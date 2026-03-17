@@ -1,11 +1,12 @@
 import { createFileRoute } from '@tanstack/react-router';
 import {
   Title, Text, Stack, Card, Group, Badge, Select, Progress,
-  Center, Loader, Table, ThemeIcon,
+  Center, Loader, Table, ThemeIcon, ActionIcon,
 } from '@mantine/core';
 import {
-  IconCheck, IconClock, IconReceipt,
+  IconCheck, IconClock, IconReceipt, IconX,
 } from '@tabler/icons-react';
+import { notifications } from '@mantine/notifications';
 import { useState, useMemo } from 'react';
 import { ExpenseCategory } from '@commune/types';
 import { formatCurrency, formatDate, getMonthKey } from '@commune/utils';
@@ -13,6 +14,7 @@ import { useGroupStore } from '../../stores/group';
 import { useAuthStore } from '../../stores/auth';
 import { useGroup } from '../../hooks/use-groups';
 import { useUserBreakdown } from '../../hooks/use-dashboard';
+import { useMarkPayment } from '../../hooks/use-expenses';
 
 export const Route = createFileRoute('/_app/breakdown')({
   component: BreakdownPage,
@@ -44,6 +46,29 @@ function BreakdownPage() {
   const { data: group } = useGroup(activeGroupId ?? '');
   const [selectedMonth, setSelectedMonth] = useState(getMonthKey());
   const [categoryFilter, setCategoryFilter] = useState('');
+
+  const markPayment = useMarkPayment(activeGroupId ?? '');
+
+  async function handleTogglePayment(expenseId: string, currentStatus: string) {
+    try {
+      await markPayment.mutateAsync({
+        expenseId,
+        userId: user?.id ?? '',
+        status: currentStatus === 'unpaid' ? 'paid' : 'unpaid',
+      });
+      notifications.show({
+        title: currentStatus === 'unpaid' ? 'Marked as paid' : 'Marked as unpaid',
+        message: '',
+        color: 'green',
+      });
+    } catch (err) {
+      notifications.show({
+        title: 'Failed',
+        message: err instanceof Error ? err.message : 'Error',
+        color: 'red',
+      });
+    }
+  }
 
   const { data: breakdown, isLoading } = useUserBreakdown(
     activeGroupId ?? '',
@@ -149,6 +174,7 @@ function BreakdownPage() {
                     <Table.Th style={{ textAlign: 'right' }}>Your share</Table.Th>
                     <Table.Th style={{ textAlign: 'center' }}>Status</Table.Th>
                     <Table.Th>Paid by</Table.Th>
+                    <Table.Th style={{ textAlign: 'center' }}>Action</Table.Th>
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>
@@ -187,6 +213,21 @@ function BreakdownPage() {
                         <Text size="sm" c="dimmed">
                           {item.paid_by_user?.name ?? '—'}
                         </Text>
+                      </Table.Td>
+                      <Table.Td style={{ textAlign: 'center' }}>
+                        {item.payment_status !== 'confirmed' && (
+                          <ActionIcon
+                            variant="light"
+                            color={item.payment_status === 'unpaid' ? 'green' : 'red'}
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleTogglePayment(item.expense.id, item.payment_status);
+                            }}
+                          >
+                            {item.payment_status === 'unpaid' ? <IconCheck size={14} /> : <IconX size={14} />}
+                          </ActionIcon>
+                        )}
                       </Table.Td>
                     </Table.Tr>
                   ))}
