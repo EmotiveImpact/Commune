@@ -117,9 +117,18 @@ export type MarkPaymentInput = z.infer<typeof markPaymentSchema>;
 
 // ─── Profile Schemas ─────────────────────────────────────────────────────────
 
-export const updateProfileSchema = z.object({
-  name: z.string().min(1).max(100),
-  avatar_url: z.string().url().optional(),
+export const notificationPreferencesSchema = z.object({
+  email_on_new_expense: z.boolean(),
+  email_on_payment_received: z.boolean(),
+  email_on_payment_reminder: z.boolean(),
+  email_on_overdue: z.boolean(),
 });
 
+export const updateProfileSchema = z.object({
+  name: z.string().min(1).max(100),
+  avatar_url: z.string().url().optional().nullable(),
+  notification_preferences: notificationPreferencesSchema.optional(),
+});
+
+export type NotificationPreferencesInput = z.infer<typeof notificationPreferencesSchema>;
 export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;

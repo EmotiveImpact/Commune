@@ -7,3 +7,4 @@ export * from './dashboard';
 export * from './breakdown';
 export * from './update-expense';
 export * from './subscriptions';
+export * from './profile';
