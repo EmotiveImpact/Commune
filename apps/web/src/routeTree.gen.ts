@@ -15,6 +15,10 @@ import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as AuthSignupRouteImport } from './routes/_auth/signup'
 import { Route as AuthLoginRouteImport } from './routes/_auth/login'
 import { Route as AuthCallbackRouteImport } from './routes/_auth/callback'
+import { Route as AppSettingsRouteImport } from './routes/_app/settings'
+import { Route as AppMembersRouteImport } from './routes/_app/members'
+import { Route as AppBreakdownRouteImport } from './routes/_app/breakdown'
+import { Route as AppExpensesIndexRouteImport } from './routes/_app/expenses/index'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/_auth',
@@ -44,41 +48,93 @@ const AuthCallbackRoute = AuthCallbackRouteImport.update({
   path: '/callback',
   getParentRoute: () => AuthRoute,
 } as any)
+const AppSettingsRoute = AppSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppMembersRoute = AppMembersRouteImport.update({
+  id: '/members',
+  path: '/members',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppBreakdownRoute = AppBreakdownRouteImport.update({
+  id: '/breakdown',
+  path: '/breakdown',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppExpensesIndexRoute = AppExpensesIndexRouteImport.update({
+  id: '/expenses/',
+  path: '/expenses/',
+  getParentRoute: () => AppRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
+  '/breakdown': typeof AppBreakdownRoute
+  '/members': typeof AppMembersRoute
+  '/settings': typeof AppSettingsRoute
   '/callback': typeof AuthCallbackRoute
   '/login': typeof AuthLoginRoute
   '/signup': typeof AuthSignupRoute
+  '/expenses/': typeof AppExpensesIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof AppIndexRoute
+  '/breakdown': typeof AppBreakdownRoute
+  '/members': typeof AppMembersRoute
+  '/settings': typeof AppSettingsRoute
   '/callback': typeof AuthCallbackRoute
   '/login': typeof AuthLoginRoute
   '/signup': typeof AuthSignupRoute
+  '/expenses': typeof AppExpensesIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_app': typeof AppRouteWithChildren
   '/_auth': typeof AuthRouteWithChildren
+  '/_app/breakdown': typeof AppBreakdownRoute
+  '/_app/members': typeof AppMembersRoute
+  '/_app/settings': typeof AppSettingsRoute
   '/_auth/callback': typeof AuthCallbackRoute
   '/_auth/login': typeof AuthLoginRoute
   '/_auth/signup': typeof AuthSignupRoute
   '/_app/': typeof AppIndexRoute
+  '/_app/expenses/': typeof AppExpensesIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/callback' | '/login' | '/signup'
+  fullPaths:
+    | '/'
+    | '/breakdown'
+    | '/members'
+    | '/settings'
+    | '/callback'
+    | '/login'
+    | '/signup'
+    | '/expenses/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/callback' | '/login' | '/signup'
+  to:
+    | '/'
+    | '/breakdown'
+    | '/members'
+    | '/settings'
+    | '/callback'
+    | '/login'
+    | '/signup'
+    | '/expenses'
   id:
     | '__root__'
     | '/_app'
     | '/_auth'
+    | '/_app/breakdown'
+    | '/_app/members'
+    | '/_app/settings'
     | '/_auth/callback'
     | '/_auth/login'
     | '/_auth/signup'
     | '/_app/'
+    | '/_app/expenses/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -130,15 +186,51 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthCallbackRouteImport
       parentRoute: typeof AuthRoute
     }
+    '/_app/settings': {
+      id: '/_app/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AppSettingsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/members': {
+      id: '/_app/members'
+      path: '/members'
+      fullPath: '/members'
+      preLoaderRoute: typeof AppMembersRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/breakdown': {
+      id: '/_app/breakdown'
+      path: '/breakdown'
+      fullPath: '/breakdown'
+      preLoaderRoute: typeof AppBreakdownRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/expenses/': {
+      id: '/_app/expenses/'
+      path: '/expenses'
+      fullPath: '/expenses/'
+      preLoaderRoute: typeof AppExpensesIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
 interface AppRouteChildren {
+  AppBreakdownRoute: typeof AppBreakdownRoute
+  AppMembersRoute: typeof AppMembersRoute
+  AppSettingsRoute: typeof AppSettingsRoute
   AppIndexRoute: typeof AppIndexRoute
+  AppExpensesIndexRoute: typeof AppExpensesIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppBreakdownRoute: AppBreakdownRoute,
+  AppMembersRoute: AppMembersRoute,
+  AppSettingsRoute: AppSettingsRoute,
   AppIndexRoute: AppIndexRoute,
+  AppExpensesIndexRoute: AppExpensesIndexRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
