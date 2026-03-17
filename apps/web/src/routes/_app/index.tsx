@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
 import {
-  Title, Text, Stack, Card, SimpleGrid, Group, ThemeIcon, Center,
-  Loader, Button, Progress, Badge,
+  Title, Text, Stack, Card, SimpleGrid, Group, ThemeIcon,
+  Button, Progress, Badge,
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import {
@@ -14,6 +14,7 @@ import { useGroup } from '../../hooks/use-groups';
 import { useDashboardStats } from '../../hooks/use-dashboard';
 import { formatCurrency, getMonthKey, formatDate } from '@commune/utils';
 import { CreateGroupModal } from '../../components/create-group-modal';
+import { PageLoader } from '../../components/page-loader';
 
 export const Route = createFileRoute('/_app/')({
   component: DashboardPage,
@@ -43,7 +44,7 @@ function DashboardPage() {
   }
 
   if (groupLoading || statsLoading) {
-    return <Center h={400}><Loader /></Center>;
+    return <PageLoader message="Loading dashboard..." />;
   }
 
   const paidPct = stats && stats.your_share > 0

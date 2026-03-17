@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router';
 import {
   Title, Text, Stack, Card, Group, Badge, Select, Progress,
-  Center, Loader, Table, ThemeIcon, ActionIcon,
+  Table, ThemeIcon, ActionIcon,
 } from '@mantine/core';
 import {
   IconCheck, IconClock, IconReceipt, IconX,
@@ -15,6 +15,8 @@ import { useAuthStore } from '../../stores/auth';
 import { useGroup } from '../../hooks/use-groups';
 import { useUserBreakdown } from '../../hooks/use-dashboard';
 import { useMarkPayment } from '../../hooks/use-expenses';
+import { PageLoader } from '../../components/page-loader';
+import { EmptyState } from '../../components/empty-state';
 
 export const Route = createFileRoute('/_app/breakdown')({
   component: BreakdownPage,
@@ -109,7 +111,7 @@ function BreakdownPage() {
       </Group>
 
       {isLoading ? (
-        <Center h={400}><Loader /></Center>
+        <PageLoader message="Loading breakdown..." />
       ) : (
         <>
           {/* Summary card */}
@@ -157,12 +159,12 @@ function BreakdownPage() {
 
           {/* Itemised list */}
           {filteredItems.length === 0 ? (
-            <Center h={200}>
-              <Stack align="center" gap="sm">
-                <IconReceipt size={40} color="gray" />
-                <Text c="dimmed">No expenses for this period.</Text>
-              </Stack>
-            </Center>
+            <EmptyState
+              icon={IconReceipt}
+              iconColor="blue"
+              title="No expenses for this period"
+              description="There are no expenses in the selected month."
+            />
           ) : (
             <Card withBorder padding={0} radius="md">
               <Table striped highlightOnHover>

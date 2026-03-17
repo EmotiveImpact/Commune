@@ -1,7 +1,6 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
 import {
   Title, Stack, Card, Group, Text, Badge, Select, TextInput, Button,
-  Center, Loader,
 } from '@mantine/core';
 import { IconPlus, IconSearch, IconReceipt } from '@tabler/icons-react';
 import { useState, useMemo } from 'react';
@@ -10,6 +9,8 @@ import { formatCurrency, formatDate, isOverdue } from '@commune/utils';
 import { useGroupStore } from '../../../stores/group';
 import { useGroup } from '../../../hooks/use-groups';
 import { useGroupExpenses } from '../../../hooks/use-expenses';
+import { PageLoader } from '../../../components/page-loader';
+import { EmptyState } from '../../../components/empty-state';
 
 export const Route = createFileRoute('/_app/expenses/')({
   component: ExpensesPage,
@@ -71,14 +72,14 @@ function ExpensesPage() {
       </Group>
 
       {isLoading ? (
-        <Center h={300}><Loader /></Center>
+        <PageLoader message="Loading expenses..." />
       ) : filtered.length === 0 ? (
-        <Center h={300}>
-          <Stack align="center" gap="sm">
-            <IconReceipt size={48} color="gray" />
-            <Text c="dimmed">No expenses yet. Add your first shared expense.</Text>
-          </Stack>
-        </Center>
+        <EmptyState
+          icon={IconReceipt}
+          iconColor="blue"
+          title="No expenses yet"
+          description="Add your first expense to start tracking shared costs."
+        />
       ) : (
         <Stack gap="sm">
           {filtered.map((expense) => {
