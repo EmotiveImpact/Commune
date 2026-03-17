@@ -1,11 +1,18 @@
-import { createFileRoute } from '@tanstack/react-router';
-import { Title, Text, Stack, Card, SimpleGrid, Group, ThemeIcon, Center, Loader, Button } from '@mantine/core';
+import { createFileRoute, Link } from '@tanstack/react-router';
+import {
+  Title, Text, Stack, Card, SimpleGrid, Group, ThemeIcon, Center,
+  Loader, Button, Progress, Badge,
+} from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
-import { IconReceipt, IconCash, IconAlertTriangle, IconCalendar } from '@tabler/icons-react';
+import {
+  IconReceipt, IconCash, IconAlertTriangle, IconCalendar,
+  IconWallet, IconArrowRight,
+} from '@tabler/icons-react';
 import { useGroupStore } from '../../stores/group';
+import { useAuthStore } from '../../stores/auth';
 import { useGroup } from '../../hooks/use-groups';
-import { useGroupExpenses } from '../../hooks/use-expenses';
-import { formatCurrency, getMonthKey, isOverdue, isUpcoming } from '@commune/utils';
+import { useDashboardStats } from '../../hooks/use-dashboard';
+import { formatCurrency, getMonthKey, formatDate } from '@commune/utils';
 import { CreateGroupModal } from '../../components/create-group-modal';
 
 export const Route = createFileRoute('/_app/')({
@@ -14,11 +21,13 @@ export const Route = createFileRoute('/_app/')({
 
 function DashboardPage() {
   const { activeGroupId } = useGroupStore();
+  const { user } = useAuthStore();
   const { data: group, isLoading: groupLoading } = useGroup(activeGroupId ?? '');
   const currentMonth = getMonthKey();
-  const { data: expenses, isLoading: expensesLoading } = useGroupExpenses(
+  const { data: stats, isLoading: statsLoading } = useDashboardStats(
     activeGroupId ?? '',
-    { month: currentMonth }
+    user?.id ?? '',
+    currentMonth,
   );
   const [createOpened, { open: openCreate, close: closeCreate }] = useDisclosure(false);
 
@@ -33,26 +42,32 @@ function DashboardPage() {
     );
   }
 
-  if (groupLoading || expensesLoading) {
+  if (groupLoading || statsLoading) {
     return <Center h={400}><Loader /></Center>;
   }
 
-  const totalSpend = (expenses ?? []).reduce((sum, e) => sum + e.amount, 0);
-  const overdueCount = (expenses ?? []).filter((e) => isOverdue(e.due_date)).length;
-  const upcomingCount = (expenses ?? []).filter((e) => isUpcoming(e.due_date)).length;
+  const paidPct = stats && stats.your_share > 0
+    ? Math.round((stats.amount_paid / stats.your_share) * 100)
+    : 0;
 
-  const stats = [
-    { label: 'Total spend', value: formatCurrency(totalSpend, group?.currency), icon: IconReceipt, color: 'blue' },
-    { label: 'Expenses', value: (expenses ?? []).length.toString(), icon: IconCash, color: 'green' },
-    { label: 'Overdue', value: overdueCount.toString(), icon: IconAlertTriangle, color: 'red' },
-    { label: 'Upcoming', value: upcomingCount.toString(), icon: IconCalendar, color: 'orange' },
+  const statCards = [
+    { label: 'Group spend', value: formatCurrency(stats?.total_spend ?? 0, group?.currency), icon: IconReceipt, color: 'blue' },
+    { label: 'Your share', value: formatCurrency(stats?.your_share ?? 0, group?.currency), icon: IconWallet, color: 'violet' },
+    { label: 'Remaining', value: formatCurrency(stats?.amount_remaining ?? 0, group?.currency), icon: IconCash, color: 'orange' },
+    { label: 'Overdue', value: (stats?.overdue_count ?? 0).toString(), icon: IconAlertTriangle, color: 'red' },
   ];
 
   return (
     <Stack>
-      <Title order={2}>{group?.name}</Title>
+      <Group justify="space-between">
+        <Title order={2}>{group?.name}</Title>
+        <Button component={Link} to="/breakdown" variant="subtle" rightSection={<IconArrowRight size={16} />}>
+          My Breakdown
+        </Button>
+      </Group>
+
       <SimpleGrid cols={{ base: 1, xs: 2, md: 4 }}>
-        {stats.map((stat) => (
+        {statCards.map((stat) => (
           <Card key={stat.label} withBorder padding="lg" radius="md">
             <Group justify="space-between">
               <div>
@@ -66,6 +81,50 @@ function DashboardPage() {
           </Card>
         ))}
       </SimpleGrid>
+
+      {/* Payment progress */}
+      <Card withBorder padding="lg" radius="md">
+        <Group justify="space-between" mb="xs">
+          <Text fw={600}>Your payment progress</Text>
+          <Text size="sm" c="dimmed">{paidPct}% complete</Text>
+        </Group>
+        <Progress value={paidPct} size="lg" radius="md" color={paidPct === 100 ? 'green' : 'blue'} />
+        <Group justify="space-between" mt="xs">
+          <Text size="sm" c="dimmed">Paid: {formatCurrency(stats?.amount_paid ?? 0, group?.currency)}</Text>
+          <Text size="sm" c="dimmed">Total: {formatCurrency(stats?.your_share ?? 0, group?.currency)}</Text>
+        </Group>
+      </Card>
+
+      {/* Upcoming expenses */}
+      {(stats?.upcoming_items ?? []).length > 0 && (
+        <Card withBorder padding="lg" radius="md">
+          <Group justify="space-between" mb="sm">
+            <Text fw={600}>Upcoming this week</Text>
+            <Badge variant="light" color="orange">{stats!.upcoming_items.length}</Badge>
+          </Group>
+          <Stack gap="xs">
+            {stats!.upcoming_items.map((expense) => (
+              <Card
+                key={expense.id}
+                component={Link}
+                to={`/expenses/${expense.id}`}
+                withBorder
+                padding="sm"
+                radius="sm"
+                style={{ cursor: 'pointer', textDecoration: 'none' }}
+              >
+                <Group justify="space-between">
+                  <div>
+                    <Text size="sm" fw={500}>{expense.title}</Text>
+                    <Text size="xs" c="dimmed">{formatDate(expense.due_date)}</Text>
+                  </div>
+                  <Text fw={600}>{formatCurrency(expense.amount, group?.currency)}</Text>
+                </Group>
+              </Card>
+            ))}
+          </Stack>
+        </Card>
+      )}
     </Stack>
   );
 }
