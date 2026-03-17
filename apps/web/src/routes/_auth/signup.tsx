@@ -13,39 +13,55 @@ import {
 import { useForm, schemaResolver } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
 import { z } from 'zod';
-import { signInWithEmail, signInWithGoogle, signInWithApple } from '@commune/api';
+import {
+  signUpWithEmail,
+  signInWithGoogle,
+  signInWithApple,
+} from '@commune/api';
 import { IconBrandGoogle, IconBrandApple } from '@tabler/icons-react';
 import { useState } from 'react';
 
-export const Route = createFileRoute('/_auth/login')({
-  component: LoginPage,
+export const Route = createFileRoute('/_auth/signup')({
+  component: SignupPage,
 });
 
-const loginSchema = z.object({
-  email: z.string().email('Valid email required'),
-  password: z.string().min(8, 'Password must be at least 8 characters'),
-});
+const signupSchema = z
+  .object({
+    name: z.string().min(1, 'Name is required'),
+    email: z.string().email('Valid email required'),
+    password: z.string().min(8, 'Password must be at least 8 characters'),
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: 'Passwords do not match',
+    path: ['confirmPassword'],
+  });
 
-type LoginValues = z.infer<typeof loginSchema>;
+type SignupValues = z.infer<typeof signupSchema>;
 
-function LoginPage() {
+function SignupPage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
 
-  const form = useForm<LoginValues>({
+  const form = useForm<SignupValues>({
     mode: 'uncontrolled',
-    initialValues: { email: '', password: '' },
-    validate: schemaResolver(loginSchema),
+    initialValues: { name: '', email: '', password: '', confirmPassword: '' },
+    validate: schemaResolver(signupSchema),
   });
 
-  async function handleSubmit(values: LoginValues) {
+  async function handleSubmit(values: SignupValues) {
     setLoading(true);
     try {
-      await signInWithEmail(values.email, values.password);
-      navigate({ to: '/' });
+      await signUpWithEmail(values.email, values.password, values.name);
+      notifications.show({
+        title: 'Account created',
+        message: 'Check your email to verify your account',
+        color: 'green',
+      });
+      navigate({ to: '/login' });
     } catch (err) {
       notifications.show({
-        title: 'Login failed',
+        title: 'Sign up failed',
         message: err instanceof Error ? err.message : 'Something went wrong',
         color: 'red',
       });
@@ -57,10 +73,10 @@ function LoginPage() {
   return (
     <Paper radius="md" p="xl" withBorder w={420}>
       <Title order={2} ta="center" mb="md">
-        Welcome back
+        Create your account
       </Title>
       <Text c="dimmed" size="sm" ta="center" mb="lg">
-        Sign in to your Commune account
+        Join Commune to split expenses with friends
       </Text>
 
       <Stack gap="sm" mb="md">
@@ -82,10 +98,16 @@ function LoginPage() {
         </Button>
       </Stack>
 
-      <Divider label="Or continue with email" labelPosition="center" my="lg" />
+      <Divider label="Or sign up with email" labelPosition="center" my="lg" />
 
       <form onSubmit={form.onSubmit(handleSubmit)}>
         <Stack gap="sm">
+          <TextInput
+            label="Name"
+            placeholder="Your name"
+            key={form.key('name')}
+            {...form.getInputProps('name')}
+          />
           <TextInput
             label="Email"
             placeholder="you@example.com"
@@ -94,20 +116,26 @@ function LoginPage() {
           />
           <PasswordInput
             label="Password"
-            placeholder="Your password"
+            placeholder="At least 8 characters"
             key={form.key('password')}
             {...form.getInputProps('password')}
           />
+          <PasswordInput
+            label="Confirm password"
+            placeholder="Repeat your password"
+            key={form.key('confirmPassword')}
+            {...form.getInputProps('confirmPassword')}
+          />
           <Button type="submit" fullWidth mt="sm" loading={loading}>
-            Sign in
+            Create account
           </Button>
         </Stack>
       </form>
 
       <Text ta="center" mt="md" size="sm">
-        Don&apos;t have an account?{' '}
-        <Anchor component={Link} to="/signup">
-          Sign up
+        Already have an account?{' '}
+        <Anchor component={Link} to="/login">
+          Sign in
         </Anchor>
       </Text>
     </Paper>
