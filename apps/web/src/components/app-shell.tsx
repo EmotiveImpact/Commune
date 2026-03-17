@@ -1,6 +1,7 @@
 import {
   AppShell as MantineAppShell,
   Burger,
+  Divider,
   Group,
   Text,
   NavLink,
@@ -13,6 +14,7 @@ import { Link, useNavigate } from '@tanstack/react-router';
 import { useAuthStore } from '../stores/auth';
 import { signOut } from '@commune/api';
 import { navLinks } from './nav-links';
+import { GroupSelector } from './group-selector';
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -77,6 +79,8 @@ export function AppShell({ children }: AppShellProps) {
       </MantineAppShell.Header>
 
       <MantineAppShell.Navbar p="md">
+        <GroupSelector />
+        <Divider my="sm" />
         {navLinks.map((link) => (
           <NavLink
             key={link.to}
