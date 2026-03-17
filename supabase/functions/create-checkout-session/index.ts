@@ -1,0 +1,88 @@
+import Stripe from 'npm:stripe@17';
+import { createClient } from 'npm:@supabase/supabase-js@2';
+
+const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY')!);
+
+const PRICE_MAP: Record<string, string> = {
+  standard: Deno.env.get('STRIPE_PRICE_STANDARD')!,
+  pro: Deno.env.get('STRIPE_PRICE_PRO')!,
+  agency: Deno.env.get('STRIPE_PRICE_AGENCY')!,
+};
+
+const APP_URL = Deno.env.get('APP_URL')!;
+
+Deno.serve(async (req: Request) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, {
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+      },
+    });
+  }
+
+  try {
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: 'Missing authorization' }), { status: 401 });
+    }
+
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_ANON_KEY')!,
+      { global: { headers: { Authorization: authHeader } } },
+    );
+
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
+    }
+
+    const { plan } = await req.json();
+    const priceId = PRICE_MAP[plan];
+    if (!priceId) {
+      return new Response(JSON.stringify({ error: 'Invalid plan' }), { status: 400 });
+    }
+
+    // Check for existing Stripe customer
+    const { data: subscription } = await supabase
+      .from('subscriptions')
+      .select('stripe_customer_id')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    let customerId = subscription?.stripe_customer_id;
+
+    // Create Stripe customer if needed
+    if (!customerId) {
+      const customer = await stripe.customers.create({
+        email: user.email,
+        metadata: { supabase_user_id: user.id },
+      });
+      customerId = customer.id;
+    }
+
+    // Create checkout session with 7-day trial
+    const session = await stripe.checkout.sessions.create({
+      customer: customerId,
+      mode: 'subscription',
+      payment_method_types: ['card'],
+      line_items: [{ price: priceId, quantity: 1 }],
+      subscription_data: {
+        trial_period_days: 7,
+        metadata: { supabase_user_id: user.id, plan },
+      },
+      success_url: `${APP_URL}/pricing?success=true`,
+      cancel_url: `${APP_URL}/pricing?cancelled=true`,
+      metadata: { supabase_user_id: user.id, plan },
+    });
+
+    return new Response(JSON.stringify({ url: session.url }), {
+      headers: { 'Content-Type': 'application/json' },
+    });
+  } catch (err) {
+    console.error('Checkout error:', err);
+    return new Response(JSON.stringify({ error: 'Internal server error' }), { status: 500 });
+  }
+});
