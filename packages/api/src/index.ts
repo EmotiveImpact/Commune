@@ -1,4 +1,4 @@
-export { supabase } from './client';
+export { supabase, initSupabase, getSupabase } from './client';
 export * from './auth';
 export * from './groups';
 export * from './expenses';

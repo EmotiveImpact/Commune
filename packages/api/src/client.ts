@@ -1,14 +1,36 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+let _supabase: SupabaseClient | null = null;
 
-if (!supabaseUrl) {
-  throw new Error('Missing VITE_SUPABASE_URL environment variable');
+/**
+ * Initialize the Supabase client. Must be called once before using any API functions.
+ * - Web: call from main.tsx with import.meta.env.VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY
+ * - Mobile: call from root layout with process.env.EXPO_PUBLIC_SUPABASE_URL / EXPO_PUBLIC_SUPABASE_ANON_KEY
+ */
+export function initSupabase(url: string, anonKey: string): SupabaseClient {
+  _supabase = createClient(url, anonKey);
+  return _supabase;
 }
 
-if (!supabaseAnonKey) {
-  throw new Error('Missing VITE_SUPABASE_ANON_KEY environment variable');
+/**
+ * Get the initialized Supabase client. Throws if initSupabase() has not been called.
+ */
+export function getSupabase(): SupabaseClient {
+  if (!_supabase) {
+    throw new Error(
+      'Supabase not initialized. Call initSupabase(url, anonKey) before using any API functions.'
+    );
+  }
+  return _supabase;
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+/**
+ * @deprecated Use getSupabase() instead. Kept for backwards compatibility —
+ * existing code that imports `supabase` from this module continues to work
+ * as long as initSupabase() has been called before first access.
+ */
+export const supabase = new Proxy({} as SupabaseClient, {
+  get(_, prop) {
+    return (getSupabase() as any)[prop];
+  },
+});

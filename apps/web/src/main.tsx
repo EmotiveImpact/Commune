@@ -2,9 +2,15 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { RouterProvider, createRouter } from '@tanstack/react-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { initSupabase } from '@commune/api';
 import { routeTree } from './routeTree.gen';
 import { useAuthStore } from './stores/auth';
 import { useAuthListener } from './hooks/use-auth-listener';
+
+initSupabase(
+  import.meta.env.VITE_SUPABASE_URL,
+  import.meta.env.VITE_SUPABASE_ANON_KEY
+);
 
 const queryClient = new QueryClient({
   defaultOptions: {

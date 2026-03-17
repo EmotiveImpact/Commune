@@ -28,26 +28,24 @@ export async function signInWithEmail(email: string, password: string) {
   return data;
 }
 
-export async function signInWithGoogle() {
+export async function signInWithGoogle(redirectUrl?: string) {
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: `${window.location.origin}/callback`,
+      redirectTo: redirectUrl ?? `${window.location.origin}/callback`,
     },
   });
-
   if (error) throw error;
   return data;
 }
 
-export async function signInWithApple() {
+export async function signInWithApple(redirectUrl?: string) {
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'apple',
     options: {
-      redirectTo: `${window.location.origin}/callback`,
+      redirectTo: redirectUrl ?? `${window.location.origin}/callback`,
     },
   });
-
   if (error) throw error;
   return data;
 }
@@ -57,11 +55,10 @@ export async function signOut() {
   if (error) throw error;
 }
 
-export async function resetPassword(email: string) {
+export async function resetPassword(email: string, redirectUrl?: string) {
   const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${window.location.origin}/auth/reset-password`,
+    redirectTo: redirectUrl ?? `${window.location.origin}/auth/reset-password`,
   });
-
   if (error) throw error;
   return data;
 }
