@@ -5,3 +5,4 @@ export * from './expenses';
 export * from './payments';
 export * from './dashboard';
 export * from './breakdown';
+export * from './update-expense';

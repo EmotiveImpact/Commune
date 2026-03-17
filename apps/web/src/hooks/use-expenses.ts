@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { createExpense, getGroupExpenses, getExpenseDetail, archiveExpense } from '@commune/api';
-import { markPayment } from '@commune/api';
+import { markPayment, confirmPayment } from '@commune/api';
 import type { SplitMethod } from '@commune/types';
 import { groupKeys } from './use-groups';
 
@@ -72,6 +72,20 @@ export function useMarkPayment(groupId: string) {
       status: 'unpaid' | 'paid';
       note?: string;
     }) => markPayment(expenseId, userId, status, note),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: expenseKeys.detail(variables.expenseId) });
+      queryClient.invalidateQueries({ queryKey: expenseKeys.list(groupId) });
+    },
+  });
+}
+
+export function useConfirmPayment(groupId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ expenseId, userId }: {
+      expenseId: string;
+      userId: string;
+    }) => confirmPayment(expenseId, userId, ''),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: expenseKeys.detail(variables.expenseId) });
       queryClient.invalidateQueries({ queryKey: expenseKeys.list(groupId) });
