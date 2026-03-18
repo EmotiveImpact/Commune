@@ -44,6 +44,9 @@ export function AppShell({ children }: AppShellProps) {
   const currentMember = group?.members?.find((m: any) => m.user_id === user?.id);
   const userRole = currentMember?.role === 'admin' ? 'Admin' : 'Member';
   const activeWorkspaceLabel = group?.name ?? 'No group selected';
+  const activeWorkspaceMeta = group
+    ? `${group.type.charAt(0).toUpperCase()}${group.type.slice(1)} workspace`
+    : 'Create a group to get started';
 
   async function handleSignOut() {
     setActiveGroupId(null);
@@ -172,13 +175,13 @@ export function AppShell({ children }: AppShellProps) {
                   {activeWorkspaceLabel}
                 </Text>
                 <Text size="sm" c="rgba(255, 255, 255, 0.6)">
-                  {userRole}
+                  {activeWorkspaceMeta}
                 </Text>
               </Stack>
             </Paper>
 
             <Text size="xs" fw={700} tt="uppercase" mb="xs" px="xs" className="commune-sidebar-label">
-              Navigation
+              Menu
             </Text>
             <Stack className="commune-sidebar-nav">
               {navLinks.map((link) => (

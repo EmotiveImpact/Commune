@@ -14,7 +14,6 @@ import {
   ListRowCard,
   LoadingScreen,
   Screen,
-  StatCard,
   StatusChip,
   Surface,
 } from '@/components/ui';
@@ -102,7 +101,8 @@ export default function DashboardScreen() {
         .slice(0, 4),
     [expenses]
   );
-  const focusItems = useMemo(
+
+  const attentionItems = useMemo(
     () =>
       (stats?.upcoming_items ?? [])
         .slice()
@@ -155,12 +155,20 @@ export default function DashboardScreen() {
     );
   }
 
+  const remainingAmount = stats?.amount_remaining ?? 0;
+  const totalSpend = stats?.total_spend ?? 0;
+  const yourShare = stats?.your_share ?? 0;
+  const amountPaid = stats?.amount_paid ?? 0;
+  const overdueCount = stats?.overdue_count ?? 0;
+  const nextActionExpense = attentionItems[0] ?? null;
+  const overviewDescription = 'Shared balances, progress, and what needs attention right now.';
+
   return (
     <Screen>
       <HeroPanel
         eyebrow={`Hello${user?.name ? `, ${user.name.split(' ')[0]}` : ''}`}
         title="This cycle"
-        description="Shared spending, balances, and what needs attention right now."
+        description={overviewDescription}
         badgeLabel={monthLabel}
         contextLabel={`${group.name} · ${group.currency}`}
       >
@@ -175,10 +183,10 @@ export default function DashboardScreen() {
           <View className="flex-1 justify-between">
             <View className="rounded-[22px] bg-white/8 px-4 py-3">
               <Text className="text-xs font-semibold uppercase tracking-[2px] text-[#BBB4C1]">
-                Total spend
+                Your share
               </Text>
               <Text className="mt-2 text-lg font-semibold text-white">
-                {formatCurrency(stats?.total_spend ?? 0, group.currency)}
+                {formatCurrency(yourShare, group.currency)}
               </Text>
             </View>
             <View className="rounded-[22px] bg-white/8 px-4 py-3">
@@ -186,15 +194,19 @@ export default function DashboardScreen() {
                 Remaining
               </Text>
               <Text className="mt-2 text-lg font-semibold text-white">
-                {formatCurrency(stats?.amount_remaining ?? 0, group.currency)}
+                {formatCurrency(remainingAmount, group.currency)}
               </Text>
             </View>
             <View className="rounded-[22px] bg-white/8 px-4 py-3">
               <Text className="text-xs font-semibold uppercase tracking-[2px] text-[#BBB4C1]">
-                Overdue
+                Needs attention
               </Text>
               <Text className="mt-2 text-lg font-semibold text-white">
-                {stats?.overdue_count ?? 0} item{(stats?.overdue_count ?? 0) === 1 ? '' : 's'}
+                {overdueCount > 0
+                  ? `${overdueCount} item${overdueCount === 1 ? '' : 's'}`
+                  : nextActionExpense
+                    ? formatDate(nextActionExpense.due_date)
+                    : 'All clear'}
               </Text>
             </View>
           </View>
@@ -203,9 +215,9 @@ export default function DashboardScreen() {
         <View className="mt-5 flex-row">
           <View className="mr-3 flex-1">
             <AppButton
-              label="Add expense"
-              icon="add-outline"
-              onPress={() => router.push('/expenses/new')}
+              label="Review payments"
+              icon="pie-chart-outline"
+              onPress={() => router.push('/(tabs)/breakdown')}
             />
           </View>
           <View className="flex-1">
@@ -240,12 +252,12 @@ export default function DashboardScreen() {
 
       <Surface className="mb-4">
         <View className="flex-row items-center justify-between">
-          <View className="flex-1 mr-4">
+          <View className="mr-4 flex-1">
             <Text className="text-lg font-semibold text-[#17141F]">
-              Payment progress
+              Month summary
             </Text>
             <Text className="mt-2 text-sm leading-6 text-[#6A645D]">
-              {paidPct}% of your monthly share is marked as paid.
+              A compact view of this cycle without repeating every dashboard stat.
             </Text>
           </View>
           <Text className="text-2xl font-bold text-[#205C54]">{paidPct}%</Text>
@@ -256,62 +268,74 @@ export default function DashboardScreen() {
             style={{ width: `${Math.min(Math.max(paidPct, 0), 100)}%` }}
           />
         </View>
+        <View className="mt-5 flex-row">
+          <View className="mr-3 flex-1 rounded-[22px] bg-[#FAF7F2] px-4 py-4">
+            <Text className="text-xs font-semibold uppercase tracking-[2px] text-[#7B746D]">
+              Paid so far
+            </Text>
+            <Text className="mt-2 text-xl font-semibold text-[#17141F]">
+              {formatCurrency(amountPaid, group.currency)}
+            </Text>
+          </View>
+          <View className="flex-1 rounded-[22px] bg-[#FAF7F2] px-4 py-4">
+            <Text className="text-xs font-semibold uppercase tracking-[2px] text-[#7B746D]">
+              Group spend
+            </Text>
+            <Text className="mt-2 text-xl font-semibold text-[#17141F]">
+              {formatCurrency(totalSpend, group.currency)}
+            </Text>
+          </View>
+        </View>
+        <View className="mt-3 rounded-[22px] bg-[#EEF6F3] px-4 py-4">
+          <Text className="text-xs font-semibold uppercase tracking-[2px] text-[#5F746D]">
+            Remaining this cycle
+          </Text>
+          <Text className="mt-2 text-xl font-semibold text-[#17141F]">
+            {formatCurrency(remainingAmount, group.currency)}
+          </Text>
+          <Text className="mt-1 text-sm text-[#5F746D]">
+            {remainingAmount > 0
+              ? 'Still needs paying or confirming.'
+              : 'Nothing outstanding right now.'}
+          </Text>
+        </View>
+        {nextActionExpense ? (
+          <View className="mt-4">
+            <AppButton
+              label="Open next expense"
+              variant="secondary"
+              icon="arrow-forward-outline"
+              onPress={() => router.push(`/expenses/${nextActionExpense.id}`)}
+            />
+          </View>
+        ) : null}
       </Surface>
 
-      <View className="mb-1 flex-row flex-wrap justify-between">
-        <View style={{ width: '48.5%' }}>
-          <StatCard
-            icon="wallet-outline"
-            label="Group spend"
-            value={formatCurrency(stats?.total_spend ?? 0, group.currency)}
-            note="Across the current month"
-            tone="emerald"
-          />
-        </View>
-        <View style={{ width: '48.5%' }}>
-          <StatCard
-            icon="person-outline"
-            label="Your share"
-            value={formatCurrency(stats?.your_share ?? 0, group.currency)}
-            note="Across active expenses"
-            tone="forest"
-          />
-        </View>
-        <View style={{ width: '48.5%' }}>
-          <StatCard
-            icon="cash-outline"
-            label="Remaining"
-            value={formatCurrency(stats?.amount_remaining ?? 0, group.currency)}
-            note="Still unpaid or unconfirmed"
-            tone="sky"
-          />
-        </View>
-        <View style={{ width: '48.5%' }}>
-          <StatCard
-            icon="alert-circle-outline"
-            label="Overdue"
-            value={String(stats?.overdue_count ?? 0)}
-            note="Past the due date"
-            tone="sand"
-          />
-        </View>
-      </View>
-
       <Surface className="mb-4">
-        <Text className="text-lg font-semibold text-[#17141F]">
-          Upcoming this week
-        </Text>
-        <Text className="mt-2 text-sm leading-6 text-[#6A645D]">
-          Shared expenses that need attention soon.
-        </Text>
+        <View className="flex-row items-center justify-between">
+          <View className="mr-4 flex-1">
+            <Text className="text-lg font-semibold text-[#17141F]">
+              Needs attention
+            </Text>
+            <Text className="mt-2 text-sm leading-6 text-[#6A645D]">
+              The shortest path to keeping this cycle clear.
+            </Text>
+          </View>
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => router.push('/(tabs)/breakdown')}
+          >
+            <Text className="text-sm font-semibold text-[#205C54]">Open breakdown</Text>
+          </TouchableOpacity>
+        </View>
 
-        {focusItems.length === 0 ? (
+        {attentionItems.length === 0 ? (
           <Text className="mt-4 text-sm text-[#6A645D]">
-            Nothing due in the next seven days.
+            Nothing urgent in the next seven days.
           </Text>
         ) : (
-          focusItems.map((expense) => {
-            const yourShare =
+          attentionItems.map((expense) => {
+            const yourAmount =
               expense.participants.find((participant) => participant.user_id === user?.id)
                 ?.share_amount ?? expense.amount;
 
@@ -320,7 +344,7 @@ export default function DashboardScreen() {
                 key={expense.id}
                 title={expense.title}
                 subtitle={`Due ${formatDate(expense.due_date)}`}
-                amount={formatCurrency(yourShare, expense.currency)}
+                amount={formatCurrency(yourAmount, expense.currency)}
                 amountColor="#205C54"
                 onPress={() => router.push(`/expenses/${expense.id}`)}
               >

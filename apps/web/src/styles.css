@@ -19,6 +19,8 @@
   --commune-shadow-sm: 0 10px 24px rgba(23, 27, 36, 0.05);
   --commune-shadow: 0 20px 48px rgba(23, 27, 36, 0.08);
   --commune-shadow-md: 0 28px 64px rgba(23, 27, 36, 0.12);
+  --commune-motion-fast: 160ms ease;
+  --commune-motion-medium: 220ms ease;
 }
 
 html,
@@ -93,12 +95,20 @@ a {
   border: 1px solid var(--commune-border);
   background: rgba(255, 255, 255, 0.82);
   box-shadow: var(--commune-shadow-sm);
+  transition:
+    transform var(--commune-motion-medium),
+    box-shadow var(--commune-motion-medium),
+    border-color var(--commune-motion-fast);
 }
 
 .commune-stat-card {
   border: 1px solid var(--commune-border);
   background: var(--commune-paper-strong);
   box-shadow: none;
+  transition:
+    transform var(--commune-motion-medium),
+    box-shadow var(--commune-motion-medium),
+    border-color var(--commune-motion-fast);
 }
 
 .commune-app-shell-header {
@@ -127,6 +137,10 @@ a {
   background: var(--commune-paper-strong);
   border: 1px solid var(--commune-border);
   box-shadow: none;
+  transition:
+    border-color var(--commune-motion-fast),
+    box-shadow var(--commune-motion-fast),
+    background-color var(--commune-motion-fast);
 }
 
 .commune-app-shell-navbar {
@@ -147,8 +161,8 @@ a {
 
 .commune-sidebar-panel {
   height: calc(100dvh - 2rem);
-  margin: 1rem 0 1rem 1rem;
-  padding: 1.1rem;
+  margin: 1.7rem 0 1rem 1rem;
+  padding: 1.55rem 1.1rem 1.1rem;
   border-radius: 24px;
   background: linear-gradient(180deg, #1f2330 0%, #272c39 100%);
   color: rgba(255, 255, 255, 0.92);
@@ -162,12 +176,17 @@ a {
 
 .commune-sidebar-nav {
   gap: 0.3rem;
+  margin-top: 0.6rem;
 }
 
 .commune-sidebar-link {
   color: rgba(255, 255, 255, 0.76);
   border-radius: 14px;
-  transition: background-color 160ms ease, color 160ms ease, transform 160ms ease;
+  transition:
+    background-color var(--commune-motion-fast),
+    color var(--commune-motion-fast),
+    transform var(--commune-motion-fast),
+    box-shadow var(--commune-motion-fast);
 }
 
 .commune-sidebar-link[data-active='true'],
@@ -202,6 +221,10 @@ a {
   border-radius: 999px;
   background: var(--commune-paper-strong);
   border: 1px solid var(--commune-border);
+  transition:
+    transform var(--commune-motion-fast),
+    box-shadow var(--commune-motion-fast),
+    border-color var(--commune-motion-fast);
 }
 
 .commune-main-content {
@@ -254,6 +277,9 @@ a {
   padding: 0.9rem 1rem;
   border-radius: 20px;
   background: rgba(255, 255, 255, 0.06);
+  transition:
+    transform var(--commune-motion-medium),
+    background-color var(--commune-motion-fast);
 }
 
 .commune-section-heading {
@@ -316,9 +342,86 @@ a {
   background: linear-gradient(180deg, rgba(31, 26, 42, 0.08), rgba(31, 26, 42, 0.03));
 }
 
+.mantine-Button-root,
+.mantine-ActionIcon-root,
+.mantine-Menu-item,
+.mantine-NavLink-root,
+.mantine-Select-input,
+.mantine-MultiSelect-input,
+.mantine-Input-input,
+.mantine-Paper-root button,
+.mantine-Paper-root a {
+  transition:
+    transform var(--commune-motion-fast),
+    box-shadow var(--commune-motion-fast),
+    border-color var(--commune-motion-fast),
+    background-color var(--commune-motion-fast),
+    color var(--commune-motion-fast);
+}
+
+.mantine-Input-input:focus,
+.mantine-Select-input:focus,
+.mantine-MultiSelect-input:focus {
+  border-color: rgba(32, 92, 84, 0.35);
+  box-shadow: 0 0 0 3px rgba(32, 92, 84, 0.12);
+}
+
+.commune-soft-panel:focus-within,
+.commune-stat-card:focus-within {
+  border-color: rgba(32, 92, 84, 0.18);
+}
+
+@media (hover: hover) {
+  .mantine-Button-root:hover,
+  .mantine-ActionIcon-root:hover,
+  .commune-user-chip:hover,
+  .commune-sidebar-link:hover,
+  .mantine-Menu-item:hover {
+    transform: translateY(-1px);
+  }
+
+  .commune-soft-panel:hover,
+  .commune-stat-card:hover,
+  .commune-hero-aside-stat:hover,
+  .commune-kpi-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--commune-shadow-sm);
+  }
+
+  .commune-user-chip:hover {
+    box-shadow: 0 12px 24px rgba(23, 27, 36, 0.08);
+  }
+}
+
+.mantine-Button-root:active,
+.mantine-ActionIcon-root:active,
+.commune-user-chip:active,
+.commune-sidebar-link:active,
+.mantine-Menu-item:active {
+  transform: translateY(1px) scale(0.985);
+}
+
 .commune-sidebar-workspace-card {
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(255, 255, 255, 0.05);
+}
+
+.commune-empty-dashboard {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.commune-checklist-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-height: 250px;
+}
+
+.commune-empty-dashboard-panel {
+  background:
+    radial-gradient(circle at top right, rgba(216, 235, 228, 0.22), transparent 32%),
+    rgba(255, 255, 255, 0.84);
 }
 
 .commune-focus-card {

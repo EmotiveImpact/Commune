@@ -17,8 +17,10 @@ import {
   IconAlertTriangle,
   IconArrowRight,
   IconCash,
+  IconCheck,
   IconPlus,
   IconReceipt,
+  IconTargetArrow,
   IconUsers,
   IconWallet,
 } from '@tabler/icons-react';
@@ -170,6 +172,7 @@ function DashboardPage() {
         };
       });
   }, [monthExpenses, stats?.upcoming_items, user?.id]);
+  const hasExpenses = (allExpenses?.length ?? 0) > 0;
 
   if (!activeGroupId) {
     if (groupsLoading || invitesLoading || (groups?.length ?? 0) > 0) {
@@ -233,6 +236,169 @@ function DashboardPage() {
       panelTone: 'peach',
     },
   ];
+
+  if (!hasExpenses) {
+    return (
+      <Stack gap="xl">
+        <Paper className="commune-hero-card" p={{ base: 'xl', md: '2rem' }}>
+          <div className="commune-hero-grid">
+            <Stack gap="md" maw={620}>
+              <div className="commune-hero-chip">{monthLabel}</div>
+              <Stack gap="xs">
+                <Title order={1}>
+                  Shared money, <span className="commune-hero-highlight">without the friction.</span>
+                </Title>
+                <Text size="lg" className="commune-hero-copy">
+                  {group?.name} is ready, but it still needs one real cycle before the dashboard can show anything useful.
+                </Text>
+              </Stack>
+
+              <Group className="commune-hero-actions">
+                <Button
+                  component={Link}
+                  to="/expenses/new"
+                  leftSection={<IconPlus size={16} />}
+                  styles={{
+                    root: {
+                      background: 'linear-gradient(145deg, #f3decb 0%, #d8ebe4 100%)',
+                      color: 'var(--commune-forest)',
+                      boxShadow: 'none',
+                    },
+                  }}
+                >
+                  Add expense
+                </Button>
+                <Button
+                  component={Link}
+                  to="/members"
+                  variant="white"
+                  leftSection={<IconUsers size={16} />}
+                  styles={{
+                    root: {
+                      background: 'rgba(255, 255, 255, 0.08)',
+                      color: '#fffaf6',
+                      border: '1px solid rgba(255, 255, 255, 0.08)',
+                    },
+                  }}
+                >
+                  View members
+                </Button>
+              </Group>
+            </Stack>
+
+            <Stack className="commune-hero-aside" gap="md">
+              <Group justify="space-between">
+                <div>
+                  <Text size="sm" c="rgba(255, 250, 246, 0.65)">
+                    Setup snapshot
+                  </Text>
+                  <Text fw={800} size="1.8rem">
+                    0 live expenses
+                  </Text>
+                </div>
+                <Badge
+                  variant="light"
+                  styles={{ root: { background: 'rgba(255, 255, 255, 0.12)' } }}
+                >
+                  Ready to start
+                </Badge>
+              </Group>
+
+              <SimpleGrid cols={2} spacing="sm">
+                <div className="commune-hero-aside-stat">
+                  <Text size="xs" c="rgba(255, 250, 246, 0.55)" tt="uppercase">
+                    Members
+                  </Text>
+                  <Text fw={700} size="lg">
+                    {group?.members.length ?? 0}
+                  </Text>
+                </div>
+                <div className="commune-hero-aside-stat">
+                  <Text size="xs" c="rgba(255, 250, 246, 0.55)" tt="uppercase">
+                    Open items
+                  </Text>
+                  <Text fw={700} size="lg">
+                    0
+                  </Text>
+                </div>
+              </SimpleGrid>
+
+              <div className="commune-soft-progress">
+                <Group justify="space-between" mb={8}>
+                  <Text size="sm" c="rgba(255, 250, 246, 0.7)">
+                    First cycle progress
+                  </Text>
+                  <Text size="sm" c="rgba(255, 250, 246, 0.7)">
+                    0%
+                  </Text>
+                </Group>
+                <Progress value={0} size="lg" color="commune" />
+              </div>
+            </Stack>
+          </div>
+        </Paper>
+
+        <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="lg">
+          <Paper className="commune-soft-panel commune-checklist-card" p="xl">
+            <ThemeIcon size={42} variant="light" color="lime">
+              <IconUsers size={20} />
+            </ThemeIcon>
+            <Text fw={700} size="lg" mt="md">Invite the group</Text>
+            <Text size="sm" c="dimmed" mt={6}>
+              Make sure the real members are in place before you start splitting costs.
+            </Text>
+            <Button component={Link} to="/members" variant="light" mt="lg">
+              Manage members
+            </Button>
+          </Paper>
+
+          <Paper className="commune-soft-panel commune-checklist-card" p="xl">
+            <ThemeIcon size={42} variant="light" color="commune">
+              <IconReceipt size={20} />
+            </ThemeIcon>
+            <Text fw={700} size="lg" mt="md">Add the first expense</Text>
+            <Text size="sm" c="dimmed" mt={6}>
+              Start with one real bill so the dashboard can replace setup mode with real numbers.
+            </Text>
+            <Button component={Link} to="/expenses/new" mt="lg">
+              Create expense
+            </Button>
+          </Paper>
+
+          <Paper className="commune-soft-panel commune-checklist-card" p="xl">
+            <ThemeIcon size={42} variant="light" color="green">
+              <IconCheck size={20} />
+            </ThemeIcon>
+            <Text fw={700} size="lg" mt="md">Mark the first payment</Text>
+            <Text size="sm" c="dimmed" mt={6}>
+              Once someone pays and it gets confirmed, the progress panels start telling the truth.
+            </Text>
+            <Button component={Link} to="/breakdown" variant="default" mt="lg">
+              Open breakdown
+            </Button>
+          </Paper>
+        </SimpleGrid>
+
+        <Paper className="commune-soft-panel commune-empty-dashboard-panel" p="xl">
+          <Group justify="space-between" align="flex-start">
+            <Stack gap="xs" maw={620}>
+              <Badge variant="light" color="gray" w="fit-content">
+                Setup mode
+              </Badge>
+              <Title order={2}>This workspace needs one clean cycle to come alive.</Title>
+              <Text size="md" c="dimmed">
+                Right now there is nothing to calculate, so showing a full analytics dashboard would just be noise. Add one shared expense, include the real members, and the monthly totals, category split, and payment focus will all start populating automatically.
+              </Text>
+            </Stack>
+
+            <Button component={Link} to="/expenses/new" rightSection={<IconTargetArrow size={16} />}>
+              Start with an expense
+            </Button>
+          </Group>
+        </Paper>
+      </Stack>
+    );
+  }
 
   return (
     <Stack gap="xl">
