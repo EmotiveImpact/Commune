@@ -16,9 +16,14 @@ import { Route as AuthSignupRouteImport } from './routes/_auth/signup'
 import { Route as AuthLoginRouteImport } from './routes/_auth/login'
 import { Route as AuthCallbackRouteImport } from './routes/_auth/callback'
 import { Route as AppSettingsRouteImport } from './routes/_app/settings'
+import { Route as AppPricingRouteImport } from './routes/_app/pricing'
+import { Route as AppOnboardingRouteImport } from './routes/_app/onboarding'
 import { Route as AppMembersRouteImport } from './routes/_app/members'
 import { Route as AppBreakdownRouteImport } from './routes/_app/breakdown'
 import { Route as AppExpensesIndexRouteImport } from './routes/_app/expenses/index'
+import { Route as AppExpensesNewRouteImport } from './routes/_app/expenses/new'
+import { Route as AppExpensesExpenseIdRouteImport } from './routes/_app/expenses/$expenseId'
+import { Route as AppExpensesExpenseIdEditRouteImport } from './routes/_app/expenses/$expenseId.edit'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/_auth',
@@ -53,6 +58,16 @@ const AppSettingsRoute = AppSettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => AppRoute,
 } as any)
+const AppPricingRoute = AppPricingRouteImport.update({
+  id: '/pricing',
+  path: '/pricing',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppOnboardingRoute = AppOnboardingRouteImport.update({
+  id: '/onboarding',
+  path: '/onboarding',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppMembersRoute = AppMembersRouteImport.update({
   id: '/members',
   path: '/members',
@@ -68,26 +83,52 @@ const AppExpensesIndexRoute = AppExpensesIndexRouteImport.update({
   path: '/expenses/',
   getParentRoute: () => AppRoute,
 } as any)
+const AppExpensesNewRoute = AppExpensesNewRouteImport.update({
+  id: '/expenses/new',
+  path: '/expenses/new',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppExpensesExpenseIdRoute = AppExpensesExpenseIdRouteImport.update({
+  id: '/expenses/$expenseId',
+  path: '/expenses/$expenseId',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppExpensesExpenseIdEditRoute =
+  AppExpensesExpenseIdEditRouteImport.update({
+    id: '/edit',
+    path: '/edit',
+    getParentRoute: () => AppExpensesExpenseIdRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/breakdown': typeof AppBreakdownRoute
   '/members': typeof AppMembersRoute
+  '/onboarding': typeof AppOnboardingRoute
+  '/pricing': typeof AppPricingRoute
   '/settings': typeof AppSettingsRoute
   '/callback': typeof AuthCallbackRoute
   '/login': typeof AuthLoginRoute
   '/signup': typeof AuthSignupRoute
+  '/expenses/$expenseId': typeof AppExpensesExpenseIdRouteWithChildren
+  '/expenses/new': typeof AppExpensesNewRoute
   '/expenses/': typeof AppExpensesIndexRoute
+  '/expenses/$expenseId/edit': typeof AppExpensesExpenseIdEditRoute
 }
 export interface FileRoutesByTo {
   '/': typeof AppIndexRoute
   '/breakdown': typeof AppBreakdownRoute
   '/members': typeof AppMembersRoute
+  '/onboarding': typeof AppOnboardingRoute
+  '/pricing': typeof AppPricingRoute
   '/settings': typeof AppSettingsRoute
   '/callback': typeof AuthCallbackRoute
   '/login': typeof AuthLoginRoute
   '/signup': typeof AuthSignupRoute
+  '/expenses/$expenseId': typeof AppExpensesExpenseIdRouteWithChildren
+  '/expenses/new': typeof AppExpensesNewRoute
   '/expenses': typeof AppExpensesIndexRoute
+  '/expenses/$expenseId/edit': typeof AppExpensesExpenseIdEditRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -95,12 +136,17 @@ export interface FileRoutesById {
   '/_auth': typeof AuthRouteWithChildren
   '/_app/breakdown': typeof AppBreakdownRoute
   '/_app/members': typeof AppMembersRoute
+  '/_app/onboarding': typeof AppOnboardingRoute
+  '/_app/pricing': typeof AppPricingRoute
   '/_app/settings': typeof AppSettingsRoute
   '/_auth/callback': typeof AuthCallbackRoute
   '/_auth/login': typeof AuthLoginRoute
   '/_auth/signup': typeof AuthSignupRoute
   '/_app/': typeof AppIndexRoute
+  '/_app/expenses/$expenseId': typeof AppExpensesExpenseIdRouteWithChildren
+  '/_app/expenses/new': typeof AppExpensesNewRoute
   '/_app/expenses/': typeof AppExpensesIndexRoute
+  '/_app/expenses/$expenseId/edit': typeof AppExpensesExpenseIdEditRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -108,33 +154,48 @@ export interface FileRouteTypes {
     | '/'
     | '/breakdown'
     | '/members'
+    | '/onboarding'
+    | '/pricing'
     | '/settings'
     | '/callback'
     | '/login'
     | '/signup'
+    | '/expenses/$expenseId'
+    | '/expenses/new'
     | '/expenses/'
+    | '/expenses/$expenseId/edit'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/breakdown'
     | '/members'
+    | '/onboarding'
+    | '/pricing'
     | '/settings'
     | '/callback'
     | '/login'
     | '/signup'
+    | '/expenses/$expenseId'
+    | '/expenses/new'
     | '/expenses'
+    | '/expenses/$expenseId/edit'
   id:
     | '__root__'
     | '/_app'
     | '/_auth'
     | '/_app/breakdown'
     | '/_app/members'
+    | '/_app/onboarding'
+    | '/_app/pricing'
     | '/_app/settings'
     | '/_auth/callback'
     | '/_auth/login'
     | '/_auth/signup'
     | '/_app/'
+    | '/_app/expenses/$expenseId'
+    | '/_app/expenses/new'
     | '/_app/expenses/'
+    | '/_app/expenses/$expenseId/edit'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -193,6 +254,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSettingsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/pricing': {
+      id: '/_app/pricing'
+      path: '/pricing'
+      fullPath: '/pricing'
+      preLoaderRoute: typeof AppPricingRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/onboarding': {
+      id: '/_app/onboarding'
+      path: '/onboarding'
+      fullPath: '/onboarding'
+      preLoaderRoute: typeof AppOnboardingRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/members': {
       id: '/_app/members'
       path: '/members'
@@ -214,22 +289,62 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppExpensesIndexRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/expenses/new': {
+      id: '/_app/expenses/new'
+      path: '/expenses/new'
+      fullPath: '/expenses/new'
+      preLoaderRoute: typeof AppExpensesNewRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/expenses/$expenseId': {
+      id: '/_app/expenses/$expenseId'
+      path: '/expenses/$expenseId'
+      fullPath: '/expenses/$expenseId'
+      preLoaderRoute: typeof AppExpensesExpenseIdRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/expenses/$expenseId/edit': {
+      id: '/_app/expenses/$expenseId/edit'
+      path: '/edit'
+      fullPath: '/expenses/$expenseId/edit'
+      preLoaderRoute: typeof AppExpensesExpenseIdEditRouteImport
+      parentRoute: typeof AppExpensesExpenseIdRoute
+    }
   }
 }
+
+interface AppExpensesExpenseIdRouteChildren {
+  AppExpensesExpenseIdEditRoute: typeof AppExpensesExpenseIdEditRoute
+}
+
+const AppExpensesExpenseIdRouteChildren: AppExpensesExpenseIdRouteChildren = {
+  AppExpensesExpenseIdEditRoute: AppExpensesExpenseIdEditRoute,
+}
+
+const AppExpensesExpenseIdRouteWithChildren =
+  AppExpensesExpenseIdRoute._addFileChildren(AppExpensesExpenseIdRouteChildren)
 
 interface AppRouteChildren {
   AppBreakdownRoute: typeof AppBreakdownRoute
   AppMembersRoute: typeof AppMembersRoute
+  AppOnboardingRoute: typeof AppOnboardingRoute
+  AppPricingRoute: typeof AppPricingRoute
   AppSettingsRoute: typeof AppSettingsRoute
   AppIndexRoute: typeof AppIndexRoute
+  AppExpensesExpenseIdRoute: typeof AppExpensesExpenseIdRouteWithChildren
+  AppExpensesNewRoute: typeof AppExpensesNewRoute
   AppExpensesIndexRoute: typeof AppExpensesIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
   AppBreakdownRoute: AppBreakdownRoute,
   AppMembersRoute: AppMembersRoute,
+  AppOnboardingRoute: AppOnboardingRoute,
+  AppPricingRoute: AppPricingRoute,
   AppSettingsRoute: AppSettingsRoute,
   AppIndexRoute: AppIndexRoute,
+  AppExpensesExpenseIdRoute: AppExpensesExpenseIdRouteWithChildren,
+  AppExpensesNewRoute: AppExpensesNewRoute,
   AppExpensesIndexRoute: AppExpensesIndexRoute,
 }
 

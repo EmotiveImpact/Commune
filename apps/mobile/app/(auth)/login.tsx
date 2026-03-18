@@ -1,15 +1,17 @@
 import { useState } from 'react';
 import {
+  ScrollView,
   View,
   Text,
-  TextInput,
-  TouchableOpacity,
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  TouchableOpacity,
 } from 'react-native';
 import { Link } from 'expo-router';
 import { signInWithEmail } from '@commune/api';
+import { AppButton, TextField } from '@/components/ui';
+import { getErrorMessage } from '@/lib/errors';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -27,7 +29,7 @@ export default function LoginScreen() {
     try {
       await signInWithEmail(email, password);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed');
+      setError(getErrorMessage(err, 'Login failed'));
     } finally {
       setLoading(false);
     }
@@ -36,58 +38,78 @@ export default function LoginScreen() {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      className="flex-1 bg-white"
+      className="flex-1 bg-[#F4EFE8]"
     >
-      <View className="flex-1 justify-center px-6">
-        <Text className="text-3xl font-bold text-center mb-2">Commune</Text>
-        <Text className="text-gray-500 text-center mb-8">
-          Manage shared expenses together
-        </Text>
-
-        {error ? (
-          <Text className="text-red-500 text-center mb-4">{error}</Text>
-        ) : null}
-
-        <TextInput
-          className="border border-gray-300 rounded-xl px-4 py-3 mb-3 text-base"
-          placeholder="Email"
-          value={email}
-          onChangeText={setEmail}
-          autoCapitalize="none"
-          keyboardType="email-address"
-          autoComplete="email"
-        />
-
-        <TextInput
-          className="border border-gray-300 rounded-xl px-4 py-3 mb-6 text-base"
-          placeholder="Password"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-          autoComplete="password"
-        />
-
-        <TouchableOpacity
-          className="bg-primary rounded-xl py-3.5 items-center mb-4"
-          onPress={handleLogin}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text className="text-white font-semibold text-base">Sign in</Text>
-          )}
-        </TouchableOpacity>
-
-        <View className="flex-row justify-center">
-          <Text className="text-gray-500">Don't have an account? </Text>
-          <Link href="/(auth)/signup" asChild>
-            <TouchableOpacity>
-              <Text className="text-primary font-semibold">Sign up</Text>
-            </TouchableOpacity>
-          </Link>
+      <ScrollView
+        className="flex-1"
+        contentContainerStyle={{ flexGrow: 1, padding: 20, justifyContent: 'center' }}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View className="rounded-[32px] bg-[#17141F] px-5 py-6">
+          <Text className="text-sm font-medium text-[#BBB4C1]">Commune</Text>
+          <Text className="mt-2 text-[32px] font-bold leading-[38px] text-white">
+            Shared expenses, laid out clearly.
+          </Text>
+          <Text className="mt-3 text-sm leading-6 text-[#C7C2CD]">
+            Sign in to check balances, keep payments moving, and stay on top of your groups.
+          </Text>
         </View>
-      </View>
+
+        <View className="mt-4 rounded-[28px] border border-[#DED6CA] bg-white px-5 py-5">
+          <Text className="text-2xl font-semibold text-[#17141F]">Welcome back</Text>
+          <Text className="mt-2 text-sm leading-6 text-[#6A645D]">
+            Pick up where the latest group changes left off.
+          </Text>
+
+          {error ? (
+            <View className="mt-4 rounded-[20px] bg-[#FCE7E4] px-4 py-3">
+              <Text className="text-sm font-medium text-[#B9382F]">{error}</Text>
+            </View>
+          ) : null}
+
+          <View className="mt-5">
+            <TextField
+              label="Email"
+              placeholder="you@example.com"
+              value={email}
+              onChangeText={setEmail}
+              autoCapitalize="none"
+              keyboardType="email-address"
+              autoComplete="email"
+            />
+
+            <TextField
+              label="Password"
+              placeholder="Your password"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+              autoComplete="password"
+            />
+          </View>
+
+          <AppButton
+            label={loading ? 'Signing in...' : 'Sign in'}
+            onPress={handleLogin}
+            disabled={loading}
+          />
+
+          {loading ? (
+            <View className="mt-4 flex-row items-center justify-center">
+              <ActivityIndicator color="#205C54" />
+            </View>
+          ) : null}
+
+          <View className="mt-5 flex-row justify-center">
+            <Text className="text-[#6A645D]">Don't have an account? </Text>
+            <Link href="/(auth)/signup" asChild>
+              <TouchableOpacity>
+                <Text className="font-semibold text-[#205C54]">Sign up</Text>
+              </TouchableOpacity>
+            </Link>
+          </View>
+        </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }

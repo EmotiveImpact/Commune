@@ -1,28 +1,74 @@
-import { createFileRoute, Link } from '@tanstack/react-router';
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import {
-  Title, Text, Stack, Card, SimpleGrid, Group, ThemeIcon,
-  Button, Progress, Badge,
+  Badge,
+  Button,
+  Group,
+  Paper,
+  Progress,
+  RingProgress,
+  SimpleGrid,
+  Stack,
+  Table,
+  Text,
+  ThemeIcon,
+  Title,
 } from '@mantine/core';
-import { useDisclosure } from '@mantine/hooks';
 import {
-  IconReceipt, IconCash, IconAlertTriangle, IconCalendar,
-  IconWallet, IconArrowRight,
+  IconAlertTriangle,
+  IconArrowRight,
+  IconCash,
+  IconPlus,
+  IconReceipt,
+  IconUsers,
+  IconWallet,
 } from '@tabler/icons-react';
+import { useEffect, useMemo } from 'react';
+import { formatCurrency, formatDate, getMonthKey, isOverdue } from '@commune/utils';
 import { useGroupStore } from '../../stores/group';
 import { useAuthStore } from '../../stores/auth';
-import { useGroup } from '../../hooks/use-groups';
+import { useGroup, usePendingInvites, useUserGroups } from '../../hooks/use-groups';
 import { useDashboardStats } from '../../hooks/use-dashboard';
-import { formatCurrency, getMonthKey, formatDate } from '@commune/utils';
-import { CreateGroupModal } from '../../components/create-group-modal';
+import { useGroupExpenses } from '../../hooks/use-expenses';
 import { PageLoader } from '../../components/page-loader';
 
 export const Route = createFileRoute('/_app/')({
   component: DashboardPage,
 });
 
+const categoryPalette = [
+  '#96E85F',
+  '#104536',
+  '#62C38A',
+  '#B8DA7D',
+  '#74D43B',
+  '#D9F3C3',
+];
+
+function formatCategoryLabel(category: string) {
+  return category
+    .split('_')
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .join(' ');
+}
+
+function getRecentMonthKeys(count: number) {
+  const current = new Date();
+  const keys: string[] = [];
+
+  for (let offset = count - 1; offset >= 0; offset -= 1) {
+    const value = new Date(current.getFullYear(), current.getMonth() - offset, 1);
+    keys.push(`${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, '0')}`);
+  }
+
+  return keys;
+}
+
 function DashboardPage() {
   const { activeGroupId } = useGroupStore();
   const { user } = useAuthStore();
+  const navigate = useNavigate();
+  const { data: groups, isLoading: groupsLoading } = useUserGroups();
+  const { data: pendingInvites, isLoading: invitesLoading } = usePendingInvites();
   const { data: group, isLoading: groupLoading } = useGroup(activeGroupId ?? '');
   const currentMonth = getMonthKey();
   const { data: stats, isLoading: statsLoading } = useDashboardStats(
@@ -30,20 +76,118 @@ function DashboardPage() {
     user?.id ?? '',
     currentMonth,
   );
-  const [createOpened, { open: openCreate, close: closeCreate }] = useDisclosure(false);
+  const { data: allExpenses, isLoading: expensesLoading } = useGroupExpenses(activeGroupId ?? '');
+
+  useEffect(() => {
+    if (activeGroupId || groupsLoading || invitesLoading) {
+      return;
+    }
+
+    if ((groups?.length ?? 0) === 0) {
+      navigate({ to: '/onboarding', replace: true });
+    }
+  }, [activeGroupId, groups?.length, groupsLoading, invitesLoading, navigate]);
+
+  const monthLabel = new Date(`${currentMonth}-01`).toLocaleDateString('en-GB', {
+    month: 'long',
+    year: 'numeric',
+  });
+
+  const monthExpenses = useMemo(
+    () => (allExpenses ?? []).filter((expense) => expense.due_date.startsWith(currentMonth)),
+    [allExpenses, currentMonth],
+  );
+
+  const monthlyTrend = useMemo(() => {
+    const keys = getRecentMonthKeys(6);
+    const totals = new Map(keys.map((key) => [key, 0]));
+
+    for (const expense of allExpenses ?? []) {
+      const key = expense.due_date.slice(0, 7);
+      if (totals.has(key)) {
+        totals.set(key, (totals.get(key) ?? 0) + expense.amount);
+      }
+    }
+
+    const values = keys.map((key) => totals.get(key) ?? 0);
+    const max = Math.max(...values, 1);
+
+    return {
+      max,
+      currentTotal: totals.get(currentMonth) ?? 0,
+      items: keys.map((key) => ({
+        key,
+        label: new Date(`${key}-01`).toLocaleDateString('en-GB', { month: 'short' }),
+        total: totals.get(key) ?? 0,
+      })),
+    };
+  }, [allExpenses, currentMonth]);
+
+  const categoryBreakdown = useMemo(() => {
+    const source = monthExpenses.length > 0 ? monthExpenses : allExpenses ?? [];
+    const grouped = new Map<string, number>();
+
+    for (const expense of source) {
+      grouped.set(expense.category, (grouped.get(expense.category) ?? 0) + expense.amount);
+    }
+
+    const total = Array.from(grouped.values()).reduce((sum, value) => sum + value, 0);
+
+    return Array.from(grouped.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([category, amount], index) => ({
+        category,
+        amount,
+        color: categoryPalette[index % categoryPalette.length]!,
+        percent: total > 0 ? Math.round((amount / total) * 100) : 0,
+      }));
+  }, [allExpenses, monthExpenses]);
+
+  const recentExpenses = useMemo(
+    () =>
+      [...(allExpenses ?? [])]
+        .sort((left, right) => new Date(right.due_date).getTime() - new Date(left.due_date).getTime())
+        .slice(0, 5),
+    [allExpenses],
+  );
+
+  const focusItems = useMemo(() => {
+    const cycleTotal = monthExpenses.reduce((sum, expense) => sum + expense.amount, 0);
+
+    return (stats?.upcoming_items ?? [])
+      .slice()
+      .sort((left, right) => new Date(left.due_date).getTime() - new Date(right.due_date).getTime())
+      .slice(0, 3)
+      .map((expense) => {
+        const userShare = expense.participants.find((participant) => participant.user_id === user?.id)?.share_amount
+          ?? expense.amount;
+
+        return {
+          ...expense,
+          userShare,
+          weight: cycleTotal > 0 ? Math.round((userShare / cycleTotal) * 100) : 0,
+        };
+      });
+  }, [monthExpenses, stats?.upcoming_items, user?.id]);
 
   if (!activeGroupId) {
+    if (groupsLoading || invitesLoading || (groups?.length ?? 0) > 0) {
+      return <PageLoader message="Loading workspace..." />;
+    }
+
     return (
-      <Stack align="center" justify="center" h={400}>
-        <Title order={3}>Welcome to Commune</Title>
-        <Text c="dimmed">Create your first group to get started.</Text>
-        <Button onClick={openCreate}>Create a group</Button>
-        <CreateGroupModal opened={createOpened} onClose={closeCreate} />
-      </Stack>
+      <PageLoader
+        message={
+          (pendingInvites?.length ?? 0) > 0
+            ? 'Opening your group invite...'
+            : 'Opening onboarding...'
+        }
+      />
     );
   }
 
-  if (groupLoading || statsLoading) {
+  if (groupLoading || statsLoading || expensesLoading) {
     return <PageLoader message="Loading dashboard..." />;
   }
 
@@ -52,80 +196,479 @@ function DashboardPage() {
     : 0;
 
   const statCards = [
-    { label: 'Group spend', value: formatCurrency(stats?.total_spend ?? 0, group?.currency), icon: IconReceipt, color: 'blue' },
-    { label: 'Your share', value: formatCurrency(stats?.your_share ?? 0, group?.currency), icon: IconWallet, color: 'violet' },
-    { label: 'Remaining', value: formatCurrency(stats?.amount_remaining ?? 0, group?.currency), icon: IconCash, color: 'orange' },
-    { label: 'Overdue', value: (stats?.overdue_count ?? 0).toString(), icon: IconAlertTriangle, color: 'red' },
+    {
+      label: 'Monthly budget',
+      value: formatCurrency(stats?.total_spend ?? 0, group?.currency),
+      note: monthLabel,
+      icon: IconReceipt,
+      tone: '#10B981',
+      tint: 'rgba(16, 185, 129, 0.1)',
+      panelTone: 'sage',
+    },
+    {
+      label: 'Your share',
+      value: formatCurrency(stats?.your_share ?? 0, group?.currency),
+      note: 'Across active expenses',
+      icon: IconWallet,
+      tone: '#104536',
+      tint: 'rgba(16, 69, 54, 0.1)',
+      panelTone: 'ink',
+    },
+    {
+      label: 'Remaining',
+      value: formatCurrency(stats?.amount_remaining ?? 0, group?.currency),
+      note: 'Still unpaid or unconfirmed',
+      icon: IconCash,
+      tone: '#62C38A',
+      tint: 'rgba(98, 195, 138, 0.14)',
+      panelTone: 'lilac',
+    },
+    {
+      label: 'Overdue',
+      value: String(stats?.overdue_count ?? 0),
+      note: 'Past the due date',
+      icon: IconAlertTriangle,
+      tone: '#F59A76',
+      tint: 'rgba(245, 154, 118, 0.16)',
+      panelTone: 'peach',
+    },
   ];
 
   return (
-    <Stack>
-      <Group justify="space-between">
-        <Title order={2}>{group?.name}</Title>
-        <Button component={Link} to="/breakdown" variant="subtle" rightSection={<IconArrowRight size={16} />}>
-          My Breakdown
-        </Button>
-      </Group>
+    <Stack gap="xl">
+      <Paper className="commune-hero-card" p={{ base: 'xl', md: '2rem' }}>
+        <div className="commune-hero-grid">
+          <Stack gap="md" maw={620}>
+            <div className="commune-hero-chip">{monthLabel}</div>
+            <Stack gap="xs">
+              <Title order={1}>
+                Shared money, <span className="commune-hero-highlight">without the friction.</span>
+              </Title>
+              <Text size="lg" className="commune-hero-copy">
+                Track what the group is spending, what each member owes, and what needs attention next for {group?.name}.
+              </Text>
+            </Stack>
 
-      <SimpleGrid cols={{ base: 1, xs: 2, md: 4 }}>
-        {statCards.map((stat) => (
-          <Card key={stat.label} withBorder padding="lg" radius="md">
+            <Group className="commune-hero-actions">
+              <Button
+                component={Link}
+                to="/expenses/new"
+                leftSection={<IconPlus size={16} />}
+                styles={{
+                  root: {
+                    background: 'linear-gradient(145deg, #f3decb 0%, #d8ebe4 100%)',
+                    color: 'var(--commune-forest)',
+                    boxShadow: 'none',
+                  },
+                }}
+              >
+                Add expense
+              </Button>
+              <Button
+                component={Link}
+                to="/members"
+                variant="white"
+                leftSection={<IconUsers size={16} />}
+                styles={{
+                  root: {
+                    background: 'rgba(255, 255, 255, 0.08)',
+                    color: '#fffaf6',
+                    border: '1px solid rgba(255, 255, 255, 0.08)',
+                  },
+                }}
+              >
+                View members
+              </Button>
+            </Group>
+          </Stack>
+
+          <Stack className="commune-hero-aside" gap="md">
             <Group justify="space-between">
               <div>
-                <Text size="xs" c="dimmed" tt="uppercase" fw={700}>{stat.label}</Text>
-                <Text fw={700} size="xl">{stat.value}</Text>
+                <Text size="sm" c="rgba(255, 250, 246, 0.65)">
+                  Cycle snapshot
+                </Text>
+                <Text fw={800} size="1.8rem">
+                  {formatCurrency(stats?.amount_remaining ?? 0, group?.currency)}
+                </Text>
               </div>
-              <ThemeIcon variant="light" color={stat.color} size="lg" radius="md">
+              <Badge
+                variant="light"
+                color={stats?.overdue_count ? 'red' : 'commune'}
+                styles={{ root: { background: 'rgba(255, 255, 255, 0.12)' } }}
+              >
+                {stats?.overdue_count ? 'Action needed' : 'On track'}
+              </Badge>
+            </Group>
+
+            <SimpleGrid cols={2} spacing="sm">
+              <div className="commune-hero-aside-stat">
+                <Text size="xs" c="rgba(255, 250, 246, 0.55)" tt="uppercase">
+                  Paid
+                </Text>
+                <Text fw={700} size="lg">
+                  {formatCurrency(stats?.amount_paid ?? 0, group?.currency)}
+                </Text>
+              </div>
+              <div className="commune-hero-aside-stat">
+                <Text size="xs" c="rgba(255, 250, 246, 0.55)" tt="uppercase">
+                  Open items
+                </Text>
+                <Text fw={700} size="lg">
+                  {(stats?.upcoming_items ?? []).length}
+                </Text>
+              </div>
+            </SimpleGrid>
+
+            <div className="commune-soft-progress">
+              <Group justify="space-between" mb={8}>
+                <Text size="sm" c="rgba(255, 250, 246, 0.7)">
+                  Payment completion
+                </Text>
+                <Text size="sm" c="rgba(255, 250, 246, 0.7)">
+                  {paidPct}%
+                </Text>
+              </Group>
+              <Progress value={paidPct} size="lg" color="commune" />
+            </div>
+          </Stack>
+        </div>
+      </Paper>
+
+      <SimpleGrid cols={{ base: 1, sm: 2, xl: 4 }} spacing="lg">
+        {statCards.map((stat) => (
+          <Paper key={stat.label} className="commune-stat-card commune-kpi-card" p="lg" data-tone={stat.panelTone}>
+            <Group justify="space-between" align="flex-start">
+              <Stack gap={4}>
+                <Text size="sm" c="dimmed">
+                  {stat.label}
+                </Text>
+                <Text fw={800} size="2rem" lh={1.05}>
+                  {stat.value}
+                </Text>
+                <Text size="sm" c="dimmed">
+                  {stat.note}
+                </Text>
+              </Stack>
+              <ThemeIcon
+                size={42}
+                variant="light"
+                style={{
+                  backgroundColor: stat.tint,
+                  color: stat.tone,
+                }}
+              >
                 <stat.icon size={20} />
               </ThemeIcon>
             </Group>
-          </Card>
+          </Paper>
         ))}
       </SimpleGrid>
 
-      {/* Payment progress */}
-      <Card withBorder padding="lg" radius="md">
-        <Group justify="space-between" mb="xs">
-          <Text fw={600}>Your payment progress</Text>
-          <Text size="sm" c="dimmed">{paidPct}% complete</Text>
-        </Group>
-        <Progress value={paidPct} size="lg" radius="md" color={paidPct === 100 ? 'green' : 'blue'} />
-        <Group justify="space-between" mt="xs">
-          <Text size="sm" c="dimmed">Paid: {formatCurrency(stats?.amount_paid ?? 0, group?.currency)}</Text>
-          <Text size="sm" c="dimmed">Total: {formatCurrency(stats?.your_share ?? 0, group?.currency)}</Text>
-        </Group>
-      </Card>
+      <div className="commune-dashboard-grid">
+        <Stack gap="lg">
+          <Stack gap="lg">
+            <Paper className="commune-soft-panel" p="xl">
+              <Group justify="space-between" align="flex-start" mb="md">
+                <div>
+                  <Text className="commune-section-heading">
+                    Transaction overview
+                  </Text>
+                  <Text size="sm" c="dimmed">
+                    Active expense volume across the last six months.
+                  </Text>
+                </div>
+                <Badge className="commune-pill-badge" variant="light" color="gray">
+                  Last 6 months
+                </Badge>
+              </Group>
 
-      {/* Upcoming expenses */}
-      {(stats?.upcoming_items ?? []).length > 0 && (
-        <Card withBorder padding="lg" radius="md">
-          <Group justify="space-between" mb="sm">
-            <Text fw={600}>Upcoming this week</Text>
-            <Badge variant="light" color="orange">{stats!.upcoming_items.length}</Badge>
-          </Group>
-          <Stack gap="xs">
-            {stats!.upcoming_items.map((expense) => (
-              <Card
-                key={expense.id}
-                component={Link}
-                to={`/expenses/${expense.id}`}
-                withBorder
-                padding="sm"
-                radius="sm"
-                style={{ cursor: 'pointer', textDecoration: 'none' }}
-              >
-                <Group justify="space-between">
-                  <div>
-                    <Text size="sm" fw={500}>{expense.title}</Text>
-                    <Text size="xs" c="dimmed">{formatDate(expense.due_date)}</Text>
+              {monthlyTrend.items.some((item) => item.total > 0) ? (
+                <>
+                  <div className="commune-bar-track">
+                    {monthlyTrend.items.map((item) => {
+                      const height = Math.max(
+                        24,
+                        Math.round((item.total / monthlyTrend.max) * 180),
+                      );
+                      const isCurrent = item.key === currentMonth;
+
+                      return (
+                        <div key={item.key} className="commune-bar-column">
+                          <Text size="xs" c="dimmed">
+                            {formatCurrency(item.total, group?.currency)}
+                          </Text>
+                          <div
+                            className={`commune-bar ${isCurrent ? '' : 'commune-bar-muted'}`}
+                            style={{ height }}
+                          />
+                          <Text size="sm" fw={isCurrent ? 700 : 500}>
+                            {item.label}
+                          </Text>
+                        </div>
+                      );
+                    })}
                   </div>
-                  <Text fw={600}>{formatCurrency(expense.amount, group?.currency)}</Text>
-                </Group>
-              </Card>
-            ))}
+
+                  <Group justify="space-between" mt="lg">
+                    <div>
+                      <Text size="sm" c="dimmed">
+                        Current month total
+                      </Text>
+                      <Text fw={800} size="1.85rem">
+                        {formatCurrency(monthlyTrend.currentTotal, group?.currency)}
+                      </Text>
+                    </div>
+                    <div>
+                      <Text size="sm" c="dimmed" ta="right">
+                        Average per month
+                      </Text>
+                      <Text fw={700} ta="right">
+                        {formatCurrency(
+                          monthlyTrend.items.reduce((sum, item) => sum + item.total, 0) / monthlyTrend.items.length,
+                          group?.currency,
+                        )}
+                      </Text>
+                    </div>
+                  </Group>
+                </>
+              ) : (
+                <Paper className="commune-stat-card" p="lg" radius="lg">
+                  <Text fw={600}>No trend data yet.</Text>
+                  <Text size="sm" c="dimmed">
+                    Add expenses and this panel will start showing how the group changes over time.
+                  </Text>
+                </Paper>
+              )}
+            </Paper>
+
+            <Paper className="commune-soft-panel" p="xl">
+              <Group justify="space-between" align="flex-start" mb="md">
+                <div>
+                  <Text className="commune-section-heading">
+                    Recent expenses
+                  </Text>
+                  <Text size="sm" c="dimmed">
+                    Latest shared costs added to the group.
+                  </Text>
+                </div>
+                <Button component={Link} to="/expenses" variant="subtle" rightSection={<IconArrowRight size={16} />}>
+                  View all
+                </Button>
+              </Group>
+
+              {recentExpenses.length > 0 ? (
+                <div className="commune-table-shell">
+                  <Table verticalSpacing="md" horizontalSpacing="sm">
+                    <Table.Thead>
+                      <Table.Tr>
+                        <Table.Th>Expense</Table.Th>
+                        <Table.Th>Category</Table.Th>
+                        <Table.Th>Due date</Table.Th>
+                        <Table.Th>Status</Table.Th>
+                        <Table.Th style={{ textAlign: 'right' }}>Amount</Table.Th>
+                      </Table.Tr>
+                    </Table.Thead>
+                    <Table.Tbody>
+                      {recentExpenses.map((expense) => {
+                        const unpaid = expense.payment_records.filter((payment) => payment.status === 'unpaid').length;
+                        const settled = unpaid === 0;
+                        const overdue = isOverdue(expense.due_date);
+
+                        return (
+                          <Table.Tr key={expense.id}>
+                            <Table.Td>
+                              <Text component={Link} to={`/expenses/${expense.id}`} fw={600} style={{ textDecoration: 'none' }}>
+                                {expense.title}
+                              </Text>
+                            </Table.Td>
+                            <Table.Td>
+                              <Badge className="commune-pill-badge" variant="light" color="gray">
+                                {formatCategoryLabel(expense.category)}
+                              </Badge>
+                            </Table.Td>
+                            <Table.Td>
+                              <Text size="sm" c="dimmed">
+                                {formatDate(expense.due_date)}
+                              </Text>
+                            </Table.Td>
+                            <Table.Td>
+                              <Badge color={settled ? 'emerald' : overdue ? 'red' : 'orange'} variant="light">
+                                {settled ? 'Settled' : overdue ? 'Overdue' : 'Open'}
+                              </Badge>
+                            </Table.Td>
+                            <Table.Td style={{ textAlign: 'right' }}>
+                              <Text fw={700}>{formatCurrency(expense.amount, group?.currency)}</Text>
+                            </Table.Td>
+                          </Table.Tr>
+                        );
+                      })}
+                    </Table.Tbody>
+                  </Table>
+                </div>
+              ) : (
+                <Paper className="commune-stat-card" p="lg" radius="lg">
+                  <Text fw={600}>No expenses added yet.</Text>
+                  <Text size="sm" c="dimmed">
+                    Create your first expense to populate this table.
+                  </Text>
+                </Paper>
+              )}
+            </Paper>
           </Stack>
-        </Card>
-      )}
+        </Stack>
+
+        <Stack gap="lg">
+          <Stack gap="lg">
+            <Paper className="commune-soft-panel" p="xl">
+              <Group justify="space-between" align="flex-start" mb="md">
+                <div>
+                  <Text className="commune-section-heading">
+                    Spending by category
+                  </Text>
+                  <Text size="sm" c="dimmed">
+                    Where the money is going this cycle.
+                  </Text>
+                </div>
+                <Badge className="commune-pill-badge" variant="light" color="gray">
+                  This month
+                </Badge>
+              </Group>
+
+              {categoryBreakdown.length > 0 ? (
+                <Stack gap="xl" align="center">
+                  <RingProgress
+                    size={250}
+                    thickness={28}
+                    roundCaps
+                    sections={categoryBreakdown.map((item) => ({
+                      value: Math.max(item.percent, 4),
+                      color: item.color,
+                    }))}
+                    label={(
+                      <Stack gap={0} align="center">
+                        <Text fw={800} size="2.1rem" ta="center">
+                          {formatCurrency(
+                            categoryBreakdown.reduce((sum, item) => sum + item.amount, 0),
+                            group?.currency,
+                          )}
+                        </Text>
+                        <Text size="sm" c="dimmed" ta="center">
+                          tracked spend
+                        </Text>
+                      </Stack>
+                    )}
+                  />
+
+                  <Stack gap="sm" w="100%">
+                    {categoryBreakdown.map((item) => (
+                      <Group key={item.category} justify="space-between" wrap="nowrap">
+                        <Group gap="sm" wrap="nowrap">
+                          <div className="commune-legend-dot" style={{ background: item.color }} />
+                          <div>
+                            <Text fw={600}>{formatCategoryLabel(item.category)}</Text>
+                            <Text size="xs" c="dimmed">
+                              {formatCurrency(item.amount, group?.currency)}
+                            </Text>
+                          </div>
+                        </Group>
+                        <Text fw={700}>{item.percent}%</Text>
+                      </Group>
+                    ))}
+                  </Stack>
+                </Stack>
+              ) : (
+                <Paper className="commune-stat-card" p="lg" radius="lg">
+                  <Text fw={600}>No category split yet.</Text>
+                  <Text size="sm" c="dimmed">
+                    Once expenses exist, category balance will show here.
+                  </Text>
+                </Paper>
+              )}
+            </Paper>
+
+            <Paper className="commune-soft-panel" p="xl">
+              <Stack gap="lg">
+                <Group justify="space-between" align="flex-start">
+                  <div>
+                    <Text className="commune-section-heading">
+                      Payment focus
+                    </Text>
+                    <Text size="sm" c="dimmed">
+                      What needs attention next.
+                    </Text>
+                  </div>
+                  <Badge color={stats?.overdue_count ? 'red' : 'emerald'} variant="light">
+                    {stats?.overdue_count ?? 0} overdue
+                  </Badge>
+                </Group>
+
+                <SimpleGrid cols={2} spacing="md">
+                  <Paper className="commune-stat-card commune-kpi-card" p="md" radius="lg" data-tone="sage">
+                    <Text size="sm" c="dimmed">
+                      Paid so far
+                    </Text>
+                    <Text fw={800} size="1.5rem">
+                      {formatCurrency(stats?.amount_paid ?? 0, group?.currency)}
+                    </Text>
+                  </Paper>
+                  <Paper className="commune-stat-card commune-kpi-card" p="md" radius="lg" data-tone="peach">
+                    <Text size="sm" c="dimmed">
+                      Still remaining
+                    </Text>
+                    <Text fw={800} size="1.5rem">
+                      {formatCurrency(stats?.amount_remaining ?? 0, group?.currency)}
+                    </Text>
+                  </Paper>
+                </SimpleGrid>
+
+                <div className="commune-soft-progress">
+                  <Group justify="space-between" mb={8}>
+                    <Text fw={600}>Your cycle progress</Text>
+                    <Text size="sm" c="dimmed">
+                      {paidPct}% complete
+                    </Text>
+                  </Group>
+                  <Progress value={paidPct} size="xl" color="commune" />
+                </div>
+
+                <Stack gap="sm">
+                  {focusItems.length > 0 ? focusItems.map((expense) => (
+                    <Paper key={expense.id} className="commune-stat-card commune-focus-card" p="md" radius="lg">
+                      <Stack gap="sm">
+                        <Group justify="space-between" align="flex-start">
+                          <div>
+                            <Text fw={600}>{expense.title}</Text>
+                            <Text size="sm" c="dimmed">
+                              Due {formatDate(expense.due_date)}
+                            </Text>
+                          </div>
+                          <Stack gap={4} align="flex-end">
+                            <Text fw={700}>{formatCurrency(expense.userShare, group?.currency)}</Text>
+                            <Badge variant="light" color={isOverdue(expense.due_date) ? 'red' : 'emerald'}>
+                              {isOverdue(expense.due_date) ? 'Urgent' : 'Upcoming'}
+                            </Badge>
+                          </Stack>
+                        </Group>
+                        <div className="commune-focus-progress">
+                          <Progress value={Math.max(expense.weight, 6)} color="commune" />
+                        </div>
+                      </Stack>
+                    </Paper>
+                  )) : (
+                    <Paper className="commune-stat-card" p="lg" radius="lg">
+                      <Text fw={600}>Nothing urgent is due this week.</Text>
+                      <Text size="sm" c="dimmed">
+                        Upcoming group payments will appear here when they are close enough to matter.
+                      </Text>
+                    </Paper>
+                  )}
+                </Stack>
+              </Stack>
+            </Paper>
+          </Stack>
+        </Stack>
+      </div>
     </Stack>
   );
 }

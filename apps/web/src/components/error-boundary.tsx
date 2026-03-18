@@ -42,7 +42,7 @@ export class AppErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundar
         <Center h="100vh" p="xl">
           <Card withBorder padding="xl" radius="md" maw={480} w="100%">
             <Stack align="center" gap="md">
-              <ThemeIcon variant="light" color="red" size="xl" radius="xl">
+              <ThemeIcon variant="light" color="red" size="xl">
                 <IconAlertTriangle size={28} />
               </ThemeIcon>
 

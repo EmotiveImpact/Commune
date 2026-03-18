@@ -1,0 +1,333 @@
+import { useMemo, useState } from 'react';
+import { Alert, Text, View } from 'react-native';
+import { useRouter } from 'expo-router';
+import { inviteMemberSchema } from '@commune/core';
+import { useAuthStore } from '@/stores/auth';
+import { useGroupStore } from '@/stores/group';
+import {
+  useGroup,
+  useInviteMember,
+  usePendingInvites,
+  useRemoveMember,
+  useUpdateMemberRole,
+  useUserGroups,
+} from '@/hooks/use-groups';
+import { GroupSwitcher } from '@/components/group-switcher';
+import {
+  AppButton,
+  EmptyState,
+  HeroPanel,
+  InitialAvatar,
+  ListRowCard,
+  LoadingScreen,
+  Screen,
+  StatCard,
+  StatusChip,
+  Surface,
+  TextField,
+} from '@/components/ui';
+import { getErrorMessage } from '@/lib/errors';
+
+export default function MembersScreen() {
+  const router = useRouter();
+  const { user } = useAuthStore();
+  const { activeGroupId, setActiveGroupId } = useGroupStore();
+  const { data: groups = [] } = useUserGroups();
+  const { data: pendingInvites } = usePendingInvites();
+  const {
+    data: group,
+    isLoading,
+    error: groupError,
+    refetch: refetchGroup,
+  } = useGroup(activeGroupId ?? '');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [inviteEmail, setInviteEmail] = useState('');
+
+  const inviteMember = useInviteMember(activeGroupId ?? '');
+  const updateRole = useUpdateMemberRole(activeGroupId ?? '');
+  const removeMember = useRemoveMember(activeGroupId ?? '');
+  const loadError = groupError;
+
+  const filteredMembers = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    const members = group?.members ?? [];
+
+    if (!query) {
+      return members;
+    }
+
+    return members.filter((member) =>
+      [member.user.name, member.user.email, member.role, member.status]
+        .join(' ')
+        .toLowerCase()
+        .includes(query)
+    );
+  }, [group?.members, searchQuery]);
+
+  if (!activeGroupId) {
+    return (
+      <Screen>
+        <EmptyState
+          icon="people-outline"
+          title="Choose a group first"
+          description="Pick a group from the dashboard before managing members."
+          actionLabel="Open onboarding"
+          onAction={() => router.push('/onboarding')}
+        />
+      </Screen>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <Screen>
+        <EmptyState
+          icon="cloud-offline-outline"
+          title="Members unavailable"
+          description={getErrorMessage(
+            loadError,
+            'Could not load the member list right now.'
+          )}
+          actionLabel="Try again"
+          onAction={() => {
+            void refetchGroup();
+          }}
+        />
+      </Screen>
+    );
+  }
+
+  if (isLoading || !group) {
+    return <LoadingScreen message="Loading members..." />;
+  }
+
+  const isAdmin = group.members.some(
+    (member) => member.user_id === user?.id && member.role === 'admin'
+  );
+
+  const totalMembers = group.members.length;
+  const activeCount = group.members.filter((member) => member.status === 'active').length;
+  const adminCount = group.members.filter((member) => member.role === 'admin').length;
+  const invitedCount = group.members.filter((member) => member.status === 'invited').length;
+
+  async function handleInvite() {
+    const validation = inviteMemberSchema.safeParse({ email: inviteEmail.trim() });
+    if (!validation.success) {
+      Alert.alert('Invalid email', validation.error.issues[0]?.message ?? 'Enter a valid email.');
+      return;
+    }
+
+    try {
+      await inviteMember.mutateAsync(validation.data.email);
+      setInviteEmail('');
+      Alert.alert('Invite sent', 'The member has been invited.');
+    } catch (error) {
+      Alert.alert(
+        'Invite failed',
+        getErrorMessage(error, 'Could not send the invite.')
+      );
+    }
+  }
+
+  async function handleRoleChange(memberId: string, role: 'admin' | 'member') {
+    try {
+      await updateRole.mutateAsync({ memberId, role });
+    } catch (error) {
+      Alert.alert(
+        'Update failed',
+        getErrorMessage(error)
+      );
+    }
+  }
+
+  function handleRemove(memberId: string) {
+    Alert.alert('Remove member', 'This member will lose access to the group.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Remove',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await removeMember.mutateAsync(memberId);
+          } catch (error) {
+            Alert.alert(
+              'Remove failed',
+              getErrorMessage(error)
+            );
+          }
+        },
+      },
+    ]);
+  }
+
+  return (
+    <Screen>
+      <GroupSwitcher
+        groups={groups}
+        activeGroupId={activeGroupId}
+        pendingInvites={pendingInvites?.length ?? 0}
+        onSelect={setActiveGroupId}
+        onOpenSetup={() => router.push('/onboarding')}
+      />
+
+      <HeroPanel
+        eyebrow="People and roles"
+        title="Members"
+        description="Manage who belongs to this group and who can administer it."
+        badgeLabel={`${totalMembers} people`}
+        contextLabel={`${group.name} · ${group.currency}`}
+      />
+
+      <View className="mb-1 flex-row flex-wrap justify-between">
+        <View style={{ width: '48.5%' }}>
+          <StatCard
+            icon="people-outline"
+            label="Total members"
+            value={String(totalMembers)}
+            note="People attached to this group"
+            tone="emerald"
+          />
+        </View>
+        <View style={{ width: '48.5%' }}>
+          <StatCard
+            icon="checkmark-done-outline"
+            label="Active"
+            value={String(activeCount)}
+            note="Participating right now"
+            tone="forest"
+          />
+        </View>
+        <View style={{ width: '48.5%' }}>
+          <StatCard
+            icon="shield-checkmark-outline"
+            label="Admins"
+            value={String(adminCount)}
+            note="Can manage members and payments"
+            tone="sky"
+          />
+        </View>
+        <View style={{ width: '48.5%' }}>
+          <StatCard
+            icon="mail-unread-outline"
+            label="Invited"
+            value={String(invitedCount)}
+            note="Still waiting to join"
+            tone="sand"
+          />
+        </View>
+      </View>
+
+      {isAdmin ? (
+        <Surface className="mb-4">
+          <Text className="text-lg font-semibold text-[#17141F]">
+            Invite someone new
+          </Text>
+          <Text className="mt-2 text-sm leading-6 text-[#6A645D]">
+            Invite housemates or teammates by email.
+          </Text>
+          <View className="mt-4">
+            <TextField
+              label="Email"
+              placeholder="member@example.com"
+              value={inviteEmail}
+              onChangeText={setInviteEmail}
+              autoCapitalize="none"
+              keyboardType="email-address"
+            />
+            <AppButton
+              label="Send invite"
+              variant="secondary"
+              icon="mail-outline"
+              loading={inviteMember.isPending}
+              onPress={handleInvite}
+            />
+          </View>
+        </Surface>
+      ) : null}
+
+      <Surface>
+        <Text className="text-lg font-semibold text-[#17141F]">
+          Member list
+        </Text>
+        <Text className="mt-2 text-sm leading-6 text-[#6A645D]">
+          Search by name, email, role, or status.
+        </Text>
+        <View className="mt-4">
+          <TextField
+            label="Search"
+            placeholder="Search members"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+        </View>
+
+        {filteredMembers.length === 0 ? (
+          <Text className="mt-2 text-sm text-[#6A645D]">
+            No members match that search.
+          </Text>
+        ) : (
+          filteredMembers.map((member) => {
+            const roleTarget = member.role === 'admin' ? 'member' : 'admin';
+            const statusTone =
+              member.status === 'active'
+                ? 'emerald'
+                : member.status === 'invited'
+                  ? 'sand'
+                  : member.status === 'removed'
+                    ? 'danger'
+                    : 'neutral';
+
+            return (
+              <ListRowCard
+                key={member.id}
+                title={`${member.user.name}${member.user_id === user?.id ? ' · You' : ''}`}
+                subtitle={member.user.email}
+                amount={member.role === 'admin' ? 'Admin' : 'Member'}
+                onPress={undefined}
+              >
+                <View className="flex-row items-start">
+                  <View className="mr-3">
+                    <InitialAvatar name={member.user.name} size={48} />
+                  </View>
+                  <View className="flex-1">
+                    <View className="flex-row flex-wrap">
+                      <StatusChip label={member.status} tone={statusTone} />
+                      <StatusChip
+                        label={member.role === 'admin' ? 'Can manage group' : 'Member access'}
+                        tone="neutral"
+                      />
+                    </View>
+                  </View>
+                </View>
+
+                <View className="mt-4 flex-row items-center justify-between">
+                  <Text className="text-sm font-medium text-[#17141F]">
+                    {member.role === 'admin' ? 'Admin access' : 'Standard access'}
+                  </Text>
+                  {isAdmin && member.user_id !== user?.id ? (
+                    <View className="flex-row">
+                      <AppButton
+                        label={roleTarget === 'admin' ? 'Make admin' : 'Make member'}
+                        variant="secondary"
+                        fullWidth={false}
+                        onPress={() => handleRoleChange(member.id, roleTarget)}
+                      />
+                      <View className="ml-2">
+                        <AppButton
+                          label="Remove"
+                          variant="danger"
+                          fullWidth={false}
+                          onPress={() => handleRemove(member.id)}
+                        />
+                      </View>
+                    </View>
+                  ) : null}
+                </View>
+              </ListRowCard>
+            );
+          })
+        )}
+      </Surface>
+    </Screen>
+  );
+}

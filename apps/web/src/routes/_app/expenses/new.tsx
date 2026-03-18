@@ -1,18 +1,31 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import {
-  Title, Stack, TextInput, NumberInput, Select, Textarea,
-  MultiSelect, SegmentedControl, Button, Card, Text, Group, Switch, Table,
-  Center, Loader,
+  Button,
+  Group,
+  MultiSelect,
+  NumberInput,
+  Paper,
+  SegmentedControl,
+  Select,
+  Stack,
+  Switch,
+  Table,
+  Text,
+  TextInput,
+  Textarea,
+  Title,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
-import { useState, useMemo } from 'react';
-import { ExpenseCategory, SplitMethod, RecurrenceType } from '@commune/types';
+import { useMemo, useState } from 'react';
+import { ExpenseCategory } from '@commune/types';
 import { calculateEqualSplit, calculatePercentageSplit } from '@commune/core';
 import { formatCurrency } from '@commune/utils';
 import { useGroupStore } from '../../../stores/group';
 import { useGroup } from '../../../hooks/use-groups';
 import { useCreateExpense } from '../../../hooks/use-expenses';
+import { PageLoader } from '../../../components/page-loader';
+import { EmptyState } from '../../../components/empty-state';
 
 export const Route = createFileRoute('/_app/expenses/new')({
   component: AddExpensePage,
@@ -47,33 +60,43 @@ function AddExpensePage() {
     },
   });
 
-  const memberOptions = useMemo(() =>
-    (group?.members ?? [])
-      .filter((m) => m.status === 'active')
-      .map((m) => ({ value: m.user_id, label: m.user.name })),
-    [group]
+  const memberOptions = useMemo(
+    () =>
+      (group?.members ?? [])
+        .filter((member) => member.status === 'active')
+        .map((member) => ({ value: member.user_id, label: member.user.name })),
+    [group],
   );
 
-  const paidByOptions = useMemo(() =>
-    [{ value: '', label: 'Nobody (group expense)' }, ...memberOptions],
-    [memberOptions]
+  const paidByOptions = useMemo(
+    () => [{ value: '', label: 'Nobody (group expense)' }, ...memberOptions],
+    [memberOptions],
   );
 
-  if (!activeGroupId) return <Text c="dimmed">Select a group first.</Text>;
-  if (isLoading) return <Center h={400}><Loader /></Center>;
+  if (!activeGroupId) {
+    return (
+      <EmptyState
+        title="Select a group first"
+        description="Choose a group from the sidebar before creating a shared expense."
+      />
+    );
+  }
+
+  if (isLoading) {
+    return <PageLoader message="Loading expense form..." />;
+  }
 
   const selectedParticipants = form.getValues().participant_ids;
   const amount = form.getValues().amount || 0;
 
-  // Calculate split preview
   let splitPreview: { userId: string; name: string; amount: number }[] = [];
   if (selectedParticipants.length > 0 && amount > 0) {
     if (splitMethod === 'equal') {
       const shares = calculateEqualSplit(amount, selectedParticipants.length);
-      splitPreview = selectedParticipants.map((id, i) => ({
+      splitPreview = selectedParticipants.map((id, index) => ({
         userId: id,
-        name: group?.members.find((m) => m.user_id === id)?.user.name ?? id,
-        amount: shares[i] ?? 0,
+        name: group?.members.find((member) => member.user_id === id)?.user.name ?? id,
+        amount: shares[index] ?? 0,
       }));
     } else if (splitMethod === 'percentage') {
       const percentages = form.getValues().percentages;
@@ -81,20 +104,20 @@ function AddExpensePage() {
         userId: id,
         percentage: percentages[id] ?? 0,
       }));
-      const totalPct = entries.reduce((s, e) => s + e.percentage, 0);
+      const totalPct = entries.reduce((sum, entry) => sum + entry.percentage, 0);
       if (Math.abs(totalPct - 100) < 0.01) {
         const result = calculatePercentageSplit(amount, entries);
-        splitPreview = result.map((r) => ({
-          userId: r.userId,
-          name: group?.members.find((m) => m.user_id === r.userId)?.user.name ?? r.userId,
-          amount: r.amount,
+        splitPreview = result.map((entry) => ({
+          userId: entry.userId,
+          name: group?.members.find((member) => member.user_id === entry.userId)?.user.name ?? entry.userId,
+          amount: entry.amount,
         }));
       }
     } else if (splitMethod === 'custom') {
       const customAmounts = form.getValues().custom_amounts;
       splitPreview = selectedParticipants.map((id) => ({
         userId: id,
-        name: group?.members.find((m) => m.user_id === id)?.user.name ?? id,
+        name: group?.members.find((member) => member.user_id === id)?.user.name ?? id,
         amount: customAmounts[id] ?? 0,
       }));
     }
@@ -131,11 +154,15 @@ function AddExpensePage() {
 
     try {
       await createExpense.mutateAsync(expenseData);
-      notifications.show({ title: 'Expense created', message: `${values.title} added`, color: 'green' });
+      notifications.show({
+        title: 'Expense created',
+        message: `${values.title} added`,
+        color: 'green',
+      });
       navigate({ to: '/expenses' });
     } catch (err) {
       notifications.show({
-        title: 'Failed',
+        title: 'Failed to create expense',
         message: err instanceof Error ? err.message : 'Something went wrong',
         color: 'red',
       });
@@ -143,153 +170,209 @@ function AddExpensePage() {
   }
 
   return (
-    <Stack>
-      <Title order={2}>Add expense</Title>
+    <Stack gap="xl">
+      <Paper className="commune-hero-card" p={{ base: 'xl', md: '2rem' }}>
+        <Stack gap="xs" maw={700}>
+          <Text size="sm" fw={700} tt="uppercase" c="dimmed" style={{ letterSpacing: '0.12em' }}>
+            Expense form
+          </Text>
+          <Title order={1}>Add expense</Title>
+          <Text size="lg" c="dimmed">
+            Create a new shared cost, decide who is included, and preview the split before you save it.
+          </Text>
+        </Stack>
+      </Paper>
 
       <form onSubmit={form.onSubmit(handleSubmit)}>
-        <Stack gap="md">
-          {/* Basic fields */}
-          <Card withBorder padding="md">
-            <Stack gap="sm">
-              <TextInput label="Title" placeholder="e.g. Electricity" withAsterisk key={form.key('title')} {...form.getInputProps('title')} />
-              <Group grow>
-                <NumberInput label="Amount" prefix="£" min={0} decimalScale={2} withAsterisk key={form.key('amount')} {...form.getInputProps('amount')} />
-                <Select label="Category" data={categoryOptions} withAsterisk key={form.key('category')} {...form.getInputProps('category')} />
-              </Group>
-              <TextInput label="Due date" type="date" withAsterisk key={form.key('due_date')} {...form.getInputProps('due_date')} />
-              <Textarea label="Description" placeholder="Optional notes" key={form.key('description')} {...form.getInputProps('description')} />
-            </Stack>
-          </Card>
-
-          {/* Recurrence */}
-          <Card withBorder padding="md">
-            <Stack gap="sm">
-              <Switch label="Recurring expense" checked={isRecurring} onChange={(e) => setIsRecurring(e.currentTarget.checked)} />
-              {isRecurring && (
-                <Select
-                  label="Frequency"
-                  data={[
-                    { value: 'weekly', label: 'Weekly' },
-                    { value: 'monthly', label: 'Monthly' },
-                  ]}
-                  key={form.key('recurrence_type')}
-                  {...form.getInputProps('recurrence_type')}
+        <div className="commune-dashboard-grid">
+          <Stack gap="lg">
+            <Paper className="commune-soft-panel" p="xl">
+              <Stack gap="md">
+                <Title order={3}>Basics</Title>
+                <TextInput
+                  label="Title"
+                  placeholder="e.g. Electricity"
+                  withAsterisk
+                                    key={form.key('title')}
+                  {...form.getInputProps('title')}
                 />
-              )}
-            </Stack>
-          </Card>
+                <Group grow>
+                  <NumberInput
+                    label="Amount"
+                    prefix={group?.currency === 'GBP' ? '£' : ''}
+                    min={0}
+                    decimalScale={2}
+                    withAsterisk
+                                        key={form.key('amount')}
+                    {...form.getInputProps('amount')}
+                  />
+                  <Select
+                    label="Category"
+                    data={categoryOptions}
+                    withAsterisk
+                                        key={form.key('category')}
+                    {...form.getInputProps('category')}
+                  />
+                </Group>
+                <TextInput
+                  label="Due date"
+                  type="date"
+                  withAsterisk
+                                    key={form.key('due_date')}
+                  {...form.getInputProps('due_date')}
+                />
+                <Textarea
+                  label="Description"
+                  placeholder="Optional notes"
+                                    autosize
+                  minRows={3}
+                  key={form.key('description')}
+                  {...form.getInputProps('description')}
+                />
+              </Stack>
+            </Paper>
 
-          {/* Participants */}
-          <Card withBorder padding="md">
-            <Stack gap="sm">
-              <MultiSelect
-                label="Who shares this expense?"
-                data={memberOptions}
-                withAsterisk
-                key={form.key('participant_ids')}
-                {...form.getInputProps('participant_ids')}
-              />
-              <Select
-                label="Who paid?"
-                description="If someone already paid the full amount upfront"
-                data={paidByOptions}
-                key={form.key('paid_by_user_id')}
-                {...form.getInputProps('paid_by_user_id')}
-              />
-            </Stack>
-          </Card>
+            <Paper className="commune-soft-panel" p="xl">
+              <Stack gap="md">
+                <Title order={3}>Participants</Title>
+                <MultiSelect
+                  label="Who shares this expense?"
+                  data={memberOptions}
+                  withAsterisk
+                                    key={form.key('participant_ids')}
+                  {...form.getInputProps('participant_ids')}
+                />
+                <Select
+                  label="Who paid?"
+                  description="Use this when one member already covered the full amount."
+                  data={paidByOptions}
+                                    key={form.key('paid_by_user_id')}
+                  {...form.getInputProps('paid_by_user_id')}
+                />
+                <Switch
+                  label="Recurring expense"
+                  checked={isRecurring}
+                  onChange={(event) => setIsRecurring(event.currentTarget.checked)}
+                />
+                {isRecurring && (
+                  <Select
+                    label="Frequency"
+                    data={[
+                      { value: 'weekly', label: 'Weekly' },
+                      { value: 'monthly', label: 'Monthly' },
+                    ]}
+                                        key={form.key('recurrence_type')}
+                    {...form.getInputProps('recurrence_type')}
+                  />
+                )}
+              </Stack>
+            </Paper>
+          </Stack>
 
-          {/* Split method */}
-          <Card withBorder padding="md">
-            <Stack gap="sm">
-              <Text fw={500} size="sm">How to split</Text>
-              <SegmentedControl
-                value={splitMethod}
-                onChange={setSplitMethod}
-                data={[
-                  { value: 'equal', label: 'Equal' },
-                  { value: 'percentage', label: 'Percentage' },
-                  { value: 'custom', label: 'Custom' },
-                ]}
-                fullWidth
-              />
+          <Stack gap="lg">
+            <Paper className="commune-soft-panel" p="xl">
+              <Stack gap="md">
+                <Title order={3}>Split method</Title>
+                <SegmentedControl
+                  value={splitMethod}
+                  onChange={setSplitMethod}
+                  data={[
+                    { value: 'equal', label: 'Equal' },
+                    { value: 'percentage', label: 'Percentage' },
+                    { value: 'custom', label: 'Custom' },
+                  ]}
+                  fullWidth
+                />
 
-              {/* Percentage inputs */}
-              {splitMethod === 'percentage' && selectedParticipants.length > 0 && (
-                <Stack gap="xs">
-                  {selectedParticipants.map((id) => {
-                    const name = group?.members.find((m) => m.user_id === id)?.user.name ?? id;
-                    return (
-                      <NumberInput
-                        key={id}
-                        label={name}
-                        suffix="%"
-                        min={0}
-                        max={100}
-                        decimalScale={2}
-                        value={form.getValues().percentages[id] ?? 0}
-                        onChange={(val) => {
-                          const current = form.getValues().percentages;
-                          form.setFieldValue('percentages', { ...current, [id]: Number(val) || 0 });
-                        }}
-                      />
-                    );
-                  })}
-                </Stack>
-              )}
+                {splitMethod === 'percentage' && selectedParticipants.length > 0 && (
+                  <Stack gap="xs">
+                    {selectedParticipants.map((id) => {
+                      const name = group?.members.find((member) => member.user_id === id)?.user.name ?? id;
+                      return (
+                        <NumberInput
+                          key={id}
+                          label={name}
+                          suffix="%"
+                          min={0}
+                          max={100}
+                          decimalScale={2}
+                                                    value={form.getValues().percentages[id] ?? 0}
+                          onChange={(value) => {
+                            const current = form.getValues().percentages;
+                            form.setFieldValue('percentages', { ...current, [id]: Number(value) || 0 });
+                          }}
+                        />
+                      );
+                    })}
+                  </Stack>
+                )}
 
-              {/* Custom amount inputs */}
-              {splitMethod === 'custom' && selectedParticipants.length > 0 && (
-                <Stack gap="xs">
-                  {selectedParticipants.map((id) => {
-                    const name = group?.members.find((m) => m.user_id === id)?.user.name ?? id;
-                    return (
-                      <NumberInput
-                        key={id}
-                        label={name}
-                        prefix="£"
-                        min={0}
-                        decimalScale={2}
-                        value={form.getValues().custom_amounts[id] ?? 0}
-                        onChange={(val) => {
-                          const current = form.getValues().custom_amounts;
-                          form.setFieldValue('custom_amounts', { ...current, [id]: Number(val) || 0 });
-                        }}
-                      />
-                    );
-                  })}
-                </Stack>
-              )}
+                {splitMethod === 'custom' && selectedParticipants.length > 0 && (
+                  <Stack gap="xs">
+                    {selectedParticipants.map((id) => {
+                      const name = group?.members.find((member) => member.user_id === id)?.user.name ?? id;
+                      return (
+                        <NumberInput
+                          key={id}
+                          label={name}
+                          prefix={group?.currency === 'GBP' ? '£' : ''}
+                          min={0}
+                          decimalScale={2}
+                                                    value={form.getValues().custom_amounts[id] ?? 0}
+                          onChange={(value) => {
+                            const current = form.getValues().custom_amounts;
+                            form.setFieldValue('custom_amounts', { ...current, [id]: Number(value) || 0 });
+                          }}
+                        />
+                      );
+                    })}
+                  </Stack>
+                )}
+              </Stack>
+            </Paper>
 
-              {/* Split preview */}
-              {splitPreview.length > 0 && (
-                <Card withBorder bg="gray.0" padding="sm">
-                  <Text size="sm" fw={600} mb="xs">Split preview</Text>
-                  <Table>
-                    <Table.Thead>
-                      <Table.Tr>
-                        <Table.Th>Person</Table.Th>
-                        <Table.Th style={{ textAlign: 'right' }}>Share</Table.Th>
-                      </Table.Tr>
-                    </Table.Thead>
-                    <Table.Tbody>
-                      {splitPreview.map((p) => (
-                        <Table.Tr key={p.userId}>
-                          <Table.Td>{p.name}</Table.Td>
-                          <Table.Td style={{ textAlign: 'right' }}>{formatCurrency(p.amount, group?.currency)}</Table.Td>
+            <Paper className="commune-soft-panel" p="xl">
+              <Stack gap="md">
+                <Title order={3}>Split preview</Title>
+                {splitPreview.length > 0 ? (
+                  <div style={{ overflowX: 'auto' }}>
+                    <Table verticalSpacing="md" horizontalSpacing="sm">
+                      <Table.Thead>
+                        <Table.Tr>
+                          <Table.Th>Person</Table.Th>
+                          <Table.Th style={{ textAlign: 'right' }}>Share</Table.Th>
                         </Table.Tr>
-                      ))}
-                    </Table.Tbody>
-                  </Table>
-                </Card>
-              )}
-            </Stack>
-          </Card>
+                      </Table.Thead>
+                      <Table.Tbody>
+                        {splitPreview.map((person) => (
+                          <Table.Tr key={person.userId}>
+                            <Table.Td>{person.name}</Table.Td>
+                            <Table.Td style={{ textAlign: 'right' }}>
+                              {formatCurrency(person.amount, group?.currency)}
+                            </Table.Td>
+                          </Table.Tr>
+                        ))}
+                      </Table.Tbody>
+                    </Table>
+                  </div>
+                ) : (
+                  <Text size="sm" c="dimmed">
+                    Add an amount and choose participants to see the split preview.
+                  </Text>
+                )}
+              </Stack>
+            </Paper>
 
-          <Button type="submit" size="lg" loading={createExpense.isPending} fullWidth>
-            Create expense
-          </Button>
-        </Stack>
+            <Group>
+              <Button type="submit" size="lg" loading={createExpense.isPending}>
+                Create expense
+              </Button>
+              <Button variant="default" onClick={() => navigate({ to: '/expenses' })}>
+                Cancel
+              </Button>
+            </Group>
+          </Stack>
+        </div>
       </form>
     </Stack>
   );

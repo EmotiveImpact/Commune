@@ -1,4 +1,5 @@
-import { Select, Group, Text, Button } from '@mantine/core';
+import { useEffect } from 'react';
+import { Button, Select, Stack, Text } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { IconPlus } from '@tabler/icons-react';
 import { useUserGroups } from '../hooks/use-groups';
@@ -15,27 +16,50 @@ export function GroupSelector() {
     label: g.name,
   }));
 
-  // Auto-select first group if none selected
-  if (!activeGroupId && groups && groups.length > 0) {
-    setActiveGroupId(groups[0]!.id);
-  }
+  useEffect(() => {
+    if (isLoading) {
+      return;
+    }
+
+    if (!groups?.length) {
+      if (activeGroupId) {
+        setActiveGroupId(null);
+      }
+      return;
+    }
+
+    const firstGroupId = groups[0]?.id;
+    if (firstGroupId && (!activeGroupId || !groups.some((group) => group.id === activeGroupId))) {
+      setActiveGroupId(firstGroupId);
+    }
+  }, [activeGroupId, groups, isLoading, setActiveGroupId]);
 
   return (
     <>
-      <Group gap="xs">
+      <Stack gap="xs">
+        <Text size="xs" fw={700} tt="uppercase" className="commune-sidebar-label" style={{ letterSpacing: '0.12em' }}>
+          Active group
+        </Text>
         <Select
+          className="commune-group-select"
           placeholder="Select a group"
           data={selectData}
           value={activeGroupId}
           onChange={(value) => setActiveGroupId(value)}
           disabled={isLoading}
-          style={{ flex: 1 }}
-          size="sm"
+          searchable
+          size="md"
         />
-        <Button variant="light" size="sm" onClick={openCreate} leftSection={<IconPlus size={16} />}>
-          New
+        <Button
+          className="commune-sidebar-button"
+          size="md"
+          onClick={openCreate}
+          leftSection={<IconPlus size={16} />}
+          fullWidth
+        >
+          Create new group
         </Button>
-      </Group>
+      </Stack>
       <CreateGroupModal opened={createOpened} onClose={closeCreate} />
     </>
   );

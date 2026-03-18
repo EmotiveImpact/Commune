@@ -1,27 +1,59 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import {
-  Title, Stack, Card, Group, Text, Badge, Table, Avatar, Button,
-  Center, Loader, ActionIcon, Modal, TextInput, Tooltip,
+  ActionIcon,
+  Avatar,
+  Badge,
+  Button,
+  Group,
+  Modal,
+  Paper,
+  SimpleGrid,
+  Stack,
+  Table,
+  Text,
+  TextInput,
+  ThemeIcon,
+  Title,
+  Tooltip,
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import {
-  IconArrowLeft, IconCheck, IconX, IconArchive, IconCheckbox,
-  IconNote, IconEdit,
+  IconArchive,
+  IconArrowLeft,
+  IconCheck,
+  IconCheckbox,
+  IconEdit,
+  IconNote,
+  IconReceipt,
+  IconUsers,
+  IconX,
 } from '@tabler/icons-react';
 import { useState } from 'react';
 import { formatCurrency, formatDate, isOverdue } from '@commune/utils';
 import { calculateReimbursements } from '@commune/core';
 import {
-  useExpenseDetail, useMarkPayment, useArchiveExpense, useConfirmPayment,
+  useArchiveExpense,
+  useConfirmPayment,
+  useExpenseDetail,
+  useMarkPayment,
 } from '../../../hooks/use-expenses';
 import { useGroupStore } from '../../../stores/group';
 import { useGroup } from '../../../hooks/use-groups';
 import { useAuthStore } from '../../../stores/auth';
+import { EmptyState } from '../../../components/empty-state';
+import { PageLoader } from '../../../components/page-loader';
 
 export const Route = createFileRoute('/_app/expenses/$expenseId')({
   component: ExpenseDetailPage,
 });
+
+function formatCategoryLabel(category: string) {
+  return category
+    .split('_')
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .join(' ');
+}
 
 function ExpenseDetailPage() {
   const { expenseId } = Route.useParams();
@@ -33,31 +65,43 @@ function ExpenseDetailPage() {
   const archive = useArchiveExpense(activeGroupId ?? '');
   const { user } = useAuthStore();
   const navigate = useNavigate();
-
-  // Payment note modal
   const [noteOpened, { open: openNote, close: closeNote }] = useDisclosure(false);
   const [paymentNote, setPaymentNote] = useState('');
   const [pendingPayment, setPendingPayment] = useState<{ userId: string } | null>(null);
 
-  if (isLoading) return <Center h={400}><Loader /></Center>;
-  if (!expense) return <Text c="dimmed">Expense not found.</Text>;
+  if (isLoading) {
+    return <PageLoader message="Loading expense..." />;
+  }
 
-  const isAdmin = group?.members.some(
-    (m) => m.user_id === user?.id && m.role === 'admin'
-  );
+  if (!expense) {
+    return (
+      <EmptyState
+        icon={IconReceipt}
+        iconColor="emerald"
+        title="Expense not found"
+        description="This expense may have been archived or you may not have access to it anymore."
+      />
+    );
+  }
 
+  const isAdmin = group?.members.some((member) => member.user_id === user?.id && member.role === 'admin');
   const overdue = isOverdue(expense.due_date);
-
+  const expenseData = expense;
   const reimbursements = expense.paid_by_user_id
     ? calculateReimbursements(
-        expense.participants.map((p) => ({ userId: p.user_id, amount: p.share_amount })),
-        expense.paid_by_user_id
+        expense.participants.map((participant) => ({
+          userId: participant.user_id,
+          amount: participant.share_amount,
+        })),
+        expense.paid_by_user_id,
       )
     : [];
+  const paidCount = expense.payment_records.filter((payment) => payment.status !== 'unpaid').length;
+  const confirmedCount = expense.payment_records.filter((payment) => payment.status === 'confirmed').length;
 
   const statusColor: Record<string, string> = {
-    unpaid: 'red',
-    paid: 'green',
+    unpaid: 'orange',
+    paid: 'emerald',
     confirmed: 'blue',
   };
 
@@ -71,18 +115,22 @@ function ExpenseDetailPage() {
     if (!pendingPayment) return;
     try {
       await markPayment.mutateAsync({
-        expenseId: expense!.id,
+        expenseId: expenseData.id,
         userId: pendingPayment.userId,
         status: 'paid',
         note: paymentNote || undefined,
       });
-      notifications.show({ title: 'Marked as paid', message: '', color: 'green' });
+      notifications.show({
+        title: 'Marked as paid',
+        message: '',
+        color: 'green',
+      });
       closeNote();
       setPendingPayment(null);
     } catch (err) {
       notifications.show({
-        title: 'Failed',
-        message: err instanceof Error ? err.message : 'Error',
+        title: 'Failed to update payment',
+        message: err instanceof Error ? err.message : 'Something went wrong',
         color: 'red',
       });
     }
@@ -91,15 +139,19 @@ function ExpenseDetailPage() {
   async function handleUnpay(userId: string) {
     try {
       await markPayment.mutateAsync({
-        expenseId: expense!.id,
+        expenseId: expenseData.id,
         userId,
         status: 'unpaid',
       });
-      notifications.show({ title: 'Marked as unpaid', message: '', color: 'green' });
+      notifications.show({
+        title: 'Marked as unpaid',
+        message: '',
+        color: 'green',
+      });
     } catch (err) {
       notifications.show({
-        title: 'Failed',
-        message: err instanceof Error ? err.message : 'Error',
+        title: 'Failed to update payment',
+        message: err instanceof Error ? err.message : 'Something went wrong',
         color: 'red',
       });
     }
@@ -108,14 +160,19 @@ function ExpenseDetailPage() {
   async function handleConfirmPayment(userId: string) {
     try {
       await confirmPayment.mutateAsync({
-        expenseId: expense!.id,
+        expenseId: expenseData.id,
         userId,
+        confirmedBy: user!.id,
       });
-      notifications.show({ title: 'Payment confirmed', message: '', color: 'blue' });
+      notifications.show({
+        title: 'Payment confirmed',
+        message: '',
+        color: 'blue',
+      });
     } catch (err) {
       notifications.show({
-        title: 'Failed',
-        message: err instanceof Error ? err.message : 'Error',
+        title: 'Failed to confirm payment',
+        message: err instanceof Error ? err.message : 'Something went wrong',
         color: 'red',
       });
     }
@@ -123,162 +180,246 @@ function ExpenseDetailPage() {
 
   async function handleArchive() {
     try {
-      await archive.mutateAsync(expense!.id);
-      notifications.show({ title: 'Expense archived', message: '', color: 'green' });
+      await archive.mutateAsync(expenseData.id);
+      notifications.show({
+        title: 'Expense archived',
+        message: '',
+        color: 'green',
+      });
       navigate({ to: '/expenses' });
     } catch (err) {
       notifications.show({
-        title: 'Failed',
-        message: err instanceof Error ? err.message : 'Error',
+        title: 'Failed to archive expense',
+        message: err instanceof Error ? err.message : 'Something went wrong',
         color: 'red',
       });
     }
   }
 
   return (
-    <Stack>
-      <Group justify="space-between">
-        <Group>
-          <ActionIcon variant="subtle" component={Link} to="/expenses">
-            <IconArrowLeft size={20} />
-          </ActionIcon>
-          <Title order={2}>{expense.title}</Title>
-        </Group>
-        {isAdmin && (
-          <Button
-            variant="light"
-            leftSection={<IconEdit size={16} />}
-            component={Link}
-            to={`/expenses/${expense.id}/edit`}
-          >
-            Edit
-          </Button>
-        )}
-      </Group>
-
-      {/* Info card */}
-      <Card withBorder padding="md">
-        <Stack gap="xs">
-          <Group justify="space-between">
-            <Text fw={700} size="xl">{formatCurrency(expense.amount, expense.currency)}</Text>
+    <Stack gap="xl">
+      <Paper className="commune-hero-card" p={{ base: 'xl', md: '2rem' }}>
+        <Group justify="space-between" align="flex-start">
+          <Stack gap="sm" maw={700}>
             <Group gap="xs">
-              <Badge variant="light">{expense.category.replace(/_/g, ' ')}</Badge>
-              {expense.recurrence_type !== 'none' && <Badge variant="light">Recurring ({expense.recurrence_type})</Badge>}
+              <ActionIcon variant="light" component={Link} to="/expenses">
+                <IconArrowLeft size={18} />
+              </ActionIcon>
+              <Badge variant="light" color="emerald">
+                Expense detail
+              </Badge>
+            </Group>
+            <Title order={1}>{expense.title}</Title>
+            <Text size="lg" c="dimmed">
+              {expense.description || 'Review the split, payment status, and who this expense affects.'}
+            </Text>
+            <Group gap="xs">
+              <Badge variant="light" color="gray">
+                {formatCategoryLabel(expense.category)}
+              </Badge>
+              {expense.recurrence_type !== 'none' && (
+                <Badge variant="light" color="emerald">
+                  Recurring {expense.recurrence_type}
+                </Badge>
+              )}
               {overdue && <Badge color="red">Overdue</Badge>}
             </Group>
+          </Stack>
+
+          <Group>
+            {isAdmin && (
+              <Button
+                variant="default"
+                leftSection={<IconEdit size={16} />}
+                component={Link}
+                to={`/expenses/${expense.id}/edit`}
+                              >
+                Edit
+              </Button>
+            )}
+            {isAdmin && (
+              <Button
+                variant="light"
+                color="red"
+                leftSection={<IconArchive size={16} />}
+                onClick={handleArchive}
+                              >
+                Archive
+              </Button>
+            )}
           </Group>
-          <Text size="sm" c="dimmed">Due: {formatDate(expense.due_date)}</Text>
-          <Text size="sm" c="dimmed">Split: {expense.split_method}</Text>
-          {expense.description && <Text size="sm" mt="xs">{expense.description}</Text>}
-          {expense.paid_by_user && (
-            <Text size="sm" c="dimmed">
-              Paid upfront by <Text span fw={500}>{expense.paid_by_user.name}</Text>
-            </Text>
-          )}
-        </Stack>
-      </Card>
-
-      {/* Split breakdown */}
-      <Card withBorder padding="md">
-        <Text fw={600} mb="sm">Split breakdown</Text>
-        <Table>
-          <Table.Thead>
-            <Table.Tr>
-              <Table.Th>Person</Table.Th>
-              <Table.Th style={{ textAlign: 'right' }}>Share</Table.Th>
-              {expense.paid_by_user_id && <Table.Th style={{ textAlign: 'right' }}>Owes to</Table.Th>}
-              <Table.Th style={{ textAlign: 'center' }}>Status</Table.Th>
-              <Table.Th>Details</Table.Th>
-              <Table.Th style={{ textAlign: 'center' }}>Actions</Table.Th>
-            </Table.Tr>
-          </Table.Thead>
-          <Table.Tbody>
-            {expense.participants.map((p) => {
-              const payment = expense.payment_records?.find((pr) => pr.user_id === p.user_id);
-              const paymentStatus = payment?.status ?? 'unpaid';
-              const reimbursement = reimbursements.find((r) => r.userId === p.user_id);
-              const canToggle = p.user_id === user?.id || isAdmin;
-
-              return (
-                <Table.Tr key={p.id}>
-                  <Table.Td>
-                    <Group gap="xs">
-                      <Avatar src={p.user.avatar_url} name={p.user.name} color="initials" size="sm" />
-                      <Text size="sm">{p.user.name}</Text>
-                    </Group>
-                  </Table.Td>
-                  <Table.Td style={{ textAlign: 'right' }}>
-                    {formatCurrency(p.share_amount, expense.currency)}
-                  </Table.Td>
-                  {expense.paid_by_user_id && (
-                    <Table.Td style={{ textAlign: 'right' }}>
-                      {reimbursement ? expense.paid_by_user?.name : '—'}
-                    </Table.Td>
-                  )}
-                  <Table.Td style={{ textAlign: 'center' }}>
-                    <Badge color={statusColor[paymentStatus] ?? 'gray'} variant="light" size="sm">
-                      {paymentStatus}
-                    </Badge>
-                  </Table.Td>
-                  <Table.Td>
-                    <Stack gap={2}>
-                      {payment?.paid_at && (
-                        <Text size="xs" c="dimmed">Paid: {formatDate(payment.paid_at)}</Text>
-                      )}
-                      {payment?.note && (
-                        <Tooltip label={payment.note}>
-                          <Group gap={4} style={{ cursor: 'pointer' }}>
-                            <IconNote size={12} />
-                            <Text size="xs" c="dimmed" truncate style={{ maxWidth: 120 }}>{payment.note}</Text>
-                          </Group>
-                        </Tooltip>
-                      )}
-                    </Stack>
-                  </Table.Td>
-                  <Table.Td style={{ textAlign: 'center' }}>
-                    <Group gap={4} justify="center">
-                      {canToggle && paymentStatus === 'unpaid' && (
-                        <ActionIcon variant="light" color="green" size="sm" onClick={() => handlePayClick(p.user_id)}>
-                          <IconCheck size={14} />
-                        </ActionIcon>
-                      )}
-                      {canToggle && paymentStatus === 'paid' && (
-                        <ActionIcon variant="light" color="red" size="sm" onClick={() => handleUnpay(p.user_id)}>
-                          <IconX size={14} />
-                        </ActionIcon>
-                      )}
-                      {isAdmin && paymentStatus === 'paid' && (
-                        <ActionIcon variant="light" color="blue" size="sm" onClick={() => handleConfirmPayment(p.user_id)}>
-                          <IconCheckbox size={14} />
-                        </ActionIcon>
-                      )}
-                    </Group>
-                  </Table.Td>
-                </Table.Tr>
-              );
-            })}
-          </Table.Tbody>
-        </Table>
-      </Card>
-
-      {/* Admin actions */}
-      {isAdmin && (
-        <Group>
-          <Button variant="light" color="red" leftSection={<IconArchive size={16} />} onClick={handleArchive}>
-            Archive expense
-          </Button>
         </Group>
-      )}
+      </Paper>
 
-      {/* Payment note modal */}
+      <SimpleGrid cols={{ base: 1, sm: 2, xl: 4 }} spacing="lg">
+        <Paper className="commune-stat-card" p="lg">
+          <Group justify="space-between">
+            <Stack gap={2}>
+              <Text size="sm" c="dimmed">Total amount</Text>
+              <Text fw={800} size="1.9rem">{formatCurrency(expense.amount, expense.currency)}</Text>
+              <Text size="sm" c="dimmed">Due {formatDate(expense.due_date)}</Text>
+            </Stack>
+            <ThemeIcon size={42} variant="light" style={{ backgroundColor: 'rgba(16, 185, 129, 0.1)', color: 'var(--commune-primary-strong)' }}>
+              <IconReceipt size={20} />
+            </ThemeIcon>
+          </Group>
+        </Paper>
+
+        <Paper className="commune-stat-card" p="lg">
+          <Group justify="space-between">
+            <Stack gap={2}>
+              <Text size="sm" c="dimmed">Participants</Text>
+              <Text fw={800} size="1.9rem">{expense.participants.length}</Text>
+              <Text size="sm" c="dimmed">Included in the split</Text>
+            </Stack>
+            <ThemeIcon size={42} variant="light" style={{ backgroundColor: 'rgba(16, 69, 54, 0.1)', color: 'var(--commune-forest)' }}>
+              <IconUsers size={20} />
+            </ThemeIcon>
+          </Group>
+        </Paper>
+
+        <Paper className="commune-stat-card" p="lg">
+          <Group justify="space-between">
+            <Stack gap={2}>
+              <Text size="sm" c="dimmed">Marked paid</Text>
+              <Text fw={800} size="1.9rem">{paidCount}</Text>
+              <Text size="sm" c="dimmed">Payments submitted</Text>
+            </Stack>
+            <ThemeIcon size={42} variant="light" style={{ backgroundColor: 'rgba(98, 195, 138, 0.16)', color: 'var(--commune-forest-soft)' }}>
+              <IconCheck size={20} />
+            </ThemeIcon>
+          </Group>
+        </Paper>
+
+        <Paper className="commune-stat-card" p="lg">
+          <Group justify="space-between">
+            <Stack gap={2}>
+              <Text size="sm" c="dimmed">Confirmed</Text>
+              <Text fw={800} size="1.9rem">{confirmedCount}</Text>
+              <Text size="sm" c="dimmed">Admin-approved payments</Text>
+            </Stack>
+            <ThemeIcon size={42} variant="light" style={{ backgroundColor: 'rgba(66, 153, 225, 0.16)', color: '#2B6CB0' }}>
+              <IconCheckbox size={20} />
+            </ThemeIcon>
+          </Group>
+        </Paper>
+      </SimpleGrid>
+
+      <Paper className="commune-soft-panel" p="xl">
+        <Group justify="space-between" align="flex-start" mb="lg">
+          <div>
+            <Text fw={700} size="lg">Split breakdown</Text>
+            <Text size="sm" c="dimmed">
+              Who owes what, who paid already, and who still needs to settle.
+            </Text>
+          </div>
+          {expense.paid_by_user && (
+            <Badge variant="light" color="gray">
+              Paid upfront by {expense.paid_by_user.name}
+            </Badge>
+          )}
+        </Group>
+
+        <div style={{ overflowX: 'auto' }}>
+          <Table verticalSpacing="md" horizontalSpacing="sm">
+            <Table.Thead>
+              <Table.Tr>
+                <Table.Th>Person</Table.Th>
+                <Table.Th style={{ textAlign: 'right' }}>Share</Table.Th>
+                {expense.paid_by_user_id && (
+                  <Table.Th style={{ textAlign: 'right' }}>Owes to</Table.Th>
+                )}
+                <Table.Th>Status</Table.Th>
+                <Table.Th>Details</Table.Th>
+                <Table.Th style={{ textAlign: 'center' }}>Actions</Table.Th>
+              </Table.Tr>
+            </Table.Thead>
+            <Table.Tbody>
+              {expense.participants.map((participant) => {
+                const payment = expense.payment_records.find((record) => record.user_id === participant.user_id);
+                const paymentStatus = payment?.status ?? 'unpaid';
+                const reimbursement = reimbursements.find((item) => item.userId === participant.user_id);
+                const canToggle = participant.user_id === user?.id || isAdmin;
+
+                return (
+                  <Table.Tr key={participant.id}>
+                    <Table.Td>
+                      <Group gap="xs" wrap="nowrap">
+                        <Avatar src={participant.user.avatar_url} name={participant.user.name} color="initials" size="sm" />
+                        <Text size="sm" fw={600}>{participant.user.name}</Text>
+                      </Group>
+                    </Table.Td>
+                    <Table.Td style={{ textAlign: 'right' }}>
+                      <Text size="sm" fw={700}>
+                        {formatCurrency(participant.share_amount, expense.currency)}
+                      </Text>
+                    </Table.Td>
+                    {expense.paid_by_user_id && (
+                      <Table.Td style={{ textAlign: 'right' }}>
+                        <Text size="sm" c="dimmed">
+                          {reimbursement ? expense.paid_by_user?.name : '—'}
+                        </Text>
+                      </Table.Td>
+                    )}
+                    <Table.Td>
+                      <Badge color={statusColor[paymentStatus] ?? 'gray'} variant="light">
+                        {paymentStatus}
+                      </Badge>
+                    </Table.Td>
+                    <Table.Td>
+                      <Stack gap={2}>
+                        {payment?.paid_at && (
+                          <Text size="xs" c="dimmed">
+                            Paid {formatDate(payment.paid_at)}
+                          </Text>
+                        )}
+                        {payment?.note && (
+                          <Tooltip label={payment.note}>
+                            <Group gap={4} style={{ cursor: 'pointer' }}>
+                              <IconNote size={12} />
+                              <Text size="xs" c="dimmed" truncate style={{ maxWidth: 120 }}>
+                                {payment.note}
+                              </Text>
+                            </Group>
+                          </Tooltip>
+                        )}
+                      </Stack>
+                    </Table.Td>
+                    <Table.Td style={{ textAlign: 'center' }}>
+                      <Group gap={4} justify="center">
+                        {canToggle && paymentStatus === 'unpaid' && (
+                          <ActionIcon variant="light" color="emerald" onClick={() => handlePayClick(participant.user_id)}>
+                            <IconCheck size={16} />
+                          </ActionIcon>
+                        )}
+                        {canToggle && paymentStatus === 'paid' && (
+                          <ActionIcon variant="light" color="red" onClick={() => handleUnpay(participant.user_id)}>
+                            <IconX size={16} />
+                          </ActionIcon>
+                        )}
+                        {isAdmin && paymentStatus === 'paid' && (
+                          <ActionIcon variant="light" color="blue" onClick={() => handleConfirmPayment(participant.user_id)}>
+                            <IconCheckbox size={16} />
+                          </ActionIcon>
+                        )}
+                      </Group>
+                    </Table.Td>
+                  </Table.Tr>
+                );
+              })}
+            </Table.Tbody>
+          </Table>
+        </div>
+      </Paper>
+
       <Modal opened={noteOpened} onClose={closeNote} title="Mark as paid" size="sm">
         <Stack gap="sm">
           <TextInput
             label="Payment note (optional)"
             placeholder="e.g. Bank transfer ref: ABC123"
             value={paymentNote}
-            onChange={(e) => setPaymentNote(e.currentTarget.value)}
-          />
+            onChange={(event) => setPaymentNote(event.currentTarget.value)}
+                      />
           <Button onClick={handleConfirmPay} loading={markPayment.isPending} fullWidth>
             Confirm payment
           </Button>

@@ -99,6 +99,10 @@ export type GroupWithMembers = Group & {
   members: (GroupMember & { user: User })[];
 };
 
+export type GroupInvite = GroupMember & {
+  group: Group;
+};
+
 export type ExpenseWithParticipants = Expense & {
   participants: (ExpenseParticipant & { user: User })[];
   payment_records: PaymentRecord[];

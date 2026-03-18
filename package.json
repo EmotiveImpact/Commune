@@ -9,6 +9,7 @@
     "typecheck": "turbo typecheck"
   },
   "devDependencies": {
+    "nativewind": "4.2.3",
     "turbo": "^2",
     "typescript": "^5.7"
   },

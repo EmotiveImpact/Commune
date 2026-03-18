@@ -1,12 +1,26 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { Stepper, TextInput, Select, Textarea, Button, Stack, Paper, Title, Text, Center } from '@mantine/core';
+import {
+  Badge,
+  Button,
+  Center,
+  Group,
+  Paper,
+  Select,
+  Stack,
+  Stepper,
+  Text,
+  TextInput,
+  Textarea,
+  Title,
+} from '@mantine/core';
 import { useForm, schemaResolver } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { createGroupSchema, inviteMemberSchema, type CreateGroupInput } from '@commune/core';
-import { useCreateGroup, useInviteMember } from '../../hooks/use-groups';
+import { useAcceptInvite, useCreateGroup, useInviteMember, usePendingInvites, useUserGroups } from '../../hooks/use-groups';
 import { useGroupStore } from '../../stores/group';
 import { GroupType } from '@commune/types';
+import { PageLoader } from '../../components/page-loader';
 
 export const Route = createFileRoute('/_app/onboarding')({
   component: OnboardingPage,
@@ -24,8 +38,13 @@ const groupTypeOptions = [
 function OnboardingPage() {
   const [active, setActive] = useState(0);
   const [groupId, setGroupId] = useState<string | null>(null);
+  const [showCreateFlow, setShowCreateFlow] = useState(false);
+  const [acceptingGroupId, setAcceptingGroupId] = useState<string | null>(null);
   const createGroup = useCreateGroup();
-  const { setActiveGroupId } = useGroupStore();
+  const acceptInvite = useAcceptInvite();
+  const { activeGroupId, setActiveGroupId } = useGroupStore();
+  const { data: groups, isLoading: groupsLoading } = useUserGroups();
+  const { data: pendingInvites, isLoading: invitesLoading } = usePendingInvites();
   const navigate = useNavigate();
 
   const groupForm = useForm<CreateGroupInput>({
@@ -33,6 +52,35 @@ function OnboardingPage() {
     initialValues: { name: '', type: 'home', description: '', cycle_date: 1, currency: 'GBP' },
     validate: schemaResolver(createGroupSchema),
   });
+
+  useEffect(() => {
+    if (groupsLoading || invitesLoading) {
+      return;
+    }
+
+    if (activeGroupId) {
+      navigate({ to: '/', replace: true });
+      return;
+    }
+
+    if (groups?.[0]?.id) {
+      setActiveGroupId(groups[0].id);
+      navigate({ to: '/', replace: true });
+      return;
+    }
+
+    if ((pendingInvites?.length ?? 0) === 0) {
+      setShowCreateFlow(true);
+    }
+  }, [
+    activeGroupId,
+    groups,
+    groupsLoading,
+    invitesLoading,
+    navigate,
+    pendingInvites?.length,
+    setActiveGroupId,
+  ]);
 
   async function handleCreateGroup(values: CreateGroupInput) {
     try {
@@ -53,9 +101,84 @@ function OnboardingPage() {
     navigate({ to: '/' });
   }
 
+  async function handleAcceptInvite(targetGroupId: string) {
+    try {
+      setAcceptingGroupId(targetGroupId);
+      await acceptInvite.mutateAsync(targetGroupId);
+      setActiveGroupId(targetGroupId);
+      notifications.show({
+        title: 'Group joined',
+        message: 'You can start tracking expenses now.',
+        color: 'green',
+      });
+      navigate({ to: '/', replace: true });
+    } catch (err) {
+      notifications.show({
+        title: 'Failed to join group',
+        message: err instanceof Error ? err.message : 'Something went wrong',
+        color: 'red',
+      });
+    } finally {
+      setAcceptingGroupId(null);
+    }
+  }
+
+  if (groupsLoading || invitesLoading) {
+    return <PageLoader message="Loading onboarding..." h="80vh" />;
+  }
+
+  const inviteOptions = pendingInvites ?? [];
+
+  if (inviteOptions.length > 0 && !showCreateFlow) {
+    return (
+      <Center mih="80vh">
+        <Paper p="xl" withBorder w="100%" maw={640}>
+          <Stack gap="lg">
+            <Stack gap="xs">
+              <Badge color="emerald" variant="light" w="fit-content">
+                Join a group
+              </Badge>
+              <Title order={2}>You already have an invite waiting</Title>
+              <Text c="dimmed">
+                Accept one of these invitations so you land inside the right shared workspace instead of starting from an empty dashboard.
+              </Text>
+            </Stack>
+
+            <Stack gap="sm">
+              {inviteOptions.map((invite) => (
+                <Paper key={invite.id} withBorder p="lg">
+                  <Group justify="space-between" align="flex-start">
+                    <Stack gap={4}>
+                      <Text fw={700}>{invite.group.name}</Text>
+                      <Text size="sm" c="dimmed">
+                        {invite.group.type} group
+                        {invite.group.description ? ` • ${invite.group.description}` : ''}
+                      </Text>
+                    </Stack>
+
+                    <Button
+                                            onClick={() => handleAcceptInvite(invite.group_id)}
+                      loading={acceptingGroupId === invite.group_id}
+                    >
+                      Accept invite
+                    </Button>
+                  </Group>
+                </Paper>
+              ))}
+            </Stack>
+
+            <Button variant="default" onClick={() => setShowCreateFlow(true)}>
+              Create a different group instead
+            </Button>
+          </Stack>
+        </Paper>
+      </Center>
+    );
+  }
+
   return (
     <Center mih="80vh">
-      <Paper radius="md" p="xl" withBorder w={500}>
+      <Paper p="xl" withBorder w={500}>
         <Title order={2} ta="center" mb="md">Set up your group</Title>
 
         <Stepper active={active} size="sm" mb="xl">

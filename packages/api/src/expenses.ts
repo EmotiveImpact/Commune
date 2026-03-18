@@ -37,23 +37,9 @@ export async function createExpense(data: CreateExpenseData) {
     ...expenseData
   } = data;
 
-  // Insert the expense
-  const { data: expense, error: expenseError } = await supabase
-    .from('expenses')
-    .insert({
-      ...expenseData,
-      split_method,
-      created_by: user.id,
-    })
-    .select()
-    .single();
-
-  if (expenseError) throw expenseError;
-
-  const expenseId = (expense as { id: string }).id;
   const amount = data.amount;
 
-  // Calculate shares based on split method
+  // Calculate shares before writing anything so invalid split input does not leave orphan expenses behind.
   let shares: { userId: string; amount: number; percentage?: number }[];
 
   if (split_method === 'equal') {
@@ -80,6 +66,20 @@ export async function createExpense(data: CreateExpenseData) {
     );
   }
 
+  const { data: expense, error: expenseError } = await supabase
+    .from('expenses')
+    .insert({
+      ...expenseData,
+      split_method,
+      created_by: user.id,
+    })
+    .select()
+    .single();
+
+  if (expenseError) throw expenseError;
+
+  const expenseId = (expense as { id: string }).id;
+
   // Insert expense participants
   const participants = shares.map((s) => ({
     expense_id: expenseId,
@@ -92,21 +92,13 @@ export async function createExpense(data: CreateExpenseData) {
     .from('expense_participants')
     .insert(participants);
 
-  if (participantError) throw participantError;
-
-  // Create initial payment records (unpaid) for each participant
-  const paymentRecords = shares.map((s) => ({
-    expense_id: expenseId,
-    user_id: s.userId,
-    amount: s.amount,
-    status: 'unpaid',
-  }));
-
-  const { error: paymentError } = await supabase
-    .from('payment_records')
-    .insert(paymentRecords);
-
-  if (paymentError) throw paymentError;
+  if (participantError) {
+    await supabase
+      .from('expenses')
+      .update({ is_active: false })
+      .eq('id', expenseId);
+    throw participantError;
+  }
 
   return expense;
 }

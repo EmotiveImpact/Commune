@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useEffect } from 'react';
 import { Center, Loader, Text, Stack } from '@mantine/core';
-import { supabase } from '@commune/api';
+import { useAuthStore } from '../../stores/auth';
 
 export const Route = createFileRoute('/_auth/callback')({
   component: AuthCallback,
@@ -9,20 +9,13 @@ export const Route = createFileRoute('/_auth/callback')({
 
 function AuthCallback() {
   const navigate = useNavigate();
+  const { isAuthenticated, isLoading } = useAuthStore();
 
   useEffect(() => {
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'SIGNED_IN') {
-        navigate({ to: '/' });
-      }
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [navigate]);
+    if (!isLoading && isAuthenticated) {
+      navigate({ to: '/' });
+    }
+  }, [isAuthenticated, isLoading, navigate]);
 
   return (
     <Center h="100vh">

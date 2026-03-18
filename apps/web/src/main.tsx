@@ -6,6 +6,12 @@ import { initSupabase } from '@commune/api';
 import { routeTree } from './routeTree.gen';
 import { useAuthStore } from './stores/auth';
 import { useAuthListener } from './hooks/use-auth-listener';
+import '@fontsource/inter/400.css';
+import '@fontsource/inter/500.css';
+import '@fontsource/inter/600.css';
+import '@fontsource/inter/700.css';
+import '@fontsource/inter/800.css';
+import './styles.css';
 
 initSupabase(
   import.meta.env.VITE_SUPABASE_URL,

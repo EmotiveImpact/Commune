@@ -1,4 +1,8 @@
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import {
+  createClient,
+  type SupabaseClient,
+  type SupabaseClientOptions,
+} from '@supabase/supabase-js';
 
 let _supabase: SupabaseClient | null = null;
 
@@ -7,8 +11,16 @@ let _supabase: SupabaseClient | null = null;
  * - Web: call from main.tsx with import.meta.env.VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY
  * - Mobile: call from root layout with process.env.EXPO_PUBLIC_SUPABASE_URL / EXPO_PUBLIC_SUPABASE_ANON_KEY
  */
-export function initSupabase(url: string, anonKey: string): SupabaseClient {
-  _supabase = createClient(url, anonKey);
+export function initSupabase(
+  url: string,
+  anonKey: string,
+  options?: SupabaseClientOptions<'public'>,
+): SupabaseClient {
+  if (_supabase) {
+    return _supabase;
+  }
+
+  _supabase = createClient(url, anonKey, options);
   return _supabase;
 }
 

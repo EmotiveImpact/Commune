@@ -1,6 +1,7 @@
-import type { Group, GroupWithMembers } from '@commune/types';
+import type { Group, GroupInvite, GroupMember, GroupWithMembers } from '@commune/types';
 import type { MemberRole } from '@commune/types';
 import { supabase } from './client';
+import { ensureProfile } from './profile';
 
 export async function createGroup(data: {
   name: string;
@@ -15,28 +16,44 @@ export async function createGroup(data: {
 
   if (!user) throw new Error('Not authenticated');
 
-  const { data: group, error } = await supabase
+  await ensureProfile(user.id);
+
+  const payload = {
+    name: data.name,
+    type: data.type as Group['type'],
+    description: data.description ?? null,
+    owner_id: user.id,
+    cycle_date: data.cycle_date ?? 1,
+    currency: data.currency ?? 'GBP',
+  };
+
+  const { error } = await supabase
     .from('groups')
-    .insert({
-      ...data,
-      owner_id: user.id,
-    })
-    .select()
-    .single();
+    .insert(payload);
 
   if (error) throw error;
 
-  // Add owner as admin member
-  const { error: memberError } = await supabase.from('group_members').insert({
-    group_id: (group as Group).id,
-    user_id: user.id,
-    role: 'admin',
-    status: 'active',
-  });
+  const lookup = supabase
+    .from('groups')
+    .select('*')
+    .eq('owner_id', user.id)
+    .eq('name', payload.name)
+    .eq('type', payload.type)
+    .eq('cycle_date', payload.cycle_date)
+    .eq('currency', payload.currency)
+    .order('created_at', { ascending: false })
+    .limit(1);
 
-  if (memberError) throw memberError;
+  const { data: insertedGroup, error: lookupError } = payload.description === null
+    ? await lookup.is('description', null).maybeSingle()
+    : await lookup.eq('description', payload.description).maybeSingle();
 
-  return group as Group;
+  if (lookupError) throw lookupError;
+  if (!insertedGroup) {
+    throw new Error('Group was created but could not be loaded.');
+  }
+
+  return insertedGroup as Group;
 }
 
 export async function getGroup(groupId: string) {
@@ -83,29 +100,48 @@ export async function getUserGroups() {
   );
 }
 
-export async function inviteMember(groupId: string, email: string) {
-  // Look up user by email
-  const { data: invitedUser, error: lookupError } = await supabase
-    .from('users')
-    .select('id')
-    .eq('email', email)
-    .single();
+export async function getPendingInvites() {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  if (lookupError) throw new Error('User not found with that email');
+  if (!user) throw new Error('Not authenticated');
 
   const { data, error } = await supabase
     .from('group_members')
-    .insert({
-      group_id: groupId,
-      user_id: (invitedUser as { id: string }).id,
-      role: 'member',
-      status: 'invited',
-    })
-    .select()
-    .single();
+    .select(
+      `
+      *,
+      group:groups(*)
+    `,
+    )
+    .eq('user_id', user.id)
+    .eq('status', 'invited');
+
+  if (error) throw error;
+
+  return (data ?? []) as unknown as GroupInvite[];
+}
+
+export async function inviteMember(groupId: string, email: string) {
+  const { data, error } = await supabase
+    .rpc('invite_group_member', {
+      target_group_id: groupId,
+      target_email: email,
+    });
 
   if (error) throw error;
   return data;
+}
+
+export async function acceptInvite(groupId: string) {
+  const { data, error } = await supabase
+    .rpc('accept_group_invite', {
+      target_group_id: groupId,
+    });
+
+  if (error) throw error;
+  return data as GroupMember;
 }
 
 export async function updateMemberRole(memberId: string, role: MemberRole) {

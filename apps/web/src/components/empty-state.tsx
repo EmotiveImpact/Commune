@@ -1,4 +1,4 @@
-import { Center, Stack, Text, ThemeIcon, Button, type MantineColor } from '@mantine/core';
+import { Button, Center, Paper, Stack, Text, ThemeIcon, type MantineColor } from '@mantine/core';
 import type { Icon } from '@tabler/icons-react';
 import { IconInbox } from '@tabler/icons-react';
 import type { ReactNode } from 'react';
@@ -27,25 +27,27 @@ export function EmptyState({
 }: EmptyStateProps) {
   return (
     <Center h={h}>
-      <Stack align="center" gap="sm" maw={360}>
-        <ThemeIcon variant="light" color={iconColor} size="xl" radius="xl">
-          <IconComponent size={28} />
-        </ThemeIcon>
+      <Paper className="commune-soft-panel" p="xl" maw={420} w="100%">
+        <Stack align="center" gap="sm">
+          <ThemeIcon variant="light" color={iconColor} size="xl">
+            <IconComponent size={28} />
+          </ThemeIcon>
 
-        <Text fw={600} ta="center">{title}</Text>
+          <Text fw={600} ta="center">{title}</Text>
 
-        {description && (
-          <Text size="sm" c="dimmed" ta="center">{description}</Text>
-        )}
+          {description && (
+            <Text size="sm" c="dimmed" ta="center">{description}</Text>
+          )}
 
-        {action && (
-          <Button variant="light" onClick={action.onClick} mt="xs">
-            {action.label}
-          </Button>
-        )}
+          {action && (
+            <Button variant="light" onClick={action.onClick} mt="xs">
+              {action.label}
+            </Button>
+          )}
 
-        {children}
-      </Stack>
+          {children}
+        </Stack>
+      </Paper>
     </Center>
   );
 }

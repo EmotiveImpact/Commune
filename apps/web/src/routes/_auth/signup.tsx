@@ -17,9 +17,11 @@ import {
   signUpWithEmail,
   signInWithGoogle,
   signInWithApple,
+  signInWithGitHub,
 } from '@commune/api';
-import { IconBrandGoogle, IconBrandApple } from '@tabler/icons-react';
-import { useState } from 'react';
+import { IconBrandGoogle, IconBrandApple, IconBrandGithub } from '@tabler/icons-react';
+import { useEffect, useState } from 'react';
+import { useAuthStore } from '../../stores/auth';
 
 export const Route = createFileRoute('/_auth/signup')({
   component: SignupPage,
@@ -42,6 +44,13 @@ type SignupValues = z.infer<typeof signupSchema>;
 function SignupPage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const { isAuthenticated } = useAuthStore();
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate({ to: '/' });
+    }
+  }, [isAuthenticated, navigate]);
 
   const form = useForm<SignupValues>({
     mode: 'uncontrolled',
@@ -52,10 +61,14 @@ function SignupPage() {
   async function handleSubmit(values: SignupValues) {
     setLoading(true);
     try {
-      await signUpWithEmail(values.email, values.password, values.name);
+      const result = await signUpWithEmail(values.email, values.password, values.name);
+      if (result.session) {
+        // Auto-logged in (email confirmation disabled) — auth listener handles redirect
+        return;
+      }
       notifications.show({
         title: 'Account created',
-        message: 'Check your email to verify your account',
+        message: 'Check your email to verify your account, then sign in.',
         color: 'green',
       });
       navigate({ to: '/login' });
@@ -71,12 +84,12 @@ function SignupPage() {
   }
 
   return (
-    <Paper radius="md" p="xl" withBorder w={420}>
+    <Paper  p="xl" w="100%" maw={440} className="commune-auth-panel">
       <Title order={2} ta="center" mb="md">
         Create your account
       </Title>
       <Text c="dimmed" size="sm" ta="center" mb="lg">
-        Join Commune to split expenses with friends
+        Join Commune to run shared money clearly with the people around you.
       </Text>
 
       <Stack gap="sm" mb="md">
@@ -87,6 +100,14 @@ function SignupPage() {
           onClick={() => signInWithGoogle()}
         >
           Continue with Google
+        </Button>
+        <Button
+          leftSection={<IconBrandGithub size={18} />}
+          variant="default"
+          fullWidth
+          onClick={() => signInWithGitHub()}
+        >
+          Continue with GitHub
         </Button>
         <Button
           leftSection={<IconBrandApple size={18} />}

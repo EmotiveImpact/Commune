@@ -1,14 +1,24 @@
 import { createFileRoute } from '@tanstack/react-router';
 import {
-  Title, Stack, Text, Card, Group, Badge, Button, SimpleGrid, List,
-  Center, Loader, Alert,
+  Alert,
+  Badge,
+  Button,
+  Group,
+  List,
+  Paper,
+  SimpleGrid,
+  Stack,
+  Text,
+  ThemeIcon,
+  Title,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import { IconCheck, IconSparkles, IconInfoCircle } from '@tabler/icons-react';
+import { IconCheck, IconInfoCircle, IconSparkles } from '@tabler/icons-react';
 import { SubscriptionPlan } from '@commune/types';
 import { useAuthStore } from '../../stores/auth';
-import { useSubscription, useCheckout } from '../../hooks/use-subscriptions';
+import { useCheckout, useSubscription } from '../../hooks/use-subscriptions';
 import { formatDate } from '@commune/utils';
+import { PageLoader } from '../../components/page-loader';
 
 export const Route = createFileRoute('/_app/pricing')({
   component: PricingPage,
@@ -18,7 +28,6 @@ interface PlanConfig {
   id: SubscriptionPlan;
   name: string;
   price: string;
-  priceValue: number;
   features: string[];
   limits: { groups: string; members: string };
   highlight?: boolean;
@@ -29,42 +38,39 @@ const PLANS: PlanConfig[] = [
     id: SubscriptionPlan.STANDARD,
     name: 'Standard',
     price: '£4.99',
-    priceValue: 4.99,
     features: [
-      'Up to 2 groups',
+      'Up to 1 group',
       'Up to 5 members per group',
-      'Expense tracking & splits',
+      'Expense tracking and split logic',
       'Payment tracking',
       'Monthly breakdown',
     ],
-    limits: { groups: '2', members: '5' },
+    limits: { groups: '1', members: '5' },
   },
   {
     id: SubscriptionPlan.PRO,
     name: 'Pro',
     price: '£9.99',
-    priceValue: 9.99,
     features: [
-      'Up to 10 groups',
-      'Up to 20 members per group',
+      'Up to 3 groups',
+      'Up to 15 members per group',
       'Everything in Standard',
-      'Priority support',
       'Advanced analytics',
+      'Exports and stronger admin workflows',
     ],
-    limits: { groups: '10', members: '20' },
+    limits: { groups: '3', members: '15' },
     highlight: true,
   },
   {
     id: SubscriptionPlan.AGENCY,
     name: 'Agency',
     price: '£29.99',
-    priceValue: 29.99,
     features: [
       'Unlimited groups',
       'Unlimited members',
       'Everything in Pro',
-      'Dedicated support',
-      'Custom integrations',
+      'Priority support',
+      'Best fit for larger communal operations',
     ],
     limits: { groups: 'Unlimited', members: 'Unlimited' },
   },
@@ -78,7 +84,9 @@ function PricingPage() {
   const success = search.get('success') === 'true';
   const cancelled = search.get('cancelled') === 'true';
 
-  if (isLoading) return <Center h={400}><Loader /></Center>;
+  if (isLoading) {
+    return <PageLoader message="Loading pricing..." />;
+  }
 
   const currentPlan = subscription?.plan;
   const isTrialing = subscription?.status === 'trialing';
@@ -98,25 +106,33 @@ function PricingPage() {
   }
 
   return (
-    <Stack>
-      <Stack gap="xs">
-        <Title order={2}>Pricing</Title>
-        <Text c="dimmed">Simple pricing. 7-day free trial on every plan. Cancel anytime.</Text>
-      </Stack>
+    <Stack gap="xl">
+      <Paper className="commune-hero-card" p={{ base: 'xl', md: '2rem' }}>
+        <Stack gap="sm" maw={720}>
+          <Badge variant="light" color="emerald" w="fit-content">
+            Plans and billing
+          </Badge>
+          <Title order={1}>Pricing</Title>
+          <Text size="lg" c="dimmed">
+            Every plan starts with a 7-day free trial. Pick the level that matches how many groups
+            and members you actually manage.
+          </Text>
+        </Stack>
+      </Paper>
 
       {success && (
         <Alert icon={<IconCheck size={16} />} color="green" title="Subscription activated">
-          Welcome to Commune! Your subscription is now active.
+          Welcome to Commune. Your subscription is now active.
         </Alert>
       )}
 
       {cancelled && (
         <Alert icon={<IconInfoCircle size={16} />} color="yellow" title="Checkout cancelled">
-          No worries — you can start your trial whenever you are ready.
+          No problem. You can start your trial whenever you are ready.
         </Alert>
       )}
 
-      <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing="lg">
+      <SimpleGrid cols={{ base: 1, lg: 3 }} spacing="lg">
         {PLANS.map((plan) => {
           const isCurrent = currentPlan === plan.id;
           const buttonLabel = isCurrent
@@ -124,54 +140,68 @@ function PricingPage() {
             : isActive ? 'Switch plan' : 'Start 7-day trial';
 
           return (
-            <Card
+            <Paper
               key={plan.id}
-              withBorder
-              padding="xl"
-              style={plan.highlight ? { borderColor: 'var(--mantine-color-blue-6)', borderWidth: 2 } : undefined}
+              className="commune-soft-panel"
+              p="xl"
+                            style={plan.highlight ? { borderColor: 'var(--commune-primary-strong)' } : undefined}
             >
-              <Stack gap="md">
-                <Group justify="space-between">
-                  <Text fw={700} size="lg">{plan.name}</Text>
-                  {plan.highlight && (
-                    <Badge variant="filled" color="blue" leftSection={<IconSparkles size={12} />}>
-                      Popular
-                    </Badge>
-                  )}
-                  {isCurrent && isTrialing && (
-                    <Badge variant="light" color="orange">Trial</Badge>
-                  )}
-                  {isCurrent && !isTrialing && (
-                    <Badge variant="light" color="green">Active</Badge>
-                  )}
+              <Stack gap="lg" h="100%">
+                <Group justify="space-between" align="flex-start">
+                  <div>
+                    <Text fw={800} size="1.25rem">{plan.name}</Text>
+                    <Text size="sm" c="dimmed">
+                      {plan.limits.groups} group{plan.limits.groups === '1' ? '' : 's'} and {plan.limits.members} members
+                    </Text>
+                  </div>
+                  <Group gap="xs">
+                    {plan.highlight && (
+                      <Badge variant="light" color="emerald" leftSection={<IconSparkles size={12} />}>
+                        Popular
+                      </Badge>
+                    )}
+                    {isCurrent && (
+                      <Badge variant="light" color={isTrialing ? 'orange' : 'emerald'}>
+                        {isTrialing ? 'Trial' : 'Active'}
+                      </Badge>
+                    )}
+                  </Group>
                 </Group>
 
                 <Group align="baseline" gap={4}>
-                  <Text fw={700} size="xl">{plan.price}</Text>
+                  <Text fw={900} size="2.5rem">{plan.price}</Text>
                   <Text size="sm" c="dimmed">/month</Text>
                 </Group>
 
-                <List
-                  spacing="xs"
-                  size="sm"
-                  icon={<IconCheck size={14} color="var(--mantine-color-green-6)" />}
-                >
-                  {plan.features.map((feature) => (
-                    <List.Item key={feature}>{feature}</List.Item>
-                  ))}
-                </List>
+                <Paper className="commune-stat-card" p="md" radius="lg">
+                  <Text size="sm" fw={600} mb="xs">Includes</Text>
+                  <List
+                    spacing="xs"
+                    size="sm"
+                    icon={(
+                      <ThemeIcon size={18} variant="light" color="emerald">
+                        <IconCheck size={12} />
+                      </ThemeIcon>
+                    )}
+                  >
+                    {plan.features.map((feature) => (
+                      <List.Item key={feature}>{feature}</List.Item>
+                    ))}
+                  </List>
+                </Paper>
 
                 <Button
                   fullWidth
-                  variant={isCurrent ? 'light' : plan.highlight ? 'filled' : 'outline'}
+                                    variant={isCurrent ? 'light' : plan.highlight ? 'filled' : 'default'}
                   disabled={isCurrent}
                   loading={checkout.isPending}
                   onClick={() => handleSelectPlan(plan.id)}
+                  mt="auto"
                 >
                   {buttonLabel}
                 </Button>
               </Stack>
-            </Card>
+            </Paper>
           );
         })}
       </SimpleGrid>

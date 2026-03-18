@@ -82,18 +82,6 @@ export async function updateExpense(expenseId: string, data: UpdateExpenseData) 
       .insert(participants);
     if (pError) throw pError;
 
-    // Re-insert payment records
-    const paymentRecords = shares.map((s) => ({
-      expense_id: expenseId,
-      user_id: s.userId,
-      amount: s.amount,
-      status: 'unpaid',
-    }));
-
-    const { error: prError } = await supabase
-      .from('payment_records')
-      .insert(paymentRecords);
-    if (prError) throw prError;
   }
 
   // Return updated expense

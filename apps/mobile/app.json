@@ -4,9 +4,13 @@
     "slug": "commune",
     "version": "1.0.0",
     "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
     "scheme": "commune",
     "platforms": ["ios", "android"],
     "newArchEnabled": true,
+    "experiments": {
+      "autolinkingModuleResolution": true
+    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.commune.app"

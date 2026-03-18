@@ -1,10 +1,20 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { createGroup, getGroup, getUserGroups, inviteMember, updateMemberRole, removeMember } from '@commune/api';
+import {
+  acceptInvite,
+  createGroup,
+  getGroup,
+  getPendingInvites,
+  getUserGroups,
+  inviteMember,
+  removeMember,
+  updateMemberRole,
+} from '@commune/api';
 import type { CreateGroupInput } from '@commune/core';
 
 export const groupKeys = {
   all: ['groups'] as const,
   list: () => [...groupKeys.all, 'list'] as const,
+  invites: () => [...groupKeys.all, 'invites'] as const,
   detail: (id: string) => [...groupKeys.all, 'detail', id] as const,
 };
 
@@ -23,6 +33,13 @@ export function useGroup(groupId: string) {
   });
 }
 
+export function usePendingInvites() {
+  return useQuery({
+    queryKey: groupKeys.invites(),
+    queryFn: getPendingInvites,
+  });
+}
+
 export function useCreateGroup() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -38,6 +55,18 @@ export function useInviteMember(groupId: string) {
   return useMutation({
     mutationFn: (email: string) => inviteMember(groupId, email),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: groupKeys.detail(groupId) });
+    },
+  });
+}
+
+export function useAcceptInvite() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (groupId: string) => acceptInvite(groupId),
+    onSuccess: (_, groupId) => {
+      queryClient.invalidateQueries({ queryKey: groupKeys.invites() });
+      queryClient.invalidateQueries({ queryKey: groupKeys.list() });
       queryClient.invalidateQueries({ queryKey: groupKeys.detail(groupId) });
     },
   });

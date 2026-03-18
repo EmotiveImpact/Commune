@@ -13,9 +13,10 @@ import {
 import { useForm, schemaResolver } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
 import { z } from 'zod';
-import { signInWithEmail, signInWithGoogle, signInWithApple } from '@commune/api';
-import { IconBrandGoogle, IconBrandApple } from '@tabler/icons-react';
-import { useState } from 'react';
+import { signInWithEmail, signInWithGoogle, signInWithApple, signInWithGitHub } from '@commune/api';
+import { IconBrandGoogle, IconBrandApple, IconBrandGithub } from '@tabler/icons-react';
+import { useEffect, useState } from 'react';
+import { useAuthStore } from '../../stores/auth';
 
 export const Route = createFileRoute('/_auth/login')({
   component: LoginPage,
@@ -31,6 +32,13 @@ type LoginValues = z.infer<typeof loginSchema>;
 function LoginPage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const { isAuthenticated } = useAuthStore();
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate({ to: '/' });
+    }
+  }, [isAuthenticated, navigate]);
 
   const form = useForm<LoginValues>({
     mode: 'uncontrolled',
@@ -42,7 +50,6 @@ function LoginPage() {
     setLoading(true);
     try {
       await signInWithEmail(values.email, values.password);
-      navigate({ to: '/' });
     } catch (err) {
       notifications.show({
         title: 'Login failed',
@@ -55,12 +62,12 @@ function LoginPage() {
   }
 
   return (
-    <Paper radius="md" p="xl" withBorder w={420}>
+    <Paper  p="xl" w="100%" maw={440} className="commune-auth-panel">
       <Title order={2} ta="center" mb="md">
         Welcome back
       </Title>
       <Text c="dimmed" size="sm" ta="center" mb="lg">
-        Sign in to your Commune account
+        Sign in to your Commune account and pick up the latest group changes.
       </Text>
 
       <Stack gap="sm" mb="md">
@@ -71,6 +78,14 @@ function LoginPage() {
           onClick={() => signInWithGoogle()}
         >
           Continue with Google
+        </Button>
+        <Button
+          leftSection={<IconBrandGithub size={18} />}
+          variant="default"
+          fullWidth
+          onClick={() => signInWithGitHub()}
+        >
+          Continue with GitHub
         </Button>
         <Button
           leftSection={<IconBrandApple size={18} />}

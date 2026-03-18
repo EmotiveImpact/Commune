@@ -3,6 +3,7 @@ import { createExpense, getGroupExpenses, getExpenseDetail, archiveExpense, upda
 import { markPayment, confirmPayment } from '@commune/api';
 import type { SplitMethod } from '@commune/types';
 import { groupKeys } from './use-groups';
+import { dashboardKeys } from './use-dashboard';
 
 export const expenseKeys = {
   all: ['expenses'] as const,
@@ -49,6 +50,7 @@ export function useCreateExpense(groupId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: expenseKeys.list(groupId) });
       queryClient.invalidateQueries({ queryKey: groupKeys.detail(groupId) });
+      queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
     },
   });
 }
@@ -59,6 +61,7 @@ export function useArchiveExpense(groupId: string) {
     mutationFn: (expenseId: string) => archiveExpense(expenseId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: expenseKeys.list(groupId) });
+      queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
     },
   });
 }
@@ -75,6 +78,7 @@ export function useMarkPayment(groupId: string) {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: expenseKeys.detail(variables.expenseId) });
       queryClient.invalidateQueries({ queryKey: expenseKeys.list(groupId) });
+      queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
     },
   });
 }
@@ -82,13 +86,15 @@ export function useMarkPayment(groupId: string) {
 export function useConfirmPayment(groupId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ expenseId, userId }: {
+    mutationFn: ({ expenseId, userId, confirmedBy }: {
       expenseId: string;
       userId: string;
-    }) => confirmPayment(expenseId, userId, ''),
+      confirmedBy: string;
+    }) => confirmPayment(expenseId, userId, confirmedBy),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: expenseKeys.detail(variables.expenseId) });
       queryClient.invalidateQueries({ queryKey: expenseKeys.list(groupId) });
+      queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
     },
   });
 }
@@ -103,6 +109,7 @@ export function useUpdateExpense(groupId: string) {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: expenseKeys.detail(variables.expenseId) });
       queryClient.invalidateQueries({ queryKey: expenseKeys.list(groupId) });
+      queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
     },
   });
 }
