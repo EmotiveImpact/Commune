@@ -94,25 +94,45 @@ function ExpensesPage() {
   return (
     <Stack gap="xl">
       <Paper className="commune-hero-card" p={{ base: 'xl', md: '2rem' }}>
-        <Group justify="space-between" align="flex-start">
-          <Stack gap="xs" maw={620}>
-            <Badge variant="light" color="emerald" w="fit-content">
+        <div className="commune-hero-grid">
+          <div>
+            <Badge className="commune-hero-chip" variant="light" color="emerald" w="fit-content">
               Expense ledger
             </Badge>
-            <Title order={1}>Expenses</Title>
-            <Text size="lg" c="dimmed">
+            <Title order={1}>
+              Track every <span className="commune-highlight">shared cost</span>
+            </Title>
+            <Text className="commune-hero-copy" size="lg" c="dimmed">
               Track recurring costs, one-off bills, due dates, and what still needs to be settled for {group?.name}.
             </Text>
-          </Stack>
+            <Group className="commune-hero-actions" mt="md">
+              <Button className="commune-btn-gradient" component={Link} to="/expenses/new" leftSection={<IconPlus size={16} />}>
+                Add expense
+              </Button>
+            </Group>
+          </div>
 
-          <Button component={Link} to="/expenses/new" leftSection={<IconPlus size={16} />}>
-            Add expense
-          </Button>
-        </Group>
+          <div className="commune-hero-aside">
+            <Text fw={800} size="1.9rem">{formatCurrency(summary.totalAmount, group?.currency)}</Text>
+            <Badge variant="light" color={summary.overdueCount > 0 ? 'red' : 'emerald'}>
+              {summary.overdueCount > 0 ? `${summary.overdueCount} overdue` : 'All on track'}
+            </Badge>
+            <Group gap="sm" mt="sm">
+              <Paper className="commune-hero-aside-stat" p="xs">
+                <Text size="xs" c="dimmed">Overdue</Text>
+                <Text fw={700}>{summary.overdueCount}</Text>
+              </Paper>
+              <Paper className="commune-hero-aside-stat" p="xs">
+                <Text size="xs" c="dimmed">Due this week</Text>
+                <Text fw={700}>{summary.dueSoonCount}</Text>
+              </Paper>
+            </Group>
+          </div>
+        </div>
       </Paper>
 
       <SimpleGrid cols={{ base: 1, sm: 2, xl: 4 }} spacing="lg">
-        <Paper className="commune-stat-card" p="lg">
+        <Paper className="commune-stat-card commune-kpi-card" data-tone="sage" p="lg">
           <Group justify="space-between">
             <Stack gap={2}>
               <Text size="sm" c="dimmed">Tracked spend</Text>
@@ -125,7 +145,7 @@ function ExpensesPage() {
           </Group>
         </Paper>
 
-        <Paper className="commune-stat-card" p="lg">
+        <Paper className="commune-stat-card commune-kpi-card" data-tone="peach" p="lg">
           <Group justify="space-between">
             <Stack gap={2}>
               <Text size="sm" c="dimmed">Overdue</Text>
@@ -138,7 +158,7 @@ function ExpensesPage() {
           </Group>
         </Paper>
 
-        <Paper className="commune-stat-card" p="lg">
+        <Paper className="commune-stat-card commune-kpi-card" data-tone="lilac" p="lg">
           <Group justify="space-between">
             <Stack gap={2}>
               <Text size="sm" c="dimmed">Due this week</Text>
@@ -151,7 +171,7 @@ function ExpensesPage() {
           </Group>
         </Paper>
 
-        <Paper className="commune-stat-card" p="lg">
+        <Paper className="commune-stat-card commune-kpi-card" data-tone="ink" p="lg">
           <Group justify="space-between">
             <Stack gap={2}>
               <Text size="sm" c="dimmed">Recurring</Text>
@@ -169,7 +189,7 @@ function ExpensesPage() {
         <Stack gap="lg">
           <Group justify="space-between" align="flex-start">
             <div>
-              <Text fw={700} size="lg">Filter expenses</Text>
+              <Text className="commune-section-heading">Filter expenses</Text>
               <Text size="sm" c="dimmed">
                 Search by title or category, then narrow the ledger down by type.
               </Text>
@@ -213,17 +233,17 @@ function ExpensesPage() {
         <Paper className="commune-soft-panel" p="xl">
           <Group justify="space-between" align="flex-start" mb="md">
             <div>
-              <Text fw={700} size="lg">Expense table</Text>
+              <Text className="commune-section-heading">Expense table</Text>
               <Text size="sm" c="dimmed">
                 Shared costs ordered by due date and payment status.
               </Text>
             </div>
-            <Badge variant="light" color="gray">
+            <Badge className="commune-pill-badge" variant="light" color="gray">
               {filtered.length} items
             </Badge>
           </Group>
 
-          <div style={{ overflowX: 'auto' }}>
+          <div className="commune-table-shell">
             <Table verticalSpacing="md" horizontalSpacing="sm">
               <Table.Thead>
                 <Table.Tr>
@@ -257,7 +277,7 @@ function ExpensesPage() {
                         </Stack>
                       </Table.Td>
                       <Table.Td>
-                        <Badge size="sm" variant="light" color="gray">
+                        <Badge className="commune-pill-badge" size="sm" variant="light" color="gray">
                           {formatCategoryLabel(expense.category)}
                         </Badge>
                       </Table.Td>

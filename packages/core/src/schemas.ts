@@ -125,8 +125,14 @@ export const notificationPreferencesSchema = z.object({
 });
 
 export const updateProfileSchema = z.object({
-  name: z.string().min(1).max(100),
+  first_name: z.string().min(1, 'First name is required').max(50),
+  last_name: z.string().max(50).optional().default(''),
   avatar_url: z.string().url().optional().nullable(),
+  phone: z.string().max(20).optional().nullable(),
+  country: z.string().max(100).optional().nullable(),
+  payment_info: z.string().max(200).optional().nullable(),
+  default_currency: z.string().length(3).optional(),
+  timezone: z.string().min(1).max(100).optional(),
   notification_preferences: notificationPreferencesSchema.optional(),
 });
 

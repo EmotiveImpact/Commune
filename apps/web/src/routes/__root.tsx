@@ -18,7 +18,7 @@ export interface RouterContext {
 
 const theme = createTheme({
   primaryColor: 'commune',
-  defaultRadius: 'lg',
+  defaultRadius: 'md',
   fontFamily:
     'Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif',
   headings: {
@@ -54,7 +54,7 @@ const theme = createTheme({
   },
   components: {
     Button: { defaultProps: { radius: 'lg', size: 'md' } },
-    Paper: { defaultProps: { radius: 'lg' } },
+    Paper: { defaultProps: { radius: 'md' } },
     TextInput: { defaultProps: { radius: 'md' } },
     PasswordInput: { defaultProps: { radius: 'md' } },
     NumberInput: { defaultProps: { radius: 'md' } },

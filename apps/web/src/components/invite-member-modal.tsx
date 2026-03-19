@@ -1,8 +1,12 @@
-import { Modal, TextInput, Button, Stack } from '@mantine/core';
+import { Modal, TextInput, Button, Stack, Alert, Anchor } from '@mantine/core';
 import { useForm, schemaResolver } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
+import { IconInfoCircle } from '@tabler/icons-react';
 import { inviteMemberSchema, type InviteMemberInput } from '@commune/core';
 import { useInviteMember } from '../hooks/use-groups';
+import { Link } from '@tanstack/react-router';
+import { useAuthStore } from '../stores/auth';
+import { usePlanLimits } from '../hooks/use-plan-limits';
 
 interface InviteMemberModalProps {
   opened: boolean;
@@ -12,6 +16,8 @@ interface InviteMemberModalProps {
 
 export function InviteMemberModal({ opened, onClose, groupId }: InviteMemberModalProps) {
   const inviteMember = useInviteMember(groupId);
+  const { user } = useAuthStore();
+  const { canInviteMember, memberLimit, currentMembers } = usePlanLimits(user?.id ?? '');
 
   const form = useForm<InviteMemberInput>({
     mode: 'uncontrolled',
@@ -49,7 +55,15 @@ export function InviteMemberModal({ opened, onClose, groupId }: InviteMemberModa
             key={form.key('email')}
             {...form.getInputProps('email')}
           />
-          <Button type="submit" loading={inviteMember.isPending} fullWidth>
+          {!canInviteMember && (
+            <Alert icon={<IconInfoCircle size={16} />} color="orange" variant="light">
+              You've reached the member limit for your plan ({currentMembers}/{memberLimit === Infinity ? 'unlimited' : memberLimit}).{' '}
+              <Anchor component={Link} to="/pricing" size="sm" fw={600}>
+                Upgrade to invite more members.
+              </Anchor>
+            </Alert>
+          )}
+          <Button type="submit" loading={inviteMember.isPending} disabled={!canInviteMember} fullWidth>
             Send invitation
           </Button>
         </Stack>

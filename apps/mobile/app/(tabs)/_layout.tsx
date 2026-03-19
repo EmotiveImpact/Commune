@@ -5,6 +5,8 @@ import { Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GroupSwitcher } from '@/components/group-switcher';
 import { usePendingInvites, useUserGroups } from '@/hooks/use-groups';
+import { useNotifications } from '@/hooks/use-notifications';
+import { useAuthStore } from '@/stores/auth';
 import { useGroupStore } from '@/stores/group';
 
 type TabName = 'index' | 'expenses' | 'create' | 'breakdown' | 'settings';
@@ -42,9 +44,15 @@ const tabMeta: Record<
 export default function TabLayout() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const user = useAuthStore((s) => s.user);
   const { activeGroupId, setActiveGroupId } = useGroupStore();
   const { data: groups = [] } = useUserGroups();
   const { data: pendingInvites = [] } = usePendingInvites();
+  const { data: notifications = [] } = useNotifications(
+    user?.id ?? '',
+    activeGroupId ?? '',
+  );
+  const unreadCount = notifications.filter((n) => !n.read).length;
 
   useEffect(() => {
     if (!activeGroupId && groups[0]?.id) {
@@ -61,8 +69,8 @@ export default function TabLayout() {
         const meta = routeName === 'create' ? null : tabMeta[routeName];
 
         return {
-          tabBarActiveTintColor: '#17141F',
-          tabBarInactiveTintColor: '#8B8379',
+          tabBarActiveTintColor: '#171b24',
+          tabBarInactiveTintColor: '#667085',
           headerShown: true,
           headerShadowVisible: false,
           headerStyle: {
@@ -71,7 +79,7 @@ export default function TabLayout() {
           header: () => (
             <View
               style={{
-                backgroundColor: '#17141F',
+                backgroundColor: '#1f2330',
                 paddingTop: insets.top + 8,
                 paddingBottom: 14,
                 paddingHorizontal: 16,
@@ -83,7 +91,7 @@ export default function TabLayout() {
                     <Ionicons name="wallet-outline" size={18} color="#FFFFFF" />
                   </View>
                   <View className="flex-1">
-                    <Text className="text-[10px] font-semibold uppercase tracking-[3px] text-[#BBB4C1]">
+                    <Text className="text-[10px] font-semibold uppercase tracking-[3px] text-[rgba(255,255,255,0.72)]">
                       Commune
                     </Text>
                     <Text className="mt-0.5 text-[20px] font-bold text-white">
@@ -91,6 +99,46 @@ export default function TabLayout() {
                     </Text>
                   </View>
                 </View>
+                <Pressable
+                  onPress={() => router.push('/notifications')}
+                  style={{
+                    height: 40,
+                    width: 40,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderRadius: 16,
+                    backgroundColor: 'rgba(255,255,255,0.1)',
+                    marginRight: 8,
+                  }}
+                >
+                  <Ionicons name="notifications-outline" size={18} color="#FFFFFF" />
+                  {unreadCount > 0 ? (
+                    <View
+                      style={{
+                        position: 'absolute',
+                        top: 6,
+                        right: 6,
+                        minWidth: 16,
+                        height: 16,
+                        borderRadius: 8,
+                        backgroundColor: '#E5484D',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        paddingHorizontal: 4,
+                      }}
+                    >
+                      <Text
+                        style={{
+                          color: '#FFFFFF',
+                          fontSize: 9,
+                          fontWeight: '700',
+                        }}
+                      >
+                        {unreadCount > 99 ? '99+' : unreadCount}
+                      </Text>
+                    </View>
+                  ) : null}
+                </Pressable>
                 <View style={{ width: 146 }}>
                   <GroupSwitcher
                     groups={groups}
@@ -105,7 +153,7 @@ export default function TabLayout() {
           ),
           tabBarStyle: {
             backgroundColor: '#FFFFFF',
-            borderTopColor: '#DDD5CA',
+            borderTopColor: 'rgba(23,27,36,0.14)',
             borderTopWidth: 1,
             height: 70 + Math.max(insets.bottom - 2, 8),
             paddingTop: 8,
@@ -123,7 +171,7 @@ export default function TabLayout() {
             paddingTop: 2,
           },
           sceneStyle: {
-            backgroundColor: '#F4EFE8',
+            backgroundColor: '#f5f1ea',
           },
         };
       }}
@@ -181,10 +229,10 @@ export default function TabLayout() {
                   alignItems: 'center',
                   justifyContent: 'center',
                   borderRadius: 18,
-                  backgroundColor: '#17141F',
+                  backgroundColor: '#1f2330',
                   borderWidth: 1,
-                  borderColor: '#D8D0C5',
-                  shadowColor: '#17141F',
+                  borderColor: 'rgba(23,27,36,0.14)',
+                  shadowColor: '#1f2330',
                   shadowOpacity: 0.12,
                   shadowRadius: 12,
                   shadowOffset: { width: 0, height: 6 },

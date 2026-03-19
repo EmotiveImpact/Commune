@@ -14,9 +14,16 @@ import type {
 
 export interface User {
   id: string;
+  first_name: string;
+  last_name: string;
   name: string;
   email: string;
   avatar_url: string | null;
+  phone: string | null;
+  country: string | null;
+  payment_info: string | null;
+  default_currency: string;
+  timezone: string;
   created_at: string;
 }
 

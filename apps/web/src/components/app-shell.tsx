@@ -1,32 +1,37 @@
 import {
-  ActionIcon,
   AppShell as MantineAppShell,
   Box,
   Button,
   Burger,
-  Divider,
   Group,
+  Menu,
   Text,
   NavLink,
   Avatar,
-  Menu,
-  Paper,
   Stack,
   TextInput,
-  ThemeIcon,
   UnstyledButton,
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { Link, useLocation, useNavigate } from '@tanstack/react-router';
-import { IconBell, IconPlus, IconSearch, IconWallet } from '@tabler/icons-react';
+import {
+  IconChevronRight,
+  IconLogout,
+  IconPlus,
+  IconSearch,
+  IconSettings,
+  IconWallet,
+} from '@tabler/icons-react';
 import type { KeyboardEvent } from 'react';
 import { useAuthStore } from '../stores/auth';
 import { useGroupStore } from '../stores/group';
 import { useSearchStore } from '../stores/search';
 import { signOut } from '@commune/api';
 import { navLinks } from './nav-links';
+import { NotificationDropdown } from './notification-dropdown';
 import { GroupSelector } from './group-selector';
-import { useGroup } from '../hooks/use-groups';
+import { TrialExpiryModal } from './trial-expiry-modal';
+import { useSubscription } from '../hooks/use-subscriptions';
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -37,16 +42,8 @@ export function AppShell({ children }: AppShellProps) {
   const { user } = useAuthStore();
   const { activeGroupId, setActiveGroupId } = useGroupStore();
   const { query, setQuery, clearQuery } = useSearchStore();
-  const { data: group } = useGroup(activeGroupId ?? '');
   const navigate = useNavigate();
   const location = useLocation();
-
-  const currentMember = group?.members?.find((m: any) => m.user_id === user?.id);
-  const userRole = currentMember?.role === 'admin' ? 'Admin' : 'Member';
-  const activeWorkspaceLabel = group?.name ?? 'No group selected';
-  const activeWorkspaceMeta = group
-    ? `${group.type.charAt(0).toUpperCase()}${group.type.slice(1)} workspace`
-    : 'Create a group to get started';
 
   async function handleSignOut() {
     setActiveGroupId(null);
@@ -56,10 +53,7 @@ export function AppShell({ children }: AppShellProps) {
   }
 
   function handleSearchKeyDown(event: KeyboardEvent<HTMLInputElement>) {
-    if (event.key !== 'Enter') {
-      return;
-    }
-
+    if (event.key !== 'Enter') return;
     if (location.pathname !== '/expenses' && location.pathname !== '/members') {
       navigate({ to: '/expenses' });
     }
@@ -67,9 +61,10 @@ export function AppShell({ children }: AppShellProps) {
 
   return (
     <MantineAppShell
+      layout="alt"
       header={{ height: 64 }}
       navbar={{
-        width: 280,
+        width: 260,
         breakpoint: 'sm',
         collapsed: { mobile: !opened },
       }}
@@ -77,88 +72,30 @@ export function AppShell({ children }: AppShellProps) {
       className="commune-shell-frame"
     >
       <MantineAppShell.Header className="commune-app-shell-header">
-        <Group h="100%" px="xl" justify="space-between" className="commune-shell-topbar">
-          <Group wrap="nowrap" style={{ flex: 1 }}>
-            <Burger
-              opened={opened}
-              onClick={toggle}
-              hiddenFrom="sm"
-              size="sm"
-            />
-            <Group wrap="nowrap" gap="sm" className="commune-header-brand">
-              <ThemeIcon size={42} className="commune-brand-mark">
-                <IconWallet size={20} />
-              </ThemeIcon>
-              <Box>
-                <Text fw={800} size="lg" lh={1.1}>
-                  Commune
-                </Text>
-                <Text size="sm" c="dimmed">
-                  Shared expense workspace
-                </Text>
-              </Box>
-            </Group>
-
+        <Group h="100%" px="lg" justify="space-between">
+          <Group wrap="nowrap" gap="md" style={{ flex: 1 }}>
+            <Burger opened={opened} onClick={toggle} hiddenFrom="sm" size="sm" />
             <TextInput
               className="commune-header-search"
-              placeholder="Search expenses or members"
-              leftSection={<IconSearch size={16} />}
-              size="md"
+              placeholder="Search expenses, members..."
+              leftSection={<IconSearch size={15} />}
+              size="sm"
               value={query}
-              onChange={(event) => setQuery(event.currentTarget.value)}
+              onChange={(e) => setQuery(e.currentTarget.value)}
               onKeyDown={handleSearchKeyDown}
             />
           </Group>
-          <Group>
+          <Group gap="sm">
             <Button
               component={Link}
               to="/expenses/new"
-              leftSection={<IconPlus size={16} />}
-              styles={{
-                root: {
-                  background: 'var(--commune-primary)',
-                  color: '#ffffff',
-                  boxShadow: 'none',
-                },
-              }}
+              leftSection={<IconPlus size={15} />}
+              size="sm"
+              className="commune-primary-btn"
             >
               Add expense
             </Button>
-            <ActionIcon variant="subtle" color="gray" size={40}>
-              <IconBell size={18} />
-            </ActionIcon>
-            <Menu shadow="md" width={220}>
-              <Menu.Target>
-                <UnstyledButton className="commune-user-chip">
-                  <Group gap="sm">
-                    <Avatar
-                      src={user?.avatar_url}
-                      name={user?.name}
-                      color="initials"
-                      size="md"
-                    />
-                    <Stack gap={0} visibleFrom="sm">
-                      <Text fw={600} size="sm">
-                        {user?.name}
-                      </Text>
-                      <Text size="xs" c="dimmed">
-                        {userRole}
-                      </Text>
-                    </Stack>
-                  </Group>
-                </UnstyledButton>
-              </Menu.Target>
-              <Menu.Dropdown>
-                <Menu.Label>{user?.name}</Menu.Label>
-                <Menu.Item component={Link} to="/settings">
-                  Settings
-                </Menu.Item>
-                <Menu.Divider />
-                <Menu.Item color="red" onClick={handleSignOut}>
-                  Sign out
-                </Menu.Item>
-              </Menu.Dropdown>
-            </Menu>
+            <NotificationDropdown />
           </Group>
         </Group>
       </MantineAppShell.Header>
@@ -166,21 +103,16 @@ export function AppShell({ children }: AppShellProps) {
       <MantineAppShell.Navbar className="commune-app-shell-navbar">
         <Stack className="commune-sidebar-panel" justify="space-between">
           <div>
-            <Paper className="commune-sidebar-workspace-card" p="md" mb="lg">
-              <Stack gap={4}>
-                <Text size="xs" fw={700} tt="uppercase" className="commune-sidebar-label">
-                  Active workspace
-                </Text>
-                <Text fw={700} size="lg" c="white">
-                  {activeWorkspaceLabel}
-                </Text>
-                <Text size="sm" c="rgba(255, 255, 255, 0.6)">
-                  {activeWorkspaceMeta}
-                </Text>
-              </Stack>
-            </Paper>
+            <Group wrap="nowrap" gap="sm" mb="xl" px={4}>
+              <Box className="commune-brand-mark">
+                <IconWallet size={18} />
+              </Box>
+              <Text fw={700} size="md" style={{ color: '#fff' }}>
+                Commune
+              </Text>
+            </Group>
 
-            <Text size="xs" fw={700} tt="uppercase" mb="xs" px="xs" className="commune-sidebar-label">
+            <Text size="xs" fw={600} tt="uppercase" mb={6} px="xs" className="commune-sidebar-label">
               Menu
             </Text>
             <Stack className="commune-sidebar-nav">
@@ -197,18 +129,103 @@ export function AppShell({ children }: AppShellProps) {
                 />
               ))}
             </Stack>
+
+            <Box mt="1.5rem" px={4}>
+              <GroupSelector />
+            </Box>
           </div>
 
-          <Stack gap="md">
-            <Divider color="rgba(255, 255, 255, 0.08)" />
-            <Paper className="commune-sidebar-group-panel" p="md">
-              <GroupSelector />
-            </Paper>
+          <Stack gap={0}>
+            <SidebarPlanCard userId={user?.id} />
+
+            <Menu shadow="md" width={220} position="top-start" offset={8}>
+              <Menu.Target>
+                <UnstyledButton className="commune-sidebar-profile-row">
+                  <Group gap="sm" wrap="nowrap">
+                    <Avatar
+                      src={user?.avatar_url}
+                      name={user?.name}
+                      color="initials"
+                      size={38}
+                      radius="xl"
+                    />
+                    <Box style={{ flex: 1, minWidth: 0 }}>
+                      <Text size="sm" fw={600} truncate style={{ color: '#fff' }}>
+                        {user?.name ?? 'Account'}
+                      </Text>
+                      <Text size="xs" truncate style={{ color: 'rgba(255,255,255,0.5)' }}>
+                        {user?.email}
+                      </Text>
+                    </Box>
+                    <IconChevronRight size={16} style={{ color: 'rgba(255,255,255,0.4)', flexShrink: 0 }} />
+                  </Group>
+                </UnstyledButton>
+              </Menu.Target>
+              <Menu.Dropdown>
+                <Menu.Item
+                  leftSection={<IconSettings size={16} />}
+                  component={Link}
+                  to="/settings"
+                >
+                  Settings
+                </Menu.Item>
+                <Menu.Divider />
+                <Menu.Item
+                  leftSection={<IconLogout size={16} />}
+                  color="red"
+                  onClick={handleSignOut}
+                >
+                  Logout
+                </Menu.Item>
+              </Menu.Dropdown>
+            </Menu>
           </Stack>
         </Stack>
       </MantineAppShell.Navbar>
 
-      <MantineAppShell.Main className="commune-main-content">{children}</MantineAppShell.Main>
+      <MantineAppShell.Main className="commune-main-content">
+        {children}
+        {user?.id && <TrialExpiryModal userId={user.id} />}
+      </MantineAppShell.Main>
     </MantineAppShell>
+  );
+}
+
+function SidebarPlanCard({ userId }: { userId?: string }) {
+  const { data: subscription } = useSubscription(userId ?? '');
+
+  const planLabel = subscription?.plan
+    ? subscription.plan.charAt(0).toUpperCase() + subscription.plan.slice(1)
+    : 'Free trial';
+
+  const isFreeTrial = !subscription || subscription.status === 'trialing';
+
+  return (
+    <Box className="commune-sidebar-plan-card">
+      <Text size="xs" style={{ color: 'rgba(255,255,255,0.5)' }}>
+        Current plan
+      </Text>
+      <Text size="lg" fw={700} style={{ color: '#fff' }} mt={2}>
+        {planLabel}
+      </Text>
+      {isFreeTrial && (
+        <>
+          <Text size="xs" mt={6} style={{ color: 'rgba(255,255,255,0.55)', lineHeight: 1.4 }}>
+            Upgrade to Pro to get the latest and exclusive features
+          </Text>
+          <Button
+            component={Link}
+            to="/pricing"
+            variant="outline"
+            size="xs"
+            mt={10}
+            fullWidth
+            className="commune-sidebar-upgrade-btn"
+          >
+            Upgrade to pro
+          </Button>
+        </>
+      )}
+    </Box>
   );
 }

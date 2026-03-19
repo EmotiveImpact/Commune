@@ -6,7 +6,10 @@ import {
   getPendingInvites,
   getUserGroups,
   inviteMember,
+  leaveGroup,
   removeMember,
+  transferOwnership,
+  updateGroup,
   updateMemberRole,
 } from '@commune/api';
 import type { CreateGroupInput } from '@commune/core';
@@ -89,6 +92,41 @@ export function useRemoveMember(groupId: string) {
     mutationFn: (memberId: string) => removeMember(memberId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: groupKeys.detail(groupId) });
+    },
+  });
+}
+
+export function useTransferOwnership(groupId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (newOwnerId: string) => transferOwnership(groupId, newOwnerId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: groupKeys.detail(groupId) });
+      queryClient.invalidateQueries({ queryKey: groupKeys.list() });
+    },
+  });
+}
+
+export function useLeaveGroup() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ groupId, userId }: { groupId: string; userId: string }) =>
+      leaveGroup(groupId, userId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: groupKeys.list() });
+      queryClient.invalidateQueries({ queryKey: groupKeys.all });
+    },
+  });
+}
+
+export function useUpdateGroup(groupId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (updates: { name?: string; type?: string; currency?: string; cycle_date?: number }) =>
+      updateGroup(groupId, updates),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: groupKeys.detail(groupId) });
+      queryClient.invalidateQueries({ queryKey: groupKeys.list() });
     },
   });
 }

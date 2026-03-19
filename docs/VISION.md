@@ -83,6 +83,16 @@ The product sells: clarity, fairness, peace, accountability, trust, less frictio
 - **Validation:** Zod (shared across web and mobile)
 - **Payments:** Stripe
 
+### User Profile
+- first_name (required) + last_name (optional) — replaces single name field
+- email (from auth, read-only)
+- avatar_url
+- phone, country — contact/locale info
+- payment_info — free text for payment coordination
+- default_currency, timezone — preferences
+- notification_preferences — 4 email toggles
+- name — auto-generated from first_name + last_name for backward compatibility
+
 ## Non-Negotiable Technical Principle
 
 The split and statement logic must not live only in the UI. It is centralised in a shared business logic package and validated server-side via Postgres triggers. If web says one number and mobile says another, the product is broken.

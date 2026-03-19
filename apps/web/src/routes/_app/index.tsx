@@ -5,7 +5,6 @@ import {
   Group,
   Paper,
   Progress,
-  RingProgress,
   SimpleGrid,
   Stack,
   Table,
@@ -24,7 +23,7 @@ import {
   IconUsers,
   IconWallet,
 } from '@tabler/icons-react';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { formatCurrency, formatDate, getMonthKey, isOverdue } from '@commune/utils';
 import { useGroupStore } from '../../stores/group';
 import { useAuthStore } from '../../stores/auth';
@@ -32,6 +31,8 @@ import { useGroup, usePendingInvites, useUserGroups } from '../../hooks/use-grou
 import { useDashboardStats } from '../../hooks/use-dashboard';
 import { useGroupExpenses } from '../../hooks/use-expenses';
 import { PageLoader } from '../../components/page-loader';
+import { useGenerateRecurring } from '../../hooks/use-recurring';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell } from 'recharts';
 
 export const Route = createFileRoute('/_app/')({
   component: DashboardPage,
@@ -79,6 +80,15 @@ function DashboardPage() {
     currentMonth,
   );
   const { data: allExpenses, isLoading: expensesLoading } = useGroupExpenses(activeGroupId ?? '');
+  const generateRecurring = useGenerateRecurring(activeGroupId ?? '');
+  const recurringGeneratedRef = useRef(false);
+
+  useEffect(() => {
+    if (activeGroupId && !recurringGeneratedRef.current) {
+      recurringGeneratedRef.current = true;
+      generateRecurring.mutate();
+    }
+  }, [activeGroupId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (activeGroupId || groupsLoading || invitesLoading) {
@@ -551,44 +561,33 @@ function DashboardPage() {
 
               {monthlyTrend.items.some((item) => item.total > 0) ? (
                 <>
-                  <div className="commune-bar-track">
-                    {monthlyTrend.items.map((item) => {
-                      const height = Math.max(
-                        24,
-                        Math.round((item.total / monthlyTrend.max) * 180),
-                      );
-                      const isCurrent = item.key === currentMonth;
+                  <ResponsiveContainer width="100%" height={240}>
+                    <BarChart data={monthlyTrend.items} margin={{ top: 8, right: 4, bottom: 0, left: -12 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(22,19,29,0.06)" vertical={false} />
+                      <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: '#667085', fontSize: 13, fontWeight: 500 }} />
+                      <YAxis axisLine={false} tickLine={false} tick={{ fill: '#667085', fontSize: 12 }} tickFormatter={(v: number) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v)} />
+                      <Tooltip
+                        contentStyle={{ background: '#1f2330', border: 'none', borderRadius: 10, color: '#f8f5f0', fontSize: 13, boxShadow: '0 8px 24px rgba(0,0,0,.18)' }}
+                        formatter={(value) => [formatCurrency(Number(value), group?.currency), 'Spend']}
+                        cursor={{ fill: 'rgba(32,92,84,0.06)' }}
+                      />
+                      <Bar dataKey="total" radius={[8, 8, 0, 0]} maxBarSize={48} fill="url(#barGradient)" />
+                      <defs>
+                        <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#2d6a4f" />
+                          <stop offset="100%" stopColor="#1b4332" />
+                        </linearGradient>
+                      </defs>
+                    </BarChart>
+                  </ResponsiveContainer>
 
-                      return (
-                        <div key={item.key} className="commune-bar-column">
-                          <Text size="xs" c="dimmed">
-                            {formatCurrency(item.total, group?.currency)}
-                          </Text>
-                          <div
-                            className={`commune-bar ${isCurrent ? '' : 'commune-bar-muted'}`}
-                            style={{ height }}
-                          />
-                          <Text size="sm" fw={isCurrent ? 700 : 500}>
-                            {item.label}
-                          </Text>
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  <Group justify="space-between" mt="lg">
+                  <Group justify="space-between" mt="md">
                     <div>
-                      <Text size="sm" c="dimmed">
-                        Current month total
-                      </Text>
-                      <Text fw={800} size="1.85rem">
-                        {formatCurrency(monthlyTrend.currentTotal, group?.currency)}
-                      </Text>
+                      <Text size="sm" c="dimmed">Current month total</Text>
+                      <Text fw={800} size="1.85rem">{formatCurrency(monthlyTrend.currentTotal, group?.currency)}</Text>
                     </div>
                     <div>
-                      <Text size="sm" c="dimmed" ta="right">
-                        Average per month
-                      </Text>
+                      <Text size="sm" c="dimmed" ta="right">Average per month</Text>
                       <Text fw={700} ta="right">
                         {formatCurrency(
                           monthlyTrend.items.reduce((sum, item) => sum + item.total, 0) / monthlyTrend.items.length,
@@ -703,28 +702,30 @@ function DashboardPage() {
 
               {categoryBreakdown.length > 0 ? (
                 <Stack gap="xl" align="center">
-                  <RingProgress
-                    size={250}
-                    thickness={28}
-                    roundCaps
-                    sections={categoryBreakdown.map((item) => ({
-                      value: Math.max(item.percent, 4),
-                      color: item.color,
-                    }))}
-                    label={(
-                      <Stack gap={0} align="center">
-                        <Text fw={800} size="2.1rem" ta="center">
-                          {formatCurrency(
-                            categoryBreakdown.reduce((sum, item) => sum + item.amount, 0),
-                            group?.currency,
-                          )}
-                        </Text>
-                        <Text size="sm" c="dimmed" ta="center">
-                          tracked spend
-                        </Text>
-                      </Stack>
-                    )}
-                  />
+                  <ResponsiveContainer width="100%" height={260}>
+                    <PieChart>
+                      <Pie
+                        data={categoryBreakdown}
+                        dataKey="amount"
+                        nameKey="category"
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={72}
+                        outerRadius={110}
+                        strokeWidth={2}
+                        stroke="rgba(255,255,255,0.8)"
+                        paddingAngle={3}
+                      >
+                        {categoryBreakdown.map((entry) => (
+                          <Cell key={entry.category} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        contentStyle={{ background: '#1f2330', border: 'none', borderRadius: 10, color: '#f8f5f0', fontSize: 13, boxShadow: '0 8px 24px rgba(0,0,0,.18)' }}
+                        formatter={(value) => [formatCurrency(Number(value), group?.currency), 'Spend']}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
 
                   <Stack gap="sm" w="100%">
                     {categoryBreakdown.map((item) => (

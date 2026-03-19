@@ -11,8 +11,8 @@
 **Pricing:**
 | Plan | Price | Max Groups | Max Members/Group |
 |------|-------|------------|-------------------|
-| Standard | £4.99/mo | 2 | 5 |
-| Pro | £9.99/mo | 10 | 20 |
+| Standard | £4.99/mo | 1 | 5 |
+| Pro | £9.99/mo | 3 | 15 |
 | Agency | £29.99/mo | Unlimited | Unlimited |
 
 **Existing code to build on:**
@@ -498,13 +498,13 @@ const PLANS: PlanConfig[] = [
     price: '£4.99',
     priceValue: 4.99,
     features: [
-      'Up to 2 groups',
+      'Up to 1 group',
       'Up to 5 members per group',
       'Expense tracking & splits',
       'Payment tracking',
       'Monthly breakdown',
     ],
-    limits: { groups: '2', members: '5' },
+    limits: { groups: '1', members: '5' },
   },
   {
     id: SubscriptionPlan.PRO,
@@ -512,13 +512,13 @@ const PLANS: PlanConfig[] = [
     price: '£9.99',
     priceValue: 9.99,
     features: [
-      'Up to 10 groups',
-      'Up to 20 members per group',
+      'Up to 3 groups',
+      'Up to 15 members per group',
       'Everything in Standard',
       'Priority support',
       'Advanced analytics',
     ],
-    limits: { groups: '10', members: '20' },
+    limits: { groups: '3', members: '15' },
     highlight: true,
   },
   {
@@ -717,8 +717,8 @@ const PLAN_LABELS: Record<string, string> = {
 };
 
 const PLAN_LIMITS: Record<string, { groups: string; members: string }> = {
-  standard: { groups: '2', members: '5' },
-  pro: { groups: '10', members: '20' },
+  standard: { groups: '1', members: '5' },
+  pro: { groups: '3', members: '15' },
   agency: { groups: 'Unlimited', members: 'Unlimited' },
 };
 

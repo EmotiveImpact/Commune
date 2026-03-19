@@ -42,7 +42,7 @@ export function GroupSwitcher({
               >
                 {activeGroup.name}
               </Text>
-              <Text className="mt-0.5 text-[11px] text-[#BBB4C1]">
+              <Text className="mt-0.5 text-[11px] text-[rgba(255,255,255,0.72)]">
                 {pendingInvites > 0
                   ? `${pendingInvites} invite${pendingInvites === 1 ? '' : 's'}`
                   : `${activeGroup.type} group`}
@@ -54,10 +54,10 @@ export function GroupSwitcher({
           <Surface className="mb-3 p-4">
             <View className="flex-row items-center justify-between">
               <View className="mr-4 flex-1">
-                <Text className="text-[11px] font-semibold uppercase tracking-[2px] text-[#7B746D]">
+                <Text className="text-[11px] font-semibold uppercase tracking-[2px] text-[#667085]">
                   Group
                 </Text>
-                <Text className="mt-1.5 text-lg font-semibold text-[#17141F]">
+                <Text className="mt-1.5 text-lg font-semibold text-[#171b24]">
                   {activeGroup.name}
                 </Text>
                 <View className="mt-2 flex-row flex-wrap">
@@ -73,7 +73,7 @@ export function GroupSwitcher({
                 </View>
               </View>
               <View className="h-10 w-10 items-center justify-center rounded-[18px] bg-[#EEF6F3]">
-                <Ionicons name="swap-horizontal" size={18} color="#205C54" />
+                <Ionicons name="swap-horizontal" size={18} color="#2d6a4f" />
               </View>
             </View>
           </Surface>
@@ -90,13 +90,13 @@ export function GroupSwitcher({
           className="flex-1 bg-black/30"
           onPress={() => setIsOpen(false)}
         >
-          <Pressable className="mt-auto rounded-t-[32px] bg-[#F4EFE8] px-5 pb-10 pt-6">
+          <Pressable className="mt-auto rounded-t-[32px] bg-[#f5f1ea] px-5 pb-10 pt-6">
             <View className="mb-5 flex-row items-center justify-between">
               <View>
-                <Text className="text-2xl font-semibold text-[#17141F]">
+                <Text className="text-2xl font-semibold text-[#171b24]">
                   Switch group
                 </Text>
-                <Text className="mt-1 text-sm text-[#6A645D]">
+                <Text className="mt-1 text-sm text-[#667085]">
                   Choose the shared space you want to manage.
                 </Text>
               </View>
@@ -104,7 +104,7 @@ export function GroupSwitcher({
                 onPress={() => setIsOpen(false)}
                 className="h-10 w-10 items-center justify-center rounded-full bg-white"
               >
-                <Ionicons name="close" size={20} color="#17141F" />
+                <Ionicons name="close" size={20} color="#171b24" />
               </TouchableOpacity>
             </View>
 
@@ -114,7 +114,7 @@ export function GroupSwitcher({
                 <TouchableOpacity
                   key={group.id}
                   activeOpacity={0.86}
-                  className={`mb-3 rounded-[24px] border px-4 py-4 ${selected ? 'border-[#17141F] bg-[#F2F6EC]' : 'border-[#DDD5CA] bg-white'}`}
+                  className={`mb-3 rounded-[24px] border px-4 py-4 ${selected ? 'border-[#2d6a4f] bg-[#F2F6EC]' : 'border-[rgba(23,27,36,0.14)] bg-white'}`}
                   onPress={() => {
                     onSelect(group.id);
                     setIsOpen(false);
@@ -122,7 +122,7 @@ export function GroupSwitcher({
                 >
                   <View className="flex-row items-center justify-between">
                     <View className="mr-4 flex-1">
-                      <Text className="text-base font-semibold text-[#17141F]">
+                      <Text className="text-base font-semibold text-[#171b24]">
                         {group.name}
                       </Text>
                       <View className="mt-2 flex-row flex-wrap">
@@ -131,9 +131,9 @@ export function GroupSwitcher({
                       </View>
                     </View>
                     {selected ? (
-                      <Ionicons name="checkmark-circle" size={24} color="#17141F" />
+                      <Ionicons name="checkmark-circle" size={24} color="#2d6a4f" />
                     ) : (
-                      <Ionicons name="chevron-forward" size={20} color="#827A72" />
+                      <Ionicons name="chevron-forward" size={20} color="#667085" />
                     )}
                   </View>
                 </TouchableOpacity>

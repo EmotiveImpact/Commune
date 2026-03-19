@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { createGroupSchema, inviteMemberSchema } from '@commune/core';
 import { GroupType } from '@commune/types';
 import { useGroupStore } from '@/stores/group';
+import { useAuthStore } from '@/stores/auth';
 import {
   useAcceptInvite,
   useCreateGroup,
@@ -11,6 +12,7 @@ import {
   usePendingInvites,
   useUserGroups,
 } from '@/hooks/use-groups';
+import { usePlanLimits } from '@/hooks/use-plan-limits';
 import {
   AppButton,
   EmptyState,
@@ -29,7 +31,9 @@ const groupTypeOptions = Object.entries(GroupType).map(([key, value]) => ({
 
 export default function OnboardingScreen() {
   const router = useRouter();
+  const { user } = useAuthStore();
   const { activeGroupId, setActiveGroupId } = useGroupStore();
+  const { canCreateGroup, groupLimit, currentGroups } = usePlanLimits(user?.id ?? '');
   const {
     data: groups,
     isLoading: groupsLoading,
@@ -92,6 +96,14 @@ export default function OnboardingScreen() {
   ]);
 
   async function handleCreateGroup() {
+    if (!canCreateGroup) {
+      Alert.alert(
+        'Group limit reached',
+        `You've reached the group limit for your plan (${currentGroups}/${groupLimit === Infinity ? 'unlimited' : groupLimit}). Upgrade your plan to create more groups.`
+      );
+      return;
+    }
+
     const result = createGroupSchema.safeParse({
       name,
       type,
@@ -178,22 +190,22 @@ export default function OnboardingScreen() {
   if ((pendingInvites?.length ?? 0) > 0 && !showCreateFlow && !createdGroupId) {
     return (
       <Screen>
-        <View className="mb-4 rounded-[32px] bg-[#17141F] px-5 py-5">
-          <Text className="text-sm font-medium text-[#BBB4C1]">Step one</Text>
+        <View className="mb-4 rounded-[32px] bg-[#1f2330] px-5 py-5">
+          <Text className="text-sm font-medium text-[rgba(255,255,255,0.72)]">Step one</Text>
           <Text className="mt-2 text-[30px] font-bold leading-[36px] text-white">
             You already have an invite waiting
           </Text>
-          <Text className="mt-2 text-sm leading-6 text-[#C7C2CD]">
+          <Text className="mt-2 text-sm leading-6 text-[rgba(255,250,246,0.72)]">
             Join the right shared workspace instead of starting from an empty dashboard.
           </Text>
         </View>
 
         {pendingInvites?.map((invite) => (
           <Surface key={invite.id} className="mb-4">
-            <Text className="text-xl font-semibold text-[#17141F]">
+            <Text className="text-xl font-semibold text-[#171b24]">
               {invite.group.name}
             </Text>
-            <Text className="mt-2 text-sm leading-6 text-[#6A645D]">
+            <Text className="mt-2 text-sm leading-6 text-[#667085]">
               {invite.group.type} group
               {invite.group.description ? ` · ${invite.group.description}` : ''}
             </Text>
@@ -219,12 +231,12 @@ export default function OnboardingScreen() {
 
   return (
     <Screen>
-      <View className="mb-4 rounded-[32px] bg-[#17141F] px-5 py-5">
-        <Text className="text-sm font-medium text-[#BBB4C1]">Set up</Text>
+      <View className="mb-4 rounded-[32px] bg-[#1f2330] px-5 py-5">
+        <Text className="text-sm font-medium text-[rgba(255,255,255,0.72)]">Set up</Text>
         <Text className="mt-2 text-[30px] font-bold leading-[36px] text-white">
           {createdGroupId ? 'Invite your people' : 'Create your first group'}
         </Text>
-        <Text className="mt-2 text-sm leading-6 text-[#C7C2CD]">
+        <Text className="mt-2 text-sm leading-6 text-[rgba(255,250,246,0.72)]">
           {createdGroupId
             ? 'Invite housemates, teammates, or collaborators now. You can skip this and come back later.'
             : 'Start with one shared space for the bills, subscriptions, or trip costs you manage together.'}
@@ -240,7 +252,7 @@ export default function OnboardingScreen() {
             onChangeText={setName}
           />
 
-          <Text className="mb-2 text-sm font-medium text-[#17141F]">
+          <Text className="mb-2 text-sm font-medium text-[#171b24]">
             Group type
           </Text>
           <View className="mb-4 flex-row flex-wrap">
@@ -271,20 +283,28 @@ export default function OnboardingScreen() {
             multiline
           />
 
+          {!canCreateGroup && (
+            <View className="mb-4 rounded-2xl bg-[#FFF1DB] px-4 py-3">
+              <Text className="text-sm text-[#8A593B]">
+                You've reached the group limit for your plan ({currentGroups}/{groupLimit === Infinity ? 'unlimited' : groupLimit}). Upgrade to create more groups.
+              </Text>
+            </View>
+          )}
           <AppButton
             label="Create group"
             icon="sparkles-outline"
             loading={createGroup.isPending}
+            disabled={!canCreateGroup}
             onPress={handleCreateGroup}
           />
         </Surface>
       ) : (
         <>
           <Surface className="mb-4">
-            <Text className="text-xl font-semibold text-[#17141F]">
+            <Text className="text-xl font-semibold text-[#171b24]">
               Add members by email
             </Text>
-            <Text className="mt-2 text-sm leading-6 text-[#6A645D]">
+            <Text className="mt-2 text-sm leading-6 text-[#667085]">
               People can accept their invite from the web app and then use the same space on mobile.
             </Text>
 
@@ -308,11 +328,11 @@ export default function OnboardingScreen() {
 
             {invitedEmails.length > 0 ? (
               <View className="mt-5 rounded-2xl bg-[#F2F6EC] p-4">
-                <Text className="text-sm font-semibold text-[#17141F]">
+                <Text className="text-sm font-semibold text-[#171b24]">
                   Sent recently
                 </Text>
                 {invitedEmails.map((email) => (
-                  <Text key={email} className="mt-2 text-sm text-[#6A645D]">
+                  <Text key={email} className="mt-2 text-sm text-[#667085]">
                     {email}
                   </Text>
                 ))}
@@ -321,10 +341,10 @@ export default function OnboardingScreen() {
           </Surface>
 
           <Surface className="mb-4">
-            <Text className="text-base font-semibold text-[#17141F]">
+            <Text className="text-base font-semibold text-[#171b24]">
               Group ready
             </Text>
-            <Text className="mt-2 text-sm leading-6 text-[#6A645D]">
+            <Text className="mt-2 text-sm leading-6 text-[#667085]">
               You can start adding expenses now and invite the rest of the group later.
             </Text>
             <View className="mt-5">
@@ -343,7 +363,7 @@ export default function OnboardingScreen() {
           className="mt-2"
           onPress={() => router.replace('/(tabs)')}
         >
-          <Text className="text-center text-sm font-medium text-[#205C54]">
+          <Text className="text-center text-sm font-medium text-[#2d6a4f]">
             Skip for now
           </Text>
         </TouchableOpacity>

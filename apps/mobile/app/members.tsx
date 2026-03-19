@@ -12,6 +12,7 @@ import {
   useUpdateMemberRole,
   useUserGroups,
 } from '@/hooks/use-groups';
+import { usePlanLimits } from '@/hooks/use-plan-limits';
 import { GroupSwitcher } from '@/components/group-switcher';
 import {
   AppButton,
@@ -43,6 +44,7 @@ export default function MembersScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [inviteEmail, setInviteEmail] = useState('');
 
+  const { canInviteMember, memberLimit, currentMembers } = usePlanLimits(user?.id ?? '');
   const inviteMember = useInviteMember(activeGroupId ?? '');
   const updateRole = useUpdateMemberRole(activeGroupId ?? '');
   const removeMember = useRemoveMember(activeGroupId ?? '');
@@ -111,6 +113,14 @@ export default function MembersScreen() {
   const invitedCount = group.members.filter((member) => member.status === 'invited').length;
 
   async function handleInvite() {
+    if (!canInviteMember) {
+      Alert.alert(
+        'Member limit reached',
+        `You've reached the member limit for your plan (${currentMembers}/${memberLimit === Infinity ? 'unlimited' : memberLimit}). Upgrade your plan to invite more members.`
+      );
+      return;
+    }
+
     const validation = inviteMemberSchema.safeParse({ email: inviteEmail.trim() });
     if (!validation.success) {
       Alert.alert('Invalid email', validation.error.issues[0]?.message ?? 'Enter a valid email.');
@@ -219,13 +229,39 @@ export default function MembersScreen() {
 
       {isAdmin ? (
         <Surface className="mb-4">
-          <Text className="text-lg font-semibold text-[#17141F]">
+          <Text className="text-lg font-semibold text-[#171b24]">
+            Group settings
+          </Text>
+          <Text className="mt-2 text-sm leading-6 text-[#667085]">
+            Update the group name, type, currency, or billing cycle.
+          </Text>
+          <View className="mt-4">
+            <AppButton
+              label="Edit group"
+              variant="secondary"
+              icon="settings-outline"
+              onPress={() => router.push('/group-edit')}
+            />
+          </View>
+        </Surface>
+      ) : null}
+
+      {isAdmin ? (
+        <Surface className="mb-4">
+          <Text className="text-lg font-semibold text-[#171b24]">
             Invite someone new
           </Text>
-          <Text className="mt-2 text-sm leading-6 text-[#6A645D]">
+          <Text className="mt-2 text-sm leading-6 text-[#667085]">
             Invite housemates or teammates by email.
           </Text>
           <View className="mt-4">
+            {!canInviteMember && (
+              <View className="mb-4 rounded-2xl bg-[#FFF1DB] px-4 py-3">
+                <Text className="text-sm text-[#8A593B]">
+                  You've reached the member limit for your plan ({currentMembers}/{memberLimit === Infinity ? 'unlimited' : memberLimit}). Upgrade to invite more members.
+                </Text>
+              </View>
+            )}
             <TextField
               label="Email"
               placeholder="member@example.com"
@@ -239,6 +275,7 @@ export default function MembersScreen() {
               variant="secondary"
               icon="mail-outline"
               loading={inviteMember.isPending}
+              disabled={!canInviteMember}
               onPress={handleInvite}
             />
           </View>
@@ -246,10 +283,10 @@ export default function MembersScreen() {
       ) : null}
 
       <Surface>
-        <Text className="text-lg font-semibold text-[#17141F]">
+        <Text className="text-lg font-semibold text-[#171b24]">
           Member list
         </Text>
-        <Text className="mt-2 text-sm leading-6 text-[#6A645D]">
+        <Text className="mt-2 text-sm leading-6 text-[#667085]">
           Search by name, email, role, or status.
         </Text>
         <View className="mt-4">
@@ -262,7 +299,7 @@ export default function MembersScreen() {
         </View>
 
         {filteredMembers.length === 0 ? (
-          <Text className="mt-2 text-sm text-[#6A645D]">
+          <Text className="mt-2 text-sm text-[#667085]">
             No members match that search.
           </Text>
         ) : (
@@ -301,7 +338,7 @@ export default function MembersScreen() {
                 </View>
 
                 <View className="mt-4 flex-row items-center justify-between">
-                  <Text className="text-sm font-medium text-[#17141F]">
+                  <Text className="text-sm font-medium text-[#171b24]">
                     {member.role === 'admin' ? 'Admin access' : 'Standard access'}
                   </Text>
                   {isAdmin && member.user_id !== user?.id ? (

@@ -1,6 +1,7 @@
-import type { ComponentProps, ReactNode } from 'react';
+import { type ComponentProps, type ReactNode, useState } from 'react';
 import {
   ActivityIndicator,
+  Platform,
   ScrollView,
   Switch,
   Text,
@@ -9,6 +10,8 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { formatDate } from '@commune/utils';
 
 type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
 type Tone = 'emerald' | 'forest' | 'sand' | 'sky';
@@ -23,53 +26,53 @@ const toneStyles: Record<
   { icon: string; accent: string; panel: string; value: string }
 > = {
   emerald: {
-    icon: '#17463F',
-    accent: '#CFE8E1',
+    icon: '#1b4332',
+    accent: '#d7e6dd',
     panel: '#EEF6F3',
-    value: '#17141F',
+    value: '#171b24',
   },
   forest: {
-    icon: '#17141F',
-    accent: '#E7E0F0',
+    icon: '#1f2330',
+    accent: '#e8e1ef',
     panel: '#F4F1F8',
-    value: '#17141F',
+    value: '#171b24',
   },
   sand: {
     icon: '#8A593B',
-    accent: '#F2DDCF',
+    accent: '#efdccf',
     panel: '#FCF4ED',
     value: '#2E241D',
   },
   sky: {
-    icon: '#205C54',
-    accent: '#DCE7D5',
+    icon: '#2d6a4f',
+    accent: '#d7e6dd',
     panel: '#F2F6EC',
-    value: '#17141F',
+    value: '#171b24',
   },
 };
 
 const buttonStyles: Record<ButtonVariant, string> = {
-  primary: 'bg-[#17141F]',
-  secondary: 'bg-white border border-[#D9D2C8]',
+  primary: 'bg-[#1f2330]',
+  secondary: 'bg-white border border-[rgba(23,27,36,0.14)]',
   ghost: 'bg-transparent',
   danger: 'bg-[#B9382F]',
 };
 
 const buttonTextStyles: Record<ButtonVariant, string> = {
   primary: 'text-white',
-  secondary: 'text-[#17141F]',
-  ghost: 'text-[#17141F]',
+  secondary: 'text-[#171b24]',
+  ghost: 'text-[#171b24]',
   danger: 'text-white',
 };
 
 const chipStyles: Record<ChipTone, { panel: string; text: string }> = {
   neutral: {
     panel: '#F1ECE4',
-    text: '#6A645D',
+    text: '#667085',
   },
   emerald: {
     panel: '#EEF6F3',
-    text: '#205C54',
+    text: '#2d6a4f',
   },
   forest: {
     panel: '#F4F1F8',
@@ -97,12 +100,12 @@ export function Screen({
   scroll?: boolean;
 }) {
   if (!scroll) {
-    return <View className="flex-1 bg-[#F4EFE8]">{children}</View>;
+    return <View className="flex-1 bg-[#f5f1ea]">{children}</View>;
   }
 
   return (
     <ScrollView
-      className="flex-1 bg-[#F4EFE8]"
+      className="flex-1 bg-[#f5f1ea]"
       contentContainerStyle={{ padding: 20, paddingBottom: 120 }}
       showsVerticalScrollIndicator={false}
     >
@@ -121,7 +124,7 @@ export function Surface({
   return (
     <View
       className={joinClasses(
-        'rounded-[28px] border border-[#DED6CA] bg-white p-5',
+        'rounded-[28px] border border-[rgba(23,27,36,0.14)] bg-white p-5',
         className
       )}
     >
@@ -146,27 +149,27 @@ export function HeroPanel({
   children?: ReactNode;
 }) {
   return (
-    <View className="mb-4 rounded-[32px] bg-[#17141F] px-5 py-5">
+    <View className="mb-4 rounded-[32px] bg-[#1f2330] px-5 py-5">
       <View className="flex-row items-start justify-between">
         <View className="mr-4 flex-1">
-          <Text className="text-sm font-medium text-[#BBB4C1]">{eyebrow}</Text>
+          <Text className="text-sm font-medium text-[rgba(255,255,255,0.72)]">{eyebrow}</Text>
           <Text className="mt-2 text-[30px] font-bold leading-[36px] text-white">
             {title}
           </Text>
           {contextLabel ? (
-            <View className="mt-3 self-start rounded-full bg-white/8 px-3 py-2">
-              <Text className="text-xs font-semibold uppercase tracking-[2px] text-[#E8E2EF]">
+            <View className="mt-3 self-start rounded-full bg-[rgba(255,255,255,0.08)] px-3 py-2">
+              <Text className="text-xs font-semibold uppercase tracking-[2px] text-[#d9ebe5]">
                 {contextLabel}
               </Text>
             </View>
           ) : null}
-          <Text className="mt-3 text-sm leading-6 text-[#C7C2CD]">
+          <Text className="mt-3 text-sm leading-6 text-[rgba(255,250,246,0.72)]">
             {description}
           </Text>
         </View>
         {badgeLabel ? (
-          <View className="rounded-full bg-white/10 px-4 py-2">
-            <Text className="text-xs font-semibold uppercase tracking-[2px] text-[#E8E2EF]">
+          <View className="rounded-full bg-[rgba(255,255,255,0.08)] px-4 py-2">
+            <Text className="text-xs font-semibold uppercase tracking-[2px] text-[#d9ebe5]">
               {badgeLabel}
             </Text>
           </View>
@@ -190,13 +193,13 @@ export function SectionHeading({
   return (
     <View className="mb-4">
       {eyebrow ? (
-        <Text className="mb-2 text-xs font-semibold uppercase tracking-[2px] text-[#7B746D]">
+        <Text className="mb-2 text-xs font-semibold uppercase tracking-[2px] text-[#667085]">
           {eyebrow}
         </Text>
       ) : null}
-      <Text className="text-[30px] font-bold leading-[36px] text-[#17141F]">{title}</Text>
+      <Text className="text-[30px] font-bold leading-[36px] text-[#171b24]">{title}</Text>
       {description ? (
-        <Text className="mt-2 text-sm leading-6 text-[#6A645D]">
+        <Text className="mt-2 text-sm leading-6 text-[#667085]">
           {description}
         </Text>
       ) : null}
@@ -234,14 +237,14 @@ export function AppButton({
       activeOpacity={0.86}
     >
       {loading ? (
-        <ActivityIndicator color={variant === 'secondary' || variant === 'ghost' ? '#17141F' : '#FFFFFF'} />
+        <ActivityIndicator color={variant === 'secondary' || variant === 'ghost' ? '#171b24' : '#FFFFFF'} />
       ) : (
         <>
           {icon ? (
             <Ionicons
               name={icon}
               size={18}
-              color={variant === 'secondary' || variant === 'ghost' ? '#17141F' : '#FFFFFF'}
+              color={variant === 'secondary' || variant === 'ghost' ? '#171b24' : '#FFFFFF'}
               style={{ marginRight: 8 }}
             />
           ) : null}
@@ -268,8 +271,8 @@ export function Pill({
       className={joinClasses(
         'mr-2 rounded-full border px-4 py-2',
         selected
-          ? 'border-[#17141F] bg-[#17141F]'
-          : 'border-[#DDD5CA] bg-white'
+          ? 'border-[#1f2330] bg-[#1f2330]'
+          : 'border-[rgba(23,27,36,0.14)] bg-white'
       )}
       onPress={onPress}
       activeOpacity={0.85}
@@ -277,7 +280,7 @@ export function Pill({
       <Text
         className={joinClasses(
           'text-sm font-medium',
-          selected ? 'text-white' : 'text-[#17141F]'
+          selected ? 'text-white' : 'text-[#171b24]'
         )}
       >
         {label}
@@ -314,7 +317,7 @@ export function ListRowCard({
   title,
   subtitle,
   amount,
-  amountColor = '#17141F',
+  amountColor = '#171b24',
   onPress,
   children,
 }: {
@@ -329,8 +332,8 @@ export function ListRowCard({
     <>
       <View className="flex-row items-start justify-between">
         <View className="mr-3 flex-1">
-          <Text className="text-base font-semibold text-[#17141F]">{title}</Text>
-          <Text className="mt-1 text-sm leading-5 text-[#6A645D]">{subtitle}</Text>
+          <Text className="text-base font-semibold text-[#171b24]">{title}</Text>
+          <Text className="mt-1 text-sm leading-5 text-[#667085]">{subtitle}</Text>
         </View>
         <Text className="text-sm font-semibold" style={{ color: amountColor }}>
           {amount}
@@ -343,7 +346,7 @@ export function ListRowCard({
   if (onPress) {
     return (
       <TouchableOpacity
-        className="mt-4 rounded-[24px] border border-[#DDD5CA] bg-[#FAF7F2] p-4"
+        className="mt-4 rounded-[24px] border border-[rgba(23,27,36,0.14)] bg-[#fbf7f1] p-4"
         activeOpacity={0.86}
         onPress={onPress}
       >
@@ -353,7 +356,7 @@ export function ListRowCard({
   }
 
   return (
-    <View className="mt-4 rounded-[24px] border border-[#DDD5CA] bg-[#FAF7F2] p-4">
+    <View className="mt-4 rounded-[24px] border border-[rgba(23,27,36,0.14)] bg-[#fbf7f1] p-4">
       {content}
     </View>
   );
@@ -376,12 +379,12 @@ export function StatCard({
 
   return (
     <View
-      className="mb-3 rounded-[26px] border border-[#DED6CA] p-4"
+      className="mb-3 rounded-[26px] border border-[rgba(23,27,36,0.14)] p-4"
       style={{ backgroundColor: palette.panel }}
     >
       <View className="mb-4 flex-row items-start justify-between">
         <View className="mr-3 flex-1">
-          <Text className="text-sm font-medium text-[#6A645D]">{label}</Text>
+          <Text className="text-sm font-medium text-[#667085]">{label}</Text>
           <Text
             className="mt-2 text-[26px] font-bold"
             style={{ color: palette.value }}
@@ -396,7 +399,7 @@ export function StatCard({
           <Ionicons name={icon} size={20} color={palette.icon} />
         </View>
       </View>
-      <Text className="text-sm leading-5 text-[#6A645D]">{note}</Text>
+      <Text className="text-sm leading-5 text-[#667085]">{note}</Text>
     </View>
   );
 }
@@ -417,12 +420,12 @@ export function EmptyState({
   return (
     <Surface className="items-center py-10">
       <View className="mb-4 h-16 w-16 items-center justify-center rounded-full bg-[#EEF6F3]">
-        <Ionicons name={icon} size={26} color="#205C54" />
+        <Ionicons name={icon} size={26} color="#2d6a4f" />
       </View>
-      <Text className="text-center text-xl font-semibold text-[#17141F]">
+      <Text className="text-center text-xl font-semibold text-[#171b24]">
         {title}
       </Text>
-      <Text className="mt-3 text-center text-sm leading-6 text-[#6A645D]">
+      <Text className="mt-3 text-center text-sm leading-6 text-[#667085]">
         {description}
       </Text>
       {actionLabel && onAction ? (
@@ -446,19 +449,82 @@ export function TextField({
 } & ComponentProps<typeof TextInput>) {
   return (
     <View className="mb-4">
-      <Text className="mb-2 text-sm font-medium text-[#17141F]">{label}</Text>
+      <Text className="mb-2 text-sm font-medium text-[#171b24]">{label}</Text>
       <TextInput
         className={joinClasses(
-          'rounded-2xl border border-[#DDD5CA] bg-[#FAF7F2] px-4 text-base text-[#17141F]',
+          'rounded-2xl border border-[rgba(23,27,36,0.14)] bg-[#fbf7f1] px-4 text-base text-[#171b24]',
           multiline ? 'min-h-[112px] py-4' : 'min-h-[52px]'
         )}
-        placeholderTextColor="#958D84"
+        placeholderTextColor="#667085"
         multiline={multiline}
         textAlignVertical={multiline ? 'top' : 'center'}
         {...props}
       />
       {hint ? (
-        <Text className="mt-2 text-xs leading-5 text-[#827A72]">{hint}</Text>
+        <Text className="mt-2 text-xs leading-5 text-[#667085]">{hint}</Text>
+      ) : null}
+    </View>
+  );
+}
+
+export function DateField({
+  label,
+  value,
+  onChange,
+  hint,
+  minimumDate,
+}: {
+  label: string;
+  value: Date | null;
+  onChange: (date: Date) => void;
+  hint?: string;
+  minimumDate?: Date;
+}) {
+  const [showPicker, setShowPicker] = useState(false);
+
+  function handleChange(_event: unknown, selected?: Date) {
+    if (Platform.OS === 'android') {
+      setShowPicker(false);
+    }
+    if (selected) {
+      onChange(selected);
+    }
+  }
+
+  const displayText = value
+    ? formatDate(value.toISOString().split('T')[0]!)
+    : 'Select date';
+
+  return (
+    <View className="mb-4">
+      <Text className="mb-2 text-sm font-medium text-[#171b24]">{label}</Text>
+      <TouchableOpacity
+        className="min-h-[52px] flex-row items-center justify-between rounded-2xl border border-[rgba(23,27,36,0.14)] bg-[#fbf7f1] px-4"
+        activeOpacity={0.86}
+        onPress={() => setShowPicker((prev) => !prev)}
+      >
+        <Text
+          className={joinClasses(
+            'text-base',
+            value ? 'text-[#171b24]' : 'text-[#667085]'
+          )}
+        >
+          {displayText}
+        </Text>
+        <Ionicons name="calendar-outline" size={20} color="#667085" />
+      </TouchableOpacity>
+      {showPicker && (
+        <DateTimePicker
+          value={value ?? new Date()}
+          mode="date"
+          display={Platform.OS === 'ios' ? 'inline' : 'default'}
+          onChange={handleChange}
+          minimumDate={minimumDate}
+          accentColor="#2d6a4f"
+        />
+      )}
+      {hint ? (
+        <Text className="mt-2 text-xs leading-5 text-[#667085]">{hint}</Text>
       ) : null}
     </View>
   );
@@ -476,18 +542,18 @@ export function ToggleRow({
   onValueChange: (value: boolean) => void;
 }) {
   return (
-    <View className="mb-3 flex-row items-center justify-between rounded-2xl border border-[#DDD5CA] bg-[#FAF7F2] px-4 py-4">
+    <View className="mb-3 flex-row items-center justify-between rounded-2xl border border-[rgba(23,27,36,0.14)] bg-[#fbf7f1] px-4 py-4">
       <View className="mr-4 flex-1">
-        <Text className="text-base font-medium text-[#17141F]">{label}</Text>
-        <Text className="mt-1 text-sm leading-5 text-[#827A72]">
+        <Text className="text-base font-medium text-[#171b24]">{label}</Text>
+        <Text className="mt-1 text-sm leading-5 text-[#667085]">
           {description}
         </Text>
       </View>
       <Switch
         value={value}
         onValueChange={onValueChange}
-        trackColor={{ false: '#D7D0C6', true: '#CFE8E1' }}
-        thumbColor={value ? '#17141F' : '#FFFFFF'}
+        trackColor={{ false: 'rgba(23,27,36,0.14)', true: '#d7e6dd' }}
+        thumbColor={value ? '#1f2330' : '#FFFFFF'}
       />
     </View>
   );
@@ -509,7 +575,7 @@ export function InitialAvatar({
 
   return (
     <View
-      className="items-center justify-center rounded-full bg-[#17141F]"
+      className="items-center justify-center rounded-full bg-[#1f2330]"
       style={{ height: size, width: size }}
     >
       <Text className="text-lg font-semibold text-white">{label || 'C'}</Text>
@@ -521,8 +587,8 @@ export function LoadingScreen({ message }: { message: string }) {
   return (
     <Screen scroll={false}>
       <View className="flex-1 items-center justify-center px-6">
-        <ActivityIndicator size="large" color="#205C54" />
-        <Text className="mt-4 text-sm text-[#6A645D]">{message}</Text>
+        <ActivityIndicator size="large" color="#2d6a4f" />
+        <Text className="mt-4 text-sm text-[#667085]">{message}</Text>
       </View>
     </Screen>
   );

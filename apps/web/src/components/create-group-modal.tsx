@@ -1,11 +1,14 @@
-import { Modal, TextInput, Select, Textarea, NumberInput, Button, Stack } from '@mantine/core';
+import { Modal, TextInput, Select, Textarea, NumberInput, Button, Stack, Alert, Anchor } from '@mantine/core';
 import { useForm, schemaResolver } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
+import { IconInfoCircle } from '@tabler/icons-react';
 import { createGroupSchema, type CreateGroupInput } from '@commune/core';
 import { useCreateGroup } from '../hooks/use-groups';
 import { useGroupStore } from '../stores/group';
-import { useNavigate } from '@tanstack/react-router';
+import { useNavigate, Link } from '@tanstack/react-router';
 import { GroupType } from '@commune/types';
+import { useAuthStore } from '../stores/auth';
+import { usePlanLimits } from '../hooks/use-plan-limits';
 
 interface CreateGroupModalProps {
   opened: boolean;
@@ -25,6 +28,8 @@ export function CreateGroupModal({ opened, onClose }: CreateGroupModalProps) {
   const createGroup = useCreateGroup();
   const { setActiveGroupId } = useGroupStore();
   const navigate = useNavigate();
+  const { user } = useAuthStore();
+  const { canCreateGroup, groupLimit, currentGroups } = usePlanLimits(user?.id ?? '');
 
   const form = useForm<CreateGroupInput>({
     mode: 'uncontrolled',
@@ -91,7 +96,15 @@ export function CreateGroupModal({ opened, onClose }: CreateGroupModalProps) {
             key={form.key('cycle_date')}
             {...form.getInputProps('cycle_date')}
           />
-          <Button type="submit" loading={createGroup.isPending} fullWidth mt="sm">
+          {!canCreateGroup && (
+            <Alert icon={<IconInfoCircle size={16} />} color="orange" variant="light">
+              You've reached the group limit for your plan ({currentGroups}/{groupLimit === Infinity ? 'unlimited' : groupLimit}).{' '}
+              <Anchor component={Link} to="/pricing" size="sm" fw={600}>
+                Upgrade to create more groups.
+              </Anchor>
+            </Alert>
+          )}
+          <Button type="submit" loading={createGroup.isPending} disabled={!canCreateGroup} fullWidth mt="sm">
             Create group
           </Button>
         </Stack>

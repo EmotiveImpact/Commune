@@ -43,26 +43,26 @@ export default function SignupScreen() {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      className="flex-1 bg-[#F4EFE8]"
+      className="flex-1 bg-[#f5f1ea]"
     >
       <ScrollView
         className="flex-1"
         contentContainerStyle={{ flexGrow: 1, padding: 20, justifyContent: 'center' }}
         keyboardShouldPersistTaps="handled"
       >
-        <View className="rounded-[32px] bg-[#17141F] px-5 py-6">
-          <Text className="text-sm font-medium text-[#BBB4C1]">Create your account</Text>
+        <View className="rounded-[32px] bg-[#1f2330] px-5 py-6">
+          <Text className="text-sm font-medium text-[rgba(255,255,255,0.72)]">Create your account</Text>
           <Text className="mt-2 text-[32px] font-bold leading-[38px] text-white">
             Start one clear space for shared money.
           </Text>
-          <Text className="mt-3 text-sm leading-6 text-[#C7C2CD]">
+          <Text className="mt-3 text-sm leading-6 text-[rgba(255,250,246,0.72)]">
             Join Commune to track communal costs without the clutter and confusion.
           </Text>
         </View>
 
-        <View className="mt-4 rounded-[28px] border border-[#DED6CA] bg-white px-5 py-5">
-          <Text className="text-2xl font-semibold text-[#17141F]">Create account</Text>
-          <Text className="mt-2 text-sm leading-6 text-[#6A645D]">
+        <View className="mt-4 rounded-[28px] border border-[rgba(23,27,36,0.14)] bg-white px-5 py-5">
+          <Text className="text-2xl font-semibold text-[#171b24]">Create account</Text>
+          <Text className="mt-2 text-sm leading-6 text-[#667085]">
             Set up your login details and get to your first group.
           </Text>
 
@@ -109,15 +109,15 @@ export default function SignupScreen() {
 
           {loading ? (
             <View className="mt-4 flex-row items-center justify-center">
-              <ActivityIndicator color="#205C54" />
+              <ActivityIndicator color="#2d6a4f" />
             </View>
           ) : null}
 
           <View className="mt-5 flex-row justify-center">
-            <Text className="text-[#6A645D]">Already have an account? </Text>
+            <Text className="text-[#667085]">Already have an account? </Text>
             <Link href="/(auth)/login" asChild>
               <TouchableOpacity>
-                <Text className="font-semibold text-[#205C54]">Sign in</Text>
+                <Text className="font-semibold text-[#2d6a4f]">Sign in</Text>
               </TouchableOpacity>
             </Link>
           </View>

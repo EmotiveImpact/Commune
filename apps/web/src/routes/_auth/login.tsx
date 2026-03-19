@@ -113,6 +113,9 @@ function LoginPage() {
             key={form.key('password')}
             {...form.getInputProps('password')}
           />
+          <Anchor component={Link} to="/forgot-password" size="xs" ta="right">
+            Forgot password?
+          </Anchor>
           <Button type="submit" fullWidth mt="sm" loading={loading}>
             Sign in
           </Button>

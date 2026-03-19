@@ -18,6 +18,11 @@ config.resolver.extraNodeModules = {
     workspaceRoot,
     'node_modules/react-native-css-interop'
   ),
+  'react-native-svg': path.resolve(projectRoot, 'node_modules/react-native-svg'),
+  '@react-native-community/datetimepicker': path.resolve(
+    projectRoot,
+    'node_modules/@react-native-community/datetimepicker'
+  ),
 };
 
 module.exports = withNativeWind(config, { input: './global.css' });

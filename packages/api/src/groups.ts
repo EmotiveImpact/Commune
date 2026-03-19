@@ -156,6 +156,14 @@ export async function updateMemberRole(memberId: string, role: MemberRole) {
   return data;
 }
 
+export async function transferOwnership(groupId: string, newOwnerId: string) {
+  const { error } = await supabase.rpc('fn_transfer_group_ownership', {
+    p_group_id: groupId,
+    p_new_owner_id: newOwnerId,
+  });
+  if (error) throw error;
+}
+
 export async function removeMember(memberId: string) {
   const { data, error } = await supabase
     .from('group_members')
@@ -166,4 +174,29 @@ export async function removeMember(memberId: string) {
 
   if (error) throw error;
   return data;
+}
+
+export async function leaveGroup(groupId: string, userId: string) {
+  const { error } = await supabase
+    .from('group_members')
+    .update({ status: 'removed' })
+    .eq('group_id', groupId)
+    .eq('user_id', userId);
+
+  if (error) throw error;
+}
+
+export async function updateGroup(
+  groupId: string,
+  updates: { name?: string; type?: string; currency?: string; cycle_date?: number },
+) {
+  const { data, error } = await supabase
+    .from('groups')
+    .update(updates)
+    .eq('id', groupId)
+    .select('*')
+    .single();
+
+  if (error) throw error;
+  return data as Group;
 }

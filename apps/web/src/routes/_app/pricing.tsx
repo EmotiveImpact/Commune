@@ -17,6 +17,7 @@ import { IconCheck, IconInfoCircle, IconSparkles } from '@tabler/icons-react';
 import { SubscriptionPlan } from '@commune/types';
 import { useAuthStore } from '../../stores/auth';
 import { useCheckout, useSubscription } from '../../hooks/use-subscriptions';
+import { usePlanLimits, PLAN_LIMITS } from '../../hooks/use-plan-limits';
 import { formatDate } from '@commune/utils';
 import { PageLoader } from '../../components/page-loader';
 
@@ -31,6 +32,7 @@ interface PlanConfig {
   features: string[];
   limits: { groups: string; members: string };
   highlight?: boolean;
+  tone: string;
 }
 
 const PLANS: PlanConfig[] = [
@@ -46,6 +48,7 @@ const PLANS: PlanConfig[] = [
       'Monthly breakdown',
     ],
     limits: { groups: '1', members: '5' },
+    tone: 'sage',
   },
   {
     id: SubscriptionPlan.PRO,
@@ -60,6 +63,7 @@ const PLANS: PlanConfig[] = [
     ],
     limits: { groups: '3', members: '15' },
     highlight: true,
+    tone: 'lilac',
   },
   {
     id: SubscriptionPlan.AGENCY,
@@ -73,12 +77,16 @@ const PLANS: PlanConfig[] = [
       'Best fit for larger communal operations',
     ],
     limits: { groups: 'Unlimited', members: 'Unlimited' },
+    tone: 'ink',
   },
 ];
+
+const PLAN_ORDER: SubscriptionPlan[] = [SubscriptionPlan.STANDARD, SubscriptionPlan.PRO, SubscriptionPlan.AGENCY];
 
 function PricingPage() {
   const { user } = useAuthStore();
   const { data: subscription, isLoading } = useSubscription(user?.id ?? '');
+  const { currentGroups, currentMembers } = usePlanLimits(user?.id ?? '');
   const checkout = useCheckout();
   const search = new URLSearchParams(window.location.search);
   const success = search.get('success') === 'true';
@@ -91,6 +99,25 @@ function PricingPage() {
   const currentPlan = subscription?.plan;
   const isTrialing = subscription?.status === 'trialing';
   const isActive = subscription?.status === 'active' || isTrialing;
+
+  function isDowngrade(targetPlan: SubscriptionPlan): boolean {
+    if (!currentPlan) return false;
+    return PLAN_ORDER.indexOf(targetPlan) < PLAN_ORDER.indexOf(currentPlan);
+  }
+
+  function getDowngradeBlocker(targetPlan: SubscriptionPlan): string | null {
+    if (!isDowngrade(targetPlan)) return null;
+    const limits = PLAN_LIMITS[targetPlan];
+    const issues: string[] = [];
+    if (currentGroups > limits.groups) {
+      issues.push(`You currently have ${currentGroups} group${currentGroups === 1 ? '' : 's'}. The ${targetPlan.charAt(0).toUpperCase() + targetPlan.slice(1)} plan allows ${limits.groups}.`);
+    }
+    if (currentMembers > limits.members) {
+      issues.push(`You currently have ${currentMembers} member${currentMembers === 1 ? '' : 's'} in your active group. The ${targetPlan.charAt(0).toUpperCase() + targetPlan.slice(1)} plan allows ${limits.members}.`);
+    }
+    if (issues.length === 0) return null;
+    return `${issues.join(' ')} Please reduce usage before downgrading.`;
+  }
 
   function handleSelectPlan(plan: SubscriptionPlan) {
     if (isActive && plan === currentPlan) return;
@@ -108,16 +135,71 @@ function PricingPage() {
   return (
     <Stack gap="xl">
       <Paper className="commune-hero-card" p={{ base: 'xl', md: '2rem' }}>
-        <Stack gap="sm" maw={720}>
-          <Badge variant="light" color="emerald" w="fit-content">
-            Plans and billing
-          </Badge>
-          <Title order={1}>Pricing</Title>
-          <Text size="lg" c="dimmed">
-            Every plan starts with a 7-day free trial. Pick the level that matches how many groups
-            and members you actually manage.
-          </Text>
-        </Stack>
+        <div className="commune-hero-grid">
+          <Stack gap="md" maw={620}>
+            <div className="commune-hero-chip">Plans and billing</div>
+            <Stack gap="xs">
+              <Title order={1}>
+                Find the plan that <span className="commune-hero-highlight">fits your group.</span>
+              </Title>
+              <Text size="lg" className="commune-hero-copy">
+                Every plan starts with a 7-day free trial. Pick the level that matches how many
+                groups and members you actually manage.
+              </Text>
+            </Stack>
+          </Stack>
+
+          {isActive && currentPlan ? (
+            <Stack className="commune-hero-aside" gap="md">
+              <Group justify="space-between">
+                <div>
+                  <Text size="sm" c="rgba(255, 250, 246, 0.65)">
+                    Current plan
+                  </Text>
+                  <Text fw={700} size="lg">
+                    {PLANS.find((p) => p.id === currentPlan)?.name ?? currentPlan}
+                  </Text>
+                </div>
+                <Badge variant="light" color={isTrialing ? 'orange' : 'emerald'}>
+                  {isTrialing ? 'Trial' : 'Active'}
+                </Badge>
+              </Group>
+
+              <SimpleGrid cols={2} spacing="sm">
+                <div className="commune-hero-aside-stat">
+                  <Text size="xs" c="rgba(255, 250, 246, 0.55)" tt="uppercase">
+                    Groups
+                  </Text>
+                  <Text fw={700} size="lg">
+                    {PLANS.find((p) => p.id === currentPlan)?.limits.groups ?? '—'}
+                  </Text>
+                </div>
+                <div className="commune-hero-aside-stat">
+                  <Text size="xs" c="rgba(255, 250, 246, 0.55)" tt="uppercase">
+                    Members limit
+                  </Text>
+                  <Text fw={700} size="lg">
+                    {PLANS.find((p) => p.id === currentPlan)?.limits.members ?? '—'}
+                  </Text>
+                </div>
+              </SimpleGrid>
+            </Stack>
+          ) : (
+            <Stack className="commune-hero-aside" gap="md">
+              <div>
+                <Text size="sm" c="rgba(255, 250, 246, 0.65)">
+                  Current plan
+                </Text>
+                <Text fw={700} size="lg">
+                  No active plan
+                </Text>
+              </div>
+              <Text size="sm" c="rgba(255, 250, 246, 0.55)">
+                Pick a plan below to start your 7-day free trial.
+              </Text>
+            </Stack>
+          )}
+        </div>
       </Paper>
 
       {success && (
@@ -132,12 +214,16 @@ function PricingPage() {
         </Alert>
       )}
 
-      <SimpleGrid cols={{ base: 1, lg: 3 }} spacing="lg">
+      <SimpleGrid cols={{ base: 1, md: 3 }} spacing="lg">
         {PLANS.map((plan) => {
           const isCurrent = currentPlan === plan.id;
+          const downgradeBlocker = getDowngradeBlocker(plan.id);
+          const isBlocked = !!downgradeBlocker;
           const buttonLabel = isCurrent
             ? isTrialing ? 'Current plan (trial)' : 'Current plan'
-            : isActive ? 'Switch plan' : 'Start 7-day trial';
+            : isActive
+              ? isDowngrade(plan.id) ? 'Downgrade' : 'Switch plan'
+              : 'Start 7-day trial';
 
           return (
             <Paper
@@ -173,7 +259,7 @@ function PricingPage() {
                   <Text size="sm" c="dimmed">/month</Text>
                 </Group>
 
-                <Paper className="commune-stat-card" p="md" radius="lg">
+                <Paper className="commune-stat-card commune-kpi-card" p="md" radius="lg" data-tone={plan.tone}>
                   <Text size="sm" fw={600} mb="xs">Includes</Text>
                   <List
                     spacing="xs"
@@ -190,10 +276,16 @@ function PricingPage() {
                   </List>
                 </Paper>
 
+                {isBlocked && (
+                  <Alert icon={<IconInfoCircle size={16} />} color="orange" variant="light">
+                    {downgradeBlocker}
+                  </Alert>
+                )}
+
                 <Button
                   fullWidth
                                     variant={isCurrent ? 'light' : plan.highlight ? 'filled' : 'default'}
-                  disabled={isCurrent}
+                  disabled={isCurrent || isBlocked}
                   loading={checkout.isPending}
                   onClick={() => handleSelectPlan(plan.id)}
                   mt="auto"

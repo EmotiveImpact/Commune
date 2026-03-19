@@ -8,6 +8,7 @@ import { useGroupStore } from '@/stores/group';
 import { useExpenseDetail, useUpdateExpense } from '@/hooks/use-expenses';
 import {
   AppButton,
+  DateField,
   EmptyState,
   LoadingScreen,
   Pill,
@@ -38,7 +39,7 @@ export default function EditExpenseScreen() {
     ExpenseCategory.MISCELLANEOUS
   );
   const [amount, setAmount] = useState('');
-  const [dueDate, setDueDate] = useState('');
+  const [dueDate, setDueDate] = useState<Date | null>(null);
   const [recurrenceType, setRecurrenceType] = useState('none');
 
   useEffect(() => {
@@ -50,7 +51,7 @@ export default function EditExpenseScreen() {
     setDescription(expense.description ?? '');
     setCategory(expense.category);
     setAmount(String(expense.amount));
-    setDueDate(expense.due_date);
+    setDueDate(expense.due_date ? new Date(expense.due_date + 'T00:00:00') : null);
     setRecurrenceType(expense.recurrence_type);
   }, [expense]);
 
@@ -59,13 +60,15 @@ export default function EditExpenseScreen() {
       return;
     }
 
+    const dueDateStr = dueDate ? dueDate.toISOString().split('T')[0]! : '';
+
     const validation = createExpenseSchema.safeParse({
       title: title.trim(),
       description: description.trim() || undefined,
       category,
       amount: Number(amount) || 0,
       currency: expense.currency,
-      due_date: dueDate.trim(),
+      due_date: dueDateStr,
       recurrence_type: recurrenceType,
       split_method: expense.split_method,
       paid_by_user_id: expense.paid_by_user_id ?? undefined,
@@ -88,7 +91,7 @@ export default function EditExpenseScreen() {
           description: description.trim() || undefined,
           category,
           amount: Number(amount) || 0,
-          due_date: dueDate.trim(),
+          due_date: dueDateStr,
           recurrence_type: recurrenceType,
         },
       });
@@ -154,12 +157,12 @@ export default function EditExpenseScreen() {
 
   return (
     <Screen>
-      <View className="mb-4 rounded-[32px] bg-[#17141F] px-5 py-5">
-        <Text className="text-sm font-medium text-[#BBB4C1]">Expense form</Text>
+      <View className="mb-4 rounded-[32px] bg-[#1f2330] px-5 py-5">
+        <Text className="text-sm font-medium text-[rgba(255,255,255,0.72)]">Expense form</Text>
         <Text className="mt-2 text-[30px] font-bold leading-[36px] text-white">
           Edit expense
         </Text>
-        <Text className="mt-2 text-sm leading-6 text-[#C7C2CD]">
+        <Text className="mt-2 text-sm leading-6 text-[rgba(255,250,246,0.72)]">
           Update the basics while keeping the existing split intact.
         </Text>
       </View>
@@ -172,11 +175,10 @@ export default function EditExpenseScreen() {
           onChangeText={setAmount}
           keyboardType="decimal-pad"
         />
-        <TextField
+        <DateField
           label="Due date"
           value={dueDate}
-          onChangeText={setDueDate}
-          placeholder="YYYY-MM-DD"
+          onChange={setDueDate}
         />
         <TextField
           label="Description"
@@ -185,7 +187,7 @@ export default function EditExpenseScreen() {
           multiline
         />
 
-        <Text className="mb-2 text-sm font-medium text-[#17141F]">Category</Text>
+        <Text className="mb-2 text-sm font-medium text-[#171b24]">Category</Text>
         <View className="mb-4 flex-row flex-wrap">
           {categories.map((value) => (
             <Pill
@@ -197,7 +199,7 @@ export default function EditExpenseScreen() {
           ))}
         </View>
 
-        <Text className="mb-2 text-sm font-medium text-[#17141F]">Recurrence</Text>
+        <Text className="mb-2 text-sm font-medium text-[#171b24]">Recurrence</Text>
         <View className="flex-row flex-wrap">
           {['none', 'weekly', 'monthly'].map((value) => (
             <Pill
@@ -211,7 +213,7 @@ export default function EditExpenseScreen() {
       </Surface>
 
       <Surface className="mb-4">
-        <Text className="text-sm leading-6 text-[#6A645D]">
+        <Text className="text-sm leading-6 text-[#667085]">
           Editing on mobile changes the title, amount, due date, category, description, and recurrence only. If the split structure itself needs to change, create a fresh expense.
         </Text>
       </Surface>

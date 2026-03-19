@@ -132,7 +132,7 @@ export default function BreakdownScreen() {
       >
         <View className="mt-5 flex-row">
           <View className="mr-3 flex-1 rounded-[22px] bg-white/8 px-4 py-3">
-            <Text className="text-xs font-semibold uppercase tracking-[2px] text-[#BBB4C1]">
+            <Text className="text-xs font-semibold uppercase tracking-[2px] text-[rgba(255,255,255,0.72)]">
               Total owed
             </Text>
             <Text className="mt-2 text-lg font-semibold text-white">
@@ -140,7 +140,7 @@ export default function BreakdownScreen() {
             </Text>
           </View>
           <View className="flex-1 rounded-[22px] bg-white/8 px-4 py-3">
-            <Text className="text-xs font-semibold uppercase tracking-[2px] text-[#BBB4C1]">
+            <Text className="text-xs font-semibold uppercase tracking-[2px] text-[rgba(255,255,255,0.72)]">
               Payment progress
             </Text>
             <Text className="mt-2 text-lg font-semibold text-white">
@@ -151,7 +151,7 @@ export default function BreakdownScreen() {
       </HeroPanel>
 
       <Surface className="mb-4">
-        <Text className="text-sm font-medium text-[#17141F]">Month</Text>
+        <Text className="text-sm font-medium text-[#171b24]">Month</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mt-4">
           {getRecentMonthKeys(6).map((month) => (
             <Pill
@@ -206,28 +206,28 @@ export default function BreakdownScreen() {
       <Surface className="mb-4">
         <View className="flex-row items-center justify-between">
           <View className="mr-4 flex-1">
-            <Text className="text-lg font-semibold text-[#17141F]">
+            <Text className="text-lg font-semibold text-[#171b24]">
               Payment progress
             </Text>
-            <Text className="mt-2 text-sm leading-6 text-[#6A645D]">
+            <Text className="mt-2 text-sm leading-6 text-[#667085]">
               {paidPct}% of this month's statement is marked as paid.
             </Text>
           </View>
-          <Text className="text-2xl font-bold text-[#205C54]">{paidPct}%</Text>
+          <Text className="text-2xl font-bold text-[#2d6a4f]">{paidPct}%</Text>
         </View>
-        <View className="mt-4 h-3 rounded-full bg-[#E3DDD3]">
+        <View className="mt-4 h-3 rounded-full bg-[#d7e6dd]">
           <View
-            className="h-3 rounded-full bg-[#205C54]"
+            className="h-3 rounded-full bg-[#2d6a4f]"
             style={{ width: `${Math.min(Math.max(paidPct, 0), 100)}%` }}
           />
         </View>
       </Surface>
 
       <Surface>
-        <Text className="text-lg font-semibold text-[#17141F]">
+        <Text className="text-lg font-semibold text-[#171b24]">
           Filter breakdown
         </Text>
-        <Text className="mt-2 text-sm leading-6 text-[#6A645D]">
+        <Text className="mt-2 text-sm leading-6 text-[#667085]">
           Narrow the statement by category.
         </Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mt-4">
@@ -247,7 +247,7 @@ export default function BreakdownScreen() {
         </ScrollView>
 
         {filteredItems.length === 0 ? (
-          <Text className="mt-4 text-sm text-[#6A645D]">
+          <Text className="mt-4 text-sm text-[#667085]">
             No expenses match the current month and category filters.
           </Text>
         ) : (
@@ -275,13 +275,13 @@ export default function BreakdownScreen() {
                     <TouchableOpacity
                       activeOpacity={0.86}
                       disabled={markPayment.isPending}
-                      className={`rounded-full px-4 py-3 ${item.payment_status === 'unpaid' ? 'bg-[#17141F]' : 'border border-[#DDD5CA] bg-white'}`}
+                      className={`rounded-full px-4 py-3 ${item.payment_status === 'unpaid' ? 'bg-[#1f2330]' : 'border border-[rgba(23,27,36,0.14)] bg-white'}`}
                       onPress={() =>
                         handleTogglePayment(item.expense.id, item.payment_status)
                       }
                     >
                       <Text
-                        className={`text-sm font-semibold ${item.payment_status === 'unpaid' ? 'text-white' : 'text-[#17141F]'}`}
+                        className={`text-sm font-semibold ${item.payment_status === 'unpaid' ? 'text-white' : 'text-[#171b24]'}`}
                       >
                         {markPayment.isPending
                           ? 'Saving...'

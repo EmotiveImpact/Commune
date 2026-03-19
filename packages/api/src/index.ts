@@ -12,3 +12,6 @@ export * from './breakdown';
 export * from './update-expense';
 export * from './subscriptions';
 export * from './profile';
+export * from './notifications';
+export * from './recurring';
+export * from './activity';

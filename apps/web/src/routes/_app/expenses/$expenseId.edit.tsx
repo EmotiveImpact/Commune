@@ -16,6 +16,7 @@ import { notifications } from '@mantine/notifications';
 import { useEffect, useRef } from 'react';
 import { ExpenseCategory } from '@commune/types';
 import { useGroupStore } from '../../../stores/group';
+import { useGroup } from '../../../hooks/use-groups';
 import { useExpenseDetail, useUpdateExpense } from '../../../hooks/use-expenses';
 import { PageLoader } from '../../../components/page-loader';
 import { EmptyState } from '../../../components/empty-state';
@@ -32,6 +33,7 @@ const categoryOptions = Object.entries(ExpenseCategory).map(([key, value]) => ({
 function EditExpensePage() {
   const { expenseId } = Route.useParams();
   const { activeGroupId } = useGroupStore();
+  const { data: group } = useGroup(activeGroupId ?? '');
   const { data: expense, isLoading } = useExpenseDetail(expenseId);
   const updateExpense = useUpdateExpense(activeGroupId ?? '');
   const navigate = useNavigate();
@@ -154,7 +156,7 @@ function EditExpensePage() {
               <Group grow>
                 <NumberInput
                   label="Amount"
-                  prefix="£"
+                  prefix={group?.currency === 'GBP' ? '£' : ''}
                   min={0}
                   decimalScale={2}
                   withAsterisk

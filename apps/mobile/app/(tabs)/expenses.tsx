@@ -123,7 +123,7 @@ export default function ExpensesScreen() {
       >
         <View className="mt-5 flex-row">
           <View className="mr-3 flex-1 rounded-[22px] bg-white/8 px-4 py-3">
-            <Text className="text-xs font-semibold uppercase tracking-[2px] text-[#BBB4C1]">
+            <Text className="text-xs font-semibold uppercase tracking-[2px] text-[rgba(255,255,255,0.72)]">
               Tracked spend
             </Text>
             <Text className="mt-2 text-lg font-semibold text-white">
@@ -131,7 +131,7 @@ export default function ExpensesScreen() {
             </Text>
           </View>
           <View className="flex-1 rounded-[22px] bg-white/8 px-4 py-3">
-            <Text className="text-xs font-semibold uppercase tracking-[2px] text-[#BBB4C1]">
+            <Text className="text-xs font-semibold uppercase tracking-[2px] text-[rgba(255,255,255,0.72)]">
               Overdue
             </Text>
             <Text className="mt-2 text-lg font-semibold text-white">
@@ -187,7 +187,7 @@ export default function ExpensesScreen() {
           value={searchQuery}
           onChangeText={setSearchQuery}
         />
-        <Text className="mb-2 text-sm font-medium text-[#17141F]">
+        <Text className="mb-2 text-sm font-medium text-[#171b24]">
           Filter by category
         </Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -225,10 +225,10 @@ export default function ExpensesScreen() {
         />
       ) : (
         <Surface>
-          <Text className="text-lg font-semibold text-[#17141F]">
+          <Text className="text-lg font-semibold text-[#171b24]">
             Expense list
           </Text>
-          <Text className="mt-2 text-sm leading-6 text-[#6A645D]">
+          <Text className="mt-2 text-sm leading-6 text-[#667085]">
             Shared costs ordered by due date and payment status.
           </Text>
 

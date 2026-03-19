@@ -203,7 +203,7 @@ export default function ExpenseDetailScreen() {
       />
 
       <Surface className="mb-4">
-        <Text className="text-sm font-medium uppercase tracking-[2px] text-[#6A645D]">
+        <Text className="text-sm font-medium uppercase tracking-[2px] text-[#667085]">
           Status
         </Text>
         <View className="mt-3 flex-row flex-wrap">
@@ -278,8 +278,8 @@ export default function ExpenseDetailScreen() {
       />
 
       <Surface className="mb-4">
-        <Text className="text-lg font-semibold text-[#17141F]">Split breakdown</Text>
-        <Text className="mt-2 text-sm leading-6 text-[#6A645D]">
+        <Text className="text-lg font-semibold text-[#171b24]">Split breakdown</Text>
+        <Text className="mt-2 text-sm leading-6 text-[#667085]">
           Who owes what, who has paid, and what still needs confirming.
         </Text>
 
@@ -300,7 +300,7 @@ export default function ExpenseDetailScreen() {
               title={`${participant.user.name}${isCurrentUser ? ' · You' : ''}`}
               subtitle={`Share ${formatCurrency(participant.share_amount, expenseData.currency)}`}
               amount={status}
-              amountColor="#6A645D"
+              amountColor="#667085"
             >
               <View className="flex-row flex-wrap">
                 <StatusChip label={status} tone={statusTone} />
@@ -310,7 +310,7 @@ export default function ExpenseDetailScreen() {
               </View>
 
               {payment?.note ? (
-                <Text className="mt-3 text-sm italic text-[#6A645D]">
+                <Text className="mt-3 text-sm italic text-[#667085]">
                   “{payment.note}”
                 </Text>
               ) : null}
@@ -349,10 +349,10 @@ export default function ExpenseDetailScreen() {
 
       {reimbursements.length > 0 ? (
         <Surface>
-          <Text className="text-lg font-semibold text-[#10261E]">
+          <Text className="text-lg font-semibold text-[#171b24]">
             Reimbursement plan
           </Text>
-          <Text className="mt-2 text-sm leading-6 text-[#5B6A5A]">
+          <Text className="mt-2 text-sm leading-6 text-[#667085]">
             Because {expenseData.paid_by_user?.name ?? 'someone'} covered the full amount upfront.
           </Text>
 
@@ -367,9 +367,9 @@ export default function ExpenseDetailScreen() {
             return (
               <View
                 key={`${entry.userId}-${entry.owesTo}`}
-                className="mt-4 rounded-2xl bg-[#F4F8EF] px-4 py-3"
+                className="mt-4 rounded-2xl bg-[#fbf7f1] px-4 py-3"
               >
-                <Text className="text-sm text-[#10261E]">
+                <Text className="text-sm text-[#171b24]">
                   <Text className="font-semibold">{from}</Text> pays{' '}
                   <Text className="font-semibold">{to}</Text> {' '}
                   {formatCurrency(entry.amount, expenseData.currency)}

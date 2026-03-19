@@ -149,7 +149,7 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <QueryClientProvider client={queryClient}>
           <StatusBar style="auto" />
-          <View className="flex-1 items-center justify-center bg-[#F4EFE8] px-6">
+          <View className="flex-1 items-center justify-center bg-[#f5f1ea] px-6">
             <Text className="mb-2 text-center text-xl font-semibold text-gray-900">
               Mobile app setup needed
             </Text>
@@ -167,8 +167,8 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <QueryClientProvider client={queryClient}>
           <StatusBar style="auto" />
-          <View className="flex-1 items-center justify-center bg-[#F4EFE8]">
-            <ActivityIndicator size="large" color="#205C54" />
+          <View className="flex-1 items-center justify-center bg-[#f5f1ea]">
+            <ActivityIndicator size="large" color="#2d6a4f" />
           </View>
         </QueryClientProvider>
       </SafeAreaProvider>
@@ -181,10 +181,10 @@ export default function RootLayout() {
         <StatusBar style="auto" />
         <Stack
           screenOptions={{
-            contentStyle: { backgroundColor: '#F4EFE8' },
+            contentStyle: { backgroundColor: '#f5f1ea' },
             headerShadowVisible: false,
-            headerStyle: { backgroundColor: '#F4EFE8' },
-            headerTintColor: '#17141F',
+            headerStyle: { backgroundColor: '#f5f1ea' },
+            headerTintColor: '#171b24',
             headerTitleStyle: {
               fontWeight: '700',
             },
@@ -201,6 +201,10 @@ export default function RootLayout() {
             options={{ title: 'Members', headerBackTitle: 'Back' }}
           />
           <Stack.Screen
+            name="group-edit"
+            options={{ title: 'Edit Group', headerBackTitle: 'Back' }}
+          />
+          <Stack.Screen
             name="expenses/new"
             options={{ title: 'New Expense', headerBackTitle: 'Back' }}
           />
@@ -211,6 +215,14 @@ export default function RootLayout() {
           <Stack.Screen
             name="expenses/[expenseId]/edit"
             options={{ title: 'Edit Expense', headerBackTitle: 'Back' }}
+          />
+          <Stack.Screen
+            name="notifications"
+            options={{ title: 'Notifications', headerBackTitle: 'Back' }}
+          />
+          <Stack.Screen
+            name="pricing"
+            options={{ title: 'Pricing', headerBackTitle: 'Back' }}
           />
         </Stack>
       </QueryClientProvider>

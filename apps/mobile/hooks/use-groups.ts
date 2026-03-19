@@ -7,6 +7,7 @@ import {
   getUserGroups,
   inviteMember,
   removeMember,
+  updateGroup,
   updateMemberRole,
 } from '@commune/api';
 import type { CreateGroupInput } from '@commune/core';
@@ -84,6 +85,19 @@ export function useUpdateMemberRole(groupId: string) {
       updateMemberRole(memberId, role),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: groupKeys.detail(groupId) });
+    },
+  });
+}
+
+export function useUpdateGroup(groupId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (updates: { name?: string; type?: string; currency?: string; billing_cycle?: string }) =>
+      updateGroup(groupId, updates),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: groupKeys.detail(groupId) });
+      queryClient.invalidateQueries({ queryKey: groupKeys.list() });
     },
   });
 }

@@ -24,8 +24,14 @@ export function useUpdateProfile() {
     }: {
       userId: string;
       data: {
-        name?: string;
+        first_name?: string;
+        last_name?: string;
         avatar_url?: string | null;
+        phone?: string | null;
+        country?: string | null;
+        payment_info?: string | null;
+        default_currency?: string;
+        timezone?: string;
         notification_preferences?: NotificationPreferences;
       };
     }) => updateProfile(userId, data),

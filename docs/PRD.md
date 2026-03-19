@@ -1,7 +1,7 @@
 # Commune — Product Requirements Document
 
-**Version:** 1.0
-**Date:** 2026-03-17
+**Version:** 1.1
+**Date:** 2026-03-19
 **Platform:** Web first (Vite + React), Mobile second (Expo)
 
 ---
@@ -49,9 +49,17 @@ SubscriptionStatus: trialing | active | past_due | cancelled
 | Column | Type | Constraints |
 |---|---|---|
 | id | uuid | PK, default gen_random_uuid() |
-| name | text | NOT NULL |
+| first_name | text | NOT NULL, max 50 chars |
+| last_name | text | nullable, max 50 chars |
+| name | text | NOT NULL, auto-generated from first_name + last_name (for backward compatibility) |
 | email | text | NOT NULL, UNIQUE |
 | avatar_url | text | nullable |
+| phone | text | nullable, max 20 chars |
+| country | text | nullable, max 100 chars |
+| payment_info | text | nullable, max 200 chars (free-text for payment methods, e.g. "Pay me via Monzo: @john") |
+| default_currency | text | NOT NULL, DEFAULT 'GBP' |
+| timezone | text | NOT NULL, DEFAULT 'Europe/London' |
+| notification_preferences | jsonb | NOT NULL, DEFAULT '{"email_on_new_expense":true,"email_on_payment_received":true,"email_on_payment_reminder":true,"email_on_overdue":true}' |
 | created_at | timestamptz | NOT NULL, default now() |
 
 #### groups
@@ -136,6 +144,16 @@ SubscriptionStatus: trialing | active | past_due | cancelled
 | current_period_end | timestamptz | NOT NULL |
 | created_at | timestamptz | NOT NULL, default now() |
 
+#### recurring_expense_log
+| Column | Type | Constraints |
+|---|---|---|
+| id | uuid | PK |
+| expense_id | uuid | FK → expenses, NOT NULL |
+| period_start | date | NOT NULL |
+| generated_expense_id | uuid | FK → expenses, NOT NULL |
+| created_at | timestamptz | NOT NULL, default now() |
+| | | UNIQUE(expense_id, period_start) |
+
 ### Row Level Security Policies
 
 #### users
@@ -214,7 +232,7 @@ SubscriptionStatus: trialing | active | past_due | cancelled
 - F3.5: Remove members (admin only) — soft remove, preserve history
 - F3.6: Leave group (member action)
 - F3.7: Transfer ownership
-- F3.8: Enforce plan limits (Standard: 1 group/5 members, Pro: 3 groups/15 members, Agency: unlimited)
+- F3.8: Enforce plan limits (Standard: 1 group/5 members per group, Pro: 3 groups/15 members per group, Agency: unlimited groups/unlimited members)
 
 ### F4: Expense Management
 
@@ -233,7 +251,7 @@ SubscriptionStatus: trialing | active | past_due | cancelled
 - F4.10: Archive expense (admin only, soft delete)
 - F4.11: View expense list with filters (category, status, date range)
 - F4.12: Search expenses by title
-- F4.13: Recurring expense auto-generation at the start of each period
+- F4.13: Recurring expense auto-generation at the start of each period (via `recurring_expense_log` table to prevent duplicates; `generateRecurringExpenses()` runs on dashboard load)
 
 ### F5: Split Logic
 
@@ -291,7 +309,7 @@ SubscriptionStatus: trialing | active | past_due | cancelled
 **Description:** View and manage group members.
 
 **Requirements:**
-- F9.1: List all members with name, avatar, role, status
+- F9.1: List all members with name (first_name + last_name), avatar, role, status
 - F9.2: Invite new members via email (admin only)
 - F9.3: Change member role (admin only)
 - F9.4: Remove member (admin only) — preserve expense history
@@ -302,13 +320,14 @@ SubscriptionStatus: trialing | active | past_due | cancelled
 **Description:** Keep users informed of relevant activity.
 
 **Requirements:**
-- F10.1: In-app notification center
+- F10.1: In-app notification bell icon in header with unread count badge and dropdown
 - F10.2: Notification when invited to group
-- F10.3: Notification when new expense is added
+- F10.3: Notification when new expense is added (queried from expenses table)
 - F10.4: Notification when expense is edited
-- F10.5: Notification when payment is due within 3 days
-- F10.6: Notification when monthly statement is ready
-- F10.7: Email notifications (opt-in, managed in settings)
+- F10.5: Notification when payment is made by group members (queried from payment_records)
+- F10.6: Notification when payments are overdue (queried from payment_records)
+- F10.7: Email notifications (4 toggles in settings: new expense, payment received, payment reminder, overdue)
+- F10.8: Notification queries use TanStack Query with 1-minute stale time
 
 ### F11: Subscription & Billing
 
@@ -328,14 +347,61 @@ SubscriptionStatus: trialing | active | past_due | cancelled
 
 ### F12: Settings
 
-**Description:** User profile and preferences.
+**Description:** User profile, preferences, subscription management, and account actions.
 
 **Requirements:**
-- F12.1: Edit profile (name, avatar)
-- F12.2: Change password (email/password users)
-- F12.3: Notification preferences (which notifications, email opt-in)
-- F12.4: Manage subscription/billing
-- F12.5: Delete account (with confirmation, soft delete, anonymise data)
+
+**Profile section:**
+- F12.1: Edit profile fields — first name (required, max 50 chars), last name (optional, max 50 chars), phone number (optional, max 20 chars), country (optional, max 100 chars), avatar URL (optional)
+
+**Payment info section:**
+- F12.2: Free-text field for payment methods (e.g. "Pay me via Monzo: @john") — max 200 chars, visible to group members
+
+**Preferences section:**
+- F12.3: Default currency (select: GBP, USD, EUR, CAD, AUD, NGN, GHS, ZAR, INR, JPY) and timezone (select, 14 timezones)
+
+**Notifications section:**
+- F12.4: Email notification preferences — 4 toggles: new expense added, payment received, payment reminder, overdue payment
+
+**Subscription section:**
+- F12.5: Displays current plan, status, manage billing button (opens Stripe portal), change plan link (navigates to pricing)
+
+**Account info (read-only):**
+- F12.6: Email address, member since date
+
+**Danger zone:**
+- F12.7: Account deletion with typed "DELETE" confirmation (soft delete via `soft_delete_account()` RPC — anonymises profile, marks group memberships as removed, preserves expense/payment history)
+
+### F13: Notification Bell (In-App)
+
+**Description:** Header bell icon with dropdown showing recent activity from three sources.
+
+**Requirements:**
+- F13.1: Bell icon in the app header with unread count badge
+- F13.2: Dropdown lists notifications from 3 sources: new expenses added to user's groups, payments made by group members, overdue payments
+- F13.3: Uses TanStack Query with 1-minute stale time for near-real-time updates
+- F13.4: Each notification links to the relevant expense or group
+
+### F14: Recurring Expense Auto-Generation
+
+**Description:** Automatic creation of recurring expense instances on dashboard load.
+
+**Requirements:**
+- F14.1: `recurring_expense_log` table tracks generated instances to prevent duplicates (unique on expense_id + period_start)
+- F14.2: `generateRecurringExpenses()` function runs on dashboard load
+- F14.3: Copies monthly/weekly expenses forward with participants and payment records
+- F14.4: Only generates if no log entry exists for the current period
+
+### F15: Design System
+
+**Description:** Consistent visual language across all pages.
+
+**Requirements:**
+- F15.1: All pages use `commune-hero-card` with `commune-hero-grid` layout pattern
+- F15.2: KPI cards use `commune-kpi-card` with `data-tone` attribute (positive/negative/neutral)
+- F15.3: Section headings use `commune-section-heading` class
+- F15.4: Tables use `commune-table-shell` wrapper
+- F15.5: Status indicators use `commune-pill-badge` class
 
 ---
 
@@ -446,15 +512,22 @@ function calculateReimbursements(
 
 ### S8: Members
 - **Route:** `/groups/:groupId/members`
-- **Layout:** Member cards (avatar, name, role badge, status, monthly total), invite button, role/remove actions (admin)
+- **Layout:** Member cards (avatar, first name + last name, role badge, status, monthly total), invite button, role/remove actions (admin)
 
 ### S9: Settings
 - **Route:** `/settings`
-- **Sections:** Profile, Password, Notifications, Subscription/Billing, Delete Account
+- **Sections:**
+  - Profile: first name (required), last name (optional), phone number (optional), country (optional), avatar URL (optional)
+  - Payment info: free-text payment method field (visible to group members)
+  - Preferences: default currency (select, 10 currencies), timezone (select, 14 timezones)
+  - Email notifications: 4 toggles (new expense added, payment received, payment reminder, overdue payment)
+  - Subscription: current plan display, status, manage billing button (Stripe portal), change plan link
+  - Account info: email address (read-only), member since date (read-only)
+  - Danger zone: account deletion with typed "DELETE" confirmation (soft delete — anonymises profile, removes from groups, preserves history)
 
 ### S10: Plan Selection
-- **Route:** `/plans`
-- **Layout:** Three-column pricing cards, feature comparison, monthly/annual toggle, Stripe checkout trigger
+- **Route:** `/pricing`
+- **Layout:** Three-column pricing cards (Standard £4.99/mo — 1 group, 5 members; Pro £9.99/mo — 3 groups, 15 members; Agency £29.99/mo — unlimited), feature comparison, Stripe checkout trigger, current plan highlighting, trial badge
 
 ---
 
@@ -482,6 +555,7 @@ Key query functions:
 - `fn_create_payment_records()` — trigger on expense_participants insert, creates unpaid payment records
 - `fn_enforce_plan_limits()` — trigger on groups/group_members insert, checks subscription limits
 - `fn_generate_recurring_expenses()` — called by Edge Function cron, creates next period instances
+- `soft_delete_account()` — RPC that anonymises user profile (first_name, last_name, name, avatar, phone, country, payment_info), marks all group memberships as 'removed', preserves expense and payment history for audit
 
 ### Edge Functions (async only)
 

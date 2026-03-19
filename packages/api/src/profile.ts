@@ -10,9 +10,16 @@ export interface NotificationPreferences {
 
 export interface UserProfile {
   id: string;
+  first_name: string;
+  last_name: string;
   name: string;
   email: string;
   avatar_url: string | null;
+  phone: string | null;
+  country: string | null;
+  payment_info: string | null;
+  default_currency: string;
+  timezone: string;
   notification_preferences: NotificationPreferences;
   created_at: string;
 }
@@ -24,27 +31,55 @@ const DEFAULT_NOTIFICATION_PREFS: NotificationPreferences = {
   email_on_overdue: true,
 };
 
+function splitName(fullName: string): { first_name: string; last_name: string } {
+  const spaceIndex = fullName.indexOf(' ');
+  if (spaceIndex > 0) {
+    return {
+      first_name: fullName.substring(0, spaceIndex),
+      last_name: fullName.substring(spaceIndex + 1),
+    };
+  }
+  return { first_name: fullName, last_name: '' };
+}
+
 function buildProfileFromAuthUser(authUser: AuthUser): UserProfile {
   const metadata = authUser.user_metadata ?? {};
 
+  const fullName =
+    metadata.name
+    ?? metadata.full_name
+    ?? metadata.user_name
+    ?? authUser.email?.split('@')[0]
+    ?? 'Commune member';
+  const { first_name, last_name } = splitName(fullName);
+
   return {
     id: authUser.id,
-    name:
-      metadata.name
-      ?? metadata.full_name
-      ?? metadata.user_name
-      ?? authUser.email?.split('@')[0]
-      ?? 'Commune member',
+    first_name,
+    last_name,
+    name: last_name ? `${first_name} ${last_name}` : first_name,
     email: authUser.email ?? '',
     avatar_url: metadata.avatar_url ?? null,
+    phone: null,
+    country: null,
+    payment_info: null,
+    default_currency: 'GBP',
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     notification_preferences: DEFAULT_NOTIFICATION_PREFS,
     created_at: authUser.created_at ?? new Date().toISOString(),
   };
 }
 
 function normalizeProfile(data: Record<string, any>): UserProfile {
+  const first_name = data.first_name ?? (data.name ? splitName(data.name).first_name : '');
+  const last_name = data.last_name ?? (data.name ? splitName(data.name).last_name : '');
+
   return {
     ...data,
+    first_name,
+    last_name,
+    default_currency: data.default_currency ?? 'GBP',
+    timezone: data.timezone ?? 'Europe/London',
     notification_preferences: data.notification_preferences ?? DEFAULT_NOTIFICATION_PREFS,
   } as UserProfile;
 }
@@ -72,7 +107,8 @@ export async function ensureProfile(userId: string): Promise<UserProfile> {
     .upsert(
       {
         id: fallbackProfile.id,
-        name: fallbackProfile.name,
+        first_name: fallbackProfile.first_name,
+        last_name: fallbackProfile.last_name,
         email: fallbackProfile.email,
         avatar_url: fallbackProfile.avatar_url,
       },
@@ -104,8 +140,14 @@ export async function getProfile(userId: string): Promise<UserProfile> {
 export async function updateProfile(
   userId: string,
   updates: {
-    name?: string;
+    first_name?: string;
+    last_name?: string;
     avatar_url?: string | null;
+    phone?: string | null;
+    country?: string | null;
+    payment_info?: string | null;
+    default_currency?: string;
+    timezone?: string;
     notification_preferences?: NotificationPreferences;
   },
 ): Promise<UserProfile> {

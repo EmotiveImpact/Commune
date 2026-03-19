@@ -11,6 +11,7 @@ import { useCreateExpense } from '@/hooks/use-expenses';
 import { useGroup } from '@/hooks/use-groups';
 import {
   AppButton,
+  DateField,
   EmptyState,
   LoadingScreen,
   Pill,
@@ -42,7 +43,7 @@ export default function NewExpenseScreen() {
   const [category, setCategory] = useState<ExpenseCategoryType>(
     ExpenseCategory.MISCELLANEOUS
   );
-  const [dueDate, setDueDate] = useState('');
+  const [dueDate, setDueDate] = useState<Date | null>(null);
   const [isRecurring, setIsRecurring] = useState(false);
   const [recurrenceType, setRecurrenceType] = useState('monthly');
   const [splitMethod, setSplitMethod] = useState<SplitMethod>(SplitMethod.EQUAL);
@@ -142,7 +143,7 @@ export default function NewExpenseScreen() {
       category,
       amount: numericAmount,
       currency: group.currency,
-      due_date: dueDate.trim(),
+      due_date: dueDate ? dueDate.toISOString().split('T')[0]! : '',
       recurrence_type: isRecurring ? recurrenceType : 'none',
       split_method: splitMethod,
       paid_by_user_id: paidByUserId ?? undefined,
@@ -247,12 +248,12 @@ export default function NewExpenseScreen() {
 
   return (
     <Screen>
-      <View className="mb-4 rounded-[32px] bg-[#17141F] px-5 py-5">
-        <Text className="text-sm font-medium text-[#BBB4C1]">Expense form</Text>
+      <View className="mb-4 rounded-[32px] bg-[#1f2330] px-5 py-5">
+        <Text className="text-sm font-medium text-[rgba(255,255,255,0.72)]">Expense form</Text>
         <Text className="mt-2 text-[30px] font-bold leading-[36px] text-white">
           Add expense
         </Text>
-        <Text className="mt-2 text-sm leading-6 text-[#C7C2CD]">
+        <Text className="mt-2 text-sm leading-6 text-[rgba(255,250,246,0.72)]">
           Create a shared cost, decide who is included, and preview the split before you save it.
         </Text>
       </View>
@@ -272,12 +273,11 @@ export default function NewExpenseScreen() {
           keyboardType="decimal-pad"
           hint={`Charged in ${group.currency}.`}
         />
-        <TextField
+        <DateField
           label="Due date"
-          placeholder="YYYY-MM-DD"
           value={dueDate}
-          onChangeText={setDueDate}
-          hint="Use the same format as the web app."
+          onChange={setDueDate}
+          hint="When this expense is due."
         />
         <TextField
           label="Description"
@@ -287,7 +287,7 @@ export default function NewExpenseScreen() {
           multiline
         />
 
-        <Text className="mb-2 text-sm font-medium text-[#17141F]">Category</Text>
+        <Text className="mb-2 text-sm font-medium text-[#171b24]">Category</Text>
         <View className="mb-4 flex-row flex-wrap">
           {categories.map((value) => (
             <Pill
@@ -322,8 +322,8 @@ export default function NewExpenseScreen() {
       </Surface>
 
       <Surface className="mb-4">
-        <Text className="text-lg font-semibold text-[#17141F]">Participants</Text>
-        <Text className="mt-2 text-sm leading-6 text-[#6A645D]">
+        <Text className="text-lg font-semibold text-[#171b24]">Participants</Text>
+        <Text className="mt-2 text-sm leading-6 text-[#667085]">
           Select the people who should share this cost.
         </Text>
         <View className="mt-4 flex-row">
@@ -350,20 +350,20 @@ export default function NewExpenseScreen() {
             return (
               <TouchableOpacity
                 key={member.id}
-                className={`mb-3 rounded-[22px] border px-4 py-4 ${selected ? 'border-[#17141F] bg-[#F2F6EC]' : 'border-[#DDD5CA] bg-[#FAF7F2]'}`}
+                className={`mb-3 rounded-[22px] border px-4 py-4 ${selected ? 'border-[#2d6a4f] bg-[#F2F6EC]' : 'border-[rgba(23,27,36,0.14)] bg-[#fbf7f1]'}`}
                 activeOpacity={0.86}
                 onPress={() => toggleParticipant(member.user_id)}
               >
                 <View className="flex-row items-center justify-between">
                   <View>
-                    <Text className="text-base font-semibold text-[#17141F]">
+                    <Text className="text-base font-semibold text-[#171b24]">
                       {member.user.name}
                     </Text>
-                    <Text className="mt-1 text-sm text-[#6A645D]">
+                    <Text className="mt-1 text-sm text-[#667085]">
                       {member.user.email}
                     </Text>
                   </View>
-                  <Text className="text-sm font-semibold text-[#205C54]">
+                  <Text className="text-sm font-semibold text-[#2d6a4f]">
                     {selected ? 'Included' : 'Add'}
                   </Text>
                 </View>
@@ -372,7 +372,7 @@ export default function NewExpenseScreen() {
           })}
         </View>
 
-        <Text className="mb-2 mt-2 text-sm font-medium text-[#17141F]">
+        <Text className="mb-2 mt-2 text-sm font-medium text-[#171b24]">
           Who paid upfront?
         </Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -393,7 +393,7 @@ export default function NewExpenseScreen() {
       </Surface>
 
       <Surface className="mb-4">
-        <Text className="text-lg font-semibold text-[#17141F]">Split method</Text>
+        <Text className="text-lg font-semibold text-[#171b24]">Split method</Text>
         <View className="mt-4 flex-row">
           <Pill
             label="Equal"
@@ -456,16 +456,16 @@ export default function NewExpenseScreen() {
       </Surface>
 
       <Surface className="mb-4">
-        <Text className="text-lg font-semibold text-[#17141F]">Preview</Text>
-        <Text className="mt-2 text-sm leading-6 text-[#6A645D]">
+        <Text className="text-lg font-semibold text-[#171b24]">Preview</Text>
+        <Text className="mt-2 text-sm leading-6 text-[#667085]">
           Double-check the split before saving.
         </Text>
-        <Text className="mt-2 text-xs leading-5 text-[#827A72]">
+        <Text className="mt-2 text-xs leading-5 text-[#667085]">
           New expenses start with all active members included. Remove anyone who should not share this one.
         </Text>
 
         {splitPreview.length === 0 ? (
-          <Text className="mt-4 text-sm text-[#6A645D]">
+          <Text className="mt-4 text-sm text-[#667085]">
             Add an amount and at least one participant to see the split.
           </Text>
         ) : (
@@ -479,10 +479,10 @@ export default function NewExpenseScreen() {
                 key={row.userId}
                 className="mt-4 flex-row items-center justify-between rounded-2xl bg-[#F2F6EC] px-4 py-3"
               >
-                <Text className="text-sm font-medium text-[#17141F]">
+                <Text className="text-sm font-medium text-[#171b24]">
                   {memberName}
                 </Text>
-                <Text className="text-sm font-semibold text-[#205C54]">
+                <Text className="text-sm font-semibold text-[#2d6a4f]">
                   {formatCurrency(row.amount, group.currency)}
                 </Text>
               </View>
