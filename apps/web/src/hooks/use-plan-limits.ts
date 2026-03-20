@@ -19,7 +19,17 @@ export function usePlanLimits(userId: string) {
 
   return useMemo(() => {
     const plan = subscription?.plan ?? SubscriptionPlan.STANDARD;
-    const isActive = !subscription || subscription.status === 'active' || subscription.status === 'trialing';
+
+    // Check if subscription is active or in a valid trial
+    let isActive = false;
+    if (subscription) {
+      if (subscription.status === 'active') {
+        isActive = true;
+      } else if (subscription.status === 'trialing') {
+        isActive = new Date(subscription.trial_ends_at) > new Date();
+      }
+    }
+
     const limits = PLAN_LIMITS[plan] ?? PLAN_LIMITS.standard;
 
     const currentGroups = groups?.length ?? 0;

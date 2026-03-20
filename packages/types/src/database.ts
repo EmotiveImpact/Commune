@@ -91,8 +91,8 @@ export interface PaymentRecord {
 export interface Subscription {
   id: string;
   user_id: string;
-  stripe_customer_id: string;
-  stripe_subscription_id: string;
+  stripe_customer_id: string | null;
+  stripe_subscription_id: string | null;
   plan: SubscriptionPlan;
   status: SubscriptionStatus;
   trial_ends_at: string;

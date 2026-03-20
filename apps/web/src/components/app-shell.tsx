@@ -185,11 +185,21 @@ export function AppShell({ children }: AppShellProps) {
 function SidebarPlanCard({ userId }: { userId?: string }) {
   const { data: subscription } = useSubscription(userId ?? '');
 
-  const planLabel = subscription?.plan
-    ? subscription.plan.charAt(0).toUpperCase() + subscription.plan.slice(1)
-    : 'Free trial';
+  const isTrialing = subscription?.status === 'trialing';
+  const isActive = subscription?.status === 'active';
+  const trialEndsAt = subscription?.trial_ends_at ? new Date(subscription.trial_ends_at) : null;
+  const trialExpired = isTrialing && trialEndsAt && trialEndsAt < new Date();
+  const daysLeft = isTrialing && trialEndsAt && !trialExpired
+    ? Math.ceil((trialEndsAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+    : 0;
 
-  const isFreeTrial = !subscription || subscription.status === 'trialing';
+  const planLabel = !subscription || trialExpired
+    ? 'No plan'
+    : isTrialing
+      ? `Pro Trial · ${daysLeft}d left`
+      : (subscription.plan.charAt(0).toUpperCase() + subscription.plan.slice(1));
+
+  const showUpgrade = !isActive || isTrialing;
 
   return (
     <Box className="commune-sidebar-plan-card">
@@ -199,10 +209,10 @@ function SidebarPlanCard({ userId }: { userId?: string }) {
       <Text size="lg" fw={700} style={{ color: '#fff' }} mt={2}>
         {planLabel}
       </Text>
-      {isFreeTrial && (
+      {showUpgrade && (
         <>
           <Text size="xs" mt={6} style={{ color: 'rgba(255,255,255,0.55)', lineHeight: 1.4 }}>
-            Upgrade to Pro to get the latest and exclusive features
+            {trialExpired ? 'Your trial has ended. Choose a plan to continue.' : 'Choose a plan to keep access after your trial.'}
           </Text>
           <Button
             component={Link}
@@ -213,7 +223,7 @@ function SidebarPlanCard({ userId }: { userId?: string }) {
             fullWidth
             className="commune-sidebar-upgrade-btn"
           >
-            Upgrade to pro
+            {trialExpired ? 'Choose a plan' : 'View plans'}
           </Button>
         </>
       )}
