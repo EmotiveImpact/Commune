@@ -12,9 +12,12 @@ export async function getSubscription(userId: string): Promise<Subscription | nu
   return data;
 }
 
-export async function invokeCheckout(plan: SubscriptionPlan): Promise<string> {
+export async function invokeCheckout(
+  plan: SubscriptionPlan,
+  interval: 'monthly' | 'annual' = 'monthly',
+): Promise<string> {
   const { data, error } = await supabase.functions.invoke('create-checkout-session', {
-    body: { plan },
+    body: { plan, interval },
   });
 
   if (error) throw error;

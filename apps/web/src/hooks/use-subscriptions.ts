@@ -17,7 +17,8 @@ export function useSubscription(userId: string) {
 
 export function useCheckout() {
   return useMutation({
-    mutationFn: (plan: SubscriptionPlan) => invokeCheckout(plan),
+    mutationFn: ({ plan, interval }: { plan: SubscriptionPlan; interval: 'monthly' | 'annual' }) =>
+      invokeCheckout(plan, interval),
     onSuccess: (url) => {
       window.location.href = url;
     },

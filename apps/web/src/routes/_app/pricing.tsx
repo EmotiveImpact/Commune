@@ -13,12 +13,13 @@ import {
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { IconCheck, IconInfoCircle, IconSparkles } from '@tabler/icons-react';
+import { useState } from 'react';
 import { SubscriptionPlan } from '@commune/types';
 import { useAuthStore } from '../../stores/auth';
 import { useCheckout, useSubscription } from '../../hooks/use-subscriptions';
 import { usePlanLimits, PLAN_LIMITS } from '../../hooks/use-plan-limits';
 import { formatDate } from '@commune/utils';
-import { PageLoader } from '../../components/page-loader';
+import { PricingSkeleton } from '../../components/page-skeleton';
 import { PageHeader } from '../../components/page-header';
 
 export const Route = createFileRoute('/_app/pricing')({
@@ -28,7 +29,10 @@ export const Route = createFileRoute('/_app/pricing')({
 interface PlanConfig {
   id: SubscriptionPlan;
   name: string;
-  price: string;
+  monthlyPrice: number;
+  annualMonthlyPrice: number;
+  annualTotal: number;
+  savings: number;
   features: string[];
   limits: { groups: string; members: string };
   highlight?: boolean;
@@ -39,7 +43,10 @@ const PLANS: PlanConfig[] = [
   {
     id: SubscriptionPlan.STANDARD,
     name: 'Standard',
-    price: '£4.99',
+    monthlyPrice: 4.99,
+    annualMonthlyPrice: 3.99,
+    annualTotal: 47.88,
+    savings: 12.00,
     features: [
       'Up to 1 group',
       'Up to 5 members per group',
@@ -53,7 +60,10 @@ const PLANS: PlanConfig[] = [
   {
     id: SubscriptionPlan.PRO,
     name: 'Pro',
-    price: '£9.99',
+    monthlyPrice: 9.99,
+    annualMonthlyPrice: 7.99,
+    annualTotal: 95.88,
+    savings: 24.00,
     features: [
       'Up to 3 groups',
       'Up to 15 members per group',
@@ -68,7 +78,10 @@ const PLANS: PlanConfig[] = [
   {
     id: SubscriptionPlan.AGENCY,
     name: 'Agency',
-    price: '£29.99',
+    monthlyPrice: 29.99,
+    annualMonthlyPrice: 23.99,
+    annualTotal: 287.88,
+    savings: 72.00,
     features: [
       'Unlimited groups',
       'Unlimited members',
@@ -88,12 +101,14 @@ function PricingPage() {
   const { data: subscription, isLoading } = useSubscription(user?.id ?? '');
   const { currentGroups, currentMembers } = usePlanLimits(user?.id ?? '');
   const checkout = useCheckout();
+  const [billingInterval, setBillingInterval] = useState<'monthly' | 'annual'>('monthly');
+  const isAnnual = billingInterval === 'annual';
   const search = new URLSearchParams(window.location.search);
   const success = search.get('success') === 'true';
   const cancelled = search.get('cancelled') === 'true';
 
   if (isLoading) {
-    return <PageLoader message="Loading pricing..." />;
+    return <PricingSkeleton />;
   }
 
   const currentPlan = subscription?.plan;
@@ -121,7 +136,7 @@ function PricingPage() {
 
   function handleSelectPlan(plan: SubscriptionPlan) {
     if (isActive && plan === currentPlan) return;
-    checkout.mutate(plan, {
+    checkout.mutate({ plan, interval: billingInterval }, {
       onError: (err) => {
         notifications.show({
           title: 'Checkout failed',
@@ -146,6 +161,54 @@ function PricingPage() {
           </Group>
         )}
       </PageHeader>
+
+      {/* Billing interval toggle */}
+      <Group justify="center">
+        <div
+          style={{
+            display: 'inline-flex',
+            borderRadius: 10,
+            background: 'var(--commune-paper-strong)',
+            padding: 4,
+            border: '1px solid var(--commune-border)',
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => setBillingInterval('monthly')}
+            style={{
+              padding: '8px 20px',
+              borderRadius: 8,
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: 13,
+              fontWeight: !isAnnual ? 600 : 500,
+              background: !isAnnual ? 'var(--commune-primary-strong)' : 'transparent',
+              color: !isAnnual ? '#fff' : 'var(--commune-ink-soft)',
+              transition: 'all 150ms',
+            }}
+          >
+            Monthly
+          </button>
+          <button
+            type="button"
+            onClick={() => setBillingInterval('annual')}
+            style={{
+              padding: '8px 20px',
+              borderRadius: 8,
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: 13,
+              fontWeight: isAnnual ? 600 : 500,
+              background: isAnnual ? 'var(--commune-primary-strong)' : 'transparent',
+              color: isAnnual ? '#fff' : 'var(--commune-ink-soft)',
+              transition: 'all 150ms',
+            }}
+          >
+            Annual <span style={{ fontSize: 11, opacity: 0.8 }}>save 20%</span>
+          </button>
+        </div>
+      </Group>
 
       {success && (
         <Alert icon={<IconCheck size={16} />} color="green" title="Subscription activated">
@@ -200,9 +263,21 @@ function PricingPage() {
                 </Group>
 
                 <Group align="baseline" gap={4}>
-                  <Text fw={900} size="2.5rem">{plan.price}</Text>
+                  <Text fw={900} size="2.5rem">
+                    £{isAnnual ? plan.annualMonthlyPrice.toFixed(2) : plan.monthlyPrice.toFixed(2)}
+                  </Text>
                   <Text size="sm" c="dimmed">/month</Text>
                 </Group>
+                {isAnnual && (
+                  <Stack gap={2}>
+                    <Text size="sm" c="dimmed" td="line-through">
+                      £{plan.monthlyPrice.toFixed(2)}/mo
+                    </Text>
+                    <Text size="sm" c="green" fw={500}>
+                      £{plan.annualTotal.toFixed(2)}/year — save £{plan.savings.toFixed(0)}
+                    </Text>
+                  </Stack>
+                )}
 
                 <Paper className="commune-stat-card commune-kpi-card" p="md" radius="lg" data-tone={plan.tone}>
                   <Text size="sm" fw={600} mb="xs">Includes</Text>

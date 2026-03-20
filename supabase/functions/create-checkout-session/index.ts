@@ -3,10 +3,19 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 
 const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY')!);
 
-const PRICE_MAP: Record<string, string> = {
-  standard: Deno.env.get('STRIPE_PRICE_STANDARD')!,
-  pro: Deno.env.get('STRIPE_PRICE_PRO')!,
-  agency: Deno.env.get('STRIPE_PRICE_AGENCY')!,
+const PRICE_MAP: Record<string, { monthly: string; annual: string }> = {
+  standard: {
+    monthly: Deno.env.get('STRIPE_PRICE_STANDARD')!,
+    annual: Deno.env.get('STRIPE_PRICE_STANDARD_ANNUAL') ?? Deno.env.get('STRIPE_PRICE_STANDARD')!,
+  },
+  pro: {
+    monthly: Deno.env.get('STRIPE_PRICE_PRO')!,
+    annual: Deno.env.get('STRIPE_PRICE_PRO_ANNUAL') ?? Deno.env.get('STRIPE_PRICE_PRO')!,
+  },
+  agency: {
+    monthly: Deno.env.get('STRIPE_PRICE_AGENCY')!,
+    annual: Deno.env.get('STRIPE_PRICE_AGENCY_ANNUAL') ?? Deno.env.get('STRIPE_PRICE_AGENCY')!,
+  },
 };
 
 const APP_URL = Deno.env.get('APP_URL')!;
@@ -39,11 +48,12 @@ Deno.serve(async (req: Request) => {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
     }
 
-    const { plan } = await req.json();
-    const priceId = PRICE_MAP[plan];
-    if (!priceId) {
+    const { plan, interval = 'monthly' } = await req.json();
+    const planPrices = PRICE_MAP[plan];
+    if (!planPrices) {
       return new Response(JSON.stringify({ error: 'Invalid plan' }), { status: 400 });
     }
+    const priceId = planPrices[interval as 'monthly' | 'annual'] ?? planPrices.monthly;
 
     // Check for existing Stripe customer
     const { data: subscription } = await supabase
