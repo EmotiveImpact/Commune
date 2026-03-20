@@ -202,6 +202,17 @@ function MembersPage() {
         )}
       </PageHeader>
 
+      {searchQuery && (
+        <Group gap="xs" align="center">
+          <Text size="sm" c="dimmed">
+            {filteredMembers.length} result{filteredMembers.length !== 1 ? 's' : ''} for "{searchQuery}"
+          </Text>
+          <Button variant="subtle" size="xs" color="gray" onClick={() => useSearchStore.getState().clearQuery()}>
+            Clear
+          </Button>
+        </Group>
+      )}
+
       {filteredMembers.length === 0 ? (
         <Text size="sm" c="dimmed">
           No members match the current top-bar search.

@@ -11,7 +11,6 @@ import {
   Text,
   TextInput,
   Textarea,
-  Title,
 } from '@mantine/core';
 import { useForm, schemaResolver } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
@@ -132,13 +131,13 @@ function OnboardingPage() {
   if (inviteOptions.length > 0 && !showCreateFlow) {
     return (
       <Center mih="80vh">
-        <Paper p="xl" withBorder w="100%" maw={640}>
+        <Paper className="commune-soft-panel" p="xl" w="100%" maw={640}>
           <Stack gap="lg">
             <Stack gap="xs">
               <Badge color="emerald" variant="light" w="fit-content">
                 Join a group
               </Badge>
-              <Title order={2}>You already have an invite waiting</Title>
+              <Text fw={800} size="1.5rem">You already have an invite waiting</Text>
               <Text c="dimmed">
                 Accept one of these invitations so you land inside the right shared workspace instead of starting from an empty dashboard.
               </Text>
@@ -146,7 +145,7 @@ function OnboardingPage() {
 
             <Stack gap="sm">
               {inviteOptions.map((invite) => (
-                <Paper key={invite.id} withBorder p="lg">
+                <Paper key={invite.id} className="commune-stat-card" radius="lg" p="lg">
                   <Group justify="space-between" align="flex-start">
                     <Stack gap={4}>
                       <Text fw={700}>{invite.group.name}</Text>
@@ -178,15 +177,15 @@ function OnboardingPage() {
 
   return (
     <Center mih="80vh">
-      <Paper p="xl" withBorder w={500}>
-        <Title order={2} ta="center" mb="md">Set up your group</Title>
+      <Paper className="commune-soft-panel" p="xl" w={500}>
+        <Text fw={800} size="1.5rem" ta="center" mb="md">Set up your group</Text>
 
-        <Stepper active={active} size="sm" mb="xl">
+        <Stepper active={active} size="sm" mb="xl" color="commune">
           <Stepper.Step label="Create group" />
           <Stepper.Step label="Invite members" />
           <Stepper.Completed>
             <Stack align="center" mt="md">
-              <Title order={3}>You're all set!</Title>
+              <Text fw={700} size="1.25rem">You're all set!</Text>
               <Text c="dimmed">Your group is ready. Start adding expenses.</Text>
               <Button onClick={handleDone} fullWidth>Go to dashboard</Button>
             </Stack>

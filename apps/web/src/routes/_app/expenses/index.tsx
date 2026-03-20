@@ -8,7 +8,7 @@ import {
   Table,
   Text,
 } from '@mantine/core';
-import { IconPlus, IconReceipt } from '@tabler/icons-react';
+import { IconDownload, IconPlus, IconReceipt } from '@tabler/icons-react';
 import { useMemo, useState } from 'react';
 import { ExpenseCategory } from '@commune/types';
 import { formatCurrency, formatDate, isOverdue } from '@commune/utils';
@@ -115,6 +115,35 @@ function ExpensesPage() {
     [searchFiltered],
   );
 
+  function handleExportCSV() {
+    if (!filtered || filtered.length === 0) return;
+
+    const headers = ['Title', 'Category', 'Due Date', 'Participants', 'Status', 'Amount'];
+    const rows = filtered.map((expense) => {
+      const paidCount = expense.payment_records?.filter((p) => p.status !== 'unpaid').length ?? 0;
+      const totalParticipants = expense.participants?.length ?? 0;
+      const isSettled = totalParticipants > 0 && paidCount === totalParticipants;
+      const status = isSettled ? 'Settled' : isOverdue(expense.due_date) ? 'Overdue' : 'Open';
+      return [
+        `"${expense.title.replace(/"/g, '""')}"`,
+        formatCategoryLabel(expense.category),
+        expense.due_date,
+        `${paidCount}/${totalParticipants}`,
+        status,
+        expense.amount.toFixed(2),
+      ].join(',');
+    });
+
+    const csv = [headers.join(','), ...rows].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `expenses-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
   if (!activeGroupId) {
     return (
       <EmptyState
@@ -151,6 +180,9 @@ function ExpensesPage() {
           <Button component={Link} to="/expenses/new" leftSection={<IconPlus size={16} />}>
             Add expense
           </Button>
+          <Button variant="default" leftSection={<IconDownload size={16} />} onClick={handleExportCSV} disabled={filtered.length === 0}>
+            Export
+          </Button>
         </Group>
       </PageHeader>
 
@@ -167,6 +199,17 @@ function ExpensesPage() {
           </button>
         ))}
       </div>
+
+      {searchQuery && (
+        <Group gap="xs" align="center">
+          <Text size="sm" c="dimmed">
+            {filtered.length} result{filtered.length !== 1 ? 's' : ''} for "{searchQuery}"
+          </Text>
+          <Button variant="subtle" size="xs" color="gray" onClick={() => useSearchStore.getState().clearQuery()}>
+            Clear
+          </Button>
+        </Group>
+      )}
 
       {isLoading ? (
         <PageLoader message="Loading expenses..." />
