@@ -357,10 +357,28 @@ export default function SettingsScreen() {
         <Text className="text-lg font-semibold text-[#171b24]">Quick links</Text>
         <View className="mt-4" style={{ gap: 10 }}>
           <AppButton
+            label="Recurring expenses"
+            variant="secondary"
+            icon="repeat-outline"
+            onPress={() => router.push('/recurring')}
+          />
+          <AppButton
+            label="Analytics"
+            variant="secondary"
+            icon="bar-chart-outline"
+            onPress={() => router.push('/analytics')}
+          />
+          <AppButton
             label="Activity log"
             variant="secondary"
             icon="time-outline"
             onPress={() => router.push('/activity')}
+          />
+          <AppButton
+            label="Members"
+            variant="secondary"
+            icon="people-outline"
+            onPress={() => router.push('/members')}
           />
           <AppButton
             label="Edit group"

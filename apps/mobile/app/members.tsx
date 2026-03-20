@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { Alert, FlatList, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { inviteMemberSchema } from '@commune/core';
+import { formatCurrency } from '@commune/utils';
 import { useAuthStore } from '@/stores/auth';
 import { useGroupStore } from '@/stores/group';
 import {
@@ -13,6 +14,7 @@ import {
   useUserGroups,
 } from '@/hooks/use-groups';
 import { usePlanLimits } from '@/hooks/use-plan-limits';
+import { useMemberMonthlyStats } from '@/hooks/use-member-stats';
 import { GroupSwitcher } from '@/components/group-switcher';
 import {
   AppButton,
@@ -45,6 +47,7 @@ export default function MembersScreen() {
   const [inviteEmail, setInviteEmail] = useState('');
 
   const { canInviteMember, memberLimit, currentMembers } = usePlanLimits(user?.id ?? '');
+  const { stats: memberStats } = useMemberMonthlyStats(activeGroupId ?? '');
   const inviteMember = useInviteMember(activeGroupId ?? '');
   const updateRole = useUpdateMemberRole(activeGroupId ?? '');
   const removeMember = useRemoveMember(activeGroupId ?? '');
@@ -127,6 +130,10 @@ export default function MembersScreen() {
         : member.status === 'removed' ? 'danger'
         : 'neutral';
 
+    const stat = memberStats.get(member.user_id);
+    const remaining = stat ? Math.max(0, stat.totalOwed - stat.totalPaid) : 0;
+    const isSettled = stat ? remaining < 0.01 : false;
+
     return (
       <View className="px-5">
         <ListRowCard
@@ -149,6 +156,38 @@ export default function MembersScreen() {
               </View>
             </View>
           </View>
+
+          {/* Monthly financial summary */}
+          {member.status === 'active' && (
+            <View className="mt-3 rounded-2xl bg-[#F8F6F2] px-3 py-2">
+              {!stat || stat.totalOwed === 0 ? (
+                <Text className="text-xs text-[#667085]">No activity this month</Text>
+              ) : (
+                <View className="flex-row items-center justify-between">
+                  <View className="flex-row items-center" style={{ gap: 6 }}>
+                    <View className="rounded-full bg-[#EEF6F3] px-2 py-1">
+                      <Text className="text-xs font-semibold text-[#2d6a4f]">
+                        Paid {formatCurrency(stat.totalPaid, group?.currency)}
+                      </Text>
+                    </View>
+                    {!isSettled && (
+                      <View className="rounded-full bg-[#F7E2DD] px-2 py-1">
+                        <Text className="text-xs font-semibold text-[#B9382F]">
+                          Owes {formatCurrency(remaining, group?.currency)}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                  <Text
+                    className="text-sm font-bold"
+                    style={{ color: isSettled ? '#2d6a4f' : '#B9382F' }}
+                  >
+                    {isSettled ? 'Settled' : formatCurrency(remaining, group?.currency)}
+                  </Text>
+                </View>
+              )}
+            </View>
+          )}
 
           <View className="mt-4 flex-row items-center justify-between">
             <Text className="text-sm font-medium text-[#171b24]">
@@ -176,7 +215,7 @@ export default function MembersScreen() {
         </ListRowCard>
       </View>
     );
-  }, [user, isAdmin]);
+  }, [user, isAdmin, memberStats, group?.currency]);
 
   if (!activeGroupId) {
     return (
