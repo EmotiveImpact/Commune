@@ -10,7 +10,7 @@ import {
   AppButton,
   DateField,
   EmptyState,
-  LoadingScreen,
+  ContentSkeleton,
   Pill,
   Screen,
   Surface,
@@ -119,7 +119,7 @@ export default function EditExpenseScreen() {
   }
 
   if (isLoading) {
-    return <LoadingScreen message="Loading expense..." />;
+    return <ContentSkeleton />;
   }
 
   if (expenseError) {

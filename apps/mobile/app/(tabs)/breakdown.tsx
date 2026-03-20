@@ -9,10 +9,10 @@ import { useUserBreakdown } from '@/hooks/use-dashboard';
 import { useGroup } from '@/hooks/use-groups';
 import { useMarkPayment } from '@/hooks/use-expenses';
 import {
+  BreakdownSkeleton,
   EmptyState,
   HeroPanel,
   ListRowCard,
-  LoadingScreen,
   Pill,
   Screen,
   StatCard,
@@ -118,7 +118,7 @@ export default function BreakdownScreen() {
   }
 
   if (isLoading || !group) {
-    return <LoadingScreen message="Loading breakdown..." />;
+    return <BreakdownSkeleton />;
   }
 
   return (

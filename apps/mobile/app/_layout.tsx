@@ -1,6 +1,6 @@
 import '../global.css';
-import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Text, View } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Animated, Text, View } from 'react-native';
 import {
   Stack,
   useRootNavigationState,
@@ -21,6 +21,33 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Constants from 'expo-constants';
 import { useAuthStore } from '@/stores/auth';
 import { getErrorMessage } from '@/lib/errors';
+
+/* Minimal shimmer skeleton for the root bootstrap screen. Kept inline to avoid
+   importing the full ui.tsx module before the app is ready. */
+function BootstrapSkeleton() {
+  const opacity = React.useRef(new Animated.Value(0.4)).current;
+
+  React.useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(opacity, { toValue: 1, duration: 1000, useNativeDriver: true }),
+        Animated.timing(opacity, { toValue: 0.4, duration: 1000, useNativeDriver: true }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [opacity]);
+
+  return (
+    <Animated.View style={{ flex: 1, opacity, paddingTop: 60 }}>
+      <View style={{ width: '100%', height: 200, borderRadius: 32, backgroundColor: 'rgba(23,27,36,0.08)' }} />
+      <View style={{ height: 16 }} />
+      <View style={{ width: '100%', height: 130, borderRadius: 26, backgroundColor: 'rgba(23,27,36,0.08)' }} />
+      <View style={{ height: 12 }} />
+      <View style={{ width: '100%', height: 180, borderRadius: 28, backgroundColor: 'rgba(23,27,36,0.08)' }} />
+    </Animated.View>
+  );
+}
 
 type ExpoExtra = {
   supabaseUrl?: string;
@@ -45,17 +72,24 @@ function toMobileUser(user: SupabaseAuthUser | null): User | null {
     return null;
   }
 
+  const meta = user.user_metadata ?? {};
+  const fullName =
+    typeof meta.name === 'string' && meta.name
+      ? meta.name
+      : user.email?.split('@')[0] ?? 'Commune user';
+
   return {
     id: user.id,
     email: user.email ?? '',
-    name:
-      typeof user.user_metadata?.name === 'string' && user.user_metadata.name
-        ? user.user_metadata.name
-        : user.email?.split('@')[0] ?? 'Commune user',
-    avatar_url:
-      typeof user.user_metadata?.avatar_url === 'string'
-        ? user.user_metadata.avatar_url
-        : null,
+    name: fullName,
+    first_name: typeof meta.first_name === 'string' ? meta.first_name : fullName.split(' ')[0] ?? '',
+    last_name: typeof meta.last_name === 'string' ? meta.last_name : fullName.split(' ').slice(1).join(' '),
+    avatar_url: typeof meta.avatar_url === 'string' ? meta.avatar_url : null,
+    phone: typeof meta.phone === 'string' ? meta.phone : null,
+    country: typeof meta.country === 'string' ? meta.country : null,
+    payment_info: typeof meta.payment_info === 'string' ? meta.payment_info : null,
+    default_currency: typeof meta.default_currency === 'string' ? meta.default_currency : 'GBP',
+    timezone: typeof meta.timezone === 'string' ? meta.timezone : Intl.DateTimeFormat().resolvedOptions().timeZone,
     created_at: user.created_at,
   };
 }
@@ -167,8 +201,8 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <QueryClientProvider client={queryClient}>
           <StatusBar style="auto" />
-          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f5f1ea' }}>
-            <ActivityIndicator size="large" color="#2d6a4f" />
+          <View style={{ flex: 1, backgroundColor: '#f5f1ea', padding: 16 }}>
+            <BootstrapSkeleton />
           </View>
         </QueryClientProvider>
       </SafeAreaProvider>
@@ -215,6 +249,10 @@ export default function RootLayout() {
           <Stack.Screen
             name="expenses/[expenseId]/edit"
             options={{ title: 'Edit Expense', headerBackTitle: 'Back' }}
+          />
+          <Stack.Screen
+            name="activity"
+            options={{ title: 'Activity', headerBackTitle: 'Back' }}
           />
           <Stack.Screen
             name="notifications"

@@ -20,7 +20,7 @@ import {
   HeroPanel,
   InitialAvatar,
   ListRowCard,
-  LoadingScreen,
+  MembersSkeleton,
   Screen,
   StatCard,
   StatusChip,
@@ -100,7 +100,7 @@ export default function MembersScreen() {
   }
 
   if (isLoading || !group) {
-    return <LoadingScreen message="Loading members..." />;
+    return <MembersSkeleton />;
   }
 
   const isAdmin = group.members.some(

@@ -1,6 +1,8 @@
-import { type ComponentProps, type ReactNode, useState } from 'react';
+import { type ComponentProps, type ReactNode, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Animated,
+  type DimensionValue,
   Platform,
   ScrollView,
   Switch,
@@ -573,16 +575,21 @@ export function InitialAvatar({
     .map((part) => part.charAt(0).toUpperCase())
     .join('');
 
+  const fontSize = size <= 28 ? 10 : size <= 36 ? 13 : 18;
+
   return (
     <View
       className="items-center justify-center rounded-full bg-[#1f2330]"
       style={{ height: size, width: size }}
     >
-      <Text className="text-lg font-semibold text-white">{label || 'C'}</Text>
+      <Text style={{ fontSize, fontWeight: '600', color: '#FFFFFF' }}>{label || 'C'}</Text>
     </View>
   );
 }
 
+/**
+ * @deprecated Use screen-specific skeleton components instead (e.g. DashboardSkeleton, ExpenseListSkeleton).
+ */
 export function LoadingScreen({ message }: { message: string }) {
   return (
     <Screen scroll={false}>
@@ -590,6 +597,212 @@ export function LoadingScreen({ message }: { message: string }) {
         <ActivityIndicator size="large" color="#2d6a4f" />
         <Text className="mt-4 text-sm text-[#667085]">{message}</Text>
       </View>
+    </Screen>
+  );
+}
+
+/* ---------------------------------------------------------------------------
+ * Shimmer / Skeleton loading primitives
+ * --------------------------------------------------------------------------- */
+
+const SKELETON_BG = 'rgba(23,27,36,0.08)';
+
+/** Pulsing opacity wrapper for skeleton layouts. */
+export function Shimmer({ children }: { children: ReactNode }) {
+  const opacity = useRef(new Animated.Value(0.4)).current;
+
+  useEffect(() => {
+    const animation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(opacity, {
+          toValue: 1,
+          duration: 1000,
+          easing: (t: number) => t * t * (3 - 2 * t), // ease-in-out
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacity, {
+          toValue: 0.4,
+          duration: 1000,
+          easing: (t: number) => t * t * (3 - 2 * t),
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    animation.start();
+    return () => animation.stop();
+  }, [opacity]);
+
+  return <Animated.View style={{ opacity }}>{children}</Animated.View>;
+}
+
+/** Rounded rectangle placeholder block. */
+export function SkeletonBox({
+  width,
+  height,
+  radius = 12,
+}: {
+  width: DimensionValue;
+  height: number;
+  radius?: number;
+  className?: string;
+}) {
+  return (
+    <View
+      style={{
+        width,
+        height,
+        borderRadius: radius,
+        backgroundColor: SKELETON_BG,
+      }}
+    />
+  );
+}
+
+/** Single text-line placeholder. */
+export function SkeletonLine({ width = '100%' }: { width?: DimensionValue }) {
+  return (
+    <View
+      style={{
+        width,
+        height: 14,
+        borderRadius: 7,
+        backgroundColor: SKELETON_BG,
+      }}
+    />
+  );
+}
+
+/* ---------------------------------------------------------------------------
+ * Screen-specific skeleton layouts
+ * --------------------------------------------------------------------------- */
+
+/** Dashboard skeleton -- hero + stats + chart + expense rows. */
+export function DashboardSkeleton() {
+  return (
+    <Screen>
+      <Shimmer>
+        <SkeletonBox width="100%" height={200} radius={32} />
+        <View style={{ height: 16 }} />
+        <View className="flex-row" style={{ gap: 12 }}>
+          <SkeletonBox width="48%" height={130} radius={26} />
+          <SkeletonBox width="48%" height={130} radius={26} />
+        </View>
+        <View style={{ height: 12 }} />
+        <SkeletonBox width="100%" height={180} radius={28} />
+        <View style={{ height: 16 }} />
+        <SkeletonLine width={120} />
+        <View style={{ height: 12 }} />
+        {[1, 2, 3].map((i) => (
+          <View key={i} style={{ marginBottom: 12 }}>
+            <SkeletonBox width="100%" height={80} radius={24} />
+          </View>
+        ))}
+      </Shimmer>
+    </Screen>
+  );
+}
+
+/** Expenses list skeleton -- hero + filter pills + expense rows. */
+export function ExpenseListSkeleton() {
+  return (
+    <Screen>
+      <Shimmer>
+        <SkeletonBox width="100%" height={200} radius={32} />
+        <View style={{ height: 16 }} />
+        <View className="flex-row" style={{ gap: 8 }}>
+          {[60, 80, 70, 90].map((w, i) => (
+            <SkeletonBox key={i} width={w} height={36} radius={18} />
+          ))}
+        </View>
+        <View style={{ height: 16 }} />
+        {[1, 2, 3, 4, 5].map((i) => (
+          <View key={i} style={{ marginBottom: 12 }}>
+            <SkeletonBox width="100%" height={80} radius={24} />
+          </View>
+        ))}
+      </Shimmer>
+    </Screen>
+  );
+}
+
+/** Breakdown skeleton -- hero + month pills + stats + breakdown items. */
+export function BreakdownSkeleton() {
+  return (
+    <Screen>
+      <Shimmer>
+        <SkeletonBox width="100%" height={200} radius={32} />
+        <View style={{ height: 16 }} />
+        <View className="flex-row" style={{ gap: 8 }}>
+          {[50, 50, 50, 50, 50, 50].map((w, i) => (
+            <SkeletonBox key={i} width={w} height={36} radius={18} />
+          ))}
+        </View>
+        <View style={{ height: 16 }} />
+        <View className="flex-row" style={{ gap: 12 }}>
+          <SkeletonBox width="48%" height={130} radius={26} />
+          <SkeletonBox width="48%" height={130} radius={26} />
+        </View>
+        <View style={{ height: 12 }} />
+        {[1, 2, 3].map((i) => (
+          <View key={i} style={{ marginBottom: 12 }}>
+            <SkeletonBox width="100%" height={90} radius={24} />
+          </View>
+        ))}
+      </Shimmer>
+    </Screen>
+  );
+}
+
+/** Members skeleton -- hero + stat cards + member rows. */
+export function MembersSkeleton() {
+  return (
+    <Screen>
+      <Shimmer>
+        <SkeletonBox width="100%" height={180} radius={32} />
+        <View style={{ height: 16 }} />
+        <View className="flex-row" style={{ gap: 12 }}>
+          <SkeletonBox width="48%" height={100} radius={26} />
+          <SkeletonBox width="48%" height={100} radius={26} />
+        </View>
+        <View style={{ height: 16 }} />
+        {[1, 2, 3, 4].map((i) => (
+          <View key={i} style={{ marginBottom: 12 }}>
+            <SkeletonBox width="100%" height={72} radius={20} />
+          </View>
+        ))}
+      </Shimmer>
+    </Screen>
+  );
+}
+
+/** Settings skeleton -- hero + profile field placeholders. */
+export function SettingsSkeleton() {
+  return (
+    <Screen>
+      <Shimmer>
+        <SkeletonBox width="100%" height={200} radius={32} />
+        <View style={{ height: 16 }} />
+        {[1, 2, 3, 4].map((i) => (
+          <View key={i} style={{ marginBottom: 16 }}>
+            <SkeletonLine width={80} />
+            <View style={{ height: 8 }} />
+            <SkeletonBox width="100%" height={52} radius={16} />
+          </View>
+        ))}
+      </Shimmer>
+    </Screen>
+  );
+}
+
+/** Generic content skeleton for smaller/simpler screens. */
+export function ContentSkeleton() {
+  return (
+    <Screen>
+      <Shimmer>
+        <SkeletonBox width="100%" height={200} radius={32} />
+        <View style={{ height: 16 }} />
+        <SkeletonBox width="100%" height={300} radius={28} />
+      </Shimmer>
     </Screen>
   );
 }

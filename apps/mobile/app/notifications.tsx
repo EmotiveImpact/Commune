@@ -5,9 +5,9 @@ import { useAuthStore } from '@/stores/auth';
 import { useGroupStore } from '@/stores/group';
 import { useNotifications } from '@/hooks/use-notifications';
 import {
+  ContentSkeleton,
   EmptyState,
   HeroPanel,
-  LoadingScreen,
   Screen,
   Surface,
 } from '@/components/ui';
@@ -82,7 +82,7 @@ export default function NotificationsScreen() {
   }
 
   if (isLoading) {
-    return <LoadingScreen message="Loading notifications..." />;
+    return <ContentSkeleton />;
   }
 
   const items = notifications ?? [];

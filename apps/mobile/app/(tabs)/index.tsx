@@ -11,10 +11,10 @@ import { useGroup, usePendingInvites, useUserGroups } from '@/hooks/use-groups';
 import { useRecurringGenerationOnMount } from '@/hooks/use-recurring';
 import {
   AppButton,
+  DashboardSkeleton,
   EmptyState,
   HeroPanel,
   ListRowCard,
-  LoadingScreen,
   Screen,
   StatusChip,
   Surface,
@@ -237,7 +237,7 @@ export default function DashboardScreen() {
   }, [expenses, month]);
 
   if (groupsLoading || invitesLoading || groupLoading || statsLoading || expensesLoading) {
-    return <LoadingScreen message="Loading dashboard..." />;
+    return <DashboardSkeleton />;
   }
 
   if (loadError) {

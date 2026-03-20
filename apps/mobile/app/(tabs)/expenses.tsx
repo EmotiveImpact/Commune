@@ -9,9 +9,9 @@ import { useGroupExpenses } from '@/hooks/use-expenses';
 import {
   AppButton,
   EmptyState,
+  ExpenseListSkeleton,
   HeroPanel,
   ListRowCard,
-  LoadingScreen,
   Pill,
   Screen,
   StatCard,
@@ -109,7 +109,7 @@ export default function ExpensesScreen() {
   }
 
   if (isLoading || groupLoading || !group) {
-    return <LoadingScreen message="Loading expenses..." />;
+    return <ExpenseListSkeleton />;
   }
 
   return (

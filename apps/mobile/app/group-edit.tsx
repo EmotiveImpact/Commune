@@ -8,7 +8,7 @@ import {
   AppButton,
   EmptyState,
   HeroPanel,
-  LoadingScreen,
+  ContentSkeleton,
   Pill,
   Screen,
   Surface,
@@ -42,7 +42,7 @@ export default function GroupEditScreen() {
       setName(group.name);
       setType(group.type ?? 'household');
       setCurrency(group.currency ?? 'GBP');
-      setBillingCycle(group.billing_cycle ?? 'monthly');
+      setBillingCycle((group as unknown as Record<string, unknown>).billing_cycle as string ?? 'monthly');
     }
   }, [group]);
 
@@ -75,7 +75,7 @@ export default function GroupEditScreen() {
   }
 
   if (isLoading || !group) {
-    return <LoadingScreen message="Loading group settings..." />;
+    return <ContentSkeleton />;
   }
 
   const isAdmin = group.members.some(

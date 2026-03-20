@@ -13,8 +13,8 @@ import {
   EmptyState,
   HeroPanel,
   InitialAvatar,
-  LoadingScreen,
   Screen,
+  SettingsSkeleton,
   Surface,
   TextField,
   ToggleRow,
@@ -176,7 +176,7 @@ export default function SettingsScreen() {
   }
 
   if (isLoading || subscriptionLoading || !resolvedProfile) {
-    return <LoadingScreen message="Loading settings..." />;
+    return <SettingsSkeleton />;
   }
 
   return (
@@ -351,6 +351,24 @@ export default function SettingsScreen() {
             />
           </View>
         )}
+      </Surface>
+
+      <Surface className="mb-4">
+        <Text className="text-lg font-semibold text-[#171b24]">Quick links</Text>
+        <View className="mt-4" style={{ gap: 10 }}>
+          <AppButton
+            label="Activity log"
+            variant="secondary"
+            icon="time-outline"
+            onPress={() => router.push('/activity')}
+          />
+          <AppButton
+            label="Edit group"
+            variant="secondary"
+            icon="create-outline"
+            onPress={() => router.push('/group-edit')}
+          />
+        </View>
       </Surface>
 
       <AppButton

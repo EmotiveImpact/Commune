@@ -16,10 +16,10 @@ import {
 import { GroupSwitcher } from '@/components/group-switcher';
 import {
   AppButton,
+  ContentSkeleton,
   EmptyState,
   HeroPanel,
   ListRowCard,
-  LoadingScreen,
   Screen,
   StatCard,
   StatusChip,
@@ -73,7 +73,7 @@ export default function ExpenseDetailScreen() {
   }
 
   if (isLoading) {
-    return <LoadingScreen message="Loading expense..." />;
+    return <ContentSkeleton />;
   }
 
   if (loadError) {

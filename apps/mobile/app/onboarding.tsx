@@ -16,7 +16,7 @@ import { usePlanLimits } from '@/hooks/use-plan-limits';
 import {
   AppButton,
   EmptyState,
-  LoadingScreen,
+  ContentSkeleton,
   Pill,
   Screen,
   Surface,
@@ -164,7 +164,7 @@ export default function OnboardingScreen() {
   }
 
   if (groupsLoading || invitesLoading) {
-    return <LoadingScreen message="Preparing your workspace..." />;
+    return <ContentSkeleton />;
   }
 
   if (loadError) {

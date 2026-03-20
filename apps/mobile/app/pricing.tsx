@@ -6,9 +6,9 @@ import { useAuthStore } from '@/stores/auth';
 import { useCheckout, useSubscription } from '@/hooks/use-subscriptions';
 import {
   AppButton,
+  ContentSkeleton,
   EmptyState,
   HeroPanel,
-  LoadingScreen,
   Screen,
   StatusChip,
   Surface,
@@ -85,7 +85,7 @@ export default function PricingScreen() {
   }
 
   if (isLoading) {
-    return <LoadingScreen message="Loading pricing..." />;
+    return <ContentSkeleton />;
   }
 
   const currentPlan = subscription?.plan;

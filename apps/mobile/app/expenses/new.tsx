@@ -11,9 +11,9 @@ import { useCreateExpense } from '@/hooks/use-expenses';
 import { useGroup } from '@/hooks/use-groups';
 import {
   AppButton,
+  ContentSkeleton,
   DateField,
   EmptyState,
-  LoadingScreen,
   Pill,
   Screen,
   Surface,
@@ -243,7 +243,7 @@ export default function NewExpenseScreen() {
   }
 
   if (isLoading || !group) {
-    return <LoadingScreen message="Loading expense form..." />;
+    return <ContentSkeleton />;
   }
 
   return (
