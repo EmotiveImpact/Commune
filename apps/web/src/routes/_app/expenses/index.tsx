@@ -2,21 +2,28 @@ import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import {
   Badge,
   Button,
+  Checkbox,
   Group,
+  Modal,
   Select,
   Stack,
   Table,
   Text,
 } from '@mantine/core';
-import { IconDownload, IconPlus, IconReceipt } from '@tabler/icons-react';
-import { useMemo, useState } from 'react';
+import { notifications } from '@mantine/notifications';
+import { IconDownload, IconPlus, IconReceipt, IconTrash } from '@tabler/icons-react';
+import { DatePickerInput, DatesProvider } from '@mantine/dates';
+import 'dayjs/locale/en-gb';
+import { useEffect, useMemo, useState } from 'react';
 import { ExpenseCategory } from '@commune/types';
-import { formatCurrency, formatDate, isOverdue } from '@commune/utils';
+import { formatCurrency, formatDate, getMonthKey, isOverdue } from '@commune/utils';
+import { generateExpenseCSV, downloadCSV } from '../../../utils/export-csv';
 import { useGroupStore } from '../../../stores/group';
 import { useSearchStore } from '../../../stores/search';
 import { useGroup } from '../../../hooks/use-groups';
-import { useGroupExpenses } from '../../../hooks/use-expenses';
-import { PageLoader } from '../../../components/page-loader';
+import { useGroupExpenses, useBatchArchive } from '../../../hooks/use-expenses';
+import { useAuthStore } from '../../../stores/auth';
+import { ExpenseListSkeleton } from '../../../components/page-skeleton';
 import { EmptyState } from '../../../components/empty-state';
 import { PageHeader } from '../../../components/page-header';
 
@@ -33,6 +40,22 @@ const categoryOptions = [
     label: key.charAt(0) + key.slice(1).toLowerCase().replace(/_/g, ' '),
   })),
 ];
+
+function getMonthOptions() {
+  const options: { value: string; label: string }[] = [];
+  const now = new Date();
+  for (let i = 0; i < 12; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const key = getMonthKey(d);
+    const label = d.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+    options.push({ value: key, label });
+  }
+  return [
+    ...options,
+    { value: 'all', label: 'All time' },
+    { value: 'custom', label: 'Custom range...' },
+  ];
+}
 
 function formatCategoryLabel(category: string) {
   return category
@@ -51,22 +74,51 @@ function ExpensesPage() {
   const [categoryFilter, setCategoryFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [page, setPage] = useState(0);
+  const [datePreset, setDatePreset] = useState<string | null>(null);
+  const [customFrom, setCustomFrom] = useState<string | null>(null);
+  const [customTo, setCustomTo] = useState<string | null>(null);
+
+  // Bulk actions
+  const { user } = useAuthStore();
+  const batchArchive = useBatchArchive(activeGroupId ?? '');
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [archiveModalOpen, setArchiveModalOpen] = useState(false);
+
+  const isAdmin = group?.members?.some(
+    (m: { user_id: string; role: string }) => m.user_id === user?.id && m.role === 'admin',
+  ) ?? false;
+
+  const monthFilter = datePreset && datePreset !== 'all' && datePreset !== 'custom' ? datePreset : undefined;
+  const expenseFilters = {
+    ...(categoryFilter ? { category: categoryFilter } : {}),
+    ...(monthFilter ? { month: monthFilter } : {}),
+  };
+  const hasFilters = Object.keys(expenseFilters).length > 0;
 
   const { data: expenses, isLoading } = useGroupExpenses(
     activeGroupId ?? '',
-    categoryFilter ? { category: categoryFilter } : undefined,
+    hasFilters ? expenseFilters : undefined,
   );
 
   const searchFiltered = useMemo(() => {
     if (!expenses) return [];
-    if (!searchQuery) return expenses;
-    const q = searchQuery.toLowerCase();
-    return expenses.filter(
-      (expense) =>
-        expense.title.toLowerCase().includes(q)
-        || expense.category.toLowerCase().includes(q),
-    );
-  }, [expenses, searchQuery]);
+    let result = expenses;
+
+    // Custom date range (client-side)
+    if (datePreset === 'custom' && customFrom && customTo) {
+      result = result.filter((e) => e.due_date >= customFrom && e.due_date <= customTo);
+    }
+
+    // Search query
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(
+        (e) => e.title.toLowerCase().includes(q) || e.category.toLowerCase().includes(q),
+      );
+    }
+
+    return result;
+  }, [expenses, searchQuery, datePreset, customFrom, customTo]);
 
   const counts = useMemo(() => {
     let openCount = 0;
@@ -115,33 +167,58 @@ function ExpensesPage() {
     [searchFiltered],
   );
 
+  // Clear selection when filters change
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [categoryFilter, statusFilter, datePreset, customFrom, customTo, searchQuery, page]);
+
   function handleExportCSV() {
     if (!filtered || filtered.length === 0) return;
+    const csv = generateExpenseCSV(filtered);
+    downloadCSV(csv, `expenses-${new Date().toISOString().slice(0, 10)}.csv`);
+  }
 
-    const headers = ['Title', 'Category', 'Due Date', 'Participants', 'Status', 'Amount'];
-    const rows = filtered.map((expense) => {
-      const paidCount = expense.payment_records?.filter((p) => p.status !== 'unpaid').length ?? 0;
-      const totalParticipants = expense.participants?.length ?? 0;
-      const isSettled = totalParticipants > 0 && paidCount === totalParticipants;
-      const status = isSettled ? 'Settled' : isOverdue(expense.due_date) ? 'Overdue' : 'Open';
-      return [
-        `"${expense.title.replace(/"/g, '""')}"`,
-        formatCategoryLabel(expense.category),
-        expense.due_date,
-        `${paidCount}/${totalParticipants}`,
-        status,
-        expense.amount.toFixed(2),
-      ].join(',');
+  function toggleSelectOne(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
     });
+  }
 
-    const csv = [headers.join(','), ...rows].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `expenses-${new Date().toISOString().slice(0, 10)}.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
+  function toggleSelectAll() {
+    if (selectedIds.size === paginatedExpenses.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(paginatedExpenses.map((e) => e.id)));
+    }
+  }
+
+  async function handleBulkArchive() {
+    try {
+      await batchArchive.mutateAsync(Array.from(selectedIds));
+      setSelectedIds(new Set());
+      setArchiveModalOpen(false);
+      notifications.show({
+        title: 'Expenses archived',
+        message: `${selectedIds.size} expense${selectedIds.size > 1 ? 's' : ''} archived successfully.`,
+        color: 'green',
+      });
+    } catch (err) {
+      notifications.show({
+        title: 'Archive failed',
+        message: err instanceof Error ? err.message : 'Something went wrong',
+        color: 'red',
+      });
+    }
+  }
+
+  function handleBulkExport() {
+    const selected = filtered.filter((e) => selectedIds.has(e.id));
+    if (selected.length === 0) return;
+    const csv = generateExpenseCSV(selected);
+    downloadCSV(csv, `expenses-selected-${new Date().toISOString().slice(0, 10)}.csv`);
   }
 
   if (!activeGroupId) {
@@ -168,15 +245,7 @@ function ExpensesPage() {
         title="Expenses"
         subtitle={`${searchFiltered.length} expenses · ${formatCurrency(totalAmount, group?.currency)} tracked`}
       >
-        <Group gap="sm" wrap="wrap">
-          <Select
-            placeholder="Category"
-            data={categoryOptions}
-            value={categoryFilter}
-            onChange={(value) => { setCategoryFilter(value ?? ''); setPage(0); }}
-            clearable
-            w={180}
-          />
+        <Group gap="sm">
           <Button component={Link} to="/expenses/new" leftSection={<IconPlus size={16} />}>
             Add expense
           </Button>
@@ -185,6 +254,54 @@ function ExpensesPage() {
           </Button>
         </Group>
       </PageHeader>
+
+      <Group gap="sm" wrap="wrap">
+        <Select
+          placeholder="Category"
+          data={categoryOptions}
+          value={categoryFilter}
+          onChange={(value) => { setCategoryFilter(value ?? ''); setPage(0); }}
+          clearable
+          w={180}
+        />
+        <Select
+          placeholder="Period"
+          data={getMonthOptions()}
+          value={datePreset}
+          onChange={(value) => {
+            setDatePreset(value);
+            if (value !== 'custom') {
+              setCustomFrom(null);
+              setCustomTo(null);
+            }
+            setPage(0);
+          }}
+          clearable
+          w={180}
+        />
+        {datePreset === 'custom' && (
+          <DatesProvider settings={{ locale: 'en-gb' }}>
+            <DatePickerInput
+              placeholder="From"
+              value={customFrom}
+              onChange={(v) => { setCustomFrom(v); setPage(0); }}
+              valueFormat="DD MMM YYYY"
+              w={160}
+              size="sm"
+              clearable
+            />
+            <DatePickerInput
+              placeholder="To"
+              value={customTo}
+              onChange={(v) => { setCustomTo(v); setPage(0); }}
+              valueFormat="DD MMM YYYY"
+              w={160}
+              size="sm"
+              clearable
+            />
+          </DatesProvider>
+        )}
+      </Group>
 
       <div className="commune-filter-chips">
         {chipData.map((chip) => (
@@ -212,7 +329,7 @@ function ExpensesPage() {
       )}
 
       {isLoading ? (
-        <PageLoader message="Loading expenses..." />
+        <ExpenseListSkeleton />
       ) : filtered.length === 0 ? (
         <EmptyState
           icon={IconReceipt}
@@ -232,6 +349,16 @@ function ExpensesPage() {
             <Table verticalSpacing="md" horizontalSpacing="sm">
               <Table.Thead>
                 <Table.Tr>
+                  {isAdmin && (
+                    <Table.Th w={40}>
+                      <Checkbox
+                        checked={paginatedExpenses.length > 0 && selectedIds.size === paginatedExpenses.length}
+                        indeterminate={selectedIds.size > 0 && selectedIds.size < paginatedExpenses.length}
+                        onChange={toggleSelectAll}
+                        aria-label="Select all expenses"
+                      />
+                    </Table.Th>
+                  )}
                   <Table.Th>Expense</Table.Th>
                   <Table.Th>Category</Table.Th>
                   <Table.Th>Due date</Table.Th>
@@ -248,7 +375,19 @@ function ExpensesPage() {
                   const settled = totalParticipants > 0 && paidCount === totalParticipants;
 
                   return (
-                    <Table.Tr key={expense.id}>
+                    <Table.Tr
+                      key={expense.id}
+                      style={selectedIds.has(expense.id) ? { background: 'rgba(150, 232, 95, 0.04)' } : undefined}
+                    >
+                      {isAdmin && (
+                        <Table.Td>
+                          <Checkbox
+                            checked={selectedIds.has(expense.id)}
+                            onChange={() => toggleSelectOne(expense.id)}
+                            aria-label={`Select ${expense.title}`}
+                          />
+                        </Table.Td>
+                      )}
                       <Table.Td>
                         <Stack gap={4}>
                           <Text component={Link} to={`/expenses/${expense.id}`} fw={600} style={{ textDecoration: 'none' }}>
@@ -315,6 +454,68 @@ function ExpensesPage() {
           )}
         </>
       )}
+
+      {/* Floating bulk action bar */}
+      {isAdmin && selectedIds.size > 0 && (
+        <div className="commune-bulk-bar">
+          <Text size="sm" fw={600} c="green">
+            {selectedIds.size} selected
+          </Text>
+          <Group gap="xs">
+            <Button
+              size="xs"
+              variant="light"
+              color="red"
+              leftSection={<IconTrash size={14} />}
+              onClick={() => setArchiveModalOpen(true)}
+            >
+              Archive
+            </Button>
+            <Button
+              size="xs"
+              variant="default"
+              leftSection={<IconDownload size={14} />}
+              onClick={handleBulkExport}
+            >
+              Export
+            </Button>
+            <Button
+              size="xs"
+              variant="subtle"
+              color="gray"
+              onClick={() => setSelectedIds(new Set())}
+            >
+              Clear
+            </Button>
+          </Group>
+        </div>
+      )}
+
+      {/* Bulk archive confirmation modal */}
+      <Modal
+        opened={archiveModalOpen}
+        onClose={() => setArchiveModalOpen(false)}
+        title="Archive expenses"
+        centered
+      >
+        <Stack gap="md">
+          <Text size="sm">
+            Archive {selectedIds.size} expense{selectedIds.size > 1 ? 's' : ''}? This will remove them from the active list.
+          </Text>
+          <Group justify="flex-end">
+            <Button variant="default" onClick={() => setArchiveModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              color="red"
+              onClick={handleBulkArchive}
+              loading={batchArchive.isPending}
+            >
+              Archive
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
     </Stack>
   );
 }
