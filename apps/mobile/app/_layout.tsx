@@ -262,6 +262,14 @@ export default function RootLayout() {
             name="pricing"
             options={{ title: 'Pricing', headerBackTitle: 'Back' }}
           />
+          <Stack.Screen
+            name="recurring"
+            options={{ title: 'Recurring', headerBackTitle: 'Back' }}
+          />
+          <Stack.Screen
+            name="analytics"
+            options={{ title: 'Analytics', headerBackTitle: 'Back' }}
+          />
         </Stack>
       </QueryClientProvider>
     </SafeAreaProvider>
