@@ -176,3 +176,12 @@ export async function archiveExpense(expenseId: string) {
   if (error) throw error;
   return data;
 }
+
+export async function batchArchiveExpenses(ids: string[]): Promise<void> {
+  if (ids.length === 0) return;
+  const { error } = await supabase
+    .from('expenses')
+    .update({ is_active: false, updated_at: new Date().toISOString() })
+    .in('id', ids);
+  if (error) throw error;
+}
