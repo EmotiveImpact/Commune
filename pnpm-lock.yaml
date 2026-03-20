@@ -126,6 +126,9 @@ importers:
       '@mantine/core':
         specifier: ^9.0.0-alpha.0
         version: 9.0.0-alpha.6(@mantine/hooks@9.0.0-alpha.6(react@19.2.4))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@mantine/dates':
+        specifier: 9.0.0-alpha.6
+        version: 9.0.0-alpha.6(@mantine/core@9.0.0-alpha.6(@mantine/hooks@9.0.0-alpha.6(react@19.2.4))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@mantine/hooks@9.0.0-alpha.6(react@19.2.4))(dayjs@1.11.20)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@mantine/form':
         specifier: ^9.0.0-alpha.0
         version: 9.0.0-alpha.6(react@19.2.4)
@@ -144,6 +147,9 @@ importers:
       '@tanstack/react-router':
         specifier: ^1
         version: 1.167.4(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      dayjs:
+        specifier: ^1.11.20
+        version: 1.11.20
       react:
         specifier: ^19
         version: 19.2.4
@@ -1259,6 +1265,15 @@ packages:
     resolution: {integrity: sha512-sU1aGtLd9kJm3Lkcb2CKamqTK8YMKD31iioGAUbLXtCZc3O6JvXUBVRGT30STGiAwL4W7mxH0xGz5xsYf93FGQ==}
     peerDependencies:
       '@mantine/hooks': 9.0.0-alpha.6
+      react: ^19.2.0
+      react-dom: ^19.2.0
+
+  '@mantine/dates@9.0.0-alpha.6':
+    resolution: {integrity: sha512-sM3mxC+EbKlM3giK49Z44UeHCkWt73gusqEbMTwiRn9aaSARzBYUIeuOhrWRBKeZ1BNQ31M++uELdUQzLpnXvw==}
+    peerDependencies:
+      '@mantine/core': 9.0.0-alpha.6
+      '@mantine/hooks': 9.0.0-alpha.6
+      dayjs: '>=1.0.0'
       react: ^19.2.0
       react-dom: ^19.2.0
 
@@ -2483,6 +2498,9 @@ packages:
   d3-timer@3.0.1:
     resolution: {integrity: sha512-ndfJ/JxxMd3nw31uyKoY2naivF+r29V+Lc0svZxe1JvvIRmi8hUsrMvdOwgS1o6uBHmiz91geQ0ylPP0aj1VUA==}
     engines: {node: '>=12'}
+
+  dayjs@1.11.20:
+    resolution: {integrity: sha512-YbwwqR/uYpeoP4pu043q+LTDLFBLApUP6VxRihdfNTqu4ubqMlGDLd6ErXhEgsyvY0K6nCs7nggYumAN+9uEuQ==}
 
   debug@2.6.9:
     resolution: {integrity: sha512-bC7ElrdJaJnPbAP+1EotYvqZsb3ecl5wi6Bfi6BJTUcNowp6cvspg0jXznRTKDjm/E7AdgFBVeAPVMNcKGsHMA==}
@@ -5866,6 +5884,15 @@ snapshots:
     transitivePeerDependencies:
       - '@types/react'
 
+  '@mantine/dates@9.0.0-alpha.6(@mantine/core@9.0.0-alpha.6(@mantine/hooks@9.0.0-alpha.6(react@19.2.4))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@mantine/hooks@9.0.0-alpha.6(react@19.2.4))(dayjs@1.11.20)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
+    dependencies:
+      '@mantine/core': 9.0.0-alpha.6(@mantine/hooks@9.0.0-alpha.6(react@19.2.4))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@mantine/hooks': 9.0.0-alpha.6(react@19.2.4)
+      clsx: 2.1.1
+      dayjs: 1.11.20
+      react: 19.2.4
+      react-dom: 19.2.4(react@19.2.4)
+
   '@mantine/form@9.0.0-alpha.6(react@19.2.4)':
     dependencies:
       '@standard-schema/spec': 1.1.0
@@ -7216,6 +7243,8 @@ snapshots:
       d3-array: 3.2.4
 
   d3-timer@3.0.1: {}
+
+  dayjs@1.11.20: {}
 
   debug@2.6.9:
     dependencies:

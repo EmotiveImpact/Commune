@@ -5,6 +5,7 @@ import { QueryClient } from '@tanstack/react-query';
 import { AppErrorBoundary } from '../components/error-boundary';
 
 import '@mantine/core/styles.css';
+import '@mantine/dates/styles.css';
 import '@mantine/notifications/styles.css';
 
 export interface RouterContext {
