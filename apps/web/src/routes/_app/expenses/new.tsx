@@ -25,7 +25,7 @@ import { formatCurrency } from '@commune/utils';
 import { useGroupStore } from '../../../stores/group';
 import { useGroup } from '../../../hooks/use-groups';
 import { useCreateExpense } from '../../../hooks/use-expenses';
-import { PageLoader } from '../../../components/page-loader';
+import { ExpenseFormSkeleton } from '../../../components/page-skeleton';
 import { EmptyState } from '../../../components/empty-state';
 import { PageHeader } from '../../../components/page-header';
 
@@ -85,7 +85,7 @@ function AddExpensePage() {
   }
 
   if (isLoading) {
-    return <PageLoader message="Loading expense form..." />;
+    return <ExpenseFormSkeleton />;
   }
 
   const selectedParticipants = form.getValues().participant_ids;

@@ -40,7 +40,7 @@ import { useGroupStore } from '../../../stores/group';
 import { useGroup } from '../../../hooks/use-groups';
 import { useAuthStore } from '../../../stores/auth';
 import { EmptyState } from '../../../components/empty-state';
-import { PageLoader } from '../../../components/page-loader';
+import { ExpenseDetailSkeleton } from '../../../components/page-skeleton';
 import { PageHeader } from '../../../components/page-header';
 
 export const Route = createFileRoute('/_app/expenses/$expenseId')({
@@ -69,7 +69,7 @@ function ExpenseDetailPage() {
   const [pendingPayment, setPendingPayment] = useState<{ userId: string } | null>(null);
 
   if (isLoading) {
-    return <PageLoader message="Loading expense..." />;
+    return <ExpenseDetailSkeleton />;
   }
 
   if (!expense) {

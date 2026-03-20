@@ -26,7 +26,7 @@ import type { ActivityEntry } from '@commune/api';
 import { useGroupStore } from '../../stores/group';
 import { useGroup } from '../../hooks/use-groups';
 import { useActivityLog } from '../../hooks/use-activity';
-import { PageLoader } from '../../components/page-loader';
+import { ActivitySkeleton } from '../../components/page-skeleton';
 import { EmptyState } from '../../components/empty-state';
 import { PageHeader } from '../../components/page-header';
 
@@ -196,7 +196,7 @@ function ActivityPage() {
   }
 
   if (isLoading || groupLoading) {
-    return <PageLoader message="Loading activity..." />;
+    return <ActivitySkeleton />;
   }
 
   const filterChips: { key: TypeFilter; label: string }[] = [

@@ -19,7 +19,7 @@ import { createGroupSchema, inviteMemberSchema, type CreateGroupInput } from '@c
 import { useAcceptInvite, useCreateGroup, useInviteMember, usePendingInvites, useUserGroups } from '../../hooks/use-groups';
 import { useGroupStore } from '../../stores/group';
 import { GroupType } from '@commune/types';
-import { PageLoader } from '../../components/page-loader';
+import { OnboardingSkeleton } from '../../components/page-skeleton';
 
 export const Route = createFileRoute('/_app/onboarding')({
   component: OnboardingPage,
@@ -123,7 +123,7 @@ function OnboardingPage() {
   }
 
   if (groupsLoading || invitesLoading) {
-    return <PageLoader message="Loading onboarding..." h="80vh" />;
+    return <OnboardingSkeleton />;
   }
 
   const inviteOptions = pendingInvites ?? [];

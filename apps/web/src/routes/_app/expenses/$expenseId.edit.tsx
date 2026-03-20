@@ -17,7 +17,7 @@ import { ExpenseCategory } from '@commune/types';
 import { useGroupStore } from '../../../stores/group';
 import { useGroup } from '../../../hooks/use-groups';
 import { useExpenseDetail, useUpdateExpense } from '../../../hooks/use-expenses';
-import { PageLoader } from '../../../components/page-loader';
+import { ExpenseFormSkeleton } from '../../../components/page-skeleton';
 import { EmptyState } from '../../../components/empty-state';
 import { PageHeader } from '../../../components/page-header';
 
@@ -89,7 +89,7 @@ function EditExpensePage() {
   }
 
   if (isLoading) {
-    return <PageLoader message="Loading expense..." />;
+    return <ExpenseFormSkeleton />;
   }
 
   if (!expense) {

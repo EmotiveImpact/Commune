@@ -30,7 +30,7 @@ import { useAuthStore } from '../../stores/auth';
 import { useGroup, usePendingInvites, useUserGroups } from '../../hooks/use-groups';
 import { useDashboardStats } from '../../hooks/use-dashboard';
 import { useGroupExpenses } from '../../hooks/use-expenses';
-import { PageLoader } from '../../components/page-loader';
+import { DashboardSkeleton } from '../../components/page-skeleton';
 import { useGenerateRecurring } from '../../hooks/use-recurring';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell } from 'recharts';
 
@@ -186,22 +186,14 @@ function DashboardPage() {
 
   if (!activeGroupId) {
     if (groupsLoading || invitesLoading || (groups?.length ?? 0) > 0) {
-      return <PageLoader message="Loading workspace..." />;
+      return <DashboardSkeleton />;
     }
 
-    return (
-      <PageLoader
-        message={
-          (pendingInvites?.length ?? 0) > 0
-            ? 'Opening your group invite...'
-            : 'Opening onboarding...'
-        }
-      />
-    );
+    return <DashboardSkeleton />;
   }
 
   if (groupLoading || statsLoading || expensesLoading) {
-    return <PageLoader message="Loading dashboard..." />;
+    return <DashboardSkeleton />;
   }
 
   const paidPct = stats && stats.your_share > 0

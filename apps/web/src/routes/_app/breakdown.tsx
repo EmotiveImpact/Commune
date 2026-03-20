@@ -21,7 +21,7 @@ import { useAuthStore } from '../../stores/auth';
 import { useGroup } from '../../hooks/use-groups';
 import { useUserBreakdown } from '../../hooks/use-dashboard';
 import { useMarkPayment } from '../../hooks/use-expenses';
-import { PageLoader } from '../../components/page-loader';
+import { BreakdownSkeleton } from '../../components/page-skeleton';
 import { EmptyState } from '../../components/empty-state';
 import { PageHeader } from '../../components/page-header';
 
@@ -140,7 +140,7 @@ function BreakdownPage() {
       </PageHeader>
 
       {isLoading ? (
-        <PageLoader message="Loading breakdown..." />
+        <BreakdownSkeleton />
       ) : (
         <>
           <Paper className="commune-soft-panel" p="xl">

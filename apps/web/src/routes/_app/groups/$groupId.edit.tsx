@@ -16,7 +16,7 @@ import { useEffect, useRef } from 'react';
 import { GroupType } from '@commune/types';
 import { useGroup, useUpdateGroup } from '../../../hooks/use-groups';
 import { useAuthStore } from '../../../stores/auth';
-import { PageLoader } from '../../../components/page-loader';
+import { ContentSkeleton } from '../../../components/page-skeleton';
 import { PageHeader } from '../../../components/page-header';
 import { EmptyState } from '../../../components/empty-state';
 
@@ -90,7 +90,7 @@ function EditGroupPage() {
   }, [group, form]);
 
   if (isLoading) {
-    return <PageLoader message="Loading group settings..." />;
+    return <ContentSkeleton />;
   }
 
   if (!group) {
