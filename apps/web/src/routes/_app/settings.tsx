@@ -19,6 +19,7 @@ import { notifications } from '@mantine/notifications';
 import {
   IconAlertTriangle,
   IconBell,
+  IconCamera,
   IconCoin,
   IconDeviceFloppy,
   IconExternalLink,
@@ -31,11 +32,11 @@ import {
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { updateProfileSchema } from '@commune/core';
 import { formatDate } from '@commune/utils';
-import { supabase } from '@commune/api';
+import { supabase, uploadAvatar, deleteAccount } from '@commune/api';
 import { useAuthStore } from '../../stores/auth';
 import { useProfile, useUpdateProfile } from '../../hooks/use-profile';
 import { usePortal, useSubscription } from '../../hooks/use-subscriptions';
-import { PageLoader } from '../../components/page-loader';
+import { SettingsSkeleton } from '../../components/page-skeleton';
 import { PageHeader } from '../../components/page-header';
 
 export const Route = createFileRoute('/_app/settings')({
@@ -131,6 +132,8 @@ function SettingsPage() {
   const lastHydratedProfileRef = useRef<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const resolvedProfile = useMemo(
     () => profile ?? (user ? {
@@ -204,7 +207,7 @@ function SettingsPage() {
   }, [resolvedProfile, form]);
 
   if (authLoading || (user && profileLoading && !resolvedProfile)) {
-    return <PageLoader message="Loading settings..." />;
+    return <SettingsSkeleton />;
   }
 
   if (!user) {
@@ -281,7 +284,7 @@ function SettingsPage() {
 
     setIsDeleting(true);
     try {
-      await supabase.rpc('soft_delete_account');
+      await deleteAccount();
       await supabase.auth.signOut();
       navigate({ to: '/login', replace: true });
     } catch (err) {
@@ -291,6 +294,55 @@ function SettingsPage() {
         message: err instanceof Error ? err.message : 'Something went wrong. Contact support.',
         color: 'red',
       });
+    }
+  }
+
+  async function handleAvatarUpload(file: File) {
+    if (!user) return;
+
+    const maxSize = 1 * 1024 * 1024; // 1 MB
+    if (file.size > maxSize) {
+      notifications.show({
+        title: 'File too large',
+        message: 'Please choose an image under 1 MB.',
+        color: 'red',
+      });
+      return;
+    }
+
+    if (!file.type.startsWith('image/')) {
+      notifications.show({
+        title: 'Invalid file type',
+        message: 'Please choose a JPG, PNG, or WebP image.',
+        color: 'red',
+      });
+      return;
+    }
+
+    setIsUploadingAvatar(true);
+    try {
+      const publicUrl = await uploadAvatar(user.id, file);
+      form.setFieldValue('avatar_url', publicUrl);
+
+      // Persist immediately so the avatar shows across the app
+      await updateProfile.mutateAsync({
+        userId: user.id,
+        data: { avatar_url: publicUrl },
+      });
+
+      notifications.show({
+        title: 'Profile picture updated',
+        message: 'Your new avatar is live.',
+        color: 'green',
+      });
+    } catch (err) {
+      notifications.show({
+        title: 'Upload failed',
+        message: err instanceof Error ? err.message : 'Could not upload image. Try again.',
+        color: 'red',
+      });
+    } finally {
+      setIsUploadingAvatar(false);
     }
   }
 
@@ -321,21 +373,63 @@ function SettingsPage() {
                   <Text className="commune-section-heading">Profile</Text>
                 </Group>
 
-                <Stack gap="md">
-                  <Group wrap="nowrap">
-                    <Avatar
-                      src={form.getValues().avatar_url || undefined}
-                      name={`${form.getValues().first_name} ${form.getValues().last_name}`.trim()}
-                      color="initials"
-                      size="xl"
-                    />
+                <Stack gap="lg">
+                  <Group wrap="nowrap" gap="lg">
+                    <div
+                      style={{ position: 'relative', cursor: 'pointer', flexShrink: 0 }}
+                      onClick={() => fileInputRef.current?.click()}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') fileInputRef.current?.click(); }}
+                    >
+                      <Avatar
+                        src={form.getValues().avatar_url || undefined}
+                        name={`${form.getValues().first_name} ${form.getValues().last_name}`.trim()}
+                        color="initials"
+                        size={80}
+                        style={{ opacity: isUploadingAvatar ? 0.5 : 1, transition: 'opacity 150ms' }}
+                      />
+                      <div
+                        style={{
+                          position: 'absolute',
+                          inset: 0,
+                          borderRadius: '50%',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          background: 'rgba(0,0,0,0.35)',
+                          opacity: 0,
+                          transition: 'opacity 150ms',
+                        }}
+                        className="commune-avatar-overlay"
+                      >
+                        <IconCamera size={22} color="white" />
+                      </div>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        style={{ display: 'none' }}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) void handleAvatarUpload(file);
+                          e.target.value = '';
+                        }}
+                      />
+                    </div>
+
                     <div>
                       <Text fw={600}>{resolvedProfile.email}</Text>
                       <Text size="sm" c="dimmed">
                         Member since {formatDate(resolvedProfile.created_at)}
                       </Text>
+                      <Text size="xs" c="dimmed" mt={4}>
+                        Click avatar to change. JPG, PNG, or WebP up to 1 MB.
+                      </Text>
                     </div>
                   </Group>
+
+                  <Divider />
 
                   <SimpleGrid cols={2}>
                     <TextInput
@@ -353,53 +447,25 @@ function SettingsPage() {
                     />
                   </SimpleGrid>
 
-                  <TextInput
-                    label="Phone number"
-                    placeholder="+44 7700 900000"
-                    leftSection={<IconPhone size={16} />}
-                    key={form.key('phone')}
-                    {...form.getInputProps('phone')}
-                  />
-
-                  <Select
-                    label="Country"
-                    placeholder="Select your country"
-                    data={COUNTRY_OPTIONS}
-                    key={form.key('country')}
-                    {...form.getInputProps('country')}
-                    searchable
-                    clearable
-                  />
-
-                  <TextInput
-                    label="Avatar URL"
-                    placeholder="https://example.com/avatar.jpg"
-                    key={form.key('avatar_url')}
-                    {...form.getInputProps('avatar_url')}
-                  />
+                  <SimpleGrid cols={2}>
+                    <TextInput
+                      label="Phone number"
+                      placeholder="+44 7700 900000"
+                      leftSection={<IconPhone size={16} />}
+                      key={form.key('phone')}
+                      {...form.getInputProps('phone')}
+                    />
+                    <Select
+                      label="Country"
+                      placeholder="Select your country"
+                      data={COUNTRY_OPTIONS}
+                      key={form.key('country')}
+                      {...form.getInputProps('country')}
+                      searchable
+                      clearable
+                    />
+                  </SimpleGrid>
                 </Stack>
-              </Paper>
-
-              {/* ── Payment info ── */}
-              <Paper className="commune-soft-panel" p="xl">
-                <Group gap="xs" mb="md">
-                  <IconWallet size={20} />
-                  <Text className="commune-section-heading">Payment info</Text>
-                </Group>
-                <Text size="sm" c="dimmed" mb="lg">
-                  Let group members know how to pay you. This is visible to everyone in your groups.
-                </Text>
-
-                <Textarea
-                  label="How to pay me"
-                  placeholder="e.g. Monzo: @yourname, Revolut: 07xxx, Bank: Sort 12-34-56 Acc 12345678"
-                  description="Free text — include whatever payment methods you accept"
-                  autosize
-                  minRows={2}
-                  maxRows={4}
-                  key={form.key('payment_info')}
-                  {...form.getInputProps('payment_info')}
-                />
               </Paper>
 
               {/* ── Preferences ── */}
@@ -409,68 +475,42 @@ function SettingsPage() {
                   <Text className="commune-section-heading">Preferences</Text>
                 </Group>
                 <Text size="sm" c="dimmed" mb="lg">
-                  These defaults apply when you create new groups and view amounts across the app.
+                  Defaults for new groups and how amounts appear across the app.
                 </Text>
 
                 <Stack gap="md">
-                  <Select
-                    label="Default currency"
-                    description="Used as the default when creating new groups"
-                    data={CURRENCY_OPTIONS}
-                    leftSection={<IconCoin size={16} />}
-                    key={form.key('default_currency')}
-                    {...form.getInputProps('default_currency')}
-                    searchable
-                  />
+                  <SimpleGrid cols={2}>
+                    <Select
+                      label="Default currency"
+                      description="Used when creating new groups"
+                      data={CURRENCY_OPTIONS}
+                      leftSection={<IconCoin size={16} />}
+                      key={form.key('default_currency')}
+                      {...form.getInputProps('default_currency')}
+                      searchable
+                    />
+                    <Select
+                      label="Timezone"
+                      description="Due dates and overdue warnings"
+                      data={TIMEZONE_OPTIONS}
+                      key={form.key('timezone')}
+                      {...form.getInputProps('timezone')}
+                      searchable
+                    />
+                  </SimpleGrid>
 
-                  <Select
-                    label="Timezone"
-                    description="Affects due date calculations and overdue warnings"
-                    data={TIMEZONE_OPTIONS}
-                    key={form.key('timezone')}
-                    {...form.getInputProps('timezone')}
-                    searchable
-                  />
-                </Stack>
-              </Paper>
+                  <Divider />
 
-              {/* ── Email notifications ── */}
-              <Paper className="commune-soft-panel" p="xl">
-                <Group gap="xs" mb="md">
-                  <IconBell size={20} />
-                  <Text className="commune-section-heading">Email notifications</Text>
-                </Group>
-                <Text size="sm" c="dimmed" mb="lg">
-                  Choose which events should land in your inbox.
-                </Text>
-
-                <Stack gap="md">
-                  <Switch
-                    label="New expense added"
-                    description="Notify me when someone adds a new expense in one of my groups"
-                    key={form.key('notification_preferences.email_on_new_expense')}
-                    {...form.getInputProps('notification_preferences.email_on_new_expense', { type: 'checkbox' })}
-                  />
-                  <Divider />
-                  <Switch
-                    label="Payment received"
-                    description="Notify me when someone marks a payment as paid"
-                    key={form.key('notification_preferences.email_on_payment_received')}
-                    {...form.getInputProps('notification_preferences.email_on_payment_received', { type: 'checkbox' })}
-                  />
-                  <Divider />
-                  <Switch
-                    label="Payment reminder"
-                    description="Notify me when something I owe is coming due soon"
-                    key={form.key('notification_preferences.email_on_payment_reminder')}
-                    {...form.getInputProps('notification_preferences.email_on_payment_reminder', { type: 'checkbox' })}
-                  />
-                  <Divider />
-                  <Switch
-                    label="Overdue payments"
-                    description="Notify me when a payment passes the due date"
-                    key={form.key('notification_preferences.email_on_overdue')}
-                    {...form.getInputProps('notification_preferences.email_on_overdue', { type: 'checkbox' })}
+                  <Textarea
+                    label="Payment details"
+                    description="Visible to group members so they know how to pay you"
+                    placeholder="e.g. Monzo: @yourname, Revolut: 07xxx, Bank: Sort 12-34-56 Acc 12345678"
+                    autosize
+                    minRows={2}
+                    maxRows={4}
+                    leftSection={<IconWallet size={16} />}
+                    key={form.key('payment_info')}
+                    {...form.getInputProps('payment_info')}
                   />
                 </Stack>
               </Paper>
@@ -491,7 +531,7 @@ function SettingsPage() {
             </Group>
 
             {subLoading ? (
-              <PageLoader message="Loading billing..." h={180} />
+              <SettingsSkeleton />
             ) : subscription ? (
               <Stack gap="md">
                 <Group gap="xs">
@@ -557,6 +597,47 @@ function SettingsPage() {
                 </Button>
               </Stack>
             )}
+          </Paper>
+
+          {/* ── Email notifications ── */}
+          <Paper className="commune-soft-panel" p="xl">
+            <Group gap="xs" mb="md">
+              <IconBell size={20} />
+              <Text className="commune-section-heading">Email notifications</Text>
+            </Group>
+            <Text size="sm" c="dimmed" mb="lg">
+              Choose which events should land in your inbox.
+            </Text>
+
+            <Stack gap="md">
+              <Switch
+                label="New expense added"
+                description="Notify me when someone adds a new expense in one of my groups"
+                key={form.key('notification_preferences.email_on_new_expense')}
+                {...form.getInputProps('notification_preferences.email_on_new_expense', { type: 'checkbox' })}
+              />
+              <Divider />
+              <Switch
+                label="Payment received"
+                description="Notify me when someone marks a payment as paid"
+                key={form.key('notification_preferences.email_on_payment_received')}
+                {...form.getInputProps('notification_preferences.email_on_payment_received', { type: 'checkbox' })}
+              />
+              <Divider />
+              <Switch
+                label="Payment reminder"
+                description="Notify me when something I owe is coming due soon"
+                key={form.key('notification_preferences.email_on_payment_reminder')}
+                {...form.getInputProps('notification_preferences.email_on_payment_reminder', { type: 'checkbox' })}
+              />
+              <Divider />
+              <Switch
+                label="Overdue payments"
+                description="Notify me when a payment passes the due date"
+                key={form.key('notification_preferences.email_on_overdue')}
+                {...form.getInputProps('notification_preferences.email_on_overdue', { type: 'checkbox' })}
+              />
+            </Stack>
           </Paper>
 
           {/* ── Danger zone ── */}

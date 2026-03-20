@@ -352,7 +352,7 @@ SubscriptionStatus: trialing | active | past_due | cancelled
 **Requirements:**
 
 **Profile section:**
-- F12.1: Edit profile fields — first name (required, max 50 chars), last name (optional, max 50 chars), phone number (optional, max 20 chars), country (optional, max 100 chars), avatar URL (optional)
+- F12.1: Edit profile fields — first name (required, max 50 chars), last name (optional, max 50 chars), phone number (optional, max 20 chars), country (optional, max 100 chars), profile picture (clickable avatar upload to Supabase Storage, JPG/PNG/WebP, max 1 MB)
 
 **Payment info section:**
 - F12.2: Free-text field for payment methods (e.g. "Pay me via Monzo: @john") — max 200 chars, visible to group members
@@ -397,11 +397,14 @@ SubscriptionStatus: trialing | active | past_due | cancelled
 **Description:** Consistent visual language across all pages.
 
 **Requirements:**
-- F15.1: All pages use `commune-hero-card` with `commune-hero-grid` layout pattern
-- F15.2: KPI cards use `commune-kpi-card` with `data-tone` attribute (positive/negative/neutral)
+- F15.1: Dashboard uses `commune-hero-card` with `commune-hero-grid` layout pattern; all other pages use the compact `PageHeader` component (title, subtitle, optional action buttons)
+- F15.2: KPI cards use `commune-kpi-card` with `data-tone` attribute (positive/negative/neutral) on Dashboard; stat cards elsewhere use `commune-stat-card`
 - F15.3: Section headings use `commune-section-heading` class
-- F15.4: Tables use `commune-table-shell` wrapper
+- F15.4: Tables use `commune-table-shell` wrapper with client-side pagination (PAGE_SIZE = 30)
 - F15.5: Status indicators use `commune-pill-badge` class
+- F15.6: Panels use `commune-soft-panel` class for consistent card styling
+- F15.7: Empty states use the shared `EmptyState` component with icon, title, description, and optional actions
+- F15.8: Search feedback banner with result count and "Clear" button on filterable pages
 
 ---
 
@@ -516,14 +519,13 @@ function calculateReimbursements(
 
 ### S9: Settings
 - **Route:** `/settings`
+- **Layout:** Two-column dashboard grid — left column has the form (Profile + Preferences), right column has read-only panels (Subscription, Email notifications, Danger zone)
 - **Sections:**
-  - Profile: first name (required), last name (optional), phone number (optional), country (optional), avatar URL (optional)
-  - Payment info: free-text payment method field (visible to group members)
-  - Preferences: default currency (select, 10 currencies), timezone (select, 14 timezones)
-  - Email notifications: 4 toggles (new expense added, payment received, payment reminder, overdue payment)
-  - Subscription: current plan display, status, manage billing button (Stripe portal), change plan link
-  - Account info: email address (read-only), member since date (read-only)
-  - Danger zone: account deletion with typed "DELETE" confirmation (soft delete — anonymises profile, removes from groups, preserves history)
+  - Profile: clickable avatar upload (JPG/PNG/WebP, max 1 MB, Supabase Storage), first name (required), last name (optional), phone number + country (side-by-side), email + member since (read-only, shown next to avatar)
+  - Preferences: default currency + timezone (side-by-side selects), payment details textarea (visible to group members)
+  - Subscription: current plan + status badge, trial end date, plan limits card, manage billing button (Stripe portal), change plan link
+  - Email notifications: 4 toggle switches (new expense added, payment received, payment reminder, overdue payment)
+  - Danger zone: red-bordered panel, account deletion with typed "DELETE" confirmation (soft delete — anonymises profile, removes from groups, preserves history)
 
 ### S10: Plan Selection
 - **Route:** `/pricing`

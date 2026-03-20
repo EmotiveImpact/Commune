@@ -137,6 +137,30 @@ export async function getProfile(userId: string): Promise<UserProfile> {
   return normalizeProfile(data);
 }
 
+export async function uploadAvatar(
+  userId: string,
+  file: File,
+): Promise<string> {
+  const maxSize = 1 * 1024 * 1024; // 1 MB
+  if (file.size > maxSize) {
+    throw new Error('File must be under 1 MB.');
+  }
+
+  const ext = file.name.split('.').pop() ?? 'jpg';
+  const filePath = `${userId}/avatar.${ext}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from('avatars')
+    .upload(filePath, file, { upsert: true, contentType: file.type });
+
+  if (uploadError) throw uploadError;
+
+  const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
+
+  // Append a cache-buster so the browser picks up new uploads immediately
+  return `${data.publicUrl}?t=${Date.now()}`;
+}
+
 export async function updateProfile(
   userId: string,
   updates: {
@@ -173,4 +197,9 @@ export async function updateProfile(
   if (error) throw error;
 
   return normalizeProfile(data);
+}
+
+export async function deleteAccount(): Promise<void> {
+  const { error } = await supabase.rpc('soft_delete_account');
+  if (error) throw error;
 }

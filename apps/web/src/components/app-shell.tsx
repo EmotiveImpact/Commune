@@ -17,7 +17,6 @@ import { Link, useLocation, useNavigate } from '@tanstack/react-router';
 import {
   IconChevronRight,
   IconLogout,
-  IconPlus,
   IconSearch,
   IconSettings,
   IconWallet,
@@ -86,15 +85,6 @@ export function AppShell({ children }: AppShellProps) {
             />
           </Group>
           <Group gap="sm">
-            <Button
-              component={Link}
-              to="/expenses/new"
-              leftSection={<IconPlus size={15} />}
-              size="sm"
-              className="commune-primary-btn"
-            >
-              Add expense
-            </Button>
             <NotificationDropdown />
           </Group>
         </Group>
