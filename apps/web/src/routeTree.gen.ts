@@ -91,7 +91,9 @@ const AppOnboardingRoute = AppOnboardingRouteImport.update({
   id: '/onboarding',
   path: '/onboarding',
   getParentRoute: () => AppRoute,
-} as any)
+} as any).lazy(() =>
+  import('./routes/_app/onboarding.lazy').then((d) => d.Route),
+)
 const AppMembersRoute = AppMembersRouteImport.update({
   id: '/members',
   path: '/members',
@@ -120,7 +122,9 @@ const AppGroupsIndexRoute = AppGroupsIndexRouteImport.update({
   id: '/groups/',
   path: '/groups/',
   getParentRoute: () => AppRoute,
-} as any)
+} as any).lazy(() =>
+  import('./routes/_app/groups/index.lazy').then((d) => d.Route),
+)
 const AppExpensesIndexRoute = AppExpensesIndexRouteImport.update({
   id: '/expenses/',
   path: '/expenses/',
@@ -146,7 +150,9 @@ const AppGroupsGroupIdEditRoute = AppGroupsGroupIdEditRouteImport.update({
   id: '/groups/$groupId/edit',
   path: '/groups/$groupId/edit',
   getParentRoute: () => AppRoute,
-} as any)
+} as any).lazy(() =>
+  import('./routes/_app/groups/$groupId.edit.lazy').then((d) => d.Route),
+)
 const AppExpensesExpenseIdEditRoute =
   AppExpensesExpenseIdEditRouteImport.update({
     id: '/edit',
