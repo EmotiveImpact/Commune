@@ -119,6 +119,28 @@ function AnalyticsPage() {
   const { data: group } = useGroup(activeGroupId ?? '');
   const { data: analytics, isLoading: analyticsLoading } = useAnalytics(activeGroupId ?? '');
 
+  if (!activeGroupId) {
+    return (
+      <Stack gap="xl">
+        <PageHeader
+          title="Analytics"
+          subtitle="Deep insights into your group spending patterns."
+        />
+        <Paper className="commune-soft-panel" p="xl">
+          <Stack align="center" gap="md" py="xl">
+            <ThemeIcon size={48} variant="light" color="gray" radius="xl">
+              <IconChartBar size={24} />
+            </ThemeIcon>
+            <Text fw={700} size="lg">Select a group first</Text>
+            <Text size="sm" c="dimmed" ta="center" maw={400}>
+              Choose a group in the sidebar to view analytics.
+            </Text>
+          </Stack>
+        </Paper>
+      </Stack>
+    );
+  }
+
   if (subLoading) return <AnalyticsSkeleton />;
 
   const plan = subscription?.plan;

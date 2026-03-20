@@ -5,10 +5,10 @@ import {
   getPushSubscriptions,
 } from '@commune/api';
 
-// TODO: Replace with your real VAPID public key.
-// Generate a VAPID key pair with: npx web-push generate-vapid-keys
-// Store the public key here and the private key in your server environment (VAPID_PRIVATE_KEY).
-const VAPID_PUBLIC_KEY = 'REPLACE_WITH_YOUR_VAPID_PUBLIC_KEY';
+// VAPID public key for Web Push API subscription.
+// The corresponding private key must be set as VAPID_PRIVATE_KEY in the server environment.
+// Regenerate with: npx web-push generate-vapid-keys
+const VAPID_PUBLIC_KEY = 'BGYsUhHYMOZH5DLvO1jDhViAMUiMTc2fKAY9HV-PaEq88D05CJrtl-d8B08XeOAIyQEn8n8INC1CUcrs88pPy7g';
 
 /** Check whether the browser supports push notifications. */
 export function isPushSupported(): boolean {

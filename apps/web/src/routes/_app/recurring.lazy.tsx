@@ -68,6 +68,16 @@ function RecurringPage() {
   const isLoading = activeLoading || pausedLoading;
   const expenses = tab === 'active' ? (activeExpenses ?? []) : (pausedExpenses ?? []);
 
+  if (!activeGroupId) {
+    return (
+      <EmptyState
+        icon={IconRepeat}
+        title="Select a group first"
+        description="Choose a group in the sidebar to manage recurring expenses."
+      />
+    );
+  }
+
   function handlePause(expenseId: string) {
     pauseMutation.mutate(expenseId, {
       onSuccess: () => {

@@ -3,6 +3,7 @@ import { MantineProvider, createTheme } from '@mantine/core';
 import { Notifications } from '@mantine/notifications';
 import { QueryClient } from '@tanstack/react-query';
 import { AppErrorBoundary } from '../components/error-boundary';
+import { NotFound } from '../components/not-found';
 
 import '@mantine/core/styles.css';
 import '@mantine/dates/styles.css';
@@ -72,6 +73,7 @@ const theme = createTheme({
 
 export const Route = createRootRouteWithContext<RouterContext>()({
   component: RootComponent,
+  notFoundComponent: NotFound,
 });
 
 function RootComponent() {
