@@ -4,10 +4,12 @@ import {
   Avatar,
   Badge,
   Button,
+  Divider,
   Group,
   Menu,
   Modal,
   Paper,
+  Progress,
   Stack,
   Text,
 } from '@mantine/core';
@@ -25,12 +27,14 @@ import {
   IconUsers,
 } from '@tabler/icons-react';
 import { useMemo, useState } from 'react';
+import { formatCurrency } from '@commune/utils';
 import { useGroupStore } from '../../stores/group';
 import { useSearchStore } from '../../stores/search';
 import { useGroup, useLeaveGroup, useRemoveMember, useTransferOwnership, useUpdateMemberRole, useUserGroups } from '../../hooks/use-groups';
+import { useMemberMonthlyStats } from '../../hooks/use-member-stats';
 import { useAuthStore } from '../../stores/auth';
 import { InviteMemberModal } from '../../components/invite-member-modal';
-import { PageLoader } from '../../components/page-loader';
+import { MembersSkeleton } from '../../components/page-skeleton';
 import { EmptyState } from '../../components/empty-state';
 import { PageHeader } from '../../components/page-header';
 
@@ -49,6 +53,7 @@ function MembersPage() {
   const leaveGroupMutation = useLeaveGroup();
   const navigate = useNavigate();
   const transferOwnership = useTransferOwnership(activeGroupId ?? '');
+  const { stats: memberStats } = useMemberMonthlyStats(activeGroupId ?? '');
   const [inviteOpened, { open: openInvite, close: closeInvite }] = useDisclosure(false);
   const [leaveOpened, { open: openLeave, close: closeLeave }] = useDisclosure(false);
   const [transferOpened, { open: openTransfer, close: closeTransfer }] = useDisclosure(false);
@@ -66,7 +71,7 @@ function MembersPage() {
   }
 
   if (isLoading) {
-    return <PageLoader message="Loading members..." />;
+    return <MembersSkeleton />;
   }
 
   const isAdmin = group?.members.some((member) => member.user_id === user?.id && member.role === 'admin');
@@ -291,6 +296,59 @@ function MembersPage() {
                   )}
                 </Group>
               </Group>
+
+              {/* Financial summary — only for active members */}
+              {member.status === 'active' && (() => {
+                const stat = memberStats.get(member.user_id);
+                if (!stat || stat.totalOwed === 0) {
+                  return (
+                    <Text size="xs" c="dimmed" mt="sm">
+                      No activity this month
+                    </Text>
+                  );
+                }
+                const remaining = Math.max(0, stat.totalOwed - stat.totalPaid);
+                const paidRatio = stat.totalOwed > 0 ? (stat.totalPaid / stat.totalOwed) * 100 : 0;
+                const isSettled = remaining < 0.01;
+                const isNearlyDone = !isSettled && paidRatio >= 80;
+
+                return (
+                  <>
+                    <Divider my="sm" />
+                    <Group justify="space-between" align="flex-start">
+                      <Group gap={6}>
+                        <Badge size="sm" variant="light" color="green">
+                          Paid {formatCurrency(stat.totalPaid, group?.currency)}
+                        </Badge>
+                        {!isSettled && (
+                          <Badge size="sm" variant="light" color="red">
+                            Owes {formatCurrency(remaining, group?.currency)}
+                          </Badge>
+                        )}
+                      </Group>
+                      <div style={{ textAlign: 'right' }}>
+                        {isSettled ? (
+                          <Text fw={700} size="lg" c="green">Settled</Text>
+                        ) : (
+                          <Text fw={700} size="lg" c={isNearlyDone ? 'green' : 'red'}>
+                            {formatCurrency(remaining, group?.currency)}
+                          </Text>
+                        )}
+                        <Text size="xs" c="dimmed">
+                          {isSettled ? 'all paid' : `${formatCurrency(stat.totalPaid, group?.currency)} of ${formatCurrency(stat.totalOwed, group?.currency)}`}
+                        </Text>
+                      </div>
+                    </Group>
+                    <Progress
+                      value={Math.min(paidRatio, 100)}
+                      color="green"
+                      size={5}
+                      radius="xl"
+                      mt={6}
+                    />
+                  </>
+                );
+              })()}
             </Paper>
           ))}
 
