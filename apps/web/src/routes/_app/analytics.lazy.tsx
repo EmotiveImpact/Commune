@@ -32,7 +32,9 @@ import {
   ResponsiveContainer,
   CartesianGrid,
 } from 'recharts';
+import { useEffect } from 'react';
 import { formatCurrency } from '@commune/utils';
+import { setPageTitle } from '../../utils/seo';
 import { useGroupStore } from '../../stores/group';
 import { useAuthStore } from '../../stores/auth';
 import { useGroup } from '../../hooks/use-groups';
@@ -113,6 +115,10 @@ function UpgradeCTA() {
 }
 
 function AnalyticsPage() {
+  useEffect(() => {
+    setPageTitle('Analytics');
+  }, []);
+
   const { activeGroupId } = useGroupStore();
   const { user } = useAuthStore();
   const { data: subscription, isLoading: subLoading } = useSubscription(user?.id ?? '');

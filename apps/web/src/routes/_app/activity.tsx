@@ -24,7 +24,8 @@ import {
   IconSettings,
   IconArrowsTransferDown,
 } from '@tabler/icons-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { setPageTitle } from '../../utils/seo';
 import type { ActivityEntry } from '@commune/api';
 import { useGroupStore } from '../../stores/group';
 import { useGroup } from '../../hooks/use-groups';
@@ -138,6 +139,10 @@ function getDateLabel(dateStr: string): string {
 type TypeFilter = 'all' | 'expense' | 'payment' | 'member';
 
 function ActivityPage() {
+  useEffect(() => {
+    setPageTitle('Activity');
+  }, []);
+
   const { activeGroupId } = useGroupStore();
   const { data: group, isLoading: groupLoading } = useGroup(activeGroupId ?? '');
   const [limit, setLimit] = useState(PAGE_SIZE);

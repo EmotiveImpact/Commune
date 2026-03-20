@@ -31,6 +31,8 @@ import {
   IconWallet,
 } from '@tabler/icons-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { setPageTitle } from '../../utils/seo';
+import { RouteError } from '../../components/route-error';
 import { updateProfileSchema } from '@commune/core';
 import { formatDate } from '@commune/utils';
 import { supabase, uploadAvatar, deleteAccount } from '@commune/api';
@@ -48,6 +50,7 @@ import { PageHeader } from '../../components/page-header';
 
 export const Route = createFileRoute('/_app/settings')({
   component: SettingsPage,
+  errorComponent: RouteError,
 });
 
 const PLAN_LABELS: Record<string, string> = {
@@ -125,6 +128,10 @@ const DEFAULT_NOTIFICATION_PREFS = {
 };
 
 function SettingsPage() {
+  useEffect(() => {
+    setPageTitle('Settings');
+  }, []);
+
   const navigate = useNavigate();
   const { user, isLoading: authLoading } = useAuthStore();
   const {

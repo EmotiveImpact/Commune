@@ -1,5 +1,6 @@
 import { createFileRoute, Outlet, redirect } from '@tanstack/react-router';
 import { AppShell } from '../components/app-shell';
+import { RouteError } from '../components/route-error';
 
 export const Route = createFileRoute('/_app')({
   beforeLoad: ({ context }) => {
@@ -8,6 +9,7 @@ export const Route = createFileRoute('/_app')({
     }
   },
   component: ProtectedLayout,
+  errorComponent: RouteError,
 });
 
 function ProtectedLayout() {

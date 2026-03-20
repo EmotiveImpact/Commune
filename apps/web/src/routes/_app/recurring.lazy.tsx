@@ -24,8 +24,9 @@ import {
   IconRepeat,
   IconTrash,
 } from '@tabler/icons-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { formatCurrency, formatDate } from '@commune/utils';
+import { setPageTitle } from '../../utils/seo';
 import { useGroupStore } from '../../stores/group';
 import { useGroup } from '../../hooks/use-groups';
 import {
@@ -53,6 +54,10 @@ function formatCategoryLabel(category: string) {
 }
 
 function RecurringPage() {
+  useEffect(() => {
+    setPageTitle('Recurring');
+  }, []);
+
   const { activeGroupId } = useGroupStore();
   const { data: group } = useGroup(activeGroupId ?? '');
   const { data: activeExpenses, isLoading: activeLoading } = useRecurringExpenses(activeGroupId ?? '');
@@ -247,7 +252,7 @@ function RecurringPage() {
                     <Table.Td>
                       <Menu shadow="md" width={180} position="bottom-end">
                         <Menu.Target>
-                          <ActionIcon variant="subtle" color="gray">
+                          <ActionIcon variant="subtle" color="gray" aria-label={`Actions for ${expense.title}`}>
                             <IconDots size={18} />
                           </ActionIcon>
                         </Menu.Target>

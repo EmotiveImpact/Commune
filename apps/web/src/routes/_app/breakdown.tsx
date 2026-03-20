@@ -13,7 +13,8 @@ import {
 } from '@mantine/core';
 import { IconCheck, IconDownload, IconReceipt, IconWallet, IconX } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { setPageTitle } from '../../utils/seo';
 import { downloadStatement } from '@commune/api';
 import { ExpenseCategory } from '@commune/types';
 import { formatCurrency, formatDate, getMonthKey } from '@commune/utils';
@@ -63,6 +64,10 @@ function formatCategoryLabel(category: string) {
 }
 
 function BreakdownPage() {
+  useEffect(() => {
+    setPageTitle('My Breakdown');
+  }, []);
+
   const { activeGroupId } = useGroupStore();
   const { user } = useAuthStore();
   const { data: group } = useGroup(activeGroupId ?? '');
@@ -176,6 +181,7 @@ function BreakdownPage() {
               loading={downloadingPdf}
               onClick={handleDownloadStatement}
               title="Download PDF statement"
+              aria-label="Download PDF statement"
             >
               <IconDownload size={18} />
             </ActionIcon>
@@ -186,6 +192,7 @@ function BreakdownPage() {
               size="lg"
               disabled
               title="Upgrade to Pro to download statements"
+              aria-label="Download PDF statement (upgrade required)"
             >
               <IconDownload size={18} />
             </ActionIcon>
@@ -302,6 +309,7 @@ function BreakdownPage() {
                             variant="light"
                             color={item.payment_status === 'unpaid' ? 'emerald' : 'red'}
                             onClick={() => handleTogglePayment(item.expense.id, item.payment_status)}
+                            aria-label={item.payment_status === 'unpaid' ? `Mark ${item.expense.title} as paid` : `Mark ${item.expense.title} as unpaid`}
                           >
                             {item.payment_status === 'unpaid' ? <IconCheck size={16} /> : <IconX size={16} />}
                           </ActionIcon>

@@ -82,6 +82,7 @@ export function AppShell({ children }: AppShellProps) {
               value={query}
               onChange={(e) => setQuery(e.currentTarget.value)}
               onKeyDown={handleSearchKeyDown}
+              aria-label="Search expenses and members"
             />
           </Group>
           <Group gap="sm">
@@ -90,7 +91,7 @@ export function AppShell({ children }: AppShellProps) {
         </Group>
       </MantineAppShell.Header>
 
-      <MantineAppShell.Navbar className="commune-app-shell-navbar">
+      <MantineAppShell.Navbar className="commune-app-shell-navbar" role="navigation" aria-label="Main navigation">
         <Stack className="commune-sidebar-panel" justify="space-between">
           <div>
             <Group wrap="nowrap" gap="sm" mb="xl" px={4}>
@@ -173,7 +174,7 @@ export function AppShell({ children }: AppShellProps) {
         </Stack>
       </MantineAppShell.Navbar>
 
-      <MantineAppShell.Main className="commune-main-content">
+      <MantineAppShell.Main className="commune-main-content" role="main">
         {children}
         {user?.id && <TrialExpiryModal userId={user.id} />}
       </MantineAppShell.Main>

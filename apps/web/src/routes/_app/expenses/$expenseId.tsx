@@ -28,7 +28,9 @@ import {
   IconUsers,
   IconX,
 } from '@tabler/icons-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { setPageTitle } from '../../../utils/seo';
+import { RouteError } from '../../../components/route-error';
 import { formatCurrency, formatDate, isOverdue } from '@commune/utils';
 import { calculateReimbursements } from '@commune/core';
 import {
@@ -48,6 +50,7 @@ import { PageHeader } from '../../../components/page-header';
 
 export const Route = createFileRoute('/_app/expenses/$expenseId')({
   component: ExpenseDetailPage,
+  errorComponent: RouteError,
 });
 
 function formatCategoryLabel(category: string) {
@@ -72,6 +75,10 @@ function ExpenseDetailPage() {
   const [noteOpened, { open: openNote, close: closeNote }] = useDisclosure(false);
   const [paymentNote, setPaymentNote] = useState('');
   const [pendingPayment, setPendingPayment] = useState<{ userId: string } | null>(null);
+
+  useEffect(() => {
+    setPageTitle(expense?.title ?? 'Expense');
+  }, [expense?.title]);
 
   if (isLoading) {
     return <ExpenseDetailSkeleton />;
@@ -427,17 +434,17 @@ function ExpenseDetailPage() {
                     <Table.Td style={{ textAlign: 'center' }}>
                       <Group gap={4} justify="center">
                         {canToggle && paymentStatus === 'unpaid' && (
-                          <ActionIcon variant="light" color="emerald" onClick={() => handlePayClick(participant.user_id)}>
+                          <ActionIcon variant="light" color="emerald" onClick={() => handlePayClick(participant.user_id)} aria-label={`Mark ${participant.user.name} as paid`}>
                             <IconCheck size={16} />
                           </ActionIcon>
                         )}
                         {canToggle && paymentStatus === 'paid' && (
-                          <ActionIcon variant="light" color="red" onClick={() => handleUnpay(participant.user_id)}>
+                          <ActionIcon variant="light" color="red" onClick={() => handleUnpay(participant.user_id)} aria-label={`Mark ${participant.user.name} as unpaid`}>
                             <IconX size={16} />
                           </ActionIcon>
                         )}
                         {isAdmin && paymentStatus === 'paid' && (
-                          <ActionIcon variant="light" color="blue" onClick={() => handleConfirmPayment(participant.user_id)}>
+                          <ActionIcon variant="light" color="blue" onClick={() => handleConfirmPayment(participant.user_id)} aria-label={`Confirm payment from ${participant.user.name}`}>
                             <IconCheckbox size={16} />
                           </ActionIcon>
                         )}

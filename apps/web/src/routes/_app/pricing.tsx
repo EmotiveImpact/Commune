@@ -13,7 +13,8 @@ import {
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { IconCheck, IconInfoCircle, IconSparkles } from '@tabler/icons-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { setPageTitle } from '../../utils/seo';
 import { SubscriptionPlan } from '@commune/types';
 import { useAuthStore } from '../../stores/auth';
 import { useCheckout, useSubscription } from '../../hooks/use-subscriptions';
@@ -97,6 +98,10 @@ const PLANS: PlanConfig[] = [
 const PLAN_ORDER: SubscriptionPlan[] = [SubscriptionPlan.STANDARD, SubscriptionPlan.PRO, SubscriptionPlan.AGENCY];
 
 function PricingPage() {
+  useEffect(() => {
+    setPageTitle('Pricing');
+  }, []);
+
   const { user } = useAuthStore();
   const { data: subscription, isLoading } = useSubscription(user?.id ?? '');
   const { currentGroups, currentMembers } = usePlanLimits(user?.id ?? '');

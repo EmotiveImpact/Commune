@@ -15,6 +15,8 @@ import { IconCheck, IconDownload, IconPlus, IconReceipt, IconTrash } from '@tabl
 import { DatePickerInput, DatesProvider } from '@mantine/dates';
 import 'dayjs/locale/en-gb';
 import { useEffect, useMemo, useState } from 'react';
+import { setPageTitle } from '../../../utils/seo';
+import { RouteError } from '../../../components/route-error';
 import { ExpenseCategory } from '@commune/types';
 import { formatCurrency, formatDate, getMonthKey, isOverdue } from '@commune/utils';
 import { generateExpenseCSV, downloadCSV } from '../../../utils/export-csv';
@@ -29,6 +31,7 @@ import { PageHeader } from '../../../components/page-header';
 
 export const Route = createFileRoute('/_app/expenses/')({
   component: ExpensesPage,
+  errorComponent: RouteError,
 });
 
 const PAGE_SIZE = 30;
@@ -66,6 +69,10 @@ function formatCategoryLabel(category: string) {
 type StatusFilter = 'all' | 'open' | 'overdue' | 'settled';
 
 function ExpensesPage() {
+  useEffect(() => {
+    setPageTitle('Expenses');
+  }, []);
+
   const navigate = useNavigate();
   const { activeGroupId } = useGroupStore();
   const { query: searchQuery } = useSearchStore();

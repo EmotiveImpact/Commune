@@ -25,6 +25,8 @@ import {
 } from '@tabler/icons-react';
 import { useEffect, useMemo, useRef } from 'react';
 import { formatCurrency, formatDate, getMonthKey, isOverdue } from '@commune/utils';
+import { setPageTitle } from '../../utils/seo';
+import { RouteError } from '../../components/route-error';
 import { useGroupStore } from '../../stores/group';
 import { useAuthStore } from '../../stores/auth';
 import { useGroup, usePendingInvites, useUserGroups } from '../../hooks/use-groups';
@@ -36,6 +38,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGri
 
 export const Route = createFileRoute('/_app/')({
   component: DashboardPage,
+  errorComponent: RouteError,
 });
 
 const categoryPalette = [
@@ -89,6 +92,10 @@ function DashboardPage() {
       generateRecurring.mutate();
     }
   }, [activeGroupId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    setPageTitle('Dashboard');
+  }, []);
 
   useEffect(() => {
     if (activeGroupId || groupsLoading || invitesLoading) {

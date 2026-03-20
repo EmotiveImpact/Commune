@@ -26,7 +26,9 @@ import {
   IconUserPlus,
   IconUsers,
 } from '@tabler/icons-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { setPageTitle } from '../../utils/seo';
+import { RouteError } from '../../components/route-error';
 import { formatCurrency } from '@commune/utils';
 import { useGroupStore } from '../../stores/group';
 import { useSearchStore } from '../../stores/search';
@@ -40,9 +42,14 @@ import { PageHeader } from '../../components/page-header';
 
 export const Route = createFileRoute('/_app/members')({
   component: MembersPage,
+  errorComponent: RouteError,
 });
 
 function MembersPage() {
+  useEffect(() => {
+    setPageTitle('Members');
+  }, []);
+
   const { activeGroupId, setActiveGroupId } = useGroupStore();
   const { data: group, isLoading } = useGroup(activeGroupId ?? '');
   const { data: userGroups } = useUserGroups();
@@ -252,7 +259,7 @@ function MembersPage() {
                   {isAdmin && member.user_id !== user?.id && (
                     <Menu shadow="md" width={220}>
                       <Menu.Target>
-                        <ActionIcon variant="subtle" color="gray">
+                        <ActionIcon variant="subtle" color="gray" aria-label={`Actions for ${member.user.name}`}>
                           <IconDots size={16} />
                         </ActionIcon>
                       </Menu.Target>
