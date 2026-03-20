@@ -1,11 +1,74 @@
 /// <reference lib="webworker" />
 
 /**
- * Commune — Push Notification Service Worker
+ * Commune — Service Worker
  *
- * This service worker handles incoming push events and notification clicks.
- * It is registered from the client via navigator.serviceWorker.register('/sw.js').
+ * Handles push notifications and provides offline fallback caching.
+ * Registered from the client via navigator.serviceWorker.register('/sw.js').
  */
+
+// ── App Shell Cache ────────────────────────────────────────────────────────────
+
+const CACHE_NAME = 'commune-v1';
+const APP_SHELL_URLS = [
+  '/',
+  '/manifest.json',
+  '/favicon.svg',
+];
+
+/**
+ * Install event — cache the app shell.
+ */
+self.addEventListener('install', (event) => {
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL_URLS)),
+  );
+  // Activate immediately without waiting for existing clients to close
+  self.skipWaiting();
+});
+
+/**
+ * Activate event — clean up old caches.
+ */
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys().then((keys) =>
+      Promise.all(
+        keys
+          .filter((key) => key !== CACHE_NAME)
+          .map((key) => caches.delete(key)),
+      ),
+    ),
+  );
+  // Take control of all open clients immediately
+  self.clients.claim();
+});
+
+/**
+ * Fetch event — serve navigation requests from cache when offline.
+ * Non-navigation requests use network-first with no cache fallback
+ * to avoid interfering with API calls and dynamic assets.
+ */
+self.addEventListener('fetch', (event) => {
+  const { request } = event;
+
+  // Only handle navigation requests (HTML pages) with offline fallback
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      fetch(request).catch(() => caches.match('/')),
+    );
+    return;
+  }
+
+  // For other GET requests, try network first, fall back to cache
+  if (request.method === 'GET') {
+    event.respondWith(
+      fetch(request).catch(() => caches.match(request)),
+    );
+  }
+});
+
+// ── Push Notifications ─────────────────────────────────────────────────────────
 
 // Default icon shown with every push notification
 const DEFAULT_ICON = '/favicon.svg';

@@ -1,5 +1,10 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
+// ── Invocation Guard ───────────────────────────────────────────────────────────
+// Prevent re-invocation within 5 minutes (resets on cold start, which is fine).
+const MIN_INTERVAL_MS = 5 * 60_000;
+let lastInvocationTime = 0;
+
 // Service role client — cron job has no user context
 const supabase = createClient(
   Deno.env.get('SUPABASE_URL')!,
@@ -268,6 +273,16 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
+    // Guard: skip if invoked within the last 5 minutes
+    const now = Date.now();
+    if (now - lastInvocationTime < MIN_INTERVAL_MS) {
+      return new Response(
+        JSON.stringify({ skipped: true, reason: 'Invoked too recently', next_eligible: new Date(lastInvocationTime + MIN_INTERVAL_MS).toISOString() }),
+        { status: 200, headers: { 'Content-Type': 'application/json', ...corsHeaders } },
+      );
+    }
+    lastInvocationTime = now;
+
     const upcoming = await processUpcoming();
     const overdue = await processOverdue();
 
