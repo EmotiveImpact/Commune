@@ -11,7 +11,7 @@ import {
   Text,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import { IconCheck, IconDownload, IconPlus, IconReceipt, IconTrash } from '@tabler/icons-react';
+import { IconCheck, IconDownload, IconFileTypePdf, IconPlus, IconReceipt, IconTrash } from '@tabler/icons-react';
 import { DatePickerInput, DatesProvider } from '@mantine/dates';
 import 'dayjs/locale/en-gb';
 import { useEffect, useMemo, useState } from 'react';
@@ -19,6 +19,8 @@ import { setPageTitle } from '../../../utils/seo';
 import { ExpenseCategory } from '@commune/types';
 import { formatCurrency, formatDate, getMonthKey, isOverdue } from '@commune/utils';
 import { generateExpenseCSV, downloadCSV } from '../../../utils/export-csv';
+import { downloadStatement } from '@commune/api';
+import { useSubscription } from '../../../hooks/use-subscriptions';
 import { useGroupStore } from '../../../stores/group';
 import { useSearchStore } from '../../../stores/search';
 import { useGroup } from '../../../hooks/use-groups';
@@ -81,8 +83,13 @@ function ExpensesPage() {
   const [datePreset, setDatePreset] = useState<string | null>(null);
   const [dateRange, setDateRange] = useState<[string | null, string | null]>([null, null]);
 
-  // Bulk actions
+  // PDF export
   const { user } = useAuthStore();
+  const { data: subscription } = useSubscription(user?.id ?? '');
+  const isPaidPlan = subscription?.status === 'active';
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
+
+  // Bulk actions
   const batchArchive = useBatchArchive(activeGroupId ?? '');
   const batchMarkPaid = useBatchMarkPaid(activeGroupId ?? '');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -190,6 +197,30 @@ function ExpensesPage() {
     downloadCSV(csv, `expenses-${new Date().toISOString().slice(0, 10)}.csv`);
   }
 
+  async function handleExportPDF() {
+    if (!activeGroupId) return;
+    setDownloadingPdf(true);
+    try {
+      const month = monthFilter ?? getMonthKey();
+      const blob = await downloadStatement(activeGroupId, month);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `expenses-${month}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+      notifications.show({ title: 'Statement downloaded', message: '', color: 'green' });
+    } catch (err) {
+      notifications.show({
+        title: 'Failed to generate statement',
+        message: err instanceof Error ? err.message : 'Something went wrong',
+        color: 'red',
+      });
+    } finally {
+      setDownloadingPdf(false);
+    }
+  }
+
   function toggleSelectOne(id: string) {
     setSelectedIds((prev) => {
       const next = new Set(prev);
@@ -282,7 +313,17 @@ function ExpensesPage() {
             Add expense
           </Button>
           <Button variant="default" leftSection={<IconDownload size={16} />} onClick={handleExportCSV} disabled={filtered.length === 0}>
-            Export
+            Export CSV
+          </Button>
+          <Button
+            variant="default"
+            leftSection={<IconFileTypePdf size={16} />}
+            onClick={handleExportPDF}
+            loading={downloadingPdf}
+            disabled={!isPaidPlan || filtered.length === 0}
+            title={!isPaidPlan ? 'Upgrade to Pro to export PDF statements' : 'Download PDF statement'}
+          >
+            Export PDF
           </Button>
         </Group>
       </PageHeader>

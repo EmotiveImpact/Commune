@@ -13,8 +13,8 @@ import {
 import { useForm, schemaResolver } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
 import { z } from 'zod';
-import { signInWithEmail, signInWithGoogle, signInWithApple, signInWithGitHub } from '@commune/api';
-import { IconBrandGoogle, IconBrandApple, IconBrandGithub } from '@tabler/icons-react';
+import { signInWithEmail, signInWithGoogle } from '@commune/api';
+import { IconBrandGoogle } from '@tabler/icons-react';
 import { useEffect, useState } from 'react';
 import { useAuthStore } from '../../stores/auth';
 
@@ -78,22 +78,6 @@ function LoginPage() {
           onClick={() => signInWithGoogle()}
         >
           Continue with Google
-        </Button>
-        <Button
-          leftSection={<IconBrandGithub size={18} />}
-          variant="default"
-          fullWidth
-          onClick={() => signInWithGitHub()}
-        >
-          Continue with GitHub
-        </Button>
-        <Button
-          leftSection={<IconBrandApple size={18} />}
-          variant="default"
-          fullWidth
-          onClick={() => signInWithApple()}
-        >
-          Continue with Apple
         </Button>
       </Stack>
 

@@ -7,7 +7,6 @@ import {
   Stack,
   Text,
   ThemeIcon,
-  Tooltip,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import {
@@ -221,42 +220,38 @@ function ActivityPage() {
         title="Activity"
         subtitle={`Everything that happened in ${group?.name ?? 'this group'}`}
       >
-        <Group gap="sm" align="center">
-          <div className="commune-filter-chips">
-            {filterChips.map((chip) => (
-              <button
-                key={chip.key}
-                type="button"
-                className="commune-filter-chip"
-                data-active={activeFilters.has(chip.key)}
-                onClick={() => toggleFilter(chip.key)}
-              >
-                {chip.label}
-              </button>
-            ))}
-          </div>
-          <Tooltip label="Export activity log as CSV">
-            <Button
-              variant="light"
-              size="xs"
-              leftSection={<IconDownload size={14} />}
-              disabled={filteredEntries.length === 0}
-              onClick={() => {
-                const csv = generateActivityCSV(filteredEntries);
-                const dateStr = new Date().toISOString().slice(0, 10);
-                downloadCSV(csv, `commune-activity-${group?.name ?? 'group'}-${dateStr}.csv`);
-                notifications.show({
-                  title: 'Exported',
-                  message: `${filteredEntries.length} activity entries downloaded.`,
-                  color: 'green',
-                });
-              }}
-            >
-              Export CSV
-            </Button>
-          </Tooltip>
-        </Group>
+        <Button
+          variant="default"
+          leftSection={<IconDownload size={16} />}
+          disabled={filteredEntries.length === 0}
+          onClick={() => {
+            const csv = generateActivityCSV(filteredEntries);
+            const dateStr = new Date().toISOString().slice(0, 10);
+            downloadCSV(csv, `commune-activity-${group?.name ?? 'group'}-${dateStr}.csv`);
+            notifications.show({
+              title: 'Exported',
+              message: `${filteredEntries.length} activity entries downloaded.`,
+              color: 'green',
+            });
+          }}
+        >
+          Export CSV
+        </Button>
       </PageHeader>
+
+      <div className="commune-filter-chips">
+        {filterChips.map((chip) => (
+          <button
+            key={chip.key}
+            type="button"
+            className="commune-filter-chip"
+            data-active={activeFilters.has(chip.key)}
+            onClick={() => toggleFilter(chip.key)}
+          >
+            {chip.label}
+          </button>
+        ))}
+      </div>
 
       {filteredEntries.length === 0 ? (
         <EmptyState

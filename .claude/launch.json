@@ -5,8 +5,7 @@
       "name": "web",
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["--filter", "@commune/web", "dev"],
-      "port": 5173,
-      "cwd": "/Users/augustusedem/Commune"
+      "port": 5173
     }
   ]
 }

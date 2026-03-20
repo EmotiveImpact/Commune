@@ -174,28 +174,24 @@ function BreakdownPage() {
             w={200}
           />
           {isPaidPlan ? (
-            <ActionIcon
-              variant="light"
-              color="commune"
-              size="lg"
+            <Button
+              variant="default"
+              leftSection={<IconDownload size={16} />}
               loading={downloadingPdf}
               onClick={handleDownloadStatement}
-              title="Download PDF statement"
               aria-label="Download PDF statement"
             >
-              <IconDownload size={18} />
-            </ActionIcon>
+              Export PDF
+            </Button>
           ) : (
-            <ActionIcon
-              variant="light"
-              color="gray"
-              size="lg"
+            <Button
+              variant="default"
+              leftSection={<IconDownload size={16} />}
               disabled
-              title="Upgrade to Pro to download statements"
               aria-label="Download PDF statement (upgrade required)"
             >
-              <IconDownload size={18} />
-            </ActionIcon>
+              Export PDF
+            </Button>
           )}
         </Group>
       </PageHeader>
