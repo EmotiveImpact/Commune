@@ -36,6 +36,42 @@ export function generateExpenseCSV(expenses: ExportableExpense[]): string {
   return [headers.join(','), ...rows].join('\n');
 }
 
+export interface ExportableActivity {
+  action: string;
+  entity_type?: string | null;
+  created_at: string;
+  user?: { name: string } | null;
+  metadata?: Record<string, unknown> | null;
+}
+
+export function generateActivityCSV(entries: ExportableActivity[]): string {
+  const headers = ['Date', 'Time', 'Actor', 'Action', 'Type', 'Details'];
+  const rows = entries.map((entry) => {
+    const date = new Date(entry.created_at);
+    const dateStr = date.toISOString().slice(0, 10);
+    const timeStr = date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+    const actor = entry.user?.name ?? 'Unknown';
+    const action = entry.action.replace(/_/g, ' ');
+    const type = entry.entity_type ?? '';
+    const meta = entry.metadata ?? {};
+    const details = Object.entries(meta)
+      .filter(([, v]) => v != null)
+      .map(([k, v]) => `${k}: ${String(v)}`)
+      .join('; ');
+
+    return [
+      dateStr,
+      timeStr,
+      `"${actor.replace(/"/g, '""')}"`,
+      action,
+      type,
+      `"${details.replace(/"/g, '""')}"`,
+    ].join(',');
+  });
+
+  return [headers.join(','), ...rows].join('\n');
+}
+
 export function downloadCSV(csv: string, filename: string) {
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);

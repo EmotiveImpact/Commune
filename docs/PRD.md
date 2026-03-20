@@ -729,15 +729,73 @@ Key query functions:
 
 ---
 
-## Future: Image & File Storage Migration
+## Receipt & File Uploads (F16)
 
-Currently avatars are stored in Supabase Storage. For receipt uploads and scaling, an external storage provider should be evaluated. Research candidates:
+Expenses can have an optional receipt attachment (image or PDF, max 10 MB).
+
+### Implementation
+- `receipt_url` column added to `expenses` table
+- `receipts` Supabase Storage bucket with RLS (users upload to `{user_id}/` folder)
+- Upload/delete API in `packages/api/src/receipts.ts`
+- Expense detail page shows receipt preview with view/delete actions
+- Expense creation form has optional receipt file input
+- Upload occurs after expense creation, then `receipt_url` is updated on the expense
+
+### Future: External Storage Migration
+
+Currently avatars and receipts are stored in Supabase Storage. For scaling, an external storage provider should be evaluated. Research candidates:
 
 - **Cloudinary** — 25 GB free, URL-based image transforms, face-aware avatar cropping, unsigned uploads (no backend needed), official React Native SDK. First paid tier $89/mo.
 - **AWS S3** — 5 GB free (12 months), cheapest at scale (~$0.023/GB/mo), requires presigned URLs from backend.
 - **Cloudflare R2** — 10 GB free, zero egress fees, S3-compatible API, no native image transforms (need Cloudflare Images add-on at $5/mo).
 
-Decision pending. Current Supabase Storage setup works for avatars. Receipt uploads (Pro/Agency tier feature) should use the chosen external provider to avoid consuming Supabase quota.
+Decision pending. Current Supabase Storage setup works for MVP. If storage exceeds Supabase free tier, migrate to S3 or R2.
+
+---
+
+## Web Push Notifications (F17)
+
+Browser push notifications complement the existing email notification system.
+
+### Implementation
+- `push_subscriptions` table stores Web Push API subscription data per user
+- Service worker (`public/sw.js`) handles push events and notification clicks
+- `packages/api/src/push.ts` manages subscription CRUD
+- Settings page has a push notification toggle with permission state detection
+- Supports: "Not supported" / "Blocked" / "Enabled" / "Disabled" states
+
+### Setup Required
+- Generate VAPID key pair: `npx web-push generate-vapid-keys`
+- Set `VAPID_PUBLIC_KEY` in `apps/web/src/hooks/use-push-notifications.ts`
+- Set `VAPID_PRIVATE_KEY` as environment variable on the server
+- Server-side push sending (via `web-push` npm package in edge function) is the next step
+
+---
+
+## Activity Log Export (F18)
+
+The activity log page includes a CSV export button.
+
+### Implementation
+- `generateActivityCSV()` in `apps/web/src/utils/export-csv.ts`
+- Exports: Date, Time, Actor, Action, Type, Details columns
+- Respects active filter selection (all/expenses/payments/members)
+- Downloads as `commune-activity-{group}-{date}.csv`
+
+---
+
+## Performance: Code Splitting (F19)
+
+Heavy routes are lazy-loaded to reduce initial bundle size.
+
+### Implementation
+- Vite `manualChunks` splits Mantine, Recharts, and TanStack into separate vendor chunks
+- Analytics and Recurring pages use TanStack Router lazy routes (`.lazy.tsx` files)
+- Analytics chunk: ~12 KB (loaded on navigation)
+- Recurring chunk: ~6 KB (loaded on navigation)
+- Vendor chunks: Mantine ~384 KB, Recharts ~387 KB, TanStack ~143 KB (cached independently)
+
+---
 
 ### Month boundaries for recurring items
 - Recurring expenses are generated based on due_date + recurrence
@@ -748,3 +806,18 @@ Decision pending. Current Supabase Storage setup works for avatars. Receipt uplo
 - Cannot downgrade if current usage exceeds new plan limits
 - UI shows what needs to change before downgrade is possible
 - E.g., "You have 2 groups. Standard plan allows 1. Archive a group to downgrade."
+
+---
+
+## Mobile App Polish (Planned — Next Session)
+
+The mobile app (Expo + React Native) has feature parity screens but needs UX polish.
+
+### Priorities
+1. **Recurring management screen** — mirror web's pause/resume/archive (implemented, needs visual refinement)
+2. **Analytics screen** — native bar/progress indicators (implemented, needs RN chart library for richer visuals)
+3. **PDF download** — integrate with `generate-statement` edge function via share sheet
+4. **Visual cohesion** — complementary look to web's Mantine design (shared colour palette, spacing, typography hierarchy) but adapted for native touch patterns
+5. **Member monthly totals** — F9.5 owed/paid badges on member cards (implemented)
+6. **Replace ScrollView with FlatList** — virtualization on all list screens for performance
+7. **Better form UX** — sectioned inputs, keyboard-aware scroll, inline validation

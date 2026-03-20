@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import {
   Badge,
   Button,
+  FileInput,
   Group,
   MultiSelect,
   NumberInput,
@@ -18,13 +19,16 @@ import {
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
-import { useMemo, useState } from 'react';
+import { IconUpload } from '@tabler/icons-react';
+import { useMemo, useRef, useState } from 'react';
 import { ExpenseCategory } from '@commune/types';
 import { calculateEqualSplit, calculatePercentageSplit } from '@commune/core';
 import { formatCurrency } from '@commune/utils';
+import { uploadReceipt } from '@commune/api';
 import { useGroupStore } from '../../../stores/group';
 import { useGroup } from '../../../hooks/use-groups';
 import { useCreateExpense } from '../../../hooks/use-expenses';
+import { useAuthStore } from '../../../stores/auth';
 import { ExpenseFormSkeleton } from '../../../components/page-skeleton';
 import { EmptyState } from '../../../components/empty-state';
 import { PageHeader } from '../../../components/page-header';
@@ -42,9 +46,11 @@ function AddExpensePage() {
   const { activeGroupId } = useGroupStore();
   const { data: group, isLoading } = useGroup(activeGroupId ?? '');
   const createExpense = useCreateExpense(activeGroupId ?? '');
+  const { user } = useAuthStore();
   const navigate = useNavigate();
   const [splitMethod, setSplitMethod] = useState<string>('equal');
   const [isRecurring, setIsRecurring] = useState(false);
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
 
   const form = useForm({
     mode: 'uncontrolled',
@@ -155,7 +161,22 @@ function AddExpensePage() {
     }
 
     try {
-      await createExpense.mutateAsync(expenseData);
+      const created = await createExpense.mutateAsync(expenseData);
+
+      // Upload receipt if a file was selected
+      if (receiptFile && user && created) {
+        try {
+          await uploadReceipt(receiptFile, user.id, (created as { id: string }).id);
+        } catch {
+          // Non-blocking: expense was created, receipt upload failed
+          notifications.show({
+            title: 'Receipt upload failed',
+            message: 'The expense was created but the receipt could not be attached. You can add it from the expense detail page.',
+            color: 'orange',
+          });
+        }
+      }
+
       notifications.show({
         title: 'Expense created',
         message: `${values.title} added`,
@@ -260,6 +281,22 @@ function AddExpensePage() {
                     {...form.getInputProps('recurrence_type')}
                   />
                 )}
+              </Stack>
+            </Paper>
+
+            <Paper className="commune-soft-panel" p="xl">
+              <Stack gap="md">
+                <Title order={3}>Receipt</Title>
+                <FileInput
+                  label="Attach receipt (optional)"
+                  placeholder="Click to select a file"
+                  accept="image/*,application/pdf"
+                  leftSection={<IconUpload size={16} />}
+                  value={receiptFile}
+                  onChange={setReceiptFile}
+                  description="Images or PDF, up to 10 MB"
+                  clearable
+                />
               </Stack>
             </Paper>
           </Stack>

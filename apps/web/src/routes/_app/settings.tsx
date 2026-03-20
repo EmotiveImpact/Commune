@@ -22,6 +22,7 @@ import {
   IconCamera,
   IconCoin,
   IconDeviceFloppy,
+  IconDeviceMobile,
   IconExternalLink,
   IconGlobe,
   IconPhone,
@@ -36,6 +37,12 @@ import { supabase, uploadAvatar, deleteAccount } from '@commune/api';
 import { useAuthStore } from '../../stores/auth';
 import { useProfile, useUpdateProfile } from '../../hooks/use-profile';
 import { usePortal, useSubscription } from '../../hooks/use-subscriptions';
+import {
+  isPushSupported,
+  usePushSubscription,
+  useSubscribePush,
+  useUnsubscribePush,
+} from '../../hooks/use-push-notifications';
 import { SettingsSkeleton } from '../../components/page-skeleton';
 import { PageHeader } from '../../components/page-header';
 
@@ -129,6 +136,9 @@ function SettingsPage() {
   const updateProfile = useUpdateProfile();
   const { data: subscription, isLoading: subLoading } = useSubscription(user?.id ?? '');
   const portal = usePortal();
+  const { data: pushSubs, isLoading: pushLoading } = usePushSubscription(user?.id ?? '');
+  const subscribePush = useSubscribePush();
+  const unsubscribePush = useUnsubscribePush();
   const lastHydratedProfileRef = useRef<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
@@ -638,6 +648,78 @@ function SettingsPage() {
                 {...form.getInputProps('notification_preferences.email_on_overdue', { type: 'checkbox' })}
               />
             </Stack>
+          </Paper>
+
+          {/* ── Push notifications ── */}
+          <Paper className="commune-soft-panel" p="xl">
+            <Group gap="xs" mb="md">
+              <IconDeviceMobile size={20} />
+              <Text className="commune-section-heading">Push notifications</Text>
+            </Group>
+            <Text size="sm" c="dimmed" mb="lg">
+              Receive browser push notifications even when the app is in the background.
+            </Text>
+
+            {!isPushSupported() ? (
+              <Text size="sm" c="dimmed">
+                Push notifications are not supported in this browser.
+              </Text>
+            ) : typeof Notification !== 'undefined' && Notification.permission === 'denied' ? (
+              <Text size="sm" c="red">
+                Push notifications are blocked. Please enable them in your browser settings.
+              </Text>
+            ) : (
+              <Switch
+                label={
+                  pushLoading
+                    ? 'Loading...'
+                    : (pushSubs ?? []).length > 0
+                      ? 'Enabled'
+                      : 'Disabled'
+                }
+                description="Toggle to enable or disable browser push notifications"
+                checked={(pushSubs ?? []).length > 0}
+                disabled={pushLoading || subscribePush.isPending || unsubscribePush.isPending}
+                onChange={(event) => {
+                  if (!user) return;
+                  if (event.currentTarget.checked) {
+                    subscribePush.mutate(user.id, {
+                      onError: (err) => {
+                        notifications.show({
+                          title: 'Could not enable push notifications',
+                          message: err instanceof Error ? err.message : 'Something went wrong',
+                          color: 'red',
+                        });
+                      },
+                      onSuccess: () => {
+                        notifications.show({
+                          title: 'Push notifications enabled',
+                          message: 'You will now receive browser notifications.',
+                          color: 'green',
+                        });
+                      },
+                    });
+                  } else {
+                    unsubscribePush.mutate({ userId: user.id }, {
+                      onError: (err) => {
+                        notifications.show({
+                          title: 'Could not disable push notifications',
+                          message: err instanceof Error ? err.message : 'Something went wrong',
+                          color: 'red',
+                        });
+                      },
+                      onSuccess: () => {
+                        notifications.show({
+                          title: 'Push notifications disabled',
+                          message: 'You will no longer receive browser notifications.',
+                          color: 'green',
+                        });
+                      },
+                    });
+                  }
+                }}
+              />
+            )}
           </Paper>
 
           {/* ── Danger zone ── */}

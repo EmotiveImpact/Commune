@@ -61,6 +61,7 @@ export interface Expense {
   paid_by_user_id: string | null;
   split_method: SplitMethod;
   is_active: boolean;
+  receipt_url: string | null;
   created_by: string;
   created_at: string;
   updated_at: string;

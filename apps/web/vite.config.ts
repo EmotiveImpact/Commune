@@ -7,4 +7,15 @@ export default defineConfig({
     TanStackRouterVite(),
     react(),
   ],
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'mantine-core': ['@mantine/core', '@mantine/hooks', '@mantine/notifications', '@mantine/dates'],
+          'recharts': ['recharts'],
+          'tanstack': ['@tanstack/react-query', '@tanstack/react-router'],
+        },
+      },
+    },
+  },
 });

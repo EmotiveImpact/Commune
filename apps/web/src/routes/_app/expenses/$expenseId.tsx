@@ -4,7 +4,9 @@ import {
   Avatar,
   Badge,
   Button,
+  FileInput,
   Group,
+  Image,
   Modal,
   Paper,
   SimpleGrid,
@@ -22,8 +24,12 @@ import {
   IconCheck,
   IconCheckbox,
   IconEdit,
+  IconExternalLink,
   IconNote,
+  IconPaperclip,
   IconReceipt,
+  IconTrash,
+  IconUpload,
   IconUsers,
   IconX,
 } from '@tabler/icons-react';
@@ -39,6 +45,7 @@ import {
 import { useGroupStore } from '../../../stores/group';
 import { useGroup } from '../../../hooks/use-groups';
 import { useAuthStore } from '../../../stores/auth';
+import { useUploadReceipt, useDeleteReceipt } from '../../../hooks/use-receipts';
 import { EmptyState } from '../../../components/empty-state';
 import { ExpenseDetailSkeleton } from '../../../components/page-skeleton';
 import { PageHeader } from '../../../components/page-header';
@@ -64,6 +71,8 @@ function ExpenseDetailPage() {
   const archive = useArchiveExpense(activeGroupId ?? '');
   const { user } = useAuthStore();
   const navigate = useNavigate();
+  const uploadReceipt = useUploadReceipt(activeGroupId ?? '');
+  const deleteReceipt = useDeleteReceipt(activeGroupId ?? '');
   const [noteOpened, { open: openNote, close: closeNote }] = useDisclosure(false);
   const [paymentNote, setPaymentNote] = useState('');
   const [pendingPayment, setPendingPayment] = useState<{ userId: string } | null>(null);
@@ -194,6 +203,60 @@ function ExpenseDetailPage() {
       });
     }
   }
+
+  async function handleReceiptUpload(file: File | null) {
+    if (!file || !user) return;
+
+    const maxSize = 10 * 1024 * 1024; // 10 MB
+    if (file.size > maxSize) {
+      notifications.show({
+        title: 'File too large',
+        message: 'Please choose a file under 10 MB.',
+        color: 'red',
+      });
+      return;
+    }
+
+    try {
+      await uploadReceipt.mutateAsync({
+        file,
+        userId: user.id,
+        expenseId: expenseData.id,
+      });
+      notifications.show({
+        title: 'Receipt uploaded',
+        message: 'The receipt has been attached to this expense.',
+        color: 'green',
+      });
+    } catch (err) {
+      notifications.show({
+        title: 'Upload failed',
+        message: err instanceof Error ? err.message : 'Could not upload receipt. Try again.',
+        color: 'red',
+      });
+    }
+  }
+
+  async function handleDeleteReceipt() {
+    try {
+      await deleteReceipt.mutateAsync(expenseData.id);
+      notifications.show({
+        title: 'Receipt removed',
+        message: 'The receipt has been deleted.',
+        color: 'green',
+      });
+    } catch (err) {
+      notifications.show({
+        title: 'Failed to remove receipt',
+        message: err instanceof Error ? err.message : 'Something went wrong',
+        color: 'red',
+      });
+    }
+  }
+
+  const isReceiptImage = expense.receipt_url
+    ? /\.(jpg|jpeg|png|gif|webp)/i.test(new URL(expense.receipt_url).pathname)
+    : false;
 
   return (
     <Stack gap="xl">
@@ -393,6 +456,67 @@ function ExpenseDetailPage() {
             </Table.Tbody>
           </Table>
         </div>
+      </Paper>
+
+      <Paper className="commune-soft-panel" p="xl">
+        <Group justify="space-between" align="flex-start" mb="lg">
+          <div>
+            <Group gap="xs">
+              <IconPaperclip size={20} />
+              <Text fw={700} size="lg">Receipt</Text>
+            </Group>
+            <Text size="sm" c="dimmed">
+              Attach a photo or PDF of the receipt for this expense.
+            </Text>
+          </div>
+        </Group>
+
+        {expense.receipt_url ? (
+          <Stack gap="md">
+            {isReceiptImage && (
+              <Image
+                src={expense.receipt_url}
+                alt="Receipt"
+                radius="md"
+                maw={400}
+                fit="contain"
+              />
+            )}
+            <Group gap="sm">
+              <Button
+                variant="light"
+                leftSection={<IconExternalLink size={16} />}
+                component="a"
+                href={expense.receipt_url}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                View receipt
+              </Button>
+              {isAdmin && (
+                <Button
+                  variant="light"
+                  color="red"
+                  leftSection={<IconTrash size={16} />}
+                  onClick={handleDeleteReceipt}
+                  loading={deleteReceipt.isPending}
+                >
+                  Delete receipt
+                </Button>
+              )}
+            </Group>
+          </Stack>
+        ) : (
+          <FileInput
+            label="Attach receipt"
+            placeholder="Click to select a file"
+            accept="image/*,application/pdf"
+            leftSection={<IconUpload size={16} />}
+            onChange={handleReceiptUpload}
+            disabled={uploadReceipt.isPending}
+            description="Images or PDF, up to 10 MB"
+          />
+        )}
       </Paper>
 
       <Modal opened={noteOpened} onClose={closeNote} title="Mark as paid" size="sm">

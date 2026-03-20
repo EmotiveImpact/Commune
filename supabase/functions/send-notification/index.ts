@@ -1,3 +1,15 @@
+// ── Web Push (future) ──────────────────────────────────────────────────────
+// TODO: Add web-push sending alongside email notifications.
+// When implementing:
+// 1. Install the `web-push` npm package (or use the Web Push protocol directly).
+// 2. Set VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY env vars on this edge function.
+//    Generate keys with: npx web-push generate-vapid-keys
+// 3. Query the `push_subscriptions` table for the target user's subscriptions.
+// 4. For each subscription, call webpush.sendNotification() with the payload:
+//    { title, body, icon, url }
+// 5. Handle 410 Gone responses by deleting stale subscriptions from the DB.
+// ────────────────────────────────────────────────────────────────────────────
+
 const RESEND_API_URL = 'https://api.resend.com/emails';
 
 interface NotificationRequest {
