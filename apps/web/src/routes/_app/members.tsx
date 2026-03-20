@@ -8,11 +8,8 @@ import {
   Menu,
   Modal,
   Paper,
-  SimpleGrid,
   Stack,
   Text,
-  ThemeIcon,
-  Title,
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
@@ -35,6 +32,7 @@ import { useAuthStore } from '../../stores/auth';
 import { InviteMemberModal } from '../../components/invite-member-modal';
 import { PageLoader } from '../../components/page-loader';
 import { EmptyState } from '../../components/empty-state';
+import { PageHeader } from '../../components/page-header';
 
 export const Route = createFileRoute('/_app/members')({
   component: MembersPage,
@@ -73,10 +71,8 @@ function MembersPage() {
 
   const isAdmin = group?.members.some((member) => member.user_id === user?.id && member.role === 'admin');
   const totalMembers = group?.members.length ?? 0;
-  const invitedCount = group?.members.filter((member) => member.status === 'invited').length ?? 0;
   const adminCount = group?.members.filter((member) => member.role === 'admin').length ?? 0;
-  const activeCount = group?.members.filter((member) => member.status === 'active').length ?? 0;
-  const filteredMembers = useMemo(() => {
+  const filteredMembers = (() => {
     const members = group?.members ?? [];
     const query = searchQuery.trim().toLowerCase();
 
@@ -96,7 +92,7 @@ function MembersPage() {
 
       return haystack.includes(query);
     });
-  }, [group?.members, searchQuery]);
+  })();
 
   const statusColor: Record<string, string> = {
     active: 'emerald',
@@ -189,153 +185,34 @@ function MembersPage() {
     }
   }
 
-  // Show leave button for non-admins, or for admins only when there's another admin
   const canLeave = user && group?.members.some((m) => m.user_id === user.id && m.status === 'active') && (
     !isAdmin || adminCount > 1
   );
 
   return (
-    <Stack gap="xl">
-      <Paper className="commune-hero-card" p={{ base: 'xl', md: '2rem' }}>
-        <div className="commune-hero-grid">
-          <Stack gap="md" maw={620}>
-            <div className="commune-hero-chip">People and roles</div>
-            <Stack gap="xs">
-              <Title order={1}>Members</Title>
-              <Text className="commune-hero-copy">
-                Manage who belongs to {group?.name}, who can administer it, and who still needs to accept an invite.
-              </Text>
-            </Stack>
+    <Stack gap="lg">
+      <PageHeader
+        title="Members"
+        subtitle={`${totalMembers} people in ${group?.name ?? 'this group'}`}
+      >
+        {isAdmin && (
+          <Button leftSection={<IconUserPlus size={16} />} onClick={openInvite}>
+            Invite member
+          </Button>
+        )}
+      </PageHeader>
 
-            <Group className="commune-hero-actions">
-              {isAdmin && (
-                <Button
-                  leftSection={<IconUserPlus size={16} />}
-                  onClick={openInvite}
-                  variant="gradient"
-                  gradient={{ from: 'var(--commune-primary)', to: 'var(--commune-primary-strong)', deg: 135 }}
-                >
-                  Invite member
-                </Button>
-              )}
-            </Group>
-          </Stack>
-
-          <Stack className="commune-hero-aside" gap="md">
-            <Group justify="space-between">
-              <div>
-                <Text size="sm" c="rgba(255, 250, 246, 0.65)">
-                  Total members
-                </Text>
-                <Text fw={800} size="2rem" c="white">
-                  {totalMembers}
-                </Text>
-              </div>
-              <Badge variant="light" color="emerald" size="lg">
-                {group?.name ?? 'Group'}
-              </Badge>
-            </Group>
-
-            <SimpleGrid cols={2} spacing="sm">
-              <div className="commune-hero-aside-stat">
-                <Text size="xs" c="rgba(255, 250, 246, 0.55)" tt="uppercase">
-                  Active
-                </Text>
-                <Text fw={700} size="lg" c="white">
-                  {activeCount}
-                </Text>
-              </div>
-              <div className="commune-hero-aside-stat">
-                <Text size="xs" c="rgba(255, 250, 246, 0.55)" tt="uppercase">
-                  Admins
-                </Text>
-                <Text fw={700} size="lg" c="white">
-                  {adminCount}
-                </Text>
-              </div>
-            </SimpleGrid>
-          </Stack>
-        </div>
-      </Paper>
-
-      <SimpleGrid cols={{ base: 1, sm: 2, xl: 4 }} spacing="lg">
-        <Paper className="commune-stat-card commune-kpi-card" p="lg" data-tone="sage">
-          <Group justify="space-between">
-            <Stack gap={2}>
-              <Text size="sm" c="dimmed">Total members</Text>
-              <Text fw={800} size="1.9rem">{totalMembers}</Text>
-              <Text size="sm" c="dimmed">People attached to this group</Text>
-            </Stack>
-            <ThemeIcon size={42} variant="light" style={{ backgroundColor: 'rgba(16, 185, 129, 0.1)', color: 'var(--commune-primary-strong)' }}>
-              <IconUsers size={20} />
-            </ThemeIcon>
-          </Group>
-        </Paper>
-
-        <Paper className="commune-stat-card commune-kpi-card" p="lg" data-tone="lilac">
-          <Group justify="space-between">
-            <Stack gap={2}>
-              <Text size="sm" c="dimmed">Active</Text>
-              <Text fw={800} size="1.9rem">{activeCount}</Text>
-              <Text size="sm" c="dimmed">Participating right now</Text>
-            </Stack>
-            <ThemeIcon size={42} variant="light" style={{ backgroundColor: 'rgba(98, 195, 138, 0.16)', color: 'var(--commune-forest-soft)' }}>
-              <IconShieldCheck size={20} />
-            </ThemeIcon>
-          </Group>
-        </Paper>
-
-        <Paper className="commune-stat-card commune-kpi-card" p="lg" data-tone="ink">
-          <Group justify="space-between">
-            <Stack gap={2}>
-              <Text size="sm" c="dimmed">Admins</Text>
-              <Text fw={800} size="1.9rem">{adminCount}</Text>
-              <Text size="sm" c="dimmed">Can manage group settings</Text>
-            </Stack>
-            <ThemeIcon size={42} variant="light" style={{ backgroundColor: 'rgba(16, 69, 54, 0.1)', color: 'var(--commune-forest)' }}>
-              <IconShield size={20} />
-            </ThemeIcon>
-          </Group>
-        </Paper>
-
-        <Paper className="commune-stat-card commune-kpi-card" p="lg" data-tone="peach">
-          <Group justify="space-between">
-            <Stack gap={2}>
-              <Text size="sm" c="dimmed">Invited</Text>
-              <Text fw={800} size="1.9rem">{invitedCount}</Text>
-              <Text size="sm" c="dimmed">Still waiting to join</Text>
-            </Stack>
-            <ThemeIcon size={42} variant="light" style={{ backgroundColor: 'rgba(245, 154, 118, 0.18)', color: '#F59A76' }}>
-              <IconUserPlus size={20} />
-            </ThemeIcon>
-          </Group>
-        </Paper>
-      </SimpleGrid>
-
-      <Paper className="commune-soft-panel" p="xl" >
-        <Group justify="space-between" align="flex-start" mb="lg">
-          <div>
-            <Text className="commune-section-heading">Member list</Text>
-            <Text size="sm" c="dimmed">
-              Roles and statuses are visible here so the group can stay clear about who can do what.
-            </Text>
-          </div>
-          <Badge className="commune-pill-badge" variant="light" color="gray">
-            {filteredMembers.length} shown
-          </Badge>
-        </Group>
-
-        {filteredMembers.length === 0 ? (
-          <Text size="sm" c="dimmed">
-            No members match the current top-bar search.
-          </Text>
-        ) : (
-          <Stack gap="sm">
-            {filteredMembers.map((member) => (
+      {filteredMembers.length === 0 ? (
+        <Text size="sm" c="dimmed">
+          No members match the current top-bar search.
+        </Text>
+      ) : (
+        <div className="commune-member-grid">
+          {filteredMembers.map((member) => (
             <Paper key={member.id} className="commune-stat-card" p="md" radius="lg">
               <Group justify="space-between" align="center">
                 <Group wrap="nowrap">
-                  <Avatar src={member.user.avatar_url} name={member.user.name} color="initials" size="lg" />
+                  <Avatar src={member.user.avatar_url} name={member.user.name} color="initials" size={44} />
                   <div>
                     <Group gap="xs">
                       <Text fw={600}>{member.user.name}</Text>
@@ -359,7 +236,7 @@ function MembersPage() {
                   {isAdmin && member.user_id !== user?.id && (
                     <Menu shadow="md" width={220}>
                       <Menu.Target>
-                        <ActionIcon variant="subtle" color="gray" >
+                        <ActionIcon variant="subtle" color="gray">
                           <IconDots size={16} />
                         </ActionIcon>
                       </Menu.Target>
@@ -404,12 +281,27 @@ function MembersPage() {
                 </Group>
               </Group>
             </Paper>
-            ))}
-          </Stack>
-        )}
-      </Paper>
+          ))}
 
-      {/* ── Group actions ── */}
+          {isAdmin && (
+            <div
+              className="commune-invite-placeholder"
+              onClick={openInvite}
+              onKeyDown={(e) => { if (e.key === 'Enter') openInvite(); }}
+              role="button"
+              tabIndex={0}
+              aria-label="Invite a new member"
+            >
+              <Group gap="xs">
+                <IconUserPlus size={16} />
+                <Text size="sm">Invite someone</Text>
+              </Group>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Group actions (kept as-is) */}
       <Paper className="commune-soft-panel" p="xl">
         <Text className="commune-section-heading" mb="xs">Group actions</Text>
         <Text size="sm" c="dimmed" mb="lg">

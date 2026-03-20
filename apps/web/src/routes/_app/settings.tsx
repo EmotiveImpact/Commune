@@ -13,7 +13,6 @@ import {
   Text,
   Textarea,
   TextInput,
-  Title,
 } from '@mantine/core';
 import { useForm, schemaResolver } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
@@ -37,6 +36,7 @@ import { useAuthStore } from '../../stores/auth';
 import { useProfile, useUpdateProfile } from '../../hooks/use-profile';
 import { usePortal, useSubscription } from '../../hooks/use-subscriptions';
 import { PageLoader } from '../../components/page-loader';
+import { PageHeader } from '../../components/page-header';
 
 export const Route = createFileRoute('/_app/settings')({
   component: SettingsPage,
@@ -296,33 +296,19 @@ function SettingsPage() {
 
   return (
     <Stack gap="xl">
-      <Paper className="commune-hero-card" p={{ base: 'xl', md: '2rem' }}>
-        <Group justify="space-between" align="flex-start">
-          <Stack gap="xs" maw={620}>
-            <div className="commune-hero-chip">Profile and billing</div>
-            <Title order={1}>Settings</Title>
-            <Text size="lg" className="commune-hero-copy">
-              Update your display details, choose which payment events matter, and keep billing under control.
-            </Text>
-          </Stack>
-
-          <Button
-            type="submit"
-            form="settings-form"
-            leftSection={<IconDeviceFloppy size={16} />}
-            loading={updateProfile.isPending}
-            styles={{
-              root: {
-                background: 'linear-gradient(145deg, #f3decb 0%, #d8ebe4 100%)',
-                color: 'var(--commune-forest)',
-                boxShadow: 'none',
-              },
-            }}
-          >
-            Save changes
-          </Button>
-        </Group>
-      </Paper>
+      <PageHeader
+        title="Settings"
+        subtitle="Update your profile, notification preferences, and billing"
+      >
+        <Button
+          type="submit"
+          form="settings-form"
+          leftSection={<IconDeviceFloppy size={16} />}
+          loading={updateProfile.isPending}
+        >
+          Save changes
+        </Button>
+      </PageHeader>
 
       <div className="commune-dashboard-grid">
         <Stack gap="lg">
@@ -571,37 +557,6 @@ function SettingsPage() {
                 </Button>
               </Stack>
             )}
-          </Paper>
-
-          {/* ── Account info ── */}
-          <Paper className="commune-soft-panel" p="xl">
-            <Text className="commune-section-heading" mb="md">Account</Text>
-            <Stack gap="sm">
-              <Paper className="commune-stat-card" p="md" radius="lg">
-                <Text fw={600}>Email address</Text>
-                <Text size="sm" c="dimmed">{resolvedProfile.email}</Text>
-              </Paper>
-              <Paper className="commune-stat-card" p="md" radius="lg">
-                <Text fw={600}>Phone</Text>
-                <Text size="sm" c="dimmed">{resolvedProfile.phone || 'Not set'}</Text>
-              </Paper>
-              <Paper className="commune-stat-card" p="md" radius="lg">
-                <Text fw={600}>Country</Text>
-                <Text size="sm" c="dimmed">
-                  {COUNTRY_OPTIONS.find((c) => c.value === resolvedProfile.country)?.label ?? resolvedProfile.country ?? 'Not set'}
-                </Text>
-              </Paper>
-              <Paper className="commune-stat-card" p="md" radius="lg">
-                <Text fw={600}>Currency</Text>
-                <Text size="sm" c="dimmed">
-                  {CURRENCY_OPTIONS.find((c) => c.value === resolvedProfile.default_currency)?.label ?? resolvedProfile.default_currency}
-                </Text>
-              </Paper>
-              <Paper className="commune-stat-card" p="md" radius="lg">
-                <Text fw={600}>Joined</Text>
-                <Text size="sm" c="dimmed">{formatDate(resolvedProfile.created_at)}</Text>
-              </Paper>
-            </Stack>
           </Paper>
 
           {/* ── Danger zone ── */}

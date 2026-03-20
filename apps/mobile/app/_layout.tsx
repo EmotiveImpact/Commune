@@ -149,7 +149,7 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <QueryClientProvider client={queryClient}>
           <StatusBar style="auto" />
-          <View className="flex-1 items-center justify-center bg-[#f5f1ea] px-6">
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f5f1ea', paddingHorizontal: 24 }}>
             <Text className="mb-2 text-center text-xl font-semibold text-gray-900">
               Mobile app setup needed
             </Text>
@@ -167,7 +167,7 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <QueryClientProvider client={queryClient}>
           <StatusBar style="auto" />
-          <View className="flex-1 items-center justify-center bg-[#f5f1ea]">
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f5f1ea' }}>
             <ActivityIndicator size="large" color="#2d6a4f" />
           </View>
         </QueryClientProvider>

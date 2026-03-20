@@ -9,7 +9,6 @@ import {
   Text,
   TextInput,
   Textarea,
-  Title,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
@@ -20,6 +19,7 @@ import { useGroup } from '../../../hooks/use-groups';
 import { useExpenseDetail, useUpdateExpense } from '../../../hooks/use-expenses';
 import { PageLoader } from '../../../components/page-loader';
 import { EmptyState } from '../../../components/empty-state';
+import { PageHeader } from '../../../components/page-header';
 
 export const Route = createFileRoute('/_app/expenses/$expenseId/edit')({
   component: EditExpensePage,
@@ -131,17 +131,10 @@ function EditExpensePage() {
 
   return (
     <Stack gap="xl">
-      <Paper className="commune-hero-card" p={{ base: 'xl', md: '2rem' }}>
-        <Stack gap="xs" maw={700}>
-          <Text size="sm" fw={700} tt="uppercase" c="dimmed" style={{ letterSpacing: '0.12em' }}>
-            Expense form
-          </Text>
-          <Title order={1}>Edit expense</Title>
-          <Text size="lg" c="dimmed">
-            Update the amount, dates, category, and copy while keeping the existing split intact.
-          </Text>
-        </Stack>
-      </Paper>
+      <PageHeader
+        title="Edit expense"
+        subtitle="Update the amount, dates, category, and description"
+      />
 
       <form onSubmit={form.onSubmit(handleSubmit)}>
         <Stack gap="lg">

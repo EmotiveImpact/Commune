@@ -3,30 +3,28 @@ import {
   Badge,
   Button,
   Group,
-  Paper,
   Select,
-  SimpleGrid,
   Stack,
   Table,
   Text,
-  TextInput,
-  ThemeIcon,
-  Title,
 } from '@mantine/core';
-import { IconAlertTriangle, IconCalendarTime, IconPlus, IconReceipt, IconRepeat, IconSearch } from '@tabler/icons-react';
+import { IconPlus, IconReceipt } from '@tabler/icons-react';
 import { useMemo, useState } from 'react';
 import { ExpenseCategory } from '@commune/types';
-import { formatCurrency, formatDate, isOverdue, isUpcoming } from '@commune/utils';
+import { formatCurrency, formatDate, isOverdue } from '@commune/utils';
 import { useGroupStore } from '../../../stores/group';
 import { useSearchStore } from '../../../stores/search';
 import { useGroup } from '../../../hooks/use-groups';
 import { useGroupExpenses } from '../../../hooks/use-expenses';
 import { PageLoader } from '../../../components/page-loader';
 import { EmptyState } from '../../../components/empty-state';
+import { PageHeader } from '../../../components/page-header';
 
 export const Route = createFileRoute('/_app/expenses/')({
   component: ExpensesPage,
 });
+
+const PAGE_SIZE = 30;
 
 const categoryOptions = [
   { value: '', label: 'All categories' },
@@ -43,19 +41,23 @@ function formatCategoryLabel(category: string) {
     .join(' ');
 }
 
+type StatusFilter = 'all' | 'open' | 'overdue' | 'settled';
+
 function ExpensesPage() {
   const navigate = useNavigate();
   const { activeGroupId } = useGroupStore();
   const { query: searchQuery } = useSearchStore();
   const { data: group } = useGroup(activeGroupId ?? '');
   const [categoryFilter, setCategoryFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [page, setPage] = useState(0);
 
   const { data: expenses, isLoading } = useGroupExpenses(
     activeGroupId ?? '',
     categoryFilter ? { category: categoryFilter } : undefined,
   );
 
-  const filtered = useMemo(() => {
+  const searchFiltered = useMemo(() => {
     if (!expenses) return [];
     if (!searchQuery) return expenses;
     const q = searchQuery.toLowerCase();
@@ -66,19 +68,52 @@ function ExpensesPage() {
     );
   }, [expenses, searchQuery]);
 
-  const summary = useMemo(() => {
-    const totalAmount = filtered.reduce((sum, expense) => sum + expense.amount, 0);
-    const overdueCount = filtered.filter((expense) => isOverdue(expense.due_date)).length;
-    const recurringCount = filtered.filter((expense) => expense.recurrence_type !== 'none').length;
-    const dueSoonCount = filtered.filter((expense) => isUpcoming(expense.due_date)).length;
+  const counts = useMemo(() => {
+    let openCount = 0;
+    let overdueCount = 0;
+    let settledCount = 0;
 
-    return {
-      totalAmount,
-      overdueCount,
-      recurringCount,
-      dueSoonCount,
-    };
-  }, [filtered]);
+    for (const expense of searchFiltered) {
+      const paidCount = expense.payment_records?.filter((p) => p.status !== 'unpaid').length ?? 0;
+      const totalParticipants = expense.participants?.length ?? 0;
+      const isSettled = totalParticipants > 0 && paidCount === totalParticipants;
+
+      if (isSettled) {
+        settledCount += 1;
+      } else if (isOverdue(expense.due_date)) {
+        overdueCount += 1;
+      } else {
+        openCount += 1;
+      }
+    }
+
+    return { openCount, overdueCount, settledCount };
+  }, [searchFiltered]);
+
+  const filtered = useMemo(() => {
+    if (statusFilter === 'all') return searchFiltered;
+
+    return searchFiltered.filter((expense) => {
+      const paidCount = expense.payment_records?.filter((p) => p.status !== 'unpaid').length ?? 0;
+      const totalParticipants = expense.participants?.length ?? 0;
+      const isSettled = totalParticipants > 0 && paidCount === totalParticipants;
+
+      if (statusFilter === 'settled') return isSettled;
+      if (statusFilter === 'overdue') return !isSettled && isOverdue(expense.due_date);
+      return !isSettled && !isOverdue(expense.due_date);
+    });
+  }, [searchFiltered, statusFilter]);
+
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+  const paginatedExpenses = useMemo(
+    () => filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE),
+    [filtered, page],
+  );
+
+  const totalAmount = useMemo(
+    () => searchFiltered.reduce((sum, expense) => sum + expense.amount, 0),
+    [searchFiltered],
+  );
 
   if (!activeGroupId) {
     return (
@@ -91,128 +126,47 @@ function ExpensesPage() {
     );
   }
 
+  const chipData: { key: StatusFilter; label: string; count: number }[] = [
+    { key: 'all', label: 'All', count: searchFiltered.length },
+    { key: 'open', label: 'Open', count: counts.openCount },
+    { key: 'overdue', label: 'Overdue', count: counts.overdueCount },
+    { key: 'settled', label: 'Settled', count: counts.settledCount },
+  ];
+
   return (
-    <Stack gap="xl">
-      <Paper className="commune-hero-card" p={{ base: 'xl', md: '2rem' }}>
-        <div className="commune-hero-grid">
-          <div>
-            <Badge className="commune-hero-chip" variant="light" color="emerald" w="fit-content">
-              Expense ledger
-            </Badge>
-            <Title order={1}>
-              Track every <span className="commune-highlight">shared cost</span>
-            </Title>
-            <Text className="commune-hero-copy" size="lg" c="dimmed">
-              Track recurring costs, one-off bills, due dates, and what still needs to be settled for {group?.name}.
-            </Text>
-            <Group className="commune-hero-actions" mt="md">
-              <Button className="commune-btn-gradient" component={Link} to="/expenses/new" leftSection={<IconPlus size={16} />}>
-                Add expense
-              </Button>
-            </Group>
-          </div>
+    <Stack gap="lg">
+      <PageHeader
+        title="Expenses"
+        subtitle={`${searchFiltered.length} expenses · ${formatCurrency(totalAmount, group?.currency)} tracked`}
+      >
+        <Group gap="sm" wrap="wrap">
+          <Select
+            placeholder="Category"
+            data={categoryOptions}
+            value={categoryFilter}
+            onChange={(value) => { setCategoryFilter(value ?? ''); setPage(0); }}
+            clearable
+            w={180}
+          />
+          <Button component={Link} to="/expenses/new" leftSection={<IconPlus size={16} />}>
+            Add expense
+          </Button>
+        </Group>
+      </PageHeader>
 
-          <div className="commune-hero-aside">
-            <Text fw={800} size="1.9rem">{formatCurrency(summary.totalAmount, group?.currency)}</Text>
-            <Badge variant="light" color={summary.overdueCount > 0 ? 'red' : 'emerald'}>
-              {summary.overdueCount > 0 ? `${summary.overdueCount} overdue` : 'All on track'}
-            </Badge>
-            <Group gap="sm" mt="sm">
-              <Paper className="commune-hero-aside-stat" p="xs">
-                <Text size="xs" c="dimmed">Overdue</Text>
-                <Text fw={700}>{summary.overdueCount}</Text>
-              </Paper>
-              <Paper className="commune-hero-aside-stat" p="xs">
-                <Text size="xs" c="dimmed">Due this week</Text>
-                <Text fw={700}>{summary.dueSoonCount}</Text>
-              </Paper>
-            </Group>
-          </div>
-        </div>
-      </Paper>
-
-      <SimpleGrid cols={{ base: 1, sm: 2, xl: 4 }} spacing="lg">
-        <Paper className="commune-stat-card commune-kpi-card" data-tone="sage" p="lg">
-          <Group justify="space-between">
-            <Stack gap={2}>
-              <Text size="sm" c="dimmed">Tracked spend</Text>
-              <Text fw={800} size="1.9rem">{formatCurrency(summary.totalAmount, group?.currency)}</Text>
-              <Text size="sm" c="dimmed">Across {filtered.length} expenses</Text>
-            </Stack>
-            <ThemeIcon size={42} variant="light" style={{ backgroundColor: 'rgba(16, 185, 129, 0.1)', color: 'var(--commune-primary-strong)' }}>
-              <IconReceipt size={20} />
-            </ThemeIcon>
-          </Group>
-        </Paper>
-
-        <Paper className="commune-stat-card commune-kpi-card" data-tone="peach" p="lg">
-          <Group justify="space-between">
-            <Stack gap={2}>
-              <Text size="sm" c="dimmed">Overdue</Text>
-              <Text fw={800} size="1.9rem">{summary.overdueCount}</Text>
-              <Text size="sm" c="dimmed">Past the due date</Text>
-            </Stack>
-            <ThemeIcon size={42} variant="light" style={{ backgroundColor: 'rgba(245, 154, 118, 0.18)', color: '#F59A76' }}>
-              <IconAlertTriangle size={20} />
-            </ThemeIcon>
-          </Group>
-        </Paper>
-
-        <Paper className="commune-stat-card commune-kpi-card" data-tone="lilac" p="lg">
-          <Group justify="space-between">
-            <Stack gap={2}>
-              <Text size="sm" c="dimmed">Due this week</Text>
-              <Text fw={800} size="1.9rem">{summary.dueSoonCount}</Text>
-              <Text size="sm" c="dimmed">Coming up soon</Text>
-            </Stack>
-            <ThemeIcon size={42} variant="light" style={{ backgroundColor: 'rgba(98, 195, 138, 0.16)', color: 'var(--commune-forest-soft)' }}>
-              <IconCalendarTime size={20} />
-            </ThemeIcon>
-          </Group>
-        </Paper>
-
-        <Paper className="commune-stat-card commune-kpi-card" data-tone="ink" p="lg">
-          <Group justify="space-between">
-            <Stack gap={2}>
-              <Text size="sm" c="dimmed">Recurring</Text>
-              <Text fw={800} size="1.9rem">{summary.recurringCount}</Text>
-              <Text size="sm" c="dimmed">Repeating expenses</Text>
-            </Stack>
-            <ThemeIcon size={42} variant="light" style={{ backgroundColor: 'rgba(16, 69, 54, 0.1)', color: 'var(--commune-forest)' }}>
-              <IconRepeat size={20} />
-            </ThemeIcon>
-          </Group>
-        </Paper>
-      </SimpleGrid>
-
-      <Paper className="commune-soft-panel" p="xl">
-        <Stack gap="lg">
-          <Group justify="space-between" align="flex-start">
-            <div>
-              <Text className="commune-section-heading">Filter expenses</Text>
-              <Text size="sm" c="dimmed">
-                Search by title or category, then narrow the ledger down by type.
-              </Text>
-            </div>
-          </Group>
-
-          <Group align="end" grow>
-            <TextInput
-              placeholder="Use the top-bar search"
-              leftSection={<IconSearch size={16} />}
-              value={searchQuery}
-              readOnly
-                          />
-            <Select
-              placeholder="Category"
-              data={categoryOptions}
-              value={categoryFilter}
-              onChange={(value) => setCategoryFilter(value ?? '')}
-              clearable
-                          />
-          </Group>
-        </Stack>
-      </Paper>
+      <div className="commune-filter-chips">
+        {chipData.map((chip) => (
+          <button
+            key={chip.key}
+            type="button"
+            className="commune-filter-chip"
+            data-active={statusFilter === chip.key}
+            onClick={() => { setStatusFilter(chip.key); setPage(0); }}
+          >
+            {chip.label} ({chip.count})
+          </button>
+        ))}
+      </div>
 
       {isLoading ? (
         <PageLoader message="Loading expenses..." />
@@ -230,19 +184,7 @@ function ExpensesPage() {
           }}
         />
       ) : (
-        <Paper className="commune-soft-panel" p="xl">
-          <Group justify="space-between" align="flex-start" mb="md">
-            <div>
-              <Text className="commune-section-heading">Expense table</Text>
-              <Text size="sm" c="dimmed">
-                Shared costs ordered by due date and payment status.
-              </Text>
-            </div>
-            <Badge className="commune-pill-badge" variant="light" color="gray">
-              {filtered.length} items
-            </Badge>
-          </Group>
-
+        <>
           <div className="commune-table-shell">
             <Table verticalSpacing="md" horizontalSpacing="sm">
               <Table.Thead>
@@ -256,7 +198,7 @@ function ExpensesPage() {
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
-                {filtered.map((expense) => {
+                {paginatedExpenses.map((expense) => {
                   const overdue = isOverdue(expense.due_date);
                   const paidCount = expense.payment_records?.filter((payment) => payment.status !== 'unpaid').length ?? 0;
                   const totalParticipants = expense.participants?.length ?? 0;
@@ -303,7 +245,32 @@ function ExpensesPage() {
               </Table.Tbody>
             </Table>
           </div>
-        </Paper>
+          {totalPages > 1 && (
+            <Group justify="space-between" mt="sm">
+              <Text size="sm" c="dimmed">
+                Showing {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, filtered.length)} of {filtered.length}
+              </Text>
+              <Group gap="xs">
+                <Button
+                  variant="default"
+                  size="xs"
+                  disabled={page === 0}
+                  onClick={() => setPage((p) => p - 1)}
+                >
+                  Previous
+                </Button>
+                <Button
+                  variant="default"
+                  size="xs"
+                  disabled={page >= totalPages - 1}
+                  onClick={() => setPage((p) => p + 1)}
+                >
+                  Next
+                </Button>
+              </Group>
+            </Group>
+          )}
+        </>
       )}
     </Stack>
   );

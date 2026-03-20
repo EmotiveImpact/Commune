@@ -1,15 +1,12 @@
 import { createFileRoute } from '@tanstack/react-router';
 import {
   Avatar,
-  Badge,
   Button,
   Group,
   Paper,
-  SimpleGrid,
   Stack,
   Text,
   ThemeIcon,
-  Title,
 } from '@mantine/core';
 import {
   IconActivity,
@@ -21,7 +18,6 @@ import {
   IconUserCheck,
   IconUserMinus,
   IconUserPlus,
-  IconUsers,
   IconSettings,
   IconArrowsTransferDown,
 } from '@tabler/icons-react';
@@ -32,6 +28,7 @@ import { useGroup } from '../../hooks/use-groups';
 import { useActivityLog } from '../../hooks/use-activity';
 import { PageLoader } from '../../components/page-loader';
 import { EmptyState } from '../../components/empty-state';
+import { PageHeader } from '../../components/page-header';
 
 export const Route = createFileRoute('/_app/activity')({
   component: ActivityPage,
@@ -68,7 +65,7 @@ const actionColors: Record<string, string> = {
 };
 
 function describeAction(entry: ActivityEntry): string {
-  const meta = entry.metadata;
+  const meta = entry.metadata as Record<string, string | number | undefined>;
   const actorName = entry.user?.name ?? 'Someone';
 
   switch (entry.action) {
@@ -120,21 +117,72 @@ function formatRelativeTime(dateStr: string): string {
   });
 }
 
+function getDateLabel(dateStr: string): string {
+  const date = new Date(dateStr);
+  const now = new Date();
+  const today = now.toISOString().slice(0, 10);
+  const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1)
+    .toISOString()
+    .slice(0, 10);
+  const dateKey = date.toISOString().slice(0, 10);
+
+  if (dateKey === today) return 'Today';
+  if (dateKey === yesterday) return 'Yesterday';
+  return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+}
+
+type TypeFilter = 'all' | 'expense' | 'payment' | 'member';
+
 function ActivityPage() {
   const { activeGroupId } = useGroupStore();
   const { data: group, isLoading: groupLoading } = useGroup(activeGroupId ?? '');
   const [limit, setLimit] = useState(PAGE_SIZE);
+  const [activeFilters, setActiveFilters] = useState<Set<TypeFilter>>(new Set(['all']));
   const { data: entries = [], isLoading } = useActivityLog(activeGroupId ?? '', limit);
 
-  const stats = useMemo(() => {
-    const today = new Date().toISOString().slice(0, 10);
-    const todayCount = entries.filter((e) => e.created_at.slice(0, 10) === today).length;
-    const expenseActions = entries.filter((e) => e.entity_type === 'expense').length;
-    const paymentActions = entries.filter((e) => e.entity_type === 'payment').length;
-    const memberActions = entries.filter((e) => e.entity_type === 'member').length;
+  function toggleFilter(key: TypeFilter) {
+    setActiveFilters((prev) => {
+      const next = new Set(prev);
+      if (key === 'all') {
+        return new Set(['all']);
+      }
+      next.delete('all');
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      if (next.size === 0) {
+        return new Set(['all']);
+      }
+      return next;
+    });
+  }
 
-    return { todayCount, expenseActions, paymentActions, memberActions };
-  }, [entries]);
+  const filteredEntries = useMemo(() => {
+    if (activeFilters.has('all')) return entries;
+    return entries.filter((e) => {
+      const type = e.entity_type;
+      if (!type) return false;
+      return activeFilters.has(type as TypeFilter);
+    });
+  }, [entries, activeFilters]);
+
+  const grouped = useMemo(() => {
+    const groups: { label: string; items: typeof filteredEntries }[] = [];
+    let currentLabel = '';
+
+    for (const entry of filteredEntries) {
+      const label = getDateLabel(entry.created_at);
+      if (label !== currentLabel) {
+        currentLabel = label;
+        groups.push({ label, items: [] });
+      }
+      groups[groups.length - 1]!.items.push(entry);
+    }
+
+    return groups;
+  }, [filteredEntries]);
 
   if (!activeGroupId) {
     return (
@@ -151,189 +199,99 @@ function ActivityPage() {
     return <PageLoader message="Loading activity..." />;
   }
 
+  const filterChips: { key: TypeFilter; label: string }[] = [
+    { key: 'all', label: 'All' },
+    { key: 'expense', label: 'Expenses' },
+    { key: 'payment', label: 'Payments' },
+    { key: 'member', label: 'Members' },
+  ];
+
   return (
-    <Stack gap="xl">
-      {/* ── Hero card ── */}
-      <Paper className="commune-hero-card" p={{ base: 'xl', md: '2rem' }}>
-        <div className="commune-hero-grid">
-          <Stack gap="md" maw={620}>
-            <div className="commune-hero-chip">Audit trail</div>
-            <Stack gap="xs">
-              <Title order={1}>Activity</Title>
-              <Text className="commune-hero-copy">
-                A persistent history of every action taken inside {group?.name ?? 'this group'}.
-                Expenses, payments, and membership changes are all logged here.
-              </Text>
-            </Stack>
-          </Stack>
-
-          <Stack className="commune-hero-aside" gap="md">
-            <Group justify="space-between">
-              <div>
-                <Text size="sm" c="rgba(255, 250, 246, 0.65)">
-                  Total events
-                </Text>
-                <Text fw={800} size="2rem" c="white">
-                  {entries.length}
-                </Text>
-              </div>
-              <Badge variant="light" color="emerald" size="lg">
-                {group?.name ?? 'Group'}
-              </Badge>
-            </Group>
-
-            <SimpleGrid cols={2} spacing="sm">
-              <div className="commune-hero-aside-stat">
-                <Text size="xs" c="rgba(255, 250, 246, 0.55)" tt="uppercase">
-                  Today
-                </Text>
-                <Text fw={700} size="lg" c="white">
-                  {stats.todayCount}
-                </Text>
-              </div>
-              <div className="commune-hero-aside-stat">
-                <Text size="xs" c="rgba(255, 250, 246, 0.55)" tt="uppercase">
-                  Expenses
-                </Text>
-                <Text fw={700} size="lg" c="white">
-                  {stats.expenseActions}
-                </Text>
-              </div>
-            </SimpleGrid>
-          </Stack>
+    <Stack gap="lg">
+      <PageHeader
+        title="Activity"
+        subtitle={`Everything that happened in ${group?.name ?? 'this group'}`}
+      >
+        <div className="commune-filter-chips">
+          {filterChips.map((chip) => (
+            <button
+              key={chip.key}
+              type="button"
+              className="commune-filter-chip"
+              data-active={activeFilters.has(chip.key)}
+              onClick={() => toggleFilter(chip.key)}
+            >
+              {chip.label}
+            </button>
+          ))}
         </div>
-      </Paper>
+      </PageHeader>
 
-      {/* ── KPI cards ── */}
-      <SimpleGrid cols={{ base: 1, sm: 2, xl: 4 }} spacing="lg">
-        <Paper className="commune-stat-card commune-kpi-card" p="lg" data-tone="sage">
-          <Group justify="space-between">
-            <Stack gap={2}>
-              <Text size="sm" c="dimmed">Today</Text>
-              <Text fw={800} size="1.9rem">{stats.todayCount}</Text>
-              <Text size="sm" c="dimmed">Actions logged today</Text>
-            </Stack>
-            <ThemeIcon size={42} variant="light" style={{ backgroundColor: 'rgba(16, 185, 129, 0.1)', color: 'var(--commune-primary-strong)' }}>
-              <IconActivity size={20} />
-            </ThemeIcon>
-          </Group>
-        </Paper>
+      {filteredEntries.length === 0 ? (
+        <EmptyState
+          icon={IconHistory}
+          iconColor="gray"
+          title="No activity yet"
+          description="Actions like creating expenses, marking payments, and inviting members will appear here automatically."
+          h={200}
+        />
+      ) : (
+        <Stack gap="xs">
+          {grouped.map((dateGroup) => (
+            <Stack key={dateGroup.label} gap="xs">
+              <div className="commune-date-header">{dateGroup.label}</div>
+              {dateGroup.items.map((entry) => {
+                const IconComponent = actionIcons[entry.action] ?? IconActivity;
+                const color = actionColors[entry.action] ?? 'gray';
 
-        <Paper className="commune-stat-card commune-kpi-card" p="lg" data-tone="lilac">
-          <Group justify="space-between">
-            <Stack gap={2}>
-              <Text size="sm" c="dimmed">Expense events</Text>
-              <Text fw={800} size="1.9rem">{stats.expenseActions}</Text>
-              <Text size="sm" c="dimmed">Created, updated, or archived</Text>
-            </Stack>
-            <ThemeIcon size={42} variant="light" style={{ backgroundColor: 'rgba(98, 195, 138, 0.16)', color: 'var(--commune-forest-soft)' }}>
-              <IconReceipt size={20} />
-            </ThemeIcon>
-          </Group>
-        </Paper>
+                return (
+                  <Paper key={entry.id} className="commune-stat-card" p="md" radius="lg">
+                    <Group wrap="nowrap" align="flex-start">
+                      <ThemeIcon variant="light" color={color} size="lg" radius="xl">
+                        <IconComponent size={18} />
+                      </ThemeIcon>
 
-        <Paper className="commune-stat-card commune-kpi-card" p="lg" data-tone="ink">
-          <Group justify="space-between">
-            <Stack gap={2}>
-              <Text size="sm" c="dimmed">Payment events</Text>
-              <Text fw={800} size="1.9rem">{stats.paymentActions}</Text>
-              <Text size="sm" c="dimmed">Marked or confirmed</Text>
-            </Stack>
-            <ThemeIcon size={42} variant="light" style={{ backgroundColor: 'rgba(16, 69, 54, 0.1)', color: 'var(--commune-forest)' }}>
-              <IconCash size={20} />
-            </ThemeIcon>
-          </Group>
-        </Paper>
-
-        <Paper className="commune-stat-card commune-kpi-card" p="lg" data-tone="peach">
-          <Group justify="space-between">
-            <Stack gap={2}>
-              <Text size="sm" c="dimmed">Member events</Text>
-              <Text fw={800} size="1.9rem">{stats.memberActions}</Text>
-              <Text size="sm" c="dimmed">Invited, joined, or removed</Text>
-            </Stack>
-            <ThemeIcon size={42} variant="light" style={{ backgroundColor: 'rgba(245, 154, 118, 0.18)', color: '#F59A76' }}>
-              <IconUsers size={20} />
-            </ThemeIcon>
-          </Group>
-        </Paper>
-      </SimpleGrid>
-
-      {/* ── Timeline ── */}
-      <Paper className="commune-soft-panel" p="xl">
-        <Group justify="space-between" align="flex-start" mb="lg">
-          <div>
-            <Text className="commune-section-heading">Timeline</Text>
-            <Text size="sm" c="dimmed">
-              Every change is recorded so nothing slips through the cracks.
-            </Text>
-          </div>
-          <Badge className="commune-pill-badge" variant="light" color="gray">
-            {entries.length} events
-          </Badge>
-        </Group>
-
-        {entries.length === 0 ? (
-          <EmptyState
-            icon={IconHistory}
-            iconColor="gray"
-            title="No activity yet"
-            description="Actions like creating expenses, marking payments, and inviting members will appear here automatically."
-            h={200}
-          />
-        ) : (
-          <Stack gap="sm">
-            {entries.map((entry) => {
-              const IconComponent = actionIcons[entry.action] ?? IconActivity;
-              const color = actionColors[entry.action] ?? 'gray';
-
-              return (
-                <Paper key={entry.id} className="commune-stat-card" p="md" radius="lg">
-                  <Group wrap="nowrap" align="flex-start">
-                    <ThemeIcon variant="light" color={color} size="lg" radius="xl">
-                      <IconComponent size={18} />
-                    </ThemeIcon>
-
-                    <Stack gap={2} style={{ flex: 1 }}>
-                      <Group justify="space-between" wrap="nowrap">
-                        <Group gap="xs" wrap="nowrap">
-                          <Avatar
-                            src={entry.user?.avatar_url}
-                            name={entry.user?.name}
-                            color="initials"
-                            size="sm"
-                          />
-                          <Text size="sm" fw={600}>
-                            {entry.user?.name ?? 'Unknown'}
+                      <Stack gap={2} style={{ flex: 1 }}>
+                        <Group justify="space-between" wrap="nowrap">
+                          <Group gap="xs" wrap="nowrap">
+                            <Avatar
+                              src={entry.user?.avatar_url}
+                              name={entry.user?.name}
+                              color="initials"
+                              size="sm"
+                            />
+                            <Text size="sm" fw={600}>
+                              {entry.user?.name ?? 'Unknown'}
+                            </Text>
+                          </Group>
+                          <Text size="xs" c="dimmed" style={{ whiteSpace: 'nowrap' }}>
+                            {formatRelativeTime(entry.created_at)}
                           </Text>
                         </Group>
-                        <Text size="xs" c="dimmed" style={{ whiteSpace: 'nowrap' }}>
-                          {formatRelativeTime(entry.created_at)}
+
+                        <Text size="sm" c="dimmed">
+                          {describeAction(entry)}
                         </Text>
-                      </Group>
+                      </Stack>
+                    </Group>
+                  </Paper>
+                );
+              })}
+            </Stack>
+          ))}
 
-                      <Text size="sm" c="dimmed">
-                        {describeAction(entry)}
-                      </Text>
-                    </Stack>
-                  </Group>
-                </Paper>
-              );
-            })}
-
-            {entries.length >= limit && (
-              <Button
-                variant="light"
-                fullWidth
-                mt="sm"
-                onClick={() => setLimit((prev) => prev + PAGE_SIZE)}
-              >
-                Load more
-              </Button>
-            )}
-          </Stack>
-        )}
-      </Paper>
+          {entries.length >= limit && (
+            <Button
+              variant="light"
+              fullWidth
+              mt="sm"
+              onClick={() => setLimit((prev) => prev + PAGE_SIZE)}
+            >
+              Load more
+            </Button>
+          )}
+        </Stack>
+      )}
     </Stack>
   );
 }

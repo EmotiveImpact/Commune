@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import {
+  Badge,
   Button,
   Group,
   MultiSelect,
@@ -26,6 +27,7 @@ import { useGroup } from '../../../hooks/use-groups';
 import { useCreateExpense } from '../../../hooks/use-expenses';
 import { PageLoader } from '../../../components/page-loader';
 import { EmptyState } from '../../../components/empty-state';
+import { PageHeader } from '../../../components/page-header';
 
 export const Route = createFileRoute('/_app/expenses/new')({
   component: AddExpensePage,
@@ -171,17 +173,10 @@ function AddExpensePage() {
 
   return (
     <Stack gap="xl">
-      <Paper className="commune-hero-card" p={{ base: 'xl', md: '2rem' }}>
-        <Stack gap="xs" maw={700}>
-          <Text size="sm" fw={700} tt="uppercase" c="dimmed" style={{ letterSpacing: '0.12em' }}>
-            Expense form
-          </Text>
-          <Title order={1}>Add expense</Title>
-          <Text size="lg" c="dimmed">
-            Create a new shared cost, decide who is included, and preview the split before you save it.
-          </Text>
-        </Stack>
-      </Paper>
+      <PageHeader
+        title="Add expense"
+        subtitle="Create a new shared cost, pick participants, and preview the split"
+      />
 
       <form onSubmit={form.onSubmit(handleSubmit)}>
         <div className="commune-dashboard-grid">
@@ -333,14 +328,23 @@ function AddExpensePage() {
 
             <Paper className="commune-soft-panel" p="xl">
               <Stack gap="md">
-                <Title order={3}>Split preview</Title>
+                <Group justify="space-between" align="center">
+                  <Title order={3}>Split preview</Title>
+                  {splitPreview.length > 0 && (
+                    <Badge variant="light" color="gray">
+                      {splitMethod === 'equal' ? 'Equal split' : splitMethod === 'percentage' ? 'By percentage' : 'Custom amounts'}
+                    </Badge>
+                  )}
+                </Group>
                 {splitPreview.length > 0 ? (
+                <>
                   <div style={{ overflowX: 'auto' }}>
                     <Table verticalSpacing="md" horizontalSpacing="sm">
                       <Table.Thead>
                         <Table.Tr>
                           <Table.Th>Person</Table.Th>
                           <Table.Th style={{ textAlign: 'right' }}>Share</Table.Th>
+                          <Table.Th style={{ textAlign: 'right' }}>%</Table.Th>
                         </Table.Tr>
                       </Table.Thead>
                       <Table.Tbody>
@@ -350,11 +354,42 @@ function AddExpensePage() {
                             <Table.Td style={{ textAlign: 'right' }}>
                               {formatCurrency(person.amount, group?.currency)}
                             </Table.Td>
+                            <Table.Td style={{ textAlign: 'right' }}>
+                              <Text size="sm" c="dimmed">
+                                {amount > 0 ? Math.round((person.amount / amount) * 100) : 0}%
+                              </Text>
+                            </Table.Td>
                           </Table.Tr>
                         ))}
                       </Table.Tbody>
+                      <Table.Tfoot>
+                        <Table.Tr>
+                          <Table.Td>
+                            <Text fw={700}>Total</Text>
+                          </Table.Td>
+                          <Table.Td style={{ textAlign: 'right' }}>
+                            <Text fw={700}>
+                              {formatCurrency(
+                                splitPreview.reduce((sum, p) => sum + p.amount, 0),
+                                group?.currency,
+                              )}
+                            </Text>
+                          </Table.Td>
+                          <Table.Td style={{ textAlign: 'right' }}>
+                            <Text size="sm" fw={600} c={Math.abs(splitPreview.reduce((sum, p) => sum + p.amount, 0) - amount) < 0.01 ? 'green' : 'red'}>
+                              {amount > 0 ? Math.round((splitPreview.reduce((sum, p) => sum + p.amount, 0) / amount) * 100) : 0}%
+                            </Text>
+                          </Table.Td>
+                        </Table.Tr>
+                      </Table.Tfoot>
                     </Table>
                   </div>
+                  {splitMethod === 'custom' && splitPreview.length > 0 && Math.abs(splitPreview.reduce((sum, p) => sum + p.amount, 0) - amount) > 0.01 && (
+                    <Text size="sm" c="red">
+                      Custom amounts ({formatCurrency(splitPreview.reduce((sum, p) => sum + p.amount, 0), group?.currency)}) don&apos;t match the expense total ({formatCurrency(amount, group?.currency)}).
+                    </Text>
+                  )}
+                </>
                 ) : (
                   <Text size="sm" c="dimmed">
                     Add an amount and choose participants to see the split preview.

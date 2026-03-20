@@ -13,14 +13,12 @@ import {
   Text,
   TextInput,
   ThemeIcon,
-  Title,
   Tooltip,
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import {
   IconArchive,
-  IconArrowLeft,
   IconCheck,
   IconCheckbox,
   IconEdit,
@@ -43,6 +41,7 @@ import { useGroup } from '../../../hooks/use-groups';
 import { useAuthStore } from '../../../stores/auth';
 import { EmptyState } from '../../../components/empty-state';
 import { PageLoader } from '../../../components/page-loader';
+import { PageHeader } from '../../../components/page-header';
 
 export const Route = createFileRoute('/_app/expenses/$expenseId')({
   component: ExpenseDetailPage,
@@ -198,58 +197,42 @@ function ExpenseDetailPage() {
 
   return (
     <Stack gap="xl">
-      <Paper className="commune-hero-card" p={{ base: 'xl', md: '2rem' }}>
-        <Group justify="space-between" align="flex-start">
-          <Stack gap="sm" maw={700}>
-            <Group gap="xs">
-              <ActionIcon variant="light" component={Link} to="/expenses">
-                <IconArrowLeft size={18} />
-              </ActionIcon>
-              <Badge variant="light" color="emerald">
-                Expense detail
-              </Badge>
-            </Group>
-            <Title order={1}>{expense.title}</Title>
-            <Text size="lg" c="dimmed">
-              {expense.description || 'Review the split, payment status, and who this expense affects.'}
-            </Text>
-            <Group gap="xs">
-              <Badge variant="light" color="gray">
-                {formatCategoryLabel(expense.category)}
-              </Badge>
-              {expense.recurrence_type !== 'none' && (
-                <Badge variant="light" color="emerald">
-                  Recurring {expense.recurrence_type}
-                </Badge>
-              )}
-              {overdue && <Badge color="red">Overdue</Badge>}
-            </Group>
-          </Stack>
-
-          <Group>
-            {isAdmin && (
-              <Button
-                variant="default"
-                leftSection={<IconEdit size={16} />}
-                component={Link}
-                to={`/expenses/${expense.id}/edit`}
-                              >
-                Edit
-              </Button>
-            )}
-            {isAdmin && (
-              <Button
-                variant="light"
-                color="red"
-                leftSection={<IconArchive size={16} />}
-                onClick={handleArchive}
-                              >
-                Archive
-              </Button>
-            )}
-          </Group>
+      <PageHeader
+        title={expense.title}
+        subtitle={expense.description || 'Review the split, payment status, and who this expense affects.'}
+      >
+        <Group gap="xs" wrap="wrap">
+          <Badge variant="light" color="gray">
+            {formatCategoryLabel(expense.category)}
+          </Badge>
+          {expense.recurrence_type !== 'none' && (
+            <Badge variant="light" color="emerald">
+              Recurring {expense.recurrence_type}
+            </Badge>
+          )}
+          {overdue && <Badge color="red">Overdue</Badge>}
+          {isAdmin && (
+            <Button
+              variant="default"
+              leftSection={<IconEdit size={16} />}
+              component={Link}
+              to={`/expenses/${expense.id}/edit`}
+            >
+              Edit
+            </Button>
+          )}
+          {isAdmin && (
+            <Button
+              variant="light"
+              color="red"
+              leftSection={<IconArchive size={16} />}
+              onClick={handleArchive}
+            >
+              Archive
+            </Button>
+          )}
         </Group>
-      </Paper>
+      </PageHeader>
 
       <SimpleGrid cols={{ base: 1, sm: 2, xl: 4 }} spacing="lg">
         <Paper className="commune-stat-card" p="lg">

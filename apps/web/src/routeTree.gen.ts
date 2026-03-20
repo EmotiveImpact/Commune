@@ -41,7 +41,7 @@ const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AppRoute,
-} as any).lazy(() => import('./routes/_app/index.lazy').then((d) => d.Route))
+} as any)
 const AuthSignupRoute = AuthSignupRouteImport.update({
   id: '/signup',
   path: '/signup',
@@ -71,7 +71,7 @@ const AppSettingsRoute = AppSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
   getParentRoute: () => AppRoute,
-} as any).lazy(() => import('./routes/_app/settings.lazy').then((d) => d.Route))
+} as any)
 const AppPricingRoute = AppPricingRouteImport.update({
   id: '/pricing',
   path: '/pricing',

@@ -8,7 +8,6 @@ import {
   Stack,
   Text,
   TextInput,
-  Title,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
@@ -18,6 +17,7 @@ import { GroupType } from '@commune/types';
 import { useGroup, useUpdateGroup } from '../../../hooks/use-groups';
 import { useAuthStore } from '../../../stores/auth';
 import { PageLoader } from '../../../components/page-loader';
+import { PageHeader } from '../../../components/page-header';
 import { EmptyState } from '../../../components/empty-state';
 
 export const Route = createFileRoute('/_app/groups/$groupId/edit')({
@@ -140,42 +140,28 @@ function EditGroupPage() {
 
   return (
     <Stack gap="xl">
-      <Paper className="commune-hero-card" p={{ base: 'xl', md: '2rem' }}>
-        <Group justify="space-between" align="flex-start">
-          <Stack gap="xs" maw={620}>
-            <div className="commune-hero-chip">Group settings</div>
-            <Title order={1}>Edit {group.name}</Title>
-            <Text size="lg" className="commune-hero-copy">
-              Update the name, type, currency, and billing cycle for this group.
-            </Text>
-          </Stack>
-
-          <Group>
-            <Button
-              variant="default"
-              leftSection={<IconArrowLeft size={16} />}
-              onClick={() => navigate({ to: '/members' })}
-            >
-              Back
-            </Button>
-            <Button
-              type="submit"
-              form="edit-group-form"
-              leftSection={<IconDeviceFloppy size={16} />}
-              loading={updateGroup.isPending}
-              styles={{
-                root: {
-                  background: 'linear-gradient(145deg, #f3decb 0%, #d8ebe4 100%)',
-                  color: 'var(--commune-forest)',
-                  boxShadow: 'none',
-                },
-              }}
-            >
-              Save changes
-            </Button>
-          </Group>
+      <PageHeader
+        title={`Edit ${group.name}`}
+        subtitle="Update the name, type, currency, and billing cycle"
+      >
+        <Group gap="sm">
+          <Button
+            variant="default"
+            leftSection={<IconArrowLeft size={16} />}
+            onClick={() => navigate({ to: '/members' })}
+          >
+            Back
+          </Button>
+          <Button
+            type="submit"
+            form="edit-group-form"
+            leftSection={<IconDeviceFloppy size={16} />}
+            loading={updateGroup.isPending}
+          >
+            Save changes
+          </Button>
         </Group>
-      </Paper>
+      </PageHeader>
 
       <Paper className="commune-soft-panel" p="xl">
         <Group gap="xs" mb="md">

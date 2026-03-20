@@ -10,7 +10,6 @@ import {
   Stack,
   Text,
   ThemeIcon,
-  Title,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { IconCheck, IconInfoCircle, IconSparkles } from '@tabler/icons-react';
@@ -20,6 +19,7 @@ import { useCheckout, useSubscription } from '../../hooks/use-subscriptions';
 import { usePlanLimits, PLAN_LIMITS } from '../../hooks/use-plan-limits';
 import { formatDate } from '@commune/utils';
 import { PageLoader } from '../../components/page-loader';
+import { PageHeader } from '../../components/page-header';
 
 export const Route = createFileRoute('/_app/pricing')({
   component: PricingPage,
@@ -134,73 +134,18 @@ function PricingPage() {
 
   return (
     <Stack gap="xl">
-      <Paper className="commune-hero-card" p={{ base: 'xl', md: '2rem' }}>
-        <div className="commune-hero-grid">
-          <Stack gap="md" maw={620}>
-            <div className="commune-hero-chip">Plans and billing</div>
-            <Stack gap="xs">
-              <Title order={1}>
-                Find the plan that <span className="commune-hero-highlight">fits your group.</span>
-              </Title>
-              <Text size="lg" className="commune-hero-copy">
-                Every plan starts with a 7-day free trial. Pick the level that matches how many
-                groups and members you actually manage.
-              </Text>
-            </Stack>
-          </Stack>
-
-          {isActive && currentPlan ? (
-            <Stack className="commune-hero-aside" gap="md">
-              <Group justify="space-between">
-                <div>
-                  <Text size="sm" c="rgba(255, 250, 246, 0.65)">
-                    Current plan
-                  </Text>
-                  <Text fw={700} size="lg">
-                    {PLANS.find((p) => p.id === currentPlan)?.name ?? currentPlan}
-                  </Text>
-                </div>
-                <Badge variant="light" color={isTrialing ? 'orange' : 'emerald'}>
-                  {isTrialing ? 'Trial' : 'Active'}
-                </Badge>
-              </Group>
-
-              <SimpleGrid cols={2} spacing="sm">
-                <div className="commune-hero-aside-stat">
-                  <Text size="xs" c="rgba(255, 250, 246, 0.55)" tt="uppercase">
-                    Groups
-                  </Text>
-                  <Text fw={700} size="lg">
-                    {PLANS.find((p) => p.id === currentPlan)?.limits.groups ?? '—'}
-                  </Text>
-                </div>
-                <div className="commune-hero-aside-stat">
-                  <Text size="xs" c="rgba(255, 250, 246, 0.55)" tt="uppercase">
-                    Members limit
-                  </Text>
-                  <Text fw={700} size="lg">
-                    {PLANS.find((p) => p.id === currentPlan)?.limits.members ?? '—'}
-                  </Text>
-                </div>
-              </SimpleGrid>
-            </Stack>
-          ) : (
-            <Stack className="commune-hero-aside" gap="md">
-              <div>
-                <Text size="sm" c="rgba(255, 250, 246, 0.65)">
-                  Current plan
-                </Text>
-                <Text fw={700} size="lg">
-                  No active plan
-                </Text>
-              </div>
-              <Text size="sm" c="rgba(255, 250, 246, 0.55)">
-                Pick a plan below to start your 7-day free trial.
-              </Text>
-            </Stack>
-          )}
-        </div>
-      </Paper>
+      <PageHeader
+        title="Choose your plan"
+        subtitle="Every plan starts with a 7-day free trial. Pick the level that matches your needs."
+      >
+        {isActive && currentPlan && (
+          <Group gap="xs">
+            <Badge variant="light" color={isTrialing ? 'orange' : 'emerald'} size="lg">
+              {PLANS.find((p) => p.id === currentPlan)?.name ?? currentPlan} — {isTrialing ? 'Trial' : 'Active'}
+            </Badge>
+          </Group>
+        )}
+      </PageHeader>
 
       {success && (
         <Alert icon={<IconCheck size={16} />} color="green" title="Subscription activated">
