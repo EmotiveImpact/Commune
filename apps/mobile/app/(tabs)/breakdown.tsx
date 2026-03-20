@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { Alert, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { useCallback, useMemo, useState } from 'react';
+import { Alert, FlatList, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ExpenseCategory } from '@commune/types';
 import { formatCurrency, formatDate, getMonthKey } from '@commune/utils';
@@ -40,21 +40,13 @@ export default function BreakdownScreen() {
     isLoading,
     error: breakdownError,
     refetch: refetchBreakdown,
-  } = useUserBreakdown(
-    activeGroupId ?? '',
-    user?.id ?? '',
-    selectedMonth
-  );
+  } = useUserBreakdown(activeGroupId ?? '', user?.id ?? '', selectedMonth);
   const markPayment = useMarkPayment(activeGroupId ?? '');
   const loadError = groupError ?? breakdownError;
 
   const filteredItems = useMemo(() => {
-    if (!breakdown?.items) {
-      return [];
-    }
-    if (!categoryFilter) {
-      return breakdown.items;
-    }
+    if (!breakdown?.items) return [];
+    if (!categoryFilter) return breakdown.items;
     return breakdown.items.filter((item) => item.expense.category === categoryFilter);
   }, [breakdown?.items, categoryFilter]);
 
@@ -64,11 +56,8 @@ export default function BreakdownScreen() {
       : 0;
   const monthLabel = formatMonthLabel(selectedMonth);
 
-  async function handleTogglePayment(expenseId: string, status: 'unpaid' | 'paid' | 'confirmed') {
-    if (!user) {
-      return;
-    }
-
+  const handleTogglePayment = useCallback(async (expenseId: string, status: 'unpaid' | 'paid' | 'confirmed') => {
+    if (!user) return;
     try {
       await markPayment.mutateAsync({
         expenseId,
@@ -76,12 +65,45 @@ export default function BreakdownScreen() {
         status: status === 'unpaid' ? 'paid' : 'unpaid',
       });
     } catch (error) {
-      Alert.alert(
-        'Payment update failed',
-        getErrorMessage(error)
-      );
+      Alert.alert('Payment update failed', getErrorMessage(error));
     }
-  }
+  }, [user, markPayment]);
+
+  const renderItem = useCallback(({ item }: { item: (typeof filteredItems)[0] }) => {
+    const paymentTone =
+      item.payment_status === 'paid'
+        ? 'emerald'
+        : item.payment_status === 'confirmed'
+          ? 'forest'
+          : 'sand';
+
+    return (
+      <View className="px-5">
+        <ListRowCard
+          title={item.expense.title}
+          subtitle={`${formatCategoryLabel(item.expense.category)} · Due ${formatDate(item.expense.due_date)}`}
+          amount={formatCurrency(item.share_amount, group?.currency ?? 'GBP')}
+          onPress={() => router.push(`/expenses/${item.expense.id}`)}
+        >
+          <View className="mt-4 flex-row items-center justify-between">
+            <View className="flex-row flex-wrap">
+              <StatusChip label={item.payment_status} tone={paymentTone} />
+            </View>
+            <TouchableOpacity
+              activeOpacity={0.86}
+              disabled={markPayment.isPending}
+              className={`rounded-full px-4 py-3 ${item.payment_status === 'unpaid' ? 'bg-[#1f2330]' : 'border border-[rgba(23,27,36,0.14)] bg-white'}`}
+              onPress={() => handleTogglePayment(item.expense.id, item.payment_status)}
+            >
+              <Text className={`text-sm font-semibold ${item.payment_status === 'unpaid' ? 'text-white' : 'text-[#171b24]'}`}>
+                {markPayment.isPending ? 'Saving...' : item.payment_status === 'unpaid' ? 'Mark paid' : 'Mark unpaid'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </ListRowCard>
+      </View>
+    );
+  }, [group?.currency, router, markPayment, handleTogglePayment]);
 
   if (!activeGroupId) {
     return (
@@ -103,15 +125,9 @@ export default function BreakdownScreen() {
         <EmptyState
           icon="cloud-offline-outline"
           title="Breakdown unavailable"
-          description={getErrorMessage(
-            loadError,
-            'Could not load your monthly breakdown right now.'
-          )}
+          description={getErrorMessage(loadError, 'Could not load your monthly breakdown right now.')}
           actionLabel="Try again"
-          onAction={() => {
-            void refetchGroup();
-            void refetchBreakdown();
-          }}
+          onAction={() => { void refetchGroup(); void refetchBreakdown(); }}
         />
       </Screen>
     );
@@ -121,8 +137,8 @@ export default function BreakdownScreen() {
     return <BreakdownSkeleton />;
   }
 
-  return (
-    <Screen>
+  const ListHeader = (
+    <View className="px-5 pt-5">
       <HeroPanel
         eyebrow="Personal statement"
         title="Your breakdown"
@@ -143,9 +159,7 @@ export default function BreakdownScreen() {
             <Text className="text-xs font-semibold uppercase tracking-[2px] text-[rgba(255,255,255,0.72)]">
               Payment progress
             </Text>
-            <Text className="mt-2 text-lg font-semibold text-white">
-              {paidPct}%
-            </Text>
+            <Text className="mt-2 text-lg font-semibold text-white">{paidPct}%</Text>
           </View>
         </View>
       </HeroPanel>
@@ -154,61 +168,31 @@ export default function BreakdownScreen() {
         <Text className="text-sm font-medium text-[#171b24]">Month</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mt-4">
           {getRecentMonthKeys(6).map((month) => (
-            <Pill
-              key={month}
-              label={formatMonthLabel(month)}
-              selected={selectedMonth === month}
-              onPress={() => setSelectedMonth(month)}
-            />
+            <Pill key={month} label={formatMonthLabel(month)} selected={selectedMonth === month} onPress={() => setSelectedMonth(month)} />
           ))}
         </ScrollView>
       </Surface>
 
       <View className="mb-1 flex-row flex-wrap justify-between">
         <View style={{ width: '48.5%' }}>
-          <StatCard
-            icon="wallet-outline"
-            label="Total owed"
-            value={formatCurrency(breakdown?.total_owed ?? 0, group.currency)}
-            note="For the selected month"
-            tone="emerald"
-          />
+          <StatCard icon="wallet-outline" label="Total owed" value={formatCurrency(breakdown?.total_owed ?? 0, group.currency)} note="For the selected month" tone="emerald" />
         </View>
         <View style={{ width: '48.5%' }}>
-          <StatCard
-            icon="checkmark-circle-outline"
-            label="Paid"
-            value={formatCurrency(breakdown?.total_paid ?? 0, group.currency)}
-            note="Already marked as paid"
-            tone="forest"
-          />
+          <StatCard icon="checkmark-circle-outline" label="Paid" value={formatCurrency(breakdown?.total_paid ?? 0, group.currency)} note="Already marked as paid" tone="forest" />
         </View>
         <View style={{ width: '48.5%' }}>
-          <StatCard
-            icon="time-outline"
-            label="Remaining"
-            value={formatCurrency(breakdown?.remaining ?? 0, group.currency)}
-            note="Still outstanding"
-            tone="sand"
-          />
+          <StatCard icon="time-outline" label="Remaining" value={formatCurrency(breakdown?.remaining ?? 0, group.currency)} note="Still outstanding" tone="sand" />
         </View>
         <View style={{ width: '48.5%' }}>
-          <StatCard
-            icon="receipt-outline"
-            label="Items"
-            value={String(filteredItems.length)}
-            note="Expenses in this view"
-            tone="sky"
-          />
+          <StatCard icon="receipt-outline" label="Items" value={String(filteredItems.length)} note="Expenses in this view" tone="sky" />
         </View>
       </View>
 
+      {/* Payment progress bar */}
       <Surface className="mb-4">
         <View className="flex-row items-center justify-between">
           <View className="mr-4 flex-1">
-            <Text className="text-lg font-semibold text-[#171b24]">
-              Payment progress
-            </Text>
+            <Text className="text-lg font-semibold text-[#171b24]">Payment progress</Text>
             <Text className="mt-2 text-sm leading-6 text-[#667085]">
               {paidPct}% of this month's statement is marked as paid.
             </Text>
@@ -223,80 +207,41 @@ export default function BreakdownScreen() {
         </View>
       </Surface>
 
-      <Surface>
-        <Text className="text-lg font-semibold text-[#171b24]">
-          Filter breakdown
-        </Text>
-        <Text className="mt-2 text-sm leading-6 text-[#667085]">
-          Narrow the statement by category.
-        </Text>
+      {/* Category filter */}
+      <Surface className="mb-2">
+        <Text className="text-lg font-semibold text-[#171b24]">Filter breakdown</Text>
+        <Text className="mt-2 text-sm leading-6 text-[#667085]">Narrow the statement by category.</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mt-4">
-          <Pill
-            label="All"
-            selected={!categoryFilter}
-            onPress={() => setCategoryFilter('')}
-          />
+          <Pill label="All" selected={!categoryFilter} onPress={() => setCategoryFilter('')} />
           {categories.map((value) => (
-            <Pill
-              key={value}
-              label={formatCategoryLabel(value)}
-              selected={categoryFilter === value}
-              onPress={() => setCategoryFilter(value)}
-            />
+            <Pill key={value} label={formatCategoryLabel(value)} selected={categoryFilter === value} onPress={() => setCategoryFilter(value)} />
           ))}
         </ScrollView>
-
-        {filteredItems.length === 0 ? (
-          <Text className="mt-4 text-sm text-[#667085]">
-            No expenses match the current month and category filters.
-          </Text>
-        ) : (
-          filteredItems.map((item) => {
-            const paymentTone =
-              item.payment_status === 'paid'
-                ? 'emerald'
-                : item.payment_status === 'confirmed'
-                  ? 'forest'
-                  : 'sand';
-
-            return (
-              <ListRowCard
-                key={item.expense.id}
-                title={item.expense.title}
-                subtitle={`${formatCategoryLabel(item.expense.category)} · Due ${formatDate(item.expense.due_date)}`}
-                amount={formatCurrency(item.share_amount, group.currency)}
-                onPress={() => router.push(`/expenses/${item.expense.id}`)}
-              >
-                <View className="mt-4 flex-row items-center justify-between">
-                  <View className="flex-row flex-wrap">
-                    <StatusChip label={item.payment_status} tone={paymentTone} />
-                  </View>
-                  <View>
-                    <TouchableOpacity
-                      activeOpacity={0.86}
-                      disabled={markPayment.isPending}
-                      className={`rounded-full px-4 py-3 ${item.payment_status === 'unpaid' ? 'bg-[#1f2330]' : 'border border-[rgba(23,27,36,0.14)] bg-white'}`}
-                      onPress={() =>
-                        handleTogglePayment(item.expense.id, item.payment_status)
-                      }
-                    >
-                      <Text
-                        className={`text-sm font-semibold ${item.payment_status === 'unpaid' ? 'text-white' : 'text-[#171b24]'}`}
-                      >
-                        {markPayment.isPending
-                          ? 'Saving...'
-                          : item.payment_status === 'unpaid'
-                            ? 'Mark paid'
-                            : 'Mark unpaid'}
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              </ListRowCard>
-            );
-          })
-        )}
       </Surface>
-    </Screen>
+    </View>
+  );
+
+  return (
+    <FlatList
+      data={filteredItems}
+      renderItem={renderItem}
+      keyExtractor={(item) => item.expense.id}
+      className="flex-1 bg-[#f5f1ea]"
+      contentContainerStyle={{ paddingBottom: 120 }}
+      showsVerticalScrollIndicator={false}
+      ListHeaderComponent={ListHeader}
+      ListEmptyComponent={
+        <View className="px-5">
+          <Surface>
+            <Text className="text-sm text-[#667085]">
+              No expenses match the current month and category filters.
+            </Text>
+          </Surface>
+        </View>
+      }
+      initialNumToRender={15}
+      maxToRenderPerBatch={10}
+      windowSize={5}
+    />
   );
 }

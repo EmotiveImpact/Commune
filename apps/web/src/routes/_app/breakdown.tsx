@@ -11,9 +11,10 @@ import {
   Table,
   Text,
 } from '@mantine/core';
-import { IconCheck, IconReceipt, IconWallet, IconX } from '@tabler/icons-react';
+import { IconCheck, IconDownload, IconReceipt, IconWallet, IconX } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { useMemo, useState } from 'react';
+import { downloadStatement } from '@commune/api';
 import { ExpenseCategory } from '@commune/types';
 import { formatCurrency, formatDate, getMonthKey } from '@commune/utils';
 import { useGroupStore } from '../../stores/group';
@@ -21,6 +22,7 @@ import { useAuthStore } from '../../stores/auth';
 import { useGroup } from '../../hooks/use-groups';
 import { useUserBreakdown } from '../../hooks/use-dashboard';
 import { useMarkPayment } from '../../hooks/use-expenses';
+import { useSubscription } from '../../hooks/use-subscriptions';
 import { BreakdownSkeleton } from '../../components/page-skeleton';
 import { EmptyState } from '../../components/empty-state';
 import { PageHeader } from '../../components/page-header';
@@ -68,6 +70,9 @@ function BreakdownPage() {
   const [categoryFilter, setCategoryFilter] = useState('');
   const [page, setPage] = useState(0);
   const markPayment = useMarkPayment(activeGroupId ?? '');
+  const { data: subscription } = useSubscription(user?.id ?? '');
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
+  const isPaidPlan = subscription?.plan === 'pro' || subscription?.plan === 'agency';
 
   const { data: breakdown, isLoading } = useUserBreakdown(
     activeGroupId ?? '',
@@ -114,6 +119,31 @@ function BreakdownPage() {
     }
   }
 
+  async function handleDownloadStatement() {
+    if (!activeGroupId) return;
+    setDownloadingPdf(true);
+    try {
+      const blob = await downloadStatement(activeGroupId, selectedMonth);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `statement-${selectedMonth}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      notifications.show({ title: 'Statement downloaded', message: '', color: 'green' });
+    } catch (err) {
+      notifications.show({
+        title: 'Failed to generate statement',
+        message: err instanceof Error ? err.message : 'Something went wrong',
+        color: 'red',
+      });
+    } finally {
+      setDownloadingPdf(false);
+    }
+  }
+
   if (!activeGroupId) {
     return (
       <EmptyState
@@ -131,12 +161,36 @@ function BreakdownPage() {
         title="Your Breakdown"
         subtitle="What you owe and what you've paid"
       >
-        <Select
-          data={monthOptions}
-          value={selectedMonth}
-          onChange={(value) => { setSelectedMonth(value ?? getMonthKey()); setPage(0); }}
-          w={200}
-        />
+        <Group gap="sm">
+          <Select
+            data={monthOptions}
+            value={selectedMonth}
+            onChange={(value) => { setSelectedMonth(value ?? getMonthKey()); setPage(0); }}
+            w={200}
+          />
+          {isPaidPlan ? (
+            <ActionIcon
+              variant="light"
+              color="commune"
+              size="lg"
+              loading={downloadingPdf}
+              onClick={handleDownloadStatement}
+              title="Download PDF statement"
+            >
+              <IconDownload size={18} />
+            </ActionIcon>
+          ) : (
+            <ActionIcon
+              variant="light"
+              color="gray"
+              size="lg"
+              disabled
+              title="Upgrade to Pro to download statements"
+            >
+              <IconDownload size={18} />
+            </ActionIcon>
+          )}
+        </Group>
       </PageHeader>
 
       {isLoading ? (

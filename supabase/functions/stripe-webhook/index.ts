@@ -67,8 +67,18 @@ Deno.serve(async (req: Request) => {
 
       case 'customer.subscription.updated': {
         const sub = event.data.object as Stripe.Subscription;
-        const userId = sub.metadata?.supabase_user_id;
-        if (!userId) break;
+        let userId = sub.metadata?.supabase_user_id;
+
+        // Fallback: look up user by subscription ID if metadata is missing
+        if (!userId) {
+          const { data: existingSub } = await supabase
+            .from('subscriptions')
+            .select('user_id')
+            .eq('stripe_subscription_id', sub.id)
+            .maybeSingle();
+          if (!existingSub) break;
+          userId = existingSub.user_id;
+        }
 
         const plan = sub.metadata?.plan ?? sub.items.data[0]?.price?.lookup_key;
 
@@ -99,8 +109,17 @@ Deno.serve(async (req: Request) => {
 
       case 'customer.subscription.deleted': {
         const sub = event.data.object as Stripe.Subscription;
-        const userId = sub.metadata?.supabase_user_id;
-        if (!userId) break;
+        let userId = sub.metadata?.supabase_user_id;
+
+        if (!userId) {
+          const { data: existingSub } = await supabase
+            .from('subscriptions')
+            .select('user_id')
+            .eq('stripe_subscription_id', sub.id)
+            .maybeSingle();
+          if (!existingSub) break;
+          userId = existingSub.user_id;
+        }
 
         const { error } = await supabase
           .from('subscriptions')

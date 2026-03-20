@@ -18,11 +18,14 @@ import { Route as AuthLoginRouteImport } from './routes/_auth/login'
 import { Route as AuthForgotPasswordRouteImport } from './routes/_auth/forgot-password'
 import { Route as AuthCallbackRouteImport } from './routes/_auth/callback'
 import { Route as AppSettingsRouteImport } from './routes/_app/settings'
+import { Route as AppRecurringRouteImport } from './routes/_app/recurring'
 import { Route as AppPricingRouteImport } from './routes/_app/pricing'
 import { Route as AppOnboardingRouteImport } from './routes/_app/onboarding'
 import { Route as AppMembersRouteImport } from './routes/_app/members'
 import { Route as AppBreakdownRouteImport } from './routes/_app/breakdown'
+import { Route as AppAnalyticsRouteImport } from './routes/_app/analytics'
 import { Route as AppActivityRouteImport } from './routes/_app/activity'
+import { Route as AppGroupsIndexRouteImport } from './routes/_app/groups/index'
 import { Route as AppExpensesIndexRouteImport } from './routes/_app/expenses/index'
 import { Route as AppExpensesNewRouteImport } from './routes/_app/expenses/new'
 import { Route as AppExpensesExpenseIdRouteImport } from './routes/_app/expenses/$expenseId'
@@ -72,6 +75,11 @@ const AppSettingsRoute = AppSettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => AppRoute,
 } as any)
+const AppRecurringRoute = AppRecurringRouteImport.update({
+  id: '/recurring',
+  path: '/recurring',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppPricingRoute = AppPricingRouteImport.update({
   id: '/pricing',
   path: '/pricing',
@@ -92,9 +100,19 @@ const AppBreakdownRoute = AppBreakdownRouteImport.update({
   path: '/breakdown',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAnalyticsRoute = AppAnalyticsRouteImport.update({
+  id: '/analytics',
+  path: '/analytics',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppActivityRoute = AppActivityRouteImport.update({
   id: '/activity',
   path: '/activity',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppGroupsIndexRoute = AppGroupsIndexRouteImport.update({
+  id: '/groups/',
+  path: '/groups/',
   getParentRoute: () => AppRoute,
 } as any)
 const AppExpensesIndexRoute = AppExpensesIndexRouteImport.update({
@@ -127,10 +145,12 @@ const AppExpensesExpenseIdEditRoute =
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/activity': typeof AppActivityRoute
+  '/analytics': typeof AppAnalyticsRoute
   '/breakdown': typeof AppBreakdownRoute
   '/members': typeof AppMembersRoute
   '/onboarding': typeof AppOnboardingRoute
   '/pricing': typeof AppPricingRoute
+  '/recurring': typeof AppRecurringRoute
   '/settings': typeof AppSettingsRoute
   '/callback': typeof AuthCallbackRoute
   '/forgot-password': typeof AuthForgotPasswordRoute
@@ -140,16 +160,19 @@ export interface FileRoutesByFullPath {
   '/expenses/$expenseId': typeof AppExpensesExpenseIdRouteWithChildren
   '/expenses/new': typeof AppExpensesNewRoute
   '/expenses/': typeof AppExpensesIndexRoute
+  '/groups/': typeof AppGroupsIndexRoute
   '/expenses/$expenseId/edit': typeof AppExpensesExpenseIdEditRoute
   '/groups/$groupId/edit': typeof AppGroupsGroupIdEditRoute
 }
 export interface FileRoutesByTo {
   '/': typeof AppIndexRoute
   '/activity': typeof AppActivityRoute
+  '/analytics': typeof AppAnalyticsRoute
   '/breakdown': typeof AppBreakdownRoute
   '/members': typeof AppMembersRoute
   '/onboarding': typeof AppOnboardingRoute
   '/pricing': typeof AppPricingRoute
+  '/recurring': typeof AppRecurringRoute
   '/settings': typeof AppSettingsRoute
   '/callback': typeof AuthCallbackRoute
   '/forgot-password': typeof AuthForgotPasswordRoute
@@ -159,6 +182,7 @@ export interface FileRoutesByTo {
   '/expenses/$expenseId': typeof AppExpensesExpenseIdRouteWithChildren
   '/expenses/new': typeof AppExpensesNewRoute
   '/expenses': typeof AppExpensesIndexRoute
+  '/groups': typeof AppGroupsIndexRoute
   '/expenses/$expenseId/edit': typeof AppExpensesExpenseIdEditRoute
   '/groups/$groupId/edit': typeof AppGroupsGroupIdEditRoute
 }
@@ -167,10 +191,12 @@ export interface FileRoutesById {
   '/_app': typeof AppRouteWithChildren
   '/_auth': typeof AuthRouteWithChildren
   '/_app/activity': typeof AppActivityRoute
+  '/_app/analytics': typeof AppAnalyticsRoute
   '/_app/breakdown': typeof AppBreakdownRoute
   '/_app/members': typeof AppMembersRoute
   '/_app/onboarding': typeof AppOnboardingRoute
   '/_app/pricing': typeof AppPricingRoute
+  '/_app/recurring': typeof AppRecurringRoute
   '/_app/settings': typeof AppSettingsRoute
   '/_auth/callback': typeof AuthCallbackRoute
   '/_auth/forgot-password': typeof AuthForgotPasswordRoute
@@ -181,6 +207,7 @@ export interface FileRoutesById {
   '/_app/expenses/$expenseId': typeof AppExpensesExpenseIdRouteWithChildren
   '/_app/expenses/new': typeof AppExpensesNewRoute
   '/_app/expenses/': typeof AppExpensesIndexRoute
+  '/_app/groups/': typeof AppGroupsIndexRoute
   '/_app/expenses/$expenseId/edit': typeof AppExpensesExpenseIdEditRoute
   '/_app/groups/$groupId/edit': typeof AppGroupsGroupIdEditRoute
 }
@@ -189,10 +216,12 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/activity'
+    | '/analytics'
     | '/breakdown'
     | '/members'
     | '/onboarding'
     | '/pricing'
+    | '/recurring'
     | '/settings'
     | '/callback'
     | '/forgot-password'
@@ -202,16 +231,19 @@ export interface FileRouteTypes {
     | '/expenses/$expenseId'
     | '/expenses/new'
     | '/expenses/'
+    | '/groups/'
     | '/expenses/$expenseId/edit'
     | '/groups/$groupId/edit'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/activity'
+    | '/analytics'
     | '/breakdown'
     | '/members'
     | '/onboarding'
     | '/pricing'
+    | '/recurring'
     | '/settings'
     | '/callback'
     | '/forgot-password'
@@ -221,6 +253,7 @@ export interface FileRouteTypes {
     | '/expenses/$expenseId'
     | '/expenses/new'
     | '/expenses'
+    | '/groups'
     | '/expenses/$expenseId/edit'
     | '/groups/$groupId/edit'
   id:
@@ -228,10 +261,12 @@ export interface FileRouteTypes {
     | '/_app'
     | '/_auth'
     | '/_app/activity'
+    | '/_app/analytics'
     | '/_app/breakdown'
     | '/_app/members'
     | '/_app/onboarding'
     | '/_app/pricing'
+    | '/_app/recurring'
     | '/_app/settings'
     | '/_auth/callback'
     | '/_auth/forgot-password'
@@ -242,6 +277,7 @@ export interface FileRouteTypes {
     | '/_app/expenses/$expenseId'
     | '/_app/expenses/new'
     | '/_app/expenses/'
+    | '/_app/groups/'
     | '/_app/expenses/$expenseId/edit'
     | '/_app/groups/$groupId/edit'
   fileRoutesById: FileRoutesById
@@ -316,6 +352,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSettingsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/recurring': {
+      id: '/_app/recurring'
+      path: '/recurring'
+      fullPath: '/recurring'
+      preLoaderRoute: typeof AppRecurringRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/pricing': {
       id: '/_app/pricing'
       path: '/pricing'
@@ -344,11 +387,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppBreakdownRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/analytics': {
+      id: '/_app/analytics'
+      path: '/analytics'
+      fullPath: '/analytics'
+      preLoaderRoute: typeof AppAnalyticsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/activity': {
       id: '/_app/activity'
       path: '/activity'
       fullPath: '/activity'
       preLoaderRoute: typeof AppActivityRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/groups/': {
+      id: '/_app/groups/'
+      path: '/groups'
+      fullPath: '/groups/'
+      preLoaderRoute: typeof AppGroupsIndexRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/expenses/': {
@@ -402,29 +459,35 @@ const AppExpensesExpenseIdRouteWithChildren =
 
 interface AppRouteChildren {
   AppActivityRoute: typeof AppActivityRoute
+  AppAnalyticsRoute: typeof AppAnalyticsRoute
   AppBreakdownRoute: typeof AppBreakdownRoute
   AppMembersRoute: typeof AppMembersRoute
   AppOnboardingRoute: typeof AppOnboardingRoute
   AppPricingRoute: typeof AppPricingRoute
+  AppRecurringRoute: typeof AppRecurringRoute
   AppSettingsRoute: typeof AppSettingsRoute
   AppIndexRoute: typeof AppIndexRoute
   AppExpensesExpenseIdRoute: typeof AppExpensesExpenseIdRouteWithChildren
   AppExpensesNewRoute: typeof AppExpensesNewRoute
   AppExpensesIndexRoute: typeof AppExpensesIndexRoute
+  AppGroupsIndexRoute: typeof AppGroupsIndexRoute
   AppGroupsGroupIdEditRoute: typeof AppGroupsGroupIdEditRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
   AppActivityRoute: AppActivityRoute,
+  AppAnalyticsRoute: AppAnalyticsRoute,
   AppBreakdownRoute: AppBreakdownRoute,
   AppMembersRoute: AppMembersRoute,
   AppOnboardingRoute: AppOnboardingRoute,
   AppPricingRoute: AppPricingRoute,
+  AppRecurringRoute: AppRecurringRoute,
   AppSettingsRoute: AppSettingsRoute,
   AppIndexRoute: AppIndexRoute,
   AppExpensesExpenseIdRoute: AppExpensesExpenseIdRouteWithChildren,
   AppExpensesNewRoute: AppExpensesNewRoute,
   AppExpensesIndexRoute: AppExpensesIndexRoute,
+  AppGroupsIndexRoute: AppGroupsIndexRoute,
   AppGroupsGroupIdEditRoute: AppGroupsGroupIdEditRoute,
 }
 

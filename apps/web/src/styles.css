@@ -445,20 +445,19 @@ div:hover > .commune-avatar-overlay {
   color: rgba(255, 255, 255, 0.62);
 }
 
-.commune-sidebar-icon-btn {
-  color: rgba(255, 255, 255, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: var(--commune-radius);
-}
-.commune-sidebar-icon-btn:hover {
-  color: #fff;
-  background: rgba(255, 255, 255, 0.1);
+.commune-sidebar-manage-link:hover {
+  color: rgba(255, 255, 255, 0.8) !important;
 }
 
-.commune-sidebar-button {
-  background: linear-gradient(145deg, #f3decb 0%, #d9ebe5 100%);
-  color: var(--commune-forest);
-  border: 0;
+.commune-group-card {
+  background: var(--commune-paper-strong);
+  border: 1px solid var(--commune-border);
+  box-shadow: var(--commune-shadow-sm);
+  transition: box-shadow var(--commune-motion-fast), transform var(--commune-motion-fast), outline-color var(--commune-motion-fast);
+}
+.commune-group-card:hover {
+  box-shadow: var(--commune-shadow-md);
+  transform: translateY(-2px);
 }
 
 .commune-sidebar-plan-card {

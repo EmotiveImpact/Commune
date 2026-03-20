@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { createExpense, getGroupExpenses, getExpenseDetail, archiveExpense, batchArchiveExpenses, updateExpense } from '@commune/api';
-import { markPayment, confirmPayment } from '@commune/api';
+import { markPayment, confirmPayment, batchMarkPaid } from '@commune/api';
 import type { SplitMethod } from '@commune/types';
 import { groupKeys } from './use-groups';
 import { dashboardKeys } from './use-dashboard';
@@ -70,6 +70,18 @@ export function useBatchArchive(groupId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (ids: string[]) => batchArchiveExpenses(ids),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: expenseKeys.list(groupId) });
+      queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
+    },
+  });
+}
+
+export function useBatchMarkPaid(groupId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ expenseIds, userId }: { expenseIds: string[]; userId: string }) =>
+      batchMarkPaid(expenseIds, userId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: expenseKeys.list(groupId) });
       queryClient.invalidateQueries({ queryKey: dashboardKeys.all });

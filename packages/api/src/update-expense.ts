@@ -39,7 +39,34 @@ export async function updateExpense(expenseId: string, data: UpdateExpenseData) 
   }
 
   // If split recalculation needed (amount, split_method, or participants changed)
-  if (participant_ids && split_method && data.amount) {
+  const needsRecalc = participant_ids || split_method || data.amount;
+  if (needsRecalc) {
+    // Fetch current expense state to fill in any missing fields
+    const { data: current, error: fetchCurrentError } = await supabase
+      .from('expenses')
+      .select('amount, split_method')
+      .eq('id', expenseId)
+      .single();
+    if (fetchCurrentError) throw fetchCurrentError;
+
+    const effectiveAmount = data.amount ?? current.amount;
+    const effectiveMethod = (split_method ?? current.split_method) as SplitMethod;
+
+    // Fetch current participant IDs if not provided
+    let effectiveParticipantIds = participant_ids;
+    if (!effectiveParticipantIds) {
+      const { data: existingParticipants, error: pFetchError } = await supabase
+        .from('expense_participants')
+        .select('user_id')
+        .eq('expense_id', expenseId);
+      if (pFetchError) throw pFetchError;
+      effectiveParticipantIds = (existingParticipants ?? []).map((p) => p.user_id);
+    }
+
+    if (effectiveParticipantIds.length === 0) {
+      throw new Error('Expense must have at least one participant');
+    }
+
     // Delete existing participants and payment records
     await supabase.from('expense_participants').delete().eq('expense_id', expenseId);
     await supabase.from('payment_records').delete().eq('expense_id', expenseId);
@@ -47,26 +74,32 @@ export async function updateExpense(expenseId: string, data: UpdateExpenseData) 
     // Recalculate shares
     let shares: { userId: string; amount: number; percentage?: number }[];
 
-    if (split_method === 'equal') {
-      const amounts = calculateEqualSplit(data.amount, participant_ids.length);
-      shares = participant_ids.map((userId, i) => ({
+    if (effectiveMethod === 'equal') {
+      const amounts = calculateEqualSplit(effectiveAmount, effectiveParticipantIds.length);
+      shares = effectiveParticipantIds.map((userId, i) => ({
         userId,
         amount: amounts[i]!,
       }));
-    } else if (split_method === 'percentage' && percentages) {
-      const result = calculatePercentageSplit(data.amount, percentages);
+    } else if (effectiveMethod === 'percentage' && percentages) {
+      const result = calculatePercentageSplit(effectiveAmount, percentages);
       shares = result.map((r) => ({
         userId: r.userId,
         amount: r.amount,
         percentage: percentages.find((p) => p.userId === r.userId)?.percentage,
       }));
-    } else if (split_method === 'custom' && custom_amounts) {
+    } else if (effectiveMethod === 'custom' && custom_amounts) {
       shares = custom_amounts.map((c) => ({
         userId: c.userId,
         amount: c.amount,
       }));
     } else {
-      throw new Error(`Invalid split config: method=${split_method}`);
+      // Fallback: recalculate as equal split (e.g. amount-only edit on percentage split
+      // without new percentages provided)
+      const amounts = calculateEqualSplit(effectiveAmount, effectiveParticipantIds.length);
+      shares = effectiveParticipantIds.map((userId, i) => ({
+        userId,
+        amount: amounts[i]!,
+      }));
     }
 
     // Re-insert participants

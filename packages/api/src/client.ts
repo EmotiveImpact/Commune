@@ -5,6 +5,7 @@ import {
 } from '@supabase/supabase-js';
 
 let _supabase: SupabaseClient | null = null;
+let _supabaseUrl: string | null = null;
 
 /**
  * Initialize the Supabase client. Must be called once before using any API functions.
@@ -20,6 +21,7 @@ export function initSupabase(
     return _supabase;
   }
 
+  _supabaseUrl = url;
   _supabase = createClient(url, anonKey, options);
   return _supabase;
 }
@@ -34,6 +36,18 @@ export function getSupabase(): SupabaseClient {
     );
   }
   return _supabase;
+}
+
+/**
+ * Get the Supabase project URL. Throws if initSupabase() has not been called.
+ */
+export function getSupabaseUrl(): string {
+  if (!_supabaseUrl) {
+    throw new Error(
+      'Supabase not initialized. Call initSupabase(url, anonKey) before using any API functions.'
+    );
+  }
+  return _supabaseUrl;
 }
 
 /**

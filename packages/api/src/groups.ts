@@ -27,31 +27,13 @@ export async function createGroup(data: {
     currency: data.currency ?? 'GBP',
   };
 
-  const { error } = await supabase
+  const { data: insertedGroup, error } = await supabase
     .from('groups')
-    .insert(payload);
+    .insert(payload)
+    .select()
+    .single();
 
   if (error) throw error;
-
-  const lookup = supabase
-    .from('groups')
-    .select('*')
-    .eq('owner_id', user.id)
-    .eq('name', payload.name)
-    .eq('type', payload.type)
-    .eq('cycle_date', payload.cycle_date)
-    .eq('currency', payload.currency)
-    .order('created_at', { ascending: false })
-    .limit(1);
-
-  const { data: insertedGroup, error: lookupError } = payload.description === null
-    ? await lookup.is('description', null).maybeSingle()
-    : await lookup.eq('description', payload.description).maybeSingle();
-
-  if (lookupError) throw lookupError;
-  if (!insertedGroup) {
-    throw new Error('Group was created but could not be loaded.');
-  }
 
   return insertedGroup as Group;
 }
@@ -177,6 +159,18 @@ export async function removeMember(memberId: string) {
 }
 
 export async function leaveGroup(groupId: string, userId: string) {
+  // Prevent the owner from leaving without transferring ownership first
+  const { data: group, error: groupError } = await supabase
+    .from('groups')
+    .select('owner_id')
+    .eq('id', groupId)
+    .single();
+
+  if (groupError) throw groupError;
+  if (group?.owner_id === userId) {
+    throw new Error('Transfer ownership before leaving the group.');
+  }
+
   const { error } = await supabase
     .from('group_members')
     .update({ status: 'removed' })

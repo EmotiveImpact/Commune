@@ -1,4 +1,4 @@
-export { supabase, initSupabase, getSupabase } from './client';
+export { supabase, initSupabase, getSupabase, getSupabaseUrl } from './client';
 export type {
   Session,
   User as SupabaseAuthUser,
@@ -15,3 +15,4 @@ export * from './profile';
 export * from './notifications';
 export * from './recurring';
 export * from './activity';
+export * from './analytics';

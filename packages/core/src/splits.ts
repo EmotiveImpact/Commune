@@ -30,16 +30,33 @@ export function calculateEqualSplit(
 
 /**
  * Split an amount by percentage for each participant.
+ * Uses cents internally and distributes remainder pennies to avoid rounding drift.
  *
- * @returns Array of { userId, amount } with amounts rounded to 2 decimals.
+ * @returns Array of { userId, amount } with amounts that sum exactly to the total.
  */
 export function calculatePercentageSplit(
   amount: number,
   participants: { userId: string; percentage: number }[],
 ): { userId: string; amount: number }[] {
-  return participants.map((p) => ({
+  const totalCents = Math.round(amount * 100);
+  const rawCents = participants.map((p) => (totalCents * p.percentage) / 100);
+  const flooredCents = rawCents.map((c) => Math.floor(c));
+  let remainder = totalCents - flooredCents.reduce((a, b) => a + b, 0);
+
+  // Distribute remainder pennies to entries with the largest fractional parts
+  const indexed = rawCents
+    .map((c, i) => ({ i, frac: c - flooredCents[i]! }))
+    .sort((a, b) => b.frac - a.frac);
+
+  for (const entry of indexed) {
+    if (remainder <= 0) break;
+    flooredCents[entry.i]!++;
+    remainder--;
+  }
+
+  return participants.map((p, i) => ({
     userId: p.userId,
-    amount: Number(((amount * p.percentage) / 100).toFixed(2)),
+    amount: Number((flooredCents[i]! / 100).toFixed(2)),
   }));
 }
 

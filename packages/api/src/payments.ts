@@ -10,7 +10,7 @@ export async function markPayment(
   const updateData: Record<string, unknown> = {
     status,
     ...(note !== undefined && { note }),
-    ...(status === 'paid' && { paid_at: new Date().toISOString() }),
+    paid_at: status === 'paid' ? new Date().toISOString() : null,
   };
 
   const { data, error } = await supabase
@@ -20,6 +20,19 @@ export async function markPayment(
     .eq('user_id', userId)
     .select()
     .single();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function batchMarkPaid(expenseIds: string[], userId: string) {
+  const { data, error } = await supabase
+    .from('payment_records')
+    .update({ status: 'paid', paid_at: new Date().toISOString() })
+    .in('expense_id', expenseIds)
+    .eq('user_id', userId)
+    .eq('status', 'unpaid')
+    .select();
 
   if (error) throw error;
   return data;

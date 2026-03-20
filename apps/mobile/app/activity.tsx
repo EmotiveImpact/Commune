@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { useCallback, useMemo, useState } from 'react';
+import { SectionList, ScrollView, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { ActivityEntry } from '@commune/api';
 import { useGroupStore } from '@/stores/group';
@@ -146,19 +146,51 @@ export default function ActivityScreen() {
     return entries.filter((e) => e.entity_type === activeFilter);
   }, [entries, activeFilter]);
 
-  const grouped = useMemo(() => {
-    const groups: { label: string; items: typeof filteredEntries }[] = [];
+  const sections = useMemo(() => {
+    const groups: { title: string; data: typeof filteredEntries }[] = [];
     let currentLabel = '';
     for (const entry of filteredEntries) {
       const label = getDateLabel(entry.created_at);
       if (label !== currentLabel) {
         currentLabel = label;
-        groups.push({ label, items: [] });
+        groups.push({ title: label, data: [] });
       }
-      groups[groups.length - 1]!.items.push(entry);
+      groups[groups.length - 1]!.data.push(entry);
     }
     return groups;
   }, [filteredEntries]);
+
+  const renderItem = useCallback(({ item: entry }: { item: ActivityEntry }) => {
+    const icon = actionIcons[entry.action] ?? 'ellipsis-horizontal';
+    const colors = actionColors[entry.action] ?? defaultColor;
+
+    return (
+      <View className="mx-5 flex-row items-start border-b border-[rgba(23,27,36,0.06)] py-4">
+        <View
+          className="mr-3 h-10 w-10 items-center justify-center rounded-2xl"
+          style={{ backgroundColor: colors.bg }}
+        >
+          <Ionicons name={icon} size={18} color={colors.fg} />
+        </View>
+        <View className="flex-1">
+          <View className="flex-row items-center justify-between">
+            <View className="mr-2 flex-row items-center">
+              <InitialAvatar name={entry.user?.name} size={28} />
+              <Text className="ml-2 text-base font-semibold text-[#171b24]">
+                {entry.user?.name ?? 'Unknown'}
+              </Text>
+            </View>
+            <Text className="text-xs text-[#667085]">
+              {formatRelativeTime(entry.created_at)}
+            </Text>
+          </View>
+          <Text className="mt-1 text-sm leading-5 text-[#667085]">
+            {describeAction(entry)}
+          </Text>
+        </View>
+      </View>
+    );
+  }, []);
 
   if (!activeGroupId) {
     return (
@@ -180,10 +212,7 @@ export default function ActivityScreen() {
           title="Could not load activity"
           description={getErrorMessage(loadError, 'Something went wrong loading the activity log.')}
           actionLabel="Try again"
-          onAction={() => {
-            void refetchGroup();
-            void refetchActivity();
-          }}
+          onAction={() => { void refetchGroup(); void refetchActivity(); }}
         />
       </Screen>
     );
@@ -193,8 +222,8 @@ export default function ActivityScreen() {
     return <ContentSkeleton />;
   }
 
-  return (
-    <Screen>
+  const ListHeader = (
+    <View className="px-5 pt-5">
       <HeroPanel
         eyebrow="History"
         title="Activity"
@@ -202,7 +231,6 @@ export default function ActivityScreen() {
         badgeLabel={`${filteredEntries.length} events`}
       />
 
-      {/* Filter chips */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -218,73 +246,49 @@ export default function ActivityScreen() {
           />
         ))}
       </ScrollView>
+    </View>
+  );
 
-      {filteredEntries.length === 0 ? (
-        <EmptyState
-          icon="time-outline"
-          title="No activity yet"
-          description="Actions like creating expenses, marking payments, and inviting members will appear here."
-        />
-      ) : (
-        <>
-          {grouped.map((dateGroup) => (
-            <View key={dateGroup.label} className="mb-4">
-              <Text className="mb-2 text-xs font-semibold uppercase tracking-[2px] text-[#667085]">
-                {dateGroup.label}
-              </Text>
-              <Surface>
-                {dateGroup.items.map((entry, index) => {
-                  const icon = actionIcons[entry.action] ?? 'ellipsis-horizontal';
-                  const colors = actionColors[entry.action] ?? defaultColor;
-                  const isLast = index === dateGroup.items.length - 1;
-
-                  return (
-                    <View
-                      key={entry.id}
-                      className={
-                        isLast
-                          ? 'flex-row items-start py-4'
-                          : 'flex-row items-start border-b border-[rgba(23,27,36,0.06)] py-4'
-                      }
-                    >
-                      <View
-                        className="mr-3 h-10 w-10 items-center justify-center rounded-2xl"
-                        style={{ backgroundColor: colors.bg }}
-                      >
-                        <Ionicons name={icon} size={18} color={colors.fg} />
-                      </View>
-                      <View className="flex-1">
-                        <View className="flex-row items-center justify-between">
-                          <View className="mr-2 flex-row items-center">
-                            <InitialAvatar name={entry.user?.name} size={28} />
-                            <Text className="ml-2 text-base font-semibold text-[#171b24]">
-                              {entry.user?.name ?? 'Unknown'}
-                            </Text>
-                          </View>
-                          <Text className="text-xs text-[#667085]">
-                            {formatRelativeTime(entry.created_at)}
-                          </Text>
-                        </View>
-                        <Text className="mt-1 text-sm leading-5 text-[#667085]">
-                          {describeAction(entry)}
-                        </Text>
-                      </View>
-                    </View>
-                  );
-                })}
-              </Surface>
-            </View>
-          ))}
-
-          {entries.length >= limit ? (
+  return (
+    <SectionList
+      sections={sections}
+      renderItem={renderItem}
+      keyExtractor={(item) => item.id}
+      renderSectionHeader={({ section }) => (
+        <View className="bg-[#f5f1ea] px-5 pb-2 pt-4">
+          <Text className="text-xs font-semibold uppercase tracking-[2px] text-[#667085]">
+            {section.title}
+          </Text>
+        </View>
+      )}
+      className="flex-1 bg-[#f5f1ea]"
+      contentContainerStyle={{ paddingBottom: 120 }}
+      showsVerticalScrollIndicator={false}
+      ListHeaderComponent={ListHeader}
+      ListEmptyComponent={
+        <View className="px-5">
+          <EmptyState
+            icon="time-outline"
+            title="No activity yet"
+            description="Actions like creating expenses, marking payments, and inviting members will appear here."
+          />
+        </View>
+      }
+      ListFooterComponent={
+        entries.length >= limit ? (
+          <View className="px-5 pb-4">
             <AppButton
               label="Load more"
               variant="secondary"
               onPress={() => setLimit((prev) => prev + PAGE_SIZE)}
             />
-          ) : null}
-        </>
-      )}
-    </Screen>
+          </View>
+        ) : null
+      }
+      stickySectionHeadersEnabled
+      initialNumToRender={20}
+      maxToRenderPerBatch={15}
+      windowSize={5}
+    />
   );
 }

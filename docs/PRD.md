@@ -727,6 +727,18 @@ Key query functions:
 - Member shows as "(removed)" in historical expense views
 - Their payment records remain
 
+---
+
+## Future: Image & File Storage Migration
+
+Currently avatars are stored in Supabase Storage. For receipt uploads and scaling, an external storage provider should be evaluated. Research candidates:
+
+- **Cloudinary** — 25 GB free, URL-based image transforms, face-aware avatar cropping, unsigned uploads (no backend needed), official React Native SDK. First paid tier $89/mo.
+- **AWS S3** — 5 GB free (12 months), cheapest at scale (~$0.023/GB/mo), requires presigned URLs from backend.
+- **Cloudflare R2** — 10 GB free, zero egress fees, S3-compatible API, no native image transforms (need Cloudflare Images add-on at $5/mo).
+
+Decision pending. Current Supabase Storage setup works for avatars. Receipt uploads (Pro/Agency tier feature) should use the chosen external provider to avoid consuming Supabase quota.
+
 ### Month boundaries for recurring items
 - Recurring expenses are generated based on due_date + recurrence
 - Edge Function runs daily and creates next-period instances when due

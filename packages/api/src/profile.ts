@@ -100,24 +100,42 @@ async function getAuthenticatedUser(userId: string) {
 
 export async function ensureProfile(userId: string): Promise<UserProfile> {
   const authUser = await getAuthenticatedUser(userId);
+
+  // Check if profile already exists — if so, return it without overwriting
+  const { data: existing, error: lookupError } = await supabase
+    .from('users')
+    .select('*')
+    .eq('id', userId)
+    .maybeSingle();
+
+  if (lookupError) throw lookupError;
+  if (existing) return normalizeProfile(existing);
+
+  // Profile doesn't exist — create it from auth metadata
   const fallbackProfile = buildProfileFromAuthUser(authUser);
 
   const { data, error } = await supabase
     .from('users')
-    .upsert(
-      {
-        id: fallbackProfile.id,
-        first_name: fallbackProfile.first_name,
-        last_name: fallbackProfile.last_name,
-        email: fallbackProfile.email,
-        avatar_url: fallbackProfile.avatar_url,
-      },
-      { onConflict: 'id' },
-    )
+    .insert({
+      id: fallbackProfile.id,
+      first_name: fallbackProfile.first_name,
+      last_name: fallbackProfile.last_name,
+      email: fallbackProfile.email,
+      avatar_url: fallbackProfile.avatar_url,
+    })
     .select('*')
     .single();
 
   if (error) {
+    // Race condition: profile was created between our check and insert
+    if (error.code === '23505') {
+      const { data: raceData } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', userId)
+        .single();
+      if (raceData) return normalizeProfile(raceData);
+    }
     throw error;
   }
 

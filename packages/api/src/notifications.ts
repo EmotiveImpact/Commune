@@ -19,6 +19,27 @@ export async function getNotifications(
   const cutoff = thirtyDaysAgo.toISOString();
   const now = new Date().toISOString();
 
+  // Fetch group currency for display
+  const { data: group } = await supabase
+    .from('groups')
+    .select('currency')
+    .eq('id', groupId)
+    .single();
+
+  const currencySymbol: Record<string, string> = {
+    GBP: '\u00A3', USD: '$', EUR: '\u20AC', GHS: 'GH\u20B5', NGN: '\u20A6',
+    CAD: 'CA$', AUD: 'A$', JPY: '\u00A5', INR: '\u20B9', ZAR: 'R',
+  };
+  const sym = currencySymbol[group?.currency ?? 'GBP'] ?? (group?.currency ?? '') + ' ';
+
+  // Fetch the user's read notification IDs
+  const { data: readRows } = await supabase
+    .from('notification_reads')
+    .select('notification_id')
+    .eq('user_id', userId);
+
+  const readIds = new Set((readRows ?? []).map((r: { notification_id: string }) => r.notification_id));
+
   // Recent expenses added to the group (last 30 days)
   const { data: expenses, error: expenseError } = await supabase
     .from('expenses')
@@ -74,13 +95,14 @@ export async function getNotifications(
 
   // Map expenses to notifications
   for (const e of expenses ?? []) {
+    const nId = `expense-${e.id}`;
     notifications.push({
-      id: `expense-${e.id}`,
+      id: nId,
       type: 'expense_added',
       title: 'New expense added',
-      description: `${e.title} — £${Number(e.amount).toFixed(2)}`,
+      description: `${e.title} — ${sym}${Number(e.amount).toFixed(2)}`,
       created_at: e.created_at,
-      read: false,
+      read: readIds.has(nId),
       expense_id: e.id,
     });
   }
@@ -89,13 +111,14 @@ export async function getNotifications(
   for (const p of (payments ?? []) as any[]) {
     if (p.user_id === userId) continue; // skip own payments
     const expense = p.expense as { id: string; title: string };
+    const nId = `payment-${p.id}`;
     notifications.push({
-      id: `payment-${p.id}`,
+      id: nId,
       type: 'payment_made',
       title: 'Payment received',
-      description: `£${Number(p.amount).toFixed(2)} paid for ${expense.title}`,
+      description: `${sym}${Number(p.amount).toFixed(2)} paid for ${expense.title}`,
       created_at: p.paid_at,
-      read: false,
+      read: readIds.has(nId),
       expense_id: expense.id,
     });
   }
@@ -103,13 +126,14 @@ export async function getNotifications(
   // Map overdue to notifications
   for (const o of (overdue ?? []) as any[]) {
     const expense = o.expense as { id: string; title: string; due_date: string };
+    const nId = `overdue-${o.id}`;
     notifications.push({
-      id: `overdue-${o.id}`,
+      id: nId,
       type: 'payment_overdue',
       title: 'Payment overdue',
-      description: `£${Number(o.amount).toFixed(2)} for ${expense.title} was due ${expense.due_date}`,
+      description: `${sym}${Number(o.amount).toFixed(2)} for ${expense.title} was due ${expense.due_date}`,
       created_at: expense.due_date,
-      read: false,
+      read: readIds.has(nId),
       expense_id: expense.id,
     });
   }
@@ -120,4 +144,40 @@ export async function getNotifications(
   );
 
   return notifications;
+}
+
+/**
+ * Mark a single notification as read.
+ */
+export async function markNotificationRead(
+  userId: string,
+  notificationId: string,
+): Promise<void> {
+  const { error } = await supabase
+    .from('notification_reads')
+    .upsert(
+      { user_id: userId, notification_id: notificationId },
+      { onConflict: 'user_id,notification_id' },
+    );
+  if (error) throw error;
+}
+
+/**
+ * Mark all current notifications as read.
+ */
+export async function markAllNotificationsRead(
+  userId: string,
+  notificationIds: string[],
+): Promise<void> {
+  if (notificationIds.length === 0) return;
+
+  const rows = notificationIds.map((nId) => ({
+    user_id: userId,
+    notification_id: nId,
+  }));
+
+  const { error } = await supabase
+    .from('notification_reads')
+    .upsert(rows, { onConflict: 'user_id,notification_id' });
+  if (error) throw error;
 }

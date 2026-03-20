@@ -24,6 +24,15 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // Verify the caller is authenticated (service role or valid user JWT)
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { 'Content-Type': 'application/json' } },
+      );
+    }
+
     const apiKey = Deno.env.get('RESEND_API_KEY');
     const fromEmail = Deno.env.get('FROM_EMAIL') ?? 'Commune <noreply@commune.app>';
 

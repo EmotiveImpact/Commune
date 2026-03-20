@@ -1,7 +1,12 @@
-import { ActionIcon, Badge, Indicator, Menu, Text, Group, Stack, Box } from '@mantine/core';
-import { IconBell, IconReceipt, IconCheck, IconAlertTriangle } from '@tabler/icons-react';
+import { ActionIcon, Badge, Indicator, Menu, Text, Group, Stack, Box, UnstyledButton } from '@mantine/core';
+import { IconBell, IconReceipt, IconCheck, IconAlertTriangle, IconChecks } from '@tabler/icons-react';
 import { useNavigate } from '@tanstack/react-router';
-import { useNotifications, type AppNotification } from '../hooks/use-notifications';
+import {
+  useNotifications,
+  useMarkNotificationRead,
+  useMarkAllNotificationsRead,
+  type AppNotification,
+} from '../hooks/use-notifications';
 
 function timeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -22,8 +27,29 @@ const iconMap: Record<AppNotification['type'], React.ReactNode> = {
 
 export function NotificationDropdown() {
   const { data: notifications = [] } = useNotifications();
+  const markRead = useMarkNotificationRead();
+  const markAllRead = useMarkAllNotificationsRead();
   const navigate = useNavigate();
   const unreadCount = notifications.filter((n) => !n.read).length;
+
+  const handleNotificationClick = (n: AppNotification) => {
+    // Mark as read
+    if (!n.read) {
+      markRead.mutate(n.id);
+    }
+    // Navigate to expense
+    if (n.expense_id) {
+      navigate({ to: '/expenses/$expenseId', params: { expenseId: n.expense_id } });
+    }
+  };
+
+  const handleMarkAllRead = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const unreadIds = notifications.filter((n) => !n.read).map((n) => n.id);
+    if (unreadIds.length > 0) {
+      markAllRead.mutate(unreadIds);
+    }
+  };
 
   return (
     <Menu shadow="md" width={360} position="bottom-end">
@@ -44,11 +70,23 @@ export function NotificationDropdown() {
         <Menu.Label>
           <Group justify="space-between">
             <Text fw={700}>Notifications</Text>
-            {unreadCount > 0 && (
-              <Badge size="sm" variant="light" color="commune">
-                {unreadCount} new
-              </Badge>
-            )}
+            <Group gap="xs">
+              {unreadCount > 0 && (
+                <>
+                  <Badge size="sm" variant="light" color="commune">
+                    {unreadCount} new
+                  </Badge>
+                  <UnstyledButton onClick={handleMarkAllRead}>
+                    <Group gap={4}>
+                      <IconChecks size={14} color="var(--mantine-color-dimmed)" />
+                      <Text size="xs" c="dimmed">
+                        Mark all read
+                      </Text>
+                    </Group>
+                  </UnstyledButton>
+                </>
+              )}
+            </Group>
           </Group>
         </Menu.Label>
 
@@ -63,15 +101,12 @@ export function NotificationDropdown() {
             <Menu.Item
               key={n.id}
               leftSection={iconMap[n.type]}
-              onClick={() => {
-                if (n.expense_id) {
-                  navigate({ to: '/expenses/$expenseId', params: { expenseId: n.expense_id } });
-                }
-              }}
+              onClick={() => handleNotificationClick(n)}
+              bg={n.read ? undefined : 'var(--mantine-color-blue-light)'}
             >
               <Group justify="space-between" wrap="nowrap">
                 <Stack gap={2}>
-                  <Text size="sm" fw={600}>
+                  <Text size="sm" fw={n.read ? 400 : 600}>
                     {n.title}
                   </Text>
                   <Text size="xs" c="dimmed" lineClamp={1}>

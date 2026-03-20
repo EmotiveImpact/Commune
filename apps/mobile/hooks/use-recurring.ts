@@ -1,33 +1,8 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@commune/api';
+import { generateRecurringExpenses } from '@commune/api';
 import { dashboardKeys } from './use-dashboard';
 import { expenseKeys } from './use-expenses';
-
-/**
- * Generates any due recurring expenses for the given group by calling the
- * `generate_recurring_expenses` Supabase RPC. If the function does not exist
- * yet on the backend the call fails silently so the rest of the app is not
- * affected.
- */
-async function generateRecurringExpenses(groupId: string): Promise<void> {
-  const { error } = await supabase.rpc('generate_recurring_expenses', {
-    p_group_id: groupId,
-  });
-
-  if (error) {
-    // The RPC may not be deployed yet -- swallow the error so the app keeps
-    // working. Once the backend function ships this will start working
-    // automatically.
-    if (
-      error.message.includes('function') &&
-      error.message.includes('does not exist')
-    ) {
-      return;
-    }
-    throw error;
-  }
-}
 
 /**
  * Hook that triggers recurring expense generation for a group.
@@ -48,16 +23,16 @@ export function useRecurringGeneration(groupId: string) {
 }
 
 /**
- * Fires recurring generation once per mount. Safe to call on every render --
- * it will only trigger the mutation the first time.
+ * Fires recurring generation once per group. Resets when the user switches
+ * to a different group so recurring expenses are generated for each group.
  */
 export function useRecurringGenerationOnMount(groupId: string) {
   const generation = useRecurringGeneration(groupId);
-  const hasRun = useRef(false);
+  const prevGroupId = useRef<string | null>(null);
 
   useEffect(() => {
-    if (groupId && !hasRun.current) {
-      hasRun.current = true;
+    if (groupId && groupId !== prevGroupId.current) {
+      prevGroupId.current = groupId;
       generation.mutate();
     }
   }, [groupId]);

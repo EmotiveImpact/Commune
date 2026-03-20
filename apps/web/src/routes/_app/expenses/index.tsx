@@ -11,7 +11,7 @@ import {
   Text,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import { IconDownload, IconPlus, IconReceipt, IconTrash } from '@tabler/icons-react';
+import { IconCheck, IconDownload, IconPlus, IconReceipt, IconTrash } from '@tabler/icons-react';
 import { DatePickerInput, DatesProvider } from '@mantine/dates';
 import 'dayjs/locale/en-gb';
 import { useEffect, useMemo, useState } from 'react';
@@ -21,7 +21,7 @@ import { generateExpenseCSV, downloadCSV } from '../../../utils/export-csv';
 import { useGroupStore } from '../../../stores/group';
 import { useSearchStore } from '../../../stores/search';
 import { useGroup } from '../../../hooks/use-groups';
-import { useGroupExpenses, useBatchArchive } from '../../../hooks/use-expenses';
+import { useGroupExpenses, useBatchArchive, useBatchMarkPaid } from '../../../hooks/use-expenses';
 import { useAuthStore } from '../../../stores/auth';
 import { ExpenseListSkeleton } from '../../../components/page-skeleton';
 import { EmptyState } from '../../../components/empty-state';
@@ -53,7 +53,6 @@ function getMonthOptions() {
   return [
     ...options,
     { value: 'all', label: 'All time' },
-    { value: 'custom', label: 'Custom range...' },
   ];
 }
 
@@ -75,20 +74,21 @@ function ExpensesPage() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [page, setPage] = useState(0);
   const [datePreset, setDatePreset] = useState<string | null>(null);
-  const [customFrom, setCustomFrom] = useState<string | null>(null);
-  const [customTo, setCustomTo] = useState<string | null>(null);
+  const [dateRange, setDateRange] = useState<[string | null, string | null]>([null, null]);
 
   // Bulk actions
   const { user } = useAuthStore();
   const batchArchive = useBatchArchive(activeGroupId ?? '');
+  const batchMarkPaid = useBatchMarkPaid(activeGroupId ?? '');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [archiveModalOpen, setArchiveModalOpen] = useState(false);
+  const [markPaidModalOpen, setMarkPaidModalOpen] = useState(false);
 
   const isAdmin = group?.members?.some(
     (m: { user_id: string; role: string }) => m.user_id === user?.id && m.role === 'admin',
   ) ?? false;
 
-  const monthFilter = datePreset && datePreset !== 'all' && datePreset !== 'custom' ? datePreset : undefined;
+  const monthFilter = datePreset && datePreset !== 'all' ? datePreset : undefined;
   const expenseFilters = {
     ...(categoryFilter ? { category: categoryFilter } : {}),
     ...(monthFilter ? { month: monthFilter } : {}),
@@ -104,9 +104,16 @@ function ExpensesPage() {
     if (!expenses) return [];
     let result = expenses;
 
-    // Custom date range (client-side)
-    if (datePreset === 'custom' && customFrom && customTo) {
-      result = result.filter((e) => e.due_date >= customFrom && e.due_date <= customTo);
+    // Date range filter (client-side)
+    const [rangeFrom, rangeTo] = dateRange;
+    if (rangeFrom && rangeTo) {
+      const fromDate = new Date(rangeFrom);
+      const toDate = new Date(rangeTo);
+      if (!isNaN(fromDate.getTime()) && !isNaN(toDate.getTime())) {
+        const fromStr = fromDate.toISOString().slice(0, 10);
+        const toStr = toDate.toISOString().slice(0, 10);
+        result = result.filter((e) => e.due_date >= fromStr && e.due_date <= toStr);
+      }
     }
 
     // Search query
@@ -118,7 +125,7 @@ function ExpensesPage() {
     }
 
     return result;
-  }, [expenses, searchQuery, datePreset, customFrom, customTo]);
+  }, [expenses, searchQuery, dateRange]);
 
   const counts = useMemo(() => {
     let openCount = 0;
@@ -170,7 +177,7 @@ function ExpensesPage() {
   // Clear selection when filters change
   useEffect(() => {
     setSelectedIds(new Set());
-  }, [categoryFilter, statusFilter, datePreset, customFrom, customTo, searchQuery, page]);
+  }, [categoryFilter, statusFilter, datePreset, dateRange, searchQuery, page]);
 
   function handleExportCSV() {
     if (!filtered || filtered.length === 0) return;
@@ -208,6 +215,26 @@ function ExpensesPage() {
     } catch (err) {
       notifications.show({
         title: 'Archive failed',
+        message: err instanceof Error ? err.message : 'Something went wrong',
+        color: 'red',
+      });
+    }
+  }
+
+  async function handleBulkMarkPaid() {
+    if (!user?.id) return;
+    try {
+      await batchMarkPaid.mutateAsync({ expenseIds: Array.from(selectedIds), userId: user.id });
+      setSelectedIds(new Set());
+      setMarkPaidModalOpen(false);
+      notifications.show({
+        title: 'Expenses marked as paid',
+        message: `${selectedIds.size} expense${selectedIds.size > 1 ? 's' : ''} marked as paid successfully.`,
+        color: 'green',
+      });
+    } catch (err) {
+      notifications.show({
+        title: 'Mark as paid failed',
         message: err instanceof Error ? err.message : 'Something went wrong',
         color: 'red',
       });
@@ -270,37 +297,23 @@ function ExpensesPage() {
           value={datePreset}
           onChange={(value) => {
             setDatePreset(value);
-            if (value !== 'custom') {
-              setCustomFrom(null);
-              setCustomTo(null);
-            }
             setPage(0);
           }}
           clearable
           w={180}
         />
-        {datePreset === 'custom' && (
-          <DatesProvider settings={{ locale: 'en-gb' }}>
-            <DatePickerInput
-              placeholder="From"
-              value={customFrom}
-              onChange={(v) => { setCustomFrom(v); setPage(0); }}
-              valueFormat="DD MMM YYYY"
-              w={160}
-              size="sm"
-              clearable
-            />
-            <DatePickerInput
-              placeholder="To"
-              value={customTo}
-              onChange={(v) => { setCustomTo(v); setPage(0); }}
-              valueFormat="DD MMM YYYY"
-              w={160}
-              size="sm"
-              clearable
-            />
-          </DatesProvider>
-        )}
+        <DatesProvider settings={{ locale: 'en-gb' }}>
+          <DatePickerInput
+            type="range"
+            placeholder="Date range"
+            value={dateRange}
+            onChange={(value) => { setDateRange(value); setPage(0); }}
+            valueFormat="DD MMM YYYY"
+            w={260}
+            size="sm"
+            clearable
+          />
+        </DatesProvider>
       </Group>
 
       <div className="commune-filter-chips">
@@ -473,6 +486,15 @@ function ExpensesPage() {
             </Button>
             <Button
               size="xs"
+              variant="light"
+              color="green"
+              leftSection={<IconCheck size={14} />}
+              onClick={() => setMarkPaidModalOpen(true)}
+            >
+              Mark paid
+            </Button>
+            <Button
+              size="xs"
               variant="default"
               leftSection={<IconDownload size={14} />}
               onClick={handleBulkExport}
@@ -512,6 +534,32 @@ function ExpensesPage() {
               loading={batchArchive.isPending}
             >
               Archive
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+
+      {/* Bulk mark as paid confirmation modal */}
+      <Modal
+        opened={markPaidModalOpen}
+        onClose={() => setMarkPaidModalOpen(false)}
+        title="Mark as paid"
+        centered
+      >
+        <Stack gap="md">
+          <Text size="sm">
+            Mark {selectedIds.size} expense{selectedIds.size > 1 ? 's' : ''} as paid? This will update your payment status for the selected expenses.
+          </Text>
+          <Group justify="flex-end">
+            <Button variant="default" onClick={() => setMarkPaidModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              color="green"
+              onClick={handleBulkMarkPaid}
+              loading={batchMarkPaid.isPending}
+            >
+              Mark paid
             </Button>
           </Group>
         </Stack>

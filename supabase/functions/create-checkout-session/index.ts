@@ -73,14 +73,16 @@ Deno.serve(async (req: Request) => {
       customerId = customer.id;
     }
 
-    // Create checkout session with 7-day trial
+    // Only offer a trial to first-time subscribers
+    const isFirstSubscription = !subscription?.stripe_customer_id;
+
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       mode: 'subscription',
       payment_method_types: ['card'],
       line_items: [{ price: priceId, quantity: 1 }],
       subscription_data: {
-        trial_period_days: 7,
+        ...(isFirstSubscription && { trial_period_days: 7 }),
         metadata: { supabase_user_id: user.id, plan },
       },
       success_url: `${APP_URL}/pricing?success=true`,

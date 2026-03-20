@@ -28,11 +28,18 @@ export async function signInWithEmail(email: string, password: string) {
   return data;
 }
 
+function getDefaultRedirectUrl(): string {
+  if (typeof window !== 'undefined' && window.location) {
+    return `${window.location.origin}/callback`;
+  }
+  return '';
+}
+
 export async function signInWithGoogle(redirectUrl?: string) {
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: redirectUrl ?? `${window.location.origin}/callback`,
+      redirectTo: redirectUrl ?? getDefaultRedirectUrl(),
     },
   });
   if (error) throw error;
@@ -43,7 +50,7 @@ export async function signInWithApple(redirectUrl?: string) {
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'apple',
     options: {
-      redirectTo: redirectUrl ?? `${window.location.origin}/callback`,
+      redirectTo: redirectUrl ?? getDefaultRedirectUrl(),
     },
   });
   if (error) throw error;
@@ -54,7 +61,7 @@ export async function signInWithGitHub(redirectUrl?: string) {
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'github',
     options: {
-      redirectTo: redirectUrl ?? `${window.location.origin}/callback`,
+      redirectTo: redirectUrl ?? getDefaultRedirectUrl(),
     },
   });
   if (error) throw error;
@@ -67,9 +74,11 @@ export async function signOut() {
 }
 
 export async function resetPassword(email: string, redirectUrl?: string) {
+  const defaultUrl = typeof window !== 'undefined' && window.location
+    ? `${window.location.origin}/callback?type=recovery`
+    : '';
   const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo:
-      redirectUrl ?? `${window.location.origin}/callback?type=recovery`,
+    redirectTo: redirectUrl ?? defaultUrl,
   });
   if (error) throw error;
   return data;
