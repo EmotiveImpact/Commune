@@ -2,7 +2,6 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import {
   Badge,
   Button,
-  FileInput,
   Group,
   MultiSelect,
   NumberInput,
@@ -19,7 +18,6 @@ import {
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
-import { IconUpload } from '@tabler/icons-react';
 import { useMemo, useRef, useState } from 'react';
 import { ExpenseCategory } from '@commune/types';
 import { calculateEqualSplit, calculatePercentageSplit } from '@commune/core';
@@ -32,6 +30,7 @@ import { useAuthStore } from '../../../stores/auth';
 import { ExpenseFormSkeleton } from '../../../components/page-skeleton';
 import { EmptyState } from '../../../components/empty-state';
 import { PageHeader } from '../../../components/page-header';
+import { ReceiptDropzone } from '../../../components/receipt-dropzone';
 
 export const Route = createFileRoute('/_app/expenses/new')({
   component: AddExpensePage,
@@ -287,15 +286,12 @@ function AddExpensePage() {
             <Paper className="commune-soft-panel" p="xl">
               <Stack gap="md">
                 <Title order={3}>Receipt</Title>
-                <FileInput
-                  label="Attach receipt (optional)"
-                  placeholder="Click to select a file"
-                  accept="image/*,application/pdf"
-                  leftSection={<IconUpload size={16} />}
+                <Text size="sm" c="dimmed">
+                  Attach a photo or PDF of the receipt (optional).
+                </Text>
+                <ReceiptDropzone
                   value={receiptFile}
                   onChange={setReceiptFile}
-                  description="Images or PDF, up to 10 MB"
-                  clearable
                 />
               </Stack>
             </Paper>

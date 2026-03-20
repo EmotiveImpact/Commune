@@ -4,9 +4,7 @@ import {
   Avatar,
   Badge,
   Button,
-  FileInput,
   Group,
-  Image,
   Modal,
   Paper,
   SimpleGrid,
@@ -24,12 +22,9 @@ import {
   IconCheck,
   IconCheckbox,
   IconEdit,
-  IconExternalLink,
   IconNote,
   IconPaperclip,
   IconReceipt,
-  IconTrash,
-  IconUpload,
   IconUsers,
   IconX,
 } from '@tabler/icons-react';
@@ -46,6 +41,7 @@ import { useGroupStore } from '../../../stores/group';
 import { useGroup } from '../../../hooks/use-groups';
 import { useAuthStore } from '../../../stores/auth';
 import { useUploadReceipt, useDeleteReceipt } from '../../../hooks/use-receipts';
+import { ReceiptDropzone } from '../../../components/receipt-dropzone';
 import { EmptyState } from '../../../components/empty-state';
 import { ExpenseDetailSkeleton } from '../../../components/page-skeleton';
 import { PageHeader } from '../../../components/page-header';
@@ -254,9 +250,6 @@ function ExpenseDetailPage() {
     }
   }
 
-  const isReceiptImage = expense.receipt_url
-    ? /\.(jpg|jpeg|png|gif|webp)/i.test(new URL(expense.receipt_url).pathname)
-    : false;
 
   return (
     <Stack gap="xl">
@@ -471,52 +464,14 @@ function ExpenseDetailPage() {
           </div>
         </Group>
 
-        {expense.receipt_url ? (
-          <Stack gap="md">
-            {isReceiptImage && (
-              <Image
-                src={expense.receipt_url}
-                alt="Receipt"
-                radius="md"
-                maw={400}
-                fit="contain"
-              />
-            )}
-            <Group gap="sm">
-              <Button
-                variant="light"
-                leftSection={<IconExternalLink size={16} />}
-                component="a"
-                href={expense.receipt_url}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                View receipt
-              </Button>
-              {isAdmin && (
-                <Button
-                  variant="light"
-                  color="red"
-                  leftSection={<IconTrash size={16} />}
-                  onClick={handleDeleteReceipt}
-                  loading={deleteReceipt.isPending}
-                >
-                  Delete receipt
-                </Button>
-              )}
-            </Group>
-          </Stack>
-        ) : (
-          <FileInput
-            label="Attach receipt"
-            placeholder="Click to select a file"
-            accept="image/*,application/pdf"
-            leftSection={<IconUpload size={16} />}
-            onChange={handleReceiptUpload}
-            disabled={uploadReceipt.isPending}
-            description="Images or PDF, up to 10 MB"
-          />
-        )}
+        <ReceiptDropzone
+          existingUrl={expense.receipt_url}
+          onChange={handleReceiptUpload}
+          onDelete={isAdmin ? handleDeleteReceipt : undefined}
+          deleteLoading={deleteReceipt.isPending}
+          uploading={uploadReceipt.isPending}
+          disabled={uploadReceipt.isPending}
+        />
       </Paper>
 
       <Modal opened={noteOpened} onClose={closeNote} title="Mark as paid" size="sm">
