@@ -332,32 +332,28 @@ export function AppShell({ children }: AppShellProps) {
             {/* Profile */}
             <Menu shadow="md" width={220} position={collapsed ? 'right-end' : 'top-start'} offset={8}>
               <Menu.Target>
-                {collapsed ? (
-                  <Tooltip label={user?.name ?? 'Account'} position="right" withArrow>
-                    <UnstyledButton className="commune-sidebar-profile-row" style={{ display: 'flex', justifyContent: 'center' }}>
+                <Tooltip label={user?.name ?? 'Account'} position="right" withArrow disabled={!collapsed}>
+                  <UnstyledButton
+                    className="commune-sidebar-profile-row"
+                    style={{ display: 'flex', justifyContent: collapsed ? 'center' : 'flex-start' }}
+                  >
+                    <Group gap="sm" wrap="nowrap" style={{ overflow: 'hidden' }}>
                       <Avatar
                         src={user?.avatar_url}
                         name={user?.name}
                         color="initials"
-                        size={34}
+                        size={36}
                         radius="xl"
-                      />
-                    </UnstyledButton>
-                  </Tooltip>
-                ) : (
-                  <UnstyledButton className="commune-sidebar-profile-row">
-                    <Group gap="sm" wrap="nowrap">
-                      <Avatar
-                        src={user?.avatar_url}
-                        name={user?.name}
-                        color="initials"
-                        size={38}
-                        radius="xl"
+                        style={{ flexShrink: 0 }}
                       />
                       <motion.div
                         initial={false}
-                        animate={{ opacity: 1, width: 'auto' }}
-                        style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}
+                        animate={{
+                          opacity: collapsed ? 0 : 1,
+                          maxWidth: collapsed ? 0 : 200,
+                        }}
+                        transition={sidebarTransition}
+                        style={{ overflow: 'hidden', minWidth: 0, whiteSpace: 'nowrap' }}
                       >
                         <Text size="sm" fw={600} truncate style={{ color: '#fff' }}>
                           {user?.name ?? 'Account'}
@@ -366,10 +362,17 @@ export function AppShell({ children }: AppShellProps) {
                           {user?.email}
                         </Text>
                       </motion.div>
-                      <IconChevronRight size={16} style={{ color: 'rgba(255,255,255,0.4)', flexShrink: 0 }} />
+                      <motion.div
+                        initial={false}
+                        animate={{ opacity: collapsed ? 0 : 1, maxWidth: collapsed ? 0 : 20 }}
+                        transition={sidebarTransition}
+                        style={{ overflow: 'hidden', flexShrink: 0 }}
+                      >
+                        <IconChevronRight size={16} style={{ color: 'rgba(255,255,255,0.4)' }} />
+                      </motion.div>
                     </Group>
                   </UnstyledButton>
-                )}
+                </Tooltip>
               </Menu.Target>
               <Menu.Dropdown>
                 <Menu.Item

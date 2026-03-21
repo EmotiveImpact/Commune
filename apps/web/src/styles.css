@@ -485,16 +485,25 @@ div:hover > .commune-avatar-overlay {
   transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Nav links: smooth padding + label transition */
+/* Nav links: smooth transitions between expanded and collapsed */
+.commune-sidebar-link .mantine-NavLink-root,
 .commune-sidebar-link {
-  transition: padding 0.25s cubic-bezier(0.4, 0, 0.2, 1),
-              justify-content 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: padding 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.commune-sidebar-link .mantine-NavLink-section {
+  transition: margin 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  flex-shrink: 0;
 }
 
 .commune-sidebar-link .mantine-NavLink-body {
-  transition: opacity 0.2s ease, width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   overflow: hidden;
   white-space: nowrap;
+  transition: opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+              max-width 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+              margin 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  max-width: 200px;
+  opacity: 1;
 }
 
 .commune-sidebar-link--collapsed {
@@ -504,13 +513,13 @@ div:hover > .commune-avatar-overlay {
 
 .commune-sidebar-link--collapsed .mantine-NavLink-section {
   margin: 0;
-  transition: margin 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .commune-sidebar-link--collapsed .mantine-NavLink-body {
   opacity: 0;
-  width: 0;
-  display: none;
+  max-width: 0;
+  margin: 0;
+  pointer-events: none;
 }
 
 /* Collapse button: hidden by default, visible on sidebar hover */
