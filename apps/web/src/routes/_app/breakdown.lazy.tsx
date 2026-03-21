@@ -77,7 +77,9 @@ function BreakdownPage() {
   const markPayment = useMarkPayment(activeGroupId ?? '');
   const { data: subscription } = useSubscription(user?.id ?? '');
   const [downloadingPdf, setDownloadingPdf] = useState(false);
-  const isPaidPlan = subscription?.plan === 'pro' || subscription?.plan === 'agency';
+  const isPaidPlan =
+    (subscription?.plan === 'pro' || subscription?.plan === 'agency') &&
+    (subscription?.status === 'active' || subscription?.status === 'trialing');
 
   const { data: breakdown, isLoading } = useUserBreakdown(
     activeGroupId ?? '',

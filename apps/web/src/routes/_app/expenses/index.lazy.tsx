@@ -86,7 +86,9 @@ function ExpensesPage() {
   // PDF export
   const { user } = useAuthStore();
   const { data: subscription } = useSubscription(user?.id ?? '');
-  const isPaidPlan = subscription?.status === 'active';
+  const isPaidPlan =
+    (subscription?.plan === 'pro' || subscription?.plan === 'agency') &&
+    (subscription?.status === 'active' || subscription?.status === 'trialing');
   const [downloadingPdf, setDownloadingPdf] = useState(false);
 
   // Bulk actions
@@ -207,7 +209,9 @@ function ExpensesPage() {
       const a = document.createElement('a');
       a.href = url;
       a.download = `expenses-${month}.pdf`;
+      document.body.appendChild(a);
       a.click();
+      document.body.removeChild(a);
       URL.revokeObjectURL(url);
       notifications.show({ title: 'Statement downloaded', message: '', color: 'green' });
     } catch (err) {

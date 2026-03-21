@@ -80,11 +80,18 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_ANON_KEY')!,
-      { global: { headers: { Authorization: authHeader } } },
-    );
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
+    if (!supabaseUrl || !supabaseAnonKey) {
+      return new Response(JSON.stringify({ error: 'Statement service is not configured' }), {
+        status: 500,
+        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
 
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
@@ -103,7 +110,17 @@ Deno.serve(async (req: Request) => {
     }
 
     // ── Parse body ───────────────────────────────────────────────────────
-    const { groupId, month } = await req.json();
+    let body: { groupId?: string; month?: string };
+    try {
+      body = await req.json();
+    } catch {
+      return new Response(JSON.stringify({ error: 'Invalid JSON body' }), {
+        status: 400,
+        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const { groupId, month } = body;
     if (!groupId || !month) {
       return new Response(JSON.stringify({ error: 'groupId and month are required' }), {
         status: 400,
@@ -186,20 +203,38 @@ Deno.serve(async (req: Request) => {
     // ── Participants with user details ───────────────────────────────────
     let participants: any[] = [];
     if (expenseIds.length > 0) {
-      const { data: parts } = await supabase
+      const { data: parts, error: participantsError } = await supabase
         .from('expense_participants')
         .select('expense_id, user_id, share_amount, users:user_id (id, name, email)')
         .in('expense_id', expenseIds);
+
+      if (participantsError) {
+        console.error('Participants query error:', participantsError);
+        return new Response(JSON.stringify({ error: 'Failed to query participants' }), {
+          status: 500,
+          headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
+        });
+      }
+
       participants = parts ?? [];
     }
 
     // ── Payment records ──────────────────────────────────────────────────
     let payments: any[] = [];
     if (expenseIds.length > 0) {
-      const { data: pays } = await supabase
+      const { data: pays, error: paymentsError } = await supabase
         .from('payment_records')
         .select('expense_id, user_id, amount, status')
         .in('expense_id', expenseIds);
+
+      if (paymentsError) {
+        console.error('Payments query error:', paymentsError);
+        return new Response(JSON.stringify({ error: 'Failed to query payments' }), {
+          status: 500,
+          headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
+        });
+      }
+
       payments = pays ?? [];
     }
 
