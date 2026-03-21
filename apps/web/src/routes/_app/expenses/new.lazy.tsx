@@ -199,226 +199,240 @@ function AddExpensePage() {
       />
 
       <form onSubmit={form.onSubmit(handleSubmit)}>
-        <div className="commune-dashboard-grid">
+        <div className="commune-expense-form-grid">
           <Stack gap="lg">
-            <Paper className="commune-soft-panel" p="xl">
-              <Stack gap="md">
-                <Title order={3}>Basics</Title>
-                <TextInput
-                  label="Title"
-                  placeholder="e.g. Electricity"
-                  withAsterisk
-                                    key={form.key('title')}
-                  {...form.getInputProps('title')}
-                />
-                <Group grow>
-                  <NumberInput
-                    label="Amount"
-                    prefix={group?.currency === 'GBP' ? '£' : ''}
-                    min={0}
-                    decimalScale={2}
-                    withAsterisk
-                                        key={form.key('amount')}
-                    {...form.getInputProps('amount')}
-                  />
-                  <Select
-                    label="Category"
-                    data={categoryOptions}
-                    withAsterisk
-                                        key={form.key('category')}
-                    {...form.getInputProps('category')}
-                  />
-                </Group>
-                <TextInput
-                  label="Due date"
-                  type="date"
-                  withAsterisk
-                                    key={form.key('due_date')}
-                  {...form.getInputProps('due_date')}
-                />
-                <Textarea
-                  label="Description"
-                  placeholder="Optional notes"
-                                    autosize
-                  minRows={3}
-                  key={form.key('description')}
-                  {...form.getInputProps('description')}
-                />
-              </Stack>
-            </Paper>
+            <div className="commune-dashboard-grid">
+              <Stack gap="lg">
+                <Paper className="commune-soft-panel" p="xl">
+                  <Stack gap="md">
+                    <Title order={3}>Basics</Title>
+                    <TextInput
+                      label="Title"
+                      placeholder="e.g. Electricity"
+                      withAsterisk
+                      key={form.key('title')}
+                      {...form.getInputProps('title')}
+                    />
+                    <Group grow>
+                      <NumberInput
+                        label="Amount"
+                        prefix={group?.currency === 'GBP' ? '£' : ''}
+                        min={0}
+                        decimalScale={2}
+                        withAsterisk
+                        key={form.key('amount')}
+                        {...form.getInputProps('amount')}
+                      />
+                      <Select
+                        label="Category"
+                        data={categoryOptions}
+                        withAsterisk
+                        key={form.key('category')}
+                        {...form.getInputProps('category')}
+                      />
+                    </Group>
+                    <TextInput
+                      label="Due date"
+                      type="date"
+                      withAsterisk
+                      key={form.key('due_date')}
+                      {...form.getInputProps('due_date')}
+                    />
+                    <Textarea
+                      label="Description"
+                      placeholder="Optional notes"
+                      autosize
+                      minRows={3}
+                      key={form.key('description')}
+                      {...form.getInputProps('description')}
+                    />
+                  </Stack>
+                </Paper>
 
-            <Paper className="commune-soft-panel" p="xl">
-              <Stack gap="md">
-                <Title order={3}>Participants</Title>
-                <MultiSelect
-                  label="Who shares this expense?"
-                  data={memberOptions}
-                  withAsterisk
-                                    key={form.key('participant_ids')}
-                  {...form.getInputProps('participant_ids')}
-                />
-                <Select
-                  label="Who paid?"
-                  description="Use this when one member already covered the full amount."
-                  data={paidByOptions}
-                                    key={form.key('paid_by_user_id')}
-                  {...form.getInputProps('paid_by_user_id')}
-                />
-                <Switch
-                  label="Recurring expense"
-                  checked={isRecurring}
-                  onChange={(event) => setIsRecurring(event.currentTarget.checked)}
-                />
-                {isRecurring && (
-                  <Select
-                    label="Frequency"
-                    data={[
-                      { value: 'weekly', label: 'Weekly' },
-                      { value: 'monthly', label: 'Monthly' },
-                    ]}
-                                        key={form.key('recurrence_type')}
-                    {...form.getInputProps('recurrence_type')}
-                  />
-                )}
+                <Paper className="commune-soft-panel" p="xl">
+                  <Stack gap="md">
+                    <Title order={3}>Participants</Title>
+                    <MultiSelect
+                      label="Who shares this expense?"
+                      data={memberOptions}
+                      withAsterisk
+                      key={form.key('participant_ids')}
+                      {...form.getInputProps('participant_ids')}
+                    />
+                    <Select
+                      label="Who paid?"
+                      description="Use this when one member already covered the full amount."
+                      data={paidByOptions}
+                      key={form.key('paid_by_user_id')}
+                      {...form.getInputProps('paid_by_user_id')}
+                    />
+                    <Switch
+                      label="Recurring expense"
+                      checked={isRecurring}
+                      onChange={(event) => setIsRecurring(event.currentTarget.checked)}
+                    />
+                    {isRecurring && (
+                      <Select
+                        label="Frequency"
+                        data={[
+                          { value: 'weekly', label: 'Weekly' },
+                          { value: 'monthly', label: 'Monthly' },
+                        ]}
+                        key={form.key('recurrence_type')}
+                        {...form.getInputProps('recurrence_type')}
+                      />
+                    )}
+                  </Stack>
+                </Paper>
               </Stack>
-            </Paper>
 
+              <Stack gap="lg">
+                <Paper className="commune-soft-panel" p="xl">
+                  <Stack gap="md">
+                    <Title order={3}>Split method</Title>
+                    <SegmentedControl
+                      value={splitMethod}
+                      onChange={setSplitMethod}
+                      data={[
+                        { value: 'equal', label: 'Equal' },
+                        { value: 'percentage', label: 'Percentage' },
+                        { value: 'custom', label: 'Custom' },
+                      ]}
+                      fullWidth
+                    />
+
+                    {splitMethod === 'percentage' && selectedParticipants.length > 0 && (
+                      <Stack gap="xs">
+                        {selectedParticipants.map((id) => {
+                          const name = group?.members.find((member) => member.user_id === id)?.user.name ?? id;
+                          return (
+                            <NumberInput
+                              key={id}
+                              label={name}
+                              suffix="%"
+                              min={0}
+                              max={100}
+                              decimalScale={2}
+                              value={form.getValues().percentages[id] ?? 0}
+                              onChange={(value) => {
+                                const current = form.getValues().percentages;
+                                form.setFieldValue('percentages', { ...current, [id]: Number(value) || 0 });
+                              }}
+                            />
+                          );
+                        })}
+                      </Stack>
+                    )}
+
+                    {splitMethod === 'custom' && selectedParticipants.length > 0 && (
+                      <Stack gap="xs">
+                        {selectedParticipants.map((id) => {
+                          const name = group?.members.find((member) => member.user_id === id)?.user.name ?? id;
+                          return (
+                            <NumberInput
+                              key={id}
+                              label={name}
+                              prefix={group?.currency === 'GBP' ? '£' : ''}
+                              min={0}
+                              decimalScale={2}
+                              value={form.getValues().custom_amounts[id] ?? 0}
+                              onChange={(value) => {
+                                const current = form.getValues().custom_amounts;
+                                form.setFieldValue('custom_amounts', { ...current, [id]: Number(value) || 0 });
+                              }}
+                            />
+                          );
+                        })}
+                      </Stack>
+                    )}
+                  </Stack>
+                </Paper>
+
+                <Paper className="commune-soft-panel" p="xl">
+                  <Stack gap="md">
+                    <Group justify="space-between" align="center">
+                      <Title order={3}>Split preview</Title>
+                      {splitPreview.length > 0 && (
+                        <Badge variant="light" color="gray">
+                          {splitMethod === 'equal' ? 'Equal split' : splitMethod === 'percentage' ? 'By percentage' : 'Custom amounts'}
+                        </Badge>
+                      )}
+                    </Group>
+                    {splitPreview.length > 0 ? (
+                    <>
+                      <div style={{ overflowX: 'auto' }}>
+                        <Table verticalSpacing="md" horizontalSpacing="sm">
+                          <Table.Thead>
+                            <Table.Tr>
+                              <Table.Th>Person</Table.Th>
+                              <Table.Th style={{ textAlign: 'right' }}>Share</Table.Th>
+                              <Table.Th style={{ textAlign: 'right' }}>%</Table.Th>
+                            </Table.Tr>
+                          </Table.Thead>
+                          <Table.Tbody>
+                            {splitPreview.map((person) => (
+                              <Table.Tr key={person.userId}>
+                                <Table.Td>{person.name}</Table.Td>
+                                <Table.Td style={{ textAlign: 'right' }}>
+                                  {formatCurrency(person.amount, group?.currency)}
+                                </Table.Td>
+                                <Table.Td style={{ textAlign: 'right' }}>
+                                  <Text size="sm" c="dimmed">
+                                    {amount > 0 ? Math.round((person.amount / amount) * 100) : 0}%
+                                  </Text>
+                                </Table.Td>
+                              </Table.Tr>
+                            ))}
+                          </Table.Tbody>
+                          <Table.Tfoot>
+                            <Table.Tr>
+                              <Table.Td>
+                                <Text fw={700}>Total</Text>
+                              </Table.Td>
+                              <Table.Td style={{ textAlign: 'right' }}>
+                                <Text fw={700}>
+                                  {formatCurrency(
+                                    splitPreview.reduce((sum, p) => sum + p.amount, 0),
+                                    group?.currency,
+                                  )}
+                                </Text>
+                              </Table.Td>
+                              <Table.Td style={{ textAlign: 'right' }}>
+                                <Text size="sm" fw={600} c={Math.abs(splitPreview.reduce((sum, p) => sum + p.amount, 0) - amount) < 0.01 ? 'green' : 'red'}>
+                                  {amount > 0 ? Math.round((splitPreview.reduce((sum, p) => sum + p.amount, 0) / amount) * 100) : 0}%
+                                </Text>
+                              </Table.Td>
+                            </Table.Tr>
+                          </Table.Tfoot>
+                        </Table>
+                      </div>
+                      {splitMethod === 'custom' && splitPreview.length > 0 && Math.abs(splitPreview.reduce((sum, p) => sum + p.amount, 0) - amount) > 0.01 && (
+                        <Text size="sm" c="red">
+                          Custom amounts ({formatCurrency(splitPreview.reduce((sum, p) => sum + p.amount, 0), group?.currency)}) don&apos;t match the expense total ({formatCurrency(amount, group?.currency)}).
+                        </Text>
+                      )}
+                    </>
+                    ) : (
+                      <Text size="sm" c="dimmed">
+                        Add an amount and choose participants to see the split preview.
+                      </Text>
+                    )}
+                  </Stack>
+                </Paper>
+              </Stack>
+            </div>
+
+            <Group>
+              <Button type="submit" size="lg" loading={createExpense.isPending}>
+                Create expense
+              </Button>
+              <Button variant="default" onClick={() => navigate({ to: '/expenses' })}>
+                Cancel
+              </Button>
+            </Group>
           </Stack>
 
-          <Stack gap="lg">
-            <Paper className="commune-soft-panel" p="xl">
-              <Stack gap="md">
-                <Title order={3}>Split method</Title>
-                <SegmentedControl
-                  value={splitMethod}
-                  onChange={setSplitMethod}
-                  data={[
-                    { value: 'equal', label: 'Equal' },
-                    { value: 'percentage', label: 'Percentage' },
-                    { value: 'custom', label: 'Custom' },
-                  ]}
-                  fullWidth
-                />
-
-                {splitMethod === 'percentage' && selectedParticipants.length > 0 && (
-                  <Stack gap="xs">
-                    {selectedParticipants.map((id) => {
-                      const name = group?.members.find((member) => member.user_id === id)?.user.name ?? id;
-                      return (
-                        <NumberInput
-                          key={id}
-                          label={name}
-                          suffix="%"
-                          min={0}
-                          max={100}
-                          decimalScale={2}
-                                                    value={form.getValues().percentages[id] ?? 0}
-                          onChange={(value) => {
-                            const current = form.getValues().percentages;
-                            form.setFieldValue('percentages', { ...current, [id]: Number(value) || 0 });
-                          }}
-                        />
-                      );
-                    })}
-                  </Stack>
-                )}
-
-                {splitMethod === 'custom' && selectedParticipants.length > 0 && (
-                  <Stack gap="xs">
-                    {selectedParticipants.map((id) => {
-                      const name = group?.members.find((member) => member.user_id === id)?.user.name ?? id;
-                      return (
-                        <NumberInput
-                          key={id}
-                          label={name}
-                          prefix={group?.currency === 'GBP' ? '£' : ''}
-                          min={0}
-                          decimalScale={2}
-                                                    value={form.getValues().custom_amounts[id] ?? 0}
-                          onChange={(value) => {
-                            const current = form.getValues().custom_amounts;
-                            form.setFieldValue('custom_amounts', { ...current, [id]: Number(value) || 0 });
-                          }}
-                        />
-                      );
-                    })}
-                  </Stack>
-                )}
-              </Stack>
-            </Paper>
-
-            <Paper className="commune-soft-panel" p="xl">
-              <Stack gap="md">
-                <Group justify="space-between" align="center">
-                  <Title order={3}>Split preview</Title>
-                  {splitPreview.length > 0 && (
-                    <Badge variant="light" color="gray">
-                      {splitMethod === 'equal' ? 'Equal split' : splitMethod === 'percentage' ? 'By percentage' : 'Custom amounts'}
-                    </Badge>
-                  )}
-                </Group>
-                {splitPreview.length > 0 ? (
-                <>
-                  <div style={{ overflowX: 'auto' }}>
-                    <Table verticalSpacing="md" horizontalSpacing="sm">
-                      <Table.Thead>
-                        <Table.Tr>
-                          <Table.Th>Person</Table.Th>
-                          <Table.Th style={{ textAlign: 'right' }}>Share</Table.Th>
-                          <Table.Th style={{ textAlign: 'right' }}>%</Table.Th>
-                        </Table.Tr>
-                      </Table.Thead>
-                      <Table.Tbody>
-                        {splitPreview.map((person) => (
-                          <Table.Tr key={person.userId}>
-                            <Table.Td>{person.name}</Table.Td>
-                            <Table.Td style={{ textAlign: 'right' }}>
-                              {formatCurrency(person.amount, group?.currency)}
-                            </Table.Td>
-                            <Table.Td style={{ textAlign: 'right' }}>
-                              <Text size="sm" c="dimmed">
-                                {amount > 0 ? Math.round((person.amount / amount) * 100) : 0}%
-                              </Text>
-                            </Table.Td>
-                          </Table.Tr>
-                        ))}
-                      </Table.Tbody>
-                      <Table.Tfoot>
-                        <Table.Tr>
-                          <Table.Td>
-                            <Text fw={700}>Total</Text>
-                          </Table.Td>
-                          <Table.Td style={{ textAlign: 'right' }}>
-                            <Text fw={700}>
-                              {formatCurrency(
-                                splitPreview.reduce((sum, p) => sum + p.amount, 0),
-                                group?.currency,
-                              )}
-                            </Text>
-                          </Table.Td>
-                          <Table.Td style={{ textAlign: 'right' }}>
-                            <Text size="sm" fw={600} c={Math.abs(splitPreview.reduce((sum, p) => sum + p.amount, 0) - amount) < 0.01 ? 'green' : 'red'}>
-                              {amount > 0 ? Math.round((splitPreview.reduce((sum, p) => sum + p.amount, 0) / amount) * 100) : 0}%
-                            </Text>
-                          </Table.Td>
-                        </Table.Tr>
-                      </Table.Tfoot>
-                    </Table>
-                  </div>
-                  {splitMethod === 'custom' && splitPreview.length > 0 && Math.abs(splitPreview.reduce((sum, p) => sum + p.amount, 0) - amount) > 0.01 && (
-                    <Text size="sm" c="red">
-                      Custom amounts ({formatCurrency(splitPreview.reduce((sum, p) => sum + p.amount, 0), group?.currency)}) don&apos;t match the expense total ({formatCurrency(amount, group?.currency)}).
-                    </Text>
-                  )}
-                </>
-                ) : (
-                  <Text size="sm" c="dimmed">
-                    Add an amount and choose participants to see the split preview.
-                  </Text>
-                )}
-              </Stack>
-            </Paper>
-
+          <div className="commune-receipt-sidebar">
             <Paper className="commune-soft-panel" p="xl">
               <Stack gap="md">
                 <Title order={3}>Receipt</Title>
@@ -431,16 +445,7 @@ function AddExpensePage() {
                 />
               </Stack>
             </Paper>
-
-            <Group>
-              <Button type="submit" size="lg" loading={createExpense.isPending}>
-                Create expense
-              </Button>
-              <Button variant="default" onClick={() => navigate({ to: '/expenses' })}>
-                Cancel
-              </Button>
-            </Group>
-          </Stack>
+          </div>
         </div>
       </form>
     </Stack>

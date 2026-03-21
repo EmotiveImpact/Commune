@@ -213,6 +213,18 @@ div:hover > .commune-avatar-overlay {
   gap: 1.25rem;
 }
 
+.commune-expense-form-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.commune-expense-form-grid > .commune-receipt-sidebar {
+  position: sticky;
+  top: calc(var(--app-shell-header-offset, 0rem) + 1.5rem);
+}
+
 .commune-hero-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.3fr) minmax(280px, 360px);
@@ -758,6 +770,14 @@ div:hover > .commune-avatar-overlay {
 
   .commune-dashboard-grid {
     grid-template-columns: 1fr;
+  }
+
+  .commune-expense-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .commune-expense-form-grid > .commune-receipt-sidebar {
+    position: static;
   }
 
   .commune-hero-grid {

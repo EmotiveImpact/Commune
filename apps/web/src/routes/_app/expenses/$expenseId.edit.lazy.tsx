@@ -9,17 +9,21 @@ import {
   Text,
   TextInput,
   Textarea,
+  Title,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
-import { useEffect, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { ExpenseCategory } from '@commune/types';
+import { uploadReceipt } from '@commune/api';
 import { useGroupStore } from '../../../stores/group';
 import { useGroup } from '../../../hooks/use-groups';
 import { useExpenseDetail, useUpdateExpense } from '../../../hooks/use-expenses';
+import { useAuthStore } from '../../../stores/auth';
 import { ExpenseFormSkeleton } from '../../../components/page-skeleton';
 import { EmptyState } from '../../../components/empty-state';
 import { PageHeader } from '../../../components/page-header';
+import { ReceiptDropzone } from '../../../components/receipt-dropzone';
 
 export const Route = createLazyFileRoute('/_app/expenses/$expenseId/edit')({
   component: EditExpensePage,
@@ -36,11 +40,10 @@ function EditExpensePage() {
   const { data: group } = useGroup(activeGroupId ?? '');
   const { data: expense, isLoading } = useExpenseDetail(expenseId);
   const updateExpense = useUpdateExpense(activeGroupId ?? '');
+  const { user } = useAuthStore();
   const navigate = useNavigate();
-  const lastHydratedExpenseRef = useRef<string | null>(null);
-
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const form = useForm({
-    mode: 'uncontrolled',
     initialValues: {
       title: '',
       description: '',
@@ -53,21 +56,6 @@ function EditExpensePage() {
 
   useEffect(() => {
     if (expense) {
-      const hydrationKey = JSON.stringify({
-        id: expense.id,
-        title: expense.title,
-        description: expense.description,
-        category: expense.category,
-        amount: expense.amount,
-        due_date: expense.due_date,
-        recurrence_type: expense.recurrence_type,
-      });
-
-      if (lastHydratedExpenseRef.current === hydrationKey) {
-        return;
-      }
-
-      lastHydratedExpenseRef.current = hydrationKey;
       form.setValues({
         title: expense.title,
         description: expense.description ?? '',
@@ -77,7 +65,8 @@ function EditExpensePage() {
         recurrence_type: expense.recurrence_type,
       });
     }
-  }, [expense, form]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expense?.id, expense?.updated_at]);
 
   if (!activeGroupId) {
     return (
@@ -114,6 +103,20 @@ function EditExpensePage() {
           recurrence_type: values.recurrence_type,
         },
       });
+
+      // Upload receipt if a file was selected
+      if (receiptFile && user) {
+        try {
+          await uploadReceipt(receiptFile, user.id, expenseId);
+        } catch {
+          notifications.show({
+            title: 'Receipt upload failed',
+            message: 'The expense was updated but the receipt could not be attached.',
+            color: 'orange',
+          });
+        }
+      }
+
       notifications.show({
         title: 'Expense updated',
         message: '',
@@ -137,76 +140,87 @@ function EditExpensePage() {
       />
 
       <form onSubmit={form.onSubmit(handleSubmit)}>
-        <Stack gap="lg">
-          <Paper className="commune-soft-panel" p="xl">
-            <Stack gap="md">
-              <TextInput
-                label="Title"
-                withAsterisk
-                key={form.key('title')}
-                {...form.getInputProps('title')}
-              />
-              <Group grow>
-                <NumberInput
-                  label="Amount"
-                  prefix={group?.currency === 'GBP' ? '£' : ''}
-                  min={0}
-                  decimalScale={2}
+        <div className="commune-expense-form-grid">
+          <Stack gap="lg">
+            <Paper className="commune-soft-panel" p="xl">
+              <Stack gap="md">
+                <TextInput
+                  label="Title"
                   withAsterisk
-                  key={form.key('amount')}
-                  {...form.getInputProps('amount')}
+                  {...form.getInputProps('title')}
+                />
+                <Group grow>
+                  <NumberInput
+                    label="Amount"
+                    prefix={group?.currency === 'GBP' ? '£' : ''}
+                    min={0}
+                    decimalScale={2}
+                    withAsterisk
+                    {...form.getInputProps('amount')}
+                  />
+                  <Select
+                    label="Category"
+                    data={categoryOptions}
+                    withAsterisk
+                    {...form.getInputProps('category')}
+                  />
+                </Group>
+                <TextInput
+                  label="Due date"
+                  type="date"
+                  withAsterisk
+                  {...form.getInputProps('due_date')}
+                />
+                <Textarea
+                  label="Description"
+                  autosize
+                  minRows={3}
+                  {...form.getInputProps('description')}
                 />
                 <Select
-                  label="Category"
-                  data={categoryOptions}
-                  withAsterisk
-                  key={form.key('category')}
-                  {...form.getInputProps('category')}
+                  label="Recurrence"
+                  data={[
+                    { value: 'none', label: 'None' },
+                    { value: 'weekly', label: 'Weekly' },
+                    { value: 'monthly', label: 'Monthly' },
+                  ]}
+                  {...form.getInputProps('recurrence_type')}
                 />
-              </Group>
-              <TextInput
-                label="Due date"
-                type="date"
-                withAsterisk
-                key={form.key('due_date')}
-                {...form.getInputProps('due_date')}
-              />
-              <Textarea
-                label="Description"
-                autosize
-                minRows={3}
-                key={form.key('description')}
-                {...form.getInputProps('description')}
-              />
-              <Select
-                label="Recurrence"
-                data={[
-                  { value: 'none', label: 'None' },
-                  { value: 'weekly', label: 'Weekly' },
-                  { value: 'monthly', label: 'Monthly' },
-                ]}
-                key={form.key('recurrence_type')}
-                {...form.getInputProps('recurrence_type')}
-              />
-            </Stack>
-          </Paper>
+              </Stack>
+            </Paper>
 
-          <Paper className="commune-soft-panel" p="xl">
-            <Text size="sm" c="dimmed">
-              This form edits the basic fields only. To change the split method or participants, archive the
-              original expense and create a new one.
-            </Text>
-          </Paper>
+            <Paper className="commune-soft-panel" p="xl">
+              <Text size="sm" c="dimmed">
+                This form edits the basic fields only. To change the split method or participants, archive the
+                original expense and create a new one.
+              </Text>
+            </Paper>
 
-          <Group>
-            <Button type="submit" loading={updateExpense.isPending}>
-              Save changes
-            </Button>
-            <Button variant="default" onClick={() => navigate({ to: `/expenses/${expenseId}` })}>
-              Cancel
-            </Button>
-          </Group>
-        </Stack>
+            <Group>
+              <Button type="submit" loading={updateExpense.isPending}>
+                Save changes
+              </Button>
+              <Button variant="default" onClick={() => navigate({ to: `/expenses/${expenseId}` })}>
+                Cancel
+              </Button>
+            </Group>
+          </Stack>
+
+          <div className="commune-receipt-sidebar">
+            <Paper className="commune-soft-panel" p="xl">
+              <Stack gap="md">
+                <Title order={3}>Receipt</Title>
+                <Text size="sm" c="dimmed">
+                  Attach or replace the receipt photo or PDF (optional).
+                </Text>
+                <ReceiptDropzone
+                  value={receiptFile}
+                  onChange={setReceiptFile}
+                />
+              </Stack>
+            </Paper>
+          </div>
+        </div>
       </form>
     </Stack>
   );
