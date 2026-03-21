@@ -194,3 +194,27 @@ export async function updateGroup(
   if (error) throw error;
   return data as Group;
 }
+
+export async function deleteGroup(groupId: string) {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) throw new Error('Not authenticated');
+
+  // Verify the current user is the group owner
+  const { data: group, error: groupError } = await supabase
+    .from('groups')
+    .select('owner_id')
+    .eq('id', groupId)
+    .single();
+
+  if (groupError) throw groupError;
+  if (group?.owner_id !== user.id) {
+    throw new Error('Only the group owner can delete this group.');
+  }
+
+  const { error } = await supabase.from('groups').delete().eq('id', groupId);
+
+  if (error) throw error;
+}

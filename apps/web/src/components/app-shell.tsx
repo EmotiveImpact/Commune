@@ -17,21 +17,20 @@ import {
 import { useDisclosure } from '@mantine/hooks';
 import { Link, useLocation, useNavigate } from '@tanstack/react-router';
 import {
-  IconChevronRight,
   IconChevronsLeft,
   IconChevronsRight,
   IconLogout,
   IconSearch,
   IconSettings,
 } from '@tabler/icons-react';
-import { useState, useEffect, useCallback, type KeyboardEvent } from 'react';
+import { useState, useCallback, type KeyboardEvent } from 'react';
 import { useAuthStore } from '../stores/auth';
 import { useGroupStore } from '../stores/group';
 import { useSearchStore } from '../stores/search';
 import { signOut } from '@commune/api';
 import { navLinks } from './nav-links';
 import { NotificationDropdown } from './notification-dropdown';
-import { GroupSelector } from './group-selector';
+import { HeaderGroupSelector } from './header-group-selector';
 import { TrialExpiryModal } from './trial-expiry-modal';
 import { useSubscription } from '../hooks/use-subscriptions';
 
