@@ -41,8 +41,8 @@ import { useSubscription } from '../hooks/use-subscriptions';
 const SIDEBAR_STORAGE_KEY = 'commune-sidebar-collapsed';
 const SIDEBAR_WIDTH_EXPANDED = 260;
 const SIDEBAR_WIDTH_COLLAPSED = 72;
-// Fixed padding so icons never shift
-const SIDEBAR_PAD = 10;
+const SIDEBAR_PAD_EXPANDED = 12;
+const SIDEBAR_PAD_COLLAPSED = 6;
 
 const ease = [0.4, 0, 0.2, 1] as [number, number, number, number];
 const sidebarTransition = { duration: 0.25, ease };
@@ -129,21 +129,33 @@ export function AppShell({ children }: AppShellProps) {
         role="navigation"
         aria-label="Main navigation"
       >
-        <div
+        <motion.div
           className="commune-sidebar-panel"
+          initial={false}
+          animate={{
+            paddingLeft: collapsed ? SIDEBAR_PAD_COLLAPSED : SIDEBAR_PAD_EXPANDED,
+            paddingRight: collapsed ? SIDEBAR_PAD_COLLAPSED : SIDEBAR_PAD_EXPANDED,
+          }}
+          transition={sidebarTransition}
           style={{
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'space-between',
             height: '100%',
             overflow: 'hidden',
-            padding: `1.25rem ${SIDEBAR_PAD}px`,
+            paddingTop: '1.25rem',
+            paddingBottom: '1.25rem',
           }}
         >
           {/* ── Top ── */}
           <div>
-            {/* Logo row — icon always at same left offset */}
-            <div
+            {/* Logo row */}
+            <motion.div
+              initial={false}
+              animate={{
+                justifyContent: collapsed ? 'center' : 'flex-start',
+              }}
+              transition={sidebarTransition}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -207,7 +219,7 @@ export function AppShell({ children }: AppShellProps) {
                   </motion.div>
                 )}
               </AnimatePresence>
-            </div>
+            </motion.div>
 
             {/* Menu label */}
             <motion.div
@@ -310,10 +322,10 @@ export function AppShell({ children }: AppShellProps) {
                     <motion.div
                       initial={false}
                       animate={{
-                        paddingLeft: collapsed ? 0 : 10,
+                        justifyContent: collapsed ? 'center' : 'flex-start',
                       }}
                       transition={sidebarTransition}
-                      style={{ display: 'flex', alignItems: 'center', overflow: 'hidden', gap: 12, justifyContent: collapsed ? 'center' : 'flex-start' }}
+                      style={{ display: 'flex', alignItems: 'center', overflow: 'hidden', gap: 12 }}
                     >
                       <Avatar
                         src={user?.avatar_url}
@@ -398,7 +410,7 @@ export function AppShell({ children }: AppShellProps) {
               </Menu.Dropdown>
             </Menu>
           </Stack>
-        </div>
+        </motion.div>
       </MantineAppShell.Navbar>
 
       <MantineAppShell.Main className="commune-main-content" role="main">

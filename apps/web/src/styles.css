@@ -486,10 +486,15 @@ div:hover > .commune-avatar-overlay {
   transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Nav links: icons stay fixed, labels slide in/out */
+/* Nav links: smooth transitions */
+.commune-sidebar-link {
+  transition: padding 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+              justify-content 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
 .commune-sidebar-link .mantine-NavLink-section {
   flex-shrink: 0;
-  width: 20px;
+  width: 22px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -503,6 +508,18 @@ div:hover > .commune-avatar-overlay {
               max-width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   max-width: 200px;
   opacity: 1;
+}
+
+/* Collapsed: center the icon, hide the label */
+.commune-sidebar-link--collapsed {
+  display: flex;
+  justify-content: center;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.commune-sidebar-link--collapsed .mantine-NavLink-section {
+  margin: 0;
 }
 
 .commune-sidebar-link--collapsed .mantine-NavLink-body {
