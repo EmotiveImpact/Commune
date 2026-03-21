@@ -491,6 +491,39 @@ div:hover > .commune-avatar-overlay {
   background: rgba(255, 255, 255, 0.06);
 }
 
+/* ── Collapsible sidebar ── */
+.commune-app-shell-navbar {
+  transition: width var(--commune-motion-medium);
+}
+
+.commune-sidebar-panel[data-collapsed] {
+  padding: 1.25rem 0.5rem;
+  align-items: center;
+}
+
+.commune-sidebar-link--collapsed {
+  justify-content: center;
+  padding: 8px 0;
+}
+
+.commune-sidebar-link--collapsed .mantine-NavLink-section {
+  margin: 0;
+}
+
+.commune-sidebar-link--collapsed .mantine-NavLink-body {
+  display: none;
+}
+
+.commune-sidebar-toggle {
+  color: rgba(255, 255, 255, 0.5);
+  border-radius: 8px;
+}
+
+.commune-sidebar-toggle:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.85);
+}
+
 
 .commune-legend-dot {
   width: 10px;

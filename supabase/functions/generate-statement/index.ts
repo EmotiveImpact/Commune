@@ -1,4 +1,4 @@
-import { jsPDF } from 'npm:jspdf';
+import { PDFDocument, StandardFonts, rgb } from 'https://esm.sh/pdf-lib@1.17.1';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
 // ── Rate Limiting ──────────────────────────────────────────────────────────────
@@ -39,6 +39,14 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+// ── PDF helpers ───────────────────────────────────────────────────────────────
+// pdf-lib uses points (1 pt = 1/72 inch). A4 is 595.28 x 841.89 pt.
+const MM = 2.8346; // 1 mm in points
+const A4_W = 595.28;
+const A4_H = 841.89;
+const MARGIN = 15 * MM;
+const CONTENT_W = A4_W - MARGIN * 2;
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
@@ -205,13 +213,6 @@ Deno.serve(async (req: Request) => {
       return 'Open';
     }
 
-    // ── Generate PDF ─────────────────────────────────────────────────────
-    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const margin = 15;
-    const contentWidth = pageWidth - margin * 2;
-    let y = margin;
-
     const currency = group.currency || 'GBP';
     const fmt = (n: number) => {
       try {
@@ -226,80 +227,152 @@ Deno.serve(async (req: Request) => {
       year: 'numeric',
     });
 
-    // Title
-    doc.setFontSize(18);
-    doc.setFont('helvetica', 'bold');
-    doc.text(`${group.name}`, margin, y);
-    y += 8;
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Statement for ${monthLabel}`, margin, y);
-    y += 6;
-    doc.setFontSize(9);
-    doc.setTextColor(120, 120, 120);
-    doc.text(`Generated ${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}`, margin, y);
-    doc.setTextColor(0, 0, 0);
-    y += 10;
+    // ── Generate PDF with pdf-lib ─────────────────────────────────────────
+    const pdfDoc = await PDFDocument.create();
+    const helvetica = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    const helveticaBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 
-    // Summary box
-    doc.setDrawColor(200, 200, 200);
-    doc.setFillColor(248, 249, 250);
-    doc.roundedRect(margin, y, contentWidth, 28, 2, 2, 'FD');
-    y += 7;
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'bold');
-    const colW = contentWidth / 4;
+    let page = pdfDoc.addPage([A4_W, A4_H]);
+    // y tracks position from TOP of the page; pdf-lib draws from bottom,
+    // so we convert with: drawY = A4_H - y
+    let y = MARGIN;
+
+    function drawY(yTop: number) {
+      return A4_H - yTop;
+    }
+
+    function ensureSpace(needed: number) {
+      if (y + needed > A4_H - MARGIN) {
+        page = pdfDoc.addPage([A4_W, A4_H]);
+        y = MARGIN;
+      }
+    }
+
+    // ── Title ──────────────────────────────────────────────────────────
+    page.drawText(group.name, {
+      x: MARGIN,
+      y: drawY(y),
+      size: 18,
+      font: helveticaBold,
+      color: rgb(0, 0, 0),
+    });
+    y += 22;
+
+    page.drawText(`Statement for ${monthLabel}`, {
+      x: MARGIN,
+      y: drawY(y),
+      size: 12,
+      font: helvetica,
+      color: rgb(0, 0, 0),
+    });
+    y += 16;
+
+    const generatedDate = new Date().toLocaleDateString('en-GB', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    });
+    page.drawText(`Generated ${generatedDate}`, {
+      x: MARGIN,
+      y: drawY(y),
+      size: 9,
+      font: helvetica,
+      color: rgb(0.47, 0.47, 0.47),
+    });
+    y += 24;
+
+    // ── Summary box ──────────────────────────────────────────────────
+    const boxH = 28 * MM;
+    page.drawRectangle({
+      x: MARGIN,
+      y: drawY(y + boxH),
+      width: CONTENT_W,
+      height: boxH,
+      color: rgb(0.973, 0.976, 0.984),
+      borderColor: rgb(0.784, 0.784, 0.784),
+      borderWidth: 0.5,
+    });
+
+    const colW = CONTENT_W / 4;
     const summaryLabels = ['Total Expenses', 'Total Amount', 'Amount Paid', 'Outstanding'];
     const summaryValues = [String(expenseCount), fmt(totalAmount), fmt(totalPaid), fmt(outstanding)];
 
     for (let i = 0; i < 4; i++) {
-      const cx = margin + colW * i + colW / 2;
-      doc.setTextColor(120, 120, 120);
-      doc.text(summaryLabels[i], cx, y, { align: 'center' });
-      doc.setTextColor(0, 0, 0);
-      doc.setFontSize(11);
-      doc.text(summaryValues[i], cx, y + 10, { align: 'center' });
-      doc.setFontSize(9);
-    }
-    y += 25;
+      const cx = MARGIN + colW * i + colW / 2;
 
-    // Expense table
-    y += 5;
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Expenses', margin, y);
-    y += 6;
+      // Label
+      const labelWidth = helveticaBold.widthOfTextAtSize(summaryLabels[i], 9);
+      page.drawText(summaryLabels[i], {
+        x: cx - labelWidth / 2,
+        y: drawY(y + 7 * MM),
+        size: 9,
+        font: helveticaBold,
+        color: rgb(0.47, 0.47, 0.47),
+      });
+
+      // Value
+      const valWidth = helveticaBold.widthOfTextAtSize(summaryValues[i], 11);
+      page.drawText(summaryValues[i], {
+        x: cx - valWidth / 2,
+        y: drawY(y + 14 * MM),
+        size: 11,
+        font: helveticaBold,
+        color: rgb(0, 0, 0),
+      });
+    }
+    y += boxH + 14;
+
+    // ── Expenses table ──────────────────────────────────────────────
+    page.drawText('Expenses', {
+      x: MARGIN,
+      y: drawY(y),
+      size: 12,
+      font: helveticaBold,
+      color: rgb(0, 0, 0),
+    });
+    y += 16;
+
+    const cols = [
+      { label: 'Title', x: MARGIN, w: 50 * MM },
+      { label: 'Category', x: MARGIN + 50 * MM, w: 30 * MM },
+      { label: 'Due Date', x: MARGIN + 80 * MM, w: 25 * MM },
+      { label: 'Amount', x: MARGIN + 105 * MM, w: 30 * MM },
+      { label: 'Status', x: MARGIN + 135 * MM, w: 25 * MM },
+    ];
 
     if ((expenses ?? []).length === 0) {
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'normal');
-      doc.text('No expenses for this period.', margin, y);
-      y += 8;
+      page.drawText('No expenses for this period.', {
+        x: MARGIN,
+        y: drawY(y),
+        size: 10,
+        font: helvetica,
+        color: rgb(0, 0, 0),
+      });
+      y += 20;
     } else {
-      // Table header
-      const cols = [
-        { label: 'Title', x: margin, w: 50 },
-        { label: 'Category', x: margin + 50, w: 30 },
-        { label: 'Due Date', x: margin + 80, w: 25 },
-        { label: 'Amount', x: margin + 105, w: 30 },
-        { label: 'Status', x: margin + 135, w: 25 },
-      ];
+      // Header row background
+      const rowH = 7 * MM;
+      page.drawRectangle({
+        x: MARGIN,
+        y: drawY(y + rowH - 3),
+        width: CONTENT_W,
+        height: rowH,
+        color: rgb(0.941, 0.941, 0.941),
+      });
 
-      doc.setFillColor(240, 240, 240);
-      doc.rect(margin, y - 4, contentWidth, 7, 'F');
-      doc.setFontSize(8);
-      doc.setFont('helvetica', 'bold');
       for (const col of cols) {
-        doc.text(col.label, col.x + 1, y);
+        page.drawText(col.label, {
+          x: col.x + 2,
+          y: drawY(y + 4),
+          size: 8,
+          font: helveticaBold,
+          color: rgb(0, 0, 0),
+        });
       }
-      y += 5;
+      y += rowH + 2;
 
-      doc.setFont('helvetica', 'normal');
       for (const expense of expenses ?? []) {
-        if (y > 270) {
-          doc.addPage();
-          y = margin;
-        }
+        ensureSpace(5 * MM + 4);
 
         const status = getExpenseStatus(expense);
         const catLabel = (expense.category as string)
@@ -307,79 +380,111 @@ Deno.serve(async (req: Request) => {
           .map((w: string) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
           .join(' ');
 
-        doc.setFontSize(8);
-        doc.text(String(expense.title).substring(0, 30), cols[0].x + 1, y);
-        doc.text(catLabel.substring(0, 18), cols[1].x + 1, y);
-        doc.text(expense.due_date, cols[2].x + 1, y);
-        doc.text(fmt(Number(expense.amount)), cols[3].x + 1, y);
+        const statusColor = status === 'Settled'
+          ? rgb(0.133, 0.545, 0.133)
+          : status === 'Overdue'
+          ? rgb(0.784, 0.196, 0.196)
+          : rgb(0.784, 0.588, 0);
 
-        // Status with colour
-        if (status === 'Settled') doc.setTextColor(34, 139, 34);
-        else if (status === 'Overdue') doc.setTextColor(200, 50, 50);
-        else doc.setTextColor(200, 150, 0);
-        doc.text(status, cols[4].x + 1, y);
-        doc.setTextColor(0, 0, 0);
+        page.drawText(String(expense.title).substring(0, 30), {
+          x: cols[0].x + 2, y: drawY(y), size: 8, font: helvetica, color: rgb(0, 0, 0),
+        });
+        page.drawText(catLabel.substring(0, 18), {
+          x: cols[1].x + 2, y: drawY(y), size: 8, font: helvetica, color: rgb(0, 0, 0),
+        });
+        page.drawText(expense.due_date, {
+          x: cols[2].x + 2, y: drawY(y), size: 8, font: helvetica, color: rgb(0, 0, 0),
+        });
+        page.drawText(fmt(Number(expense.amount)), {
+          x: cols[3].x + 2, y: drawY(y), size: 8, font: helvetica, color: rgb(0, 0, 0),
+        });
+        page.drawText(status, {
+          x: cols[4].x + 2, y: drawY(y), size: 8, font: helvetica, color: statusColor,
+        });
 
-        y += 5;
+        y += 5 * MM;
       }
     }
 
-    // Member breakdown
-    y += 8;
-    if (y > 250) {
-      doc.addPage();
-      y = margin;
-    }
+    // ── Member breakdown ──────────────────────────────────────────────
+    y += 8 * MM;
+    ensureSpace(30 * MM);
 
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Member Breakdown', margin, y);
-    y += 6;
+    page.drawText('Member Breakdown', {
+      x: MARGIN,
+      y: drawY(y),
+      size: 12,
+      font: helveticaBold,
+      color: rgb(0, 0, 0),
+    });
+    y += 16;
 
     const memberCols = [
-      { label: 'Name', x: margin, w: 50 },
-      { label: 'Total Owed', x: margin + 50, w: 35 },
-      { label: 'Total Paid', x: margin + 85, w: 35 },
-      { label: 'Balance', x: margin + 120, w: 35 },
+      { label: 'Name', x: MARGIN, w: 50 * MM },
+      { label: 'Total Owed', x: MARGIN + 50 * MM, w: 35 * MM },
+      { label: 'Total Paid', x: MARGIN + 85 * MM, w: 35 * MM },
+      { label: 'Balance', x: MARGIN + 120 * MM, w: 35 * MM },
     ];
 
-    doc.setFillColor(240, 240, 240);
-    doc.rect(margin, y - 4, contentWidth, 7, 'F');
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'bold');
+    // Header row
+    const mRowH = 7 * MM;
+    page.drawRectangle({
+      x: MARGIN,
+      y: drawY(y + mRowH - 3),
+      width: CONTENT_W,
+      height: mRowH,
+      color: rgb(0.941, 0.941, 0.941),
+    });
+
     for (const col of memberCols) {
-      doc.text(col.label, col.x + 1, y);
+      page.drawText(col.label, {
+        x: col.x + 2,
+        y: drawY(y + 4),
+        size: 8,
+        font: helveticaBold,
+        color: rgb(0, 0, 0),
+      });
     }
-    y += 5;
-
-    doc.setFont('helvetica', 'normal');
-    for (const [, member] of memberMap) {
-      if (y > 270) {
-        doc.addPage();
-        y = margin;
-      }
-
-      const balance = member.totalPaid - member.totalOwed;
-      doc.setFontSize(8);
-      doc.text(member.name.substring(0, 28), memberCols[0].x + 1, y);
-      doc.text(fmt(member.totalOwed), memberCols[1].x + 1, y);
-      doc.text(fmt(member.totalPaid), memberCols[2].x + 1, y);
-
-      if (balance < 0) doc.setTextColor(200, 50, 50);
-      else if (balance > 0) doc.setTextColor(34, 139, 34);
-      doc.text(fmt(balance), memberCols[3].x + 1, y);
-      doc.setTextColor(0, 0, 0);
-
-      y += 5;
-    }
+    y += mRowH + 2;
 
     if (memberMap.size === 0) {
-      doc.setFontSize(10);
-      doc.text('No member data for this period.', margin, y);
+      page.drawText('No member data for this period.', {
+        x: MARGIN,
+        y: drawY(y),
+        size: 10,
+        font: helvetica,
+        color: rgb(0, 0, 0),
+      });
+    } else {
+      for (const [, member] of memberMap) {
+        ensureSpace(5 * MM + 4);
+
+        const balance = member.totalPaid - member.totalOwed;
+        const balColor = balance < 0
+          ? rgb(0.784, 0.196, 0.196)
+          : balance > 0
+          ? rgb(0.133, 0.545, 0.133)
+          : rgb(0, 0, 0);
+
+        page.drawText(member.name.substring(0, 28), {
+          x: memberCols[0].x + 2, y: drawY(y), size: 8, font: helvetica, color: rgb(0, 0, 0),
+        });
+        page.drawText(fmt(member.totalOwed), {
+          x: memberCols[1].x + 2, y: drawY(y), size: 8, font: helvetica, color: rgb(0, 0, 0),
+        });
+        page.drawText(fmt(member.totalPaid), {
+          x: memberCols[2].x + 2, y: drawY(y), size: 8, font: helvetica, color: rgb(0, 0, 0),
+        });
+        page.drawText(fmt(balance), {
+          x: memberCols[3].x + 2, y: drawY(y), size: 8, font: helvetica, color: balColor,
+        });
+
+        y += 5 * MM;
+      }
     }
 
     // ── Return PDF ───────────────────────────────────────────────────────
-    const pdfBytes = doc.output('arraybuffer');
+    const pdfBytes = await pdfDoc.save();
 
     return new Response(pdfBytes, {
       headers: {

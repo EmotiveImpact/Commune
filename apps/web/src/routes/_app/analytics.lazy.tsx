@@ -121,9 +121,9 @@ function AnalyticsPage() {
 
   const { activeGroupId } = useGroupStore();
   const { user } = useAuthStore();
-  const { data: subscription, isLoading: subLoading } = useSubscription(user?.id ?? '');
+  const { data: subscription, isLoading: subLoading, isError: subError, fetchStatus: subFetchStatus } = useSubscription(user?.id ?? '');
   const { data: group } = useGroup(activeGroupId ?? '');
-  const { data: analytics, isLoading: analyticsLoading } = useAnalytics(activeGroupId ?? '');
+  const { data: analytics, isLoading: analyticsLoading, isError: analyticsError, fetchStatus: analyticsFetchStatus } = useAnalytics(activeGroupId ?? '');
 
   if (!activeGroupId) {
     return (
@@ -147,14 +147,63 @@ function AnalyticsPage() {
     );
   }
 
-  if (subLoading) return <AnalyticsSkeleton />;
+  // When enabled is false (no user id yet), fetchStatus is 'idle' — treat that as
+  // "not loading" so the page doesn't stay stuck on skeleton forever.
+  const subActuallyLoading = subLoading && subFetchStatus !== 'idle';
+  if (subActuallyLoading) return <AnalyticsSkeleton />;
+
+  if (subError) {
+    return (
+      <Stack gap="xl">
+        <PageHeader
+          title="Analytics"
+          subtitle="Deep insights into your group spending patterns."
+        />
+        <Paper className="commune-soft-panel" p="xl">
+          <Stack align="center" gap="md" py="xl">
+            <ThemeIcon size={48} variant="light" color="red" radius="xl">
+              <IconChartBar size={24} />
+            </ThemeIcon>
+            <Text fw={700} size="lg">Failed to load subscription</Text>
+            <Text size="sm" c="dimmed" ta="center" maw={400}>
+              We couldn&apos;t verify your subscription status. Please try refreshing the page.
+            </Text>
+          </Stack>
+        </Paper>
+      </Stack>
+    );
+  }
 
   const plan = subscription?.plan;
   const isProOrAgency = plan === 'pro' || plan === 'agency';
 
   if (!isProOrAgency) return <UpgradeCTA />;
 
-  if (analyticsLoading || !analytics) return <AnalyticsSkeleton />;
+  const analyticsActuallyLoading = analyticsLoading && analyticsFetchStatus !== 'idle';
+  if (analyticsActuallyLoading) return <AnalyticsSkeleton />;
+
+  if (analyticsError || !analytics) {
+    return (
+      <Stack gap="xl">
+        <PageHeader
+          title="Analytics"
+          subtitle="Deep insights into your group spending patterns."
+        />
+        <Paper className="commune-soft-panel" p="xl">
+          <Stack align="center" gap="md" py="xl">
+            <ThemeIcon size={48} variant="light" color="red" radius="xl">
+              <IconChartBar size={24} />
+            </ThemeIcon>
+            <Text fw={700} size="lg">Failed to load analytics</Text>
+            <Text size="sm" c="dimmed" ta="center" maw={400}>
+              Something went wrong while fetching your analytics data. Please try
+              refreshing the page.
+            </Text>
+          </Stack>
+        </Paper>
+      </Stack>
+    );
+  }
 
   const { spendingTrend, categoryBreakdown, topSpenders, complianceRate, monthComparison } = analytics;
 
