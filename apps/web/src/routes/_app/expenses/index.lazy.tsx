@@ -103,6 +103,7 @@ function ExpensesPage() {
   ) ?? false;
 
   const monthFilter = datePreset && datePreset !== 'all' ? datePreset : undefined;
+  const hasCustomDateRange = Boolean(dateRange[0] || dateRange[1]);
   const expenseFilters = {
     ...(categoryFilter ? { category: categoryFilter } : {}),
     ...(monthFilter ? { month: monthFilter } : {}),
@@ -177,6 +178,8 @@ function ExpensesPage() {
     });
   }, [searchFiltered, statusFilter]);
 
+  const canExportPdf = isPaidPlan && Boolean(monthFilter) && !hasCustomDateRange && filtered.length > 0;
+
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const paginatedExpenses = useMemo(
     () => filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE),
@@ -200,10 +203,10 @@ function ExpensesPage() {
   }
 
   async function handleExportPDF() {
-    if (!activeGroupId) return;
+    if (!activeGroupId || !monthFilter || hasCustomDateRange) return;
     setDownloadingPdf(true);
     try {
-      const month = monthFilter ?? getMonthKey();
+      const month = monthFilter;
       const blob = await downloadStatement(activeGroupId, month);
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -324,8 +327,18 @@ function ExpensesPage() {
             leftSection={<IconFileTypePdf size={16} />}
             onClick={handleExportPDF}
             loading={downloadingPdf}
-            disabled={!isPaidPlan || filtered.length === 0}
-            title={!isPaidPlan ? 'Upgrade to Pro to export PDF statements' : 'Download PDF statement'}
+            disabled={!canExportPdf}
+            title={
+              !isPaidPlan
+                ? 'Upgrade to Pro to export PDF statements'
+                : hasCustomDateRange
+                ? 'PDF statements are only available for a single month'
+                : !monthFilter
+                ? 'Select a month to export a PDF statement'
+                : filtered.length === 0
+                ? 'No expenses available for the selected month'
+                : 'Download PDF statement'
+            }
           >
             Export PDF
           </Button>
