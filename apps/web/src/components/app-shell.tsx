@@ -143,11 +143,13 @@ export function AppShell({ children }: AppShellProps) {
           {/* ── Top section ── */}
           <div>
             {/* Logo row */}
-            <div
+            <motion.div
+              layout
+              transition={sidebarTransition}
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center',
+                justifyContent: collapsed ? 'center' : 'flex-start',
                 marginBottom: '1.5rem',
                 position: 'relative',
                 minHeight: 44,
@@ -220,7 +222,7 @@ export function AppShell({ children }: AppShellProps) {
                   </motion.div>
                 )}
               </AnimatePresence>
-            </div>
+            </motion.div>
 
             {/* Menu label */}
             <AnimatePresence>
