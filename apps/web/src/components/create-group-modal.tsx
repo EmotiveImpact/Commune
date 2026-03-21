@@ -29,7 +29,7 @@ export function CreateGroupModal({ opened, onClose }: CreateGroupModalProps) {
   const { setActiveGroupId } = useGroupStore();
   const navigate = useNavigate();
   const { user } = useAuthStore();
-  const { canCreateGroup, groupLimit, currentGroups } = usePlanLimits(user?.id ?? '');
+  const { canCreateGroup, groupLimit, currentGroups, isLoading: limitsLoading } = usePlanLimits(user?.id ?? '');
 
   const form = useForm<CreateGroupInput>({
     mode: 'uncontrolled',
@@ -96,7 +96,7 @@ export function CreateGroupModal({ opened, onClose }: CreateGroupModalProps) {
             key={form.key('cycle_date')}
             {...form.getInputProps('cycle_date')}
           />
-          {!canCreateGroup && (
+          {!limitsLoading && !canCreateGroup && (
             <Alert icon={<IconInfoCircle size={16} />} color="orange" variant="light">
               You've reached the group limit for your plan ({currentGroups}/{groupLimit === Infinity ? 'unlimited' : groupLimit}).{' '}
               <Anchor component={Link} to="/pricing" size="sm" fw={600}>
@@ -104,7 +104,7 @@ export function CreateGroupModal({ opened, onClose }: CreateGroupModalProps) {
               </Anchor>
             </Alert>
           )}
-          <Button type="submit" loading={createGroup.isPending} disabled={!canCreateGroup} fullWidth mt="sm">
+          <Button type="submit" loading={createGroup.isPending || limitsLoading} disabled={!limitsLoading && !canCreateGroup} fullWidth mt="sm">
             Create group
           </Button>
         </Stack>

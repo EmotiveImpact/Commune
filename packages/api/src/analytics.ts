@@ -35,7 +35,7 @@ export async function getAnalyticsData(groupId: string): Promise<AnalyticsData> 
       `
       *,
       payment_records(*),
-      created_by_user:users!expenses_created_by_fkey(id, full_name, email)
+      created_by_user:users!expenses_created_by_fkey(id, name, email)
     `,
     )
     .eq('group_id', groupId)
@@ -85,7 +85,7 @@ export async function getAnalyticsData(groupId: string): Promise<AnalyticsData> 
       existing.amount += row.amount;
     } else {
       spenderMap.set(userId, {
-        name: user?.full_name ?? user?.email ?? 'Unknown',
+        name: user?.name ?? user?.email ?? 'Unknown',
         amount: row.amount,
       });
     }

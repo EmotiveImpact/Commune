@@ -123,16 +123,33 @@ export function AppShell({ children }: AppShellProps) {
       >
         <Stack className="commune-sidebar-panel" data-collapsed={collapsed || undefined} justify="space-between">
           <div>
-            <Group wrap="nowrap" gap="sm" mb="xl" px={4} justify={collapsed ? 'center' : undefined}>
+            <Group
+              wrap="nowrap"
+              gap={4}
+              mb="xl"
+              align="center"
+              justify={collapsed ? 'center' : undefined}
+            >
               <img
                 src="/logo.png"
                 alt="Commune"
-                width={collapsed ? 32 : 36}
-                height={collapsed ? 32 : 36}
-                style={{ display: 'block', borderRadius: 8 }}
+                width={44}
+                height={44}
+                style={{ display: 'block', borderRadius: 10, flexShrink: 0 }}
               />
               {!collapsed && (
-                <Text fw={700} size="md" style={{ color: '#fff' }}>
+                <Text
+                  fw={600}
+                  size="lg"
+                  style={{
+                    color: '#fff',
+                    whiteSpace: 'nowrap',
+                    letterSpacing: '0.08em',
+                    textTransform: 'uppercase',
+                    fontFamily: "'Inter', sans-serif",
+                    marginLeft: 0,
+                  }}
+                >
                   Commune
                 </Text>
               )}
