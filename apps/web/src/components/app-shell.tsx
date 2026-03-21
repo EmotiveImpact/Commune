@@ -310,11 +310,10 @@ export function AppShell({ children }: AppShellProps) {
                     <motion.div
                       initial={false}
                       animate={{
-                        justifyContent: collapsed ? 'center' : 'flex-start',
-                        gap: collapsed ? 0 : 10,
+                        paddingLeft: collapsed ? 0 : 10,
                       }}
                       transition={sidebarTransition}
-                      style={{ display: 'flex', alignItems: 'center', overflow: 'hidden', paddingLeft: collapsed ? 0 : 10 }}
+                      style={{ display: 'flex', alignItems: 'center', overflow: 'hidden', gap: 12, justifyContent: collapsed ? 'center' : 'flex-start' }}
                     >
                       <Avatar
                         src={user?.avatar_url}
