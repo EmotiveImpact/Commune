@@ -1,30 +1,73 @@
 import { useEffect, useMemo } from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import Svg, { Path, G } from 'react-native-svg';
-import { formatCurrency, formatDate, getMonthKey, isOverdue } from '@commune/utils';
+import { Ionicons } from '@expo/vector-icons';
+import { formatCurrency, getMonthKey } from '@commune/utils';
 import { useAuthStore } from '@/stores/auth';
 import { useGroupStore } from '@/stores/group';
 import { useDashboardStats } from '@/hooks/use-dashboard';
 import { useGroupExpenses } from '@/hooks/use-expenses';
 import { useGroup, usePendingInvites, useUserGroups } from '@/hooks/use-groups';
 import { useRecurringGenerationOnMount } from '@/hooks/use-recurring';
+import { useSubscription } from '@/hooks/use-subscriptions';
 import {
-  AppButton,
   DashboardSkeleton,
   EmptyState,
-  HeroPanel,
-  ListRowCard,
   Screen,
-  StatusChip,
   Surface,
 } from '@/components/ui';
-import { TrialExpiryBanner } from '@/components/TrialExpiryBanner';
 import { getErrorMessage } from '@/lib/errors';
 
 const CHART_BAR_COLOR = '#2d6a4f';
 const CHART_BAR_MUTED = '#d7e6dd';
-const PIE_COLORS = ['#2d6a4f', '#efdccf', '#e8e1ef', '#f1e5bf', '#eaa681'];
+
+const CATEGORY_COLORS: Record<string, string> = {
+  shopping: '#C4B5FD',
+  food: '#93C5FD',
+  transport: '#FCA5A5',
+  bills: '#FDBA74',
+  entertainment: '#99F6E4',
+  groceries: '#FCA5A5',
+  other: '#D1D5DB',
+};
+
+const CATEGORY_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
+  shopping: 'bag-outline',
+  food: 'restaurant-outline',
+  transport: 'car-outline',
+  bills: 'document-text-outline',
+  entertainment: 'game-controller-outline',
+  groceries: 'cart-outline',
+  other: 'ellipsis-horizontal-circle-outline',
+};
+
+function getCategoryColor(category: string): string {
+  return CATEGORY_COLORS[category.toLowerCase()] ?? '#D1D5DB';
+}
+
+function getCategoryIcon(category: string): keyof typeof Ionicons.glyphMap {
+  return CATEGORY_ICONS[category.toLowerCase()] ?? 'ellipsis-horizontal-circle-outline';
+}
+
+function getGreeting(): string {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Good morning';
+  if (hour < 18) return 'Good afternoon';
+  return 'Good evening';
+}
+
+function formatRelativeDate(dateStr: string): string {
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffDays === 0) return 'Today';
+  if (diffDays === 1) return 'Yesterday';
+  if (diffDays < 7) return `${diffDays}d ago`;
+  if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`;
+  return date.toLocaleDateString('en-GB', { month: 'short', day: 'numeric' });
+}
 
 function getRecentMonthKeys(count: number) {
   const current = new Date();
@@ -36,62 +79,16 @@ function getRecentMonthKeys(count: number) {
   return keys;
 }
 
-function formatCategoryLabel(category: string) {
-  return category
-    .split('_')
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
-    .join(' ');
-}
-
-function describeArc(cx: number, cy: number, r: number, startAngle: number, endAngle: number) {
-  const clampedEnd = Math.min(endAngle, startAngle + 359.999);
-  const startRad = ((clampedEnd - 90) * Math.PI) / 180;
-  const endRad = ((startAngle - 90) * Math.PI) / 180;
-  const x1 = cx + r * Math.cos(endRad);
-  const y1 = cy + r * Math.sin(endRad);
-  const x2 = cx + r * Math.cos(startRad);
-  const y2 = cy + r * Math.sin(startRad);
-  const largeArc = clampedEnd - startAngle > 180 ? 1 : 0;
-  return `M ${x1} ${y1} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2}`;
-}
-
-function PieChart({
-  data,
-  size = 180,
-  strokeWidth = 24,
-}: {
-  data: Array<{ percent: number; color: string }>;
-  size?: number;
-  strokeWidth?: number;
-}) {
-  const cx = size / 2;
-  const cy = size / 2;
-  const r = (size - strokeWidth) / 2;
-  let cumulative = 0;
-
-  return (
-    <Svg width={size} height={size}>
-      <G>
-        {data.map((slice, i) => {
-          const startAngle = cumulative * 3.6;
-          cumulative += slice.percent;
-          const endAngle = cumulative * 3.6;
-          if (slice.percent < 0.5) return null;
-          return (
-            <Path
-              key={slice.color}
-              d={describeArc(cx, cy, r, startAngle, endAngle)}
-              stroke={slice.color}
-              strokeWidth={strokeWidth}
-              fill="none"
-              strokeLinecap="round"
-            />
-          );
-        })}
-      </G>
-    </Svg>
-  );
-}
+const QUICK_ACTIONS: Array<{
+  label: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  key: string;
+}> = [
+  { label: 'Add', icon: 'add-outline', key: 'add' },
+  { label: 'Split', icon: 'git-branch-outline', key: 'split' },
+  { label: 'Settle', icon: 'checkmark-circle-outline', key: 'settle' },
+  { label: 'Export', icon: 'download-outline', key: 'export' },
+];
 
 export default function DashboardScreen() {
   const router = useRouter();
@@ -131,6 +128,9 @@ export default function DashboardScreen() {
     refetch: refetchExpenses,
   } = useGroupExpenses(resolvedGroupId);
   useRecurringGenerationOnMount(resolvedGroupId);
+
+  const { data: subscription } = useSubscription(user?.id ?? '');
+
   const loadError = resolvedGroupId
     ? groupError ?? statsError ?? expensesError
     : groupsError ?? invitesError;
@@ -157,15 +157,6 @@ export default function DashboardScreen() {
     setActiveGroupId,
   ]);
 
-  const paidPct =
-    stats && stats.your_share > 0
-      ? Math.round((stats.amount_paid / stats.your_share) * 100)
-      : 0;
-  const monthLabel = new Date(`${month}-01`).toLocaleDateString('en-GB', {
-    month: 'long',
-    year: 'numeric',
-  });
-
   const recentExpenses = useMemo(
     () =>
       [...expenses]
@@ -173,20 +164,8 @@ export default function DashboardScreen() {
           (left, right) =>
             new Date(right.due_date).getTime() - new Date(left.due_date).getTime()
         )
-        .slice(0, 4),
+        .slice(0, 5),
     [expenses]
-  );
-
-  const attentionItems = useMemo(
-    () =>
-      (stats?.upcoming_items ?? [])
-        .slice()
-        .sort(
-          (left, right) =>
-            new Date(left.due_date).getTime() - new Date(right.due_date).getTime()
-        )
-        .slice(0, 3),
-    [stats?.upcoming_items]
   );
 
   const monthlyTrend = useMemo(() => {
@@ -214,27 +193,15 @@ export default function DashboardScreen() {
     };
   }, [expenses, month]);
 
-  const categoryBreakdown = useMemo(() => {
-    const monthExpenses = expenses.filter((e) => e.due_date.startsWith(month));
-    const source = monthExpenses.length > 0 ? monthExpenses : expenses;
-    const grouped = new Map<string, number>();
+  /* Trial state */
+  const trialDaysLeft = useMemo(() => {
+    if (!subscription?.trial_ends_at) return 0;
+    const trialEnd = new Date(subscription.trial_ends_at);
+    return Math.max(0, Math.ceil((trialEnd.getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
+  }, [subscription]);
 
-    for (const expense of source) {
-      grouped.set(expense.category, (grouped.get(expense.category) ?? 0) + expense.amount);
-    }
-
-    const total = Array.from(grouped.values()).reduce((sum, value) => sum + value, 0);
-
-    return Array.from(grouped.entries())
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 5)
-      .map(([category, amount], index) => ({
-        category,
-        amount,
-        color: PIE_COLORS[index % PIE_COLORS.length]!,
-        percent: total > 0 ? Math.round((amount / total) * 100) : 0,
-      }));
-  }, [expenses, month]);
+  const isOnTrial = subscription?.status === 'trialing' && trialDaysLeft > 0;
+  const trialTotalDays = 14; // standard trial length
 
   if (groupsLoading || invitesLoading || groupLoading || statsLoading || expensesLoading) {
     return <DashboardSkeleton />;
@@ -280,423 +247,253 @@ export default function DashboardScreen() {
   const remainingAmount = stats?.amount_remaining ?? 0;
   const totalSpend = stats?.total_spend ?? 0;
   const yourShare = stats?.your_share ?? 0;
-  const amountPaid = stats?.amount_paid ?? 0;
-  const overdueCount = stats?.overdue_count ?? 0;
-  const nextActionExpense = attentionItems[0] ?? null;
-  const overviewDescription = 'Shared balances, progress, and what needs attention right now.';
+  const firstName = user?.name?.split(' ')[0] ?? '';
+  const todayStr = new Date().toLocaleDateString('en-GB', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  });
+
+  function handleQuickAction(key: string) {
+    switch (key) {
+      case 'add':
+        router.push('/expenses/new');
+        break;
+      default:
+        break;
+    }
+  }
 
   return (
     <Screen>
-      <TrialExpiryBanner userId={user?.id ?? ''} />
-      <HeroPanel
-        eyebrow={`Hello${user?.name ? `, ${user.name.split(' ')[0]}` : ''}`}
-        title="This cycle"
-        description={overviewDescription}
-        badgeLabel={monthLabel}
-        contextLabel={`${group.name} · ${group.currency}`}
-      >
-        <View className="mt-6 flex-row">
-          <View className="mr-4 h-[144px] w-[144px] items-center justify-center rounded-full border-[10px] border-[#d7e6dd] bg-[#323847]">
-            <Text className="text-[32px] font-bold text-white">{paidPct}%</Text>
-            <Text className="mt-1 text-xs font-semibold uppercase tracking-[2px] text-[rgba(255,255,255,0.72)]">
-              paid
-            </Text>
-          </View>
+      {/* 1. Greeting section */}
+      <View className="mb-5">
+        <Text className="text-[26px] font-bold text-[#171b24]">
+          {getGreeting()}{firstName ? `, ${firstName}` : ''}
+        </Text>
+        <Text className="mt-1 text-sm text-[#98a1b0]">{todayStr}</Text>
+      </View>
 
-          <View className="flex-1 justify-between">
-            <View className="rounded-[22px] bg-white/8 px-4 py-3">
-              <Text className="text-xs font-semibold uppercase tracking-[2px] text-[rgba(255,255,255,0.72)]">
-                Your share
-              </Text>
-              <Text className="mt-2 text-lg font-semibold text-white">
-                {formatCurrency(yourShare, group.currency)}
-              </Text>
-            </View>
-            <View className="rounded-[22px] bg-white/8 px-4 py-3">
-              <Text className="text-xs font-semibold uppercase tracking-[2px] text-[rgba(255,255,255,0.72)]">
-                Remaining
-              </Text>
-              <Text className="mt-2 text-lg font-semibold text-white">
-                {formatCurrency(remainingAmount, group.currency)}
-              </Text>
-            </View>
-            <View className="rounded-[22px] bg-white/8 px-4 py-3">
-              <Text className="text-xs font-semibold uppercase tracking-[2px] text-[rgba(255,255,255,0.72)]">
-                Needs attention
-              </Text>
-              <Text className="mt-2 text-lg font-semibold text-white">
-                {overdueCount > 0
-                  ? `${overdueCount} item${overdueCount === 1 ? '' : 's'}`
-                  : nextActionExpense
-                    ? formatDate(nextActionExpense.due_date)
-                    : 'All clear'}
-              </Text>
-            </View>
-          </View>
-        </View>
-
-        <View className="mt-5 flex-row">
-          <View className="mr-3 flex-1">
-            <AppButton
-              label="Review payments"
-              icon="pie-chart-outline"
-              onPress={() => router.push('/(tabs)/breakdown')}
-            />
-          </View>
+      {/* 2. Balance card */}
+      <Surface className="mb-4">
+        <Text className="text-xs font-medium text-[#98a1b0]">This month</Text>
+        <Text className="mt-2 text-[32px] font-bold text-[#171b24]">
+          {formatCurrency(totalSpend, group.currency)}
+        </Text>
+        <View
+          style={{
+            height: 1,
+            backgroundColor: 'rgba(23,27,36,0.08)',
+            marginTop: 16,
+            marginBottom: 16,
+          }}
+        />
+        <View className="flex-row">
           <View className="flex-1">
-            <AppButton
-              label="Members"
-              variant="secondary"
-              icon="people-outline"
-              onPress={() => router.push('/members')}
-            />
-          </View>
-        </View>
-      </HeroPanel>
-
-      {/* Spending Trend Bar Chart */}
-      <Surface className="mb-4">
-        <View className="flex-row items-center justify-between">
-          <View className="mr-4 flex-1">
-            <Text className="text-lg font-semibold text-[#171b24]">
-              Spending Trend
+            <Text className="text-xs font-medium text-[#98a1b0]">Your share</Text>
+            <Text className="mt-1 text-lg font-semibold text-[#171b24]">
+              {formatCurrency(yourShare, group.currency)}
             </Text>
-            <Text className="mt-1 text-sm leading-6 text-[#667085]">
-              Last 6 months
+          </View>
+          <View className="flex-1 items-end">
+            <Text className="text-xs font-medium text-[#98a1b0]">Remaining</Text>
+            <Text className="mt-1 text-lg font-semibold text-[#171b24]">
+              {formatCurrency(remainingAmount, group.currency)}
             </Text>
           </View>
         </View>
-
-        {monthlyTrend.items.some((item) => item.total > 0) ? (
-          <>
-            <View className="mt-5 flex-row items-end justify-between" style={{ height: 160 }}>
-              {monthlyTrend.items.map((item) => {
-                const barHeight = Math.max(
-                  12,
-                  Math.round((item.total / monthlyTrend.max) * 140)
-                );
-                const isCurrent = item.key === month;
-
-                return (
-                  <View key={item.key} className="flex-1 items-center">
-                    <Text
-                      className="mb-2 text-center text-[10px] text-[#667085]"
-                      numberOfLines={1}
-                    >
-                      {formatCurrency(item.total, group.currency)}
-                    </Text>
-                    <View
-                      style={{
-                        height: barHeight,
-                        backgroundColor: isCurrent ? CHART_BAR_COLOR : CHART_BAR_MUTED,
-                        width: '60%',
-                        borderRadius: 8,
-                      }}
-                    />
-                  </View>
-                );
-              })}
-            </View>
-            <View className="mt-3 flex-row justify-between">
-              {monthlyTrend.items.map((item) => (
-                <View key={item.key} className="flex-1 items-center">
-                  <Text
-                    className="text-xs text-[#667085]"
-                    style={{
-                      fontWeight: item.key === month ? '700' : '500',
-                      color: item.key === month ? '#171b24' : '#667085',
-                    }}
-                  >
-                    {item.label}
-                  </Text>
-                </View>
-              ))}
-            </View>
-            <View className="mt-5 flex-row items-center justify-between rounded-[18px] bg-[#EEF6F3] px-4 py-3">
-              <View>
-                <Text className="text-xs font-semibold uppercase tracking-[2px] text-[#667085]">
-                  This month
-                </Text>
-                <Text className="mt-1 text-xl font-bold text-[#171b24]">
-                  {formatCurrency(monthlyTrend.currentTotal, group.currency)}
-                </Text>
-              </View>
-              <View className="items-end">
-                <Text className="text-xs font-semibold uppercase tracking-[2px] text-[#667085]">
-                  Average
-                </Text>
-                <Text className="mt-1 text-base font-semibold text-[#171b24]">
-                  {formatCurrency(
-                    monthlyTrend.items.reduce((sum, item) => sum + item.total, 0) /
-                      monthlyTrend.items.length,
-                    group.currency
-                  )}
-                </Text>
-              </View>
-            </View>
-          </>
-        ) : (
-          <View className="mt-4 rounded-[18px] bg-[#fbf7f1] px-4 py-5">
-            <Text className="text-sm font-semibold text-[#171b24]">No data yet</Text>
-            <Text className="mt-1 text-sm text-[#667085]">
-              Add expenses and this chart will show spending over time.
-            </Text>
-          </View>
-        )}
       </Surface>
 
-      {/* Category Breakdown Pie Chart */}
-      <Surface className="mb-4">
-        <View className="flex-row items-center justify-between">
-          <View className="mr-4 flex-1">
-            <Text className="text-lg font-semibold text-[#171b24]">
-              By Category
+      {/* 3. Quick actions */}
+      <View className="mb-4 flex-row justify-between px-2">
+        {QUICK_ACTIONS.map((action) => (
+          <TouchableOpacity
+            key={action.key}
+            className="items-center"
+            activeOpacity={0.7}
+            onPress={() => handleQuickAction(action.key)}
+          >
+            <View
+              style={{
+                width: 56,
+                height: 56,
+                borderRadius: 28,
+                backgroundColor: '#2d6a4f',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Ionicons name={action.icon} size={22} color="#FFFFFF" />
+            </View>
+            <Text className="mt-2 text-xs font-medium text-[#667085]">
+              {action.label}
             </Text>
-            <Text className="mt-1 text-sm leading-6 text-[#667085]">
-              This month
-            </Text>
-          </View>
-        </View>
+          </TouchableOpacity>
+        ))}
+      </View>
 
-        {categoryBreakdown.length > 0 ? (
-          <>
-            <View className="mt-5 items-center">
-              <View style={{ position: 'relative', width: 180, height: 180 }}>
-                <PieChart data={categoryBreakdown} />
+      {/* 4. Trial card (conditional) */}
+      {isOnTrial ? (
+        <Surface
+          className="mb-4"
+        >
+          <View style={{ position: 'absolute', left: 0, top: 16, bottom: 16, width: 3, borderRadius: 2, backgroundColor: '#2d6a4f' }} />
+          <View className="pl-2">
+            <View className="flex-row items-center justify-between">
+              <Text className="text-sm font-semibold text-[#171b24]">
+                Pro Trial{' '}
+                <Text className="font-medium text-[#98a1b0]">
+                  {'\u00B7'} {trialDaysLeft} day{trialDaysLeft === 1 ? '' : 's'} left
+                </Text>
+              </Text>
+            </View>
+            <View className="mt-3 flex-row" style={{ gap: 4 }}>
+              {Array.from({ length: trialTotalDays }).map((_, i) => (
                 <View
+                  key={i}
                   style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    alignItems: 'center',
-                    justifyContent: 'center',
+                    width: 6,
+                    height: 6,
+                    borderRadius: 3,
+                    backgroundColor:
+                      i < trialTotalDays - trialDaysLeft ? '#2d6a4f' : '#d7e6dd',
                   }}
-                >
-                  <Text className="text-xl font-bold text-[#171b24]">
-                    {formatCurrency(
-                      categoryBreakdown.reduce((sum, item) => sum + item.amount, 0),
-                      group.currency
-                    )}
-                  </Text>
-                  <Text className="mt-1 text-xs text-[#667085]">total</Text>
-                </View>
-              </View>
-            </View>
-
-            <View className="mt-5">
-              {categoryBreakdown.map((item) => (
-                <View
-                  key={item.category}
-                  className="flex-row items-center justify-between py-3"
-                  style={{ borderBottomWidth: 1, borderBottomColor: '#F1ECE4' }}
-                >
-                  <View className="flex-row items-center">
-                    <View
-                      style={{
-                        width: 12,
-                        height: 12,
-                        borderRadius: 6,
-                        backgroundColor: item.color,
-                        marginRight: 12,
-                      }}
-                    />
-                    <View>
-                      <Text className="text-sm font-semibold text-[#171b24]">
-                        {formatCategoryLabel(item.category)}
-                      </Text>
-                      <Text className="mt-1 text-xs text-[#667085]">
-                        {formatCurrency(item.amount, group.currency)}
-                      </Text>
-                    </View>
-                  </View>
-                  <Text className="text-sm font-bold text-[#171b24]">{item.percent}%</Text>
-                </View>
+                />
               ))}
             </View>
-          </>
-        ) : (
-          <View className="mt-4 rounded-[18px] bg-[#fbf7f1] px-4 py-5">
-            <Text className="text-sm font-semibold text-[#171b24]">No data yet</Text>
-            <Text className="mt-1 text-sm text-[#667085]">
-              Once expenses exist, category breakdown will appear here.
-            </Text>
-          </View>
-        )}
-      </Surface>
-
-      {pendingInvites.length > 0 ? (
-        <Surface className="mb-4">
-          <Text className="text-lg font-semibold text-[#171b24]">
-            You have {pendingInvites.length} pending invite{pendingInvites.length === 1 ? '' : 's'}
-          </Text>
-          <Text className="mt-2 text-sm leading-6 text-[#667085]">
-            Review them from onboarding so you can switch between every space you belong to.
-          </Text>
-          <View className="mt-4">
-            <AppButton
-              label="Review invites"
-              variant="secondary"
-              icon="mail-unread-outline"
-              onPress={() => router.push('/onboarding')}
-            />
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => router.push('/pricing')}
+              className="mt-3"
+            >
+              <Text className="text-sm font-semibold text-[#2d6a4f]">View plans</Text>
+            </TouchableOpacity>
           </View>
         </Surface>
       ) : null}
 
-      <Surface className="mb-4">
-        <View className="flex-row items-center justify-between">
-          <View className="mr-4 flex-1">
-            <Text className="text-lg font-semibold text-[#171b24]">
-              Month summary
-            </Text>
-            <Text className="mt-2 text-sm leading-6 text-[#667085]">
-              A compact view of this cycle without repeating every dashboard stat.
-            </Text>
-          </View>
-          <Text className="text-2xl font-bold text-[#2d6a4f]">{paidPct}%</Text>
-        </View>
-        <View className="mt-4 h-3 rounded-full bg-[#d7e6dd]">
-          <View
-            className="h-3 rounded-full bg-[#2d6a4f]"
-            style={{ width: `${Math.min(Math.max(paidPct, 0), 100)}%` }}
-          />
-        </View>
-        <View className="mt-5 flex-row">
-          <View className="mr-3 flex-1 rounded-[22px] bg-[#fbf7f1] px-4 py-4">
-            <Text className="text-xs font-semibold uppercase tracking-[2px] text-[#667085]">
-              Paid so far
-            </Text>
-            <Text className="mt-2 text-xl font-semibold text-[#171b24]">
-              {formatCurrency(amountPaid, group.currency)}
-            </Text>
-          </View>
-          <View className="flex-1 rounded-[22px] bg-[#fbf7f1] px-4 py-4">
-            <Text className="text-xs font-semibold uppercase tracking-[2px] text-[#667085]">
-              Group spend
-            </Text>
-            <Text className="mt-2 text-xl font-semibold text-[#171b24]">
-              {formatCurrency(totalSpend, group.currency)}
-            </Text>
-          </View>
-        </View>
-        <View className="mt-3 rounded-[22px] bg-[#EEF6F3] px-4 py-4">
-          <Text className="text-xs font-semibold uppercase tracking-[2px] text-[#667085]">
-            Remaining this cycle
-          </Text>
-          <Text className="mt-2 text-xl font-semibold text-[#171b24]">
-            {formatCurrency(remainingAmount, group.currency)}
-          </Text>
-          <Text className="mt-1 text-sm text-[#667085]">
-            {remainingAmount > 0
-              ? 'Still needs paying or confirming.'
-              : 'Nothing outstanding right now.'}
-          </Text>
-        </View>
-        {nextActionExpense ? (
-          <View className="mt-4">
-            <AppButton
-              label="Open next expense"
-              variant="secondary"
-              icon="arrow-forward-outline"
-              onPress={() => router.push(`/expenses/${nextActionExpense.id}`)}
-            />
-          </View>
-        ) : null}
-      </Surface>
-
-      <Surface className="mb-4">
-        <View className="flex-row items-center justify-between">
-          <View className="mr-4 flex-1">
-            <Text className="text-lg font-semibold text-[#171b24]">
-              Needs attention
-            </Text>
-            <Text className="mt-2 text-sm leading-6 text-[#667085]">
-              The shortest path to keeping this cycle clear.
-            </Text>
-          </View>
+      {/* 5. Recent expenses */}
+      <View className="mb-4">
+        <View className="mb-3 flex-row items-center justify-between">
+          <Text className="text-lg font-semibold text-[#171b24]">Recent</Text>
           <TouchableOpacity
-            activeOpacity={0.8}
-            onPress={() => router.push('/(tabs)/breakdown')}
-          >
-            <Text className="text-sm font-semibold text-[#2d6a4f]">Open breakdown</Text>
-          </TouchableOpacity>
-        </View>
-
-        {attentionItems.length === 0 ? (
-          <Text className="mt-4 text-sm text-[#667085]">
-            Nothing urgent in the next seven days.
-          </Text>
-        ) : (
-          attentionItems.map((expense) => {
-            const yourAmount =
-              expense.participants.find((participant) => participant.user_id === user?.id)
-                ?.share_amount ?? expense.amount;
-
-            return (
-              <ListRowCard
-                key={expense.id}
-                title={expense.title}
-                subtitle={`Due ${formatDate(expense.due_date)}`}
-                amount={formatCurrency(yourAmount, expense.currency)}
-                amountColor="#2d6a4f"
-                onPress={() => router.push(`/expenses/${expense.id}`)}
-              >
-                <View className="flex-row flex-wrap">
-                  <StatusChip
-                    label={isOverdue(expense.due_date) ? 'Urgent' : 'Upcoming'}
-                    tone={isOverdue(expense.due_date) ? 'danger' : 'emerald'}
-                  />
-                </View>
-              </ListRowCard>
-            );
-          })
-        )}
-      </Surface>
-
-      <Surface>
-        <View className="flex-row items-center justify-between">
-          <View className="mr-4 flex-1">
-            <Text className="text-lg font-semibold text-[#171b24]">
-              Recent expenses
-            </Text>
-            <Text className="mt-2 text-sm leading-6 text-[#667085]">
-              The latest shared costs across this group.
-            </Text>
-          </View>
-          <TouchableOpacity
-            activeOpacity={0.8}
+            activeOpacity={0.7}
             onPress={() => router.push('/(tabs)/expenses')}
           >
-            <Text className="text-sm font-semibold text-[#2d6a4f]">View all</Text>
+            <Text className="text-sm font-semibold text-[#2d6a4f]">See all</Text>
           </TouchableOpacity>
         </View>
 
         {recentExpenses.length === 0 ? (
-          <Text className="mt-4 text-sm text-[#667085]">
-            No expenses yet. Add your first one to get this group started.
-          </Text>
+          <Surface>
+            <Text className="text-sm text-[#667085]">
+              No expenses yet. Add your first one to get started.
+            </Text>
+          </Surface>
         ) : (
-          recentExpenses.map((expense) => (
-            <ListRowCard
-              key={expense.id}
-              title={expense.title}
-              subtitle={`Due ${formatDate(expense.due_date)}`}
-              amount={formatCurrency(expense.amount, expense.currency)}
-              onPress={() => router.push(`/expenses/${expense.id}`)}
-            >
-              <View className="flex-row flex-wrap">
-                {isOverdue(expense.due_date) ? (
-                  <StatusChip label="Overdue" tone="danger" />
-                ) : (
-                  <StatusChip label="On track" tone="neutral" />
-                )}
-              </View>
-            </ListRowCard>
-          ))
+          <Surface className="p-0">
+            {recentExpenses.map((expense, index) => {
+              const catColor = getCategoryColor(expense.category);
+              const catIcon = getCategoryIcon(expense.category);
+              const isLast = index === recentExpenses.length - 1;
+
+              return (
+                <TouchableOpacity
+                  key={expense.id}
+                  className="flex-row items-center px-5 py-3"
+                  style={
+                    !isLast
+                      ? { borderBottomWidth: 1, borderBottomColor: 'rgba(23,27,36,0.06)' }
+                      : undefined
+                  }
+                  activeOpacity={0.7}
+                  onPress={() => router.push(`/expenses/${expense.id}`)}
+                >
+                  <View
+                    style={{
+                      width: 40,
+                      height: 40,
+                      borderRadius: 20,
+                      backgroundColor: catColor,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      marginRight: 12,
+                    }}
+                  >
+                    <Ionicons name={catIcon} size={18} color="#FFFFFF" />
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-sm font-semibold text-[#171b24]" numberOfLines={1}>
+                      {expense.title}
+                    </Text>
+                    <Text className="mt-0.5 text-xs text-[#98a1b0]">
+                      {formatRelativeDate(expense.due_date)}
+                    </Text>
+                  </View>
+                  <Text className="text-sm font-semibold text-[#171b24]">
+                    {formatCurrency(expense.amount, expense.currency)}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </Surface>
         )}
-      </Surface>
+      </View>
+
+      {/* 6. Monthly trend (simplified bar chart) */}
+      <View className="mb-4">
+        <Text className="mb-3 text-lg font-semibold text-[#171b24]">Spending trend</Text>
+        <Surface>
+          {monthlyTrend.items.some((item) => item.total > 0) ? (
+            <>
+              <View className="flex-row items-end justify-between" style={{ height: 120 }}>
+                {monthlyTrend.items.map((item) => {
+                  const barHeight = Math.max(
+                    8,
+                    Math.round((item.total / monthlyTrend.max) * 100)
+                  );
+                  const isCurrent = item.key === month;
+
+                  return (
+                    <View key={item.key} className="flex-1 items-center">
+                      <View
+                        style={{
+                          height: barHeight,
+                          backgroundColor: isCurrent ? CHART_BAR_COLOR : CHART_BAR_MUTED,
+                          width: '50%',
+                          borderRadius: 6,
+                        }}
+                      />
+                    </View>
+                  );
+                })}
+              </View>
+              <View className="mt-3 flex-row justify-between">
+                {monthlyTrend.items.map((item) => (
+                  <View key={item.key} className="flex-1 items-center">
+                    <Text
+                      className="text-xs"
+                      style={{
+                        fontWeight: item.key === month ? '700' : '400',
+                        color: item.key === month ? '#171b24' : '#98a1b0',
+                      }}
+                    >
+                      {item.label}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            </>
+          ) : (
+            <View className="rounded-[18px] bg-[#fbf7f1] px-4 py-5">
+              <Text className="text-sm font-semibold text-[#171b24]">No data yet</Text>
+              <Text className="mt-1 text-sm text-[#667085]">
+                Add expenses and this chart will show spending over time.
+              </Text>
+            </View>
+          )}
+        </Surface>
+      </View>
     </Screen>
   );
 }

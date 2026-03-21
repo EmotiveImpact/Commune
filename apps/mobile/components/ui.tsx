@@ -676,27 +676,53 @@ export function SkeletonLine({ width = '100%' }: { width?: DimensionValue }) {
  * Screen-specific skeleton layouts
  * --------------------------------------------------------------------------- */
 
-/** Dashboard skeleton -- hero + stats + chart + expense rows. */
+/** Dashboard skeleton -- greeting + balance card + quick actions + list rows. */
 export function DashboardSkeleton() {
   return (
     <Screen>
       <Shimmer>
-        <SkeletonBox width="100%" height={200} radius={32} />
-        <View style={{ height: 16 }} />
-        <View className="flex-row" style={{ gap: 12 }}>
-          <SkeletonBox width="48%" height={130} radius={26} />
-          <SkeletonBox width="48%" height={130} radius={26} />
-        </View>
-        <View style={{ height: 12 }} />
+        {/* Greeting */}
+        <SkeletonLine width={200} />
+        <View style={{ height: 8 }} />
+        <SkeletonLine width={140} />
+        <View style={{ height: 20 }} />
+
+        {/* Balance card */}
         <SkeletonBox width="100%" height={180} radius={28} />
         <View style={{ height: 16 }} />
-        <SkeletonLine width={120} />
+
+        {/* Quick action circles */}
+        <View className="flex-row justify-between" style={{ paddingHorizontal: 8 }}>
+          {[1, 2, 3, 4].map((i) => (
+            <View key={i} className="items-center">
+              <SkeletonBox width={56} height={56} radius={28} />
+              <View style={{ height: 8 }} />
+              <SkeletonLine width={32} />
+            </View>
+          ))}
+        </View>
+        <View style={{ height: 20 }} />
+
+        {/* Recent expenses header */}
+        <SkeletonLine width={80} />
         <View style={{ height: 12 }} />
-        {[1, 2, 3].map((i) => (
-          <View key={i} style={{ marginBottom: 12 }}>
-            <SkeletonBox width="100%" height={80} radius={24} />
+
+        {/* Expense rows */}
+        {[1, 2, 3, 4, 5].map((i) => (
+          <View key={i} className="flex-row items-center" style={{ marginBottom: 12 }}>
+            <SkeletonBox width={40} height={40} radius={20} />
+            <View style={{ marginLeft: 12, flex: 1 }}>
+              <SkeletonLine width="70%" />
+              <View style={{ height: 6 }} />
+              <SkeletonLine width="40%" />
+            </View>
+            <SkeletonLine width={60} />
           </View>
         ))}
+        <View style={{ height: 16 }} />
+
+        {/* Trend chart */}
+        <SkeletonBox width="100%" height={160} radius={28} />
       </Shimmer>
     </Screen>
   );

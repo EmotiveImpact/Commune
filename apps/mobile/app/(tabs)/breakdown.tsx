@@ -1,7 +1,9 @@
 import { useCallback, useMemo, useState } from 'react';
 import { Alert, FlatList, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { ExpenseCategory } from '@commune/types';
+import type { ComponentProps } from 'react';
 import { formatCurrency, formatDate, getMonthKey } from '@commune/utils';
 import { useAuthStore } from '@/stores/auth';
 import { useGroupStore } from '@/stores/group';
@@ -11,11 +13,8 @@ import { useMarkPayment } from '@/hooks/use-expenses';
 import {
   BreakdownSkeleton,
   EmptyState,
-  HeroPanel,
-  ListRowCard,
   Pill,
   Screen,
-  StatCard,
   StatusChip,
   Surface,
 } from '@/components/ui';
@@ -23,6 +22,33 @@ import { getErrorMessage } from '@/lib/errors';
 import { formatCategoryLabel, formatMonthLabel, getRecentMonthKeys } from '@/lib/ui';
 
 const categories = Object.values(ExpenseCategory);
+
+/* ---------------------------------------------------------------------------
+ * Wise-style category color + icon mapping
+ * --------------------------------------------------------------------------- */
+
+type IoniconsName = ComponentProps<typeof Ionicons>['name'];
+
+const CATEGORY_META: Record<string, { color: string; icon: IoniconsName }> = {
+  rent: { color: '#FDBA74', icon: 'home-outline' },
+  utilities: { color: '#FDBA74', icon: 'flash-outline' },
+  internet: { color: '#93C5FD', icon: 'wifi-outline' },
+  cleaning: { color: '#99F6E4', icon: 'sparkles-outline' },
+  groceries: { color: '#FCA5A5', icon: 'cart-outline' },
+  entertainment: { color: '#99F6E4', icon: 'game-controller-outline' },
+  household_supplies: { color: '#C4B5FD', icon: 'bag-outline' },
+  transport: { color: '#FCA5A5', icon: 'bus-outline' },
+  work_tools: { color: '#C4B5FD', icon: 'school-outline' },
+  miscellaneous: { color: '#D1D5DB', icon: 'ellipsis-horizontal-outline' },
+};
+
+function getCategoryMeta(category: string) {
+  return CATEGORY_META[category] ?? { color: '#D1D5DB', icon: 'ellipsis-horizontal-outline' as IoniconsName };
+}
+
+/* ---------------------------------------------------------------------------
+ * Component
+ * --------------------------------------------------------------------------- */
 
 export default function BreakdownScreen() {
   const router = useRouter();
@@ -54,7 +80,24 @@ export default function BreakdownScreen() {
     breakdown && breakdown.total_owed > 0
       ? Math.round((breakdown.total_paid / breakdown.total_owed) * 100)
       : 0;
-  const monthLabel = formatMonthLabel(selectedMonth);
+
+  /* Aggregate spend per category for the Wise-style breakdown bars */
+  const categoryBreakdown = useMemo(() => {
+    if (!breakdown?.items) return [];
+    const map: Record<string, number> = {};
+    for (const item of breakdown.items) {
+      const cat = item.expense.category;
+      map[cat] = (map[cat] ?? 0) + item.share_amount;
+    }
+    const total = breakdown.total_owed || 1;
+    return Object.entries(map)
+      .sort((a, b) => b[1] - a[1])
+      .map(([category, amount]) => ({
+        category,
+        amount,
+        pct: Math.round((amount / total) * 100),
+      }));
+  }, [breakdown?.items, breakdown?.total_owed]);
 
   const handleTogglePayment = useCallback(async (expenseId: string, status: 'unpaid' | 'paid' | 'confirmed') => {
     if (!user) return;
@@ -76,34 +119,44 @@ export default function BreakdownScreen() {
         : item.payment_status === 'confirmed'
           ? 'forest'
           : 'sand';
+    const meta = getCategoryMeta(item.expense.category);
 
     return (
-      <View className="px-5">
-        <ListRowCard
-          title={item.expense.title}
-          subtitle={`${formatCategoryLabel(item.expense.category)} · Due ${formatDate(item.expense.due_date)}`}
-          amount={formatCurrency(item.share_amount, group?.currency ?? 'GBP')}
-          onPress={() => router.push(`/expenses/${item.expense.id}`)}
+      <TouchableOpacity
+        activeOpacity={0.86}
+        className="mx-5 mt-3 flex-row items-center rounded-2xl border border-[rgba(23,27,36,0.08)] bg-white px-4 py-3"
+        onPress={() => router.push(`/expenses/${item.expense.id}`)}
+      >
+        {/* Category icon */}
+        <View
+          className="mr-3 h-10 w-10 items-center justify-center rounded-full"
+          style={{ backgroundColor: meta.color + '33' }}
         >
-          <View className="mt-4 flex-row items-center justify-between">
-            <View className="flex-row flex-wrap">
-              <StatusChip label={item.payment_status} tone={paymentTone} />
-            </View>
-            <TouchableOpacity
-              activeOpacity={0.86}
-              disabled={markPayment.isPending}
-              className={`rounded-full px-4 py-3 ${item.payment_status === 'unpaid' ? 'bg-[#1f2330]' : 'border border-[rgba(23,27,36,0.14)] bg-white'}`}
-              onPress={() => handleTogglePayment(item.expense.id, item.payment_status)}
-            >
-              <Text className={`text-sm font-semibold ${item.payment_status === 'unpaid' ? 'text-white' : 'text-[#171b24]'}`}>
-                {markPayment.isPending ? 'Saving...' : item.payment_status === 'unpaid' ? 'Mark paid' : 'Mark unpaid'}
-              </Text>
-            </TouchableOpacity>
+          <Ionicons name={meta.icon} size={18} color={meta.color} />
+        </View>
+
+        {/* Title + date */}
+        <View className="mr-3 flex-1">
+          <Text className="text-sm font-semibold text-[#171b24]" numberOfLines={1}>
+            {item.expense.title}
+          </Text>
+          <Text className="mt-0.5 text-xs text-[#667085]">
+            {formatDate(item.expense.due_date)}
+          </Text>
+        </View>
+
+        {/* Amount + status */}
+        <View className="items-end">
+          <Text className="text-sm font-semibold text-[#171b24]">
+            {formatCurrency(item.share_amount, group?.currency ?? 'GBP')}
+          </Text>
+          <View className="mt-1 flex-row items-center">
+            <StatusChip label={item.payment_status} tone={paymentTone} />
           </View>
-        </ListRowCard>
-      </View>
+        </View>
+      </TouchableOpacity>
     );
-  }, [group?.currency, router, markPayment, handleTogglePayment]);
+  }, [group?.currency, router]);
 
   if (!activeGroupId) {
     return (
@@ -138,86 +191,92 @@ export default function BreakdownScreen() {
   }
 
   const ListHeader = (
-    <View className="px-5 pt-5">
-      <HeroPanel
-        eyebrow="Personal statement"
-        title="Your breakdown"
-        description="What you owe, what has been paid, and what still needs confirming."
-        badgeLabel={monthLabel}
-        contextLabel={`${group.name} · ${group.currency}`}
-      >
-        <View className="mt-5 flex-row">
-          <View className="mr-3 flex-1 rounded-[22px] bg-white/8 px-4 py-3">
-            <Text className="text-xs font-semibold uppercase tracking-[2px] text-[rgba(255,255,255,0.72)]">
-              Total owed
-            </Text>
-            <Text className="mt-2 text-lg font-semibold text-white">
-              {formatCurrency(breakdown?.total_owed ?? 0, group.currency)}
-            </Text>
-          </View>
-          <View className="flex-1 rounded-[22px] bg-white/8 px-4 py-3">
-            <Text className="text-xs font-semibold uppercase tracking-[2px] text-[rgba(255,255,255,0.72)]">
-              Payment progress
-            </Text>
-            <Text className="mt-2 text-lg font-semibold text-white">{paidPct}%</Text>
-          </View>
-        </View>
-      </HeroPanel>
+    <View className="px-5 pt-6 pb-2">
+      {/* Clean light header */}
+      <Text className="text-[28px] font-bold text-[#171b24]">My Breakdown</Text>
 
-      <Surface className="mb-4">
-        <Text className="text-sm font-medium text-[#171b24]">Month</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mt-4">
-          {getRecentMonthKeys(6).map((month) => (
-            <Pill key={month} label={formatMonthLabel(month)} selected={selectedMonth === month} onPress={() => setSelectedMonth(month)} />
-          ))}
-        </ScrollView>
-      </Surface>
-
-      <View className="mb-1 flex-row flex-wrap justify-between">
-        <View style={{ width: '48.5%' }}>
-          <StatCard icon="wallet-outline" label="Total owed" value={formatCurrency(breakdown?.total_owed ?? 0, group.currency)} note="For the selected month" tone="emerald" />
+      {/* Two-column summary row */}
+      <View className="mt-4 flex-row">
+        <View className="mr-4 flex-1">
+          <Text className="text-xs font-medium text-[#667085]">Avg monthly spend</Text>
+          <Text className="mt-1 text-lg font-bold text-[#171b24]">
+            {formatCurrency(breakdown?.total_owed ?? 0, group.currency)}
+          </Text>
         </View>
-        <View style={{ width: '48.5%' }}>
-          <StatCard icon="checkmark-circle-outline" label="Paid" value={formatCurrency(breakdown?.total_paid ?? 0, group.currency)} note="Already marked as paid" tone="forest" />
-        </View>
-        <View style={{ width: '48.5%' }}>
-          <StatCard icon="time-outline" label="Remaining" value={formatCurrency(breakdown?.remaining ?? 0, group.currency)} note="Still outstanding" tone="sand" />
-        </View>
-        <View style={{ width: '48.5%' }}>
-          <StatCard icon="receipt-outline" label="Items" value={String(filteredItems.length)} note="Expenses in this view" tone="sky" />
+        <View className="flex-1">
+          <Text className="text-xs font-medium text-[#667085]">Spent this month</Text>
+          <Text className="mt-1 text-lg font-bold text-[#171b24]">
+            {formatCurrency(breakdown?.total_paid ?? 0, group.currency)}
+          </Text>
         </View>
       </View>
 
-      {/* Payment progress bar */}
-      <Surface className="mb-4">
-        <View className="flex-row items-center justify-between">
-          <View className="mr-4 flex-1">
-            <Text className="text-lg font-semibold text-[#171b24]">Payment progress</Text>
-            <Text className="mt-2 text-sm leading-6 text-[#667085]">
-              {paidPct}% of this month's statement is marked as paid.
-            </Text>
-          </View>
-          <Text className="text-2xl font-bold text-[#2d6a4f]">{paidPct}%</Text>
-        </View>
-        <View className="mt-4 h-3 rounded-full bg-[#d7e6dd]">
-          <View
-            className="h-3 rounded-full bg-[#2d6a4f]"
-            style={{ width: `${Math.min(Math.max(paidPct, 0), 100)}%` }}
-          />
-        </View>
-      </Surface>
+      {/* Month selector pills */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mt-5">
+        {getRecentMonthKeys(6).map((month) => (
+          <Pill key={month} label={formatMonthLabel(month)} selected={selectedMonth === month} onPress={() => setSelectedMonth(month)} />
+        ))}
+      </ScrollView>
 
-      {/* Category filter */}
-      <Surface className="mb-2">
-        <Text className="text-lg font-semibold text-[#171b24]">Filter breakdown</Text>
-        <Text className="mt-2 text-sm leading-6 text-[#667085]">Narrow the statement by category.</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mt-4">
-          <Pill label="All" selected={!categoryFilter} onPress={() => setCategoryFilter('')} />
-          {categories.map((value) => (
-            <Pill key={value} label={formatCategoryLabel(value)} selected={categoryFilter === value} onPress={() => setCategoryFilter(value)} />
-          ))}
-        </ScrollView>
-      </Surface>
+      {/* Wise-style category breakdown */}
+      {categoryBreakdown.length > 0 && (
+        <View className="mt-5">
+          <Text className="mb-3 text-base font-semibold text-[#171b24]">Spending breakdown</Text>
+          {categoryBreakdown.map(({ category, amount, pct }) => {
+            const meta = getCategoryMeta(category);
+            return (
+              <TouchableOpacity
+                key={category}
+                activeOpacity={0.8}
+                className="mb-3 flex-row items-center"
+                onPress={() => setCategoryFilter(categoryFilter === category ? '' : category)}
+              >
+                {/* Colored circle icon */}
+                <View
+                  className="mr-3 h-12 w-12 items-center justify-center rounded-full"
+                  style={{ backgroundColor: meta.color + '33' }}
+                >
+                  <Ionicons name={meta.icon} size={20} color={meta.color} />
+                </View>
+
+                {/* Name + progress bar */}
+                <View className="mr-3 flex-1">
+                  <Text className="text-sm font-semibold text-[#171b24]">
+                    {formatCategoryLabel(category)}
+                  </Text>
+                  <View className="mt-1.5 h-1.5 rounded-full bg-[#F1ECE4]">
+                    <View
+                      className="h-1.5 rounded-full"
+                      style={{ width: `${Math.min(pct, 100)}%`, backgroundColor: meta.color }}
+                    />
+                  </View>
+                </View>
+
+                {/* Amount + percentage */}
+                <View className="items-end">
+                  <Text className="text-sm font-bold text-[#171b24]">
+                    {formatCurrency(amount, group.currency)}
+                  </Text>
+                  <Text className="mt-0.5 text-xs text-[#667085]">{pct}%</Text>
+                </View>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      )}
+
+      {/* Category filter pills */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mt-4 mb-2">
+        <Pill label="All" selected={!categoryFilter} onPress={() => setCategoryFilter('')} />
+        {categories.map((value) => (
+          <Pill key={value} label={formatCategoryLabel(value)} selected={categoryFilter === value} onPress={() => setCategoryFilter(value)} />
+        ))}
+      </ScrollView>
+
+      {/* Section label for individual items */}
+      {filteredItems.length > 0 && (
+        <Text className="mt-3 mb-1 text-base font-semibold text-[#171b24]">Expenses</Text>
+      )}
     </View>
   );
 

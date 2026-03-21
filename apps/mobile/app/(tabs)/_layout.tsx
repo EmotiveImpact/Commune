@@ -69,8 +69,8 @@ export default function TabLayout() {
         const meta = routeName === 'create' ? null : tabMeta[routeName];
 
         return {
-          tabBarActiveTintColor: '#171b24',
-          tabBarInactiveTintColor: '#667085',
+          tabBarActiveTintColor: '#2d6a4f',
+          tabBarInactiveTintColor: '#98a1b0',
           headerShown: true,
           headerShadowVisible: false,
           headerStyle: {
@@ -79,7 +79,7 @@ export default function TabLayout() {
           header: () => (
             <View
               style={{
-                backgroundColor: '#1f2330',
+                backgroundColor: '#f5f1ea',
                 paddingTop: insets.top + 8,
                 paddingBottom: 14,
                 paddingHorizontal: 16,
@@ -87,14 +87,14 @@ export default function TabLayout() {
             >
               <View className="flex-row items-center justify-between">
                 <View className="mr-3 flex-1 flex-row items-center">
-                  <View className="mr-3 h-10 w-10 items-center justify-center rounded-[16px] bg-white/10">
-                    <Ionicons name="wallet-outline" size={18} color="#FFFFFF" />
+                  <View className="mr-3 h-10 w-10 items-center justify-center rounded-[16px] bg-[rgba(23,27,36,0.06)]">
+                    <Ionicons name="wallet-outline" size={18} color="#171b24" />
                   </View>
                   <View className="flex-1">
-                    <Text className="text-[10px] font-semibold uppercase tracking-[3px] text-[rgba(255,255,255,0.72)]">
+                    <Text className="text-[10px] font-semibold uppercase tracking-[3px] text-[#98a1b0]">
                       Commune
                     </Text>
-                    <Text className="mt-0.5 text-[20px] font-bold text-white">
+                    <Text className="mt-0.5 text-[20px] font-bold text-[#171b24]">
                       {meta?.title ?? 'New expense'}
                     </Text>
                   </View>
@@ -107,11 +107,11 @@ export default function TabLayout() {
                     alignItems: 'center',
                     justifyContent: 'center',
                     borderRadius: 16,
-                    backgroundColor: 'rgba(255,255,255,0.1)',
+                    backgroundColor: 'rgba(23,27,36,0.06)',
                     marginRight: 8,
                   }}
                 >
-                  <Ionicons name="notifications-outline" size={18} color="#FFFFFF" />
+                  <Ionicons name="notifications-outline" size={18} color="#171b24" />
                   {unreadCount > 0 ? (
                     <View
                       style={{
@@ -153,7 +153,7 @@ export default function TabLayout() {
           ),
           tabBarStyle: {
             backgroundColor: '#FFFFFF',
-            borderTopColor: 'rgba(23,27,36,0.14)',
+            borderTopColor: 'rgba(23,27,36,0.08)',
             borderTopWidth: 1,
             height: 70 + Math.max(insets.bottom - 2, 8),
             paddingTop: 8,
@@ -163,9 +163,10 @@ export default function TabLayout() {
             elevation: 0,
           },
           tabBarLabelStyle: {
-            fontSize: 10,
-            fontWeight: '600',
+            fontSize: 9,
+            fontWeight: '500',
             marginTop: 2,
+            letterSpacing: 0.2,
           },
           tabBarItemStyle: {
             paddingTop: 2,
@@ -229,11 +230,9 @@ export default function TabLayout() {
                   alignItems: 'center',
                   justifyContent: 'center',
                   borderRadius: 18,
-                  backgroundColor: '#1f2330',
-                  borderWidth: 1,
-                  borderColor: 'rgba(23,27,36,0.14)',
-                  shadowColor: '#1f2330',
-                  shadowOpacity: 0.12,
+                  backgroundColor: '#2d6a4f',
+                  shadowColor: '#2d6a4f',
+                  shadowOpacity: 0.25,
                   shadowRadius: 12,
                   shadowOffset: { width: 0, height: 6 },
                   elevation: 4,
