@@ -235,7 +235,7 @@ export function AppShell({ children }: AppShellProps) {
                   transition={sidebarTransition}
                   style={{ overflow: 'hidden' }}
                 >
-                  <Text size="xs" fw={600} tt="uppercase" mb={6} px="xs" className="commune-sidebar-label">
+                  <Text size="xs" fw={700} tt="uppercase" mb={6} px="xs" className="commune-sidebar-label" style={{ letterSpacing: '0.12em' }}>
                     Menu
                   </Text>
                 </motion.div>
