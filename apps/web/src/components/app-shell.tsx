@@ -30,7 +30,7 @@ import { useSearchStore } from '../stores/search';
 import { signOut } from '@commune/api';
 import { navLinks } from './nav-links';
 import { NotificationDropdown } from './notification-dropdown';
-import { HeaderGroupSelector } from './header-group-selector';
+import { GroupSelector } from './group-selector';
 import { TrialExpiryModal } from './trial-expiry-modal';
 import { useSubscription } from '../hooks/use-subscriptions';
 
@@ -109,7 +109,6 @@ export function AppShell({ children }: AppShellProps) {
             />
           </Group>
           <Group gap="sm">
-            <HeaderGroupSelector />
             <NotificationDropdown />
             <Menu shadow="md" width={220} position="bottom-end" offset={8}>
               <Menu.Target>
@@ -212,6 +211,11 @@ export function AppShell({ children }: AppShellProps) {
               )}
             </Stack>
 
+            {!collapsed && (
+              <Box mt="1.5rem" px={4}>
+                <GroupSelector />
+              </Box>
+            )}
           </div>
 
           <Stack gap={0}>
