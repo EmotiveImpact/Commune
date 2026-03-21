@@ -27,6 +27,52 @@ export async function updateExpense(expenseId: string, data: UpdateExpenseData) 
     ...expenseFields
   } = data;
 
+  const hasExplicitSplitChanges =
+    participant_ids !== undefined ||
+    split_method !== undefined ||
+    percentages !== undefined ||
+    custom_amounts !== undefined;
+  const amountChanged = data.amount !== undefined;
+
+  let currentExpense:
+    | {
+        amount: number;
+        split_method: SplitMethod;
+      }
+    | null = null;
+
+  let currentParticipants:
+    | Array<{
+        user_id: string;
+        share_amount: number;
+        share_percentage: number | null;
+      }>
+    | null = null;
+
+  const needsCurrentSplitState = hasExplicitSplitChanges || amountChanged;
+  if (needsCurrentSplitState) {
+    const { data: current, error: fetchCurrentError } = await supabase
+      .from('expenses')
+      .select('amount, split_method')
+      .eq('id', expenseId)
+      .single();
+
+    if (fetchCurrentError) throw fetchCurrentError;
+    currentExpense = current as { amount: number; split_method: SplitMethod };
+
+    const { data: existingParticipants, error: pFetchError } = await supabase
+      .from('expense_participants')
+      .select('user_id, share_amount, share_percentage')
+      .eq('expense_id', expenseId);
+
+    if (pFetchError) throw pFetchError;
+    currentParticipants = (existingParticipants ?? []) as Array<{
+      user_id: string;
+      share_amount: number;
+      share_percentage: number | null;
+    }>;
+  }
+
   // Update expense fields
   if (Object.keys(expenseFields).length > 0 || split_method) {
     const updateData = { ...expenseFields, ...(split_method && { split_method }) };
@@ -38,38 +84,22 @@ export async function updateExpense(expenseId: string, data: UpdateExpenseData) 
     if (error) throw error;
   }
 
-  // If split recalculation needed (amount, split_method, or participants changed)
-  const needsRecalc = participant_ids || split_method || data.amount;
+  // Only touch split rows when the edit actually changes split semantics or when the amount
+  // changes and we can recalculate without guessing.
+  const needsRecalc = hasExplicitSplitChanges || amountChanged;
   if (needsRecalc) {
-    // Fetch current expense state to fill in any missing fields
-    const { data: current, error: fetchCurrentError } = await supabase
-      .from('expenses')
-      .select('amount, split_method')
-      .eq('id', expenseId)
-      .single();
-    if (fetchCurrentError) throw fetchCurrentError;
-
-    const effectiveAmount = data.amount ?? current.amount;
-    const effectiveMethod = (split_method ?? current.split_method) as SplitMethod;
-
-    // Fetch current participant IDs if not provided
-    let effectiveParticipantIds = participant_ids;
-    if (!effectiveParticipantIds) {
-      const { data: existingParticipants, error: pFetchError } = await supabase
-        .from('expense_participants')
-        .select('user_id')
-        .eq('expense_id', expenseId);
-      if (pFetchError) throw pFetchError;
-      effectiveParticipantIds = (existingParticipants ?? []).map((p) => p.user_id);
+    if (!currentExpense || !currentParticipants) {
+      throw new Error('Could not load the current split state for this expense');
     }
+
+    const effectiveAmount = data.amount ?? currentExpense.amount;
+    const effectiveMethod = split_method ?? currentExpense.split_method;
+    const effectiveParticipantIds =
+      participant_ids ?? currentParticipants.map((participant) => participant.user_id);
 
     if (effectiveParticipantIds.length === 0) {
       throw new Error('Expense must have at least one participant');
     }
-
-    // Delete existing participants and payment records
-    await supabase.from('expense_participants').delete().eq('expense_id', expenseId);
-    await supabase.from('payment_records').delete().eq('expense_id', expenseId);
 
     // Recalculate shares
     let shares: { userId: string; amount: number; percentage?: number }[];
@@ -80,12 +110,24 @@ export async function updateExpense(expenseId: string, data: UpdateExpenseData) 
         userId,
         amount: amounts[i]!,
       }));
-    } else if (effectiveMethod === 'percentage' && percentages) {
-      const result = calculatePercentageSplit(effectiveAmount, percentages);
+    } else if (effectiveMethod === 'percentage') {
+      const effectivePercentages =
+        percentages ??
+        currentParticipants.map((participant) => ({
+          userId: participant.user_id,
+          percentage: participant.share_percentage ?? 0,
+        }));
+
+      const hasAllPercentages = effectivePercentages.every((entry) => entry.percentage > 0);
+      if (!hasAllPercentages || effectivePercentages.length !== effectiveParticipantIds.length) {
+        throw new Error('Percentage splits require percentage values for every participant');
+      }
+
+      const result = calculatePercentageSplit(effectiveAmount, effectivePercentages);
       shares = result.map((r) => ({
         userId: r.userId,
         amount: r.amount,
-        percentage: percentages.find((p) => p.userId === r.userId)?.percentage,
+        percentage: effectivePercentages.find((p) => p.userId === r.userId)?.percentage,
       }));
     } else if (effectiveMethod === 'custom' && custom_amounts) {
       shares = custom_amounts.map((c) => ({
@@ -93,14 +135,23 @@ export async function updateExpense(expenseId: string, data: UpdateExpenseData) 
         amount: c.amount,
       }));
     } else {
-      // Fallback: recalculate as equal split (e.g. amount-only edit on percentage split
-      // without new percentages provided)
-      const amounts = calculateEqualSplit(effectiveAmount, effectiveParticipantIds.length);
-      shares = effectiveParticipantIds.map((userId, i) => ({
-        userId,
-        amount: amounts[i]!,
-      }));
+      throw new Error(
+        'This expense uses a custom split. Edit the split details directly or create a new expense.',
+      );
     }
+
+    // Delete existing participants and payment records
+    const { error: deleteParticipantsError } = await supabase
+      .from('expense_participants')
+      .delete()
+      .eq('expense_id', expenseId);
+    if (deleteParticipantsError) throw deleteParticipantsError;
+
+    const { error: deletePaymentsError } = await supabase
+      .from('payment_records')
+      .delete()
+      .eq('expense_id', expenseId);
+    if (deletePaymentsError) throw deletePaymentsError;
 
     // Re-insert participants
     const participants = shares.map((s) => ({
