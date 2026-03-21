@@ -128,10 +128,10 @@ export function AppShell({ children }: AppShellProps) {
               gap={4}
               mb="xl"
               align="center"
-              justify="space-between"
+              justify={collapsed ? 'center' : 'space-between'}
               style={{ width: '100%' }}
             >
-              <Group wrap="nowrap" gap={4} align="center" justify={collapsed ? 'center' : undefined} style={{ flex: 1 }}>
+              <Group wrap="nowrap" gap={4} align="center" justify={collapsed ? 'center' : undefined} style={collapsed ? undefined : { flex: 1 }}>
                 <img
                   src="/logo.png"
                   alt="Commune"
@@ -156,15 +156,17 @@ export function AppShell({ children }: AppShellProps) {
                   </Text>
                 )}
               </Group>
-              <ActionIcon
-                variant="subtle"
-                onClick={toggleCollapsed}
-                className="commune-sidebar-collapse-btn"
-                aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-                size="sm"
-              >
-                {collapsed ? <IconChevronsRight size={16} /> : <IconChevronsLeft size={16} />}
-              </ActionIcon>
+              {!collapsed && (
+                <ActionIcon
+                  variant="subtle"
+                  onClick={toggleCollapsed}
+                  className="commune-sidebar-collapse-btn"
+                  aria-label="Collapse sidebar"
+                  size="sm"
+                >
+                  <IconChevronsLeft size={16} />
+                </ActionIcon>
+              )}
             </Group>
 
             {!collapsed && (
@@ -210,6 +212,22 @@ export function AppShell({ children }: AppShellProps) {
 
           <Stack gap={0}>
             {!collapsed && <SidebarPlanCard userId={user?.id} />}
+
+            {collapsed && (
+              <Tooltip label="Expand sidebar" position="right" withArrow>
+                <ActionIcon
+                  variant="subtle"
+                  onClick={toggleCollapsed}
+                  className="commune-sidebar-collapse-btn"
+                  aria-label="Expand sidebar"
+                  size="md"
+                  mb={8}
+                  style={{ alignSelf: 'center' }}
+                >
+                  <IconChevronsRight size={18} />
+                </ActionIcon>
+              </Tooltip>
+            )}
 
             {collapsed ? (
               <Menu shadow="md" width={220} position="right-end" offset={8}>
