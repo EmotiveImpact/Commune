@@ -2,7 +2,6 @@ import {
   AppShell as MantineAppShell,
   ActionIcon,
   Box,
-  Button,
   Burger,
   Group,
   Menu,
@@ -17,7 +16,6 @@ import {
 import { useDisclosure } from '@mantine/hooks';
 import { Link, useLocation, useNavigate } from '@tanstack/react-router';
 import {
-  IconChevronRight,
   IconChevronsLeft,
   IconChevronsRight,
   IconLogout,
@@ -39,8 +37,11 @@ import { useSubscription } from '../hooks/use-subscriptions';
 const SIDEBAR_STORAGE_KEY = 'commune-sidebar-collapsed';
 const SIDEBAR_WIDTH_EXPANDED = 260;
 const SIDEBAR_WIDTH_COLLAPSED = 72;
+// Fixed padding so icons never shift — 14px gives icon a consistent left offset
+const SIDEBAR_PAD = 14;
 
-const sidebarTransition = { duration: 0.25, ease: [0.4, 0, 0.2, 1] as [number, number, number, number] };
+const ease = [0.4, 0, 0.2, 1] as [number, number, number, number];
+const sidebarTransition = { duration: 0.25, ease };
 const fadeTransition = { duration: 0.15, ease: 'easeOut' as const };
 
 interface AppShellProps {
@@ -123,83 +124,63 @@ export function AppShell({ children }: AppShellProps) {
         className="commune-app-shell-navbar"
         role="navigation"
         aria-label="Main navigation"
-        data-collapsed={collapsed || undefined}
       >
-        <motion.div
+        <div
           className="commune-sidebar-panel"
-          data-collapsed={collapsed || undefined}
-          animate={{
-            padding: collapsed ? '1.25rem 0.5rem' : '1.25rem 1rem',
-          }}
-          transition={sidebarTransition}
           style={{
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'space-between',
             height: '100%',
             overflow: 'hidden',
+            padding: `1.25rem ${SIDEBAR_PAD}px`,
           }}
         >
-          {/* ── Top section ── */}
+          {/* ── Top ── */}
           <div>
-            {/* Logo row */}
-            <motion.div
-              layout
-              transition={sidebarTransition}
+            {/* Logo row — icon always at same left offset */}
+            <div
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: collapsed ? 'center' : 'flex-start',
                 marginBottom: '1.5rem',
                 position: 'relative',
                 minHeight: 44,
               }}
             >
-              <motion.div
-                layout
-                transition={sidebarTransition}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 4,
+              <img
+                src="/logo.png"
+                alt="Commune"
+                width={44}
+                height={44}
+                style={{ display: 'block', borderRadius: 10, flexShrink: 0 }}
+              />
+              <motion.span
+                initial={false}
+                animate={{
+                  opacity: collapsed ? 0 : 1,
+                  maxWidth: collapsed ? 0 : 160,
+                  marginLeft: collapsed ? 0 : 4,
                 }}
+                transition={sidebarTransition}
+                style={{ overflow: 'hidden', display: 'inline-flex', whiteSpace: 'nowrap' }}
               >
-                <img
-                  src="/logo.png"
-                  alt="Commune"
-                  width={44}
-                  height={44}
-                  style={{ display: 'block', borderRadius: 10, flexShrink: 0 }}
-                />
-                <AnimatePresence>
-                  {!collapsed && (
-                    <motion.span
-                      key="brand-text"
-                      initial={{ opacity: 0, width: 0 }}
-                      animate={{ opacity: 1, width: 'auto' }}
-                      exit={{ opacity: 0, width: 0 }}
-                      transition={sidebarTransition}
-                      style={{ overflow: 'hidden', display: 'inline-flex', whiteSpace: 'nowrap' }}
-                    >
-                      <Text
-                        fw={600}
-                        size="lg"
-                        style={{
-                          color: '#fff',
-                          whiteSpace: 'nowrap',
-                          letterSpacing: '0.08em',
-                          textTransform: 'uppercase',
-                          fontFamily: "'Inter', sans-serif",
-                        }}
-                      >
-                        Commune
-                      </Text>
-                    </motion.span>
-                  )}
-                </AnimatePresence>
-              </motion.div>
+                <Text
+                  fw={600}
+                  size="lg"
+                  style={{
+                    color: '#fff',
+                    whiteSpace: 'nowrap',
+                    letterSpacing: '0.08em',
+                    textTransform: 'uppercase',
+                    fontFamily: "'Inter', sans-serif",
+                  }}
+                >
+                  Commune
+                </Text>
+              </motion.span>
 
-              {/* Collapse button — top right, hover-only */}
+              {/* Collapse button — top right, hover-only, expanded only */}
               <AnimatePresence>
                 {!collapsed && (
                   <motion.div
@@ -222,27 +203,25 @@ export function AppShell({ children }: AppShellProps) {
                   </motion.div>
                 )}
               </AnimatePresence>
-            </motion.div>
+            </div>
 
             {/* Menu label */}
-            <AnimatePresence>
-              {!collapsed && (
-                <motion.div
-                  key="menu-label"
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
-                  transition={sidebarTransition}
-                  style={{ overflow: 'hidden' }}
-                >
-                  <Text size="xs" fw={700} tt="uppercase" mb={6} px="xs" className="commune-sidebar-label" style={{ letterSpacing: '0.12em' }}>
-                    Menu
-                  </Text>
-                </motion.div>
-              )}
-            </AnimatePresence>
+            <motion.div
+              initial={false}
+              animate={{
+                opacity: collapsed ? 0 : 1,
+                height: collapsed ? 0 : 'auto',
+                marginBottom: collapsed ? 0 : 6,
+              }}
+              transition={sidebarTransition}
+              style={{ overflow: 'hidden' }}
+            >
+              <Text size="xs" fw={700} tt="uppercase" px="xs" className="commune-sidebar-label" style={{ letterSpacing: '0.12em' }}>
+                Menu
+              </Text>
+            </motion.div>
 
-            {/* Nav links — single set, animated with CSS */}
+            {/* Nav links — icons stay in place, labels slide */}
             <Stack className="commune-sidebar-nav" gap={2}>
               {navLinks.map((link) => (
                 <Tooltip
@@ -253,7 +232,7 @@ export function AppShell({ children }: AppShellProps) {
                   disabled={!collapsed}
                 >
                   <NavLink
-                    label={collapsed ? '' : link.label}
+                    label={link.label}
                     component={Link}
                     to={link.to}
                     leftSection={link.icon}
@@ -266,41 +245,26 @@ export function AppShell({ children }: AppShellProps) {
             </Stack>
 
             {/* Workspace selector */}
-            <AnimatePresence>
-              {!collapsed && (
-                <motion.div
-                  key="group-selector"
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
-                  transition={sidebarTransition}
-                  style={{ overflow: 'hidden' }}
-                >
-                  <Box mt="1.5rem" px={4}>
-                    <GroupSelector />
-                  </Box>
-                </motion.div>
-              )}
-            </AnimatePresence>
+            <motion.div
+              initial={false}
+              animate={{
+                opacity: collapsed ? 0 : 1,
+                height: collapsed ? 0 : 'auto',
+                marginTop: collapsed ? 0 : 24,
+              }}
+              transition={sidebarTransition}
+              style={{ overflow: 'hidden' }}
+            >
+              <Box px={4}>
+                <GroupSelector />
+              </Box>
+            </motion.div>
           </div>
 
-          {/* ── Bottom section ── */}
+          {/* ── Bottom ── */}
           <Stack gap={0}>
-            {/* Plan card */}
-            <AnimatePresence>
-              {!collapsed && (
-                <motion.div
-                  key="plan-card"
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
-                  transition={sidebarTransition}
-                  style={{ overflow: 'hidden' }}
-                >
-                  <SidebarPlanCard userId={user?.id} />
-                </motion.div>
-              )}
-            </AnimatePresence>
+            {/* Trial banner — only shown during active trial */}
+            <SidebarTrialBanner userId={user?.id} collapsed={collapsed} />
 
             {/* Expand button (collapsed only) */}
             <AnimatePresence>
@@ -311,7 +275,7 @@ export function AppShell({ children }: AppShellProps) {
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   transition={fadeTransition}
-                  style={{ display: 'flex', justifyContent: 'center' }}
+                  style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}
                 >
                   <Tooltip label="Expand sidebar" position="right" withArrow>
                     <ActionIcon
@@ -320,7 +284,6 @@ export function AppShell({ children }: AppShellProps) {
                       className="commune-sidebar-expand-btn"
                       aria-label="Expand sidebar"
                       size="md"
-                      mb={8}
                     >
                       <IconChevronsRight size={18} />
                     </ActionIcon>
@@ -329,15 +292,12 @@ export function AppShell({ children }: AppShellProps) {
               )}
             </AnimatePresence>
 
-            {/* Profile */}
+            {/* Profile + plan label */}
             <Menu shadow="md" width={220} position={collapsed ? 'right-end' : 'top-start'} offset={8}>
               <Menu.Target>
                 <Tooltip label={user?.name ?? 'Account'} position="right" withArrow disabled={!collapsed}>
-                  <UnstyledButton
-                    className="commune-sidebar-profile-row"
-                    style={{ display: 'flex', justifyContent: collapsed ? 'center' : 'flex-start' }}
-                  >
-                    <Group gap="sm" wrap="nowrap" style={{ overflow: 'hidden' }}>
+                  <UnstyledButton className="commune-sidebar-profile-row">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, overflow: 'hidden' }}>
                       <Avatar
                         src={user?.avatar_url}
                         name={user?.name}
@@ -350,7 +310,7 @@ export function AppShell({ children }: AppShellProps) {
                         initial={false}
                         animate={{
                           opacity: collapsed ? 0 : 1,
-                          maxWidth: collapsed ? 0 : 200,
+                          maxWidth: collapsed ? 0 : 180,
                         }}
                         transition={sidebarTransition}
                         style={{ overflow: 'hidden', minWidth: 0, whiteSpace: 'nowrap' }}
@@ -358,19 +318,9 @@ export function AppShell({ children }: AppShellProps) {
                         <Text size="sm" fw={600} truncate style={{ color: '#fff' }}>
                           {user?.name ?? 'Account'}
                         </Text>
-                        <Text size="xs" truncate style={{ color: 'rgba(255,255,255,0.5)' }}>
-                          {user?.email}
-                        </Text>
+                        <SidebarPlanLabel userId={user?.id} />
                       </motion.div>
-                      <motion.div
-                        initial={false}
-                        animate={{ opacity: collapsed ? 0 : 1, maxWidth: collapsed ? 0 : 20 }}
-                        transition={sidebarTransition}
-                        style={{ overflow: 'hidden', flexShrink: 0 }}
-                      >
-                        <IconChevronRight size={16} style={{ color: 'rgba(255,255,255,0.4)' }} />
-                      </motion.div>
-                    </Group>
+                    </div>
                   </UnstyledButton>
                 </Tooltip>
               </Menu.Target>
@@ -393,7 +343,7 @@ export function AppShell({ children }: AppShellProps) {
               </Menu.Dropdown>
             </Menu>
           </Stack>
-        </motion.div>
+        </div>
       </MantineAppShell.Navbar>
 
       <MantineAppShell.Main className="commune-main-content" role="main">
@@ -404,51 +354,85 @@ export function AppShell({ children }: AppShellProps) {
   );
 }
 
-function SidebarPlanCard({ userId }: { userId?: string }) {
+/** Small plan label under the user's name — e.g. "Pro plan" or "Pro Trial" */
+function SidebarPlanLabel({ userId }: { userId?: string }) {
   const { data: subscription } = useSubscription(userId ?? '');
 
   const isTrialing = subscription?.status === 'trialing';
   const isActive = subscription?.status === 'active';
   const trialEndsAt = subscription?.trial_ends_at ? new Date(subscription.trial_ends_at) : null;
   const trialExpired = isTrialing && trialEndsAt && trialEndsAt < new Date();
+
+  let label = 'No plan';
+  if (subscription && !trialExpired) {
+    if (isTrialing) {
+      label = 'Pro Trial';
+    } else if (isActive) {
+      label = subscription.plan === 'agency'
+        ? 'Pro Max plan'
+        : `${subscription.plan.charAt(0).toUpperCase() + subscription.plan.slice(1)} plan`;
+    }
+  }
+
+  return (
+    <Text size="xs" truncate style={{ color: 'rgba(255,255,255,0.45)' }}>
+      {label}
+    </Text>
+  );
+}
+
+/** Trial banner — only visible during active trial, with days remaining + upgrade link */
+function SidebarTrialBanner({ userId, collapsed }: { userId?: string; collapsed: boolean }) {
+  const { data: subscription } = useSubscription(userId ?? '');
+
+  const isTrialing = subscription?.status === 'trialing';
+  const trialEndsAt = subscription?.trial_ends_at ? new Date(subscription.trial_ends_at) : null;
+  const trialExpired = isTrialing && trialEndsAt && trialEndsAt < new Date();
   const daysLeft = isTrialing && trialEndsAt && !trialExpired
     ? Math.ceil((trialEndsAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
     : 0;
 
-  const planLabel = !subscription || trialExpired
-    ? 'No plan'
-    : isTrialing
-      ? `Pro Trial · ${daysLeft}d left`
-      : subscription.plan === 'agency' ? 'Pro Max' : (subscription.plan.charAt(0).toUpperCase() + subscription.plan.slice(1));
+  const showBanner = isTrialing && !trialExpired;
 
-  const showUpgrade = !isActive || isTrialing;
+  if (!showBanner || collapsed) return null;
 
   return (
-    <Box className="commune-sidebar-plan-card">
-      <Text size="xs" style={{ color: 'rgba(255,255,255,0.5)' }}>
-        Current plan
-      </Text>
-      <Text size="lg" fw={700} style={{ color: '#fff' }} mt={2}>
-        {planLabel}
-      </Text>
-      {showUpgrade && (
-        <>
-          <Text size="xs" mt={6} style={{ color: 'rgba(255,255,255,0.55)', lineHeight: 1.4 }}>
-            {trialExpired ? 'Your trial has ended. Choose a plan to continue.' : 'Choose a plan to keep access after your trial.'}
-          </Text>
-          <Button
-            component={Link}
-            to="/pricing"
-            variant="outline"
-            size="xs"
-            mt={10}
-            fullWidth
-            className="commune-sidebar-upgrade-btn"
-          >
-            {trialExpired ? 'Choose a plan' : 'View plans'}
-          </Button>
-        </>
-      )}
-    </Box>
+    <motion.div
+      initial={{ opacity: 0, height: 0 }}
+      animate={{ opacity: 1, height: 'auto' }}
+      exit={{ opacity: 0, height: 0 }}
+      transition={sidebarTransition}
+      style={{ overflow: 'hidden', marginBottom: 8 }}
+    >
+      <Box
+        style={{
+          padding: '10px 12px',
+          borderRadius: 10,
+          background: 'rgba(255,255,255,0.06)',
+          border: '1px solid rgba(255,255,255,0.08)',
+        }}
+      >
+        <Text size="xs" fw={600} style={{ color: '#fff' }}>
+          {daysLeft}d left on trial
+        </Text>
+        <Text size="xs" style={{ color: 'rgba(255,255,255,0.5)', lineHeight: 1.4 }} mt={2}>
+          Choose a plan to keep access.
+        </Text>
+        <Text
+          component={Link}
+          to="/pricing"
+          size="xs"
+          fw={600}
+          mt={4}
+          style={{
+            color: 'var(--commune-primary-soft, #62c38a)',
+            textDecoration: 'none',
+            display: 'inline-block',
+          }}
+        >
+          View plans →
+        </Text>
+      </Box>
+    </motion.div>
   );
 }
