@@ -1,6 +1,10 @@
+import {
+  FunctionsFetchError,
+  FunctionsHttpError,
+  FunctionsRelayError,
+} from '@supabase/supabase-js';
 import type { Subscription, SubscriptionPlan } from '@commune/types';
 import { supabase } from './client';
-import { getSupabaseAnonKey, getSupabaseUrl } from './client';
 
 export async function getSubscription(userId: string): Promise<Subscription | null> {
   const { data, error } = await supabase
@@ -33,37 +37,37 @@ export async function invokePortal(): Promise<string> {
 }
 
 export async function downloadStatement(groupId: string, month: string): Promise<Blob> {
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) throw new Error('Not authenticated');
+  const { data, error, response } = await supabase.functions.invoke<Blob>('generate-statement', {
+    body: { groupId, month },
+  });
 
-  let response: Response;
-  try {
-    response = await fetch(`${getSupabaseUrl()}/functions/v1/generate-statement`, {
-      method: 'POST',
-      headers: {
-        'apikey': getSupabaseAnonKey(),
-        'Authorization': `Bearer ${session.access_token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ groupId, month }),
-    });
-  } catch (error) {
-    throw new Error(
-      error instanceof Error ? error.message : 'Could not reach statement service',
-    );
-  }
+  if (error) {
+    if (error instanceof FunctionsHttpError && response) {
+      const contentType = response.headers.get('content-type') ?? '';
 
-  if (!response.ok) {
-    const contentType = response.headers.get('content-type') ?? '';
+      if (contentType.includes('application/json')) {
+        const err = await response.clone().json().catch(() => null) as { error?: string } | null;
+        throw new Error(err?.error || `Statement request failed (${response.status})`);
+      }
 
-    if (contentType.includes('application/json')) {
-      const err = await response.json().catch(() => null) as { error?: string } | null;
-      throw new Error(err?.error || `Statement request failed (${response.status})`);
+      const text = (await response.clone().text().catch(() => '')).trim();
+      throw new Error(text || `Statement request failed (${response.status})`);
     }
 
-    const text = (await response.text().catch(() => '')).trim();
-    throw new Error(text || `Statement request failed (${response.status})`);
+    if (error instanceof FunctionsFetchError) {
+      throw new Error('Could not reach statement service');
+    }
+
+    if (error instanceof FunctionsRelayError) {
+      throw new Error('Statement service unavailable');
+    }
+
+    throw new Error(error.message || 'Failed to generate statement');
   }
 
-  return response.blob();
+  if (!(data instanceof Blob)) {
+    throw new Error('Statement service returned an unexpected response');
+  }
+
+  return data;
 }
