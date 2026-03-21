@@ -471,9 +471,10 @@ div:hover > .commune-avatar-overlay {
 }
 
 .commune-sidebar-profile-row {
-  padding: 10px 8px;
+  padding: 10px 4px;
   border-radius: 10px;
   transition: background var(--commune-motion-fast);
+  width: 100%;
 }
 
 .commune-sidebar-profile-row:hover {

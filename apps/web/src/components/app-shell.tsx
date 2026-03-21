@@ -41,8 +41,8 @@ import { useSubscription } from '../hooks/use-subscriptions';
 const SIDEBAR_STORAGE_KEY = 'commune-sidebar-collapsed';
 const SIDEBAR_WIDTH_EXPANDED = 260;
 const SIDEBAR_WIDTH_COLLAPSED = 72;
-// Fixed padding so icons never shift — 14px gives icon a consistent left offset
-const SIDEBAR_PAD = 14;
+// Fixed padding so icons never shift
+const SIDEBAR_PAD = 10;
 
 const ease = [0.4, 0, 0.2, 1] as [number, number, number, number];
 const sidebarTransition = { duration: 0.25, ease };
