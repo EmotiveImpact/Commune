@@ -39,10 +39,9 @@ import { TrialExpiryModal } from './trial-expiry-modal';
 import { useSubscription } from '../hooks/use-subscriptions';
 
 const SIDEBAR_STORAGE_KEY = 'commune-sidebar-collapsed';
-const SIDEBAR_WIDTH_EXPANDED = 260;
+const SIDEBAR_WIDTH_EXPANDED = 230;
 const SIDEBAR_WIDTH_COLLAPSED = 72;
-const SIDEBAR_PAD_EXPANDED = 12;
-const SIDEBAR_PAD_COLLAPSED = 6;
+const SIDEBAR_PAD = 8; // fixed — never changes, so nothing jumps
 
 const ease = [0.4, 0, 0.2, 1] as [number, number, number, number];
 const sidebarTransition = { duration: 0.25, ease };
@@ -129,32 +128,23 @@ export function AppShell({ children }: AppShellProps) {
         role="navigation"
         aria-label="Main navigation"
       >
-        <motion.div
+        <div
           className="commune-sidebar-panel"
-          initial={false}
-          animate={{
-            paddingLeft: collapsed ? SIDEBAR_PAD_COLLAPSED : SIDEBAR_PAD_EXPANDED,
-            paddingRight: collapsed ? SIDEBAR_PAD_COLLAPSED : SIDEBAR_PAD_EXPANDED,
-          }}
-          transition={sidebarTransition}
           style={{
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'space-between',
             height: '100%',
             overflow: 'hidden',
-            paddingTop: '1.25rem',
-            paddingBottom: '1.25rem',
+            padding: `1.25rem ${SIDEBAR_PAD}px`,
           }}
         >
           {/* ── Top ── */}
-          <div>
-            {/* Logo row */}
+          <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
+            {/* Logo row — padding-left centers the 44px logo when collapsed */}
             <motion.div
               initial={false}
-              animate={{
-                justifyContent: collapsed ? 'center' : 'flex-start',
-              }}
+              animate={{ paddingLeft: collapsed ? 6 : 0 }}
               transition={sidebarTransition}
               style={{
                 display: 'flex',
@@ -176,10 +166,9 @@ export function AppShell({ children }: AppShellProps) {
                 animate={{
                   opacity: collapsed ? 0 : 1,
                   maxWidth: collapsed ? 0 : 160,
-                  marginLeft: collapsed ? 0 : 4,
                 }}
                 transition={sidebarTransition}
-                style={{ overflow: 'hidden', display: 'inline-flex', whiteSpace: 'nowrap' }}
+                style={{ overflow: 'hidden', display: 'inline-flex', whiteSpace: 'nowrap', marginLeft: 8 }}
               >
                 <Text
                   fw={600}
@@ -278,7 +267,7 @@ export function AppShell({ children }: AppShellProps) {
           </div>
 
           {/* ── Bottom ── */}
-          <Stack gap={0}>
+          <Stack gap={0} style={{ flexShrink: 0 }}>
             {/* Trial banner — only shown during active trial */}
             <SidebarTrialBanner userId={user?.id} collapsed={collapsed} />
 
@@ -322,10 +311,17 @@ export function AppShell({ children }: AppShellProps) {
                     <motion.div
                       initial={false}
                       animate={{
-                        justifyContent: collapsed ? 'center' : 'flex-start',
+                        paddingLeft: collapsed ? 12 : 14,
+                        paddingRight: collapsed ? 0 : 8,
+                        paddingTop: collapsed ? 4 : 8,
+                        paddingBottom: collapsed ? 4 : 8,
                       }}
                       transition={sidebarTransition}
-                      style={{ display: 'flex', alignItems: 'center', overflow: 'hidden', gap: 12 }}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        overflow: 'hidden',
+                      }}
                     >
                       <Avatar
                         src={user?.avatar_url}
@@ -339,10 +335,11 @@ export function AppShell({ children }: AppShellProps) {
                         initial={false}
                         animate={{
                           opacity: collapsed ? 0 : 1,
-                          maxWidth: collapsed ? 0 : 140,
+                          width: collapsed ? 0 : 120,
+                          marginLeft: collapsed ? 0 : 12,
                         }}
                         transition={sidebarTransition}
-                        style={{ overflow: 'hidden', minWidth: 0, whiteSpace: 'nowrap', flex: 1 }}
+                        style={{ overflow: 'hidden', whiteSpace: 'nowrap', flexShrink: 1, minWidth: 0 }}
                       >
                         <Text size="sm" fw={600} truncate style={{ color: '#fff' }}>
                           {user?.name ?? 'Account'}
@@ -353,7 +350,8 @@ export function AppShell({ children }: AppShellProps) {
                         initial={false}
                         animate={{
                           opacity: collapsed ? 0 : 0.5,
-                          maxWidth: collapsed ? 0 : 20,
+                          width: collapsed ? 0 : 20,
+                          marginLeft: collapsed ? 0 : 8,
                         }}
                         transition={sidebarTransition}
                         style={{ overflow: 'hidden', flexShrink: 0, display: 'flex', alignItems: 'center' }}
@@ -410,7 +408,7 @@ export function AppShell({ children }: AppShellProps) {
               </Menu.Dropdown>
             </Menu>
           </Stack>
-        </motion.div>
+        </div>
       </MantineAppShell.Navbar>
 
       <MantineAppShell.Main className="commune-main-content" role="main">

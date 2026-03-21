@@ -471,10 +471,11 @@ div:hover > .commune-avatar-overlay {
 }
 
 .commune-sidebar-profile-row {
-  padding: 8px 2px;
+  padding: 6px 0;
   border-radius: 10px;
   transition: background var(--commune-motion-fast);
   width: 100%;
+  box-sizing: border-box;
 }
 
 .commune-sidebar-profile-row:hover {
@@ -486,10 +487,15 @@ div:hover > .commune-avatar-overlay {
   transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Nav links: smooth transitions */
+/*
+ * Sidebar geometry (all values in px from inner edge):
+ *   Collapsed: 72px sidebar, 8px panel pad → 56px inner, center = 28px
+ *   Nav icon 22px  → padL = (56-22)/2 = 17  → center 17+11 = 28 ✓
+ *   Expanded padL  = 14                      → center 14+11 = 25 (left-biased, normal)
+ */
 .commune-sidebar-link {
-  transition: padding 0.25s cubic-bezier(0.4, 0, 0.2, 1),
-              justify-content 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  padding: 8px 14px !important;             /* explicit — no Mantine guessing */
+  transition: padding 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
 .commune-sidebar-link .mantine-NavLink-section {
@@ -498,28 +504,25 @@ div:hover > .commune-avatar-overlay {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: margin 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .commune-sidebar-link .mantine-NavLink-body {
   overflow: hidden;
   white-space: nowrap;
-  transition: opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+  transition: opacity 0.15s cubic-bezier(0.4, 0, 0.2, 1),
               max-width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   max-width: 200px;
   opacity: 1;
 }
 
-/* Collapsed: center the icon, hide the label */
+/* Collapsed: padding centers the 22px icon in 56px inner */
 .commune-sidebar-link--collapsed {
-  display: flex;
-  justify-content: center;
-  padding-left: 0;
-  padding-right: 0;
+  padding-left: 17px !important;
+  padding-right: 17px !important;
 }
 
 .commune-sidebar-link--collapsed .mantine-NavLink-section {
-  margin: 0;
+  margin-right: 0 !important;
 }
 
 .commune-sidebar-link--collapsed .mantine-NavLink-body {
