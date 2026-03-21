@@ -1,5 +1,5 @@
 import type { Subscription, SubscriptionPlan } from '@commune/types';
-import { supabase, getSupabaseUrl, getSupabaseAnonKey } from './client';
+import { supabase } from './client';
 
 export async function getSubscription(userId: string): Promise<Subscription | null> {
   const { data, error } = await supabase
@@ -32,34 +32,28 @@ export async function invokePortal(): Promise<string> {
 }
 
 export async function downloadStatement(groupId: string, month: string): Promise<Blob> {
-  // Refresh the session first to ensure we have a valid token
-  const { data: { session }, error: sessionError } = await supabase.auth.refreshSession();
-  if (sessionError || !session) {
-    throw new Error('Not authenticated — please sign in again');
+  const { data, error } = await supabase.functions.invoke('generate-statement', {
+    body: { groupId, month },
+  });
+
+  if (error) {
+    // Extract a useful message from the error
+    const msg =
+      error.message ||
+      (typeof error === 'object' && 'error' in (error as any) ? (error as any).error : null) ||
+      'Failed to generate statement';
+    throw new Error(msg);
   }
 
-  const response = await fetch(
-    `${getSupabaseUrl()}/functions/v1/generate-statement`,
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${session.access_token}`,
-        'apikey': getSupabaseAnonKey(),
-      },
-      body: JSON.stringify({ groupId, month }),
-    },
-  );
-
-  if (!response.ok) {
-    const contentType = response.headers.get('content-type') ?? '';
-    if (contentType.includes('application/json')) {
-      const err = await response.json().catch(() => null) as { error?: string } | null;
-      throw new Error(err?.error || `Statement request failed (${response.status})`);
-    }
-    const text = (await response.text().catch(() => '')).trim();
-    throw new Error(text || `Statement request failed (${response.status})`);
+  // functions.invoke returns Blob for application/pdf content-type
+  if (data instanceof Blob) {
+    return data;
   }
 
-  return response.blob();
+  // If it came back as something else, try to use it
+  if (data instanceof ArrayBuffer) {
+    return new Blob([data], { type: 'application/pdf' });
+  }
+
+  throw new Error('Unexpected response from statement service');
 }
