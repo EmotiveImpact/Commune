@@ -32,8 +32,11 @@ export async function invokePortal(): Promise<string> {
 }
 
 export async function downloadStatement(groupId: string, month: string): Promise<Blob> {
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) throw new Error('Not authenticated');
+  // Refresh the session first to ensure we have a valid token
+  const { data: { session }, error: sessionError } = await supabase.auth.refreshSession();
+  if (sessionError || !session) {
+    throw new Error('Not authenticated — please sign in again');
+  }
 
   const response = await fetch(
     `${getSupabaseUrl()}/functions/v1/generate-statement`,
