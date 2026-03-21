@@ -11,10 +11,11 @@ import {
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
-import { IconArrowLeft, IconDeviceFloppy, IconSettings } from '@tabler/icons-react';
-import { useEffect, useRef } from 'react';
+import { IconArrowLeft, IconDeviceFloppy, IconSettings, IconTrash } from '@tabler/icons-react';
+import { useEffect, useRef, useState } from 'react';
 import { GroupType } from '@commune/types';
-import { useGroup, useUpdateGroup } from '../../../hooks/use-groups';
+import { useGroup, useUpdateGroup, useDeleteGroup } from '../../../hooks/use-groups';
+import { useGroupStore } from '../../../stores/group';
 import { useAuthStore } from '../../../stores/auth';
 import { ContentSkeleton } from '../../../components/page-skeleton';
 import { PageHeader } from '../../../components/page-header';
@@ -50,9 +51,12 @@ function EditGroupPage() {
   const { groupId } = Route.useParams();
   const { data: group, isLoading } = useGroup(groupId);
   const updateGroup = useUpdateGroup(groupId);
+  const deleteGroup = useDeleteGroup();
   const { user } = useAuthStore();
+  const { setActiveGroupId } = useGroupStore();
   const navigate = useNavigate();
   const lastHydratedRef = useRef<string | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState('');
 
   const isAdmin = group?.members.some(
     (member) => member.user_id === user?.id && member.role === 'admin',
@@ -207,6 +211,54 @@ function EditGroupPage() {
           </Stack>
         </form>
       </Paper>
+
+      {group.owner_id === user?.id && (
+        <Paper className="commune-soft-panel" p="xl" style={{ borderColor: 'var(--mantine-color-red-4)' }}>
+          <Group gap="xs" mb="md">
+            <IconTrash size={20} color="var(--mantine-color-red-6)" />
+            <Text className="commune-section-heading" c="red">Delete this group</Text>
+          </Group>
+
+          <Text size="sm" c="dimmed" mb="md">
+            This action cannot be undone. All expenses, members, and data in this group will be permanently deleted.
+          </Text>
+
+          <TextInput
+            label='Type "DELETE" to confirm'
+            placeholder="DELETE"
+            value={deleteConfirm}
+            onChange={(e) => setDeleteConfirm(e.currentTarget.value)}
+            mb="md"
+          />
+
+          <Button
+            color="red"
+            leftSection={<IconTrash size={16} />}
+            disabled={deleteConfirm !== 'DELETE'}
+            loading={deleteGroup.isPending}
+            onClick={async () => {
+              try {
+                await deleteGroup.mutateAsync(groupId);
+                notifications.show({
+                  title: 'Group deleted',
+                  message: `${group.name} has been permanently deleted.`,
+                  color: 'green',
+                });
+                setActiveGroupId(null);
+                navigate({ to: '/groups' });
+              } catch (err) {
+                notifications.show({
+                  title: 'Failed to delete group',
+                  message: err instanceof Error ? err.message : 'Something went wrong',
+                  color: 'red',
+                });
+              }
+            }}
+          >
+            Delete group
+          </Button>
+        </Paper>
+      )}
     </Stack>
   );
 }

@@ -350,135 +350,140 @@ function ExpenseDetailPage() {
         </Paper>
       </SimpleGrid>
 
-      <Paper className="commune-soft-panel" p="xl">
-        <Group justify="space-between" align="flex-start" mb="lg">
-          <div>
-            <Text fw={700} size="lg">Split breakdown</Text>
-            <Text size="sm" c="dimmed">
-              Who owes what, who paid already, and who still needs to settle.
-            </Text>
-          </div>
-          {expense.paid_by_user && (
-            <Badge variant="light" color="gray">
-              Paid upfront by {expense.paid_by_user.name}
-            </Badge>
-          )}
-        </Group>
-
-        <div style={{ overflowX: 'auto' }}>
-          <Table verticalSpacing="md" horizontalSpacing="sm">
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th>Person</Table.Th>
-                <Table.Th style={{ textAlign: 'right' }}>Share</Table.Th>
-                {expense.paid_by_user_id && (
-                  <Table.Th style={{ textAlign: 'right' }}>Owes to</Table.Th>
-                )}
-                <Table.Th>Status</Table.Th>
-                <Table.Th>Details</Table.Th>
-                <Table.Th style={{ textAlign: 'center' }}>Actions</Table.Th>
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {expense.participants.map((participant) => {
-                const payment = expense.payment_records.find((record) => record.user_id === participant.user_id);
-                const paymentStatus = payment?.status ?? 'unpaid';
-                const reimbursement = reimbursements.find((item) => item.userId === participant.user_id);
-                const canToggle = participant.user_id === user?.id || isAdmin;
-
-                return (
-                  <Table.Tr key={participant.id}>
-                    <Table.Td>
-                      <Group gap="xs" wrap="nowrap">
-                        <Avatar src={participant.user.avatar_url} name={participant.user.name} color="initials" size="sm" />
-                        <Text size="sm" fw={600}>{participant.user.name}</Text>
-                      </Group>
-                    </Table.Td>
-                    <Table.Td style={{ textAlign: 'right' }}>
-                      <Text size="sm" fw={700}>
-                        {formatCurrency(participant.share_amount, expense.currency)}
-                      </Text>
-                    </Table.Td>
-                    {expense.paid_by_user_id && (
-                      <Table.Td style={{ textAlign: 'right' }}>
-                        <Text size="sm" c="dimmed">
-                          {reimbursement ? expense.paid_by_user?.name : '—'}
-                        </Text>
-                      </Table.Td>
-                    )}
-                    <Table.Td>
-                      <Badge color={statusColor[paymentStatus] ?? 'gray'} variant="light">
-                        {paymentStatus}
-                      </Badge>
-                    </Table.Td>
-                    <Table.Td>
-                      <Stack gap={2}>
-                        {payment?.paid_at && (
-                          <Text size="xs" c="dimmed">
-                            Paid {formatDate(payment.paid_at)}
-                          </Text>
-                        )}
-                        {payment?.note && (
-                          <Tooltip label={payment.note}>
-                            <Group gap={4} style={{ cursor: 'pointer' }}>
-                              <IconNote size={12} />
-                              <Text size="xs" c="dimmed" truncate style={{ maxWidth: 120 }}>
-                                {payment.note}
-                              </Text>
-                            </Group>
-                          </Tooltip>
-                        )}
-                      </Stack>
-                    </Table.Td>
-                    <Table.Td style={{ textAlign: 'center' }}>
-                      <Group gap={4} justify="center">
-                        {canToggle && paymentStatus === 'unpaid' && (
-                          <ActionIcon variant="light" color="emerald" onClick={() => handlePayClick(participant.user_id)} aria-label={`Mark ${participant.user.name} as paid`}>
-                            <IconCheck size={16} />
-                          </ActionIcon>
-                        )}
-                        {canToggle && paymentStatus === 'paid' && (
-                          <ActionIcon variant="light" color="red" onClick={() => handleUnpay(participant.user_id)} aria-label={`Mark ${participant.user.name} as unpaid`}>
-                            <IconX size={16} />
-                          </ActionIcon>
-                        )}
-                        {isAdmin && paymentStatus === 'paid' && (
-                          <ActionIcon variant="light" color="blue" onClick={() => handleConfirmPayment(participant.user_id)} aria-label={`Confirm payment from ${participant.user.name}`}>
-                            <IconCheckbox size={16} />
-                          </ActionIcon>
-                        )}
-                      </Group>
-                    </Table.Td>
-                  </Table.Tr>
-                );
-              })}
-            </Table.Tbody>
-          </Table>
-        </div>
-      </Paper>
-
-      <Paper className="commune-soft-panel" p="xl">
-        <Group justify="space-between" align="flex-start" mb="lg">
-          <div>
-            <Group gap="xs">
-              <IconPaperclip size={20} />
-              <Text fw={700} size="lg">Receipt</Text>
+      <Grid gap="xl">
+        <Grid.Col span={{ base: 12, lg: 8 }}>
+          <Paper className="commune-soft-panel" p="xl">
+            <Group justify="space-between" align="flex-start" mb="lg">
+              <div>
+                <Text fw={700} size="lg">Split breakdown</Text>
+                <Text size="sm" c="dimmed">
+                  Who owes what, who paid already, and who still needs to settle.
+                </Text>
+              </div>
+              {expense.paid_by_user && (
+                <Badge variant="light" color="gray">
+                  Paid upfront by {expense.paid_by_user.name}
+                </Badge>
+              )}
             </Group>
-            <Text size="sm" c="dimmed">
-              Attach a photo or PDF of the receipt for this expense.
-            </Text>
-          </div>
-        </Group>
 
-        <ReceiptDropzone
-          existingUrl={expense.receipt_url}
-          onChange={handleReceiptUpload}
-          onDelete={isAdmin ? handleDeleteReceipt : undefined}
-          deleteLoading={deleteReceipt.isPending}
-          uploading={uploadReceipt.isPending}
-          disabled={uploadReceipt.isPending}
-        />
-      </Paper>
+            <div style={{ overflowX: 'auto' }}>
+              <Table verticalSpacing="md" horizontalSpacing="sm">
+                <Table.Thead>
+                  <Table.Tr>
+                    <Table.Th>Person</Table.Th>
+                    <Table.Th style={{ textAlign: 'right' }}>Share</Table.Th>
+                    {expense.paid_by_user_id && (
+                      <Table.Th style={{ textAlign: 'right' }}>Owes to</Table.Th>
+                    )}
+                    <Table.Th>Status</Table.Th>
+                    <Table.Th>Details</Table.Th>
+                    <Table.Th style={{ textAlign: 'center' }}>Actions</Table.Th>
+                  </Table.Tr>
+                </Table.Thead>
+                <Table.Tbody>
+                  {expense.participants.map((participant) => {
+                    const payment = expense.payment_records.find((record) => record.user_id === participant.user_id);
+                    const paymentStatus = payment?.status ?? 'unpaid';
+                    const reimbursement = reimbursements.find((item) => item.userId === participant.user_id);
+                    const canToggle = participant.user_id === user?.id || isAdmin;
+
+                    return (
+                      <Table.Tr key={participant.id}>
+                        <Table.Td>
+                          <Group gap="xs" wrap="nowrap">
+                            <Avatar src={participant.user.avatar_url} name={participant.user.name} color="initials" size="sm" />
+                            <Text size="sm" fw={600}>{participant.user.name}</Text>
+                          </Group>
+                        </Table.Td>
+                        <Table.Td style={{ textAlign: 'right' }}>
+                          <Text size="sm" fw={700}>
+                            {formatCurrency(participant.share_amount, expense.currency)}
+                          </Text>
+                        </Table.Td>
+                        {expense.paid_by_user_id && (
+                          <Table.Td style={{ textAlign: 'right' }}>
+                            <Text size="sm" c="dimmed">
+                              {reimbursement ? expense.paid_by_user?.name : '—'}
+                            </Text>
+                          </Table.Td>
+                        )}
+                        <Table.Td>
+                          <Badge color={statusColor[paymentStatus] ?? 'gray'} variant="light">
+                            {paymentStatus}
+                          </Badge>
+                        </Table.Td>
+                        <Table.Td>
+                          <Stack gap={2}>
+                            {payment?.paid_at && (
+                              <Text size="xs" c="dimmed">
+                                Paid {formatDate(payment.paid_at)}
+                              </Text>
+                            )}
+                            {payment?.note && (
+                              <Tooltip label={payment.note}>
+                                <Group gap={4} style={{ cursor: 'pointer' }}>
+                                  <IconNote size={12} />
+                                  <Text size="xs" c="dimmed" truncate style={{ maxWidth: 120 }}>
+                                    {payment.note}
+                                  </Text>
+                                </Group>
+                              </Tooltip>
+                            )}
+                          </Stack>
+                        </Table.Td>
+                        <Table.Td style={{ textAlign: 'center' }}>
+                          <Group gap={4} justify="center">
+                            {canToggle && paymentStatus === 'unpaid' && (
+                              <ActionIcon variant="light" color="emerald" onClick={() => handlePayClick(participant.user_id)} aria-label={`Mark ${participant.user.name} as paid`}>
+                                <IconCheck size={16} />
+                              </ActionIcon>
+                            )}
+                            {canToggle && paymentStatus === 'paid' && (
+                              <ActionIcon variant="light" color="red" onClick={() => handleUnpay(participant.user_id)} aria-label={`Mark ${participant.user.name} as unpaid`}>
+                                <IconX size={16} />
+                              </ActionIcon>
+                            )}
+                            {isAdmin && paymentStatus === 'paid' && (
+                              <ActionIcon variant="light" color="blue" onClick={() => handleConfirmPayment(participant.user_id)} aria-label={`Confirm payment from ${participant.user.name}`}>
+                                <IconCheckbox size={16} />
+                              </ActionIcon>
+                            )}
+                          </Group>
+                        </Table.Td>
+                      </Table.Tr>
+                    );
+                  })}
+                </Table.Tbody>
+              </Table>
+            </div>
+          </Paper>
+        </Grid.Col>
+        <Grid.Col span={{ base: 12, lg: 4 }}>
+          <Paper className="commune-soft-panel" p="xl">
+            <Group justify="space-between" align="flex-start" mb="lg">
+              <div>
+                <Group gap="xs">
+                  <IconPaperclip size={20} />
+                  <Text fw={700} size="lg">Receipt</Text>
+                </Group>
+                <Text size="sm" c="dimmed">
+                  Attach a photo or PDF of the receipt for this expense.
+                </Text>
+              </div>
+            </Group>
+
+            <ReceiptDropzone
+              existingUrl={expense.receipt_url}
+              onChange={handleReceiptUpload}
+              onDelete={isAdmin ? handleDeleteReceipt : undefined}
+              deleteLoading={deleteReceipt.isPending}
+              uploading={uploadReceipt.isPending}
+              disabled={uploadReceipt.isPending}
+            />
+          </Paper>
+        </Grid.Col>
+      </Grid>
 
       <Modal opened={noteOpened} onClose={closeNote} title="Mark as paid" size="sm">
         <Stack gap="sm">
