@@ -48,6 +48,23 @@ const A4_H = 841.89;
 const MARGIN = 15 * MM;
 const CONTENT_W = A4_W - MARGIN * 2;
 
+function sanitizePdfText(value: unknown): string {
+  if (typeof value !== 'string') {
+    if (value == null) return '';
+    return String(value);
+  }
+
+  // Standard PDF fonts in pdf-lib use WinAnsi. Strip characters that cause runtime encode failures.
+  return value
+    .replace(/[^\x20-\x7E\xA0-\xFF]/g, '')
+    .trim();
+}
+
+function safeLabel(value: unknown, fallback: string): string {
+  const text = sanitizePdfText(value);
+  return text.length > 0 ? text : fallback;
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: CORS_HEADERS });
@@ -94,6 +111,13 @@ Deno.serve(async (req: Request) => {
       });
     }
 
+    if (!/^\d{4}-\d{2}$/.test(month)) {
+      return new Response(JSON.stringify({ error: 'month must use YYYY-MM format' }), {
+        status: 400,
+        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
+      });
+    }
+
     // ── Check subscription ───────────────────────────────────────────────
     const { data: subscription } = await supabase
       .from('subscriptions')
@@ -128,6 +152,13 @@ Deno.serve(async (req: Request) => {
 
     // ── Date range for month ─────────────────────────────────────────────
     const [year, mon] = month.split('-').map(Number);
+    if (!Number.isInteger(year) || !Number.isInteger(mon) || mon < 1 || mon > 12) {
+      return new Response(JSON.stringify({ error: 'month must be a valid calendar month' }), {
+        status: 400,
+        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
+      });
+    }
+
     const startDate = `${year}-${String(mon).padStart(2, '0')}-01`;
     const endDate = new Date(year, mon, 0); // last day of month
     const endDateStr = `${year}-${String(mon).padStart(2, '0')}-${String(endDate.getDate()).padStart(2, '0')}`;
@@ -184,7 +215,7 @@ Deno.serve(async (req: Request) => {
     const memberMap = new Map<string, { name: string; totalOwed: number; totalPaid: number }>();
 
     for (const p of participants) {
-      const userName = p.users?.name || p.users?.email || 'Unknown';
+      const userName = safeLabel(p.users?.name || p.users?.email, 'Unknown');
       const userId = p.user_id;
       if (!memberMap.has(userId)) {
         memberMap.set(userId, { name: userName, totalOwed: 0, totalPaid: 0 });
@@ -249,7 +280,7 @@ Deno.serve(async (req: Request) => {
     }
 
     // ── Title ──────────────────────────────────────────────────────────
-    page.drawText(group.name, {
+    page.drawText(safeLabel(group.name, 'Commune statement'), {
       x: MARGIN,
       y: drawY(y),
       size: 18,
@@ -301,8 +332,9 @@ Deno.serve(async (req: Request) => {
       const cx = MARGIN + colW * i + colW / 2;
 
       // Label
-      const labelWidth = helveticaBold.widthOfTextAtSize(summaryLabels[i], 9);
-      page.drawText(summaryLabels[i], {
+      const summaryLabel = safeLabel(summaryLabels[i], '');
+      const labelWidth = helveticaBold.widthOfTextAtSize(summaryLabel, 9);
+      page.drawText(summaryLabel, {
         x: cx - labelWidth / 2,
         y: drawY(y + 7 * MM),
         size: 9,
@@ -311,8 +343,9 @@ Deno.serve(async (req: Request) => {
       });
 
       // Value
-      const valWidth = helveticaBold.widthOfTextAtSize(summaryValues[i], 11);
-      page.drawText(summaryValues[i], {
+      const summaryValue = safeLabel(summaryValues[i], '0');
+      const valWidth = helveticaBold.widthOfTextAtSize(summaryValue, 11);
+      page.drawText(summaryValue, {
         x: cx - valWidth / 2,
         y: drawY(y + 14 * MM),
         size: 11,
@@ -375,7 +408,7 @@ Deno.serve(async (req: Request) => {
         ensureSpace(5 * MM + 4);
 
         const status = getExpenseStatus(expense);
-        const catLabel = (expense.category as string)
+        const catLabel = safeLabel(expense.category, 'Uncategorised')
           .split('_')
           .map((w: string) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
           .join(' ');
@@ -386,13 +419,13 @@ Deno.serve(async (req: Request) => {
           ? rgb(0.784, 0.196, 0.196)
           : rgb(0.784, 0.588, 0);
 
-        page.drawText(String(expense.title).substring(0, 30), {
+        page.drawText(safeLabel(expense.title, 'Untitled expense').substring(0, 30), {
           x: cols[0].x + 2, y: drawY(y), size: 8, font: helvetica, color: rgb(0, 0, 0),
         });
         page.drawText(catLabel.substring(0, 18), {
           x: cols[1].x + 2, y: drawY(y), size: 8, font: helvetica, color: rgb(0, 0, 0),
         });
-        page.drawText(expense.due_date, {
+        page.drawText(safeLabel(expense.due_date, ''), {
           x: cols[2].x + 2, y: drawY(y), size: 8, font: helvetica, color: rgb(0, 0, 0),
         });
         page.drawText(fmt(Number(expense.amount)), {
@@ -466,7 +499,7 @@ Deno.serve(async (req: Request) => {
           ? rgb(0.133, 0.545, 0.133)
           : rgb(0, 0, 0);
 
-        page.drawText(member.name.substring(0, 28), {
+        page.drawText(safeLabel(member.name, 'Unknown').substring(0, 28), {
           x: memberCols[0].x + 2, y: drawY(y), size: 8, font: helvetica, color: rgb(0, 0, 0),
         });
         page.drawText(fmt(member.totalOwed), {
@@ -495,7 +528,8 @@ Deno.serve(async (req: Request) => {
     });
   } catch (err) {
     console.error('Statement generation error:', err);
-    return new Response(JSON.stringify({ error: 'Internal server error' }), {
+    const message = err instanceof Error ? err.message : 'Internal server error';
+    return new Response(JSON.stringify({ error: message || 'Internal server error' }), {
       status: 500,
       headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
     });

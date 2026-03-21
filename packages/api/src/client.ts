@@ -6,6 +6,7 @@ import {
 
 let _supabase: SupabaseClient | null = null;
 let _supabaseUrl: string | null = null;
+let _supabaseAnonKey: string | null = null;
 
 /**
  * Initialize the Supabase client. Must be called once before using any API functions.
@@ -22,6 +23,7 @@ export function initSupabase(
   }
 
   _supabaseUrl = url;
+  _supabaseAnonKey = anonKey;
   _supabase = createClient(url, anonKey, options);
   return _supabase;
 }
@@ -48,6 +50,18 @@ export function getSupabaseUrl(): string {
     );
   }
   return _supabaseUrl;
+}
+
+/**
+ * Get the initialized Supabase anon key. Throws if initSupabase() has not been called.
+ */
+export function getSupabaseAnonKey(): string {
+  if (!_supabaseAnonKey) {
+    throw new Error(
+      'Supabase not initialized. Call initSupabase(url, anonKey) before using any API functions.'
+    );
+  }
+  return _supabaseAnonKey;
 }
 
 /**
