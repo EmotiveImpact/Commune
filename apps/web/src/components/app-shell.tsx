@@ -306,8 +306,8 @@ export function AppShell({ children }: AppShellProps) {
             >
               <Menu.Target>
                 <Tooltip label={user?.name ?? 'Account'} position="right" withArrow disabled={!collapsed}>
-                  <UnstyledButton className="commune-sidebar-profile-row">
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, overflow: 'hidden' }}>
+                  <UnstyledButton className="commune-sidebar-profile-row" style={collapsed ? { display: 'flex', justifyContent: 'center' } : undefined}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: collapsed ? 0 : 10, overflow: 'hidden' }}>
                       <Avatar
                         src={user?.avatar_url}
                         name={user?.name}
