@@ -18,9 +18,13 @@ import { Link, useLocation, useNavigate } from '@tanstack/react-router';
 import {
   IconChevronsLeft,
   IconChevronsRight,
+  IconCreditCard,
+  IconDotsVertical,
+  IconLifebuoy,
   IconLogout,
   IconSearch,
   IconSettings,
+  IconUser,
 } from '@tabler/icons-react';
 import { useState, useCallback, type KeyboardEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -292,8 +296,14 @@ export function AppShell({ children }: AppShellProps) {
               )}
             </AnimatePresence>
 
-            {/* Profile + plan label */}
-            <Menu shadow="md" width={220} position={collapsed ? 'right-end' : 'top-start'} offset={8}>
+            {/* Profile + menu */}
+            <Menu
+              shadow="lg"
+              width={240}
+              position={collapsed ? 'right-end' : 'top-start'}
+              offset={8}
+              classNames={{ dropdown: 'commune-profile-menu' }}
+            >
               <Menu.Target>
                 <Tooltip label={user?.name ?? 'Account'} position="right" withArrow disabled={!collapsed}>
                   <UnstyledButton className="commune-sidebar-profile-row">
@@ -310,21 +320,44 @@ export function AppShell({ children }: AppShellProps) {
                         initial={false}
                         animate={{
                           opacity: collapsed ? 0 : 1,
-                          maxWidth: collapsed ? 0 : 180,
+                          maxWidth: collapsed ? 0 : 160,
                         }}
                         transition={sidebarTransition}
-                        style={{ overflow: 'hidden', minWidth: 0, whiteSpace: 'nowrap' }}
+                        style={{ overflow: 'hidden', minWidth: 0, whiteSpace: 'nowrap', flex: 1 }}
                       >
                         <Text size="sm" fw={600} truncate style={{ color: '#fff' }}>
                           {user?.name ?? 'Account'}
                         </Text>
                         <SidebarPlanLabel userId={user?.id} />
                       </motion.div>
+                      <motion.div
+                        initial={false}
+                        animate={{
+                          opacity: collapsed ? 0 : 0.5,
+                          maxWidth: collapsed ? 0 : 20,
+                        }}
+                        transition={sidebarTransition}
+                        style={{ overflow: 'hidden', flexShrink: 0, display: 'flex', alignItems: 'center' }}
+                      >
+                        <IconDotsVertical size={16} style={{ color: 'rgba(255,255,255,0.4)' }} />
+                      </motion.div>
                     </div>
                   </UnstyledButton>
                 </Tooltip>
               </Menu.Target>
               <Menu.Dropdown>
+                {/* User info header */}
+                <div style={{ padding: '8px 12px 4px' }}>
+                  <Text size="xs" c="dimmed" truncate>{user?.email}</Text>
+                </div>
+                <Menu.Divider />
+                <Menu.Item
+                  leftSection={<IconUser size={16} />}
+                  component={Link}
+                  to="/settings"
+                >
+                  Profile
+                </Menu.Item>
                 <Menu.Item
                   leftSection={<IconSettings size={16} />}
                   component={Link}
@@ -332,13 +365,28 @@ export function AppShell({ children }: AppShellProps) {
                 >
                   Settings
                 </Menu.Item>
+                <Menu.Item
+                  leftSection={<IconCreditCard size={16} />}
+                  component={Link}
+                  to="/pricing"
+                >
+                  Manage plan
+                </Menu.Item>
+                <Menu.Divider />
+                <Menu.Item
+                  leftSection={<IconLifebuoy size={16} />}
+                  component="a"
+                  href="mailto:support@commune.app"
+                >
+                  Get help
+                </Menu.Item>
                 <Menu.Divider />
                 <Menu.Item
                   leftSection={<IconLogout size={16} />}
                   color="red"
                   onClick={handleSignOut}
                 >
-                  Logout
+                  Log out
                 </Menu.Item>
               </Menu.Dropdown>
             </Menu>

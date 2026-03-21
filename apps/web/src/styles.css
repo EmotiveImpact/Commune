@@ -541,6 +541,49 @@ div:hover > .commune-avatar-overlay {
   color: rgba(255, 255, 255, 0.85);
 }
 
+/* Profile menu dropdown — dark theme matching sidebar */
+.commune-profile-menu {
+  background: var(--commune-forest, #1a2e28);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 4px;
+}
+
+.commune-profile-menu .mantine-Menu-item {
+  color: rgba(255, 255, 255, 0.85);
+  border-radius: 8px;
+  font-size: 0.85rem;
+}
+
+.commune-profile-menu .mantine-Menu-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.commune-profile-menu .mantine-Menu-item[data-color='red'] {
+  color: #f87171;
+}
+
+.commune-profile-menu .mantine-Menu-item[data-color='red']:hover {
+  background: rgba(248, 113, 113, 0.1);
+}
+
+.commune-profile-menu .mantine-Menu-itemSection {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.commune-profile-menu .mantine-Menu-item[data-color='red'] .mantine-Menu-itemSection {
+  color: #f87171;
+}
+
+.commune-profile-menu .mantine-Menu-divider {
+  border-color: rgba(255, 255, 255, 0.08);
+  margin: 4px 0;
+}
+
+.commune-profile-menu .mantine-Menu-label {
+  color: rgba(255, 255, 255, 0.4);
+}
+
 
 .commune-legend-dot {
   width: 10px;
