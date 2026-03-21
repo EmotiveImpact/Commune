@@ -306,8 +306,16 @@ export function AppShell({ children }: AppShellProps) {
             >
               <Menu.Target>
                 <Tooltip label={user?.name ?? 'Account'} position="right" withArrow disabled={!collapsed}>
-                  <UnstyledButton className="commune-sidebar-profile-row" style={collapsed ? { display: 'flex', justifyContent: 'center' } : undefined}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: collapsed ? 0 : 10, overflow: 'hidden' }}>
+                  <UnstyledButton className="commune-sidebar-profile-row">
+                    <motion.div
+                      initial={false}
+                      animate={{
+                        justifyContent: collapsed ? 'center' : 'flex-start',
+                        gap: collapsed ? 0 : 10,
+                      }}
+                      transition={sidebarTransition}
+                      style={{ display: 'flex', alignItems: 'center', overflow: 'hidden' }}
+                    >
                       <Avatar
                         src={user?.avatar_url}
                         name={user?.name}
@@ -341,7 +349,7 @@ export function AppShell({ children }: AppShellProps) {
                       >
                         <IconDotsVertical size={16} style={{ color: 'rgba(255,255,255,0.4)' }} />
                       </motion.div>
-                    </div>
+                    </motion.div>
                   </UnstyledButton>
                 </Tooltip>
               </Menu.Target>
