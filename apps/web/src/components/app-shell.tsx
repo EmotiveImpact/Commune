@@ -40,6 +40,9 @@ const SIDEBAR_STORAGE_KEY = 'commune-sidebar-collapsed';
 const SIDEBAR_WIDTH_EXPANDED = 260;
 const SIDEBAR_WIDTH_COLLAPSED = 72;
 
+const sidebarTransition = { duration: 0.25, ease: [0.4, 0, 0.2, 1] as [number, number, number, number] };
+const fadeTransition = { duration: 0.15, ease: 'easeOut' as const };
+
 interface AppShellProps {
   children: React.ReactNode;
 }
@@ -122,17 +125,43 @@ export function AppShell({ children }: AppShellProps) {
         aria-label="Main navigation"
         data-collapsed={collapsed || undefined}
       >
-        <Stack className="commune-sidebar-panel" data-collapsed={collapsed || undefined} justify="space-between">
+        <motion.div
+          className="commune-sidebar-panel"
+          data-collapsed={collapsed || undefined}
+          animate={{
+            padding: collapsed ? '1.25rem 0.5rem' : '1.25rem 1rem',
+          }}
+          transition={sidebarTransition}
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            height: '100%',
+            overflow: 'hidden',
+          }}
+        >
+          {/* ── Top section ── */}
           <div>
-            <Group
-              wrap="nowrap"
-              gap={4}
-              mb="xl"
-              align="center"
-              justify={collapsed ? 'center' : 'space-between'}
-              style={{ width: '100%' }}
+            {/* Logo row */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: '1.5rem',
+                position: 'relative',
+                minHeight: 44,
+              }}
             >
-              <Group wrap="nowrap" gap={4} align="center" justify={collapsed ? 'center' : undefined} style={collapsed ? undefined : { flex: 1 }}>
+              <motion.div
+                layout
+                transition={sidebarTransition}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4,
+                }}
+              >
                 <img
                   src="/logo.png"
                   alt="Commune"
@@ -147,8 +176,8 @@ export function AppShell({ children }: AppShellProps) {
                       initial={{ opacity: 0, width: 0 }}
                       animate={{ opacity: 1, width: 'auto' }}
                       exit={{ opacity: 0, width: 0 }}
-                      transition={{ duration: 0.2, ease: 'easeInOut' }}
-                      style={{ overflow: 'hidden', display: 'inline-flex' }}
+                      transition={sidebarTransition}
+                      style={{ overflow: 'hidden', display: 'inline-flex', whiteSpace: 'nowrap' }}
                     >
                       <Text
                         fw={600}
@@ -159,7 +188,6 @@ export function AppShell({ children }: AppShellProps) {
                           letterSpacing: '0.08em',
                           textTransform: 'uppercase',
                           fontFamily: "'Inter', sans-serif",
-                          marginLeft: 0,
                         }}
                       >
                         Commune
@@ -167,15 +195,18 @@ export function AppShell({ children }: AppShellProps) {
                     </motion.span>
                   )}
                 </AnimatePresence>
-              </Group>
+              </motion.div>
+
+              {/* Collapse button — top right, hover-only */}
               <AnimatePresence>
                 {!collapsed && (
                   <motion.div
                     key="collapse-btn"
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.8 }}
-                    transition={{ duration: 0.15 }}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={fadeTransition}
+                    style={{ position: 'absolute', right: 0, top: '50%', transform: 'translateY(-50%)' }}
                   >
                     <ActionIcon
                       variant="subtle"
@@ -189,8 +220,9 @@ export function AppShell({ children }: AppShellProps) {
                   </motion.div>
                 )}
               </AnimatePresence>
-            </Group>
+            </div>
 
+            {/* Menu label */}
             <AnimatePresence>
               {!collapsed && (
                 <motion.div
@@ -198,7 +230,7 @@ export function AppShell({ children }: AppShellProps) {
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
                   exit={{ opacity: 0, height: 0 }}
-                  transition={{ duration: 0.15 }}
+                  transition={sidebarTransition}
                   style={{ overflow: 'hidden' }}
                 >
                   <Text size="xs" fw={600} tt="uppercase" mb={6} px="xs" className="commune-sidebar-label">
@@ -207,35 +239,31 @@ export function AppShell({ children }: AppShellProps) {
                 </motion.div>
               )}
             </AnimatePresence>
-            <Stack className="commune-sidebar-nav">
-              {navLinks.map((link) =>
-                collapsed ? (
-                  <Tooltip key={link.to} label={link.label} position="right" withArrow>
-                    <NavLink
-                      label=""
-                      component={Link}
-                      to={link.to}
-                      leftSection={link.icon}
-                      variant="subtle"
-                      className="commune-sidebar-link commune-sidebar-link--collapsed"
-                      activeOptions={{ exact: link.to === '/' }}
-                    />
-                  </Tooltip>
-                ) : (
+
+            {/* Nav links — single set, animated with CSS */}
+            <Stack className="commune-sidebar-nav" gap={2}>
+              {navLinks.map((link) => (
+                <Tooltip
+                  key={link.to}
+                  label={link.label}
+                  position="right"
+                  withArrow
+                  disabled={!collapsed}
+                >
                   <NavLink
-                    key={link.to}
-                    label={link.label}
+                    label={collapsed ? '' : link.label}
                     component={Link}
                     to={link.to}
                     leftSection={link.icon}
                     variant="subtle"
-                    className="commune-sidebar-link"
+                    className={`commune-sidebar-link ${collapsed ? 'commune-sidebar-link--collapsed' : ''}`}
                     activeOptions={{ exact: link.to === '/' }}
                   />
-                ),
-              )}
+                </Tooltip>
+              ))}
             </Stack>
 
+            {/* Workspace selector */}
             <AnimatePresence>
               {!collapsed && (
                 <motion.div
@@ -243,7 +271,7 @@ export function AppShell({ children }: AppShellProps) {
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
                   exit={{ opacity: 0, height: 0 }}
-                  transition={{ duration: 0.2, ease: 'easeInOut' }}
+                  transition={sidebarTransition}
                   style={{ overflow: 'hidden' }}
                 >
                   <Box mt="1.5rem" px={4}>
@@ -254,7 +282,9 @@ export function AppShell({ children }: AppShellProps) {
             </AnimatePresence>
           </div>
 
+          {/* ── Bottom section ── */}
           <Stack gap={0}>
+            {/* Plan card */}
             <AnimatePresence>
               {!collapsed && (
                 <motion.div
@@ -262,7 +292,7 @@ export function AppShell({ children }: AppShellProps) {
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
                   exit={{ opacity: 0, height: 0 }}
-                  transition={{ duration: 0.2, ease: 'easeInOut' }}
+                  transition={sidebarTransition}
                   style={{ overflow: 'hidden' }}
                 >
                   <SidebarPlanCard userId={user?.id} />
@@ -270,21 +300,22 @@ export function AppShell({ children }: AppShellProps) {
               )}
             </AnimatePresence>
 
+            {/* Expand button (collapsed only) */}
             <AnimatePresence>
               {collapsed && (
                 <motion.div
                   key="expand-btn"
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.8 }}
-                  transition={{ duration: 0.15 }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={fadeTransition}
                   style={{ display: 'flex', justifyContent: 'center' }}
                 >
                   <Tooltip label="Expand sidebar" position="right" withArrow>
                     <ActionIcon
                       variant="subtle"
                       onClick={toggleCollapsed}
-                      className="commune-sidebar-collapse-btn"
+                      className="commune-sidebar-expand-btn"
                       aria-label="Expand sidebar"
                       size="md"
                       mb={8}
@@ -296,9 +327,10 @@ export function AppShell({ children }: AppShellProps) {
               )}
             </AnimatePresence>
 
-            {collapsed ? (
-              <Menu shadow="md" width={220} position="right-end" offset={8}>
-                <Menu.Target>
+            {/* Profile */}
+            <Menu shadow="md" width={220} position={collapsed ? 'right-end' : 'top-start'} offset={8}>
+              <Menu.Target>
+                {collapsed ? (
                   <Tooltip label={user?.name ?? 'Account'} position="right" withArrow>
                     <UnstyledButton className="commune-sidebar-profile-row" style={{ display: 'flex', justifyContent: 'center' }}>
                       <Avatar
@@ -310,28 +342,7 @@ export function AppShell({ children }: AppShellProps) {
                       />
                     </UnstyledButton>
                   </Tooltip>
-                </Menu.Target>
-                <Menu.Dropdown>
-                  <Menu.Item
-                    leftSection={<IconSettings size={16} />}
-                    component={Link}
-                    to="/settings"
-                  >
-                    Settings
-                  </Menu.Item>
-                  <Menu.Divider />
-                  <Menu.Item
-                    leftSection={<IconLogout size={16} />}
-                    color="red"
-                    onClick={handleSignOut}
-                  >
-                    Logout
-                  </Menu.Item>
-                </Menu.Dropdown>
-              </Menu>
-            ) : (
-              <Menu shadow="md" width={220} position="top-start" offset={8}>
-                <Menu.Target>
+                ) : (
                   <UnstyledButton className="commune-sidebar-profile-row">
                     <Group gap="sm" wrap="nowrap">
                       <Avatar
@@ -341,39 +352,43 @@ export function AppShell({ children }: AppShellProps) {
                         size={38}
                         radius="xl"
                       />
-                      <Box style={{ flex: 1, minWidth: 0 }}>
+                      <motion.div
+                        initial={false}
+                        animate={{ opacity: 1, width: 'auto' }}
+                        style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}
+                      >
                         <Text size="sm" fw={600} truncate style={{ color: '#fff' }}>
                           {user?.name ?? 'Account'}
                         </Text>
                         <Text size="xs" truncate style={{ color: 'rgba(255,255,255,0.5)' }}>
                           {user?.email}
                         </Text>
-                      </Box>
+                      </motion.div>
                       <IconChevronRight size={16} style={{ color: 'rgba(255,255,255,0.4)', flexShrink: 0 }} />
                     </Group>
                   </UnstyledButton>
-                </Menu.Target>
-                <Menu.Dropdown>
-                  <Menu.Item
-                    leftSection={<IconSettings size={16} />}
-                    component={Link}
-                    to="/settings"
-                  >
-                    Settings
-                  </Menu.Item>
-                  <Menu.Divider />
-                  <Menu.Item
-                    leftSection={<IconLogout size={16} />}
-                    color="red"
-                    onClick={handleSignOut}
-                  >
-                    Logout
-                  </Menu.Item>
-                </Menu.Dropdown>
-              </Menu>
-            )}
+                )}
+              </Menu.Target>
+              <Menu.Dropdown>
+                <Menu.Item
+                  leftSection={<IconSettings size={16} />}
+                  component={Link}
+                  to="/settings"
+                >
+                  Settings
+                </Menu.Item>
+                <Menu.Divider />
+                <Menu.Item
+                  leftSection={<IconLogout size={16} />}
+                  color="red"
+                  onClick={handleSignOut}
+                >
+                  Logout
+                </Menu.Item>
+              </Menu.Dropdown>
+            </Menu>
           </Stack>
-        </Stack>
+        </motion.div>
       </MantineAppShell.Navbar>
 
       <MantineAppShell.Main className="commune-main-content" role="main">

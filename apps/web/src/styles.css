@@ -482,12 +482,19 @@ div:hover > .commune-avatar-overlay {
 
 /* ── Collapsible sidebar ── */
 .commune-app-shell-navbar {
-  transition: width var(--commune-motion-medium);
+  transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.commune-sidebar-panel[data-collapsed] {
-  padding: 1.25rem 0.5rem;
-  align-items: center;
+/* Nav links: smooth padding + label transition */
+.commune-sidebar-link {
+  transition: padding 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+              justify-content 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.commune-sidebar-link .mantine-NavLink-body {
+  transition: opacity 0.2s ease, width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+  white-space: nowrap;
 }
 
 .commune-sidebar-link--collapsed {
@@ -497,20 +504,13 @@ div:hover > .commune-avatar-overlay {
 
 .commune-sidebar-link--collapsed .mantine-NavLink-section {
   margin: 0;
+  transition: margin 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .commune-sidebar-link--collapsed .mantine-NavLink-body {
+  opacity: 0;
+  width: 0;
   display: none;
-}
-
-.commune-sidebar-toggle {
-  color: rgba(255, 255, 255, 0.5);
-  border-radius: 8px;
-}
-
-.commune-sidebar-toggle:hover {
-  background: rgba(255, 255, 255, 0.08);
-  color: rgba(255, 255, 255, 0.85);
 }
 
 /* Collapse button: hidden by default, visible on sidebar hover */
@@ -518,7 +518,7 @@ div:hover > .commune-avatar-overlay {
   opacity: 0;
   color: rgba(255, 255, 255, 0.4);
   border-radius: 6px;
-  transition: opacity var(--commune-motion-fast), background var(--commune-motion-fast), color var(--commune-motion-fast);
+  transition: opacity 0.15s ease, background 0.15s ease, color 0.15s ease;
   flex-shrink: 0;
 }
 
@@ -528,6 +528,18 @@ div:hover > .commune-avatar-overlay {
 
 .commune-sidebar-collapse-btn:hover {
   opacity: 1;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.85);
+}
+
+/* Expand button: always visible when collapsed */
+.commune-sidebar-expand-btn {
+  color: rgba(255, 255, 255, 0.5);
+  border-radius: 8px;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.commune-sidebar-expand-btn:hover {
   background: rgba(255, 255, 255, 0.08);
   color: rgba(255, 255, 255, 0.85);
 }
