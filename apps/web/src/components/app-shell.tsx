@@ -124,9 +124,13 @@ export function AppShell({ children }: AppShellProps) {
         <Stack className="commune-sidebar-panel" data-collapsed={collapsed || undefined} justify="space-between">
           <div>
             <Group wrap="nowrap" gap="sm" mb="xl" px={4} justify={collapsed ? 'center' : undefined}>
-              <Box className="commune-brand-mark">
-                <img src="/favicon.svg" alt="Commune" width={18} height={18} style={{ display: 'block' }} />
-              </Box>
+              <img
+                src="/logo.png"
+                alt="Commune"
+                width={collapsed ? 32 : 36}
+                height={collapsed ? 32 : 36}
+                style={{ display: 'block', borderRadius: 8 }}
+              />
               {!collapsed && (
                 <Text fw={700} size="md" style={{ color: '#fff' }}>
                   Commune

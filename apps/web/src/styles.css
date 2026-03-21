@@ -202,17 +202,6 @@ div:hover > .commune-avatar-overlay {
   color: inherit;
 }
 
-.commune-brand-mark {
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  background: linear-gradient(145deg, #f3decb 0%, #d9ebe5 100%);
-  color: var(--commune-forest);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
 
 .commune-main-content {
   padding-top: calc(var(--app-shell-header-offset, 0rem) + 1.5rem);
