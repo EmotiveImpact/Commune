@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Alert, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { calculateEqualSplit, calculatePercentageSplit, createExpenseSchema } from '@commune/core';
 import type { ExpenseCategory as ExpenseCategoryType } from '@commune/types';
@@ -248,43 +249,39 @@ export default function NewExpenseScreen() {
 
   return (
     <Screen>
+      {/* Header */}
       <View className="mb-4 rounded-[32px] bg-[#1f2330] px-5 py-5">
-        <Text className="text-sm font-medium text-[rgba(255,255,255,0.72)]">Expense form</Text>
+        <Text className="text-sm font-medium text-[rgba(255,255,255,0.72)]">New expense</Text>
         <Text className="mt-2 text-[30px] font-bold leading-[36px] text-white">
           Add expense
         </Text>
         <Text className="mt-2 text-sm leading-6 text-[rgba(255,250,246,0.72)]">
-          Create a shared cost, decide who is included, and preview the split before you save it.
+          Create a shared cost, decide who is included, and preview the split.
         </Text>
       </View>
 
+      {/* Amount input -- large centered */}
+      <Surface className="mb-4 items-center">
+        <Text className="mb-1 text-sm font-medium text-[#667085]">Amount ({group.currency})</Text>
+        <View className="w-full items-center">
+          <TextField
+            label=""
+            placeholder="0.00"
+            value={amount}
+            onChangeText={setAmount}
+            keyboardType="decimal-pad"
+            hint={`Charged in ${group.currency}.`}
+          />
+        </View>
+      </Surface>
+
+      {/* Title, category, date, description */}
       <Surface className="mb-4">
         <TextField
           label="Title"
           placeholder="Electricity, cleaner, internet"
           value={title}
           onChangeText={setTitle}
-        />
-        <TextField
-          label="Amount"
-          placeholder="0.00"
-          value={amount}
-          onChangeText={setAmount}
-          keyboardType="decimal-pad"
-          hint={`Charged in ${group.currency}.`}
-        />
-        <DateField
-          label="Due date"
-          value={dueDate}
-          onChange={setDueDate}
-          hint="When this expense is due."
-        />
-        <TextField
-          label="Description"
-          placeholder="Optional note for the group"
-          value={description}
-          onChangeText={setDescription}
-          multiline
         />
 
         <Text className="mb-2 text-sm font-medium text-[#171b24]">Category</Text>
@@ -298,6 +295,21 @@ export default function NewExpenseScreen() {
             />
           ))}
         </View>
+
+        <DateField
+          label="Due date"
+          value={dueDate}
+          onChange={setDueDate}
+          hint="When this expense is due."
+        />
+
+        <TextField
+          label="Description"
+          placeholder="Optional note for the group"
+          value={description}
+          onChangeText={setDescription}
+          multiline
+        />
 
         <ToggleRow
           label="Recurring expense"
@@ -321,6 +333,7 @@ export default function NewExpenseScreen() {
         ) : null}
       </Surface>
 
+      {/* Participants */}
       <Surface className="mb-4">
         <Text className="text-lg font-semibold text-[#171b24]">Participants</Text>
         <Text className="mt-2 text-sm leading-6 text-[#667085]">
@@ -363,9 +376,16 @@ export default function NewExpenseScreen() {
                       {member.user.email}
                     </Text>
                   </View>
-                  <Text className="text-sm font-semibold text-[#2d6a4f]">
-                    {selected ? 'Included' : 'Add'}
-                  </Text>
+                  <View className="flex-row items-center">
+                    {selected ? (
+                      <View className="mr-2 h-6 w-6 items-center justify-center rounded-full bg-[#2d6a4f]">
+                        <Ionicons name="checkmark" size={14} color="#FFFFFF" />
+                      </View>
+                    ) : null}
+                    <Text className="text-sm font-semibold text-[#2d6a4f]">
+                      {selected ? 'Included' : 'Add'}
+                    </Text>
+                  </View>
                 </View>
               </TouchableOpacity>
             );
@@ -392,6 +412,7 @@ export default function NewExpenseScreen() {
         </ScrollView>
       </Surface>
 
+      {/* Split method */}
       <Surface className="mb-4">
         <Text className="text-lg font-semibold text-[#171b24]">Split method</Text>
         <View className="mt-4 flex-row">
@@ -455,13 +476,11 @@ export default function NewExpenseScreen() {
           : null}
       </Surface>
 
+      {/* Preview */}
       <Surface className="mb-4">
         <Text className="text-lg font-semibold text-[#171b24]">Preview</Text>
         <Text className="mt-2 text-sm leading-6 text-[#667085]">
           Double-check the split before saving.
-        </Text>
-        <Text className="mt-2 text-xs leading-5 text-[#667085]">
-          New expenses start with all active members included. Remove anyone who should not share this one.
         </Text>
 
         {splitPreview.length === 0 ? (
@@ -477,7 +496,7 @@ export default function NewExpenseScreen() {
             return (
               <View
                 key={row.userId}
-                className="mt-4 flex-row items-center justify-between rounded-2xl bg-[#F2F6EC] px-4 py-3"
+                className="mt-3 flex-row items-center justify-between rounded-2xl bg-[#F2F6EC] px-4 py-3"
               >
                 <Text className="text-sm font-medium text-[#171b24]">
                   {memberName}
@@ -491,12 +510,15 @@ export default function NewExpenseScreen() {
         )}
       </Surface>
 
-      <AppButton
-        label="Save expense"
-        icon="save-outline"
-        loading={createExpense.isPending}
-        onPress={handleSubmit}
-      />
+      {/* Submit */}
+      <View className="mb-4">
+        <AppButton
+          label="Create expense"
+          icon="add-circle-outline"
+          loading={createExpense.isPending}
+          onPress={handleSubmit}
+        />
+      </View>
     </Screen>
   );
 }

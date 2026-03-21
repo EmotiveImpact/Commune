@@ -10,7 +10,6 @@ import {
   AppButton,
   ContentSkeleton,
   EmptyState,
-  HeroPanel,
   InitialAvatar,
   Pill,
   Screen,
@@ -224,12 +223,22 @@ export default function ActivityScreen() {
 
   const ListHeader = (
     <View className="px-5 pt-5">
-      <HeroPanel
-        eyebrow="History"
-        title="Activity"
-        description={`Everything that happened in ${group?.name ?? 'this group'}`}
-        badgeLabel={`${filteredEntries.length} events`}
-      />
+      <View className="mb-4">
+        <Text className="text-[10px] font-semibold uppercase tracking-[3px] text-[#98a1b0]">
+          History
+        </Text>
+        <Text className="mt-1 text-2xl font-bold text-[#171b24]">Activity</Text>
+        <Text className="mt-1 text-sm text-[#667085]">
+          Everything that happened in {group?.name ?? 'this group'}
+        </Text>
+        <View className="mt-2 flex-row items-center">
+          <View className="rounded-full bg-[#EEF6F3] px-2.5 py-1">
+            <Text className="text-xs font-semibold text-[#2d6a4f]">
+              {filteredEntries.length} events
+            </Text>
+          </View>
+        </View>
+      </View>
 
       <ScrollView
         horizontal

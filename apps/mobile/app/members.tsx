@@ -19,7 +19,6 @@ import { GroupSwitcher } from '@/components/group-switcher';
 import {
   AppButton,
   EmptyState,
-  HeroPanel,
   InitialAvatar,
   ListRowCard,
   MembersSkeleton,
@@ -259,13 +258,23 @@ export default function MembersScreen() {
         onOpenSetup={() => router.push('/onboarding')}
       />
 
-      <HeroPanel
-        eyebrow="People and roles"
-        title="Members"
-        description="Manage who belongs to this group and who can administer it."
-        badgeLabel={`${totalMembers} people`}
-        contextLabel={`${group.name} · ${group.currency}`}
-      />
+      <View className="mb-4">
+        <Text className="text-[10px] font-semibold uppercase tracking-[3px] text-[#98a1b0]">
+          People and roles
+        </Text>
+        <Text className="mt-1 text-2xl font-bold text-[#171b24]">Members</Text>
+        <Text className="mt-1 text-sm text-[#667085]">
+          Manage who belongs to this group and who can administer it.
+        </Text>
+        <View className="mt-2 flex-row items-center" style={{ gap: 8 }}>
+          <View className="rounded-full bg-[#EEF6F3] px-2.5 py-1">
+            <Text className="text-xs font-semibold text-[#2d6a4f]">
+              {totalMembers} people
+            </Text>
+          </View>
+          <Text className="text-xs text-[#98a1b0]">{group.name} · {group.currency}</Text>
+        </View>
+      </View>
 
       <View className="mb-1 flex-row flex-wrap justify-between">
         <View style={{ width: '48.5%' }}>

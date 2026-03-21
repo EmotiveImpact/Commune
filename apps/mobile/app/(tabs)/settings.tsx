@@ -11,7 +11,6 @@ import { usePortal, useSubscription } from '@/hooks/use-subscriptions';
 import {
   AppButton,
   EmptyState,
-  HeroPanel,
   InitialAvatar,
   Screen,
   SettingsSkeleton,
@@ -181,11 +180,15 @@ export default function SettingsScreen() {
 
   return (
     <Screen>
-      <HeroPanel
-        eyebrow="Profile and billing"
-        title="Settings"
-        description="Update your details, keep notification preferences under control, and manage billing."
-      />
+      <View className="mb-4">
+        <Text className="text-[10px] font-semibold uppercase tracking-[3px] text-[#98a1b0]">
+          Profile and billing
+        </Text>
+        <Text className="mt-1 text-2xl font-bold text-[#171b24]">Settings</Text>
+        <Text className="mt-1 text-sm leading-5 text-[#667085]">
+          Update your details, keep notification preferences under control, and manage billing.
+        </Text>
+      </View>
 
       <Surface className="mb-4">
         <View className="flex-row items-center">

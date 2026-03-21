@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
-import { Alert, Text, View } from 'react-native';
+import { Alert, Text, TouchableOpacity, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { calculateReimbursements } from '@commune/core';
 import type { PaymentRecord } from '@commune/types';
@@ -18,10 +19,7 @@ import {
   AppButton,
   ContentSkeleton,
   EmptyState,
-  HeroPanel,
-  ListRowCard,
   Screen,
-  StatCard,
   StatusChip,
   Surface,
 } from '@/components/ui';
@@ -191,96 +189,109 @@ export default function ExpenseDetailScreen() {
         onOpenSetup={() => router.push('/onboarding')}
       />
 
-      <HeroPanel
-        eyebrow="Expense detail"
-        title={expenseData.title}
-        description={
-          expenseData.description ||
-          'Review the split, payment status, and who this expense affects.'
-        }
-        badgeLabel={`Due ${formatDate(expenseData.due_date)}`}
-        contextLabel={`${group.name} · ${expenseData.currency}`}
-      />
+      {/* Header with back and edit */}
+      <View className="mb-2 flex-row items-center justify-between">
+        <TouchableOpacity
+          className="h-10 w-10 items-center justify-center rounded-full bg-white"
+          activeOpacity={0.86}
+          onPress={() => router.back()}
+          style={{ borderWidth: 1, borderColor: 'rgba(23,27,36,0.14)' }}
+        >
+          <Ionicons name="arrow-back" size={20} color="#171b24" />
+        </TouchableOpacity>
+        {isAdmin ? (
+          <TouchableOpacity
+            className="h-10 w-10 items-center justify-center rounded-full bg-white"
+            activeOpacity={0.86}
+            onPress={() => router.push(`/expenses/${expenseData.id}/edit`)}
+            style={{ borderWidth: 1, borderColor: 'rgba(23,27,36,0.14)' }}
+          >
+            <Ionicons name="create-outline" size={20} color="#171b24" />
+          </TouchableOpacity>
+        ) : null}
+      </View>
 
-      <Surface className="mb-4">
-        <Text className="text-sm font-medium uppercase tracking-[2px] text-[#667085]">
-          Status
+      {/* Big amount display */}
+      <View className="mb-2 items-center py-6">
+        <Text className="text-center text-[42px] font-black text-[#171b24]">
+          {formatCurrency(expenseData.amount, expenseData.currency)}
         </Text>
-        <View className="mt-3 flex-row flex-wrap">
+        <View className="mt-3 flex-row items-center">
           <StatusChip label={formatCategoryLabel(expenseData.category)} tone="emerald" />
-          {expenseData.recurrence_type !== 'none' ? (
-            <StatusChip label={expenseData.recurrence_type} tone="forest" />
-          ) : null}
           {overdue ? (
             <StatusChip label="Overdue" tone="danger" />
           ) : (
             <StatusChip label="On track" tone="neutral" />
           )}
-          {expenseData.paid_by_user?.name ? (
-            <StatusChip
-              label={`Paid by ${expenseData.paid_by_user.name}`}
-              tone="sky"
-            />
+          {expenseData.recurrence_type !== 'none' ? (
+            <StatusChip label={expenseData.recurrence_type} tone="forest" />
           ) : null}
         </View>
-        <View className="mt-5 flex-row">
-          {isAdmin ? (
-            <>
-              <View className="mr-3 flex-1">
-                <AppButton
-                  label="Edit"
-                  variant="secondary"
-                  icon="create-outline"
-                  onPress={() => router.push(`/expenses/${expenseData.id}/edit`)}
-                />
-              </View>
-              <View className="flex-1">
-                <AppButton
-                  label="Archive"
-                  variant="danger"
-                  icon="archive-outline"
-                  loading={archiveExpense.isPending}
-                  onPress={handleArchive}
-                />
-              </View>
-            </>
-          ) : null}
+      </View>
+
+      {/* Details card */}
+      <Surface className="mb-4">
+        <Text className="mb-3 text-sm font-medium uppercase tracking-[2px] text-[#667085]">
+          Details
+        </Text>
+
+        <View className="mb-3">
+          <Text className="text-sm text-[#667085]">Title</Text>
+          <Text className="mt-1 text-base font-semibold text-[#171b24]">
+            {expenseData.title}
+          </Text>
+        </View>
+
+        {expenseData.description ? (
+          <View className="mb-3">
+            <Text className="text-sm text-[#667085]">Description</Text>
+            <Text className="mt-1 text-base text-[#171b24]">
+              {expenseData.description}
+            </Text>
+          </View>
+        ) : null}
+
+        <View className="flex-row">
+          <View className="mr-6 flex-1">
+            <Text className="text-sm text-[#667085]">Due date</Text>
+            <Text className="mt-1 text-base font-medium text-[#171b24]">
+              {formatDate(expenseData.due_date)}
+            </Text>
+          </View>
+          <View className="flex-1">
+            <Text className="text-sm text-[#667085]">Group</Text>
+            <Text className="mt-1 text-base font-medium text-[#171b24]">
+              {group.name}
+            </Text>
+          </View>
+        </View>
+
+        {expenseData.paid_by_user?.name ? (
+          <View className="mt-3">
+            <Text className="text-sm text-[#667085]">Paid by</Text>
+            <Text className="mt-1 text-base font-medium text-[#171b24]">
+              {expenseData.paid_by_user.name}
+            </Text>
+          </View>
+        ) : null}
+
+        <View className="mt-3 flex-row">
+          <View className="mr-4">
+            <Text className="text-sm text-[#667085]">Marked paid</Text>
+            <Text className="mt-1 text-lg font-bold text-[#2d6a4f]">{paidCount}</Text>
+          </View>
+          <View>
+            <Text className="text-sm text-[#667085]">Confirmed</Text>
+            <Text className="mt-1 text-lg font-bold text-[#2d6a4f]">{confirmedCount}</Text>
+          </View>
         </View>
       </Surface>
 
-      <StatCard
-        icon="wallet-outline"
-        label="Total amount"
-        value={formatCurrency(expenseData.amount, expenseData.currency)}
-        note={`Due ${formatDate(expenseData.due_date)}`}
-        tone="emerald"
-      />
-      <StatCard
-        icon="people-outline"
-        label="Participants"
-        value={String(expenseData.participants.length)}
-        note="Included in the split"
-        tone="forest"
-      />
-      <StatCard
-        icon="checkmark-done-outline"
-        label="Marked paid"
-        value={String(paidCount)}
-        note="Payments submitted"
-        tone="sky"
-      />
-      <StatCard
-        icon="shield-checkmark-outline"
-        label="Confirmed"
-        value={String(confirmedCount)}
-        note="Admin approved"
-        tone="sand"
-      />
-
+      {/* Participants card */}
       <Surface className="mb-4">
-        <Text className="text-lg font-semibold text-[#171b24]">Split breakdown</Text>
-        <Text className="mt-2 text-sm leading-6 text-[#667085]">
-          Who owes what, who has paid, and what still needs confirming.
+        <Text className="mb-1 text-lg font-semibold text-[#171b24]">Participants</Text>
+        <Text className="mb-2 text-sm leading-6 text-[#667085]">
+          {expenseData.participants.length} people sharing this expense
         </Text>
 
         {expenseData.participants.map((participant) => {
@@ -295,27 +306,35 @@ export default function ExpenseDetailScreen() {
           const isCurrentUser = participant.user_id === user?.id;
 
           return (
-            <ListRowCard
+            <View
               key={participant.id}
-              title={`${participant.user.name}${isCurrentUser ? ' · You' : ''}`}
-              subtitle={`Share ${formatCurrency(participant.share_amount, expenseData.currency)}`}
-              amount={status}
-              amountColor="#667085"
+              className="mt-3 rounded-[22px] border border-[rgba(23,27,36,0.14)] bg-[#fbf7f1] p-4"
             >
-              <View className="flex-row flex-wrap">
+              <View className="flex-row items-start justify-between">
+                <View className="mr-3 flex-1">
+                  <Text className="text-base font-semibold text-[#171b24]">
+                    {participant.user.name}{isCurrentUser ? ' (You)' : ''}
+                  </Text>
+                  <Text className="mt-1 text-sm font-medium text-[#2d6a4f]">
+                    {formatCurrency(participant.share_amount, expenseData.currency)}
+                  </Text>
+                </View>
                 <StatusChip label={status} tone={statusTone} />
-                {payment?.confirmed_by ? (
-                  <StatusChip label="Admin confirmed" tone="forest" />
-                ) : null}
               </View>
 
+              {payment?.confirmed_by ? (
+                <View className="mt-2">
+                  <StatusChip label="Admin confirmed" tone="forest" />
+                </View>
+              ) : null}
+
               {payment?.note ? (
-                <Text className="mt-3 text-sm italic text-[#667085]">
-                  “{payment.note}”
+                <Text className="mt-2 text-sm italic text-[#667085]">
+                  "{payment.note}"
                 </Text>
               ) : null}
 
-              <View className="mt-4 flex-row">
+              <View className="mt-3 flex-row">
                 {isCurrentUser ? (
                   <View className="mr-2 flex-1">
                     <AppButton
@@ -342,13 +361,14 @@ export default function ExpenseDetailScreen() {
                   </View>
                 ) : null}
               </View>
-            </ListRowCard>
+            </View>
           );
         })}
       </Surface>
 
+      {/* Reimbursement plan */}
       {reimbursements.length > 0 ? (
-        <Surface>
+        <Surface className="mb-4">
           <Text className="text-lg font-semibold text-[#171b24]">
             Reimbursement plan
           </Text>
@@ -367,7 +387,7 @@ export default function ExpenseDetailScreen() {
             return (
               <View
                 key={`${entry.userId}-${entry.owesTo}`}
-                className="mt-4 rounded-2xl bg-[#fbf7f1] px-4 py-3"
+                className="mt-3 rounded-2xl bg-[#F2F6EC] px-4 py-3"
               >
                 <Text className="text-sm text-[#171b24]">
                   <Text className="font-semibold">{from}</Text> pays{' '}
@@ -378,6 +398,31 @@ export default function ExpenseDetailScreen() {
             );
           })}
         </Surface>
+      ) : null}
+
+      {/* Action buttons */}
+      {isAdmin ? (
+        <View className="mb-4">
+          <View className="mb-3 flex-row" style={{ gap: 12 }}>
+            <View className="flex-1">
+              <AppButton
+                label="Edit"
+                variant="secondary"
+                icon="create-outline"
+                onPress={() => router.push(`/expenses/${expenseData.id}/edit`)}
+              />
+            </View>
+            <View className="flex-1">
+              <AppButton
+                label="Delete"
+                variant="danger"
+                icon="trash-outline"
+                loading={archiveExpense.isPending}
+                onPress={handleArchive}
+              />
+            </View>
+          </View>
+        </View>
       ) : null}
     </Screen>
   );

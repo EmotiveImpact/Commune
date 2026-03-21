@@ -13,6 +13,7 @@ import {
   useArchiveRecurring,
 } from '@/hooks/use-recurring-management';
 import {
+  AppButton,
   ContentSkeleton,
   EmptyState,
   HeroPanel,
@@ -26,10 +27,50 @@ import { formatCategoryLabel } from '@/lib/ui';
 
 type Tab = 'active' | 'paused';
 
+const CATEGORY_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
+  shopping: 'bag-outline',
+  food: 'restaurant-outline',
+  transport: 'car-outline',
+  bills: 'document-text-outline',
+  entertainment: 'game-controller-outline',
+  groceries: 'cart-outline',
+  rent: 'home-outline',
+  utilities: 'flash-outline',
+  subscriptions: 'card-outline',
+  other: 'ellipsis-horizontal-circle-outline',
+};
+
+const CATEGORY_COLORS: Record<string, { bg: string; icon: string }> = {
+  shopping: { bg: '#F3EEFF', icon: '#6D5DC7' },
+  food: { bg: '#E8F0FE', icon: '#1a56db' },
+  transport: { bg: '#FFF1DB', icon: '#C4620A' },
+  bills: { bg: '#EEF6F3', icon: '#2d6a4f' },
+  entertainment: { bg: '#E8FAF5', icon: '#0D9488' },
+  groceries: { bg: '#FEE8E8', icon: '#B9382F' },
+  rent: { bg: '#F2F6EC', icon: '#55704B' },
+  utilities: { bg: '#FFF8E1', icon: '#C4620A' },
+  subscriptions: { bg: '#F4F1F8', icon: '#4F4660' },
+  other: { bg: '#F1ECE4', icon: '#667085' },
+};
+
+const FREQ_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
+  weekly: { label: 'Weekly', color: '#1a56db', bg: '#E8F0FE' },
+  monthly: { label: 'Monthly', color: '#2d6a4f', bg: '#EEF6F3' },
+  yearly: { label: 'Yearly', color: '#4F4660', bg: '#F4F1F8' },
+};
+
 function extractPausedType(description: string | null): string {
   if (!description) return 'unknown';
   const match = description.match(/\[paused:(weekly|monthly)\]/);
   return match?.[1] ?? 'unknown';
+}
+
+function getCategoryIcon(category: string): keyof typeof Ionicons.glyphMap {
+  return CATEGORY_ICONS[category?.toLowerCase()] ?? 'ellipsis-horizontal-circle-outline';
+}
+
+function getCategoryColor(category: string): { bg: string; icon: string } {
+  return CATEGORY_COLORS[category?.toLowerCase()] ?? { bg: '#F1ECE4', icon: '#667085' };
 }
 
 export default function RecurringScreen() {
@@ -96,6 +137,9 @@ export default function RecurringScreen() {
       ? extractPausedType(expense.description)
       : expense.recurrence_type;
     const isPaused = tab === 'paused';
+    const catColor = getCategoryColor(expense.category);
+    const catIcon = getCategoryIcon(expense.category);
+    const freqConfig = FREQ_CONFIG[freq] ?? { label: freq, color: '#667085', bg: '#F1ECE4' };
 
     return (
       <View className="mx-5 mb-3">
@@ -104,72 +148,80 @@ export default function RecurringScreen() {
             activeOpacity={0.8}
             onPress={() => router.push(`/expenses/${expense.id}`)}
           >
-            <View className="flex-row items-start justify-between">
+            <View className="flex-row items-center">
+              {/* Category icon */}
+              <View
+                className="mr-3 h-11 w-11 items-center justify-center rounded-full"
+                style={{ backgroundColor: catColor.bg }}
+              >
+                <Ionicons name={catIcon} size={20} color={catColor.icon} />
+              </View>
+
+              {/* Title + frequency */}
               <View className="mr-3 flex-1">
                 <Text className="text-base font-semibold text-[#171b24]" numberOfLines={1}>
                   {expense.title}
                 </Text>
-                <Text className="mt-1 text-sm text-[#667085]">
-                  {formatCategoryLabel(expense.category)} · Due {formatDate(expense.due_date)}
-                </Text>
+                <View className="mt-1 flex-row items-center">
+                  <View
+                    className="mr-2 rounded-full px-2 py-0.5"
+                    style={{ backgroundColor: isPaused ? '#FFF1DB' : freqConfig.bg }}
+                  >
+                    <Text
+                      className="text-[11px] font-semibold"
+                      style={{ color: isPaused ? '#8A593B' : freqConfig.color }}
+                    >
+                      {isPaused ? 'Paused' : freqConfig.label}
+                    </Text>
+                  </View>
+                  <Text className="text-xs text-[#667085]">
+                    {formatCategoryLabel(expense.category)}
+                  </Text>
+                </View>
               </View>
-              <Text className="text-lg font-bold text-[#171b24]">
-                {formatCurrency(expense.amount, group?.currency)}
-              </Text>
-            </View>
 
-            <View className="mt-3 flex-row items-center">
-              <View
-                className="mr-2 rounded-full px-3 py-1"
-                style={{
-                  backgroundColor: isPaused ? '#FFF1DB' : freq === 'weekly' ? '#E8F0FE' : '#EEF6F3',
-                }}
-              >
-                <Text
-                  className="text-xs font-semibold"
-                  style={{
-                    color: isPaused ? '#8A593B' : freq === 'weekly' ? '#1a56db' : '#2d6a4f',
-                  }}
-                >
-                  {isPaused ? `Paused (${freq})` : freq}
+              {/* Amount + due date */}
+              <View className="items-end">
+                <Text className="text-base font-bold text-[#171b24]">
+                  {formatCurrency(expense.amount, group?.currency)}
+                </Text>
+                <Text className="mt-1 text-xs text-[#667085]">
+                  Due {formatDate(expense.due_date)}
                 </Text>
               </View>
-              <Text className="text-xs text-[#667085]">
-                {expense.participants?.length ?? 0} member{(expense.participants?.length ?? 0) !== 1 ? 's' : ''}
-              </Text>
             </View>
           </TouchableOpacity>
 
-          {/* Action buttons */}
-          <View className="mt-4 flex-row" style={{ gap: 8 }}>
+          {/* Pause/resume toggle + archive */}
+          <View className="mt-4 flex-row items-center border-t border-[rgba(23,27,36,0.06)] pt-3" style={{ gap: 8 }}>
             {isPaused ? (
               <TouchableOpacity
                 activeOpacity={0.8}
-                className="flex-1 flex-row items-center justify-center rounded-2xl bg-[#1f2330] py-3"
+                className="flex-1 flex-row items-center justify-center rounded-2xl bg-[#2d6a4f] py-2.5"
                 onPress={() => handleResume(expense.id)}
                 disabled={resumeMutation.isPending}
               >
-                <Ionicons name="play-outline" size={16} color="#fff" />
-                <Text className="ml-2 text-sm font-semibold text-white">Resume</Text>
+                <Ionicons name="play-outline" size={15} color="#fff" />
+                <Text className="ml-1.5 text-sm font-semibold text-white">Resume</Text>
               </TouchableOpacity>
             ) : (
               <TouchableOpacity
                 activeOpacity={0.8}
-                className="flex-1 flex-row items-center justify-center rounded-2xl border border-[rgba(23,27,36,0.14)] bg-white py-3"
+                className="flex-1 flex-row items-center justify-center rounded-2xl border border-[rgba(23,27,36,0.14)] bg-white py-2.5"
                 onPress={() => handlePause(expense.id)}
                 disabled={pauseMutation.isPending}
               >
-                <Ionicons name="pause-outline" size={16} color="#171b24" />
-                <Text className="ml-2 text-sm font-semibold text-[#171b24]">Pause</Text>
+                <Ionicons name="pause-outline" size={15} color="#171b24" />
+                <Text className="ml-1.5 text-sm font-semibold text-[#171b24]">Pause</Text>
               </TouchableOpacity>
             )}
             <TouchableOpacity
               activeOpacity={0.8}
-              className="flex-row items-center justify-center rounded-2xl border border-[rgba(185,56,47,0.2)] px-4 py-3"
+              className="flex-row items-center justify-center rounded-2xl border border-[rgba(185,56,47,0.15)] px-3 py-2.5"
               onPress={() => handleArchive(expense.id, expense.title)}
               disabled={archiveMutation.isPending}
             >
-              <Ionicons name="trash-outline" size={16} color="#B9382F" />
+              <Ionicons name="trash-outline" size={15} color="#B9382F" />
             </TouchableOpacity>
           </View>
         </Surface>
@@ -213,7 +265,7 @@ export default function RecurringScreen() {
     <View className="px-5 pt-5">
       <HeroPanel
         eyebrow="Automation"
-        title="Recurring expenses"
+        title="Recurring"
         description="Manage expenses that automatically repeat on a schedule."
         badgeLabel={`${(activeExpenses ?? []).length} active`}
         contextLabel={group ? `${group.name} · ${group.currency}` : undefined}
@@ -231,29 +283,11 @@ export default function RecurringScreen() {
         </View>
         <View style={{ width: '48.5%' }}>
           <StatCard
-            icon="pause-outline"
-            label="Paused"
-            value={String((pausedExpenses ?? []).length)}
-            note="On hold"
-            tone="sand"
-          />
-        </View>
-        <View style={{ width: '48.5%' }}>
-          <StatCard
             icon="wallet-outline"
             label="Monthly total"
             value={formatCurrency(monthlyTotal, group?.currency)}
             note="Active recurring spend"
             tone="forest"
-          />
-        </View>
-        <View style={{ width: '48.5%' }}>
-          <StatCard
-            icon="calendar-outline"
-            label="Total"
-            value={String((activeExpenses ?? []).length + (pausedExpenses ?? []).length)}
-            note="All recurring items"
-            tone="sky"
           />
         </View>
       </View>
@@ -274,6 +308,16 @@ export default function RecurringScreen() {
     </View>
   );
 
+  const ListFooter = (
+    <View className="mx-5 mt-2 mb-4">
+      <AppButton
+        label="Add recurring expense"
+        icon="add-outline"
+        onPress={() => router.push('/add-expense')}
+      />
+    </View>
+  );
+
   return (
     <FlatList
       data={expenses}
@@ -283,6 +327,7 @@ export default function RecurringScreen() {
       contentContainerStyle={{ paddingBottom: 120 }}
       showsVerticalScrollIndicator={false}
       ListHeaderComponent={ListHeader}
+      ListFooterComponent={ListFooter}
       ListEmptyComponent={
         <View className="px-5">
           <EmptyState

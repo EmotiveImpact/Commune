@@ -332,7 +332,220 @@ export default function DashboardScreen() {
         ))}
       </View>
 
-      {/* 4. Trial card (conditional) */}
+      {/* 4. Weekly Activity Tracker */}
+      {(() => {
+        const now = new Date();
+        const dayOfWeek = now.getDay(); // 0=Sun
+        const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+        const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() + mondayOffset);
+        const dayLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+        const daysWithExpenses = new Set<number>();
+
+        for (const expense of expenses) {
+          const expDate = new Date(expense.due_date);
+          const diffDays = Math.floor((expDate.getTime() - monday.getTime()) / (1000 * 60 * 60 * 24));
+          if (diffDays >= 0 && diffDays < 7) {
+            daysWithExpenses.add(diffDays);
+          }
+        }
+
+        const todayIndex = Math.floor((now.getTime() - monday.getTime()) / (1000 * 60 * 60 * 24));
+        const completedDays = daysWithExpenses.size;
+        const remainingDays = Math.max(0, 7 - completedDays);
+
+        return (
+          <Surface className="mb-4">
+            <View className="mb-3 flex-row items-center">
+              <Ionicons name="bar-chart-outline" size={18} color="#2d6a4f" />
+              <Text className="ml-2 text-base font-semibold text-[#171b24]">Weekly Activity</Text>
+            </View>
+            <View className="flex-row justify-between" style={{ gap: 8 }}>
+              {dayLabels.map((label, index) => {
+                const hasExpense = daysWithExpenses.has(index);
+                const isFuture = index > todayIndex;
+
+                return (
+                  <View key={`day-${index}`} className="items-center" style={{ flex: 1 }}>
+                    <View
+                      style={{
+                        width: 36,
+                        height: 36,
+                        borderRadius: 18,
+                        backgroundColor: hasExpense ? '#2d6a4f' : isFuture ? 'transparent' : '#E8E1E1',
+                        borderWidth: isFuture ? 1.5 : 0,
+                        borderColor: isFuture ? '#D1D5DB' : 'transparent',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      {hasExpense ? (
+                        <Ionicons name="checkmark" size={16} color="#FFFFFF" />
+                      ) : (
+                        <Text
+                          style={{
+                            fontSize: 12,
+                            fontWeight: '600',
+                            color: isFuture ? '#D1D5DB' : '#98a1b0',
+                          }}
+                        >
+                          {label}
+                        </Text>
+                      )}
+                    </View>
+                    <Text className="mt-1 text-[10px] text-[#98a1b0]">{label}</Text>
+                  </View>
+                );
+              })}
+            </View>
+            {remainingDays > 0 ? (
+              <Text className="mt-3 text-xs text-[#667085]">
+                Track for {remainingDays} more day{remainingDays !== 1 ? 's' : ''} this week to complete your streak
+              </Text>
+            ) : (
+              <Text className="mt-3 text-xs font-semibold text-[#2d6a4f]">
+                Perfect week! You tracked every day.
+              </Text>
+            )}
+          </Surface>
+        );
+      })()}
+
+      {/* 5. Group Challenge Card */}
+      {(() => {
+        const now = new Date();
+        let consecutiveDays = 0;
+
+        for (let i = 0; i < 7; i++) {
+          const checkDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i);
+          const dateStr = checkDate.toISOString().slice(0, 10);
+          const hasExpenseOnDay = expenses.some(
+            (e) => e.due_date.slice(0, 10) === dateStr
+          );
+          if (hasExpenseOnDay) {
+            consecutiveDays++;
+          } else {
+            break;
+          }
+        }
+
+        return (
+          <View className="mb-4 overflow-hidden rounded-2xl bg-white" style={{ borderLeftWidth: 3, borderLeftColor: '#2d6a4f' }}>
+            <View className="p-5">
+            <View className="mb-2 flex-row items-center">
+              <Ionicons name="gift-outline" size={18} color="#2d6a4f" />
+              <Text className="ml-2 text-base font-semibold text-[#171b24]">Savings Challenge</Text>
+            </View>
+            <View className="flex-row" style={{ gap: 6 }}>
+              {Array.from({ length: 7 }).map((_, i) => (
+                <View
+                  key={`dot-${i}`}
+                  style={{
+                    width: 10,
+                    height: 10,
+                    borderRadius: 5,
+                    backgroundColor: i < consecutiveDays ? (i < 3 ? '#E8820C' : '#2d6a4f') : '#D1D5DB',
+                  }}
+                />
+              ))}
+            </View>
+            <Text className="mt-3 text-xs text-[#667085]">
+              {consecutiveDays >= 7
+                ? 'Challenge complete! You tracked 7 days straight.'
+                : `Track expenses for 7 days straight to earn insights (${consecutiveDays}/7)`}
+            </Text>
+            </View>
+          </View>
+        );
+      })()}
+
+      {/* 6. Quick Stats Row */}
+      <View className="mb-4 flex-row" style={{ gap: 12 }}>
+        <Surface className="flex-1">
+          <View className="flex-row items-center">
+            <View
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: 16,
+                backgroundColor: '#EEF6F3',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginRight: 10,
+              }}
+            >
+              <Ionicons name="people-outline" size={16} color="#2d6a4f" />
+            </View>
+            <View>
+              <Text className="text-lg font-bold text-[#171b24]">
+                {group?.members?.length ?? 0}
+              </Text>
+              <Text className="text-[10px] text-[#98a1b0]">Members</Text>
+            </View>
+          </View>
+        </Surface>
+        <Surface className="flex-1">
+          <View className="flex-row items-center">
+            <View
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: 16,
+                backgroundColor: '#FCF4ED',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginRight: 10,
+              }}
+            >
+              <Ionicons name="grid-outline" size={16} color="#8A593B" />
+            </View>
+            <View>
+              <Text className="text-lg font-bold text-[#171b24]">
+                {new Set(expenses.map((e) => e.category)).size}
+              </Text>
+              <Text className="text-[10px] text-[#98a1b0]">Categories</Text>
+            </View>
+          </View>
+        </Surface>
+      </View>
+
+      {/* 7. Settle Up Section */}
+      {remainingAmount > 0 ? (
+        <Surface className="mb-4">
+          <View className="mb-3 flex-row items-center justify-between">
+            <View className="flex-row items-center">
+              <Ionicons name="swap-horizontal-outline" size={18} color="#2d6a4f" />
+              <Text className="ml-2 text-base font-semibold text-[#171b24]">Settle Up</Text>
+            </View>
+          </View>
+          <View className="flex-row items-center justify-between rounded-2xl bg-[#F8F6F2] px-4 py-3">
+            <View className="flex-1">
+              <Text className="text-sm text-[#667085]">Your remaining share</Text>
+              <Text className="mt-1 text-lg font-bold text-[#B9382F]">
+                {formatCurrency(remainingAmount, group?.currency)}
+              </Text>
+            </View>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => router.push('/(tabs)/expenses')}
+              style={{
+                backgroundColor: '#2d6a4f',
+                paddingHorizontal: 16,
+                paddingVertical: 10,
+                borderRadius: 12,
+              }}
+            >
+              <Text className="text-sm font-semibold text-white">Settle up</Text>
+            </TouchableOpacity>
+          </View>
+          {(stats?.overdue_count ?? 0) > 0 ? (
+            <Text className="mt-2 text-xs text-[#B9382F]">
+              {stats?.overdue_count} overdue expense{(stats?.overdue_count ?? 0) !== 1 ? 's' : ''} need attention
+            </Text>
+          ) : null}
+        </Surface>
+      ) : null}
+
+      {/* 8. Trial card (conditional) */}
       {isOnTrial ? (
         <Surface
           className="mb-4"
@@ -372,7 +585,7 @@ export default function DashboardScreen() {
         </Surface>
       ) : null}
 
-      {/* 5. Recent expenses */}
+      {/* 9. Recent expenses */}
       <View className="mb-4">
         <View className="mb-3 flex-row items-center justify-between">
           <Text className="text-lg font-semibold text-[#171b24]">Recent</Text>
@@ -440,7 +653,7 @@ export default function DashboardScreen() {
         )}
       </View>
 
-      {/* 6. Monthly trend (simplified bar chart) */}
+      {/* 10. Monthly trend (simplified bar chart) */}
       <View className="mb-4">
         <Text className="mb-3 text-lg font-semibold text-[#171b24]">Spending trend</Text>
         <Surface>

@@ -157,24 +157,34 @@ export default function EditExpenseScreen() {
 
   return (
     <Screen>
+      {/* Header */}
       <View className="mb-4 rounded-[32px] bg-[#1f2330] px-5 py-5">
-        <Text className="text-sm font-medium text-[rgba(255,255,255,0.72)]">Expense form</Text>
+        <Text className="text-sm font-medium text-[rgba(255,255,255,0.72)]">Edit expense</Text>
         <Text className="mt-2 text-[30px] font-bold leading-[36px] text-white">
-          Edit expense
+          {expense.title}
         </Text>
         <Text className="mt-2 text-sm leading-6 text-[rgba(255,250,246,0.72)]">
-          Update the basics while keeping the existing split intact.
+          Update the details while keeping the existing split intact.
         </Text>
       </View>
 
+      {/* Amount */}
+      <Surface className="mb-4">
+        <Text className="mb-2 text-sm font-medium text-[#171b24]">Amount</Text>
+        <View className="items-center rounded-2xl border border-[rgba(23,27,36,0.14)] bg-[#fbf7f1] px-4 py-5">
+          <TextField
+            label=""
+            value={amount}
+            onChangeText={setAmount}
+            keyboardType="decimal-pad"
+            placeholder="0.00"
+          />
+        </View>
+      </Surface>
+
+      {/* Form fields */}
       <Surface className="mb-4">
         <TextField label="Title" value={title} onChangeText={setTitle} />
-        <TextField
-          label="Amount"
-          value={amount}
-          onChangeText={setAmount}
-          keyboardType="decimal-pad"
-        />
         <DateField
           label="Due date"
           value={dueDate}
@@ -185,6 +195,7 @@ export default function EditExpenseScreen() {
           value={description}
           onChangeText={setDescription}
           multiline
+          placeholder="Optional note"
         />
 
         <Text className="mb-2 text-sm font-medium text-[#171b24]">Category</Text>
@@ -212,12 +223,14 @@ export default function EditExpenseScreen() {
         </View>
       </Surface>
 
+      {/* Info note */}
       <Surface className="mb-4">
         <Text className="text-sm leading-6 text-[#667085]">
-          Editing on mobile changes the title, amount, due date, category, description, and recurrence only. If the split structure itself needs to change, create a fresh expense.
+          Editing changes the title, amount, due date, category, description, and recurrence only. To change the split, create a new expense.
         </Text>
       </Surface>
 
+      {/* Action buttons */}
       <View className="mb-3">
         <AppButton
           label="Save changes"

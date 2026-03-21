@@ -8,7 +8,6 @@ import {
   AppButton,
   ContentSkeleton,
   EmptyState,
-  HeroPanel,
   Screen,
   StatusChip,
   Surface,
@@ -19,6 +18,7 @@ interface PlanConfig {
   id: SubscriptionPlan;
   name: string;
   price: string;
+  priceNote: string;
   features: string[];
   limits: { groups: string; members: string };
   highlight?: boolean;
@@ -28,7 +28,8 @@ const PLANS: PlanConfig[] = [
   {
     id: SubscriptionPlan.STANDARD,
     name: 'Standard',
-    price: '£4.99',
+    price: '\u00a34.99',
+    priceNote: '/month',
     features: [
       'Up to 1 group',
       'Up to 5 members per group',
@@ -41,7 +42,8 @@ const PLANS: PlanConfig[] = [
   {
     id: SubscriptionPlan.PRO,
     name: 'Pro',
-    price: '£9.99',
+    price: '\u00a39.99',
+    priceNote: '/month',
     features: [
       'Up to 3 groups',
       'Up to 15 members per group',
@@ -54,8 +56,9 @@ const PLANS: PlanConfig[] = [
   },
   {
     id: SubscriptionPlan.AGENCY,
-    name: 'Agency',
-    price: '£29.99',
+    name: 'Pro Max',
+    price: '\u00a399.99',
+    priceNote: '/month',
     features: [
       'Unlimited groups',
       'Unlimited members',
@@ -108,11 +111,19 @@ export default function PricingScreen() {
 
   return (
     <Screen>
-      <HeroPanel
-        eyebrow="Plans and billing"
-        title="Choose Your Plan"
-        description="Every plan starts with a 7-day free trial. Pick the level that matches how many groups and members you actually manage."
-      />
+      {/* Hero */}
+      <View className="mb-4 rounded-[32px] bg-[#1f2330] px-5 py-6">
+        <Text className="text-sm font-medium text-[rgba(255,255,255,0.72)]">
+          Plans and billing
+        </Text>
+        <Text className="mt-2 text-[30px] font-bold leading-[36px] text-white">
+          Choose your plan
+        </Text>
+        <Text className="mt-3 text-sm leading-6 text-[rgba(255,250,246,0.72)]">
+          Every plan starts with a 7-day free trial. Pick the level that matches
+          how many groups and members you manage.
+        </Text>
+      </View>
 
       {PLANS.map((plan) => {
         const isCurrent = currentPlan === plan.id;
@@ -129,6 +140,7 @@ export default function PricingScreen() {
             key={plan.id}
             className="mb-4"
           >
+            {/* Green border for highlighted plan */}
             {plan.highlight ? (
               <View
                 style={{
@@ -145,6 +157,7 @@ export default function PricingScreen() {
               />
             ) : null}
 
+            {/* Plan header */}
             <View className="flex-row items-start justify-between">
               <View className="flex-1">
                 <Text className="text-xl font-bold text-[#171b24]">
@@ -157,7 +170,7 @@ export default function PricingScreen() {
               </View>
               <View className="flex-row" style={{ gap: 6 }}>
                 {plan.highlight ? (
-                  <StatusChip label="Popular" tone="emerald" />
+                  <StatusChip label="Most popular" tone="emerald" />
                 ) : null}
                 {isCurrent ? (
                   <StatusChip
@@ -168,13 +181,15 @@ export default function PricingScreen() {
               </View>
             </View>
 
+            {/* Price */}
             <View className="mt-4 flex-row items-baseline" style={{ gap: 4 }}>
               <Text className="text-[36px] font-black text-[#171b24]">
                 {plan.price}
               </Text>
-              <Text className="text-sm text-[#667085]">/month</Text>
+              <Text className="text-sm text-[#667085]">{plan.priceNote}</Text>
             </View>
 
+            {/* Feature list */}
             <View className="mt-4 rounded-2xl border border-[rgba(23,27,36,0.14)] bg-[#fbf7f1] p-4">
               <Text className="mb-3 text-sm font-semibold text-[#171b24]">
                 Includes
@@ -191,10 +206,11 @@ export default function PricingScreen() {
               ))}
             </View>
 
+            {/* CTA */}
             <View className="mt-4">
               <AppButton
                 label={buttonLabel}
-                variant={isCurrent ? 'secondary' : plan.highlight ? 'primary' : 'secondary'}
+                variant={isCurrent ? 'secondary' : 'primary'}
                 disabled={isCurrent}
                 loading={checkout.isPending}
                 onPress={() => handleSelectPlan(plan.id)}
