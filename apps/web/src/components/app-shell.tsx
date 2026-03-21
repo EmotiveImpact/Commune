@@ -25,6 +25,7 @@ import {
   IconSettings,
 } from '@tabler/icons-react';
 import { useState, useCallback, type KeyboardEvent } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useAuthStore } from '../stores/auth';
 import { useGroupStore } from '../stores/group';
 import { useSearchStore } from '../stores/search';
@@ -139,41 +140,73 @@ export function AppShell({ children }: AppShellProps) {
                   height={44}
                   style={{ display: 'block', borderRadius: 10, flexShrink: 0 }}
                 />
-                {!collapsed && (
-                  <Text
-                    fw={600}
-                    size="lg"
-                    style={{
-                      color: '#fff',
-                      whiteSpace: 'nowrap',
-                      letterSpacing: '0.08em',
-                      textTransform: 'uppercase',
-                      fontFamily: "'Inter', sans-serif",
-                      marginLeft: 0,
-                    }}
-                  >
-                    Commune
-                  </Text>
-                )}
+                <AnimatePresence>
+                  {!collapsed && (
+                    <motion.span
+                      key="brand-text"
+                      initial={{ opacity: 0, width: 0 }}
+                      animate={{ opacity: 1, width: 'auto' }}
+                      exit={{ opacity: 0, width: 0 }}
+                      transition={{ duration: 0.2, ease: 'easeInOut' }}
+                      style={{ overflow: 'hidden', display: 'inline-flex' }}
+                    >
+                      <Text
+                        fw={600}
+                        size="lg"
+                        style={{
+                          color: '#fff',
+                          whiteSpace: 'nowrap',
+                          letterSpacing: '0.08em',
+                          textTransform: 'uppercase',
+                          fontFamily: "'Inter', sans-serif",
+                          marginLeft: 0,
+                        }}
+                      >
+                        Commune
+                      </Text>
+                    </motion.span>
+                  )}
+                </AnimatePresence>
               </Group>
-              {!collapsed && (
-                <ActionIcon
-                  variant="subtle"
-                  onClick={toggleCollapsed}
-                  className="commune-sidebar-collapse-btn"
-                  aria-label="Collapse sidebar"
-                  size="sm"
-                >
-                  <IconChevronsLeft size={16} />
-                </ActionIcon>
-              )}
+              <AnimatePresence>
+                {!collapsed && (
+                  <motion.div
+                    key="collapse-btn"
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    transition={{ duration: 0.15 }}
+                  >
+                    <ActionIcon
+                      variant="subtle"
+                      onClick={toggleCollapsed}
+                      className="commune-sidebar-collapse-btn"
+                      aria-label="Collapse sidebar"
+                      size="sm"
+                    >
+                      <IconChevronsLeft size={16} />
+                    </ActionIcon>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </Group>
 
-            {!collapsed && (
-              <Text size="xs" fw={600} tt="uppercase" mb={6} px="xs" className="commune-sidebar-label">
-                Menu
-              </Text>
-            )}
+            <AnimatePresence>
+              {!collapsed && (
+                <motion.div
+                  key="menu-label"
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.15 }}
+                  style={{ overflow: 'hidden' }}
+                >
+                  <Text size="xs" fw={600} tt="uppercase" mb={6} px="xs" className="commune-sidebar-label">
+                    Menu
+                  </Text>
+                </motion.div>
+              )}
+            </AnimatePresence>
             <Stack className="commune-sidebar-nav">
               {navLinks.map((link) =>
                 collapsed ? (
@@ -203,31 +236,65 @@ export function AppShell({ children }: AppShellProps) {
               )}
             </Stack>
 
-            {!collapsed && (
-              <Box mt="1.5rem" px={4}>
-                <GroupSelector />
-              </Box>
-            )}
+            <AnimatePresence>
+              {!collapsed && (
+                <motion.div
+                  key="group-selector"
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.2, ease: 'easeInOut' }}
+                  style={{ overflow: 'hidden' }}
+                >
+                  <Box mt="1.5rem" px={4}>
+                    <GroupSelector />
+                  </Box>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
 
           <Stack gap={0}>
-            {!collapsed && <SidebarPlanCard userId={user?.id} />}
-
-            {collapsed && (
-              <Tooltip label="Expand sidebar" position="right" withArrow>
-                <ActionIcon
-                  variant="subtle"
-                  onClick={toggleCollapsed}
-                  className="commune-sidebar-collapse-btn"
-                  aria-label="Expand sidebar"
-                  size="md"
-                  mb={8}
-                  style={{ alignSelf: 'center' }}
+            <AnimatePresence>
+              {!collapsed && (
+                <motion.div
+                  key="plan-card"
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.2, ease: 'easeInOut' }}
+                  style={{ overflow: 'hidden' }}
                 >
-                  <IconChevronsRight size={18} />
-                </ActionIcon>
-              </Tooltip>
-            )}
+                  <SidebarPlanCard userId={user?.id} />
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            <AnimatePresence>
+              {collapsed && (
+                <motion.div
+                  key="expand-btn"
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  transition={{ duration: 0.15 }}
+                  style={{ display: 'flex', justifyContent: 'center' }}
+                >
+                  <Tooltip label="Expand sidebar" position="right" withArrow>
+                    <ActionIcon
+                      variant="subtle"
+                      onClick={toggleCollapsed}
+                      className="commune-sidebar-collapse-btn"
+                      aria-label="Expand sidebar"
+                      size="md"
+                      mb={8}
+                    >
+                      <IconChevronsRight size={18} />
+                    </ActionIcon>
+                  </Tooltip>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {collapsed ? (
               <Menu shadow="md" width={220} position="right-end" offset={8}>

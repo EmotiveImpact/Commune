@@ -40,7 +40,6 @@ function EditExpensePage() {
   const lastHydratedExpenseRef = useRef<string | null>(null);
 
   const form = useForm({
-    mode: 'uncontrolled',
     initialValues: {
       title: '',
       description: '',
@@ -143,7 +142,6 @@ function EditExpensePage() {
               <TextInput
                 label="Title"
                 withAsterisk
-                                key={form.key('title')}
                 {...form.getInputProps('title')}
               />
               <Group grow>
@@ -153,14 +151,12 @@ function EditExpensePage() {
                   min={0}
                   decimalScale={2}
                   withAsterisk
-                                    key={form.key('amount')}
                   {...form.getInputProps('amount')}
                 />
                 <Select
                   label="Category"
                   data={categoryOptions}
                   withAsterisk
-                                    key={form.key('category')}
                   {...form.getInputProps('category')}
                 />
               </Group>
@@ -168,14 +164,12 @@ function EditExpensePage() {
                 label="Due date"
                 type="date"
                 withAsterisk
-                                key={form.key('due_date')}
                 {...form.getInputProps('due_date')}
               />
               <Textarea
                 label="Description"
-                                autosize
+                autosize
                 minRows={3}
-                key={form.key('description')}
                 {...form.getInputProps('description')}
               />
               <Select
@@ -185,7 +179,6 @@ function EditExpensePage() {
                   { value: 'weekly', label: 'Weekly' },
                   { value: 'monthly', label: 'Monthly' },
                 ]}
-                                key={form.key('recurrence_type')}
                 {...form.getInputProps('recurrence_type')}
               />
             </Stack>
