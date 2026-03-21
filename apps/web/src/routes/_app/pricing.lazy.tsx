@@ -78,11 +78,11 @@ const PLANS: PlanConfig[] = [
   },
   {
     id: SubscriptionPlan.AGENCY,
-    name: 'Agency',
-    monthlyPrice: 29.99,
-    annualMonthlyPrice: 23.99,
-    annualTotal: 287.88,
-    savings: 72.00,
+    name: 'Pro Max',
+    monthlyPrice: 99.99,
+    annualMonthlyPrice: 79.99,
+    annualTotal: 959.88,
+    savings: 240.00,
     features: [
       'Unlimited groups',
       'Unlimited members',

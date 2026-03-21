@@ -197,7 +197,7 @@ function SidebarPlanCard({ userId }: { userId?: string }) {
     ? 'No plan'
     : isTrialing
       ? `Pro Trial · ${daysLeft}d left`
-      : (subscription.plan.charAt(0).toUpperCase() + subscription.plan.slice(1));
+      : subscription.plan === 'agency' ? 'Pro Max' : (subscription.plan.charAt(0).toUpperCase() + subscription.plan.slice(1));
 
   const showUpgrade = !isActive || isTrialing;
 
