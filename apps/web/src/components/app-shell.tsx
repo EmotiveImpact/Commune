@@ -314,13 +314,13 @@ export function AppShell({ children }: AppShellProps) {
                         gap: collapsed ? 0 : 10,
                       }}
                       transition={sidebarTransition}
-                      style={{ display: 'flex', alignItems: 'center', overflow: 'hidden' }}
+                      style={{ display: 'flex', alignItems: 'center', overflow: 'hidden', paddingLeft: collapsed ? 0 : 10 }}
                     >
                       <Avatar
                         src={user?.avatar_url}
                         name={user?.name}
                         color="initials"
-                        size={36}
+                        size={32}
                         radius="xl"
                         style={{ flexShrink: 0 }}
                       />
@@ -328,7 +328,7 @@ export function AppShell({ children }: AppShellProps) {
                         initial={false}
                         animate={{
                           opacity: collapsed ? 0 : 1,
-                          maxWidth: collapsed ? 0 : 160,
+                          maxWidth: collapsed ? 0 : 140,
                         }}
                         transition={sidebarTransition}
                         style={{ overflow: 'hidden', minWidth: 0, whiteSpace: 'nowrap', flex: 1 }}
