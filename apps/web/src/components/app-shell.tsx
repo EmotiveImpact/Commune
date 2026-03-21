@@ -17,6 +17,7 @@ import {
 import { useDisclosure } from '@mantine/hooks';
 import { Link, useLocation, useNavigate } from '@tanstack/react-router';
 import {
+  IconChevronRight,
   IconChevronsLeft,
   IconChevronsRight,
   IconLogout,
@@ -110,29 +111,6 @@ export function AppShell({ children }: AppShellProps) {
           </Group>
           <Group gap="sm">
             <NotificationDropdown />
-            <Menu shadow="md" width={220} position="bottom-end" offset={8}>
-              <Menu.Target>
-                <UnstyledButton>
-                  <Avatar
-                    src={user?.avatar_url}
-                    name={user?.name}
-                    color="initials"
-                    size={34}
-                    radius="xl"
-                  />
-                </UnstyledButton>
-              </Menu.Target>
-              <Menu.Dropdown>
-                <Menu.Label>{user?.name ?? 'Account'}</Menu.Label>
-                <Menu.Item leftSection={<IconSettings size={16} />} component={Link} to="/settings">
-                  Settings
-                </Menu.Item>
-                <Menu.Divider />
-                <Menu.Item leftSection={<IconLogout size={16} />} color="red" onClick={handleSignOut}>
-                  Logout
-                </Menu.Item>
-              </Menu.Dropdown>
-            </Menu>
           </Group>
         </Group>
       </MantineAppShell.Header>
@@ -150,31 +128,43 @@ export function AppShell({ children }: AppShellProps) {
               gap={4}
               mb="xl"
               align="center"
-              justify={collapsed ? 'center' : undefined}
+              justify="space-between"
+              style={{ width: '100%' }}
             >
-              <img
-                src="/logo.png"
-                alt="Commune"
-                width={44}
-                height={44}
-                style={{ display: 'block', borderRadius: 10, flexShrink: 0 }}
-              />
-              {!collapsed && (
-                <Text
-                  fw={600}
-                  size="lg"
-                  style={{
-                    color: '#fff',
-                    whiteSpace: 'nowrap',
-                    letterSpacing: '0.08em',
-                    textTransform: 'uppercase',
-                    fontFamily: "'Inter', sans-serif",
-                    marginLeft: 0,
-                  }}
-                >
-                  Commune
-                </Text>
-              )}
+              <Group wrap="nowrap" gap={4} align="center" justify={collapsed ? 'center' : undefined} style={{ flex: 1 }}>
+                <img
+                  src="/logo.png"
+                  alt="Commune"
+                  width={44}
+                  height={44}
+                  style={{ display: 'block', borderRadius: 10, flexShrink: 0 }}
+                />
+                {!collapsed && (
+                  <Text
+                    fw={600}
+                    size="lg"
+                    style={{
+                      color: '#fff',
+                      whiteSpace: 'nowrap',
+                      letterSpacing: '0.08em',
+                      textTransform: 'uppercase',
+                      fontFamily: "'Inter', sans-serif",
+                      marginLeft: 0,
+                    }}
+                  >
+                    Commune
+                  </Text>
+                )}
+              </Group>
+              <ActionIcon
+                variant="subtle"
+                onClick={toggleCollapsed}
+                className="commune-sidebar-collapse-btn"
+                aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                size="sm"
+              >
+                {collapsed ? <IconChevronsRight size={16} /> : <IconChevronsLeft size={16} />}
+              </ActionIcon>
             </Group>
 
             {!collapsed && (
@@ -221,19 +211,82 @@ export function AppShell({ children }: AppShellProps) {
           <Stack gap={0}>
             {!collapsed && <SidebarPlanCard userId={user?.id} />}
 
-            <Tooltip label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'} position="right" withArrow>
-              <ActionIcon
-                variant="subtle"
-                onClick={toggleCollapsed}
-                className="commune-sidebar-toggle"
-                aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-                size="md"
-                mt={8}
-                style={{ alignSelf: collapsed ? 'center' : 'flex-end' }}
-              >
-                {collapsed ? <IconChevronsRight size={18} /> : <IconChevronsLeft size={18} />}
-              </ActionIcon>
-            </Tooltip>
+            {collapsed ? (
+              <Menu shadow="md" width={220} position="right-end" offset={8}>
+                <Menu.Target>
+                  <Tooltip label={user?.name ?? 'Account'} position="right" withArrow>
+                    <UnstyledButton className="commune-sidebar-profile-row" style={{ display: 'flex', justifyContent: 'center' }}>
+                      <Avatar
+                        src={user?.avatar_url}
+                        name={user?.name}
+                        color="initials"
+                        size={34}
+                        radius="xl"
+                      />
+                    </UnstyledButton>
+                  </Tooltip>
+                </Menu.Target>
+                <Menu.Dropdown>
+                  <Menu.Item
+                    leftSection={<IconSettings size={16} />}
+                    component={Link}
+                    to="/settings"
+                  >
+                    Settings
+                  </Menu.Item>
+                  <Menu.Divider />
+                  <Menu.Item
+                    leftSection={<IconLogout size={16} />}
+                    color="red"
+                    onClick={handleSignOut}
+                  >
+                    Logout
+                  </Menu.Item>
+                </Menu.Dropdown>
+              </Menu>
+            ) : (
+              <Menu shadow="md" width={220} position="top-start" offset={8}>
+                <Menu.Target>
+                  <UnstyledButton className="commune-sidebar-profile-row">
+                    <Group gap="sm" wrap="nowrap">
+                      <Avatar
+                        src={user?.avatar_url}
+                        name={user?.name}
+                        color="initials"
+                        size={38}
+                        radius="xl"
+                      />
+                      <Box style={{ flex: 1, minWidth: 0 }}>
+                        <Text size="sm" fw={600} truncate style={{ color: '#fff' }}>
+                          {user?.name ?? 'Account'}
+                        </Text>
+                        <Text size="xs" truncate style={{ color: 'rgba(255,255,255,0.5)' }}>
+                          {user?.email}
+                        </Text>
+                      </Box>
+                      <IconChevronRight size={16} style={{ color: 'rgba(255,255,255,0.4)', flexShrink: 0 }} />
+                    </Group>
+                  </UnstyledButton>
+                </Menu.Target>
+                <Menu.Dropdown>
+                  <Menu.Item
+                    leftSection={<IconSettings size={16} />}
+                    component={Link}
+                    to="/settings"
+                  >
+                    Settings
+                  </Menu.Item>
+                  <Menu.Divider />
+                  <Menu.Item
+                    leftSection={<IconLogout size={16} />}
+                    color="red"
+                    onClick={handleSignOut}
+                  >
+                    Logout
+                  </Menu.Item>
+                </Menu.Dropdown>
+              </Menu>
+            )}
           </Stack>
         </Stack>
       </MantineAppShell.Navbar>

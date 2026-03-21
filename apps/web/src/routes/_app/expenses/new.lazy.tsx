@@ -283,18 +283,6 @@ function AddExpensePage() {
               </Stack>
             </Paper>
 
-            <Paper className="commune-soft-panel" p="xl">
-              <Stack gap="md">
-                <Title order={3}>Receipt</Title>
-                <Text size="sm" c="dimmed">
-                  Attach a photo or PDF of the receipt (optional).
-                </Text>
-                <ReceiptDropzone
-                  value={receiptFile}
-                  onChange={setReceiptFile}
-                />
-              </Stack>
-            </Paper>
           </Stack>
 
           <Stack gap="lg">
@@ -428,6 +416,19 @@ function AddExpensePage() {
                     Add an amount and choose participants to see the split preview.
                   </Text>
                 )}
+              </Stack>
+            </Paper>
+
+            <Paper className="commune-soft-panel" p="xl">
+              <Stack gap="md">
+                <Title order={3}>Receipt</Title>
+                <Text size="sm" c="dimmed">
+                  Attach a photo or PDF of the receipt (optional).
+                </Text>
+                <ReceiptDropzone
+                  value={receiptFile}
+                  onChange={setReceiptFile}
+                />
               </Stack>
             </Paper>
 

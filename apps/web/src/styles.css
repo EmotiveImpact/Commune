@@ -513,6 +513,25 @@ div:hover > .commune-avatar-overlay {
   color: rgba(255, 255, 255, 0.85);
 }
 
+/* Collapse button: hidden by default, visible on sidebar hover */
+.commune-sidebar-collapse-btn {
+  opacity: 0;
+  color: rgba(255, 255, 255, 0.4);
+  border-radius: 6px;
+  transition: opacity var(--commune-motion-fast), background var(--commune-motion-fast), color var(--commune-motion-fast);
+  flex-shrink: 0;
+}
+
+.commune-sidebar-panel:hover .commune-sidebar-collapse-btn {
+  opacity: 1;
+}
+
+.commune-sidebar-collapse-btn:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.85);
+}
+
 
 .commune-legend-dot {
   width: 10px;
