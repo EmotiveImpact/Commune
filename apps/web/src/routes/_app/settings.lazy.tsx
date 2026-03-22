@@ -150,6 +150,7 @@ function SettingsPage() {
   const unsubscribePush = useUnsubscribePush();
   const lastHydratedProfileRef = useRef<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState('');
+  const [activeProvider, setActiveProvider] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -230,6 +231,7 @@ function SettingsPage() {
         timezone: resolvedProfile.timezone,
         notification_preferences: resolvedProfile.notification_preferences,
       });
+      setActiveProvider(resolvedProfile.payment_provider ?? null);
     }
   }, [resolvedProfile, form]);
 
@@ -553,33 +555,35 @@ function SettingsPage() {
                         ]}
                         key={form.key('payment_provider')}
                         {...form.getInputProps('payment_provider')}
+                        onChange={(value) => {
+                          form.setFieldValue('payment_provider', value ?? '');
+                          form.setFieldValue('payment_link', '');
+                          form.setFieldValue('payment_info', '');
+                          setActiveProvider(value ?? null);
+                        }}
                         clearable
                       />
 
-                      {form.getValues().payment_provider && isClickableProvider(form.getValues().payment_provider as PaymentProvider) && (
+                      {activeProvider && isClickableProvider(activeProvider as PaymentProvider) && (
                         <TextInput
                           label={
-                            form.getValues().payment_provider === 'revolut' ? 'Revolut.me username'
-                            : form.getValues().payment_provider === 'monzo' ? 'Monzo.me username'
+                            activeProvider === 'revolut' ? 'Revolut.me username'
+                            : activeProvider === 'monzo' ? 'Monzo.me username'
                             : 'PayPal.me username'
                           }
                           description={
-                            form.getValues().payment_provider === 'revolut' ? 'Your Revolut.me link or username (e.g. johndoe or revolut.me/johndoe)'
-                            : form.getValues().payment_provider === 'monzo' ? 'Your Monzo.me link or username (e.g. johndoe or monzo.me/johndoe)'
+                            activeProvider === 'revolut' ? 'Your Revolut.me link or username (e.g. johndoe or revolut.me/johndoe)'
+                            : activeProvider === 'monzo' ? 'Your Monzo.me link or username (e.g. johndoe or monzo.me/johndoe)'
                             : 'Your PayPal.me link or username (e.g. johndoe or paypal.me/johndoe)'
                           }
-                          placeholder={
-                            form.getValues().payment_provider === 'revolut' ? 'johndoe'
-                            : form.getValues().payment_provider === 'monzo' ? 'johndoe'
-                            : 'johndoe'
-                          }
+                          placeholder="johndoe"
                           leftSection={<IconLink size={16} />}
                           key={form.key('payment_link')}
                           {...form.getInputProps('payment_link')}
                         />
                       )}
 
-                      {form.getValues().payment_provider && !isClickableProvider(form.getValues().payment_provider as PaymentProvider) && (
+                      {activeProvider && !isClickableProvider(activeProvider as PaymentProvider) && (
                         <Textarea
                           label="Payment details"
                           description="Your bank details or payment instructions visible to group members"

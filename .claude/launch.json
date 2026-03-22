@@ -12,6 +12,12 @@
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["--filter", "@commune/landing", "dev"],
       "port": 3001
+    },
+    {
+      "name": "mobile",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@commune/mobile", "dev"],
+      "port": 8081
     }
   ]
 }

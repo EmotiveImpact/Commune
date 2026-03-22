@@ -9,7 +9,7 @@ export function PageLoader({ message, h = 400 }: PageLoaderProps) {
   return (
     <Center h={h}>
       <Stack align="center" gap="sm">
-        <Loader size="md" />
+        <Loader size="md" color="#1a1e2b" />
         {message && <Text size="sm" c="dimmed">{message}</Text>}
       </Stack>
     </Center>
