@@ -47,7 +47,7 @@ a {
 }
 
 .commune-auth-brand {
-  background: var(--commune-primary-strong);
+  background: linear-gradient(180deg, #1a1e2b 0%, #21262f 100%);
   display: flex;
   flex-direction: column;
 }
