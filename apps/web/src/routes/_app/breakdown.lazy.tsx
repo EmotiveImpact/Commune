@@ -496,6 +496,11 @@ function BreakdownPage() {
                         <Text size="sm" fw={700}>
                           {formatCurrency(item.share_amount, group?.currency)}
                         </Text>
+                        {item.proration && (
+                          <Text size="xs" c="dimmed">
+                            Prorated: {item.proration.daysPresent}/{item.proration.totalDays} days
+                          </Text>
+                        )}
                       </Table.Td>
                       <Table.Td>
                         <Badge

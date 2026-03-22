@@ -15,16 +15,23 @@ import {
 import {
   IconAlertTriangle,
   IconArrowRight,
+  IconArrowsExchange,
   IconCash,
   IconCheck,
+  IconCoin,
+  IconDownload,
+  IconFileExport,
   IconPlus,
   IconReceipt,
+  IconRefresh,
   IconTargetArrow,
+  IconTemplate,
   IconUsers,
   IconWallet,
 } from '@tabler/icons-react';
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { formatCurrency, formatDate, getMonthKey, isOverdue } from '@commune/utils';
+import type { GroupType } from '@commune/types';
 import { setPageTitle } from '../../utils/seo';
 import { useGroupStore } from '../../stores/group';
 import { useAuthStore } from '../../stores/auth';
@@ -33,6 +40,9 @@ import { useDashboardStats } from '../../hooks/use-dashboard';
 import { useGroupExpenses } from '../../hooks/use-expenses';
 import { DashboardSkeleton } from '../../components/page-skeleton';
 import { useGenerateRecurring } from '../../hooks/use-recurring';
+import { useGroupBudget } from '../../hooks/use-budgets';
+import { useTemplates } from '../../hooks/use-templates';
+import { SetBudgetModal } from '../../components/set-budget-modal';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell } from 'recharts';
 
 export const Route = createLazyFileRoute('/_app/')({
@@ -67,6 +77,122 @@ function getRecentMonthKeys(count: number) {
   return keys;
 }
 
+// ─── F36: Group-Type-Aware Configuration ─────────────────────────────────────
+
+interface QuickAction {
+  label: string;
+  to: string;
+  icon: typeof IconPlus;
+  variant?: 'filled' | 'default' | 'light';
+}
+
+function getQuickActions(groupType: GroupType | undefined): QuickAction[] {
+  switch (groupType) {
+    case 'home':
+      return [
+        { label: 'Add recurring bill', to: '/recurring', icon: IconRefresh },
+        { label: 'View settlement', to: '/breakdown', icon: IconArrowsExchange },
+        { label: 'Set auto-split', to: '/templates', icon: IconTemplate, variant: 'light' },
+      ];
+    case 'trip':
+      return [
+        { label: 'Quick expense', to: '/expenses/new', icon: IconPlus },
+        { label: 'View settlement', to: '/breakdown', icon: IconArrowsExchange },
+        { label: 'Import expenses', to: '/import', icon: IconDownload, variant: 'light' },
+      ];
+    case 'couple':
+      return [
+        { label: 'Add expense', to: '/expenses/new', icon: IconPlus },
+        { label: 'View balance', to: '/breakdown', icon: IconArrowsExchange },
+      ];
+    case 'workspace':
+      return [
+        { label: 'Add shared cost', to: '/expenses/new', icon: IconPlus },
+        { label: 'Export', to: '/analytics', icon: IconFileExport, variant: 'light' },
+      ];
+    case 'project':
+      return [
+        { label: 'Add expense', to: '/expenses/new', icon: IconPlus },
+        { label: 'View budget', to: '/analytics', icon: IconCoin },
+        { label: 'Export', to: '/analytics', icon: IconFileExport, variant: 'light' },
+      ];
+    default:
+      return [
+        { label: 'Add expense', to: '/expenses/new', icon: IconPlus },
+        { label: 'View settlement', to: '/breakdown', icon: IconArrowsExchange },
+      ];
+  }
+}
+
+function getEmptyStateConfig(groupType: GroupType | undefined, groupName: string | undefined) {
+  switch (groupType) {
+    case 'home':
+      return {
+        heroCopy: `${groupName ?? 'Your home group'} is set up. Start by adding your recurring household bills like rent and utilities.`,
+        addExpenseLabel: 'Add recurring bill',
+        addExpenseTo: '/recurring',
+        checklistDescription: 'Start with one real bill like rent or utilities so the dashboard can replace setup mode with real numbers.',
+        bottomTitle: 'Start by adding your recurring household bills like rent and utilities.',
+        bottomDescription: 'Add a recurring bill, include the housemates, and the monthly totals, category split, and payment focus will all start populating automatically.',
+      };
+    case 'trip':
+      return {
+        heroCopy: `${groupName ?? 'Your trip group'} is ready. Log your first shared trip expense to get started.`,
+        addExpenseLabel: 'Quick expense',
+        addExpenseTo: '/expenses/new',
+        checklistDescription: 'Log your first shared trip expense so everyone knows what they owe.',
+        bottomTitle: 'Log your first shared trip expense.',
+        bottomDescription: 'Add an expense, tag the participants, and the group balance will calculate automatically.',
+      };
+    case 'couple':
+      return {
+        heroCopy: `${groupName ?? 'Your shared space'} is ready. Track your first shared expense together.`,
+        addExpenseLabel: 'Add expense',
+        addExpenseTo: '/expenses/new',
+        checklistDescription: 'Track your first shared expense together to see how the balance looks.',
+        bottomTitle: 'Track your first shared expense together.',
+        bottomDescription: 'Add a shared cost and the dashboard will show who owes what at a glance.',
+      };
+    case 'workspace':
+      return {
+        heroCopy: `${groupName ?? 'Your workspace'} is set up. Add your first shared office expense to get started.`,
+        addExpenseLabel: 'Add shared cost',
+        addExpenseTo: '/expenses/new',
+        checklistDescription: 'Add your first shared office expense so the team can track costs.',
+        bottomTitle: 'Add your first shared office expense.',
+        bottomDescription: 'Log shared costs, split them across the team, and the analytics will populate automatically.',
+      };
+    case 'project':
+      return {
+        heroCopy: `${groupName ?? 'Your project'} is ready. Add your first project expense to start tracking the budget.`,
+        addExpenseLabel: 'Add expense',
+        addExpenseTo: '/expenses/new',
+        checklistDescription: 'Add your first project expense so the budget tracking can begin.',
+        bottomTitle: 'Add your first project expense.',
+        bottomDescription: 'Start logging project costs and the budget tracker will show progress against your targets.',
+      };
+    default:
+      return {
+        heroCopy: `${groupName ?? 'Your group'} is ready, but it still needs one real cycle before the dashboard can show anything useful.`,
+        addExpenseLabel: 'Add expense',
+        addExpenseTo: '/expenses/new',
+        checklistDescription: 'Start with one real bill so the dashboard can replace setup mode with real numbers.',
+        bottomTitle: 'This workspace needs one clean cycle to come alive.',
+        bottomDescription: 'Right now there is nothing to calculate, so showing a full analytics dashboard would just be noise. Add one shared expense, include the real members, and the monthly totals, category split, and payment focus will all start populating automatically.',
+      };
+  }
+}
+
+// ─── F35: Budget progress helpers ────────────────────────────────────────────
+
+function getBudgetColor(pct: number): string {
+  if (pct >= 100) return 'red';
+  if (pct >= 80) return 'yellow';
+  return 'green';
+}
+
+// ─── Dashboard Page ──────────────────────────────────────────────────────────
+
 function DashboardPage() {
   const { activeGroupId } = useGroupStore();
   const { user } = useAuthStore();
@@ -83,6 +209,13 @@ function DashboardPage() {
   const { data: allExpenses, isLoading: expensesLoading } = useGroupExpenses(activeGroupId ?? '');
   const generateRecurring = useGenerateRecurring(activeGroupId ?? '');
   const recurringGeneratedRef = useRef(false);
+
+  // F35: Budget data
+  const { data: currentBudget } = useGroupBudget(activeGroupId ?? '', currentMonth);
+  const [budgetModalOpened, setBudgetModalOpened] = useState(false);
+
+  // F36: Templates for feature discovery
+  const { data: templates } = useTemplates(activeGroupId ?? '');
 
   useEffect(() => {
     if (activeGroupId && !recurringGeneratedRef.current) {
@@ -189,6 +322,28 @@ function DashboardPage() {
   }, [monthExpenses, stats?.upcoming_items, user?.id]);
   const hasExpenses = (allExpenses?.length ?? 0) > 0;
 
+  // F35: Budget calculations
+  const budgetPct = currentBudget && currentBudget.budget_amount > 0
+    ? Math.round((monthlyTrend.currentTotal / currentBudget.budget_amount) * 100)
+    : null;
+
+  // F36: Feature discovery prompts
+  const featurePrompt = useMemo(() => {
+    if (!group || hasExpenses) return null;
+
+    const groupType = group.type;
+    const hasTemplates = (templates?.length ?? 0) > 0;
+
+    if (groupType === 'home' && !hasTemplates) {
+      return 'Tip: Set up auto-split templates for rent so expenses are split consistently every month.';
+    }
+    if (groupType === 'trip' && !hasExpenses) {
+      return 'Tip: Import expenses from Splitwise to get started faster.';
+    }
+
+    return null;
+  }, [group, hasExpenses, templates?.length]);
+
   if (!activeGroupId) {
     if (groupsLoading || invitesLoading || (groups?.length ?? 0) > 0) {
       return <DashboardSkeleton />;
@@ -244,6 +399,10 @@ function DashboardPage() {
     },
   ];
 
+  // F36: Get group-type-specific configuration
+  const quickActions = getQuickActions(group?.type);
+  const emptyConfig = getEmptyStateConfig(group?.type, group?.name);
+
   if (!hasExpenses) {
     return (
       <Stack gap="xl">
@@ -256,14 +415,15 @@ function DashboardPage() {
                   Shared money, <span className="commune-hero-highlight">without the friction.</span>
                 </Title>
                 <Text size="lg" className="commune-hero-copy">
-                  {group?.name} is ready, but it still needs one real cycle before the dashboard can show anything useful.
+                  {emptyConfig.heroCopy}
                 </Text>
               </Stack>
 
+              {/* F36: Group-type-aware quick actions */}
               <Group className="commune-hero-actions">
                 <Button
                   component={Link}
-                  to="/expenses/new"
+                  to={emptyConfig.addExpenseTo}
                   leftSection={<IconPlus size={16} />}
                   styles={{
                     root: {
@@ -273,7 +433,7 @@ function DashboardPage() {
                     },
                   }}
                 >
-                  Add expense
+                  {emptyConfig.addExpenseLabel}
                 </Button>
                 <Button
                   component={Link}
@@ -345,6 +505,15 @@ function DashboardPage() {
           </div>
         </Paper>
 
+        {/* F36: Feature discovery prompt */}
+        {featurePrompt && (
+          <Paper className="commune-soft-panel" p="md" style={{ borderLeft: '3px solid var(--mantine-color-commune-5)' }}>
+            <Text size="sm" c="dimmed">
+              {featurePrompt}
+            </Text>
+          </Paper>
+        )}
+
         <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="lg">
           <Paper className="commune-soft-panel commune-checklist-card" p="xl">
             <ThemeIcon size={42} variant="light" color="lime">
@@ -365,10 +534,10 @@ function DashboardPage() {
             </ThemeIcon>
             <Text fw={700} size="lg" mt="md">Add the first expense</Text>
             <Text size="sm" c="dimmed" mt={6}>
-              Start with one real bill so the dashboard can replace setup mode with real numbers.
+              {emptyConfig.checklistDescription}
             </Text>
-            <Button component={Link} to="/expenses/new" mt="lg">
-              Create expense
+            <Button component={Link} to={emptyConfig.addExpenseTo} mt="lg">
+              {emptyConfig.addExpenseLabel}
             </Button>
           </Paper>
 
@@ -392,17 +561,26 @@ function DashboardPage() {
               <Badge variant="light" color="gray" w="fit-content">
                 Setup mode
               </Badge>
-              <Title order={2}>This workspace needs one clean cycle to come alive.</Title>
+              <Title order={2}>{emptyConfig.bottomTitle}</Title>
               <Text size="md" c="dimmed">
-                Right now there is nothing to calculate, so showing a full analytics dashboard would just be noise. Add one shared expense, include the real members, and the monthly totals, category split, and payment focus will all start populating automatically.
+                {emptyConfig.bottomDescription}
               </Text>
             </Stack>
 
-            <Button component={Link} to="/expenses/new" rightSection={<IconTargetArrow size={16} />}>
-              Start with an expense
+            <Button component={Link} to={emptyConfig.addExpenseTo} rightSection={<IconTargetArrow size={16} />}>
+              {emptyConfig.addExpenseLabel}
             </Button>
           </Group>
         </Paper>
+
+        {/* F35: Budget modal */}
+        <SetBudgetModal
+          opened={budgetModalOpened}
+          onClose={() => setBudgetModalOpened(false)}
+          groupId={activeGroupId}
+          currency={group?.currency}
+          currentAmount={currentBudget?.budget_amount}
+        />
       </Stack>
     );
   }
@@ -422,36 +600,38 @@ function DashboardPage() {
               </Text>
             </Stack>
 
-            <Group className="commune-hero-actions">
-              <Button
-                component={Link}
-                to="/expenses/new"
-                leftSection={<IconPlus size={16} />}
-                styles={{
-                  root: {
-                    background: 'linear-gradient(145deg, #f3decb 0%, #d8ebe4 100%)',
-                    color: 'var(--commune-forest)',
-                    boxShadow: 'none',
-                  },
-                }}
-              >
-                Add expense
-              </Button>
-              <Button
-                component={Link}
-                to="/members"
-                variant="white"
-                leftSection={<IconUsers size={16} />}
-                styles={{
-                  root: {
-                    background: 'rgba(255, 255, 255, 0.08)',
-                    color: '#fffaf6',
-                    border: '1px solid rgba(255, 255, 255, 0.08)',
-                  },
-                }}
-              >
-                View members
-              </Button>
+            {/* F36: Group-type-aware quick actions */}
+            <Group className="commune-hero-actions" gap="sm">
+              {quickActions.map((action) => (
+                <Button
+                  key={action.label}
+                  component={Link}
+                  to={action.to}
+                  leftSection={<action.icon size={16} />}
+                  variant={action.variant}
+                  styles={
+                    !action.variant
+                      ? {
+                          root: {
+                            background: 'linear-gradient(145deg, #f3decb 0%, #d8ebe4 100%)',
+                            color: 'var(--commune-forest)',
+                            boxShadow: 'none',
+                          },
+                        }
+                      : action.variant === 'light'
+                        ? {
+                            root: {
+                              background: 'rgba(255, 255, 255, 0.08)',
+                              color: '#fffaf6',
+                              border: '1px solid rgba(255, 255, 255, 0.08)',
+                            },
+                          }
+                        : undefined
+                  }
+                >
+                  {action.label}
+                </Button>
+              ))}
             </Group>
           </Stack>
 
@@ -507,6 +687,66 @@ function DashboardPage() {
           </Stack>
         </div>
       </Paper>
+
+      {/* F35: Budget tracking widget */}
+      <Paper className="commune-soft-panel" p="lg">
+        {currentBudget && budgetPct !== null ? (
+          <Stack gap="sm">
+            <Group justify="space-between" align="flex-start">
+              <div>
+                <Text className="commune-section-heading">Monthly budget</Text>
+                <Text size="sm" c="dimmed">
+                  {formatCurrency(monthlyTrend.currentTotal, group?.currency)} spent of{' '}
+                  {formatCurrency(currentBudget.budget_amount, group?.currency)} budget
+                </Text>
+              </div>
+              <Group gap="xs">
+                <Badge color={getBudgetColor(budgetPct)} variant="light">
+                  {budgetPct}%
+                </Badge>
+                <Button size="xs" variant="subtle" onClick={() => setBudgetModalOpened(true)}>
+                  Edit
+                </Button>
+              </Group>
+            </Group>
+            <Progress
+              value={Math.min(budgetPct, 100)}
+              size="lg"
+              color={getBudgetColor(budgetPct)}
+            />
+            {budgetPct >= 100 && (
+              <Text size="xs" c="red">
+                Over budget by {formatCurrency(monthlyTrend.currentTotal - currentBudget.budget_amount, group?.currency)}
+              </Text>
+            )}
+          </Stack>
+        ) : (
+          <Group justify="space-between" align="center">
+            <Stack gap={2}>
+              <Text fw={600}>No budget set for {monthLabel}</Text>
+              <Text size="sm" c="dimmed">
+                Set a monthly spending target to track progress.
+              </Text>
+            </Stack>
+            <Button
+              variant="light"
+              leftSection={<IconTargetArrow size={16} />}
+              onClick={() => setBudgetModalOpened(true)}
+            >
+              Set budget
+            </Button>
+          </Group>
+        )}
+      </Paper>
+
+      {/* F36: Feature discovery prompts (only shown when relevant) */}
+      {featurePrompt && (
+        <Paper className="commune-soft-panel" p="md" style={{ borderLeft: '3px solid var(--mantine-color-commune-5)' }}>
+          <Text size="sm" c="dimmed">
+            {featurePrompt}
+          </Text>
+        </Paper>
+      )}
 
       <SimpleGrid cols={{ base: 1, sm: 2, xl: 4 }} spacing="lg">
         {statCards.map((stat) => (
@@ -833,6 +1073,15 @@ function DashboardPage() {
           </Stack>
         </Stack>
       </div>
+
+      {/* F35: Budget modal */}
+      <SetBudgetModal
+        opened={budgetModalOpened}
+        onClose={() => setBudgetModalOpened(false)}
+        groupId={activeGroupId}
+        currency={group?.currency}
+        currentAmount={currentBudget?.budget_amount}
+      />
     </Stack>
   );
 }

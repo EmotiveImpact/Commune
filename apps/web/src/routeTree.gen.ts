@@ -22,9 +22,11 @@ import { Route as AppTemplatesRouteImport } from './routes/_app/templates'
 import { Route as AppSettingsRouteImport } from './routes/_app/settings'
 import { Route as AppRecurringRouteImport } from './routes/_app/recurring'
 import { Route as AppPricingRouteImport } from './routes/_app/pricing'
+import { Route as AppOverviewRouteImport } from './routes/_app/overview'
 import { Route as AppOnboardingRouteImport } from './routes/_app/onboarding'
 import { Route as AppMembersRouteImport } from './routes/_app/members'
 import { Route as AppImportRouteImport } from './routes/_app/import'
+import { Route as AppFundsRouteImport } from './routes/_app/funds'
 import { Route as AppBreakdownRouteImport } from './routes/_app/breakdown'
 import { Route as AppAnalyticsRouteImport } from './routes/_app/analytics'
 import { Route as AppActivityRouteImport } from './routes/_app/activity'
@@ -102,6 +104,11 @@ const AppPricingRoute = AppPricingRouteImport.update({
   path: '/pricing',
   getParentRoute: () => AppRoute,
 } as any).lazy(() => import('./routes/_app/pricing.lazy').then((d) => d.Route))
+const AppOverviewRoute = AppOverviewRouteImport.update({
+  id: '/overview',
+  path: '/overview',
+  getParentRoute: () => AppRoute,
+} as any).lazy(() => import('./routes/_app/overview.lazy').then((d) => d.Route))
 const AppOnboardingRoute = AppOnboardingRouteImport.update({
   id: '/onboarding',
   path: '/onboarding',
@@ -119,6 +126,11 @@ const AppImportRoute = AppImportRouteImport.update({
   path: '/import',
   getParentRoute: () => AppRoute,
 } as any).lazy(() => import('./routes/_app/import.lazy').then((d) => d.Route))
+const AppFundsRoute = AppFundsRouteImport.update({
+  id: '/funds',
+  path: '/funds',
+  getParentRoute: () => AppRoute,
+} as any).lazy(() => import('./routes/_app/funds.lazy').then((d) => d.Route))
 const AppBreakdownRoute = AppBreakdownRouteImport.update({
   id: '/breakdown',
   path: '/breakdown',
@@ -187,9 +199,11 @@ export interface FileRoutesByFullPath {
   '/activity': typeof AppActivityRoute
   '/analytics': typeof AppAnalyticsRoute
   '/breakdown': typeof AppBreakdownRoute
+  '/funds': typeof AppFundsRoute
   '/import': typeof AppImportRoute
   '/members': typeof AppMembersRoute
   '/onboarding': typeof AppOnboardingRoute
+  '/overview': typeof AppOverviewRoute
   '/pricing': typeof AppPricingRoute
   '/recurring': typeof AppRecurringRoute
   '/settings': typeof AppSettingsRoute
@@ -212,9 +226,11 @@ export interface FileRoutesByTo {
   '/activity': typeof AppActivityRoute
   '/analytics': typeof AppAnalyticsRoute
   '/breakdown': typeof AppBreakdownRoute
+  '/funds': typeof AppFundsRoute
   '/import': typeof AppImportRoute
   '/members': typeof AppMembersRoute
   '/onboarding': typeof AppOnboardingRoute
+  '/overview': typeof AppOverviewRoute
   '/pricing': typeof AppPricingRoute
   '/recurring': typeof AppRecurringRoute
   '/settings': typeof AppSettingsRoute
@@ -239,9 +255,11 @@ export interface FileRoutesById {
   '/_app/activity': typeof AppActivityRoute
   '/_app/analytics': typeof AppAnalyticsRoute
   '/_app/breakdown': typeof AppBreakdownRoute
+  '/_app/funds': typeof AppFundsRoute
   '/_app/import': typeof AppImportRoute
   '/_app/members': typeof AppMembersRoute
   '/_app/onboarding': typeof AppOnboardingRoute
+  '/_app/overview': typeof AppOverviewRoute
   '/_app/pricing': typeof AppPricingRoute
   '/_app/recurring': typeof AppRecurringRoute
   '/_app/settings': typeof AppSettingsRoute
@@ -267,9 +285,11 @@ export interface FileRouteTypes {
     | '/activity'
     | '/analytics'
     | '/breakdown'
+    | '/funds'
     | '/import'
     | '/members'
     | '/onboarding'
+    | '/overview'
     | '/pricing'
     | '/recurring'
     | '/settings'
@@ -292,9 +312,11 @@ export interface FileRouteTypes {
     | '/activity'
     | '/analytics'
     | '/breakdown'
+    | '/funds'
     | '/import'
     | '/members'
     | '/onboarding'
+    | '/overview'
     | '/pricing'
     | '/recurring'
     | '/settings'
@@ -318,9 +340,11 @@ export interface FileRouteTypes {
     | '/_app/activity'
     | '/_app/analytics'
     | '/_app/breakdown'
+    | '/_app/funds'
     | '/_app/import'
     | '/_app/members'
     | '/_app/onboarding'
+    | '/_app/overview'
     | '/_app/pricing'
     | '/_app/recurring'
     | '/_app/settings'
@@ -439,6 +463,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppPricingRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/overview': {
+      id: '/_app/overview'
+      path: '/overview'
+      fullPath: '/overview'
+      preLoaderRoute: typeof AppOverviewRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/onboarding': {
       id: '/_app/onboarding'
       path: '/onboarding'
@@ -458,6 +489,13 @@ declare module '@tanstack/react-router' {
       path: '/import'
       fullPath: '/import'
       preLoaderRoute: typeof AppImportRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/funds': {
+      id: '/_app/funds'
+      path: '/funds'
+      fullPath: '/funds'
+      preLoaderRoute: typeof AppFundsRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/breakdown': {
@@ -541,9 +579,11 @@ interface AppRouteChildren {
   AppActivityRoute: typeof AppActivityRoute
   AppAnalyticsRoute: typeof AppAnalyticsRoute
   AppBreakdownRoute: typeof AppBreakdownRoute
+  AppFundsRoute: typeof AppFundsRoute
   AppImportRoute: typeof AppImportRoute
   AppMembersRoute: typeof AppMembersRoute
   AppOnboardingRoute: typeof AppOnboardingRoute
+  AppOverviewRoute: typeof AppOverviewRoute
   AppPricingRoute: typeof AppPricingRoute
   AppRecurringRoute: typeof AppRecurringRoute
   AppSettingsRoute: typeof AppSettingsRoute
@@ -560,9 +600,11 @@ const AppRouteChildren: AppRouteChildren = {
   AppActivityRoute: AppActivityRoute,
   AppAnalyticsRoute: AppAnalyticsRoute,
   AppBreakdownRoute: AppBreakdownRoute,
+  AppFundsRoute: AppFundsRoute,
   AppImportRoute: AppImportRoute,
   AppMembersRoute: AppMembersRoute,
   AppOnboardingRoute: AppOnboardingRoute,
+  AppOverviewRoute: AppOverviewRoute,
   AppPricingRoute: AppPricingRoute,
   AppRecurringRoute: AppRecurringRoute,
   AppSettingsRoute: AppSettingsRoute,

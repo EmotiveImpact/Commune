@@ -171,6 +171,52 @@ export const updateTemplateSchema = z.object({
 
 export type UpdateTemplateInput = z.infer<typeof updateTemplateSchema>;
 
+// ─── Fund Schemas ───────────────────────────────────────────────────────────
+
+export const createFundSchema = z.object({
+  group_id: z.string().regex(uuidRegex, 'Must be a valid UUID'),
+  name: z.string().min(1, 'Fund name is required').max(100),
+  target_amount: z.number().positive().nullable().optional(),
+  currency: z.string().length(3).default('GBP'),
+});
+
+export type CreateFundInput = z.infer<typeof createFundSchema>;
+
+export const createContributionSchema = z.object({
+  amount: z.number().positive('Amount must be greater than 0'),
+  note: z.string().max(500).optional(),
+});
+
+export type CreateContributionInput = z.infer<typeof createContributionSchema>;
+
+export const createFundExpenseSchema = z.object({
+  description: z.string().min(1, 'Description is required').max(200),
+  amount: z.number().positive('Amount must be greater than 0'),
+  receipt_url: z.string().url().nullable().optional(),
+});
+
+export type CreateFundExpenseInput = z.infer<typeof createFundExpenseSchema>;
+
+// ─── Proration Schemas ──────────────────────────────────────────────────────
+
+export const prorationInfoSchema = z.object({
+  daysPresent: z.number().int().min(0),
+  totalDays: z.number().int().min(1),
+  ratio: z.number().min(0).max(1),
+});
+
+export type ProrationInfoInput = z.infer<typeof prorationInfoSchema>;
+
+export const prorationRequestSchema = z.object({
+  effectiveFrom: z.string().regex(dateRegex, 'Must be YYYY-MM-DD format').nullable(),
+  effectiveUntil: z.string().regex(dateRegex, 'Must be YYYY-MM-DD format').nullable(),
+  periodStart: z.string().regex(dateRegex, 'Must be YYYY-MM-DD format'),
+  periodEnd: z.string().regex(dateRegex, 'Must be YYYY-MM-DD format'),
+  fullShare: z.number().min(0),
+});
+
+export type ProrationRequestInput = z.infer<typeof prorationRequestSchema>;
+
 // ─── Settlement Schemas ─────────────────────────────────────────────────────
 
 export const settlementTransactionSchema = z.object({

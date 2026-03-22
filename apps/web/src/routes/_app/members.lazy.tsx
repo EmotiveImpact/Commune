@@ -19,6 +19,9 @@ import {
   IconCrown,
   IconDoorExit,
   IconDots,
+  IconHeart,
+  IconHeartOff,
+  IconLink,
   IconSettings,
   IconShield,
   IconShieldCheck,
@@ -32,6 +35,7 @@ import { formatCurrency } from '@commune/utils';
 import { useGroupStore } from '../../stores/group';
 import { useSearchStore } from '../../stores/search';
 import { useGroup, useLeaveGroup, useRemoveMember, useTransferOwnership, useUpdateMemberRole, useUserGroups } from '../../hooks/use-groups';
+import { useLinkedPairs, useLinkMembers, useUnlinkMembers } from '../../hooks/use-couple-linking';
 import { useMemberMonthlyStats } from '../../hooks/use-member-stats';
 import { useAuthStore } from '../../stores/auth';
 import { InviteMemberModal } from '../../components/invite-member-modal';
@@ -42,6 +46,11 @@ import { PageHeader } from '../../components/page-header';
 export const Route = createLazyFileRoute('/_app/members')({
   component: MembersPage,
 });
+
+function formatProrationDate(dateStr: string): string {
+  const date = new Date(dateStr + 'T00:00:00');
+  return date.toLocaleDateString('en-GB', { month: 'short', day: 'numeric' });
+}
 
 function MembersPage() {
   useEffect(() => {
@@ -63,6 +72,13 @@ function MembersPage() {
   const [leaveOpened, { open: openLeave, close: closeLeave }] = useDisclosure(false);
   const [transferOpened, { open: openTransfer, close: closeTransfer }] = useDisclosure(false);
   const [transferTarget, setTransferTarget] = useState<{ userId: string; name: string } | null>(null);
+
+  // ── Couple linking state ──────────────────────────────────────────────
+  const { data: linkedPairs } = useLinkedPairs(activeGroupId ?? '');
+  const linkMembersMutation = useLinkMembers(activeGroupId ?? '');
+  const unlinkMembersMutation = useUnlinkMembers(activeGroupId ?? '');
+  const [linkOpened, { open: openLink, close: closeLink }] = useDisclosure(false);
+  const [linkTarget, setLinkTarget] = useState<{ memberId: string; userId: string; name: string } | null>(null);
 
   if (!activeGroupId) {
     return (
@@ -195,6 +211,72 @@ function MembersPage() {
     }
   }
 
+  // ── Couple linking helpers ──────────────────────────────────────────
+  // Build a map: userId → partnered userId (via linked_partner_id)
+  const linkedPartnerMap = new Map<string, string>();
+  const linkedMemberIdMap = new Map<string, string>(); // userId → memberId of their partner's row
+  if (linkedPairs) {
+    for (const pair of linkedPairs) {
+      linkedPartnerMap.set(pair.userIdA, pair.userIdB);
+      linkedPartnerMap.set(pair.userIdB, pair.userIdA);
+    }
+  }
+  // Also build memberId → userId map for the linked_partner_id column
+  const memberIdToUserId = new Map<string, string>();
+  for (const m of group?.members ?? []) {
+    memberIdToUserId.set(m.id, m.user_id);
+    if (m.linked_partner_id) {
+      linkedMemberIdMap.set(m.user_id, m.linked_partner_id);
+    }
+  }
+
+  function getPartnerName(userId: string): string | null {
+    const partnerId = linkedPartnerMap.get(userId);
+    if (!partnerId) return null;
+    const partner = group?.members.find((m) => m.user_id === partnerId);
+    return partner?.user.name ?? null;
+  }
+
+  function isLinked(userId: string): boolean {
+    return linkedPartnerMap.has(userId);
+  }
+
+  async function handleLinkCouple(memberIdA: string, memberIdB: string) {
+    try {
+      await linkMembersMutation.mutateAsync({ memberIdA, memberIdB });
+      closeLink();
+      setLinkTarget(null);
+      notifications.show({
+        title: 'Linked as couple',
+        message: 'Their balances will now be combined in settlements.',
+        color: 'pink',
+      });
+    } catch (err) {
+      notifications.show({
+        title: 'Failed to link members',
+        message: err instanceof Error ? err.message : 'Something went wrong',
+        color: 'red',
+      });
+    }
+  }
+
+  async function handleUnlink(memberId: string, partnerMemberId: string) {
+    try {
+      await unlinkMembersMutation.mutateAsync({ memberIdA: memberId, memberIdB: partnerMemberId });
+      notifications.show({
+        title: 'Unlinked',
+        message: 'Members will settle individually again.',
+        color: 'gray',
+      });
+    } catch (err) {
+      notifications.show({
+        title: 'Failed to unlink',
+        message: err instanceof Error ? err.message : 'Something went wrong',
+        color: 'red',
+      });
+    }
+  }
+
   const canLeave = user && group?.members.some((m) => m.user_id === user.id && m.status === 'active') && (
     !isAdmin || adminCount > 1
   );
@@ -242,8 +324,20 @@ function MembersPage() {
                           You
                         </Badge>
                       )}
+                      {isLinked(member.user_id) && (
+                        <Badge size="xs" variant="light" color="pink" leftSection={<IconHeart size={10} />}>
+                          {getPartnerName(member.user_id)}
+                        </Badge>
+                      )}
                     </Group>
                     <Text size="sm" c="dimmed">{member.user.email}</Text>
+                    {member.effective_from && (
+                      <Text size="xs" c="dimmed">
+                        {member.status === 'removed' && member.effective_until
+                          ? `Left ${formatProrationDate(member.effective_until)}`
+                          : `Joined ${formatProrationDate(member.effective_from)}`}
+                      </Text>
+                    )}
                   </div>
                 </Group>
 
@@ -286,6 +380,27 @@ function MembersPage() {
                             }}
                           >
                             Transfer ownership
+                          </Menu.Item>
+                        )}
+                        {/* Couple linking actions */}
+                        {member.status === 'active' && !isLinked(member.user_id) && (
+                          <Menu.Item
+                            leftSection={<IconLink size={14} />}
+                            onClick={() => {
+                              setLinkTarget({ memberId: member.id, userId: member.user_id, name: member.user.name });
+                              openLink();
+                            }}
+                          >
+                            Link as couple
+                          </Menu.Item>
+                        )}
+                        {member.status === 'active' && isLinked(member.user_id) && member.linked_partner_id && (
+                          <Menu.Item
+                            leftSection={<IconHeartOff size={14} />}
+                            color="orange"
+                            onClick={() => handleUnlink(member.id, member.linked_partner_id!)}
+                          >
+                            Unlink couple
                           </Menu.Item>
                         )}
                         <Menu.Divider />
@@ -473,6 +588,62 @@ function MembersPage() {
       {activeGroupId && (
         <InviteMemberModal opened={inviteOpened} onClose={closeInvite} groupId={activeGroupId} />
       )}
+
+      {/* Link as couple modal — select the partner to link with */}
+      <Modal
+        opened={linkOpened}
+        onClose={() => {
+          closeLink();
+          setLinkTarget(null);
+        }}
+        title="Link as couple"
+        centered
+      >
+        <Stack gap="md">
+          <Text size="sm">
+            Select who to link with <Text span fw={600}>{linkTarget?.name}</Text>.
+            Their balances will be combined in settlement calculations, and they will
+            appear as a single unit (e.g. "John & Jane").
+          </Text>
+          <Stack gap="xs">
+            {(group?.members ?? [])
+              .filter(
+                (m) =>
+                  m.status === 'active' &&
+                  m.id !== linkTarget?.memberId &&
+                  !isLinked(m.user_id),
+              )
+              .map((m) => (
+                <Button
+                  key={m.id}
+                  variant="light"
+                  leftSection={<IconHeart size={14} />}
+                  onClick={() => {
+                    if (linkTarget) {
+                      handleLinkCouple(linkTarget.memberId, m.id);
+                    }
+                  }}
+                  loading={linkMembersMutation.isPending}
+                  fullWidth
+                  justify="flex-start"
+                >
+                  {m.user.name}
+                </Button>
+              ))}
+          </Stack>
+          <Group justify="flex-end">
+            <Button
+              variant="default"
+              onClick={() => {
+                closeLink();
+                setLinkTarget(null);
+              }}
+            >
+              Cancel
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
     </Stack>
   );
 }

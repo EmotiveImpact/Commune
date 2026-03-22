@@ -194,7 +194,10 @@ export async function transferOwnership(groupId: string, newOwnerId: string) {
 export async function removeMember(memberId: string) {
   const { data, error } = await supabase
     .from('group_members')
-    .update({ status: 'removed' })
+    .update({
+      status: 'removed',
+      effective_until: new Date().toISOString().split('T')[0],
+    })
     .eq('id', memberId)
     .select()
     .single();
@@ -218,7 +221,10 @@ export async function leaveGroup(groupId: string, userId: string) {
 
   const { error } = await supabase
     .from('group_members')
-    .update({ status: 'removed' })
+    .update({
+      status: 'removed',
+      effective_until: new Date().toISOString().split('T')[0],
+    })
     .eq('group_id', groupId)
     .eq('user_id', userId);
 

@@ -48,6 +48,15 @@ export interface GroupMember {
   role: MemberRole;
   status: MemberStatus;
   joined_at: string;
+  linked_partner_id: string | null;
+  effective_from: string | null;
+  effective_until: string | null;
+}
+
+export interface LinkedPartnerInfo {
+  memberId: string;
+  userId: string;
+  userName: string;
 }
 
 export interface Expense {
@@ -118,6 +127,48 @@ export interface SplitTemplate {
   created_at: string;
 }
 
+export interface GroupBudget {
+  id: string;
+  group_id: string;
+  month: string;
+  budget_amount: number;
+  currency: string;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// ─── Group Fund types ───────────────────────────────────────────────────────
+
+export interface GroupFund {
+  id: string;
+  group_id: string;
+  name: string;
+  target_amount: number | null;
+  currency: string;
+  created_by: string;
+  created_at: string;
+}
+
+export interface FundContribution {
+  id: string;
+  fund_id: string;
+  user_id: string;
+  amount: number;
+  contributed_at: string;
+  note: string | null;
+}
+
+export interface FundExpense {
+  id: string;
+  fund_id: string;
+  description: string;
+  amount: number;
+  spent_by: string;
+  spent_at: string;
+  receipt_url: string | null;
+}
+
 // ─── Joined / computed types ────────────────────────────────────────────────
 
 export type GroupWithMembers = Group & {
@@ -134,11 +185,18 @@ export type ExpenseWithParticipants = Expense & {
   paid_by_user: User | null;
 };
 
+export interface ProrationInfo {
+  daysPresent: number;
+  totalDays: number;
+  ratio: number;
+}
+
 export interface BreakdownItem {
   expense: Expense;
   share_amount: number;
   payment_status: PaymentStatus;
   paid_by_user: User | null;
+  proration: ProrationInfo | null;
 }
 
 export interface MonthlyBreakdown {
@@ -197,3 +255,61 @@ export interface SettlementResult {
   transactionCount: number;
   isSettled: boolean;
 }
+
+// ─── Cross-Group Settlement types ────────────────────────────────────────────
+
+export interface GroupSettlementInput {
+  groupId: string;
+  groupName: string;
+  currency: string;
+  settlements: SettlementTransaction[];
+}
+
+export interface CrossGroupTransaction {
+  fromUserId: string;
+  fromName: string;
+  toUserId: string;
+  toName: string;
+  netAmount: number;
+  currency: string;
+  groups: string[];
+  paymentLink?: string | null;
+  paymentProvider?: PaymentProvider | null;
+}
+
+export interface CrossGroupResult {
+  transactions: CrossGroupTransaction[];
+  transactionCount: number;
+  isSettled: boolean;
+}
+
+// ─── Couple Mode types ───────────────────────────────────────────────────────
+
+export interface LinkedPair {
+  userIdA: string;
+  userIdB: string;
+}
+
+// ─── Fund computed types ────────────────────────────────────────────────────
+
+export type FundContributionWithUser = FundContribution & {
+  user: User;
+};
+
+export type FundExpenseWithUser = FundExpense & {
+  user: User;
+};
+
+export type GroupFundWithTotals = GroupFund & {
+  total_contributions: number;
+  total_expenses: number;
+  balance: number;
+};
+
+export type GroupFundDetails = GroupFund & {
+  contributions: FundContributionWithUser[];
+  expenses: FundExpenseWithUser[];
+  total_contributions: number;
+  total_expenses: number;
+  balance: number;
+};

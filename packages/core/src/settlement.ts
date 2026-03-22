@@ -1,7 +1,7 @@
 // ─── Smart Settlement / Minimum Transactions Algorithm ──────────────────────
 // All monetary calculations use cents internally to avoid floating-point errors.
 
-import type { SettlementTransaction, SettlementResult } from '@commune/types';
+import type { SettlementTransaction, SettlementResult, LinkedPair } from '@commune/types';
 
 /**
  * Represents the net balance for a single group member.
@@ -161,6 +161,108 @@ export function calculateSettlement(
     ...t,
     fromUserName: memberNames.get(t.fromUserId) ?? 'Unknown',
     toUserName: memberNames.get(t.toUserId) ?? 'Unknown',
+  }));
+
+  return {
+    transactions,
+    transactionCount: transactions.length,
+    isSettled: transactions.length === 0,
+  };
+}
+
+// ─── F38: Couple Mode — Merge Linked Balances ──────────────────────────────
+
+/**
+ * Merge net balances for linked pairs. Each linked pair's individual balances
+ * are summed and attributed to the canonical (lower-id) user. The output
+ * uses a composite display name like "John & Jane".
+ *
+ * @param balances - Individual net balances
+ * @param linkedPairs - Array of linked user-id pairs
+ * @param memberNames - Map of userId → display name
+ * @returns Merged balances with composite names map
+ */
+export function mergeLinkedBalances(
+  balances: NetBalance[],
+  linkedPairs: LinkedPair[],
+  memberNames: Map<string, string>,
+): { mergedBalances: NetBalance[]; mergedNames: Map<string, string> } {
+  if (linkedPairs.length === 0) {
+    return { mergedBalances: balances, mergedNames: memberNames };
+  }
+
+  // Build a mapping: userId → canonical representative userId
+  const representative = new Map<string, string>();
+  for (const pair of linkedPairs) {
+    const canonical = pair.userIdA < pair.userIdB ? pair.userIdA : pair.userIdB;
+    const other = canonical === pair.userIdA ? pair.userIdB : pair.userIdA;
+    representative.set(pair.userIdA, canonical);
+    representative.set(pair.userIdB, canonical);
+
+    // Store the "other" for name building — we'll always compose from canonical
+    representative.set(`__partner_of_${canonical}`, other);
+  }
+
+  // Sum balances by canonical representative
+  const mergedMap = new Map<string, number>(); // canonical userId → net cents
+  for (const b of balances) {
+    const canonical = representative.get(b.userId) ?? b.userId;
+    const cents = Math.round(b.amount * 100);
+    mergedMap.set(canonical, (mergedMap.get(canonical) ?? 0) + cents);
+  }
+
+  // Build merged names
+  const mergedNames = new Map(memberNames);
+  for (const pair of linkedPairs) {
+    const canonical = pair.userIdA < pair.userIdB ? pair.userIdA : pair.userIdB;
+    const other = canonical === pair.userIdA ? pair.userIdB : pair.userIdA;
+    const nameA = memberNames.get(canonical) ?? 'Unknown';
+    const nameB = memberNames.get(other) ?? 'Unknown';
+    mergedNames.set(canonical, `${nameA} & ${nameB}`);
+  }
+
+  // Build output balances
+  const mergedBalances: NetBalance[] = [];
+  for (const [userId, cents] of mergedMap) {
+    if (cents === 0) continue;
+    mergedBalances.push({
+      userId,
+      amount: Number((cents / 100).toFixed(2)),
+    });
+  }
+
+  return { mergedBalances, mergedNames };
+}
+
+/**
+ * End-to-end settlement with couple mode support.
+ * Like calculateSettlement but merges linked pairs before simplifying debts.
+ */
+export function calculateSettlementWithCouples(
+  expenses: {
+    payerId: string;
+    participants: { userId: string; shareAmount: number }[];
+  }[],
+  memberNames: Map<string, string>,
+  linkedPairs: LinkedPair[],
+): SettlementResult {
+  if (expenses.length === 0) {
+    return { transactions: [], transactionCount: 0, isSettled: true };
+  }
+
+  const balances = calculateNetBalances(expenses);
+  const { mergedBalances, mergedNames } = mergeLinkedBalances(
+    balances,
+    linkedPairs,
+    memberNames,
+  );
+
+  const rawTransactions = simplifyDebts(mergedBalances);
+
+  const transactions: SettlementTransaction[] = rawTransactions.map((t) => ({
+    ...t,
+    fromUserName: mergedNames.get(t.fromUserId) ?? 'Unknown',
+    toUserName: mergedNames.get(t.toUserId) ?? 'Unknown',
   }));
 
   return {

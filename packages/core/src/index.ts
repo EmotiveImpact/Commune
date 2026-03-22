@@ -22,9 +22,20 @@ export {
   calculateNetBalances,
   simplifyDebts,
   calculateSettlement,
+  mergeLinkedBalances,
+  calculateSettlementWithCouples,
 } from './settlement';
 
 export type { NetBalance } from './settlement';
+
+export { netCrossGroupDebts } from './cross-group';
+
+export {
+  calculateProration,
+  calculateDaysPresent,
+  needsProration,
+  getProrationInfo,
+} from './proration';
 
 export {
   createGroupSchema,
@@ -38,6 +49,11 @@ export {
   settlementResultSchema,
   createTemplateSchema,
   updateTemplateSchema,
+  createFundSchema,
+  createContributionSchema,
+  createFundExpenseSchema,
+  prorationInfoSchema,
+  prorationRequestSchema,
 } from './schemas';
 
 export type {
@@ -52,6 +68,11 @@ export type {
   SettlementResultInput,
   CreateTemplateInput,
   UpdateTemplateInput,
+  CreateFundInput,
+  CreateContributionInput,
+  CreateFundExpenseInput,
+  ProrationInfoInput,
+  ProrationRequestInput,
 } from './schemas';
 
 export {

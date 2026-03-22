@@ -2,10 +2,12 @@ import type {
   SettlementResult,
   SettlementTransaction,
   ExpenseWithParticipants,
+  LinkedPair,
 } from '@commune/types';
-import { calculateNetBalances, simplifyDebts } from '@commune/core';
+import { calculateNetBalances, simplifyDebts, mergeLinkedBalances } from '@commune/core';
 import { buildPaymentUrl } from '@commune/core';
 import { supabase } from './client';
+import { getLinkedPairs } from './couple-linking';
 
 /**
  * Fetch all active expenses for a group and compute the minimum set of
@@ -78,9 +80,42 @@ export async function getGroupSettlement(
     })
     .filter((e) => e.participants.length > 0);
 
-  // ── 3. Run the algorithm ─────────────────────────────────────────────
+  // ── 3. Run the algorithm (with couple mode support) ─────────────────
   const balances = calculateNetBalances(expenseData);
-  const rawTransactions = simplifyDebts(balances);
+
+  // Fetch linked pairs for this group (couple mode)
+  let linkedPairs: LinkedPair[] = [];
+  try {
+    linkedPairs = await getLinkedPairs(groupId);
+  } catch {
+    // If couple linking table doesn't exist yet, proceed without it
+  }
+
+  // Build a name map for merging linked balances
+  const allBalanceUserIds = new Set<string>();
+  for (const b of balances) allBalanceUserIds.add(b.userId);
+  // Also include partner user IDs from linked pairs
+  for (const pair of linkedPairs) {
+    allBalanceUserIds.add(pair.userIdA);
+    allBalanceUserIds.add(pair.userIdB);
+  }
+
+  const { data: balanceUsers } = await supabase
+    .from('users')
+    .select('id, name')
+    .in('id', Array.from(allBalanceUserIds));
+
+  const nameMap = new Map(
+    (balanceUsers ?? []).map((u) => [u.id as string, u.name as string]),
+  );
+
+  // Merge linked pairs then simplify
+  const { mergedBalances, mergedNames } =
+    linkedPairs.length > 0
+      ? mergeLinkedBalances(balances, linkedPairs, nameMap)
+      : { mergedBalances: balances, mergedNames: nameMap };
+
+  const rawTransactions = simplifyDebts(mergedBalances);
 
   if (rawTransactions.length === 0) {
     return { transactions: [], transactionCount: 0, isSettled: true };
@@ -114,6 +149,10 @@ export async function getGroupSettlement(
     const toUser = userMap.get(t.toUserId);
     const fromUser = userMap.get(t.fromUserId);
 
+    // Use merged couple names if available, otherwise fall back to individual names
+    const fromName = mergedNames.get(t.fromUserId) ?? fromUser?.name ?? 'Unknown';
+    const toName = mergedNames.get(t.toUserId) ?? toUser?.name ?? 'Unknown';
+
     let paymentLink: string | null = null;
     let paymentProvider = (toUser?.paymentProvider as SettlementTransaction['paymentProvider']) ?? null;
 
@@ -134,8 +173,8 @@ export async function getGroupSettlement(
       fromUserId: t.fromUserId,
       toUserId: t.toUserId,
       amount: t.amount,
-      fromUserName: fromUser?.name ?? 'Unknown',
-      toUserName: toUser?.name ?? 'Unknown',
+      fromUserName: fromName,
+      toUserName: toName,
       paymentLink,
       paymentProvider,
     };
