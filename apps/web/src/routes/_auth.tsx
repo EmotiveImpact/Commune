@@ -4,6 +4,14 @@ import { Anchor, Group, Stack, Text, Title } from '@mantine/core';
 export const Route = createFileRoute('/_auth')({
   beforeLoad: ({ context }) => {
     if (context.auth.isAuthenticated && !context.auth.isLoading) {
+      // Check for pending invite token (set when user clicks invite link before auth)
+      if (typeof window !== 'undefined') {
+        const inviteToken = localStorage.getItem('commune_invite_token');
+        if (inviteToken) {
+          localStorage.removeItem('commune_invite_token');
+          throw redirect({ to: '/invite/$token', params: { token: inviteToken } });
+        }
+      }
       throw redirect({ to: '/' });
     }
   },
