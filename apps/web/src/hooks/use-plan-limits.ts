@@ -6,6 +6,7 @@ import { useGroup } from './use-groups';
 import { useGroupStore } from '../stores/group';
 
 export const PLAN_LIMITS = {
+  free: { groups: 0, members: 0 },
   standard: { groups: 1, members: 5 },
   pro: { groups: 3, members: 15 },
   agency: { groups: Infinity, members: Infinity },

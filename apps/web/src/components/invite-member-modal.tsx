@@ -30,7 +30,7 @@ export function InviteMemberModal({ opened, onClose, groupId }: InviteMemberModa
       await inviteMember.mutateAsync(values.email);
       notifications.show({
         title: 'Invitation sent',
-        message: `Invited ${values.email} to the group`,
+        message: `Invitation email sent to ${values.email}`,
         color: 'green',
       });
       form.reset();

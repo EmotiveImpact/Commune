@@ -89,6 +89,7 @@ export type PaymentProvider =
 // ─── SubscriptionPlan ───────────────────────────────────────────────────────
 
 export const SubscriptionPlan = {
+  FREE: 'free',
   STANDARD: 'standard',
   PRO: 'pro',
   AGENCY: 'agency',

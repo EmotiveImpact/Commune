@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   acceptInvite,
+  acceptInviteByToken,
   createGroup,
   deleteGroup,
   getGroup,
@@ -12,6 +13,7 @@ import {
   transferOwnership,
   updateGroup,
   updateMemberRole,
+  validateInviteToken,
 } from '@commune/api';
 import type { CreateGroupInput } from '@commune/core';
 
@@ -139,6 +141,25 @@ export function useUpdateGroup(groupId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: groupKeys.detail(groupId) });
       queryClient.invalidateQueries({ queryKey: groupKeys.list() });
+    },
+  });
+}
+
+export function useValidateInviteToken(token: string) {
+  return useQuery({
+    queryKey: ['invite', 'validate', token],
+    queryFn: () => validateInviteToken(token),
+    enabled: !!token,
+  });
+}
+
+export function useAcceptInviteByToken() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (token: string) => acceptInviteByToken(token),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: groupKeys.list() });
+      queryClient.invalidateQueries({ queryKey: groupKeys.invites() });
     },
   });
 }

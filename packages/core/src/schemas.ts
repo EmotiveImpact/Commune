@@ -46,6 +46,11 @@ export const inviteMemberSchema = z.object({
 
 export type InviteMemberInput = z.infer<typeof inviteMemberSchema>;
 
+export const inviteTokenSchema = z.object({
+  token: z.string().min(1),
+});
+export type InviteTokenInput = z.infer<typeof inviteTokenSchema>;
+
 // ─── Expense Schemas ─────────────────────────────────────────────────────────
 
 export const createExpenseSchema = z.object({

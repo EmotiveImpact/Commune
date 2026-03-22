@@ -135,6 +135,27 @@ export interface MonthlyBreakdown {
   items: BreakdownItem[];
 }
 
+export interface GroupInviteRecord {
+  id: string;
+  group_id: string;
+  email: string;
+  token: string;
+  invited_by: string;
+  status: 'pending' | 'accepted' | 'expired';
+  expires_at: string;
+  created_at: string;
+}
+
+export interface InviteValidation {
+  invite_id: string;
+  group_id: string;
+  group_name: string;
+  email: string;
+  invited_by_name: string;
+  status: string;
+  expires_at: string;
+}
+
 export interface DashboardStats {
   total_spend: number;
   your_share: number;

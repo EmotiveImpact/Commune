@@ -36,7 +36,13 @@ function LoginPage() {
 
   useEffect(() => {
     if (isAuthenticated) {
-      navigate({ to: '/' });
+      const inviteToken = localStorage.getItem('commune_invite_token');
+      if (inviteToken) {
+        localStorage.removeItem('commune_invite_token');
+        navigate({ to: '/invite/$token', params: { token: inviteToken } });
+      } else {
+        navigate({ to: '/' });
+      }
     }
   }, [isAuthenticated, navigate]);
 

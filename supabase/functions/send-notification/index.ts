@@ -16,10 +16,11 @@ interface NotificationRequest {
   to: string;
   subject: string;
   body: string;
-  type: 'new_expense' | 'payment_received' | 'payment_reminder' | 'overdue';
+  type: 'new_expense' | 'payment_received' | 'payment_reminder' | 'overdue' | 'group_invite';
   payment_url?: string;
   payment_provider?: string;
   amount?: string;
+  invite_url?: string;
 }
 
 interface ResendPayload {
@@ -49,7 +50,7 @@ Deno.serve(async (req) => {
     }
 
     const apiKey = Deno.env.get('RESEND_API_KEY');
-    const fromEmail = Deno.env.get('FROM_EMAIL') ?? 'Commune <noreply@commune.app>';
+    const fromEmail = Deno.env.get('FROM_EMAIL') ?? 'Commune <noreply@ourcommune.io>';
 
     if (!apiKey) {
       return new Response(
@@ -58,7 +59,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    const { to, subject, body, type, payment_url, payment_provider, amount } = (await req.json()) as NotificationRequest;
+    const { to, subject, body, type, payment_url, payment_provider, amount, invite_url } = (await req.json()) as NotificationRequest;
 
     if (!to || !subject || !body || !type) {
       return new Response(
@@ -67,7 +68,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    const htmlBody = wrapInTemplate(subject, body, { payment_url, payment_provider, amount });
+    const htmlBody = wrapInTemplate(subject, body, { payment_url, payment_provider, amount, invite_url });
 
     const payload: ResendPayload = {
       from: fromEmail,
@@ -113,6 +114,7 @@ interface TemplateOptions {
   payment_url?: string;
   payment_provider?: string;
   amount?: string;
+  invite_url?: string;
 }
 
 const PROVIDER_LABELS: Record<string, string> = {
@@ -122,15 +124,25 @@ const PROVIDER_LABELS: Record<string, string> = {
 };
 
 function wrapInTemplate(subject: string, body: string, options?: TemplateOptions): string {
-  const payButtonHtml = options?.payment_url
-    ? `<div style="text-align: center; margin-top: 24px;">
+  let ctaButtonHtml = '';
+
+  if (options?.invite_url) {
+    ctaButtonHtml = `<div style="text-align: center; margin-top: 24px;">
+        <a href="${options.invite_url}" target="_blank" rel="noopener noreferrer"
+           style="display: inline-block; background-color: #6366f1; color: #ffffff; text-decoration: none;
+                  padding: 14px 36px; border-radius: 8px; font-weight: 600; font-size: 16px;">
+          Accept Invitation
+        </a>
+      </div>`;
+  } else if (options?.payment_url) {
+    ctaButtonHtml = `<div style="text-align: center; margin-top: 24px;">
         <a href="${options.payment_url}" target="_blank" rel="noopener noreferrer"
            style="display: inline-block; background-color: #6366f1; color: #ffffff; text-decoration: none;
                   padding: 12px 32px; border-radius: 6px; font-weight: 600; font-size: 15px;">
           ${PROVIDER_LABELS[options.payment_provider ?? ''] ?? 'Pay now'}${options.amount ? ` — £${options.amount}` : ''}
         </a>
-      </div>`
-    : '';
+      </div>`;
+  }
 
   return `<!DOCTYPE html>
 <html>
@@ -152,7 +164,7 @@ function wrapInTemplate(subject: string, body: string, options?: TemplateOptions
     <div class="card">
       <div class="header">Commune</div>
       <div class="content">${body}</div>
-      ${payButtonHtml}
+      ${ctaButtonHtml}
     </div>
     <div class="footer">
       You're receiving this because of your notification settings in Commune.

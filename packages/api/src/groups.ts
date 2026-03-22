@@ -1,4 +1,4 @@
-import type { Group, GroupInvite, GroupMember, GroupWithMembers } from '@commune/types';
+import type { Group, GroupInvite, GroupMember, GroupWithMembers, InviteValidation } from '@commune/types';
 import type { MemberRole } from '@commune/types';
 import { supabase } from './client';
 import { ensureProfile } from './profile';
@@ -105,7 +105,17 @@ export async function getPendingInvites() {
   return (data ?? []) as unknown as GroupInvite[];
 }
 
-export async function inviteMember(groupId: string, email: string) {
+export interface InviteResult {
+  invite_id: string;
+  token: string;
+  email: string;
+  group_id: string;
+  group_name: string;
+  inviter_name: string;
+  existing_user: boolean;
+}
+
+export async function inviteMember(groupId: string, email: string): Promise<InviteResult> {
   const { data, error } = await supabase
     .rpc('invite_group_member', {
       target_group_id: groupId,
@@ -113,7 +123,42 @@ export async function inviteMember(groupId: string, email: string) {
     });
 
   if (error) throw error;
-  return data;
+
+  const result = data as InviteResult;
+
+  // Fire-and-forget: send invite email via edge function
+  const inviteUrl = `https://app.ourcommune.io/invite/${result.token}`;
+  supabase.functions.invoke('send-notification', {
+    body: {
+      to: result.email,
+      subject: `You've been invited to ${result.group_name} on Commune`,
+      body: `<p><strong>${result.inviter_name}</strong> has invited you to join <strong>${result.group_name}</strong> on Commune.</p><p>Click the button below to accept the invitation and start managing shared expenses together.</p>`,
+      type: 'group_invite',
+      invite_url: inviteUrl,
+    },
+  }).catch((err) => {
+    console.error('Failed to send invite email:', err);
+  });
+
+  return result;
+}
+
+export async function validateInviteToken(token: string): Promise<InviteValidation | null> {
+  const { data, error } = await supabase
+    .rpc('validate_invite_token', { p_token: token });
+
+  if (error) throw error;
+
+  const rows = (data ?? []) as InviteValidation[];
+  return rows[0] ?? null;
+}
+
+export async function acceptInviteByToken(token: string) {
+  const { data, error } = await supabase
+    .rpc('accept_invite_by_token', { p_token: token });
+
+  if (error) throw error;
+  return data as GroupMember;
 }
 
 export async function acceptInvite(groupId: string) {
