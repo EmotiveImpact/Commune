@@ -55,6 +55,19 @@ a {
 .commune-auth-form-side {
   background: var(--commune-paper-strong);
   min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+}
+
+.commune-auth-mobile-header {
+  display: none;
+}
+
+.commune-auth-mobile-footer {
+  display: none;
 }
 
 .commune-auth-panel {
@@ -758,12 +771,57 @@ div:hover > .commune-avatar-overlay {
   }
 
   .commune-auth-brand {
-    min-height: auto;
-    padding: 2rem;
+    display: none;
   }
 
   .commune-auth-form-side {
-    min-height: auto;
+    min-height: 100vh;
+    justify-content: flex-start;
+    align-items: stretch;
+  }
+
+  .commune-auth-mobile-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 16px 24px;
+    background: linear-gradient(135deg, #1a1e2b 0%, #21262f 100%);
+  }
+
+  .commune-auth-mobile-header img {
+    border-radius: 8px;
+  }
+
+  .commune-auth-mobile-header span {
+    font-weight: 600;
+    font-size: 0.95rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #fff;
+  }
+
+  .commune-auth-mobile-logo {
+    display: none;
+  }
+
+  .commune-auth-mobile-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 24px;
+    margin-top: auto;
+    font-size: 0.75rem;
+    color: var(--commune-ink-soft);
+  }
+
+  .commune-auth-mobile-footer a {
+    color: var(--commune-ink-soft);
+    text-decoration: none;
+  }
+
+  .commune-auth-mobile-footer a:hover {
+    color: var(--commune-ink);
   }
 
   .commune-sidebar-panel {

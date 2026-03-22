@@ -1,4 +1,4 @@
-import { StrictMode } from 'react';
+import { StrictMode, useMemo } from 'react';
 import { createRoot } from 'react-dom/client';
 import { RouterProvider, createRouter } from '@tanstack/react-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -49,19 +49,18 @@ function App() {
   useAuthListener();
   const { isAuthenticated, isLoading, user } = useAuthStore();
 
+  const userId = user?.id ?? null;
+  const routerContext = useMemo(
+    () => ({
+      queryClient,
+      auth: { isAuthenticated, isLoading, userId },
+    }),
+    [isAuthenticated, isLoading, userId],
+  );
+
   return (
     <QueryClientProvider client={queryClient}>
-      <RouterProvider
-        router={router}
-        context={{
-          queryClient,
-          auth: {
-            isAuthenticated,
-            isLoading,
-            userId: user?.id ?? null,
-          },
-        }}
-      />
+      <RouterProvider router={router} context={routerContext} />
     </QueryClientProvider>
   );
 }

@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
+import { createFileRoute, Link } from '@tanstack/react-router';
 import {
   Paper,
   Title,
@@ -15,8 +15,7 @@ import { useForm, schemaResolver } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
 import { z } from 'zod';
 import { signInWithEmail, signInWithGoogle } from '@commune/api';
-import { useEffect, useState } from 'react';
-import { useAuthStore } from '../../stores/auth';
+import { useState } from 'react';
 
 export const Route = createFileRoute('/_auth/login')({
   component: LoginPage,
@@ -30,21 +29,7 @@ const loginSchema = z.object({
 type LoginValues = z.infer<typeof loginSchema>;
 
 function LoginPage() {
-  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const { isAuthenticated } = useAuthStore();
-
-  useEffect(() => {
-    if (isAuthenticated) {
-      const inviteToken = localStorage.getItem('commune_invite_token');
-      if (inviteToken) {
-        localStorage.removeItem('commune_invite_token');
-        navigate({ to: '/invite/$token', params: { token: inviteToken } });
-      } else {
-        navigate({ to: '/' });
-      }
-    }
-  }, [isAuthenticated, navigate]);
 
   const form = useForm<LoginValues>({
     mode: 'uncontrolled',

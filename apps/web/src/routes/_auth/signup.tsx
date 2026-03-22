@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
+// useNavigate kept for post-signup redirect to /login
 import {
   Paper,
   Title,
@@ -14,8 +15,7 @@ import { useForm, schemaResolver } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
 import { z } from 'zod';
 import { signUpWithEmail, signInWithGoogle } from '@commune/api';
-import { useEffect, useState } from 'react';
-import { useAuthStore } from '../../stores/auth';
+import { useState } from 'react';
 
 export const Route = createFileRoute('/_auth/signup')({
   component: SignupPage,
@@ -38,19 +38,6 @@ type SignupValues = z.infer<typeof signupSchema>;
 function SignupPage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const { isAuthenticated } = useAuthStore();
-
-  useEffect(() => {
-    if (isAuthenticated) {
-      const inviteToken = localStorage.getItem('commune_invite_token');
-      if (inviteToken) {
-        localStorage.removeItem('commune_invite_token');
-        navigate({ to: '/invite/$token', params: { token: inviteToken } });
-      } else {
-        navigate({ to: '/' });
-      }
-    }
-  }, [isAuthenticated, navigate]);
 
   const form = useForm<SignupValues>({
     mode: 'uncontrolled',

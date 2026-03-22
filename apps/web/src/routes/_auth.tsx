@@ -3,7 +3,7 @@ import { Anchor, Group, Stack, Text, Title } from '@mantine/core';
 
 export const Route = createFileRoute('/_auth')({
   beforeLoad: ({ context }) => {
-    if (context.auth.isAuthenticated) {
+    if (context.auth.isAuthenticated && !context.auth.isLoading) {
       throw redirect({ to: '/' });
     }
   },
@@ -35,6 +35,9 @@ function AuthLayout() {
             >
               Commune
             </Text>
+            <Text size="sm" c="rgba(255,255,255,0.5)">
+              — for people who do life, together.
+            </Text>
           </Group>
 
           <Stack gap="xs">
@@ -57,9 +60,31 @@ function AuthLayout() {
         </Stack>
       </div>
 
-      <Stack justify="center" align="center" p="xl" className="commune-auth-form-side">
-        <Outlet />
-      </Stack>
+      <div className="commune-auth-form-side">
+        <div className="commune-auth-mobile-header">
+          <img src="/logo.png" alt="Commune" width={32} height={32} />
+          <span>Commune</span>
+          <Text size="xs" c="rgba(255,255,255,0.5)" style={{ marginLeft: 4 }}>
+            — for people who do life, together.
+          </Text>
+        </div>
+        <Stack
+          justify="center"
+          align="center"
+          p="xl"
+          style={{ flex: 1, width: '100%' }}
+        >
+          <Outlet />
+        </Stack>
+        <div className="commune-auth-mobile-footer">
+          <Text size="xs" c="inherit">
+            &copy; {new Date().getFullYear()} Commune
+          </Text>
+          <Anchor href="/privacy" size="xs" c="inherit">
+            Privacy Policy
+          </Anchor>
+        </div>
+      </div>
     </div>
   );
 }
