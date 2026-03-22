@@ -232,7 +232,7 @@ SubscriptionStatus: trialing | active | past_due | cancelled
 - F3.5: Remove members (admin only) — soft remove, preserve history
 - F3.6: Leave group (member action)
 - F3.7: Transfer ownership
-- F3.8: Enforce plan limits (Standard: 1 group/5 members per group, Pro: 3 groups/15 members per group, Agency: unlimited groups/unlimited members)
+- F3.8: Enforce plan limits (Standard: 1 group/8 members per group, Pro: 3 groups/15 members per group, Agency: unlimited groups/unlimited members)
 
 ### F4: Expense Management
 
@@ -529,7 +529,7 @@ function calculateReimbursements(
 
 ### S10: Plan Selection
 - **Route:** `/pricing`
-- **Layout:** Three-column pricing cards (Standard £4.99/mo — 1 group, 5 members; Pro £9.99/mo — 3 groups, 15 members; Agency £29.99/mo — unlimited), feature comparison, Stripe checkout trigger, current plan highlighting, trial badge
+- **Layout:** Three-column pricing cards (Standard £4.99/mo — 1 group, 8 members; Pro £9.99/mo — 3 groups, 15 members; Agency £29.99/mo — unlimited), feature comparison, Stripe checkout trigger, current plan highlighting, trial badge
 
 ---
 

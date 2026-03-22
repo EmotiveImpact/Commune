@@ -7,16 +7,19 @@ import {
   Paper,
   Progress,
   Select,
+  Skeleton,
   Stack,
   Table,
   Text,
+  ThemeIcon,
 } from '@mantine/core';
-import { IconCheck, IconDownload, IconReceipt, IconWallet, IconX } from '@tabler/icons-react';
+import { IconArrowRight, IconCheck, IconCash, IconDownload, IconExternalLink, IconReceipt, IconWallet, IconX } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { useEffect, useMemo, useState } from 'react';
 import { setPageTitle } from '../../utils/seo';
 import { downloadStatement } from '@commune/api';
 import { ExpenseCategory } from '@commune/types';
+import type { SettlementTransaction } from '@commune/types';
 import { formatCurrency, formatDate, getMonthKey } from '@commune/utils';
 import { useGroupStore } from '../../stores/group';
 import { useAuthStore } from '../../stores/auth';
@@ -24,6 +27,7 @@ import { useGroup } from '../../hooks/use-groups';
 import { useUserBreakdown } from '../../hooks/use-dashboard';
 import { useMarkPayment } from '../../hooks/use-expenses';
 import { useSubscription } from '../../hooks/use-subscriptions';
+import { useGroupSettlement } from '../../hooks/use-settlement';
 import { BreakdownSkeleton } from '../../components/page-skeleton';
 import { EmptyState } from '../../components/empty-state';
 import { PageHeader } from '../../components/page-header';
@@ -63,6 +67,112 @@ function formatCategoryLabel(category: string) {
     .join(' ');
 }
 
+function SettlementSection({
+  settlement,
+  isLoading,
+  currency,
+}: {
+  settlement: { transactions: SettlementTransaction[]; transactionCount: number; isSettled: boolean } | undefined;
+  isLoading: boolean;
+  currency?: string;
+}) {
+  if (isLoading) {
+    return (
+      <Paper className="commune-soft-panel" p="xl">
+        <Group gap="sm" mb="md">
+          <ThemeIcon size="lg" variant="light" color="emerald" radius="xl">
+            <IconCash size={18} />
+          </ThemeIcon>
+          <Text fw={700} size="lg">Smart Settlement</Text>
+        </Group>
+        <Stack gap="sm">
+          <Skeleton height={40} />
+          <Skeleton height={40} />
+          <Skeleton height={40} />
+        </Stack>
+      </Paper>
+    );
+  }
+
+  if (!settlement) return null;
+
+  return (
+    <Paper className="commune-soft-panel" p="xl">
+      <Group gap="sm" mb="md">
+        <ThemeIcon size="lg" variant="light" color="emerald" radius="xl">
+          <IconCash size={18} />
+        </ThemeIcon>
+        <div>
+          <Text fw={700} size="lg">Smart Settlement</Text>
+          <Text size="xs" c="dimmed">
+            Minimum transactions to settle all debts
+          </Text>
+        </div>
+      </Group>
+
+      {settlement.isSettled ? (
+        <Paper p="lg" radius="md" style={{ textAlign: 'center', border: '1px dashed var(--mantine-color-green-3)' }}>
+          <Text size="xl" fw={700} c="green">
+            All settled!
+          </Text>
+          <Text size="sm" c="dimmed" mt={4}>
+            No outstanding balances for this period.
+          </Text>
+        </Paper>
+      ) : (
+        <>
+          <Stack gap="sm">
+            {settlement.transactions.map((t, i) => (
+              <Paper
+                key={`${t.fromUserId}-${t.toUserId}-${i}`}
+                p="md"
+                radius="md"
+                withBorder
+              >
+                <Group justify="space-between" wrap="nowrap">
+                  <Group gap="xs" wrap="nowrap" style={{ flex: 1, minWidth: 0 }}>
+                    <Text fw={600} size="sm" truncate>
+                      {t.fromUserName}
+                    </Text>
+                    <IconArrowRight size={16} style={{ flexShrink: 0, color: 'var(--mantine-color-dimmed)' }} />
+                    <Text fw={600} size="sm" truncate>
+                      {t.toUserName}
+                    </Text>
+                    <Text fw={700} size="sm" style={{ flexShrink: 0 }}>
+                      {formatCurrency(t.amount, currency)}
+                    </Text>
+                  </Group>
+                  {t.paymentLink ? (
+                    <Button
+                      component="a"
+                      href={t.paymentLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      size="xs"
+                      variant="light"
+                      color="emerald"
+                      leftSection={<IconExternalLink size={14} />}
+                    >
+                      Pay
+                    </Button>
+                  ) : (
+                    <Badge size="sm" variant="light" color="gray">
+                      No payment link
+                    </Badge>
+                  )}
+                </Group>
+              </Paper>
+            ))}
+          </Stack>
+          <Text size="sm" c="dimmed" mt="md" ta="center">
+            Only {settlement.transactionCount} payment{settlement.transactionCount === 1 ? '' : 's'} needed to settle all debts
+          </Text>
+        </>
+      )}
+    </Paper>
+  );
+}
+
 function BreakdownPage() {
   useEffect(() => {
     setPageTitle('My Breakdown');
@@ -84,6 +194,11 @@ function BreakdownPage() {
   const { data: breakdown, isLoading } = useUserBreakdown(
     activeGroupId ?? '',
     user?.id ?? '',
+    selectedMonth,
+  );
+
+  const { data: settlement, isLoading: isSettlementLoading } = useGroupSettlement(
+    activeGroupId ?? '',
     selectedMonth,
   );
 
@@ -233,6 +348,12 @@ function BreakdownPage() {
               <Progress value={paidPct} size="xl" color="commune" />
             </div>
           </Paper>
+
+          <SettlementSection
+            settlement={settlement}
+            isLoading={isSettlementLoading}
+            currency={group?.currency}
+          />
 
           <Group justify="space-between" align="center">
             <Text size="sm" c="dimmed">{filteredItems.length} expenses</Text>

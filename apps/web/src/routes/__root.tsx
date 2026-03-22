@@ -1,5 +1,5 @@
 import { createRootRouteWithContext, Outlet } from '@tanstack/react-router';
-import { MantineProvider, createTheme } from '@mantine/core';
+import { MantineProvider, createTheme, type MantineColorScheme } from '@mantine/core';
 import { Notifications } from '@mantine/notifications';
 import { QueryClient } from '@tanstack/react-query';
 import { AppErrorBoundary } from '../components/error-boundary';
@@ -8,6 +8,13 @@ import { NotFound } from '../components/not-found';
 import '@mantine/core/styles.css';
 import '@mantine/dates/styles.css';
 import '@mantine/notifications/styles.css';
+
+function getInitialColorScheme(): MantineColorScheme {
+  if (typeof window === 'undefined') return 'auto';
+  const stored = localStorage.getItem('commune-color-scheme');
+  if (stored === 'light' || stored === 'dark' || stored === 'auto') return stored;
+  return 'auto';
+}
 
 export interface RouterContext {
   queryClient: QueryClient;
@@ -78,7 +85,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
 
 function RootComponent() {
   return (
-    <MantineProvider theme={theme} defaultColorScheme="light">
+    <MantineProvider theme={theme} defaultColorScheme={getInitialColorScheme()}>
       <Notifications position="top-right" />
       <AppErrorBoundary>
         <Outlet />

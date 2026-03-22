@@ -23,6 +23,180 @@
   --commune-motion-medium: 220ms ease;
 }
 
+/* ── Dark mode overrides ── */
+[data-mantine-color-scheme="dark"] {
+  --commune-paper: #1a1b1e;
+  --commune-paper-strong: #25262b;
+  --commune-paper-soft: #1e1f23;
+  --commune-mist: rgba(45, 106, 79, 0.18);
+  --commune-sage: rgba(45, 106, 79, 0.22);
+  --commune-primary: #4c9a89;
+  --commune-primary-strong: #6ee7b7;
+  --commune-forest: #1a1b1e;
+  --commune-forest-soft: #2c2e33;
+  --commune-ink: #c1c2c5;
+  --commune-ink-soft: #909296;
+  --commune-peach: rgba(239, 220, 207, 0.15);
+  --commune-lilac: rgba(232, 225, 239, 0.15);
+  --commune-gold: rgba(241, 229, 191, 0.12);
+  --commune-coral: #eaa681;
+  --commune-border: rgba(255, 255, 255, 0.08);
+  --commune-border-strong: rgba(255, 255, 255, 0.14);
+  --commune-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.2), 0 1px 2px rgba(0, 0, 0, 0.15);
+  --commune-shadow: 0 4px 12px rgba(0, 0, 0, 0.25), 0 1px 3px rgba(0, 0, 0, 0.15);
+  --commune-shadow-md: 0 8px 24px rgba(0, 0, 0, 0.3), 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+[data-mantine-color-scheme="dark"] body {
+  color: var(--commune-ink);
+  background: linear-gradient(180deg, #1a1b1e 0%, #1e1f23 100%);
+}
+
+[data-mantine-color-scheme="dark"] .commune-soft-panel {
+  border-color: var(--commune-border);
+  background: rgba(37, 38, 43, 0.82);
+  box-shadow: var(--commune-shadow-sm);
+}
+
+[data-mantine-color-scheme="dark"] .commune-stat-card {
+  border-color: var(--commune-border);
+  background: var(--commune-paper-strong);
+}
+
+[data-mantine-color-scheme="dark"] .commune-kpi-card {
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+[data-mantine-color-scheme="dark"] .commune-kpi-card[data-tone='sage'] {
+  background: linear-gradient(180deg, rgba(45, 106, 79, 0.22), rgba(45, 106, 79, 0.08));
+}
+
+[data-mantine-color-scheme="dark"] .commune-kpi-card[data-tone='peach'] {
+  background: linear-gradient(180deg, rgba(234, 166, 129, 0.18), rgba(234, 166, 129, 0.06));
+}
+
+[data-mantine-color-scheme="dark"] .commune-kpi-card[data-tone='lilac'] {
+  background: linear-gradient(180deg, rgba(232, 225, 239, 0.14), rgba(232, 225, 239, 0.05));
+}
+
+[data-mantine-color-scheme="dark"] .commune-kpi-card[data-tone='ink'] {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02));
+}
+
+[data-mantine-color-scheme="dark"] .commune-section-heading {
+  color: #e1e2e5;
+}
+
+[data-mantine-color-scheme="dark"] .commune-hero-card {
+  background:
+    radial-gradient(circle at top right, rgba(76, 154, 137, 0.14), transparent 32%),
+    linear-gradient(135deg, #25262b 0%, #2c2e33 100%);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+[data-mantine-color-scheme="dark"] .commune-hero-grid {
+  color: inherit;
+}
+
+[data-mantine-color-scheme="dark"] .commune-pill-badge {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--commune-ink-soft);
+}
+
+[data-mantine-color-scheme="dark"] .commune-table-shell {
+  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(37, 38, 43, 0.72);
+}
+
+[data-mantine-color-scheme="dark"] .commune-table-shell th {
+  background: rgba(44, 46, 51, 0.9);
+  color: var(--commune-ink-soft);
+}
+
+[data-mantine-color-scheme="dark"] .commune-table-shell tr:not(:last-child) td {
+  border-bottom-color: rgba(255, 255, 255, 0.06);
+}
+
+[data-mantine-color-scheme="dark"] .commune-app-shell-header {
+  background: var(--commune-paper);
+  border-bottom-color: var(--commune-border);
+}
+
+[data-mantine-color-scheme="dark"] .commune-header-search input {
+  background: var(--commune-paper-strong);
+  border-color: var(--commune-border);
+  color: var(--commune-ink);
+}
+
+[data-mantine-color-scheme="dark"] .commune-auth-form-side {
+  background: var(--commune-paper-strong);
+}
+
+[data-mantine-color-scheme="dark"] .commune-empty-dashboard-panel {
+  background:
+    radial-gradient(circle at top right, rgba(45, 106, 79, 0.12), transparent 32%),
+    rgba(37, 38, 43, 0.84);
+}
+
+[data-mantine-color-scheme="dark"] .commune-filter-chip {
+  background: var(--commune-paper-strong);
+  color: var(--commune-ink-soft);
+}
+
+[data-mantine-color-scheme="dark"] .commune-filter-chip[data-active='true'] {
+  background: var(--commune-mist);
+  color: var(--commune-primary-strong);
+}
+
+[data-mantine-color-scheme="dark"] .commune-filter-chip:hover {
+  background: var(--commune-sage);
+  color: var(--commune-primary-strong);
+}
+
+[data-mantine-color-scheme="dark"] .commune-focus-progress .mantine-Progress-root {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+[data-mantine-color-scheme="dark"] .commune-soft-progress .mantine-Progress-root {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+[data-mantine-color-scheme="dark"] .commune-group-card {
+  background: var(--commune-paper-strong);
+  border-color: var(--commune-border);
+}
+
+[data-mantine-color-scheme="dark"] .commune-invite-placeholder {
+  border-color: var(--commune-border-strong);
+  color: var(--commune-ink-soft);
+}
+
+[data-mantine-color-scheme="dark"] .commune-invite-placeholder:hover {
+  border-color: var(--commune-primary);
+  background: rgba(76, 154, 137, 0.08);
+  color: var(--commune-primary);
+}
+
+[data-mantine-color-scheme="dark"] .commune-bulk-bar {
+  background: var(--commune-paper-strong);
+  border-color: var(--commune-border-strong);
+}
+
+[data-mantine-color-scheme="dark"] .commune-page-header {
+  border-bottom-color: var(--commune-border);
+}
+
+[data-mantine-color-scheme="dark"] .commune-page-header-title {
+  color: var(--commune-ink);
+}
+
+[data-mantine-color-scheme="dark"] .mantine-Input-input:focus,
+[data-mantine-color-scheme="dark"] .mantine-Select-input:focus,
+[data-mantine-color-scheme="dark"] .mantine-MultiSelect-input:focus {
+  border-color: rgba(76, 154, 137, 0.45);
+  box-shadow: 0 0 0 3px rgba(76, 154, 137, 0.18);
+}
+
 html,
 body,
 #root {

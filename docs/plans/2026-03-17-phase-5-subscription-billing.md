@@ -499,12 +499,12 @@ const PLANS: PlanConfig[] = [
     priceValue: 4.99,
     features: [
       'Up to 1 group',
-      'Up to 5 members per group',
+      'Up to 8 members per group',
       'Expense tracking & splits',
       'Payment tracking',
       'Monthly breakdown',
     ],
-    limits: { groups: '1', members: '5' },
+    limits: { groups: '1', members: '8' },
   },
   {
     id: SubscriptionPlan.PRO,

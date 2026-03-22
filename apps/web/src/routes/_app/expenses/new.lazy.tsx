@@ -1,5 +1,6 @@
 import { createLazyFileRoute, useNavigate } from '@tanstack/react-router';
 import {
+  Alert,
   Badge,
   Button,
   Group,
@@ -18,7 +19,8 @@ import {
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect, useCallback, useRef } from 'react';
+import { IconFileAlert } from '@tabler/icons-react';
 import { ExpenseCategory } from '@commune/types';
 import { calculateEqualSplit, calculatePercentageSplit } from '@commune/core';
 import { formatCurrency } from '@commune/utils';
@@ -26,11 +28,59 @@ import { uploadReceipt } from '@commune/api';
 import { useGroupStore } from '../../../stores/group';
 import { useGroup } from '../../../hooks/use-groups';
 import { useCreateExpense } from '../../../hooks/use-expenses';
+import { useTemplates } from '../../../hooks/use-templates';
 import { useAuthStore } from '../../../stores/auth';
 import { ExpenseFormSkeleton } from '../../../components/page-skeleton';
 import { EmptyState } from '../../../components/empty-state';
 import { PageHeader } from '../../../components/page-header';
 import { ReceiptDropzone } from '../../../components/receipt-dropzone';
+
+// ─── Draft persistence helpers ──────────────────────────────────────────────
+interface ExpenseDraft {
+  title: string;
+  description: string;
+  amount: number;
+  category: string;
+  due_date: string;
+  recurrence_type: string;
+  paid_by_user_id: string;
+  participant_ids: string[];
+  percentages: Record<string, number>;
+  custom_amounts: Record<string, number>;
+  splitMethod: string;
+  isRecurring: boolean;
+  savedAt: number;
+}
+
+function getDraftKey(groupId: string) {
+  return `commune-expense-draft-${groupId}`;
+}
+
+function loadDraft(groupId: string): ExpenseDraft | null {
+  try {
+    const raw = localStorage.getItem(getDraftKey(groupId));
+    if (!raw) return null;
+    return JSON.parse(raw) as ExpenseDraft;
+  } catch {
+    return null;
+  }
+}
+
+function saveDraft(groupId: string, draft: Omit<ExpenseDraft, 'savedAt'>) {
+  try {
+    localStorage.setItem(getDraftKey(groupId), JSON.stringify({ ...draft, savedAt: Date.now() }));
+  } catch {
+    // localStorage full or unavailable — silently ignore
+  }
+}
+
+function clearDraft(groupId: string) {
+  try {
+    localStorage.removeItem(getDraftKey(groupId));
+  } catch {
+    // ignore
+  }
+}
 
 export const Route = createLazyFileRoute('/_app/expenses/new')({
   component: AddExpensePage,
@@ -50,6 +100,9 @@ function AddExpensePage() {
   const [splitMethod, setSplitMethod] = useState<string>('equal');
   const [isRecurring, setIsRecurring] = useState(false);
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [draftBanner, setDraftBanner] = useState<ExpenseDraft | null>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { data: templates } = useTemplates(activeGroupId ?? '');
 
   const form = useForm({
     mode: 'uncontrolled',
@@ -67,6 +120,70 @@ function AddExpensePage() {
     },
   });
 
+  // ─── Check for existing draft on mount ──────────────────────────────────
+  useEffect(() => {
+    if (!activeGroupId) return;
+    const draft = loadDraft(activeGroupId);
+    if (draft) {
+      setDraftBanner(draft);
+    }
+  }, [activeGroupId]);
+
+  // ─── Debounced auto-save on form changes ────────────────────────────────
+  const persistDraft = useCallback(() => {
+    if (!activeGroupId) return;
+    const values = form.getValues();
+    // Only save if user has entered something meaningful
+    if (!values.title && !values.amount && values.participant_ids.length === 0) return;
+    saveDraft(activeGroupId, {
+      ...values,
+      splitMethod,
+      isRecurring,
+    });
+  }, [activeGroupId, form, splitMethod, isRecurring]);
+
+  // Watch form values via an interval-based observer since Mantine uncontrolled
+  // mode does not fire onChange callbacks we can hook into globally.
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      debounceRef.current = setTimeout(persistDraft, 500);
+    }, 2000);
+    return () => {
+      clearInterval(interval);
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [persistDraft]);
+
+  // Also save on splitMethod / isRecurring change
+  useEffect(() => {
+    persistDraft();
+  }, [splitMethod, isRecurring, persistDraft]);
+
+  function handleRestoreDraft() {
+    if (!draftBanner) return;
+    form.setValues({
+      title: draftBanner.title,
+      description: draftBanner.description,
+      amount: draftBanner.amount,
+      category: draftBanner.category,
+      due_date: draftBanner.due_date,
+      recurrence_type: draftBanner.recurrence_type,
+      paid_by_user_id: draftBanner.paid_by_user_id,
+      participant_ids: draftBanner.participant_ids,
+      percentages: draftBanner.percentages,
+      custom_amounts: draftBanner.custom_amounts,
+    });
+    setSplitMethod(draftBanner.splitMethod || 'equal');
+    setIsRecurring(draftBanner.isRecurring || false);
+    setDraftBanner(null);
+  }
+
+  function handleDiscardDraft() {
+    if (activeGroupId) clearDraft(activeGroupId);
+    setDraftBanner(null);
+  }
+
   const memberOptions = useMemo(
     () =>
       (group?.members ?? [])
@@ -79,6 +196,41 @@ function AddExpensePage() {
     () => [{ value: '', label: 'Nobody (group expense)' }, ...memberOptions],
     [memberOptions],
   );
+
+  const templateOptions = useMemo(
+    () =>
+      (templates ?? []).map((t) => ({
+        value: t.id,
+        label: t.name,
+      })),
+    [templates],
+  );
+
+  function handleApplyTemplate(templateId: string | null) {
+    if (!templateId) return;
+    const template = templates?.find((t) => t.id === templateId);
+    if (!template) return;
+
+    const participantIds = template.participants.map((p) => p.user_id);
+    const percentages: Record<string, number> = {};
+    const customAmounts: Record<string, number> = {};
+
+    for (const p of template.participants) {
+      if (p.percentage !== undefined) percentages[p.user_id] = p.percentage;
+      if (p.amount !== undefined) customAmounts[p.user_id] = p.amount;
+    }
+
+    form.setFieldValue('participant_ids', participantIds);
+    form.setFieldValue('percentages', percentages);
+    form.setFieldValue('custom_amounts', customAmounts);
+    setSplitMethod(template.split_method);
+
+    notifications.show({
+      title: 'Template applied',
+      message: `"${template.name}" applied — participants and split method updated.`,
+      color: 'blue',
+    });
+  }
 
   if (!activeGroupId) {
     return (
@@ -176,6 +328,9 @@ function AddExpensePage() {
         }
       }
 
+      // Clear draft on successful creation
+      if (activeGroupId) clearDraft(activeGroupId);
+
       notifications.show({
         title: 'Expense created',
         message: `${values.title} added`,
@@ -197,6 +352,44 @@ function AddExpensePage() {
         title="Add expense"
         subtitle="Create a new shared cost, pick participants, and preview the split"
       />
+
+      {draftBanner && (
+        <Alert
+          icon={<IconFileAlert size={18} />}
+          color="blue"
+          title="You have an unsaved expense draft"
+          withCloseButton
+          onClose={handleDiscardDraft}
+        >
+          <Group gap="xs" mt="xs">
+            <Text size="sm">
+              {draftBanner.title ? `"${draftBanner.title}"` : 'Untitled'} — saved{' '}
+              {new Date(draftBanner.savedAt).toLocaleString()}
+            </Text>
+            <Group gap="xs">
+              <Button size="xs" variant="filled" onClick={handleRestoreDraft}>
+                Restore
+              </Button>
+              <Button size="xs" variant="default" onClick={handleDiscardDraft}>
+                Discard
+              </Button>
+            </Group>
+          </Group>
+        </Alert>
+      )}
+
+      {templateOptions.length > 0 && (
+        <Paper className="commune-soft-panel" p="lg">
+          <Select
+            label="Use a template"
+            description="Auto-fill participants and split method from a saved template."
+            placeholder="Select a template..."
+            data={templateOptions}
+            clearable
+            onChange={handleApplyTemplate}
+          />
+        </Paper>
+      )}
 
       <form onSubmit={form.onSubmit(handleSubmit)}>
         <div className="commune-expense-form-grid">

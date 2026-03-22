@@ -18,6 +18,7 @@ import { Route as AuthResetPasswordRouteImport } from './routes/_auth/reset-pass
 import { Route as AuthLoginRouteImport } from './routes/_auth/login'
 import { Route as AuthForgotPasswordRouteImport } from './routes/_auth/forgot-password'
 import { Route as AuthCallbackRouteImport } from './routes/_auth/callback'
+import { Route as AppTemplatesRouteImport } from './routes/_app/templates'
 import { Route as AppSettingsRouteImport } from './routes/_app/settings'
 import { Route as AppRecurringRouteImport } from './routes/_app/recurring'
 import { Route as AppPricingRouteImport } from './routes/_app/pricing'
@@ -76,6 +77,13 @@ const AuthCallbackRoute = AuthCallbackRouteImport.update({
   path: '/callback',
   getParentRoute: () => AuthRoute,
 } as any)
+const AppTemplatesRoute = AppTemplatesRouteImport.update({
+  id: '/templates',
+  path: '/templates',
+  getParentRoute: () => AppRoute,
+} as any).lazy(() =>
+  import('./routes/_app/templates.lazy').then((d) => d.Route),
+)
 const AppSettingsRoute = AppSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -178,6 +186,7 @@ export interface FileRoutesByFullPath {
   '/pricing': typeof AppPricingRoute
   '/recurring': typeof AppRecurringRoute
   '/settings': typeof AppSettingsRoute
+  '/templates': typeof AppTemplatesRoute
   '/callback': typeof AuthCallbackRoute
   '/forgot-password': typeof AuthForgotPasswordRoute
   '/login': typeof AuthLoginRoute
@@ -201,6 +210,7 @@ export interface FileRoutesByTo {
   '/pricing': typeof AppPricingRoute
   '/recurring': typeof AppRecurringRoute
   '/settings': typeof AppSettingsRoute
+  '/templates': typeof AppTemplatesRoute
   '/callback': typeof AuthCallbackRoute
   '/forgot-password': typeof AuthForgotPasswordRoute
   '/login': typeof AuthLoginRoute
@@ -226,6 +236,7 @@ export interface FileRoutesById {
   '/_app/pricing': typeof AppPricingRoute
   '/_app/recurring': typeof AppRecurringRoute
   '/_app/settings': typeof AppSettingsRoute
+  '/_app/templates': typeof AppTemplatesRoute
   '/_auth/callback': typeof AuthCallbackRoute
   '/_auth/forgot-password': typeof AuthForgotPasswordRoute
   '/_auth/login': typeof AuthLoginRoute
@@ -252,6 +263,7 @@ export interface FileRouteTypes {
     | '/pricing'
     | '/recurring'
     | '/settings'
+    | '/templates'
     | '/callback'
     | '/forgot-password'
     | '/login'
@@ -275,6 +287,7 @@ export interface FileRouteTypes {
     | '/pricing'
     | '/recurring'
     | '/settings'
+    | '/templates'
     | '/callback'
     | '/forgot-password'
     | '/login'
@@ -299,6 +312,7 @@ export interface FileRouteTypes {
     | '/_app/pricing'
     | '/_app/recurring'
     | '/_app/settings'
+    | '/_app/templates'
     | '/_auth/callback'
     | '/_auth/forgot-password'
     | '/_auth/login'
@@ -384,6 +398,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/callback'
       preLoaderRoute: typeof AuthCallbackRouteImport
       parentRoute: typeof AuthRoute
+    }
+    '/_app/templates': {
+      id: '/_app/templates'
+      path: '/templates'
+      fullPath: '/templates'
+      preLoaderRoute: typeof AppTemplatesRouteImport
+      parentRoute: typeof AppRoute
     }
     '/_app/settings': {
       id: '/_app/settings'
@@ -506,6 +527,7 @@ interface AppRouteChildren {
   AppPricingRoute: typeof AppPricingRoute
   AppRecurringRoute: typeof AppRecurringRoute
   AppSettingsRoute: typeof AppSettingsRoute
+  AppTemplatesRoute: typeof AppTemplatesRoute
   AppIndexRoute: typeof AppIndexRoute
   AppExpensesExpenseIdRoute: typeof AppExpensesExpenseIdRouteWithChildren
   AppExpensesNewRoute: typeof AppExpensesNewRoute
@@ -523,6 +545,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppPricingRoute: AppPricingRoute,
   AppRecurringRoute: AppRecurringRoute,
   AppSettingsRoute: AppSettingsRoute,
+  AppTemplatesRoute: AppTemplatesRoute,
   AppIndexRoute: AppIndexRoute,
   AppExpensesExpenseIdRoute: AppExpensesExpenseIdRouteWithChildren,
   AppExpensesNewRoute: AppExpensesNewRoute,

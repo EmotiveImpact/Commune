@@ -104,6 +104,20 @@ export interface Subscription {
   created_at: string;
 }
 
+export interface SplitTemplate {
+  id: string;
+  group_id: string;
+  name: string;
+  split_method: SplitMethod;
+  participants: {
+    user_id: string;
+    percentage?: number;
+    amount?: number;
+  }[];
+  created_by: string;
+  created_at: string;
+}
+
 // ─── Joined / computed types ────────────────────────────────────────────────
 
 export type GroupWithMembers = Group & {
@@ -163,4 +177,23 @@ export interface DashboardStats {
   amount_remaining: number;
   overdue_count: number;
   upcoming_items: ExpenseWithParticipants[];
+}
+
+// ─── Settlement types ───────────────────────────────────────────────────────
+
+export interface SettlementTransaction {
+  fromUserId: string;
+  toUserId: string;
+  amount: number;
+  fromUserName?: string;
+  toUserName?: string;
+  /** Payment link for the payee (creditor), if they have one configured */
+  paymentLink?: string | null;
+  paymentProvider?: PaymentProvider | null;
+}
+
+export interface SettlementResult {
+  transactions: SettlementTransaction[];
+  transactionCount: number;
+  isSettled: boolean;
 }

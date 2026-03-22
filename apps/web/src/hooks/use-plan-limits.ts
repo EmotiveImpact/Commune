@@ -7,7 +7,7 @@ import { useGroupStore } from '../stores/group';
 
 export const PLAN_LIMITS = {
   free: { groups: 0, members: 0 },
-  standard: { groups: 1, members: 5 },
+  standard: { groups: 1, members: 8 },
   pro: { groups: 3, members: 15 },
   agency: { groups: Infinity, members: Infinity },
 } as const;

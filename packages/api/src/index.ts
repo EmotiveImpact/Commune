@@ -18,3 +18,5 @@ export * from './activity';
 export * from './analytics';
 export * from './receipts';
 export * from './push';
+export * from './settlement';
+export * from './templates';

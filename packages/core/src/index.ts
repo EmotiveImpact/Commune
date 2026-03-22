@@ -19,6 +19,14 @@ export type {
 } from './payment-links';
 
 export {
+  calculateNetBalances,
+  simplifyDebts,
+  calculateSettlement,
+} from './settlement';
+
+export type { NetBalance } from './settlement';
+
+export {
   createGroupSchema,
   inviteMemberSchema,
   createExpenseSchema,
@@ -26,6 +34,10 @@ export {
   customSplitSchema,
   markPaymentSchema,
   updateProfileSchema,
+  settlementTransactionSchema,
+  settlementResultSchema,
+  createTemplateSchema,
+  updateTemplateSchema,
 } from './schemas';
 
 export type {
@@ -36,4 +48,8 @@ export type {
   CustomSplitInput,
   MarkPaymentInput,
   UpdateProfileInput,
+  SettlementTransactionInput,
+  SettlementResultInput,
+  CreateTemplateInput,
+  UpdateTemplateInput,
 } from './schemas';

@@ -103,7 +103,7 @@ The split and statement logic must not live only in the UI. It is centralised in
 |---|---|---|---|
 | Price | £4.99/mo | £9.99/mo | £29.99/mo |
 | Annual | £49.99/yr | £99.99/yr | £299.99/yr |
-| Members per group | 5 | 15 | Unlimited |
+| Members per group | 8 | 15 | Unlimited |
 | Groups | 1 | 3 | Unlimited |
 | Trial | 7 days free | 7 days free | 7 days free |
 

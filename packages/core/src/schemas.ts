@@ -145,3 +145,52 @@ export const updateProfileSchema = z.object({
 
 export type NotificationPreferencesInput = z.infer<typeof notificationPreferencesSchema>;
 export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
+
+// ─── Template Schemas ───────────────────────────────────────────────────────
+
+const templateParticipantSchema = z.object({
+  user_id: z.string().regex(uuidRegex, 'Must be a valid UUID'),
+  percentage: z.number().min(0).max(100).optional(),
+  amount: z.number().min(0).optional(),
+});
+
+export const createTemplateSchema = z.object({
+  group_id: z.string().regex(uuidRegex, 'Must be a valid UUID'),
+  name: z.string().min(1, 'Template name is required').max(100),
+  split_method: z.enum(splitMethodValues),
+  participants: z.array(templateParticipantSchema).min(1, 'At least one participant is required'),
+});
+
+export type CreateTemplateInput = z.infer<typeof createTemplateSchema>;
+
+export const updateTemplateSchema = z.object({
+  name: z.string().min(1).max(100).optional(),
+  split_method: z.enum(splitMethodValues).optional(),
+  participants: z.array(templateParticipantSchema).min(1).optional(),
+});
+
+export type UpdateTemplateInput = z.infer<typeof updateTemplateSchema>;
+
+// ─── Settlement Schemas ─────────────────────────────────────────────────────
+
+export const settlementTransactionSchema = z.object({
+  fromUserId: z.string().regex(uuidRegex, 'Must be a valid UUID'),
+  toUserId: z.string().regex(uuidRegex, 'Must be a valid UUID'),
+  amount: z.number().positive(),
+  fromUserName: z.string().optional(),
+  toUserName: z.string().optional(),
+  paymentLink: z.string().nullable().optional(),
+  paymentProvider: z
+    .enum(['revolut', 'monzo', 'paypal', 'bank_transfer', 'other'])
+    .nullable()
+    .optional(),
+});
+
+export const settlementResultSchema = z.object({
+  transactions: z.array(settlementTransactionSchema),
+  transactionCount: z.number().int().min(0),
+  isSettled: z.boolean(),
+});
+
+export type SettlementTransactionInput = z.infer<typeof settlementTransactionSchema>;
+export type SettlementResultInput = z.infer<typeof settlementResultSchema>;

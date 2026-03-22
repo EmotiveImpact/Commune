@@ -6,6 +6,7 @@ import {
   Divider,
   Group,
   Paper,
+  SegmentedControl,
   Select,
   SimpleGrid,
   Stack,
@@ -13,6 +14,7 @@ import {
   Text,
   Textarea,
   TextInput,
+  useMantineColorScheme,
 } from '@mantine/core';
 import { useForm, schemaResolver } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
@@ -25,7 +27,10 @@ import {
   IconDeviceMobile,
   IconExternalLink,
   IconGlobe,
+  IconMoon,
+  IconPalette,
   IconPhone,
+  IconSun,
   IconTrash,
   IconUser,
   IconWallet,
@@ -135,6 +140,7 @@ function SettingsPage() {
   }, []);
 
   const navigate = useNavigate();
+  const { colorScheme, setColorScheme } = useMantineColorScheme();
   const { user, isLoading: authLoading } = useAuthStore();
   const {
     data: profile,
@@ -497,6 +503,56 @@ function SettingsPage() {
                     />
                   </SimpleGrid>
                 </Stack>
+              </Paper>
+
+              {/* ── Appearance ── */}
+              <Paper className="commune-soft-panel" p="xl">
+                <Group gap="xs" mb="md">
+                  <IconPalette size={20} />
+                  <Text className="commune-section-heading">Appearance</Text>
+                </Group>
+                <Text size="sm" c="dimmed" mb="lg">
+                  Choose how Commune looks. System will follow your device settings.
+                </Text>
+
+                <SegmentedControl
+                  value={colorScheme}
+                  onChange={(value) => {
+                    const scheme = value as 'light' | 'dark' | 'auto';
+                    setColorScheme(scheme);
+                    localStorage.setItem('commune-color-scheme', scheme);
+                  }}
+                  data={[
+                    {
+                      value: 'light',
+                      label: (
+                        <Group gap={6} wrap="nowrap">
+                          <IconSun size={16} />
+                          <span>Light</span>
+                        </Group>
+                      ),
+                    },
+                    {
+                      value: 'dark',
+                      label: (
+                        <Group gap={6} wrap="nowrap">
+                          <IconMoon size={16} />
+                          <span>Dark</span>
+                        </Group>
+                      ),
+                    },
+                    {
+                      value: 'auto',
+                      label: (
+                        <Group gap={6} wrap="nowrap">
+                          <IconDeviceMobile size={16} />
+                          <span>System</span>
+                        </Group>
+                      ),
+                    },
+                  ]}
+                  fullWidth
+                />
               </Paper>
 
               {/* ── Preferences ── */}

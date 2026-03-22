@@ -42,7 +42,7 @@ Phase 6: Notifications & polish
 Phase 7: Mobile app (Expo)
 
 ## Pricing
-- Standard: £4.99/mo (5 members, 1 group)
+- Standard: £4.99/mo (8 members, 1 group)
 - Pro: £9.99/mo (15 members, 3 groups)
 - Agency: £29.99/mo (unlimited)
 - 7-day free trial, no free tier
