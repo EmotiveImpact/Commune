@@ -23,16 +23,19 @@ import {
   IconCheck,
   IconCheckbox,
   IconEdit,
+  IconExternalLink,
   IconNote,
   IconPaperclip,
   IconReceipt,
   IconUsers,
+  IconWallet,
   IconX,
 } from '@tabler/icons-react';
 import { useEffect, useState } from 'react';
 import { setPageTitle } from '../../../utils/seo';
 import { formatCurrency, formatDate, isOverdue } from '@commune/utils';
-import { calculateReimbursements } from '@commune/core';
+import { calculateReimbursements, buildPaymentUrl, isClickableProvider, getProviderDisplayName } from '@commune/core';
+import type { PaymentProvider } from '@commune/types';
 import {
   useArchiveExpense,
   useConfirmPayment,
@@ -108,6 +111,15 @@ function ExpenseDetailPage() {
     : [];
   const paidCount = expense.payment_records.filter((payment) => payment.status !== 'unpaid').length;
   const confirmedCount = expense.payment_records.filter((payment) => payment.status === 'confirmed').length;
+
+  // Build payment link from the person who paid upfront
+  const paidByUser = expense.paid_by_user as any;
+  const paymentLinkResult = paidByUser?.payment_provider && paidByUser?.payment_link
+    && isClickableProvider(paidByUser.payment_provider as PaymentProvider)
+    ? buildPaymentUrl(
+        { provider: paidByUser.payment_provider as PaymentProvider, link: paidByUser.payment_link },
+      )
+    : null;
 
   const statusColor: Record<string, string> = {
     unpaid: 'orange',
@@ -434,6 +446,21 @@ function ExpenseDetailPage() {
                         </Table.Td>
                         <Table.Td style={{ textAlign: 'center' }}>
                           <Group gap={4} justify="center">
+                            {canToggle && paymentStatus === 'unpaid' && reimbursement && paymentLinkResult && (
+                              <Tooltip label={`${paymentLinkResult.label} — ${formatCurrency(reimbursement.amount, expense.currency)}`}>
+                                <ActionIcon
+                                  variant="filled"
+                                  color="emerald"
+                                  component="a"
+                                  href={buildPaymentUrl({ provider: paymentLinkResult.provider, link: expense.paid_by_user?.payment_link ?? '' }, reimbursement.amount)?.url ?? '#'}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  aria-label={`Pay ${expense.paid_by_user?.name} via ${getProviderDisplayName(paymentLinkResult.provider)}`}
+                                >
+                                  <IconExternalLink size={16} />
+                                </ActionIcon>
+                              </Tooltip>
+                            )}
                             {canToggle && paymentStatus === 'unpaid' && (
                               <ActionIcon variant="light" color="emerald" onClick={() => handlePayClick(participant.user_id)} aria-label={`Mark ${participant.user.name} as paid`}>
                                 <IconCheck size={16} />
@@ -482,6 +509,63 @@ function ExpenseDetailPage() {
               disabled={uploadReceipt.isPending}
             />
           </Paper>
+
+          {expense.paid_by_user && (
+            <Paper className="commune-soft-panel" p="xl">
+              <Group gap="xs" mb="md">
+                <IconWallet size={20} />
+                <Text fw={700} size="lg">Pay {expense.paid_by_user.name}</Text>
+              </Group>
+
+              {paymentLinkResult ? (
+                <Stack gap="md">
+                  <Text size="sm" c="dimmed">
+                    {expense.paid_by_user.name} accepts payments via {getProviderDisplayName(paymentLinkResult.provider)}.
+                    Click below to pay your share directly.
+                  </Text>
+                  {reimbursements
+                    .filter((r) => r.userId === user?.id)
+                    .map((r) => {
+                      const link = buildPaymentUrl(
+                        { provider: paymentLinkResult.provider, link: paidByUser.payment_link },
+                        r.amount,
+                      );
+                      if (!link) return null;
+                      return (
+                        <Button
+                          key={r.userId}
+                          component="a"
+                          href={link.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          leftSection={<IconExternalLink size={16} />}
+                          fullWidth
+                        >
+                          {link.label} — {formatCurrency(r.amount, expense.currency)}
+                        </Button>
+                      );
+                    })}
+                  {!reimbursements.some((r) => r.userId === user?.id) && (
+                    <Text size="sm" c="dimmed">
+                      You don&apos;t owe anything for this expense.
+                    </Text>
+                  )}
+                </Stack>
+              ) : paidByUser?.payment_info ? (
+                <Stack gap="sm">
+                  <Text size="sm" c="dimmed">Payment details:</Text>
+                  <Paper p="sm" bg="gray.0" radius="md">
+                    <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>{paidByUser.payment_info}</Text>
+                  </Paper>
+                </Stack>
+              ) : (
+                <Text size="sm" c="dimmed">
+                  {expense.paid_by_user.name} hasn&apos;t set up a payment link yet.
+                  {isAdmin && ' Go to Settings to add one.'}
+                </Text>
+              )}
+            </Paper>
+          )}
         </Grid.Col>
       </Grid>
 

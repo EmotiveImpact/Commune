@@ -1,5 +1,6 @@
 import { supabase } from './client';
 import type { User as AuthUser } from '@supabase/supabase-js';
+import type { PaymentProvider } from '@commune/types';
 
 export interface NotificationPreferences {
   email_on_new_expense: boolean;
@@ -18,6 +19,8 @@ export interface UserProfile {
   phone: string | null;
   country: string | null;
   payment_info: string | null;
+  payment_provider: PaymentProvider | null;
+  payment_link: string | null;
   default_currency: string;
   timezone: string;
   notification_preferences: NotificationPreferences;
@@ -63,6 +66,8 @@ function buildProfileFromAuthUser(authUser: AuthUser): UserProfile {
     phone: null,
     country: null,
     payment_info: null,
+    payment_provider: null,
+    payment_link: null,
     default_currency: 'GBP',
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     notification_preferences: DEFAULT_NOTIFICATION_PREFS,
@@ -188,6 +193,8 @@ export async function updateProfile(
     phone?: string | null;
     country?: string | null;
     payment_info?: string | null;
+    payment_provider?: PaymentProvider | null;
+    payment_link?: string | null;
     default_currency?: string;
     timezone?: string;
     notification_preferences?: NotificationPreferences;

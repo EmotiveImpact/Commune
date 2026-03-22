@@ -74,6 +74,18 @@ export const PaymentStatus = {
 export type PaymentStatus =
   (typeof PaymentStatus)[keyof typeof PaymentStatus];
 
+// ─── PaymentProvider ────────────────────────────────────────────────────────
+
+export const PaymentProvider = {
+  REVOLUT: 'revolut',
+  MONZO: 'monzo',
+  PAYPAL: 'paypal',
+  BANK_TRANSFER: 'bank_transfer',
+  OTHER: 'other',
+} as const;
+export type PaymentProvider =
+  (typeof PaymentProvider)[keyof typeof PaymentProvider];
+
 // ─── SubscriptionPlan ───────────────────────────────────────────────────────
 
 export const SubscriptionPlan = {

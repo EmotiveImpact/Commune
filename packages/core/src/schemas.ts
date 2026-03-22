@@ -131,6 +131,8 @@ export const updateProfileSchema = z.object({
   phone: z.union([z.string().max(20), z.literal(''), z.null()]).optional(),
   country: z.union([z.string().max(100), z.literal(''), z.null()]).optional(),
   payment_info: z.union([z.string().max(200), z.literal(''), z.null()]).optional(),
+  payment_provider: z.union([z.enum(['revolut', 'monzo', 'paypal', 'bank_transfer', 'other']), z.literal(''), z.null()]).optional(),
+  payment_link: z.union([z.string().max(200), z.literal(''), z.null()]).optional(),
   default_currency: z.string().length(3).optional(),
   timezone: z.string().min(1).max(100).optional(),
   notification_preferences: notificationPreferencesSchema.optional(),

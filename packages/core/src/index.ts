@@ -6,6 +6,17 @@ export {
 } from './splits';
 
 export {
+  buildPaymentUrl,
+  isClickableProvider,
+  getProviderDisplayName,
+} from './payment-links';
+
+export type {
+  PaymentLinkConfig,
+  PaymentLinkResult,
+} from './payment-links';
+
+export {
   createGroupSchema,
   inviteMemberSchema,
   createExpenseSchema,

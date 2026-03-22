@@ -29,10 +29,14 @@ import {
   IconTrash,
   IconUser,
   IconWallet,
+  IconBrandRevolut,
+  IconBrandPaypal,
+  IconLink,
 } from '@tabler/icons-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { setPageTitle } from '../../utils/seo';
-import { updateProfileSchema } from '@commune/core';
+import { updateProfileSchema, isClickableProvider } from '@commune/core';
+import { PaymentProvider } from '@commune/types';
 import { formatDate } from '@commune/utils';
 import { supabase, uploadAvatar, deleteAccount } from '@commune/api';
 import { useAuthStore } from '../../stores/auth';
@@ -161,6 +165,8 @@ function SettingsPage() {
       phone: user.phone ?? null,
       country: user.country ?? null,
       payment_info: user.payment_info ?? null,
+      payment_provider: user.payment_provider ?? null,
+      payment_link: user.payment_link ?? null,
       default_currency: user.default_currency ?? 'GBP',
       timezone: user.timezone ?? 'Europe/London',
       created_at: user.created_at,
@@ -178,6 +184,8 @@ function SettingsPage() {
       phone: '' as string | null,
       country: '' as string | null,
       payment_info: '' as string | null,
+      payment_provider: '' as string | null,
+      payment_link: '' as string | null,
       default_currency: 'GBP',
       timezone: 'Europe/London',
       notification_preferences: DEFAULT_NOTIFICATION_PREFS,
@@ -196,6 +204,8 @@ function SettingsPage() {
         phone: resolvedProfile.phone,
         country: resolvedProfile.country,
         payment_info: resolvedProfile.payment_info,
+        payment_provider: resolvedProfile.payment_provider,
+        payment_link: resolvedProfile.payment_link,
         default_currency: resolvedProfile.default_currency,
         timezone: resolvedProfile.timezone,
         created_at: resolvedProfile.created_at,
@@ -214,6 +224,8 @@ function SettingsPage() {
         phone: resolvedProfile.phone ?? '',
         country: resolvedProfile.country ?? '',
         payment_info: resolvedProfile.payment_info ?? '',
+        payment_provider: resolvedProfile.payment_provider ?? '',
+        payment_link: resolvedProfile.payment_link ?? '',
         default_currency: resolvedProfile.default_currency,
         timezone: resolvedProfile.timezone,
         notification_preferences: resolvedProfile.notification_preferences,
@@ -263,6 +275,8 @@ function SettingsPage() {
           phone: values.phone || null,
           country: values.country || null,
           payment_info: values.payment_info || null,
+          payment_provider: (values.payment_provider as PaymentProvider) || null,
+          payment_link: values.payment_link || null,
           default_currency: values.default_currency,
           timezone: values.timezone,
           notification_preferences: values.notification_preferences,
@@ -516,17 +530,69 @@ function SettingsPage() {
 
                   <Divider />
 
-                  <Textarea
-                    label="Payment details"
-                    description="Visible to group members so they know how to pay you"
-                    placeholder="e.g. Monzo: @yourname, Revolut: 07xxx, Bank: Sort 12-34-56 Acc 12345678"
-                    autosize
-                    minRows={2}
-                    maxRows={4}
-                    leftSection={<IconWallet size={16} />}
-                    key={form.key('payment_info')}
-                    {...form.getInputProps('payment_info')}
-                  />
+                  <div>
+                    <Group gap="xs" mb={4}>
+                      <IconWallet size={18} />
+                      <Text fw={600} size="sm">Payment link</Text>
+                    </Group>
+                    <Text size="xs" c="dimmed" mb="md">
+                      Members will see a &quot;Pay now&quot; button that opens your payment link with the amount pre-filled.
+                    </Text>
+
+                    <Stack gap="md">
+                      <Select
+                        label="Payment provider"
+                        description="How you want to receive payments from group members"
+                        placeholder="Select your payment provider"
+                        data={[
+                          { value: 'revolut', label: 'Revolut' },
+                          { value: 'monzo', label: 'Monzo' },
+                          { value: 'paypal', label: 'PayPal' },
+                          { value: 'bank_transfer', label: 'Bank transfer' },
+                          { value: 'other', label: 'Other' },
+                        ]}
+                        key={form.key('payment_provider')}
+                        {...form.getInputProps('payment_provider')}
+                        clearable
+                      />
+
+                      {form.getValues().payment_provider && isClickableProvider(form.getValues().payment_provider as PaymentProvider) && (
+                        <TextInput
+                          label={
+                            form.getValues().payment_provider === 'revolut' ? 'Revolut.me username'
+                            : form.getValues().payment_provider === 'monzo' ? 'Monzo.me username'
+                            : 'PayPal.me username'
+                          }
+                          description={
+                            form.getValues().payment_provider === 'revolut' ? 'Your Revolut.me link or username (e.g. johndoe or revolut.me/johndoe)'
+                            : form.getValues().payment_provider === 'monzo' ? 'Your Monzo.me link or username (e.g. johndoe or monzo.me/johndoe)'
+                            : 'Your PayPal.me link or username (e.g. johndoe or paypal.me/johndoe)'
+                          }
+                          placeholder={
+                            form.getValues().payment_provider === 'revolut' ? 'johndoe'
+                            : form.getValues().payment_provider === 'monzo' ? 'johndoe'
+                            : 'johndoe'
+                          }
+                          leftSection={<IconLink size={16} />}
+                          key={form.key('payment_link')}
+                          {...form.getInputProps('payment_link')}
+                        />
+                      )}
+
+                      {form.getValues().payment_provider && !isClickableProvider(form.getValues().payment_provider as PaymentProvider) && (
+                        <Textarea
+                          label="Payment details"
+                          description="Your bank details or payment instructions visible to group members"
+                          placeholder="e.g. Sort: 12-34-56, Account: 12345678"
+                          autosize
+                          minRows={2}
+                          maxRows={4}
+                          key={form.key('payment_info')}
+                          {...form.getInputProps('payment_info')}
+                        />
+                      )}
+                    </Stack>
+                  </div>
                 </Stack>
               </Paper>
             </Stack>

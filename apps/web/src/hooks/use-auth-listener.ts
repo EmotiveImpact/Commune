@@ -36,6 +36,8 @@ function buildFallbackUser(authUser: SupabaseAuthUser): User {
     phone: null,
     country: null,
     payment_info: null,
+    payment_provider: null,
+    payment_link: null,
     default_currency: 'GBP',
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     created_at: authUser.created_at ?? new Date().toISOString(),
