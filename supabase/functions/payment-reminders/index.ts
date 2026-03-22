@@ -27,7 +27,12 @@ interface PaymentRow {
     title: string;
     due_date: string;
     currency: string;
+    paid_by_user_id: string;
     group: { name: string };
+    paid_by_user: {
+      payment_provider: string | null;
+      payment_link: string | null;
+    } | null;
   };
   user: {
     email: string;
@@ -38,11 +43,35 @@ interface PaymentRow {
   };
 }
 
+const CLICKABLE_PROVIDERS = ['revolut', 'monzo', 'paypal'];
+
+function buildPaymentUrl(provider: string, link: string, amount?: number): string | null {
+  if (!link || !CLICKABLE_PROVIDERS.includes(provider)) return null;
+  let url = link.trim();
+  switch (provider) {
+    case 'revolut':
+      if (url.startsWith('@')) url = `https://revolut.me/${url.slice(1)}`;
+      else if (!url.startsWith('http')) url = url.startsWith('revolut.me') ? `https://${url}` : `https://revolut.me/${url}`;
+      if (amount && amount > 0) url = `${url.replace(/\/+$/, '')}/${amount.toFixed(2)}`;
+      break;
+    case 'monzo':
+      if (!url.startsWith('http')) url = url.startsWith('monzo.me') ? `https://${url}` : `https://monzo.me/${url}`;
+      if (amount && amount > 0) url = `${url}${url.includes('?') ? '&' : '?'}amount=${amount.toFixed(2)}`;
+      break;
+    case 'paypal':
+      if (!url.startsWith('http')) url = url.startsWith('paypal.me') ? `https://${url}` : `https://paypal.me/${url}`;
+      if (amount && amount > 0) url = `${url.replace(/\/+$/, '')}/${amount.toFixed(2)}`;
+      break;
+  }
+  return url;
+}
+
 async function sendNotification(
   to: string,
   subject: string,
   body: string,
   type: 'payment_reminder' | 'overdue',
+  extras?: { payment_url?: string; payment_provider?: string; amount?: string },
 ): Promise<boolean> {
   const functionsUrl = Deno.env.get('SUPABASE_URL')!.replace(
     '.supabase.co',
@@ -57,7 +86,7 @@ async function sendNotification(
         'Content-Type': 'application/json',
         Authorization: `Bearer ${serviceKey}`,
       },
-      body: JSON.stringify({ to, subject, body, type }),
+      body: JSON.stringify({ to, subject, body, type, ...extras }),
     });
     if (!res.ok) {
       const text = await res.text();
@@ -105,7 +134,12 @@ async function processUpcoming(): Promise<{ sent: number; skipped: number }> {
         title,
         due_date,
         currency,
-        group:groups!inner ( name )
+        paid_by_user_id,
+        group:groups!inner ( name ),
+        paid_by_user:users!expenses_paid_by_user_id_fkey (
+          payment_provider,
+          payment_link
+        )
       ),
       user:users!inner (
         email,
@@ -131,6 +165,9 @@ async function processUpcoming(): Promise<{ sent: number; skipped: number }> {
       expense: Array.isArray(raw.expense) ? raw.expense[0] : raw.expense,
       user: Array.isArray(raw.user) ? raw.user[0] : raw.user,
     };
+    if (r.expense.paid_by_user && Array.isArray(r.expense.paid_by_user)) {
+      r.expense.paid_by_user = r.expense.paid_by_user[0] ?? null;
+    }
 
     // Check user preference
     if (!r.user.notification_preferences?.email_on_payment_reminder) {
@@ -158,7 +195,17 @@ async function processUpcoming(): Promise<{ sent: number; skipped: number }> {
 <p>Due date: <strong>${formatDate(r.expense.due_date)}</strong></p>
 <p>Please mark it as paid once completed.</p>`;
 
-    const ok = await sendNotification(r.user.email, subject, body, 'payment_reminder');
+    // Build payment link if payer has one configured
+    const payer = r.expense.paid_by_user;
+    const payUrl = payer?.payment_provider && payer?.payment_link
+      ? buildPaymentUrl(payer.payment_provider, payer.payment_link, r.amount)
+      : null;
+
+    const ok = await sendNotification(r.user.email, subject, body, 'payment_reminder', payUrl ? {
+      payment_url: payUrl,
+      payment_provider: payer!.payment_provider!,
+      amount: r.amount.toFixed(2),
+    } : undefined);
     if (ok) {
       await supabase.from('payment_reminder_log').upsert(
         { payment_record_id: r.id, reminder_type: 'upcoming' },
@@ -188,7 +235,12 @@ async function processOverdue(): Promise<{ sent: number; skipped: number }> {
         title,
         due_date,
         currency,
-        group:groups!inner ( name )
+        paid_by_user_id,
+        group:groups!inner ( name ),
+        paid_by_user:users!expenses_paid_by_user_id_fkey (
+          payment_provider,
+          payment_link
+        )
       ),
       user:users!inner (
         email,
@@ -213,6 +265,9 @@ async function processOverdue(): Promise<{ sent: number; skipped: number }> {
       expense: Array.isArray(raw.expense) ? raw.expense[0] : raw.expense,
       user: Array.isArray(raw.user) ? raw.user[0] : raw.user,
     };
+    if (r.expense.paid_by_user && Array.isArray(r.expense.paid_by_user)) {
+      r.expense.paid_by_user = r.expense.paid_by_user[0] ?? null;
+    }
 
     // Check user preference
     if (!r.user.notification_preferences?.email_on_overdue) {
@@ -246,7 +301,17 @@ async function processOverdue(): Promise<{ sent: number; skipped: number }> {
 <p>Original due date: <strong>${formatDate(r.expense.due_date)}</strong></p>
 <p>Please settle this payment as soon as possible.</p>`;
 
-    const ok = await sendNotification(r.user.email, subject, body, 'overdue');
+    // Build payment link if payer has one configured
+    const payer = r.expense.paid_by_user;
+    const payUrl = payer?.payment_provider && payer?.payment_link
+      ? buildPaymentUrl(payer.payment_provider, payer.payment_link, r.amount)
+      : null;
+
+    const ok = await sendNotification(r.user.email, subject, body, 'overdue', payUrl ? {
+      payment_url: payUrl,
+      payment_provider: payer!.payment_provider!,
+      amount: r.amount.toFixed(2),
+    } : undefined);
     if (ok) {
       // Upsert to update sent_at for re-send tracking
       if (existing) {

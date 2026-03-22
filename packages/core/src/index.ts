@@ -9,6 +9,8 @@ export {
   buildPaymentUrl,
   isClickableProvider,
   getProviderDisplayName,
+  getProviderSignupPrompt,
+  REVOLUT_AFFILIATE_URL,
 } from './payment-links';
 
 export type {

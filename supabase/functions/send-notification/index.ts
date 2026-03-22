@@ -17,6 +17,9 @@ interface NotificationRequest {
   subject: string;
   body: string;
   type: 'new_expense' | 'payment_received' | 'payment_reminder' | 'overdue';
+  payment_url?: string;
+  payment_provider?: string;
+  amount?: string;
 }
 
 interface ResendPayload {
@@ -55,7 +58,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    const { to, subject, body, type } = (await req.json()) as NotificationRequest;
+    const { to, subject, body, type, payment_url, payment_provider, amount } = (await req.json()) as NotificationRequest;
 
     if (!to || !subject || !body || !type) {
       return new Response(
@@ -64,7 +67,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    const htmlBody = wrapInTemplate(subject, body);
+    const htmlBody = wrapInTemplate(subject, body, { payment_url, payment_provider, amount });
 
     const payload: ResendPayload = {
       from: fromEmail,
@@ -106,7 +109,29 @@ Deno.serve(async (req) => {
   }
 });
 
-function wrapInTemplate(subject: string, body: string): string {
+interface TemplateOptions {
+  payment_url?: string;
+  payment_provider?: string;
+  amount?: string;
+}
+
+const PROVIDER_LABELS: Record<string, string> = {
+  revolut: 'Pay with Revolut',
+  monzo: 'Pay with Monzo',
+  paypal: 'Pay with PayPal',
+};
+
+function wrapInTemplate(subject: string, body: string, options?: TemplateOptions): string {
+  const payButtonHtml = options?.payment_url
+    ? `<div style="text-align: center; margin-top: 24px;">
+        <a href="${options.payment_url}" target="_blank" rel="noopener noreferrer"
+           style="display: inline-block; background-color: #6366f1; color: #ffffff; text-decoration: none;
+                  padding: 12px 32px; border-radius: 6px; font-weight: 600; font-size: 15px;">
+          ${PROVIDER_LABELS[options.payment_provider ?? ''] ?? 'Pay now'}${options.amount ? ` — £${options.amount}` : ''}
+        </a>
+      </div>`
+    : '';
+
   return `<!DOCTYPE html>
 <html>
 <head>
@@ -127,6 +152,7 @@ function wrapInTemplate(subject: string, body: string): string {
     <div class="card">
       <div class="header">Commune</div>
       <div class="content">${body}</div>
+      ${payButtonHtml}
     </div>
     <div class="footer">
       You're receiving this because of your notification settings in Commune.

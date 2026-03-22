@@ -578,7 +578,7 @@ function SettingsPage() {
                           }
                           placeholder="johndoe"
                           leftSection={<IconLink size={16} />}
-                          key={form.key('payment_link')}
+                          key={`payment_link_${activeProvider}`}
                           {...form.getInputProps('payment_link')}
                         />
                       )}
@@ -591,7 +591,7 @@ function SettingsPage() {
                           autosize
                           minRows={2}
                           maxRows={4}
-                          key={form.key('payment_info')}
+                          key={`payment_info_${activeProvider}`}
                           {...form.getInputProps('payment_info')}
                         />
                       )}

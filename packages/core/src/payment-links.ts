@@ -111,3 +111,35 @@ export function isClickableProvider(provider: PaymentProvider): boolean {
 export function getProviderDisplayName(provider: PaymentProvider): string {
   return PROVIDER_DISPLAY[provider] ?? 'Other';
 }
+
+/**
+ * Revolut affiliate signup URL.
+ * Replace with your actual Impact tracking link once approved.
+ */
+export const REVOLUT_AFFILIATE_URL = 'https://www.revolut.com/referral';
+
+/**
+ * Get provider-specific signup prompt for users who don't have the app.
+ */
+export function getProviderSignupPrompt(provider: PaymentProvider): {
+  message: string;
+  url: string;
+  cta: string;
+} | null {
+  switch (provider) {
+    case 'revolut':
+      return {
+        message: "Don't have Revolut? Sign up for a free account to pay instantly.",
+        url: REVOLUT_AFFILIATE_URL,
+        cta: 'Get Revolut free',
+      };
+    case 'monzo':
+      return {
+        message: "Don't have Monzo? You can still pay by card via the link above.",
+        url: 'https://monzo.com',
+        cta: 'Learn about Monzo',
+      };
+    default:
+      return null;
+  }
+}

@@ -34,7 +34,7 @@ import {
 import { useEffect, useState } from 'react';
 import { setPageTitle } from '../../../utils/seo';
 import { formatCurrency, formatDate, isOverdue } from '@commune/utils';
-import { calculateReimbursements, buildPaymentUrl, isClickableProvider, getProviderDisplayName } from '@commune/core';
+import { calculateReimbursements, buildPaymentUrl, isClickableProvider, getProviderDisplayName, getProviderSignupPrompt } from '@commune/core';
 import type { PaymentProvider } from '@commune/types';
 import {
   useArchiveExpense,
@@ -550,6 +550,25 @@ function ExpenseDetailPage() {
                       You don&apos;t owe anything for this expense.
                     </Text>
                   )}
+                  {(() => {
+                    const signupPrompt = getProviderSignupPrompt(paymentLinkResult.provider);
+                    return signupPrompt ? (
+                      <Text size="xs" c="dimmed" ta="center">
+                        {signupPrompt.message}{' '}
+                        <Text
+                          component="a"
+                          href={signupPrompt.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          size="xs"
+                          c="indigo"
+                          td="underline"
+                        >
+                          {signupPrompt.cta}
+                        </Text>
+                      </Text>
+                    ) : null;
+                  })()}
                 </Stack>
               ) : paidByUser?.payment_info ? (
                 <Stack gap="sm">
