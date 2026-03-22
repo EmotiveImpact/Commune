@@ -42,31 +42,25 @@ a {
 
 .commune-auth-shell {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(360px, 440px);
-  gap: 2rem;
-  align-items: stretch;
+  grid-template-columns: 1fr 1fr;
+  min-height: 100vh;
+}
+
+.commune-auth-brand {
+  background: var(--commune-primary-strong);
+  display: flex;
+  flex-direction: column;
+}
+
+.commune-auth-form-side {
+  background: var(--commune-paper-strong);
+  min-height: 100vh;
 }
 
 .commune-auth-panel {
-  background: var(--commune-paper-strong);
-  border: 1px solid var(--commune-border);
-  box-shadow: var(--commune-shadow);
-}
-
-.commune-auth-showcase {
-  border: 1px solid var(--commune-border);
-  background: linear-gradient(180deg, #f8f4ee 0%, #f4eee8 100%);
-  box-shadow: var(--commune-shadow-sm);
-}
-
-.commune-auth-point {
-  border: 1px solid var(--commune-border);
-  background: rgba(255, 255, 255, 0.72);
-}
-
-.commune-auth-summary {
-  border: 1px solid var(--commune-border);
-  background: rgba(255, 255, 255, 0.88);
+  background: transparent;
+  border: none;
+  box-shadow: none;
 }
 
 .commune-hero-card {
@@ -761,6 +755,15 @@ div:hover > .commune-avatar-overlay {
 @media (max-width: 900px) {
   .commune-auth-shell {
     grid-template-columns: 1fr;
+  }
+
+  .commune-auth-brand {
+    min-height: auto;
+    padding: 2rem;
+  }
+
+  .commune-auth-form-side {
+    min-height: auto;
   }
 
   .commune-sidebar-panel {

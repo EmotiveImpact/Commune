@@ -6,6 +6,12 @@
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["--filter", "@commune/web", "dev"],
       "port": 5173
+    },
+    {
+      "name": "landing",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@commune/landing", "dev"],
+      "port": 3001
     }
   ]
 }

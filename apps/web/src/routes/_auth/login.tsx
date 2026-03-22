@@ -7,6 +7,7 @@ import {
   PasswordInput,
   Button,
   Stack,
+  Group,
   Divider,
   Anchor,
 } from '@mantine/core';
@@ -62,54 +63,55 @@ function LoginPage() {
   }
 
   return (
-    <Paper  p="xl" w="100%" maw={440} className="commune-auth-panel">
+    <Paper p="xl" w="100%" maw={440} className="commune-auth-panel">
       <Title order={2} ta="center" mb="md">
-        Welcome back
+        Welcome Back
       </Title>
-      <Text c="dimmed" size="sm" ta="center" mb="lg">
-        Sign in to your Commune account and pick up the latest group changes.
+      <Text c="dimmed" size="sm" ta="center" mb="xl">
+        Enter your email and password to access your account.
       </Text>
-
-      <Stack gap="sm" mb="md">
-        <Button
-          leftSection={<IconBrandGoogle size={18} />}
-          variant="default"
-          fullWidth
-          onClick={() => signInWithGoogle()}
-        >
-          Continue with Google
-        </Button>
-      </Stack>
-
-      <Divider label="Or continue with email" labelPosition="center" my="lg" />
 
       <form onSubmit={form.onSubmit(handleSubmit)}>
         <Stack gap="sm">
           <TextInput
             label="Email"
-            placeholder="you@example.com"
+            placeholder="user@company.com"
             key={form.key('email')}
             {...form.getInputProps('email')}
           />
           <PasswordInput
             label="Password"
-            placeholder="Your password"
+            placeholder="Enter password"
             key={form.key('password')}
             {...form.getInputProps('password')}
           />
-          <Anchor component={Link} to="/forgot-password" size="xs" ta="right">
-            Forgot password?
-          </Anchor>
-          <Button type="submit" fullWidth mt="sm" loading={loading}>
-            Sign in
+          <Group justify="flex-end">
+            <Anchor component={Link} to="/forgot-password" size="xs">
+              Forgot Your Password?
+            </Anchor>
+          </Group>
+          <Button type="submit" fullWidth mt="xs" loading={loading}>
+            Log In
           </Button>
         </Stack>
       </form>
 
-      <Text ta="center" mt="md" size="sm">
-        Don&apos;t have an account?{' '}
+      <Divider label="OR LOGIN WITH" labelPosition="center" my="lg" />
+
+      <Group grow>
+        <Button
+          leftSection={<IconBrandGoogle size={18} />}
+          variant="default"
+          onClick={() => signInWithGoogle()}
+        >
+          Google
+        </Button>
+      </Group>
+
+      <Text ta="center" mt="lg" size="sm">
+        Don&apos;t Have An Account?{' '}
         <Anchor component={Link} to="/signup">
-          Sign up
+          Register Now.
         </Anchor>
       </Text>
     </Paper>
