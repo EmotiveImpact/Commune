@@ -316,7 +316,7 @@ function ExpenseDetailPage() {
               <Text fw={800} size="1.9rem">{formatCurrency(expense.amount, expense.currency)}</Text>
               <Text size="sm" c="dimmed">Due {formatDate(expense.due_date)}</Text>
             </Stack>
-            <ThemeIcon size={42} variant="light" style={{ backgroundColor: 'rgba(16, 185, 129, 0.1)', color: 'var(--commune-primary-strong)' }}>
+            <ThemeIcon size={42} variant="light" style={{ backgroundColor: 'var(--commune-icon-bg-primary)', color: 'var(--commune-primary-strong)' }}>
               <IconReceipt size={20} />
             </ThemeIcon>
           </Group>
@@ -329,7 +329,7 @@ function ExpenseDetailPage() {
               <Text fw={800} size="1.9rem">{expense.participants.length}</Text>
               <Text size="sm" c="dimmed">Included in the split</Text>
             </Stack>
-            <ThemeIcon size={42} variant="light" style={{ backgroundColor: 'rgba(16, 69, 54, 0.1)', color: 'var(--commune-forest)' }}>
+            <ThemeIcon size={42} variant="light" style={{ backgroundColor: 'var(--commune-icon-bg-forest)', color: 'var(--commune-forest)' }}>
               <IconUsers size={20} />
             </ThemeIcon>
           </Group>
@@ -342,7 +342,7 @@ function ExpenseDetailPage() {
               <Text fw={800} size="1.9rem">{paidCount}</Text>
               <Text size="sm" c="dimmed">Payments submitted</Text>
             </Stack>
-            <ThemeIcon size={42} variant="light" style={{ backgroundColor: 'rgba(98, 195, 138, 0.16)', color: 'var(--commune-forest-soft)' }}>
+            <ThemeIcon size={42} variant="light" style={{ backgroundColor: 'var(--commune-icon-bg-success)', color: 'var(--commune-forest-soft)' }}>
               <IconCheck size={20} />
             </ThemeIcon>
           </Group>
@@ -355,7 +355,7 @@ function ExpenseDetailPage() {
               <Text fw={800} size="1.9rem">{confirmedCount}</Text>
               <Text size="sm" c="dimmed">Admin-approved payments</Text>
             </Stack>
-            <ThemeIcon size={42} variant="light" style={{ backgroundColor: 'rgba(66, 153, 225, 0.16)', color: '#2B6CB0' }}>
+            <ThemeIcon size={42} variant="light" style={{ backgroundColor: 'var(--commune-icon-bg-info)', color: 'var(--commune-icon-info)' }}>
               <IconCheckbox size={20} />
             </ThemeIcon>
           </Group>

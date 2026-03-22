@@ -146,11 +146,13 @@ function SettlementSection({
   isLoading,
   currency,
   groupId,
+  nudgesEnabled,
 }: {
   settlement: { transactions: SettlementTransaction[]; transactionCount: number; isSettled: boolean } | undefined;
   isLoading: boolean;
   currency?: string;
   groupId: string;
+  nudgesEnabled: boolean;
 }) {
   if (isLoading) {
     return (
@@ -219,13 +221,15 @@ function SettlementSection({
                     </Text>
                   </Group>
                   <Group gap="xs" wrap="nowrap">
-                    <NudgeButton
-                      groupId={groupId}
-                      toUserId={t.fromUserId}
-                      toUserName={t.fromUserName ?? 'User'}
-                      amount={t.amount}
-                      currency={currency}
-                    />
+                    {nudgesEnabled && (
+                      <NudgeButton
+                        groupId={groupId}
+                        toUserId={t.fromUserId}
+                        toUserName={t.fromUserName ?? 'User'}
+                        amount={t.amount}
+                        currency={currency}
+                      />
+                    )}
                     {t.paymentLink ? (
                       <Button
                         component="a"
@@ -441,6 +445,7 @@ function BreakdownPage() {
             isLoading={isSettlementLoading}
             currency={group?.currency}
             groupId={activeGroupId}
+            nudgesEnabled={group?.nudges_enabled ?? true}
           />
 
           <Group justify="space-between" align="center">

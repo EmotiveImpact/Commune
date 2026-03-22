@@ -371,7 +371,7 @@ export function AppShell({ children }: AppShellProps) {
                 <Menu.Item
                   leftSection={<IconUser size={16} />}
                   component={Link}
-                  to="/settings"
+                  to="/profile"
                 >
                   Profile
                 </Menu.Item>

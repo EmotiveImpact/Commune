@@ -6,6 +6,7 @@ import {
   Group,
   List,
   Paper,
+  SegmentedControl,
   SimpleGrid,
   Stack,
   Text,
@@ -45,9 +46,9 @@ const PLANS: PlanConfig[] = [
     id: SubscriptionPlan.STANDARD,
     name: 'Standard',
     monthlyPrice: 4.99,
-    annualMonthlyPrice: 3.99,
-    annualTotal: 47.88,
-    savings: 12.00,
+    annualMonthlyPrice: 4.16,
+    annualTotal: 49.90,
+    savings: 9.98,
     features: [
       'Up to 1 group',
       'Up to 8 members per group',
@@ -62,9 +63,9 @@ const PLANS: PlanConfig[] = [
     id: SubscriptionPlan.PRO,
     name: 'Pro',
     monthlyPrice: 9.99,
-    annualMonthlyPrice: 7.99,
-    annualTotal: 95.88,
-    savings: 24.00,
+    annualMonthlyPrice: 8.33,
+    annualTotal: 99.90,
+    savings: 19.98,
     features: [
       'Up to 3 groups',
       'Up to 15 members per group',
@@ -79,10 +80,10 @@ const PLANS: PlanConfig[] = [
   {
     id: SubscriptionPlan.AGENCY,
     name: 'Pro Max',
-    monthlyPrice: 99.99,
-    annualMonthlyPrice: 79.99,
-    annualTotal: 959.88,
-    savings: 240.00,
+    monthlyPrice: 29.99,
+    annualMonthlyPrice: 24.99,
+    annualTotal: 299.90,
+    savings: 59.98,
     features: [
       'Unlimited groups',
       'Unlimited members',
@@ -169,50 +170,15 @@ function PricingPage() {
 
       {/* Billing interval toggle */}
       <Group justify="center">
-        <div
-          style={{
-            display: 'inline-flex',
-            borderRadius: 10,
-            background: 'var(--commune-paper-strong)',
-            padding: 4,
-            border: '1px solid var(--commune-border)',
-          }}
-        >
-          <button
-            type="button"
-            onClick={() => setBillingInterval('monthly')}
-            style={{
-              padding: '8px 20px',
-              borderRadius: 8,
-              border: 'none',
-              cursor: 'pointer',
-              fontSize: 13,
-              fontWeight: !isAnnual ? 600 : 500,
-              background: !isAnnual ? 'var(--commune-primary-strong)' : 'transparent',
-              color: !isAnnual ? '#fff' : 'var(--commune-ink-soft)',
-              transition: 'all 150ms',
-            }}
-          >
-            Monthly
-          </button>
-          <button
-            type="button"
-            onClick={() => setBillingInterval('annual')}
-            style={{
-              padding: '8px 20px',
-              borderRadius: 8,
-              border: 'none',
-              cursor: 'pointer',
-              fontSize: 13,
-              fontWeight: isAnnual ? 600 : 500,
-              background: isAnnual ? 'var(--commune-primary-strong)' : 'transparent',
-              color: isAnnual ? '#fff' : 'var(--commune-ink-soft)',
-              transition: 'all 150ms',
-            }}
-          >
-            Annual <span style={{ fontSize: 11, opacity: 0.8 }}>save 20%</span>
-          </button>
-        </div>
+        <SegmentedControl
+          value={billingInterval}
+          onChange={(value) => setBillingInterval(value as 'monthly' | 'annual')}
+          data={[
+            { value: 'monthly', label: 'Monthly' },
+            { value: 'annual', label: 'Annual — 2 months free' },
+          ]}
+          size="sm"
+        />
       </Group>
 
       {success && (

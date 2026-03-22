@@ -307,7 +307,7 @@ function AnalyticsPage() {
               size={42}
               variant="light"
               color="emerald"
-              style={{ backgroundColor: 'rgba(16, 185, 129, 0.1)' }}
+              style={{ backgroundColor: 'var(--commune-icon-bg-primary)' }}
             >
               <IconClockCheck size={20} />
             </ThemeIcon>

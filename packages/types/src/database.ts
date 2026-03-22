@@ -38,6 +38,7 @@ export interface Group {
   owner_id: string;
   cycle_date: number;
   currency: string;
+  nudges_enabled: boolean;
   created_at: string;
 }
 

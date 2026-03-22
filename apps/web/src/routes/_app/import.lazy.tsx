@@ -421,17 +421,17 @@ function ImportPage() {
                   {dragOver ? (
                     <IconCloudUpload
                       size={48}
-                      style={{ color: '#2d6a4f' }}
+                      style={{ color: 'var(--commune-primary-strong)' }}
                       stroke={1.5}
                     />
                   ) : (
                     <IconFileSpreadsheet
                       size={48}
-                      style={{ color: '#667085' }}
+                      style={{ color: 'var(--commune-ink-soft)' }}
                       stroke={1.5}
                     />
                   )}
-                  <Text fw={600} size="sm" style={{ color: dragOver ? '#2d6a4f' : undefined }}>
+                  <Text fw={600} size="sm" style={{ color: dragOver ? 'var(--commune-primary-strong)' : undefined }}>
                     {dragOver
                       ? 'Drop to upload'
                       : 'Drag a Splitwise CSV here or click to browse'}

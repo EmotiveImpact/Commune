@@ -8,7 +8,6 @@ import {
   IconHistory,
   IconPigMoney,
   IconRepeat,
-  IconSettings,
   IconTemplate,
 } from '@tabler/icons-react';
 
@@ -23,5 +22,4 @@ export const navLinks = [
   { label: 'Members', to: '/members', icon: <IconUsers size={20} /> },
   { label: 'Analytics', to: '/analytics', icon: <IconChartBar size={20} /> },
   { label: 'Activity', to: '/activity', icon: <IconHistory size={20} /> },
-  { label: 'Settings', to: '/settings', icon: <IconSettings size={20} /> },
 ];

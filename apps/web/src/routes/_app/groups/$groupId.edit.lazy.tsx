@@ -6,6 +6,7 @@ import {
   Paper,
   Select,
   Stack,
+  Switch,
   Text,
   TextInput,
 } from '@mantine/core';
@@ -69,6 +70,7 @@ function EditGroupPage() {
       type: 'home',
       currency: 'GBP',
       cycle_date: 1,
+      nudges_enabled: true,
     },
   });
 
@@ -80,6 +82,7 @@ function EditGroupPage() {
       type: group.type,
       currency: group.currency,
       cycle_date: group.cycle_date,
+      nudges_enabled: group.nudges_enabled,
     });
 
     if (lastHydratedRef.current === hydrationKey) return;
@@ -90,6 +93,7 @@ function EditGroupPage() {
       type: group.type,
       currency: group.currency ?? 'GBP',
       cycle_date: group.cycle_date ?? 1,
+      nudges_enabled: group.nudges_enabled ?? true,
     });
   }, [group, form]);
 
@@ -126,6 +130,7 @@ function EditGroupPage() {
         type: values.type,
         currency: values.currency,
         cycle_date: values.cycle_date,
+        nudges_enabled: values.nudges_enabled,
       });
       notifications.show({
         title: 'Group updated',
@@ -207,6 +212,13 @@ function EditGroupPage() {
               max={28}
               key={form.key('cycle_date')}
               {...form.getInputProps('cycle_date')}
+            />
+
+            <Switch
+              label="Allow payment nudges"
+              description="When enabled, members can send payment reminders to each other"
+              key={form.key('nudges_enabled')}
+              {...form.getInputProps('nudges_enabled', { type: 'checkbox' })}
             />
           </Stack>
         </form>

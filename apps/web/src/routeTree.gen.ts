@@ -21,6 +21,7 @@ import { Route as AuthCallbackRouteImport } from './routes/_auth/callback'
 import { Route as AppTemplatesRouteImport } from './routes/_app/templates'
 import { Route as AppSettingsRouteImport } from './routes/_app/settings'
 import { Route as AppRecurringRouteImport } from './routes/_app/recurring'
+import { Route as AppProfileRouteImport } from './routes/_app/profile'
 import { Route as AppPricingRouteImport } from './routes/_app/pricing'
 import { Route as AppOverviewRouteImport } from './routes/_app/overview'
 import { Route as AppOnboardingRouteImport } from './routes/_app/onboarding'
@@ -99,6 +100,11 @@ const AppRecurringRoute = AppRecurringRouteImport.update({
 } as any).lazy(() =>
   import('./routes/_app/recurring.lazy').then((d) => d.Route),
 )
+const AppProfileRoute = AppProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => AppRoute,
+} as any).lazy(() => import('./routes/_app/profile.lazy').then((d) => d.Route))
 const AppPricingRoute = AppPricingRouteImport.update({
   id: '/pricing',
   path: '/pricing',
@@ -205,6 +211,7 @@ export interface FileRoutesByFullPath {
   '/onboarding': typeof AppOnboardingRoute
   '/overview': typeof AppOverviewRoute
   '/pricing': typeof AppPricingRoute
+  '/profile': typeof AppProfileRoute
   '/recurring': typeof AppRecurringRoute
   '/settings': typeof AppSettingsRoute
   '/templates': typeof AppTemplatesRoute
@@ -232,6 +239,7 @@ export interface FileRoutesByTo {
   '/onboarding': typeof AppOnboardingRoute
   '/overview': typeof AppOverviewRoute
   '/pricing': typeof AppPricingRoute
+  '/profile': typeof AppProfileRoute
   '/recurring': typeof AppRecurringRoute
   '/settings': typeof AppSettingsRoute
   '/templates': typeof AppTemplatesRoute
@@ -261,6 +269,7 @@ export interface FileRoutesById {
   '/_app/onboarding': typeof AppOnboardingRoute
   '/_app/overview': typeof AppOverviewRoute
   '/_app/pricing': typeof AppPricingRoute
+  '/_app/profile': typeof AppProfileRoute
   '/_app/recurring': typeof AppRecurringRoute
   '/_app/settings': typeof AppSettingsRoute
   '/_app/templates': typeof AppTemplatesRoute
@@ -291,6 +300,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/overview'
     | '/pricing'
+    | '/profile'
     | '/recurring'
     | '/settings'
     | '/templates'
@@ -318,6 +328,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/overview'
     | '/pricing'
+    | '/profile'
     | '/recurring'
     | '/settings'
     | '/templates'
@@ -346,6 +357,7 @@ export interface FileRouteTypes {
     | '/_app/onboarding'
     | '/_app/overview'
     | '/_app/pricing'
+    | '/_app/profile'
     | '/_app/recurring'
     | '/_app/settings'
     | '/_app/templates'
@@ -454,6 +466,13 @@ declare module '@tanstack/react-router' {
       path: '/recurring'
       fullPath: '/recurring'
       preLoaderRoute: typeof AppRecurringRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/profile': {
+      id: '/_app/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof AppProfileRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/pricing': {
@@ -585,6 +604,7 @@ interface AppRouteChildren {
   AppOnboardingRoute: typeof AppOnboardingRoute
   AppOverviewRoute: typeof AppOverviewRoute
   AppPricingRoute: typeof AppPricingRoute
+  AppProfileRoute: typeof AppProfileRoute
   AppRecurringRoute: typeof AppRecurringRoute
   AppSettingsRoute: typeof AppSettingsRoute
   AppTemplatesRoute: typeof AppTemplatesRoute
@@ -606,6 +626,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppOnboardingRoute: AppOnboardingRoute,
   AppOverviewRoute: AppOverviewRoute,
   AppPricingRoute: AppPricingRoute,
+  AppProfileRoute: AppProfileRoute,
   AppRecurringRoute: AppRecurringRoute,
   AppSettingsRoute: AppSettingsRoute,
   AppTemplatesRoute: AppTemplatesRoute,

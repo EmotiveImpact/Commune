@@ -1,6 +1,5 @@
 import { createLazyFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import {
-  Avatar,
   Badge,
   Button,
   Divider,
@@ -12,7 +11,6 @@ import {
   Stack,
   Switch,
   Text,
-  Textarea,
   TextInput,
   useMantineColorScheme,
 } from '@mantine/core';
@@ -21,30 +19,22 @@ import { notifications } from '@mantine/notifications';
 import {
   IconAlertTriangle,
   IconBell,
-  IconCamera,
   IconCoin,
   IconDeviceFloppy,
   IconDeviceMobile,
   IconExternalLink,
+  IconFileSpreadsheet,
   IconGlobe,
   IconMoon,
   IconPalette,
-  IconPhone,
   IconSun,
   IconTrash,
-  IconUser,
-  IconWallet,
-  IconBrandRevolut,
-  IconBrandPaypal,
-  IconFileSpreadsheet,
-  IconLink,
 } from '@tabler/icons-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { setPageTitle } from '../../utils/seo';
-import { updateProfileSchema, isClickableProvider } from '@commune/core';
-import { PaymentProvider } from '@commune/types';
+import { updateProfileSchema } from '@commune/core';
 import { formatDate } from '@commune/utils';
-import { supabase, uploadAvatar, deleteAccount } from '@commune/api';
+import { supabase, deleteAccount } from '@commune/api';
 import { useAuthStore } from '../../stores/auth';
 import { useProfile, useUpdateProfile } from '../../hooks/use-profile';
 import { usePortal, useSubscription } from '../../hooks/use-subscriptions';
@@ -68,7 +58,7 @@ const PLAN_LABELS: Record<string, string> = {
 };
 
 const PLAN_LIMITS: Record<string, { groups: string; members: string }> = {
-  standard: { groups: '1', members: '5' },
+  standard: { groups: '1', members: '8' },
   pro: { groups: '3', members: '15' },
   agency: { groups: 'Unlimited', members: 'Unlimited' },
 };
@@ -110,24 +100,6 @@ const TIMEZONE_OPTIONS = [
   { value: 'Pacific/Auckland', label: 'Auckland (NZST/NZDT)' },
 ];
 
-const COUNTRY_OPTIONS = [
-  { value: 'GB', label: 'United Kingdom' },
-  { value: 'US', label: 'United States' },
-  { value: 'CA', label: 'Canada' },
-  { value: 'AU', label: 'Australia' },
-  { value: 'NG', label: 'Nigeria' },
-  { value: 'GH', label: 'Ghana' },
-  { value: 'ZA', label: 'South Africa' },
-  { value: 'KE', label: 'Kenya' },
-  { value: 'DE', label: 'Germany' },
-  { value: 'FR', label: 'France' },
-  { value: 'NL', label: 'Netherlands' },
-  { value: 'IE', label: 'Ireland' },
-  { value: 'IN', label: 'India' },
-  { value: 'JP', label: 'Japan' },
-  { value: 'NZ', label: 'New Zealand' },
-];
-
 const DEFAULT_NOTIFICATION_PREFS = {
   email_on_new_expense: true,
   email_on_payment_received: true,
@@ -145,9 +117,7 @@ function SettingsPage() {
   const { user, isLoading: authLoading } = useAuthStore();
   const {
     data: profile,
-    error: profileError,
     isLoading: profileLoading,
-    refetch: refetchProfile,
   } = useProfile(user?.id ?? '');
   const updateProfile = useUpdateProfile();
   const { data: subscription, isLoading: subLoading } = useSubscription(user?.id ?? '');
@@ -155,29 +125,14 @@ function SettingsPage() {
   const { data: pushSubs, isLoading: pushLoading } = usePushSubscription(user?.id ?? '');
   const subscribePush = useSubscribePush();
   const unsubscribePush = useUnsubscribePush();
-  const lastHydratedProfileRef = useRef<string | null>(null);
+  const lastHydratedRef = useRef<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState('');
-  const [activeProvider, setActiveProvider] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const resolvedProfile = useMemo(
     () => profile ?? (user ? {
-      id: user.id,
-      first_name: user.first_name,
-      last_name: user.last_name,
-      name: user.name,
-      email: user.email,
-      avatar_url: user.avatar_url,
-      phone: user.phone ?? null,
-      country: user.country ?? null,
-      payment_info: user.payment_info ?? null,
-      payment_provider: user.payment_provider ?? null,
-      payment_link: user.payment_link ?? null,
       default_currency: user.default_currency ?? 'GBP',
       timezone: user.timezone ?? 'Europe/London',
-      created_at: user.created_at,
       notification_preferences: DEFAULT_NOTIFICATION_PREFS,
     } : null),
     [profile, user],
@@ -186,14 +141,6 @@ function SettingsPage() {
   const form = useForm({
     mode: 'uncontrolled',
     initialValues: {
-      first_name: '',
-      last_name: '',
-      avatar_url: '' as string | null,
-      phone: '' as string | null,
-      country: '' as string | null,
-      payment_info: '' as string | null,
-      payment_provider: '' as string | null,
-      payment_link: '' as string | null,
       default_currency: 'GBP',
       timezone: 'Europe/London',
       notification_preferences: DEFAULT_NOTIFICATION_PREFS,
@@ -204,41 +151,19 @@ function SettingsPage() {
   useEffect(() => {
     if (resolvedProfile) {
       const hydrationKey = JSON.stringify({
-        id: resolvedProfile.id,
-        first_name: resolvedProfile.first_name,
-        last_name: resolvedProfile.last_name,
-        email: resolvedProfile.email,
-        avatar_url: resolvedProfile.avatar_url,
-        phone: resolvedProfile.phone,
-        country: resolvedProfile.country,
-        payment_info: resolvedProfile.payment_info,
-        payment_provider: resolvedProfile.payment_provider,
-        payment_link: resolvedProfile.payment_link,
         default_currency: resolvedProfile.default_currency,
         timezone: resolvedProfile.timezone,
-        created_at: resolvedProfile.created_at,
         notification_preferences: resolvedProfile.notification_preferences,
       });
 
-      if (lastHydratedProfileRef.current === hydrationKey) {
-        return;
-      }
+      if (lastHydratedRef.current === hydrationKey) return;
+      lastHydratedRef.current = hydrationKey;
 
-      lastHydratedProfileRef.current = hydrationKey;
       form.setValues({
-        first_name: resolvedProfile.first_name,
-        last_name: resolvedProfile.last_name,
-        avatar_url: resolvedProfile.avatar_url ?? '',
-        phone: resolvedProfile.phone ?? '',
-        country: resolvedProfile.country ?? '',
-        payment_info: resolvedProfile.payment_info ?? '',
-        payment_provider: resolvedProfile.payment_provider ?? '',
-        payment_link: resolvedProfile.payment_link ?? '',
         default_currency: resolvedProfile.default_currency,
         timezone: resolvedProfile.timezone,
         notification_preferences: resolvedProfile.notification_preferences,
       });
-      setActiveProvider(resolvedProfile.payment_provider ?? null);
     }
   }, [resolvedProfile, form]);
 
@@ -257,35 +182,11 @@ function SettingsPage() {
     );
   }
 
-  if (!resolvedProfile) {
-    return (
-      <Paper className="commune-soft-panel" p="xl">
-        <Text fw={600}>Could not load profile.</Text>
-        <Text size="sm" c="dimmed">
-          {profileError instanceof Error
-            ? profileError.message
-            : 'Refresh the page or sign in again if this keeps happening.'}
-        </Text>
-        <Button variant="light" mt="md" onClick={() => void refetchProfile()}>
-          Retry
-        </Button>
-      </Paper>
-    );
-  }
-
   async function handleSubmit(values: ReturnType<typeof form.getValues>) {
     try {
       await updateProfile.mutateAsync({
         userId: user!.id,
         data: {
-          first_name: values.first_name,
-          last_name: values.last_name,
-          avatar_url: values.avatar_url || null,
-          phone: values.phone || null,
-          country: values.country || null,
-          payment_info: values.payment_info || null,
-          payment_provider: (values.payment_provider as PaymentProvider) || null,
-          payment_link: values.payment_link || null,
           default_currency: values.default_currency,
           timezone: values.timezone,
           notification_preferences: values.notification_preferences,
@@ -293,7 +194,7 @@ function SettingsPage() {
       });
       notifications.show({
         title: 'Settings saved',
-        message: 'Your profile has been updated.',
+        message: 'Your preferences have been updated.',
         color: 'green',
       });
     } catch (err) {
@@ -335,60 +236,11 @@ function SettingsPage() {
     }
   }
 
-  async function handleAvatarUpload(file: File) {
-    if (!user) return;
-
-    const maxSize = 1 * 1024 * 1024; // 1 MB
-    if (file.size > maxSize) {
-      notifications.show({
-        title: 'File too large',
-        message: 'Please choose an image under 1 MB.',
-        color: 'red',
-      });
-      return;
-    }
-
-    if (!file.type.startsWith('image/')) {
-      notifications.show({
-        title: 'Invalid file type',
-        message: 'Please choose a JPG, PNG, or WebP image.',
-        color: 'red',
-      });
-      return;
-    }
-
-    setIsUploadingAvatar(true);
-    try {
-      const publicUrl = await uploadAvatar(user.id, file);
-      form.setFieldValue('avatar_url', publicUrl);
-
-      // Persist immediately so the avatar shows across the app
-      await updateProfile.mutateAsync({
-        userId: user.id,
-        data: { avatar_url: publicUrl },
-      });
-
-      notifications.show({
-        title: 'Profile picture updated',
-        message: 'Your new avatar is live.',
-        color: 'green',
-      });
-    } catch (err) {
-      notifications.show({
-        title: 'Upload failed',
-        message: err instanceof Error ? err.message : 'Could not upload image. Try again.',
-        color: 'red',
-      });
-    } finally {
-      setIsUploadingAvatar(false);
-    }
-  }
-
   return (
     <Stack gap="xl">
       <PageHeader
         title="Settings"
-        subtitle="Update your profile, notification preferences, and billing"
+        subtitle="Appearance, preferences, notifications, and billing"
       >
         <Button
           type="submit"
@@ -404,108 +256,6 @@ function SettingsPage() {
         <Stack gap="lg">
           <form id="settings-form" onSubmit={form.onSubmit(handleSubmit)}>
             <Stack gap="lg">
-              {/* ── Profile ── */}
-              <Paper className="commune-soft-panel" p="xl">
-                <Group gap="xs" mb="md">
-                  <IconUser size={20} />
-                  <Text className="commune-section-heading">Profile</Text>
-                </Group>
-
-                <Stack gap="lg">
-                  <Group wrap="nowrap" gap="lg">
-                    <div
-                      style={{ position: 'relative', cursor: 'pointer', flexShrink: 0 }}
-                      onClick={() => fileInputRef.current?.click()}
-                      role="button"
-                      tabIndex={0}
-                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') fileInputRef.current?.click(); }}
-                    >
-                      <Avatar
-                        src={form.getValues().avatar_url || undefined}
-                        name={`${form.getValues().first_name} ${form.getValues().last_name}`.trim()}
-                        color="initials"
-                        size={80}
-                        style={{ opacity: isUploadingAvatar ? 0.5 : 1, transition: 'opacity 150ms' }}
-                      />
-                      <div
-                        style={{
-                          position: 'absolute',
-                          inset: 0,
-                          borderRadius: '50%',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          background: 'rgba(0,0,0,0.35)',
-                          opacity: 0,
-                          transition: 'opacity 150ms',
-                        }}
-                        className="commune-avatar-overlay"
-                      >
-                        <IconCamera size={22} color="white" />
-                      </div>
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept="image/jpeg,image/png,image/webp"
-                        style={{ display: 'none' }}
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) void handleAvatarUpload(file);
-                          e.target.value = '';
-                        }}
-                      />
-                    </div>
-
-                    <div>
-                      <Text fw={600}>{resolvedProfile.email}</Text>
-                      <Text size="sm" c="dimmed">
-                        Member since {formatDate(resolvedProfile.created_at)}
-                      </Text>
-                      <Text size="xs" c="dimmed" mt={4}>
-                        Click avatar to change. JPG, PNG, or WebP up to 1 MB.
-                      </Text>
-                    </div>
-                  </Group>
-
-                  <Divider />
-
-                  <SimpleGrid cols={2}>
-                    <TextInput
-                      label="First name"
-                      placeholder="Enter your first name"
-                      withAsterisk
-                      key={form.key('first_name')}
-                      {...form.getInputProps('first_name')}
-                    />
-                    <TextInput
-                      label="Last name"
-                      placeholder="Enter your last name"
-                      key={form.key('last_name')}
-                      {...form.getInputProps('last_name')}
-                    />
-                  </SimpleGrid>
-
-                  <SimpleGrid cols={2}>
-                    <TextInput
-                      label="Phone number"
-                      placeholder="+44 7700 900000"
-                      leftSection={<IconPhone size={16} />}
-                      key={form.key('phone')}
-                      {...form.getInputProps('phone')}
-                    />
-                    <Select
-                      label="Country"
-                      placeholder="Select your country"
-                      data={COUNTRY_OPTIONS}
-                      key={form.key('country')}
-                      {...form.getInputProps('country')}
-                      searchable
-                      clearable
-                    />
-                  </SimpleGrid>
-                </Stack>
-              </Paper>
-
               {/* ── Appearance ── */}
               <Paper className="commune-soft-panel" p="xl">
                 <Group gap="xs" mb="md">
@@ -566,95 +316,25 @@ function SettingsPage() {
                   Defaults for new groups and how amounts appear across the app.
                 </Text>
 
-                <Stack gap="md">
-                  <SimpleGrid cols={2}>
-                    <Select
-                      label="Default currency"
-                      description="Used when creating new groups"
-                      data={CURRENCY_OPTIONS}
-                      leftSection={<IconCoin size={16} />}
-                      key={form.key('default_currency')}
-                      {...form.getInputProps('default_currency')}
-                      searchable
-                    />
-                    <Select
-                      label="Timezone"
-                      description="Due dates and overdue warnings"
-                      data={TIMEZONE_OPTIONS}
-                      key={form.key('timezone')}
-                      {...form.getInputProps('timezone')}
-                      searchable
-                    />
-                  </SimpleGrid>
-
-                  <Divider />
-
-                  <div>
-                    <Group gap="xs" mb={4}>
-                      <IconWallet size={18} />
-                      <Text fw={600} size="sm">Payment link</Text>
-                    </Group>
-                    <Text size="xs" c="dimmed" mb="md">
-                      Members will see a &quot;Pay now&quot; button that opens your payment link with the amount pre-filled.
-                    </Text>
-
-                    <Stack gap="md">
-                      <Select
-                        label="Payment provider"
-                        description="How you want to receive payments from group members"
-                        placeholder="Select your payment provider"
-                        data={[
-                          { value: 'revolut', label: 'Revolut' },
-                          { value: 'monzo', label: 'Monzo' },
-                          { value: 'paypal', label: 'PayPal' },
-                          { value: 'bank_transfer', label: 'Bank transfer' },
-                          { value: 'other', label: 'Other' },
-                        ]}
-                        key={form.key('payment_provider')}
-                        {...form.getInputProps('payment_provider')}
-                        onChange={(value) => {
-                          form.setFieldValue('payment_provider', value ?? '');
-                          form.setFieldValue('payment_link', '');
-                          form.setFieldValue('payment_info', '');
-                          setActiveProvider(value ?? null);
-                        }}
-                        clearable
-                      />
-
-                      {activeProvider && isClickableProvider(activeProvider as PaymentProvider) && (
-                        <TextInput
-                          label={
-                            activeProvider === 'revolut' ? 'Revolut.me username'
-                            : activeProvider === 'monzo' ? 'Monzo.me username'
-                            : 'PayPal.me username'
-                          }
-                          description={
-                            activeProvider === 'revolut' ? 'Your Revolut.me link or username (e.g. johndoe or revolut.me/johndoe)'
-                            : activeProvider === 'monzo' ? 'Your Monzo.me link or username (e.g. johndoe or monzo.me/johndoe)'
-                            : 'Your PayPal.me link or username (e.g. johndoe or paypal.me/johndoe)'
-                          }
-                          placeholder="johndoe"
-                          leftSection={<IconLink size={16} />}
-                          key={`payment_link_${activeProvider}`}
-                          {...form.getInputProps('payment_link')}
-                        />
-                      )}
-
-                      {activeProvider && !isClickableProvider(activeProvider as PaymentProvider) && (
-                        <Textarea
-                          label="Payment details"
-                          description="Your bank details or payment instructions visible to group members"
-                          placeholder="e.g. Sort: 12-34-56, Account: 12345678"
-                          autosize
-                          minRows={2}
-                          maxRows={4}
-                          key={`payment_info_${activeProvider}`}
-                          {...form.getInputProps('payment_info')}
-                        />
-                      )}
-                    </Stack>
-                  </div>
-                </Stack>
+                <SimpleGrid cols={2}>
+                  <Select
+                    label="Default currency"
+                    description="Used when creating new groups"
+                    data={CURRENCY_OPTIONS}
+                    leftSection={<IconCoin size={16} />}
+                    key={form.key('default_currency')}
+                    {...form.getInputProps('default_currency')}
+                    searchable
+                  />
+                  <Select
+                    label="Timezone"
+                    description="Due dates and overdue warnings"
+                    data={TIMEZONE_OPTIONS}
+                    key={form.key('timezone')}
+                    {...form.getInputProps('timezone')}
+                    searchable
+                  />
+                </SimpleGrid>
               </Paper>
             </Stack>
           </form>
@@ -690,9 +370,21 @@ function SettingsPage() {
                 )}
 
                 {(subscription.status === 'active' || subscription.status === 'trialing') && (
-                  <Text size="sm" c="dimmed">
-                    Next billing date: {formatDate(subscription.current_period_end)}
-                  </Text>
+                  <Stack gap={4}>
+                    <Text size="sm" c="dimmed">
+                      Billing: {
+                        (() => {
+                          const start = new Date(subscription.current_period_start);
+                          const end = new Date(subscription.current_period_end);
+                          const days = Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+                          return days > 35 ? 'Annual' : 'Monthly';
+                        })()
+                      }
+                    </Text>
+                    <Text size="sm" c="dimmed">
+                      Next billing date: {formatDate(subscription.current_period_end)}
+                    </Text>
+                  </Stack>
                 )}
 
                 {subscription.status === 'past_due' && (
@@ -874,7 +566,7 @@ function SettingsPage() {
           </Paper>
 
           {/* ── Danger zone ── */}
-          <Paper className="commune-soft-panel" p="xl" style={{ borderColor: 'rgba(239, 68, 68, 0.2)' }}>
+          <Paper className="commune-soft-panel" p="xl" style={{ borderColor: 'var(--commune-danger-border)' }}>
             <Group gap="xs" mb="md">
               <IconAlertTriangle size={20} color="var(--mantine-color-red-6)" />
               <Text className="commune-section-heading" c="red">Danger zone</Text>
