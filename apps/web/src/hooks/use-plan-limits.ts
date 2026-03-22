@@ -6,10 +6,10 @@ import { useGroup } from './use-groups';
 import { useGroupStore } from '../stores/group';
 
 export const PLAN_LIMITS = {
-  free: { groups: 0, members: 0 },
-  standard: { groups: 1, members: 8 },
-  pro: { groups: 3, members: 15 },
-  agency: { groups: Infinity, members: Infinity },
+  free: { groups: 0, members: 0, proFeatures: false },
+  standard: { groups: 1, members: 8, proFeatures: false },
+  pro: { groups: 3, members: 15, proFeatures: true },
+  agency: { groups: Infinity, members: Infinity, proFeatures: true },
 } as const;
 
 export function usePlanLimits(userId: string) {
@@ -39,9 +39,16 @@ export function usePlanLimits(userId: string) {
     const canCreateGroup = isActive && currentGroups < limits.groups;
     const canInviteMember = isActive && currentMembers < limits.members;
 
+    const canAccessAnalytics = isActive && limits.proFeatures;
+    const canExport = isActive && limits.proFeatures;
+    const canDownloadStatements = isActive && limits.proFeatures;
+
     return {
       canCreateGroup,
       canInviteMember,
+      canAccessAnalytics,
+      canExport,
+      canDownloadStatements,
       groupLimit: limits.groups,
       memberLimit: limits.members,
       currentGroups,

@@ -12,8 +12,9 @@ import {
   Table,
   Text,
   ThemeIcon,
+  Tooltip,
 } from '@mantine/core';
-import { IconArrowRight, IconCheck, IconCash, IconDownload, IconExternalLink, IconReceipt, IconWallet, IconX } from '@tabler/icons-react';
+import { IconArrowRight, IconBellRinging, IconCheck, IconCash, IconDownload, IconExternalLink, IconReceipt, IconWallet, IconX } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { useEffect, useMemo, useState } from 'react';
 import { setPageTitle } from '../../utils/seo';
@@ -27,7 +28,9 @@ import { useGroup } from '../../hooks/use-groups';
 import { useUserBreakdown } from '../../hooks/use-dashboard';
 import { useMarkPayment } from '../../hooks/use-expenses';
 import { useSubscription } from '../../hooks/use-subscriptions';
+import { usePlanLimits } from '../../hooks/use-plan-limits';
 import { useGroupSettlement } from '../../hooks/use-settlement';
+import { useCanNudge, useSendNudge } from '../../hooks/use-nudges';
 import { BreakdownSkeleton } from '../../components/page-skeleton';
 import { EmptyState } from '../../components/empty-state';
 import { PageHeader } from '../../components/page-header';
@@ -67,14 +70,87 @@ function formatCategoryLabel(category: string) {
     .join(' ');
 }
 
+function NudgeButton({
+  groupId,
+  toUserId,
+  toUserName,
+  amount,
+  currency,
+}: {
+  groupId: string;
+  toUserId: string;
+  toUserName: string;
+  amount: number;
+  currency?: string;
+}) {
+  const { data: nudgeStatus } = useCanNudge(groupId, toUserId);
+  const sendNudge = useSendNudge(groupId);
+
+  const daysAgoLabel = useMemo(() => {
+    if (!nudgeStatus?.lastSentAt) return '';
+    const diff = Date.now() - new Date(nudgeStatus.lastSentAt).getTime();
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    if (days === 0) return 'Nudge sent today';
+    if (days === 1) return 'Nudge sent 1 day ago';
+    return `Nudge sent ${days} days ago`;
+  }, [nudgeStatus?.lastSentAt]);
+
+  const disabled = nudgeStatus ? !nudgeStatus.allowed : false;
+
+  function handleNudge() {
+    const confirmed = window.confirm(
+      `Send reminder to ${toUserName} about ${formatCurrency(amount, currency)}?`,
+    );
+    if (!confirmed) return;
+
+    sendNudge.mutate(
+      { toUserId, amount },
+      {
+        onSuccess: () => {
+          notifications.show({
+            title: 'Reminder sent!',
+            message: `${toUserName} has been nudged.`,
+            color: 'green',
+          });
+        },
+        onError: (err) => {
+          notifications.show({
+            title: 'Failed to send reminder',
+            message: err instanceof Error ? err.message : 'Something went wrong',
+            color: 'red',
+          });
+        },
+      },
+    );
+  }
+
+  return (
+    <Tooltip label={disabled ? daysAgoLabel : `Nudge ${toUserName}`} withArrow>
+      <ActionIcon
+        variant="subtle"
+        color="orange"
+        size="sm"
+        disabled={disabled}
+        loading={sendNudge.isPending}
+        onClick={handleNudge}
+        aria-label={`Send payment reminder to ${toUserName}`}
+      >
+        <IconBellRinging size={16} />
+      </ActionIcon>
+    </Tooltip>
+  );
+}
+
 function SettlementSection({
   settlement,
   isLoading,
   currency,
+  groupId,
 }: {
   settlement: { transactions: SettlementTransaction[]; transactionCount: number; isSettled: boolean } | undefined;
   isLoading: boolean;
   currency?: string;
+  groupId: string;
 }) {
   if (isLoading) {
     return (
@@ -142,24 +218,33 @@ function SettlementSection({
                       {formatCurrency(t.amount, currency)}
                     </Text>
                   </Group>
-                  {t.paymentLink ? (
-                    <Button
-                      component="a"
-                      href={t.paymentLink}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      size="xs"
-                      variant="light"
-                      color="emerald"
-                      leftSection={<IconExternalLink size={14} />}
-                    >
-                      Pay
-                    </Button>
-                  ) : (
-                    <Badge size="sm" variant="light" color="gray">
-                      No payment link
-                    </Badge>
-                  )}
+                  <Group gap="xs" wrap="nowrap">
+                    <NudgeButton
+                      groupId={groupId}
+                      toUserId={t.fromUserId}
+                      toUserName={t.fromUserName ?? 'User'}
+                      amount={t.amount}
+                      currency={currency}
+                    />
+                    {t.paymentLink ? (
+                      <Button
+                        component="a"
+                        href={t.paymentLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        size="xs"
+                        variant="light"
+                        color="emerald"
+                        leftSection={<IconExternalLink size={14} />}
+                      >
+                        Pay
+                      </Button>
+                    ) : (
+                      <Badge size="sm" variant="light" color="gray">
+                        No payment link
+                      </Badge>
+                    )}
+                  </Group>
                 </Group>
               </Paper>
             ))}
@@ -186,10 +271,9 @@ function BreakdownPage() {
   const [page, setPage] = useState(0);
   const markPayment = useMarkPayment(activeGroupId ?? '');
   const { data: subscription } = useSubscription(user?.id ?? '');
+  const { canDownloadStatements } = usePlanLimits(user?.id ?? '');
   const [downloadingPdf, setDownloadingPdf] = useState(false);
-  const isPaidPlan =
-    (subscription?.plan === 'pro' || subscription?.plan === 'agency') &&
-    (subscription?.status === 'active' || subscription?.status === 'trialing');
+  const isPaidPlan = canDownloadStatements;
 
   const { data: breakdown, isLoading } = useUserBreakdown(
     activeGroupId ?? '',
@@ -301,14 +385,17 @@ function BreakdownPage() {
               Export PDF
             </Button>
           ) : (
-            <Button
-              variant="default"
-              leftSection={<IconDownload size={16} />}
-              disabled
-              aria-label="Download PDF statement (upgrade required)"
-            >
-              Export PDF
-            </Button>
+            <Tooltip label="Pro feature — upgrade to unlock" withArrow>
+              <Button
+                variant="default"
+                leftSection={<IconDownload size={16} />}
+                disabled
+                data-disabled
+                aria-label="Download PDF statement (upgrade required)"
+              >
+                Export PDF
+              </Button>
+            </Tooltip>
           )}
         </Group>
       </PageHeader>
@@ -353,6 +440,7 @@ function BreakdownPage() {
             settlement={settlement}
             isLoading={isSettlementLoading}
             currency={group?.currency}
+            groupId={activeGroupId}
           />
 
           <Group justify="space-between" align="center">

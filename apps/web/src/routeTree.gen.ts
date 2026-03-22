@@ -24,6 +24,7 @@ import { Route as AppRecurringRouteImport } from './routes/_app/recurring'
 import { Route as AppPricingRouteImport } from './routes/_app/pricing'
 import { Route as AppOnboardingRouteImport } from './routes/_app/onboarding'
 import { Route as AppMembersRouteImport } from './routes/_app/members'
+import { Route as AppImportRouteImport } from './routes/_app/import'
 import { Route as AppBreakdownRouteImport } from './routes/_app/breakdown'
 import { Route as AppAnalyticsRouteImport } from './routes/_app/analytics'
 import { Route as AppActivityRouteImport } from './routes/_app/activity'
@@ -113,6 +114,11 @@ const AppMembersRoute = AppMembersRouteImport.update({
   path: '/members',
   getParentRoute: () => AppRoute,
 } as any).lazy(() => import('./routes/_app/members.lazy').then((d) => d.Route))
+const AppImportRoute = AppImportRouteImport.update({
+  id: '/import',
+  path: '/import',
+  getParentRoute: () => AppRoute,
+} as any).lazy(() => import('./routes/_app/import.lazy').then((d) => d.Route))
 const AppBreakdownRoute = AppBreakdownRouteImport.update({
   id: '/breakdown',
   path: '/breakdown',
@@ -181,6 +187,7 @@ export interface FileRoutesByFullPath {
   '/activity': typeof AppActivityRoute
   '/analytics': typeof AppAnalyticsRoute
   '/breakdown': typeof AppBreakdownRoute
+  '/import': typeof AppImportRoute
   '/members': typeof AppMembersRoute
   '/onboarding': typeof AppOnboardingRoute
   '/pricing': typeof AppPricingRoute
@@ -205,6 +212,7 @@ export interface FileRoutesByTo {
   '/activity': typeof AppActivityRoute
   '/analytics': typeof AppAnalyticsRoute
   '/breakdown': typeof AppBreakdownRoute
+  '/import': typeof AppImportRoute
   '/members': typeof AppMembersRoute
   '/onboarding': typeof AppOnboardingRoute
   '/pricing': typeof AppPricingRoute
@@ -231,6 +239,7 @@ export interface FileRoutesById {
   '/_app/activity': typeof AppActivityRoute
   '/_app/analytics': typeof AppAnalyticsRoute
   '/_app/breakdown': typeof AppBreakdownRoute
+  '/_app/import': typeof AppImportRoute
   '/_app/members': typeof AppMembersRoute
   '/_app/onboarding': typeof AppOnboardingRoute
   '/_app/pricing': typeof AppPricingRoute
@@ -258,6 +267,7 @@ export interface FileRouteTypes {
     | '/activity'
     | '/analytics'
     | '/breakdown'
+    | '/import'
     | '/members'
     | '/onboarding'
     | '/pricing'
@@ -282,6 +292,7 @@ export interface FileRouteTypes {
     | '/activity'
     | '/analytics'
     | '/breakdown'
+    | '/import'
     | '/members'
     | '/onboarding'
     | '/pricing'
@@ -307,6 +318,7 @@ export interface FileRouteTypes {
     | '/_app/activity'
     | '/_app/analytics'
     | '/_app/breakdown'
+    | '/_app/import'
     | '/_app/members'
     | '/_app/onboarding'
     | '/_app/pricing'
@@ -441,6 +453,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppMembersRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/import': {
+      id: '/_app/import'
+      path: '/import'
+      fullPath: '/import'
+      preLoaderRoute: typeof AppImportRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/breakdown': {
       id: '/_app/breakdown'
       path: '/breakdown'
@@ -522,6 +541,7 @@ interface AppRouteChildren {
   AppActivityRoute: typeof AppActivityRoute
   AppAnalyticsRoute: typeof AppAnalyticsRoute
   AppBreakdownRoute: typeof AppBreakdownRoute
+  AppImportRoute: typeof AppImportRoute
   AppMembersRoute: typeof AppMembersRoute
   AppOnboardingRoute: typeof AppOnboardingRoute
   AppPricingRoute: typeof AppPricingRoute
@@ -540,6 +560,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppActivityRoute: AppActivityRoute,
   AppAnalyticsRoute: AppAnalyticsRoute,
   AppBreakdownRoute: AppBreakdownRoute,
+  AppImportRoute: AppImportRoute,
   AppMembersRoute: AppMembersRoute,
   AppOnboardingRoute: AppOnboardingRoute,
   AppPricingRoute: AppPricingRoute,

@@ -39,6 +39,7 @@ import { useGroupStore } from '../../stores/group';
 import { useAuthStore } from '../../stores/auth';
 import { useGroup } from '../../hooks/use-groups';
 import { useSubscription } from '../../hooks/use-subscriptions';
+import { usePlanLimits } from '../../hooks/use-plan-limits';
 import { useAnalytics } from '../../hooks/use-analytics';
 import { PageHeader } from '../../components/page-header';
 
@@ -122,6 +123,7 @@ function AnalyticsPage() {
   const { activeGroupId } = useGroupStore();
   const { user } = useAuthStore();
   const { data: subscription, isLoading: subLoading, isError: subError, fetchStatus: subFetchStatus } = useSubscription(user?.id ?? '');
+  const { canAccessAnalytics, isLoading: planLoading } = usePlanLimits(user?.id ?? '');
   const { data: group } = useGroup(activeGroupId ?? '');
   const { data: analytics, isLoading: analyticsLoading, isError: analyticsError, fetchStatus: analyticsFetchStatus } = useAnalytics(activeGroupId ?? '');
 
@@ -149,7 +151,7 @@ function AnalyticsPage() {
 
   // When enabled is false (no user id yet), fetchStatus is 'idle' — treat that as
   // "not loading" so the page doesn't stay stuck on skeleton forever.
-  const subActuallyLoading = subLoading && subFetchStatus !== 'idle';
+  const subActuallyLoading = (subLoading && subFetchStatus !== 'idle') || planLoading;
   if (subActuallyLoading) return <AnalyticsSkeleton />;
 
   if (subError) {
@@ -174,10 +176,7 @@ function AnalyticsPage() {
     );
   }
 
-  const plan = subscription?.plan;
-  const isProOrAgency = plan === 'pro' || plan === 'agency';
-
-  if (!isProOrAgency) return <UpgradeCTA />;
+  if (!canAccessAnalytics) return <UpgradeCTA />;
 
   const analyticsActuallyLoading = analyticsLoading && analyticsFetchStatus !== 'idle';
   if (analyticsActuallyLoading) return <AnalyticsSkeleton />;

@@ -7,6 +7,7 @@ import {
   Stack,
   Text,
   ThemeIcon,
+  Tooltip,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import {
@@ -27,7 +28,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { setPageTitle } from '../../utils/seo';
 import type { ActivityEntry } from '@commune/api';
 import { useGroupStore } from '../../stores/group';
+import { useAuthStore } from '../../stores/auth';
 import { useGroup } from '../../hooks/use-groups';
+import { usePlanLimits } from '../../hooks/use-plan-limits';
 import { useActivityLog } from '../../hooks/use-activity';
 import { ActivitySkeleton } from '../../components/page-skeleton';
 import { EmptyState } from '../../components/empty-state';
@@ -143,6 +146,8 @@ function ActivityPage() {
   }, []);
 
   const { activeGroupId } = useGroupStore();
+  const { user } = useAuthStore();
+  const { canExport } = usePlanLimits(user?.id ?? '');
   const { data: group, isLoading: groupLoading } = useGroup(activeGroupId ?? '');
   const [limit, setLimit] = useState(PAGE_SIZE);
   const [activeFilters, setActiveFilters] = useState<Set<TypeFilter>>(new Set(['all']));
@@ -220,23 +225,36 @@ function ActivityPage() {
         title="Activity"
         subtitle={`Everything that happened in ${group?.name ?? 'this group'}`}
       >
-        <Button
-          variant="default"
-          leftSection={<IconDownload size={16} />}
-          disabled={filteredEntries.length === 0}
-          onClick={() => {
-            const csv = generateActivityCSV(filteredEntries);
-            const dateStr = new Date().toISOString().slice(0, 10);
-            downloadCSV(csv, `commune-activity-${group?.name ?? 'group'}-${dateStr}.csv`);
-            notifications.show({
-              title: 'Exported',
-              message: `${filteredEntries.length} activity entries downloaded.`,
-              color: 'green',
-            });
-          }}
-        >
-          Export CSV
-        </Button>
+        {canExport ? (
+          <Button
+            variant="default"
+            leftSection={<IconDownload size={16} />}
+            disabled={filteredEntries.length === 0}
+            onClick={() => {
+              const csv = generateActivityCSV(filteredEntries);
+              const dateStr = new Date().toISOString().slice(0, 10);
+              downloadCSV(csv, `commune-activity-${group?.name ?? 'group'}-${dateStr}.csv`);
+              notifications.show({
+                title: 'Exported',
+                message: `${filteredEntries.length} activity entries downloaded.`,
+                color: 'green',
+              });
+            }}
+          >
+            Export CSV
+          </Button>
+        ) : (
+          <Tooltip label="Pro feature — upgrade to unlock" withArrow>
+            <Button
+              variant="default"
+              leftSection={<IconDownload size={16} />}
+              disabled
+              data-disabled
+            >
+              Export CSV
+            </Button>
+          </Tooltip>
+        )}
       </PageHeader>
 
       <div className="commune-filter-chips">

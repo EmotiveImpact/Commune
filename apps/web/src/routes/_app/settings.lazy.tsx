@@ -36,6 +36,7 @@ import {
   IconWallet,
   IconBrandRevolut,
   IconBrandPaypal,
+  IconFileSpreadsheet,
   IconLink,
 } from '@tabler/icons-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -738,6 +739,25 @@ function SettingsPage() {
                 </Button>
               </Stack>
             )}
+          </Paper>
+
+          {/* ── Data import ── */}
+          <Paper className="commune-soft-panel" p="xl">
+            <Group gap="xs" mb="md">
+              <IconFileSpreadsheet size={20} />
+              <Text className="commune-section-heading">Data</Text>
+            </Group>
+            <Text size="sm" c="dimmed" mb="lg">
+              Import expense history from other apps.
+            </Text>
+            <Button
+              variant="light"
+              leftSection={<IconFileSpreadsheet size={16} />}
+              component={Link}
+              to="/import"
+            >
+              Import from Splitwise
+            </Button>
           </Paper>
 
           {/* ── Email notifications ── */}

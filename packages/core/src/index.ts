@@ -53,3 +53,21 @@ export type {
   CreateTemplateInput,
   UpdateTemplateInput,
 } from './schemas';
+
+export {
+  parseSplitwiseCSV,
+  mapSplitwiseCategory,
+  transformForImport,
+  splitwiseParticipantMappingSchema,
+  splitwiseImportExpenseSchema,
+  splitwiseImportRequestSchema,
+} from './splitwise-import';
+
+export type {
+  SplitwiseParticipantShare,
+  SplitwiseExpenseRow,
+  SplitwiseParseResult,
+  SplitwiseParticipantMapping,
+  SplitwiseImportExpense,
+  SplitwiseImportRequest,
+} from './splitwise-import';

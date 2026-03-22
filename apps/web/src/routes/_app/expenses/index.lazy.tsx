@@ -9,6 +9,7 @@ import {
   Stack,
   Table,
   Text,
+  Tooltip,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { IconCheck, IconDownload, IconFileTypePdf, IconPlus, IconReceipt, IconTrash } from '@tabler/icons-react';
@@ -21,6 +22,7 @@ import { formatCurrency, formatDate, getMonthKey, isOverdue } from '@commune/uti
 import { generateExpenseCSV, downloadCSV } from '../../../utils/export-csv';
 import { downloadStatement } from '@commune/api';
 import { useSubscription } from '../../../hooks/use-subscriptions';
+import { usePlanLimits } from '../../../hooks/use-plan-limits';
 import { useGroupStore } from '../../../stores/group';
 import { useSearchStore } from '../../../stores/search';
 import { useGroup } from '../../../hooks/use-groups';
@@ -83,12 +85,11 @@ function ExpensesPage() {
   const [datePreset, setDatePreset] = useState<string | null>(null);
   const [dateRange, setDateRange] = useState<[string | null, string | null]>([null, null]);
 
-  // PDF export
+  // PDF export & tier gating
   const { user } = useAuthStore();
   const { data: subscription } = useSubscription(user?.id ?? '');
-  const isPaidPlan =
-    (subscription?.plan === 'pro' || subscription?.plan === 'agency') &&
-    (subscription?.status === 'active' || subscription?.status === 'trialing');
+  const { canExport, canDownloadStatements } = usePlanLimits(user?.id ?? '');
+  const isPaidPlan = canDownloadStatements;
   const [downloadingPdf, setDownloadingPdf] = useState(false);
 
   // Bulk actions
@@ -319,9 +320,17 @@ function ExpensesPage() {
           <Button component={Link} to="/expenses/new" leftSection={<IconPlus size={16} />}>
             Add expense
           </Button>
-          <Button variant="default" leftSection={<IconDownload size={16} />} onClick={handleExportCSV} disabled={filtered.length === 0}>
-            Export CSV
-          </Button>
+          {canExport ? (
+            <Button variant="default" leftSection={<IconDownload size={16} />} onClick={handleExportCSV} disabled={filtered.length === 0}>
+              Export CSV
+            </Button>
+          ) : (
+            <Tooltip label="Pro feature — upgrade to unlock" withArrow>
+              <Button variant="default" leftSection={<IconDownload size={16} />} disabled data-disabled>
+                Export CSV
+              </Button>
+            </Tooltip>
+          )}
           <Button
             variant="default"
             leftSection={<IconFileTypePdf size={16} />}
@@ -556,14 +565,28 @@ function ExpensesPage() {
             >
               Mark paid
             </Button>
-            <Button
-              size="xs"
-              variant="default"
-              leftSection={<IconDownload size={14} />}
-              onClick={handleBulkExport}
-            >
-              Export
-            </Button>
+            {canExport ? (
+              <Button
+                size="xs"
+                variant="default"
+                leftSection={<IconDownload size={14} />}
+                onClick={handleBulkExport}
+              >
+                Export
+              </Button>
+            ) : (
+              <Tooltip label="Pro feature — upgrade to unlock" withArrow>
+                <Button
+                  size="xs"
+                  variant="default"
+                  leftSection={<IconDownload size={14} />}
+                  disabled
+                  data-disabled
+                >
+                  Export
+                </Button>
+              </Tooltip>
+            )}
             <Button
               size="xs"
               variant="subtle"
