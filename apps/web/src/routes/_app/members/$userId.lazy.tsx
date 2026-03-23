@@ -37,6 +37,7 @@ import { formatCurrency, formatDate } from '@commune/utils';
 import { getProviderDisplayName, isClickableProvider, buildPaymentUrl } from '@commune/core';
 import type { PaymentProvider } from '@commune/types';
 import { useMemberProfile } from '../../../hooks/use-group-hub';
+import { useGroupSettlement } from '../../../hooks/use-settlement';
 import { useGroupStore } from '../../../stores/group';
 import { useGroup } from '../../../hooks/use-groups';
 import { useAuthStore } from '../../../stores/auth';
@@ -92,16 +93,26 @@ function MemberProfilePage() {
     );
   }
 
+  const { data: settlement } = useGroupSettlement(activeGroupId ?? '');
   const { user, membership, paymentMethods, recentActivity, sharedGroups } = profile;
   const currency = group?.currency ?? 'GBP';
   const isViewingSelf = currentUser?.id === userId;
 
-  // Compute member's monthly share from group hub data
-  const memberTotalOwed = (() => {
-    if (!group) return 0;
-    // Use recent activity to approximate: sum share amounts from expenses this member participates in
-    return 0; // Will be shown from membership data if available
-  })();
+  // Settlement status for this member
+  const memberOwes = settlement?.transactions
+    ?.filter((t: any) => t.fromUserId === userId)
+    .reduce((sum: number, t: any) => sum + t.amount, 0) ?? 0;
+  const memberOwed = settlement?.transactions
+    ?.filter((t: any) => t.toUserId === userId)
+    .reduce((sum: number, t: any) => sum + t.amount, 0) ?? 0;
+
+  // Does the current user owe this member? (for quick pay)
+  const currentUserOwesThisMember = settlement?.transactions
+    ?.find((t: any) => t.fromUserId === currentUser?.id && t.toUserId === userId);
+  const defaultPaymentMethod = paymentMethods.find((m: any) => m.is_default) ?? paymentMethods[0];
+  const quickPayUrl = currentUserOwesThisMember && defaultPaymentMethod?.payment_link
+    ? buildPaymentUrl({ provider: defaultPaymentMethod.provider, link: defaultPaymentMethod.payment_link })
+    : null;
 
   // Determine payment status from membership/stats
   const roleBadgeColor =
@@ -156,6 +167,18 @@ function MemberProfilePage() {
               {membership?.role && (
                 <Badge size="sm" variant="light" color={roleBadgeColor}>
                   {membership.role}
+                </Badge>
+              )}
+              {/* Settlement status badge */}
+              {memberOwes === 0 && memberOwed === 0 ? (
+                <Badge size="sm" variant="dot" color="green">Settled</Badge>
+              ) : memberOwes > 0 ? (
+                <Badge size="sm" variant="dot" color="orange">
+                  Owes {formatCurrency(memberOwes, currency)}
+                </Badge>
+              ) : (
+                <Badge size="sm" variant="dot" color="blue">
+                  Owed {formatCurrency(memberOwed, currency)}
                 </Badge>
               )}
             </Group>
@@ -355,6 +378,41 @@ function MemberProfilePage() {
         )}
       </Paper>
 
+      {/* 3b. Quick Pay (when you owe this member) */}
+      {!isViewingSelf && currentUserOwesThisMember && (
+        <Paper
+          className="commune-soft-panel"
+          p="lg"
+          style={{ borderLeft: '4px solid var(--mantine-color-orange-5)' }}
+        >
+          <Group justify="space-between" align="center">
+            <Stack gap={2}>
+              <Text fw={700} size="sm">
+                You owe {user.first_name ?? user.name} {formatCurrency(currentUserOwesThisMember.amount, currency)}
+              </Text>
+              <Text size="xs" c="dimmed">
+                {quickPayUrl ? 'Pay directly via their preferred method' : 'No payment link available'}
+              </Text>
+            </Stack>
+            {quickPayUrl ? (
+              <Button
+                component="a"
+                href={quickPayUrl.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                color="orange"
+                leftSection={<IconCash size={16} />}
+                rightSection={<IconArrowRight size={14} />}
+              >
+                Pay {formatCurrency(currentUserOwesThisMember.amount, currency)}
+              </Button>
+            ) : (
+              <Badge variant="light" color="gray">No payment link</Badge>
+            )}
+          </Group>
+        </Paper>
+      )}
+
       {/* 4. Shared Groups Section (only when viewing someone else) */}
       {!isViewingSelf && sharedGroups.length > 0 && (
         <Paper className="commune-soft-panel" p="xl">
@@ -374,7 +432,7 @@ function MemberProfilePage() {
                   className="commune-stat-card"
                   p="md"
                   component={Link}
-                  to="/"
+                  to={`/groups/${sg.id}`}
                   style={{ textDecoration: 'none', cursor: 'pointer' }}
                 >
                   <Group gap="sm">
