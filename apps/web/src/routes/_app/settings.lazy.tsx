@@ -20,6 +20,7 @@ import {
   IconAlertTriangle,
   IconBell,
   IconCoin,
+  IconCreditCard,
   IconDeviceFloppy,
   IconDeviceMobile,
   IconExternalLink,
@@ -240,7 +241,7 @@ function SettingsPage() {
     <Stack gap="xl">
       <PageHeader
         title="Settings"
-        subtitle="Appearance, preferences, notifications, and billing"
+        subtitle="Manage your preferences, notifications, and account"
       >
         <Button
           type="submit"
@@ -252,104 +253,212 @@ function SettingsPage() {
         </Button>
       </PageHeader>
 
-      <div className="commune-dashboard-grid">
-        <Stack gap="lg">
-          <form id="settings-form" onSubmit={form.onSubmit(handleSubmit)}>
-            <Stack gap="lg">
-              {/* ── Appearance ── */}
-              <Paper className="commune-soft-panel" p="xl">
-                <Group gap="xs" mb="md">
-                  <IconPalette size={20} />
-                  <Text className="commune-section-heading">Appearance</Text>
-                </Group>
-                <Text size="sm" c="dimmed" mb="lg">
-                  Choose how Commune looks. System will follow your device settings.
-                </Text>
+      <form id="settings-form" onSubmit={form.onSubmit(handleSubmit)}>
+        <Stack gap="lg" maw={720}>
 
-                <SegmentedControl
-                  value={colorScheme}
-                  onChange={(value) => {
-                    const scheme = value as 'light' | 'dark' | 'auto';
-                    setColorScheme(scheme);
-                    localStorage.setItem('commune-color-scheme', scheme);
-                  }}
-                  data={[
-                    {
-                      value: 'light',
-                      label: (
-                        <Group gap={6} wrap="nowrap">
-                          <IconSun size={16} />
-                          <span>Light</span>
-                        </Group>
-                      ),
-                    },
-                    {
-                      value: 'dark',
-                      label: (
-                        <Group gap={6} wrap="nowrap">
-                          <IconMoon size={16} />
-                          <span>Dark</span>
-                        </Group>
-                      ),
-                    },
-                    {
-                      value: 'auto',
-                      label: (
-                        <Group gap={6} wrap="nowrap">
-                          <IconDeviceMobile size={16} />
-                          <span>System</span>
-                        </Group>
-                      ),
-                    },
-                  ]}
-                  fullWidth
-                />
-              </Paper>
-
-              {/* ── Preferences ── */}
-              <Paper className="commune-soft-panel" p="xl">
-                <Group gap="xs" mb="md">
-                  <IconGlobe size={20} />
-                  <Text className="commune-section-heading">Preferences</Text>
-                </Group>
-                <Text size="sm" c="dimmed" mb="lg">
-                  Defaults for new groups and how amounts appear across the app.
-                </Text>
-
-                <SimpleGrid cols={2}>
-                  <Select
-                    label="Default currency"
-                    description="Used when creating new groups"
-                    data={CURRENCY_OPTIONS}
-                    leftSection={<IconCoin size={16} />}
-                    key={form.key('default_currency')}
-                    {...form.getInputProps('default_currency')}
-                    searchable
-                  />
-                  <Select
-                    label="Timezone"
-                    description="Due dates and overdue warnings"
-                    data={TIMEZONE_OPTIONS}
-                    key={form.key('timezone')}
-                    {...form.getInputProps('timezone')}
-                    searchable
-                  />
-                </SimpleGrid>
-              </Paper>
-            </Stack>
-          </form>
-        </Stack>
-
-        <Stack gap="lg">
-          {/* ── Subscription ── */}
+          {/* ── 1. Appearance ── */}
           <Paper className="commune-soft-panel" p="xl">
-            <Group justify="space-between" align="flex-start" mb="md">
-              <div>
-                <Text className="commune-section-heading">Subscription</Text>
-                <Text size="sm" c="dimmed">
-                  Billing status, limits, and the next thing to do.
-                </Text>
-              </div>
+            <Group gap="xs" mb="md">
+              <IconPalette size={20} />
+              <Text className="commune-section-heading">Appearance</Text>
+            </Group>
+            <Text size="sm" c="dimmed" mb="lg">
+              Choose how Commune looks. System will follow your device settings.
+            </Text>
+
+            <SegmentedControl
+              value={colorScheme}
+              onChange={(value) => {
+                const scheme = value as 'light' | 'dark' | 'auto';
+                setColorScheme(scheme);
+                localStorage.setItem('commune-color-scheme', scheme);
+              }}
+              data={[
+                {
+                  value: 'light',
+                  label: (
+                    <Group gap={6} wrap="nowrap">
+                      <IconSun size={16} />
+                      <span>Light</span>
+                    </Group>
+                  ),
+                },
+                {
+                  value: 'dark',
+                  label: (
+                    <Group gap={6} wrap="nowrap">
+                      <IconMoon size={16} />
+                      <span>Dark</span>
+                    </Group>
+                  ),
+                },
+                {
+                  value: 'auto',
+                  label: (
+                    <Group gap={6} wrap="nowrap">
+                      <IconDeviceMobile size={16} />
+                      <span>System</span>
+                    </Group>
+                  ),
+                },
+              ]}
+              fullWidth
+            />
+          </Paper>
+
+          {/* ── 2. Preferences ── */}
+          <Paper className="commune-soft-panel" p="xl">
+            <Group gap="xs" mb="md">
+              <IconGlobe size={20} />
+              <Text className="commune-section-heading">Preferences</Text>
+            </Group>
+            <Text size="sm" c="dimmed" mb="lg">
+              Defaults for new groups and how amounts appear across the app.
+            </Text>
+
+            <SimpleGrid cols={2}>
+              <Select
+                label="Default currency"
+                description="Used when creating new groups"
+                data={CURRENCY_OPTIONS}
+                leftSection={<IconCoin size={16} />}
+                key={form.key('default_currency')}
+                {...form.getInputProps('default_currency')}
+                searchable
+              />
+              <Select
+                label="Timezone"
+                description="Due dates and overdue warnings"
+                data={TIMEZONE_OPTIONS}
+                key={form.key('timezone')}
+                {...form.getInputProps('timezone')}
+                searchable
+              />
+            </SimpleGrid>
+          </Paper>
+
+          {/* ── 3. Notifications (email + push combined) ── */}
+          <Paper className="commune-soft-panel" p="xl">
+            <Group gap="xs" mb="md">
+              <IconBell size={20} />
+              <Text className="commune-section-heading">Notifications</Text>
+            </Group>
+            <Text size="sm" c="dimmed" mb="lg">
+              Control how and when Commune notifies you.
+            </Text>
+
+            {/* Push notifications */}
+            <Text size="sm" fw={600} mb="xs">Push notifications</Text>
+            <Text size="xs" c="dimmed" mb="sm">
+              Receive browser notifications even when the app is in the background.
+            </Text>
+
+            {!isPushSupported() ? (
+              <Text size="sm" c="dimmed" mb="lg">
+                Push notifications are not supported in this browser.
+              </Text>
+            ) : typeof Notification !== 'undefined' && Notification.permission === 'denied' ? (
+              <Text size="sm" c="red" mb="lg">
+                Push notifications are blocked. Please enable them in your browser settings.
+              </Text>
+            ) : (
+              <Switch
+                label={
+                  pushLoading
+                    ? 'Loading...'
+                    : (pushSubs ?? []).length > 0
+                      ? 'Enabled'
+                      : 'Disabled'
+                }
+                description="Toggle to enable or disable browser push notifications"
+                checked={(pushSubs ?? []).length > 0}
+                disabled={pushLoading || subscribePush.isPending || unsubscribePush.isPending}
+                onChange={(event) => {
+                  if (!user) return;
+                  if (event.currentTarget.checked) {
+                    subscribePush.mutate(user.id, {
+                      onError: (err) => {
+                        notifications.show({
+                          title: 'Could not enable push notifications',
+                          message: err instanceof Error ? err.message : 'Something went wrong',
+                          color: 'red',
+                        });
+                      },
+                      onSuccess: () => {
+                        notifications.show({
+                          title: 'Push notifications enabled',
+                          message: 'You will now receive browser notifications.',
+                          color: 'green',
+                        });
+                      },
+                    });
+                  } else {
+                    unsubscribePush.mutate({ userId: user.id }, {
+                      onError: (err) => {
+                        notifications.show({
+                          title: 'Could not disable push notifications',
+                          message: err instanceof Error ? err.message : 'Something went wrong',
+                          color: 'red',
+                        });
+                      },
+                      onSuccess: () => {
+                        notifications.show({
+                          title: 'Push notifications disabled',
+                          message: 'You will no longer receive browser notifications.',
+                          color: 'green',
+                        });
+                      },
+                    });
+                  }
+                }}
+                mb="lg"
+              />
+            )}
+
+            <Divider mb="lg" />
+
+            {/* Email notifications */}
+            <Text size="sm" fw={600} mb="xs">Email notifications</Text>
+            <Text size="xs" c="dimmed" mb="sm">
+              Choose which events should land in your inbox.
+            </Text>
+
+            <Stack gap="md">
+              <Switch
+                label="New expense added"
+                description="Notify me when someone adds a new expense in one of my groups"
+                key={form.key('notification_preferences.email_on_new_expense')}
+                {...form.getInputProps('notification_preferences.email_on_new_expense', { type: 'checkbox' })}
+              />
+              <Divider />
+              <Switch
+                label="Payment received"
+                description="Notify me when someone marks a payment as paid"
+                key={form.key('notification_preferences.email_on_payment_received')}
+                {...form.getInputProps('notification_preferences.email_on_payment_received', { type: 'checkbox' })}
+              />
+              <Divider />
+              <Switch
+                label="Payment reminder"
+                description="Notify me when something I owe is coming due soon"
+                key={form.key('notification_preferences.email_on_payment_reminder')}
+                {...form.getInputProps('notification_preferences.email_on_payment_reminder', { type: 'checkbox' })}
+              />
+              <Divider />
+              <Switch
+                label="Overdue payments"
+                description="Notify me when a payment passes the due date"
+                key={form.key('notification_preferences.email_on_overdue')}
+                {...form.getInputProps('notification_preferences.email_on_overdue', { type: 'checkbox' })}
+              />
+            </Stack>
+          </Paper>
+
+          {/* ── 4. Subscription & Billing ── */}
+          <Paper className="commune-soft-panel" p="xl">
+            <Group gap="xs" mb="md">
+              <IconCreditCard size={20} />
+              <Text className="commune-section-heading">Subscription & Billing</Text>
             </Group>
 
             {subLoading ? (
@@ -433,11 +542,11 @@ function SettingsPage() {
             )}
           </Paper>
 
-          {/* ── Data import ── */}
+          {/* ── 5. Data & Import ── */}
           <Paper className="commune-soft-panel" p="xl">
             <Group gap="xs" mb="md">
               <IconFileSpreadsheet size={20} />
-              <Text className="commune-section-heading">Data</Text>
+              <Text className="commune-section-heading">Data & Import</Text>
             </Group>
             <Text size="sm" c="dimmed" mb="lg">
               Import expense history from other apps.
@@ -452,120 +561,7 @@ function SettingsPage() {
             </Button>
           </Paper>
 
-          {/* ── Email notifications ── */}
-          <Paper className="commune-soft-panel" p="xl">
-            <Group gap="xs" mb="md">
-              <IconBell size={20} />
-              <Text className="commune-section-heading">Email notifications</Text>
-            </Group>
-            <Text size="sm" c="dimmed" mb="lg">
-              Choose which events should land in your inbox.
-            </Text>
-
-            <Stack gap="md">
-              <Switch
-                label="New expense added"
-                description="Notify me when someone adds a new expense in one of my groups"
-                key={form.key('notification_preferences.email_on_new_expense')}
-                {...form.getInputProps('notification_preferences.email_on_new_expense', { type: 'checkbox' })}
-              />
-              <Divider />
-              <Switch
-                label="Payment received"
-                description="Notify me when someone marks a payment as paid"
-                key={form.key('notification_preferences.email_on_payment_received')}
-                {...form.getInputProps('notification_preferences.email_on_payment_received', { type: 'checkbox' })}
-              />
-              <Divider />
-              <Switch
-                label="Payment reminder"
-                description="Notify me when something I owe is coming due soon"
-                key={form.key('notification_preferences.email_on_payment_reminder')}
-                {...form.getInputProps('notification_preferences.email_on_payment_reminder', { type: 'checkbox' })}
-              />
-              <Divider />
-              <Switch
-                label="Overdue payments"
-                description="Notify me when a payment passes the due date"
-                key={form.key('notification_preferences.email_on_overdue')}
-                {...form.getInputProps('notification_preferences.email_on_overdue', { type: 'checkbox' })}
-              />
-            </Stack>
-          </Paper>
-
-          {/* ── Push notifications ── */}
-          <Paper className="commune-soft-panel" p="xl">
-            <Group gap="xs" mb="md">
-              <IconDeviceMobile size={20} />
-              <Text className="commune-section-heading">Push notifications</Text>
-            </Group>
-            <Text size="sm" c="dimmed" mb="lg">
-              Receive browser push notifications even when the app is in the background.
-            </Text>
-
-            {!isPushSupported() ? (
-              <Text size="sm" c="dimmed">
-                Push notifications are not supported in this browser.
-              </Text>
-            ) : typeof Notification !== 'undefined' && Notification.permission === 'denied' ? (
-              <Text size="sm" c="red">
-                Push notifications are blocked. Please enable them in your browser settings.
-              </Text>
-            ) : (
-              <Switch
-                label={
-                  pushLoading
-                    ? 'Loading...'
-                    : (pushSubs ?? []).length > 0
-                      ? 'Enabled'
-                      : 'Disabled'
-                }
-                description="Toggle to enable or disable browser push notifications"
-                checked={(pushSubs ?? []).length > 0}
-                disabled={pushLoading || subscribePush.isPending || unsubscribePush.isPending}
-                onChange={(event) => {
-                  if (!user) return;
-                  if (event.currentTarget.checked) {
-                    subscribePush.mutate(user.id, {
-                      onError: (err) => {
-                        notifications.show({
-                          title: 'Could not enable push notifications',
-                          message: err instanceof Error ? err.message : 'Something went wrong',
-                          color: 'red',
-                        });
-                      },
-                      onSuccess: () => {
-                        notifications.show({
-                          title: 'Push notifications enabled',
-                          message: 'You will now receive browser notifications.',
-                          color: 'green',
-                        });
-                      },
-                    });
-                  } else {
-                    unsubscribePush.mutate({ userId: user.id }, {
-                      onError: (err) => {
-                        notifications.show({
-                          title: 'Could not disable push notifications',
-                          message: err instanceof Error ? err.message : 'Something went wrong',
-                          color: 'red',
-                        });
-                      },
-                      onSuccess: () => {
-                        notifications.show({
-                          title: 'Push notifications disabled',
-                          message: 'You will no longer receive browser notifications.',
-                          color: 'green',
-                        });
-                      },
-                    });
-                  }
-                }}
-              />
-            )}
-          </Paper>
-
-          {/* ── Danger zone ── */}
+          {/* ── 6. Danger Zone ── */}
           <Paper className="commune-soft-panel" p="xl" style={{ borderColor: 'var(--commune-danger-border)' }}>
             <Group gap="xs" mb="md">
               <IconAlertTriangle size={20} color="var(--mantine-color-red-6)" />
@@ -595,7 +591,7 @@ function SettingsPage() {
             </Stack>
           </Paper>
         </Stack>
-      </div>
+      </form>
     </Stack>
   );
 }
