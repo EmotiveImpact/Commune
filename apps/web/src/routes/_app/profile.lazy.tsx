@@ -1,37 +1,52 @@
 import { createLazyFileRoute } from '@tanstack/react-router';
 import {
+  ActionIcon,
   Avatar,
+  Badge,
   Button,
   Divider,
   Group,
+  Modal,
   Paper,
   Select,
   SimpleGrid,
   Stack,
+  Switch,
   Text,
   Textarea,
   TextInput,
+  Tooltip,
 } from '@mantine/core';
 import { useForm, schemaResolver } from '@mantine/form';
+import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import {
   IconCamera,
   IconDeviceFloppy,
+  IconEdit,
   IconLink,
   IconPhone,
+  IconPlus,
+  IconStar,
+  IconTrash,
   IconUser,
   IconWallet,
-  IconBrandRevolut,
-  IconBrandPaypal,
 } from '@tabler/icons-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { setPageTitle } from '../../utils/seo';
-import { updateProfileSchema, isClickableProvider } from '@commune/core';
+import { updateProfileSchema, isClickableProvider, getProviderDisplayName } from '@commune/core';
 import { PaymentProvider } from '@commune/types';
+import type { UserPaymentMethod } from '@commune/types';
 import { formatDate } from '@commune/utils';
 import { uploadAvatar } from '@commune/api';
 import { useAuthStore } from '../../stores/auth';
 import { useProfile, useUpdateProfile } from '../../hooks/use-profile';
+import {
+  usePaymentMethods,
+  useCreatePaymentMethod,
+  useUpdatePaymentMethod,
+  useDeletePaymentMethod,
+} from '../../hooks/use-payment-methods';
 import { SettingsSkeleton } from '../../components/page-skeleton';
 import { PageHeader } from '../../components/page-header';
 
@@ -70,8 +85,13 @@ function ProfilePage() {
     refetch: refetchProfile,
   } = useProfile(user?.id ?? '');
   const updateProfile = useUpdateProfile();
+  const { data: paymentMethods = [] } = usePaymentMethods(user?.id ?? '');
+  const createMethod = useCreatePaymentMethod(user?.id ?? '');
+  const updateMethod = useUpdatePaymentMethod(user?.id ?? '');
+  const deleteMethod = useDeletePaymentMethod(user?.id ?? '');
+  const [methodModalOpened, { open: openMethodModal, close: closeMethodModal }] = useDisclosure(false);
+  const [editingMethod, setEditingMethod] = useState<UserPaymentMethod | null>(null);
   const lastHydratedProfileRef = useRef<string | null>(null);
-  const [activeProvider, setActiveProvider] = useState<string | null>(null);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -109,9 +129,6 @@ function ProfilePage() {
       avatar_url: '' as string | null,
       phone: '' as string | null,
       country: '' as string | null,
-      payment_info: '' as string | null,
-      payment_provider: '' as string | null,
-      payment_link: '' as string | null,
     },
     validate: schemaResolver(updateProfileSchema),
   });
@@ -124,9 +141,6 @@ function ProfilePage() {
         last_name: resolvedProfile.last_name,
         phone: resolvedProfile.phone,
         country: resolvedProfile.country,
-        payment_info: resolvedProfile.payment_info,
-        payment_provider: resolvedProfile.payment_provider,
-        payment_link: resolvedProfile.payment_link,
       });
 
       if (lastHydratedProfileRef.current === hydrationKey) return;
@@ -138,11 +152,7 @@ function ProfilePage() {
         avatar_url: resolvedProfile.avatar_url ?? '',
         phone: resolvedProfile.phone ?? '',
         country: resolvedProfile.country ?? '',
-        payment_info: resolvedProfile.payment_info ?? '',
-        payment_provider: resolvedProfile.payment_provider ?? '',
-        payment_link: resolvedProfile.payment_link ?? '',
       });
-      setActiveProvider(resolvedProfile.payment_provider ?? null);
     }
   }, [resolvedProfile, form]);
 
@@ -187,9 +197,6 @@ function ProfilePage() {
           avatar_url: values.avatar_url || null,
           phone: values.phone || null,
           country: values.country || null,
-          payment_info: values.payment_info || null,
-          payment_provider: (values.payment_provider as PaymentProvider) || null,
-          payment_link: values.payment_link || null,
         },
       });
       notifications.show({
@@ -372,74 +379,301 @@ function ProfilePage() {
             </Stack>
           </Paper>
 
-          {/* ── Payment link ── */}
+          {/* ── Payment methods ── */}
           <Paper className="commune-soft-panel" p="xl">
-            <Group gap="xs" mb={4}>
-              <IconWallet size={20} />
-              <Text className="commune-section-heading">Payment link</Text>
+            <Group justify="space-between" mb="md">
+              <Group gap="xs">
+                <IconWallet size={20} />
+                <Text className="commune-section-heading">Payment methods</Text>
+              </Group>
+              <Button
+                variant="light"
+                size="xs"
+                leftSection={<IconPlus size={14} />}
+                onClick={() => {
+                  setEditingMethod(null);
+                  openMethodModal();
+                }}
+              >
+                Add method
+              </Button>
             </Group>
             <Text size="sm" c="dimmed" mb="lg">
-              Members will see a &quot;Pay now&quot; button that opens your payment link with the amount pre-filled.
+              Group members will see your payment methods when settling up. You can add multiple providers.
             </Text>
 
-            <Stack gap="md">
-              <Select
-                label="Payment provider"
-                description="How you want to receive payments from group members"
-                placeholder="Select your payment provider"
-                data={[
-                  { value: 'revolut', label: 'Revolut' },
-                  { value: 'monzo', label: 'Monzo' },
-                  { value: 'paypal', label: 'PayPal' },
-                  { value: 'bank_transfer', label: 'Bank transfer' },
-                  { value: 'other', label: 'Other' },
-                ]}
-                key={form.key('payment_provider')}
-                {...form.getInputProps('payment_provider')}
-                onChange={(value) => {
-                  form.setFieldValue('payment_provider', value ?? '');
-                  form.setFieldValue('payment_link', '');
-                  form.setFieldValue('payment_info', '');
-                  setActiveProvider(value ?? null);
-                }}
-                clearable
-              />
-
-              {activeProvider && isClickableProvider(activeProvider as PaymentProvider) && (
-                <TextInput
-                  label={
-                    activeProvider === 'revolut' ? 'Revolut.me username'
-                    : activeProvider === 'monzo' ? 'Monzo.me username'
-                    : 'PayPal.me username'
-                  }
-                  description={
-                    activeProvider === 'revolut' ? 'Your Revolut.me link or username (e.g. johndoe or revolut.me/johndoe)'
-                    : activeProvider === 'monzo' ? 'Your Monzo.me link or username (e.g. johndoe or monzo.me/johndoe)'
-                    : 'Your PayPal.me link or username (e.g. johndoe or paypal.me/johndoe)'
-                  }
-                  placeholder="johndoe"
-                  leftSection={<IconLink size={16} />}
-                  key={`payment_link_${activeProvider}`}
-                  {...form.getInputProps('payment_link')}
-                />
-              )}
-
-              {activeProvider && !isClickableProvider(activeProvider as PaymentProvider) && (
-                <Textarea
-                  label="Payment details"
-                  description="Your bank details or payment instructions visible to group members"
-                  placeholder="e.g. Sort: 12-34-56, Account: 12345678"
-                  autosize
-                  minRows={2}
-                  maxRows={4}
-                  key={`payment_info_${activeProvider}`}
-                  {...form.getInputProps('payment_info')}
-                />
-              )}
-            </Stack>
+            {paymentMethods.length === 0 ? (
+              <Paper p="lg" radius="md" style={{ border: '1px dashed var(--commune-border-strong)', textAlign: 'center' }}>
+                <Text size="sm" c="dimmed">No payment methods yet. Add one so members can pay you.</Text>
+              </Paper>
+            ) : (
+              <Stack gap="sm">
+                {paymentMethods.map((method) => (
+                  <Paper key={method.id} className="commune-stat-card" p="md" radius="md">
+                    <Group justify="space-between" wrap="nowrap">
+                      <Stack gap={2}>
+                        <Group gap="xs">
+                          <Text fw={600} size="sm">
+                            {getProviderDisplayName(method.provider as PaymentProvider)}
+                          </Text>
+                          {method.label && (
+                            <Text size="xs" c="dimmed">({method.label})</Text>
+                          )}
+                          {method.is_default && (
+                            <Badge size="xs" variant="light" color="yellow" leftSection={<IconStar size={10} />}>
+                              Default
+                            </Badge>
+                          )}
+                        </Group>
+                        <Text size="xs" c="dimmed" truncate maw={300}>
+                          {method.payment_link || method.payment_info || 'No details set'}
+                        </Text>
+                      </Stack>
+                      <Group gap={4}>
+                        <Tooltip label="Edit">
+                          <ActionIcon
+                            variant="subtle"
+                            size="sm"
+                            onClick={() => {
+                              setEditingMethod(method);
+                              openMethodModal();
+                            }}
+                          >
+                            <IconEdit size={14} />
+                          </ActionIcon>
+                        </Tooltip>
+                        <Tooltip label="Delete">
+                          <ActionIcon
+                            variant="subtle"
+                            size="sm"
+                            color="red"
+                            onClick={() => {
+                              if (window.confirm('Remove this payment method?')) {
+                                deleteMethod.mutate(method.id, {
+                                  onSuccess: () => {
+                                    notifications.show({
+                                      title: 'Payment method removed',
+                                      message: `${getProviderDisplayName(method.provider as PaymentProvider)} has been removed.`,
+                                      color: 'green',
+                                    });
+                                  },
+                                });
+                              }
+                            }}
+                          >
+                            <IconTrash size={14} />
+                          </ActionIcon>
+                        </Tooltip>
+                      </Group>
+                    </Group>
+                  </Paper>
+                ))}
+              </Stack>
+            )}
           </Paper>
         </Stack>
       </form>
+
+      {/* ── Add / Edit payment method modal ── */}
+      <PaymentMethodModal
+        opened={methodModalOpened}
+        onClose={() => {
+          closeMethodModal();
+          setEditingMethod(null);
+        }}
+        editing={editingMethod}
+        onCreate={(data) => {
+          createMethod.mutate(data, {
+            onSuccess: () => {
+              closeMethodModal();
+              notifications.show({ title: 'Payment method added', message: 'Your new payment method is saved.', color: 'green' });
+            },
+            onError: (err) => {
+              notifications.show({ title: 'Failed to add method', message: err instanceof Error ? err.message : 'Something went wrong', color: 'red' });
+            },
+          });
+        }}
+        onUpdate={(methodId, data) => {
+          updateMethod.mutate({ methodId, data }, {
+            onSuccess: () => {
+              closeMethodModal();
+              setEditingMethod(null);
+              notifications.show({ title: 'Payment method updated', message: 'Changes saved.', color: 'green' });
+            },
+            onError: (err) => {
+              notifications.show({ title: 'Failed to update method', message: err instanceof Error ? err.message : 'Something went wrong', color: 'red' });
+            },
+          });
+        }}
+        isLoading={createMethod.isPending || updateMethod.isPending}
+      />
     </Stack>
+  );
+}
+
+// ─── Payment Method Modal ───────────────────────────────────────────────────
+
+const PROVIDER_OPTIONS = [
+  { value: 'revolut', label: 'Revolut' },
+  { value: 'monzo', label: 'Monzo' },
+  { value: 'paypal', label: 'PayPal' },
+  { value: 'bank_transfer', label: 'Bank transfer' },
+  { value: 'other', label: 'Other' },
+];
+
+function PaymentMethodModal({
+  opened,
+  onClose,
+  editing,
+  onCreate,
+  onUpdate,
+  isLoading,
+}: {
+  opened: boolean;
+  onClose: () => void;
+  editing: UserPaymentMethod | null;
+  onCreate: (data: {
+    provider: string;
+    label?: string | null;
+    payment_link?: string | null;
+    payment_info?: string | null;
+    is_default?: boolean;
+  }) => void;
+  onUpdate: (methodId: string, data: {
+    provider?: string;
+    label?: string | null;
+    payment_link?: string | null;
+    payment_info?: string | null;
+    is_default?: boolean;
+  }) => void;
+  isLoading: boolean;
+}) {
+  const [provider, setProvider] = useState<string | null>(null);
+  const [label, setLabel] = useState('');
+  const [link, setLink] = useState('');
+  const [info, setInfo] = useState('');
+  const [isDefault, setIsDefault] = useState(false);
+
+  // Reset form when modal opens/editing changes
+  useEffect(() => {
+    if (opened) {
+      if (editing) {
+        setProvider(editing.provider);
+        setLabel(editing.label ?? '');
+        setLink(editing.payment_link ?? '');
+        setInfo(editing.payment_info ?? '');
+        setIsDefault(editing.is_default);
+      } else {
+        setProvider(null);
+        setLabel('');
+        setLink('');
+        setInfo('');
+        setIsDefault(false);
+      }
+    }
+  }, [opened, editing]);
+
+  const showLink = provider && isClickableProvider(provider as PaymentProvider);
+  const showInfo = provider && !isClickableProvider(provider as PaymentProvider);
+
+  function handleSubmit() {
+    if (!provider) return;
+    const data = {
+      provider,
+      label: label || null,
+      payment_link: link || null,
+      payment_info: info || null,
+      is_default: isDefault,
+    };
+    if (editing) {
+      onUpdate(editing.id, data);
+    } else {
+      onCreate(data);
+    }
+  }
+
+  return (
+    <Modal
+      opened={opened}
+      onClose={onClose}
+      title={editing ? 'Edit payment method' : 'Add payment method'}
+      size="md"
+    >
+      <Stack gap="md">
+        <Select
+          label="Provider"
+          placeholder="Select provider"
+          data={PROVIDER_OPTIONS}
+          value={provider}
+          onChange={(val) => {
+            setProvider(val);
+            setLink('');
+            setInfo('');
+          }}
+          required
+        />
+
+        {provider && (
+          <TextInput
+            label="Label (optional)"
+            placeholder={`e.g. Personal ${getProviderDisplayName(provider as PaymentProvider)}`}
+            value={label}
+            onChange={(e) => setLabel(e.currentTarget.value)}
+          />
+        )}
+
+        {showLink && (
+          <TextInput
+            label={
+              provider === 'revolut' ? 'Revolut.me username'
+              : provider === 'monzo' ? 'Monzo.me username'
+              : 'PayPal.me username'
+            }
+            description={
+              provider === 'revolut' ? 'e.g. johndoe or revolut.me/johndoe'
+              : provider === 'monzo' ? 'e.g. johndoe or monzo.me/johndoe'
+              : 'e.g. johndoe or paypal.me/johndoe'
+            }
+            placeholder="johndoe"
+            leftSection={<IconLink size={16} />}
+            value={link}
+            onChange={(e) => setLink(e.currentTarget.value)}
+          />
+        )}
+
+        {showInfo && (
+          <Textarea
+            label="Payment details"
+            description="Your bank details or payment instructions"
+            placeholder="e.g. Sort: 12-34-56, Account: 12345678"
+            autosize
+            minRows={2}
+            maxRows={4}
+            value={info}
+            onChange={(e) => setInfo(e.currentTarget.value)}
+          />
+        )}
+
+        {provider && (
+          <Switch
+            label="Set as default"
+            description="This will be shown first when members settle up"
+            checked={isDefault}
+            onChange={(e) => setIsDefault(e.currentTarget.checked)}
+          />
+        )}
+
+        <Group justify="flex-end" mt="sm">
+          <Button variant="subtle" onClick={onClose}>Cancel</Button>
+          <Button
+            onClick={handleSubmit}
+            disabled={!provider}
+            loading={isLoading}
+          >
+            {editing ? 'Save changes' : 'Add method'}
+          </Button>
+        </Group>
+      </Stack>
+    </Modal>
   );
 }

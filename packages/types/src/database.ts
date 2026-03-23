@@ -30,6 +30,18 @@ export interface User {
   created_at: string;
 }
 
+export interface UserPaymentMethod {
+  id: string;
+  user_id: string;
+  provider: PaymentProvider;
+  label: string | null;
+  payment_link: string | null;
+  payment_info: string | null;
+  is_default: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Group {
   id: string;
   name: string;

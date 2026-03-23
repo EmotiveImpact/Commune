@@ -26,3 +26,4 @@ export * from './budgets';
 export * from './funds';
 export * from './cross-group';
 export * from './couple-linking';
+export * from './payment-methods';

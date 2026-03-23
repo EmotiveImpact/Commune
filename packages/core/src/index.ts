@@ -54,6 +54,8 @@ export {
   createFundExpenseSchema,
   prorationInfoSchema,
   prorationRequestSchema,
+  createPaymentMethodSchema,
+  updatePaymentMethodSchema,
 } from './schemas';
 
 export type {
@@ -73,6 +75,8 @@ export type {
   CreateFundExpenseInput,
   ProrationInfoInput,
   ProrationRequestInput,
+  CreatePaymentMethodInput,
+  UpdatePaymentMethodInput,
 } from './schemas';
 
 export {

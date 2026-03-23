@@ -240,3 +240,18 @@ export const settlementResultSchema = z.object({
 
 export type SettlementTransactionInput = z.infer<typeof settlementTransactionSchema>;
 export type SettlementResultInput = z.infer<typeof settlementResultSchema>;
+
+// ─── Payment Method Schemas ─────────────────────────────────────────────────
+
+export const createPaymentMethodSchema = z.object({
+  provider: z.enum(['revolut', 'monzo', 'paypal', 'bank_transfer', 'other']),
+  label: z.string().max(50).optional().nullable(),
+  payment_link: z.string().max(200).optional().nullable(),
+  payment_info: z.string().max(500).optional().nullable(),
+  is_default: z.boolean().optional(),
+});
+
+export const updatePaymentMethodSchema = createPaymentMethodSchema.partial();
+
+export type CreatePaymentMethodInput = z.infer<typeof createPaymentMethodSchema>;
+export type UpdatePaymentMethodInput = z.infer<typeof updatePaymentMethodSchema>;

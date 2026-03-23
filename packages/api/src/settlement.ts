@@ -133,13 +133,34 @@ export async function getGroupSettlement(
     .select('id, name, payment_provider, payment_link')
     .in('id', Array.from(allUserIds));
 
+  // Fetch payment methods from the new table for all users
+  const { data: paymentMethodRows } = await supabase
+    .from('user_payment_methods')
+    .select('*')
+    .in('user_id', Array.from(allUserIds))
+    .order('is_default', { ascending: false })
+    .order('created_at', { ascending: true });
+
+  // Build a map: userId -> default payment method (first one, which is default-sorted)
+  const defaultMethodMap = new Map<string, { provider: string; link: string | null; info: string | null }>();
+  for (const pm of paymentMethodRows ?? []) {
+    if (!defaultMethodMap.has(pm.user_id as string)) {
+      defaultMethodMap.set(pm.user_id as string, {
+        provider: pm.provider as string,
+        link: pm.payment_link as string | null,
+        info: pm.payment_info as string | null,
+      });
+    }
+  }
+
   const userMap = new Map(
     (users ?? []).map((u) => [
       u.id as string,
       {
         name: u.name as string,
-        paymentProvider: u.payment_provider as string | null,
-        paymentLink: u.payment_link as string | null,
+        // Prefer new payment methods table, fall back to legacy profile fields
+        paymentProvider: defaultMethodMap.get(u.id as string)?.provider ?? (u.payment_provider as string | null),
+        paymentLink: defaultMethodMap.get(u.id as string)?.link ?? (u.payment_link as string | null),
       },
     ]),
   );
