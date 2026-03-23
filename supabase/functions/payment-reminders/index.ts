@@ -29,10 +29,6 @@ interface PaymentRow {
     currency: string;
     paid_by_user_id: string;
     group: { name: string };
-    paid_by_user: {
-      payment_provider: string | null;
-      payment_link: string | null;
-    } | null;
   };
   user: {
     email: string;
@@ -107,6 +103,17 @@ function formatCurrency(amount: number, currency: string): string {
   }).format(amount);
 }
 
+async function getDefaultPaymentMethod(userId: string): Promise<{ provider: string; payment_link: string } | null> {
+  const { data } = await supabase
+    .from('user_payment_methods')
+    .select('provider, payment_link')
+    .eq('user_id', userId)
+    .eq('is_default', true)
+    .maybeSingle();
+  if (!data?.provider) return null;
+  return { provider: data.provider as string, payment_link: data.payment_link as string };
+}
+
 function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString('en-GB', {
     day: 'numeric',
@@ -135,11 +142,7 @@ async function processUpcoming(): Promise<{ sent: number; skipped: number }> {
         due_date,
         currency,
         paid_by_user_id,
-        group:groups!inner ( name ),
-        paid_by_user:users!expenses_paid_by_user_id_fkey (
-          payment_provider,
-          payment_link
-        )
+        group:groups!inner ( name )
       ),
       user:users!inner (
         email,
@@ -165,9 +168,6 @@ async function processUpcoming(): Promise<{ sent: number; skipped: number }> {
       expense: Array.isArray(raw.expense) ? raw.expense[0] : raw.expense,
       user: Array.isArray(raw.user) ? raw.user[0] : raw.user,
     };
-    if (r.expense.paid_by_user && Array.isArray(r.expense.paid_by_user)) {
-      r.expense.paid_by_user = r.expense.paid_by_user[0] ?? null;
-    }
 
     // Check user preference
     if (!r.user.notification_preferences?.email_on_payment_reminder) {
@@ -195,15 +195,17 @@ async function processUpcoming(): Promise<{ sent: number; skipped: number }> {
 <p>Due date: <strong>${formatDate(r.expense.due_date)}</strong></p>
 <p>Please mark it as paid once completed.</p>`;
 
-    // Build payment link if payer has one configured
-    const payer = r.expense.paid_by_user;
-    const payUrl = payer?.payment_provider && payer?.payment_link
-      ? buildPaymentUrl(payer.payment_provider, payer.payment_link, r.amount)
+    // Build payment link from user_payment_methods if payer has one configured
+    const payerMethod = r.expense.paid_by_user_id
+      ? await getDefaultPaymentMethod(r.expense.paid_by_user_id)
+      : null;
+    const payUrl = payerMethod?.provider && payerMethod?.payment_link
+      ? buildPaymentUrl(payerMethod.provider, payerMethod.payment_link, r.amount)
       : null;
 
     const ok = await sendNotification(r.user.email, subject, body, 'payment_reminder', payUrl ? {
       payment_url: payUrl,
-      payment_provider: payer!.payment_provider!,
+      payment_provider: payerMethod!.provider,
       amount: r.amount.toFixed(2),
     } : undefined);
     if (ok) {
@@ -236,11 +238,7 @@ async function processOverdue(): Promise<{ sent: number; skipped: number }> {
         due_date,
         currency,
         paid_by_user_id,
-        group:groups!inner ( name ),
-        paid_by_user:users!expenses_paid_by_user_id_fkey (
-          payment_provider,
-          payment_link
-        )
+        group:groups!inner ( name )
       ),
       user:users!inner (
         email,
@@ -265,9 +263,6 @@ async function processOverdue(): Promise<{ sent: number; skipped: number }> {
       expense: Array.isArray(raw.expense) ? raw.expense[0] : raw.expense,
       user: Array.isArray(raw.user) ? raw.user[0] : raw.user,
     };
-    if (r.expense.paid_by_user && Array.isArray(r.expense.paid_by_user)) {
-      r.expense.paid_by_user = r.expense.paid_by_user[0] ?? null;
-    }
 
     // Check user preference
     if (!r.user.notification_preferences?.email_on_overdue) {
@@ -301,15 +296,17 @@ async function processOverdue(): Promise<{ sent: number; skipped: number }> {
 <p>Original due date: <strong>${formatDate(r.expense.due_date)}</strong></p>
 <p>Please settle this payment as soon as possible.</p>`;
 
-    // Build payment link if payer has one configured
-    const payer = r.expense.paid_by_user;
-    const payUrl = payer?.payment_provider && payer?.payment_link
-      ? buildPaymentUrl(payer.payment_provider, payer.payment_link, r.amount)
+    // Build payment link from user_payment_methods if payer has one configured
+    const payerMethod = r.expense.paid_by_user_id
+      ? await getDefaultPaymentMethod(r.expense.paid_by_user_id)
+      : null;
+    const payUrl = payerMethod?.provider && payerMethod?.payment_link
+      ? buildPaymentUrl(payerMethod.provider, payerMethod.payment_link, r.amount)
       : null;
 
     const ok = await sendNotification(r.user.email, subject, body, 'overdue', payUrl ? {
       payment_url: payUrl,
-      payment_provider: payer!.payment_provider!,
+      payment_provider: payerMethod!.provider,
       amount: r.amount.toFixed(2),
     } : undefined);
     if (ok) {

@@ -46,6 +46,7 @@ import { useGroupStore } from '../../../stores/group';
 import { useGroup } from '../../../hooks/use-groups';
 import { useAuthStore } from '../../../stores/auth';
 import { useUploadReceipt, useDeleteReceipt } from '../../../hooks/use-receipts';
+import { usePaymentMethods } from '../../../hooks/use-payment-methods';
 import { ReceiptDropzone } from '../../../components/receipt-dropzone';
 import { EmptyState } from '../../../components/empty-state';
 import { ExpenseDetailSkeleton } from '../../../components/page-skeleton';
@@ -112,12 +113,14 @@ function ExpenseDetailPage() {
   const paidCount = expense.payment_records.filter((payment) => payment.status !== 'unpaid').length;
   const confirmedCount = expense.payment_records.filter((payment) => payment.status === 'confirmed').length;
 
-  // Build payment link from the person who paid upfront
-  const paidByUser = expense.paid_by_user as any;
-  const paymentLinkResult = paidByUser?.payment_provider && paidByUser?.payment_link
-    && isClickableProvider(paidByUser.payment_provider as PaymentProvider)
+  // Fetch payment methods for the person who paid upfront
+  const paidByUserId = expense.paid_by_user_id ?? '';
+  const { data: paidByMethods } = usePaymentMethods(paidByUserId);
+  const defaultMethod = paidByMethods?.find((m) => m.is_default) ?? paidByMethods?.[0] ?? null;
+  const paymentLinkResult = defaultMethod?.provider && defaultMethod?.payment_link
+    && isClickableProvider(defaultMethod.provider as PaymentProvider)
     ? buildPaymentUrl(
-        { provider: paidByUser.payment_provider as PaymentProvider, link: paidByUser.payment_link },
+        { provider: defaultMethod.provider as PaymentProvider, link: defaultMethod.payment_link },
       )
     : null;
 
@@ -452,7 +455,7 @@ function ExpenseDetailPage() {
                                   variant="filled"
                                   color="emerald"
                                   component="a"
-                                  href={buildPaymentUrl({ provider: paymentLinkResult.provider, link: expense.paid_by_user?.payment_link ?? '' }, reimbursement.amount)?.url ?? '#'}
+                                  href={buildPaymentUrl({ provider: paymentLinkResult.provider, link: defaultMethod?.payment_link ?? '' }, reimbursement.amount)?.url ?? '#'}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   aria-label={`Pay ${expense.paid_by_user?.name} via ${getProviderDisplayName(paymentLinkResult.provider)}`}
@@ -527,7 +530,7 @@ function ExpenseDetailPage() {
                     .filter((r) => r.userId === user?.id)
                     .map((r) => {
                       const link = buildPaymentUrl(
-                        { provider: paymentLinkResult.provider, link: paidByUser.payment_link },
+                        { provider: paymentLinkResult.provider, link: defaultMethod?.payment_link ?? '' },
                         r.amount,
                       );
                       if (!link) return null;
@@ -570,11 +573,11 @@ function ExpenseDetailPage() {
                     ) : null;
                   })()}
                 </Stack>
-              ) : paidByUser?.payment_info ? (
+              ) : defaultMethod?.payment_info ? (
                 <Stack gap="sm">
                   <Text size="sm" c="dimmed">Payment details:</Text>
                   <Paper p="sm" bg="gray.0" radius="md">
-                    <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>{paidByUser.payment_info}</Text>
+                    <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>{defaultMethod.payment_info}</Text>
                   </Paper>
                 </Stack>
               ) : (

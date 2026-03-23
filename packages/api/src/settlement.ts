@@ -130,7 +130,7 @@ export async function getGroupSettlement(
 
   const { data: users } = await supabase
     .from('users')
-    .select('id, name, payment_provider, payment_link')
+    .select('id, name')
     .in('id', Array.from(allUserIds));
 
   // Fetch payment methods from the new table for all users
@@ -158,9 +158,8 @@ export async function getGroupSettlement(
       u.id as string,
       {
         name: u.name as string,
-        // Prefer new payment methods table, fall back to legacy profile fields
-        paymentProvider: defaultMethodMap.get(u.id as string)?.provider ?? (u.payment_provider as string | null),
-        paymentLink: defaultMethodMap.get(u.id as string)?.link ?? (u.payment_link as string | null),
+        paymentProvider: defaultMethodMap.get(u.id as string)?.provider ?? null,
+        paymentLink: defaultMethodMap.get(u.id as string)?.link ?? null,
       },
     ]),
   );

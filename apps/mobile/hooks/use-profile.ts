@@ -30,7 +30,6 @@ export function useUpdateProfile() {
         avatar_url?: string | null;
         phone?: string | null;
         country?: string | null;
-        payment_info?: string | null;
         default_currency?: string;
         timezone?: string;
         notification_preferences?: NotificationPreferences;

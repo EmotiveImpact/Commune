@@ -87,7 +87,6 @@ function toMobileUser(user: SupabaseAuthUser | null): User | null {
     avatar_url: typeof meta.avatar_url === 'string' ? meta.avatar_url : null,
     phone: typeof meta.phone === 'string' ? meta.phone : null,
     country: typeof meta.country === 'string' ? meta.country : null,
-    payment_info: typeof meta.payment_info === 'string' ? meta.payment_info : null,
     default_currency: typeof meta.default_currency === 'string' ? meta.default_currency : 'GBP',
     timezone: typeof meta.timezone === 'string' ? meta.timezone : Intl.DateTimeFormat().resolvedOptions().timeZone,
     created_at: user.created_at,

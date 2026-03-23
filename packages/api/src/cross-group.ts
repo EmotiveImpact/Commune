@@ -70,25 +70,26 @@ export async function getCrossGroupSettlements(
   // ── 3. Run cross-group netting ────────────────────────────────────────
   const result = netCrossGroupDebts(validSettlements);
 
-  // ── 4. Enrich with payment links from the payee ───────────────────────
+  // ── 4. Enrich with payment links from user_payment_methods ────────────
   if (result.transactions.length > 0) {
     const payeeIds = [...new Set(result.transactions.map((t) => t.toUserId))];
 
-    const { data: users } = await supabase
-      .from('users')
-      .select('id, payment_provider, payment_link')
-      .in('id', payeeIds);
+    const { data: paymentMethodRows } = await supabase
+      .from('user_payment_methods')
+      .select('*')
+      .in('user_id', payeeIds)
+      .eq('is_default', true);
 
-    if (users) {
-      const userMap = new Map(
-        users.map((u) => [u.id as string, u]),
+    if (paymentMethodRows) {
+      const methodMap = new Map(
+        paymentMethodRows.map((pm) => [pm.user_id as string, pm]),
       );
 
       for (const tx of result.transactions) {
-        const payee = userMap.get(tx.toUserId);
-        if (payee?.payment_provider) {
-          tx.paymentProvider = payee.payment_provider as any;
-          tx.paymentLink = payee.payment_link as string | null;
+        const method = methodMap.get(tx.toUserId);
+        if (method?.provider) {
+          tx.paymentProvider = method.provider as any;
+          tx.paymentLink = method.payment_link as string | null;
         }
       }
     }

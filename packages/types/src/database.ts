@@ -22,9 +22,6 @@ export interface User {
   avatar_url: string | null;
   phone: string | null;
   country: string | null;
-  payment_info: string | null;
-  payment_provider: PaymentProvider | null;
-  payment_link: string | null;
   default_currency: string;
   timezone: string;
   created_at: string;

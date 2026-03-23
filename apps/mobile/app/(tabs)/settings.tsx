@@ -57,7 +57,6 @@ export default function SettingsScreen() {
             avatar_url: user.avatar_url,
             phone: user.phone ?? null,
             country: user.country ?? null,
-            payment_info: user.payment_info ?? null,
             notification_preferences: defaultNotifications,
             created_at: user.created_at,
           }
@@ -70,7 +69,6 @@ export default function SettingsScreen() {
   const [avatarUrl, setAvatarUrl] = useState('');
   const [phone, setPhone] = useState('');
   const [country, setCountry] = useState('');
-  const [paymentInfo, setPaymentInfo] = useState('');
   const [notifications, setNotifications] = useState(defaultNotifications);
 
   useEffect(() => {
@@ -83,7 +81,6 @@ export default function SettingsScreen() {
     setAvatarUrl(resolvedProfile.avatar_url ?? '');
     setPhone(resolvedProfile.phone ?? '');
     setCountry(resolvedProfile.country ?? '');
-    setPaymentInfo(resolvedProfile.payment_info ?? '');
     setNotifications(
       resolvedProfile.notification_preferences ?? defaultNotifications
     );
@@ -103,7 +100,6 @@ export default function SettingsScreen() {
           avatar_url: avatarUrl.trim() || null,
           phone: phone.trim() || null,
           country: country.trim() || null,
-          payment_info: paymentInfo.trim() || null,
           notification_preferences: notifications,
         },
       });
@@ -116,7 +112,6 @@ export default function SettingsScreen() {
         avatar_url: result.avatar_url,
         phone: result.phone,
         country: result.country,
-        payment_info: result.payment_info,
       });
       Alert.alert('Saved', 'Your settings have been updated.');
     } catch (error) {
@@ -240,18 +235,6 @@ export default function SettingsScreen() {
       </Surface>
 
       <Surface className="mb-4">
-        <Text className="text-lg font-semibold text-[#171b24]">
-          Payment info
-        </Text>
-        <Text className="mt-2 text-sm leading-6 text-[#667085]">
-          Let group members know how to pay you. Visible to everyone in your groups.
-        </Text>
-        <TextField
-          label="How to pay me"
-          value={paymentInfo}
-          onChangeText={setPaymentInfo}
-          placeholder="e.g. Monzo: @yourname, Revolut: 07xxx"
-        />
         <AppButton
           label="Save profile"
           icon="save-outline"
