@@ -256,3 +256,20 @@ export const updatePaymentMethodSchema = createPaymentMethodSchema.partial();
 
 export type CreatePaymentMethodInput = z.infer<typeof createPaymentMethodSchema>;
 export type UpdatePaymentMethodInput = z.infer<typeof updatePaymentMethodSchema>;
+
+// ─── Chore Schemas ──────────────────────────────────────────────────────────
+
+export const createChoreSchema = z.object({
+  group_id: z.string().regex(uuidRegex),
+  title: z.string().min(1).max(200),
+  description: z.string().max(500).optional().nullable(),
+  frequency: z.enum(['daily', 'weekly', 'biweekly', 'monthly', 'once']),
+  assigned_to: z.string().regex(uuidRegex).optional().nullable(),
+  rotation_order: z.array(z.string()).optional().nullable(),
+  next_due: z.string().regex(dateRegex).optional(),
+});
+
+export const updateChoreSchema = createChoreSchema.partial().omit({ group_id: true });
+
+export type CreateChoreInput = z.infer<typeof createChoreSchema>;
+export type UpdateChoreInput = z.infer<typeof updateChoreSchema>;

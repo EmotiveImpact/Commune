@@ -100,3 +100,16 @@ export type {
 } from './splitwise-import';
 
 export { getCategoriesByGroupType, getOnboardingTips } from './group-type';
+
+export { calculateNextDue, getNextInRotation } from './chores';
+export type { ChoreFrequency } from './chores';
+
+export {
+  createChoreSchema,
+  updateChoreSchema,
+} from './schemas';
+
+export type {
+  CreateChoreInput,
+  UpdateChoreInput,
+} from './schemas';

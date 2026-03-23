@@ -7,6 +7,7 @@ import {
   IconReceipt,
   IconFileText,
   IconUsers,
+  IconChecklist,
   IconHistory,
   IconPigMoney,
   IconRepeat,
@@ -57,6 +58,7 @@ export const navGroups: NavGroup[] = [
     icon: <IconUsers size={14} />,
     links: [
       { label: 'Members', to: '/members', icon: <IconUsers size={20} /> },
+      { label: 'Chores', to: '/chores', icon: <IconChecklist size={20} /> },
       { label: 'Activity', to: '/activity', icon: <IconHistory size={20} /> },
     ],
   },

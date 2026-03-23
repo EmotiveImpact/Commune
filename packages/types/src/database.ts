@@ -120,6 +120,32 @@ export interface PaymentRecord {
   created_at: string;
 }
 
+export interface Chore {
+  id: string;
+  group_id: string;
+  title: string;
+  description: string | null;
+  frequency: 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'once';
+  assigned_to: string | null;
+  rotation_order: string[] | null;
+  next_due: string;
+  created_by: string;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface ChoreCompletion {
+  id: string;
+  chore_id: string;
+  completed_by: string;
+  completed_at: string;
+}
+
+export type ChoreWithDetails = Chore & {
+  assigned_user?: { id: string; name: string; avatar_url: string | null } | null;
+  last_completion?: ChoreCompletion | null;
+};
+
 export interface Subscription {
   id: string;
   user_id: string;

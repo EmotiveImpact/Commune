@@ -29,3 +29,4 @@ export * from './couple-linking';
 export * from './payment-methods';
 export * from './group-hub';
 export * from './approvals';
+export * from './chores';
