@@ -17,6 +17,7 @@ export interface NavLink {
   label: string;
   to: string;
   icon: React.ReactNode;
+  'aria-label'?: string;
 }
 
 export interface NavGroup {

@@ -108,6 +108,7 @@ export async function getNotifications(
   }
 
   // Map payments to notifications
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Supabase join result
   for (const p of (payments ?? []) as any[]) {
     if (p.user_id === userId) continue; // skip own payments
     const expense = p.expense as { id: string; title: string };
@@ -124,6 +125,7 @@ export async function getNotifications(
   }
 
   // Map overdue to notifications
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Supabase join result
   for (const o of (overdue ?? []) as any[]) {
     const expense = o.expense as { id: string; title: string; due_date: string };
     const nId = `overdue-${o.id}`;

@@ -3,6 +3,7 @@ import type {
   SettlementTransaction,
   ExpenseWithParticipants,
   LinkedPair,
+  PaymentProvider,
 } from '@commune/types';
 import { calculateNetBalances, simplifyDebts, mergeLinkedBalances } from '@commune/core';
 import { buildPaymentUrl } from '@commune/core';
@@ -179,7 +180,7 @@ export async function getGroupSettlement(
     if (toUser?.paymentProvider && toUser?.paymentLink) {
       const result = buildPaymentUrl(
         {
-          provider: toUser.paymentProvider as any,
+          provider: toUser.paymentProvider as PaymentProvider,
           link: toUser.paymentLink,
         },
         t.amount,

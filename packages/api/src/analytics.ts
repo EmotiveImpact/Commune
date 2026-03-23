@@ -46,6 +46,7 @@ export async function getAnalyticsData(groupId: string): Promise<AnalyticsData> 
 
   if (error) throw error;
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Supabase join result has dynamic shape
   const rows = (expenses ?? []) as any[];
 
   // --- spendingTrend: group by month for last 6 months ---

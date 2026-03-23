@@ -103,7 +103,7 @@ export async function getCrossGroupSettlements(
       for (const tx of result.transactions) {
         const method = methodMap.get(tx.toUserId);
         if (method?.provider) {
-          tx.paymentProvider = method.provider as any;
+          tx.paymentProvider = method.provider;
           tx.paymentLink = method.payment_link as string | null;
         }
       }

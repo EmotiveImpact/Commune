@@ -73,6 +73,7 @@ export async function getGroupHub(groupId: string) {
   const categoryTotals: Record<string, number> = {};
 
   (expenses || []).forEach((exp) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Supabase join result
     ((exp.expense_participants as any[]) || []).forEach((p) => {
       memberTotals[p.user_id] =
         (memberTotals[p.user_id] || 0) + (p.share_amount || 0);
