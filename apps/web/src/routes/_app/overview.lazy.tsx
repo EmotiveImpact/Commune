@@ -1,9 +1,12 @@
 import { createLazyFileRoute } from '@tanstack/react-router';
+import { Link } from '@tanstack/react-router';
 import {
+  Avatar,
   Badge,
   Button,
   Group,
   Paper,
+  SimpleGrid,
   Stack,
   Switch,
   Text,
@@ -11,22 +14,28 @@ import {
   Tooltip,
 } from '@mantine/core';
 import {
+  IconAlertTriangle,
   IconArrowRight,
   IconArrowsExchange,
   IconBriefcase,
   IconCash,
+  IconCheck,
+  IconChevronRight,
   IconExternalLink,
   IconHeart,
   IconHome,
   IconMap,
   IconPuzzle,
+  IconTarget,
   IconUsers,
 } from '@tabler/icons-react';
 import { useCallback, useEffect, useState } from 'react';
 import { formatCurrency } from '@commune/utils';
 import { setPageTitle } from '../../utils/seo';
 import { useAuthStore } from '../../stores/auth';
+import { useUserGroups } from '../../hooks/use-groups';
 import { useCrossGroupSettlements } from '../../hooks/use-cross-group';
+import { useGroupStore } from '../../stores/group';
 import { PageHeader } from '../../components/page-header';
 import { EmptyState } from '../../components/empty-state';
 import { PageLoader } from '../../components/page-loader';
@@ -75,6 +84,8 @@ function CrossGroupOverviewPage() {
   }, []);
 
   const { user } = useAuthStore();
+  const { data: groups } = useUserGroups();
+  const { setActiveGroupId } = useGroupStore();
   const { data: result, isLoading } = useCrossGroupSettlements(user?.id ?? '');
 
   const [nettingEnabled, setNettingEnabled] = useState(readNettingPreference);
@@ -93,18 +104,58 @@ function CrossGroupOverviewPage() {
     return <PageLoader />;
   }
 
+  // Build group status map from perGroupData
+  const groupStatusMap = new Map<string, { owes: number; owed: number; currency: string; waiting: number }>();
+  for (const pg of result?.perGroupData ?? []) {
+    let owes = 0;
+    let owed = 0;
+    let waiting = 0;
+    for (const tx of pg.settlement.transactions) {
+      if (tx.fromUserId === user?.id) owes += tx.amount;
+      if (tx.toUserId === user?.id) { owed += tx.amount; waiting++; }
+    }
+    groupStatusMap.set(pg.groupId, { owes, owed, currency: pg.currency, waiting });
+  }
+
   if (!result || result.isSettled) {
     return (
       <Stack gap="lg">
         <PageHeader
-          title="Cross-Group Overview"
-          subtitle="Your netted balances across all groups"
+          title="Command Centre"
+          subtitle="Your priorities across all groups"
         />
+
+        {/* My Groups (always shown) */}
+        {groups && groups.length > 0 && (
+          <Stack gap="md">
+            <Group gap="xs">
+              <IconTarget size={18} />
+              <Text className="commune-section-heading">My Groups</Text>
+            </Group>
+            <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="md">
+              {groups.map((g) => {
+                const GIcon = GROUP_TYPE_ICONS[g.type] ?? IconUsers;
+                return (
+                  <Paper key={g.id} className="commune-stat-card" p="md" radius="lg" component={Link} to={`/groups/${g.id}`} style={{ textDecoration: 'none', cursor: 'pointer' }}>
+                    <Group justify="space-between" align="center">
+                      <Group gap="sm">
+                        <Avatar size={36} radius="xl" src={g.avatar_url} color="commune"><GIcon size={18} /></Avatar>
+                        <Text fw={600} size="sm">{g.name}</Text>
+                      </Group>
+                      <Badge size="sm" variant="dot" color="green">Settled</Badge>
+                    </Group>
+                  </Paper>
+                );
+              })}
+            </SimpleGrid>
+          </Stack>
+        )}
+
         <EmptyState
-          icon={IconArrowsExchange}
+          icon={IconCheck}
           iconColor="emerald"
           title="All settled up!"
-          description="You have no outstanding debts across any of your groups. When debts exist in multiple groups, they will be netted here to minimise transfers."
+          description="You have no outstanding debts across any of your groups."
         />
       </Stack>
     );
@@ -154,9 +205,72 @@ function CrossGroupOverviewPage() {
   return (
     <Stack gap="lg">
       <PageHeader
-        title="Cross-Group Overview"
-        subtitle="Your netted balances across all groups"
+        title="Command Centre"
+        subtitle="Your priorities across all groups"
       />
+
+      {/* Next 3 Actions */}
+      {youOwe.length > 0 && (
+        <Paper className="commune-soft-panel" p="lg" style={{ borderLeft: '4px solid var(--mantine-color-red-5)' }}>
+          <Group gap="xs" mb="sm">
+            <IconAlertTriangle size={18} color="var(--mantine-color-red-6)" />
+            <Text fw={700} size="sm">Priority Actions</Text>
+          </Group>
+          <Stack gap="xs">
+            {youOwe.slice(0, 3).map((tx) => (
+              <Group key={`action-${tx.toUserId}-${tx.currency}`} justify="space-between" align="center">
+                <Group gap="xs">
+                  <Badge size="xs" variant="light" color="gray">{tx.groups[0]}</Badge>
+                  <Text size="sm">Pay <Text span fw={600}>{tx.toName}</Text></Text>
+                </Group>
+                <Group gap="sm">
+                  <Text fw={700} size="sm" c="red">{formatCurrency(tx.netAmount, tx.currency)}</Text>
+                  {tx.paymentLink && (
+                    <Button component="a" href={tx.paymentLink} target="_blank" size="compact-xs" variant="light" rightSection={<IconChevronRight size={12} />}>
+                      Pay
+                    </Button>
+                  )}
+                </Group>
+              </Group>
+            ))}
+          </Stack>
+        </Paper>
+      )}
+
+      {/* My Groups with status pills */}
+      {groups && groups.length > 0 && (
+        <Stack gap="md">
+          <Group gap="xs">
+            <IconTarget size={18} />
+            <Text className="commune-section-heading">My Groups</Text>
+          </Group>
+          <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="md">
+            {groups.map((g) => {
+              const GIcon = GROUP_TYPE_ICONS[g.type] ?? IconUsers;
+              const status = groupStatusMap.get(g.id);
+              let statusBadge;
+              if (!status || (status.owes === 0 && status.owed === 0)) {
+                statusBadge = <Badge size="sm" variant="dot" color="green">Settled</Badge>;
+              } else if (status.owes > 0) {
+                statusBadge = <Badge size="sm" variant="dot" color="red">You owe {formatCurrency(status.owes, status.currency)}</Badge>;
+              } else if (status.waiting > 0) {
+                statusBadge = <Badge size="sm" variant="dot" color="orange">Waiting on {status.waiting}</Badge>;
+              }
+              return (
+                <Paper key={g.id} className="commune-stat-card" p="md" radius="lg" component={Link} to={`/groups/${g.id}`} style={{ textDecoration: 'none', cursor: 'pointer' }}>
+                  <Group justify="space-between" align="center">
+                    <Group gap="sm">
+                      <Avatar size={36} radius="xl" src={g.avatar_url} color="commune"><GIcon size={18} /></Avatar>
+                      <Text fw={600} size="sm">{g.name}</Text>
+                    </Group>
+                    {statusBadge}
+                  </Group>
+                </Paper>
+              );
+            })}
+          </SimpleGrid>
+        </Stack>
+      )}
 
       {/* Netting toggle */}
       <Paper className="commune-soft-panel" p="md">
