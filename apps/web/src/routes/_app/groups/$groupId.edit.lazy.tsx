@@ -9,6 +9,7 @@ import {
   NumberInput,
   Paper,
   Select,
+  SimpleGrid,
   Stack,
   Switch,
   Text,
@@ -18,7 +19,7 @@ import {
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
-import { IconArrowLeft, IconCamera, IconDeviceFloppy, IconPhoto, IconPin, IconSettings, IconTrash } from '@tabler/icons-react';
+import { IconArrowLeft, IconCamera, IconDeviceFloppy, IconHome2, IconPhone, IconPhoto, IconPin, IconSettings, IconTrash, IconWifi } from '@tabler/icons-react';
 import { useEffect, useRef, useState } from 'react';
 import { GroupType } from '@commune/types';
 import { useGroup, useUpdateGroup, useDeleteGroup } from '../../../hooks/use-groups';
@@ -80,6 +81,12 @@ function EditGroupPage() {
       nudges_enabled: true,
       tagline: '',
       pinned_message: '',
+      house_info_wifi: '',
+      house_info_bins: '',
+      house_info_landlord: '',
+      house_info_landlord_phone: '',
+      house_info_emergency: '',
+      house_info_rules: '',
     },
   });
 
@@ -96,11 +103,13 @@ function EditGroupPage() {
       nudges_enabled: group.nudges_enabled,
       tagline: group.tagline,
       pinned_message: group.pinned_message,
+      house_info: group.house_info,
     });
 
     if (lastHydratedRef.current === hydrationKey) return;
     lastHydratedRef.current = hydrationKey;
 
+    const hi = group.house_info ?? {};
     form.setValues({
       name: group.name,
       type: group.type,
@@ -109,6 +118,12 @@ function EditGroupPage() {
       nudges_enabled: group.nudges_enabled ?? true,
       tagline: group.tagline ?? '',
       pinned_message: group.pinned_message ?? '',
+      house_info_wifi: hi.wifi ?? '',
+      house_info_bins: hi.bins ?? '',
+      house_info_landlord: hi.landlord ?? '',
+      house_info_landlord_phone: hi.landlord_phone ?? '',
+      house_info_emergency: hi.emergency ?? '',
+      house_info_rules: hi.rules ?? '',
     });
   }, [group, form]);
 
@@ -148,6 +163,16 @@ function EditGroupPage() {
         nudges_enabled: values.nudges_enabled,
         tagline: values.tagline || undefined,
         pinned_message: values.pinned_message || null,
+        house_info: (() => {
+          const info: Record<string, string> = {};
+          if (values.house_info_wifi) info.wifi = values.house_info_wifi;
+          if (values.house_info_bins) info.bins = values.house_info_bins;
+          if (values.house_info_landlord) info.landlord = values.house_info_landlord;
+          if (values.house_info_landlord_phone) info.landlord_phone = values.house_info_landlord_phone;
+          if (values.house_info_emergency) info.emergency = values.house_info_emergency;
+          if (values.house_info_rules) info.rules = values.house_info_rules;
+          return Object.keys(info).length > 0 ? info : null;
+        })(),
       });
       notifications.show({
         title: 'Group updated',
@@ -355,6 +380,63 @@ function EditGroupPage() {
           autosize
           key={form.key('pinned_message')}
           {...form.getInputProps('pinned_message')}
+        />
+      </Paper>
+
+      {/* House Info */}
+      <Paper className="commune-soft-panel" p="xl">
+        <Group gap="xs" mb="md">
+          <IconHome2 size={20} />
+          <Text className="commune-section-heading">House essentials</Text>
+        </Group>
+        <Text size="sm" c="dimmed" mb="md">
+          Practical info shown on the group hub for all members. Leave fields empty to hide them.
+        </Text>
+
+        <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+          <TextInput
+            label="Wi-Fi password"
+            placeholder="e.g. MyNetwork / password123"
+            leftSection={<IconWifi size={16} />}
+            key={form.key('house_info_wifi')}
+            {...form.getInputProps('house_info_wifi')}
+          />
+          <TextInput
+            label="Bins day"
+            placeholder="e.g. Tuesday (recycling), Thursday (general)"
+            key={form.key('house_info_bins')}
+            {...form.getInputProps('house_info_bins')}
+          />
+          <TextInput
+            label="Landlord name"
+            placeholder="e.g. John Smith"
+            key={form.key('house_info_landlord')}
+            {...form.getInputProps('house_info_landlord')}
+          />
+          <TextInput
+            label="Landlord phone"
+            placeholder="e.g. 07700 900000"
+            leftSection={<IconPhone size={16} />}
+            key={form.key('house_info_landlord_phone')}
+            {...form.getInputProps('house_info_landlord_phone')}
+          />
+          <TextInput
+            label="Emergency contact"
+            placeholder="e.g. Gas: 0800 111 999"
+            key={form.key('house_info_emergency')}
+            {...form.getInputProps('house_info_emergency')}
+          />
+        </SimpleGrid>
+
+        <Textarea
+          label="House rules"
+          placeholder="e.g. Quiet hours after 10pm. No shoes inside. Clean up after yourself."
+          minRows={2}
+          maxRows={4}
+          autosize
+          mt="md"
+          key={form.key('house_info_rules')}
+          {...form.getInputProps('house_info_rules')}
         />
       </Paper>
 

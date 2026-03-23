@@ -37,6 +37,12 @@ import {
   IconCheck,
   IconClock,
   IconActivity,
+  IconWifi,
+  IconTrash,
+  IconPhone,
+  IconBook,
+  IconHeartbeat,
+  IconHome2,
 } from '@tabler/icons-react';
 import { useGroupHub, useUploadGroupImage } from '../../../../hooks/use-group-hub';
 import { useGroupSettlement } from '../../../../hooks/use-settlement';
@@ -297,6 +303,18 @@ function GroupHubPage() {
                 <Badge size="sm" variant="light" color="gray" radius="sm">
                   {visual.label}
                 </Badge>
+                {/* Health status badge */}
+                {(() => {
+                  if (!settlement) return null;
+                  const hasTransactions = settlement.transactions?.length > 0;
+                  const hasOverdue = expenses.some((e: any) => {
+                    const due = e.due_date ? new Date(e.due_date) : null;
+                    return due && due < new Date();
+                  });
+                  if (!hasTransactions) return <Badge size="sm" variant="filled" color="green">All settled</Badge>;
+                  if (hasOverdue) return <Badge size="sm" variant="filled" color="red">Bills overdue</Badge>;
+                  return <Badge size="sm" variant="filled" color="orange">Payments pending</Badge>;
+                })()}
                 <Group gap={4}>
                   <IconUsers size={13} color="white" style={{ opacity: 0.8 }} />
                   <Text size="xs" c="white" opacity={0.8}>
@@ -374,6 +392,56 @@ function GroupHubPage() {
               {group.pinned_message}
             </Text>
           </Group>
+        </Paper>
+      )}
+
+      {/* ------------------------------------------------------------------ */}
+      {/*  2b2. House Info Strip                                             */}
+      {/* ------------------------------------------------------------------ */}
+      {group.house_info && Object.keys(group.house_info).length > 0 && (
+        <Paper className="commune-soft-panel" p="md" radius="md">
+          <Group gap="xs" mb="sm">
+            <IconHome2 size={16} />
+            <Text size="sm" fw={600}>House Essentials</Text>
+          </Group>
+          <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="xs">
+            {group.house_info.wifi && (
+              <Group gap="xs" wrap="nowrap">
+                <IconWifi size={14} style={{ color: 'var(--commune-ink-soft)', flexShrink: 0 }} />
+                <Text size="xs"><Text span fw={600} size="xs">Wi-Fi:</Text> {group.house_info.wifi}</Text>
+              </Group>
+            )}
+            {group.house_info.bins && (
+              <Group gap="xs" wrap="nowrap">
+                <IconTrash size={14} style={{ color: 'var(--commune-ink-soft)', flexShrink: 0 }} />
+                <Text size="xs"><Text span fw={600} size="xs">Bins:</Text> {group.house_info.bins}</Text>
+              </Group>
+            )}
+            {group.house_info.landlord && (
+              <Group gap="xs" wrap="nowrap">
+                <IconUsers size={14} style={{ color: 'var(--commune-ink-soft)', flexShrink: 0 }} />
+                <Text size="xs"><Text span fw={600} size="xs">Landlord:</Text> {group.house_info.landlord}</Text>
+              </Group>
+            )}
+            {group.house_info.landlord_phone && (
+              <Group gap="xs" wrap="nowrap">
+                <IconPhone size={14} style={{ color: 'var(--commune-ink-soft)', flexShrink: 0 }} />
+                <Text size="xs"><Text span fw={600} size="xs">Landlord phone:</Text> {group.house_info.landlord_phone}</Text>
+              </Group>
+            )}
+            {group.house_info.emergency && (
+              <Group gap="xs" wrap="nowrap">
+                <IconAlertCircle size={14} style={{ color: 'var(--commune-ink-soft)', flexShrink: 0 }} />
+                <Text size="xs"><Text span fw={600} size="xs">Emergency:</Text> {group.house_info.emergency}</Text>
+              </Group>
+            )}
+            {group.house_info.rules && (
+              <Group gap="xs" wrap="nowrap" style={{ gridColumn: 'span 2' }}>
+                <IconBook size={14} style={{ color: 'var(--commune-ink-soft)', flexShrink: 0 }} />
+                <Text size="xs"><Text span fw={600} size="xs">Rules:</Text> {group.house_info.rules}</Text>
+              </Group>
+            )}
+          </SimpleGrid>
         </Paper>
       )}
 

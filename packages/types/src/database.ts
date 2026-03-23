@@ -50,6 +50,7 @@ export interface Group {
   currency: string;
   nudges_enabled: boolean;
   pinned_message: string | null;
+  house_info: Record<string, string> | null;
   avatar_url: string | null;
   cover_url: string | null;
   tagline: string | null;
