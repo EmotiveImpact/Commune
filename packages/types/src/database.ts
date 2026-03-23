@@ -51,6 +51,7 @@ export interface Group {
   nudges_enabled: boolean;
   pinned_message: string | null;
   house_info: Record<string, string> | null;
+  approval_threshold: number | null;
   avatar_url: string | null;
   cover_url: string | null;
   tagline: string | null;
@@ -90,6 +91,9 @@ export interface Expense {
   split_method: SplitMethod;
   is_active: boolean;
   receipt_url: string | null;
+  approval_status: 'approved' | 'pending' | 'rejected';
+  approved_by: string | null;
+  approved_at: string | null;
   created_by: string;
   created_at: string;
   updated_at: string;

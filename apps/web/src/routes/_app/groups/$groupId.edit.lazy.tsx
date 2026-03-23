@@ -81,6 +81,7 @@ function EditGroupPage() {
       nudges_enabled: true,
       tagline: '',
       pinned_message: '',
+      approval_threshold: '' as any,
       house_info_wifi: '',
       house_info_bins: '',
       house_info_landlord: '',
@@ -103,6 +104,7 @@ function EditGroupPage() {
       nudges_enabled: group.nudges_enabled,
       tagline: group.tagline,
       pinned_message: group.pinned_message,
+      approval_threshold: group.approval_threshold,
       house_info: group.house_info,
     });
 
@@ -118,6 +120,7 @@ function EditGroupPage() {
       nudges_enabled: group.nudges_enabled ?? true,
       tagline: group.tagline ?? '',
       pinned_message: group.pinned_message ?? '',
+      approval_threshold: group.approval_threshold ?? ('' as any),
       house_info_wifi: hi.wifi ?? '',
       house_info_bins: hi.bins ?? '',
       house_info_landlord: hi.landlord ?? '',
@@ -163,6 +166,7 @@ function EditGroupPage() {
         nudges_enabled: values.nudges_enabled,
         tagline: values.tagline || undefined,
         pinned_message: values.pinned_message || null,
+        approval_threshold: values.approval_threshold ? Number(values.approval_threshold) : null,
         house_info: (() => {
           const info: Record<string, string> = {};
           if (values.house_info_wifi) info.wifi = values.house_info_wifi;
@@ -360,6 +364,16 @@ function EditGroupPage() {
               description="When enabled, members can send payment reminders to each other"
               key={form.key('nudges_enabled')}
               {...form.getInputProps('nudges_enabled', { type: 'checkbox' })}
+            />
+
+            <NumberInput
+              label="Approval threshold"
+              description="Expenses above this amount require admin approval. Leave empty to disable."
+              placeholder="e.g. 100"
+              min={0}
+              decimalScale={2}
+              key={form.key('approval_threshold')}
+              {...form.getInputProps('approval_threshold')}
             />
           </Stack>
         </form>

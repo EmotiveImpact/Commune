@@ -23,10 +23,12 @@ import { generateExpenseCSV, downloadCSV } from '../../../utils/export-csv';
 import { downloadStatement } from '@commune/api';
 import { useSubscription } from '../../../hooks/use-subscriptions';
 import { usePlanLimits } from '../../../hooks/use-plan-limits';
+import { IconAlertTriangle, IconX } from '@tabler/icons-react';
 import { useGroupStore } from '../../../stores/group';
 import { useSearchStore } from '../../../stores/search';
 import { useGroup } from '../../../hooks/use-groups';
 import { useGroupExpenses, useBatchArchive, useBatchMarkPaid } from '../../../hooks/use-expenses';
+import { usePendingApprovals, useApproveExpense, useRejectExpense } from '../../../hooks/use-approvals';
 import { useAuthStore } from '../../../stores/auth';
 import { ExpenseListSkeleton } from '../../../components/page-skeleton';
 import { EmptyState } from '../../../components/empty-state';
@@ -102,6 +104,11 @@ function ExpensesPage() {
   const isAdmin = group?.members?.some(
     (m: { user_id: string; role: string }) => m.user_id === user?.id && m.role === 'admin',
   ) ?? false;
+
+  // Approval flow
+  const { data: pendingApprovals } = usePendingApprovals(activeGroupId ?? '');
+  const approveExp = useApproveExpense(activeGroupId ?? '');
+  const rejectExp = useRejectExpense(activeGroupId ?? '');
 
   const monthFilter = datePreset && datePreset !== 'all' ? datePreset : undefined;
   const hasCustomDateRange = Boolean(dateRange[0] || dateRange[1]);
@@ -352,6 +359,51 @@ function ExpensesPage() {
           </Button>
         </Group>
       </PageHeader>
+
+      {/* Pending Approvals (admin only) */}
+      {isAdmin && pendingApprovals && pendingApprovals.length > 0 && (
+        <Stack gap="xs">
+          <Group gap="xs">
+            <IconAlertTriangle size={18} color="var(--mantine-color-orange-6)" />
+            <Text fw={700} size="sm" c="orange">
+              {pendingApprovals.length} expense{pendingApprovals.length !== 1 ? 's' : ''} awaiting approval
+            </Text>
+          </Group>
+          {pendingApprovals.map((exp: any) => (
+            <Group key={exp.id} justify="space-between" align="center" p="sm"
+              style={{ background: 'var(--commune-surface-alt)', borderRadius: 8, border: '1px solid var(--mantine-color-orange-3)' }}>
+              <Stack gap={2}>
+                <Text fw={600} size="sm">{exp.title}</Text>
+                <Text size="xs" c="dimmed">
+                  {formatCurrency(exp.amount, exp.currency)} · Added by {exp.created_by_user?.name ?? 'Unknown'}
+                </Text>
+              </Stack>
+              <Group gap="xs">
+                <Button size="compact-xs" color="green" variant="light"
+                  leftSection={<IconCheck size={14} />}
+                  loading={approveExp.isPending}
+                  onClick={() => {
+                    approveExp.mutate(exp.id, {
+                      onSuccess: () => notifications.show({ title: 'Approved', message: `${exp.title} has been approved.`, color: 'green' }),
+                    });
+                  }}>
+                  Approve
+                </Button>
+                <Button size="compact-xs" color="red" variant="light"
+                  leftSection={<IconX size={14} />}
+                  loading={rejectExp.isPending}
+                  onClick={() => {
+                    rejectExp.mutate(exp.id, {
+                      onSuccess: () => notifications.show({ title: 'Rejected', message: `${exp.title} has been rejected.`, color: 'red' }),
+                    });
+                  }}>
+                  Reject
+                </Button>
+              </Group>
+            </Group>
+          ))}
+        </Stack>
+      )}
 
       <Group gap="sm" wrap="wrap">
         <Select

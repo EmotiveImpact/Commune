@@ -162,6 +162,7 @@ export function useUpdateGroup(groupId: string) {
       tagline?: string;
       pinned_message?: string | null;
       house_info?: Record<string, string> | null;
+      approval_threshold?: number | null;
       avatar_url?: string;
       cover_url?: string;
     }) => updateGroup(groupId, updates),

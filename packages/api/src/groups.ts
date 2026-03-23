@@ -241,6 +241,7 @@ export async function updateGroup(
     tagline?: string;
     pinned_message?: string | null;
     house_info?: Record<string, string> | null;
+    approval_threshold?: number | null;
     avatar_url?: string;
     cover_url?: string;
   },

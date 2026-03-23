@@ -28,3 +28,4 @@ export * from './cross-group';
 export * from './couple-linking';
 export * from './payment-methods';
 export * from './group-hub';
+export * from './approvals';
