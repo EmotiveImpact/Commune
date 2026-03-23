@@ -42,6 +42,44 @@ const groupTypeOptions = [
   { value: GroupType.OTHER, label: 'Other' },
 ];
 
+const HOME_SUBTYPES = [
+  { value: 'shared_house', label: 'Shared house (friends)' },
+  { value: 'student_house', label: 'Student house' },
+  { value: 'family_home', label: 'Family home' },
+  { value: 'coliving', label: 'Co-living / intentional community' },
+  { value: 'high_turnover', label: 'High-turnover house share' },
+  { value: 'other_home', label: 'Other household' },
+];
+
+const COUPLE_SUBTYPES = [
+  { value: 'living_together', label: 'Living together' },
+  { value: 'not_living_together', label: 'Not living together' },
+  { value: 'engaged', label: 'Engaged / planning wedding' },
+  { value: 'married', label: 'Married' },
+];
+
+const WORKSPACE_SUBTYPES = [
+  { value: 'coworking', label: 'Coworking space' },
+  { value: 'shared_office', label: 'Shared office' },
+  { value: 'team', label: 'Team / department' },
+  { value: 'freelancers', label: 'Freelancer collective' },
+];
+
+const TRIP_SUBTYPES = [
+  { value: 'holiday', label: 'Holiday / vacation' },
+  { value: 'weekend_trip', label: 'Weekend trip' },
+  { value: 'festival', label: 'Festival / event' },
+  { value: 'business_trip', label: 'Business trip' },
+  { value: 'backpacking', label: 'Backpacking / long-term travel' },
+];
+
+const SUBTYPE_MAP: Record<string, { value: string; label: string }[]> = {
+  home: HOME_SUBTYPES,
+  couple: COUPLE_SUBTYPES,
+  workspace: WORKSPACE_SUBTYPES,
+  trip: TRIP_SUBTYPES,
+};
+
 const CURRENCY_OPTIONS = [
   { value: 'GBP', label: '\u00a3 GBP \u2014 British Pound' },
   { value: 'USD', label: '$ USD \u2014 US Dollar' },
@@ -75,6 +113,7 @@ function EditGroupPage() {
     initialValues: {
       name: '',
       type: 'home',
+      subtype: '' as string | null,
       currency: 'GBP',
       cycle_date: 1,
       nudges_enabled: true,
@@ -98,6 +137,7 @@ function EditGroupPage() {
     const hydrationKey = JSON.stringify({
       name: group.name,
       type: group.type,
+      subtype: group.subtype,
       currency: group.currency,
       cycle_date: group.cycle_date,
       nudges_enabled: group.nudges_enabled,
@@ -114,6 +154,7 @@ function EditGroupPage() {
     form.setValues({
       name: group.name,
       type: group.type,
+      subtype: group.subtype ?? null,
       currency: group.currency ?? 'GBP',
       cycle_date: group.cycle_date ?? 1,
       nudges_enabled: group.nudges_enabled ?? true,
@@ -160,12 +201,16 @@ function EditGroupPage() {
       await updateGroup.mutateAsync({
         name: values.name,
         type: values.type,
+        subtype: values.subtype || null,
         currency: values.currency,
         cycle_date: values.cycle_date,
         nudges_enabled: values.nudges_enabled,
         tagline: values.tagline || undefined,
         pinned_message: values.pinned_message || null,
-        approval_threshold: values.approval_threshold ? Number(values.approval_threshold) : null,
+        approval_threshold:
+          values.approval_threshold === '' || values.approval_threshold == null
+            ? null
+            : Number(values.approval_threshold),
         house_info: (() => {
           const info: Record<string, string> = {};
           if (values.house_info_wifi) info.wifi = values.house_info_wifi;
@@ -339,6 +384,18 @@ function EditGroupPage() {
               key={form.key('type')}
               {...form.getInputProps('type')}
             />
+
+            {SUBTYPE_MAP[form.getValues().type] && (
+              <Select
+                label="Specific type"
+                description="Helps us tailor the experience for your situation"
+                placeholder="Select a sub-type (optional)"
+                data={SUBTYPE_MAP[form.getValues().type] ?? []}
+                clearable
+                key={form.key('subtype')}
+                {...form.getInputProps('subtype')}
+              />
+            )}
 
             <Select
               label="Default currency"

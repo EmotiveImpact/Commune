@@ -44,6 +44,7 @@ export interface Group {
   id: string;
   name: string;
   type: GroupType;
+  subtype: string | null;
   description: string | null;
   owner_id: string;
   cycle_date: number;

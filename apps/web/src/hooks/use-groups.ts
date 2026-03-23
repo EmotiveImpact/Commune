@@ -161,6 +161,7 @@ export function useUpdateGroup(groupId: string) {
       nudges_enabled?: boolean;
       tagline?: string;
       pinned_message?: string | null;
+      subtype?: string | null;
       house_info?: Record<string, string> | null;
       approval_threshold?: number | null;
       avatar_url?: string;
