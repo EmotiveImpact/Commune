@@ -229,7 +229,7 @@ CREATE POLICY "Admins can update group funds"
 -- Fix Medium Bug 8a: fund_contributions missing UPDATE policy
 CREATE POLICY "Contributors can update own contributions"
   ON fund_contributions FOR UPDATE
-  USING (contributed_by = auth.uid());
+  USING (user_id = auth.uid());
 
 -- Fix Medium Bug 8b: fund_expenses missing UPDATE policy
 CREATE POLICY "Admins can update fund expenses"
