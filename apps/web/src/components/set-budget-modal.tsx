@@ -14,6 +14,7 @@ interface SetBudgetModalProps {
   currency?: string;
   currentAmount?: number;
   currentCategoryBudgets?: Record<string, number> | null;
+  currentAlertThreshold?: number;
 }
 
 function getMonthOptions() {
@@ -46,9 +47,11 @@ export function SetBudgetModal({
   currency = 'GBP',
   currentAmount,
   currentCategoryBudgets,
+  currentAlertThreshold,
 }: SetBudgetModalProps) {
   const [month, setMonth] = useState(getMonthKey());
   const [amount, setAmount] = useState<number | ''>(currentAmount ?? '');
+  const [alertThreshold, setAlertThreshold] = useState<number | ''>(currentAlertThreshold ?? 80);
   const [categoryBudgets, setCategoryBudgets] = useState<Record<string, number>>(
     currentCategoryBudgets ?? {},
   );
@@ -93,6 +96,7 @@ export function SetBudgetModal({
         month,
         amount,
         categoryBudgets: hasCategoryBudgets ? filteredCategoryBudgets : null,
+        alertThreshold: typeof alertThreshold === 'number' ? alertThreshold : 80,
       });
       notifications.show({
         title: 'Budget set',
@@ -143,6 +147,19 @@ export function SetBudgetModal({
           value={amount}
           onChange={(val) => setAmount(typeof val === 'number' ? val : '')}
           decimalScale={2}
+        />
+
+        <NumberInput
+          label="Alert threshold"
+          description="Get a warning when spending reaches this % of the budget"
+          placeholder="80"
+          min={10}
+          max={100}
+          step={5}
+          suffix="%"
+          value={alertThreshold}
+          onChange={(val) => setAlertThreshold(typeof val === 'number' ? val : '')}
+          size="sm"
         />
 
         {/* Collapsible category budgets section */}

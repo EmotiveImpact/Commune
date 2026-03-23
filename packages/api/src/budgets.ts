@@ -18,6 +18,7 @@ export async function setGroupBudget(
   month: string,
   amount: number,
   categoryBudgets?: Record<string, number> | null,
+  alertThreshold?: number,
 ) {
   const {
     data: { user },
@@ -34,6 +35,7 @@ export async function setGroupBudget(
         month: `${month}-01`,
         budget_amount: amount,
         category_budgets: categoryBudgets ?? null,
+        alert_threshold: alertThreshold ?? 80,
         created_by: user.id,
       },
       { onConflict: 'group_id,month' },

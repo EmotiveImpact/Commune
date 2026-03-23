@@ -51,7 +51,6 @@ export async function getGroup(groupId: string) {
     `,
     )
     .eq('id', groupId)
-    .neq('members.status', 'removed')
     .single();
 
   if (error) throw error;

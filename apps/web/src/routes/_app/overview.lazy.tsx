@@ -13,8 +13,14 @@ import {
 import {
   IconArrowRight,
   IconArrowsExchange,
+  IconBriefcase,
   IconCash,
   IconExternalLink,
+  IconHeart,
+  IconHome,
+  IconMap,
+  IconPuzzle,
+  IconUsers,
 } from '@tabler/icons-react';
 import { useCallback, useEffect, useState } from 'react';
 import { formatCurrency } from '@commune/utils';
@@ -24,6 +30,15 @@ import { useCrossGroupSettlements } from '../../hooks/use-cross-group';
 import { PageHeader } from '../../components/page-header';
 import { EmptyState } from '../../components/empty-state';
 import { PageLoader } from '../../components/page-loader';
+
+const GROUP_TYPE_ICONS: Record<string, typeof IconHome> = {
+  home: IconHome,
+  couple: IconHeart,
+  workspace: IconBriefcase,
+  project: IconPuzzle,
+  trip: IconMap,
+  other: IconUsers,
+};
 
 const NETTING_STORAGE_KEY = 'commune-cross-group-netting';
 
@@ -258,9 +273,42 @@ function CrossGroupOverviewPage() {
       ) : (
         /* ── Per-group view (un-netted) ──────────────────────────────────── */
         <>
-          {(result.perGroupData ?? []).map((group) => (
+          {/* Per-group summary */}
+          <Group gap="lg">
+            <Paper className="commune-stat-card commune-kpi-card" p="lg" data-tone="peach" style={{ flex: 1 }}>
+              <Text size="sm" c="dimmed">Total you owe</Text>
+              <Text fw={800} size="1.5rem">
+                {formatCurrency(
+                  (result.perGroupData ?? []).reduce((sum, g) =>
+                    sum + g.settlement.transactions
+                      .filter((tx) => tx.fromUserId === user?.id)
+                      .reduce((s, tx) => s + tx.amount, 0), 0),
+                )}
+              </Text>
+            </Paper>
+            <Paper className="commune-stat-card commune-kpi-card" p="lg" data-tone="sage" style={{ flex: 1 }}>
+              <Text size="sm" c="dimmed">Total owed to you</Text>
+              <Text fw={800} size="1.5rem">
+                {formatCurrency(
+                  (result.perGroupData ?? []).reduce((sum, g) =>
+                    sum + g.settlement.transactions
+                      .filter((tx) => tx.toUserId === user?.id)
+                      .reduce((s, tx) => s + tx.amount, 0), 0),
+                )}
+              </Text>
+            </Paper>
+          </Group>
+
+          {(result.perGroupData ?? []).map((group) => {
+            const GroupIcon = GROUP_TYPE_ICONS[group.groupType] ?? IconUsers;
+            return (
             <Paper key={group.groupId} className="commune-soft-panel" p="xl">
-              <Text className="commune-section-heading" mb="xs">{group.groupName}</Text>
+              <Group gap="xs" mb="xs">
+                <ThemeIcon size={24} variant="light" color="gray" radius="xl">
+                  <GroupIcon size={14} />
+                </ThemeIcon>
+                <Text className="commune-section-heading">{group.groupName}</Text>
+              </Group>
               <Text size="sm" c="dimmed" mb="lg">
                 {group.settlement.transactionCount} settlement{group.settlement.transactionCount !== 1 ? 's' : ''} in {group.currency}
               </Text>
@@ -307,7 +355,8 @@ function CrossGroupOverviewPage() {
                 ))}
               </Stack>
             </Paper>
-          ))}
+            );
+          })}
 
           {(result.perGroupData ?? []).length === 0 && (
             <EmptyState

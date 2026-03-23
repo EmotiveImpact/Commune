@@ -27,14 +27,14 @@ export async function getCrossGroupSettlements(
   // ── 1. Get all groups the user belongs to ─────────────────────────────
   const { data: memberships, error: memberError } = await supabase
     .from('group_members')
-    .select('group:groups(id, name, currency)')
+    .select('group:groups(id, name, type, currency)')
     .eq('user_id', userId)
     .eq('status', 'active');
 
   if (memberError) throw memberError;
 
   const groups = (memberships ?? [])
-    .map((m) => (m as unknown as { group: { id: string; name: string; currency: string } }).group)
+    .map((m) => (m as unknown as { group: { id: string; name: string; type: string; currency: string } }).group)
     .filter(Boolean);
 
   if (groups.length === 0) {
@@ -69,9 +69,11 @@ export async function getCrossGroupSettlements(
   }
 
   // ── 3. Build per-group data for the un-netted view ───────────────────
+  const groupTypeMap = new Map(groups.map((g) => [g.id, g.type]));
   const perGroupData: CrossGroupPerGroupData[] = validSettlements.map((s) => ({
     groupId: s.groupId,
     groupName: s.groupName,
+    groupType: groupTypeMap.get(s.groupId) ?? 'other',
     currency: s.currency,
     settlement: {
       transactions: s.settlements,

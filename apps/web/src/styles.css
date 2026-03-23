@@ -243,7 +243,6 @@ a {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  justify-content: center;
   align-items: center;
   position: relative;
 }
@@ -395,6 +394,20 @@ div:hover > .commune-avatar-overlay {
   color: inherit;
 }
 
+/* Collapsed mode — hide labels, center icons */
+.commune-sidebar-link--collapsed .mantine-NavLink-label {
+  display: none;
+}
+
+/* Nav group header */
+.commune-nav-group-header {
+  cursor: pointer;
+  transition: background-color var(--commune-motion-fast);
+}
+
+.commune-nav-group-header:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
 
 .commune-main-content {
   padding-top: calc(var(--app-shell-header-offset, 0rem) + 1.5rem);
@@ -962,7 +975,6 @@ div:hover > .commune-avatar-overlay {
 
   .commune-auth-form-side {
     min-height: 100vh;
-    justify-content: flex-start;
     align-items: stretch;
   }
 

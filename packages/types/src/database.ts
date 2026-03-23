@@ -143,6 +143,7 @@ export interface GroupBudget {
   month: string;
   budget_amount: number;
   category_budgets: Record<string, number> | null;
+  alert_threshold: number;
   currency: string;
   created_by: string;
   created_at: string;
@@ -291,6 +292,7 @@ export interface CrossGroupTransaction {
 export interface CrossGroupPerGroupData {
   groupId: string;
   groupName: string;
+  groupType: string;
   currency: string;
   settlement: SettlementResult;
 }

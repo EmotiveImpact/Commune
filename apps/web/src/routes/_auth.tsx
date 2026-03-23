@@ -3,7 +3,11 @@ import { Anchor, Group, Stack, Text, Title } from '@mantine/core';
 
 export const Route = createFileRoute('/_auth')({
   beforeLoad: ({ context }) => {
-    if (context.auth.isAuthenticated && !context.auth.isLoading) {
+    // Wait for auth to finish loading before making any redirect decisions
+    if (context.auth.isLoading) {
+      return;
+    }
+    if (context.auth.isAuthenticated) {
       // Check for pending invite token (set when user clicks invite link before auth)
       if (typeof window !== 'undefined') {
         const inviteToken = localStorage.getItem('commune_invite_token');
@@ -76,14 +80,18 @@ function AuthLayout() {
             — for people who do life, together.
           </Text>
         </div>
-        <Stack
-          justify="center"
-          align="center"
-          p="xl"
-          style={{ flex: 1, width: '100%' }}
+        <div
+          style={{
+            flex: 1,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '100%',
+            padding: 'var(--mantine-spacing-xl)',
+          }}
         >
           <Outlet />
-        </Stack>
+        </div>
         <div className="commune-auth-mobile-footer">
           <Text size="xs" c="inherit">
             &copy; {new Date().getFullYear()} Commune

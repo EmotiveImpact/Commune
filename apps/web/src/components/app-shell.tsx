@@ -16,6 +16,7 @@ import {
 import { useDisclosure } from '@mantine/hooks';
 import { Link, useLocation, useNavigate } from '@tanstack/react-router';
 import {
+  IconChevronDown,
   IconChevronsLeft,
   IconChevronsRight,
   IconCreditCard,
@@ -32,7 +33,7 @@ import { useAuthStore } from '../stores/auth';
 import { useGroupStore } from '../stores/group';
 import { useSearchStore } from '../stores/search';
 import { signOut } from '@commune/api';
-import { navLinks } from './nav-links';
+import { pinnedLinks, navGroups, navLinks } from './nav-links';
 import { NotificationDropdown } from './notification-dropdown';
 import { GroupSelector } from './group-selector';
 import { TrialExpiryModal } from './trial-expiry-modal';
@@ -226,9 +227,10 @@ export function AppShell({ children }: AppShellProps) {
               </Text>
             </motion.div>
 
-            {/* Nav links — icons stay in place, labels slide */}
+            {/* Nav links — grouped with collapsible sections */}
             <Stack className="commune-sidebar-nav" gap={2}>
-              {navLinks.map((link) => (
+              {/* Pinned links (always visible, no group header) */}
+              {pinnedLinks.map((link) => (
                 <Tooltip
                   key={link.to}
                   label={link.label}
@@ -247,6 +249,34 @@ export function AppShell({ children }: AppShellProps) {
                   />
                 </Tooltip>
               ))}
+
+              {/* Collapsible groups */}
+              {collapsed
+                ? /* When sidebar is collapsed, show all links flat (icon-only) */
+                  navGroups.flatMap((group) =>
+                    group.links.map((link) => (
+                      <Tooltip
+                        key={link.to}
+                        label={link.label}
+                        position="right"
+                        withArrow
+                      >
+                        <NavLink
+                          label={link.label}
+                          component={Link}
+                          to={link.to}
+                          leftSection={link.icon}
+                          variant="subtle"
+                          className="commune-sidebar-link commune-sidebar-link--collapsed"
+                          activeOptions={{ exact: false }}
+                        />
+                      </Tooltip>
+                    )),
+                  )
+                : /* When sidebar is expanded, show collapsible groups */
+                  navGroups.map((group) => (
+                    <NavGroupSection key={group.label} group={group} />
+                  ))}
             </Stack>
 
             {/* Workspace selector */}
@@ -416,6 +446,102 @@ export function AppShell({ children }: AppShellProps) {
         {user?.id && <TrialExpiryModal userId={user.id} />}
       </MantineAppShell.Main>
     </MantineAppShell>
+  );
+}
+
+const NAV_GROUP_STORAGE_KEY = 'commune-nav-groups';
+
+function getGroupState(): Record<string, boolean> {
+  try {
+    const raw = localStorage.getItem(NAV_GROUP_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function setGroupState(label: string, open: boolean) {
+  try {
+    const state = getGroupState();
+    state[label] = open;
+    localStorage.setItem(NAV_GROUP_STORAGE_KEY, JSON.stringify(state));
+  } catch { /* ignore */ }
+}
+
+/** Collapsible nav group with header + animated children */
+function NavGroupSection({ group }: { group: { label: string; links: Array<{ label: string; to: string; icon: React.ReactNode }> } }) {
+  const [open, setOpen] = useState(() => {
+    const stored = getGroupState();
+    return stored[group.label] !== false; // default open
+  });
+
+  const toggle = useCallback(() => {
+    setOpen((prev) => {
+      const next = !prev;
+      setGroupState(group.label, next);
+      return next;
+    });
+  }, [group.label]);
+
+  return (
+    <div style={{ marginTop: 8 }}>
+      <UnstyledButton
+        onClick={toggle}
+        className="commune-nav-group-header"
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 4,
+          padding: '4px 10px',
+          width: '100%',
+          borderRadius: 6,
+        }}
+      >
+        <motion.div
+          initial={false}
+          animate={{ rotate: open ? 0 : -90 }}
+          transition={{ duration: 0.15 }}
+          style={{ display: 'flex', alignItems: 'center' }}
+        >
+          <IconChevronDown size={12} style={{ color: 'rgba(255,255,255,0.35)' }} />
+        </motion.div>
+        <Text
+          size="xs"
+          fw={700}
+          tt="uppercase"
+          style={{ color: 'rgba(255,255,255,0.35)', letterSpacing: '0.1em', fontSize: 10 }}
+        >
+          {group.label}
+        </Text>
+      </UnstyledButton>
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            key={group.label}
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+            style={{ overflow: 'hidden' }}
+          >
+            <Stack gap={2} mt={2}>
+              {group.links.map((link) => (
+                <NavLink
+                  key={link.to}
+                  label={link.label}
+                  component={Link}
+                  to={link.to}
+                  leftSection={link.icon}
+                  variant="subtle"
+                  className="commune-sidebar-link"
+                  activeOptions={{ exact: false }}
+                />
+              ))}
+            </Stack>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }
 

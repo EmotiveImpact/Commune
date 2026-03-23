@@ -29,11 +29,13 @@ export function useSetGroupBudget(groupId: string) {
       month,
       amount,
       categoryBudgets,
+      alertThreshold,
     }: {
       month: string;
       amount: number;
       categoryBudgets?: Record<string, number> | null;
-    }) => setGroupBudget(groupId, month, amount, categoryBudgets),
+      alertThreshold?: number;
+    }) => setGroupBudget(groupId, month, amount, categoryBudgets, alertThreshold),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: budgetKeys.all });
     },

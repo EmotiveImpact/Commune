@@ -606,6 +606,7 @@ function DashboardPage() {
           groupId={activeGroupId}
           currency={group?.currency}
           currentAmount={currentBudget?.budget_amount}
+          currentAlertThreshold={currentBudget?.alert_threshold}
         />
       </Stack>
     );
@@ -741,8 +742,13 @@ function DashboardPage() {
               color={getBudgetColor(budgetPct)}
             />
             {budgetPct >= 100 && (
-              <Text size="xs" c="red">
+              <Text size="xs" c="red" fw={600}>
                 Over budget by {formatCurrency(monthlyTrend.currentTotal - currentBudget.budget_amount, group?.currency)}
+              </Text>
+            )}
+            {budgetPct >= (currentBudget.alert_threshold ?? 80) && budgetPct < 100 && (
+              <Text size="xs" c="yellow.7" fw={500}>
+                Approaching budget ({budgetPct}% of {currentBudget.alert_threshold ?? 80}% threshold)
               </Text>
             )}
             {categorySpend.length > 0 && (
@@ -750,9 +756,11 @@ function DashboardPage() {
                 <Text size="xs" fw={600} c="dimmed" tt="uppercase">
                   Category breakdown
                 </Text>
-                {categorySpend.map((item) => (
+                {categorySpend.map((item) => {
+                  const catThreshold = currentBudget.alert_threshold ?? 80;
+                  return (
                   <Group key={item.category} gap="xs" wrap="nowrap">
-                    <Text size="xs" fw={500} w={120} style={{ flexShrink: 0 }}>
+                    <Text size="xs" fw={item.pct >= 100 ? 700 : 500} c={item.pct >= 100 ? 'red' : item.pct >= catThreshold ? 'yellow.7' : undefined} w={120} style={{ flexShrink: 0 }}>
                       {formatCategoryLabel(item.category)}
                     </Text>
                     <Progress
@@ -765,7 +773,8 @@ function DashboardPage() {
                       {formatCurrency(item.spent, group?.currency)} / {formatCurrency(item.budget, group?.currency)}
                     </Text>
                   </Group>
-                ))}
+                  );
+                })}
               </Stack>
             )}
           </Stack>
@@ -1139,6 +1148,7 @@ function DashboardPage() {
         currency={group?.currency}
         currentAmount={currentBudget?.budget_amount}
         currentCategoryBudgets={currentBudget?.category_budgets}
+        currentAlertThreshold={currentBudget?.alert_threshold}
       />
     </Stack>
   );
