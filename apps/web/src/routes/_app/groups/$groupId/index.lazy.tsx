@@ -31,8 +31,15 @@ import {
   IconPlane,
   IconMapPin,
   IconStar,
+  IconPin,
+  IconAlertCircle,
+  IconCheck,
+  IconClock,
+  IconActivity,
 } from '@tabler/icons-react';
 import { useGroupHub, useUploadGroupImage } from '../../../../hooks/use-group-hub';
+import { useGroupSettlement } from '../../../../hooks/use-settlement';
+import { useActivityLog } from '../../../../hooks/use-activity';
 import { useAuthStore } from '../../../../stores/auth';
 import { useGroupStore } from '../../../../stores/group';
 import { ContentSkeleton } from '../../../../components/page-skeleton';
@@ -116,6 +123,9 @@ function GroupHubPage() {
   const uploadImage = useUploadGroupImage(groupId);
 
   if (isLoading || !hub) return <ContentSkeleton />;
+
+  const { data: settlement } = useGroupSettlement(groupId);
+  const { data: activityItems } = useActivityLog(groupId, 10);
 
   const { group, expenses, memberTotals, categoryTotals, totalMonthly, activeMembers } = hub;
   const members = (group.members as any[]).filter((m: any) => m.status === 'active');
@@ -343,6 +353,151 @@ function GroupHubPage() {
       </SimpleGrid>
 
       {/* ------------------------------------------------------------------ */}
+      {/*  2b. Pinned Announcement                                           */}
+      {/* ------------------------------------------------------------------ */}
+      {group.pinned_message && (
+        <Paper
+          className="commune-soft-panel"
+          p="md"
+          radius="md"
+          style={{ borderLeft: '4px solid var(--commune-primary)' }}
+        >
+          <Group gap="xs" align="flex-start">
+            <IconPin size={18} style={{ color: 'var(--commune-primary)', flexShrink: 0, marginTop: 2 }} />
+            <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>
+              {group.pinned_message}
+            </Text>
+          </Group>
+        </Paper>
+      )}
+
+      {/* ------------------------------------------------------------------ */}
+      {/*  2c. Your Position Card                                            */}
+      {/* ------------------------------------------------------------------ */}
+      {(() => {
+        if (!settlement || !user) return null;
+        const youOwe = settlement.transactions
+          .filter((t: any) => t.fromUserId === user.id)
+          .reduce((sum: number, t: any) => sum + t.amount, 0);
+        const owedToYou = settlement.transactions
+          .filter((t: any) => t.toUserId === user.id)
+          .reduce((sum: number, t: any) => sum + t.amount, 0);
+        const isSettled = youOwe === 0 && owedToYou === 0;
+        const myMonthly = memberTotals[user.id] ?? 0;
+
+        return (
+          <Paper className="commune-soft-panel" p="lg" radius="md">
+            <Group gap="xs" mb="sm">
+              <IconAlertCircle size={18} />
+              <Text className="commune-section-heading">Your Position</Text>
+            </Group>
+            <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="md">
+              <Stack gap={2} align="center">
+                <Text size="xs" c="dimmed">Your monthly share</Text>
+                <Text fw={700} size="lg">{formatCurrency(myMonthly, currency)}</Text>
+              </Stack>
+              <Stack gap={2} align="center">
+                <Text size="xs" c="dimmed">Status</Text>
+                {isSettled ? (
+                  <Badge color="green" variant="light" size="lg" leftSection={<IconCheck size={14} />}>
+                    Settled
+                  </Badge>
+                ) : youOwe > 0 ? (
+                  <Badge color="orange" variant="light" size="lg">
+                    You owe {formatCurrency(youOwe, currency)}
+                  </Badge>
+                ) : (
+                  <Badge color="blue" variant="light" size="lg">
+                    Owed {formatCurrency(owedToYou, currency)}
+                  </Badge>
+                )}
+              </Stack>
+              <Stack gap={2} align="center">
+                <Text size="xs" c="dimmed">Payments needed</Text>
+                <Text fw={700} size="lg">
+                  {settlement.transactions.filter((t: any) => t.fromUserId === user.id).length}
+                </Text>
+              </Stack>
+              <Stack gap={2} align="center">
+                <Button
+                  component={Link}
+                  to="/breakdown"
+                  variant="light"
+                  color="orange"
+                  size="sm"
+                  leftSection={<IconCash size={16} />}
+                  onClick={() => setActiveGroupId(groupId)}
+                >
+                  Settle Up
+                </Button>
+              </Stack>
+            </SimpleGrid>
+          </Paper>
+        );
+      })()}
+
+      {/* ------------------------------------------------------------------ */}
+      {/*  2d. Recent Activity Feed                                          */}
+      {/* ------------------------------------------------------------------ */}
+      {activityItems && activityItems.length > 0 && (
+        <Stack gap="md">
+          <Group gap="xs" justify="space-between">
+            <Group gap="xs">
+              <IconActivity size={20} />
+              <Text className="commune-section-heading">Recent Activity</Text>
+            </Group>
+            <Button
+              component={Link}
+              to="/activity"
+              variant="subtle"
+              size="xs"
+              rightSection={<IconArrowRight size={14} />}
+              onClick={() => setActiveGroupId(groupId)}
+            >
+              View all
+            </Button>
+          </Group>
+
+          <Paper className="commune-soft-panel" p="md">
+            <Stack gap="xs">
+              {activityItems.slice(0, 8).map((item: any) => {
+                const timeAgo = (() => {
+                  const diff = Date.now() - new Date(item.created_at).getTime();
+                  const mins = Math.floor(diff / 60000);
+                  if (mins < 1) return 'just now';
+                  if (mins < 60) return `${mins}m ago`;
+                  const hrs = Math.floor(mins / 60);
+                  if (hrs < 24) return `${hrs}h ago`;
+                  return `${Math.floor(hrs / 24)}d ago`;
+                })();
+
+                return (
+                  <Group key={item.id} gap="sm" wrap="nowrap">
+                    <Avatar
+                      src={item.user?.avatar_url}
+                      size={28}
+                      radius="xl"
+                      color="commune"
+                    >
+                      {item.user?.first_name?.[0] ?? '?'}
+                    </Avatar>
+                    <Text size="sm" style={{ flex: 1 }} truncate>
+                      <Text span fw={600} size="sm">{item.user?.name ?? 'Someone'}</Text>
+                      {' '}{item.description}
+                    </Text>
+                    <Group gap={4} wrap="nowrap" style={{ flexShrink: 0 }}>
+                      <IconClock size={12} style={{ color: 'var(--commune-ink-soft)' }} />
+                      <Text size="xs" c="dimmed">{timeAgo}</Text>
+                    </Group>
+                  </Group>
+                );
+              })}
+            </Stack>
+          </Paper>
+        </Stack>
+      )}
+
+      {/* ------------------------------------------------------------------ */}
       {/*  3. Members Section                                                */}
       {/* ------------------------------------------------------------------ */}
       <Stack gap="md">
@@ -356,6 +511,14 @@ function GroupHubPage() {
             const memberUser = member.user;
             const isCurrentUser = memberUser?.id === user?.id;
             const monthlyShare = memberTotals[member.user_id] ?? 0;
+
+            // Calculate member settlement status
+            const memberOwes = settlement?.transactions
+              ?.filter((t: any) => t.fromUserId === member.user_id)
+              .reduce((sum: number, t: any) => sum + t.amount, 0) ?? 0;
+            const memberOwed = settlement?.transactions
+              ?.filter((t: any) => t.toUserId === member.user_id)
+              .reduce((sum: number, t: any) => sum + t.amount, 0) ?? 0;
 
             return (
               <Paper
@@ -407,6 +570,19 @@ function GroupHubPage() {
                     <Text size="xs" c="dimmed" fw={500}>
                       {formatCurrency(monthlyShare, currency)}/mo
                     </Text>
+
+                    {/* Settlement status */}
+                    {memberOwes === 0 && memberOwed === 0 ? (
+                      <Badge size="xs" variant="dot" color="green">Settled</Badge>
+                    ) : memberOwes > 0 ? (
+                      <Badge size="xs" variant="dot" color="orange">
+                        Owes {formatCurrency(memberOwes, currency)}
+                      </Badge>
+                    ) : (
+                      <Badge size="xs" variant="dot" color="blue">
+                        Owed {formatCurrency(memberOwed, currency)}
+                      </Badge>
+                    )}
                   </Stack>
                 </Stack>
               </Paper>

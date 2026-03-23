@@ -239,6 +239,7 @@ export async function updateGroup(
     cycle_date?: number;
     nudges_enabled?: boolean;
     tagline?: string;
+    pinned_message?: string | null;
     avatar_url?: string;
     cover_url?: string;
   },

@@ -1,21 +1,28 @@
 import { createLazyFileRoute, useNavigate } from '@tanstack/react-router';
 import {
+  Avatar,
+  Box,
   Button,
+  FileButton,
   Group,
+  Image,
   NumberInput,
   Paper,
   Select,
   Stack,
   Switch,
   Text,
+  Textarea,
   TextInput,
+  Tooltip,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
-import { IconArrowLeft, IconDeviceFloppy, IconSettings, IconTrash } from '@tabler/icons-react';
+import { IconArrowLeft, IconCamera, IconDeviceFloppy, IconPhoto, IconPin, IconSettings, IconTrash } from '@tabler/icons-react';
 import { useEffect, useRef, useState } from 'react';
 import { GroupType } from '@commune/types';
 import { useGroup, useUpdateGroup, useDeleteGroup } from '../../../hooks/use-groups';
+import { useUploadGroupImage } from '../../../hooks/use-group-hub';
 import { useGroupStore } from '../../../stores/group';
 import { useAuthStore } from '../../../stores/auth';
 import { ContentSkeleton } from '../../../components/page-skeleton';
@@ -72,8 +79,11 @@ function EditGroupPage() {
       cycle_date: 1,
       nudges_enabled: true,
       tagline: '',
+      pinned_message: '',
     },
   });
+
+  const uploadImage = useUploadGroupImage(groupId);
 
   useEffect(() => {
     if (!group) return;
@@ -85,6 +95,7 @@ function EditGroupPage() {
       cycle_date: group.cycle_date,
       nudges_enabled: group.nudges_enabled,
       tagline: group.tagline,
+      pinned_message: group.pinned_message,
     });
 
     if (lastHydratedRef.current === hydrationKey) return;
@@ -97,6 +108,7 @@ function EditGroupPage() {
       cycle_date: group.cycle_date ?? 1,
       nudges_enabled: group.nudges_enabled ?? true,
       tagline: group.tagline ?? '',
+      pinned_message: group.pinned_message ?? '',
     });
   }, [group, form]);
 
@@ -135,6 +147,7 @@ function EditGroupPage() {
         cycle_date: values.cycle_date,
         nudges_enabled: values.nudges_enabled,
         tagline: values.tagline || undefined,
+        pinned_message: values.pinned_message || null,
       });
       notifications.show({
         title: 'Group updated',
@@ -175,6 +188,97 @@ function EditGroupPage() {
           </Button>
         </Group>
       </PageHeader>
+
+      {/* Group images */}
+      <Paper className="commune-soft-panel" p="xl">
+        <Group gap="xs" mb="md">
+          <IconPhoto size={20} />
+          <Text className="commune-section-heading">Group images</Text>
+        </Group>
+
+        <Group gap="xl" align="flex-start">
+          <Stack gap="xs" align="center">
+            <Text size="sm" fw={500}>Avatar</Text>
+            <Box style={{ position: 'relative' }}>
+              <Avatar
+                src={group.avatar_url}
+                size={80}
+                radius="xl"
+                color="commune"
+              >
+                {group.name[0]}
+              </Avatar>
+              <FileButton
+                onChange={(file) => {
+                  if (!file) return;
+                  if (file.size > 5 * 1024 * 1024) {
+                    notifications.show({ title: 'File too large', message: 'Max 5MB', color: 'red' });
+                    return;
+                  }
+                  uploadImage.mutate({ file, type: 'avatar' }, {
+                    onSuccess: () => notifications.show({ title: 'Avatar updated', message: 'Group avatar saved.', color: 'green' }),
+                    onError: (err) => notifications.show({ title: 'Upload failed', message: err instanceof Error ? err.message : 'Something went wrong', color: 'red' }),
+                  });
+                }}
+                accept="image/png,image/jpeg,image/webp"
+              >
+                {(props) => (
+                  <Tooltip label="Change avatar" withArrow>
+                    <Button {...props} variant="filled" color="dark" size="compact-xs" radius="xl"
+                      style={{ position: 'absolute', bottom: -4, right: -4 }}
+                      loading={uploadImage.isPending}
+                    >
+                      <IconCamera size={12} />
+                    </Button>
+                  </Tooltip>
+                )}
+              </FileButton>
+            </Box>
+          </Stack>
+
+          <Stack gap="xs" style={{ flex: 1 }}>
+            <Text size="sm" fw={500}>Cover photo</Text>
+            <Box
+              style={{
+                height: 100,
+                borderRadius: 8,
+                overflow: 'hidden',
+                background: group.cover_url
+                  ? `url(${group.cover_url}) center / cover no-repeat`
+                  : 'var(--commune-surface-alt)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                border: '1px dashed var(--commune-border-strong)',
+              }}
+            >
+              {!group.cover_url && (
+                <Text size="xs" c="dimmed">No cover photo</Text>
+              )}
+            </Box>
+            <FileButton
+              onChange={(file) => {
+                if (!file) return;
+                if (file.size > 5 * 1024 * 1024) {
+                  notifications.show({ title: 'File too large', message: 'Max 5MB', color: 'red' });
+                  return;
+                }
+                uploadImage.mutate({ file, type: 'cover' }, {
+                  onSuccess: () => notifications.show({ title: 'Cover updated', message: 'Cover photo saved.', color: 'green' }),
+                  onError: (err) => notifications.show({ title: 'Upload failed', message: err instanceof Error ? err.message : 'Something went wrong', color: 'red' }),
+                });
+              }}
+              accept="image/png,image/jpeg,image/webp"
+            >
+              {(props) => (
+                <Button {...props} variant="light" size="xs" leftSection={<IconPhoto size={14} />} loading={uploadImage.isPending}>
+                  {group.cover_url ? 'Change cover' : 'Upload cover'}
+                </Button>
+              )}
+            </FileButton>
+          </Stack>
+        </Group>
+      </Paper>
 
       <Paper className="commune-soft-panel" p="xl">
         <Group gap="xs" mb="md">
@@ -234,6 +338,24 @@ function EditGroupPage() {
             />
           </Stack>
         </form>
+      </Paper>
+
+      {/* Pinned message */}
+      <Paper className="commune-soft-panel" p="xl">
+        <Group gap="xs" mb="md">
+          <IconPin size={20} />
+          <Text className="commune-section-heading">Pinned announcement</Text>
+        </Group>
+
+        <Textarea
+          placeholder="e.g. Rent due on the 1st! Council tax reminder: pay by March 28."
+          description="This message appears at the top of the group hub page for all members to see"
+          minRows={2}
+          maxRows={4}
+          autosize
+          key={form.key('pinned_message')}
+          {...form.getInputProps('pinned_message')}
+        />
       </Paper>
 
       {group.owner_id === user?.id && (
