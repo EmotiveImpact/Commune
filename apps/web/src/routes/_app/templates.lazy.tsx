@@ -241,13 +241,11 @@ function TemplatesPage() {
       <PageHeader
         title="Split Templates"
         subtitle="Save reusable split configurations to speed up expense creation."
-      />
-
-      <Group justify="flex-end">
+      >
         <Button leftSection={<IconPlus size={18} />} onClick={openCreateForm}>
           New template
         </Button>
-      </Group>
+      </PageHeader>
 
       {isLoading ? (
         <ExpenseListSkeleton />

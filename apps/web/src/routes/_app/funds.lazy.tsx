@@ -174,16 +174,14 @@ function FundListView({
       <PageHeader
         title="Shared Funds"
         subtitle="Pool money together for group goals, trips, or shared expenses."
-      />
-
-      <Group justify="flex-end">
+      >
         <Button
           leftSection={<IconPlus size={18} />}
           onClick={() => setShowCreate(true)}
         >
           New fund
         </Button>
-      </Group>
+      </PageHeader>
 
       {isLoading ? (
         <ExpenseListSkeleton />
