@@ -3,6 +3,7 @@
 // cross-group netting to produce a single optimised list of transfers.
 
 import type {
+  CrossGroupPerGroupData,
   CrossGroupResult,
   GroupSettlementInput,
 } from '@commune/types';
@@ -37,7 +38,7 @@ export async function getCrossGroupSettlements(
     .filter(Boolean);
 
   if (groups.length === 0) {
-    return { transactions: [], transactionCount: 0, isSettled: true };
+    return { transactions: [], transactionCount: 0, isSettled: true, perGroupData: [] };
   }
 
   // ── 2. Compute per-group settlements in parallel ──────────────────────
@@ -64,10 +65,22 @@ export async function getCrossGroupSettlements(
   );
 
   if (validSettlements.length === 0) {
-    return { transactions: [], transactionCount: 0, isSettled: true };
+    return { transactions: [], transactionCount: 0, isSettled: true, perGroupData: [] };
   }
 
-  // ── 3. Run cross-group netting ────────────────────────────────────────
+  // ── 3. Build per-group data for the un-netted view ───────────────────
+  const perGroupData: CrossGroupPerGroupData[] = validSettlements.map((s) => ({
+    groupId: s.groupId,
+    groupName: s.groupName,
+    currency: s.currency,
+    settlement: {
+      transactions: s.settlements,
+      transactionCount: s.settlements.length,
+      isSettled: false,
+    },
+  }));
+
+  // ── 4. Run cross-group netting ────────────────────────────────────────
   const result = netCrossGroupDebts(validSettlements);
 
   // ── 4. Enrich with payment links from user_payment_methods ────────────
@@ -95,5 +108,5 @@ export async function getCrossGroupSettlements(
     }
   }
 
-  return result;
+  return { ...result, perGroupData };
 }

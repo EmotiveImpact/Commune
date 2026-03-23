@@ -12,6 +12,7 @@ import {
   removeMember,
   transferOwnership,
   updateGroup,
+  updateMemberEffectiveDates,
   updateMemberRole,
   validateInviteToken,
 } from '@commune/api';
@@ -83,6 +84,22 @@ export function useUpdateMemberRole(groupId: string) {
   return useMutation({
     mutationFn: ({ memberId, role }: { memberId: string; role: 'admin' | 'member' }) =>
       updateMemberRole(memberId, role),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: groupKeys.detail(groupId) });
+    },
+  });
+}
+
+export function useUpdateMemberDates(groupId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      memberId,
+      dates,
+    }: {
+      memberId: string;
+      dates: { effective_from?: string; effective_until?: string };
+    }) => updateMemberEffectiveDates(memberId, dates),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: groupKeys.detail(groupId) });
     },

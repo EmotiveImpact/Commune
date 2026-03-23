@@ -11,6 +11,7 @@ import {
   Text,
   ThemeIcon,
   Title,
+  useComputedColorScheme,
 } from '@mantine/core';
 import {
   IconAlertTriangle,
@@ -31,7 +32,8 @@ import {
 } from '@tabler/icons-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { formatCurrency, formatDate, getMonthKey, isOverdue } from '@commune/utils';
-import type { GroupType } from '@commune/types';
+import type { GroupType, ExpenseCategory } from '@commune/types';
+import { getOnboardingTips } from '@commune/core';
 import { setPageTitle } from '../../utils/seo';
 import { useGroupStore } from '../../stores/group';
 import { useAuthStore } from '../../stores/auth';
@@ -194,6 +196,10 @@ function getBudgetColor(pct: number): string {
 // ─── Dashboard Page ──────────────────────────────────────────────────────────
 
 function DashboardPage() {
+  const colorScheme = useComputedColorScheme('light');
+  const tickFill = colorScheme === 'dark' ? '#909296' : '#667085';
+  const gridStroke = colorScheme === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(22,19,29,0.06)';
+
   const { activeGroupId } = useGroupStore();
   const { user } = useAuthStore();
   const navigate = useNavigate();
@@ -327,22 +333,34 @@ function DashboardPage() {
     ? Math.round((monthlyTrend.currentTotal / currentBudget.budget_amount) * 100)
     : null;
 
-  // F36: Feature discovery prompts
-  const featurePrompt = useMemo(() => {
-    if (!group || hasExpenses) return null;
+  // F35.7: Category budget spend breakdown
+  const categorySpend = useMemo(() => {
+    if (!currentBudget?.category_budgets) return [];
+    const budgets = currentBudget.category_budgets as Record<string, number>;
+    const spendByCategory = new Map<string, number>();
 
-    const groupType = group.type;
-    const hasTemplates = (templates?.length ?? 0) > 0;
-
-    if (groupType === 'home' && !hasTemplates) {
-      return 'Tip: Set up auto-split templates for rent so expenses are split consistently every month.';
+    for (const expense of monthExpenses) {
+      const cat = expense.category as ExpenseCategory;
+      if (budgets[cat] != null) {
+        spendByCategory.set(cat, (spendByCategory.get(cat) ?? 0) + expense.amount);
+      }
     }
-    if (groupType === 'trip' && !hasExpenses) {
-      return 'Tip: Import expenses from Splitwise to get started faster.';
-    }
 
-    return null;
-  }, [group, hasExpenses, templates?.length]);
+    return Object.entries(budgets)
+      .filter(([, budget]) => budget > 0)
+      .map(([category, budget]) => ({
+        category,
+        budget,
+        spent: spendByCategory.get(category) ?? 0,
+        pct: Math.round(((spendByCategory.get(category) ?? 0) / budget) * 100),
+      }));
+  }, [currentBudget?.category_budgets, monthExpenses]);
+
+  // F36: Onboarding tips (group-type-aware)
+  const onboardingTips = useMemo(
+    () => (group && !hasExpenses ? getOnboardingTips(group.type) : []),
+    [group, hasExpenses],
+  );
 
   if (!activeGroupId) {
     if (groupsLoading || invitesLoading || (groups?.length ?? 0) > 0) {
@@ -505,12 +523,20 @@ function DashboardPage() {
           </div>
         </Paper>
 
-        {/* F36: Feature discovery prompt */}
-        {featurePrompt && (
-          <Paper className="commune-soft-panel" p="md" style={{ borderLeft: '3px solid var(--mantine-color-commune-5)' }}>
-            <Text size="sm" c="dimmed">
-              {featurePrompt}
-            </Text>
+        {/* F36: Onboarding tips checklist */}
+        {onboardingTips.length > 0 && (
+          <Paper className="commune-soft-panel" p="lg" style={{ borderLeft: '3px solid var(--mantine-color-commune-5)' }}>
+            <Text fw={600} mb="sm">Getting started</Text>
+            <Stack gap="xs">
+              {onboardingTips.map((tip) => (
+                <Group key={tip} gap="sm" wrap="nowrap">
+                  <ThemeIcon size={20} variant="light" color="commune" radius="xl">
+                    <IconCheck size={12} />
+                  </ThemeIcon>
+                  <Text size="sm" c="dimmed">{tip}</Text>
+                </Group>
+              ))}
+            </Stack>
           </Paper>
         )}
 
@@ -719,6 +745,29 @@ function DashboardPage() {
                 Over budget by {formatCurrency(monthlyTrend.currentTotal - currentBudget.budget_amount, group?.currency)}
               </Text>
             )}
+            {categorySpend.length > 0 && (
+              <Stack gap={6} mt="xs">
+                <Text size="xs" fw={600} c="dimmed" tt="uppercase">
+                  Category breakdown
+                </Text>
+                {categorySpend.map((item) => (
+                  <Group key={item.category} gap="xs" wrap="nowrap">
+                    <Text size="xs" fw={500} w={120} style={{ flexShrink: 0 }}>
+                      {formatCategoryLabel(item.category)}
+                    </Text>
+                    <Progress
+                      value={Math.min(item.pct, 100)}
+                      size="sm"
+                      color={getBudgetColor(item.pct)}
+                      style={{ flex: 1 }}
+                    />
+                    <Text size="xs" c="dimmed" w={120} ta="right" style={{ flexShrink: 0 }}>
+                      {formatCurrency(item.spent, group?.currency)} / {formatCurrency(item.budget, group?.currency)}
+                    </Text>
+                  </Group>
+                ))}
+              </Stack>
+            )}
           </Stack>
         ) : (
           <Group justify="space-between" align="center">
@@ -739,12 +788,20 @@ function DashboardPage() {
         )}
       </Paper>
 
-      {/* F36: Feature discovery prompts (only shown when relevant) */}
-      {featurePrompt && (
-        <Paper className="commune-soft-panel" p="md" style={{ borderLeft: '3px solid var(--mantine-color-commune-5)' }}>
-          <Text size="sm" c="dimmed">
-            {featurePrompt}
-          </Text>
+      {/* F36: Onboarding tips (hidden once expenses exist) */}
+      {onboardingTips.length > 0 && (
+        <Paper className="commune-soft-panel" p="lg" style={{ borderLeft: '3px solid var(--mantine-color-commune-5)' }}>
+          <Text fw={600} mb="sm">Getting started</Text>
+          <Stack gap="xs">
+            {onboardingTips.map((tip) => (
+              <Group key={tip} gap="sm" wrap="nowrap">
+                <ThemeIcon size={20} variant="light" color="commune" radius="xl">
+                  <IconCheck size={12} />
+                </ThemeIcon>
+                <Text size="sm" c="dimmed">{tip}</Text>
+              </Group>
+            ))}
+          </Stack>
         </Paper>
       )}
 
@@ -800,9 +857,9 @@ function DashboardPage() {
                 <>
                   <ResponsiveContainer width="100%" height={240}>
                     <BarChart data={monthlyTrend.items} margin={{ top: 8, right: 4, bottom: 0, left: -12 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(22,19,29,0.06)" vertical={false} />
-                      <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: '#667085', fontSize: 13, fontWeight: 500 }} />
-                      <YAxis axisLine={false} tickLine={false} tick={{ fill: '#667085', fontSize: 12 }} tickFormatter={(v: number) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v)} />
+                      <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} vertical={false} />
+                      <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: tickFill, fontSize: 13, fontWeight: 500 }} />
+                      <YAxis axisLine={false} tickLine={false} tick={{ fill: tickFill, fontSize: 12 }} tickFormatter={(v: number) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v)} />
                       <Tooltip
                         contentStyle={{ background: '#1f2330', border: 'none', borderRadius: 10, color: '#f8f5f0', fontSize: 13, boxShadow: '0 8px 24px rgba(0,0,0,.18)' }}
                         formatter={(value) => [formatCurrency(Number(value), group?.currency), 'Spend']}
@@ -1081,6 +1138,7 @@ function DashboardPage() {
         groupId={activeGroupId}
         currency={group?.currency}
         currentAmount={currentBudget?.budget_amount}
+        currentCategoryBudgets={currentBudget?.category_budgets}
       />
     </Stack>
   );

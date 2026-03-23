@@ -41,7 +41,7 @@ export const Route = createLazyFileRoute('/_app/activity')({
   component: ActivityPage,
 });
 
-const PAGE_SIZE = 50;
+import { PaginationBar, PAGE_SIZE } from '../../components/pagination';
 
 const actionIcons: Record<string, typeof IconReceipt> = {
   expense_created: IconReceipt,
@@ -149,11 +149,12 @@ function ActivityPage() {
   const { user } = useAuthStore();
   const { canExport } = usePlanLimits(user?.id ?? '');
   const { data: group, isLoading: groupLoading } = useGroup(activeGroupId ?? '');
-  const [limit, setLimit] = useState(PAGE_SIZE);
+  const [page, setPage] = useState(0);
   const [activeFilters, setActiveFilters] = useState<Set<TypeFilter>>(new Set(['all']));
-  const { data: entries = [], isLoading } = useActivityLog(activeGroupId ?? '', limit);
+  const { data: entries = [], isLoading } = useActivityLog(activeGroupId ?? '');
 
   function toggleFilter(key: TypeFilter) {
+    setPage(0);
     setActiveFilters((prev) => {
       const next = new Set(prev);
       if (key === 'all') {
@@ -181,11 +182,16 @@ function ActivityPage() {
     });
   }, [entries, activeFilters]);
 
+  const paginatedEntries = useMemo(
+    () => filteredEntries.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE),
+    [filteredEntries, page],
+  );
+
   const grouped = useMemo(() => {
-    const groups: { label: string; items: typeof filteredEntries }[] = [];
+    const groups: { label: string; items: typeof paginatedEntries }[] = [];
     let currentLabel = '';
 
-    for (const entry of filteredEntries) {
+    for (const entry of paginatedEntries) {
       const label = getDateLabel(entry.created_at);
       if (label !== currentLabel) {
         currentLabel = label;
@@ -195,7 +201,7 @@ function ActivityPage() {
     }
 
     return groups;
-  }, [filteredEntries]);
+  }, [paginatedEntries]);
 
   if (!activeGroupId) {
     return (
@@ -324,16 +330,11 @@ function ActivityPage() {
             </Stack>
           ))}
 
-          {entries.length >= limit && (
-            <Button
-              variant="light"
-              fullWidth
-              mt="sm"
-              onClick={() => setLimit((prev) => prev + PAGE_SIZE)}
-            >
-              Load more
-            </Button>
-          )}
+          <PaginationBar
+            page={page}
+            totalItems={filteredEntries.length}
+            onPageChange={setPage}
+          />
         </Stack>
       )}
     </Stack>

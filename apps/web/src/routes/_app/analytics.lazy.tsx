@@ -10,6 +10,7 @@ import {
   Stack,
   Text,
   ThemeIcon,
+  useComputedColorScheme,
 } from '@mantine/core';
 import {
   IconArrowDownRight,
@@ -224,6 +225,10 @@ function AnalyticsPage() {
     color: categoryPalette[i % categoryPalette.length]!,
   }));
 
+  const colorScheme = useComputedColorScheme('light');
+  const tickFill = colorScheme === 'dark' ? '#909296' : '#667085';
+  const gridStroke = colorScheme === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(22,19,29,0.06)';
+
   const hasData = spendingTrend.some((item) => item.amount > 0);
 
   if (!hasData) {
@@ -336,17 +341,17 @@ function AnalyticsPage() {
                 <stop offset="100%" stopColor="#2d6a4f" stopOpacity={0.02} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(22,19,29,0.06)" vertical={false} />
+            <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} vertical={false} />
             <XAxis
               dataKey="label"
               axisLine={false}
               tickLine={false}
-              tick={{ fill: '#667085', fontSize: 13, fontWeight: 500 }}
+              tick={{ fill: tickFill, fontSize: 13, fontWeight: 500 }}
             />
             <YAxis
               axisLine={false}
               tickLine={false}
-              tick={{ fill: '#667085', fontSize: 12 }}
+              tick={{ fill: tickFill, fontSize: 12 }}
               tickFormatter={(v: number) => (v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v))}
             />
             <Tooltip
@@ -464,12 +469,12 @@ function AnalyticsPage() {
                 layout="vertical"
                 margin={{ top: 8, right: 8, bottom: 0, left: 4 }}
               >
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(22,19,29,0.06)" horizontal={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} horizontal={false} />
                 <XAxis
                   type="number"
                   axisLine={false}
                   tickLine={false}
-                  tick={{ fill: '#667085', fontSize: 12 }}
+                  tick={{ fill: tickFill, fontSize: 12 }}
                   tickFormatter={(v: number) => (v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v))}
                 />
                 <YAxis
@@ -477,7 +482,7 @@ function AnalyticsPage() {
                   dataKey="name"
                   axisLine={false}
                   tickLine={false}
-                  tick={{ fill: '#667085', fontSize: 13, fontWeight: 500 }}
+                  tick={{ fill: tickFill, fontSize: 13, fontWeight: 500 }}
                   width={100}
                 />
                 <Tooltip

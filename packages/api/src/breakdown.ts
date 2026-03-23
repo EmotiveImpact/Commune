@@ -4,8 +4,137 @@ import type {
   ExpenseWithParticipants,
   GroupMember,
 } from '@commune/types';
-import { getProrationInfo, calculateProration } from '@commune/core';
+import {
+  getProrationInfo,
+  calculateProration,
+  needsProration,
+  calculateDaysPresent,
+} from '@commune/core';
 import { supabase } from './client';
+
+/**
+ * Membership dates for a single group member, keyed by user_id.
+ */
+interface MemberDates {
+  effective_from: string | null;
+  effective_until: string | null;
+}
+
+/**
+ * Calculate the requesting user's share for a recurring expense, redistributing
+ * the surplus from prorated members among full-period (non-prorated) members.
+ *
+ * If ALL participants are prorated, surplus is distributed proportionally by
+ * days present so nothing is lost.
+ */
+function calculateRedistributedShare(
+  expense: ExpenseWithParticipants,
+  userId: string,
+  membershipsMap: Map<string, MemberDates>,
+  periodStart: string,
+  periodEnd: string,
+): { shareAmount: number; proration: ReturnType<typeof getProrationInfo> } {
+  const participation = expense.participants.find(
+    (p) => p.user_id === userId,
+  );
+  if (!participation) {
+    return { shareAmount: 0, proration: null };
+  }
+
+  const userMembership = membershipsMap.get(userId);
+  const userProration = userMembership
+    ? getProrationInfo(
+        userMembership.effective_from,
+        userMembership.effective_until,
+        periodStart,
+        periodEnd,
+      )
+    : null;
+
+  // Compute each participant's prorated vs full share and classify them
+  let totalSurplus = 0;
+  const fullPeriodUserIds: string[] = [];
+  const proratedDaysMap = new Map<string, number>();
+  let totalProratedDays = 0;
+
+  // We need the total days in the period for proportional fallback
+  const pStartDate = new Date(periodStart);
+  const pEndDate = new Date(periodEnd);
+  const totalDaysInPeriod = Math.round(
+    (Date.UTC(pEndDate.getFullYear(), pEndDate.getMonth(), pEndDate.getDate()) -
+      Date.UTC(pStartDate.getFullYear(), pStartDate.getMonth(), pStartDate.getDate())) /
+      86_400_000,
+  );
+
+  for (const participant of expense.participants) {
+    const membership = membershipsMap.get(participant.user_id);
+    const isProrated =
+      membership != null &&
+      needsProration(
+        membership.effective_from,
+        membership.effective_until,
+        periodStart,
+        periodEnd,
+      );
+
+    if (isProrated && membership) {
+      const proratedShare = calculateProration(
+        membership.effective_from,
+        membership.effective_until,
+        periodStart,
+        periodEnd,
+        participant.share_amount,
+      );
+      const surplus = participant.share_amount - proratedShare;
+      totalSurplus += surplus;
+
+      const days = calculateDaysPresent(
+        membership.effective_from,
+        membership.effective_until,
+        periodStart,
+        periodEnd,
+      );
+      proratedDaysMap.set(participant.user_id, days);
+      totalProratedDays += days;
+    } else {
+      fullPeriodUserIds.push(participant.user_id);
+      // Full-period members have totalDaysInPeriod
+      proratedDaysMap.set(participant.user_id, totalDaysInPeriod);
+    }
+  }
+
+  // Determine the requesting user's base share (prorated or full)
+  let userBaseShare = participation.share_amount;
+  if (userProration) {
+    userBaseShare = calculateProration(
+      userMembership!.effective_from,
+      userMembership!.effective_until,
+      periodStart,
+      periodEnd,
+      participation.share_amount,
+    );
+  }
+
+  // Redistribute surplus
+  let absorbedSurplus = 0;
+  if (totalSurplus > 0) {
+    if (fullPeriodUserIds.length > 0) {
+      // Distribute surplus equally among full-period participants
+      if (fullPeriodUserIds.includes(userId)) {
+        absorbedSurplus = totalSurplus / fullPeriodUserIds.length;
+      }
+    } else {
+      // ALL participants are prorated — distribute proportionally by days present
+      const userDays = proratedDaysMap.get(userId) ?? 0;
+      if (totalProratedDays > 0 && userDays > 0) {
+        absorbedSurplus = (totalSurplus * userDays) / totalProratedDays;
+      }
+    }
+  }
+
+  const finalShare = Number((userBaseShare + absorbedSurplus).toFixed(2));
+  return { shareAmount: finalShare, proration: userProration };
+}
 
 export async function getUserBreakdown(
   groupId: string,
@@ -16,8 +145,8 @@ export async function getUserBreakdown(
   const [year, mon] = month.split('-').map(Number);
   const endDate = new Date(year!, mon!, 1).toISOString().split('T')[0];
 
-  // Fetch expenses and the user's group membership in parallel
-  const [expenseResult, memberResult] = await Promise.all([
+  // Fetch expenses and ALL group members' effective dates in parallel
+  const [expenseResult, allMembersResult] = await Promise.all([
     supabase
       .from('expenses')
       .select(
@@ -38,16 +167,26 @@ export async function getUserBreakdown(
       .order('due_date', { ascending: false }),
     supabase
       .from('group_members')
-      .select('effective_from, effective_until')
-      .eq('group_id', groupId)
-      .eq('user_id', userId)
-      .single(),
+      .select('user_id, effective_from, effective_until')
+      .eq('group_id', groupId),
   ]);
 
   if (expenseResult.error) throw expenseResult.error;
+  if (allMembersResult.error) throw allMembersResult.error;
 
   const typed = (expenseResult.data ?? []) as unknown as ExpenseWithParticipants[];
-  const membership = memberResult.data as Pick<GroupMember, 'effective_from' | 'effective_until'> | null;
+
+  // Build a lookup of user_id → membership dates for all group members
+  const membershipsMap = new Map<string, MemberDates>();
+  for (const row of allMembersResult.data ?? []) {
+    const member = row as Pick<GroupMember, 'user_id' | 'effective_from' | 'effective_until'>;
+    membershipsMap.set(member.user_id, {
+      effective_from: member.effective_from,
+      effective_until: member.effective_until,
+    });
+  }
+
+  const userMembership = membershipsMap.get(userId);
 
   let totalOwed = 0;
   let totalPaid = 0;
@@ -64,27 +203,28 @@ export async function getUserBreakdown(
     );
     const paymentStatus = payment?.status ?? 'unpaid';
 
-    // Calculate proration if member has effective_from/effective_until
     let proration = null;
     let shareAmount = participation.share_amount;
 
-    if (membership && expense.recurrence_type !== 'none') {
-      proration = getProrationInfo(
-        membership.effective_from,
-        membership.effective_until,
+    if (expense.recurrence_type !== 'none') {
+      // Use redistribution-aware calculation for recurring expenses
+      const result = calculateRedistributedShare(
+        expense,
+        userId,
+        membershipsMap,
         startDate,
         endDate!,
       );
-
-      if (proration) {
-        shareAmount = calculateProration(
-          membership.effective_from,
-          membership.effective_until,
-          startDate,
-          endDate!,
-          participation.share_amount,
-        );
-      }
+      shareAmount = result.shareAmount;
+      proration = result.proration;
+    } else if (userMembership) {
+      // For non-recurring expenses, just show proration info (no redistribution)
+      proration = getProrationInfo(
+        userMembership.effective_from,
+        userMembership.effective_until,
+        startDate,
+        endDate!,
+      );
     }
 
     totalOwed += shareAmount;

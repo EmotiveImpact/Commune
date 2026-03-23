@@ -36,7 +36,7 @@ export const Route = createLazyFileRoute('/_app/expenses/')({
   component: ExpensesPage,
 });
 
-const PAGE_SIZE = 30;
+import { PaginationBar, paginate, PAGE_SIZE } from '../../../components/pagination';
 
 const categoryOptions = [
   { value: '', label: 'All categories' },
@@ -181,9 +181,8 @@ function ExpensesPage() {
 
   const canExportPdf = isPaidPlan && Boolean(monthFilter) && !hasCustomDateRange && filtered.length > 0;
 
-  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const paginatedExpenses = useMemo(
-    () => filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE),
+    () => paginate(filtered, page),
     [filtered, page],
   );
 
@@ -512,31 +511,11 @@ function ExpensesPage() {
               </Table.Tbody>
             </Table>
           </div>
-          {totalPages > 1 && (
-            <Group justify="space-between" mt="sm">
-              <Text size="sm" c="dimmed">
-                Showing {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, filtered.length)} of {filtered.length}
-              </Text>
-              <Group gap="xs">
-                <Button
-                  variant="default"
-                  size="xs"
-                  disabled={page === 0}
-                  onClick={() => setPage((p) => p - 1)}
-                >
-                  Previous
-                </Button>
-                <Button
-                  variant="default"
-                  size="xs"
-                  disabled={page >= totalPages - 1}
-                  onClick={() => setPage((p) => p + 1)}
-                >
-                  Next
-                </Button>
-              </Group>
-            </Group>
-          )}
+          <PaginationBar
+            page={page}
+            totalItems={filtered.length}
+            onPageChange={setPage}
+          />
         </>
       )}
 

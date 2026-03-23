@@ -142,6 +142,7 @@ export interface GroupBudget {
   group_id: string;
   month: string;
   budget_amount: number;
+  category_budgets: Record<string, number> | null;
   currency: string;
   created_by: string;
   created_at: string;
@@ -287,10 +288,19 @@ export interface CrossGroupTransaction {
   paymentProvider?: PaymentProvider | null;
 }
 
+export interface CrossGroupPerGroupData {
+  groupId: string;
+  groupName: string;
+  currency: string;
+  settlement: SettlementResult;
+}
+
 export interface CrossGroupResult {
   transactions: CrossGroupTransaction[];
   transactionCount: number;
   isSettled: boolean;
+  /** Per-group settlement data before netting, so the client can show either view */
+  perGroupData?: CrossGroupPerGroupData[];
 }
 
 // ─── Couple Mode types ───────────────────────────────────────────────────────

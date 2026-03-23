@@ -98,3 +98,5 @@ export type {
   SplitwiseImportExpense,
   SplitwiseImportRequest,
 } from './splitwise-import';
+
+export { getCategoriesByGroupType, getOnboardingTips } from './group-type';

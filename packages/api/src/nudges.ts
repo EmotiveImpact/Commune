@@ -73,6 +73,52 @@ export async function sendNudge(
     .single();
 
   if (error) throw error;
+
+  // Fire-and-forget: send email notification to the nudge recipient
+  (async () => {
+    try {
+      // Look up sender name
+      const { data: sender } = await supabase
+        .from('users')
+        .select('name')
+        .eq('id', user.id)
+        .single();
+
+      // Look up recipient email + notification preferences
+      const { data: recipient } = await supabase
+        .from('users')
+        .select('email, notification_preferences')
+        .eq('id', toUserId)
+        .single();
+
+      if (
+        recipient?.email &&
+        recipient.notification_preferences?.email_on_payment_reminder !== false
+      ) {
+        const senderName = sender?.name ?? 'A group member';
+        const formattedAmount = new Intl.NumberFormat('en-GB', {
+          style: 'currency',
+          currency: 'GBP',
+        }).format(amount);
+
+        supabase.functions
+          .invoke('send-notification', {
+            body: {
+              to: recipient.email,
+              subject: `${senderName} sent you a payment reminder`,
+              body: `<p><strong>${senderName}</strong> has sent you a payment reminder for <strong>${formattedAmount}</strong>.</p><p>Log in to Commune to view and settle your balance.</p>`,
+              type: 'payment_reminder',
+            },
+          })
+          .catch((err) => {
+            console.error('Failed to send nudge email:', err);
+          });
+      }
+    } catch (err) {
+      console.error('Failed to look up nudge notification data:', err);
+    }
+  })();
+
   return data as PaymentNudge;
 }
 

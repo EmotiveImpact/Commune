@@ -9,16 +9,19 @@ import {
   Menu,
   Modal,
   Paper,
+  Popover,
   Progress,
   Stack,
   Text,
 } from '@mantine/core';
+import { DateInput } from '@mantine/dates';
 import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import {
   IconCrown,
   IconDoorExit,
   IconDots,
+  IconEdit,
   IconHeart,
   IconHeartOff,
   IconLink,
@@ -34,7 +37,7 @@ import { setPageTitle } from '../../utils/seo';
 import { formatCurrency } from '@commune/utils';
 import { useGroupStore } from '../../stores/group';
 import { useSearchStore } from '../../stores/search';
-import { useGroup, useLeaveGroup, useRemoveMember, useTransferOwnership, useUpdateMemberRole, useUserGroups } from '../../hooks/use-groups';
+import { useGroup, useLeaveGroup, useRemoveMember, useTransferOwnership, useUpdateMemberDates, useUpdateMemberRole, useUserGroups } from '../../hooks/use-groups';
 import { useLinkedPairs, useLinkMembers, useUnlinkMembers } from '../../hooks/use-couple-linking';
 import { useMemberMonthlyStats } from '../../hooks/use-member-stats';
 import { useAuthStore } from '../../stores/auth';
@@ -79,6 +82,11 @@ function MembersPage() {
   const unlinkMembersMutation = useUnlinkMembers(activeGroupId ?? '');
   const [linkOpened, { open: openLink, close: closeLink }] = useDisclosure(false);
   const [linkTarget, setLinkTarget] = useState<{ memberId: string; userId: string; name: string } | null>(null);
+
+  // ── Date editing state ────────────────────────────────────────────────
+  const updateMemberDates = useUpdateMemberDates(activeGroupId ?? '');
+  const [editingDateMemberId, setEditingDateMemberId] = useState<string | null>(null);
+  const [editingDateField, setEditingDateField] = useState<'effective_from' | 'effective_until' | null>(null);
 
   if (!activeGroupId) {
     return (
@@ -277,6 +285,33 @@ function MembersPage() {
     }
   }
 
+  async function handleDateChange(memberId: string, field: 'effective_from' | 'effective_until', date: Date | string | null) {
+    const isoDate = date
+      ? typeof date === 'string'
+        ? date
+        : date.toISOString().split('T')[0]!
+      : '';
+    try {
+      await updateMemberDates.mutateAsync({
+        memberId,
+        dates: { [field]: isoDate },
+      });
+      setEditingDateMemberId(null);
+      setEditingDateField(null);
+      notifications.show({
+        title: 'Date updated',
+        message: `Member ${field === 'effective_from' ? 'join' : 'leave'} date has been updated.`,
+        color: 'green',
+      });
+    } catch (err) {
+      notifications.show({
+        title: 'Failed to update date',
+        message: err instanceof Error ? err.message : 'Something went wrong',
+        color: 'red',
+      });
+    }
+  }
+
   const canLeave = user && group?.members.some((m) => m.user_id === user.id && m.status === 'active') && (
     !isAdmin || adminCount > 1
   );
@@ -332,11 +367,73 @@ function MembersPage() {
                     </Group>
                     <Text size="sm" c="dimmed">{member.user.email}</Text>
                     {member.effective_from && (
-                      <Text size="xs" c="dimmed">
-                        {member.status === 'removed' && member.effective_until
-                          ? `Left ${formatProrationDate(member.effective_until)}`
-                          : `Joined ${formatProrationDate(member.effective_from)}`}
-                      </Text>
+                      <Group gap={4} align="center">
+                        <Text size="xs" c="dimmed">
+                          {member.status === 'removed' && member.effective_until
+                            ? `Left ${formatProrationDate(member.effective_until)}`
+                            : `Joined ${formatProrationDate(member.effective_from)}`}
+                        </Text>
+                        {isAdmin && (
+                          <Popover
+                            opened={
+                              editingDateMemberId === member.id &&
+                              editingDateField ===
+                                (member.status === 'removed' && member.effective_until
+                                  ? 'effective_until'
+                                  : 'effective_from')
+                            }
+                            onClose={() => {
+                              setEditingDateMemberId(null);
+                              setEditingDateField(null);
+                            }}
+                            position="bottom"
+                            withArrow
+                          >
+                            <Popover.Target>
+                              <ActionIcon
+                                variant="subtle"
+                                color="gray"
+                                size="xs"
+                                aria-label={`Edit ${member.status === 'removed' && member.effective_until ? 'leave' : 'join'} date`}
+                                onClick={() => {
+                                  const field =
+                                    member.status === 'removed' && member.effective_until
+                                      ? 'effective_until'
+                                      : 'effective_from';
+                                  setEditingDateMemberId(member.id);
+                                  setEditingDateField(field as 'effective_from' | 'effective_until');
+                                }}
+                              >
+                                <IconEdit size={12} />
+                              </ActionIcon>
+                            </Popover.Target>
+                            <Popover.Dropdown>
+                              <DateInput
+                                label={
+                                  editingDateField === 'effective_until'
+                                    ? 'Left date'
+                                    : 'Joined date'
+                                }
+                                defaultValue={
+                                  editingDateField === 'effective_until' && member.effective_until
+                                    ? new Date(member.effective_until + 'T00:00:00')
+                                    : member.effective_from
+                                      ? new Date(member.effective_from + 'T00:00:00')
+                                      : undefined
+                                }
+                                onChange={(date) => {
+                                  if (editingDateField) {
+                                    handleDateChange(member.id, editingDateField, date);
+                                  }
+                                }}
+                                size="xs"
+                                style={{ width: 180 }}
+                                clearable
+                              />
+                            </Popover.Dropdown>
+                          </Popover>
+                        )}
+                      </Group>
                     )}
                   </div>
                 </Group>

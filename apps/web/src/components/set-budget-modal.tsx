@@ -1,7 +1,10 @@
-import { Modal, NumberInput, Button, Stack, Text, Group } from '@mantine/core';
+import { Modal, NumberInput, Button, Stack, Text, Group, Collapse, UnstyledButton } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { useState } from 'react';
+import { useDisclosure } from '@mantine/hooks';
+import { IconChevronDown, IconChevronRight } from '@tabler/icons-react';
 import { getMonthKey } from '@commune/utils';
+import { ExpenseCategory } from '@commune/types';
 import { useSetGroupBudget } from '../hooks/use-budgets';
 
 interface SetBudgetModalProps {
@@ -10,6 +13,7 @@ interface SetBudgetModalProps {
   groupId: string;
   currency?: string;
   currentAmount?: number;
+  currentCategoryBudgets?: Record<string, number> | null;
 }
 
 function getMonthOptions() {
@@ -26,18 +30,47 @@ function getMonthOptions() {
   return options;
 }
 
+function formatCategoryLabel(category: string) {
+  return category
+    .split('_')
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .join(' ');
+}
+
+const allCategories = Object.values(ExpenseCategory);
+
 export function SetBudgetModal({
   opened,
   onClose,
   groupId,
   currency = 'GBP',
   currentAmount,
+  currentCategoryBudgets,
 }: SetBudgetModalProps) {
   const [month, setMonth] = useState(getMonthKey());
   const [amount, setAmount] = useState<number | ''>(currentAmount ?? '');
+  const [categoryBudgets, setCategoryBudgets] = useState<Record<string, number>>(
+    currentCategoryBudgets ?? {},
+  );
+  const [categoryExpanded, { toggle: toggleCategory }] = useDisclosure(false);
   const setBudget = useSetGroupBudget(groupId);
 
   const monthOptions = getMonthOptions();
+
+  const currencyPrefix =
+    currency === 'GBP' ? '£' : currency === 'USD' ? '$' : currency === 'EUR' ? '€' : `${currency} `;
+
+  function handleCategoryChange(category: string, value: number | '') {
+    setCategoryBudgets((prev) => {
+      const next = { ...prev };
+      if (value === '' || value === 0) {
+        delete next[category];
+      } else {
+        next[category] = value;
+      }
+      return next;
+    });
+  }
 
   async function handleSubmit() {
     if (!amount || amount <= 0) {
@@ -49,8 +82,18 @@ export function SetBudgetModal({
       return;
     }
 
+    // Only include categories with non-zero amounts
+    const filteredCategoryBudgets = Object.fromEntries(
+      Object.entries(categoryBudgets).filter(([, v]) => v > 0),
+    );
+    const hasCategoryBudgets = Object.keys(filteredCategoryBudgets).length > 0;
+
     try {
-      await setBudget.mutateAsync({ month, amount });
+      await setBudget.mutateAsync({
+        month,
+        amount,
+        categoryBudgets: hasCategoryBudgets ? filteredCategoryBudgets : null,
+      });
       notifications.show({
         title: 'Budget set',
         message: `Monthly budget has been set to ${currency} ${amount.toLocaleString()}`,
@@ -67,7 +110,7 @@ export function SetBudgetModal({
   }
 
   return (
-    <Modal opened={opened} onClose={onClose} title="Set monthly budget" centered>
+    <Modal opened={opened} onClose={onClose} title="Set monthly budget" centered size="lg">
       <Stack gap="md">
         <Text size="sm" c="dimmed">
           Set a spending target for the group. The dashboard will track progress against this budget.
@@ -96,11 +139,44 @@ export function SetBudgetModal({
           placeholder="e.g. 2000"
           min={1}
           step={100}
-          prefix={currency === 'GBP' ? '£' : currency === 'USD' ? '$' : currency === 'EUR' ? '€' : `${currency} `}
+          prefix={currencyPrefix}
           value={amount}
           onChange={(val) => setAmount(typeof val === 'number' ? val : '')}
           decimalScale={2}
         />
+
+        {/* Collapsible category budgets section */}
+        <div>
+          <UnstyledButton onClick={toggleCategory} style={{ width: '100%' }}>
+            <Group gap={6}>
+              {categoryExpanded ? <IconChevronDown size={16} /> : <IconChevronRight size={16} />}
+              <Text size="sm" fw={500} c="dimmed">
+                Set category budgets (optional)
+              </Text>
+            </Group>
+          </UnstyledButton>
+
+          <Collapse expanded={categoryExpanded}>
+            <Stack gap="xs" mt="sm">
+              {allCategories.map((category) => (
+                <NumberInput
+                  key={category}
+                  label={formatCategoryLabel(category)}
+                  placeholder="0"
+                  min={0}
+                  step={50}
+                  prefix={currencyPrefix}
+                  value={categoryBudgets[category] ?? ''}
+                  onChange={(val) =>
+                    handleCategoryChange(category, typeof val === 'number' ? val : '')
+                  }
+                  decimalScale={2}
+                  size="sm"
+                />
+              ))}
+            </Stack>
+          </Collapse>
+        </div>
 
         <Group justify="flex-end" mt="sm">
           <Button variant="default" onClick={onClose}>

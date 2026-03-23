@@ -246,6 +246,29 @@ export async function updateGroup(
   return data as Group;
 }
 
+export async function updateMemberEffectiveDates(
+  memberId: string,
+  dates: { effective_from?: string; effective_until?: string },
+) {
+  const updates: Record<string, string | null> = {};
+  if (dates.effective_from !== undefined) {
+    updates.effective_from = dates.effective_from || null;
+  }
+  if (dates.effective_until !== undefined) {
+    updates.effective_until = dates.effective_until || null;
+  }
+
+  const { data, error } = await supabase
+    .from('group_members')
+    .update(updates)
+    .eq('id', memberId)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
 export async function deleteGroup(groupId: string) {
   const {
     data: { user },

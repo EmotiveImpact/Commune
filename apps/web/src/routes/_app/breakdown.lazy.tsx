@@ -14,7 +14,8 @@ import {
   ThemeIcon,
   Tooltip,
 } from '@mantine/core';
-import { IconArrowRight, IconBellRinging, IconCheck, IconCash, IconDownload, IconExternalLink, IconReceipt, IconWallet, IconX } from '@tabler/icons-react';
+import { IconArrowRight, IconBellRinging, IconCheck, IconCash, IconChevronDown, IconChevronRight, IconDownload, IconExternalLink, IconHistory, IconReceipt, IconWallet, IconX } from '@tabler/icons-react';
+import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { useEffect, useMemo, useState } from 'react';
 import { setPageTitle } from '../../utils/seo';
@@ -30,7 +31,7 @@ import { useMarkPayment } from '../../hooks/use-expenses';
 import { useSubscription } from '../../hooks/use-subscriptions';
 import { usePlanLimits } from '../../hooks/use-plan-limits';
 import { useGroupSettlement } from '../../hooks/use-settlement';
-import { useCanNudge, useSendNudge } from '../../hooks/use-nudges';
+import { useCanNudge, useNudgeHistory, useSendNudge } from '../../hooks/use-nudges';
 import { BreakdownSkeleton } from '../../components/page-skeleton';
 import { EmptyState } from '../../components/empty-state';
 import { PageHeader } from '../../components/page-header';
@@ -39,7 +40,7 @@ export const Route = createLazyFileRoute('/_app/breakdown')({
   component: BreakdownPage,
 });
 
-const PAGE_SIZE = 30;
+import { PaginationBar, paginate, PAGE_SIZE } from '../../components/pagination';
 
 const categoryOptions = [
   { value: '', label: 'All categories' },
@@ -262,6 +263,79 @@ function SettlementSection({
   );
 }
 
+function formatRelativeTime(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60_000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days === 1) return '1 day ago';
+  return `${days} days ago`;
+}
+
+function NudgeHistorySection({
+  groupId,
+  members,
+  currency,
+}: {
+  groupId: string;
+  members: { user_id: string; user: { name: string } }[];
+  currency?: string;
+}) {
+  const [opened, { toggle }] = useDisclosure(false);
+  const { data: nudges, isLoading } = useNudgeHistory(groupId);
+
+  const memberNameMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const m of members) {
+      map.set(m.user_id, m.user?.name ?? 'Unknown');
+    }
+    return map;
+  }, [members]);
+
+  const resolveName = (userId: string) => memberNameMap.get(userId) ?? 'Unknown';
+
+  if (isLoading || !nudges || nudges.length === 0) return null;
+
+  return (
+    <Paper className="commune-soft-panel" p="md">
+      <Group
+        gap="xs"
+        onClick={toggle}
+        style={{ cursor: 'pointer', userSelect: 'none' }}
+      >
+        <ThemeIcon size="sm" variant="light" color="gray" radius="xl">
+          <IconHistory size={14} />
+        </ThemeIcon>
+        <Text size="sm" fw={600} c="dimmed">
+          Nudge History
+        </Text>
+        {opened ? (
+          <IconChevronDown size={14} style={{ color: 'var(--mantine-color-dimmed)' }} />
+        ) : (
+          <IconChevronRight size={14} style={{ color: 'var(--mantine-color-dimmed)' }} />
+        )}
+        <Badge size="xs" variant="light" color="gray">
+          {nudges.length}
+        </Badge>
+      </Group>
+
+      {opened && (
+        <Stack gap={4} mt="sm">
+          {nudges.map((n) => (
+            <Text key={n.id} size="xs" c="dimmed">
+              {resolveName(n.from_user_id)} nudged {resolveName(n.to_user_id)} for{' '}
+              {formatCurrency(n.amount, currency)} — {formatRelativeTime(n.sent_at)}
+            </Text>
+          ))}
+        </Stack>
+      )}
+    </Paper>
+  );
+}
+
 function BreakdownPage() {
   useEffect(() => {
     setPageTitle('My Breakdown');
@@ -278,6 +352,10 @@ function BreakdownPage() {
   const { canDownloadStatements } = usePlanLimits(user?.id ?? '');
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const isPaidPlan = canDownloadStatements;
+
+  const isAdmin = group?.members.some(
+    (m) => m.user_id === user?.id && m.role === 'admin',
+  ) ?? false;
 
   const { data: breakdown, isLoading } = useUserBreakdown(
     activeGroupId ?? '',
@@ -298,9 +376,8 @@ function BreakdownPage() {
     return breakdown.items.filter((item) => item.expense.category === categoryFilter);
   }, [breakdown, categoryFilter]);
 
-  const totalPages = Math.ceil(filteredItems.length / PAGE_SIZE);
   const paginatedItems = useMemo(
-    () => filteredItems.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE),
+    () => paginate(filteredItems, page),
     [filteredItems, page],
   );
 
@@ -448,6 +525,14 @@ function BreakdownPage() {
             nudgesEnabled={group?.nudges_enabled ?? true}
           />
 
+          {isAdmin && group?.members && (
+            <NudgeHistorySection
+              groupId={activeGroupId}
+              members={group.members}
+              currency={group?.currency}
+            />
+          )}
+
           <Group justify="space-between" align="center">
             <Text size="sm" c="dimmed">{filteredItems.length} expenses</Text>
             <Select
@@ -538,31 +623,11 @@ function BreakdownPage() {
               </Table>
             </div>
           )}
-          {totalPages > 1 && (
-            <Group justify="space-between" mt="sm">
-              <Text size="sm" c="dimmed">
-                Showing {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, filteredItems.length)} of {filteredItems.length}
-              </Text>
-              <Group gap="xs">
-                <Button
-                  variant="default"
-                  size="xs"
-                  disabled={page === 0}
-                  onClick={() => setPage((p) => p - 1)}
-                >
-                  Previous
-                </Button>
-                <Button
-                  variant="default"
-                  size="xs"
-                  disabled={page >= totalPages - 1}
-                  onClick={() => setPage((p) => p + 1)}
-                >
-                  Next
-                </Button>
-              </Group>
-            </Group>
-          )}
+          <PaginationBar
+            page={page}
+            totalItems={filteredItems.length}
+            onPageChange={setPage}
+          />
         </>
       )}
     </Stack>

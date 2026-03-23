@@ -404,7 +404,7 @@ function ImportPage() {
                 onDragLeave={handleDragLeave}
                 onClick={() => fileInputRef.current?.click()}
                 style={{
-                  border: `2px dashed ${dragOver ? '#2d6a4f' : 'rgba(23, 27, 36, 0.14)'}`,
+                  border: `2px dashed ${dragOver ? '#2d6a4f' : 'var(--commune-border-strong)'}`,
                   backgroundColor: dragOver
                     ? 'rgba(45, 106, 79, 0.06)'
                     : 'transparent',

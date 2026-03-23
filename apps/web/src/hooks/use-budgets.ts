@@ -25,8 +25,15 @@ export function useGroupBudget(groupId: string, month: string) {
 export function useSetGroupBudget(groupId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ month, amount }: { month: string; amount: number }) =>
-      setGroupBudget(groupId, month, amount),
+    mutationFn: ({
+      month,
+      amount,
+      categoryBudgets,
+    }: {
+      month: string;
+      amount: number;
+      categoryBudgets?: Record<string, number> | null;
+    }) => setGroupBudget(groupId, month, amount, categoryBudgets),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: budgetKeys.all });
     },

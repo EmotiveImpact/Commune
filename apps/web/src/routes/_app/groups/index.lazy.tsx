@@ -9,6 +9,7 @@ import {
   Stack,
   Text,
   Tooltip,
+  useComputedColorScheme,
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import {
@@ -34,39 +35,45 @@ export const Route = createLazyFileRoute('/_app/groups/')({
   component: GroupsPage,
 });
 
-const GROUP_VISUALS: Record<string, { gradient: string; iconColor: string; icon: typeof IconHome; label: string }> = {
+const GROUP_VISUALS: Record<string, { gradient: string; gradientDark: string; iconColor: string; icon: typeof IconHome; label: string }> = {
   home: {
     gradient: 'linear-gradient(135deg, #d7e6dd 0%, #e8f0eb 50%, #f0f7f2 100%)',
+    gradientDark: 'linear-gradient(135deg, #1a2f24 0%, #1f3529 50%, #243b2e 100%)',
     iconColor: 'rgba(45,106,79,0.45)',
     icon: IconHome,
     label: 'Household',
   },
   couple: {
     gradient: 'linear-gradient(135deg, #f2d0e9 0%, #f5e0f0 50%, #faf0f7 100%)',
+    gradientDark: 'linear-gradient(135deg, #2d1a28 0%, #332030 50%, #3a2538 100%)',
     iconColor: 'rgba(127,79,126,0.4)',
     icon: IconHeart,
     label: 'Couple',
   },
   workspace: {
     gradient: 'linear-gradient(135deg, #d0e8f2 0%, #e0f0f7 50%, #eef7fb 100%)',
+    gradientDark: 'linear-gradient(135deg, #152630 0%, #1a2d38 50%, #1f3440 100%)',
     iconColor: 'rgba(27,73,101,0.4)',
     icon: IconBriefcase,
     label: 'Workspace',
   },
   project: {
     gradient: 'linear-gradient(135deg, #f1e5bf 0%, #f5edda 50%, #faf6ec 100%)',
+    gradientDark: 'linear-gradient(135deg, #2a2414 0%, #30291a 50%, #362e1f 100%)',
     iconColor: 'rgba(188,108,37,0.4)',
     icon: IconUsersGroup,
     label: 'Friends',
   },
   trip: {
     gradient: 'linear-gradient(135deg, #fde2d4 0%, #fdeee6 50%, #fef6f2 100%)',
+    gradientDark: 'linear-gradient(135deg, #2e1f17 0%, #34241c 50%, #3a2921 100%)',
     iconColor: 'rgba(231,111,81,0.45)',
     icon: IconPlane,
     label: 'Trip',
   },
   other: {
     gradient: 'linear-gradient(135deg, #e8e1ef 0%, #f0ecf3 50%, #f7f5f9 100%)',
+    gradientDark: 'linear-gradient(135deg, #22202a 0%, #282630 50%, #2e2c36 100%)',
     iconColor: 'rgba(74,78,105,0.4)',
     icon: IconMapPin,
     label: 'Other',
@@ -111,6 +118,7 @@ function GroupsPage() {
 }
 
 function GroupCard({ groupId, name, type }: { groupId: string; name: string; type: string }) {
+  const colorScheme = useComputedColorScheme('light');
   const { data: group } = useGroup(groupId);
   const { user } = useAuthStore();
   const { activeGroupId, setActiveGroupId } = useGroupStore();
@@ -123,6 +131,7 @@ function GroupCard({ groupId, name, type }: { groupId: string; name: string; typ
   const fallback = GROUP_VISUALS['other']!;
   const visual = GROUP_VISUALS[type] ?? fallback;
   const Icon = visual.icon;
+  const cardGradient = colorScheme === 'dark' ? visual.gradientDark : visual.gradient;
 
   return (
     <Paper
@@ -140,7 +149,7 @@ function GroupCard({ groupId, name, type }: { groupId: string; name: string; typ
       {/* Thumbnail header */}
       <Box
         style={{
-          background: visual.gradient,
+          background: cardGradient,
           height: 120,
           position: 'relative',
           display: 'flex',

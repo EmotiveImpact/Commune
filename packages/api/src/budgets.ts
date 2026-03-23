@@ -13,7 +13,12 @@ export async function getGroupBudget(groupId: string, month: string) {
   return data as GroupBudget | null;
 }
 
-export async function setGroupBudget(groupId: string, month: string, amount: number) {
+export async function setGroupBudget(
+  groupId: string,
+  month: string,
+  amount: number,
+  categoryBudgets?: Record<string, number> | null,
+) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -28,6 +33,7 @@ export async function setGroupBudget(groupId: string, month: string, amount: num
         group_id: groupId,
         month: `${month}-01`,
         budget_amount: amount,
+        category_budgets: categoryBudgets ?? null,
         created_by: user.id,
       },
       { onConflict: 'group_id,month' },

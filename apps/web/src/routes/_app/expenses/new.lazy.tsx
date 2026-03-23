@@ -19,10 +19,9 @@ import {
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
-import { useMemo, useState, useEffect, useCallback, useRef } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import { IconFileAlert } from '@tabler/icons-react';
-import { ExpenseCategory } from '@commune/types';
-import { calculateEqualSplit, calculatePercentageSplit } from '@commune/core';
+import { calculateEqualSplit, calculatePercentageSplit, getCategoriesByGroupType } from '@commune/core';
 import { formatCurrency } from '@commune/utils';
 import { uploadReceipt } from '@commune/api';
 import { useGroupStore } from '../../../stores/group';
@@ -86,10 +85,12 @@ export const Route = createLazyFileRoute('/_app/expenses/new')({
   component: AddExpensePage,
 });
 
-const categoryOptions = Object.entries(ExpenseCategory).map(([key, value]) => ({
-  value,
-  label: key.charAt(0) + key.slice(1).toLowerCase().replace(/_/g, ' '),
-}));
+function formatCategoryLabel(cat: string) {
+  return cat
+    .split('_')
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .join(' ');
+}
 
 function AddExpensePage() {
   const { activeGroupId } = useGroupStore();
@@ -103,6 +104,15 @@ function AddExpensePage() {
   const [draftBanner, setDraftBanner] = useState<ExpenseDraft | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { data: templates } = useTemplates(activeGroupId ?? '');
+
+  const categoryOptions = useMemo(
+    () =>
+      getCategoriesByGroupType(group?.type).map((cat) => ({
+        value: cat,
+        label: formatCategoryLabel(cat),
+      })),
+    [group?.type],
+  );
 
   const form = useForm({
     mode: 'uncontrolled',
@@ -118,6 +128,19 @@ function AddExpensePage() {
       percentages: {} as Record<string, number>,
       custom_amounts: {} as Record<string, number>,
     },
+    onValuesChange(values) {
+      if (!activeGroupId) return;
+      // Only save if user has entered something meaningful
+      if (!values.title && !values.amount && values.participant_ids.length === 0) return;
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      debounceRef.current = setTimeout(() => {
+        saveDraft(activeGroupId, {
+          ...values,
+          splitMethod,
+          isRecurring,
+        });
+      }, 300);
+    },
   });
 
   // ─── Check for existing draft on mount ──────────────────────────────────
@@ -129,36 +152,17 @@ function AddExpensePage() {
     }
   }, [activeGroupId]);
 
-  // ─── Debounced auto-save on form changes ────────────────────────────────
-  const persistDraft = useCallback(() => {
+  // ─── Save on splitMethod / isRecurring change ───────────────────────────
+  useEffect(() => {
     if (!activeGroupId) return;
     const values = form.getValues();
-    // Only save if user has entered something meaningful
     if (!values.title && !values.amount && values.participant_ids.length === 0) return;
     saveDraft(activeGroupId, {
       ...values,
       splitMethod,
       isRecurring,
     });
-  }, [activeGroupId, form, splitMethod, isRecurring]);
-
-  // Watch form values via an interval-based observer since Mantine uncontrolled
-  // mode does not fire onChange callbacks we can hook into globally.
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-      debounceRef.current = setTimeout(persistDraft, 500);
-    }, 2000);
-    return () => {
-      clearInterval(interval);
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-    };
-  }, [persistDraft]);
-
-  // Also save on splitMethod / isRecurring change
-  useEffect(() => {
-    persistDraft();
-  }, [splitMethod, isRecurring, persistDraft]);
+  }, [splitMethod, isRecurring]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleRestoreDraft() {
     if (!draftBanner) return;
