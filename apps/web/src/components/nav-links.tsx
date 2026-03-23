@@ -1,6 +1,8 @@
 import {
   IconArrowsExchange,
   IconChartBar,
+  IconChartPie,
+  IconCoin,
   IconDashboard,
   IconReceipt,
   IconFileText,
@@ -19,6 +21,7 @@ export interface NavLink {
 
 export interface NavGroup {
   label: string;
+  icon: React.ReactNode;
   links: NavLink[];
 }
 
@@ -27,10 +30,11 @@ export const pinnedLinks: NavLink[] = [
   { label: 'Dashboard', to: '/', icon: <IconDashboard size={20} /> },
 ];
 
-/** Collapsible nav groups */
+/** Collapsible nav groups — each has an icon for the category header */
 export const navGroups: NavGroup[] = [
   {
     label: 'Money',
+    icon: <IconCoin size={14} />,
     links: [
       { label: 'Expenses', to: '/expenses', icon: <IconReceipt size={20} /> },
       { label: 'Recurring', to: '/recurring', icon: <IconRepeat size={20} /> },
@@ -40,6 +44,7 @@ export const navGroups: NavGroup[] = [
   },
   {
     label: 'Insights',
+    icon: <IconChartPie size={14} />,
     links: [
       { label: 'Overview', to: '/overview', icon: <IconArrowsExchange size={20} /> },
       { label: 'My Breakdown', to: '/breakdown', icon: <IconFileText size={20} /> },
@@ -48,6 +53,7 @@ export const navGroups: NavGroup[] = [
   },
   {
     label: 'Team',
+    icon: <IconUsers size={14} />,
     links: [
       { label: 'Members', to: '/members', icon: <IconUsers size={20} /> },
       { label: 'Activity', to: '/activity', icon: <IconHistory size={20} /> },

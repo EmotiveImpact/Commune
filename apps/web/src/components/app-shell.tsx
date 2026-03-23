@@ -33,7 +33,7 @@ import { useAuthStore } from '../stores/auth';
 import { useGroupStore } from '../stores/group';
 import { useSearchStore } from '../stores/search';
 import { signOut } from '@commune/api';
-import { pinnedLinks, navGroups, navLinks } from './nav-links';
+import { pinnedLinks, navGroups, navLinks, type NavGroup } from './nav-links';
 import { NotificationDropdown } from './notification-dropdown';
 import { GroupSelector } from './group-selector';
 import { TrialExpiryModal } from './trial-expiry-modal';
@@ -53,7 +53,7 @@ interface AppShellProps {
 }
 
 export function AppShell({ children }: AppShellProps) {
-  const [opened, { toggle }] = useDisclosure();
+  const [opened, { toggle, close }] = useDisclosure();
   const [collapsed, setCollapsed] = useState(() => {
     try {
       return localStorage.getItem(SIDEBAR_STORAGE_KEY) === 'true';
@@ -246,36 +246,46 @@ export function AppShell({ children }: AppShellProps) {
                     variant="subtle"
                     className={`commune-sidebar-link ${collapsed ? 'commune-sidebar-link--collapsed' : ''}`}
                     activeOptions={{ exact: link.to === '/' }}
+                    onClick={close}
                   />
                 </Tooltip>
               ))}
 
               {/* Collapsible groups */}
               {collapsed
-                ? /* When sidebar is collapsed, show all links flat (icon-only) */
-                  navGroups.flatMap((group) =>
-                    group.links.map((link) => (
-                      <Tooltip
-                        key={link.to}
-                        label={link.label}
-                        position="right"
-                        withArrow
-                      >
-                        <NavLink
-                          label={link.label}
-                          component={Link}
-                          to={link.to}
-                          leftSection={link.icon}
-                          variant="subtle"
-                          className="commune-sidebar-link commune-sidebar-link--collapsed"
-                          activeOptions={{ exact: false }}
-                        />
+                ? /* When sidebar is collapsed, show group icons as dividers + flat link icons */
+                  navGroups.map((group, gi) => (
+                    <div key={group.label}>
+                      {/* Group divider icon — centered, subtle */}
+                      <Tooltip label={group.label} position="right" withArrow>
+                        <div className="commune-nav-group-divider">
+                          {group.icon}
+                        </div>
                       </Tooltip>
-                    )),
-                  )
+                      {group.links.map((link) => (
+                        <Tooltip
+                          key={link.to}
+                          label={link.label}
+                          position="right"
+                          withArrow
+                        >
+                          <NavLink
+                            label={link.label}
+                            component={Link}
+                            to={link.to}
+                            leftSection={link.icon}
+                            variant="subtle"
+                            className="commune-sidebar-link commune-sidebar-link--collapsed"
+                            activeOptions={{ exact: false }}
+                            onClick={close}
+                          />
+                        </Tooltip>
+                      ))}
+                    </div>
+                  ))
                 : /* When sidebar is expanded, show collapsible groups */
                   navGroups.map((group) => (
-                    <NavGroupSection key={group.label} group={group} />
+                    <NavGroupSection key={group.label} group={group} onNavigate={close} />
                   ))}
             </Stack>
 
@@ -468,8 +478,8 @@ function setGroupState(label: string, open: boolean) {
   } catch { /* ignore */ }
 }
 
-/** Collapsible nav group with header + animated children */
-function NavGroupSection({ group }: { group: { label: string; links: Array<{ label: string; to: string; icon: React.ReactNode }> } }) {
+/** Collapsible nav group with icon + label header and animated children */
+function NavGroupSection({ group, onNavigate }: { group: NavGroup; onNavigate?: () => void }) {
   const [open, setOpen] = useState(() => {
     const stored = getGroupState();
     return stored[group.label] !== false; // default open
@@ -484,35 +494,30 @@ function NavGroupSection({ group }: { group: { label: string; links: Array<{ lab
   }, [group.label]);
 
   return (
-    <div style={{ marginTop: 8 }}>
+    <div style={{ marginTop: 10 }}>
       <UnstyledButton
         onClick={toggle}
         className="commune-nav-group-header"
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 4,
-          padding: '4px 10px',
-          width: '100%',
-          borderRadius: 6,
-        }}
       >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1 }}>
+          <span className="commune-nav-group-icon">{group.icon}</span>
+          <Text
+            size="xs"
+            fw={700}
+            tt="uppercase"
+            className="commune-nav-group-label"
+          >
+            {group.label}
+          </Text>
+        </div>
         <motion.div
           initial={false}
           animate={{ rotate: open ? 0 : -90 }}
           transition={{ duration: 0.15 }}
           style={{ display: 'flex', alignItems: 'center' }}
         >
-          <IconChevronDown size={12} style={{ color: 'rgba(255,255,255,0.35)' }} />
+          <IconChevronDown size={10} className="commune-nav-group-chevron" />
         </motion.div>
-        <Text
-          size="xs"
-          fw={700}
-          tt="uppercase"
-          style={{ color: 'rgba(255,255,255,0.35)', letterSpacing: '0.1em', fontSize: 10 }}
-        >
-          {group.label}
-        </Text>
       </UnstyledButton>
       <AnimatePresence initial={false}>
         {open && (
@@ -535,6 +540,7 @@ function NavGroupSection({ group }: { group: { label: string; links: Array<{ lab
                   variant="subtle"
                   className="commune-sidebar-link"
                   activeOptions={{ exact: false }}
+                  onClick={onNavigate}
                 />
               ))}
             </Stack>

@@ -399,14 +399,66 @@ div:hover > .commune-avatar-overlay {
   display: none;
 }
 
-/* Nav group header */
+/* Nav group header — expanded sidebar */
 .commune-nav-group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  padding: 5px 10px;
+  width: 100%;
+  border-radius: 6px;
   cursor: pointer;
   transition: background-color var(--commune-motion-fast);
 }
 
 .commune-nav-group-header:hover {
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.commune-nav-group-header:hover .commune-nav-group-label,
+.commune-nav-group-header:hover .commune-nav-group-icon,
+.commune-nav-group-header:hover .commune-nav-group-chevron {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.commune-nav-group-icon {
+  display: flex;
+  align-items: center;
+  color: rgba(255, 255, 255, 0.3);
+  transition: color var(--commune-motion-fast);
+}
+
+.commune-nav-group-label {
+  color: rgba(255, 255, 255, 0.3);
+  letter-spacing: 0.1em;
+  font-size: 10px;
+  transition: color var(--commune-motion-fast);
+}
+
+.commune-nav-group-chevron {
+  color: rgba(255, 255, 255, 0.2);
+  transition: color var(--commune-motion-fast);
+}
+
+/* Nav group divider — collapsed sidebar (icon-only mode) */
+.commune-nav-group-divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 0 4px;
+  margin: 4px 0 2px;
+  color: rgba(255, 255, 255, 0.2);
+  position: relative;
+}
+
+.commune-nav-group-divider::before,
+.commune-nav-group-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.06);
+  margin: 0 6px;
 }
 
 .commune-main-content {

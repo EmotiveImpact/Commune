@@ -56,27 +56,38 @@ export function useAuthListener() {
 
   useEffect(() => {
     let mounted = true;
+    let initialised = false;
+    let lastUserId: string | null = null;
 
     async function syncSession(session: Session | null) {
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
 
       if (!session?.user) {
-        setActiveGroupId(null);
-        setUser(null);
-        setLoading(false);
+        if (lastUserId !== null) {
+          lastUserId = null;
+          setActiveGroupId(null);
+          setUser(null);
+        }
+        if (!initialised) {
+          initialised = true;
+          setLoading(false);
+        }
         return;
       }
+
+      // Skip if the same user is already resolved — avoids re-render on token refresh
+      if (session.user.id === lastUserId && initialised) return;
 
       const user = await resolveUser(session.user);
+      if (!mounted) return;
 
-      if (!mounted) {
-        return;
-      }
-
+      lastUserId = session.user.id;
       setUser(user);
-      setLoading(false);
+
+      if (!initialised) {
+        initialised = true;
+        setLoading(false);
+      }
     }
 
     void supabase.auth.getSession().then(({ data: { session } }) => syncSession(session));
