@@ -105,18 +105,7 @@ function ProfilePage() {
       avatar_url: user.avatar_url,
       phone: user.phone ?? null,
       country: user.country ?? null,
-      payment_info: user.payment_info ?? null,
-      payment_provider: user.payment_provider ?? null,
-      payment_link: user.payment_link ?? null,
-      default_currency: user.default_currency ?? 'GBP',
-      timezone: user.timezone ?? 'Europe/London',
       created_at: user.created_at,
-      notification_preferences: {
-        email_on_new_expense: true,
-        email_on_payment_received: true,
-        email_on_payment_reminder: true,
-        email_on_overdue: true,
-      },
     } : null),
     [profile, user],
   );

@@ -1,7 +1,7 @@
 -- Multiple payment methods per user
 CREATE TABLE user_payment_methods (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   provider text NOT NULL CHECK (provider IN ('revolut', 'monzo', 'paypal', 'bank_transfer', 'other')),
   label text, -- optional friendly name like "Personal Revolut"
   payment_link text, -- for revolut/monzo/paypal: username or full URL
@@ -42,9 +42,9 @@ CREATE POLICY "Users can delete own payment methods"
 CREATE TRIGGER set_updated_at_user_payment_methods
   BEFORE UPDATE ON user_payment_methods
   FOR EACH ROW
-  EXECUTE FUNCTION fn_set_updated_at();
+  EXECUTE FUNCTION fn_update_timestamp();
 
--- Migrate existing payment data from profiles into the new table
+-- Migrate existing payment data from users table into the new table
 INSERT INTO user_payment_methods (user_id, provider, payment_link, payment_info, is_default)
 SELECT
   id,
@@ -52,5 +52,5 @@ SELECT
   payment_link,
   payment_info,
   true
-FROM profiles
+FROM users
 WHERE payment_provider IS NOT NULL;

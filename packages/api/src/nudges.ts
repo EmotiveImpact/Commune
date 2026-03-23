@@ -37,7 +37,7 @@ export async function canNudge(
 
   if (error) throw error;
 
-  if (data && data.length > 0) {
+  if (data && data.length > 0 && data[0]) {
     return { allowed: false, lastSentAt: data[0].sent_at as string };
   }
 

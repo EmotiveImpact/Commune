@@ -135,9 +135,9 @@ export const updateProfileSchema = z.object({
   avatar_url: z.union([z.string().url(), z.literal(''), z.null()]).optional(),
   phone: z.union([z.string().max(20), z.literal(''), z.null()]).optional(),
   country: z.union([z.string().max(100), z.literal(''), z.null()]).optional(),
-  payment_info: z.union([z.string().max(200), z.literal(''), z.null()]).optional(),
-  payment_provider: z.union([z.enum(['revolut', 'monzo', 'paypal', 'bank_transfer', 'other']), z.literal(''), z.null()]).optional(),
-  payment_link: z.union([z.string().max(200), z.literal(''), z.null()]).optional(),
+});
+
+export const updateSettingsSchema = z.object({
   default_currency: z.string().length(3).optional(),
   timezone: z.string().min(1).max(100).optional(),
   notification_preferences: notificationPreferencesSchema.optional(),
@@ -145,6 +145,7 @@ export const updateProfileSchema = z.object({
 
 export type NotificationPreferencesInput = z.infer<typeof notificationPreferencesSchema>;
 export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
+export type UpdateSettingsInput = z.infer<typeof updateSettingsSchema>;
 
 // ─── Template Schemas ───────────────────────────────────────────────────────
 

@@ -32,7 +32,7 @@ import {
 } from '@tabler/icons-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { setPageTitle } from '../../utils/seo';
-import { updateProfileSchema } from '@commune/core';
+import { updateSettingsSchema } from '@commune/core';
 import { formatDate } from '@commune/utils';
 import { supabase, deleteAccount } from '@commune/api';
 import { useAuthStore } from '../../stores/auth';
@@ -145,7 +145,7 @@ function SettingsPage() {
       timezone: 'Europe/London',
       notification_preferences: DEFAULT_NOTIFICATION_PREFS,
     },
-    validate: schemaResolver(updateProfileSchema),
+    validate: schemaResolver(updateSettingsSchema),
   });
 
   useEffect(() => {
