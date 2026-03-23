@@ -27,6 +27,9 @@ import {
   IconMap,
   IconPuzzle,
   IconTarget,
+  IconTrendingUp,
+  IconTrendingDown,
+  IconBulb,
   IconUsers,
 } from '@tabler/icons-react';
 import { useCallback, useEffect, useState } from 'react';
@@ -35,6 +38,7 @@ import { setPageTitle } from '../../utils/seo';
 import { useAuthStore } from '../../stores/auth';
 import { useUserGroups } from '../../hooks/use-groups';
 import { useCrossGroupSettlements } from '../../hooks/use-cross-group';
+import { useSmartNudges } from '../../hooks/use-smart-nudges';
 import { useGroupStore } from '../../stores/group';
 import { PageHeader } from '../../components/page-header';
 import { EmptyState } from '../../components/empty-state';
@@ -85,6 +89,7 @@ function CrossGroupOverviewPage() {
 
   const { user } = useAuthStore();
   const { data: groups } = useUserGroups();
+  const { data: smartNudges } = useSmartNudges(user?.id ?? '');
   const { setActiveGroupId } = useGroupStore();
   const { data: result, isLoading } = useCrossGroupSettlements(user?.id ?? '');
 
@@ -208,6 +213,41 @@ function CrossGroupOverviewPage() {
         title="Command Centre"
         subtitle="Your priorities across all groups"
       />
+
+      {/* Smart Nudges */}
+      {smartNudges && smartNudges.length > 0 && (
+        <Paper className="commune-soft-panel" p="md">
+          <Group gap="xs" mb="sm">
+            <IconBulb size={18} color="var(--mantine-color-yellow-6)" />
+            <Text fw={700} size="sm">Insights</Text>
+          </Group>
+          <Stack gap="xs">
+            {smartNudges.map((nudge: any) => {
+              const NudgeIcon = nudge.type === 'spending_increase' ? IconTrendingUp
+                : nudge.type === 'spending_decrease' ? IconTrendingDown
+                : nudge.type === 'budget_warning' ? IconAlertTriangle
+                : nudge.type === 'upcoming_due' ? IconCash
+                : nudge.type === 'unpaid_expense' ? IconAlertTriangle
+                : IconUsers;
+              const nudgeColor = nudge.color ?? 'gray';
+              return (
+                <Group key={nudge.id} gap="sm" wrap="nowrap">
+                  <ThemeIcon size={28} variant="light" color={nudgeColor} radius="xl">
+                    <NudgeIcon size={14} />
+                  </ThemeIcon>
+                  <Stack gap={0} style={{ flex: 1 }}>
+                    <Text size="sm" fw={600}>{nudge.title}</Text>
+                    <Text size="xs" c="dimmed">{nudge.description}</Text>
+                  </Stack>
+                  {nudge.groupName && (
+                    <Badge size="xs" variant="light" color="gray">{nudge.groupName}</Badge>
+                  )}
+                </Group>
+              );
+            })}
+          </Stack>
+        </Paper>
+      )}
 
       {/* Next 3 Actions */}
       {youOwe.length > 0 && (

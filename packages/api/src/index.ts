@@ -30,3 +30,4 @@ export * from './payment-methods';
 export * from './group-hub';
 export * from './approvals';
 export * from './chores';
+export * from './smart-nudges';

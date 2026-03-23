@@ -101,6 +101,9 @@ export type {
 
 export { getCategoriesByGroupType, getOnboardingTips } from './group-type';
 
+export { generateSmartNudges } from './smart-nudges';
+export type { SmartNudge, SmartNudgeInput } from './smart-nudges';
+
 export { calculateNextDue, getNextInRotation } from './chores';
 export type { ChoreFrequency } from './chores';
 
