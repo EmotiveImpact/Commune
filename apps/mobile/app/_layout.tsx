@@ -1,5 +1,5 @@
 import '../global.css';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Animated, Text, View } from 'react-native';
 import {
   Stack,
@@ -18,12 +18,13 @@ import {
 import type { User } from '@commune/types';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { HeroUINativeProvider } from 'heroui-native';
 import Constants from 'expo-constants';
 import { useAuthStore } from '@/stores/auth';
+import { useThemeStore } from '@/stores/theme';
 import { getErrorMessage } from '@/lib/errors';
 
-/* Minimal shimmer skeleton for the root bootstrap screen. Kept inline to avoid
-   importing the full ui.tsx module before the app is ready. */
 function BootstrapSkeleton() {
   const opacity = React.useRef(new Animated.Value(0.4)).current;
 
@@ -39,12 +40,20 @@ function BootstrapSkeleton() {
   }, [opacity]);
 
   return (
-    <Animated.View style={{ flex: 1, opacity, paddingTop: 60 }}>
-      <View style={{ width: '100%', height: 200, borderRadius: 32, backgroundColor: 'rgba(23,27,36,0.08)' }} />
-      <View style={{ height: 16 }} />
-      <View style={{ width: '100%', height: 130, borderRadius: 26, backgroundColor: 'rgba(23,27,36,0.08)' }} />
-      <View style={{ height: 12 }} />
-      <View style={{ width: '100%', height: 180, borderRadius: 28, backgroundColor: 'rgba(23,27,36,0.08)' }} />
+    <Animated.View style={{ flex: 1, opacity, padding: 20, paddingTop: 60 }}>
+      <View style={{ width: '100%', height: 180, borderRadius: 16, backgroundColor: 'rgba(23,27,36,0.08)' }} />
+      <View style={{ height: 20 }} />
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 8 }}>
+        {[1, 2, 3, 4].map((i) => (
+          <View key={i} style={{ alignItems: 'center' }}>
+            <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(23,27,36,0.08)' }} />
+            <View style={{ height: 8 }} />
+            <View style={{ width: 32, height: 10, borderRadius: 5, backgroundColor: 'rgba(23,27,36,0.08)' }} />
+          </View>
+        ))}
+      </View>
+      <View style={{ height: 20 }} />
+      <View style={{ width: '100%', height: 300, borderRadius: 16, backgroundColor: 'rgba(23,27,36,0.08)' }} />
     </Animated.View>
   );
 }
@@ -68,9 +77,7 @@ const queryClient = new QueryClient({
 });
 
 function toMobileUser(user: SupabaseAuthUser | null): User | null {
-  if (!user) {
-    return null;
-  }
+  if (!user) return null;
 
   const meta = user.user_metadata ?? {};
   const fullName =
@@ -100,6 +107,8 @@ export default function RootLayout() {
   const isLoading = useAuthStore((s) => s.isLoading);
   const setLoading = useAuthStore((s) => s.setLoading);
   const setUser = useAuthStore((s) => s.setUser);
+  const themeMode = useThemeStore((s) => s.mode);
+  const hydrateTheme = useThemeStore((s) => s.hydrate);
   const segments = useSegments();
   const router = useRouter();
   const navigationState = useRootNavigationState();
@@ -115,6 +124,10 @@ export default function RootLayout() {
   const configError = !supabaseUrl || !supabaseAnonKey
     ? 'Missing mobile Supabase configuration. Add EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY in apps/mobile/.env and restart Expo.'
     : '';
+
+  useEffect(() => {
+    void hydrateTheme();
+  }, [hydrateTheme]);
 
   useEffect(() => {
     if (configError) {
@@ -145,9 +158,7 @@ export default function RootLayout() {
         setBootstrapError(getErrorMessage(error, 'Could not initialize auth.'));
         setLoading(false);
       } finally {
-        if (isMounted) {
-          setIsReady(true);
-        }
+        if (isMounted) setIsReady(true);
       }
     }
 
@@ -177,100 +188,80 @@ export default function RootLayout() {
     }
   }, [configError, isAuthenticated, isReady, navigationState?.key, router, segments]);
 
+  const bgColor = themeMode === 'dark' ? '#0A0A0A' : '#FAFAFA';
+  const textColor = themeMode === 'dark' ? '#FAFAFA' : '#171b24';
+
   if (configError || bootstrapError) {
     return (
-      <SafeAreaProvider>
-        <QueryClientProvider client={queryClient}>
-          <StatusBar style="auto" />
-          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f5f1ea', paddingHorizontal: 24 }}>
-            <Text className="mb-2 text-center text-xl font-semibold text-gray-900">
-              Mobile app setup needed
-            </Text>
-            <Text className="text-center text-sm text-gray-500">
-              {configError || bootstrapError}
-            </Text>
-          </View>
-        </QueryClientProvider>
-      </SafeAreaProvider>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <HeroUINativeProvider>
+          <SafeAreaProvider>
+            <QueryClientProvider client={queryClient}>
+              <StatusBar style={themeMode === 'dark' ? 'light' : 'dark'} />
+              <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: bgColor, paddingHorizontal: 24 }}>
+                <Text style={{ marginBottom: 8, textAlign: 'center', fontSize: 20, fontWeight: '600', color: textColor }}>
+                  Mobile app setup needed
+                </Text>
+                <Text style={{ textAlign: 'center', fontSize: 14, color: '#667085' }}>
+                  {configError || bootstrapError}
+                </Text>
+              </View>
+            </QueryClientProvider>
+          </SafeAreaProvider>
+        </HeroUINativeProvider>
+      </GestureHandlerRootView>
     );
   }
 
   if (!isReady || isLoading) {
     return (
-      <SafeAreaProvider>
-        <QueryClientProvider client={queryClient}>
-          <StatusBar style="auto" />
-          <View style={{ flex: 1, backgroundColor: '#f5f1ea', padding: 16 }}>
-            <BootstrapSkeleton />
-          </View>
-        </QueryClientProvider>
-      </SafeAreaProvider>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <HeroUINativeProvider>
+          <SafeAreaProvider>
+            <QueryClientProvider client={queryClient}>
+              <StatusBar style={themeMode === 'dark' ? 'light' : 'dark'} />
+              <View style={{ flex: 1, backgroundColor: bgColor }}>
+                <BootstrapSkeleton />
+              </View>
+            </QueryClientProvider>
+          </SafeAreaProvider>
+        </HeroUINativeProvider>
+      </GestureHandlerRootView>
     );
   }
 
   return (
-    <SafeAreaProvider>
-      <QueryClientProvider client={queryClient}>
-        <StatusBar style="auto" />
-        <Stack
-          screenOptions={{
-            contentStyle: { backgroundColor: '#f5f1ea' },
-            headerShadowVisible: false,
-            headerStyle: { backgroundColor: '#f5f1ea' },
-            headerTintColor: '#171b24',
-            headerTitleStyle: {
-              fontWeight: '700',
-            },
-          }}
-        >
-          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen
-            name="onboarding"
-            options={{ title: 'Get Started', headerBackTitle: 'Back' }}
-          />
-          <Stack.Screen
-            name="members"
-            options={{ title: 'Members', headerBackTitle: 'Back' }}
-          />
-          <Stack.Screen
-            name="group-edit"
-            options={{ title: 'Edit Group', headerBackTitle: 'Back' }}
-          />
-          <Stack.Screen
-            name="expenses/new"
-            options={{ title: 'New Expense', headerBackTitle: 'Back' }}
-          />
-          <Stack.Screen
-            name="expenses/[expenseId]"
-            options={{ title: 'Expense Detail', headerBackTitle: 'Back' }}
-          />
-          <Stack.Screen
-            name="expenses/[expenseId]/edit"
-            options={{ title: 'Edit Expense', headerBackTitle: 'Back' }}
-          />
-          <Stack.Screen
-            name="activity"
-            options={{ title: 'Activity', headerBackTitle: 'Back' }}
-          />
-          <Stack.Screen
-            name="notifications"
-            options={{ title: 'Notifications', headerBackTitle: 'Back' }}
-          />
-          <Stack.Screen
-            name="pricing"
-            options={{ title: 'Pricing', headerBackTitle: 'Back' }}
-          />
-          <Stack.Screen
-            name="recurring"
-            options={{ title: 'Recurring', headerBackTitle: 'Back' }}
-          />
-          <Stack.Screen
-            name="analytics"
-            options={{ title: 'Analytics', headerBackTitle: 'Back' }}
-          />
-        </Stack>
-      </QueryClientProvider>
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <HeroUINativeProvider>
+        <SafeAreaProvider>
+          <QueryClientProvider client={queryClient}>
+            <StatusBar style={themeMode === 'dark' ? 'light' : 'dark'} />
+            <Stack
+              screenOptions={{
+                contentStyle: { backgroundColor: bgColor },
+                headerShadowVisible: false,
+                headerStyle: { backgroundColor: bgColor },
+                headerTintColor: textColor,
+                headerTitleStyle: { fontWeight: '700' },
+              }}
+            >
+              <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              <Stack.Screen name="onboarding" options={{ title: 'Get Started', headerBackTitle: 'Back' }} />
+              <Stack.Screen name="members" options={{ title: 'Members', headerBackTitle: 'Back' }} />
+              <Stack.Screen name="group-edit" options={{ title: 'Edit Group', headerBackTitle: 'Back' }} />
+              <Stack.Screen name="expenses/new" options={{ title: 'New Expense', headerBackTitle: 'Back' }} />
+              <Stack.Screen name="expenses/[expenseId]" options={{ title: 'Expense Detail', headerBackTitle: 'Back' }} />
+              <Stack.Screen name="expenses/[expenseId]/edit" options={{ title: 'Edit Expense', headerBackTitle: 'Back' }} />
+              <Stack.Screen name="activity" options={{ title: 'Activity', headerBackTitle: 'Back' }} />
+              <Stack.Screen name="notifications" options={{ title: 'Notifications', headerBackTitle: 'Back' }} />
+              <Stack.Screen name="pricing" options={{ title: 'Pricing', headerBackTitle: 'Back' }} />
+              <Stack.Screen name="recurring" options={{ title: 'Recurring', headerBackTitle: 'Back' }} />
+              <Stack.Screen name="analytics" options={{ title: 'Analytics', headerBackTitle: 'Back' }} />
+            </Stack>
+          </QueryClientProvider>
+        </SafeAreaProvider>
+      </HeroUINativeProvider>
+    </GestureHandlerRootView>
   );
 }

@@ -1,20 +1,20 @@
-import { useCallback, useMemo, useState } from 'react';
-import { SectionList, ScrollView, Text, View } from 'react-native';
+import { useCallback, useMemo, useState, useEffect, useRef } from 'react';
+import {
+  Animated,
+  Pressable,
+  SectionList,
+  ScrollView,
+  Text,
+  View,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { ActivityEntry } from '@commune/api';
 import { useGroupStore } from '@/stores/group';
+import { useThemeStore } from '@/stores/theme';
 import { useGroup } from '@/hooks/use-groups';
 import { useActivityLog } from '@/hooks/use-activity';
 import { getErrorMessage } from '@/lib/errors';
-import {
-  AppButton,
-  ContentSkeleton,
-  EmptyState,
-  InitialAvatar,
-  Pill,
-  Screen,
-  Surface,
-} from '@/components/ui';
+import { hapticLight } from '@/lib/haptics';
 
 const PAGE_SIZE = 50;
 
@@ -121,8 +121,65 @@ const filterChips: { key: TypeFilter; label: string }[] = [
   { key: 'member', label: 'Members' },
 ];
 
+function ShimmerBlock({ width, height, style }: { width: number | string; height: number; style?: object }) {
+  const anim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(anim, { toValue: 1, duration: 800, useNativeDriver: true }),
+        Animated.timing(anim, { toValue: 0, duration: 800, useNativeDriver: true }),
+      ]),
+    ).start();
+  }, [anim]);
+  const opacity = anim.interpolate({ inputRange: [0, 1], outputRange: [0.3, 0.7] });
+  return (
+    <Animated.View
+      style={[{ width: width as number, height, borderRadius: 8, backgroundColor: '#E5E7EB', opacity }, style]}
+    />
+  );
+}
+
+function ContentSkeleton({ isDark }: { isDark: boolean }) {
+  const bg = isDark ? '#0A0A0A' : '#FAFAFA';
+  return (
+    <View style={{ flex: 1, backgroundColor: bg, padding: 20 }}>
+      <ShimmerBlock width="40%" height={14} style={{ marginBottom: 8 }} />
+      <ShimmerBlock width="60%" height={28} style={{ marginBottom: 8 }} />
+      <ShimmerBlock width="80%" height={14} style={{ marginBottom: 24 }} />
+      {[1, 2, 3, 4, 5].map((i) => (
+        <View key={i} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20 }}>
+          <ShimmerBlock width={40} height={40} style={{ borderRadius: 20, marginRight: 12 }} />
+          <View style={{ flex: 1 }}>
+            <ShimmerBlock width="70%" height={14} style={{ marginBottom: 6 }} />
+            <ShimmerBlock width="50%" height={12} />
+          </View>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+function getInitials(name: string): string {
+  return name
+    .split(' ')
+    .map((n: string) => n[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
+}
+
 export default function ActivityScreen() {
   const { activeGroupId } = useGroupStore();
+  const { mode } = useThemeStore();
+  const isDark = mode === 'dark';
+  const bgColor = isDark ? '#0A0A0A' : '#FAFAFA';
+  const textPrimary = isDark ? '#FFFFFF' : '#171b24';
+  const textSecondary = isDark ? '#9CA3AF' : '#9CA3AF';
+  const textMuted = isDark ? '#6B7280' : '#98a1b0';
+  const cardBg = isDark ? '#1A1A1A' : '#FFFFFF';
+  const dividerColor = isDark ? 'rgba(255,255,255,0.06)' : '#F0F0F0';
+  const sectionBg = isDark ? '#111111' : '#F3F4F6';
+
   const {
     data: group,
     isLoading: groupLoading,
@@ -162,98 +219,235 @@ export default function ActivityScreen() {
   const renderItem = useCallback(({ item: entry }: { item: ActivityEntry }) => {
     const icon = actionIcons[entry.action] ?? 'ellipsis-horizontal';
     const colors = actionColors[entry.action] ?? defaultColor;
+    const initials = getInitials(entry.user?.name ?? '?');
 
     return (
-      <View className="mx-5 flex-row items-start border-b border-[rgba(23,27,36,0.06)] py-4">
+      <View
+        style={{
+          backgroundColor: cardBg,
+          paddingVertical: 14,
+          paddingHorizontal: 16,
+          flexDirection: 'row',
+          alignItems: 'flex-start',
+          borderBottomWidth: 1,
+          borderBottomColor: dividerColor,
+        }}
+      >
+        {/* Icon badge */}
         <View
-          className="mr-3 h-10 w-10 items-center justify-center rounded-2xl"
-          style={{ backgroundColor: colors.bg }}
+          style={{
+            marginRight: 12,
+            height: 40,
+            width: 40,
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderRadius: 20,
+            backgroundColor: isDark ? `${colors.fg}20` : colors.bg,
+          }}
         >
           <Ionicons name={icon} size={18} color={colors.fg} />
         </View>
-        <View className="flex-1">
-          <View className="flex-row items-center justify-between">
-            <View className="mr-2 flex-row items-center">
-              <InitialAvatar name={entry.user?.name} size={28} />
-              <Text className="ml-2 text-base font-semibold text-[#171b24]">
+
+        {/* Content */}
+        <View style={{ flex: 1 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <View style={{ marginRight: 8, flexDirection: 'row', alignItems: 'center' }}>
+              {/* Avatar */}
+              <View
+                style={{
+                  width: 24,
+                  height: 24,
+                  borderRadius: 12,
+                  backgroundColor: '#1f2330',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Text style={{ fontSize: 10, fontWeight: '700', color: '#FFFFFF' }}>
+                  {initials}
+                </Text>
+              </View>
+              <Text style={{ marginLeft: 8, fontSize: 14, fontWeight: '600', color: textPrimary }}>
                 {entry.user?.name ?? 'Unknown'}
               </Text>
             </View>
-            <Text className="text-xs text-[#667085]">
+            <Text style={{ fontSize: 12, color: textSecondary }}>
               {formatRelativeTime(entry.created_at)}
             </Text>
           </View>
-          <Text className="mt-1 text-sm leading-5 text-[#667085]">
+          <Text style={{ marginTop: 4, fontSize: 14, lineHeight: 20, color: textSecondary }}>
             {describeAction(entry)}
           </Text>
         </View>
       </View>
     );
-  }, []);
+  }, [isDark, textPrimary, textSecondary, dividerColor, cardBg]);
 
+  // No active group
   if (!activeGroupId) {
     return (
-      <Screen>
-        <EmptyState
-          icon="time-outline"
-          title="Select a group first"
-          description="Pick a group from the dashboard to view its activity log."
-        />
-      </Screen>
+      <ScrollView
+        style={{ flex: 1, backgroundColor: bgColor }}
+        contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 20 }}
+      >
+        <View
+          style={{
+            backgroundColor: cardBg,
+            borderRadius: 16,
+            padding: 20,
+            shadowColor: '#000',
+            shadowOpacity: 0.04,
+            shadowRadius: 8,
+            shadowOffset: { width: 0, height: 2 },
+            elevation: 2,
+          }}
+        >
+          <View style={{ alignItems: 'center', paddingVertical: 24 }}>
+            <View
+              style={{
+                width: 48,
+                height: 48,
+                borderRadius: 24,
+                backgroundColor: '#F3F4F6',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: 16,
+              }}
+            >
+              <Ionicons name="time-outline" size={24} color={textMuted} />
+            </View>
+            <Text style={{ fontSize: 18, fontWeight: '600', color: textPrimary }}>
+              Select a group first
+            </Text>
+            <Text style={{ fontSize: 14, color: textSecondary, marginTop: 8, textAlign: 'center' }}>
+              Pick a group from the dashboard to view its activity log.
+            </Text>
+          </View>
+        </View>
+      </ScrollView>
     );
   }
 
+  // Error
   if (loadError) {
     return (
-      <Screen>
-        <EmptyState
-          icon="cloud-offline-outline"
-          title="Could not load activity"
-          description={getErrorMessage(loadError, 'Something went wrong loading the activity log.')}
-          actionLabel="Try again"
-          onAction={() => { void refetchGroup(); void refetchActivity(); }}
-        />
-      </Screen>
+      <ScrollView
+        style={{ flex: 1, backgroundColor: bgColor }}
+        contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 20 }}
+      >
+        <View
+          style={{
+            backgroundColor: cardBg,
+            borderRadius: 16,
+            padding: 20,
+            shadowColor: '#000',
+            shadowOpacity: 0.04,
+            shadowRadius: 8,
+            shadowOffset: { width: 0, height: 2 },
+            elevation: 2,
+          }}
+        >
+          <View style={{ alignItems: 'center', paddingVertical: 24 }}>
+            <View
+              style={{
+                width: 48,
+                height: 48,
+                borderRadius: 24,
+                backgroundColor: '#F3F4F6',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: 16,
+              }}
+            >
+              <Ionicons name="cloud-offline-outline" size={24} color={textMuted} />
+            </View>
+            <Text style={{ fontSize: 18, fontWeight: '600', color: textPrimary }}>
+              Could not load activity
+            </Text>
+            <Text style={{ fontSize: 14, color: textSecondary, marginTop: 8, textAlign: 'center' }}>
+              {getErrorMessage(loadError, 'Something went wrong loading the activity log.')}
+            </Text>
+            <Pressable
+              onPress={() => { hapticLight(); void refetchGroup(); void refetchActivity(); }}
+              style={{
+                marginTop: 20,
+                backgroundColor: '#1f2330',
+                borderRadius: 12,
+                paddingVertical: 12,
+                paddingHorizontal: 24,
+              }}
+            >
+              <Text style={{ fontSize: 14, fontWeight: '600', color: '#FFFFFF' }}>Try again</Text>
+            </Pressable>
+          </View>
+        </View>
+      </ScrollView>
     );
   }
 
+  // Loading
   if (isLoading || groupLoading) {
-    return <ContentSkeleton />;
+    return <ContentSkeleton isDark={isDark} />;
   }
 
   const ListHeader = (
-    <View className="px-5 pt-5">
-      <View className="mb-4">
-        <Text className="text-[10px] font-semibold uppercase tracking-[3px] text-[#98a1b0]">
-          History
+    <View style={{ paddingHorizontal: 20, paddingTop: 20, backgroundColor: bgColor }}>
+      {/* Page title */}
+      <View style={{ marginBottom: 16 }}>
+        <Text style={{ fontSize: 28, fontWeight: '700', color: textPrimary, marginBottom: 4 }}>
+          Activity
         </Text>
-        <Text className="mt-1 text-2xl font-bold text-[#171b24]">Activity</Text>
-        <Text className="mt-1 text-sm text-[#667085]">
+        <Text style={{ fontSize: 14, color: textSecondary }}>
           Everything that happened in {group?.name ?? 'this group'}
         </Text>
-        <View className="mt-2 flex-row items-center">
-          <View className="rounded-full bg-[#EEF6F3] px-2.5 py-1">
-            <Text className="text-xs font-semibold text-[#2d6a4f]">
+        <View style={{ marginTop: 10, flexDirection: 'row', alignItems: 'center' }}>
+          <View
+            style={{
+              backgroundColor: isDark ? '#1A1A1A' : '#F3F4F6',
+              borderRadius: 20,
+              paddingVertical: 4,
+              paddingHorizontal: 12,
+            }}
+          >
+            <Text style={{ fontSize: 12, fontWeight: '500', color: textSecondary }}>
               {filteredEntries.length} events
             </Text>
           </View>
         </View>
       </View>
 
+      {/* Filter pills */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        className="mb-4"
-        contentContainerStyle={{ paddingRight: 8 }}
+        style={{ marginBottom: 16 }}
+        contentContainerStyle={{ paddingRight: 8, gap: 8 }}
       >
-        {filterChips.map((chip) => (
-          <Pill
-            key={chip.key}
-            label={chip.label}
-            selected={activeFilter === chip.key}
-            onPress={() => setActiveFilter(chip.key)}
-          />
-        ))}
+        {filterChips.map((chip) => {
+          const isActive = activeFilter === chip.key;
+          return (
+            <Pressable
+              key={chip.key}
+              onPress={() => { hapticLight(); setActiveFilter(chip.key); }}
+              style={{
+                backgroundColor: isActive ? '#1f2330' : '#F3F4F6',
+                borderRadius: 20,
+                paddingVertical: 8,
+                paddingHorizontal: 16,
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 13,
+                  fontWeight: '600',
+                  color: isActive ? '#FFFFFF' : '#6B7280',
+                }}
+              >
+                {chip.label}
+              </Text>
+            </Pressable>
+          );
+        })}
       </ScrollView>
     </View>
   );
@@ -264,33 +458,78 @@ export default function ActivityScreen() {
       renderItem={renderItem}
       keyExtractor={(item) => item.id}
       renderSectionHeader={({ section }) => (
-        <View className="bg-[#f5f1ea] px-5 pb-2 pt-4">
-          <Text className="text-xs font-semibold uppercase tracking-[2px] text-[#667085]">
+        <View style={{ backgroundColor: sectionBg, paddingHorizontal: 20, paddingBottom: 8, paddingTop: 16 }}>
+          <Text
+            style={{
+              fontSize: 12,
+              fontWeight: '600',
+              textTransform: 'uppercase',
+              letterSpacing: 2,
+              color: textSecondary,
+            }}
+          >
             {section.title}
           </Text>
         </View>
       )}
-      className="flex-1 bg-[#f5f1ea]"
+      style={{ flex: 1, backgroundColor: bgColor }}
       contentContainerStyle={{ paddingBottom: 120 }}
       showsVerticalScrollIndicator={false}
       ListHeaderComponent={ListHeader}
       ListEmptyComponent={
-        <View className="px-5">
-          <EmptyState
-            icon="time-outline"
-            title="No activity yet"
-            description="Actions like creating expenses, marking payments, and inviting members will appear here."
-          />
+        <View style={{ paddingHorizontal: 20 }}>
+          <View
+            style={{
+              backgroundColor: cardBg,
+              borderRadius: 16,
+              padding: 20,
+              shadowColor: '#000',
+              shadowOpacity: 0.04,
+              shadowRadius: 8,
+              shadowOffset: { width: 0, height: 2 },
+              elevation: 2,
+            }}
+          >
+            <View style={{ alignItems: 'center', paddingVertical: 24 }}>
+              <View
+                style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: 24,
+                  backgroundColor: '#F3F4F6',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: 16,
+                }}
+              >
+                <Ionicons name="time-outline" size={24} color={textMuted} />
+              </View>
+              <Text style={{ fontSize: 18, fontWeight: '600', color: textPrimary }}>
+                No activity yet
+              </Text>
+              <Text style={{ fontSize: 14, color: textSecondary, marginTop: 8, textAlign: 'center' }}>
+                Actions like creating expenses, marking payments, and inviting members will appear here.
+              </Text>
+            </View>
+          </View>
         </View>
       }
       ListFooterComponent={
         entries.length >= limit ? (
-          <View className="px-5 pb-4">
-            <AppButton
-              label="Load more"
-              variant="secondary"
-              onPress={() => setLimit((prev) => prev + PAGE_SIZE)}
-            />
+          <View style={{ paddingHorizontal: 20, paddingVertical: 16 }}>
+            <Pressable
+              onPress={() => { hapticLight(); setLimit((prev) => prev + PAGE_SIZE); }}
+              style={{
+                borderWidth: 1,
+                borderColor: isDark ? '#333' : '#E5E7EB',
+                borderRadius: 12,
+                paddingVertical: 14,
+                alignItems: 'center',
+                backgroundColor: cardBg,
+              }}
+            >
+              <Text style={{ fontSize: 14, fontWeight: '600', color: textPrimary }}>Load more</Text>
+            </Pressable>
           </View>
         ) : null
       }

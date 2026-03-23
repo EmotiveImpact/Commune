@@ -122,17 +122,65 @@ export async function getMemberProfile(userId: string, groupId: string) {
     .from('user_payment_methods')
     .select('*')
     .eq('user_id', userId)
-    .order('is_default', { ascending: false });
+    .order('is_default', { ascending: false })
+    .order('created_at', { ascending: true });
 
-  // Get recent activity in this group (last 20 expenses they created or participated in)
-  const { data: recentActivity } = await supabase
+  // Get recent activity in this group (last 20 expenses they created, paid, or participated in)
+  const { data: directExpenses, error: directExpensesError } = await supabase
     .from('expenses')
-    .select('id, title, amount, category, due_date, created_at, paid_by_user_id')
+    .select('id, title, amount, category, due_date, created_at, paid_by_user_id, created_by')
     .eq('group_id', groupId)
     .eq('is_active', true)
-    .or(`paid_by_user_id.eq.${userId}`)
-    .order('due_date', { ascending: false })
+    .or(`created_by.eq.${userId},paid_by_user_id.eq.${userId}`)
+    .order('created_at', { ascending: false })
     .limit(20);
+
+  if (directExpensesError) throw directExpensesError;
+
+  const { data: participantRows, error: participantRowsError } = await supabase
+    .from('expense_participants')
+    .select('expense_id')
+    .eq('user_id', userId);
+
+  if (participantRowsError) throw participantRowsError;
+
+  const participantExpenseIds = Array.from(
+    new Set((participantRows ?? []).map((row) => row.expense_id as string)),
+  );
+
+  let participantExpenses: Array<Record<string, unknown>> = [];
+  if (participantExpenseIds.length > 0) {
+    const { data, error } = await supabase
+      .from('expenses')
+      .select('id, title, amount, category, due_date, created_at, paid_by_user_id, created_by')
+      .in('id', participantExpenseIds)
+      .eq('group_id', groupId)
+      .eq('is_active', true)
+      .order('created_at', { ascending: false })
+      .limit(20);
+
+    if (error) throw error;
+    participantExpenses = (data ?? []) as Array<Record<string, unknown>>;
+  }
+
+  const recentActivityMap = new Map<string, Record<string, unknown>>();
+  for (const activity of directExpenses ?? []) {
+    recentActivityMap.set(activity.id as string, activity as Record<string, unknown>);
+  }
+  for (const activity of participantExpenses) {
+    const activityId = activity.id as string;
+    if (!recentActivityMap.has(activityId)) {
+      recentActivityMap.set(activityId, activity);
+    }
+  }
+
+  const recentActivity = Array.from(recentActivityMap.values())
+    .sort((a, b) => {
+      const aTime = new Date(String(a.created_at ?? '')).getTime();
+      const bTime = new Date(String(b.created_at ?? '')).getTime();
+      return bTime - aTime;
+    })
+    .slice(0, 20);
 
   // Get shared groups (groups where both the viewer and this user are members)
   const { data: viewerSession } = await supabase.auth.getSession();

@@ -31,6 +31,7 @@ export function useUpdateProfile() {
         country?: string | null;
         default_currency?: string;
         timezone?: string;
+        show_shared_groups?: boolean;
         notification_preferences?: NotificationPreferences;
       };
     }) => updateProfile(userId, data),

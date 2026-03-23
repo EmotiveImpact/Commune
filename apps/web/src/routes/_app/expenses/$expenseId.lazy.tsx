@@ -112,6 +112,8 @@ function ExpenseDetailPage() {
     : [];
   const paidCount = expense.payment_records.filter((payment) => payment.status !== 'unpaid').length;
   const confirmedCount = expense.payment_records.filter((payment) => payment.status === 'confirmed').length;
+  const approvalStatus = expense.approval_status ?? 'approved';
+  const isApprovalBlocked = approvalStatus !== 'approved';
 
   // Fetch payment methods for the person who paid upfront
   const paidByUserId = expense.paid_by_user_id ?? '';
@@ -282,6 +284,16 @@ function ExpenseDetailPage() {
           <Badge variant="light" color="gray">
             {formatCategoryLabel(expense.category)}
           </Badge>
+          {approvalStatus === 'pending' && (
+            <Badge variant="light" color="orange">
+              Pending approval
+            </Badge>
+          )}
+          {approvalStatus === 'rejected' && (
+            <Badge variant="light" color="red">
+              Rejected
+            </Badge>
+          )}
           {expense.recurrence_type !== 'none' && (
             <Badge variant="light" color="emerald">
               Recurring {expense.recurrence_type}
@@ -310,6 +322,24 @@ function ExpenseDetailPage() {
           )}
         </Group>
       </PageHeader>
+
+      {approvalStatus === 'pending' && (
+        <Paper className="commune-soft-panel" p="md" style={{ borderLeft: '4px solid var(--mantine-color-orange-5)' }}>
+          <Text fw={600} size="sm">This expense is waiting for admin approval.</Text>
+          <Text size="sm" c="dimmed">
+            Settlement and payment actions stay disabled until it is approved.
+          </Text>
+        </Paper>
+      )}
+
+      {approvalStatus === 'rejected' && (
+        <Paper className="commune-soft-panel" p="md" style={{ borderLeft: '4px solid var(--mantine-color-red-5)' }}>
+          <Text fw={600} size="sm">This expense was rejected.</Text>
+          <Text size="sm" c="dimmed">
+            It no longer affects balances, and payment actions are disabled.
+          </Text>
+        </Paper>
+      )}
 
       <SimpleGrid cols={{ base: 1, sm: 2, xl: 4 }} spacing="lg">
         <Paper className="commune-stat-card" p="lg">
@@ -449,7 +479,7 @@ function ExpenseDetailPage() {
                         </Table.Td>
                         <Table.Td style={{ textAlign: 'center' }}>
                           <Group gap={4} justify="center">
-                            {canToggle && paymentStatus === 'unpaid' && reimbursement && paymentLinkResult && (
+                            {!isApprovalBlocked && canToggle && paymentStatus === 'unpaid' && reimbursement && paymentLinkResult && (
                               <Tooltip label={`${paymentLinkResult.label} — ${formatCurrency(reimbursement.amount, expense.currency)}`}>
                                 <ActionIcon
                                   variant="filled"
@@ -464,17 +494,17 @@ function ExpenseDetailPage() {
                                 </ActionIcon>
                               </Tooltip>
                             )}
-                            {canToggle && paymentStatus === 'unpaid' && (
+                            {!isApprovalBlocked && canToggle && paymentStatus === 'unpaid' && (
                               <ActionIcon variant="light" color="emerald" onClick={() => handlePayClick(participant.user_id)} aria-label={`Mark ${participant.user.name} as paid`}>
                                 <IconCheck size={16} />
                               </ActionIcon>
                             )}
-                            {canToggle && paymentStatus === 'paid' && (
+                            {!isApprovalBlocked && canToggle && paymentStatus === 'paid' && (
                               <ActionIcon variant="light" color="red" onClick={() => handleUnpay(participant.user_id)} aria-label={`Mark ${participant.user.name} as unpaid`}>
                                 <IconX size={16} />
                               </ActionIcon>
                             )}
-                            {isAdmin && paymentStatus === 'paid' && (
+                            {!isApprovalBlocked && isAdmin && paymentStatus === 'paid' && (
                               <ActionIcon variant="light" color="blue" onClick={() => handleConfirmPayment(participant.user_id)} aria-label={`Confirm payment from ${participant.user.name}`}>
                                 <IconCheckbox size={16} />
                               </ActionIcon>
@@ -513,7 +543,7 @@ function ExpenseDetailPage() {
             />
           </Paper>
 
-          {expense.paid_by_user && (
+          {expense.paid_by_user && !isApprovalBlocked && (
             <Paper className="commune-soft-panel" p="xl">
               <Group gap="xs" mb="md">
                 <IconWallet size={20} />

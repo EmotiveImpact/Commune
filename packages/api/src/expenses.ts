@@ -75,7 +75,10 @@ export async function createExpense(data: CreateExpenseData) {
       .eq('id', expenseData.group_id)
       .single();
 
-    if (groupData?.approval_threshold && amount > groupData.approval_threshold) {
+    if (
+      groupData?.approval_threshold != null
+      && amount > groupData.approval_threshold
+    ) {
       approvalStatus = 'pending';
     }
   }

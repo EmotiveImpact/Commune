@@ -15,7 +15,7 @@ import {
   useComputedColorScheme,
   useMantineColorScheme,
 } from '@mantine/core';
-import { useDisclosure } from '@mantine/hooks';
+import { useDisclosure, useMediaQuery } from '@mantine/hooks';
 import { Link, useLocation, useNavigate } from '@tanstack/react-router';
 import {
   IconChevronDown,
@@ -58,13 +58,16 @@ interface AppShellProps {
 
 export function AppShell({ children }: AppShellProps) {
   const [opened, { toggle, close }] = useDisclosure();
-  const [collapsed, setCollapsed] = useState(() => {
+  const isMobile = useMediaQuery('(max-width: 47.99em)') ?? false; // matches Mantine 'sm' breakpoint
+  const [desktopCollapsed, setDesktopCollapsed] = useState(() => {
     try {
       return localStorage.getItem(SIDEBAR_STORAGE_KEY) === 'true';
     } catch {
       return false;
     }
   });
+  // On mobile the sidebar is always full-width (expanded), never icon-only
+  const collapsed = isMobile ? false : desktopCollapsed;
   const { user } = useAuthStore();
   const { activeGroupId, setActiveGroupId } = useGroupStore();
   const { query, setQuery, clearQuery } = useSearchStore();
@@ -72,7 +75,7 @@ export function AppShell({ children }: AppShellProps) {
   const location = useLocation();
 
   const toggleCollapsed = useCallback(() => {
-    setCollapsed((prev) => {
+    setDesktopCollapsed((prev) => {
       const next = !prev;
       try {
         localStorage.setItem(SIDEBAR_STORAGE_KEY, String(next));
@@ -100,7 +103,7 @@ export function AppShell({ children }: AppShellProps) {
       layout="alt"
       header={{ height: 64 }}
       navbar={{
-        width: collapsed ? SIDEBAR_WIDTH_COLLAPSED : SIDEBAR_WIDTH_EXPANDED,
+        width: { base: 280, sm: collapsed ? SIDEBAR_WIDTH_COLLAPSED : SIDEBAR_WIDTH_EXPANDED },
         breakpoint: 'sm',
         collapsed: { mobile: !opened },
       }}
@@ -191,29 +194,31 @@ export function AppShell({ children }: AppShellProps) {
                 </Text>
               </motion.span>
 
-              {/* Collapse button — top right, hover-only, expanded only */}
-              <AnimatePresence>
-                {!collapsed && (
-                  <motion.div
-                    key="collapse-btn"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={fadeTransition}
-                    style={{ position: 'absolute', right: 0, top: '50%', transform: 'translateY(-50%)' }}
-                  >
-                    <ActionIcon
-                      variant="subtle"
-                      onClick={toggleCollapsed}
-                      className="commune-sidebar-collapse-btn"
-                      aria-label="Collapse sidebar"
-                      size="sm"
+              {/* Collapse button — desktop only, top right, hover-only, expanded only */}
+              {!isMobile && (
+                <AnimatePresence>
+                  {!collapsed && (
+                    <motion.div
+                      key="collapse-btn"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={fadeTransition}
+                      style={{ position: 'absolute', right: 0, top: '50%', transform: 'translateY(-50%)' }}
                     >
-                      <IconChevronsLeft size={16} />
-                    </ActionIcon>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+                      <ActionIcon
+                        variant="subtle"
+                        onClick={toggleCollapsed}
+                        className="commune-sidebar-collapse-btn"
+                        aria-label="Collapse sidebar"
+                        size="sm"
+                      >
+                        <IconChevronsLeft size={16} />
+                      </ActionIcon>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              )}
             </motion.div>
 
             {/* Menu label */}

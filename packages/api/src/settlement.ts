@@ -36,7 +36,8 @@ export async function getGroupSettlement(
     `,
     )
     .eq('group_id', groupId)
-    .eq('is_active', true);
+    .eq('is_active', true)
+    .eq('approval_status', 'approved');
 
   if (month) {
     const startDate = `${month}-01`;

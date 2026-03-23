@@ -1,6 +1,10 @@
 import { supabase } from './client';
-import { calculateNextDue, getNextInRotation } from '@commune/core';
-import type { ChoreFrequency } from '@commune/core';
+import {
+  calculateNextDue,
+  createChoreSchema,
+  getNextInRotation,
+} from '@commune/core';
+import type { ChoreFrequency, CreateChoreInput } from '@commune/core';
 
 export async function getGroupChores(groupId: string) {
   const { data, error } = await supabase
@@ -36,23 +40,23 @@ export async function getGroupChores(groupId: string) {
   }));
 }
 
-export async function createChore(data: {
-  group_id: string;
-  title: string;
-  description?: string | null;
-  frequency: string;
-  assigned_to?: string | null;
-  rotation_order?: string[] | null;
-  next_due?: string;
-}) {
+export async function createChore(data: CreateChoreInput) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
+
+  const parsed = createChoreSchema.safeParse({
+    ...data,
+    next_due: data.next_due ?? new Date().toISOString().slice(0, 10),
+  });
+
+  if (!parsed.success) {
+    throw new Error(parsed.error.issues[0]?.message ?? 'Invalid chore');
+  }
 
   const { data: chore, error } = await supabase
     .from('chores')
     .insert({
-      ...data,
-      next_due: data.next_due ?? new Date().toISOString().slice(0, 10),
+      ...parsed.data,
       created_by: user.id,
     })
     .select('*')
@@ -106,7 +110,9 @@ export async function completeChore(choreId: string) {
   const updates: Record<string, unknown> = {};
 
   // Advance next_due
-  if (chore.frequency !== 'once') {
+  if (chore.frequency === 'once') {
+    updates.is_active = false;
+  } else {
     updates.next_due = calculateNextDue(
       chore.frequency as ChoreFrequency,
       chore.next_due,
@@ -120,7 +126,12 @@ export async function completeChore(choreId: string) {
   }
 
   if (Object.keys(updates).length > 0) {
-    await supabase.from('chores').update(updates).eq('id', choreId);
+    const { error: updateError } = await supabase
+      .from('chores')
+      .update(updates)
+      .eq('id', choreId);
+
+    if (updateError) throw updateError;
   }
 
   return { success: true };

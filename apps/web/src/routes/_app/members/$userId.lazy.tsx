@@ -21,6 +21,7 @@ import {
   IconCash,
   IconCheck,
   IconClock,
+  IconCrown,
   IconHeart,
   IconHome,
   IconMail,
@@ -111,13 +112,14 @@ function MemberProfilePage() {
   const quickPayUrl = currentUserOwesThisMember && defaultPaymentMethod?.payment_link
     ? buildPaymentUrl({ provider: defaultPaymentMethod.provider, link: defaultPaymentMethod.payment_link })
     : null;
+  const isOwner = group?.owner_id === userId;
 
   // Determine payment status from membership/stats
   const roleBadgeColor =
-    membership?.role === 'admin'
-      ? 'dark'
-      : membership?.role === 'owner'
-        ? 'indigo'
+    isOwner
+      ? 'orange'
+      : membership?.role === 'admin'
+        ? 'yellow'
         : 'gray';
 
   const joinedDate = membership?.effective_from
@@ -163,8 +165,13 @@ function MemberProfilePage() {
                 </Badge>
               )}
               {membership?.role && (
-                <Badge size="sm" variant="light" color={roleBadgeColor}>
-                  {membership.role}
+                <Badge
+                  size="sm"
+                  variant="light"
+                  color={roleBadgeColor}
+                  leftSection={isOwner ? <IconCrown size={10} /> : undefined}
+                >
+                  {isOwner ? 'Owner' : membership.role}
                 </Badge>
               )}
               {/* Settlement status badge */}
@@ -460,7 +467,7 @@ function MemberProfilePage() {
           <Text className="commune-section-heading">Recent activity</Text>
         </Group>
         <Text size="sm" c="dimmed" mb="md">
-          Recent expenses in this group.
+          Recent expenses this member created, paid for, or joined in this group.
         </Text>
 
         {recentActivity.length === 0 ? (
@@ -470,7 +477,13 @@ function MemberProfilePage() {
         ) : (
           <Timeline active={recentActivity.length - 1} bulletSize={28} lineWidth={2}>
             {recentActivity.map((activity: any) => {
+              const isCreator = activity.created_by === userId;
               const isPayer = activity.paid_by_user_id === userId;
+              const activityTitle = isPayer
+                ? `Paid for "${activity.title}"`
+                : isCreator
+                  ? `Added "${activity.title}"`
+                  : `Joined "${activity.title}"`;
               return (
                 <Timeline.Item
                   key={activity.id}
@@ -478,7 +491,7 @@ function MemberProfilePage() {
                     <ThemeIcon
                       size={28}
                       variant="light"
-                      color={isPayer ? 'emerald' : 'gray'}
+                      color={isPayer ? 'emerald' : isCreator ? 'blue' : 'gray'}
                       radius="xl"
                     >
                       {isPayer ? <IconCash size={14} /> : <IconReceipt size={14} />}
@@ -487,7 +500,7 @@ function MemberProfilePage() {
                   title={
                     <Group gap="xs">
                       <Text size="sm" fw={600}>
-                        {isPayer ? `Paid for "${activity.title}"` : `Added "${activity.title}"`}
+                        {activityTitle}
                       </Text>
                       <Badge size="xs" variant="light" color="gray">
                         {formatCategoryLabel(activity.category)}

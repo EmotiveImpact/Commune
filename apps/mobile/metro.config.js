@@ -23,6 +23,15 @@ config.resolver.extraNodeModules = {
     projectRoot,
     'node_modules/@react-native-community/datetimepicker'
   ),
+  // HeroUI Native, Uniwind, and peer deps — resolve through pnpm symlinks
+  uniwind: path.resolve(projectRoot, 'node_modules/uniwind'),
+  'heroui-native': path.resolve(projectRoot, 'node_modules/heroui-native'),
+  'tailwind-variants': path.resolve(projectRoot, 'node_modules/tailwind-variants'),
+  'tailwind-merge': path.resolve(projectRoot, 'node_modules/tailwind-merge'),
+  '@gorhom/bottom-sheet': path.resolve(projectRoot, 'node_modules/@gorhom/bottom-sheet'),
+  'react-native-gesture-handler': path.resolve(projectRoot, 'node_modules/react-native-gesture-handler'),
+  'react-native-worklets': path.resolve(projectRoot, 'node_modules/react-native-worklets'),
+  'expo-haptics': path.resolve(projectRoot, 'node_modules/expo-haptics'),
 };
 
 module.exports = withNativeWind(config, { input: './global.css' });

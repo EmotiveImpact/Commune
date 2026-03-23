@@ -1,4 +1,4 @@
-import { createRootRouteWithContext, Outlet } from '@tanstack/react-router';
+import { createRootRouteWithContext, Outlet, useRouterState } from '@tanstack/react-router';
 import { MantineProvider, createTheme, type MantineColorScheme } from '@mantine/core';
 import { Notifications } from '@mantine/notifications';
 import { QueryClient } from '@tanstack/react-query';
@@ -84,10 +84,14 @@ export const Route = createRootRouteWithContext<RouterContext>()({
 });
 
 function RootComponent() {
+  const locationKey = useRouterState({
+    select: (state) => state.location.href,
+  });
+
   return (
     <MantineProvider theme={theme} defaultColorScheme={getInitialColorScheme()}>
       <Notifications position="top-right" />
-      <AppErrorBoundary>
+      <AppErrorBoundary key={locationKey}>
         <Outlet />
       </AppErrorBoundary>
     </MantineProvider>

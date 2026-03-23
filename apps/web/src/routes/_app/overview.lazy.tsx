@@ -84,7 +84,7 @@ export const Route = createLazyFileRoute('/_app/overview')({
 
 function CrossGroupOverviewPage() {
   useEffect(() => {
-    setPageTitle('Cross-Group Overview');
+    setPageTitle('Command Centre');
   }, []);
 
   const { user } = useAuthStore();

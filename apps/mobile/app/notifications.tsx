@@ -1,21 +1,23 @@
-import { useCallback, useMemo } from 'react';
-import { SectionList, Text, TouchableOpacity, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
+import {
+  Animated,
+  Pressable,
+  SectionList,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '@/stores/auth';
 import { useGroupStore } from '@/stores/group';
+import { useThemeStore } from '@/stores/theme';
 import {
   useNotifications,
   useMarkNotificationRead,
   useMarkAllNotificationsRead,
 } from '@/hooks/use-notifications';
-import {
-  ContentSkeleton,
-  EmptyState,
-  HeroPanel,
-  Screen,
-  Surface,
-} from '@/components/ui';
+import { hapticLight, hapticMedium } from '@/lib/haptics';
 
 type NotificationType = 'expense_added' | 'payment_made' | 'payment_overdue';
 
@@ -70,8 +72,127 @@ function getTimeBucket(dateString: string): 'Today' | 'This week' | 'Earlier' {
   return 'Earlier';
 }
 
+/* ---------- Shimmer skeleton ---------- */
+function ShimmerBlock({ width, height, style }: { width: number | string; height: number; style?: object }) {
+  const opacity = useRef(new Animated.Value(0.3)).current;
+
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(opacity, { toValue: 1, duration: 800, useNativeDriver: true }),
+        Animated.timing(opacity, { toValue: 0.3, duration: 800, useNativeDriver: true }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [opacity]);
+
+  return (
+    <Animated.View
+      style={[
+        { width: width as number, height, borderRadius: 8, backgroundColor: '#E5E7EB', opacity },
+        style,
+      ]}
+    />
+  );
+}
+
+function NotificationSkeleton() {
+  const mode = useThemeStore((s) => s.mode);
+  const bg = mode === 'dark' ? '#0A0A0A' : '#FAFAFA';
+
+  return (
+    <View style={{ flex: 1, backgroundColor: bg, paddingHorizontal: 20, paddingTop: 60 }}>
+      <ShimmerBlock width="50%" height={28} style={{ marginBottom: 8 }} />
+      <ShimmerBlock width="80%" height={14} style={{ marginBottom: 24 }} />
+      {[1, 2, 3].map((i) => (
+        <View key={i} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
+          <ShimmerBlock width={40} height={40} style={{ borderRadius: 20, marginRight: 12 }} />
+          <View style={{ flex: 1 }}>
+            <ShimmerBlock width="70%" height={14} style={{ marginBottom: 6 }} />
+            <ShimmerBlock width="90%" height={12} />
+          </View>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+/* ---------- Empty state ---------- */
+function NotificationEmpty({
+  icon,
+  title,
+  description,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  title: string;
+  description: string;
+}) {
+  const mode = useThemeStore((s) => s.mode);
+  const isDark = mode === 'dark';
+
+  return (
+    <View
+      style={{
+        marginHorizontal: 20,
+        backgroundColor: isDark ? '#1A1A1A' : '#FFFFFF',
+        borderRadius: 16,
+        padding: 20,
+        shadowColor: '#000',
+        shadowOpacity: 0.04,
+        shadowRadius: 8,
+        shadowOffset: { width: 0, height: 2 },
+        elevation: 2,
+      }}
+    >
+      <View style={{ alignItems: 'center', paddingVertical: 24 }}>
+        <View
+          style={{
+            width: 48,
+            height: 48,
+            borderRadius: 24,
+            backgroundColor: isDark ? '#1A1A1A' : '#F3F4F6',
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginBottom: 16,
+          }}
+        >
+          <Ionicons name={icon} size={24} color={isDark ? '#6B7280' : '#9CA3AF'} />
+        </View>
+        <Text
+          style={{
+            fontSize: 18,
+            fontWeight: '600',
+            color: isDark ? '#F9FAFB' : '#171b24',
+            marginBottom: 6,
+          }}
+        >
+          {title}
+        </Text>
+        <Text
+          style={{
+            fontSize: 14,
+            lineHeight: 20,
+            color: isDark ? '#9CA3AF' : '#9CA3AF',
+            textAlign: 'center',
+            maxWidth: 280,
+          }}
+        >
+          {description}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+/* ---------- Main screen ---------- */
 export default function NotificationsScreen() {
   const router = useRouter();
+  const mode = useThemeStore((s) => s.mode);
+  const isDark = mode === 'dark';
+  const bg = isDark ? '#0A0A0A' : '#FAFAFA';
+  const cardBg = isDark ? '#1A1A1A' : '#FFFFFF';
+
   const user = useAuthStore((s) => s.user);
   const activeGroupId = useGroupStore((s) => s.activeGroupId);
   const { data: notifications, isLoading } = useNotifications(
@@ -100,6 +221,7 @@ export default function NotificationsScreen() {
   }, [items]);
 
   const handleMarkAllRead = useCallback(() => {
+    hapticMedium();
     const unreadIds = items.filter((n) => !n.read).map((n) => n.id);
     if (unreadIds.length > 0) {
       markAllRead.mutate(unreadIds);
@@ -108,6 +230,7 @@ export default function NotificationsScreen() {
 
   const handleToggleRead = useCallback(
     (item: NotificationItem) => {
+      hapticLight();
       if (!item.read) {
         markRead.mutate(item.id);
       }
@@ -122,112 +245,218 @@ export default function NotificationsScreen() {
 
       return (
         <TouchableOpacity
-          activeOpacity={0.86}
+          activeOpacity={0.7}
           onPress={() => {
+            hapticMedium();
             if (!item.read) markRead.mutate(item.id);
             if (item.expense_id) router.push(`/expenses/${item.expense_id}`);
           }}
-          className="mx-5 mb-2 flex-row items-start rounded-2xl border border-[rgba(23,27,36,0.06)] bg-white p-4"
-          style={
-            !item.read
-              ? { borderColor: 'rgba(45,106,79,0.15)', backgroundColor: '#FDFCFA' }
-              : undefined
-          }
+          style={{
+            marginHorizontal: 20,
+            marginBottom: 2,
+            flexDirection: 'row',
+            alignItems: 'flex-start',
+            paddingVertical: 14,
+            paddingHorizontal: 16,
+            backgroundColor: isDark
+              ? item.read ? cardBg : '#111A15'
+              : item.read ? '#FFFFFF' : '#F8FBF9',
+            borderBottomWidth: 1,
+            borderBottomColor: isDark ? 'rgba(255,255,255,0.06)' : '#F0F0F0',
+          }}
         >
+          {/* Icon */}
           <View
-            className="mr-3 h-10 w-10 items-center justify-center rounded-full"
-            style={{ backgroundColor: config.bgColor }}
+            style={{
+              marginRight: 12,
+              width: 40,
+              height: 40,
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderRadius: 20,
+              backgroundColor: isDark ? `${config.bgColor}22` : config.bgColor,
+            }}
           >
             <Ionicons name={config.icon} size={18} color={config.color} />
           </View>
-          <View className="flex-1">
-            <View className="flex-row items-start justify-between">
+
+          {/* Content */}
+          <View style={{ flex: 1 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
               <Text
-                className="flex-1 text-base text-[#171b24]"
-                style={{ fontWeight: item.read ? '400' : '600' }}
                 numberOfLines={1}
+                style={{
+                  flex: 1,
+                  fontSize: 14,
+                  fontWeight: item.read ? '400' : '600',
+                  color: isDark ? '#F9FAFB' : '#171b24',
+                }}
               >
                 {item.title}
               </Text>
-              <Text className="ml-2 text-xs text-[#667085]">
+              <Text
+                style={{
+                  marginLeft: 8,
+                  fontSize: 12,
+                  color: isDark ? '#6B7280' : '#9CA3AF',
+                }}
+              >
                 {formatTimeAgo(item.created_at)}
               </Text>
             </View>
-            <Text className="mt-1 text-sm leading-5 text-[#667085]" numberOfLines={2}>
+            <Text
+              numberOfLines={2}
+              style={{
+                marginTop: 2,
+                fontSize: 12,
+                lineHeight: 18,
+                color: isDark ? '#9CA3AF' : '#9CA3AF',
+              }}
+            >
               {item.description}
             </Text>
           </View>
+
+          {/* Unread dot */}
           <TouchableOpacity
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             onPress={() => handleToggleRead(item)}
-            className="ml-2 mt-1"
+            style={{ marginLeft: 8, marginTop: 4 }}
           >
             <View
-              className="h-3 w-3 rounded-full"
               style={{
+                width: 10,
+                height: 10,
+                borderRadius: 5,
                 backgroundColor: item.read ? 'transparent' : '#2d6a4f',
                 borderWidth: item.read ? 1.5 : 0,
-                borderColor: '#d7e6dd',
+                borderColor: isDark ? '#374151' : '#D1D5DB',
               }}
             />
           </TouchableOpacity>
         </TouchableOpacity>
       );
     },
-    [markRead, router, handleToggleRead],
+    [markRead, router, handleToggleRead, isDark, cardBg],
   );
 
   const renderSectionHeader = useCallback(
     ({ section }: { section: { title: string } }) => (
-      <View className="mx-5 mb-2 mt-4">
-        <Text className="text-xs font-semibold uppercase tracking-[2px] text-[#667085]">
+      <View style={{ marginHorizontal: 20, marginBottom: 8, marginTop: 20 }}>
+        <Text
+          style={{
+            fontSize: 12,
+            fontWeight: '600',
+            textTransform: 'uppercase',
+            letterSpacing: 1.5,
+            color: isDark ? '#6B7280' : '#9CA3AF',
+          }}
+        >
           {section.title}
         </Text>
       </View>
     ),
-    [],
+    [isDark],
   );
 
+  // Not signed in
   if (!user) {
     return (
-      <Screen>
-        <EmptyState
+      <View style={{ flex: 1, backgroundColor: bg, justifyContent: 'center' }}>
+        <NotificationEmpty
           icon="notifications-outline"
           title="Not signed in"
           description="Sign in to view your notifications."
         />
-      </Screen>
+      </View>
     );
   }
 
+  // Loading
   if (isLoading) {
-    return <ContentSkeleton />;
+    return <NotificationSkeleton />;
   }
 
   const ListHeader = (
-    <View className="px-5 pt-5">
-      <HeroPanel
-        eyebrow="Activity"
-        title="Notifications"
-        description="Recent activity across your group including new expenses, payments, and overdue alerts."
-      />
+    <View style={{ paddingHorizontal: 20, paddingTop: 60, paddingBottom: 4 }}>
+      {/* Page title */}
+      <Text
+        style={{
+          fontSize: 28,
+          fontWeight: '700',
+          color: isDark ? '#F9FAFB' : '#171b24',
+          marginBottom: 4,
+        }}
+      >
+        Notifications
+      </Text>
+      <Text
+        style={{
+          fontSize: 14,
+          color: isDark ? '#9CA3AF' : '#9CA3AF',
+          marginBottom: 20,
+        }}
+      >
+        Recent activity across your group
+      </Text>
 
+      {/* Unread badge + mark all read */}
       {unreadCount > 0 && (
-        <View className="mb-2 flex-row items-center justify-between">
-          <View className="flex-row items-center">
-            <View className="mr-2 h-6 min-w-[24px] items-center justify-center rounded-full bg-[#2d6a4f] px-2">
-              <Text className="text-xs font-bold text-white">{unreadCount}</Text>
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: 8,
+          }}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <View
+              style={{
+                height: 24,
+                minWidth: 24,
+                borderRadius: 12,
+                backgroundColor: '#2d6a4f',
+                alignItems: 'center',
+                justifyContent: 'center',
+                paddingHorizontal: 8,
+                marginRight: 8,
+              }}
+            >
+              <Text style={{ fontSize: 12, fontWeight: '700', color: '#FFFFFF' }}>
+                {unreadCount}
+              </Text>
             </View>
-            <Text className="text-sm font-medium text-[#171b24]">unread</Text>
+            <Text
+              style={{
+                fontSize: 14,
+                fontWeight: '500',
+                color: isDark ? '#D1D5DB' : '#374151',
+              }}
+            >
+              unread
+            </Text>
           </View>
-          <TouchableOpacity
-            activeOpacity={0.7}
+          <Pressable
             onPress={handleMarkAllRead}
-            className="flex-row items-center gap-1 rounded-full border border-[rgba(23,27,36,0.14)] bg-white px-3 py-2"
+            style={{
+              borderWidth: 1,
+              borderColor: isDark ? '#333' : '#E5E7EB',
+              borderRadius: 10,
+              paddingVertical: 8,
+              paddingHorizontal: 14,
+            }}
           >
-            <Ionicons name="checkmark-done-outline" size={14} color="#2d6a4f" />
-            <Text className="text-xs font-semibold text-[#2d6a4f]">Mark all read</Text>
-          </TouchableOpacity>
+            <Text
+              style={{
+                fontSize: 13,
+                fontWeight: '600',
+                color: isDark ? '#D1D5DB' : '#374151',
+              }}
+            >
+              Mark all read
+            </Text>
+          </Pressable>
         </View>
       )}
     </View>
@@ -239,18 +468,16 @@ export default function NotificationsScreen() {
       renderItem={renderItem}
       renderSectionHeader={renderSectionHeader}
       keyExtractor={(item) => item.id}
-      className="flex-1 bg-[#f5f1ea]"
+      style={{ flex: 1, backgroundColor: bg }}
       contentContainerStyle={{ paddingBottom: 120 }}
       showsVerticalScrollIndicator={false}
       ListHeaderComponent={ListHeader}
       ListEmptyComponent={
-        <View className="px-5">
-          <EmptyState
-            icon="notifications-off-outline"
-            title="No notifications"
-            description="When expenses are added, payments are made, or balances go overdue, they will appear here."
-          />
-        </View>
+        <NotificationEmpty
+          icon="notifications-off-outline"
+          title="No notifications"
+          description="When expenses are added, payments are made, or balances go overdue, they will appear here."
+        />
       }
       stickySectionHeadersEnabled={false}
     />

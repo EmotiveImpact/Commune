@@ -156,6 +156,8 @@ function ExpensesPage() {
     let settledCount = 0;
 
     for (const expense of searchFiltered) {
+      if (expense.approval_status !== 'approved') continue;
+
       const paidCount = expense.payment_records?.filter((p) => p.status !== 'unpaid').length ?? 0;
       const totalParticipants = expense.participants?.length ?? 0;
       const isSettled = totalParticipants > 0 && paidCount === totalParticipants;
@@ -176,6 +178,8 @@ function ExpensesPage() {
     if (statusFilter === 'all') return searchFiltered;
 
     return searchFiltered.filter((expense) => {
+      if (expense.approval_status !== 'approved') return false;
+
       const paidCount = expense.payment_records?.filter((p) => p.status !== 'unpaid').length ?? 0;
       const totalParticipants = expense.participants?.length ?? 0;
       const isSettled = totalParticipants > 0 && paidCount === totalParticipants;
@@ -509,6 +513,17 @@ function ExpensesPage() {
                   const paidCount = expense.payment_records?.filter((payment) => payment.status !== 'unpaid').length ?? 0;
                   const totalParticipants = expense.participants?.length ?? 0;
                   const settled = totalParticipants > 0 && paidCount === totalParticipants;
+                  const approvalStatus = expense.approval_status ?? 'approved';
+                  const statusBadge =
+                    approvalStatus === 'pending'
+                      ? { color: 'orange', label: 'Pending approval' }
+                      : approvalStatus === 'rejected'
+                        ? { color: 'red', label: 'Rejected' }
+                        : settled
+                          ? { color: 'emerald', label: 'Settled' }
+                          : overdue
+                            ? { color: 'red', label: 'Overdue' }
+                            : { color: 'orange', label: 'Open' };
 
                   return (
                     <Table.Tr
@@ -550,8 +565,8 @@ function ExpensesPage() {
                         </Text>
                       </Table.Td>
                       <Table.Td>
-                        <Badge color={settled ? 'emerald' : overdue ? 'red' : 'orange'} variant="light">
-                          {settled ? 'Settled' : overdue ? 'Overdue' : 'Open'}
+                        <Badge color={statusBadge.color} variant="light">
+                          {statusBadge.label}
                         </Badge>
                       </Table.Td>
                       <Table.Td style={{ textAlign: 'right' }}>

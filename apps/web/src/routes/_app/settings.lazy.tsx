@@ -36,7 +36,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { setPageTitle } from '../../utils/seo';
 import { updateSettingsSchema } from '@commune/core';
 import { formatDate } from '@commune/utils';
-import { supabase, deleteAccount } from '@commune/api';
+import { deleteAccount, supabase } from '@commune/api';
 import { useAuthStore } from '../../stores/auth';
 import { useProfile, useUpdateProfile } from '../../hooks/use-profile';
 import { usePortal, useSubscription } from '../../hooks/use-subscriptions';
@@ -135,6 +135,7 @@ function SettingsPage() {
     () => profile ?? (user ? {
       default_currency: user.default_currency ?? 'GBP',
       timezone: user.timezone ?? 'Europe/London',
+      show_shared_groups: (user as typeof user & { show_shared_groups?: boolean }).show_shared_groups ?? true,
       notification_preferences: DEFAULT_NOTIFICATION_PREFS,
     } : null),
     [profile, user],
@@ -466,14 +467,26 @@ function SettingsPage() {
               <Switch
                 label="Show shared groups on profile"
                 description="When enabled, other members can see which groups you have in common when viewing your profile"
-                checked={(profile as any)?.show_shared_groups ?? true}
+                checked={resolvedProfile?.show_shared_groups ?? true}
+                disabled={updateProfile.isPending}
                 onChange={async (e) => {
                   try {
-                    const supabase = (await import('@commune/api')).supabase;
-                    await supabase.from('users').update({ show_shared_groups: e.currentTarget.checked }).eq('id', user?.id ?? '');
-                    notifications.show({ title: 'Privacy updated', message: 'Your preference has been saved.', color: 'green' });
-                  } catch {
-                    notifications.show({ title: 'Failed to update', message: 'Something went wrong', color: 'red' });
+                    if (!user) return;
+                    await updateProfile.mutateAsync({
+                      userId: user.id,
+                      data: { show_shared_groups: e.currentTarget.checked },
+                    });
+                    notifications.show({
+                      title: 'Privacy updated',
+                      message: 'Your preference has been saved.',
+                      color: 'green',
+                    });
+                  } catch (err) {
+                    notifications.show({
+                      title: 'Failed to update',
+                      message: err instanceof Error ? err.message : 'Something went wrong',
+                      color: 'red',
+                    });
                   }
                 }}
               />

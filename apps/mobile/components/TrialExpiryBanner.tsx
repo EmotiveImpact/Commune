@@ -1,8 +1,9 @@
 import { useMemo } from 'react';
 import { Linking, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { Button, Chip, Card } from 'heroui-native';
 import { useSubscription } from '@/hooks/use-subscriptions';
-import { AppButton } from './ui';
+import { useThemeStore } from '@/stores/theme';
 
 const PRICING_URL = 'https://commune.app/pricing';
 
@@ -14,6 +15,7 @@ interface TrialExpiryBannerProps {
 
 export function TrialExpiryBanner({ userId }: TrialExpiryBannerProps) {
   const { data: subscription, isLoading } = useSubscription(userId);
+  const isDark = useThemeStore((s) => s.mode) === 'dark';
 
   const daysLeft = useMemo(() => {
     if (!subscription?.trial_ends_at) return 0;
@@ -35,33 +37,24 @@ export function TrialExpiryBanner({ userId }: TrialExpiryBannerProps) {
   const config = {
     warning: {
       icon: 'time-outline' as const,
-      badge: `${daysLeft} day${daysLeft === 1 ? '' : 's'} left`,
+      chipLabel: `${daysLeft} day${daysLeft === 1 ? '' : 's'} left`,
+      chipColor: 'warning' as const,
       message: `Your free trial ends in ${daysLeft} day${daysLeft === 1 ? '' : 's'}. Upgrade now to keep access to all features.`,
-      panelBg: '#FFF8F0',
       borderColor: '#F5A623',
-      badgeBg: '#FFF1DB',
-      badgeText: '#8A593B',
-      iconColor: '#F5A623',
     },
     expired: {
       icon: 'alert-circle-outline' as const,
-      badge: 'Expired',
+      chipLabel: 'Expired',
+      chipColor: 'danger' as const,
       message: 'Your free trial has ended. Upgrade to continue using Commune.',
-      panelBg: '#FFF0EE',
       borderColor: '#B9382F',
-      badgeBg: '#F7E2DD',
-      badgeText: '#B9382F',
-      iconColor: '#B9382F',
     },
     no_subscription: {
       icon: 'sparkles-outline' as const,
-      badge: '7 days free',
+      chipLabel: '7 days free',
+      chipColor: 'success' as const,
       message: 'Pick a plan to start your 7-day free trial and unlock all of Commune.',
-      panelBg: '#EEF6F3',
       borderColor: '#2d6a4f',
-      badgeBg: '#d7e6dd',
-      badgeText: '#2d6a4f',
-      iconColor: '#2d6a4f',
     },
   }[variant];
 
@@ -70,40 +63,35 @@ export function TrialExpiryBanner({ userId }: TrialExpiryBannerProps) {
   }
 
   return (
-    <View
-      className="mb-4 rounded-[24px] px-5 py-4"
-      style={{
-        backgroundColor: config.panelBg,
-        borderWidth: 1,
-        borderColor: config.borderColor,
-      }}
+    <Card style={{ marginBottom: 16, padding: 16,  borderWidth: 1, borderColor: config.borderColor }}
     >
-      <View className="flex-row items-center">
-        <Ionicons name={config.icon} size={20} color={config.iconColor} />
-        <View
-          className="ml-2 rounded-full px-3 py-1"
-          style={{ backgroundColor: config.badgeBg }}
-        >
-          <Text
-            className="text-xs font-semibold uppercase tracking-[1px]"
-            style={{ color: config.badgeText }}
-          >
-            {config.badge}
-          </Text>
-        </View>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        <Ionicons name={config.icon} size={20} color={config.borderColor} />
+        <Chip color={config.chipColor} variant="soft" size="sm">
+          {config.chipLabel}
+        </Chip>
       </View>
 
-      <Text className="mt-3 text-sm leading-6 text-[#171b24]">
+      <Text
+        style={{
+          marginTop: 12,
+          fontSize: 14,
+          lineHeight: 22,
+          color: isDark ? '#FAFAFA' : '#171b24',
+        }}
+      >
         {config.message}
       </Text>
 
-      <View className="mt-3">
-        <AppButton
-          label="Upgrade now"
-          icon="sparkles-outline"
+      <View style={{ marginTop: 12 }}>
+        <Button
+          variant="primary"
+          className="w-full"
           onPress={handleUpgrade}
-        />
+        >
+          <Button.Label>Upgrade now</Button.Label>
+        </Button>
       </View>
-    </View>
+    </Card>
   );
 }

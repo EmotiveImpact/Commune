@@ -11,7 +11,7 @@ import {
 export const fundKeys = {
   all: ['funds'] as const,
   list: (groupId: string) => [...fundKeys.all, 'list', groupId] as const,
-  detail: (fundId: string) => [...fundKeys.all, 'detail', fundId] as const,
+  detail: (groupId: string, fundId: string) => [...fundKeys.all, 'detail', groupId, fundId] as const,
 };
 
 export function useFunds(groupId: string) {
@@ -22,11 +22,11 @@ export function useFunds(groupId: string) {
   });
 }
 
-export function useFundDetails(fundId: string) {
+export function useFundDetails(groupId: string, fundId: string) {
   return useQuery({
-    queryKey: fundKeys.detail(fundId),
-    queryFn: () => getFundDetails(fundId),
-    enabled: !!fundId,
+    queryKey: fundKeys.detail(groupId, fundId),
+    queryFn: () => getFundDetails(fundId, groupId),
+    enabled: !!groupId && !!fundId,
   });
 }
 
@@ -39,7 +39,18 @@ export function useCreateFund(groupId: string) {
       target_amount?: number | null;
       currency: string;
     }) => createFund(data),
-    onSuccess: () => {
+    onSuccess: (fund) => {
+      queryClient.setQueryData(
+        fundKeys.detail(groupId, fund.id),
+        {
+          ...fund,
+          contributions: [],
+          expenses: [],
+          total_contributions: 0,
+          total_expenses: 0,
+          balance: 0,
+        },
+      );
       queryClient.invalidateQueries({ queryKey: fundKeys.list(groupId) });
     },
   });
@@ -52,7 +63,7 @@ export function useAddContribution(groupId: string, fundId: string) {
       addContribution(fundId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: fundKeys.list(groupId) });
-      queryClient.invalidateQueries({ queryKey: fundKeys.detail(fundId) });
+      queryClient.invalidateQueries({ queryKey: fundKeys.detail(groupId, fundId) });
     },
   });
 }
@@ -67,7 +78,7 @@ export function useAddFundExpense(groupId: string, fundId: string) {
     }) => addFundExpense(fundId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: fundKeys.list(groupId) });
-      queryClient.invalidateQueries({ queryKey: fundKeys.detail(fundId) });
+      queryClient.invalidateQueries({ queryKey: fundKeys.detail(groupId, fundId) });
     },
   });
 }

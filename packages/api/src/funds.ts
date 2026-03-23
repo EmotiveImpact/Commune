@@ -90,14 +90,20 @@ export async function createFund(data: CreateFundData) {
   return fund as unknown as GroupFund;
 }
 
-export async function getFundDetails(fundId: string) {
-  const { data: fund, error: fundErr } = await supabase
+export async function getFundDetails(fundId: string, groupId?: string) {
+  let fundQuery = supabase
     .from('group_funds')
     .select('*')
-    .eq('id', fundId)
-    .single();
+    .eq('id', fundId);
+
+  if (groupId) {
+    fundQuery = fundQuery.eq('group_id', groupId);
+  }
+
+  const { data: fund, error: fundErr } = await fundQuery.maybeSingle();
 
   if (fundErr) throw fundErr;
+  if (!fund) return null;
 
   const [{ data: contributions, error: contErr }, { data: expenses, error: expErr }] =
     await Promise.all([

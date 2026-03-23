@@ -4,14 +4,16 @@ import {
   ScrollView,
   View,
   Text,
+  TextInput,
+  TouchableOpacity,
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { updatePassword } from '@commune/api';
-import { AppButton, TextField } from '@/components/ui';
 import { getErrorMessage } from '@/lib/errors';
+import { hapticMedium, hapticSuccess, hapticWarning, hapticError } from '@/lib/haptics';
 
 export default function ResetPasswordScreen() {
   const router = useRouter();
@@ -21,15 +23,19 @@ export default function ResetPasswordScreen() {
   const [loading, setLoading] = useState(false);
 
   async function handleUpdate() {
+    hapticMedium();
     if (!password || !confirmPassword) {
+      hapticWarning();
       setError('Please fill in both fields');
       return;
     }
     if (password.length < 8) {
+      hapticWarning();
       setError('Password must be at least 8 characters');
       return;
     }
     if (password !== confirmPassword) {
+      hapticWarning();
       setError('Passwords do not match');
       return;
     }
@@ -37,10 +43,12 @@ export default function ResetPasswordScreen() {
     setError('');
     try {
       await updatePassword(password);
+      hapticSuccess();
       Alert.alert('Password updated', 'Your password has been changed successfully.', [
         { text: 'OK', onPress: () => router.replace('/(auth)/login') },
       ]);
     } catch (err) {
+      hapticError();
       setError(getErrorMessage(err, 'Could not update password'));
     } finally {
       setLoading(false);
@@ -50,48 +58,148 @@ export default function ResetPasswordScreen() {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      className="flex-1 bg-[#f5f1ea]"
+      style={{ flex: 1, backgroundColor: '#FFFFFF' }}
     >
       <ScrollView
-        className="flex-1"
-        contentContainerStyle={{ flexGrow: 1, padding: 20, justifyContent: 'center' }}
+        style={{ flex: 1 }}
+        contentContainerStyle={{
+          flexGrow: 1,
+          paddingHorizontal: 24,
+          justifyContent: 'center',
+        }}
         keyboardShouldPersistTaps="handled"
       >
-        <View className="rounded-[32px] bg-[#1f2330] px-5 py-6">
-          <Text className="text-sm font-medium text-[rgba(255,255,255,0.72)]">Commune</Text>
-          <Text className="mt-2 text-[32px] font-bold leading-[38px] text-white">
-            New password
+        {/* Branding */}
+        <View style={{ alignItems: 'center', marginBottom: 32 }}>
+          <Text
+            style={{
+              fontSize: 32,
+              fontWeight: '700',
+              color: '#2d6a4f',
+            }}
+          >
+            Commune
           </Text>
-          <Text className="mt-3 text-sm leading-6 text-[rgba(255,250,246,0.72)]">
-            Choose a strong password for your account.
+          <Text
+            style={{
+              marginTop: 8,
+              fontSize: 16,
+              color: '#9CA3AF',
+            }}
+          >
+            Set a new password
           </Text>
         </View>
 
-        <View className="mt-4 rounded-[28px] border border-[rgba(23,27,36,0.14)] bg-white px-5 py-5">
-          <Text className="text-2xl font-semibold text-[#171b24]">Set new password</Text>
-          <Text className="mt-2 text-sm leading-6 text-[#667085]">
+        {/* Card */}
+        <View
+          style={{
+            backgroundColor: '#FFFFFF',
+            borderRadius: 20,
+            padding: 24,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.08,
+            shadowRadius: 24,
+            elevation: 8,
+          }}
+        >
+          <Text
+            style={{
+              textAlign: 'center',
+              fontSize: 20,
+              fontWeight: '700',
+              color: '#171b24',
+            }}
+          >
+            New password
+          </Text>
+          <Text
+            style={{
+              marginTop: 8,
+              textAlign: 'center',
+              fontSize: 15,
+              lineHeight: 22,
+              color: '#9CA3AF',
+            }}
+          >
             Your new password must be at least 8 characters long.
           </Text>
 
           {error ? (
-            <View className="mt-4 rounded-[20px] bg-[#FCE7E4] px-4 py-3">
-              <Text className="text-sm font-medium text-[#B9382F]">{error}</Text>
+            <View
+              style={{
+                backgroundColor: '#FEF2F2',
+                borderRadius: 12,
+                padding: 12,
+                marginTop: 16,
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 13,
+                  color: '#DC2626',
+                  fontWeight: '500',
+                }}
+              >
+                {error}
+              </Text>
             </View>
           ) : null}
 
-          <View className="mt-5">
-            <TextField
-              label="New password"
+          {/* New password */}
+          <View style={{ marginTop: 20, marginBottom: 16 }}>
+            <Text
+              style={{
+                fontSize: 14,
+                fontWeight: '600',
+                color: '#374151',
+                marginBottom: 8,
+              }}
+            >
+              New password
+            </Text>
+            <TextInput
+              style={{
+                backgroundColor: '#F3F4F6',
+                borderRadius: 12,
+                height: 50,
+                paddingHorizontal: 16,
+                fontSize: 15,
+                color: '#171b24',
+              }}
               placeholder="At least 8 characters"
+              placeholderTextColor="#9CA3AF"
               value={password}
               onChangeText={setPassword}
               secureTextEntry
               autoComplete="new-password"
             />
+          </View>
 
-            <TextField
-              label="Confirm password"
+          {/* Confirm password */}
+          <View style={{ marginBottom: 24 }}>
+            <Text
+              style={{
+                fontSize: 14,
+                fontWeight: '600',
+                color: '#374151',
+                marginBottom: 8,
+              }}
+            >
+              Confirm password
+            </Text>
+            <TextInput
+              style={{
+                backgroundColor: '#F3F4F6',
+                borderRadius: 12,
+                height: 50,
+                paddingHorizontal: 16,
+                fontSize: 15,
+                color: '#171b24',
+              }}
               placeholder="Re-enter your password"
+              placeholderTextColor="#9CA3AF"
               value={confirmPassword}
               onChangeText={setConfirmPassword}
               secureTextEntry
@@ -99,17 +207,34 @@ export default function ResetPasswordScreen() {
             />
           </View>
 
-          <AppButton
-            label={loading ? 'Updating...' : 'Update password'}
+          {/* Update password button */}
+          <TouchableOpacity
             onPress={handleUpdate}
             disabled={loading}
-          />
-
-          {loading ? (
-            <View className="mt-4 flex-row items-center justify-center">
-              <ActivityIndicator color="#2d6a4f" />
-            </View>
-          ) : null}
+            activeOpacity={0.8}
+            style={{
+              backgroundColor: '#1f2330',
+              height: 52,
+              borderRadius: 14,
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexDirection: 'row',
+              opacity: loading ? 0.7 : 1,
+            }}
+          >
+            {loading ? (
+              <ActivityIndicator color="#FFFFFF" style={{ marginRight: 8 }} />
+            ) : null}
+            <Text
+              style={{
+                color: '#FFFFFF',
+                fontSize: 16,
+                fontWeight: '600',
+              }}
+            >
+              {loading ? 'Updating...' : 'Update password'}
+            </Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>

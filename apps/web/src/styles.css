@@ -834,6 +834,27 @@ div:hover > .commune-avatar-overlay {
   color: rgba(255, 255, 255, 0.85);
 }
 
+/* ── Mobile sidebar ── */
+@media (max-width: 47.99em) {
+  /* Full-height overlay panel — always expanded on mobile */
+  .commune-sidebar-panel {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Larger tap targets on mobile */
+  .commune-sidebar-link {
+    padding: 10px 14px !important;
+    min-height: 44px;
+  }
+
+  /* Group headers need bigger tap targets too */
+  .commune-nav-group-header {
+    padding: 8px 10px;
+    min-height: 36px;
+  }
+}
+
 /* Profile menu dropdown — dark theme matching sidebar */
 .commune-profile-menu {
   background: var(--commune-forest, #1a2e28);

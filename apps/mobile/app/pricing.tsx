@@ -1,18 +1,22 @@
-import { Alert, Linking, Text, View } from 'react-native';
+import { useEffect, useRef } from 'react';
+import {
+  Alert,
+  Animated,
+  Linking,
+  Platform,
+  Pressable,
+  ScrollView,
+  Text,
+  View,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SubscriptionPlan } from '@commune/types';
 import { formatDate } from '@commune/utils';
 import { useAuthStore } from '@/stores/auth';
+import { useThemeStore } from '@/stores/theme';
 import { useCheckout, useSubscription } from '@/hooks/use-subscriptions';
-import {
-  AppButton,
-  ContentSkeleton,
-  EmptyState,
-  Screen,
-  StatusChip,
-  Surface,
-} from '@/components/ui';
 import { getErrorMessage } from '@/lib/errors';
+import { hapticMedium, hapticWarning } from '@/lib/haptics';
 
 interface PlanConfig {
   id: SubscriptionPlan;
@@ -70,25 +74,168 @@ const PLANS: PlanConfig[] = [
   },
 ];
 
+const shadow = Platform.select({
+  ios: {
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+  },
+  android: { elevation: 2 },
+  default: {},
+});
+
+/* -- Shimmer skeleton ---------------------------------------------------- */
+
+function PricingLoadingSkeleton() {
+  const mode = useThemeStore((s) => s.mode);
+  const bg = mode === 'dark' ? '#0A0A0A' : '#FAFAFA';
+  const shimmerBg =
+    mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(23,27,36,0.08)';
+  const opacity = useRef(new Animated.Value(0.4)).current;
+
+  useEffect(() => {
+    const anim = Animated.loop(
+      Animated.sequence([
+        Animated.timing(opacity, {
+          toValue: 1,
+          duration: 900,
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacity, {
+          toValue: 0.4,
+          duration: 900,
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    anim.start();
+    return () => anim.stop();
+  }, [opacity]);
+
+  return (
+    <ScrollView
+      style={{ flex: 1, backgroundColor: bg }}
+      contentContainerStyle={{ padding: 20, paddingBottom: 120 }}
+    >
+      <Animated.View style={{ opacity }}>
+        <View
+          style={{
+            height: 80,
+            borderRadius: 16,
+            backgroundColor: shimmerBg,
+            marginBottom: 20,
+          }}
+        />
+        {[1, 2, 3].map((i) => (
+          <View
+            key={i}
+            style={{
+              height: 320,
+              borderRadius: 16,
+              backgroundColor: shimmerBg,
+              marginBottom: 16,
+            }}
+          />
+        ))}
+      </Animated.View>
+    </ScrollView>
+  );
+}
+
+/* -- Empty state --------------------------------------------------------- */
+
+function EmptyState({
+  icon,
+  title,
+  description,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  title: string;
+  description: string;
+}) {
+  const mode = useThemeStore((s) => s.mode);
+  const isDark = mode === 'dark';
+
+  return (
+    <View
+      style={{
+        alignItems: 'center',
+        padding: 24,
+        borderRadius: 16,
+        backgroundColor: isDark ? '#1A1A1A' : '#FFFFFF',
+        ...shadow,
+      }}
+    >
+      <View
+        style={{
+          marginBottom: 16,
+          height: 64,
+          width: 64,
+          alignItems: 'center',
+          justifyContent: 'center',
+          borderRadius: 32,
+          backgroundColor: isDark ? 'rgba(45,106,79,0.15)' : '#EEF6F3',
+        }}
+      >
+        <Ionicons name={icon} size={26} color="#2d6a4f" />
+      </View>
+      <Text
+        style={{
+          textAlign: 'center',
+          fontSize: 20,
+          fontWeight: '600',
+          color: isDark ? '#E5E5E5' : '#171b24',
+        }}
+      >
+        {title}
+      </Text>
+      <Text
+        style={{
+          marginTop: 12,
+          textAlign: 'center',
+          fontSize: 14,
+          lineHeight: 24,
+          color: isDark ? '#888' : '#667085',
+        }}
+      >
+        {description}
+      </Text>
+    </View>
+  );
+}
+
+/* -- Main screen --------------------------------------------------------- */
+
 export default function PricingScreen() {
   const user = useAuthStore((s) => s.user);
+  const mode = useThemeStore((s) => s.mode);
+  const isDark = mode === 'dark';
+  const bg = isDark ? '#0A0A0A' : '#FAFAFA';
+  const textPrimary = isDark ? '#E5E5E5' : '#171b24';
+  const textSecondary = isDark ? '#888' : '#667085';
+  const cardBg = isDark ? '#1A1A1A' : '#FFFFFF';
+
   const { data: subscription, isLoading } = useSubscription(user?.id ?? '');
   const checkout = useCheckout();
 
   if (!user) {
     return (
-      <Screen>
+      <ScrollView
+        style={{ flex: 1, backgroundColor: bg }}
+        contentContainerStyle={{ padding: 20, paddingBottom: 120 }}
+      >
         <EmptyState
           icon="pricetag-outline"
           title="Not signed in"
           description="Sign in to view pricing plans."
         />
-      </Screen>
+      </ScrollView>
     );
   }
 
   if (isLoading) {
-    return <ContentSkeleton />;
+    return <PricingLoadingSkeleton />;
   }
 
   const currentPlan = subscription?.plan;
@@ -97,11 +244,13 @@ export default function PricingScreen() {
 
   async function handleSelectPlan(plan: SubscriptionPlan) {
     if (isActive && plan === currentPlan) return;
+    hapticMedium();
 
     try {
       const url = await checkout.mutateAsync(plan);
       await Linking.openURL(url);
     } catch (error) {
+      hapticWarning();
       Alert.alert(
         'Checkout failed',
         getErrorMessage(error, 'Something went wrong starting checkout.'),
@@ -110,23 +259,89 @@ export default function PricingScreen() {
   }
 
   return (
-    <Screen>
-      {/* Hero */}
-      <View className="mb-4 rounded-[32px] bg-[#1f2330] px-5 py-6">
-        <Text className="text-sm font-medium text-[rgba(255,255,255,0.72)]">
-          Plans and billing
-        </Text>
-        <Text className="mt-2 text-[30px] font-bold leading-[36px] text-white">
+    <ScrollView
+      style={{ flex: 1, backgroundColor: bg }}
+      contentContainerStyle={{ padding: 20, paddingBottom: 120 }}
+      showsVerticalScrollIndicator={false}
+    >
+      {/* Trial banner */}
+      {isTrialing && subscription?.trial_ends_at ? (
+        <View
+          style={{
+            marginBottom: 16,
+            padding: 14,
+            borderRadius: 12,
+            backgroundColor: isDark ? 'rgba(45,106,79,0.12)' : '#ECFDF5',
+            flexDirection: 'row',
+            alignItems: 'center',
+          }}
+        >
+          <View
+            style={{
+              height: 32,
+              width: 32,
+              borderRadius: 16,
+              backgroundColor: isDark ? 'rgba(5,150,105,0.2)' : '#D1FAE5',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginRight: 12,
+            }}
+          >
+            <Ionicons name="time-outline" size={16} color="#059669" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text
+              style={{
+                fontSize: 13,
+                fontWeight: '600',
+                color: '#059669',
+              }}
+            >
+              Free trial active
+            </Text>
+            <Text
+              style={{
+                fontSize: 12,
+                color: isDark ? '#6EE7B7' : '#047857',
+                marginTop: 2,
+              }}
+            >
+              Ends {formatDate(subscription.trial_ends_at)}. No charge until
+              then.
+            </Text>
+          </View>
+        </View>
+      ) : null}
+
+      {/* Header */}
+      <View style={{ marginBottom: 24 }}>
+        <Text
+          style={{
+            fontSize: 28,
+            fontWeight: '700',
+            color: textPrimary,
+          }}
+        >
           Choose your plan
         </Text>
-        <Text className="mt-3 text-sm leading-6 text-[rgba(255,250,246,0.72)]">
+        <Text
+          style={{
+            marginTop: 8,
+            fontSize: 14,
+            lineHeight: 22,
+            color: textSecondary,
+          }}
+        >
           Every plan starts with a 7-day free trial. Pick the level that matches
           how many groups and members you manage.
         </Text>
       </View>
 
+      {/* Plan cards */}
       {PLANS.map((plan) => {
         const isCurrent = currentPlan === plan.id;
+        const isHighlighted = isCurrent || plan.highlight;
+
         const buttonLabel = isCurrent
           ? isTrialing
             ? 'Current plan (trial)'
@@ -136,96 +351,213 @@ export default function PricingScreen() {
             : 'Start 7-day trial';
 
         return (
-          <Surface
+          <View
             key={plan.id}
-            className="mb-4"
+            style={{
+              marginBottom: 16,
+              borderRadius: 16,
+              padding: 20,
+              backgroundColor: isCurrent
+                ? isDark
+                  ? 'rgba(45,106,79,0.08)'
+                  : '#F7FDF9'
+                : cardBg,
+              borderWidth: isHighlighted ? 2 : 1,
+              borderColor: isHighlighted ? '#2d6a4f' : '#E5E7EB',
+              ...shadow,
+            }}
           >
-            {/* Green border for highlighted plan */}
-            {plan.highlight ? (
-              <View
-                style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  borderRadius: 28,
-                  borderWidth: 2,
-                  borderColor: '#2d6a4f',
-                  pointerEvents: 'none',
-                }}
-              />
-            ) : null}
-
-            {/* Plan header */}
-            <View className="flex-row items-start justify-between">
-              <View className="flex-1">
-                <Text className="text-xl font-bold text-[#171b24]">
+            {/* Plan header row */}
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'flex-start',
+                justifyContent: 'space-between',
+              }}
+            >
+              <View style={{ flex: 1 }}>
+                <Text
+                  style={{
+                    fontSize: 20,
+                    fontWeight: '600',
+                    color: textPrimary,
+                  }}
+                >
                   {plan.name}
                 </Text>
-                <Text className="mt-1 text-sm text-[#667085]">
-                  {plan.limits.groups} group{plan.limits.groups === '1' ? '' : 's'} and{' '}
+                <Text
+                  style={{
+                    marginTop: 4,
+                    fontSize: 13,
+                    color: textSecondary,
+                  }}
+                >
+                  {plan.limits.groups} group
+                  {plan.limits.groups === '1' ? '' : 's'} &middot;{' '}
                   {plan.limits.members} members
                 </Text>
               </View>
-              <View className="flex-row" style={{ gap: 6 }}>
+
+              {/* Badges */}
+              <View style={{ flexDirection: 'row', gap: 6 }}>
                 {plan.highlight ? (
-                  <StatusChip label="Most popular" tone="emerald" />
+                  <View
+                    style={{
+                      paddingHorizontal: 10,
+                      paddingVertical: 4,
+                      borderRadius: 8,
+                      backgroundColor: '#ECFDF5',
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 11,
+                        fontWeight: '600',
+                        color: '#059669',
+                      }}
+                    >
+                      Most popular
+                    </Text>
+                  </View>
                 ) : null}
                 {isCurrent ? (
-                  <StatusChip
-                    label={isTrialing ? 'Trial' : 'Active'}
-                    tone={isTrialing ? 'sand' : 'emerald'}
-                  />
+                  <View
+                    style={{
+                      paddingHorizontal: 10,
+                      paddingVertical: 4,
+                      borderRadius: 8,
+                      backgroundColor: isDark
+                        ? 'rgba(45,106,79,0.2)'
+                        : '#ECFDF5',
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 11,
+                        fontWeight: '600',
+                        color: '#059669',
+                      }}
+                    >
+                      {isTrialing ? 'Trial' : 'Active'}
+                    </Text>
+                  </View>
                 ) : null}
               </View>
             </View>
 
             {/* Price */}
-            <View className="mt-4 flex-row items-baseline" style={{ gap: 4 }}>
-              <Text className="text-[36px] font-black text-[#171b24]">
+            <View
+              style={{
+                marginTop: 16,
+                flexDirection: 'row',
+                alignItems: 'baseline',
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 28,
+                  fontWeight: '700',
+                  color: textPrimary,
+                }}
+              >
                 {plan.price}
               </Text>
-              <Text className="text-sm text-[#667085]">{plan.priceNote}</Text>
+              <Text
+                style={{
+                  fontSize: 14,
+                  color: textSecondary,
+                  marginLeft: 4,
+                }}
+              >
+                {plan.priceNote}
+              </Text>
             </View>
 
             {/* Feature list */}
-            <View className="mt-4 rounded-2xl border border-[rgba(23,27,36,0.14)] bg-[#fbf7f1] p-4">
-              <Text className="mb-3 text-sm font-semibold text-[#171b24]">
-                Includes
-              </Text>
+            <View style={{ marginTop: 16 }}>
               {plan.features.map((feature) => (
-                <View key={feature} className="mb-2 flex-row items-start">
-                  <View className="mr-2 mt-0.5 h-5 w-5 items-center justify-center rounded-full bg-[#EEF6F3]">
+                <View
+                  key={feature}
+                  style={{
+                    marginBottom: 10,
+                    flexDirection: 'row',
+                    alignItems: 'flex-start',
+                  }}
+                >
+                  <View
+                    style={{
+                      marginRight: 10,
+                      marginTop: 2,
+                      height: 20,
+                      width: 20,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      borderRadius: 10,
+                      backgroundColor: isDark
+                        ? 'rgba(45,106,79,0.15)'
+                        : '#EEF6F3',
+                    }}
+                  >
                     <Ionicons name="checkmark" size={12} color="#2d6a4f" />
                   </View>
-                  <Text className="flex-1 text-sm leading-5 text-[#171b24]">
+                  <Text
+                    style={{
+                      flex: 1,
+                      fontSize: 14,
+                      lineHeight: 20,
+                      color: textPrimary,
+                    }}
+                  >
                     {feature}
                   </Text>
                 </View>
               ))}
             </View>
 
-            {/* CTA */}
-            <View className="mt-4">
-              <AppButton
-                label={buttonLabel}
-                variant={isCurrent ? 'secondary' : 'primary'}
-                disabled={isCurrent}
-                loading={checkout.isPending}
-                onPress={() => handleSelectPlan(plan.id)}
-              />
-            </View>
-          </Surface>
+            {/* CTA button */}
+            <Pressable
+              onPress={() => handleSelectPlan(plan.id)}
+              disabled={isCurrent}
+              style={({ pressed }) => ({
+                marginTop: 16,
+                height: 48,
+                borderRadius: 14,
+                alignItems: 'center',
+                justifyContent: 'center',
+                opacity: isCurrent ? 0.5 : pressed ? 0.85 : 1,
+                ...(isCurrent
+                  ? {
+                      backgroundColor: 'transparent',
+                      borderWidth: 1,
+                      borderColor: '#E5E7EB',
+                    }
+                  : plan.highlight
+                    ? {
+                        backgroundColor: '#1f2330',
+                      }
+                    : {
+                        backgroundColor: 'transparent',
+                        borderWidth: 1,
+                        borderColor: '#E5E7EB',
+                      }),
+              })}
+            >
+              <Text
+                style={{
+                  fontSize: 15,
+                  fontWeight: '600',
+                  color:
+                    !isCurrent && plan.highlight
+                      ? '#FFFFFF'
+                      : textPrimary,
+                }}
+              >
+                {buttonLabel}
+              </Text>
+            </Pressable>
+          </View>
         );
       })}
-
-      {isTrialing && subscription?.trial_ends_at ? (
-        <Text className="mt-2 mb-4 text-center text-sm text-[#667085]">
-          Your trial ends on {formatDate(subscription.trial_ends_at)}. You will
-          not be charged until then.
-        </Text>
-      ) : null}
-    </Screen>
+    </ScrollView>
   );
 }

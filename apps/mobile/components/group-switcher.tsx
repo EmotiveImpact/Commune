@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react';
 import { Modal, Pressable, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { Card, Chip, Button, Avatar } from 'heroui-native';
 import type { Group } from '@commune/types';
-import { AppButton, StatusChip, Surface } from './ui';
+import { useThemeStore } from '@/stores/theme';
 
 export function GroupSwitcher({
   groups,
@@ -20,6 +21,8 @@ export function GroupSwitcher({
   variant?: 'card' | 'compact';
 }) {
   const [isOpen, setIsOpen] = useState(false);
+  const themeMode = useThemeStore((s) => s.mode);
+  const isDark = themeMode === 'dark';
 
   const activeGroup = useMemo(
     () => groups.find((group) => group.id === activeGroupId) ?? groups[0] ?? null,
@@ -32,51 +35,87 @@ export function GroupSwitcher({
 
   return (
     <>
-      <TouchableOpacity activeOpacity={0.88} onPress={() => setIsOpen(true)}>
+      <TouchableOpacity
+        activeOpacity={0.88}
+        onPress={() => setIsOpen(true)}
+        accessibilityLabel={`Switch group. Current: ${activeGroup.name}`}
+        accessibilityRole="button"
+      >
         {variant === 'compact' ? (
-          <View className="flex-row items-center rounded-[18px] bg-white/10 px-3 py-2">
-            <View className="mr-2 flex-1">
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              borderRadius: 12,
+              backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)',
+              paddingHorizontal: 12,
+              paddingVertical: 8,
+            }}
+          >
+            <View style={{ flex: 1, marginRight: 4 }}>
               <Text
-                className="text-[13px] font-semibold text-white"
+                style={{
+                  fontSize: 13,
+                  fontWeight: '600',
+                  color: isDark ? '#FAFAFA' : '#171b24',
+                }}
                 numberOfLines={1}
               >
                 {activeGroup.name}
               </Text>
-              <Text className="mt-0.5 text-[11px] text-[rgba(255,255,255,0.72)]">
+              <Text
+                style={{
+                  fontSize: 11,
+                  color: isDark ? 'rgba(255,255,255,0.5)' : '#667085',
+                  marginTop: 1,
+                }}
+              >
                 {pendingInvites > 0
                   ? `${pendingInvites} invite${pendingInvites === 1 ? '' : 's'}`
                   : `${activeGroup.type} group`}
               </Text>
             </View>
-            <Ionicons name="chevron-down" size={16} color="#FFFFFF" />
+            <Ionicons
+              name="chevron-down"
+              size={14}
+              color={isDark ? '#A1A1AA' : '#667085'}
+            />
           </View>
         ) : (
-          <Surface className="mb-3 p-4">
-            <View className="flex-row items-center justify-between">
-              <View className="mr-4 flex-1">
-                <Text className="text-[11px] font-semibold uppercase tracking-[2px] text-[#667085]">
+          <Card style={{ marginBottom: 12, padding: 16 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <View style={{ flex: 1, marginRight: 16 }}>
+                <Text style={{ fontSize: 11, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 2, color: '#667085' }}>
                   Group
                 </Text>
-                <Text className="mt-1.5 text-lg font-semibold text-[#171b24]">
+                <Text style={{ marginTop: 6, fontSize: 18, fontWeight: '600', color: isDark ? '#FAFAFA' : '#171b24' }}>
                   {activeGroup.name}
                 </Text>
-                <View className="mt-2 flex-row flex-wrap">
-                  <StatusChip
-                    label={`${activeGroup.type} group · ${activeGroup.currency}`}
-                  />
-                  {pendingInvites > 0 ? (
-                    <StatusChip
-                      label={`${pendingInvites} invite${pendingInvites === 1 ? '' : 's'}`}
-                      tone="sky"
-                    />
-                  ) : null}
+                <View style={{ marginTop: 8, flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                  <Chip variant="soft" size="sm">
+                    {`${activeGroup.type} · ${activeGroup.currency}`}
+                  </Chip>
+                  {pendingInvites > 0 && (
+                    <Chip variant="soft" size="sm">
+                      {`${pendingInvites} invite${pendingInvites === 1 ? '' : 's'}`}
+                    </Chip>
+                  )}
                 </View>
               </View>
-              <View className="h-10 w-10 items-center justify-center rounded-[18px] bg-[#EEF6F3]">
+              <View
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 14,
+                  backgroundColor: '#EEF6F3',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
                 <Ionicons name="swap-horizontal" size={18} color="#2d6a4f" />
               </View>
             </View>
-          </Surface>
+          </Card>
         )}
       </TouchableOpacity>
 
@@ -87,24 +126,43 @@ export function GroupSwitcher({
         onRequestClose={() => setIsOpen(false)}
       >
         <Pressable
-          className="flex-1 bg-black/30"
+          style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.3)' }}
           onPress={() => setIsOpen(false)}
         >
-          <Pressable className="mt-auto rounded-t-[32px] bg-[#f5f1ea] px-5 pb-10 pt-6">
-            <View className="mb-5 flex-row items-center justify-between">
+          <Pressable
+            style={{
+              marginTop: 'auto',
+              borderTopLeftRadius: 24,
+              borderTopRightRadius: 24,
+              backgroundColor: isDark ? '#18181B' : '#FAFAFA',
+              paddingHorizontal: 20,
+              paddingBottom: 40,
+              paddingTop: 24,
+            }}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
               <View>
-                <Text className="text-2xl font-semibold text-[#171b24]">
+                <Text style={{ fontSize: 24, fontWeight: '600', color: isDark ? '#FAFAFA' : '#171b24' }}>
                   Switch group
                 </Text>
-                <Text className="mt-1 text-sm text-[#667085]">
+                <Text style={{ marginTop: 4, fontSize: 14, color: '#667085' }}>
                   Choose the shared space you want to manage.
                 </Text>
               </View>
               <TouchableOpacity
                 onPress={() => setIsOpen(false)}
-                className="h-10 w-10 items-center justify-center rounded-full bg-white"
+                style={{
+                  height: 40,
+                  width: 40,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderRadius: 20,
+                  backgroundColor: isDark ? '#27272A' : '#FFFFFF',
+                }}
+                accessibilityLabel="Close group switcher"
+                accessibilityRole="button"
               >
-                <Ionicons name="close" size={20} color="#171b24" />
+                <Ionicons name="close" size={20} color={isDark ? '#FAFAFA' : '#171b24'} />
               </TouchableOpacity>
             </View>
 
@@ -114,20 +172,35 @@ export function GroupSwitcher({
                 <TouchableOpacity
                   key={group.id}
                   activeOpacity={0.86}
-                  className={`mb-3 rounded-[24px] border px-4 py-4 ${selected ? 'border-[#2d6a4f] bg-[#F2F6EC]' : 'border-[rgba(23,27,36,0.14)] bg-white'}`}
+                  style={{
+                    marginBottom: 12,
+                    borderRadius: 16,
+                    borderWidth: 1,
+                    borderColor: selected ? '#2d6a4f' : isDark ? 'rgba(255,255,255,0.1)' : 'rgba(23,27,36,0.1)',
+                    backgroundColor: selected
+                      ? (isDark ? '#1a2e25' : '#EEF6F3')
+                      : (isDark ? '#27272A' : '#FFFFFF'),
+                    padding: 16,
+                  }}
                   onPress={() => {
                     onSelect(group.id);
                     setIsOpen(false);
                   }}
+                  accessibilityLabel={`Select group ${group.name}`}
+                  accessibilityRole="button"
                 >
-                  <View className="flex-row items-center justify-between">
-                    <View className="mr-4 flex-1">
-                      <Text className="text-base font-semibold text-[#171b24]">
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <View style={{ flex: 1, marginRight: 16 }}>
+                      <Text style={{ fontSize: 16, fontWeight: '600', color: isDark ? '#FAFAFA' : '#171b24' }}>
                         {group.name}
                       </Text>
-                      <View className="mt-2 flex-row flex-wrap">
-                        <StatusChip label={`${group.type} · ${group.currency}`} />
-                        <StatusChip label={`Cycle day ${group.cycle_date}`} tone="neutral" />
+                      <View style={{ marginTop: 8, flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                        <Chip variant="soft" size="sm">
+                          {`${group.type} · ${group.currency}`}
+                        </Chip>
+                        <Chip variant="soft" size="sm">
+                          {`Cycle day ${group.cycle_date}`}
+                        </Chip>
                       </View>
                     </View>
                     {selected ? (
@@ -140,23 +213,23 @@ export function GroupSwitcher({
               );
             })}
 
-            {onOpenSetup ? (
-              <View className="mt-2">
-                <AppButton
-                  label={
-                    pendingInvites > 0
-                      ? 'Review invites and setup'
-                      : 'Create or join another group'
-                  }
-                  variant="secondary"
-                  icon="add-circle-outline"
+            {onOpenSetup && (
+              <View style={{ marginTop: 8 }}>
+                <Button
+                  variant="outline"
+                 
+                  className="w-full"
                   onPress={() => {
                     setIsOpen(false);
                     onOpenSetup();
                   }}
-                />
+                >
+                  {pendingInvites > 0
+                    ? 'Review invites and setup'
+                    : 'Create or join another group'}
+                </Button>
               </View>
-            ) : null}
+            )}
           </Pressable>
         </Pressable>
       </Modal>

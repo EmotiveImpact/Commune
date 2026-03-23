@@ -567,6 +567,24 @@ function PaymentMethodModal({
 
   function handleSubmit() {
     if (!provider) return;
+    if (showLink && !link.trim()) {
+      notifications.show({
+        title: 'Payment link required',
+        message: `Add your ${getProviderDisplayName(provider as PaymentProvider)} username or link.`,
+        color: 'red',
+      });
+      return;
+    }
+
+    if (showInfo && !info.trim()) {
+      notifications.show({
+        title: 'Payment details required',
+        message: 'Add the payment details members should use when settling up.',
+        color: 'red',
+      });
+      return;
+    }
+
     const data = {
       provider,
       label: label || null,

@@ -1,45 +1,20 @@
 import { useEffect } from 'react';
 import { Tabs, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, Text, View, Platform } from 'react-native';
+import { hapticLight, hapticMedium } from '@/lib/haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { GroupSwitcher } from '@/components/group-switcher';
 import { usePendingInvites, useUserGroups } from '@/hooks/use-groups';
 import { useNotifications } from '@/hooks/use-notifications';
 import { useAuthStore } from '@/stores/auth';
 import { useGroupStore } from '@/stores/group';
+import { useThemeStore } from '@/stores/theme';
 
-type TabName = 'index' | 'expenses' | 'create' | 'breakdown' | 'settings';
+/* Match web sidebar: linear-gradient(180deg, #1a1e2b, #21262f) */
+const TAB_BAR_BG = '#1d2130';
+const ACTIVE_COLOR = '#FFFFFF';
+const INACTIVE_COLOR = 'rgba(255,255,255,0.45)';
 
-const tabMeta: Record<
-  Exclude<TabName, 'create'>,
-  {
-    title: string;
-    label: string;
-    icon: keyof typeof Ionicons.glyphMap;
-  }
-> = {
-  index: {
-    title: 'Overview',
-    label: 'Home',
-    icon: 'home-outline',
-  },
-  expenses: {
-    title: 'Expenses',
-    label: 'Expenses',
-    icon: 'receipt-outline',
-  },
-  breakdown: {
-    title: 'Breakdown',
-    label: 'Breakdown',
-    icon: 'pie-chart-outline',
-  },
-  settings: {
-    title: 'Settings',
-    label: 'Settings',
-    icon: 'settings-outline',
-  },
-};
 
 export default function TabLayout() {
   const router = useRouter();
@@ -53,6 +28,8 @@ export default function TabLayout() {
     activeGroupId ?? '',
   );
   const unreadCount = notifications.filter((n) => !n.read).length;
+  const mode = useThemeStore((s) => s.mode);
+  const isDark = mode === 'dark';
 
   useEffect(() => {
     if (!activeGroupId && groups[0]?.id) {
@@ -61,132 +38,199 @@ export default function TabLayout() {
   }, [activeGroupId, groups, setActiveGroupId]);
 
   const resolvedGroupId = activeGroupId ?? groups[0]?.id ?? null;
+  const activeGroup = groups.find((g) => g.id === resolvedGroupId);
+
+  const firstName = user?.name?.split(' ')[0] ?? 'there';
+  const userInitials = user?.name
+    ? user.name
+        .split(' ')
+        .map((n: string) => n[0])
+        .join('')
+        .toUpperCase()
+        .slice(0, 2)
+    : '?';
+
+  const headerBg = isDark ? '#0A0A0A' : '#FFFFFF';
+  const tabBarBg = isDark ? '#18181B' : '#FFFFFF';
+  const tabBarBorderColor = isDark ? 'rgba(255,255,255,0.06)' : '#F0F0F0';
+  const sceneBg = isDark ? '#0A0A0A' : '#F9FAFB';
 
   return (
     <Tabs
-      screenOptions={({ route }) => {
-        const routeName = route.name as TabName;
-        const meta = routeName === 'create' ? null : tabMeta[routeName];
-
-        return {
-          tabBarActiveTintColor: '#FFFFFF',
-          tabBarInactiveTintColor: 'rgba(255,255,255,0.5)',
-          headerShown: true,
-          headerShadowVisible: false,
-          headerStyle: {
-            height: insets.top + 84,
-          },
-          header: () => (
+      screenListeners={{
+        tabPress: () => {
+          hapticLight();
+        },
+      }}
+      screenOptions={() => ({
+        tabBarActiveTintColor: ACTIVE_COLOR,
+        tabBarInactiveTintColor: INACTIVE_COLOR,
+        headerShown: true,
+        headerShadowVisible: false,
+        header: () => (
+          <View
+            style={{
+              backgroundColor: headerBg,
+              paddingTop: insets.top + 12,
+              paddingBottom: 16,
+              paddingHorizontal: 20,
+            }}
+          >
             <View
               style={{
-                backgroundColor: '#1f2330',
-                paddingTop: insets.top + 8,
-                paddingBottom: 14,
-                paddingHorizontal: 16,
+                flexDirection: 'row',
+                alignItems: 'center',
               }}
             >
-              <View className="flex-row items-center justify-between">
-                <View className="mr-3 flex-1 flex-row items-center">
-                  <View className="mr-3 h-10 w-10 items-center justify-center rounded-[16px] bg-[rgba(255,255,255,0.1)]">
-                    <Ionicons name="wallet-outline" size={18} color="#FFFFFF" />
-                  </View>
-                  <View className="flex-1">
-                    <Text className="text-[10px] font-semibold uppercase tracking-[3px] text-[rgba(255,255,255,0.5)]">
-                      Commune
-                    </Text>
-                    <Text className="mt-0.5 text-[20px] font-bold text-white">
-                      {meta?.title ?? 'New expense'}
-                    </Text>
-                  </View>
-                </View>
-                <Pressable
-                  onPress={() => router.push('/notifications')}
+              {/* Avatar */}
+              <View
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 20,
+                  backgroundColor: '#1f2330',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginRight: 12,
+                }}
+              >
+                <Text
                   style={{
-                    height: 40,
-                    width: 40,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    borderRadius: 16,
-                    backgroundColor: 'rgba(255,255,255,0.1)',
-                    marginRight: 8,
+                    color: '#FFFFFF',
+                    fontSize: 14,
+                    fontWeight: '600',
+                    letterSpacing: 0.5,
                   }}
                 >
-                  <Ionicons name="notifications-outline" size={18} color="#FFFFFF" />
-                  {unreadCount > 0 ? (
-                    <View
-                      style={{
-                        position: 'absolute',
-                        top: 6,
-                        right: 6,
-                        minWidth: 16,
-                        height: 16,
-                        borderRadius: 8,
-                        backgroundColor: '#E5484D',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        paddingHorizontal: 4,
-                      }}
-                    >
-                      <Text
-                        style={{
-                          color: '#FFFFFF',
-                          fontSize: 9,
-                          fontWeight: '700',
-                        }}
-                      >
-                        {unreadCount > 99 ? '99+' : unreadCount}
-                      </Text>
-                    </View>
-                  ) : null}
-                </Pressable>
-                <View style={{ width: 146 }}>
-                  <GroupSwitcher
-                    groups={groups}
-                    activeGroupId={resolvedGroupId}
-                    pendingInvites={pendingInvites.length}
-                    onSelect={setActiveGroupId}
-                    variant="compact"
+                  {userInitials}
+                </Text>
+              </View>
+
+              {/* Greeting + Group */}
+              <View style={{ flex: 1 }}>
+                <Text
+                  style={{
+                    fontSize: 18,
+                    fontWeight: '600',
+                    color: isDark ? '#FFFFFF' : '#171b24',
+                    letterSpacing: -0.2,
+                  }}
+                >
+                  Hello, {firstName}
+                </Text>
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    marginTop: 2,
+                  }}
+                >
+                  <Ionicons
+                    name="location"
+                    size={11}
+                    color="#9CA3AF"
+                    style={{ marginRight: 3 }}
                   />
+                  <Text
+                    style={{
+                      fontSize: 13,
+                      color: '#9CA3AF',
+                      fontWeight: '400',
+                    }}
+                    numberOfLines={1}
+                  >
+                    {activeGroup?.name ?? 'No group selected'}
+                  </Text>
                 </View>
               </View>
+
+              {/* Notification Bell */}
+              <Pressable
+                onPress={() => {
+                  hapticLight();
+                  router.push('/notifications');
+                }}
+                style={{
+                  height: 40,
+                  width: 40,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Ionicons
+                  name="notifications-outline"
+                  size={28}
+                  color={isDark ? '#FFFFFF' : '#171b24'}
+                />
+                {unreadCount > 0 && (
+                  <View
+                    style={{
+                      position: 'absolute',
+                      top: -4,
+                      right: -4,
+                      minWidth: 18,
+                      height: 18,
+                      borderRadius: 9,
+                      backgroundColor: '#EF4444',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      paddingHorizontal: 4,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        color: '#FFFFFF',
+                        fontSize: 10,
+                        fontWeight: '700',
+                        lineHeight: 12,
+                      }}
+                    >
+                      {unreadCount > 99 ? '99+' : String(unreadCount)}
+                    </Text>
+                  </View>
+                )}
+              </Pressable>
             </View>
-          ),
-          tabBarStyle: {
-            backgroundColor: '#1f2330',
-            borderTopColor: 'rgba(255,255,255,0.08)',
-            borderTopWidth: 1,
-            height: 70 + Math.max(insets.bottom - 2, 8),
-            paddingTop: 8,
-            paddingBottom: Math.max(insets.bottom - 2, 8),
-            paddingHorizontal: 8,
-            shadowColor: 'transparent',
-            elevation: 0,
-          },
-          tabBarLabelStyle: {
-            fontSize: 9,
-            fontWeight: '500',
-            marginTop: 2,
-            letterSpacing: 0.2,
-          },
-          tabBarItemStyle: {
-            paddingTop: 2,
-          },
-          sceneStyle: {
-            backgroundColor: '#f5f1ea',
-          },
-        };
-      }}
+          </View>
+        ),
+        tabBarStyle: {
+          backgroundColor: TAB_BAR_BG,
+          borderTopWidth: 0,
+          height: 62 + insets.bottom,
+          paddingTop: 6,
+          paddingBottom: insets.bottom,
+          shadowColor: '#000',
+          shadowOpacity: 0.15,
+          shadowRadius: 10,
+          shadowOffset: { width: 0, height: -3 },
+          elevation: 8,
+        },
+        tabBarLabelStyle: {
+          fontSize: 10,
+          fontWeight: '500',
+          marginTop: 2,
+          letterSpacing: 0.3,
+        },
+        tabBarItemStyle: {
+          paddingTop: 2,
+        },
+        tabBarActiveTintColor: ACTIVE_COLOR,
+        tabBarInactiveTintColor: INACTIVE_COLOR,
+        sceneStyle: {
+          backgroundColor: sceneBg,
+        },
+      })}
     >
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Overview',
-          tabBarLabel: tabMeta.index.label,
-          tabBarIcon: ({ color }) => (
+          title: 'Home',
+          tabBarLabel: 'Home',
+          tabBarIcon: ({ focused }) => (
             <Ionicons
-              name={tabMeta.index.icon}
-              size={21}
-              color={color}
+              name="home-outline"
+              size={28}
+              color={focused ? ACTIVE_COLOR : INACTIVE_COLOR}
             />
           ),
         }}
@@ -195,12 +239,12 @@ export default function TabLayout() {
         name="expenses"
         options={{
           title: 'Expenses',
-          tabBarLabel: tabMeta.expenses.label,
-          tabBarIcon: ({ color }) => (
+          tabBarLabel: 'Expenses',
+          tabBarIcon: ({ focused }) => (
             <Ionicons
-              name={tabMeta.expenses.icon}
-              size={21}
-              color={color}
+              name="receipt-outline"
+              size={28}
+              color={focused ? ACTIVE_COLOR : INACTIVE_COLOR}
             />
           ),
         }}
@@ -212,48 +256,51 @@ export default function TabLayout() {
           headerShown: false,
           tabBarLabel: '',
           tabBarIcon: () => null,
-          tabBarButton: () => (
+          tabBarButton: (props) => (
             <Pressable
-              onPress={() => router.push('/expenses/new')}
+              onPress={() => {
+                hapticMedium();
+                router.push('/expenses/new');
+              }}
               style={{
-                top: -10,
-                justifyContent: 'center',
+                flex: 1,
                 alignItems: 'center',
-                width: 70,
-                height: 64,
+                justifyContent: 'flex-start',
+                paddingTop: 0,
               }}
             >
               <View
                 style={{
-                  height: 56,
-                  width: 56,
+                  marginTop: -16,
+                  height: 48,
+                  width: 48,
                   alignItems: 'center',
                   justifyContent: 'center',
-                  borderRadius: 18,
-                  backgroundColor: '#2d6a4f',
-                  shadowColor: '#2d6a4f',
-                  shadowOpacity: 0.25,
-                  shadowRadius: 12,
-                  shadowOffset: { width: 0, height: 6 },
-                  elevation: 4,
+                  borderRadius: 24,
+                  backgroundColor: '#f5f1ea',
+                  shadowColor: '#000',
+                  shadowOpacity: 0.15,
+                  shadowRadius: 8,
+                  shadowOffset: { width: 0, height: 3 },
+                  elevation: 6,
                 }}
               >
-                <Ionicons name="add" size={24} color="#FFFFFF" />
+                <Ionicons name="add" size={24} color="#1a1e2b" />
               </View>
             </Pressable>
           ),
         }}
       />
       <Tabs.Screen
-        name="breakdown"
+        name="groups"
         options={{
-          title: 'Breakdown',
-          tabBarLabel: tabMeta.breakdown.label,
-          tabBarIcon: ({ color }) => (
+          title: 'Groups',
+          tabBarLabel: 'Groups',
+          tabBarIcon: ({ focused }) => (
             <Ionicons
-              name={tabMeta.breakdown.icon}
-              size={21}
-              color={color}
+              name="people-outline"
+              size={28}
+              color={focused ? ACTIVE_COLOR : INACTIVE_COLOR}
             />
           ),
         }}
@@ -262,12 +309,12 @@ export default function TabLayout() {
         name="settings"
         options={{
           title: 'Settings',
-          tabBarLabel: tabMeta.settings.label,
-          tabBarIcon: ({ color }) => (
+          tabBarLabel: 'Settings',
+          tabBarIcon: ({ focused }) => (
             <Ionicons
-              name={tabMeta.settings.icon}
-              size={21}
-              color={color}
+              name="settings-outline"
+              size={28}
+              color={focused ? ACTIVE_COLOR : INACTIVE_COLOR}
             />
           ),
         }}

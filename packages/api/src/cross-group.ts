@@ -93,12 +93,17 @@ export async function getCrossGroupSettlements(
       .from('user_payment_methods')
       .select('*')
       .in('user_id', payeeIds)
-      .eq('is_default', true);
+      .order('is_default', { ascending: false })
+      .order('created_at', { ascending: true });
 
     if (paymentMethodRows) {
-      const methodMap = new Map(
-        paymentMethodRows.map((pm) => [pm.user_id as string, pm]),
-      );
+      const methodMap = new Map<string, typeof paymentMethodRows[number]>();
+      for (const method of paymentMethodRows) {
+        const userId = method.user_id as string;
+        if (!methodMap.has(userId)) {
+          methodMap.set(userId, method);
+        }
+      }
 
       for (const tx of result.transactions) {
         const method = methodMap.get(tx.toUserId);

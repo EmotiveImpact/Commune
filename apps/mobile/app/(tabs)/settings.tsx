@@ -1,23 +1,27 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, Linking, Text, View } from 'react-native';
+import {
+  Alert,
+  Linking,
+  Platform,
+  ScrollView,
+  Switch,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { formatDate } from '@commune/utils';
 import { signOut } from '@commune/api';
 import { useQueryClient } from '@tanstack/react-query';
+import { hapticHeavy, hapticLight, hapticMedium } from '@/lib/haptics';
 import { useAuthStore } from '@/stores/auth';
 import { useGroupStore } from '@/stores/group';
+import { useThemeStore } from '@/stores/theme';
 import { useProfile, useUpdateProfile } from '@/hooks/use-profile';
 import { usePortal, useSubscription } from '@/hooks/use-subscriptions';
-import {
-  AppButton,
-  EmptyState,
-  InitialAvatar,
-  Screen,
-  SettingsSkeleton,
-  Surface,
-  TextField,
-  ToggleRow,
-} from '@/components/ui';
+import { EmptyState, SettingsSkeleton } from '@/components/ui';
 import { getErrorMessage } from '@/lib/errors';
 
 const planLabels: Record<string, string> = {
@@ -33,11 +37,39 @@ const defaultNotifications = {
   email_on_overdue: true,
 };
 
+type QuickLink = {
+  icon: React.ComponentProps<typeof Ionicons>['name'];
+  label: string;
+  route: string;
+};
+
+const quickLinks: QuickLink[] = [
+  { icon: 'repeat-outline', label: 'Recurring expenses', route: '/recurring' },
+  { icon: 'bar-chart-outline', label: 'Analytics', route: '/analytics' },
+  { icon: 'time-outline', label: 'Activity log', route: '/activity' },
+  { icon: 'people-outline', label: 'Members', route: '/members' },
+  { icon: 'create-outline', label: 'Edit group', route: '/group-edit' },
+];
+
+function shadow(elevation: number = 1) {
+  if (Platform.OS === 'android') {
+    return { elevation: elevation * 2 };
+  }
+  return {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: elevation },
+    shadowOpacity: 0.06 * elevation,
+    shadowRadius: 4 * elevation,
+  };
+}
+
 export default function SettingsScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { user, setUser } = useAuthStore();
   const setActiveGroupId = useGroupStore((state) => state.setActiveGroupId);
+  const themeMode = useThemeStore((state) => state.mode);
+  const toggleTheme = useThemeStore((state) => state.toggle);
   const { data: profile, isLoading } = useProfile(user?.id ?? '');
   const updateProfile = useUpdateProfile();
   const { data: subscription, isLoading: subscriptionLoading } = useSubscription(
@@ -45,9 +77,23 @@ export default function SettingsScreen() {
   );
   const portal = usePortal();
 
+  const isDark = themeMode === 'dark';
+
+  // -- Theme tokens --
+  const bg = isDark ? '#0A0A0A' : '#F2F4F7';
+  const cardBg = isDark ? '#1A1A1A' : '#FFFFFF';
+  const textPrimary = isDark ? '#F5F5F5' : '#171b24';
+  const textSecondary = isDark ? '#A1A1AA' : '#6B7280';
+  const textMuted = isDark ? '#71717A' : '#9CA3AF';
+  const borderColor = isDark ? '#2A2A2A' : '#F0F0F0';
+  const inputBg = isDark ? '#111111' : '#F9FAFB';
+  const inputBorder = isDark ? '#333' : '#E5E7EB';
+  const chevronColor = isDark ? '#555' : '#D1D5DB';
+
   const resolvedProfile = useMemo(
     () =>
-      profile ?? (user
+      profile ??
+      (user
         ? {
             id: user.id,
             first_name: user.first_name,
@@ -70,12 +116,10 @@ export default function SettingsScreen() {
   const [phone, setPhone] = useState('');
   const [country, setCountry] = useState('');
   const [notifications, setNotifications] = useState(defaultNotifications);
+  const [editingProfile, setEditingProfile] = useState(false);
 
   useEffect(() => {
-    if (!resolvedProfile) {
-      return;
-    }
-
+    if (!resolvedProfile) return;
     setFirstName(resolvedProfile.first_name ?? '');
     setLastName(resolvedProfile.last_name ?? '');
     setAvatarUrl(resolvedProfile.avatar_url ?? '');
@@ -86,11 +130,14 @@ export default function SettingsScreen() {
     );
   }, [resolvedProfile]);
 
-  async function handleSave() {
-    if (!user) {
-      return;
-    }
+  const displayName =
+    `${resolvedProfile?.first_name ?? ''} ${resolvedProfile?.last_name ?? ''}`.trim() ||
+    resolvedProfile?.name ||
+    '';
 
+  async function handleSave() {
+    hapticMedium();
+    if (!user) return;
     try {
       const result = await updateProfile.mutateAsync({
         userId: user.id,
@@ -103,7 +150,6 @@ export default function SettingsScreen() {
           notification_preferences: notifications,
         },
       });
-
       setUser({
         ...user,
         first_name: result.first_name,
@@ -113,16 +159,15 @@ export default function SettingsScreen() {
         phone: result.phone,
         country: result.country,
       });
+      setEditingProfile(false);
       Alert.alert('Saved', 'Your settings have been updated.');
     } catch (error) {
-      Alert.alert(
-        'Save failed',
-        getErrorMessage(error)
-      );
+      Alert.alert('Save failed', getErrorMessage(error));
     }
   }
 
   async function handleManageBilling() {
+    hapticMedium();
     try {
       const url = await portal.mutateAsync();
       await Linking.openURL(url);
@@ -135,6 +180,7 @@ export default function SettingsScreen() {
   }
 
   function handleSignOut() {
+    hapticHeavy();
     Alert.alert('Sign out', 'You will need to log in again to access Commune.', [
       { text: 'Cancel', style: 'cancel' },
       {
@@ -147,25 +193,23 @@ export default function SettingsScreen() {
             setActiveGroupId(null);
             queryClient.clear();
           } catch (error) {
-            Alert.alert(
-              'Could not sign out',
-              getErrorMessage(error)
-            );
+            Alert.alert('Could not sign out', getErrorMessage(error));
           }
         },
       },
     ]);
   }
 
+  // ── Guards ──
   if (!user) {
     return (
-      <Screen>
+      <View style={{ flex: 1, backgroundColor: bg }}>
         <EmptyState
           icon="settings-outline"
           title="Session not ready"
           description="Sign in again if settings do not load."
         />
-      </Screen>
+      </View>
     );
   }
 
@@ -173,214 +217,613 @@ export default function SettingsScreen() {
     return <SettingsSkeleton />;
   }
 
+  // ── Helpers ──
+  const cardStyle = {
+    backgroundColor: cardBg,
+    borderRadius: 16,
+    ...shadow(2),
+    marginBottom: 24,
+  };
+
+  function renderRow(
+    label: string,
+    value: string,
+    onPress?: () => void,
+    isLast?: boolean
+  ) {
+    return (
+      <TouchableOpacity
+        key={label}
+        onPress={onPress ? () => { hapticLight(); onPress(); } : undefined}
+        activeOpacity={onPress ? 0.6 : 1}
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          paddingVertical: 16,
+          paddingHorizontal: 16,
+          borderBottomWidth: isLast ? 0 : 1,
+          borderBottomColor: borderColor,
+        }}
+      >
+        <Text style={{ flex: 1, fontSize: 14, color: textSecondary }}>{label}</Text>
+        <Text
+          style={{
+            fontSize: 14,
+            color: textPrimary,
+            marginRight: 8,
+            maxWidth: 180,
+          }}
+          numberOfLines={1}
+        >
+          {value || '--'}
+        </Text>
+        <Ionicons name="chevron-forward" size={16} color={chevronColor} />
+      </TouchableOpacity>
+    );
+  }
+
+  function renderNotificationRow(
+    label: string,
+    subtitle: string,
+    key: keyof typeof defaultNotifications,
+    isLast?: boolean
+  ) {
+    return (
+      <View
+        key={key}
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          paddingVertical: 14,
+          paddingHorizontal: 16,
+          borderBottomWidth: isLast ? 0 : 1,
+          borderBottomColor: borderColor,
+        }}
+      >
+        <View style={{ flex: 1 }}>
+          <Text style={{ fontSize: 14, color: textPrimary }}>{label}</Text>
+          <Text style={{ fontSize: 12, color: textMuted, marginTop: 2 }}>
+            {subtitle}
+          </Text>
+        </View>
+        <Switch
+          value={notifications[key]}
+          onValueChange={(val) => {
+            hapticLight();
+            setNotifications((prev) => ({ ...prev, [key]: val }));
+          }}
+          trackColor={{ false: '#E5E7EB', true: '#d7e6dd' }}
+          thumbColor={notifications[key] ? '#2d6a4f' : '#FFFFFF'}
+          ios_backgroundColor="#E5E7EB"
+        />
+      </View>
+    );
+  }
+
+  // ── Render ──
   return (
-    <Screen>
-      <View className="mb-4">
-        <Text className="text-[10px] font-semibold uppercase tracking-[3px] text-[#98a1b0]">
-          Profile and billing
+    <ScrollView
+      style={{ flex: 1, backgroundColor: bg }}
+      contentContainerStyle={{ padding: 20, paddingBottom: 120 }}
+      showsVerticalScrollIndicator={false}
+    >
+      {/* ── Profile Card ── */}
+      <View
+        style={{
+          backgroundColor: cardBg,
+          borderRadius: 20,
+          ...shadow(3),
+          padding: 24,
+          marginBottom: 28,
+          alignItems: 'center',
+        }}
+      >
+        <View
+          style={{
+            width: 64,
+            height: 64,
+            borderRadius: 32,
+            backgroundColor: '#1f2330',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Text style={{ fontSize: 22, fontWeight: '700', color: '#FFFFFF' }}>
+            {getInitials(displayName)}
+          </Text>
+        </View>
+
+        <Text
+          style={{
+            fontSize: 20,
+            fontWeight: '600',
+            color: textPrimary,
+            marginTop: 14,
+          }}
+        >
+          {displayName}
         </Text>
-        <Text className="mt-1 text-2xl font-bold text-[#171b24]">Settings</Text>
-        <Text className="mt-1 text-sm leading-5 text-[#667085]">
-          Update your details, keep notification preferences under control, and manage billing.
+        <Text style={{ fontSize: 14, color: textMuted, marginTop: 4 }}>
+          {resolvedProfile.email}
         </Text>
+        <Text
+          style={{
+            fontSize: 12,
+            color: textMuted,
+            marginTop: 6,
+          }}
+        >
+          Member since {formatDate(resolvedProfile.created_at)}
+        </Text>
+
+        <TouchableOpacity
+          onPress={() => { hapticLight(); setEditingProfile(!editingProfile); }}
+          activeOpacity={0.7}
+          style={{
+            marginTop: 16,
+            borderWidth: 1,
+            borderColor: isDark ? '#333' : '#D1D5DB',
+            borderRadius: 12,
+            paddingVertical: 10,
+            paddingHorizontal: 24,
+          }}
+        >
+          <Text
+            style={{
+              fontSize: 14,
+              fontWeight: '500',
+              color: textPrimary,
+            }}
+          >
+            {editingProfile ? 'Cancel editing' : 'Edit Profile'}
+          </Text>
+        </TouchableOpacity>
       </View>
 
-      <Surface className="mb-4">
-        <View className="flex-row items-center">
-          <InitialAvatar name={`${resolvedProfile.first_name ?? ''} ${resolvedProfile.last_name ?? ''}`.trim() || resolvedProfile.name} size={64} />
-          <View className="ml-4 flex-1">
-            <Text className="text-xl font-semibold text-[#171b24]">
-              {`${resolvedProfile.first_name ?? ''} ${resolvedProfile.last_name ?? ''}`.trim() || resolvedProfile.name}
-            </Text>
-            <Text className="mt-1 text-sm text-[#667085]">
-              {resolvedProfile.email}
-            </Text>
-            <Text className="mt-2 text-xs uppercase tracking-[2px] text-[#667085]">
-              Member since {formatDate(resolvedProfile.created_at)}
-            </Text>
-          </View>
-        </View>
-      </Surface>
+      {/* ── Edit Profile Form (conditional) ── */}
+      {editingProfile && (
+        <View style={{ ...cardStyle, padding: 20 }}>
+          <Text
+            style={{
+              fontSize: 13,
+              fontWeight: '600',
+              color: textMuted,
+              textTransform: 'uppercase',
+              letterSpacing: 1,
+              marginBottom: 16,
+            }}
+          >
+            Edit Profile
+          </Text>
 
-      <Surface className="mb-4">
-        <Text className="text-lg font-semibold text-[#171b24]">
-          Profile
-        </Text>
-        <View className="flex-row" style={{ gap: 12 }}>
-          <View className="flex-1">
-            <TextField label="First name" value={firstName} onChangeText={setFirstName} />
-          </View>
-          <View className="flex-1">
-            <TextField label="Last name" value={lastName} onChangeText={setLastName} />
-          </View>
-        </View>
-        <TextField
-          label="Phone"
-          value={phone}
-          onChangeText={setPhone}
-          placeholder="+44 7700 900000"
-        />
-        <TextField
-          label="Country"
-          value={country}
-          onChangeText={setCountry}
-          placeholder="e.g. United Kingdom"
-        />
-        <TextField
-          label="Avatar URL"
-          value={avatarUrl}
-          onChangeText={setAvatarUrl}
-          placeholder="Optional"
-        />
-      </Surface>
+          <View style={{ gap: 14 }}>
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <View style={{ flex: 1 }}>
+                <Text
+                  style={{
+                    fontSize: 12,
+                    color: textSecondary,
+                    marginBottom: 6,
+                    fontWeight: '500',
+                  }}
+                >
+                  First name
+                </Text>
+                <TextInput
+                  value={firstName}
+                  onChangeText={setFirstName}
+                  placeholder="First name"
+                  placeholderTextColor={textMuted}
+                  style={{
+                    fontSize: 14,
+                    color: textPrimary,
+                    backgroundColor: inputBg,
+                    borderWidth: 1,
+                    borderColor: inputBorder,
+                    borderRadius: 12,
+                    paddingHorizontal: 14,
+                    paddingVertical: 12,
+                  }}
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text
+                  style={{
+                    fontSize: 12,
+                    color: textSecondary,
+                    marginBottom: 6,
+                    fontWeight: '500',
+                  }}
+                >
+                  Last name
+                </Text>
+                <TextInput
+                  value={lastName}
+                  onChangeText={setLastName}
+                  placeholder="Last name"
+                  placeholderTextColor={textMuted}
+                  style={{
+                    fontSize: 14,
+                    color: textPrimary,
+                    backgroundColor: inputBg,
+                    borderWidth: 1,
+                    borderColor: inputBorder,
+                    borderRadius: 12,
+                    paddingHorizontal: 14,
+                    paddingVertical: 12,
+                  }}
+                />
+              </View>
+            </View>
 
-      <Surface className="mb-4">
-        <AppButton
-          label="Save profile"
-          icon="save-outline"
-          loading={updateProfile.isPending}
-          onPress={handleSave}
-        />
-      </Surface>
-
-      <Surface className="mb-4">
-        <Text className="text-lg font-semibold text-[#171b24]">
-          Notifications
-        </Text>
-        <Text className="mt-2 text-sm leading-6 text-[#667085]">
-          Email preferences follow the same profile record as the web app.
-        </Text>
-        <View className="mt-4">
-          <ToggleRow
-            label="New expenses"
-            description="Receive an email when a new expense is added."
-            value={notifications.email_on_new_expense}
-            onValueChange={(value) =>
-              setNotifications((current) => ({
-                ...current,
-                email_on_new_expense: value,
-              }))
-            }
-          />
-          <ToggleRow
-            label="Payments received"
-            description="Be notified when someone marks a payment."
-            value={notifications.email_on_payment_received}
-            onValueChange={(value) =>
-              setNotifications((current) => ({
-                ...current,
-                email_on_payment_received: value,
-              }))
-            }
-          />
-          <ToggleRow
-            label="Payment reminders"
-            description="Send reminders for upcoming or missed payments."
-            value={notifications.email_on_payment_reminder}
-            onValueChange={(value) =>
-              setNotifications((current) => ({
-                ...current,
-                email_on_payment_reminder: value,
-              }))
-            }
-          />
-          <ToggleRow
-            label="Overdue alerts"
-            description="Get notified when shared expenses slip overdue."
-            value={notifications.email_on_overdue}
-            onValueChange={(value) =>
-              setNotifications((current) => ({
-                ...current,
-                email_on_overdue: value,
-              }))
-            }
-          />
-        </View>
-      </Surface>
-
-      <Surface className="mb-4">
-        <Text className="text-lg font-semibold text-[#171b24]">
-          Billing
-        </Text>
-        <Text className="mt-2 text-sm leading-6 text-[#667085]">
-          {subscription
-            ? `${planLabels[subscription.plan] ?? subscription.plan} plan · ${subscription.status.replace(/_/g, ' ')}`
-            : 'No active subscription found for this account.'}
-        </Text>
-        {subscription ? (
-          <>
-            <Text className="mt-3 text-sm text-[#667085]">
-              Current period ends {formatDate(subscription.current_period_end)}.
-            </Text>
-            <View className="mt-4" style={{ gap: 10 }}>
-              <AppButton
-                label="Manage billing"
-                variant="secondary"
-                icon="open-outline"
-                loading={portal.isPending}
-                onPress={handleManageBilling}
-              />
-              <AppButton
-                label="View Plans"
-                variant="secondary"
-                icon="pricetag-outline"
-                onPress={() => router.push('/pricing')}
+            <View>
+              <Text
+                style={{
+                  fontSize: 12,
+                  color: textSecondary,
+                  marginBottom: 6,
+                  fontWeight: '500',
+                }}
+              >
+                Phone
+              </Text>
+              <TextInput
+                value={phone}
+                onChangeText={setPhone}
+                placeholder="+44 7700 900000"
+                placeholderTextColor={textMuted}
+                keyboardType="phone-pad"
+                style={{
+                  fontSize: 14,
+                  color: textPrimary,
+                  backgroundColor: inputBg,
+                  borderWidth: 1,
+                  borderColor: inputBorder,
+                  borderRadius: 12,
+                  paddingHorizontal: 14,
+                  paddingVertical: 12,
+                }}
               />
             </View>
-          </>
-        ) : (
-          <View className="mt-4">
-            <AppButton
-              label="View Plans"
-              icon="pricetag-outline"
-              onPress={() => router.push('/pricing')}
-            />
-          </View>
-        )}
-      </Surface>
 
-      <Surface className="mb-4">
-        <Text className="text-lg font-semibold text-[#171b24]">Quick links</Text>
-        <View className="mt-4" style={{ gap: 10 }}>
-          <AppButton
-            label="Recurring expenses"
-            variant="secondary"
-            icon="repeat-outline"
-            onPress={() => router.push('/recurring')}
-          />
-          <AppButton
-            label="Analytics"
-            variant="secondary"
-            icon="bar-chart-outline"
-            onPress={() => router.push('/analytics')}
-          />
-          <AppButton
-            label="Activity log"
-            variant="secondary"
-            icon="time-outline"
-            onPress={() => router.push('/activity')}
-          />
-          <AppButton
-            label="Members"
-            variant="secondary"
-            icon="people-outline"
-            onPress={() => router.push('/members')}
-          />
-          <AppButton
-            label="Edit group"
-            variant="secondary"
-            icon="create-outline"
-            onPress={() => router.push('/group-edit')}
+            <View>
+              <Text
+                style={{
+                  fontSize: 12,
+                  color: textSecondary,
+                  marginBottom: 6,
+                  fontWeight: '500',
+                }}
+              >
+                Country
+              </Text>
+              <TextInput
+                value={country}
+                onChangeText={setCountry}
+                placeholder="e.g. United Kingdom"
+                placeholderTextColor={textMuted}
+                style={{
+                  fontSize: 14,
+                  color: textPrimary,
+                  backgroundColor: inputBg,
+                  borderWidth: 1,
+                  borderColor: inputBorder,
+                  borderRadius: 12,
+                  paddingHorizontal: 14,
+                  paddingVertical: 12,
+                }}
+              />
+            </View>
+
+            <View>
+              <Text
+                style={{
+                  fontSize: 12,
+                  color: textSecondary,
+                  marginBottom: 6,
+                  fontWeight: '500',
+                }}
+              >
+                Avatar URL
+              </Text>
+              <TextInput
+                value={avatarUrl}
+                onChangeText={setAvatarUrl}
+                placeholder="Optional"
+                placeholderTextColor={textMuted}
+                autoCapitalize="none"
+                keyboardType="url"
+                style={{
+                  fontSize: 14,
+                  color: textPrimary,
+                  backgroundColor: inputBg,
+                  borderWidth: 1,
+                  borderColor: inputBorder,
+                  borderRadius: 12,
+                  paddingHorizontal: 14,
+                  paddingVertical: 12,
+                }}
+              />
+            </View>
+          </View>
+
+          <TouchableOpacity
+            onPress={handleSave}
+            disabled={updateProfile.isPending}
+            activeOpacity={0.8}
+            style={{
+              marginTop: 20,
+              backgroundColor: '#2d6a4f',
+              borderRadius: 12,
+              paddingVertical: 14,
+              alignItems: 'center',
+              opacity: updateProfile.isPending ? 0.6 : 1,
+            }}
+          >
+            <Text style={{ fontSize: 15, fontWeight: '600', color: '#FFFFFF' }}>
+              {updateProfile.isPending ? 'Saving...' : 'Save profile'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* ── Profile Section (read-only rows) ── */}
+      <Text
+        style={{
+          fontSize: 13,
+          fontWeight: '600',
+          color: textMuted,
+          textTransform: 'uppercase',
+          letterSpacing: 1,
+          marginBottom: 8,
+        }}
+      >
+        Profile
+      </Text>
+      <View style={cardStyle}>
+        {renderRow('First name', firstName, () => setEditingProfile(true))}
+        {renderRow('Last name', lastName, () => setEditingProfile(true))}
+        {renderRow('Phone', phone, () => setEditingProfile(true))}
+        {renderRow('Country', country, () => setEditingProfile(true), true)}
+      </View>
+
+      {/* ── Notifications ── */}
+      <Text
+        style={{
+          fontSize: 13,
+          fontWeight: '600',
+          color: textMuted,
+          textTransform: 'uppercase',
+          letterSpacing: 1,
+          marginBottom: 8,
+        }}
+      >
+        Notifications
+      </Text>
+      <View style={cardStyle}>
+        {renderNotificationRow(
+          'New expenses',
+          'Email when a new expense is added',
+          'email_on_new_expense'
+        )}
+        {renderNotificationRow(
+          'Payments received',
+          'Notified when someone marks a payment',
+          'email_on_payment_received'
+        )}
+        {renderNotificationRow(
+          'Payment reminders',
+          'Reminders for upcoming or missed payments',
+          'email_on_payment_reminder'
+        )}
+        {renderNotificationRow(
+          'Overdue alerts',
+          'When shared expenses slip overdue',
+          'email_on_overdue',
+          true
+        )}
+      </View>
+
+      {/* ── Appearance ── */}
+      <Text
+        style={{
+          fontSize: 13,
+          fontWeight: '600',
+          color: textMuted,
+          textTransform: 'uppercase',
+          letterSpacing: 1,
+          marginBottom: 8,
+        }}
+      >
+        Appearance
+      </Text>
+      <View style={cardStyle}>
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            paddingVertical: 14,
+            paddingHorizontal: 16,
+          }}
+        >
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 14, color: textPrimary }}>Dark mode</Text>
+            <Text style={{ fontSize: 12, color: textMuted, marginTop: 2 }}>
+              Switch between light and dark themes
+            </Text>
+          </View>
+          <Switch
+            value={isDark}
+            onValueChange={() => { hapticLight(); toggleTheme(); }}
+            trackColor={{ false: '#E5E7EB', true: '#d7e6dd' }}
+            thumbColor={isDark ? '#2d6a4f' : '#FFFFFF'}
+            ios_backgroundColor="#E5E7EB"
           />
         </View>
-      </Surface>
+      </View>
 
-      <AppButton
-        label="Sign out"
-        variant="danger"
-        icon="log-out-outline"
+      {/* ── Billing ── */}
+      <Text
+        style={{
+          fontSize: 13,
+          fontWeight: '600',
+          color: textMuted,
+          textTransform: 'uppercase',
+          letterSpacing: 1,
+          marginBottom: 8,
+        }}
+      >
+        Billing
+      </Text>
+      <View style={{ ...cardStyle, padding: 16 }}>
+        <Text
+          style={{
+            fontSize: 14,
+            color: textSecondary,
+            marginBottom: 4,
+          }}
+        >
+          {subscription
+            ? `${planLabels[subscription.plan] ?? subscription.plan} plan \u00B7 ${subscription.status.replace(/_/g, ' ')}`
+            : 'No active subscription found for this account.'}
+        </Text>
+        {subscription && (
+          <Text style={{ fontSize: 13, color: textMuted, marginBottom: 16 }}>
+            Current period ends {formatDate(subscription.current_period_end)}
+          </Text>
+        )}
+        <View style={{ gap: 10 }}>
+          {subscription && (
+            <TouchableOpacity
+              onPress={handleManageBilling}
+              disabled={portal.isPending}
+              activeOpacity={0.7}
+              style={{
+                borderWidth: 1,
+                borderColor: isDark ? '#333' : '#D1D5DB',
+                borderRadius: 12,
+                paddingVertical: 12,
+                alignItems: 'center',
+                opacity: portal.isPending ? 0.6 : 1,
+              }}
+            >
+              <Text style={{ fontSize: 14, fontWeight: '500', color: textPrimary }}>
+                {portal.isPending ? 'Opening...' : 'Manage billing'}
+              </Text>
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity
+            onPress={() => { hapticMedium(); router.push('/pricing'); }}
+            activeOpacity={0.7}
+            style={{
+              borderWidth: 1,
+              borderColor: isDark ? '#333' : '#D1D5DB',
+              borderRadius: 12,
+              paddingVertical: 12,
+              alignItems: 'center',
+            }}
+          >
+            <Text style={{ fontSize: 14, fontWeight: '500', color: textPrimary }}>
+              View Plans
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* ── Quick Links ── */}
+      <Text
+        style={{
+          fontSize: 13,
+          fontWeight: '600',
+          color: textMuted,
+          textTransform: 'uppercase',
+          letterSpacing: 1,
+          marginBottom: 8,
+        }}
+      >
+        Quick links
+      </Text>
+      <View style={cardStyle}>
+        {quickLinks.map((link, index) => (
+          <TouchableOpacity
+            key={link.route}
+            onPress={() => { hapticMedium(); router.push(link.route as never); }}
+            activeOpacity={0.6}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              paddingVertical: 14,
+              paddingHorizontal: 16,
+              borderBottomWidth: index < quickLinks.length - 1 ? 1 : 0,
+              borderBottomColor: borderColor,
+            }}
+          >
+            <View
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: 8,
+                backgroundColor: isDark ? '#1f2330' : '#F3F4F6',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginRight: 12,
+              }}
+            >
+              <Ionicons name={link.icon} size={18} color={textSecondary} />
+            </View>
+            <Text style={{ flex: 1, fontSize: 14, color: textPrimary }}>
+              {link.label}
+            </Text>
+            <Ionicons name="chevron-forward" size={16} color={chevronColor} />
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      {/* ── Save Notifications (auto-save trigger) ── */}
+      <TouchableOpacity
+        onPress={handleSave}
+        disabled={updateProfile.isPending}
+        activeOpacity={0.8}
+        style={{
+          backgroundColor: '#2d6a4f',
+          borderRadius: 14,
+          paddingVertical: 16,
+          alignItems: 'center',
+          marginBottom: 16,
+          opacity: updateProfile.isPending ? 0.6 : 1,
+          ...shadow(2),
+        }}
+      >
+        <Text style={{ fontSize: 15, fontWeight: '600', color: '#FFFFFF' }}>
+          {updateProfile.isPending ? 'Saving...' : 'Save all changes'}
+        </Text>
+      </TouchableOpacity>
+
+      {/* ── Sign Out ── */}
+      <TouchableOpacity
         onPress={handleSignOut}
-      />
-    </Screen>
+        activeOpacity={0.7}
+        style={{
+          paddingVertical: 16,
+          alignItems: 'center',
+          marginBottom: 20,
+        }}
+      >
+        <Text style={{ fontSize: 15, fontWeight: '500', color: '#EF4444' }}>
+          Sign out
+        </Text>
+      </TouchableOpacity>
+    </ScrollView>
+  );
+}
+
+function getInitials(name: string): string {
+  return (
+    name
+      .split(' ')
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part.charAt(0).toUpperCase())
+      .join('') || 'C'
   );
 }

@@ -65,6 +65,10 @@ function FundsPage() {
 
   const [selectedFundId, setSelectedFundId] = useState<string | null>(null);
 
+  useEffect(() => {
+    setSelectedFundId(null);
+  }, [activeGroupId]);
+
   if (!activeGroupId) {
     return (
       <EmptyState
@@ -90,6 +94,7 @@ function FundsPage() {
     <FundListView
       groupId={activeGroupId}
       currency={group?.currency ?? 'GBP'}
+      selectedFundId={selectedFundId}
       onSelectFund={setSelectedFundId}
     />
   );
@@ -100,10 +105,12 @@ function FundsPage() {
 function FundListView({
   groupId,
   currency,
+  selectedFundId,
   onSelectFund,
 }: {
   groupId: string;
   currency: string;
+  selectedFundId: string | null;
   onSelectFund: (fundId: string) => void;
 }) {
   const { data: funds, isLoading } = useFunds(groupId);
@@ -143,9 +150,10 @@ function FundListView({
     createMutation.mutate(
       validation.data,
       {
-        onSuccess: () => {
+        onSuccess: (createdFund) => {
           setShowCreate(false);
           createForm.reset();
+          onSelectFund(createdFund.id);
           notifications.show({
             title: 'Fund created',
             message: `"${values.name}" is ready for contributions.`,
@@ -239,6 +247,7 @@ function FundListView({
                     key={fund.id}
                     style={{ cursor: 'pointer' }}
                     onClick={() => onSelectFund(fund.id)}
+                    data-selected={selectedFundId === fund.id || undefined}
                   >
                     <Table.Td>
                       <Text fw={600} lineClamp={1}>
@@ -407,7 +416,13 @@ function FundDetailView({
   currency: string;
   onBack: () => void;
 }) {
-  const { data: fund, isLoading } = useFundDetails(fundId);
+  const {
+    data: fund,
+    error,
+    isError,
+    isLoading,
+    refetch,
+  } = useFundDetails(groupId, fundId);
   const contributionMutation = useAddContribution(groupId, fundId);
   const expenseMutation = useAddFundExpense(groupId, fundId);
 
@@ -520,12 +535,23 @@ function FundDetailView({
     );
   }
 
+  if (isError) {
+    return (
+      <EmptyState
+        icon={IconPigMoney}
+        title="Could not load fund"
+        description={error instanceof Error ? error.message : 'Try again in a moment.'}
+        action={{ label: 'Retry', onClick: () => void refetch() }}
+      />
+    );
+  }
+
   if (!fund) {
     return (
       <EmptyState
         icon={IconPigMoney}
         title="Fund not found"
-        description="This fund may have been deleted."
+        description="This fund may have been deleted or may belong to another group."
         action={{ label: 'Go back', onClick: onBack }}
       />
     );

@@ -28,6 +28,7 @@ import { Route as AppOnboardingRouteImport } from './routes/_app/onboarding'
 import { Route as AppMembersRouteImport } from './routes/_app/members'
 import { Route as AppImportRouteImport } from './routes/_app/import'
 import { Route as AppFundsRouteImport } from './routes/_app/funds'
+import { Route as AppChoresRouteImport } from './routes/_app/chores'
 import { Route as AppBreakdownRouteImport } from './routes/_app/breakdown'
 import { Route as AppAnalyticsRouteImport } from './routes/_app/analytics'
 import { Route as AppActivityRouteImport } from './routes/_app/activity'
@@ -139,6 +140,11 @@ const AppFundsRoute = AppFundsRouteImport.update({
   path: '/funds',
   getParentRoute: () => AppRoute,
 } as any).lazy(() => import('./routes/_app/funds.lazy').then((d) => d.Route))
+const AppChoresRoute = AppChoresRouteImport.update({
+  id: '/chores',
+  path: '/chores',
+  getParentRoute: () => AppRoute,
+} as any).lazy(() => import('./routes/_app/chores.lazy').then((d) => d.Route))
 const AppBreakdownRoute = AppBreakdownRouteImport.update({
   id: '/breakdown',
   path: '/breakdown',
@@ -221,6 +227,7 @@ export interface FileRoutesByFullPath {
   '/activity': typeof AppActivityRoute
   '/analytics': typeof AppAnalyticsRoute
   '/breakdown': typeof AppBreakdownRoute
+  '/chores': typeof AppChoresRoute
   '/funds': typeof AppFundsRoute
   '/import': typeof AppImportRoute
   '/members': typeof AppMembersRouteWithChildren
@@ -251,6 +258,7 @@ export interface FileRoutesByTo {
   '/activity': typeof AppActivityRoute
   '/analytics': typeof AppAnalyticsRoute
   '/breakdown': typeof AppBreakdownRoute
+  '/chores': typeof AppChoresRoute
   '/funds': typeof AppFundsRoute
   '/import': typeof AppImportRoute
   '/members': typeof AppMembersRouteWithChildren
@@ -283,6 +291,7 @@ export interface FileRoutesById {
   '/_app/activity': typeof AppActivityRoute
   '/_app/analytics': typeof AppAnalyticsRoute
   '/_app/breakdown': typeof AppBreakdownRoute
+  '/_app/chores': typeof AppChoresRoute
   '/_app/funds': typeof AppFundsRoute
   '/_app/import': typeof AppImportRoute
   '/_app/members': typeof AppMembersRouteWithChildren
@@ -316,6 +325,7 @@ export interface FileRouteTypes {
     | '/activity'
     | '/analytics'
     | '/breakdown'
+    | '/chores'
     | '/funds'
     | '/import'
     | '/members'
@@ -346,6 +356,7 @@ export interface FileRouteTypes {
     | '/activity'
     | '/analytics'
     | '/breakdown'
+    | '/chores'
     | '/funds'
     | '/import'
     | '/members'
@@ -377,6 +388,7 @@ export interface FileRouteTypes {
     | '/_app/activity'
     | '/_app/analytics'
     | '/_app/breakdown'
+    | '/_app/chores'
     | '/_app/funds'
     | '/_app/import'
     | '/_app/members'
@@ -545,6 +557,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppFundsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/chores': {
+      id: '/_app/chores'
+      path: '/chores'
+      fullPath: '/chores'
+      preLoaderRoute: typeof AppChoresRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/breakdown': {
       id: '/_app/breakdown'
       path: '/breakdown'
@@ -652,6 +671,7 @@ interface AppRouteChildren {
   AppActivityRoute: typeof AppActivityRoute
   AppAnalyticsRoute: typeof AppAnalyticsRoute
   AppBreakdownRoute: typeof AppBreakdownRoute
+  AppChoresRoute: typeof AppChoresRoute
   AppFundsRoute: typeof AppFundsRoute
   AppImportRoute: typeof AppImportRoute
   AppMembersRoute: typeof AppMembersRouteWithChildren
@@ -675,6 +695,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppActivityRoute: AppActivityRoute,
   AppAnalyticsRoute: AppAnalyticsRoute,
   AppBreakdownRoute: AppBreakdownRoute,
+  AppChoresRoute: AppChoresRoute,
   AppFundsRoute: AppFundsRoute,
   AppImportRoute: AppImportRoute,
   AppMembersRoute: AppMembersRouteWithChildren,

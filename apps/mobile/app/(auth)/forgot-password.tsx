@@ -4,6 +4,7 @@ import {
   ScrollView,
   View,
   Text,
+  TextInput,
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
@@ -11,8 +12,8 @@ import {
 } from 'react-native';
 import { Link } from 'expo-router';
 import { resetPassword } from '@commune/api';
-import { AppButton, TextField } from '@/components/ui';
 import { getErrorMessage } from '@/lib/errors';
+import { hapticLight, hapticMedium, hapticSuccess, hapticWarning, hapticError } from '@/lib/haptics';
 
 export default function ForgotPasswordScreen() {
   const [email, setEmail] = useState('');
@@ -21,7 +22,9 @@ export default function ForgotPasswordScreen() {
   const [sent, setSent] = useState(false);
 
   async function handleReset() {
+    hapticMedium();
     if (!email) {
+      hapticWarning();
       setError('Please enter your email');
       return;
     }
@@ -29,8 +32,10 @@ export default function ForgotPasswordScreen() {
     setError('');
     try {
       await resetPassword(email);
+      hapticSuccess();
       setSent(true);
     } catch (err) {
+      hapticError();
       Alert.alert('Reset failed', getErrorMessage(err, 'Could not send reset link'));
     } finally {
       setLoading(false);
@@ -40,56 +45,190 @@ export default function ForgotPasswordScreen() {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      className="flex-1 bg-[#f5f1ea]"
+      style={{ flex: 1, backgroundColor: '#FFFFFF' }}
     >
       <ScrollView
-        className="flex-1"
-        contentContainerStyle={{ flexGrow: 1, padding: 20, justifyContent: 'center' }}
+        style={{ flex: 1 }}
+        contentContainerStyle={{
+          flexGrow: 1,
+          paddingHorizontal: 24,
+          justifyContent: 'center',
+        }}
         keyboardShouldPersistTaps="handled"
       >
-        <View className="rounded-[32px] bg-[#1f2330] px-5 py-6">
-          <Text className="text-sm font-medium text-[rgba(255,255,255,0.72)]">Commune</Text>
-          <Text className="mt-2 text-[32px] font-bold leading-[38px] text-white">
-            Reset password
+        {/* Branding */}
+        <View style={{ alignItems: 'center', marginBottom: 32 }}>
+          <Text
+            style={{
+              fontSize: 32,
+              fontWeight: '700',
+              color: '#2d6a4f',
+            }}
+          >
+            Commune
           </Text>
-          <Text className="mt-3 text-sm leading-6 text-[rgba(255,250,246,0.72)]">
-            Enter your email and we'll send you a reset link.
+          <Text
+            style={{
+              marginTop: 8,
+              fontSize: 16,
+              color: '#9CA3AF',
+            }}
+          >
+            Reset your password
           </Text>
         </View>
 
-        <View className="mt-4 rounded-[28px] border border-[rgba(23,27,36,0.14)] bg-white px-5 py-5">
+        {/* Card */}
+        <View
+          style={{
+            backgroundColor: '#FFFFFF',
+            borderRadius: 20,
+            padding: 24,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.08,
+            shadowRadius: 24,
+            elevation: 8,
+          }}
+        >
           {sent ? (
             <>
-              <Text className="text-2xl font-semibold text-[#171b24]">Check your email</Text>
-              <Text className="mt-2 text-sm leading-6 text-[#667085]">
-                We sent a password reset link to {email}. Follow the link to set a new password.
+              {/* Success icon */}
+              <View style={{ alignItems: 'center', marginBottom: 16 }}>
+                <View
+                  style={{
+                    width: 56,
+                    height: 56,
+                    borderRadius: 28,
+                    backgroundColor: '#ECFDF5',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Text style={{ fontSize: 28 }}>✓</Text>
+                </View>
+              </View>
+
+              <Text
+                style={{
+                  textAlign: 'center',
+                  fontSize: 20,
+                  fontWeight: '700',
+                  color: '#171b24',
+                }}
+              >
+                Check your email
+              </Text>
+              <Text
+                style={{
+                  marginTop: 12,
+                  textAlign: 'center',
+                  fontSize: 15,
+                  lineHeight: 22,
+                  color: '#9CA3AF',
+                }}
+              >
+                We sent a password reset link to{' '}
+                <Text style={{ fontWeight: '600', color: '#374151' }}>
+                  {email}
+                </Text>
+                . Follow the link to set a new password.
               </Text>
 
-              <View className="mt-6 flex-row justify-center">
-                <Link href="/(auth)/login" asChild>
-                  <TouchableOpacity>
-                    <Text className="font-semibold text-[#2d6a4f]">Back to sign in</Text>
-                  </TouchableOpacity>
-                </Link>
-              </View>
+              <Link href="/(auth)/login" asChild>
+                <TouchableOpacity
+                  onPress={hapticLight}
+                  activeOpacity={0.8}
+                  style={{
+                    marginTop: 28,
+                    backgroundColor: '#1f2330',
+                    height: 52,
+                    borderRadius: 14,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Text
+                    style={{
+                      color: '#FFFFFF',
+                      fontSize: 16,
+                      fontWeight: '600',
+                    }}
+                  >
+                    Back to sign in
+                  </Text>
+                </TouchableOpacity>
+              </Link>
             </>
           ) : (
             <>
-              <Text className="text-2xl font-semibold text-[#171b24]">Forgot your password?</Text>
-              <Text className="mt-2 text-sm leading-6 text-[#667085]">
-                No worries. Enter the email linked to your account and we'll send instructions.
+              <Text
+                style={{
+                  textAlign: 'center',
+                  fontSize: 20,
+                  fontWeight: '700',
+                  color: '#171b24',
+                }}
+              >
+                Forgot your password?
+              </Text>
+              <Text
+                style={{
+                  marginTop: 8,
+                  textAlign: 'center',
+                  fontSize: 15,
+                  lineHeight: 22,
+                  color: '#9CA3AF',
+                }}
+              >
+                No worries. Enter the email linked to your account and we'll
+                send instructions.
               </Text>
 
               {error ? (
-                <View className="mt-4 rounded-[20px] bg-[#FCE7E4] px-4 py-3">
-                  <Text className="text-sm font-medium text-[#B9382F]">{error}</Text>
+                <View
+                  style={{
+                    backgroundColor: '#FEF2F2',
+                    borderRadius: 12,
+                    padding: 12,
+                    marginTop: 16,
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontSize: 13,
+                      color: '#DC2626',
+                      fontWeight: '500',
+                    }}
+                  >
+                    {error}
+                  </Text>
                 </View>
               ) : null}
 
-              <View className="mt-5">
-                <TextField
-                  label="Email"
+              {/* Email */}
+              <View style={{ marginTop: 20, marginBottom: 24 }}>
+                <Text
+                  style={{
+                    fontSize: 14,
+                    fontWeight: '600',
+                    color: '#374151',
+                    marginBottom: 8,
+                  }}
+                >
+                  Email
+                </Text>
+                <TextInput
+                  style={{
+                    backgroundColor: '#F3F4F6',
+                    borderRadius: 12,
+                    height: 50,
+                    paddingHorizontal: 16,
+                    fontSize: 15,
+                    color: '#171b24',
+                  }}
                   placeholder="you@example.com"
+                  placeholderTextColor="#9CA3AF"
                   value={email}
                   onChangeText={setEmail}
                   autoCapitalize="none"
@@ -98,22 +237,57 @@ export default function ForgotPasswordScreen() {
                 />
               </View>
 
-              <AppButton
-                label={loading ? 'Sending...' : 'Send reset link'}
+              {/* Send reset link button */}
+              <TouchableOpacity
                 onPress={handleReset}
                 disabled={loading}
-              />
+                activeOpacity={0.8}
+                style={{
+                  backgroundColor: '#1f2330',
+                  height: 52,
+                  borderRadius: 14,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexDirection: 'row',
+                  opacity: loading ? 0.7 : 1,
+                }}
+              >
+                {loading ? (
+                  <ActivityIndicator
+                    color="#FFFFFF"
+                    style={{ marginRight: 8 }}
+                  />
+                ) : null}
+                <Text
+                  style={{
+                    color: '#FFFFFF',
+                    fontSize: 16,
+                    fontWeight: '600',
+                  }}
+                >
+                  {loading ? 'Sending...' : 'Send reset link'}
+                </Text>
+              </TouchableOpacity>
 
-              {loading ? (
-                <View className="mt-4 flex-row items-center justify-center">
-                  <ActivityIndicator color="#2d6a4f" />
-                </View>
-              ) : null}
-
-              <View className="mt-5 flex-row justify-center">
+              {/* Back to sign in */}
+              <View
+                style={{
+                  marginTop: 24,
+                  flexDirection: 'row',
+                  justifyContent: 'center',
+                }}
+              >
                 <Link href="/(auth)/login" asChild>
-                  <TouchableOpacity>
-                    <Text className="font-semibold text-[#2d6a4f]">Back to sign in</Text>
+                  <TouchableOpacity onPress={hapticLight}>
+                    <Text
+                      style={{
+                        fontWeight: '600',
+                        color: '#2d6a4f',
+                        fontSize: 14,
+                      }}
+                    >
+                      Back to sign in
+                    </Text>
                   </TouchableOpacity>
                 </Link>
               </View>

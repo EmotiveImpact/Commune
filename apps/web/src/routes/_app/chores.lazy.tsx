@@ -13,16 +13,20 @@ import {
   Textarea,
   TextInput,
 } from '@mantine/core';
+import { DatePickerInput, DatesProvider } from '@mantine/dates';
 import { useForm } from '@mantine/form';
 import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
+import { createChoreSchema } from '@commune/core';
 import {
+  IconCalendarEvent,
   IconCheck,
   IconChecklist,
   IconPlus,
   IconTrash,
 } from '@tabler/icons-react';
 import { useEffect, useMemo } from 'react';
+import 'dayjs/locale/en-gb';
 import { setPageTitle } from '../../utils/seo';
 import { useGroupStore } from '../../stores/group';
 import { useGroup } from '../../hooks/use-groups';
@@ -43,6 +47,72 @@ const FREQUENCY_OPTIONS = [
   { value: 'monthly', label: 'Monthly' },
   { value: 'once', label: 'One-time' },
 ];
+
+function getWeekdayLabel(dateString: string) {
+  return new Date(`${dateString}T00:00:00`).toLocaleDateString('en-GB', {
+    weekday: 'long',
+  });
+}
+
+function getOrdinalDay(day: number) {
+  const mod10 = day % 10;
+  const mod100 = day % 100;
+
+  if (mod10 === 1 && mod100 !== 11) return `${day}st`;
+  if (mod10 === 2 && mod100 !== 12) return `${day}nd`;
+  if (mod10 === 3 && mod100 !== 13) return `${day}rd`;
+  return `${day}th`;
+}
+
+function getNextDueDescription(frequency: string, nextDue: string) {
+  if (!nextDue) {
+    return 'Choose the first day this chore should be due.';
+  }
+
+  if (frequency === 'weekly') {
+    return `Repeats every ${getWeekdayLabel(nextDue)}.`;
+  }
+
+  if (frequency === 'biweekly') {
+    return `Repeats every 2 weeks on ${getWeekdayLabel(nextDue)}.`;
+  }
+
+  if (frequency === 'monthly') {
+    const day = new Date(`${nextDue}T00:00:00`).getDate();
+    return `Repeats monthly on the ${getOrdinalDay(day)}.`;
+  }
+
+  if (frequency === 'once') {
+    return 'This chore will disappear after it is marked done.';
+  }
+
+  return 'Choose the first day this chore should be due.';
+}
+
+function getFrequencyBadgeLabel(frequency: string, nextDue: string) {
+  if (!nextDue) {
+    return frequency;
+  }
+
+  if (frequency === 'weekly') {
+    return `Weekly · ${new Date(`${nextDue}T00:00:00`).toLocaleDateString('en-GB', { weekday: 'short' })}`;
+  }
+
+  if (frequency === 'biweekly') {
+    return `Every 2 weeks · ${new Date(`${nextDue}T00:00:00`).toLocaleDateString('en-GB', { weekday: 'short' })}`;
+  }
+
+  if (frequency === 'monthly') {
+    const day = new Date(`${nextDue}T00:00:00`).getDate();
+    return `Monthly · ${getOrdinalDay(day)}`;
+  }
+
+  if (frequency === 'once') {
+    return 'One-time';
+  }
+
+  return 'Daily';
+}
 
 function ChoresPage() {
   useEffect(() => { setPageTitle('Chores'); }, []);
@@ -75,6 +145,7 @@ function ChoresPage() {
       description: '',
       frequency: 'weekly',
       assigned_to: '' as string | null,
+      next_due: new Date().toISOString().slice(0, 10),
     },
   });
 
@@ -167,14 +238,26 @@ function ChoresPage() {
       {/* Create Modal */}
       <Modal opened={createOpened} onClose={closeCreate} title="Add a chore" centered>
         <form onSubmit={form.onSubmit(async (values) => {
-          try {
-            await createChore.mutateAsync({
-              group_id: activeGroupId!,
-              title: values.title,
-              description: values.description || null,
-              frequency: values.frequency,
-              assigned_to: values.assigned_to || null,
+          const validation = createChoreSchema.safeParse({
+            group_id: activeGroupId!,
+            title: values.title,
+            description: values.description || null,
+            frequency: values.frequency,
+            assigned_to: values.assigned_to || null,
+            next_due: values.next_due,
+          });
+
+          if (!validation.success) {
+            notifications.show({
+              title: 'Invalid chore',
+              message: validation.error.issues[0]?.message ?? 'Please check the form and try again.',
+              color: 'red',
             });
+            return;
+          }
+
+          try {
+            await createChore.mutateAsync(validation.data);
             notifications.show({ title: 'Chore added', message: `${values.title} has been created.`, color: 'green' });
             form.reset();
             closeCreate();
@@ -202,6 +285,17 @@ function ChoresPage() {
               key={form.key('frequency')}
               {...form.getInputProps('frequency')}
             />
+            <DatesProvider settings={{ locale: 'en-gb' }}>
+              <DatePickerInput
+                label="First due date"
+                description={getNextDueDescription(form.getValues().frequency, form.getValues().next_due)}
+                leftSection={<IconCalendarEvent size={16} />}
+                valueFormat="DD MMM YYYY"
+                withAsterisk
+                key={form.key('next_due')}
+                {...form.getInputProps('next_due')}
+              />
+            </DatesProvider>
             <Select
               label="Assign to"
               placeholder="Anyone / unassigned"
@@ -257,7 +351,9 @@ function ChoreCard({
           )}
 
           <Group gap="xs">
-            <Badge size="xs" variant="dot" color="blue">{chore.frequency}</Badge>
+            <Badge size="xs" variant="dot" color="blue">
+              {getFrequencyBadgeLabel(chore.frequency, chore.next_due)}
+            </Badge>
             {chore.assigned_user && (
               <Group gap={4}>
                 <Avatar size={16} radius="xl" src={chore.assigned_user.avatar_url}>
