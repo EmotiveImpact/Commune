@@ -19,6 +19,7 @@ export interface UserProfile {
   country: string | null;
   default_currency: string;
   timezone: string;
+  show_shared_groups: boolean;
   notification_preferences: NotificationPreferences;
   created_at: string;
 }
@@ -63,6 +64,7 @@ function buildProfileFromAuthUser(authUser: AuthUser): UserProfile {
     country: null,
     default_currency: 'GBP',
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    show_shared_groups: true,
     notification_preferences: DEFAULT_NOTIFICATION_PREFS,
     created_at: authUser.created_at ?? new Date().toISOString(),
   };
@@ -78,6 +80,7 @@ function normalizeProfile(data: Record<string, any>): UserProfile {
     last_name,
     default_currency: data.default_currency ?? 'GBP',
     timezone: data.timezone ?? 'Europe/London',
+    show_shared_groups: data.show_shared_groups ?? true,
     notification_preferences: data.notification_preferences ?? DEFAULT_NOTIFICATION_PREFS,
   } as UserProfile;
 }

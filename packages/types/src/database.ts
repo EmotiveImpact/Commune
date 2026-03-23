@@ -24,6 +24,7 @@ export interface User {
   country: string | null;
   default_currency: string;
   timezone: string;
+  show_shared_groups: boolean;
   created_at: string;
 }
 

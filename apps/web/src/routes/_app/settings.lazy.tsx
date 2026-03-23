@@ -29,6 +29,7 @@ import {
   IconMoon,
   IconPalette,
   IconSun,
+  IconShield,
   IconTrash,
 } from '@tabler/icons-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -450,6 +451,31 @@ function SettingsPage() {
                 description="Notify me when a payment passes the due date"
                 key={form.key('notification_preferences.email_on_overdue')}
                 {...form.getInputProps('notification_preferences.email_on_overdue', { type: 'checkbox' })}
+              />
+            </Stack>
+          </Paper>
+
+          {/* ── 3b. Privacy ── */}
+          <Paper className="commune-soft-panel" p="xl">
+            <Group gap="xs" mb="md">
+              <IconShield size={20} />
+              <Text className="commune-section-heading">Privacy</Text>
+            </Group>
+
+            <Stack gap="md">
+              <Switch
+                label="Show shared groups on profile"
+                description="When enabled, other members can see which groups you have in common when viewing your profile"
+                checked={(profile as any)?.show_shared_groups ?? true}
+                onChange={async (e) => {
+                  try {
+                    const supabase = (await import('@commune/api')).supabase;
+                    await supabase.from('users').update({ show_shared_groups: e.currentTarget.checked }).eq('id', user?.id ?? '');
+                    notifications.show({ title: 'Privacy updated', message: 'Your preference has been saved.', color: 'green' });
+                  } catch {
+                    notifications.show({ title: 'Failed to update', message: 'Something went wrong', color: 'red' });
+                  }
+                }}
               />
             </Stack>
           </Paper>

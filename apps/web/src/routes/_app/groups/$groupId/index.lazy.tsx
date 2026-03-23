@@ -31,6 +31,7 @@ import {
   IconPlane,
   IconMapPin,
   IconStar,
+  IconCrown,
   IconPin,
   IconAlertCircle,
   IconCheck,
@@ -322,6 +323,11 @@ function GroupHubPage() {
               <Text fw={800} size="2rem" lh={1.05}>
                 {formatCurrency(totalMonthly, currency)}
               </Text>
+              {activeMembers > 0 && (
+                <Text size="xs" c="dimmed">
+                  Split {activeMembers} ways · {formatCurrency(activeMembers > 0 ? totalMonthly / activeMembers : 0, currency)}/person
+                </Text>
+              )}
             </Stack>
             <IconCash size={24} style={{ color: 'var(--commune-ink-soft)', opacity: 0.5 }} />
           </Group>
@@ -557,13 +563,17 @@ function GroupHubPage() {
                     </Group>
 
                     <Group gap={4} justify="center">
-                      {member.role === 'admin' && (
+                      {member.user_id === group.owner_id ? (
+                        <Tooltip label="Owner" withArrow>
+                          <IconCrown size={13} color="var(--mantine-color-orange-6)" />
+                        </Tooltip>
+                      ) : member.role === 'admin' ? (
                         <Tooltip label="Admin" withArrow>
                           <IconStar size={13} color="var(--mantine-color-yellow-6)" />
                         </Tooltip>
-                      )}
-                      <Badge size="xs" variant="light" color="gray" radius="sm">
-                        {member.role}
+                      ) : null}
+                      <Badge size="xs" variant="light" color={member.user_id === group.owner_id ? 'orange' : member.role === 'admin' ? 'yellow' : 'gray'} radius="sm">
+                        {member.user_id === group.owner_id ? 'Owner' : member.role}
                       </Badge>
                     </Group>
 

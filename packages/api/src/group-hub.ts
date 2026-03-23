@@ -139,6 +139,17 @@ export async function getMemberProfile(userId: string, groupId: string) {
 
   let sharedGroups: any[] = [];
   if (viewerId && viewerId !== userId) {
+    // Check if the target user allows shared group visibility
+    const { data: targetUser } = await supabase
+      .from('users')
+      .select('show_shared_groups')
+      .eq('id', userId)
+      .single();
+
+    if (targetUser?.show_shared_groups === false) {
+      // User has opted out of showing shared groups
+      sharedGroups = [];
+    } else {
     // Get all groups for this user
     const { data: userGroups } = await supabase
       .from('group_members')
@@ -159,6 +170,7 @@ export async function getMemberProfile(userId: string, groupId: string) {
     sharedGroups = (userGroups || [])
       .filter((g) => viewerGroupIds.has(g.group_id))
       .map((g) => g.groups);
+    }
   }
 
   return {

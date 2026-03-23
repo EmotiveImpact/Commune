@@ -458,8 +458,8 @@ function MembersPage() {
                   <Badge color={statusColor[member.status] ?? 'gray'} variant="light">
                     {member.status}
                   </Badge>
-                  <Badge color={member.role === 'admin' ? 'dark' : 'gray'} variant="light">
-                    {member.role}
+                  <Badge color={member.user_id === group?.owner_id ? 'orange' : member.role === 'admin' ? 'dark' : 'gray'} variant="light">
+                    {member.user_id === group?.owner_id ? 'Owner' : member.role}
                   </Badge>
                   {isAdmin && member.user_id !== user?.id && (
                     <Menu shadow="md" width={220}>

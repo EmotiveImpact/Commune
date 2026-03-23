@@ -37,6 +37,7 @@ function buildFallbackUser(authUser: SupabaseAuthUser): User {
     country: null,
     default_currency: 'GBP',
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    show_shared_groups: true,
     created_at: authUser.created_at ?? new Date().toISOString(),
   };
 }
