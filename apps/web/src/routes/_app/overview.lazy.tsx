@@ -52,6 +52,19 @@ function readNettingPreference(): boolean {
   }
 }
 
+function formatCurrencyBreakdown(
+  totals: Map<string, number>,
+  fallbackCurrency = 'GBP',
+): string {
+  if (totals.size === 0) {
+    return formatCurrency(0, fallbackCurrency);
+  }
+
+  return Array.from(totals.entries())
+    .map(([currency, amount]) => formatCurrency(amount, currency))
+    .join(' + ');
+}
+
 export const Route = createLazyFileRoute('/_app/overview')({
   component: CrossGroupOverviewPage,
 });
@@ -104,6 +117,40 @@ function CrossGroupOverviewPage() {
     (tx) => tx.fromUserId !== user?.id && tx.toUserId !== user?.id,
   );
 
+  const nettedYouOweTotals = youOwe.reduce((totals, tx) => {
+    totals.set(tx.currency, (totals.get(tx.currency) ?? 0) + tx.netAmount);
+    return totals;
+  }, new Map<string, number>());
+
+  const nettedOwedToYouTotals = owedToYou.reduce((totals, tx) => {
+    totals.set(tx.currency, (totals.get(tx.currency) ?? 0) + tx.netAmount);
+    return totals;
+  }, new Map<string, number>());
+
+  const perGroupYouOweTotals = (result.perGroupData ?? []).reduce((totals, group) => {
+    const groupAmount = group.settlement.transactions
+      .filter((tx) => tx.fromUserId === user?.id)
+      .reduce((sum, tx) => sum + tx.amount, 0);
+
+    if (groupAmount > 0) {
+      totals.set(group.currency, (totals.get(group.currency) ?? 0) + groupAmount);
+    }
+
+    return totals;
+  }, new Map<string, number>());
+
+  const perGroupOwedToYouTotals = (result.perGroupData ?? []).reduce((totals, group) => {
+    const groupAmount = group.settlement.transactions
+      .filter((tx) => tx.toUserId === user?.id)
+      .reduce((sum, tx) => sum + tx.amount, 0);
+
+    if (groupAmount > 0) {
+      totals.set(group.currency, (totals.get(group.currency) ?? 0) + groupAmount);
+    }
+
+    return totals;
+  }, new Map<string, number>());
+
   return (
     <Stack gap="lg">
       <PageHeader
@@ -129,10 +176,10 @@ function CrossGroupOverviewPage() {
             <Paper className="commune-stat-card commune-kpi-card" p="lg" data-tone="peach" style={{ flex: 1 }}>
               <Text size="sm" c="dimmed">You owe (total)</Text>
               <Text fw={800} size="1.5rem">
-                {youOwe.length > 0
-                  ? youOwe.map((tx) => formatCurrency(tx.netAmount, tx.currency)).join(' + ')
-                  : formatCurrency(0)
-                }
+                {formatCurrencyBreakdown(
+                  nettedYouOweTotals,
+                  result.transactions[0]?.currency ?? 'GBP',
+                )}
               </Text>
               <Text size="xs" c="dimmed">
                 {youOwe.length} payment{youOwe.length !== 1 ? 's' : ''} to make
@@ -142,10 +189,10 @@ function CrossGroupOverviewPage() {
             <Paper className="commune-stat-card commune-kpi-card" p="lg" data-tone="sage" style={{ flex: 1 }}>
               <Text size="sm" c="dimmed">Owed to you (total)</Text>
               <Text fw={800} size="1.5rem">
-                {owedToYou.length > 0
-                  ? owedToYou.map((tx) => formatCurrency(tx.netAmount, tx.currency)).join(' + ')
-                  : formatCurrency(0)
-                }
+                {formatCurrencyBreakdown(
+                  nettedOwedToYouTotals,
+                  result.transactions[0]?.currency ?? 'GBP',
+                )}
               </Text>
               <Text size="xs" c="dimmed">
                 {owedToYou.length} payment{owedToYou.length !== 1 ? 's' : ''} incoming
@@ -278,22 +325,18 @@ function CrossGroupOverviewPage() {
             <Paper className="commune-stat-card commune-kpi-card" p="lg" data-tone="peach" style={{ flex: 1 }}>
               <Text size="sm" c="dimmed">Total you owe</Text>
               <Text fw={800} size="1.5rem">
-                {formatCurrency(
-                  (result.perGroupData ?? []).reduce((sum, g) =>
-                    sum + g.settlement.transactions
-                      .filter((tx) => tx.fromUserId === user?.id)
-                      .reduce((s, tx) => s + tx.amount, 0), 0),
+                {formatCurrencyBreakdown(
+                  perGroupYouOweTotals,
+                  result.perGroupData?.[0]?.currency ?? 'GBP',
                 )}
               </Text>
             </Paper>
             <Paper className="commune-stat-card commune-kpi-card" p="lg" data-tone="sage" style={{ flex: 1 }}>
               <Text size="sm" c="dimmed">Total owed to you</Text>
               <Text fw={800} size="1.5rem">
-                {formatCurrency(
-                  (result.perGroupData ?? []).reduce((sum, g) =>
-                    sum + g.settlement.transactions
-                      .filter((tx) => tx.toUserId === user?.id)
-                      .reduce((s, tx) => s + tx.amount, 0), 0),
+                {formatCurrencyBreakdown(
+                  perGroupOwedToYouTotals,
+                  result.perGroupData?.[0]?.currency ?? 'GBP',
                 )}
               </Text>
             </Paper>

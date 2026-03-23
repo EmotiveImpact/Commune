@@ -232,7 +232,16 @@ export async function leaveGroup(groupId: string, userId: string) {
 
 export async function updateGroup(
   groupId: string,
-  updates: { name?: string; type?: string; currency?: string; cycle_date?: number; nudges_enabled?: boolean },
+  updates: {
+    name?: string;
+    type?: string;
+    currency?: string;
+    cycle_date?: number;
+    nudges_enabled?: boolean;
+    tagline?: string;
+    avatar_url?: string;
+    cover_url?: string;
+  },
 ) {
   const { data, error } = await supabase
     .from('groups')

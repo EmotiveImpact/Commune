@@ -153,8 +153,16 @@ export function useDeleteGroup() {
 export function useUpdateGroup(groupId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (updates: { name?: string; type?: string; currency?: string; cycle_date?: number; nudges_enabled?: boolean }) =>
-      updateGroup(groupId, updates),
+    mutationFn: (updates: {
+      name?: string;
+      type?: string;
+      currency?: string;
+      cycle_date?: number;
+      nudges_enabled?: boolean;
+      tagline?: string;
+      avatar_url?: string;
+      cover_url?: string;
+    }) => updateGroup(groupId, updates),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: groupKeys.detail(groupId) });
       queryClient.invalidateQueries({ queryKey: groupKeys.list() });

@@ -192,6 +192,35 @@ export function OnboardingSkeleton() {
   );
 }
 
+// Member profile skeleton
+export function MemberProfileSkeleton() {
+  return (
+    <Stack gap="lg">
+      {/* Back button */}
+      <Skeleton height={32} width={140} radius={8} />
+      {/* Profile header */}
+      <Group gap="md">
+        <Skeleton height={80} width={80} circle />
+        <Stack gap="xs" style={{ flex: 1 }}>
+          <Skeleton height={24} width={200} radius={6} />
+          <Skeleton height={14} width={180} radius={6} />
+          <Skeleton height={14} width={160} radius={6} />
+        </Stack>
+      </Group>
+      {/* Stat cards */}
+      <SimpleGrid cols={4} spacing="md">
+        {[1, 2, 3, 4].map(i => (
+          <Skeleton key={i} height={100} radius={14} />
+        ))}
+      </SimpleGrid>
+      {/* Payment methods */}
+      <Skeleton height={120} radius={14} />
+      {/* Activity timeline */}
+      <Skeleton height={300} radius={14} />
+    </Stack>
+  );
+}
+
 // Generic content skeleton (fallback)
 export function ContentSkeleton() {
   return (

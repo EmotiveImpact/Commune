@@ -48,6 +48,9 @@ export interface Group {
   cycle_date: number;
   currency: string;
   nudges_enabled: boolean;
+  avatar_url: string | null;
+  cover_url: string | null;
+  tagline: string | null;
   created_at: string;
 }
 

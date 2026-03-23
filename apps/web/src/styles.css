@@ -994,6 +994,19 @@ div:hover > .commune-avatar-overlay {
   gap: 0.75rem;
 }
 
+.commune-member-card-link {
+  transition: background-color 150ms ease, border-color 150ms ease;
+}
+
+.commune-member-card-link:hover {
+  background-color: rgba(32, 92, 84, 0.04) !important;
+  border-color: rgba(32, 92, 84, 0.18);
+}
+
+[data-mantine-color-scheme="dark"] .commune-member-card-link:hover {
+  background-color: rgba(255, 255, 255, 0.04) !important;
+}
+
 .commune-invite-placeholder {
   display: flex;
   align-items: center;

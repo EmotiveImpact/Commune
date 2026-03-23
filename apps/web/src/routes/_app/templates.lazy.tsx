@@ -18,6 +18,7 @@ import {
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
+import { createTemplateSchema, updateTemplateSchema } from '@commune/core';
 import {
   IconCheck,
   IconDots,
@@ -142,16 +143,41 @@ function TemplatesPage() {
     if (!activeGroupId) return;
 
     const participants = buildParticipants(values);
+    const percentageTotal =
+      splitMethod === 'percentage'
+        ? participants.reduce((sum, participant) => sum + (participant.percentage ?? 0), 0)
+        : null;
+
+    if (splitMethod === 'percentage' && (percentageTotal === null || Math.abs(percentageTotal - 100) > 0.01)) {
+      notifications.show({
+        title: 'Invalid percentage split',
+        message: 'Template percentages must add up to exactly 100%.',
+        color: 'red',
+      });
+      return;
+    }
+
+    const payload = {
+      name: values.name,
+      split_method: splitMethod,
+      participants,
+    };
 
     if (editingId) {
+      const validation = updateTemplateSchema.safeParse(payload);
+      if (!validation.success) {
+        notifications.show({
+          title: 'Invalid template',
+          message: validation.error.issues[0]?.message ?? 'Please check the template fields and try again.',
+          color: 'red',
+        });
+        return;
+      }
+
       updateMutation.mutate(
         {
           id: editingId,
-          data: {
-            name: values.name,
-            split_method: splitMethod,
-            participants,
-          },
+          data: validation.data,
         },
         {
           onSuccess: () => {
@@ -165,23 +191,31 @@ function TemplatesPage() {
               icon: <IconCheck size={18} />,
             });
           },
-          onError: () => {
+          onError: (error) => {
             notifications.show({
               title: 'Failed to update template',
-              message: 'Something went wrong. Please try again.',
+              message: error instanceof Error ? error.message : 'Something went wrong. Please try again.',
               color: 'red',
             });
           },
         },
       );
     } else {
+      const validation = createTemplateSchema.safeParse({
+        group_id: activeGroupId,
+        ...payload,
+      });
+      if (!validation.success) {
+        notifications.show({
+          title: 'Invalid template',
+          message: validation.error.issues[0]?.message ?? 'Please check the template fields and try again.',
+          color: 'red',
+        });
+        return;
+      }
+
       createMutation.mutate(
-        {
-          group_id: activeGroupId,
-          name: values.name,
-          split_method: splitMethod,
-          participants,
-        },
+        validation.data,
         {
           onSuccess: () => {
             setShowForm(false);
@@ -193,10 +227,10 @@ function TemplatesPage() {
               icon: <IconCheck size={18} />,
             });
           },
-          onError: () => {
+          onError: (error) => {
             notifications.show({
               title: 'Failed to create template',
-              message: 'Something went wrong. Please try again.',
+              message: error instanceof Error ? error.message : 'Something went wrong. Please try again.',
               color: 'red',
             });
           },

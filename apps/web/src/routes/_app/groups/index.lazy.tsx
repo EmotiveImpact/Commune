@@ -1,4 +1,4 @@
-import { createLazyFileRoute, Link } from '@tanstack/react-router';
+import { createLazyFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import {
   Badge,
   Box,
@@ -119,6 +119,7 @@ function GroupsPage() {
 
 function GroupCard({ groupId, name, type }: { groupId: string; name: string; type: string }) {
   const colorScheme = useComputedColorScheme('light');
+  const navigate = useNavigate();
   const { data: group } = useGroup(groupId);
   const { user } = useAuthStore();
   const { activeGroupId, setActiveGroupId } = useGroupStore();
@@ -144,7 +145,10 @@ function GroupCard({ groupId, name, type }: { groupId: string; name: string; typ
         outlineOffset: -2,
         transition: 'outline-color var(--commune-motion-fast), box-shadow var(--commune-motion-fast)',
       }}
-      onClick={() => setActiveGroupId(groupId)}
+      onClick={() => {
+        setActiveGroupId(groupId);
+        navigate({ to: '/groups/$groupId', params: { groupId } });
+      }}
     >
       {/* Thumbnail header */}
       <Box

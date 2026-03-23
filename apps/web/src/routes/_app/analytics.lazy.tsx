@@ -127,6 +127,7 @@ function AnalyticsPage() {
   const { canAccessAnalytics, isLoading: planLoading } = usePlanLimits(user?.id ?? '');
   const { data: group } = useGroup(activeGroupId ?? '');
   const { data: analytics, isLoading: analyticsLoading, isError: analyticsError, fetchStatus: analyticsFetchStatus } = useAnalytics(activeGroupId ?? '');
+  const colorScheme = useComputedColorScheme('light');
 
   if (!activeGroupId) {
     return (
@@ -225,7 +226,6 @@ function AnalyticsPage() {
     color: categoryPalette[i % categoryPalette.length]!,
   }));
 
-  const colorScheme = useComputedColorScheme('light');
   const tickFill = colorScheme === 'dark' ? '#909296' : '#667085';
   const gridStroke = colorScheme === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(22,19,29,0.06)';
 

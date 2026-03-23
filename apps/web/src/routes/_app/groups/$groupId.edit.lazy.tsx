@@ -71,6 +71,7 @@ function EditGroupPage() {
       currency: 'GBP',
       cycle_date: 1,
       nudges_enabled: true,
+      tagline: '',
     },
   });
 
@@ -83,6 +84,7 @@ function EditGroupPage() {
       currency: group.currency,
       cycle_date: group.cycle_date,
       nudges_enabled: group.nudges_enabled,
+      tagline: group.tagline,
     });
 
     if (lastHydratedRef.current === hydrationKey) return;
@@ -94,6 +96,7 @@ function EditGroupPage() {
       currency: group.currency ?? 'GBP',
       cycle_date: group.cycle_date ?? 1,
       nudges_enabled: group.nudges_enabled ?? true,
+      tagline: group.tagline ?? '',
     });
   }, [group, form]);
 
@@ -131,6 +134,7 @@ function EditGroupPage() {
         currency: values.currency,
         cycle_date: values.cycle_date,
         nudges_enabled: values.nudges_enabled,
+        tagline: values.tagline || undefined,
       });
       notifications.show({
         title: 'Group updated',
@@ -186,6 +190,14 @@ function EditGroupPage() {
               withAsterisk
               key={form.key('name')}
               {...form.getInputProps('name')}
+            />
+
+            <TextInput
+              label="Tagline"
+              description="A short tagline or motto for the group"
+              placeholder="e.g. Splitting bills, not friendships"
+              key={form.key('tagline')}
+              {...form.getInputProps('tagline')}
             />
 
             <Select

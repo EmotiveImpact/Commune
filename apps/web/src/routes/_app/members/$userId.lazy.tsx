@@ -1,0 +1,458 @@
+import { createLazyFileRoute, Link } from '@tanstack/react-router';
+import {
+  Avatar,
+  Badge,
+  Button,
+  Divider,
+  Group,
+  Paper,
+  SimpleGrid,
+  Stack,
+  Text,
+  ThemeIcon,
+  Timeline,
+  Tooltip,
+} from '@mantine/core';
+import {
+  IconArrowLeft,
+  IconArrowRight,
+  IconAlertTriangle,
+  IconBriefcase,
+  IconCalendar,
+  IconCash,
+  IconCheck,
+  IconClock,
+  IconHeart,
+  IconHome,
+  IconMail,
+  IconMapPin,
+  IconPlane,
+  IconReceipt,
+  IconUser,
+  IconUsersGroup,
+} from '@tabler/icons-react';
+import { useEffect } from 'react';
+import { setPageTitle } from '../../../utils/seo';
+import { formatCurrency, formatDate } from '@commune/utils';
+import { getProviderDisplayName, isClickableProvider, buildPaymentUrl } from '@commune/core';
+import type { PaymentProvider } from '@commune/types';
+import { useMemberProfile } from '../../../hooks/use-group-hub';
+import { useGroupStore } from '../../../stores/group';
+import { useGroup } from '../../../hooks/use-groups';
+import { useAuthStore } from '../../../stores/auth';
+import { ContentSkeleton } from '../../../components/page-skeleton';
+import { EmptyState } from '../../../components/empty-state';
+
+export const Route = createLazyFileRoute('/_app/members/$userId')({
+  component: MemberProfilePage,
+});
+
+const GROUP_TYPE_ICONS: Record<string, typeof IconHome> = {
+  household: IconHome,
+  couple: IconHeart,
+  flatmates: IconHome,
+  friends: IconUsersGroup,
+  work: IconBriefcase,
+  travel: IconPlane,
+  other: IconUsersGroup,
+};
+
+function formatCategoryLabel(category: string) {
+  return category
+    .split('_')
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .join(' ');
+}
+
+function MemberProfilePage() {
+  const { userId } = Route.useParams();
+  const { activeGroupId } = useGroupStore();
+  const { data: group } = useGroup(activeGroupId ?? '');
+  const { user: currentUser } = useAuthStore();
+  const { data: profile, isLoading } = useMemberProfile(userId, activeGroupId ?? '');
+
+  const memberName = profile?.user?.name ?? 'Member';
+
+  useEffect(() => {
+    setPageTitle(memberName);
+  }, [memberName]);
+
+  if (isLoading) {
+    return <ContentSkeleton />;
+  }
+
+  if (!profile || !profile.user) {
+    return (
+      <EmptyState
+        icon={IconUser}
+        iconColor="gray"
+        title="Member not found"
+        description="This person may no longer be part of the group, or the link may be invalid."
+      />
+    );
+  }
+
+  const { user, membership, paymentMethods, recentActivity, sharedGroups } = profile;
+  const currency = group?.currency ?? 'GBP';
+  const isViewingSelf = currentUser?.id === userId;
+
+  // Compute member's monthly share from group hub data
+  const memberTotalOwed = (() => {
+    if (!group) return 0;
+    // Use recent activity to approximate: sum share amounts from expenses this member participates in
+    return 0; // Will be shown from membership data if available
+  })();
+
+  // Determine payment status from membership/stats
+  const roleBadgeColor =
+    membership?.role === 'admin'
+      ? 'dark'
+      : membership?.role === 'owner'
+        ? 'indigo'
+        : 'gray';
+
+  const joinedDate = membership?.effective_from
+    ? new Date(membership.effective_from + 'T00:00:00')
+    : membership?.created_at
+      ? new Date(membership.created_at)
+      : null;
+
+  return (
+    <Stack gap="xl">
+      {/* Back navigation */}
+      <div>
+        <Button
+          component={Link}
+          to="/members"
+          variant="subtle"
+          color="gray"
+          size="sm"
+          leftSection={<IconArrowLeft size={16} />}
+        >
+          Back to members
+        </Button>
+      </div>
+
+      {/* 1. Profile Header */}
+      <Paper className="commune-soft-panel" p="xl">
+        <Group gap="lg" align="flex-start">
+          <Avatar
+            src={user.avatar_url}
+            name={user.name}
+            color="initials"
+            size={80}
+            radius="xl"
+          />
+          <Stack gap={4} style={{ flex: 1 }}>
+            <Group gap="sm" align="center">
+              <Text fw={800} size="xl">
+                {user.name}
+              </Text>
+              {isViewingSelf && (
+                <Badge size="sm" variant="light" color="emerald">
+                  You
+                </Badge>
+              )}
+              {membership?.role && (
+                <Badge size="sm" variant="light" color={roleBadgeColor}>
+                  {membership.role}
+                </Badge>
+              )}
+            </Group>
+            <Group gap="xs" align="center">
+              <IconMail size={14} style={{ opacity: 0.5 }} />
+              <Text size="sm" c="dimmed">
+                {user.email}
+              </Text>
+            </Group>
+            {joinedDate && (
+              <Group gap="xs" align="center">
+                <IconCalendar size={14} style={{ opacity: 0.5 }} />
+                <Text size="sm" c="dimmed">
+                  Member since{' '}
+                  {joinedDate.toLocaleDateString('en-GB', {
+                    day: 'numeric',
+                    month: 'long',
+                    year: 'numeric',
+                  })}
+                </Text>
+              </Group>
+            )}
+          </Stack>
+        </Group>
+      </Paper>
+
+      {/* 2. "In This Group" Section */}
+      {group && membership && (
+        <Paper className="commune-soft-panel" p="xl">
+          <Text className="commune-section-heading" mb="md">
+            In this group
+          </Text>
+          <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="md">
+            <Paper className="commune-stat-card" p="md">
+              <Group justify="space-between">
+                <Stack gap={2}>
+                  <Text size="sm" c="dimmed">
+                    Group
+                  </Text>
+                  <Text fw={700}>{group.name}</Text>
+                </Stack>
+                <ThemeIcon
+                  size={36}
+                  variant="light"
+                  style={{
+                    backgroundColor: 'var(--commune-icon-bg-primary)',
+                    color: 'var(--commune-primary-strong)',
+                  }}
+                >
+                  <IconUsersGroup size={18} />
+                </ThemeIcon>
+              </Group>
+            </Paper>
+
+            <Paper className="commune-stat-card" p="md">
+              <Group justify="space-between">
+                <Stack gap={2}>
+                  <Text size="sm" c="dimmed">
+                    Role
+                  </Text>
+                  <Text fw={700} tt="capitalize">
+                    {membership.role}
+                  </Text>
+                </Stack>
+                <ThemeIcon
+                  size={36}
+                  variant="light"
+                  style={{
+                    backgroundColor: 'var(--commune-icon-bg-forest)',
+                    color: 'var(--commune-forest)',
+                  }}
+                >
+                  <IconUser size={18} />
+                </ThemeIcon>
+              </Group>
+            </Paper>
+
+            <Paper className="commune-stat-card" p="md">
+              <Group justify="space-between">
+                <Stack gap={2}>
+                  <Text size="sm" c="dimmed">
+                    Status
+                  </Text>
+                  <Text fw={700} tt="capitalize">
+                    {membership.status}
+                  </Text>
+                </Stack>
+                <ThemeIcon
+                  size={36}
+                  variant="light"
+                  style={{
+                    backgroundColor: 'var(--commune-icon-bg-success)',
+                    color: 'var(--commune-forest-soft)',
+                  }}
+                >
+                  {membership.status === 'active' ? (
+                    <IconCheck size={18} />
+                  ) : (
+                    <IconClock size={18} />
+                  )}
+                </ThemeIcon>
+              </Group>
+            </Paper>
+
+            <Paper className="commune-stat-card" p="md">
+              <Group justify="space-between">
+                <Stack gap={2}>
+                  <Text size="sm" c="dimmed">
+                    Member type
+                  </Text>
+                  <Badge variant="light" color="gray" size="lg">
+                    {group.type ?? 'Group'}
+                  </Badge>
+                </Stack>
+                <ThemeIcon
+                  size={36}
+                  variant="light"
+                  style={{
+                    backgroundColor: 'var(--commune-icon-bg-info)',
+                    color: 'var(--commune-icon-info)',
+                  }}
+                >
+                  <IconMapPin size={18} />
+                </ThemeIcon>
+              </Group>
+            </Paper>
+          </SimpleGrid>
+        </Paper>
+      )}
+
+      {/* 3. Payment Methods Section */}
+      <Paper className="commune-soft-panel" p="xl">
+        <Group gap="xs" mb="md">
+          <IconCash size={20} />
+          <Text className="commune-section-heading">Payment methods</Text>
+        </Group>
+
+        {paymentMethods.length === 0 ? (
+          <Text size="sm" c="dimmed">
+            No payment methods configured.
+          </Text>
+        ) : (
+          <Stack gap="sm">
+            {paymentMethods.map((method: any) => {
+              const provider = method.provider as PaymentProvider;
+              const clickable =
+                isClickableProvider(provider) && method.payment_link;
+              const linkResult = clickable
+                ? buildPaymentUrl({
+                    provider,
+                    link: method.payment_link ?? '',
+                  })
+                : null;
+
+              return (
+                <Paper key={method.id} className="commune-stat-card" p="md">
+                  <Group justify="space-between" align="center">
+                    <Group gap="sm">
+                      <ThemeIcon variant="light" color="gray" size="md">
+                        <IconCash size={16} />
+                      </ThemeIcon>
+                      <div>
+                        <Text fw={600} size="sm">
+                          {method.label || getProviderDisplayName(provider)}
+                        </Text>
+                        <Text size="xs" c="dimmed">
+                          {getProviderDisplayName(provider)}
+                          {method.is_default && ' (default)'}
+                        </Text>
+                      </div>
+                    </Group>
+                    {linkResult && (
+                      <Button
+                        component="a"
+                        href={linkResult.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        size="xs"
+                        variant="light"
+                        rightSection={<IconArrowRight size={14} />}
+                      >
+                        Pay
+                      </Button>
+                    )}
+                    {method.payment_info && !linkResult && (
+                      <Tooltip label={method.payment_info} multiline w={220}>
+                        <Badge variant="light" color="gray" size="sm" style={{ cursor: 'help' }}>
+                          Info
+                        </Badge>
+                      </Tooltip>
+                    )}
+                  </Group>
+                </Paper>
+              );
+            })}
+          </Stack>
+        )}
+      </Paper>
+
+      {/* 4. Shared Groups Section (only when viewing someone else) */}
+      {!isViewingSelf && sharedGroups.length > 0 && (
+        <Paper className="commune-soft-panel" p="xl">
+          <Group gap="xs" mb="md">
+            <IconUsersGroup size={20} />
+            <Text className="commune-section-heading">Shared groups</Text>
+          </Group>
+          <Text size="sm" c="dimmed" mb="md">
+            Groups you both belong to.
+          </Text>
+          <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing="sm">
+            {sharedGroups.map((sg: any) => {
+              const TypeIcon = GROUP_TYPE_ICONS[sg.type] ?? IconUsersGroup;
+              return (
+                <Paper
+                  key={sg.id}
+                  className="commune-stat-card"
+                  p="md"
+                  component={Link}
+                  to="/"
+                  style={{ textDecoration: 'none', cursor: 'pointer' }}
+                >
+                  <Group gap="sm">
+                    <ThemeIcon variant="light" color="gray" size="md">
+                      <TypeIcon size={16} />
+                    </ThemeIcon>
+                    <div>
+                      <Text fw={600} size="sm">
+                        {sg.name}
+                      </Text>
+                      <Text size="xs" c="dimmed" tt="capitalize">
+                        {sg.type ?? 'Group'}
+                      </Text>
+                    </div>
+                  </Group>
+                </Paper>
+              );
+            })}
+          </SimpleGrid>
+        </Paper>
+      )}
+
+      {/* 5. Recent Activity Section */}
+      <Paper className="commune-soft-panel" p="xl">
+        <Group gap="xs" mb="md">
+          <IconReceipt size={20} />
+          <Text className="commune-section-heading">Recent activity</Text>
+        </Group>
+        <Text size="sm" c="dimmed" mb="md">
+          Recent expenses in this group.
+        </Text>
+
+        {recentActivity.length === 0 ? (
+          <Text size="sm" c="dimmed">
+            No recent activity in this group.
+          </Text>
+        ) : (
+          <Timeline active={recentActivity.length - 1} bulletSize={28} lineWidth={2}>
+            {recentActivity.map((activity: any) => {
+              const isPayer = activity.paid_by_user_id === userId;
+              return (
+                <Timeline.Item
+                  key={activity.id}
+                  bullet={
+                    <ThemeIcon
+                      size={28}
+                      variant="light"
+                      color={isPayer ? 'emerald' : 'gray'}
+                      radius="xl"
+                    >
+                      {isPayer ? <IconCash size={14} /> : <IconReceipt size={14} />}
+                    </ThemeIcon>
+                  }
+                  title={
+                    <Group gap="xs">
+                      <Text size="sm" fw={600}>
+                        {isPayer ? `Paid for "${activity.title}"` : `Added "${activity.title}"`}
+                      </Text>
+                      <Badge size="xs" variant="light" color="gray">
+                        {formatCategoryLabel(activity.category)}
+                      </Badge>
+                    </Group>
+                  }
+                >
+                  <Group gap="sm">
+                    <Text size="sm" fw={700} c={isPayer ? 'emerald' : undefined}>
+                      {formatCurrency(activity.amount, currency)}
+                    </Text>
+                    <Text size="xs" c="dimmed">
+                      {formatDate(activity.due_date ?? activity.created_at)}
+                    </Text>
+                  </Group>
+                </Timeline.Item>
+              );
+            })}
+          </Timeline>
+        )}
+      </Paper>
+    </Stack>
+  );
+}

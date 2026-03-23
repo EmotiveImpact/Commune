@@ -35,7 +35,7 @@ export function GroupSelector() {
   return (
     <Stack gap="xs">
       <Text size="xs" fw={700} tt="uppercase" className="commune-sidebar-label" style={{ letterSpacing: '0.12em', whiteSpace: 'nowrap' }}>
-        Workspace
+        Group
       </Text>
       <Select
         className="commune-group-select"

@@ -33,8 +33,10 @@ import { Route as AppAnalyticsRouteImport } from './routes/_app/analytics'
 import { Route as AppActivityRouteImport } from './routes/_app/activity'
 import { Route as AppGroupsIndexRouteImport } from './routes/_app/groups/index'
 import { Route as AppExpensesIndexRouteImport } from './routes/_app/expenses/index'
+import { Route as AppMembersUserIdRouteImport } from './routes/_app/members/$userId'
 import { Route as AppExpensesNewRouteImport } from './routes/_app/expenses/new'
 import { Route as AppExpensesExpenseIdRouteImport } from './routes/_app/expenses/$expenseId'
+import { Route as AppGroupsGroupIdIndexRouteImport } from './routes/_app/groups/$groupId/index'
 import { Route as AppGroupsGroupIdEditRouteImport } from './routes/_app/groups/$groupId.edit'
 import { Route as AppExpensesExpenseIdEditRouteImport } from './routes/_app/expenses/$expenseId.edit'
 
@@ -170,6 +172,13 @@ const AppExpensesIndexRoute = AppExpensesIndexRouteImport.update({
 } as any).lazy(() =>
   import('./routes/_app/expenses/index.lazy').then((d) => d.Route),
 )
+const AppMembersUserIdRoute = AppMembersUserIdRouteImport.update({
+  id: '/$userId',
+  path: '/$userId',
+  getParentRoute: () => AppMembersRoute,
+} as any).lazy(() =>
+  import('./routes/_app/members/$userId.lazy').then((d) => d.Route),
+)
 const AppExpensesNewRoute = AppExpensesNewRouteImport.update({
   id: '/expenses/new',
   path: '/expenses/new',
@@ -183,6 +192,13 @@ const AppExpensesExpenseIdRoute = AppExpensesExpenseIdRouteImport.update({
   getParentRoute: () => AppRoute,
 } as any).lazy(() =>
   import('./routes/_app/expenses/$expenseId.lazy').then((d) => d.Route),
+)
+const AppGroupsGroupIdIndexRoute = AppGroupsGroupIdIndexRouteImport.update({
+  id: '/groups/$groupId/',
+  path: '/groups/$groupId/',
+  getParentRoute: () => AppRoute,
+} as any).lazy(() =>
+  import('./routes/_app/groups/$groupId/index.lazy').then((d) => d.Route),
 )
 const AppGroupsGroupIdEditRoute = AppGroupsGroupIdEditRouteImport.update({
   id: '/groups/$groupId/edit',
@@ -207,7 +223,7 @@ export interface FileRoutesByFullPath {
   '/breakdown': typeof AppBreakdownRoute
   '/funds': typeof AppFundsRoute
   '/import': typeof AppImportRoute
-  '/members': typeof AppMembersRoute
+  '/members': typeof AppMembersRouteWithChildren
   '/onboarding': typeof AppOnboardingRoute
   '/overview': typeof AppOverviewRoute
   '/pricing': typeof AppPricingRoute
@@ -223,10 +239,12 @@ export interface FileRoutesByFullPath {
   '/invite/$token': typeof InviteTokenRoute
   '/expenses/$expenseId': typeof AppExpensesExpenseIdRouteWithChildren
   '/expenses/new': typeof AppExpensesNewRoute
+  '/members/$userId': typeof AppMembersUserIdRoute
   '/expenses/': typeof AppExpensesIndexRoute
   '/groups/': typeof AppGroupsIndexRoute
   '/expenses/$expenseId/edit': typeof AppExpensesExpenseIdEditRoute
   '/groups/$groupId/edit': typeof AppGroupsGroupIdEditRoute
+  '/groups/$groupId/': typeof AppGroupsGroupIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof AppIndexRoute
@@ -235,7 +253,7 @@ export interface FileRoutesByTo {
   '/breakdown': typeof AppBreakdownRoute
   '/funds': typeof AppFundsRoute
   '/import': typeof AppImportRoute
-  '/members': typeof AppMembersRoute
+  '/members': typeof AppMembersRouteWithChildren
   '/onboarding': typeof AppOnboardingRoute
   '/overview': typeof AppOverviewRoute
   '/pricing': typeof AppPricingRoute
@@ -251,10 +269,12 @@ export interface FileRoutesByTo {
   '/invite/$token': typeof InviteTokenRoute
   '/expenses/$expenseId': typeof AppExpensesExpenseIdRouteWithChildren
   '/expenses/new': typeof AppExpensesNewRoute
+  '/members/$userId': typeof AppMembersUserIdRoute
   '/expenses': typeof AppExpensesIndexRoute
   '/groups': typeof AppGroupsIndexRoute
   '/expenses/$expenseId/edit': typeof AppExpensesExpenseIdEditRoute
   '/groups/$groupId/edit': typeof AppGroupsGroupIdEditRoute
+  '/groups/$groupId': typeof AppGroupsGroupIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -265,7 +285,7 @@ export interface FileRoutesById {
   '/_app/breakdown': typeof AppBreakdownRoute
   '/_app/funds': typeof AppFundsRoute
   '/_app/import': typeof AppImportRoute
-  '/_app/members': typeof AppMembersRoute
+  '/_app/members': typeof AppMembersRouteWithChildren
   '/_app/onboarding': typeof AppOnboardingRoute
   '/_app/overview': typeof AppOverviewRoute
   '/_app/pricing': typeof AppPricingRoute
@@ -282,10 +302,12 @@ export interface FileRoutesById {
   '/_app/': typeof AppIndexRoute
   '/_app/expenses/$expenseId': typeof AppExpensesExpenseIdRouteWithChildren
   '/_app/expenses/new': typeof AppExpensesNewRoute
+  '/_app/members/$userId': typeof AppMembersUserIdRoute
   '/_app/expenses/': typeof AppExpensesIndexRoute
   '/_app/groups/': typeof AppGroupsIndexRoute
   '/_app/expenses/$expenseId/edit': typeof AppExpensesExpenseIdEditRoute
   '/_app/groups/$groupId/edit': typeof AppGroupsGroupIdEditRoute
+  '/_app/groups/$groupId/': typeof AppGroupsGroupIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -312,10 +334,12 @@ export interface FileRouteTypes {
     | '/invite/$token'
     | '/expenses/$expenseId'
     | '/expenses/new'
+    | '/members/$userId'
     | '/expenses/'
     | '/groups/'
     | '/expenses/$expenseId/edit'
     | '/groups/$groupId/edit'
+    | '/groups/$groupId/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -340,10 +364,12 @@ export interface FileRouteTypes {
     | '/invite/$token'
     | '/expenses/$expenseId'
     | '/expenses/new'
+    | '/members/$userId'
     | '/expenses'
     | '/groups'
     | '/expenses/$expenseId/edit'
     | '/groups/$groupId/edit'
+    | '/groups/$groupId'
   id:
     | '__root__'
     | '/_app'
@@ -370,10 +396,12 @@ export interface FileRouteTypes {
     | '/_app/'
     | '/_app/expenses/$expenseId'
     | '/_app/expenses/new'
+    | '/_app/members/$userId'
     | '/_app/expenses/'
     | '/_app/groups/'
     | '/_app/expenses/$expenseId/edit'
     | '/_app/groups/$groupId/edit'
+    | '/_app/groups/$groupId/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -552,6 +580,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppExpensesIndexRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/members/$userId': {
+      id: '/_app/members/$userId'
+      path: '/$userId'
+      fullPath: '/members/$userId'
+      preLoaderRoute: typeof AppMembersUserIdRouteImport
+      parentRoute: typeof AppMembersRoute
+    }
     '/_app/expenses/new': {
       id: '/_app/expenses/new'
       path: '/expenses/new'
@@ -564,6 +599,13 @@ declare module '@tanstack/react-router' {
       path: '/expenses/$expenseId'
       fullPath: '/expenses/$expenseId'
       preLoaderRoute: typeof AppExpensesExpenseIdRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/groups/$groupId/': {
+      id: '/_app/groups/$groupId/'
+      path: '/groups/$groupId'
+      fullPath: '/groups/$groupId/'
+      preLoaderRoute: typeof AppGroupsGroupIdIndexRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/groups/$groupId/edit': {
@@ -583,6 +625,18 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AppMembersRouteChildren {
+  AppMembersUserIdRoute: typeof AppMembersUserIdRoute
+}
+
+const AppMembersRouteChildren: AppMembersRouteChildren = {
+  AppMembersUserIdRoute: AppMembersUserIdRoute,
+}
+
+const AppMembersRouteWithChildren = AppMembersRoute._addFileChildren(
+  AppMembersRouteChildren,
+)
+
 interface AppExpensesExpenseIdRouteChildren {
   AppExpensesExpenseIdEditRoute: typeof AppExpensesExpenseIdEditRoute
 }
@@ -600,7 +654,7 @@ interface AppRouteChildren {
   AppBreakdownRoute: typeof AppBreakdownRoute
   AppFundsRoute: typeof AppFundsRoute
   AppImportRoute: typeof AppImportRoute
-  AppMembersRoute: typeof AppMembersRoute
+  AppMembersRoute: typeof AppMembersRouteWithChildren
   AppOnboardingRoute: typeof AppOnboardingRoute
   AppOverviewRoute: typeof AppOverviewRoute
   AppPricingRoute: typeof AppPricingRoute
@@ -614,6 +668,7 @@ interface AppRouteChildren {
   AppExpensesIndexRoute: typeof AppExpensesIndexRoute
   AppGroupsIndexRoute: typeof AppGroupsIndexRoute
   AppGroupsGroupIdEditRoute: typeof AppGroupsGroupIdEditRoute
+  AppGroupsGroupIdIndexRoute: typeof AppGroupsGroupIdIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
@@ -622,7 +677,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppBreakdownRoute: AppBreakdownRoute,
   AppFundsRoute: AppFundsRoute,
   AppImportRoute: AppImportRoute,
-  AppMembersRoute: AppMembersRoute,
+  AppMembersRoute: AppMembersRouteWithChildren,
   AppOnboardingRoute: AppOnboardingRoute,
   AppOverviewRoute: AppOverviewRoute,
   AppPricingRoute: AppPricingRoute,
@@ -636,6 +691,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppExpensesIndexRoute: AppExpensesIndexRoute,
   AppGroupsIndexRoute: AppGroupsIndexRoute,
   AppGroupsGroupIdEditRoute: AppGroupsGroupIdEditRoute,
+  AppGroupsGroupIdIndexRoute: AppGroupsGroupIdIndexRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)

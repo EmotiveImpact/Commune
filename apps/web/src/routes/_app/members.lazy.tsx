@@ -1,4 +1,4 @@
-import { createLazyFileRoute, Link, useNavigate } from '@tanstack/react-router';
+import { createLazyFileRoute, Link, Outlet, useNavigate, useMatch } from '@tanstack/react-router';
 import {
   ActionIcon,
   Avatar,
@@ -47,8 +47,16 @@ import { EmptyState } from '../../components/empty-state';
 import { PageHeader } from '../../components/page-header';
 
 export const Route = createLazyFileRoute('/_app/members')({
-  component: MembersPage,
+  component: MembersLayout,
 });
+
+function MembersLayout() {
+  const childMatch = useMatch({ from: '/_app/members/$userId', shouldThrow: false });
+  if (childMatch) {
+    return <Outlet />;
+  }
+  return <MembersPage />;
+}
 
 function formatProrationDate(dateStr: string): string {
   const date = new Date(dateStr + 'T00:00:00');
@@ -347,7 +355,15 @@ function MembersPage() {
       ) : (
         <div className="commune-member-grid">
           {filteredMembers.map((member) => (
-            <Paper key={member.id} className="commune-stat-card" p="md" radius="lg">
+            <Paper
+              key={member.id}
+              className="commune-stat-card commune-member-card-link"
+              p="md"
+              radius="lg"
+              component={Link}
+              to={`/members/${member.user_id}`}
+              style={{ textDecoration: 'none', cursor: 'pointer' }}
+            >
               <Group justify="space-between" align="center">
                 <Group wrap="nowrap">
                   <Avatar src={member.user.avatar_url} name={member.user.name} color="initials" size={44} />

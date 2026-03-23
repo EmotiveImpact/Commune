@@ -12,6 +12,8 @@ import {
   TextInput,
   Tooltip,
   UnstyledButton,
+  useComputedColorScheme,
+  useMantineColorScheme,
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { Link, useLocation, useNavigate } from '@tanstack/react-router';
@@ -20,6 +22,8 @@ import {
   IconChevronsLeft,
   IconChevronsRight,
   IconCreditCard,
+  IconMoon,
+  IconSun,
   IconDotsVertical,
   IconLifebuoy,
   IconLogout,
@@ -119,6 +123,7 @@ export function AppShell({ children }: AppShellProps) {
             />
           </Group>
           <Group gap="sm">
+            <ColorSchemeToggle />
             <NotificationDropdown />
           </Group>
         </Group>
@@ -254,7 +259,7 @@ export function AppShell({ children }: AppShellProps) {
               {/* Collapsible groups */}
               {collapsed
                 ? /* When sidebar is collapsed, show group icons as dividers + flat link icons */
-                  navGroups.map((group, gi) => (
+                  navGroups.map((group) => (
                     <div key={group.label}>
                       {/* Group divider icon — centered, subtle */}
                       <Tooltip label={group.label} position="right" withArrow>
@@ -456,6 +461,27 @@ export function AppShell({ children }: AppShellProps) {
         {user?.id && <TrialExpiryModal userId={user.id} />}
       </MantineAppShell.Main>
     </MantineAppShell>
+  );
+}
+
+/** Light/dark mode toggle for the header */
+function ColorSchemeToggle() {
+  const { setColorScheme } = useMantineColorScheme();
+  const computedColorScheme = useComputedColorScheme('dark');
+  const isDark = computedColorScheme === 'dark';
+
+  return (
+    <Tooltip label={isDark ? 'Light mode' : 'Dark mode'} position="bottom" withArrow>
+      <ActionIcon
+        variant="subtle"
+        size="lg"
+        onClick={() => setColorScheme(isDark ? 'light' : 'dark')}
+        aria-label="Toggle color scheme"
+        className="commune-color-scheme-toggle"
+      >
+        {isDark ? <IconSun size={18} /> : <IconMoon size={18} />}
+      </ActionIcon>
+    </Tooltip>
   );
 }
 

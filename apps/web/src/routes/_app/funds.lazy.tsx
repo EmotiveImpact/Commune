@@ -19,6 +19,11 @@ import {
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
 import {
+  createContributionSchema,
+  createFundExpenseSchema,
+  createFundSchema,
+} from '@commune/core';
+import {
   IconCheck,
   IconCash,
   IconDots,
@@ -118,14 +123,25 @@ function FundListView({
   });
 
   function handleCreate(values: ReturnType<typeof createForm.getValues>) {
+    const validation = createFundSchema.safeParse({
+      group_id: groupId,
+      name: values.name,
+      target_amount:
+        values.target_amount !== '' ? Number(values.target_amount) : null,
+      currency: (values.currency || currency).toUpperCase(),
+    });
+
+    if (!validation.success) {
+      notifications.show({
+        title: 'Invalid fund details',
+        message: validation.error.issues[0]?.message ?? 'Please check the form and try again.',
+        color: 'red',
+      });
+      return;
+    }
+
     createMutation.mutate(
-      {
-        group_id: groupId,
-        name: values.name,
-        target_amount:
-          values.target_amount !== '' ? Number(values.target_amount) : null,
-        currency: values.currency || currency,
-      },
+      validation.data,
       {
         onSuccess: () => {
           setShowCreate(false);
@@ -137,10 +153,10 @@ function FundListView({
             icon: <IconCheck size={18} />,
           });
         },
-        onError: () => {
+        onError: (error) => {
           notifications.show({
             title: 'Failed to create fund',
-            message: 'Something went wrong. Please try again.',
+            message: error instanceof Error ? error.message : 'Something went wrong. Please try again.',
             color: 'red',
           });
         },
@@ -417,11 +433,22 @@ function FundDetailView({
   function handleAddContribution(
     values: ReturnType<typeof contributionForm.getValues>,
   ) {
+    const validation = createContributionSchema.safeParse({
+      amount: Number(values.amount),
+      note: values.note || undefined,
+    });
+
+    if (!validation.success) {
+      notifications.show({
+        title: 'Invalid contribution',
+        message: validation.error.issues[0]?.message ?? 'Please check the form and try again.',
+        color: 'red',
+      });
+      return;
+    }
+
     contributionMutation.mutate(
-      {
-        amount: Number(values.amount),
-        note: values.note || undefined,
-      },
+      validation.data,
       {
         onSuccess: () => {
           setShowContribution(false);
@@ -433,10 +460,10 @@ function FundDetailView({
             icon: <IconCheck size={18} />,
           });
         },
-        onError: () => {
+        onError: (error) => {
           notifications.show({
             title: 'Failed to add contribution',
-            message: 'Something went wrong. Please try again.',
+            message: error instanceof Error ? error.message : 'Something went wrong. Please try again.',
             color: 'red',
           });
         },
@@ -447,11 +474,22 @@ function FundDetailView({
   function handleAddExpense(
     values: ReturnType<typeof expenseForm.getValues>,
   ) {
+    const validation = createFundExpenseSchema.safeParse({
+      description: values.description,
+      amount: Number(values.amount),
+    });
+
+    if (!validation.success) {
+      notifications.show({
+        title: 'Invalid expense',
+        message: validation.error.issues[0]?.message ?? 'Please check the form and try again.',
+        color: 'red',
+      });
+      return;
+    }
+
     expenseMutation.mutate(
-      {
-        description: values.description,
-        amount: Number(values.amount),
-      },
+      validation.data,
       {
         onSuccess: () => {
           setShowExpense(false);
@@ -463,10 +501,10 @@ function FundDetailView({
             icon: <IconCheck size={18} />,
           });
         },
-        onError: () => {
+        onError: (error) => {
           notifications.show({
             title: 'Failed to record expense',
-            message: 'Something went wrong. Please try again.',
+            message: error instanceof Error ? error.message : 'Something went wrong. Please try again.',
             color: 'red',
           });
         },
