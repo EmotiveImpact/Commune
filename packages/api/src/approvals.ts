@@ -13,9 +13,35 @@ export async function getPendingApprovals(groupId: string) {
   return data ?? [];
 }
 
+async function verifyAdminForExpense(expenseId: string, userId: string) {
+  // Get the expense's group_id
+  const { data: expense, error: expError } = await supabase
+    .from('expenses')
+    .select('group_id')
+    .eq('id', expenseId)
+    .single();
+
+  if (expError || !expense) throw new Error('Expense not found');
+
+  // Verify user is admin in that group
+  const { data: membership, error: memError } = await supabase
+    .from('group_members')
+    .select('role')
+    .eq('group_id', expense.group_id)
+    .eq('user_id', userId)
+    .eq('status', 'active')
+    .single();
+
+  if (memError || !membership || membership.role !== 'admin') {
+    throw new Error('Only group admins can approve or reject expenses');
+  }
+}
+
 export async function approveExpense(expenseId: string) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
+
+  await verifyAdminForExpense(expenseId, user.id);
 
   const { data, error } = await supabase
     .from('expenses')
@@ -35,6 +61,8 @@ export async function approveExpense(expenseId: string) {
 export async function rejectExpense(expenseId: string) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
+
+  await verifyAdminForExpense(expenseId, user.id);
 
   const { data, error } = await supabase
     .from('expenses')

@@ -66,12 +66,27 @@ export async function createExpense(data: CreateExpenseData) {
     );
   }
 
+  // Check group's approval threshold
+  let approvalStatus = 'approved';
+  if (expenseData.group_id) {
+    const { data: groupData } = await supabase
+      .from('groups')
+      .select('approval_threshold')
+      .eq('id', expenseData.group_id)
+      .single();
+
+    if (groupData?.approval_threshold && amount > groupData.approval_threshold) {
+      approvalStatus = 'pending';
+    }
+  }
+
   const { data: expense, error: expenseError } = await supabase
     .from('expenses')
     .insert({
       ...expenseData,
       split_method,
       created_by: user.id,
+      approval_status: approvalStatus,
     })
     .select()
     .single();

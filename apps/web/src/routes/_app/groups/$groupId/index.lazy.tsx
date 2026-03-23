@@ -6,7 +6,6 @@ import {
   Button,
   FileButton,
   Group,
-  Image,
   Paper,
   Progress,
   SimpleGrid,
@@ -41,7 +40,6 @@ import {
   IconTrash,
   IconPhone,
   IconBook,
-  IconHeartbeat,
   IconHome2,
 } from '@tabler/icons-react';
 import { useGroupHub, useUploadGroupImage } from '../../../../hooks/use-group-hub';
@@ -128,11 +126,10 @@ function GroupHubPage() {
   const { setActiveGroupId } = useGroupStore();
   const { data: hub, isLoading } = useGroupHub(groupId);
   const uploadImage = useUploadGroupImage(groupId);
-
-  if (isLoading || !hub) return <ContentSkeleton />;
-
   const { data: settlement } = useGroupSettlement(groupId);
   const { data: activityItems } = useActivityLog(groupId, 10);
+
+  if (isLoading || !hub) return <ContentSkeleton />;
 
   const { group, expenses, memberTotals, categoryTotals, totalMonthly, activeMembers } = hub;
   const members = (group.members as any[]).filter((m: any) => m.status === 'active');
@@ -598,7 +595,7 @@ function GroupHubPage() {
               <Paper
                 key={member.id}
                 component={Link}
-                to="/members"
+                to={`/members/${member.user_id}`}
                 className="commune-stat-card"
                 p="md"
                 radius="lg"

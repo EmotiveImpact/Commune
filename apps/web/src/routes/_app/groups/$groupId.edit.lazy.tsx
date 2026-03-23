@@ -5,7 +5,6 @@ import {
   Button,
   FileButton,
   Group,
-  Image,
   NumberInput,
   Paper,
   Select,
@@ -183,7 +182,7 @@ function EditGroupPage() {
         message: `${values.name} settings have been saved.`,
         color: 'green',
       });
-      navigate({ to: '/members' });
+      navigate({ to: '/groups/$groupId', params: { groupId } });
     } catch (err) {
       notifications.show({
         title: 'Failed to update group',

@@ -3,7 +3,6 @@ import {
   Avatar,
   Badge,
   Button,
-  Divider,
   Group,
   Paper,
   SimpleGrid,
@@ -71,6 +70,7 @@ function MemberProfilePage() {
   const { data: group } = useGroup(activeGroupId ?? '');
   const { user: currentUser } = useAuthStore();
   const { data: profile, isLoading } = useMemberProfile(userId, activeGroupId ?? '');
+  const { data: settlement } = useGroupSettlement(activeGroupId ?? '');
 
   const memberName = profile?.user?.name ?? 'Member';
 
@@ -92,8 +92,6 @@ function MemberProfilePage() {
       />
     );
   }
-
-  const { data: settlement } = useGroupSettlement(activeGroupId ?? '');
   const { user, membership, paymentMethods, recentActivity, sharedGroups } = profile;
   const currency = group?.currency ?? 'GBP';
   const isViewingSelf = currentUser?.id === userId;
