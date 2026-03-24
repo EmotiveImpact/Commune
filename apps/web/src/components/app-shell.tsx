@@ -144,7 +144,7 @@ export function AppShell({ children }: AppShellProps) {
             flexDirection: 'column',
             justifyContent: 'space-between',
             height: '100%',
-            overflow: 'hidden',
+            overflow: isMobile ? 'auto' : 'hidden',
             padding: `1.25rem ${SIDEBAR_PAD}px`,
           }}
         >
@@ -460,6 +460,15 @@ export function AppShell({ children }: AppShellProps) {
           </Stack>
         </div>
       </MantineAppShell.Navbar>
+
+      {/* Mobile backdrop — closes sidebar when tapping outside */}
+      {isMobile && opened && (
+        <div
+          className="commune-mobile-backdrop"
+          onClick={close}
+          aria-hidden="true"
+        />
+      )}
 
       <MantineAppShell.Main className="commune-main-content" role="main">
         {children}

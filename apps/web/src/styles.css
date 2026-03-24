@@ -834,12 +834,39 @@ div:hover > .commune-avatar-overlay {
   color: rgba(255, 255, 255, 0.85);
 }
 
+/* Mobile backdrop overlay */
+.commune-mobile-backdrop {
+  display: none;
+}
+
+@media (max-width: 47.99em) {
+  .commune-mobile-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    top: 64px;
+    z-index: 199; /* just below the navbar (200) */
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+  }
+}
+
 /* ── Mobile sidebar ── */
 @media (max-width: 47.99em) {
-  /* Full-height overlay panel — always expanded on mobile */
+  /* On mobile, Mantine turns the navbar into an overlay.
+     We must NOT use 100dvh — let the navbar fill its parent naturally. */
   .commune-sidebar-panel {
+    height: 100%;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
+  }
+
+  /* The Mantine navbar itself — ensure it sits below the header as an overlay */
+  .commune-app-shell-navbar {
+    z-index: 200;
+    top: 64px !important;
+    height: calc(100dvh - 64px) !important;
   }
 
   /* Larger tap targets on mobile */
@@ -1108,11 +1135,6 @@ div:hover > .commune-avatar-overlay {
 
   .commune-auth-mobile-footer a:hover {
     color: var(--commune-ink);
-  }
-
-  .commune-sidebar-panel {
-    height: auto;
-    border-radius: 0;
   }
 
   .commune-dashboard-grid {
