@@ -20,6 +20,7 @@ import {
   IconCash,
   IconCheck,
   IconCoin,
+  IconDashboard,
   IconDownload,
   IconFileExport,
   IconPlus,
@@ -363,8 +364,28 @@ function DashboardPage() {
   );
 
   if (!activeGroupId) {
-    if (groupsLoading || invitesLoading || (groups?.length ?? 0) > 0) {
+    if (groupsLoading || invitesLoading) {
       return <DashboardSkeleton />;
+    }
+
+    if ((groups?.length ?? 0) > 0) {
+      return (
+        <Stack gap="xl" py="xl" align="center" maw={480} mx="auto">
+          <IconDashboard size={48} style={{ color: 'var(--commune-primary)', opacity: 0.5 }} />
+          <Text size="xl" fw={700} ta="center">Select a group to get started</Text>
+          <Text size="sm" c="dimmed" ta="center">
+            Choose one of your groups to view its dashboard, expenses, and members.
+          </Text>
+          <Button
+            component={Link}
+            to="/groups"
+            size="md"
+            variant="light"
+          >
+            View my groups
+          </Button>
+        </Stack>
+      );
     }
 
     return <DashboardSkeleton />;

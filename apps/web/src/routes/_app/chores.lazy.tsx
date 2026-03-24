@@ -149,6 +149,17 @@ function ChoresPage() {
     },
   });
 
+  if (!activeGroupId) {
+    return (
+      <EmptyState
+        icon={IconChecklist}
+        iconColor="emerald"
+        title="Select a group first"
+        description="Choose a group to manage its chores and tasks."
+      />
+    );
+  }
+
   if (isLoading) return <ContentSkeleton />;
 
   const today = new Date().toISOString().slice(0, 10);
