@@ -153,6 +153,26 @@ export function generateSmartNudges(input: SmartNudgeInput): SmartNudge[] {
     }
   }
 
+  // 4b. You owe — unsettled debts where user needs to pay
+  for (const settlement of input.settlements) {
+    const youOwe = settlement.transactions.filter((t) => t.fromUserId === input.userId);
+    if (youOwe.length > 0) {
+      const totalOwed = youOwe.reduce((sum, t) => sum + t.amount, 0);
+      const currency = input.groups.find((g) => g.id === settlement.groupId)?.currency ?? 'GBP';
+      nudges.push({
+        id: `you-owe-${settlement.groupId}`,
+        type: 'unsettled_purchases',
+        priority: 1,
+        title: `You owe ${formatAmount(totalOwed, currency)}`,
+        description: `In ${settlement.groupName}, you owe ${youOwe.length} member${youOwe.length > 1 ? 's' : ''}. Settle up to stay current.`,
+        groupName: settlement.groupName,
+        actionUrl: '/breakdown',
+        icon: 'alert',
+        color: 'red',
+      });
+    }
+  }
+
   // 5. Budget warning
   for (const group of input.groups) {
     if (group.budgetAmount && group.budgetAmount > 0) {

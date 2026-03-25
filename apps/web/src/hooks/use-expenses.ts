@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { createExpense, getGroupExpenses, getExpenseDetail, archiveExpense, batchArchiveExpenses, updateExpense } from '@commune/api';
+import { createExpense, getGroupExpenses, getExpenseDetail, archiveExpense, batchArchiveExpenses, updateExpense, flagExpense, unflagExpense } from '@commune/api';
 import { markPayment, confirmPayment, batchMarkPaid } from '@commune/api';
 import type { SplitMethod } from '@commune/types';
 import { groupKeys } from './use-groups';
@@ -239,6 +239,28 @@ export function useUpdateExpense(groupId: string) {
       queryClient.invalidateQueries({ queryKey: groupHubKeys.all });
       queryClient.invalidateQueries({ queryKey: activityKeys.all });
       queryClient.invalidateQueries({ queryKey: crossGroupKeys.all });
+    },
+  });
+}
+
+export function useFlagExpense() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ expenseId, reason }: { expenseId: string; reason: string }) =>
+      flagExpense(expenseId, reason),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: expenseKeys.all });
+      queryClient.invalidateQueries({ queryKey: activityKeys.all });
+    },
+  });
+}
+
+export function useUnflagExpense() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (expenseId: string) => unflagExpense(expenseId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: expenseKeys.all });
     },
   });
 }

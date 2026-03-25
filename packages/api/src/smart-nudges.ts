@@ -1,6 +1,7 @@
 import { supabase } from './client';
 import { generateSmartNudges } from '@commune/core';
 import type { SmartNudgeInput } from '@commune/core';
+import { getGroupSettlement } from './settlement';
 
 export async function getUserSmartNudges(userId: string) {
   if (!userId) return [];
@@ -74,25 +75,29 @@ export async function getUserSmartNudges(userId: string) {
     }
   }
 
-  // Build settlements from cross-group data (simplified — just check who owes whom)
-  // We'll use a lightweight approach: query settlement-relevant data per group
-  const settlements: SmartNudgeInput['settlements'] = [];
+  // Build settlements from REAL settlement calculations per group
+  const settlementResults = await Promise.all(
+    groups.map(async (group) => {
+      try {
+        const result = await getGroupSettlement(group.id);
+        return { group, result };
+      } catch {
+        return { group, result: null };
+      }
+    }),
+  );
 
-  // For each group, get basic settlement info from the settlement module
-  // To keep this lightweight, we'll use the expense participants to derive basic "who owes"
-  // This is approximate but avoids running the full settlement algorithm per group
-  for (const group of groups) {
-    const groupExpenses = (thisMonthExpenses ?? []).filter((e) => e.group_id === group.id);
-    if (groupExpenses.length === 0) continue;
-
-    // Simple heuristic: if there are expenses, there might be unsettled debts
-    // The real settlement data comes from the command centre hooks
-    settlements.push({
-      groupId: group.id,
-      groupName: group.name,
-      transactions: [], // Will be populated by the command centre separately
-    });
-  }
+  const settlements: SmartNudgeInput['settlements'] = settlementResults
+    .filter((s) => s.result && s.result.transactions.length > 0)
+    .map((s) => ({
+      groupId: s.group.id,
+      groupName: s.group.name,
+      transactions: s.result!.transactions.map((t) => ({
+        fromUserId: t.fromUserId,
+        toUserId: t.toUserId,
+        amount: t.amount,
+      })),
+    }));
 
   const input: SmartNudgeInput = {
     groups,

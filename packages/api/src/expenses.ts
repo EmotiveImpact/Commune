@@ -9,6 +9,10 @@ import {
   getEffectiveApprovalThreshold,
   getGroupApprovalSettings,
 } from './approvals';
+import {
+  ensureExpenseCycleOpen,
+  ensureGroupCycleOpenForDate,
+} from './cycles';
 
 interface CreateExpenseData {
   group_id: string;
@@ -37,6 +41,12 @@ export async function createExpense(data: CreateExpenseData) {
   } = await supabase.auth.getUser();
 
   if (!user) throw new Error('Not authenticated');
+
+  await ensureGroupCycleOpenForDate(
+    data.group_id,
+    data.due_date,
+    'create an expense in this cycle',
+  );
 
   const {
     participant_ids,
@@ -198,6 +208,8 @@ export async function getExpenseDetail(expenseId: string) {
 }
 
 export async function archiveExpense(expenseId: string) {
+  await ensureExpenseCycleOpen(expenseId, 'archive an expense in this cycle');
+
   const { data, error } = await supabase
     .from('expenses')
     .update({ is_active: false })
@@ -211,9 +223,65 @@ export async function archiveExpense(expenseId: string) {
 
 export async function batchArchiveExpenses(ids: string[]): Promise<void> {
   if (ids.length === 0) return;
+
+  const { data: expenseRows, error: expenseFetchError } = await supabase
+    .from('expenses')
+    .select('id, group_id, due_date')
+    .in('id', ids);
+
+  if (expenseFetchError) throw expenseFetchError;
+
+  for (const expense of (expenseRows ?? []) as Array<{
+    id: string;
+    group_id: string;
+    due_date: string;
+  }>) {
+    await ensureGroupCycleOpenForDate(
+      expense.group_id,
+      expense.due_date,
+      'archive expenses in this cycle',
+    );
+  }
+
   const { error } = await supabase
     .from('expenses')
     .update({ is_active: false, updated_at: new Date().toISOString() })
     .in('id', ids);
+  if (error) throw error;
+}
+
+export async function flagExpense(expenseId: string, reason: string): Promise<void> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not authenticated');
+
+  const { data: expense } = await supabase
+    .from('expenses')
+    .select('flagged_by')
+    .eq('id', expenseId)
+    .single();
+
+  const currentFlags: string[] = (expense?.flagged_by as string[]) ?? [];
+  if (currentFlags.includes(user.id)) return; // Already flagged
+
+  const { error } = await supabase
+    .from('expenses')
+    .update({
+      flagged_by: [...currentFlags, user.id],
+      flagged_reason: reason,
+      flagged_at: new Date().toISOString(),
+    })
+    .eq('id', expenseId);
+  if (error) throw error;
+}
+
+export async function unflagExpense(expenseId: string): Promise<void> {
+  const { error } = await supabase
+    .from('expenses')
+    .update({
+      flagged_by: [],
+      flagged_reason: null,
+      flagged_at: null,
+    })
+    .eq('id', expenseId);
   if (error) throw error;
 }

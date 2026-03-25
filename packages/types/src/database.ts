@@ -143,6 +143,9 @@ export interface Expense extends ExpenseVendorInvoiceContext {
   approval_status: 'approved' | 'pending' | 'rejected';
   approved_by: string | null;
   approved_at: string | null;
+  flagged_by: string[];
+  flagged_reason: string | null;
+  flagged_at: string | null;
   created_by: string;
   created_at: string;
   updated_at: string;

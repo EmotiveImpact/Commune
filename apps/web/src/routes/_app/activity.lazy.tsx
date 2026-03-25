@@ -94,8 +94,21 @@ function describeAction(entry: ActivityEntry): string {
   switch (entry.action) {
     case 'expense_created':
       return `${actorName} created expense '${meta.title ?? 'Untitled'}'${billingLabel ? ` for ${billingLabel}` : ''}`;
-    case 'expense_updated':
+    case 'expense_updated': {
+      const changes = (entry.metadata as any)?.changes as Record<string, { from: any; to: any }> | undefined;
+      if (changes) {
+        const parts: string[] = [];
+        if (changes.amount) parts.push(`amount ${changes.amount.from} → ${changes.amount.to}`);
+        if (changes.title) parts.push(`title → '${changes.title.to}'`);
+        if (changes.category) parts.push(`category → ${changes.category.to}`);
+        if (changes.due_date) parts.push(`due date → ${changes.due_date.to}`);
+        if (changes.approval_status) parts.push(`${changes.approval_status.to}`);
+        if (parts.length > 0) {
+          return `${actorName} updated '${meta.title ?? 'Untitled'}' — ${parts.join(', ')}`;
+        }
+      }
       return `${actorName} updated expense '${meta.title ?? 'Untitled'}'${billingLabel ? ` · ${billingLabel}` : ''}`;
+    }
     case 'expense_deleted':
       return `${actorName} archived expense '${meta.title ?? 'Untitled'}'`;
     case 'payment_marked':
