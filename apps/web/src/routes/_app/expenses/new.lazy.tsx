@@ -464,7 +464,6 @@ export function AddExpensePage() {
       <form onSubmit={form.onSubmit(handleSubmit)}>
         <div className="commune-expense-form-grid">
           <Stack gap="lg">
-            <div className="commune-dashboard-grid">
               <Stack gap="lg">
                 <Paper className="commune-soft-panel" p="xl">
                   <Stack gap="md">
@@ -611,7 +610,6 @@ export function AddExpensePage() {
                 </Paper>
               </Stack>
 
-              <Stack gap="lg">
                 <Paper className="commune-soft-panel" p="xl">
                   <Stack gap="md">
                     <Title order={3}>Split method</Title>
@@ -744,8 +742,6 @@ export function AddExpensePage() {
                     )}
                   </Stack>
                 </Paper>
-              </Stack>
-            </div>
 
             <Group>
               <Button type="submit" size="lg" loading={createExpense.isPending}>
