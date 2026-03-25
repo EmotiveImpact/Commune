@@ -2,28 +2,28 @@
 -- These explicit deny policies prevent direct PostgREST manipulation
 
 -- 1. Subscriptions — managed only by Stripe webhooks and system functions
-CREATE POLICY IF NOT EXISTS "subscriptions_deny_user_insert"
+CREATE POLICY "subscriptions_deny_user_insert"
   ON subscriptions FOR INSERT TO authenticated
   WITH CHECK (false);
 
-CREATE POLICY IF NOT EXISTS "subscriptions_deny_user_update"
+CREATE POLICY "subscriptions_deny_user_update"
   ON subscriptions FOR UPDATE TO authenticated
   USING (false) WITH CHECK (false);
 
-CREATE POLICY IF NOT EXISTS "subscriptions_deny_user_delete"
+CREATE POLICY "subscriptions_deny_user_delete"
   ON subscriptions FOR DELETE TO authenticated
   USING (false);
 
 -- 2. Group invites — managed only by invite_group_member() and accept_invite_by_token() RPCs
-CREATE POLICY IF NOT EXISTS "group_invites_deny_user_insert"
+CREATE POLICY "group_invites_deny_user_insert"
   ON group_invites FOR INSERT TO authenticated
   WITH CHECK (false);
 
-CREATE POLICY IF NOT EXISTS "group_invites_deny_user_update"
+CREATE POLICY "group_invites_deny_user_update"
   ON group_invites FOR UPDATE TO authenticated
   USING (false) WITH CHECK (false);
 
-CREATE POLICY IF NOT EXISTS "group_invites_deny_user_delete"
+CREATE POLICY "group_invites_deny_user_delete"
   ON group_invites FOR DELETE TO authenticated
   USING (false);
 
