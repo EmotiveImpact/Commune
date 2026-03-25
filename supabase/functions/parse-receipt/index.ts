@@ -77,31 +77,36 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Check scan limits
-    const { data: sub } = await supabase
+    // Check scan limits — gracefully handle missing subscription row
+    const { data: sub, error: subError } = await supabase
       .from('subscriptions')
       .select('plan, receipt_scan_count, receipt_scan_reset_at')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
 
+    // If no subscription row exists, allow scans with standard limits
     const plan = sub?.plan ?? 'standard';
     const limits: Record<string, number> = {
+      free: 5,
       standard: 10,
       pro: 50,
       agency: 999999,
     };
     const maxScans = limits[plan] ?? 10;
 
-    // Reset count if it's a new month
-    let scanCount = sub?.receipt_scan_count ?? 0;
-    const resetAt = sub?.receipt_scan_reset_at ? new Date(sub.receipt_scan_reset_at) : new Date(0);
-    const now = new Date();
-    if (now.getMonth() !== resetAt.getMonth() || now.getFullYear() !== resetAt.getFullYear()) {
-      scanCount = 0;
-      await supabase
-        .from('subscriptions')
-        .update({ receipt_scan_count: 0, receipt_scan_reset_at: now.toISOString() })
-        .eq('user_id', user.id);
+    let scanCount = 0;
+    if (sub) {
+      // Reset count if it's a new month
+      scanCount = sub.receipt_scan_count ?? 0;
+      const resetAt = sub.receipt_scan_reset_at ? new Date(sub.receipt_scan_reset_at) : new Date(0);
+      const now = new Date();
+      if (now.getMonth() !== resetAt.getMonth() || now.getFullYear() !== resetAt.getFullYear()) {
+        scanCount = 0;
+        await supabase
+          .from('subscriptions')
+          .update({ receipt_scan_count: 0, receipt_scan_reset_at: now.toISOString() })
+          .eq('user_id', user.id);
+      }
     }
 
     if (scanCount >= maxScans) {
@@ -181,11 +186,13 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Increment scan count
-    await supabase
-      .from('subscriptions')
-      .update({ receipt_scan_count: scanCount + 1 })
-      .eq('user_id', user.id);
+    // Increment scan count (only if subscription row exists)
+    if (sub) {
+      await supabase
+        .from('subscriptions')
+        .update({ receipt_scan_count: scanCount + 1 })
+        .eq('user_id', user.id);
+    }
 
     return new Response(
       JSON.stringify({
