@@ -788,25 +788,13 @@ export function AddExpensePage() {
                             reader.readAsDataURL(receiptFile);
                           });
 
-                          const { data: { session } } = await (await import('@commune/api')).supabase.auth.getSession();
-                          const resp = await fetch(
-                            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/parse-receipt`,
-                            {
-                              method: 'POST',
-                              headers: {
-                                'Content-Type': 'application/json',
-                                Authorization: `Bearer ${session?.access_token}`,
-                              },
-                              body: JSON.stringify({ image_base64: base64, mime_type: receiptFile.type }),
-                            },
-                          );
+                          const { supabase } = await import('@commune/api');
+                          const { data, error } = await supabase.functions.invoke('parse-receipt', {
+                            body: { image_base64: base64, mime_type: receiptFile.type },
+                          });
 
-                          if (!resp.ok) {
-                            const err = await resp.json().catch(() => ({}));
-                            throw new Error(err.error ?? 'Scan failed');
-                          }
-
-                          const result = await resp.json();
+                          if (error) throw new Error(error.message ?? 'Scan failed');
+                          const result = data;
                           if (result.amount) form.setFieldValue('amount', result.amount);
                           if (result.vendor) form.setFieldValue('title', result.vendor);
                           if (result.category) form.setFieldValue('category', result.category);
