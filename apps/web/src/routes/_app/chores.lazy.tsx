@@ -276,7 +276,7 @@ function ChoresPage() {
               <Text fw={700} size="sm" c="red">
                 Overdue ({overdueChores.length})
               </Text>
-              <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+              <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="md">
                 {overdueChores.map((chore: any) => (
                   <ChoreCard
                     key={chore.id}
@@ -305,7 +305,7 @@ function ChoresPage() {
               <Text fw={700} size="sm" c="dimmed">
                 Upcoming ({upcomingChores.length})
               </Text>
-              <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+              <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="md">
                 {upcomingChores.map((chore: any) => (
                   <ChoreCard
                     key={chore.id}
