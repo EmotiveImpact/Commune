@@ -97,6 +97,9 @@ function toMobileUser(user: SupabaseAuthUser | null): User | null {
     default_currency: typeof meta.default_currency === 'string' ? meta.default_currency : 'GBP',
     timezone: typeof meta.timezone === 'string' ? meta.timezone : Intl.DateTimeFormat().resolvedOptions().timeZone,
     show_shared_groups: typeof meta.show_shared_groups === 'boolean' ? meta.show_shared_groups : true,
+    is_deactivated: false,
+    deletion_requested_at: null,
+    deletion_scheduled_for: null,
     created_at: user.created_at,
   };
 }
@@ -261,6 +264,8 @@ export default function RootLayout() {
               <Stack.Screen name="pricing" options={{ title: 'Pricing', headerBackTitle: 'Back' }} />
               <Stack.Screen name="recurring" options={{ title: 'Recurring', headerBackTitle: 'Back' }} />
               <Stack.Screen name="analytics" options={{ title: 'Analytics', headerBackTitle: 'Back' }} />
+              <Stack.Screen name="group-hub" options={{ title: 'Group', headerShown: false }} />
+              <Stack.Screen name="command-centre" options={{ title: 'Command Centre', headerShown: false }} />
             </Stack>
           </QueryClientProvider>
         </SafeAreaProvider>
