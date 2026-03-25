@@ -421,7 +421,16 @@ export function AddExpensePage() {
       <PageHeader
         title="Add expense"
         subtitle="Create a new shared cost, pick participants, and preview the split"
-      />
+      >
+        <Group gap="sm">
+          <Button variant="default" onClick={() => navigate({ to: '/expenses' })}>
+            Cancel
+          </Button>
+          <Button type="submit" form="expense-form" loading={createExpense.isPending}>
+            Create expense
+          </Button>
+        </Group>
+      </PageHeader>
 
       {draftBanner && (
         <Alert
@@ -461,7 +470,7 @@ export function AddExpensePage() {
         </Paper>
       )}
 
-      <form onSubmit={form.onSubmit(handleSubmit)}>
+      <form id="expense-form" onSubmit={form.onSubmit(handleSubmit)}>
         <div className="commune-expense-form-grid">
           <Stack gap="lg">
               <Stack gap="lg">
@@ -743,14 +752,6 @@ export function AddExpensePage() {
                   </Stack>
                 </Paper>
 
-            <Group>
-              <Button type="submit" size="lg" loading={createExpense.isPending}>
-                Create expense
-              </Button>
-              <Button variant="default" onClick={() => navigate({ to: '/expenses' })}>
-                Cancel
-              </Button>
-            </Group>
           </Stack>
 
           <div className="commune-receipt-sidebar">
