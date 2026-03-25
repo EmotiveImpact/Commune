@@ -3,6 +3,8 @@ import type {
   GroupType,
   MemberRole,
   MemberStatus,
+  OperationCategory,
+  OperationTaskType,
   PaymentProvider,
   PaymentStatus,
   RecurrenceType,
@@ -10,6 +12,45 @@ import type {
   SubscriptionPlan,
   SubscriptionStatus,
 } from './enums';
+
+export interface SpaceEssentialValue {
+  label: string;
+  value: string;
+  visible: boolean;
+}
+
+export type SpaceEssentials = Record<string, SpaceEssentialValue>;
+
+export interface SetupChecklistProgressItem {
+  label: string;
+  completed: boolean;
+  completed_at: string | null;
+}
+
+export type SetupChecklistProgress = Record<string, SetupChecklistProgressItem>;
+
+export interface ExpenseVendorInvoiceContext {
+  vendor_name: string | null;
+  invoice_reference: string | null;
+  invoice_date: string | null;
+  payment_due_date: string | null;
+}
+
+export interface WorkspaceRolePreset {
+  key: string;
+  label: string;
+  description: string | null;
+  responsibility_label: string | null;
+  can_approve: boolean;
+  is_default: boolean;
+}
+
+export interface GroupApprovalPolicy {
+  threshold: number | null;
+  allowed_roles: MemberRole[];
+  allowed_labels: string[];
+  role_presets: WorkspaceRolePreset[];
+}
 
 // ─── Base database models ───────────────────────────────────────────────────
 
@@ -52,7 +93,10 @@ export interface Group {
   nudges_enabled: boolean;
   pinned_message: string | null;
   house_info: Record<string, string> | null;
+  space_essentials: SpaceEssentials | null;
+  setup_checklist_progress: SetupChecklistProgress | null;
   approval_threshold: number | null;
+  approval_policy: GroupApprovalPolicy | null;
   avatar_url: string | null;
   cover_url: string | null;
   tagline: string | null;
@@ -65,6 +109,7 @@ export interface GroupMember {
   user_id: string;
   role: MemberRole;
   status: MemberStatus;
+  responsibility_label: string | null;
   joined_at: string;
   linked_partner_id: string | null;
   effective_from: string | null;
@@ -77,7 +122,7 @@ export interface LinkedPartnerInfo {
   userName: string;
 }
 
-export interface Expense {
+export interface Expense extends ExpenseVendorInvoiceContext {
   id: string;
   group_id: string;
   title: string;
@@ -126,9 +171,13 @@ export interface Chore {
   group_id: string;
   title: string;
   description: string | null;
+  category: OperationCategory;
+  task_type: OperationTaskType;
   frequency: 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'once';
   assigned_to: string | null;
   rotation_order: string[] | null;
+  checklist_items: string[] | null;
+  escalation_days: number | null;
   next_due: string;
   created_by: string;
   is_active: boolean;
@@ -183,6 +232,20 @@ export interface GroupBudget {
   alert_threshold: number;
   currency: string;
   created_by: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface GroupCycleClosure {
+  id: string;
+  group_id: string;
+  cycle_start: string;
+  cycle_end: string;
+  closed_by: string;
+  closed_at: string;
+  notes: string | null;
+  reopened_at: string | null;
+  reopened_by: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -284,6 +347,78 @@ export interface DashboardStats {
   amount_remaining: number;
   overdue_count: number;
   upcoming_items: ExpenseWithParticipants[];
+}
+
+export interface GroupCycleExpenseStatus {
+  id: string;
+  title: string;
+  amount: number;
+  currency: string;
+  due_date: string;
+  category: ExpenseCategory;
+  approval_status: 'approved' | 'pending' | 'rejected';
+  unpaid_participants: number;
+  remaining_amount: number;
+}
+
+export interface GroupCycleMemberBalance {
+  user_id: string;
+  user_name: string;
+  avatar_url: string | null;
+  total_share: number;
+  paid_amount: number;
+  remaining_amount: number;
+  overdue_expense_count: number;
+}
+
+export interface GroupCycleSummary {
+  group_id: string;
+  cycle_date: number;
+  cycle_start: string;
+  cycle_end: string;
+  cycle_end_exclusive: string;
+  is_closed: boolean;
+  closure: GroupCycleClosure | null;
+  total_expenses: number;
+  approved_expense_count: number;
+  pending_expense_count: number;
+  total_spend: number;
+  total_outstanding: number;
+  overdue_expense_count: number;
+  unpaid_expense_count: number;
+  member_balances: GroupCycleMemberBalance[];
+  expenses: GroupCycleExpenseStatus[];
+}
+
+export interface GroupLifecycleMember {
+  member_id: string;
+  user_id: string;
+  user_name: string;
+  email: string;
+  avatar_url: string | null;
+  role: MemberRole;
+  status: MemberStatus;
+  effective_from: string | null;
+  effective_until: string | null;
+  is_owner: boolean;
+  scheduled_departure: boolean;
+  proration: ProrationInfo | null;
+}
+
+export interface GroupLifecycleSummary {
+  group_id: string;
+  cycle_date: number;
+  cycle_start: string;
+  cycle_end: string;
+  cycle_end_exclusive: string;
+  active_member_count: number;
+  admin_count: number;
+  owner_transition_required: boolean;
+  members: GroupLifecycleMember[];
+  joiners_this_cycle: GroupLifecycleMember[];
+  departures_this_cycle: GroupLifecycleMember[];
+  scheduled_departures: GroupLifecycleMember[];
+  proration_members: GroupLifecycleMember[];
 }
 
 // ─── Settlement types ───────────────────────────────────────────────────────

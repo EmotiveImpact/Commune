@@ -60,7 +60,7 @@ export const navGroups: NavGroup[] = [
     icon: <IconUsers size={14} />,
     links: [
       { label: 'Members', to: '/members', icon: <IconUsers size={20} />, 'aria-label': 'View group members' },
-      { label: 'Chores', to: '/chores', icon: <IconChecklist size={20} />, 'aria-label': 'Manage chores' },
+      { label: 'Operations', to: '/chores', icon: <IconChecklist size={20} />, 'aria-label': 'Manage shared operations' },
       { label: 'Activity', to: '/activity', icon: <IconHistory size={20} />, 'aria-label': 'View activity log' },
     ],
   },

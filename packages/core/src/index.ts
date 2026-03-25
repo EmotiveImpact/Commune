@@ -38,9 +38,20 @@ export {
 } from './proration';
 
 export {
+  getCycleWindow,
+  getPreviousCycleWindow,
+  getNextCycleWindow,
+} from './cycle';
+
+export type { CycleWindow } from './cycle';
+
+export {
   createGroupSchema,
+  groupApprovalPolicySchema,
   inviteMemberSchema,
   createExpenseSchema,
+  expenseVendorInvoiceContextSchema,
+  workspaceRolePresetSchema,
   percentageSplitSchema,
   customSplitSchema,
   markPaymentSchema,
@@ -61,8 +72,11 @@ export {
 
 export type {
   CreateGroupInput,
+  GroupApprovalPolicyInput,
   InviteMemberInput,
   CreateExpenseInput,
+  ExpenseVendorInvoiceContextInput,
+  WorkspaceRolePresetInput,
   PercentageSplitInput,
   CustomSplitInput,
   MarkPaymentInput,
@@ -80,6 +94,12 @@ export type {
   CreatePaymentMethodInput,
   UpdatePaymentMethodInput,
 } from './schemas';
+
+export {
+  expenseVendorInvoiceContextKeys,
+  normalizeExpenseVendorInvoiceContext,
+  pickExpenseVendorInvoiceContextUpdates,
+} from './expense-vendor-invoice';
 
 export {
   parseSplitwiseCSV,
@@ -100,6 +120,47 @@ export type {
 } from './splitwise-import';
 
 export { getCategoriesByGroupType, getOnboardingTips } from './group-type';
+export { getSpacePreset } from './space-presets';
+export type { SpacePreset } from './space-presets';
+export {
+  getDefaultWorkspaceRolePresets,
+  getWorkspaceGovernancePreview,
+  normalizeGroupApprovalPolicy,
+  canMemberApproveWithPolicy,
+} from './workspace-governance';
+export type {
+  WorkspaceApprovalStep,
+  WorkspaceApproverMember,
+  WorkspaceGovernancePreview,
+} from './workspace-governance';
+export {
+  getAdminOnboardingChecklist,
+  getAdminOnboardingChecklistItems,
+  getGroupSubtypeOptions,
+  createSetupChecklistProgress,
+  countCompletedSetupChecklistItems,
+  getIncompleteSetupChecklistItems,
+} from './space-playbooks';
+export type {
+  GroupSubtypeOption,
+  AdminChecklistItem,
+} from './space-playbooks';
+export {
+  getSpaceEssentialDefinitions,
+  normalizeSpaceEssentials,
+} from './space-essentials';
+export type {
+  SpaceEssentialDefinition,
+  SpaceEssentialValue,
+  SpaceEssentials,
+  SpaceEssentialFieldKind,
+} from './space-essentials';
+export { getOperationTemplates } from './operations-templates';
+export type {
+  OperationCategory,
+  OperationTaskType,
+  OperationTemplate,
+} from './operations-templates';
 
 export { generateSmartNudges } from './smart-nudges';
 export type { SmartNudge, SmartNudgeInput } from './smart-nudges';

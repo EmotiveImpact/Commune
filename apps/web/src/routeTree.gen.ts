@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as AuthRouteImport } from './routes/_auth'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
@@ -39,8 +40,14 @@ import { Route as AppExpensesNewRouteImport } from './routes/_app/expenses/new'
 import { Route as AppExpensesExpenseIdRouteImport } from './routes/_app/expenses/$expenseId'
 import { Route as AppGroupsGroupIdIndexRouteImport } from './routes/_app/groups/$groupId/index'
 import { Route as AppGroupsGroupIdEditRouteImport } from './routes/_app/groups/$groupId.edit'
+import { Route as AppGroupsGroupIdCloseRouteImport } from './routes/_app/groups/$groupId.close'
 import { Route as AppExpensesExpenseIdEditRouteImport } from './routes/_app/expenses/$expenseId.edit'
 
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthRoute = AuthRouteImport.update({
   id: '/_auth',
   getParentRoute: () => rootRouteImport,
@@ -213,6 +220,13 @@ const AppGroupsGroupIdEditRoute = AppGroupsGroupIdEditRouteImport.update({
 } as any).lazy(() =>
   import('./routes/_app/groups/$groupId.edit.lazy').then((d) => d.Route),
 )
+const AppGroupsGroupIdCloseRoute = AppGroupsGroupIdCloseRouteImport.update({
+  id: '/groups/$groupId/close',
+  path: '/groups/$groupId/close',
+  getParentRoute: () => AppRoute,
+} as any).lazy(() =>
+  import('./routes/_app/groups/$groupId.close.lazy').then((d) => d.Route),
+)
 const AppExpensesExpenseIdEditRoute =
   AppExpensesExpenseIdEditRouteImport.update({
     id: '/edit',
@@ -224,6 +238,7 @@ const AppExpensesExpenseIdEditRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
+  '/privacy': typeof PrivacyRoute
   '/activity': typeof AppActivityRoute
   '/analytics': typeof AppAnalyticsRoute
   '/breakdown': typeof AppBreakdownRoute
@@ -250,11 +265,13 @@ export interface FileRoutesByFullPath {
   '/expenses/': typeof AppExpensesIndexRoute
   '/groups/': typeof AppGroupsIndexRoute
   '/expenses/$expenseId/edit': typeof AppExpensesExpenseIdEditRoute
+  '/groups/$groupId/close': typeof AppGroupsGroupIdCloseRoute
   '/groups/$groupId/edit': typeof AppGroupsGroupIdEditRoute
   '/groups/$groupId/': typeof AppGroupsGroupIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof AppIndexRoute
+  '/privacy': typeof PrivacyRoute
   '/activity': typeof AppActivityRoute
   '/analytics': typeof AppAnalyticsRoute
   '/breakdown': typeof AppBreakdownRoute
@@ -281,6 +298,7 @@ export interface FileRoutesByTo {
   '/expenses': typeof AppExpensesIndexRoute
   '/groups': typeof AppGroupsIndexRoute
   '/expenses/$expenseId/edit': typeof AppExpensesExpenseIdEditRoute
+  '/groups/$groupId/close': typeof AppGroupsGroupIdCloseRoute
   '/groups/$groupId/edit': typeof AppGroupsGroupIdEditRoute
   '/groups/$groupId': typeof AppGroupsGroupIdIndexRoute
 }
@@ -288,6 +306,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_app': typeof AppRouteWithChildren
   '/_auth': typeof AuthRouteWithChildren
+  '/privacy': typeof PrivacyRoute
   '/_app/activity': typeof AppActivityRoute
   '/_app/analytics': typeof AppAnalyticsRoute
   '/_app/breakdown': typeof AppBreakdownRoute
@@ -315,6 +334,7 @@ export interface FileRoutesById {
   '/_app/expenses/': typeof AppExpensesIndexRoute
   '/_app/groups/': typeof AppGroupsIndexRoute
   '/_app/expenses/$expenseId/edit': typeof AppExpensesExpenseIdEditRoute
+  '/_app/groups/$groupId/close': typeof AppGroupsGroupIdCloseRoute
   '/_app/groups/$groupId/edit': typeof AppGroupsGroupIdEditRoute
   '/_app/groups/$groupId/': typeof AppGroupsGroupIdIndexRoute
 }
@@ -322,6 +342,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/privacy'
     | '/activity'
     | '/analytics'
     | '/breakdown'
@@ -348,11 +369,13 @@ export interface FileRouteTypes {
     | '/expenses/'
     | '/groups/'
     | '/expenses/$expenseId/edit'
+    | '/groups/$groupId/close'
     | '/groups/$groupId/edit'
     | '/groups/$groupId/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/privacy'
     | '/activity'
     | '/analytics'
     | '/breakdown'
@@ -379,12 +402,14 @@ export interface FileRouteTypes {
     | '/expenses'
     | '/groups'
     | '/expenses/$expenseId/edit'
+    | '/groups/$groupId/close'
     | '/groups/$groupId/edit'
     | '/groups/$groupId'
   id:
     | '__root__'
     | '/_app'
     | '/_auth'
+    | '/privacy'
     | '/_app/activity'
     | '/_app/analytics'
     | '/_app/breakdown'
@@ -412,6 +437,7 @@ export interface FileRouteTypes {
     | '/_app/expenses/'
     | '/_app/groups/'
     | '/_app/expenses/$expenseId/edit'
+    | '/_app/groups/$groupId/close'
     | '/_app/groups/$groupId/edit'
     | '/_app/groups/$groupId/'
   fileRoutesById: FileRoutesById
@@ -419,11 +445,19 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
   AuthRoute: typeof AuthRouteWithChildren
+  PrivacyRoute: typeof PrivacyRoute
   InviteTokenRoute: typeof InviteTokenRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_auth': {
       id: '/_auth'
       path: ''
@@ -634,6 +668,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppGroupsGroupIdEditRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/groups/$groupId/close': {
+      id: '/_app/groups/$groupId/close'
+      path: '/groups/$groupId/close'
+      fullPath: '/groups/$groupId/close'
+      preLoaderRoute: typeof AppGroupsGroupIdCloseRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/expenses/$expenseId/edit': {
       id: '/_app/expenses/$expenseId/edit'
       path: '/edit'
@@ -687,6 +728,7 @@ interface AppRouteChildren {
   AppExpensesNewRoute: typeof AppExpensesNewRoute
   AppExpensesIndexRoute: typeof AppExpensesIndexRoute
   AppGroupsIndexRoute: typeof AppGroupsIndexRoute
+  AppGroupsGroupIdCloseRoute: typeof AppGroupsGroupIdCloseRoute
   AppGroupsGroupIdEditRoute: typeof AppGroupsGroupIdEditRoute
   AppGroupsGroupIdIndexRoute: typeof AppGroupsGroupIdIndexRoute
 }
@@ -711,6 +753,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppExpensesNewRoute: AppExpensesNewRoute,
   AppExpensesIndexRoute: AppExpensesIndexRoute,
   AppGroupsIndexRoute: AppGroupsIndexRoute,
+  AppGroupsGroupIdCloseRoute: AppGroupsGroupIdCloseRoute,
   AppGroupsGroupIdEditRoute: AppGroupsGroupIdEditRoute,
   AppGroupsGroupIdIndexRoute: AppGroupsGroupIdIndexRoute,
 }
@@ -738,6 +781,7 @@ const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
   AuthRoute: AuthRouteWithChildren,
+  PrivacyRoute: PrivacyRoute,
   InviteTokenRoute: InviteTokenRoute,
 }
 export const routeTree = rootRouteImport

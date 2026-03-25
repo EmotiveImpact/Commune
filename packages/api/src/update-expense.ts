@@ -2,8 +2,13 @@ import type { SplitMethod } from '@commune/types';
 import {
   calculateEqualSplit,
   calculatePercentageSplit,
+  pickExpenseVendorInvoiceContextUpdates,
 } from '@commune/core';
 import { supabase } from './client';
+import {
+  getEffectiveApprovalThreshold,
+  getGroupApprovalSettings,
+} from './approvals';
 
 interface UpdateExpenseData {
   title?: string;
@@ -11,6 +16,10 @@ interface UpdateExpenseData {
   category?: string;
   amount?: number;
   due_date?: string;
+  vendor_name?: string | null;
+  invoice_reference?: string | null;
+  invoice_date?: string | null;
+  payment_due_date?: string | null;
   recurrence_type?: string;
   split_method?: SplitMethod;
   participant_ids?: string[];
@@ -24,8 +33,31 @@ export async function updateExpense(expenseId: string, data: UpdateExpenseData) 
     percentages,
     custom_amounts,
     split_method,
+    vendor_name,
+    invoice_reference,
+    invoice_date,
+    payment_due_date,
     ...expenseFields
   } = data;
+
+  const vendorInvoiceInput = {
+    ...(Object.prototype.hasOwnProperty.call(data, 'vendor_name') && {
+      vendor_name,
+    }),
+    ...(Object.prototype.hasOwnProperty.call(data, 'invoice_reference') && {
+      invoice_reference,
+    }),
+    ...(Object.prototype.hasOwnProperty.call(data, 'invoice_date') && {
+      invoice_date,
+    }),
+    ...(Object.prototype.hasOwnProperty.call(data, 'payment_due_date') && {
+      payment_due_date,
+    }),
+  };
+
+  const vendorInvoiceUpdates = pickExpenseVendorInvoiceContextUpdates({
+    ...vendorInvoiceInput,
+  });
 
   const hasExplicitSplitChanges =
     participant_ids !== undefined ||
@@ -38,6 +70,8 @@ export async function updateExpense(expenseId: string, data: UpdateExpenseData) 
     | {
         amount: number;
         split_method: SplitMethod;
+        approval_status: 'approved' | 'pending' | 'rejected';
+        group_id: string;
       }
     | null = null;
 
@@ -53,12 +87,17 @@ export async function updateExpense(expenseId: string, data: UpdateExpenseData) 
   if (needsCurrentSplitState) {
     const { data: current, error: fetchCurrentError } = await supabase
       .from('expenses')
-      .select('amount, split_method')
+      .select('amount, split_method, approval_status, group_id')
       .eq('id', expenseId)
       .single();
 
     if (fetchCurrentError) throw fetchCurrentError;
-    currentExpense = current as { amount: number; split_method: SplitMethod };
+    currentExpense = current as {
+      amount: number;
+      split_method: SplitMethod;
+      approval_status: 'approved' | 'pending' | 'rejected';
+      group_id: string;
+    };
 
     const { data: existingParticipants, error: pFetchError } = await supabase
       .from('expense_participants')
@@ -73,9 +112,50 @@ export async function updateExpense(expenseId: string, data: UpdateExpenseData) 
     }>;
   }
 
+  let approvalStatusUpdate:
+    | {
+        approval_status: 'pending';
+        approved_by: null;
+        approved_at: null;
+      }
+    | Record<string, never> = {};
+
+  if (
+    currentExpense
+    && currentExpense.approval_status === 'approved'
+    && (hasExplicitSplitChanges || amountChanged)
+  ) {
+    const approvalSettings = await getGroupApprovalSettings(currentExpense.group_id);
+    const effectiveThreshold = getEffectiveApprovalThreshold(
+      approvalSettings.approval_threshold,
+      approvalSettings.approval_policy,
+    );
+    const effectiveAmount = data.amount ?? currentExpense.amount;
+    const requiresReapproval =
+      hasExplicitSplitChanges
+      || (effectiveThreshold != null && effectiveAmount > effectiveThreshold);
+
+    if (requiresReapproval) {
+      approvalStatusUpdate = {
+        approval_status: 'pending',
+        approved_by: null,
+        approved_at: null,
+      };
+    }
+  }
+
   // Update expense fields
-  if (Object.keys(expenseFields).length > 0 || split_method) {
-    const updateData = { ...expenseFields, ...(split_method && { split_method }) };
+  if (
+    Object.keys(expenseFields).length > 0
+    || Object.keys(vendorInvoiceUpdates).length > 0
+    || split_method
+  ) {
+    const updateData = {
+      ...expenseFields,
+      ...vendorInvoiceUpdates,
+      ...(split_method && { split_method }),
+      ...approvalStatusUpdate,
+    };
     const { error } = await supabase
       .from('expenses')
       .update(updateData)

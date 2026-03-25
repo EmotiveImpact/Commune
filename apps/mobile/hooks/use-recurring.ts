@@ -35,7 +35,7 @@ export function useRecurringGenerationOnMount(groupId: string) {
       prevGroupId.current = groupId;
       generation.mutate();
     }
-  }, [groupId]);
+  }, [generation, groupId]);
 
   return generation;
 }

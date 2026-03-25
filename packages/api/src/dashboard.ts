@@ -1,11 +1,22 @@
 import type { DashboardStats, ExpenseWithParticipants } from '@commune/types';
 import { supabase } from './client';
+import {
+  buildWorkspaceBillingSnapshot,
+  type WorkspaceBillingExpenseRecord,
+  type WorkspaceBillingSnapshot,
+} from './workspace-billing';
+
+export interface DashboardWorkspaceBillingData {
+  workspace_billing: WorkspaceBillingSnapshot;
+}
+
+type DashboardExpenseRow = ExpenseWithParticipants & WorkspaceBillingExpenseRecord;
 
 export async function getDashboardStats(
   groupId: string,
   userId: string,
   month: string,
-): Promise<DashboardStats> {
+): Promise<DashboardStats & DashboardWorkspaceBillingData> {
   const startDate = `${month}-01`;
   const [year, mon] = month.split('-').map(Number);
   const endDate = new Date(year!, mon!, 1).toISOString().split('T')[0];
@@ -30,7 +41,7 @@ export async function getDashboardStats(
 
   if (error) throw error;
 
-  const typed = (expenses ?? []) as unknown as ExpenseWithParticipants[];
+  const typed = (expenses ?? []) as unknown as DashboardExpenseRow[];
 
   let totalSpend = 0;
   let yourShare = 0;
@@ -78,5 +89,6 @@ export async function getDashboardStats(
     amount_remaining: yourShare - amountPaid,
     overdue_count: overdueCount,
     upcoming_items: upcoming,
+    workspace_billing: buildWorkspaceBillingSnapshot(typed),
   };
 }

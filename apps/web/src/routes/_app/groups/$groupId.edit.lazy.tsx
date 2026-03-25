@@ -1,10 +1,13 @@
 import { createLazyFileRoute, useNavigate } from '@tanstack/react-router';
 import {
   Avatar,
+  Badge,
   Box,
   Button,
+  Checkbox,
   FileButton,
   Group,
+  MultiSelect,
   NumberInput,
   Paper,
   Select,
@@ -18,11 +21,25 @@ import {
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
-import { IconArrowLeft, IconCamera, IconDeviceFloppy, IconHome2, IconPhone, IconPhoto, IconPin, IconSettings, IconTrash, IconWifi } from '@tabler/icons-react';
-import { useEffect, useRef, useState } from 'react';
+import { IconArrowLeft, IconBriefcase, IconCamera, IconDeviceFloppy, IconHome2, IconPhone, IconPhoto, IconPin, IconSettings, IconShieldCheck, IconTrash, IconWifi } from '@tabler/icons-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  countCompletedSetupChecklistItems,
+  createSetupChecklistProgress,
+  getDefaultWorkspaceRolePresets,
+  getGroupSubtypeOptions,
+  getSpaceEssentialDefinitions,
+  getSpacePreset,
+  normalizeSpaceEssentials,
+} from '@commune/core';
+import type {
+  SpaceEssentials,
+  SetupChecklistProgress,
+} from '@commune/types';
 import { GroupType } from '@commune/types';
 import { useGroup, useUpdateGroup, useDeleteGroup } from '../../../hooks/use-groups';
 import { useUploadGroupImage } from '../../../hooks/use-group-hub';
+import { useWorkspaceGovernance } from '../../../hooks/use-workspace-governance';
 import { useGroupStore } from '../../../stores/group';
 import { useAuthStore } from '../../../stores/auth';
 import { ContentSkeleton } from '../../../components/page-skeleton';
@@ -42,44 +59,6 @@ const groupTypeOptions = [
   { value: GroupType.OTHER, label: 'Other' },
 ];
 
-const HOME_SUBTYPES = [
-  { value: 'shared_house', label: 'Shared house (friends)' },
-  { value: 'student_house', label: 'Student house' },
-  { value: 'family_home', label: 'Family home' },
-  { value: 'coliving', label: 'Co-living / intentional community' },
-  { value: 'high_turnover', label: 'High-turnover house share' },
-  { value: 'other_home', label: 'Other household' },
-];
-
-const COUPLE_SUBTYPES = [
-  { value: 'living_together', label: 'Living together' },
-  { value: 'not_living_together', label: 'Not living together' },
-  { value: 'engaged', label: 'Engaged / planning wedding' },
-  { value: 'married', label: 'Married' },
-];
-
-const WORKSPACE_SUBTYPES = [
-  { value: 'coworking', label: 'Coworking space' },
-  { value: 'shared_office', label: 'Shared office' },
-  { value: 'team', label: 'Team / department' },
-  { value: 'freelancers', label: 'Freelancer collective' },
-];
-
-const TRIP_SUBTYPES = [
-  { value: 'holiday', label: 'Holiday / vacation' },
-  { value: 'weekend_trip', label: 'Weekend trip' },
-  { value: 'festival', label: 'Festival / event' },
-  { value: 'business_trip', label: 'Business trip' },
-  { value: 'backpacking', label: 'Backpacking / long-term travel' },
-];
-
-const SUBTYPE_MAP: Record<string, { value: string; label: string }[]> = {
-  home: HOME_SUBTYPES,
-  couple: COUPLE_SUBTYPES,
-  workspace: WORKSPACE_SUBTYPES,
-  trip: TRIP_SUBTYPES,
-};
-
 const CURRENCY_OPTIONS = [
   { value: 'GBP', label: '\u00a3 GBP \u2014 British Pound' },
   { value: 'USD', label: '$ USD \u2014 US Dollar' },
@@ -93,7 +72,7 @@ const CURRENCY_OPTIONS = [
   { value: 'JPY', label: '\u00a5 JPY \u2014 Japanese Yen' },
 ];
 
-function EditGroupPage() {
+export function EditGroupPage() {
   const { groupId } = Route.useParams();
   const { data: group, isLoading } = useGroup(groupId);
   const updateGroup = useUpdateGroup(groupId);
@@ -103,6 +82,10 @@ function EditGroupPage() {
   const navigate = useNavigate();
   const lastHydratedRef = useRef<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState('');
+  const [spaceEssentials, setSpaceEssentials] = useState<SpaceEssentials>({});
+  const [setupChecklistProgress, setSetupChecklistProgress] = useState<SetupChecklistProgress>({});
+  const [workspaceApproverLabels, setWorkspaceApproverLabels] = useState<string[]>([]);
+  const [workspaceAdminCanApprove, setWorkspaceAdminCanApprove] = useState(true);
 
   const isAdmin = group?.members.some(
     (member) => member.user_id === user?.id && member.role === 'admin',
@@ -120,16 +103,51 @@ function EditGroupPage() {
       tagline: '',
       pinned_message: '',
       approval_threshold: '' as any,
-      house_info_wifi: '',
-      house_info_bins: '',
-      house_info_landlord: '',
-      house_info_landlord_phone: '',
-      house_info_emergency: '',
-      house_info_rules: '',
     },
   });
 
   const uploadImage = useUploadGroupImage(groupId);
+  const typeInputProps = form.getInputProps('type');
+  const selectedGroupType = form.getValues().type;
+  const selectedSubtype = form.getValues().subtype ?? null;
+  const selectedCurrency = form.getValues().currency ?? group?.currency ?? 'GBP';
+  const selectedApprovalThresholdValue = form.getValues().approval_threshold;
+  const selectedApprovalThreshold =
+    selectedApprovalThresholdValue === '' || selectedApprovalThresholdValue == null
+      ? null
+      : Number(selectedApprovalThresholdValue);
+  const workspaceRolePresets = useMemo(
+    () => (
+      selectedGroupType === GroupType.WORKSPACE
+        ? group?.approval_policy?.role_presets?.length && selectedSubtype === group?.subtype
+          ? group.approval_policy.role_presets
+          : getDefaultWorkspaceRolePresets(selectedSubtype)
+        : []
+    ),
+    [group?.approval_policy?.role_presets, group?.subtype, selectedGroupType, selectedSubtype],
+  );
+  const workspaceGovernance = useWorkspaceGovernance(
+    selectedGroupType === GroupType.WORKSPACE
+      ? {
+          type: selectedGroupType,
+          subtype: selectedSubtype,
+          currency: selectedCurrency,
+          approval_threshold: selectedApprovalThreshold,
+          approval_policy: {
+            threshold: selectedApprovalThreshold,
+            allowed_roles: workspaceAdminCanApprove ? ['admin'] : [],
+            allowed_labels: workspaceApproverLabels,
+            role_presets: workspaceRolePresets,
+          },
+        }
+      : group,
+  );
+  const workspaceResponsibilityOptions = workspaceRolePresets
+    .filter((preset) => preset.responsibility_label)
+    .map((preset) => ({
+      value: preset.responsibility_label as string,
+      label: preset.label,
+    }));
 
   useEffect(() => {
     if (!group) return;
@@ -144,13 +162,14 @@ function EditGroupPage() {
       tagline: group.tagline,
       pinned_message: group.pinned_message,
       approval_threshold: group.approval_threshold,
+      space_essentials: group.space_essentials,
       house_info: group.house_info,
+      setup_checklist_progress: group.setup_checklist_progress,
     });
 
     if (lastHydratedRef.current === hydrationKey) return;
     lastHydratedRef.current = hydrationKey;
 
-    const hi = group.house_info ?? {};
     form.setValues({
       name: group.name,
       type: group.type,
@@ -161,14 +180,49 @@ function EditGroupPage() {
       tagline: group.tagline ?? '',
       pinned_message: group.pinned_message ?? '',
       approval_threshold: group.approval_threshold ?? ('' as any),
-      house_info_wifi: hi.wifi ?? '',
-      house_info_bins: hi.bins ?? '',
-      house_info_landlord: hi.landlord ?? '',
-      house_info_landlord_phone: hi.landlord_phone ?? '',
-      house_info_emergency: hi.emergency ?? '',
-      house_info_rules: hi.rules ?? '',
     });
-  }, [group, form]);
+    setSpaceEssentials(
+      normalizeSpaceEssentials(group.type, group.space_essentials, group.house_info),
+    );
+    setSetupChecklistProgress(
+      createSetupChecklistProgress(
+        group.type,
+        group.subtype,
+        group.setup_checklist_progress,
+      ),
+    );
+    setWorkspaceApproverLabels(
+      group.approval_policy?.allowed_labels
+      ?? workspaceRolePresets
+        .filter((preset) => preset.can_approve && preset.responsibility_label)
+        .map((preset) => preset.responsibility_label as string),
+    );
+    setWorkspaceAdminCanApprove(
+      group.approval_policy?.allowed_roles?.includes('admin') ?? true,
+    );
+  }, [group, form, workspaceRolePresets]);
+
+  useEffect(() => {
+    if (selectedGroupType !== GroupType.WORKSPACE) {
+      setWorkspaceApproverLabels([]);
+      setWorkspaceAdminCanApprove(true);
+      return;
+    }
+
+    const defaultApproverLabels = workspaceRolePresets
+      .filter((preset) => preset.can_approve && preset.responsibility_label)
+      .map((preset) => preset.responsibility_label as string);
+    const validLabels = new Set(
+      workspaceRolePresets
+        .filter((preset) => preset.responsibility_label)
+        .map((preset) => preset.responsibility_label as string),
+    );
+
+    setWorkspaceApproverLabels((existing) => {
+      const next = existing.filter((label) => validLabels.has(label));
+      return next.length > 0 ? next : defaultApproverLabels;
+    });
+  }, [selectedGroupType, workspaceRolePresets]);
 
   if (isLoading) {
     return <ContentSkeleton />;
@@ -196,7 +250,27 @@ function EditGroupPage() {
     );
   }
 
+  const isWorkspaceGroup = selectedGroupType === GroupType.WORKSPACE;
+
   async function handleSubmit(values: ReturnType<typeof form.getValues>) {
+    const currentDefinitions = getSpaceEssentialDefinitions(values.type);
+    const normalizedEssentials = currentDefinitions.reduce<SpaceEssentials>((acc, definition) => {
+      const current = spaceEssentials[definition.key];
+      if (!current?.value?.trim()) return acc;
+
+      acc[definition.key] = {
+        label: definition.label,
+        value: current.value.trim(),
+        visible: current.visible,
+      };
+      return acc;
+    }, {});
+
+    const approvalThreshold =
+      values.approval_threshold === '' || values.approval_threshold == null
+        ? null
+        : Number(values.approval_threshold);
+
     try {
       await updateGroup.mutateAsync({
         name: values.name,
@@ -207,20 +281,29 @@ function EditGroupPage() {
         nudges_enabled: values.nudges_enabled,
         tagline: values.tagline || undefined,
         pinned_message: values.pinned_message || null,
-        approval_threshold:
-          values.approval_threshold === '' || values.approval_threshold == null
-            ? null
-            : Number(values.approval_threshold),
-        house_info: (() => {
-          const info: Record<string, string> = {};
-          if (values.house_info_wifi) info.wifi = values.house_info_wifi;
-          if (values.house_info_bins) info.bins = values.house_info_bins;
-          if (values.house_info_landlord) info.landlord = values.house_info_landlord;
-          if (values.house_info_landlord_phone) info.landlord_phone = values.house_info_landlord_phone;
-          if (values.house_info_emergency) info.emergency = values.house_info_emergency;
-          if (values.house_info_rules) info.rules = values.house_info_rules;
-          return Object.keys(info).length > 0 ? info : null;
-        })(),
+        approval_threshold: approvalThreshold,
+        approval_policy:
+          values.type === GroupType.WORKSPACE
+            ? {
+                threshold: approvalThreshold,
+                allowed_roles: workspaceAdminCanApprove ? ['admin'] : [],
+                allowed_labels: workspaceApproverLabels,
+                role_presets: workspaceRolePresets,
+              }
+            : null,
+        house_info:
+          values.type === 'home'
+            ? Object.fromEntries(
+                Object.entries(normalizedEssentials).map(([key, entry]) => [key, entry.value]),
+              )
+            : null,
+        space_essentials:
+          Object.keys(normalizedEssentials).length > 0 ? normalizedEssentials : null,
+        setup_checklist_progress: createSetupChecklistProgress(
+          values.type,
+          values.subtype || null,
+          setupChecklistProgress,
+        ),
       });
       notifications.show({
         title: 'Group updated',
@@ -237,11 +320,61 @@ function EditGroupPage() {
     }
   }
 
+  const essentialDefinitions = getSpaceEssentialDefinitions(selectedGroupType);
+  const subtypeOptions = getGroupSubtypeOptions(selectedGroupType);
+  const preset = getSpacePreset(selectedGroupType, selectedSubtype);
+  const checklistProgress = createSetupChecklistProgress(
+    selectedGroupType,
+    selectedSubtype,
+    setupChecklistProgress,
+  );
+  const checklistEntries = Object.entries(checklistProgress);
+  const completedChecklistCount = countCompletedSetupChecklistItems(checklistProgress);
+
+  function handleApplyRecommendedEssentials() {
+    let appliedCount = 0;
+
+    setSpaceEssentials((existing) => {
+      const next = { ...existing };
+
+      for (const definition of essentialDefinitions) {
+        const currentValue = existing[definition.key]?.value?.trim();
+        const seededValue = preset.essentialSeeds[definition.key];
+
+        if (currentValue || !seededValue) {
+          continue;
+        }
+
+        next[definition.key] = {
+          label: definition.label,
+          value: seededValue,
+          visible: existing[definition.key]?.visible ?? definition.defaultVisible !== false,
+        };
+        appliedCount += 1;
+      }
+
+      return next;
+    });
+
+    notifications.show({
+      title: appliedCount > 0 ? 'Recommended notes applied' : 'Nothing to apply',
+      message:
+        appliedCount > 0
+          ? `${appliedCount} suggested setup ${appliedCount === 1 ? 'note was' : 'notes were'} added to empty fields.`
+          : 'The recommended setup notes are already covered in your current essentials.',
+      color: appliedCount > 0 ? 'green' : 'blue',
+    });
+  }
+
   return (
     <Stack gap="xl">
       <PageHeader
         title={`Edit ${group.name}`}
-        subtitle="Update the name, type, currency, and billing cycle"
+        subtitle={
+          isWorkspaceGroup
+            ? 'Update the workspace identity, billing cycle, and team-role guidance'
+            : 'Update the name, type, currency, and billing cycle'
+        }
       >
         <Group gap="sm">
           <Button
@@ -382,15 +515,25 @@ function EditGroupPage() {
               data={groupTypeOptions}
               withAsterisk
               key={form.key('type')}
-              {...form.getInputProps('type')}
+              {...typeInputProps}
+              onChange={(value, option) => {
+                typeInputProps.onChange(value, option);
+                if (value) {
+                  const nextSubtypeOptions = getGroupSubtypeOptions(value);
+                  const currentSubtype = form.getValues().subtype ?? null;
+                  if (!nextSubtypeOptions.some((item) => item.value === currentSubtype)) {
+                    form.setFieldValue('subtype', null);
+                  }
+                }
+              }}
             />
 
-            {SUBTYPE_MAP[form.getValues().type] && (
+            {subtypeOptions.length > 0 && (
               <Select
                 label="Specific type"
                 description="Helps us tailor the experience for your situation"
                 placeholder="Select a sub-type (optional)"
-                data={SUBTYPE_MAP[form.getValues().type] ?? []}
+                data={subtypeOptions}
                 clearable
                 key={form.key('subtype')}
                 {...form.getInputProps('subtype')}
@@ -415,6 +558,24 @@ function EditGroupPage() {
               {...form.getInputProps('cycle_date')}
             />
 
+            <Group justify="space-between" align="center" mt={-4}>
+              <Text size="sm" c="dimmed">
+                Review the current statement and lock the period when this cycle is complete.
+              </Text>
+              <Button
+                variant="light"
+                size="xs"
+                onClick={() =>
+                  navigate({
+                    to: '/groups/$groupId/close',
+                    params: { groupId },
+                  })
+                }
+              >
+                Open cycle close
+              </Button>
+            </Group>
+
             <Switch
               label="Allow payment nudges"
               description="When enabled, members can send payment reminders to each other"
@@ -431,6 +592,99 @@ function EditGroupPage() {
               key={form.key('approval_threshold')}
               {...form.getInputProps('approval_threshold')}
             />
+
+            {isWorkspaceGroup && (
+              <Paper withBorder radius="md" p="md" mt="xs">
+                <Stack gap="md">
+                  <Group justify="space-between" align="flex-start" gap="md">
+                    <div>
+                      <Group gap="xs" mb={4}>
+                        <IconBriefcase size={18} />
+                        <Text fw={700}>Workspace role presets</Text>
+                      </Group>
+                      <Text size="sm" c="dimmed">
+                        These are recommended labels for shared-office or team-style spaces. They keep responsibility clear without changing the basic admin/member model.
+                      </Text>
+                    </div>
+                    <Badge variant="light" color="blue">
+                      Shared-space model
+                    </Badge>
+                  </Group>
+
+                  <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md">
+                    {workspaceGovernance.rolePresets.slice(0, 2).map((role) => (
+                      <Paper key={role.label} withBorder radius="md" p="md">
+                        <Group gap="xs" mb="xs">
+                          <IconShieldCheck size={16} />
+                          <Text fw={700} size="sm">{role.label}</Text>
+                        </Group>
+                        <Text size="sm" c="dimmed" mb="xs">
+                          {role.description}
+                        </Text>
+                        <Group gap="xs">
+                          {role.can_approve && (
+                            <Badge size="xs" variant="light" color="emerald">
+                              Can approve
+                            </Badge>
+                          )}
+                          {role.responsibility_label && (
+                            <Badge size="xs" variant="light" color="gray">
+                              {role.responsibility_label}
+                            </Badge>
+                          )}
+                        </Group>
+                      </Paper>
+                    ))}
+                  </SimpleGrid>
+
+                  <Stack gap="xs">
+                    <Text fw={700} size="sm">Approval chain preview</Text>
+                    <Text size="sm" c="dimmed">
+                      {workspaceGovernance.approvalSummary}
+                    </Text>
+                    <Group gap="xs" wrap="wrap">
+                      {workspaceGovernance.approvalChain.map((step, index) => (
+                        <Badge key={step.label} variant="light" color={index === workspaceGovernance.approvalChain.length - 1 ? 'emerald' : 'gray'}>
+                          {step.label}
+                        </Badge>
+                      ))}
+                    </Group>
+                  </Stack>
+
+                  <MultiSelect
+                    label="Workspace approvers"
+                    description="Members with these labels can approve pending workspace spend above the threshold."
+                    data={workspaceResponsibilityOptions}
+                    value={workspaceApproverLabels}
+                    onChange={setWorkspaceApproverLabels}
+                    placeholder="Select approver labels"
+                    nothingFoundMessage="No responsibility labels available"
+                    searchable
+                    clearable
+                  />
+
+                  <Switch
+                    label="Admins can still approve"
+                    description="Keep admins as a fallback approver group alongside the selected workspace labels."
+                    checked={workspaceAdminCanApprove}
+                    onChange={(event) => {
+                      setWorkspaceAdminCanApprove(event.currentTarget.checked);
+                    }}
+                  />
+
+                  <Stack gap="xs">
+                    <Text fw={700} size="sm">Responsibility labels</Text>
+                    <Group gap="xs" wrap="wrap">
+                      {workspaceGovernance.responsibilityLabels.map((label) => (
+                        <Badge key={label} variant="light" color="gray">
+                          {label}
+                        </Badge>
+                      ))}
+                    </Group>
+                  </Stack>
+                </Stack>
+              </Paper>
+            )}
           </Stack>
         </form>
       </Paper>
@@ -453,61 +707,194 @@ function EditGroupPage() {
         />
       </Paper>
 
-      {/* House Info */}
+      {/* Space Essentials */}
       <Paper className="commune-soft-panel" p="xl">
         <Group gap="xs" mb="md">
           <IconHome2 size={20} />
-          <Text className="commune-section-heading">House essentials</Text>
+          <Text className="commune-section-heading">Space essentials</Text>
         </Group>
         <Text size="sm" c="dimmed" mb="md">
-          Practical info shown on the group hub for all members. Leave fields empty to hide them.
+          Practical info shown on the group hub. Each field can be hidden from members without being deleted.
         </Text>
+        <Paper className="commune-stat-card" p="md" radius="lg" mb="md">
+          <Stack gap="xs">
+            <Group justify="space-between" align="center">
+              <Text fw={700}>{preset.title}</Text>
+              <Button variant="subtle" size="xs" onClick={handleApplyRecommendedEssentials}>
+                Apply recommended setup notes
+              </Button>
+            </Group>
+            <Text size="sm" c="dimmed">
+              {preset.summary}
+            </Text>
+            <Group gap="xs">
+              {preset.suggestedCategories.slice(0, 4).map((category) => (
+                <Text key={category} size="xs" c="dimmed">
+                  {category.replaceAll('_', ' ')}
+                </Text>
+              ))}
+            </Group>
+          </Stack>
+        </Paper>
 
-        <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-          <TextInput
-            label="Wi-Fi password"
-            placeholder="e.g. MyNetwork / password123"
-            leftSection={<IconWifi size={16} />}
-            key={form.key('house_info_wifi')}
-            {...form.getInputProps('house_info_wifi')}
-          />
-          <TextInput
-            label="Bins day"
-            placeholder="e.g. Tuesday (recycling), Thursday (general)"
-            key={form.key('house_info_bins')}
-            {...form.getInputProps('house_info_bins')}
-          />
-          <TextInput
-            label="Landlord name"
-            placeholder="e.g. John Smith"
-            key={form.key('house_info_landlord')}
-            {...form.getInputProps('house_info_landlord')}
-          />
-          <TextInput
-            label="Landlord phone"
-            placeholder="e.g. 07700 900000"
-            leftSection={<IconPhone size={16} />}
-            key={form.key('house_info_landlord_phone')}
-            {...form.getInputProps('house_info_landlord_phone')}
-          />
-          <TextInput
-            label="Emergency contact"
-            placeholder="e.g. Gas: 0800 111 999"
-            key={form.key('house_info_emergency')}
-            {...form.getInputProps('house_info_emergency')}
-          />
-        </SimpleGrid>
+        <Stack gap="md">
+          {essentialDefinitions.map((definition) => {
+            const current = spaceEssentials[definition.key];
+            const value = current?.value ?? '';
+            const visible = current?.visible ?? definition.defaultVisible !== false;
 
-        <Textarea
-          label="House rules"
-          placeholder="e.g. Quiet hours after 10pm. No shoes inside. Clean up after yourself."
-          minRows={2}
-          maxRows={4}
-          autosize
-          mt="md"
-          key={form.key('house_info_rules')}
-          {...form.getInputProps('house_info_rules')}
-        />
+            const commonProps = {
+              label: definition.label,
+              description: definition.description,
+              placeholder: definition.placeholder,
+              value,
+              onChange: (event: { currentTarget: { value: string } }) => {
+                const nextValue = event.currentTarget.value;
+                setSpaceEssentials((existing) => ({
+                  ...existing,
+                  [definition.key]: {
+                    label: definition.label,
+                    value: nextValue,
+                    visible,
+                  },
+                }));
+              },
+            };
+
+            return (
+              <Paper key={definition.key} withBorder radius="md" p="md">
+                <Group justify="space-between" align="flex-start" mb="xs">
+                  <Text fw={600} size="sm">{definition.label}</Text>
+                  <Switch
+                    label="Visible"
+                    checked={visible}
+                    onChange={(event) => {
+                      const nextChecked = event.currentTarget.checked;
+                      setSpaceEssentials((existing) => ({
+                        ...existing,
+                        [definition.key]: {
+                          label: definition.label,
+                          value,
+                          visible: nextChecked,
+                        },
+                      }));
+                    }}
+                  />
+                </Group>
+                {definition.kind === 'textarea' ? (
+                  <Textarea
+                    {...commonProps}
+                    minRows={2}
+                    maxRows={4}
+                    autosize
+                  />
+                ) : (
+                  <TextInput
+                    {...commonProps}
+                    leftSection={
+                      definition.key === 'wifi' ? <IconWifi size={16} /> :
+                      definition.key.includes('phone') || definition.key.includes('contact') ? <IconPhone size={16} /> :
+                      undefined
+                    }
+                  />
+                )}
+              </Paper>
+            );
+          })}
+        </Stack>
+      </Paper>
+
+      <Paper className="commune-soft-panel" p="xl">
+        <Group gap="xs" mb="md">
+          <IconSettings size={20} />
+          <Text className="commune-section-heading">Setup checklist</Text>
+        </Group>
+        <Stack gap="md">
+          <Group justify="space-between" align="center">
+            <Text size="sm" c="dimmed">
+              Persist the operational setup work that should not disappear after onboarding.
+            </Text>
+            <Badge
+              variant="light"
+              color={
+                checklistEntries.length > 0 && completedChecklistCount === checklistEntries.length
+                  ? 'green'
+                  : 'blue'
+              }
+            >
+              {completedChecklistCount}/{checklistEntries.length} done
+            </Badge>
+          </Group>
+          {checklistEntries.map(([key, entry]) => (
+            <Checkbox
+              key={key}
+              checked={entry.completed}
+              label={entry.label}
+              description={
+                entry.completed_at
+                  ? `Completed ${new Date(entry.completed_at).toLocaleDateString()}`
+                  : undefined
+              }
+              onChange={(event) => {
+                const nextChecked = event.currentTarget.checked;
+                setSetupChecklistProgress((existing) => ({
+                  ...createSetupChecklistProgress(selectedGroupType, selectedSubtype, existing),
+                  [key]: {
+                    label: entry.label,
+                    completed: nextChecked,
+                    completed_at: nextChecked ? new Date().toISOString() : null,
+                  },
+                }));
+              }}
+            />
+          ))}
+          {checklistEntries.length > 0 && (
+            <Group>
+              <Button
+                type="button"
+                variant="default"
+                size="xs"
+                onClick={() =>
+                  setSetupChecklistProgress(
+                    Object.fromEntries(
+                      checklistEntries.map(([key, entry]) => [
+                        key,
+                        {
+                          ...entry,
+                          completed: true,
+                          completed_at: entry.completed_at ?? new Date().toISOString(),
+                        },
+                      ]),
+                    ) as SetupChecklistProgress,
+                  )
+                }
+              >
+                Mark all done
+              </Button>
+              <Button
+                type="button"
+                variant="subtle"
+                size="xs"
+                onClick={() =>
+                  setSetupChecklistProgress(
+                    Object.fromEntries(
+                      checklistEntries.map(([key, entry]) => [
+                        key,
+                        {
+                          ...entry,
+                          completed: false,
+                          completed_at: null,
+                        },
+                      ]),
+                    ) as SetupChecklistProgress,
+                  )
+                }
+              >
+                Reset
+              </Button>
+            </Group>
+          )}
+        </Stack>
       </Paper>
 
       {group.owner_id === user?.id && (

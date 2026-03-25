@@ -27,6 +27,7 @@ import {
   IconNote,
   IconPaperclip,
   IconReceipt,
+  IconShieldCheck,
   IconUsers,
   IconWallet,
   IconX,
@@ -34,7 +35,7 @@ import {
 import { useEffect, useState } from 'react';
 import { setPageTitle } from '../../../utils/seo';
 import { formatCurrency, formatDate, isOverdue } from '@commune/utils';
-import { calculateReimbursements, buildPaymentUrl, isClickableProvider, getProviderDisplayName, getProviderSignupPrompt } from '@commune/core';
+import { calculateReimbursements, buildPaymentUrl, canMemberApproveWithPolicy, isClickableProvider, getProviderDisplayName, getProviderSignupPrompt } from '@commune/core';
 import type { PaymentProvider } from '@commune/types';
 import {
   useArchiveExpense,
@@ -42,11 +43,14 @@ import {
   useExpenseDetail,
   useMarkPayment,
 } from '../../../hooks/use-expenses';
+import { useApproveExpense, useRejectExpense } from '../../../hooks/use-approvals';
 import { useGroupStore } from '../../../stores/group';
 import { useGroup } from '../../../hooks/use-groups';
 import { useAuthStore } from '../../../stores/auth';
 import { useUploadReceipt, useDeleteReceipt } from '../../../hooks/use-receipts';
 import { usePaymentMethods } from '../../../hooks/use-payment-methods';
+import { getWorkspaceExpenseContext, hasWorkspaceExpenseContext } from '../../../hooks/use-expenses';
+import { useWorkspaceGovernance } from '../../../hooks/use-workspace-governance';
 import { ReceiptDropzone } from '../../../components/receipt-dropzone';
 import { EmptyState } from '../../../components/empty-state';
 import { ExpenseDetailSkeleton } from '../../../components/page-skeleton';
@@ -63,7 +67,7 @@ function formatCategoryLabel(category: string) {
     .join(' ');
 }
 
-function ExpenseDetailPage() {
+export function ExpenseDetailPage() {
   const { expenseId } = Route.useParams();
   const { activeGroupId } = useGroupStore();
   const { data: group } = useGroup(activeGroupId ?? '');
@@ -71,13 +75,20 @@ function ExpenseDetailPage() {
   const markPayment = useMarkPayment(activeGroupId ?? '');
   const confirmPayment = useConfirmPayment(activeGroupId ?? '');
   const archive = useArchiveExpense(activeGroupId ?? '');
+  const approveExpense = useApproveExpense(activeGroupId ?? '');
+  const rejectExpense = useRejectExpense(activeGroupId ?? '');
   const { user } = useAuthStore();
   const navigate = useNavigate();
   const uploadReceipt = useUploadReceipt(activeGroupId ?? '');
   const deleteReceipt = useDeleteReceipt(activeGroupId ?? '');
+  const workspaceGovernance = useWorkspaceGovernance(group);
   const [noteOpened, { open: openNote, close: closeNote }] = useDisclosure(false);
   const [paymentNote, setPaymentNote] = useState('');
   const [pendingPayment, setPendingPayment] = useState<{ userId: string } | null>(null);
+  const paidByUserId = expense?.paid_by_user_id ?? '';
+  const { data: paidByMethods } = usePaymentMethods(paidByUserId);
+  const workspaceContext = getWorkspaceExpenseContext(expense);
+  const showWorkspaceContext = group?.type === 'workspace' || hasWorkspaceExpenseContext(expense);
 
   useEffect(() => {
     setPageTitle(expense?.title ?? 'Expense');
@@ -99,6 +110,10 @@ function ExpenseDetailPage() {
   }
 
   const isAdmin = group?.members.some((member) => member.user_id === user?.id && member.role === 'admin');
+  const currentMember = group?.members.find((member) => member.user_id === user?.id) ?? null;
+  const canApproveExpense = group?.type === 'workspace'
+    ? canMemberApproveWithPolicy(currentMember, group?.approval_policy)
+    : isAdmin;
   const overdue = isOverdue(expense.due_date);
   const expenseData = expense;
   const reimbursements = expense.paid_by_user_id
@@ -116,8 +131,6 @@ function ExpenseDetailPage() {
   const isApprovalBlocked = approvalStatus !== 'approved';
 
   // Fetch payment methods for the person who paid upfront
-  const paidByUserId = expense.paid_by_user_id ?? '';
-  const { data: paidByMethods } = usePaymentMethods(paidByUserId);
   const defaultMethod = paidByMethods?.find((m) => m.is_default) ?? paidByMethods?.[0] ?? null;
   const paymentLinkResult = defaultMethod?.provider && defaultMethod?.payment_link
     && isClickableProvider(defaultMethod.provider as PaymentProvider)
@@ -284,6 +297,11 @@ function ExpenseDetailPage() {
           <Badge variant="light" color="gray">
             {formatCategoryLabel(expense.category)}
           </Badge>
+          {showWorkspaceContext && (
+            <Badge variant="light" color="indigo">
+              Workspace context
+            </Badge>
+          )}
           {approvalStatus === 'pending' && (
             <Badge variant="light" color="orange">
               Pending approval
@@ -325,10 +343,57 @@ function ExpenseDetailPage() {
 
       {approvalStatus === 'pending' && (
         <Paper className="commune-soft-panel" p="md" style={{ borderLeft: '4px solid var(--mantine-color-orange-5)' }}>
-          <Text fw={600} size="sm">This expense is waiting for admin approval.</Text>
-          <Text size="sm" c="dimmed">
-            Settlement and payment actions stay disabled until it is approved.
-          </Text>
+          <Stack gap="sm">
+            <div>
+              <Text fw={600} size="sm">This expense is waiting for workspace approval.</Text>
+              <Text size="sm" c="dimmed">
+                Settlement and payment actions stay disabled until it is approved.
+              </Text>
+            </div>
+            {canApproveExpense && (
+              <Group gap="xs">
+                <Button
+                  size="compact-sm"
+                  color="green"
+                  leftSection={<IconCheck size={14} />}
+                  loading={approveExpense.isPending}
+                  onClick={() => {
+                    approveExpense.mutate(expense.id, {
+                      onSuccess: () => {
+                        notifications.show({
+                          title: 'Expense approved',
+                          message: `${expense.title} is now live in balances and settlements.`,
+                          color: 'green',
+                        });
+                      },
+                    });
+                  }}
+                >
+                  Approve expense
+                </Button>
+                <Button
+                  size="compact-sm"
+                  color="red"
+                  variant="light"
+                  leftSection={<IconX size={14} />}
+                  loading={rejectExpense.isPending}
+                  onClick={() => {
+                    rejectExpense.mutate(expense.id, {
+                      onSuccess: () => {
+                        notifications.show({
+                          title: 'Expense rejected',
+                          message: `${expense.title} will stay out of balances until it is edited and resubmitted.`,
+                          color: 'red',
+                        });
+                      },
+                    });
+                  }}
+                >
+                  Reject expense
+                </Button>
+              </Group>
+            )}
+          </Stack>
         </Paper>
       )}
 
@@ -542,6 +607,88 @@ function ExpenseDetailPage() {
               disabled={uploadReceipt.isPending}
             />
           </Paper>
+
+          {showWorkspaceContext && (
+            <Paper className="commune-soft-panel" p="xl">
+              <Stack gap="md">
+                <Group gap="xs" align="center">
+                  <IconReceipt size={20} />
+                  <Text fw={700} size="lg">Workspace context</Text>
+                </Group>
+                <Text size="sm" c="dimmed">
+                  Vendor and invoice details stay attached to the expense so workspace bills are easier to trace.
+                </Text>
+                <Stack gap={6}>
+                  <Group justify="space-between" gap="sm" wrap="nowrap">
+                    <Text size="sm" c="dimmed">Vendor</Text>
+                    <Text size="sm" fw={600} ta="right">
+                      {workspaceContext.vendor_name || 'Not set'}
+                    </Text>
+                  </Group>
+                  <Group justify="space-between" gap="sm" wrap="nowrap">
+                    <Text size="sm" c="dimmed">Invoice reference</Text>
+                    <Text size="sm" fw={600} ta="right">
+                      {workspaceContext.invoice_reference || 'Not set'}
+                    </Text>
+                  </Group>
+                  <Group justify="space-between" gap="sm" wrap="nowrap">
+                    <Text size="sm" c="dimmed">Invoice date</Text>
+                    <Text size="sm" fw={600} ta="right">
+                      {workspaceContext.invoice_date ? formatDate(workspaceContext.invoice_date) : 'Not set'}
+                    </Text>
+                  </Group>
+                  <Group justify="space-between" gap="sm" wrap="nowrap">
+                    <Text size="sm" c="dimmed">Payment due date</Text>
+                    <Text size="sm" fw={600} ta="right">
+                      {workspaceContext.payment_due_date
+                        ? formatDate(workspaceContext.payment_due_date)
+                        : 'Not set'}
+                    </Text>
+                  </Group>
+                </Stack>
+              </Stack>
+            </Paper>
+          )}
+
+          {workspaceGovernance.isWorkspaceGroup && (
+            <Paper className="commune-soft-panel" p="xl">
+              <Stack gap="md">
+                <Group gap="xs" align="center">
+                  <IconShieldCheck size={20} />
+                  <Text fw={700} size="lg">Workspace approval chain</Text>
+                </Group>
+                <Text size="sm" c="dimmed">
+                  {workspaceGovernance.approvalSummary}
+                </Text>
+                <Group gap={6} wrap="wrap">
+                  {workspaceGovernance.rolePresets.slice(0, 3).map((role) => (
+                    <Badge key={role.label} variant="light" color="gray">
+                      {role.label}
+                    </Badge>
+                  ))}
+                </Group>
+                <Stack gap={4}>
+                  {workspaceGovernance.approvalChain.map((step, index) => (
+                    <Paper key={step.label} withBorder radius="md" p="sm">
+                      <Group justify="space-between" align="flex-start" gap="sm">
+                        <div>
+                          <Text fw={600} size="sm">
+                            {index + 1}. {step.label}
+                          </Text>
+                          <Text size="xs" c="dimmed">
+                            {step.description}
+                          </Text>
+                        </div>
+                        <Badge variant="light" color={index === workspaceGovernance.approvalChain.length - 1 ? 'emerald' : 'gray'}>
+                          {index === workspaceGovernance.approvalChain.length - 1 ? 'Final' : 'Review'}
+                        </Badge>
+                      </Group>
+                    </Paper>
+                  ))}
+                </Stack>
+              </Stack>
+            </Paper>
+          )}
 
           {expense.paid_by_user && !isApprovalBlocked && (
             <Paper className="commune-soft-panel" p="xl">

@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev --port 3001",
     "build": "next build",
+    "lint": "eslint src next.config.ts",
     "start": "next start",
     "typecheck": "tsc --noEmit"
   },

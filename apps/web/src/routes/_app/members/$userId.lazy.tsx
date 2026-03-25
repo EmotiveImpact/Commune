@@ -49,12 +49,11 @@ export const Route = createLazyFileRoute('/_app/members/$userId')({
 });
 
 const GROUP_TYPE_ICONS: Record<string, typeof IconHome> = {
-  household: IconHome,
+  home: IconHome,
   couple: IconHeart,
-  flatmates: IconHome,
-  friends: IconUsersGroup,
-  work: IconBriefcase,
-  travel: IconPlane,
+  workspace: IconBriefcase,
+  project: IconUsersGroup,
+  trip: IconPlane,
   other: IconUsersGroup,
 };
 
@@ -78,6 +77,17 @@ function MemberProfilePage() {
   useEffect(() => {
     setPageTitle(memberName);
   }, [memberName]);
+
+  if (!activeGroupId) {
+    return (
+      <EmptyState
+        icon={IconUsersGroup}
+        iconColor="gray"
+        title="Choose a group first"
+        description="This member profile is shown within a group context. Pick a group in the sidebar, then open the member again."
+      />
+    );
+  }
 
   if (isLoading) {
     return <ContentSkeleton />;
@@ -477,24 +487,41 @@ function MemberProfilePage() {
         ) : (
           <Timeline active={recentActivity.length - 1} bulletSize={28} lineWidth={2}>
             {recentActivity.map((activity: any) => {
+              const isPayment = activity.kind === 'payment';
               const isCreator = activity.created_by === userId;
               const isPayer = activity.paid_by_user_id === userId;
-              const activityTitle = isPayer
-                ? `Paid for "${activity.title}"`
-                : isCreator
-                  ? `Added "${activity.title}"`
-                  : `Joined "${activity.title}"`;
+              const activityTitle = isPayment
+                ? activity.status === 'confirmed'
+                  ? `Payment for "${activity.title}" confirmed`
+                  : `Paid share for "${activity.title}"`
+                : isPayer
+                  ? `Paid for "${activity.title}"`
+                  : isCreator
+                    ? `Added "${activity.title}"`
+                    : `Joined "${activity.title}"`;
+              const activityDate = activity.paid_at ?? activity.due_date ?? activity.created_at;
+              const bulletColor = isPayment
+                ? activity.status === 'confirmed'
+                  ? 'teal'
+                  : 'emerald'
+                : isPayer
+                  ? 'emerald'
+                  : isCreator
+                    ? 'blue'
+                    : 'gray';
               return (
                 <Timeline.Item
-                  key={activity.id}
+                  key={`${activity.kind ?? 'expense'}:${activity.id}`}
                   bullet={
                     <ThemeIcon
                       size={28}
                       variant="light"
-                      color={isPayer ? 'emerald' : isCreator ? 'blue' : 'gray'}
+                      color={bulletColor}
                       radius="xl"
                     >
-                      {isPayer ? <IconCash size={14} /> : <IconReceipt size={14} />}
+                      {isPayment ? (
+                        activity.status === 'confirmed' ? <IconCheck size={14} /> : <IconCash size={14} />
+                      ) : isPayer ? <IconCash size={14} /> : <IconReceipt size={14} />}
                     </ThemeIcon>
                   }
                   title={
@@ -509,11 +536,11 @@ function MemberProfilePage() {
                   }
                 >
                   <Group gap="sm">
-                    <Text size="sm" fw={700} c={isPayer ? 'emerald' : undefined}>
+                    <Text size="sm" fw={700} c={isPayment || isPayer ? 'emerald' : undefined}>
                       {formatCurrency(activity.amount, currency)}
                     </Text>
                     <Text size="xs" c="dimmed">
-                      {formatDate(activity.due_date ?? activity.created_at)}
+                      {formatDate(activityDate)}
                     </Text>
                   </Group>
                 </Timeline.Item>

@@ -202,7 +202,7 @@ export default function NotificationsScreen() {
   const markRead = useMarkNotificationRead(user?.id ?? '');
   const markAllRead = useMarkAllNotificationsRead(user?.id ?? '');
 
-  const items = notifications ?? [];
+  const items = useMemo(() => notifications ?? [], [notifications]);
   const unreadCount = items.filter((n) => !n.read).length;
 
   const sections = useMemo(() => {

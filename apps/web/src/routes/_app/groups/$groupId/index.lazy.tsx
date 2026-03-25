@@ -1,5 +1,9 @@
 import { createLazyFileRoute, Link } from '@tanstack/react-router';
 import {
+  countCompletedSetupChecklistItems,
+  normalizeSpaceEssentials,
+} from '@commune/core';
+import {
   Avatar,
   Badge,
   Box,
@@ -41,6 +45,9 @@ import {
   IconPhone,
   IconBook,
   IconHome2,
+  IconKey,
+  IconBuilding,
+  IconChecklist,
 } from '@tabler/icons-react';
 import { useGroupHub, useUploadGroupImage } from '../../../../hooks/use-group-hub';
 import { useGroupSettlement } from '../../../../hooks/use-settlement';
@@ -49,6 +56,7 @@ import { useAuthStore } from '../../../../stores/auth';
 import { useGroupStore } from '../../../../stores/group';
 import { ContentSkeleton } from '../../../../components/page-skeleton';
 import { formatCurrency } from '@commune/utils';
+import { useEffect } from 'react';
 
 export const Route = createLazyFileRoute('/_app/groups/$groupId/')({
   component: GroupHubPage,
@@ -129,15 +137,26 @@ function GroupHubPage() {
   const { data: settlement } = useGroupSettlement(groupId);
   const { data: activityItems } = useActivityLog(groupId, 10);
 
+  useEffect(() => {
+    setActiveGroupId(groupId);
+  }, [groupId, setActiveGroupId]);
+
   if (isLoading || !hub) return <ContentSkeleton />;
 
   const { group, expenses, memberTotals, categoryTotals, totalMonthly, activeMembers } = hub;
   const members = (group.members as any[]).filter((m: any) => m.status === 'active');
+  const spaceEssentials = normalizeSpaceEssentials(
+    group.type,
+    group.space_essentials,
+    group.house_info,
+  );
   const fallback = GROUP_VISUALS['other']!;
   const visual = GROUP_VISUALS[group.type] ?? fallback;
   const Icon = visual.icon;
   const coverGradient = colorScheme === 'dark' ? visual.gradientDark : visual.gradient;
   const currency = group.currency ?? 'GBP';
+  const completedChecklistCount = countCompletedSetupChecklistItems(group.setup_checklist_progress);
+  const totalChecklistCount = Object.keys(group.setup_checklist_progress ?? {}).length;
 
   const isAdmin = members.some(
     (m) => m.user_id === user?.id && m.role === 'admin',
@@ -165,6 +184,30 @@ function GroupHubPage() {
       },
     );
   }
+
+  const essentialIconMap: Record<string, typeof IconHome2> = {
+    wifi: IconWifi,
+    bins: IconTrash,
+    landlord: IconUsers,
+    landlord_phone: IconPhone,
+    emergency: IconAlertCircle,
+    rules: IconBook,
+    access: IconKey,
+    building_contact: IconBuilding,
+    location: IconMapPin,
+    meetup: IconMapPin,
+    transport: IconActivity,
+    stay: IconHome2,
+    checkout: IconArrowRight,
+    supplies: IconReceipt,
+    contact: IconUsers,
+    lead_contact: IconUsers,
+    equipment: IconBriefcase,
+    handover: IconPin,
+    hours: IconClock,
+    instructions: IconBook,
+    calendar: IconClock,
+  };
 
   return (
     <Stack gap="xl">
@@ -304,10 +347,7 @@ function GroupHubPage() {
                 {(() => {
                   if (!settlement) return null;
                   const hasTransactions = settlement.transactions?.length > 0;
-                  const hasOverdue = expenses.some((e: any) => {
-                    const due = e.due_date ? new Date(e.due_date) : null;
-                    return due && due < new Date();
-                  });
+                  const hasOverdue = hub.overdueExpenseCount > 0;
                   if (!hasTransactions) return <Badge size="sm" variant="filled" color="green">All settled</Badge>;
                   if (hasOverdue) return <Badge size="sm" variant="filled" color="red">Bills overdue</Badge>;
                   return <Badge size="sm" variant="filled" color="orange">Payments pending</Badge>;
@@ -318,6 +358,15 @@ function GroupHubPage() {
                     {activeMembers} member{activeMembers === 1 ? '' : 's'}
                   </Text>
                 </Group>
+                <Button
+                  component={Link}
+                  to={`/groups/${groupId}/close`}
+                  size="compact-xs"
+                  variant="white"
+                  color="dark"
+                >
+                  Cycle close
+                </Button>
                 <Text size="xs" c="white" opacity={0.6}>
                   Created {formatDate(group.created_at)}
                 </Text>
@@ -330,7 +379,7 @@ function GroupHubPage() {
       {/* ------------------------------------------------------------------ */}
       {/*  2. Key Stats Row                                                  */}
       {/* ------------------------------------------------------------------ */}
-      <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="lg">
+      <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="lg">
         <Paper className="commune-stat-card commune-kpi-card" p="lg" data-tone="sage">
           <Group justify="space-between" align="flex-start">
             <Stack gap={4}>
@@ -364,11 +413,31 @@ function GroupHubPage() {
           <Group justify="space-between" align="flex-start">
             <Stack gap={4}>
               <Text size="sm" c="dimmed">Active expenses</Text>
+              <Text size="xs" c="dimmed">This month</Text>
               <Text fw={800} size="2rem" lh={1.05}>
                 {expenses.length}
               </Text>
             </Stack>
             <IconReceipt size={24} style={{ color: 'var(--commune-ink-soft)', opacity: 0.5 }} />
+          </Group>
+        </Paper>
+
+        <Paper className="commune-stat-card commune-kpi-card" p="lg" data-tone="sky">
+          <Group justify="space-between" align="flex-start">
+            <Stack gap={4}>
+              <Text size="sm" c="dimmed">Setup progress</Text>
+              <Text fw={800} size="2rem" lh={1.05}>
+                {completedChecklistCount}/{totalChecklistCount}
+              </Text>
+              <Text size="xs" c="dimmed">
+                {totalChecklistCount > 0
+                  ? completedChecklistCount === totalChecklistCount
+                    ? 'Operational setup looks complete'
+                    : 'Finish the remaining setup checklist items'
+                  : 'Starter checklist appears after setup is initialised'}
+              </Text>
+            </Stack>
+            <IconChecklist size={24} style={{ color: 'var(--commune-ink-soft)', opacity: 0.5 }} />
           </Group>
         </Paper>
       </SimpleGrid>
@@ -393,51 +462,36 @@ function GroupHubPage() {
       )}
 
       {/* ------------------------------------------------------------------ */}
-      {/*  2b2. House Info Strip                                             */}
+      {/*  2b2. Space Essentials Strip                                       */}
       {/* ------------------------------------------------------------------ */}
-      {group.house_info && Object.keys(group.house_info).length > 0 && (
+      {Object.keys(spaceEssentials).length > 0 && (
         <Paper className="commune-soft-panel" p="md" radius="md">
           <Group gap="xs" mb="sm">
             <IconHome2 size={16} />
-            <Text size="sm" fw={600}>House Essentials</Text>
+            <Text size="sm" fw={600}>Space essentials</Text>
           </Group>
           <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="xs">
-            {group.house_info.wifi && (
-              <Group gap="xs" wrap="nowrap">
-                <IconWifi size={14} style={{ color: 'var(--commune-ink-soft)', flexShrink: 0 }} />
-                <Text size="xs"><Text span fw={600} size="xs">Wi-Fi:</Text> {group.house_info.wifi}</Text>
-              </Group>
-            )}
-            {group.house_info.bins && (
-              <Group gap="xs" wrap="nowrap">
-                <IconTrash size={14} style={{ color: 'var(--commune-ink-soft)', flexShrink: 0 }} />
-                <Text size="xs"><Text span fw={600} size="xs">Bins:</Text> {group.house_info.bins}</Text>
-              </Group>
-            )}
-            {group.house_info.landlord && (
-              <Group gap="xs" wrap="nowrap">
-                <IconUsers size={14} style={{ color: 'var(--commune-ink-soft)', flexShrink: 0 }} />
-                <Text size="xs"><Text span fw={600} size="xs">Landlord:</Text> {group.house_info.landlord}</Text>
-              </Group>
-            )}
-            {group.house_info.landlord_phone && (
-              <Group gap="xs" wrap="nowrap">
-                <IconPhone size={14} style={{ color: 'var(--commune-ink-soft)', flexShrink: 0 }} />
-                <Text size="xs"><Text span fw={600} size="xs">Landlord phone:</Text> {group.house_info.landlord_phone}</Text>
-              </Group>
-            )}
-            {group.house_info.emergency && (
-              <Group gap="xs" wrap="nowrap">
-                <IconAlertCircle size={14} style={{ color: 'var(--commune-ink-soft)', flexShrink: 0 }} />
-                <Text size="xs"><Text span fw={600} size="xs">Emergency:</Text> {group.house_info.emergency}</Text>
-              </Group>
-            )}
-            {group.house_info.rules && (
-              <Group gap="xs" wrap="nowrap" style={{ gridColumn: 'span 2' }}>
-                <IconBook size={14} style={{ color: 'var(--commune-ink-soft)', flexShrink: 0 }} />
-                <Text size="xs"><Text span fw={600} size="xs">Rules:</Text> {group.house_info.rules}</Text>
-              </Group>
-            )}
+            {Object.entries(spaceEssentials)
+              .filter(([, item]) => item.visible)
+              .map(([key, item]) => {
+                const IconForItem = essentialIconMap[key] ?? IconHome2;
+                const spanWide =
+                  item.value.length > 70 || key === 'rules' || key === 'instructions' || key === 'handover';
+
+                return (
+                  <Group
+                    key={key}
+                    gap="xs"
+                    wrap="nowrap"
+                    style={spanWide ? { gridColumn: 'span 2' } : undefined}
+                  >
+                    <IconForItem size={14} style={{ color: 'var(--commune-ink-soft)', flexShrink: 0 }} />
+                    <Text size="xs">
+                      <Text span fw={600} size="xs">{item.label}:</Text> {item.value}
+                    </Text>
+                  </Group>
+                );
+              })}
           </SimpleGrid>
         </Paper>
       )}

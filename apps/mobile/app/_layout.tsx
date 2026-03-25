@@ -96,6 +96,7 @@ function toMobileUser(user: SupabaseAuthUser | null): User | null {
     country: typeof meta.country === 'string' ? meta.country : null,
     default_currency: typeof meta.default_currency === 'string' ? meta.default_currency : 'GBP',
     timezone: typeof meta.timezone === 'string' ? meta.timezone : Intl.DateTimeFormat().resolvedOptions().timeZone,
+    show_shared_groups: typeof meta.show_shared_groups === 'boolean' ? meta.show_shared_groups : true,
     created_at: user.created_at,
   };
 }
@@ -250,6 +251,8 @@ export default function RootLayout() {
               <Stack.Screen name="onboarding" options={{ title: 'Get Started', headerBackTitle: 'Back' }} />
               <Stack.Screen name="members" options={{ title: 'Members', headerBackTitle: 'Back' }} />
               <Stack.Screen name="group-edit" options={{ title: 'Edit Group', headerBackTitle: 'Back' }} />
+              <Stack.Screen name="group-close" options={{ title: 'Cycle Close', headerBackTitle: 'Back' }} />
+              <Stack.Screen name="operations" options={{ title: 'Operations', headerBackTitle: 'Back' }} />
               <Stack.Screen name="expenses/new" options={{ title: 'New Expense', headerBackTitle: 'Back' }} />
               <Stack.Screen name="expenses/[expenseId]" options={{ title: 'Expense Detail', headerBackTitle: 'Back' }} />
               <Stack.Screen name="expenses/[expenseId]/edit" options={{ title: 'Edit Expense', headerBackTitle: 'Back' }} />

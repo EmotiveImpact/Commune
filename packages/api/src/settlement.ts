@@ -176,7 +176,8 @@ export async function getGroupSettlement(
     const toName = mergedNames.get(t.toUserId) ?? toUser?.name ?? 'Unknown';
 
     let paymentLink: string | null = null;
-    let paymentProvider = (toUser?.paymentProvider as SettlementTransaction['paymentProvider']) ?? null;
+    const paymentProvider =
+      (toUser?.paymentProvider as SettlementTransaction['paymentProvider']) ?? null;
 
     if (toUser?.paymentProvider && toUser?.paymentLink) {
       const result = buildPaymentUrl(

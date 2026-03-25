@@ -1,6 +1,7 @@
 import { createLazyFileRoute, Link, Outlet, useNavigate, useMatch } from '@tanstack/react-router';
 import {
   ActionIcon,
+  Alert,
   Avatar,
   Badge,
   Button,
@@ -11,6 +12,7 @@ import {
   Paper,
   Popover,
   Progress,
+  SimpleGrid,
   Stack,
   Text,
 } from '@mantine/core';
@@ -28,18 +30,27 @@ import {
   IconSettings,
   IconShield,
   IconShieldCheck,
+  IconRefresh,
+  IconChecklist,
   IconUserMinus,
   IconUserPlus,
   IconUsers,
 } from '@tabler/icons-react';
 import { useEffect, useState } from 'react';
+import {
+  canMemberApproveWithPolicy,
+  countCompletedSetupChecklistItems,
+  getIncompleteSetupChecklistItems,
+} from '@commune/core';
 import { setPageTitle } from '../../utils/seo';
 import { formatCurrency } from '@commune/utils';
 import { useGroupStore } from '../../stores/group';
 import { useSearchStore } from '../../stores/search';
-import { useGroup, useLeaveGroup, useRemoveMember, useTransferOwnership, useUpdateMemberDates, useUpdateMemberRole, useUserGroups } from '../../hooks/use-groups';
+import { useGroup, useLeaveGroup, useRemoveMember, useTransferOwnership, useUpdateMemberDates, useUpdateMemberResponsibility, useUpdateMemberRole, useUserGroups } from '../../hooks/use-groups';
 import { useLinkedPairs, useLinkMembers, useUnlinkMembers } from '../../hooks/use-couple-linking';
+import { useGroupLifecycleSummary, useRestoreMemberAccess, useScheduleMemberDeparture } from '../../hooks/use-member-lifecycle';
 import { useMemberMonthlyStats } from '../../hooks/use-member-stats';
+import { useWorkspaceGovernance } from '../../hooks/use-workspace-governance';
 import { useAuthStore } from '../../stores/auth';
 import { InviteMemberModal } from '../../components/invite-member-modal';
 import { MembersSkeleton } from '../../components/page-skeleton';
@@ -63,18 +74,38 @@ function formatProrationDate(dateStr: string): string {
   return date.toLocaleDateString('en-GB', { month: 'short', day: 'numeric' });
 }
 
-function MembersPage() {
+function formatLifecycleRange(start: string, end: string): string {
+  return `${formatProrationDate(start)} to ${formatProrationDate(end)}`;
+}
+
+function formatResponsibilityLabel(value: string): string {
+  return value
+    .split('_')
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+}
+
+export function MembersPage() {
   useEffect(() => {
     setPageTitle('Members');
   }, []);
 
   const { activeGroupId, setActiveGroupId } = useGroupStore();
   const { data: group, isLoading } = useGroup(activeGroupId ?? '');
+  const lifecycleReferenceDate = new Date().toISOString().slice(0, 10);
+  const { data: lifecycle } = useGroupLifecycleSummary(
+    activeGroupId ?? '',
+    lifecycleReferenceDate,
+  );
   const { data: userGroups } = useUserGroups();
   const { query: searchQuery } = useSearchStore();
   const { user } = useAuthStore();
+  const workspaceGovernance = useWorkspaceGovernance(group);
   const updateRole = useUpdateMemberRole(activeGroupId ?? '');
+  const updateResponsibility = useUpdateMemberResponsibility(activeGroupId ?? '');
   const removeMember = useRemoveMember(activeGroupId ?? '');
+  const scheduleDeparture = useScheduleMemberDeparture(activeGroupId ?? '');
+  const restoreMemberAccess = useRestoreMemberAccess(activeGroupId ?? '');
   const leaveGroupMutation = useLeaveGroup();
   const navigate = useNavigate();
   const transferOwnership = useTransferOwnership(activeGroupId ?? '');
@@ -90,6 +121,15 @@ function MembersPage() {
   const unlinkMembersMutation = useUnlinkMembers(activeGroupId ?? '');
   const [linkOpened, { open: openLink, close: closeLink }] = useDisclosure(false);
   const [linkTarget, setLinkTarget] = useState<{ memberId: string; userId: string; name: string } | null>(null);
+  const [departureOpened, { open: openDeparture, close: closeDeparture }] = useDisclosure(false);
+  const [departureTarget, setDepartureTarget] = useState<{
+    memberId: string;
+    userId: string;
+    name: string;
+    currentDate: string | null;
+    isOwner: boolean;
+  } | null>(null);
+  const [departureDate, setDepartureDate] = useState<string | null>(null);
 
   // ── Date editing state ────────────────────────────────────────────────
   const updateMemberDates = useUpdateMemberDates(activeGroupId ?? '');
@@ -160,6 +200,29 @@ function MembersPage() {
     }
   }
 
+  async function handleResponsibilityChange(
+    memberId: string,
+    name: string,
+    responsibilityLabel: string | null,
+  ) {
+    try {
+      await updateResponsibility.mutateAsync({ memberId, responsibilityLabel });
+      notifications.show({
+        title: 'Responsibility updated',
+        message: responsibilityLabel
+          ? `${name} is now tagged as ${formatResponsibilityLabel(responsibilityLabel)}.`
+          : `${name}'s workspace responsibility label has been cleared.`,
+        color: 'green',
+      });
+    } catch (err) {
+      notifications.show({
+        title: 'Failed to update responsibility',
+        message: err instanceof Error ? err.message : 'Something went wrong',
+        color: 'red',
+      });
+    }
+  }
+
   async function handleRemove(memberId: string) {
     try {
       await removeMember.mutateAsync(memberId);
@@ -206,6 +269,9 @@ function MembersPage() {
   }
 
   const isOwner = user?.id === group?.owner_id;
+  const lifecycleMemberMap = new Map(
+    (lifecycle?.members ?? []).map((member) => [member.member_id, member]),
+  );
 
   async function handleTransferOwnership() {
     if (!transferTarget) return;
@@ -221,6 +287,52 @@ function MembersPage() {
     } catch (err) {
       notifications.show({
         title: 'Failed to transfer ownership',
+        message: err instanceof Error ? err.message : 'Something went wrong',
+        color: 'red',
+      });
+    }
+  }
+
+  async function handleScheduleDeparture() {
+    if (!departureTarget || !departureDate) return;
+    const isoDate = departureDate;
+
+    try {
+      await scheduleDeparture.mutateAsync({
+        memberId: departureTarget.memberId,
+        effectiveUntil: isoDate,
+      });
+      closeDeparture();
+      setDepartureTarget(null);
+      setDepartureDate(null);
+      notifications.show({
+        title: 'Departure scheduled',
+        message:
+          isoDate <= lifecycleReferenceDate
+            ? `${departureTarget.name} has been moved out of the group.`
+            : `${departureTarget.name} is scheduled to leave on ${formatProrationDate(isoDate)}.`,
+        color: 'green',
+      });
+    } catch (err) {
+      notifications.show({
+        title: 'Failed to schedule departure',
+        message: err instanceof Error ? err.message : 'Something went wrong',
+        color: 'red',
+      });
+    }
+  }
+
+  async function handleRestoreMember(memberId: string, name: string) {
+    try {
+      await restoreMemberAccess.mutateAsync(memberId);
+      notifications.show({
+        title: 'Member restored',
+        message: `${name} is active in the group again.`,
+        color: 'green',
+      });
+    } catch (err) {
+      notifications.show({
+        title: 'Failed to restore member',
         message: err instanceof Error ? err.message : 'Something went wrong',
         color: 'red',
       });
@@ -323,6 +435,27 @@ function MembersPage() {
   const canLeave = user && group?.members.some((m) => m.user_id === user.id && m.status === 'active') && (
     !isAdmin || adminCount > 1
   );
+  const incompleteChecklistItems = getIncompleteSetupChecklistItems(
+    group?.setup_checklist_progress,
+  );
+  const completedChecklistCount = countCompletedSetupChecklistItems(
+    group?.setup_checklist_progress,
+  );
+  const totalChecklistCount = Object.keys(group?.setup_checklist_progress ?? {}).length;
+  const departureTargetMember = departureTarget
+    ? group?.members.find((member) => member.id === departureTarget.memberId)
+    : null;
+  const departureTargetIsLastAdmin =
+    Boolean(departureTargetMember?.role === 'admin' && adminCount <= 1);
+  const responsibilityLabelMap = new Map(
+    workspaceGovernance.rolePresets
+      .filter((preset) => preset.responsibility_label)
+      .map((preset) => [preset.responsibility_label as string, preset.label]),
+  );
+  const currentMember = group?.members.find((member) => member.user_id === user?.id) ?? null;
+  const canApproveWorkspaceSpend = workspaceGovernance.isWorkspaceGroup
+    ? canMemberApproveWithPolicy(currentMember, group?.approval_policy)
+    : isAdmin;
 
   return (
     <Stack gap="lg">
@@ -348,22 +481,249 @@ function MembersPage() {
         </Group>
       )}
 
+      {lifecycle && (
+        <Paper className="commune-soft-panel" p="xl">
+          <Stack gap="lg">
+            <Group justify="space-between" align="flex-start">
+              <div>
+                <Text className="commune-section-heading">Member lifecycle</Text>
+                <Text size="sm" c="dimmed">
+                  Current cycle {formatLifecycleRange(lifecycle.cycle_start, lifecycle.cycle_end)}.
+                </Text>
+              </div>
+              {lifecycle.owner_transition_required && (
+                <Badge color="red" variant="light">
+                  Ownership handover needed
+                </Badge>
+              )}
+            </Group>
+
+            <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="md">
+              <Paper withBorder radius="md" p="md">
+                <Text size="sm" c="dimmed">Joiners this cycle</Text>
+                <Text fw={800} size="1.75rem" lh={1.1}>
+                  {lifecycle.joiners_this_cycle.length}
+                </Text>
+                <Text size="xs" c="dimmed">
+                  {lifecycle.joiners_this_cycle.length > 0
+                    ? lifecycle.joiners_this_cycle
+                        .slice(0, 2)
+                        .map((member) => member.user_name)
+                        .join(', ')
+                    : 'No new arrivals in this cycle'}
+                </Text>
+              </Paper>
+
+              <Paper withBorder radius="md" p="md">
+                <Text size="sm" c="dimmed">Departures this cycle</Text>
+                <Text fw={800} size="1.75rem" lh={1.1}>
+                  {lifecycle.departures_this_cycle.length}
+                </Text>
+                <Text size="xs" c="dimmed">
+                  {lifecycle.departures_this_cycle.length > 0
+                    ? lifecycle.departures_this_cycle
+                        .slice(0, 2)
+                        .map((member) => member.user_name)
+                        .join(', ')
+                    : 'Nobody leaving this cycle'}
+                </Text>
+              </Paper>
+
+              <Paper withBorder radius="md" p="md">
+                <Text size="sm" c="dimmed">Prorated members</Text>
+                <Text fw={800} size="1.75rem" lh={1.1}>
+                  {lifecycle.proration_members.length}
+                </Text>
+                <Text size="xs" c="dimmed">
+                  {lifecycle.proration_members.length > 0
+                    ? 'Billing will adjust for mid-cycle join/leave dates'
+                    : 'No proration adjustments this cycle'}
+                </Text>
+              </Paper>
+
+              <Paper withBorder radius="md" p="md">
+                <Text size="sm" c="dimmed">Admins on duty</Text>
+                <Text fw={800} size="1.75rem" lh={1.1}>
+                  {lifecycle.admin_count}
+                </Text>
+                <Text size="xs" c="dimmed">
+                  {lifecycle.scheduled_departures.length > 0
+                    ? `${lifecycle.scheduled_departures.length} scheduled departure${lifecycle.scheduled_departures.length === 1 ? '' : 's'}`
+                    : 'No scheduled departures'}
+                </Text>
+              </Paper>
+            </SimpleGrid>
+
+            {lifecycle.scheduled_departures.length > 0 && (
+              <Stack gap="xs">
+                <Text fw={600}>Scheduled departures</Text>
+                {lifecycle.scheduled_departures.map((member) => (
+                  <Group key={member.member_id} justify="space-between">
+                    <div>
+                      <Text size="sm" fw={600}>{member.user_name}</Text>
+                      <Text size="xs" c="dimmed">
+                        Leaving {member.effective_until ? formatProrationDate(member.effective_until) : 'soon'}
+                        {member.role === 'admin' ? ' · admin handover required before exit' : ''}
+                      </Text>
+                    </div>
+                    <Group gap="xs">
+                      {member.proration && (
+                        <Badge variant="light" color="orange">
+                          Prorated {member.proration.daysPresent}/{member.proration.totalDays} days
+                        </Badge>
+                      )}
+                      {isAdmin && (
+                        <Button
+                          size="compact-xs"
+                          variant="light"
+                          color="gray"
+                          onClick={() => handleRestoreMember(member.member_id, member.user_name)}
+                          loading={restoreMemberAccess.isPending}
+                        >
+                          Clear departure
+                        </Button>
+                      )}
+                    </Group>
+                  </Group>
+                ))}
+              </Stack>
+            )}
+
+            {(incompleteChecklistItems.length > 0 || lifecycle.owner_transition_required) && (
+              <Paper withBorder radius="md" p="md">
+                <Stack gap="sm">
+                  <Group justify="space-between" align="center">
+                    <div>
+                      <Text fw={600}>Handover checklist</Text>
+                      <Text size="sm" c="dimmed">
+                        Use the persisted setup checklist and cycle close before key admins or owners leave.
+                      </Text>
+                    </div>
+                    <Badge
+                      variant="light"
+                      color={incompleteChecklistItems.length > 0 ? 'yellow' : 'green'}
+                    >
+                      {completedChecklistCount}/{totalChecklistCount} setup done
+                    </Badge>
+                  </Group>
+                  {incompleteChecklistItems.slice(0, 3).map((item) => (
+                    <Text key={item.id} size="sm" c="dimmed">
+                      • {item.label}
+                    </Text>
+                  ))}
+                  {lifecycle.owner_transition_required && (
+                    <Text size="sm" c="red">
+                      • Ownership transfer must be completed before the owner can leave.
+                    </Text>
+                  )}
+                  <Group gap="xs">
+                    <Button
+                      component={Link}
+                      to={`/groups/${activeGroupId}/edit`}
+                      size="compact-xs"
+                      variant="light"
+                    >
+                      Open setup checklist
+                    </Button>
+                    <Button
+                      component={Link}
+                      to={`/groups/${activeGroupId}/close`}
+                      size="compact-xs"
+                      variant="default"
+                    >
+                      Open cycle close
+                    </Button>
+                  </Group>
+                </Stack>
+              </Paper>
+            )}
+          </Stack>
+        </Paper>
+      )}
+
+      {workspaceGovernance.isWorkspaceGroup && (
+        <Paper className="commune-soft-panel" p="xl">
+          <Stack gap="lg">
+            <Group justify="space-between" align="flex-start" gap="md">
+              <div>
+                <Text className="commune-section-heading">Workspace roles and approvals</Text>
+                <Text size="sm" c="dimmed">
+                  These labels help a workspace read cleanly without replacing the shared group member model.
+                </Text>
+              </div>
+              <Badge variant="light" color="blue">
+                {canApproveWorkspaceSpend ? 'You can approve' : `${workspaceGovernance.rolePresets.length} role presets`}
+              </Badge>
+            </Group>
+
+            <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md">
+              {workspaceGovernance.rolePresets.slice(0, 2).map((role) => (
+                <Paper key={role.label} withBorder radius="md" p="md">
+                  <Text fw={700}>{role.label}</Text>
+                  <Text size="sm" c="dimmed" mt={4}>
+                    {role.description}
+                  </Text>
+                  <Group gap="xs" mt="sm">
+                    {role.can_approve && (
+                      <Badge size="xs" variant="light" color="emerald">
+                        Can approve
+                      </Badge>
+                    )}
+                    {role.responsibility_label && (
+                      <Badge size="xs" variant="light" color="gray">
+                        {role.responsibility_label}
+                      </Badge>
+                    )}
+                  </Group>
+                </Paper>
+              ))}
+            </SimpleGrid>
+
+            <Paper withBorder radius="md" p="md">
+              <Group justify="space-between" align="flex-start" gap="sm">
+                <div>
+                  <Text fw={700}>Approval chain</Text>
+                  <Text size="sm" c="dimmed">
+                    {workspaceGovernance.approvalSummary}
+                  </Text>
+                </div>
+                <Group gap={6} wrap="wrap" justify="flex-end">
+                  {workspaceGovernance.responsibilityLabels.slice(0, 3).map((label) => (
+                    <Badge key={label} variant="light" color="gray">
+                      {label}
+                    </Badge>
+                  ))}
+                </Group>
+              </Group>
+              {canApproveWorkspaceSpend && (
+                <Text size="sm" c="dimmed" mt="sm">
+                  Your current member role or workspace responsibility label matches the configured approver policy.
+                </Text>
+              )}
+            </Paper>
+          </Stack>
+        </Paper>
+      )}
+
       {filteredMembers.length === 0 ? (
         <Text size="sm" c="dimmed">
           No members match the current top-bar search.
         </Text>
       ) : (
         <div className="commune-member-grid">
-          {filteredMembers.map((member) => (
-            <Paper
-              key={member.id}
-              className="commune-stat-card commune-member-card-link"
-              p="md"
-              radius="lg"
-              component={Link}
-              to={`/members/${member.user_id}`}
-              style={{ textDecoration: 'none', cursor: 'pointer' }}
-            >
+          {filteredMembers.map((member) => {
+            const lifecycleMember = lifecycleMemberMap.get(member.id);
+
+            return (
+              <Paper
+                key={member.id}
+                className="commune-stat-card commune-member-card-link"
+                p="md"
+                radius="lg"
+                component={Link}
+                to={`/members/${member.user_id}`}
+                style={{ textDecoration: 'none', cursor: 'pointer' }}
+              >
               <Group justify="space-between" align="center">
                 <Group wrap="nowrap">
                   <Avatar src={member.user.avatar_url} name={member.user.name} color="initials" size={44} />
@@ -378,6 +738,16 @@ function MembersPage() {
                       {isLinked(member.user_id) && (
                         <Badge size="xs" variant="light" color="pink" leftSection={<IconHeart size={10} />}>
                           {getPartnerName(member.user_id)}
+                        </Badge>
+                      )}
+                      {lifecycleMember?.scheduled_departure && lifecycleMember.effective_until && (
+                        <Badge size="xs" variant="light" color="orange">
+                          Leaving {formatProrationDate(lifecycleMember.effective_until)}
+                        </Badge>
+                      )}
+                      {lifecycleMember?.proration && (
+                        <Badge size="xs" variant="light" color="yellow">
+                          Prorated {lifecycleMember.proration.daysPresent}/{lifecycleMember.proration.totalDays}d
                         </Badge>
                       )}
                     </Group>
@@ -461,6 +831,12 @@ function MembersPage() {
                   <Badge color={member.user_id === group?.owner_id ? 'orange' : member.role === 'admin' ? 'dark' : 'gray'} variant="light">
                     {member.user_id === group?.owner_id ? 'Owner' : member.role}
                   </Badge>
+                  {workspaceGovernance.isWorkspaceGroup && member.responsibility_label && (
+                    <Badge color="indigo" variant="light">
+                      {responsibilityLabelMap.get(member.responsibility_label)
+                        ?? formatResponsibilityLabel(member.responsibility_label)}
+                    </Badge>
+                  )}
                   {isAdmin && member.user_id !== user?.id && (
                     <Menu shadow="md" width={220}>
                       <Menu.Target>
@@ -483,6 +859,42 @@ function MembersPage() {
                           >
                             Make member
                           </Menu.Item>
+                        )}
+                        {workspaceGovernance.isWorkspaceGroup && member.status === 'active' && (
+                          <>
+                            <Menu.Divider />
+                            <Menu.Label>Workspace responsibility</Menu.Label>
+                            {workspaceGovernance.rolePresets
+                              .filter((preset) => preset.responsibility_label)
+                              .map((preset) => (
+                                <Menu.Item
+                                  key={preset.key}
+                                  leftSection={<IconShieldCheck size={14} />}
+                                  disabled={member.responsibility_label === preset.responsibility_label}
+                                  onClick={() =>
+                                    handleResponsibilityChange(
+                                      member.id,
+                                      member.user.name,
+                                      preset.responsibility_label,
+                                    )
+                                  }
+                                >
+                                  {preset.label}
+                                  {member.responsibility_label === preset.responsibility_label
+                                    ? ' (current)'
+                                    : ''}
+                                </Menu.Item>
+                              ))}
+                            {member.responsibility_label && (
+                              <Menu.Item
+                                color="gray"
+                                leftSection={<IconRefresh size={14} />}
+                                onClick={() => handleResponsibilityChange(member.id, member.user.name, null)}
+                              >
+                                Clear responsibility label
+                              </Menu.Item>
+                            )}
+                          </>
                         )}
                         {isOwner && member.status === 'active' && (
                           <Menu.Item
@@ -514,6 +926,35 @@ function MembersPage() {
                             onClick={() => handleUnlink(member.id, member.linked_partner_id!)}
                           >
                             Unlink couple
+                          </Menu.Item>
+                        )}
+                        {member.status === 'active' && (
+                          <Menu.Item
+                            leftSection={<IconDoorExit size={14} />}
+                            onClick={() => {
+                              setDepartureTarget({
+                                memberId: member.id,
+                                userId: member.user_id,
+                                name: member.user.name,
+                                currentDate: member.effective_until,
+                                isOwner: member.user_id === group?.owner_id,
+                              });
+                              setDepartureDate(
+                                member.effective_until ?? lifecycleReferenceDate,
+                              );
+                              openDeparture();
+                            }}
+                          >
+                            {member.effective_until ? 'Edit leave date' : 'Schedule leave'}
+                          </Menu.Item>
+                        )}
+                        {(member.status === 'removed' || member.effective_until) && (
+                          <Menu.Item
+                            leftSection={<IconRefresh size={14} />}
+                            color="green"
+                            onClick={() => handleRestoreMember(member.id, member.user.name)}
+                          >
+                            {member.status === 'removed' ? 'Restore member' : 'Clear leave date'}
                           </Menu.Item>
                         )}
                         <Menu.Divider />
@@ -583,7 +1024,8 @@ function MembersPage() {
                 );
               })()}
             </Paper>
-          ))}
+            );
+          })}
 
           {isAdmin && (
             <div
@@ -693,6 +1135,108 @@ function MembersPage() {
               loading={transferOwnership.isPending}
             >
               Transfer ownership
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+
+      <Modal
+        opened={departureOpened}
+        onClose={() => {
+          closeDeparture();
+          setDepartureTarget(null);
+          setDepartureDate(null);
+        }}
+        title="Schedule member departure"
+        centered
+      >
+        <Stack gap="md">
+          <Text size="sm">
+            Set when <Text span fw={600}>{departureTarget?.name}</Text> should stop being included in
+            group operations and billing.
+          </Text>
+          {departureTarget?.isOwner && (
+            <Badge color="red" variant="light">
+              Transfer ownership first. Owners cannot be scheduled to leave.
+            </Badge>
+          )}
+          {(departureTarget?.isOwner || departureTargetIsLastAdmin || incompleteChecklistItems.length > 0) && (
+            <Alert
+              color="yellow"
+              variant="light"
+              icon={<IconChecklist size={16} />}
+              title="Handover checks before this departure"
+            >
+              <Stack gap={6}>
+                {departureTarget?.isOwner && (
+                  <Text size="sm">• Transfer ownership before scheduling this departure.</Text>
+                )}
+                {departureTargetIsLastAdmin && (
+                  <Text size="sm">• Promote another admin before the last admin leaves.</Text>
+                )}
+                {incompleteChecklistItems.slice(0, 2).map((item) => (
+                  <Text key={item.id} size="sm">
+                    • {item.label}
+                  </Text>
+                ))}
+                <Group gap="xs" mt={4}>
+                  <Button
+                    component={Link}
+                    to={`/groups/${activeGroupId}/edit`}
+                    size="compact-xs"
+                    variant="light"
+                    onClick={() => {
+                      closeDeparture();
+                      setDepartureTarget(null);
+                      setDepartureDate(null);
+                    }}
+                  >
+                    Open setup checklist
+                  </Button>
+                  <Button
+                    component={Link}
+                    to={`/groups/${activeGroupId}/close`}
+                    size="compact-xs"
+                    variant="default"
+                    onClick={() => {
+                      closeDeparture();
+                      setDepartureTarget(null);
+                      setDepartureDate(null);
+                    }}
+                  >
+                    Open cycle close
+                  </Button>
+                </Group>
+              </Stack>
+            </Alert>
+          )}
+          <DateInput
+            label="Leave date"
+            value={departureDate}
+            onChange={setDepartureDate}
+            clearable={false}
+          />
+          <Text size="xs" c="dimmed">
+            If you choose today or an earlier date, the member is removed immediately. Future dates keep them active until then and trigger proration for the current cycle.
+          </Text>
+          <Group justify="flex-end">
+            <Button
+              variant="default"
+              onClick={() => {
+                closeDeparture();
+                setDepartureTarget(null);
+                setDepartureDate(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              color="red"
+              onClick={handleScheduleDeparture}
+              loading={scheduleDeparture.isPending}
+              disabled={!departureDate || departureTarget?.isOwner}
+            >
+              Save departure
             </Button>
           </Group>
         </Stack>

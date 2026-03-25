@@ -1,6 +1,6 @@
 # Commune
 
-A hub-based communal living and shared expense platform. Each house, group, or shared space becomes its own personalised financial and social hub — combining member identity, shared financial breakdowns, permissions, chore management, and lightweight social coordination in one place.
+A hub-based operating system for ongoing shared spaces and recurring groups. Each home, studio, workspace, project, trip, collective, or other shared space becomes its own operational and financial hub — combining communal finance, member identity, permissions, responsibilities, shared context, and lightweight coordination in one place.
 
 ## Version
 
@@ -10,14 +10,14 @@ A hub-based communal living and shared expense platform. Each house, group, or s
 
 ## Vision
 
-Commune is not just an expense splitter. It's a **shared living operating system**.
+Commune is not just an expense splitter. It's a **shared space operating system**.
 
-Most finance or household apps go straight to function and skip identity. Commune gives each group:
+Most finance or group tools go straight to function and skip context. Commune gives each group:
 - **Clarity** — see the financial truth instantly
-- **Warmth** — the group feels like a place, not a spreadsheet
-- **Social texture** — members, roles, activity, announcements
+- **Context** — the group feels like a real place, not a spreadsheet
+- **Operational visibility** — members, roles, activity, notices, responsibilities
 - **Instant orientation** — answer "What do I owe?" in 3 seconds
-- **Emotional attachment** — custom photos, taglines, house identity
+- **Shared memory** — space identity, essential details, and what needs attention now
 
 > "The first viewport should answer five things without scrolling: What is this? Who is involved? What is happening financially? What do I need to know right now? Where do I tap next?"
 
@@ -33,7 +33,7 @@ Core expense management platform: authentication, groups, expenses, splits, recu
 ### V2 — Competitive Differentiation (Stages 1-4)
 *Features F20-F42. See [PRD V2](docs/PRD-V2.md)*
 
-Market research across Splitwise (1.8/5 Trustpilot), Tricount, Settle Up, Reddit, G2. Identified the gap: **nobody builds for people who live together**. Built:
+Market research across Splitwise (1.8/5 Trustpilot), Tricount, Settle Up, Reddit, G2. Identified the gap: **nobody builds for ongoing shared spaces that need both finance and coordination**. Built:
 - Dark mode, smart settlement algorithm, auto-split templates
 - Annual billing, Splitwise import, payment nudges
 - Group funds, member proration, budgets, couple mode
@@ -42,13 +42,23 @@ Market research across Splitwise (1.8/5 Trustpilot), Tricount, Settle Up, Reddit
 ### V3 — Hub System & Intelligence (Stages 5-7)
 *Features F43-F53+. See [PRD V3](docs/PRD-V3.md)*
 
-Fundamental shift from "expense tracker" to **hub-based communal living OS**:
+Fundamental shift from "expense tracker" to **hub-based operating system for shared spaces**:
 - Group Hub landing pages with cover photos, avatars, pinned messages
 - Member profile pages with settlement status and quick pay
 - Cross-Hub Command Centre with priorities and smart nudges
 - Expense approval flows, chore/task management
 - House essentials (Wi-Fi, bins, landlord, emergency contacts)
-- Group sub-types for specific living arrangements
+- Group sub-types for living, workspace, project, and trip contexts
+
+### V4 — Shared Spaces & Operator Layer (Stages 8-10, planned)
+*Planned features and phases. See [PRD V4](docs/PRD-V4.md)*
+
+Next direction: turn the hub system into a full operational layer for any recurring shared space:
+- Monthly close, cycle management, and member lifecycle flows
+- Configurable space essentials and templates by group type
+- Responsibility boards, recurring operating tasks, and mobile parity
+- Shared-core subtype intelligence for workspace, project, trip, and collective contexts
+- Operator tooling for people running multiple spaces
 
 ---
 
@@ -64,6 +74,53 @@ Fundamental shift from "expense tracker" to **hub-based communal living OS**:
 - Command Centre totals corrected for mixed currencies
 - Templates and funds validate inputs through shared core schemas
 - Group sub-types added for Home, Couple, Workspace, and Trip categories
+- Product strategy now explicitly broadens beyond homes into recurring shared spaces and groups
+
+---
+
+## Positioning
+
+Commune is home-first in its current implementation, but not home-only in its category.
+
+The product is for any ongoing shared space or recurring group where two or more people need:
+- Shared financial truth
+- Clear responsibilities
+- Group-level visibility
+- Important context in one place
+- Less operational friction
+
+That includes:
+- Shared homes and co-living houses
+- Studios and creative collectives
+- Coworking and shared offices
+- Project teams and production crews
+- Retreat groups and trips
+- Any recurring space where people gather, spend, and coordinate together
+
+Finance remains the backbone. The product grows around it into a broader operating layer.
+
+The important constraint is that Commune should stay one platform, not split into separate mini-products. Homes, coworking spaces, productions, trips, and other subtypes should mostly change defaults, setup guidance, templates, category ordering, and a few targeted behaviours while still using the same core finance, essentials, operations, onboarding, and lifecycle model.
+
+---
+
+## Next Direction
+
+The next product phase is not "more expense features." It is **single-space excellence first, then multi-space/operator depth**.
+
+Near-term priorities:
+- Monthly close and cycle management
+- Member lifecycle: join, leave, move out, proration, handover
+- Configurable space essentials by space type
+- Responsibility boards and recurring operating checklists
+- Mobile parity for hub and operations workflows
+
+Strategy guardrail:
+- Specialise by layering on top of the shared-space core, not by creating separate product branches for each subtype
+
+After that:
+- Selective workspace/project/trip specialisation on top of the shared core
+- Portfolio dashboards and operator permissions
+- Packaging for multi-space operators and managed communities
 
 ---
 
@@ -183,6 +240,8 @@ Six top-level types with sub-types and contextual UI:
 | **Trip** | Holiday, Weekend, Festival, Business, Backpacking | Multi-currency, quick entry, receipt scanning |
 | **Other** | — | All features available |
 
+The model is intentionally broader than households. The group abstraction is meant to support any recurring shared space with money, responsibilities, and coordination needs.
+
 ### Financial Tools (V2-V3)
 - Group budgets with category-level tracking and alert thresholds (80% warning, 100% over-budget)
 - Group funds / shared pots (contribute, track spending, progress bars)
@@ -233,18 +292,15 @@ Six top-level types with sub-types and contextual UI:
 |----------|----------|
 | [PRD V1.1](docs/PRD.md) | Original features F1-F19, data model, split logic, screen specs |
 | [PRD V2](docs/PRD-V2.md) | Competitive research, market data, V2 features F20-F42, pricing strategy |
-| [PRD V3](docs/PRD-V3.md) | Hub system F43-F53, quality review, remaining backlog, architecture decisions |
+| [PRD V3](docs/PRD-V3.md) | Hub system F43-F53, home-first implementation, quality review, architecture decisions |
+| [PRD V4](docs/PRD-V4.md) | Shared spaces roadmap, future phases, operator layer, priorities, success criteria |
 | [VISION.md](docs/VISION.md) | Product vision and philosophy |
 
-## Remaining Backlog
+## Roadmap
 
-| Priority | Feature | Status |
-|----------|---------|--------|
-| High | Receipt OCR (F26) | Not built |
-| High | Trip Pass pricing (F30) | Not built |
-| High | Mobile app parity | Partial |
-| Medium | Offline expense entry (F31) | Partial |
-| Medium | Item-level splitting (F27) | Not built |
-| Low | Shopping lists (F42) | Not built |
-| Low | Open Banking (F39) | Not built |
-| Low | In-app settlement (F40) | Not built |
+| Phase | Focus | Example Features |
+|------|-------|------------------|
+| V4 / Stage 8 | Single-space operations | Monthly close, member lifecycle, shared operations, configurable essentials, templates |
+| V4 / Stage 9 | Selective type expansion | Workspace/project/trip specialization only where the shared model is insufficient |
+| V4 / Stage 10 | Operator layer | Multi-space dashboards, operator permissions, portfolio packaging |
+| Continuing backlog | Finance depth | Receipt OCR, item-level splitting, offline writes, in-app settlement, open banking |

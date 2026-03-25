@@ -18,7 +18,7 @@ import { ExpenseCategory, SplitMethod } from '@commune/types';
 import { formatCurrency } from '@commune/utils';
 import { useAuthStore } from '@/stores/auth';
 import { useGroupStore } from '@/stores/group';
-import { useCreateExpense } from '@/hooks/use-expenses';
+import { toWorkspaceExpenseContextPayload, useCreateExpense } from '@/hooks/use-expenses';
 import { useGroup } from '@/hooks/use-groups';
 import { DateField } from '@/components/ui';
 import { getErrorMessage } from '@/lib/errors';
@@ -87,6 +87,10 @@ export default function NewExpenseScreen() {
     ExpenseCategory.MISCELLANEOUS
   );
   const [dueDate, setDueDate] = useState<Date | null>(null);
+  const [vendorName, setVendorName] = useState('');
+  const [invoiceReference, setInvoiceReference] = useState('');
+  const [invoiceDate, setInvoiceDate] = useState<Date | null>(null);
+  const [paymentDueDate, setPaymentDueDate] = useState<Date | null>(null);
   const [isRecurring, setIsRecurring] = useState(false);
   const [recurrenceType, setRecurrenceType] = useState('monthly');
   const [splitMethod, setSplitMethod] = useState<SplitMethod>(SplitMethod.EQUAL);
@@ -107,7 +111,7 @@ export default function NewExpenseScreen() {
   const numericAmount = Number(amount) || 0;
 
   useEffect(() => {
-    if (!group || activeMemberIds.length === 0) {
+    if (!group?.id || activeMemberIds.length === 0) {
       return;
     }
 
@@ -166,6 +170,13 @@ export default function NewExpenseScreen() {
       amount: Number(customAmounts[userId]) || 0,
     }));
   }, [customAmounts, numericAmount, participantIds, percentages, splitMethod]);
+  const workspaceApprovalThreshold =
+    group?.type === 'workspace' ? group.approval_threshold : null;
+  const workspaceApprovalNeedsReview =
+    workspaceApprovalThreshold != null && numericAmount > workspaceApprovalThreshold;
+  const workspaceApprovalMessage = workspaceApprovalThreshold != null
+    ? `Expenses above ${formatCurrency(workspaceApprovalThreshold, group?.currency ?? 'GBP')} move into admin approval before they settle.`
+    : 'No approval threshold is set for this workspace yet.';
 
   function toggleParticipant(userId: string) {
     hapticLight();
@@ -190,9 +201,16 @@ export default function NewExpenseScreen() {
       currency: group.currency,
       due_date: dueDate ? dueDate.toISOString().split('T')[0]! : '',
       recurrence_type: isRecurring ? recurrenceType : 'none',
+      recurrence_interval: isRecurring ? 1 : undefined,
       split_method: splitMethod,
       paid_by_user_id: paidByUserId ?? undefined,
       participant_ids: participantIds,
+      ...toWorkspaceExpenseContextPayload({
+        vendor_name: vendorName,
+        invoice_reference: invoiceReference,
+        invoice_date: invoiceDate ? invoiceDate.toISOString().split('T')[0]! : '',
+        payment_due_date: paymentDueDate ? paymentDueDate.toISOString().split('T')[0]! : '',
+      }),
     };
 
     const validation = createExpenseSchema.safeParse(basePayload);
@@ -434,6 +452,51 @@ export default function NewExpenseScreen() {
         />
       </View>
 
+      {group.type === 'workspace' ? (
+        <View
+          style={{
+            backgroundColor: '#FFFFFF',
+            borderRadius: 16,
+            padding: 20,
+            marginBottom: 16,
+            shadowColor: '#000',
+            shadowOpacity: 0.04,
+            shadowRadius: 8,
+            shadowOffset: { width: 0, height: 2 },
+          }}
+        >
+          <Text style={{ fontSize: 16, fontWeight: '600', color: '#171b24', marginBottom: 4 }}>
+            Approval chain
+          </Text>
+          <Text style={{ fontSize: 14, lineHeight: 20, color: '#6B7280' }}>
+            {workspaceApprovalMessage}
+          </Text>
+          {workspaceApprovalThreshold != null && numericAmount > 0 ? (
+            <View
+              style={{
+                marginTop: 12,
+                paddingHorizontal: 12,
+                paddingVertical: 10,
+                borderRadius: 14,
+                backgroundColor: workspaceApprovalNeedsReview ? '#FFF7ED' : '#ECFDF5',
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 12,
+                  fontWeight: '600',
+                  color: workspaceApprovalNeedsReview ? '#C2410C' : '#2d6a4f',
+                }}
+              >
+                {workspaceApprovalNeedsReview
+                  ? 'This amount will be routed for approval after save.'
+                  : 'This amount stays below the approval line.'}
+              </Text>
+            </View>
+          ) : null}
+        </View>
+      ) : null}
+
       {/* Title, category, date, description card */}
       <View
         style={{
@@ -535,6 +598,61 @@ export default function NewExpenseScreen() {
 
         <View style={{ height: 1, backgroundColor: '#F0F0F0', marginVertical: 16 }} />
 
+        {group.type === 'workspace' ? (
+          <>
+            <Text style={{ fontSize: 14, fontWeight: '600', color: '#374151', marginBottom: 6 }}>
+              Workspace context
+            </Text>
+            <Text style={{ fontSize: 13, color: '#6B7280', lineHeight: 18, marginBottom: 12 }}>
+              Vendor, invoice, and due-date details keep workspace subscriptions and tool costs visible later.
+            </Text>
+            <TextInput
+              style={{
+                backgroundColor: '#F3F4F6',
+                borderRadius: 12,
+                height: 50,
+                paddingHorizontal: 16,
+                fontSize: 15,
+                color: '#171b24',
+                marginBottom: 12,
+              }}
+              placeholder="Vendor / supplier"
+              placeholderTextColor="#9CA3AF"
+              value={vendorName}
+              onChangeText={setVendorName}
+            />
+            <TextInput
+              style={{
+                backgroundColor: '#F3F4F6',
+                borderRadius: 12,
+                height: 50,
+                paddingHorizontal: 16,
+                fontSize: 15,
+                color: '#171b24',
+                marginBottom: 12,
+              }}
+              placeholder="Invoice reference"
+              placeholderTextColor="#9CA3AF"
+              value={invoiceReference}
+              onChangeText={setInvoiceReference}
+            />
+            <DateField
+              label="Invoice date"
+              value={invoiceDate}
+              onChange={setInvoiceDate}
+              hint="When the vendor issued the bill."
+            />
+            <DateField
+              label="Payment due date"
+              value={paymentDueDate}
+              onChange={setPaymentDueDate}
+              hint="Optional vendor payment deadline."
+            />
+
+            <View style={{ height: 1, backgroundColor: '#F0F0F0', marginVertical: 16 }} />
+          </>
+        ) : null}
+
         {/* Recurring toggle */}
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
           <View style={{ flex: 1, marginRight: 12 }}>
@@ -542,7 +660,7 @@ export default function NewExpenseScreen() {
               Recurring expense
             </Text>
             <Text style={{ fontSize: 13, color: '#6B7280', marginTop: 2 }}>
-              Turn this on for subscriptions or bills that repeat.
+              Turn this on for subscriptions, software, or bills that repeat.
             </Text>
           </View>
           <Switch

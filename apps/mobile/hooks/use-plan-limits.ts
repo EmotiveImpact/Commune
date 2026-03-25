@@ -19,7 +19,10 @@ export function usePlanLimits(userId: string) {
   return useMemo(() => {
     const plan = subscription?.plan ?? SubscriptionPlan.STANDARD;
     const isActive = !subscription || subscription.status === 'active' || subscription.status === 'trialing';
-    const limits = PLAN_LIMITS[plan] ?? PLAN_LIMITS.standard;
+    const limits =
+      plan in PLAN_LIMITS
+        ? PLAN_LIMITS[plan as keyof typeof PLAN_LIMITS]
+        : PLAN_LIMITS.standard;
 
     const currentGroups = groups?.length ?? 0;
     const currentMembers = activeGroup?.members?.filter((m) => m.status !== 'removed').length ?? 0;

@@ -9,13 +9,22 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import {
+  countCompletedSetupChecklistItems,
+  getIncompleteSetupChecklistItems,
+} from '@commune/core';
 import { hapticLight, hapticMedium } from '@/lib/haptics';
-import { formatCurrency, getMonthKey } from '@commune/utils';
+import { formatCurrency, formatDate, getMonthKey, isOverdue, isUpcoming } from '@commune/utils';
 import { useAuthStore } from '@/stores/auth';
 import { useGroupStore } from '@/stores/group';
 import { useThemeStore } from '@/stores/theme';
 import { useDashboardStats } from '@/hooks/use-dashboard';
-import { useGroupExpenses } from '@/hooks/use-expenses';
+import {
+  getExpenseBillingDueDate,
+  hasWorkspaceExpenseContext,
+  isWorkspaceBillingExpense,
+  useGroupExpenses,
+} from '@/hooks/use-expenses';
 import { useGroup, usePendingInvites, useUserGroups } from '@/hooks/use-groups';
 import { useRecurringGenerationOnMount } from '@/hooks/use-recurring';
 import { useSubscription } from '@/hooks/use-subscriptions';
@@ -63,12 +72,14 @@ const QUICK_ACTIONS: Array<{
 
 /* ---- Status chip config ------------------------------------------------ */
 
-const STATUS_STYLE: Record<string, { bg: string; fg: string }> = {
+const STATUS_STYLE = {
   PAID: { bg: '#ECFDF5', fg: '#059669' },
   OVERDUE: { bg: '#FEF2F2', fg: '#DC2626' },
   DUE: { bg: '#F3F4F6', fg: '#6B7280' },
   PARTIAL: { bg: '#FFF7ED', fg: '#D97706' },
-};
+} as const;
+
+type StatusStyleKey = keyof typeof STATUS_STYLE;
 
 /* ---- Helpers ----------------------------------------------------------- */
 
@@ -97,11 +108,13 @@ function getRecentMonthKeys(count: number) {
   return keys;
 }
 
-function getExpenseStatus(expense: {
-  due_date: string;
-  payment_records?: Array<{ status: string }>;
-  participants?: Array<unknown>;
-}): { label: string; styleKey: string } {
+function getExpenseStatus(
+  dueDate: string,
+  expense: {
+    payment_records?: Array<{ status: string }>;
+    participants?: Array<unknown>;
+  },
+): { label: string; styleKey: StatusStyleKey } {
   const records = expense.payment_records ?? [];
   const participantCount = expense.participants?.length ?? 1;
   const paidCount = records.filter(
@@ -111,7 +124,7 @@ function getExpenseStatus(expense: {
   if (paidCount >= participantCount && participantCount > 0) {
     return { label: 'PAID', styleKey: 'PAID' };
   }
-  const isOverdue = new Date(expense.due_date) < new Date();
+  const isOverdue = new Date(dueDate) < new Date();
   if (isOverdue && paidCount < participantCount) {
     return { label: 'OVERDUE', styleKey: 'OVERDUE' };
   }
@@ -267,7 +280,8 @@ export default function DashboardScreen() {
       [...expenses]
         .sort(
           (left, right) =>
-            new Date(right.due_date).getTime() - new Date(left.due_date).getTime(),
+            new Date(getExpenseBillingDueDate(right) ?? right.due_date).getTime() -
+            new Date(getExpenseBillingDueDate(left) ?? left.due_date).getTime(),
         )
         .slice(0, 5),
     [expenses],
@@ -277,7 +291,7 @@ export default function DashboardScreen() {
     const keys = getRecentMonthKeys(6);
     const totals = new Map(keys.map((key) => [key, 0]));
     for (const expense of expenses) {
-      const key = expense.due_date.slice(0, 7);
+      const key = (getExpenseBillingDueDate(expense) ?? expense.due_date).slice(0, 7);
       if (totals.has(key)) {
         totals.set(key, (totals.get(key) ?? 0) + expense.amount);
       }
@@ -294,6 +308,55 @@ export default function DashboardScreen() {
       })),
     };
   }, [expenses, month]);
+
+  const workspaceBillingSummary = useMemo(() => {
+    if (group?.type !== 'workspace') {
+      return null;
+    }
+
+    const workspaceExpenses = expenses.filter((expense) => isWorkspaceBillingExpense(expense, group.type));
+
+    const recurringCount = workspaceExpenses.filter((expense) => expense.recurrence_type !== 'none').length;
+    const linkedCount = workspaceExpenses.filter((expense) => hasWorkspaceExpenseContext(expense)).length;
+    const toolCostCount = workspaceExpenses.filter((expense) =>
+      expense.category === 'work_tools' || expense.category === 'internet'
+    ).length;
+    const utilityCount = workspaceExpenses.filter((expense) =>
+      expense.category === 'utilities' || expense.category === 'rent' || expense.category === 'cleaning'
+    ).length;
+    const dueSoonCount = workspaceExpenses.filter((expense) => {
+      const dueDate = getExpenseBillingDueDate(expense) ?? expense.due_date;
+      return isUpcoming(dueDate, 14);
+    }).length;
+    const overdueCount = workspaceExpenses.filter((expense) => {
+      const dueDate = getExpenseBillingDueDate(expense) ?? expense.due_date;
+      return isOverdue(dueDate);
+    }).length;
+
+    return {
+      recurringCount,
+      linkedCount,
+      toolCostCount,
+      utilityCount,
+      dueSoonCount,
+      overdueCount,
+    };
+  }, [expenses, group?.type]);
+
+  const subscriptionLabel = useMemo(() => {
+    if (!subscription) {
+      return 'No active subscription';
+    }
+
+    const plan = subscription.plan.charAt(0).toUpperCase() + subscription.plan.slice(1);
+    if (subscription.status === 'trialing') {
+      return `Trial ends ${formatDate(subscription.trial_ends_at)}`;
+    }
+    if (subscription.status === 'past_due') {
+      return `Payment due ${formatDate(subscription.current_period_end)}`;
+    }
+    return `${plan} · ${subscription.status}`;
+  }, [subscription]);
 
   /* ---- Loading / Error / Empty ----------------------------------------- */
 
@@ -340,6 +403,13 @@ export default function DashboardScreen() {
   const yourShare = stats?.your_share ?? 0;
   const amountPaid = stats?.amount_paid ?? 0;
   const paidPct = yourShare > 0 ? Math.min(Math.round((amountPaid / yourShare) * 100), 100) : 0;
+  const completedChecklistCount = countCompletedSetupChecklistItems(
+    group.setup_checklist_progress,
+  );
+  const totalChecklistCount = Object.keys(group.setup_checklist_progress ?? {}).length;
+  const incompleteChecklistItems = getIncompleteSetupChecklistItems(
+    group.setup_checklist_progress,
+  );
 
   /* ---- Render ---------------------------------------------------------- */
 
@@ -491,6 +561,223 @@ export default function DashboardScreen() {
         </View>
       </View>
 
+      {group.type === 'workspace' && workspaceBillingSummary ? (
+        <View
+          style={{
+            backgroundColor: isDark ? '#111827' : '#FFFFFF',
+            borderRadius: 20,
+            padding: 20,
+            marginBottom: 24,
+            ...cardShadow,
+          }}
+        >
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <View
+              style={{
+                backgroundColor: '#E6F6EE',
+                alignSelf: 'flex-start',
+                paddingHorizontal: 10,
+                paddingVertical: 4,
+                borderRadius: 8,
+              }}
+            >
+              <Text style={{ fontSize: 11, fontWeight: '700', color: '#2d6a4f', letterSpacing: 0.5 }}>
+                WORKSPACE BILLING
+              </Text>
+            </View>
+            <Text style={{ fontSize: 12, fontWeight: '600', color: textSecondary }}>
+              {subscriptionLabel}
+            </Text>
+          </View>
+
+          <Text style={{ fontSize: 20, fontWeight: '700', color: textPrimary, marginTop: 12 }}>
+            {workspaceBillingSummary.recurringCount} recurring bills · {workspaceBillingSummary.linkedCount} vendor-linked
+          </Text>
+          <Text style={{ fontSize: 13, color: textSecondary, marginTop: 6, lineHeight: 18 }}>
+            Keep software, tools, and vendor invoices visible so shared workspace costs do not get buried.
+            {'\n'}
+            {workspaceBillingSummary.toolCostCount} tool costs · {workspaceBillingSummary.utilityCount} rent, utilities, and cleaning
+          </Text>
+
+          <View style={{ flexDirection: 'row', gap: 10, marginTop: 16, flexWrap: 'wrap' }}>
+            <View style={{ flex: 1, minWidth: 92, backgroundColor: isDark ? '#1F2937' : '#F8FAFC', borderRadius: 16, padding: 14 }}>
+              <Text style={{ fontSize: 12, color: textSecondary }}>Tool costs</Text>
+              <Text style={{ marginTop: 4, fontSize: 22, fontWeight: '700', color: textPrimary }}>
+                {workspaceBillingSummary.toolCostCount}
+              </Text>
+            </View>
+            <View style={{ flex: 1, minWidth: 92, backgroundColor: isDark ? '#1F2937' : '#F8FAFC', borderRadius: 16, padding: 14 }}>
+              <Text style={{ fontSize: 12, color: textSecondary }}>Due soon</Text>
+              <Text style={{ marginTop: 4, fontSize: 22, fontWeight: '700', color: textPrimary }}>
+                {workspaceBillingSummary.dueSoonCount}
+              </Text>
+            </View>
+            <View style={{ flex: 1, minWidth: 92, backgroundColor: isDark ? '#1F2937' : '#F8FAFC', borderRadius: 16, padding: 14 }}>
+              <Text style={{ fontSize: 12, color: textSecondary }}>Overdue</Text>
+              <Text style={{ marginTop: 4, fontSize: 22, fontWeight: '700', color: textPrimary }}>
+                {workspaceBillingSummary.overdueCount}
+              </Text>
+            </View>
+          </View>
+
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => { hapticMedium(); router.push('/recurring'); }}
+            style={{
+              marginTop: 16,
+              backgroundColor: '#2d6a4f',
+              borderRadius: 16,
+              height: 48,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Text style={{ fontSize: 15, fontWeight: '700', color: '#FFFFFF' }}>
+              Review recurring bills
+            </Text>
+          </TouchableOpacity>
+        </View>
+      ) : null}
+
+      {totalChecklistCount > 0 && (
+        <View
+          style={{
+            backgroundColor: incompleteChecklistItems.length > 0 ? '#FFF7ED' : '#ECFDF5',
+            borderRadius: 20,
+            padding: 20,
+            marginBottom: 24,
+            ...cardShadow,
+          }}
+        >
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'flex-start',
+              justifyContent: 'space-between',
+              gap: 12,
+            }}
+          >
+            <View style={{ flex: 1 }}>
+              <Text
+                style={{
+                  fontSize: 18,
+                  fontWeight: '700',
+                  color: incompleteChecklistItems.length > 0 ? '#9A3412' : '#166534',
+                }}
+              >
+                {incompleteChecklistItems.length > 0 ? 'Setup still needs attention' : 'Setup is in good shape'}
+              </Text>
+              <Text
+                style={{
+                  marginTop: 6,
+                  fontSize: 14,
+                  lineHeight: 22,
+                  color: incompleteChecklistItems.length > 0 ? '#9A3412' : '#166534',
+                }}
+              >
+                {completedChecklistCount}/{totalChecklistCount} setup steps complete for {group.name}.
+              </Text>
+            </View>
+            <View
+              style={{
+                paddingHorizontal: 10,
+                paddingVertical: 5,
+                borderRadius: 16,
+                backgroundColor: incompleteChecklistItems.length > 0 ? '#FED7AA' : '#BBF7D0',
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 12,
+                  fontWeight: '700',
+                  color: incompleteChecklistItems.length > 0 ? '#9A3412' : '#166534',
+                }}
+              >
+                {completedChecklistCount}/{totalChecklistCount}
+              </Text>
+            </View>
+          </View>
+
+          {incompleteChecklistItems.slice(0, 2).map((item) => (
+            <Text
+              key={item.id}
+              style={{
+                marginTop: 10,
+                fontSize: 13,
+                color: incompleteChecklistItems.length > 0 ? '#9A3412' : '#166534',
+              }}
+            >
+              • {item.label}
+            </Text>
+          ))}
+
+          <View style={{ flexDirection: 'row', gap: 12, marginTop: 16 }}>
+            <TouchableOpacity
+              style={{
+                flex: 1,
+                backgroundColor: '#FFFFFF',
+                borderRadius: 18,
+                paddingVertical: 12,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+              activeOpacity={0.7}
+              onPress={() => {
+                hapticMedium();
+                router.push('/group-edit');
+              }}
+            >
+              <Text style={{ fontSize: 14, fontWeight: '600', color: '#374151' }}>
+                Open setup
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={{
+                flex: 1,
+                backgroundColor: '#1f2330',
+                borderRadius: 18,
+                paddingVertical: 12,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+              activeOpacity={0.7}
+              onPress={() => {
+                hapticMedium();
+                router.push('/group-close');
+              }}
+            >
+              <Text style={{ fontSize: 14, fontWeight: '600', color: '#FFFFFF' }}>
+                Review close
+              </Text>
+            </TouchableOpacity>
+          </View>
+          <View style={{ flexDirection: 'row', gap: 16, marginTop: 14, flexWrap: 'wrap' }}>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => {
+                hapticLight();
+                router.push('/members');
+              }}
+            >
+              <Text style={{ fontSize: 13, fontWeight: '600', color: '#2d6a4f' }}>
+                View members
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => {
+                hapticLight();
+                router.push('/operations');
+              }}
+            >
+              <Text style={{ fontSize: 13, fontWeight: '600', color: '#2d6a4f' }}>
+                Open operations
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
       {/* ================================================================== */}
       {/* 2. Quick Actions — 4 circles (72px, bg #F3F4F6, borderRadius 36)  */}
       {/* ================================================================== */}
@@ -582,7 +869,8 @@ export default function DashboardScreen() {
           <View style={{ gap: 10 }}>
             {recentExpenses.map((expense) => {
               const cat = getCat(expense.category);
-              const status = getExpenseStatus(expense);
+              const dueDate = getExpenseBillingDueDate(expense) ?? expense.due_date;
+              const status = getExpenseStatus(dueDate, expense);
               const isPaid = status.styleKey === 'PAID';
               const chipStyle = STATUS_STYLE[status.styleKey] ?? STATUS_STYLE.DUE;
 
@@ -628,7 +916,7 @@ export default function DashboardScreen() {
                       {expense.title}
                     </Text>
                     <Text style={{ fontSize: 13, color: '#6B7280', marginTop: 3 }}>
-                      {formatRelativeDate(expense.due_date)}
+                      {formatRelativeDate(dueDate)}
                     </Text>
                   </View>
 

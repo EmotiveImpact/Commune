@@ -5,6 +5,9 @@ import {
   updatePaymentMethod,
   deletePaymentMethod,
 } from '@commune/api';
+import { settlementKeys } from './use-settlement';
+import { crossGroupKeys } from './use-cross-group';
+import { groupHubKeys } from './use-group-hub';
 
 const KEYS = {
   methods: (userId: string) => ['payment-methods', userId] as const,
@@ -30,6 +33,9 @@ export function useCreatePaymentMethod(userId: string) {
     }) => createPaymentMethod(userId, input),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: KEYS.methods(userId) });
+      void qc.invalidateQueries({ queryKey: settlementKeys.all });
+      void qc.invalidateQueries({ queryKey: crossGroupKeys.all });
+      void qc.invalidateQueries({ queryKey: groupHubKeys.all });
     },
   });
 }
@@ -49,6 +55,9 @@ export function useUpdatePaymentMethod(userId: string) {
     }) => updatePaymentMethod(input.methodId, userId, input.data),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: KEYS.methods(userId) });
+      void qc.invalidateQueries({ queryKey: settlementKeys.all });
+      void qc.invalidateQueries({ queryKey: crossGroupKeys.all });
+      void qc.invalidateQueries({ queryKey: groupHubKeys.all });
     },
   });
 }
@@ -59,6 +68,9 @@ export function useDeletePaymentMethod(userId: string) {
     mutationFn: (methodId: string) => deletePaymentMethod(methodId, userId),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: KEYS.methods(userId) });
+      void qc.invalidateQueries({ queryKey: settlementKeys.all });
+      void qc.invalidateQueries({ queryKey: crossGroupKeys.all });
+      void qc.invalidateQueries({ queryKey: groupHubKeys.all });
     },
   });
 }

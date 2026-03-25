@@ -107,3 +107,25 @@ export const SubscriptionStatus = {
 } as const;
 export type SubscriptionStatus =
   (typeof SubscriptionStatus)[keyof typeof SubscriptionStatus];
+
+// ─── Shared Space Ops ──────────────────────────────────────────────────────
+
+export const OperationCategory = {
+  CLEANING: 'cleaning',
+  SUPPLIES: 'supplies',
+  ADMIN: 'admin',
+  SETUP: 'setup',
+  SHUTDOWN: 'shutdown',
+  MAINTENANCE: 'maintenance',
+  OTHER: 'other',
+} as const;
+export type OperationCategory =
+  (typeof OperationCategory)[keyof typeof OperationCategory];
+
+export const OperationTaskType = {
+  RECURRING: 'recurring',
+  ONE_OFF: 'one_off',
+  CHECKLIST: 'checklist',
+} as const;
+export type OperationTaskType =
+  (typeof OperationTaskType)[keyof typeof OperationTaskType];

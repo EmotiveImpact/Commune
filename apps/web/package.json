@@ -6,7 +6,10 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "lint": "eslint src vite.config.ts",
     "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -25,6 +28,7 @@
     "@tanstack/react-router": "^1",
     "dayjs": "^1.11.20",
     "framer-motion": "^12.38.0",
+    "jszip": "^3.10.1",
     "react": "^19",
     "react-dom": "^19",
     "recharts": "^3.8.0",
@@ -33,10 +37,15 @@
   },
   "devDependencies": {
     "@tanstack/router-plugin": "^1",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^4",
+    "jsdom": "^29.0.1",
     "typescript": "^5.7",
-    "vite": "^6"
+    "vite": "^6",
+    "vitest": "^3"
   }
 }

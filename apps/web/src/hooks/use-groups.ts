@@ -13,10 +13,15 @@ import {
   transferOwnership,
   updateGroup,
   updateMemberEffectiveDates,
+  updateMemberResponsibilityLabel,
   updateMemberRole,
   validateInviteToken,
 } from '@commune/api';
-import type { CreateGroupInput } from '@commune/core';
+import type { CreateGroupInput, GroupApprovalPolicyInput } from '@commune/core';
+import type {
+  SpaceEssentials,
+  SetupChecklistProgress,
+} from '@commune/types';
 
 export const groupKeys = {
   all: ['groups'] as const,
@@ -82,8 +87,31 @@ export function useAcceptInvite() {
 export function useUpdateMemberRole(groupId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ memberId, role }: { memberId: string; role: 'admin' | 'member' }) =>
-      updateMemberRole(memberId, role),
+    mutationFn: ({
+      memberId,
+      role,
+      responsibilityLabel,
+    }: {
+      memberId: string;
+      role: 'admin' | 'member';
+      responsibilityLabel?: string | null;
+    }) => updateMemberRole(memberId, role, responsibilityLabel),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: groupKeys.detail(groupId) });
+    },
+  });
+}
+
+export function useUpdateMemberResponsibility(groupId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      memberId,
+      responsibilityLabel,
+    }: {
+      memberId: string;
+      responsibilityLabel: string | null;
+    }) => updateMemberResponsibilityLabel(memberId, responsibilityLabel),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: groupKeys.detail(groupId) });
     },
@@ -157,13 +185,17 @@ export function useUpdateGroup(groupId: string) {
       name?: string;
       type?: string;
       currency?: string;
+      description?: string | null;
       cycle_date?: number;
       nudges_enabled?: boolean;
       tagline?: string;
       pinned_message?: string | null;
       subtype?: string | null;
       house_info?: Record<string, string> | null;
+      space_essentials?: SpaceEssentials | null;
+      setup_checklist_progress?: SetupChecklistProgress | null;
       approval_threshold?: number | null;
+      approval_policy?: GroupApprovalPolicyInput | null;
       avatar_url?: string;
       cover_url?: string;
     }) => updateGroup(groupId, updates),

@@ -5,6 +5,7 @@ import {
   Checkbox,
   Group,
   Modal,
+  Paper,
   Select,
   Stack,
   Table,
@@ -12,22 +13,30 @@ import {
   Tooltip,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import { IconCheck, IconDownload, IconFileTypePdf, IconPlus, IconReceipt, IconTrash } from '@tabler/icons-react';
+import { IconCheck, IconDownload, IconFileTypePdf, IconPlus, IconReceipt, IconShieldCheck, IconTrash } from '@tabler/icons-react';
 import { DatePickerInput, DatesProvider } from '@mantine/dates';
 import 'dayjs/locale/en-gb';
 import { useEffect, useMemo, useState } from 'react';
 import { setPageTitle } from '../../../utils/seo';
 import { ExpenseCategory } from '@commune/types';
 import { formatCurrency, formatDate, getMonthKey, isOverdue } from '@commune/utils';
-import { generateExpenseCSV, downloadCSV } from '../../../utils/export-csv';
+import { generateExpenseCSV, downloadCSV, getLocalDateKey } from '../../../utils/export-csv';
 import { downloadStatement } from '@commune/api';
+import { canMemberApproveWithPolicy } from '@commune/core';
 import { useSubscription } from '../../../hooks/use-subscriptions';
 import { usePlanLimits } from '../../../hooks/use-plan-limits';
 import { IconAlertTriangle, IconX } from '@tabler/icons-react';
 import { useGroupStore } from '../../../stores/group';
 import { useSearchStore } from '../../../stores/search';
 import { useGroup } from '../../../hooks/use-groups';
-import { useGroupExpenses, useBatchArchive, useBatchMarkPaid } from '../../../hooks/use-expenses';
+import { useWorkspaceGovernance } from '../../../hooks/use-workspace-governance';
+import {
+  getWorkspaceExpenseContext,
+  hasWorkspaceExpenseContext,
+  useGroupExpenses,
+  useBatchArchive,
+  useBatchMarkPaid,
+} from '../../../hooks/use-expenses';
 import { usePendingApprovals, useApproveExpense, useRejectExpense } from '../../../hooks/use-approvals';
 import { useAuthStore } from '../../../stores/auth';
 import { ExpenseListSkeleton } from '../../../components/page-skeleton';
@@ -71,8 +80,59 @@ function formatCategoryLabel(category: string) {
 }
 
 type StatusFilter = 'all' | 'open' | 'overdue' | 'settled';
+type WorkspaceViewFilter = 'all' | 'linked' | 'missing' | 'due-soon';
 
-function ExpensesPage() {
+const workspaceViewOptions: Array<{ value: WorkspaceViewFilter; label: string }> = [
+  { value: 'all', label: 'All workspace expenses' },
+  { value: 'linked', label: 'Linked invoices' },
+  { value: 'missing', label: 'Missing details' },
+  { value: 'due-soon', label: 'Due soon' },
+];
+
+function getEffectiveWorkspaceDueDate(expense: Parameters<typeof getWorkspaceExpenseContext>[0]) {
+  const context = getWorkspaceExpenseContext(expense);
+  return context.payment_due_date || (expense && typeof expense === 'object' && 'due_date' in expense
+    ? String((expense as { due_date?: string }).due_date ?? '')
+    : '');
+}
+
+function isExpenseSettled(expense: {
+  payment_records?: Array<{ status: string }>;
+  participants?: Array<unknown>;
+}) {
+  const paidCount = expense.payment_records?.filter((payment) => payment.status !== 'unpaid').length ?? 0;
+  const totalParticipants = expense.participants?.length ?? 0;
+  return totalParticipants > 0 && paidCount === totalParticipants;
+}
+
+function isDueSoon(dateKey: string) {
+  if (!dateKey) return false;
+  const date = new Date(dateKey);
+  if (Number.isNaN(date.getTime())) return false;
+  const today = new Date();
+  const todayKey = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
+  const sevenDaysAhead = todayKey + 7 * 24 * 60 * 60 * 1000;
+  const targetKey = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+  return targetKey >= todayKey && targetKey <= sevenDaysAhead;
+}
+
+function getWorkspaceSearchText(expense: unknown) {
+  const context = getWorkspaceExpenseContext(expense);
+  const source = expense && typeof expense === 'object' ? (expense as Record<string, unknown>) : {};
+  return [
+    source.title,
+    source.category,
+    context.vendor_name,
+    context.invoice_reference,
+    context.invoice_date,
+    context.payment_due_date,
+  ]
+    .filter((value) => typeof value === 'string' && value.trim().length > 0)
+    .map((value) => String(value).toLowerCase())
+    .join(' ');
+}
+
+export function ExpensesPage() {
   useEffect(() => {
     setPageTitle('Expenses');
   }, []);
@@ -81,8 +141,10 @@ function ExpensesPage() {
   const { activeGroupId } = useGroupStore();
   const { query: searchQuery } = useSearchStore();
   const { data: group } = useGroup(activeGroupId ?? '');
+  const workspaceGovernance = useWorkspaceGovernance(group);
   const [categoryFilter, setCategoryFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [workspaceViewFilter, setWorkspaceViewFilter] = useState<WorkspaceViewFilter>('all');
   const [page, setPage] = useState(0);
   const [datePreset, setDatePreset] = useState<string | null>(null);
   const [dateRange, setDateRange] = useState<[string | null, string | null]>([null, null]);
@@ -104,6 +166,13 @@ function ExpensesPage() {
   const isAdmin = group?.members?.some(
     (m: { user_id: string; role: string }) => m.user_id === user?.id && m.role === 'admin',
   ) ?? false;
+  const isWorkspaceGroup = group?.type === 'workspace';
+  const currentMember = group?.members?.find(
+    (member: { user_id: string }) => member.user_id === user?.id,
+  ) ?? null;
+  const canApprovePendingExpenses = isWorkspaceGroup
+    ? canMemberApproveWithPolicy(currentMember, group?.approval_policy)
+    : isAdmin;
 
   // Approval flow
   const { data: pendingApprovals } = usePendingApprovals(activeGroupId ?? '');
@@ -123,7 +192,7 @@ function ExpensesPage() {
     hasFilters ? expenseFilters : undefined,
   );
 
-  const searchFiltered = useMemo(() => {
+  const workspaceFiltered = useMemo(() => {
     if (!expenses) return [];
     let result = expenses;
 
@@ -142,25 +211,48 @@ function ExpensesPage() {
     // Search query
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
-      result = result.filter(
-        (e) => e.title.toLowerCase().includes(q) || e.category.toLowerCase().includes(q),
+      result = result.filter((expense) =>
+        getWorkspaceSearchText(expense).includes(q),
       );
     }
 
+    if (isWorkspaceGroup) {
+      result = result.filter((expense) => {
+        const hasContext = hasWorkspaceExpenseContext(expense);
+        if (workspaceViewFilter === 'linked') return hasContext;
+        if (workspaceViewFilter === 'missing') return !hasContext;
+        if (workspaceViewFilter === 'due-soon') {
+          const settled = isExpenseSettled(expense);
+          if (settled) return false;
+          return isDueSoon(getEffectiveWorkspaceDueDate(expense));
+        }
+        return true;
+      });
+
+      result = [...result].sort((a, b) => {
+        const aSettled = isExpenseSettled(a);
+        const bSettled = isExpenseSettled(b);
+        if (aSettled !== bSettled) return aSettled ? 1 : -1;
+
+        const aDue = getEffectiveWorkspaceDueDate(a) || a.due_date;
+        const bDue = getEffectiveWorkspaceDueDate(b) || b.due_date;
+        if (aDue !== bDue) return aDue.localeCompare(bDue);
+
+        return a.title.localeCompare(b.title);
+      });
+    }
+
     return result;
-  }, [expenses, searchQuery, dateRange]);
+  }, [expenses, isWorkspaceGroup, searchQuery, dateRange, workspaceViewFilter]);
 
   const counts = useMemo(() => {
     let openCount = 0;
     let overdueCount = 0;
     let settledCount = 0;
 
-    for (const expense of searchFiltered) {
+    for (const expense of workspaceFiltered) {
       if (expense.approval_status !== 'approved') continue;
-
-      const paidCount = expense.payment_records?.filter((p) => p.status !== 'unpaid').length ?? 0;
-      const totalParticipants = expense.participants?.length ?? 0;
-      const isSettled = totalParticipants > 0 && paidCount === totalParticipants;
+      const isSettled = isExpenseSettled(expense);
 
       if (isSettled) {
         settledCount += 1;
@@ -172,23 +264,21 @@ function ExpensesPage() {
     }
 
     return { openCount, overdueCount, settledCount };
-  }, [searchFiltered]);
+  }, [workspaceFiltered]);
 
   const filtered = useMemo(() => {
-    if (statusFilter === 'all') return searchFiltered;
+    if (statusFilter === 'all') return workspaceFiltered;
 
-    return searchFiltered.filter((expense) => {
+    return workspaceFiltered.filter((expense) => {
       if (expense.approval_status !== 'approved') return false;
 
-      const paidCount = expense.payment_records?.filter((p) => p.status !== 'unpaid').length ?? 0;
-      const totalParticipants = expense.participants?.length ?? 0;
-      const isSettled = totalParticipants > 0 && paidCount === totalParticipants;
+      const isSettled = isExpenseSettled(expense);
 
       if (statusFilter === 'settled') return isSettled;
       if (statusFilter === 'overdue') return !isSettled && isOverdue(expense.due_date);
       return !isSettled && !isOverdue(expense.due_date);
     });
-  }, [searchFiltered, statusFilter]);
+  }, [workspaceFiltered, statusFilter]);
 
   const canExportPdf = isPaidPlan && Boolean(monthFilter) && !hasCustomDateRange && filtered.length > 0;
 
@@ -198,19 +288,60 @@ function ExpensesPage() {
   );
 
   const totalAmount = useMemo(
-    () => searchFiltered.reduce((sum, expense) => sum + expense.amount, 0),
-    [searchFiltered],
+    () => workspaceFiltered.reduce((sum, expense) => sum + expense.amount, 0),
+    [workspaceFiltered],
   );
+
+  const workspaceSummary = useMemo(() => {
+    if (!isWorkspaceGroup || !expenses) return null;
+
+    let linkedCount = 0;
+    let missingCount = 0;
+    let dueSoonCount = 0;
+
+    for (const expense of expenses) {
+      const hasContext = hasWorkspaceExpenseContext(expense);
+      if (hasContext) linkedCount += 1;
+      else missingCount += 1;
+
+      if (!isExpenseSettled(expense) && isDueSoon(getEffectiveWorkspaceDueDate(expense))) {
+        dueSoonCount += 1;
+      }
+    }
+
+    return { linkedCount, missingCount, dueSoonCount };
+  }, [expenses, isWorkspaceGroup]);
 
   // Clear selection when filters change
   useEffect(() => {
     setSelectedIds(new Set());
   }, [categoryFilter, statusFilter, datePreset, dateRange, searchQuery, page]);
 
+  function exportExpenseCSV(rows: typeof filtered, filenamePrefix: string, message: string) {
+    if (rows.length === 0) {
+      notifications.show({
+        title: 'Nothing to export',
+        message: 'No expenses matched the current filters.',
+        color: 'yellow',
+      });
+      return;
+    }
+    const csv = generateExpenseCSV(rows);
+    const dateStr = getLocalDateKey();
+    downloadCSV(csv, `${filenamePrefix}-${dateStr}.csv`);
+    notifications.show({
+      title: 'CSV exported',
+      message,
+      color: 'green',
+    });
+  }
+
   function handleExportCSV() {
-    if (!filtered || filtered.length === 0) return;
-    const csv = generateExpenseCSV(filtered);
-    downloadCSV(csv, `expenses-${new Date().toISOString().slice(0, 10)}.csv`);
+    exportExpenseCSV(
+      filtered,
+      'expenses-filtered',
+      `${filtered.length} filtered expense${filtered.length === 1 ? '' : 's'} exported from the current view.`,
+    );
   }
 
   async function handleExportPDF() {
@@ -297,9 +428,11 @@ function ExpensesPage() {
 
   function handleBulkExport() {
     const selected = filtered.filter((e) => selectedIds.has(e.id));
-    if (selected.length === 0) return;
-    const csv = generateExpenseCSV(selected);
-    downloadCSV(csv, `expenses-selected-${new Date().toISOString().slice(0, 10)}.csv`);
+    exportExpenseCSV(
+      selected,
+      'expenses-selected',
+      `${selected.length} selected expense${selected.length === 1 ? '' : 's'} exported.`,
+    );
   }
 
   if (!activeGroupId) {
@@ -314,7 +447,7 @@ function ExpensesPage() {
   }
 
   const chipData: { key: StatusFilter; label: string; count: number }[] = [
-    { key: 'all', label: 'All', count: searchFiltered.length },
+    { key: 'all', label: 'All', count: workspaceFiltered.length },
     { key: 'open', label: 'Open', count: counts.openCount },
     { key: 'overdue', label: 'Overdue', count: counts.overdueCount },
     { key: 'settled', label: 'Settled', count: counts.settledCount },
@@ -324,20 +457,26 @@ function ExpensesPage() {
     <Stack gap="lg">
       <PageHeader
         title="Expenses"
-        subtitle={`${searchFiltered.length} expenses · ${formatCurrency(totalAmount, group?.currency)} tracked`}
+        subtitle={`${workspaceFiltered.length} expenses · ${formatCurrency(totalAmount, group?.currency)} tracked`}
       >
         <Group gap="sm">
           <Button component={Link} to="/expenses/new" leftSection={<IconPlus size={16} />}>
             Add expense
           </Button>
           {canExport ? (
-            <Button variant="default" leftSection={<IconDownload size={16} />} onClick={handleExportCSV} disabled={filtered.length === 0}>
-              Export CSV
+            <Button
+              variant="default"
+              leftSection={<IconDownload size={16} />}
+              onClick={handleExportCSV}
+              disabled={filtered.length === 0}
+              title="Export the current filtered expenses to CSV"
+            >
+              Export filtered CSV
             </Button>
           ) : (
             <Tooltip label="Pro feature — upgrade to unlock" withArrow>
               <Button variant="default" leftSection={<IconDownload size={16} />} disabled data-disabled>
-                Export CSV
+                Export filtered CSV
               </Button>
             </Tooltip>
           )}
@@ -364,8 +503,50 @@ function ExpensesPage() {
         </Group>
       </PageHeader>
 
-      {/* Pending Approvals (admin only) */}
-      {isAdmin && pendingApprovals && pendingApprovals.length > 0 && (
+      {workspaceSummary && (
+        <Paper className="commune-stat-card" p="md">
+          <Group justify="space-between" gap="md" wrap="wrap">
+            <Text fw={700}>Workspace billing</Text>
+            <Group gap="xs">
+              <Badge variant="light" color="green">
+                {workspaceSummary.linkedCount} linked
+              </Badge>
+              <Badge variant="light" color="orange">
+                {workspaceSummary.missingCount} missing details
+              </Badge>
+              <Badge variant="light" color="blue">
+                {workspaceSummary.dueSoonCount} due soon
+              </Badge>
+            </Group>
+          </Group>
+        </Paper>
+      )}
+
+      {workspaceGovernance.isWorkspaceGroup && (
+        <Paper className="commune-stat-card" p="md">
+          <Group justify="space-between" gap="md" wrap="wrap" align="flex-start">
+            <div>
+              <Group gap={6} mb={4}>
+                <IconShieldCheck size={18} />
+                <Text fw={700}>Workspace roles and approvals</Text>
+              </Group>
+              <Text size="sm" c="dimmed">
+                {workspaceGovernance.approvalSummary}
+              </Text>
+            </div>
+            <Group gap="xs" wrap="wrap">
+              {workspaceGovernance.responsibilityLabels.slice(0, 3).map((label) => (
+                <Badge key={label} variant="light" color="gray">
+                  {label}
+                </Badge>
+              ))}
+            </Group>
+          </Group>
+        </Paper>
+      )}
+
+      {/* Pending Approvals */}
+      {canApprovePendingExpenses && pendingApprovals && pendingApprovals.length > 0 && (
         <Stack gap="xs">
           <Group gap="xs">
             <IconAlertTriangle size={18} color="var(--mantine-color-orange-6)" />
@@ -418,6 +599,19 @@ function ExpensesPage() {
           clearable
           w={180}
         />
+        {isWorkspaceGroup && (
+          <Select
+            label="Workspace view"
+            placeholder="Workspace view"
+            data={workspaceViewOptions}
+            value={workspaceViewFilter}
+            onChange={(value) => {
+              setWorkspaceViewFilter((value as WorkspaceViewFilter) ?? 'all');
+              setPage(0);
+            }}
+            w={220}
+          />
+        )}
         <Select
           placeholder="Period"
           data={getMonthOptions()}
@@ -512,8 +706,10 @@ function ExpensesPage() {
                   const overdue = isOverdue(expense.due_date);
                   const paidCount = expense.payment_records?.filter((payment) => payment.status !== 'unpaid').length ?? 0;
                   const totalParticipants = expense.participants?.length ?? 0;
-                  const settled = totalParticipants > 0 && paidCount === totalParticipants;
+                  const settled = isExpenseSettled(expense);
                   const approvalStatus = expense.approval_status ?? 'approved';
+                  const workspaceContext = getWorkspaceExpenseContext(expense);
+                  const showWorkspaceContext = hasWorkspaceExpenseContext(expense) || group?.type === 'workspace';
                   const statusBadge =
                     approvalStatus === 'pending'
                       ? { color: 'orange', label: 'Pending approval' }
@@ -544,6 +740,28 @@ function ExpensesPage() {
                           <Text component={Link} to={`/expenses/${expense.id}`} fw={600} style={{ textDecoration: 'none' }}>
                             {expense.title}
                           </Text>
+                          {showWorkspaceContext && (workspaceContext.vendor_name || workspaceContext.invoice_reference) && (
+                            <Text size="xs" c="dimmed" lineClamp={1}>
+                              {workspaceContext.vendor_name || 'Workspace'}
+                              {workspaceContext.invoice_reference
+                                ? ` · Ref ${workspaceContext.invoice_reference}`
+                                : ''}
+                            </Text>
+                          )}
+                          {showWorkspaceContext && (workspaceContext.invoice_date || workspaceContext.payment_due_date) && (
+                            <Group gap={6} wrap="wrap">
+                              {workspaceContext.invoice_date && (
+                                <Badge size="xs" variant="light" color="gray">
+                                  Invoice {formatDate(workspaceContext.invoice_date)}
+                                </Badge>
+                              )}
+                              {workspaceContext.payment_due_date && (
+                                <Badge size="xs" variant="light" color={isDueSoon(workspaceContext.payment_due_date) ? 'orange' : 'gray'}>
+                                  Due {formatDate(workspaceContext.payment_due_date)}
+                                </Badge>
+                              )}
+                            </Group>
+                          )}
                           {expense.recurrence_type !== 'none' && (
                             <Badge size="xs" variant="light" color="emerald" w="fit-content">
                               Recurring
@@ -618,7 +836,7 @@ function ExpensesPage() {
                 leftSection={<IconDownload size={14} />}
                 onClick={handleBulkExport}
               >
-                Export
+                Export selected CSV
               </Button>
             ) : (
               <Tooltip label="Pro feature — upgrade to unlock" withArrow>
@@ -629,7 +847,7 @@ function ExpensesPage() {
                   disabled
                   data-disabled
                 >
-                  Export
+                  Export selected CSV
                 </Button>
               </Tooltip>
             )}

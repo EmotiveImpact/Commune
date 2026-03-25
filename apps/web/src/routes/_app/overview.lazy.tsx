@@ -33,13 +33,16 @@ import {
   IconUsers,
 } from '@tabler/icons-react';
 import { useCallback, useEffect, useState } from 'react';
-import { formatCurrency } from '@commune/utils';
+import { formatCurrency, formatDate } from '@commune/utils';
 import { setPageTitle } from '../../utils/seo';
 import { useAuthStore } from '../../stores/auth';
 import { useUserGroups } from '../../hooks/use-groups';
 import { useCrossGroupSettlements } from '../../hooks/use-cross-group';
 import { useSmartNudges } from '../../hooks/use-smart-nudges';
 import { useGroupStore } from '../../stores/group';
+import { useGroup } from '../../hooks/use-groups';
+import { useGroupExpenses } from '../../hooks/use-expenses';
+import { getWorkspaceBillingSummary } from '../../hooks/use-dashboard';
 import { PageHeader } from '../../components/page-header';
 import { EmptyState } from '../../components/empty-state';
 import { PageLoader } from '../../components/page-loader';
@@ -90,8 +93,11 @@ function CrossGroupOverviewPage() {
   const { user } = useAuthStore();
   const { data: groups } = useUserGroups();
   const { data: smartNudges } = useSmartNudges(user?.id ?? '');
-  const { setActiveGroupId } = useGroupStore();
+  const { activeGroupId, setActiveGroupId } = useGroupStore();
   const { data: result, isLoading } = useCrossGroupSettlements(user?.id ?? '');
+  const { data: activeGroup } = useGroup(activeGroupId ?? '');
+  const workspaceExpenseGroupId = activeGroup?.type === 'workspace' ? activeGroupId ?? '' : '';
+  const { data: workspaceExpenses = [] } = useGroupExpenses(workspaceExpenseGroupId);
 
   const [nettingEnabled, setNettingEnabled] = useState(readNettingPreference);
 
@@ -108,6 +114,10 @@ function CrossGroupOverviewPage() {
   if (isLoading) {
     return <PageLoader />;
   }
+
+  const workspaceBillingSummary = getWorkspaceBillingSummary(workspaceExpenses);
+  const showWorkspaceBillingWatch =
+    activeGroup?.type === 'workspace' && workspaceBillingSummary.expenseCount > 0;
 
   // Build group status map from perGroupData
   const groupStatusMap = new Map<string, { owes: number; owed: number; currency: string; waiting: number }>();
@@ -245,6 +255,147 @@ function CrossGroupOverviewPage() {
                 </Group>
               );
             })}
+          </Stack>
+        </Paper>
+      )}
+
+      {showWorkspaceBillingWatch && (
+        <Paper className="commune-soft-panel" p="xl">
+          <Group justify="space-between" align="flex-start" mb="md">
+            <div>
+              <Text className="commune-section-heading">Shared subscriptions &amp; tools</Text>
+              <Text size="sm" c="dimmed">
+                {activeGroup?.name ?? 'This workspace'} bills, invoice refs, due dates, recurring subscriptions, and shared tool costs.
+              </Text>
+            </div>
+            <Group gap="xs">
+              <Badge variant="light" color="indigo">
+                {workspaceBillingSummary.expenseCount} tracked
+              </Badge>
+              {workspaceBillingSummary.sharedSubscriptionCount > 0 && (
+                <Badge variant="light" color="violet">
+                  {workspaceBillingSummary.sharedSubscriptionCount} subscriptions
+                </Badge>
+              )}
+              <Badge variant="light" color="teal">
+                {workspaceBillingSummary.toolCostCount} work tools
+              </Badge>
+            </Group>
+          </Group>
+
+          <SimpleGrid cols={{ base: 1, sm: 2, md: 5 }} spacing="md">
+            <Paper className="commune-stat-card" p="md" radius="lg">
+              <Text size="xs" c="dimmed">Tracked bills</Text>
+              <Text fw={700} size="lg">
+                {workspaceBillingSummary.expenseCount}
+              </Text>
+            </Paper>
+            <Paper className="commune-stat-card" p="md" radius="lg">
+              <Text size="xs" c="dimmed">Work tools spend</Text>
+              <Text fw={700} size="lg">
+                {formatCurrency(workspaceBillingSummary.toolCostSpend, activeGroup?.currency)}
+              </Text>
+            </Paper>
+            <Paper className="commune-stat-card" p="md" radius="lg">
+              <Text size="xs" c="dimmed">Due soon</Text>
+              <Text fw={700} size="lg">
+                {workspaceBillingSummary.dueSoonCount}
+              </Text>
+            </Paper>
+            <Paper className="commune-stat-card" p="md" radius="lg">
+              <Text size="xs" c="dimmed">Overdue</Text>
+              <Text fw={700} size="lg" c={workspaceBillingSummary.overdueCount > 0 ? 'red' : undefined}>
+                {workspaceBillingSummary.overdueCount}
+              </Text>
+            </Paper>
+            <Paper className="commune-stat-card" p="md" radius="lg">
+              <Text size="xs" c="dimmed">Top vendor</Text>
+              <Text fw={700} size="sm">
+                {workspaceBillingSummary.topVendor?.vendor_name || 'No vendor named yet'}
+              </Text>
+              {workspaceBillingSummary.topVendor ? (
+                <Text size="xs" c="dimmed">
+                  {workspaceBillingSummary.topVendor.count} bill{workspaceBillingSummary.topVendor.count !== 1 ? 's' : ''} · {formatCurrency(workspaceBillingSummary.topVendor.amount, activeGroup?.currency)}
+                </Text>
+              ) : null}
+            </Paper>
+            <Paper className="commune-stat-card" p="md" radius="lg">
+              <Text size="xs" c="dimmed">Tracked spend</Text>
+              <Text fw={700} size="lg">
+                {formatCurrency(workspaceBillingSummary.totalSpend, activeGroup?.currency)}
+              </Text>
+            </Paper>
+          </SimpleGrid>
+
+          <Stack gap="sm" mt="lg">
+            {workspaceBillingSummary.nextDueBill && (
+              <Paper className="commune-stat-card" p="md" radius="lg">
+                <Group justify="space-between" align="flex-start" wrap="nowrap">
+                  <Stack gap={2}>
+                    <Group gap="xs" wrap="nowrap">
+                      <Text fw={700}>{workspaceBillingSummary.nextDueBill.vendor_name || workspaceBillingSummary.nextDueBill.title}</Text>
+                      {workspaceBillingSummary.nextDueBill.recurrence_type && workspaceBillingSummary.nextDueBill.recurrence_type !== 'none' && (
+                        <Badge size="xs" variant="light" color="violet">
+                          Subscription
+                        </Badge>
+                      )}
+                      {workspaceBillingSummary.nextDueBill.category === 'work_tools' && (
+                        <Badge size="xs" variant="light" color="teal">
+                          Tool cost
+                        </Badge>
+                      )}
+                    </Group>
+                    <Text size="sm" c="dimmed">
+                      {workspaceBillingSummary.nextDueBill.invoice_reference
+                        ? `Ref ${workspaceBillingSummary.nextDueBill.invoice_reference}`
+                        : 'No invoice reference yet'}
+                    </Text>
+                  </Stack>
+                  <Stack gap={2} align="flex-end">
+                    <Text fw={700}>
+                      {formatCurrency(workspaceBillingSummary.nextDueBill.amount, workspaceBillingSummary.nextDueBill.currency)}
+                    </Text>
+                    <Text size="xs" c="dimmed">
+                      Due {formatDate(workspaceBillingSummary.nextDueBill.payment_due_date || workspaceBillingSummary.nextDueBill.due_date)}
+                    </Text>
+                  </Stack>
+                </Group>
+              </Paper>
+            )}
+            {workspaceBillingSummary.latestBill && (
+              <Paper className="commune-stat-card" p="md" radius="lg">
+                <Group justify="space-between" align="flex-start" wrap="nowrap">
+                  <Stack gap={2}>
+                    <Group gap="xs">
+                      <Text fw={700}>Latest invoice</Text>
+                      {workspaceBillingSummary.latestBill.recurrence_type && workspaceBillingSummary.latestBill.recurrence_type !== 'none' && (
+                        <Badge size="xs" variant="light" color="violet">
+                          Subscription
+                        </Badge>
+                      )}
+                      {workspaceBillingSummary.latestBill.category === 'work_tools' && (
+                        <Badge size="xs" variant="light" color="teal">
+                          Tool cost
+                        </Badge>
+                      )}
+                    </Group>
+                    <Text size="sm" c="dimmed">
+                      {workspaceBillingSummary.latestBill.vendor_name || workspaceBillingSummary.latestBill.title}
+                    </Text>
+                  </Stack>
+                  <Stack gap={2} align="flex-end">
+                    <Text fw={700}>
+                      {workspaceBillingSummary.latestBill.invoice_reference || 'No reference'}
+                    </Text>
+                    <Text size="xs" c="dimmed">
+                      {workspaceBillingSummary.latestBill.invoice_date
+                        ? `Issued ${formatDate(workspaceBillingSummary.latestBill.invoice_date)}`
+                        : `Due ${formatDate(workspaceBillingSummary.latestBill.due_date)}`}
+                    </Text>
+                  </Stack>
+                </Group>
+              </Paper>
+            )}
           </Stack>
         </Paper>
       )}

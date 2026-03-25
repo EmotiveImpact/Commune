@@ -311,7 +311,7 @@ export default function RecurringScreen() {
   const expenses =
     tab === 'active' ? (activeExpenses ?? []) : (pausedExpenses ?? []);
 
-  function handlePause(expenseId: string) {
+  const handlePause = useCallback((expenseId: string) => {
     hapticMedium();
     pauseMutation.mutate(expenseId, {
       onSuccess: () => {
@@ -320,9 +320,9 @@ export default function RecurringScreen() {
       },
       onError: (err) => { hapticWarning(); Alert.alert('Error', getErrorMessage(err)); },
     });
-  }
+  }, [pauseMutation]);
 
-  function handleResume(expenseId: string) {
+  const handleResume = useCallback((expenseId: string) => {
     hapticMedium();
     resumeMutation.mutate(expenseId, {
       onSuccess: () => {
@@ -334,9 +334,9 @@ export default function RecurringScreen() {
       },
       onError: (err) => { hapticWarning(); Alert.alert('Error', getErrorMessage(err)); },
     });
-  }
+  }, [resumeMutation]);
 
-  function handleArchive(expenseId: string, title: string) {
+  const handleArchive = useCallback((expenseId: string, title: string) => {
     hapticHeavy();
     Alert.alert(
       'Archive recurring expense?',
@@ -355,7 +355,7 @@ export default function RecurringScreen() {
         },
       ],
     );
-  }
+  }, [archiveMutation]);
 
   const renderItem = useCallback(
     ({ item: expense }: { item: any }) => {
@@ -585,6 +585,9 @@ export default function RecurringScreen() {
       tab,
       group?.currency,
       router,
+      handleArchive,
+      handlePause,
+      handleResume,
       pauseMutation,
       resumeMutation,
       archiveMutation,

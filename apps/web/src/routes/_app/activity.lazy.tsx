@@ -1,9 +1,12 @@
 import { createLazyFileRoute } from '@tanstack/react-router';
+import { PaginationBar, PAGE_SIZE } from '../../components/pagination';
 import {
   Avatar,
+  Badge,
   Button,
   Group,
   Paper,
+  SimpleGrid,
   Stack,
   Text,
   ThemeIcon,
@@ -26,12 +29,19 @@ import {
 } from '@tabler/icons-react';
 import { useEffect, useMemo, useState } from 'react';
 import { setPageTitle } from '../../utils/seo';
+import { formatCurrency, formatDate } from '@commune/utils';
 import type { ActivityEntry } from '@commune/api';
 import { useGroupStore } from '../../stores/group';
 import { useAuthStore } from '../../stores/auth';
 import { useGroup } from '../../hooks/use-groups';
+import { useGroupExpenses } from '../../hooks/use-expenses';
 import { usePlanLimits } from '../../hooks/use-plan-limits';
-import { useActivityLog } from '../../hooks/use-activity';
+import {
+  getActivityWorkspaceBillingContext,
+  hasActivityWorkspaceBillingContext,
+  useActivityLog,
+} from '../../hooks/use-activity';
+import { getWorkspaceBillingSummary } from '../../hooks/use-dashboard';
 import { ActivitySkeleton } from '../../components/page-skeleton';
 import { EmptyState } from '../../components/empty-state';
 import { PageHeader } from '../../components/page-header';
@@ -40,8 +50,6 @@ import { generateActivityCSV, downloadCSV } from '../../utils/export-csv';
 export const Route = createLazyFileRoute('/_app/activity')({
   component: ActivityPage,
 });
-
-import { PaginationBar, PAGE_SIZE } from '../../components/pagination';
 
 const actionIcons: Record<string, typeof IconReceipt> = {
   expense_created: IconReceipt,
@@ -74,12 +82,17 @@ const actionColors: Record<string, string> = {
 function describeAction(entry: ActivityEntry): string {
   const meta = entry.metadata as Record<string, string | number | undefined>;
   const actorName = entry.user?.name ?? 'Someone';
+  const billingContext = getActivityWorkspaceBillingContext(entry);
+  const billingLabel =
+    billingContext.vendor_name || billingContext.invoice_reference
+      ? `${billingContext.vendor_name || 'a vendor'}${billingContext.invoice_reference ? ` · Ref ${billingContext.invoice_reference}` : ''}`
+      : '';
 
   switch (entry.action) {
     case 'expense_created':
-      return `${actorName} created expense '${meta.title ?? 'Untitled'}' for ${meta.currency ?? ''}${meta.amount ?? ''}`;
+      return `${actorName} created expense '${meta.title ?? 'Untitled'}'${billingLabel ? ` for ${billingLabel}` : ''}`;
     case 'expense_updated':
-      return `${actorName} updated expense '${meta.title ?? 'Untitled'}'`;
+      return `${actorName} updated expense '${meta.title ?? 'Untitled'}'${billingLabel ? ` · ${billingLabel}` : ''}`;
     case 'expense_deleted':
       return `${actorName} archived expense '${meta.title ?? 'Untitled'}'`;
     case 'payment_marked':
@@ -149,6 +162,8 @@ function ActivityPage() {
   const { user } = useAuthStore();
   const { canExport } = usePlanLimits(user?.id ?? '');
   const { data: group, isLoading: groupLoading } = useGroup(activeGroupId ?? '');
+  const workspaceExpenseGroupId = group?.type === 'workspace' ? activeGroupId ?? '' : '';
+  const { data: workspaceExpenses = [] } = useGroupExpenses(workspaceExpenseGroupId);
   const [page, setPage] = useState(0);
   const [activeFilters, setActiveFilters] = useState<Set<TypeFilter>>(new Set(['all']));
   const { data: entries = [], isLoading } = useActivityLog(activeGroupId ?? '');
@@ -202,6 +217,9 @@ function ActivityPage() {
 
     return groups;
   }, [paginatedEntries]);
+
+  const workspaceBillingSummary = getWorkspaceBillingSummary(workspaceExpenses);
+  const showWorkspaceBillingWatch = group?.type === 'workspace' && workspaceBillingSummary.expenseCount > 0;
 
   if (!activeGroupId) {
     return (
@@ -277,6 +295,131 @@ function ActivityPage() {
         ))}
       </div>
 
+      {showWorkspaceBillingWatch && (
+        <Paper className="commune-soft-panel" p="xl">
+          <Group justify="space-between" align="flex-start" mb="md">
+            <div>
+              <Text className="commune-section-heading">Shared subscriptions &amp; tools</Text>
+              <Text size="sm" c="dimmed">
+                Recent invoice refs, due dates, recurring subscriptions, and tool costs for {group?.name ?? 'this workspace'}.
+              </Text>
+            </div>
+            <Group gap="xs">
+              <Badge variant="light" color="indigo">
+                {workspaceBillingSummary.expenseCount} tracked
+              </Badge>
+              {workspaceBillingSummary.sharedSubscriptionCount > 0 && (
+                <Badge variant="light" color="violet">
+                  {workspaceBillingSummary.sharedSubscriptionCount} subscriptions
+                </Badge>
+              )}
+              <Badge variant="light" color="teal">
+                {workspaceBillingSummary.toolCostCount} work tools
+              </Badge>
+            </Group>
+          </Group>
+
+          <SimpleGrid cols={{ base: 1, sm: 2, md: 4 }} spacing="md" mb="md">
+            <Paper className="commune-stat-card" p="md" radius="lg">
+              <Text size="xs" c="dimmed">Tracked bills</Text>
+              <Text fw={700} size="lg">
+                {workspaceBillingSummary.expenseCount}
+              </Text>
+            </Paper>
+            <Paper className="commune-stat-card" p="md" radius="lg">
+              <Text size="xs" c="dimmed">Work tools spend</Text>
+              <Text fw={700} size="lg">
+                {formatCurrency(workspaceBillingSummary.toolCostSpend, group?.currency)}
+              </Text>
+            </Paper>
+            <Paper className="commune-stat-card" p="md" radius="lg">
+              <Text size="xs" c="dimmed">Due soon</Text>
+              <Text fw={700} size="lg">
+                {workspaceBillingSummary.dueSoonCount}
+              </Text>
+            </Paper>
+            <Paper className="commune-stat-card" p="md" radius="lg">
+              <Text size="xs" c="dimmed">Overdue</Text>
+              <Text fw={700} size="lg" c={workspaceBillingSummary.overdueCount > 0 ? 'red' : undefined}>
+                {workspaceBillingSummary.overdueCount}
+              </Text>
+            </Paper>
+          </SimpleGrid>
+
+          <Stack gap="sm">
+            {workspaceBillingSummary.nextDueBill && (
+              <Paper className="commune-stat-card" p="md" radius="lg">
+                <Group justify="space-between" align="flex-start">
+                  <Stack gap={2}>
+                    <Group gap="xs" wrap="nowrap">
+                      <Text fw={700}>{workspaceBillingSummary.nextDueBill.vendor_name || workspaceBillingSummary.nextDueBill.title}</Text>
+                      {workspaceBillingSummary.nextDueBill.recurrence_type && workspaceBillingSummary.nextDueBill.recurrence_type !== 'none' && (
+                        <Badge size="xs" variant="light" color="violet">
+                          Subscription
+                        </Badge>
+                      )}
+                      {workspaceBillingSummary.nextDueBill.category === 'work_tools' && (
+                        <Badge size="xs" variant="light" color="teal">
+                          Tool cost
+                        </Badge>
+                      )}
+                    </Group>
+                    <Text size="sm" c="dimmed">
+                      {workspaceBillingSummary.nextDueBill.invoice_reference
+                        ? `Ref ${workspaceBillingSummary.nextDueBill.invoice_reference}`
+                        : 'No invoice reference yet'}
+                    </Text>
+                  </Stack>
+                  <Stack gap={2} align="flex-end">
+                    <Text fw={700}>
+                      {formatCurrency(workspaceBillingSummary.nextDueBill.amount, workspaceBillingSummary.nextDueBill.currency)}
+                    </Text>
+                    <Text size="xs" c="dimmed">
+                      Due {formatDate(workspaceBillingSummary.nextDueBill.payment_due_date || workspaceBillingSummary.nextDueBill.due_date)}
+                    </Text>
+                  </Stack>
+                </Group>
+              </Paper>
+            )}
+
+            {workspaceBillingSummary.upcomingBills.length > 1 && (
+              <Stack gap="xs">
+                <Text size="xs" c="dimmed">
+                  More due next
+                </Text>
+                {workspaceBillingSummary.upcomingBills.slice(1, 3).map((bill) => (
+                  <Paper key={bill.id} className="commune-stat-card" p="md" radius="lg">
+                    <Group justify="space-between" align="flex-start">
+                      <Stack gap={2}>
+                        <Group gap="xs" wrap="nowrap">
+                          <Text fw={700}>{bill.vendor_name || bill.title}</Text>
+                          {bill.recurrence_type && bill.recurrence_type !== 'none' && (
+                            <Badge size="xs" variant="light" color="violet">
+                              Subscription
+                            </Badge>
+                          )}
+                          {bill.category === 'work_tools' && (
+                            <Badge size="xs" variant="light" color="teal">
+                              Tool cost
+                            </Badge>
+                          )}
+                        </Group>
+                        <Text size="sm" c="dimmed">
+                          {bill.invoice_reference ? `Ref ${bill.invoice_reference}` : 'No reference yet'}
+                        </Text>
+                      </Stack>
+                      <Text size="sm" fw={600}>
+                        {bill.payment_due_date ? formatDate(bill.payment_due_date) : formatDate(bill.due_date)}
+                      </Text>
+                    </Group>
+                  </Paper>
+                ))}
+              </Stack>
+            )}
+          </Stack>
+        </Paper>
+      )}
+
       {filteredEntries.length === 0 ? (
         <EmptyState
           icon={IconHistory}
@@ -322,6 +465,32 @@ function ActivityPage() {
                         <Text size="sm" c="dimmed">
                           {describeAction(entry)}
                         </Text>
+                        {entry.action.startsWith('expense_') && hasActivityWorkspaceBillingContext(entry) && (
+                          <Group gap="xs" mt={4}>
+                            {(() => {
+                              const billingContext = getActivityWorkspaceBillingContext(entry);
+                              return (
+                                <>
+                                  {billingContext.vendor_name ? (
+                                    <Badge size="xs" variant="light" color="gray">
+                                      {billingContext.vendor_name}
+                                    </Badge>
+                                  ) : null}
+                                  {billingContext.invoice_reference ? (
+                                    <Badge size="xs" variant="light" color="gray">
+                                      Ref {billingContext.invoice_reference}
+                                    </Badge>
+                                  ) : null}
+                                  {billingContext.payment_due_date ? (
+                                    <Badge size="xs" variant="light" color="indigo">
+                                      Due {formatDate(billingContext.payment_due_date)}
+                                    </Badge>
+                                  ) : null}
+                                </>
+                              );
+                            })()}
+                          </Group>
+                        )}
                       </Stack>
                     </Group>
                   </Paper>

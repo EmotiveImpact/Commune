@@ -15,7 +15,13 @@ import { createExpenseSchema } from '@commune/core';
 import type { ExpenseCategory as ExpenseCategoryType } from '@commune/types';
 import { ExpenseCategory } from '@commune/types';
 import { useGroupStore } from '@/stores/group';
-import { useExpenseDetail, useUpdateExpense } from '@/hooks/use-expenses';
+import {
+  getWorkspaceExpenseContext,
+  toWorkspaceExpenseContextPayload,
+  useExpenseDetail,
+  useUpdateExpense,
+} from '@/hooks/use-expenses';
+import { useGroup } from '@/hooks/use-groups';
 import { DateField } from '@/components/ui';
 import { getErrorMessage } from '@/lib/errors';
 import { formatCategoryLabel } from '@/lib/ui';
@@ -67,6 +73,7 @@ export default function EditExpenseScreen() {
   const router = useRouter();
   const { expenseId } = useLocalSearchParams<{ expenseId: string }>();
   const { activeGroupId } = useGroupStore();
+  const { data: group } = useGroup(activeGroupId ?? '');
 
   const {
     data: expense,
@@ -83,6 +90,10 @@ export default function EditExpenseScreen() {
   );
   const [amount, setAmount] = useState('');
   const [dueDate, setDueDate] = useState<Date | null>(null);
+  const [vendorName, setVendorName] = useState('');
+  const [invoiceReference, setInvoiceReference] = useState('');
+  const [invoiceDate, setInvoiceDate] = useState<Date | null>(null);
+  const [paymentDueDate, setPaymentDueDate] = useState<Date | null>(null);
   const [recurrenceType, setRecurrenceType] = useState('none');
 
   useEffect(() => {
@@ -96,6 +107,13 @@ export default function EditExpenseScreen() {
     setAmount(String(expense.amount));
     setDueDate(expense.due_date ? new Date(expense.due_date + 'T00:00:00') : null);
     setRecurrenceType(expense.recurrence_type);
+    const workspaceContext = getWorkspaceExpenseContext(expense);
+    setVendorName(workspaceContext.vendor_name);
+    setInvoiceReference(workspaceContext.invoice_reference);
+    setInvoiceDate(workspaceContext.invoice_date ? new Date(`${workspaceContext.invoice_date}T00:00:00`) : null);
+    setPaymentDueDate(
+      workspaceContext.payment_due_date ? new Date(`${workspaceContext.payment_due_date}T00:00:00`) : null,
+    );
   }, [expense]);
 
   async function handleSubmit() {
@@ -117,6 +135,12 @@ export default function EditExpenseScreen() {
       split_method: expense.split_method,
       paid_by_user_id: expense.paid_by_user_id ?? undefined,
       participant_ids: expense.participants.map((participant) => participant.user_id),
+      ...toWorkspaceExpenseContextPayload({
+        vendor_name: vendorName,
+        invoice_reference: invoiceReference,
+        invoice_date: invoiceDate ? invoiceDate.toISOString().split('T')[0]! : '',
+        payment_due_date: paymentDueDate ? paymentDueDate.toISOString().split('T')[0]! : '',
+      }),
     });
 
     if (!validation.success) {
@@ -138,6 +162,12 @@ export default function EditExpenseScreen() {
           amount: Number(amount) || 0,
           due_date: dueDateStr,
           recurrence_type: recurrenceType,
+          ...toWorkspaceExpenseContextPayload({
+            vendor_name: vendorName,
+            invoice_reference: invoiceReference,
+            invoice_date: invoiceDate ? invoiceDate.toISOString().split('T')[0]! : '',
+            payment_due_date: paymentDueDate ? paymentDueDate.toISOString().split('T')[0]! : '',
+          }),
         },
       });
       hapticSuccess();
@@ -311,6 +341,9 @@ export default function EditExpenseScreen() {
     );
   }
 
+  const workspaceContext = getWorkspaceExpenseContext(expense);
+  const showWorkspaceContext = group?.type === 'workspace' || Object.values(workspaceContext).some(Boolean);
+
   /* ------------------------------------------------------------------ */
   /*  Main edit form                                                     */
   /* ------------------------------------------------------------------ */
@@ -337,7 +370,7 @@ export default function EditExpenseScreen() {
           {expense.title}
         </Text>
         <Text style={{ marginTop: 6, fontSize: 14, lineHeight: 20, color: 'rgba(255,255,255,0.6)' }}>
-          Update the details while keeping the existing split intact.
+          Update the details while keeping the existing split and billing context intact.
         </Text>
       </View>
 
@@ -508,6 +541,61 @@ export default function EditExpenseScreen() {
             );
           })}
         </View>
+
+        {showWorkspaceContext ? (
+          <>
+            <View style={{ height: 1, backgroundColor: '#F0F0F0', marginVertical: 16 }} />
+
+            <Text style={{ fontSize: 14, fontWeight: '600', color: '#374151', marginBottom: 8 }}>
+              Workspace context
+            </Text>
+            <Text style={{ fontSize: 13, color: '#6B7280', lineHeight: 18, marginBottom: 12 }}>
+              Keep the vendor, invoice, and payment due details attached to this expense.
+            </Text>
+            <TextInput
+              style={{
+                backgroundColor: '#F3F4F6',
+                borderRadius: 12,
+                height: 50,
+                paddingHorizontal: 16,
+                fontSize: 15,
+                color: '#171b24',
+                marginBottom: 12,
+              }}
+              placeholder="Vendor / supplier"
+              placeholderTextColor="#9CA3AF"
+              value={vendorName}
+              onChangeText={setVendorName}
+            />
+            <TextInput
+              style={{
+                backgroundColor: '#F3F4F6',
+                borderRadius: 12,
+                height: 50,
+                paddingHorizontal: 16,
+                fontSize: 15,
+                color: '#171b24',
+                marginBottom: 12,
+              }}
+              placeholder="Invoice reference"
+              placeholderTextColor="#9CA3AF"
+              value={invoiceReference}
+              onChangeText={setInvoiceReference}
+            />
+            <DateField
+              label="Invoice date"
+              value={invoiceDate}
+              onChange={setInvoiceDate}
+              hint="When the vendor issued the bill."
+            />
+            <DateField
+              label="Payment due date"
+              value={paymentDueDate}
+              onChange={setPaymentDueDate}
+              hint="Optional vendor payment deadline."
+            />
+          </>
+        ) : null}
       </View>
 
       {/* Info note card */}
@@ -526,7 +614,7 @@ export default function EditExpenseScreen() {
         <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
           <Ionicons name="information-circle-outline" size={18} color="#9CA3AF" style={{ marginTop: 1 }} />
           <Text style={{ fontSize: 14, lineHeight: 20, color: '#6B7280', flex: 1 }}>
-            Editing changes the title, amount, due date, category, description, and recurrence only. To change the split, create a new expense.
+            Editing changes the title, amount, due date, category, description, recurrence, and billing context only. To change the split, create a new expense.
           </Text>
         </View>
       </View>

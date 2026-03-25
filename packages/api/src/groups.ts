@@ -1,15 +1,76 @@
-import type { Group, GroupInvite, GroupMember, GroupWithMembers, InviteValidation } from '@commune/types';
-import type { MemberRole } from '@commune/types';
+import type {
+  Group,
+  GroupInvite,
+  GroupMember,
+  GroupWithMembers,
+  InviteValidation,
+  SpaceEssentials,
+  SetupChecklistProgress,
+} from '@commune/types';
+import { GroupType, type MemberRole } from '@commune/types';
+import {
+  getDefaultWorkspaceRolePresets,
+  normalizeGroupApprovalPolicy,
+  type CreateGroupInput,
+  type GroupApprovalPolicyInput,
+} from '@commune/core';
 import { supabase } from './client';
 import { ensureProfile } from './profile';
 
-export async function createGroup(data: {
-  name: string;
-  type: string;
-  description?: string;
-  cycle_date?: number;
-  currency?: string;
-}) {
+function buildWorkspaceApprovalPolicy(
+  subtype: string | null | undefined,
+  threshold: number | null | undefined,
+): GroupApprovalPolicyInput {
+  const role_presets = getDefaultWorkspaceRolePresets(subtype);
+  const allowed_labels = Array.from(
+    new Set(
+      role_presets
+        .filter((preset) => preset.can_approve && preset.responsibility_label)
+        .map((preset) => preset.responsibility_label as string),
+    ),
+  );
+
+  return normalizeGroupApprovalPolicy(
+    GroupType.WORKSPACE,
+    subtype,
+    threshold ?? null,
+    {
+      threshold: threshold ?? null,
+      allowed_roles: ['admin'],
+      allowed_labels,
+      role_presets,
+    },
+  ) as GroupApprovalPolicyInput;
+}
+
+function getPrimaryWorkspaceResponsibilityLabel(
+  subtype: string | null | undefined,
+  policy:
+    | {
+        role_presets?: Array<{
+          is_default?: boolean;
+          can_approve?: boolean;
+          responsibility_label?: string | null;
+        }>;
+      }
+    | null
+    | undefined,
+): string | null {
+  const rolePresets = policy?.role_presets?.length
+    ? policy.role_presets
+    : getDefaultWorkspaceRolePresets(subtype);
+
+  return (
+    rolePresets.find((preset) => preset.is_default && preset.responsibility_label)
+      ?.responsibility_label
+    ?? rolePresets.find((preset) => preset.can_approve && preset.responsibility_label)
+      ?.responsibility_label
+    ?? rolePresets.find((preset) => preset.responsibility_label)?.responsibility_label
+    ?? null
+  );
+}
+
+export async function createGroup(data: CreateGroupInput) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -18,13 +79,27 @@ export async function createGroup(data: {
 
   await ensureProfile(user.id);
 
+  const approvalPolicy = data.approval_policy
+    ? normalizeGroupApprovalPolicy(
+        data.type,
+        data.subtype ?? null,
+        data.approval_threshold ?? null,
+        data.approval_policy,
+      )
+    : data.type === GroupType.WORKSPACE
+      ? buildWorkspaceApprovalPolicy(data.subtype ?? null, data.approval_threshold)
+      : null;
+
   const payload = {
     name: data.name,
     type: data.type as Group['type'],
+    subtype: data.subtype ?? null,
     description: data.description ?? null,
     owner_id: user.id,
     cycle_date: data.cycle_date ?? 1,
     currency: data.currency ?? 'GBP',
+    approval_threshold: approvalPolicy?.threshold ?? data.approval_threshold ?? null,
+    approval_policy: approvalPolicy,
   };
 
   const { data: insertedGroup, error } = await supabase
@@ -34,6 +109,24 @@ export async function createGroup(data: {
     .single();
 
   if (error) throw error;
+
+  if (data.type === GroupType.WORKSPACE) {
+    const ownerLabel = getPrimaryWorkspaceResponsibilityLabel(
+      data.subtype ?? null,
+      approvalPolicy,
+    );
+
+    if (ownerLabel) {
+      const { error: ownerLabelError } = await supabase
+        .from('group_members')
+        .update({ responsibility_label: ownerLabel })
+        .eq('group_id', insertedGroup.id)
+        .eq('user_id', user.id)
+        .is('responsibility_label', null);
+
+      if (ownerLabelError) throw ownerLabelError;
+    }
+  }
 
   return insertedGroup as Group;
 }
@@ -170,10 +263,38 @@ export async function acceptInvite(groupId: string) {
   return data as GroupMember;
 }
 
-export async function updateMemberRole(memberId: string, role: MemberRole) {
+export async function updateMemberRole(
+  memberId: string,
+  role: MemberRole,
+  responsibilityLabel?: string | null,
+) {
+  const updateData: {
+    role: MemberRole;
+    responsibility_label?: string | null;
+  } = { role };
+
+  if (responsibilityLabel !== undefined) {
+    updateData.responsibility_label = responsibilityLabel;
+  }
+
   const { data, error } = await supabase
     .from('group_members')
-    .update({ role })
+    .update(updateData)
+    .eq('id', memberId)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function updateMemberResponsibilityLabel(
+  memberId: string,
+  responsibilityLabel: string | null,
+) {
+  const { data, error } = await supabase
+    .from('group_members')
+    .update({ responsibility_label: responsibilityLabel })
     .eq('id', memberId)
     .select()
     .single();
@@ -183,14 +304,117 @@ export async function updateMemberRole(memberId: string, role: MemberRole) {
 }
 
 export async function transferOwnership(groupId: string, newOwnerId: string) {
+  const { data: currentGroup, error: currentGroupError } = await supabase
+    .from('groups')
+    .select('owner_id, type, subtype, approval_policy')
+    .eq('id', groupId)
+    .single();
+
+  if (currentGroupError) throw currentGroupError;
+
+  const ownerResponsibilityLabel =
+    currentGroup?.type === GroupType.WORKSPACE
+      ? getPrimaryWorkspaceResponsibilityLabel(
+          currentGroup.subtype,
+          currentGroup.approval_policy,
+        )
+      : null;
+
+  const { data: previousOwnerMembership, error: previousOwnerMembershipError } = await supabase
+    .from('group_members')
+    .select('responsibility_label')
+    .eq('group_id', groupId)
+    .eq('user_id', currentGroup.owner_id)
+    .maybeSingle();
+
+  if (previousOwnerMembershipError) throw previousOwnerMembershipError;
+
   const { error } = await supabase.rpc('fn_transfer_group_ownership', {
     p_group_id: groupId,
     p_new_owner_id: newOwnerId,
   });
   if (error) throw error;
+
+  if (
+    currentGroup?.type === GroupType.WORKSPACE
+    && currentGroup.owner_id
+    && previousOwnerMembership?.responsibility_label
+    && (previousOwnerMembership.responsibility_label === ownerResponsibilityLabel
+      || previousOwnerMembership.responsibility_label === 'owner')
+  ) {
+    const { error: clearOwnerLabelError } = await supabase
+      .from('group_members')
+      .update({ responsibility_label: null })
+      .eq('group_id', groupId)
+      .eq('user_id', currentGroup.owner_id)
+      .eq('responsibility_label', previousOwnerMembership.responsibility_label);
+
+    if (clearOwnerLabelError) throw clearOwnerLabelError;
+  }
+
+  if (currentGroup?.type === GroupType.WORKSPACE && ownerResponsibilityLabel) {
+    const { error: setOwnerLabelError } = await supabase
+      .from('group_members')
+      .update({ responsibility_label: ownerResponsibilityLabel })
+      .eq('group_id', groupId)
+      .eq('user_id', newOwnerId);
+
+    if (setOwnerLabelError) throw setOwnerLabelError;
+  }
 }
 
 export async function removeMember(memberId: string) {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) throw new Error('Not authenticated');
+
+  const { data: member, error: memberError } = await supabase
+    .from('group_members')
+    .select('id, group_id, user_id, role, status')
+    .eq('id', memberId)
+    .single();
+
+  if (memberError) throw memberError;
+
+  const { data: adminMembership, error: adminMembershipError } = await supabase
+    .from('group_members')
+    .select('id')
+    .eq('group_id', member.group_id)
+    .eq('user_id', user.id)
+    .eq('status', 'active')
+    .eq('role', 'admin')
+    .maybeSingle();
+
+  if (adminMembershipError) throw adminMembershipError;
+  if (!adminMembership) {
+    throw new Error('Only group admins can remove members.');
+  }
+
+  const { data: group, error: groupError } = await supabase
+    .from('groups')
+    .select('owner_id')
+    .eq('id', member.group_id)
+    .single();
+
+  if (groupError) throw groupError;
+  if (group.owner_id === member.user_id) {
+    throw new Error('Transfer ownership before removing the owner.');
+  }
+
+  const { count: adminCount, error: adminCountError } = await supabase
+    .from('group_members')
+    .select('*', { count: 'exact', head: true })
+    .eq('group_id', member.group_id)
+    .eq('status', 'active')
+    .eq('role', 'admin');
+
+  if (adminCountError) throw adminCountError;
+  if (member.role === 'admin' && member.status === 'active' && (adminCount ?? 0) <= 1) {
+    throw new Error('Promote another admin before removing this member.');
+  }
+
   const { data, error } = await supabase
     .from('group_members')
     .update({
@@ -236,20 +460,83 @@ export async function updateGroup(
     name?: string;
     type?: string;
     currency?: string;
+    description?: string | null;
     cycle_date?: number;
     nudges_enabled?: boolean;
     tagline?: string;
     pinned_message?: string | null;
     subtype?: string | null;
     house_info?: Record<string, string> | null;
+    space_essentials?: SpaceEssentials | null;
+    setup_checklist_progress?: SetupChecklistProgress | null;
     approval_threshold?: number | null;
+    approval_policy?: GroupApprovalPolicyInput | null;
     avatar_url?: string;
     cover_url?: string;
   },
 ) {
+  let approvalPolicy: GroupApprovalPolicyInput | null | undefined = undefined;
+
+  if (updates.approval_policy !== undefined) {
+    approvalPolicy = updates.approval_policy
+      ? normalizeGroupApprovalPolicy(
+          updates.type ?? GroupType.WORKSPACE,
+          updates.subtype ?? null,
+          updates.approval_threshold ?? null,
+          updates.approval_policy,
+        )
+      : null;
+  } else if (updates.approval_threshold !== undefined) {
+    const { data: currentGroup, error: currentGroupError } = await supabase
+      .from('groups')
+      .select('type, subtype, approval_policy')
+      .eq('id', groupId)
+      .single();
+
+    if (currentGroupError) throw currentGroupError;
+
+    approvalPolicy = normalizeGroupApprovalPolicy(
+      currentGroup?.type ?? updates.type ?? null,
+      updates.subtype ?? currentGroup?.subtype ?? null,
+      updates.approval_threshold,
+      currentGroup?.approval_policy ?? null,
+    ) as GroupApprovalPolicyInput | null;
+  } else if (updates.type !== undefined || updates.subtype !== undefined) {
+    const { data: currentGroup, error: currentGroupError } = await supabase
+      .from('groups')
+      .select('type, subtype, approval_threshold, approval_policy')
+      .eq('id', groupId)
+      .single();
+
+    if (currentGroupError) throw currentGroupError;
+
+    const nextType = updates.type ?? currentGroup?.type ?? null;
+    if (nextType === GroupType.WORKSPACE) {
+      approvalPolicy = normalizeGroupApprovalPolicy(
+        nextType,
+        updates.subtype ?? currentGroup?.subtype ?? null,
+        updates.approval_threshold ?? currentGroup?.approval_threshold ?? null,
+        currentGroup?.approval_policy ?? null,
+      ) as GroupApprovalPolicyInput | null;
+    } else {
+      approvalPolicy = null;
+    }
+  }
+
+  const updatePayload = {
+    ...updates,
+    ...(approvalPolicy !== undefined
+      ? {
+          approval_policy: approvalPolicy,
+          approval_threshold:
+            approvalPolicy ? approvalPolicy.threshold : updates.approval_threshold ?? null,
+        }
+      : {}),
+  };
+
   const { data, error } = await supabase
     .from('groups')
-    .update(updates)
+    .update(updatePayload)
     .eq('id', groupId)
     .select('*')
     .single();

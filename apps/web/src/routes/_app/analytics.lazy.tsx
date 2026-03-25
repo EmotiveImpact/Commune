@@ -12,12 +12,15 @@ import {
   ThemeIcon,
   useComputedColorScheme,
 } from '@mantine/core';
+import { notifications } from '@mantine/notifications';
 import {
   IconArrowDownRight,
   IconArrowUpRight,
   IconChartBar,
   IconClockCheck,
+  IconDownload,
   IconSparkles,
+  IconReceipt,
 } from '@tabler/icons-react';
 import {
   LineChart,
@@ -33,8 +36,8 @@ import {
   ResponsiveContainer,
   CartesianGrid,
 } from 'recharts';
-import { useEffect } from 'react';
-import { formatCurrency } from '@commune/utils';
+import { useEffect, useState } from 'react';
+import { formatCurrency, formatDate } from '@commune/utils';
 import { setPageTitle } from '../../utils/seo';
 import { useGroupStore } from '../../stores/group';
 import { useAuthStore } from '../../stores/auth';
@@ -42,6 +45,8 @@ import { useGroup } from '../../hooks/use-groups';
 import { useSubscription } from '../../hooks/use-subscriptions';
 import { usePlanLimits } from '../../hooks/use-plan-limits';
 import { useAnalytics } from '../../hooks/use-analytics';
+import { getWorkspaceBillingSummary } from '../../hooks/use-dashboard';
+import { downloadWorkspaceBillingPack } from '../../utils/export-csv';
 import { PageHeader } from '../../components/page-header';
 
 export const Route = createLazyFileRoute('/_app/analytics')({
@@ -116,7 +121,7 @@ function UpgradeCTA() {
   );
 }
 
-function AnalyticsPage() {
+export function AnalyticsPage() {
   useEffect(() => {
     setPageTitle('Analytics');
   }, []);
@@ -128,6 +133,7 @@ function AnalyticsPage() {
   const { data: group } = useGroup(activeGroupId ?? '');
   const { data: analytics, isLoading: analyticsLoading, isError: analyticsError, fetchStatus: analyticsFetchStatus } = useAnalytics(activeGroupId ?? '');
   const colorScheme = useComputedColorScheme('light');
+  const [exportingWorkspacePack, setExportingWorkspacePack] = useState(false);
 
   if (!activeGroupId) {
     return (
@@ -225,11 +231,40 @@ function AnalyticsPage() {
     label: formatCategoryLabel(item.category),
     color: categoryPalette[i % categoryPalette.length]!,
   }));
+  const workspaceBillingSummary = getWorkspaceBillingSummary(
+    analytics.workspace_billing.export_rows,
+  );
+  const showWorkspaceBillingWatch = group?.type === 'workspace' && workspaceBillingSummary.expenseCount > 0;
 
   const tickFill = colorScheme === 'dark' ? '#909296' : '#667085';
   const gridStroke = colorScheme === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(22,19,29,0.06)';
 
   const hasData = spendingTrend.some((item) => item.amount > 0);
+
+  async function handleExportWorkspacePack() {
+    if (!showWorkspaceBillingWatch || !analytics) return;
+
+    setExportingWorkspacePack(true);
+    try {
+      await downloadWorkspaceBillingPack(
+        analytics.workspace_billing,
+        group?.currency ?? 'GBP',
+      );
+      notifications.show({
+        title: 'Billing pack exported',
+        message: 'Workspace summary, ledger, vendor, and trend files were downloaded.',
+        color: 'green',
+      });
+    } catch (error) {
+      notifications.show({
+        title: 'Export failed',
+        message: error instanceof Error ? error.message : 'Failed to build the billing pack.',
+        color: 'red',
+      });
+    } finally {
+      setExportingWorkspacePack(false);
+    }
+  }
 
   if (!hasData) {
     return (
@@ -320,6 +355,160 @@ function AnalyticsPage() {
           <Progress value={compliancePct} size="lg" color="commune" mt="md" />
         </Paper>
       </SimpleGrid>
+
+      {showWorkspaceBillingWatch && (
+        <Paper className="commune-soft-panel" p="xl">
+          <Group justify="space-between" align="flex-start" mb="md">
+            <div>
+              <Text className="commune-section-heading">Shared subscriptions &amp; tools</Text>
+              <Text size="sm" c="dimmed">
+                Invoice cadence, recurring subscriptions, tool spend, and bills due next.
+              </Text>
+            </div>
+            <Group gap="xs">
+              <Button
+                variant="default"
+                size="xs"
+                leftSection={<IconDownload size={14} />}
+                onClick={handleExportWorkspacePack}
+                loading={exportingWorkspacePack}
+              >
+                Export billing pack
+              </Button>
+              <Badge className="commune-pill-badge" variant="light" color="indigo">
+                {workspaceBillingSummary.vendorCount} vendors
+              </Badge>
+              {workspaceBillingSummary.sharedSubscriptionCount > 0 && (
+                <Badge className="commune-pill-badge" variant="light" color="violet">
+                  {workspaceBillingSummary.sharedSubscriptionCount} subscriptions
+                </Badge>
+              )}
+              <Badge className="commune-pill-badge" variant="light" color="teal">
+                {workspaceBillingSummary.toolCostCount} work tools
+              </Badge>
+            </Group>
+          </Group>
+
+          <SimpleGrid cols={{ base: 1, sm: 2, md: 5 }} spacing="md">
+            <Paper className="commune-stat-card" p="md" radius="lg">
+              <Text size="xs" c="dimmed">Tracked bills</Text>
+              <Text fw={700} size="lg">
+                {workspaceBillingSummary.expenseCount}
+              </Text>
+            </Paper>
+            <Paper className="commune-stat-card" p="md" radius="lg">
+              <Text size="xs" c="dimmed">Work tools spend</Text>
+              <Text fw={700} size="lg">
+                {formatCurrency(workspaceBillingSummary.toolCostSpend, group?.currency)}
+              </Text>
+            </Paper>
+            <Paper className="commune-stat-card" p="md" radius="lg">
+              <Text size="xs" c="dimmed">Due soon</Text>
+              <Text fw={700} size="lg">
+                {workspaceBillingSummary.dueSoonCount}
+              </Text>
+            </Paper>
+            <Paper className="commune-stat-card" p="md" radius="lg">
+              <Text size="xs" c="dimmed">Overdue</Text>
+              <Text fw={700} size="lg" c={workspaceBillingSummary.overdueCount > 0 ? 'red' : undefined}>
+                {workspaceBillingSummary.overdueCount}
+              </Text>
+            </Paper>
+            <Paper className="commune-stat-card" p="md" radius="lg">
+              <Text size="xs" c="dimmed">Top vendor</Text>
+              <Text fw={700} size="sm">
+                {workspaceBillingSummary.topVendor?.vendor_name || 'No vendor named yet'}
+              </Text>
+              {workspaceBillingSummary.topVendor ? (
+                <Text size="xs" c="dimmed">
+                  {workspaceBillingSummary.topVendor.count} bill{workspaceBillingSummary.topVendor.count !== 1 ? 's' : ''} · {formatCurrency(workspaceBillingSummary.topVendor.amount, group?.currency)}
+                </Text>
+              ) : null}
+            </Paper>
+            <Paper className="commune-stat-card" p="md" radius="lg">
+              <Text size="xs" c="dimmed">Tracked spend</Text>
+              <Text fw={700} size="lg">
+                {formatCurrency(workspaceBillingSummary.totalSpend, group?.currency)}
+              </Text>
+            </Paper>
+          </SimpleGrid>
+
+          <Stack gap="sm" mt="lg">
+            {workspaceBillingSummary.nextDueBill && (
+              <Paper className="commune-stat-card" p="md" radius="lg">
+                <Group justify="space-between" align="flex-start" wrap="nowrap">
+                  <Stack gap={2}>
+                    <Group gap="xs" wrap="nowrap">
+                      <Text fw={700}>{workspaceBillingSummary.nextDueBill.vendor_name || workspaceBillingSummary.nextDueBill.title}</Text>
+                      {workspaceBillingSummary.nextDueBill.recurrence_type && workspaceBillingSummary.nextDueBill.recurrence_type !== 'none' && (
+                        <Badge size="xs" variant="light" color="violet">
+                          Subscription
+                        </Badge>
+                      )}
+                      {workspaceBillingSummary.nextDueBill.category === 'work_tools' && (
+                        <Badge size="xs" variant="light" color="teal">
+                          Tool cost
+                        </Badge>
+                      )}
+                    </Group>
+                    <Text size="sm" c="dimmed">
+                      {workspaceBillingSummary.nextDueBill.invoice_reference
+                        ? `Ref ${workspaceBillingSummary.nextDueBill.invoice_reference}`
+                        : 'No reference yet'}
+                    </Text>
+                  </Stack>
+                  <Stack gap={2} align="flex-end">
+                    <Text fw={700}>
+                      {formatCurrency(workspaceBillingSummary.nextDueBill.amount, workspaceBillingSummary.nextDueBill.currency)}
+                    </Text>
+                    <Text size="xs" c="dimmed">
+                      Due {formatDate(workspaceBillingSummary.nextDueBill.payment_due_date || workspaceBillingSummary.nextDueBill.due_date)}
+                    </Text>
+                  </Stack>
+                </Group>
+              </Paper>
+            )}
+
+            {workspaceBillingSummary.latestBill && (
+              <Paper className="commune-stat-card" p="md" radius="lg">
+                <Group justify="space-between" align="flex-start" wrap="nowrap">
+                  <Stack gap={2}>
+                    <Group gap="xs">
+                      <ThemeIcon size={20} variant="light" color="indigo" radius="xl">
+                        <IconReceipt size={12} />
+                      </ThemeIcon>
+                      <Text fw={700}>Latest invoice</Text>
+                      {workspaceBillingSummary.latestBill.recurrence_type && workspaceBillingSummary.latestBill.recurrence_type !== 'none' && (
+                        <Badge size="xs" variant="light" color="violet">
+                          Subscription
+                        </Badge>
+                      )}
+                      {workspaceBillingSummary.latestBill.category === 'work_tools' && (
+                        <Badge size="xs" variant="light" color="teal">
+                          Tool cost
+                        </Badge>
+                      )}
+                    </Group>
+                    <Text size="sm" c="dimmed">
+                      {workspaceBillingSummary.latestBill.vendor_name || workspaceBillingSummary.latestBill.title}
+                    </Text>
+                  </Stack>
+                  <Stack gap={2} align="flex-end">
+                    <Text fw={700}>
+                      {workspaceBillingSummary.latestBill.invoice_reference || 'No reference'}
+                    </Text>
+                    <Text size="xs" c="dimmed">
+                      {workspaceBillingSummary.latestBill.invoice_date
+                        ? `Issued ${formatDate(workspaceBillingSummary.latestBill.invoice_date)}`
+                        : `Due ${formatDate(workspaceBillingSummary.latestBill.due_date)}`}
+                    </Text>
+                  </Stack>
+                </Group>
+              </Paper>
+            )}
+          </Stack>
+        </Paper>
+      )}
 
       {/* Row 2: Spending trend line chart */}
       <Paper className="commune-soft-panel" p="xl">

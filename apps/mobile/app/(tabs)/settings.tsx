@@ -44,6 +44,8 @@ type QuickLink = {
 };
 
 const quickLinks: QuickLink[] = [
+  { icon: 'checkmark-circle-outline', label: 'Operations', route: '/operations' },
+  { icon: 'calendar-outline', label: 'Cycle close', route: '/group-close' },
   { icon: 'repeat-outline', label: 'Recurring expenses', route: '/recurring' },
   { icon: 'bar-chart-outline', label: 'Analytics', route: '/analytics' },
   { icon: 'time-outline', label: 'Activity log', route: '/activity' },

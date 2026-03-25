@@ -21,12 +21,21 @@ import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { IconFileAlert } from '@tabler/icons-react';
-import { calculateEqualSplit, calculatePercentageSplit, getCategoriesByGroupType } from '@commune/core';
+import {
+  calculateEqualSplit,
+  calculatePercentageSplit,
+  getCategoriesByGroupType,
+  getSpacePreset,
+} from '@commune/core';
 import { formatCurrency } from '@commune/utils';
 import { uploadReceipt } from '@commune/api';
 import { useGroupStore } from '../../../stores/group';
 import { useGroup } from '../../../hooks/use-groups';
-import { useCreateExpense } from '../../../hooks/use-expenses';
+import {
+  getWorkspaceExpenseContext,
+  toWorkspaceExpenseContextPayload,
+  useCreateExpense,
+} from '../../../hooks/use-expenses';
 import { useTemplates } from '../../../hooks/use-templates';
 import { useAuthStore } from '../../../stores/auth';
 import { ExpenseFormSkeleton } from '../../../components/page-skeleton';
@@ -46,6 +55,10 @@ interface ExpenseDraft {
   participant_ids: string[];
   percentages: Record<string, number>;
   custom_amounts: Record<string, number>;
+  vendor_name: string;
+  invoice_reference: string;
+  invoice_date: string;
+  payment_due_date: string;
   splitMethod: string;
   isRecurring: boolean;
   savedAt: number;
@@ -81,6 +94,28 @@ function clearDraft(groupId: string) {
   }
 }
 
+function hasDraftContent(values: {
+  title?: string;
+  amount?: number;
+  participant_ids?: string[];
+  vendor_name?: string;
+  invoice_reference?: string;
+  invoice_date?: string;
+  payment_due_date?: string;
+  splitMethod?: string;
+  isRecurring?: boolean;
+}) {
+  return Boolean(
+    values.title
+      || values.amount
+      || (values.participant_ids?.length ?? 0) > 0
+      || values.vendor_name
+      || values.invoice_reference
+      || values.invoice_date
+      || values.payment_due_date,
+  );
+}
+
 export const Route = createLazyFileRoute('/_app/expenses/new')({
   component: AddExpensePage,
 });
@@ -92,7 +127,7 @@ function formatCategoryLabel(cat: string) {
     .join(' ');
 }
 
-function AddExpensePage() {
+export function AddExpensePage() {
   const { activeGroupId } = useGroupStore();
   const { data: group, isLoading } = useGroup(activeGroupId ?? '');
   const createExpense = useCreateExpense(activeGroupId ?? '');
@@ -104,14 +139,17 @@ function AddExpensePage() {
   const [draftBanner, setDraftBanner] = useState<ExpenseDraft | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { data: templates } = useTemplates(activeGroupId ?? '');
-
+  const preset = useMemo(
+    () => getSpacePreset(group?.type, group?.subtype),
+    [group?.subtype, group?.type],
+  );
   const categoryOptions = useMemo(
     () =>
-      getCategoriesByGroupType(group?.type).map((cat) => ({
+      getCategoriesByGroupType(group?.type, group?.subtype).map((cat) => ({
         value: cat,
         label: formatCategoryLabel(cat),
       })),
-    [group?.type],
+    [group?.subtype, group?.type],
   );
 
   const form = useForm({
@@ -127,11 +165,21 @@ function AddExpensePage() {
       participant_ids: [] as string[],
       percentages: {} as Record<string, number>,
       custom_amounts: {} as Record<string, number>,
+      vendor_name: '',
+      invoice_reference: '',
+      invoice_date: '',
+      payment_due_date: '',
     },
     onValuesChange(values) {
       if (!activeGroupId) return;
       // Only save if user has entered something meaningful
-      if (!values.title && !values.amount && values.participant_ids.length === 0) return;
+      if (
+        !hasDraftContent({
+          ...values,
+          splitMethod,
+          isRecurring,
+        })
+      ) return;
       if (debounceRef.current) clearTimeout(debounceRef.current);
       debounceRef.current = setTimeout(() => {
         saveDraft(activeGroupId, {
@@ -142,6 +190,8 @@ function AddExpensePage() {
       }, 300);
     },
   });
+
+  const workspaceContext = getWorkspaceExpenseContext(form.getValues());
 
   // ─── Check for existing draft on mount ──────────────────────────────────
   useEffect(() => {
@@ -156,7 +206,13 @@ function AddExpensePage() {
   useEffect(() => {
     if (!activeGroupId) return;
     const values = form.getValues();
-    if (!values.title && !values.amount && values.participant_ids.length === 0) return;
+    if (
+      !hasDraftContent({
+        ...values,
+        splitMethod,
+        isRecurring,
+      })
+    ) return;
     saveDraft(activeGroupId, {
       ...values,
       splitMethod,
@@ -177,6 +233,10 @@ function AddExpensePage() {
       participant_ids: draftBanner.participant_ids,
       percentages: draftBanner.percentages,
       custom_amounts: draftBanner.custom_amounts,
+      vendor_name: draftBanner.vendor_name ?? '',
+      invoice_reference: draftBanner.invoice_reference ?? '',
+      invoice_date: draftBanner.invoice_date ?? '',
+      payment_due_date: draftBanner.payment_due_date ?? '',
     });
     setSplitMethod(draftBanner.splitMethod || 'equal');
     setIsRecurring(draftBanner.isRecurring || false);
@@ -301,6 +361,12 @@ function AddExpensePage() {
       split_method: splitMethod as 'equal' | 'percentage' | 'custom',
       paid_by_user_id: values.paid_by_user_id || undefined,
       participant_ids: values.participant_ids,
+      ...toWorkspaceExpenseContextPayload({
+        vendor_name: values.vendor_name,
+        invoice_reference: values.invoice_reference,
+        invoice_date: values.invoice_date,
+        payment_due_date: values.payment_due_date,
+      }),
     };
 
     if (splitMethod === 'percentage') {
@@ -402,6 +468,27 @@ function AddExpensePage() {
               <Stack gap="lg">
                 <Paper className="commune-soft-panel" p="xl">
                   <Stack gap="md">
+                    <Title order={3}>{preset.title}</Title>
+                    <Text c="dimmed" size="sm">
+                      {preset.summary}
+                    </Text>
+                    <Group gap="xs">
+                      {preset.suggestedCategories.slice(0, 4).map((category) => (
+                        <Badge key={category} variant="light" color="gray">
+                          {formatCategoryLabel(category)}
+                        </Badge>
+                      ))}
+                    </Group>
+                    {preset.firstExpenseIdeas.slice(0, 2).map((idea) => (
+                      <Text key={idea} size="sm" c="dimmed">
+                        • {idea}
+                      </Text>
+                    ))}
+                  </Stack>
+                </Paper>
+
+                <Paper className="commune-soft-panel" p="xl">
+                  <Stack gap="md">
                     <Title order={3}>Basics</Title>
                     <TextInput
                       label="Title"
@@ -445,6 +532,47 @@ function AddExpensePage() {
                     />
                   </Stack>
                 </Paper>
+
+                {(group?.type === 'workspace' || Object.values(workspaceContext).some(Boolean)) && (
+                  <Paper className="commune-soft-panel" p="xl">
+                    <Stack gap="md">
+                      <Title order={3}>Workspace context</Title>
+                      <Text size="sm" c="dimmed">
+                        Optional fields for vendor invoices, subscriptions, and internal cost tracking.
+                      </Text>
+                      <Group grow align="flex-start">
+                        <TextInput
+                          label="Vendor / supplier"
+                          placeholder="e.g. OfficeCo"
+                          key={form.key('vendor_name')}
+                          {...form.getInputProps('vendor_name')}
+                        />
+                        <TextInput
+                          label="Invoice reference"
+                          placeholder="e.g. INV-1042"
+                          key={form.key('invoice_reference')}
+                          {...form.getInputProps('invoice_reference')}
+                        />
+                      </Group>
+                      <Group grow align="flex-start">
+                        <TextInput
+                          label="Invoice date"
+                          type="date"
+                          description="Optional issue date from the vendor invoice."
+                          key={form.key('invoice_date')}
+                          {...form.getInputProps('invoice_date')}
+                        />
+                        <TextInput
+                          label="Payment due date"
+                          type="date"
+                          description="Optional vendor due date if it differs from the expense due date."
+                          key={form.key('payment_due_date')}
+                          {...form.getInputProps('payment_due_date')}
+                        />
+                      </Group>
+                    </Stack>
+                  </Paper>
+                )}
 
                 <Paper className="commune-soft-panel" p="xl">
                   <Stack gap="md">

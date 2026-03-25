@@ -253,7 +253,7 @@ export function parseSplitwiseCSV(csvText: string): SplitwiseParseResult {
     }
 
     // Parse cost
-    const costStr = (row[costIdx] ?? '').replace(/[^0-9.\-]/g, '');
+    const costStr = (row[costIdx] ?? '').replace(/[^0-9.-]/g, '');
     const cost = parseFloat(costStr);
     if (isNaN(cost) || cost <= 0) {
       // Skip zero/negative costs (settlements, payments)
@@ -272,7 +272,7 @@ export function parseSplitwiseCSV(csvText: string): SplitwiseParseResult {
       // Try each column for this participant to find the share value
       let share = 0;
       for (const ci of colIdxs) {
-        const cellVal = (row[ci] ?? '').trim().replace(/[^0-9.\-]/g, '');
+        const cellVal = (row[ci] ?? '').trim().replace(/[^0-9.-]/g, '');
         const parsed = parseFloat(cellVal);
         if (!isNaN(parsed) && parsed !== 0) {
           share = Math.abs(parsed); // shares are always positive

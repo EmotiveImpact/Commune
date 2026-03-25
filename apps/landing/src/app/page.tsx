@@ -107,22 +107,23 @@ function Hero() {
           <Reveal>
             <div className="hero-badge">
               <span className="hero-badge-dot" />
-              For people who do life, together
+              For shared spaces and recurring groups
             </div>
           </Reveal>
 
           <Reveal delay={1}>
             <h1>
-              Shared money,
+              Shared spaces,
               <br />
-              without the <em>friction</em>
+              run with <em>clarity</em>
             </h1>
           </Reveal>
 
           <Reveal delay={2}>
             <p className="hero-subtitle">
-              Track every bill. Split fairly. Settle up instantly. Commune keeps
-              shared finances clear so you can focus on what matters.
+              Commune combines communal finance, responsibilities, group
+              context, and clear priorities so homes, studios, workspaces,
+              projects, and trips can run from one hub.
             </p>
           </Reveal>
 
@@ -148,7 +149,7 @@ function Hero() {
                 ))}
               </div>
               <p className="hero-social-text">
-                <strong>2,400+ households</strong> managing money together
+                <strong>2,400+ groups</strong> managing shared spaces together
               </p>
             </div>
           </Reveal>
@@ -199,8 +200,8 @@ const features = [
         <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
       </svg>
     ),
-    title: 'Smart splitting',
-    desc: 'Split equally, by percentage, by shares, or by exact amounts. Commune handles the maths so you never have to.',
+    title: 'Flexible communal finance',
+    desc: 'Track recurring bills, split fairly, reimburse cleanly, and keep one financial truth across the whole group.',
   },
   {
     icon: (
@@ -210,8 +211,8 @@ const features = [
         <path d="M7 14h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
       </svg>
     ),
-    title: 'Payment tracking',
-    desc: 'See who paid what in real time. Mark payments as settled and keep a full history of every transaction.',
+    title: 'Space hubs',
+    desc: 'Give every space its own hub with members, roles, pinned notices, essentials, and group identity.',
   },
   {
     icon: (
@@ -221,8 +222,8 @@ const features = [
         <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
       </svg>
     ),
-    title: 'Multi-group',
-    desc: 'One account, many groups. Manage flat expenses, trip costs, and family budgets — each with their own space.',
+    title: 'Responsibilities & roles',
+    desc: 'Track who owns what, what needs doing, and which approvals or follow-ups are blocking the group.',
   },
   {
     icon: (
@@ -230,8 +231,8 @@ const features = [
         <path d="M18 20V10M12 20V4M6 20v-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
       </svg>
     ),
-    title: 'Analytics',
-    desc: 'Monthly breakdowns show where money goes. Spot trends, track budgets, and understand spending patterns.',
+    title: 'Command centre',
+    desc: 'See what is owed, what is overdue, and what needs attention across one or many spaces from a single overview.',
   },
   {
     icon: (
@@ -240,8 +241,8 @@ const features = [
         <path d="M10 7h4M10 11h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
       </svg>
     ),
-    title: 'Smart reminders',
-    desc: 'Gentle nudges when payments are due. No more awkward chasing — Commune does it for you.',
+    title: 'Multi-space by design',
+    desc: 'One account can run a house, studio, workspace, trip, or project, each with its own rules and context.',
   },
   {
     icon: (
@@ -250,8 +251,8 @@ const features = [
         <path d="M9 12l2 2 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     ),
-    title: 'Bank-level security',
-    desc: 'Your data is encrypted end-to-end. We never store payment credentials or touch your bank accounts directly.',
+    title: 'Trust & controls',
+    desc: 'Use approvals, member roles, payment methods, and audit-friendly history to keep shared admin dependable.',
   },
 ];
 
@@ -262,11 +263,11 @@ function Features() {
         <Reveal>
           <p className="section-label">Features</p>
           <h2 className="section-title">
-            Everything you need to<br />manage shared money
+            Everything you need to<br />run a shared space
           </h2>
           <p className="section-subtitle">
-            Built for the way people actually live. No spreadsheets, no group
-            chat maths, no arguments.
+            Built for the way recurring groups actually operate. No spreadsheets,
+            no scattered admin, no guesswork about what is owed or what is due.
           </p>
         </Reveal>
 
@@ -293,18 +294,18 @@ function Features() {
 const steps = [
   {
     number: '01',
-    title: 'Create your group',
-    desc: 'Set up a group in seconds. Invite housemates, friends, or family by email or link.',
+    title: 'Create your space',
+    desc: 'Set up a home, studio, workspace, project, or trip in seconds. Invite members by email or link.',
   },
   {
     number: '02',
-    title: 'Log expenses',
-    desc: 'Add bills as they come. Snap a photo, enter the amount, and choose who\'s involved.',
+    title: 'Set the rules and context',
+    desc: 'Add expenses, assign responsibilities, save key details, and define how the group should run.',
   },
   {
     number: '03',
-    title: 'Settle up',
-    desc: 'Commune calculates who owes whom. Settle with a tap and keep your books clear.',
+    title: 'Run the group',
+    desc: 'See what is owed, what is due, and what needs attention from one clear operational hub.',
   },
 ];
 
@@ -358,14 +359,14 @@ function Showcase() {
 
           <div className="showcase-text">
             <Reveal>
-              <p className="section-label">Built for shared living</p>
+              <p className="section-label">Built for shared spaces</p>
               <h2 className="section-title">
-                Designed around the way households actually work
+                Designed for homes, studios, workspaces, and recurring groups
               </h2>
               <p className="section-subtitle">
-                Rent, groceries, utilities, subscriptions — everything in one
-                place. No more screenshots of bank transfers or spreadsheets
-                that nobody updates.
+                Bills, responsibilities, member context, notices, and priorities
+                all live in one place. No more screenshots of transfers,
+                spreadsheets nobody updates, or key details buried in chat.
               </p>
             </Reveal>
 
@@ -406,9 +407,9 @@ function Testimonial() {
       <div className="section-inner">
         <Reveal>
           <blockquote className="testimonial-quote">
-            &ldquo;Commune removed every awkward conversation about money in our
-            flat. We set up expenses once and the app handles
-            everything&nbsp;else.&rdquo;
+            &ldquo;Commune gave our collective one place for money, roles, and the
+            small operational stuff that usually gets lost in chat. It made the
+            whole group calmer.&rdquo;
           </blockquote>
         </Reveal>
         <Reveal delay={1}>
@@ -417,7 +418,7 @@ function Testimonial() {
             <div className="testimonial-author-info">
               <p className="testimonial-author-name">Priya M.</p>
               <p className="testimonial-author-role">
-                4-person household, London
+                Creative collective, London
               </p>
             </div>
           </div>
@@ -437,11 +438,12 @@ const plans = [
     price: '£4.99',
     period: 'per month',
     features: [
-      '1 group',
+      '1 space',
       'Up to 8 members',
-      'Expense tracking & splitting',
-      'Payment tracking',
+      'Communal finance & splits',
+      'Responsibilities & reminders',
       'Monthly breakdown',
+      'Group hub',
     ],
     featured: false,
   },
@@ -450,25 +452,25 @@ const plans = [
     price: '£9.99',
     period: 'per month',
     features: [
-      'Up to 3 groups',
+      'Up to 3 spaces',
       'Up to 15 members',
       'Everything in Standard',
       'Advanced analytics',
-      'Export support',
+      'Exports and templates',
       'Priority email support',
     ],
     featured: true,
   },
   {
-    name: 'Pro Max',
-    price: '£99.99',
+    name: 'Agency',
+    price: '£29.99',
     period: 'per month',
     features: [
-      'Unlimited groups',
+      'Unlimited spaces',
       'Unlimited members',
       'Everything in Pro',
-      'Dedicated support',
-      'Custom integrations',
+      'Priority workflows',
+      'Operator-ready growth path',
       'For larger operations',
     ],
     featured: false,
@@ -484,7 +486,7 @@ function Pricing() {
             <p className="section-label">Pricing</p>
             <h2 className="section-title">Simple, transparent pricing</h2>
             <p className="section-subtitle" style={{ margin: '0 auto' }}>
-              Start with a 7-day free trial. No credit card required.
+              Start with a 7-day free trial for your first shared space.
             </p>
           </div>
         </Reveal>
@@ -526,10 +528,10 @@ function CtaBanner() {
   return (
     <section className="cta-banner">
       <Reveal>
-        <h2>Ready to simplify shared&nbsp;money?</h2>
+        <h2>Ready to run your shared space more clearly?</h2>
         <p>
-          Join thousands of households who stopped arguing about bills and
-          started living better, together.
+          Join thousands of groups who replaced scattered admin with one place
+          for money, responsibilities, and what needs attention.
         </p>
         <a href="https://app.ourcommune.io/signup" className="btn-white">
           Get started free
@@ -556,8 +558,8 @@ function Footer() {
             Commune
           </div>
           <p className="footer-tagline">
-            For people who do life, together. Track group spending, split costs
-            fairly, and keep shared money clear.
+            For people who share space, money, and responsibility. Run homes,
+            studios, workspaces, trips, and recurring groups from one hub.
           </p>
         </div>
 

@@ -18,7 +18,12 @@ import { ExpenseCategory } from '@commune/types';
 import { uploadReceipt } from '@commune/api';
 import { useGroupStore } from '../../../stores/group';
 import { useGroup } from '../../../hooks/use-groups';
-import { useExpenseDetail, useUpdateExpense } from '../../../hooks/use-expenses';
+import {
+  getWorkspaceExpenseContext,
+  toWorkspaceExpenseContextPayload,
+  useExpenseDetail,
+  useUpdateExpense,
+} from '../../../hooks/use-expenses';
 import { useAuthStore } from '../../../stores/auth';
 import { ExpenseFormSkeleton } from '../../../components/page-skeleton';
 import { EmptyState } from '../../../components/empty-state';
@@ -34,7 +39,7 @@ const categoryOptions = Object.entries(ExpenseCategory).map(([key, value]) => ({
   label: key.charAt(0) + key.slice(1).toLowerCase().replace(/_/g, ' '),
 }));
 
-function EditExpensePage() {
+export function EditExpensePage() {
   const { expenseId } = Route.useParams();
   const { activeGroupId } = useGroupStore();
   const { data: group } = useGroup(activeGroupId ?? '');
@@ -51,11 +56,16 @@ function EditExpensePage() {
       amount: 0,
       due_date: '',
       recurrence_type: 'none' as string,
+      vendor_name: '',
+      invoice_reference: '',
+      invoice_date: '',
+      payment_due_date: '',
     },
   });
 
   useEffect(() => {
     if (expense) {
+      const context = getWorkspaceExpenseContext(expense);
       form.setValues({
         title: expense.title,
         description: expense.description ?? '',
@@ -63,6 +73,7 @@ function EditExpensePage() {
         amount: expense.amount,
         due_date: expense.due_date,
         recurrence_type: expense.recurrence_type,
+        ...context,
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -101,6 +112,12 @@ function EditExpensePage() {
           amount: values.amount,
           due_date: values.due_date,
           recurrence_type: values.recurrence_type,
+          ...toWorkspaceExpenseContextPayload({
+            vendor_name: values.vendor_name,
+            invoice_reference: values.invoice_reference,
+            invoice_date: values.invoice_date,
+            payment_due_date: values.payment_due_date,
+          }),
         },
       });
 
@@ -189,10 +206,49 @@ function EditExpensePage() {
               </Stack>
             </Paper>
 
+            {(group?.type === 'workspace' || Object.values(getWorkspaceExpenseContext(expense)).some(Boolean)) && (
+              <Paper className="commune-soft-panel" p="xl">
+                <Stack gap="md">
+                  <Text fw={700} size="lg">
+                    Workspace context
+                  </Text>
+                  <Text size="sm" c="dimmed">
+                    Optional fields for vendor invoices, subscriptions, and internal cost tracking.
+                  </Text>
+                  <Group grow align="flex-start">
+                    <TextInput
+                      label="Vendor / supplier"
+                      placeholder="e.g. OfficeCo"
+                      {...form.getInputProps('vendor_name')}
+                    />
+                    <TextInput
+                      label="Invoice reference"
+                      placeholder="e.g. INV-1042"
+                      {...form.getInputProps('invoice_reference')}
+                    />
+                  </Group>
+                  <Group grow align="flex-start">
+                    <TextInput
+                      label="Invoice date"
+                      type="date"
+                      description="Optional issue date from the vendor invoice."
+                      {...form.getInputProps('invoice_date')}
+                    />
+                    <TextInput
+                      label="Payment due date"
+                      type="date"
+                      description="Optional vendor due date if it differs from the expense due date."
+                      {...form.getInputProps('payment_due_date')}
+                    />
+                  </Group>
+                </Stack>
+              </Paper>
+            )}
+
             <Paper className="commune-soft-panel" p="xl">
               <Text size="sm" c="dimmed">
-                This form edits the basic fields only. To change the split method or participants, archive the
-                original expense and create a new one.
+                Split method and participant changes still require a new expense, but vendor and invoice context
+                can be updated here.
               </Text>
             </Paper>
 

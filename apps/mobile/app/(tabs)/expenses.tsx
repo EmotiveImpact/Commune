@@ -9,7 +9,14 @@ import { hapticLight, hapticMedium } from '@/lib/haptics';
 import { useGroupStore } from '@/stores/group';
 import { useThemeStore } from '@/stores/theme';
 import { useGroup } from '@/hooks/use-groups';
-import { useGroupExpenses } from '@/hooks/use-expenses';
+import {
+  getExpenseBillingSignals,
+  getExpenseBillingDueDate,
+  getWorkspaceExpenseContext,
+  hasWorkspaceExpenseContext,
+  isWorkspaceBillingExpense,
+  useGroupExpenses,
+} from '@/hooks/use-expenses';
 import {
   EmptyState,
   ExpenseListSkeleton,
@@ -67,9 +74,19 @@ function getStatusPill(overdue: boolean, settled: boolean, paidCount: number, pa
 const QUICK_ACTIONS: { key: string; icon: IoniconsName; label: string; route?: string }[] = [
   { key: 'add', icon: 'add-outline', label: 'Add Expense', route: '/expenses/new' },
   { key: 'settle', icon: 'swap-horizontal-outline', label: 'Settle Up' },
-  { key: 'recurring', icon: 'repeat-outline', label: 'Recurring' },
+  { key: 'recurring', icon: 'repeat-outline', label: 'Recurring', route: '/recurring' },
   { key: 'filter', icon: 'options-outline', label: 'Filter' },
 ];
+
+const BILLING_SIGNAL_STYLES: Record<
+  'forest' | 'sky' | 'sand' | 'neutral',
+  { bg: string; fg: string }
+> = {
+  forest: { bg: '#ECFDF5', fg: '#059669' },
+  sky: { bg: '#EFF6FF', fg: '#2563EB' },
+  sand: { bg: '#FFF7ED', fg: '#D97706' },
+  neutral: { bg: '#F3F4F6', fg: '#6B7280' },
+};
 
 /* ---------------------------------------------------------------------------
  * Component
@@ -103,7 +120,15 @@ export default function ExpensesScreen() {
     const query = searchQuery.trim().toLowerCase();
     if (!query) return expenses;
     return expenses.filter((expense) =>
-      [expense.title, expense.category, expense.description ?? '']
+      [
+        expense.title,
+        expense.category,
+        expense.description ?? '',
+        getWorkspaceExpenseContext(expense).vendor_name,
+        getWorkspaceExpenseContext(expense).invoice_reference,
+        getWorkspaceExpenseContext(expense).invoice_date,
+        getWorkspaceExpenseContext(expense).payment_due_date,
+      ]
         .join(' ')
         .toLowerCase()
         .includes(query)
@@ -112,8 +137,12 @@ export default function ExpensesScreen() {
 
   const summary = useMemo(() => {
     const totalAmount = filteredExpenses.reduce((sum, expense) => sum + expense.amount, 0);
-    const overdueCount = filteredExpenses.filter((expense) => isOverdue(expense.due_date)).length;
-    const dueSoonCount = filteredExpenses.filter((expense) => isUpcoming(expense.due_date)).length;
+    const overdueCount = filteredExpenses.filter((expense) =>
+      isOverdue(getExpenseBillingDueDate(expense) ?? expense.due_date)
+    ).length;
+    const dueSoonCount = filteredExpenses.filter((expense) =>
+      isUpcoming(getExpenseBillingDueDate(expense) ?? expense.due_date)
+    ).length;
     const recurringCount = filteredExpenses.filter((expense) => expense.recurrence_type !== 'none').length;
     const paidCount = filteredExpenses.filter((expense) => {
       const pc = expense.payment_records?.filter((p) => p.status !== 'unpaid').length ?? 0;
@@ -122,6 +151,38 @@ export default function ExpensesScreen() {
     }).length;
     return { totalAmount, overdueCount, dueSoonCount, recurringCount, paidCount };
   }, [filteredExpenses]);
+  const workspaceExpenseCount = useMemo(
+    () => filteredExpenses.filter((expense) => isWorkspaceBillingExpense(expense, group?.type)).length,
+    [filteredExpenses, group?.type],
+  );
+  const workspaceBillingSummary = useMemo(() => {
+    if (group?.type !== 'workspace') {
+      return null;
+    }
+
+    const workspaceExpenses = filteredExpenses.filter((expense) => isWorkspaceBillingExpense(expense, group.type));
+
+    const recurringCount = workspaceExpenses.filter((expense) => expense.recurrence_type !== 'none').length;
+    const dueSoonCount = workspaceExpenses.filter((expense) => {
+      const dueDate = getExpenseBillingDueDate(expense) ?? expense.due_date;
+      return isUpcoming(dueDate, 14);
+    }).length;
+    const overdueCount = workspaceExpenses.filter((expense) => {
+      const dueDate = getExpenseBillingDueDate(expense) ?? expense.due_date;
+      return isOverdue(dueDate);
+    }).length;
+    const toolCostCount = workspaceExpenses.filter((expense) =>
+      expense.category === 'work_tools' || expense.category === 'internet'
+    ).length;
+
+    return {
+      recurringCount,
+      dueSoonCount,
+      overdueCount,
+      toolCostCount,
+      totalCount: workspaceExpenses.length,
+    };
+  }, [filteredExpenses, group?.type]);
 
   /* -- Theme-aware colors (reference design adapted) -- */
   const bg = isDark ? '#0A0A0A' : '#F9FAFB';
@@ -137,6 +198,7 @@ export default function ExpensesScreen() {
   const progressPercent = filteredExpenses.length > 0
     ? Math.round((summary.paidCount / filteredExpenses.length) * 100)
     : 0;
+  const isWorkspaceGroup = group?.type === 'workspace';
 
   /* -- Render expense items -- */
   const renderExpenseItem = useCallback(
@@ -144,9 +206,13 @@ export default function ExpensesScreen() {
       const paidCount = expense.payment_records?.filter((p) => p.status !== 'unpaid').length ?? 0;
       const participantCount = expense.participants?.length ?? 0;
       const settled = participantCount > 0 && paidCount === participantCount;
-      const overdue = isOverdue(expense.due_date);
+      const dueDate = getExpenseBillingDueDate(expense) ?? expense.due_date;
+      const overdue = isOverdue(dueDate);
       const meta = getCategoryMeta(expense.category);
       const status = getStatusPill(overdue, settled, paidCount, participantCount);
+      const workspaceContext = getWorkspaceExpenseContext(expense);
+      const showWorkspaceContext = isWorkspaceGroup || hasWorkspaceExpenseContext(expense);
+      const billingSignals = getExpenseBillingSignals(expense, group?.type);
 
       return (
         <TouchableOpacity
@@ -184,8 +250,38 @@ export default function ExpensesScreen() {
             >
               {expense.title}
             </Text>
+            {showWorkspaceContext && (workspaceContext.vendor_name || workspaceContext.invoice_reference) ? (
+              <Text numberOfLines={1} style={{ fontSize: 12, color: textSecondary, marginTop: 3 }}>
+                {workspaceContext.vendor_name || 'Workspace'}
+                {workspaceContext.invoice_reference ? ` · Ref ${workspaceContext.invoice_reference}` : ''}
+              </Text>
+            ) : null}
+            {billingSignals.length > 0 ? (
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 8 }}>
+                {billingSignals.map((signal) => {
+                  const tone = BILLING_SIGNAL_STYLES[signal.tone];
+                  return (
+                    <View
+                      key={signal.label}
+                      style={{
+                        backgroundColor: tone.bg,
+                        borderRadius: 999,
+                        paddingHorizontal: 8,
+                        paddingVertical: 3,
+                        marginRight: 6,
+                        marginBottom: 6,
+                      }}
+                    >
+                      <Text style={{ fontSize: 10, fontWeight: '700', color: tone.fg, letterSpacing: 0.4 }}>
+                        {signal.label}
+                      </Text>
+                    </View>
+                  );
+                })}
+              </View>
+            ) : null}
             <Text style={{ fontSize: 13, color: textSecondary, marginTop: 4 }}>
-              {formatDate(expense.due_date)}
+              {formatDate(dueDate)}
             </Text>
           </View>
 
@@ -211,7 +307,7 @@ export default function ExpensesScreen() {
         </TouchableOpacity>
       );
     },
-    [router, cardBg, textPrimary, textSecondary]
+    [router, cardBg, group?.type, isWorkspaceGroup, textPrimary, textSecondary]
   );
 
   /* -- Early returns for edge cases -- */
@@ -357,6 +453,48 @@ export default function ExpensesScreen() {
           {summary.paidCount} of {filteredExpenses.length} settled ({progressPercent}%)
         </Text>
       </View>
+
+      {group.type === 'workspace' ? (
+        <View
+          style={{
+            marginTop: 16,
+            backgroundColor: isDark ? '#18181B' : '#FFFFFF',
+            borderRadius: 20,
+            padding: 18,
+            shadowColor: '#000',
+            shadowOpacity: isDark ? 0.08 : 0.06,
+            shadowRadius: 10,
+            shadowOffset: { width: 0, height: 2 },
+            elevation: 2,
+          }}
+        >
+          <Text style={{ fontSize: 13, fontWeight: '700', color: '#2d6a4f' }}>
+            Workspace bills
+          </Text>
+          <Text style={{ fontSize: 18, fontWeight: '700', color: textPrimary, marginTop: 6 }}>
+            {workspaceBillingSummary?.totalCount ?? workspaceExpenseCount} workspace-linked expenses
+          </Text>
+          <Text style={{ fontSize: 13, color: textSecondary, marginTop: 6, lineHeight: 18 }}>
+            {workspaceBillingSummary?.recurringCount ?? 0} recurring · {workspaceBillingSummary?.toolCostCount ?? 0} tool costs · {workspaceBillingSummary?.dueSoonCount ?? 0} due soon · {workspaceBillingSummary?.overdueCount ?? 0} overdue
+          </Text>
+          <TouchableOpacity
+            onPress={() => { hapticLight(); router.push('/recurring'); }}
+            activeOpacity={0.78}
+            style={{
+              marginTop: 14,
+              alignSelf: 'flex-start',
+              backgroundColor: '#2d6a4f',
+              borderRadius: 12,
+              paddingHorizontal: 14,
+              paddingVertical: 10,
+            }}
+          >
+            <Text style={{ fontSize: 13, fontWeight: '700', color: '#FFFFFF' }}>
+              Open recurring bills
+            </Text>
+          </TouchableOpacity>
+        </View>
+      ) : null}
 
       {/* Quick actions row */}
       <View

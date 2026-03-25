@@ -214,8 +214,6 @@ export default function TabLayout() {
         tabBarItemStyle: {
           paddingTop: 2,
         },
-        tabBarActiveTintColor: ACTIVE_COLOR,
-        tabBarInactiveTintColor: INACTIVE_COLOR,
         sceneStyle: {
           backgroundColor: sceneBg,
         },

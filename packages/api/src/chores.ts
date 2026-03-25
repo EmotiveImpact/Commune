@@ -18,7 +18,7 @@ export async function getGroupChores(groupId: string) {
 
   // Get latest completion for each chore
   const choreIds = (data ?? []).map((c) => c.id);
-  let completionMap = new Map<string, any>();
+  const completionMap = new Map<string, unknown>();
 
   if (choreIds.length > 0) {
     const { data: completions } = await supabase

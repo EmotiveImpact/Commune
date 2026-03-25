@@ -65,15 +65,26 @@ export async function getGroupHub(groupId: string) {
     )
     .eq('group_id', groupId)
     .eq('is_active', true)
+    .eq('approval_status', 'approved')
     .gte('due_date', monthStart)
     .lte('due_date', monthEnd);
+
+  const today = new Date().toISOString().split('T')[0];
+  const { data: overdueExpenses, error: overdueError } = await supabase
+    .from('expenses')
+    .select('id, payment_records(status)')
+    .eq('group_id', groupId)
+    .eq('is_active', true)
+    .eq('approval_status', 'approved')
+    .lt('due_date', today);
+
+  if (overdueError) throw overdueError;
 
   // Calculate per-member monthly totals
   const memberTotals: Record<string, number> = {};
   const categoryTotals: Record<string, number> = {};
 
   (expenses || []).forEach((exp) => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Supabase join result
     ((exp.expense_participants as any[]) || []).forEach((p) => {
       memberTotals[p.user_id] =
         (memberTotals[p.user_id] || 0) + (p.share_amount || 0);
@@ -83,6 +94,11 @@ export async function getGroupHub(groupId: string) {
   });
 
   const totalMonthly = (expenses || []).reduce((sum, e) => sum + e.amount, 0);
+  const overdueExpenseCount = (overdueExpenses || []).filter((expense) =>
+    ((expense.payment_records as Array<{ status: string }> | null) ?? []).some(
+      (record) => record.status === 'unpaid',
+    ),
+  ).length;
 
   return {
     group,
@@ -90,6 +106,7 @@ export async function getGroupHub(groupId: string) {
     memberTotals,
     categoryTotals,
     totalMonthly,
+    overdueExpenseCount,
     activeMembers: (group.members as any[]).filter(
       (m: any) => m.status === 'active',
     ).length,
@@ -165,19 +182,72 @@ export async function getMemberProfile(userId: string, groupId: string) {
 
   const recentActivityMap = new Map<string, Record<string, unknown>>();
   for (const activity of directExpenses ?? []) {
-    recentActivityMap.set(activity.id as string, activity as Record<string, unknown>);
+    recentActivityMap.set(activity.id as string, {
+      kind: 'expense',
+      occurred_at: activity.created_at,
+      ...(activity as Record<string, unknown>),
+    });
   }
   for (const activity of participantExpenses) {
     const activityId = activity.id as string;
     if (!recentActivityMap.has(activityId)) {
-      recentActivityMap.set(activityId, activity);
+      recentActivityMap.set(activityId, {
+        kind: 'expense',
+        occurred_at: activity.created_at,
+        ...activity,
+      });
     }
+  }
+
+  const { data: paymentRows, error: paymentRowsError } = await supabase
+    .from('payment_records')
+    .select(`
+      id,
+      amount,
+      status,
+      paid_at,
+      created_at,
+      expense:expenses!inner (
+        id,
+        title,
+        category,
+        due_date,
+        group_id
+      )
+    `)
+    .eq('user_id', userId)
+    .eq('expense.group_id', groupId)
+    .in('status', ['paid', 'confirmed'])
+    .order('paid_at', { ascending: false })
+    .order('created_at', { ascending: false })
+    .limit(20);
+
+  if (paymentRowsError) throw paymentRowsError;
+
+  for (const row of (paymentRows ?? []) as Array<Record<string, unknown>>) {
+    const rawExpense = row.expense as Record<string, unknown> | Array<Record<string, unknown>> | null;
+    const expense = Array.isArray(rawExpense) ? rawExpense[0] : rawExpense;
+    if (!expense) continue;
+
+    recentActivityMap.set(`payment:${String(row.id)}`, {
+      kind: 'payment',
+      id: row.id,
+      expense_id: expense.id,
+      title: expense.title,
+      category: expense.category,
+      amount: row.amount,
+      status: row.status,
+      due_date: expense.due_date,
+      created_at: row.created_at,
+      paid_at: row.paid_at,
+      occurred_at: row.paid_at ?? row.created_at,
+    });
   }
 
   const recentActivity = Array.from(recentActivityMap.values())
     .sort((a, b) => {
-      const aTime = new Date(String(a.created_at ?? '')).getTime();
-      const bTime = new Date(String(b.created_at ?? '')).getTime();
+      const aTime = new Date(String(a.occurred_at ?? a.created_at ?? '')).getTime();
+      const bTime = new Date(String(b.occurred_at ?? b.created_at ?? '')).getTime();
       return bTime - aTime;
     })
     .slice(0, 20);

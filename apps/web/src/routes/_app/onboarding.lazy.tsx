@@ -7,6 +7,7 @@ import {
   Paper,
   Select,
   Stack,
+  Switch,
   Stepper,
   Text,
   TextInput,
@@ -15,11 +16,27 @@ import {
 import { useForm, schemaResolver } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
 import { useEffect, useState } from 'react';
-import { createGroupSchema, inviteMemberSchema, type CreateGroupInput } from '@commune/core';
+import {
+  createGroupSchema,
+  getAdminOnboardingChecklist,
+  getGroupSubtypeOptions,
+  getOnboardingTips,
+  getOperationTemplates,
+  getSpaceEssentialDefinitions,
+  getSpacePreset,
+  inviteMemberSchema,
+  type CreateGroupInput,
+} from '@commune/core';
 import { useAcceptInvite, useCreateGroup, useInviteMember, usePendingInvites, useUserGroups } from '../../hooks/use-groups';
+import { useApplyGroupStarterPack } from '../../hooks/use-onboarding';
 import { useGroupStore } from '../../stores/group';
+import type { SpaceEssentials } from '@commune/types';
 import { GroupType } from '@commune/types';
 import { OnboardingSkeleton } from '../../components/page-skeleton';
+import {
+  shouldRedirectFromOnboarding,
+  shouldResumeExistingGroup,
+} from './-onboarding-helpers';
 
 export const Route = createLazyFileRoute('/_app/onboarding')({
   component: OnboardingPage,
@@ -37,8 +54,11 @@ const groupTypeOptions = [
 function OnboardingPage() {
   const [active, setActive] = useState(0);
   const [groupId, setGroupId] = useState<string | null>(null);
+  const [groupType, setGroupType] = useState<CreateGroupInput['type'] | null>(null);
+  const [groupSubtype, setGroupSubtype] = useState<string | null>(null);
   const [showCreateFlow, setShowCreateFlow] = useState(false);
   const [acceptingGroupId, setAcceptingGroupId] = useState<string | null>(null);
+  const [selectedGroupType, setSelectedGroupType] = useState<CreateGroupInput['type']>('home');
   const createGroup = useCreateGroup();
   const acceptInvite = useAcceptInvite();
   const { activeGroupId, setActiveGroupId } = useGroupStore();
@@ -48,22 +68,27 @@ function OnboardingPage() {
 
   const groupForm = useForm<CreateGroupInput>({
     mode: 'uncontrolled',
-    initialValues: { name: '', type: 'home', description: '', cycle_date: 1, currency: 'GBP' },
+    initialValues: { name: '', type: 'home', subtype: null, description: '', cycle_date: 1, currency: 'GBP' },
     validate: schemaResolver(createGroupSchema),
   });
+  const typeInputProps = groupForm.getInputProps('type');
+  const subtypeInputProps = groupForm.getInputProps('subtype');
+  const subtypeOptions = getGroupSubtypeOptions(selectedGroupType);
 
   useEffect(() => {
     if (groupsLoading || invitesLoading) {
       return;
     }
 
-    if (activeGroupId) {
+    if (shouldRedirectFromOnboarding(activeGroupId, groupId)) {
       navigate({ to: '/', replace: true });
       return;
     }
 
-    if (groups?.[0]?.id) {
-      setActiveGroupId(groups[0].id);
+    const existingGroupId = groups?.[0]?.id ?? null;
+
+    if (shouldResumeExistingGroup(existingGroupId, groupId)) {
+      setActiveGroupId(existingGroupId);
       navigate({ to: '/', replace: true });
       return;
     }
@@ -73,6 +98,7 @@ function OnboardingPage() {
     }
   }, [
     activeGroupId,
+    groupId,
     groups,
     groupsLoading,
     invitesLoading,
@@ -85,6 +111,8 @@ function OnboardingPage() {
     try {
       const group = await createGroup.mutateAsync(values);
       setGroupId(group.id);
+      setGroupType(values.type);
+      setGroupSubtype(values.subtype ?? null);
       setActiveGroupId(group.id);
       setActive(1);
     } catch (err) {
@@ -182,6 +210,7 @@ function OnboardingPage() {
 
         <Stepper active={active} size="sm" mb="xl" color="commune">
           <Stepper.Step label="Create group" />
+          <Stepper.Step label="Starter setup" />
           <Stepper.Step label="Invite members" />
           <Stepper.Completed>
             <Stack align="center" mt="md">
@@ -207,8 +236,30 @@ function OnboardingPage() {
                 data={groupTypeOptions}
                 withAsterisk
                 key={groupForm.key('type')}
-                {...groupForm.getInputProps('type')}
+                {...typeInputProps}
+                onChange={(value, option) => {
+                  typeInputProps.onChange(value, option);
+                  if (value) {
+                    setSelectedGroupType(value as CreateGroupInput['type']);
+                    const nextSubtypeOptions = getGroupSubtypeOptions(value);
+                    const currentSubtype = groupForm.getValues().subtype ?? null;
+                    if (!nextSubtypeOptions.some((item) => item.value === currentSubtype)) {
+                      groupForm.setFieldValue('subtype', null);
+                    }
+                  }
+                }}
               />
+              {subtypeOptions.length > 0 && (
+                <Select
+                  label="Specific type"
+                  description="Optional, but it improves starter suggestions."
+                  placeholder="Select a subtype"
+                  data={subtypeOptions}
+                  clearable
+                  key={groupForm.key('subtype')}
+                  {...subtypeInputProps}
+                />
+              )}
               <Textarea
                 label="Description"
                 placeholder="Optional"
@@ -222,11 +273,222 @@ function OnboardingPage() {
           </form>
         )}
 
-        {active === 1 && groupId && (
-          <InviteStep groupId={groupId} onDone={() => setActive(2)} />
+        {active === 1 && groupId && groupType && (
+          <StarterSetupStep
+            groupId={groupId}
+            groupType={groupType}
+            groupSubtype={groupSubtype}
+            onDone={() => setActive(2)}
+          />
+        )}
+
+        {active === 2 && groupId && (
+          <InviteStep groupId={groupId} onDone={() => setActive(3)} />
         )}
       </Paper>
     </Center>
+  );
+}
+
+export function StarterSetupStep({
+  groupId,
+  groupType,
+  groupSubtype,
+  onDone,
+}: {
+  groupId: string;
+  groupType: CreateGroupInput['type'];
+  groupSubtype: string | null;
+  onDone: () => void;
+}) {
+  const applyStarterPack = useApplyGroupStarterPack(groupId);
+  const essentialDefinitions = getSpaceEssentialDefinitions(groupType).slice(0, 3);
+  const onboardingTips = getOnboardingTips(groupType);
+  const operationTemplates = getOperationTemplates(groupType, groupSubtype);
+  const adminChecklist = getAdminOnboardingChecklist(groupType, groupSubtype);
+  const preset = getSpacePreset(groupType, groupSubtype);
+  const [includeStarterOperations, setIncludeStarterOperations] = useState(true);
+  const [essentialValues, setEssentialValues] = useState<Record<string, string>>(
+    Object.fromEntries(essentialDefinitions.map((definition) => [definition.key, ''])),
+  );
+
+  function handleLoadRecommendedNotes() {
+    setEssentialValues((current) =>
+      Object.fromEntries(
+        essentialDefinitions.map((definition) => [
+          definition.key,
+          current[definition.key]?.trim()
+            ? current[definition.key]
+            : preset.essentialSeeds[definition.key] || '',
+        ]),
+      ) as Record<string, string>,
+    );
+  }
+
+  async function handleApplyStarterPack() {
+    const spaceEssentials = essentialDefinitions.reduce<SpaceEssentials>((acc, definition) => {
+      const value = essentialValues[definition.key]?.trim();
+      if (!value) return acc;
+
+      acc[definition.key] = {
+        label: definition.label,
+        value,
+        visible: true,
+      };
+      return acc;
+    }, {});
+
+    try {
+      const result = await applyStarterPack.mutateAsync({
+        groupType,
+        subtype: groupSubtype,
+        includeStarterOperations,
+        spaceEssentials,
+      });
+
+      notifications.show({
+        title: 'Starter setup applied',
+        message:
+          result.operationsCreated > 0 || result.essentialsApplied > 0
+            ? `${result.essentialsApplied} essentials saved, ${result.operationsCreated} starter operations created.`
+            : 'Starter setup is already in place for this group.',
+        color: 'green',
+      });
+      onDone();
+    } catch (err) {
+      notifications.show({
+        title: 'Failed to apply starter setup',
+        message: err instanceof Error ? err.message : 'Something went wrong',
+        color: 'red',
+      });
+    }
+  }
+
+  return (
+    <Stack gap="md">
+      <Text size="sm" c="dimmed">
+        Start with a lightweight template so the group does not begin empty.
+      </Text>
+
+      <Paper className="commune-stat-card" p="md" radius="lg">
+        <Stack gap="xs">
+          <Group justify="space-between" align="center">
+            <Text fw={700}>{preset.title}</Text>
+            <Badge variant="light" color="teal">
+              {preset.suggestedCategories.length} suggested categories
+            </Badge>
+          </Group>
+          <Text size="sm" c="dimmed">
+            {preset.summary}
+          </Text>
+          <Group gap="xs">
+            {preset.suggestedCategories.slice(0, 4).map((category) => (
+              <Badge key={category} variant="light" color="gray">
+                {category.replaceAll('_', ' ')}
+              </Badge>
+            ))}
+          </Group>
+          {onboardingTips.map((tip) => (
+            <Text key={tip} size="sm" c="dimmed">• {tip}</Text>
+          ))}
+          {preset.firstExpenseIdeas.slice(0, 2).map((idea) => (
+            <Text key={idea} size="sm" c="dimmed">• {idea}</Text>
+          ))}
+        </Stack>
+      </Paper>
+
+      <Paper className="commune-stat-card" p="md" radius="lg">
+        <Stack gap="xs">
+          <Group justify="space-between" align="center">
+            <Text fw={700}>Admin checklist</Text>
+            <Badge variant="light" color="grape">
+              {adminChecklist.length} steps
+            </Badge>
+          </Group>
+          {adminChecklist.map((item) => (
+            <Text key={item} size="sm" c="dimmed">• {item}</Text>
+          ))}
+        </Stack>
+      </Paper>
+
+      {essentialDefinitions.length > 0 && (
+        <Stack gap="sm">
+          <Group justify="space-between" align="center">
+            <Text fw={600} size="sm">Capture the first useful essentials</Text>
+            <Button variant="subtle" size="xs" onClick={handleLoadRecommendedNotes}>
+              Load recommended setup notes
+            </Button>
+          </Group>
+          {essentialDefinitions.map((definition) => (
+            definition.kind === 'textarea' ? (
+              <Textarea
+                key={definition.key}
+                label={definition.label}
+                placeholder={definition.placeholder}
+                value={essentialValues[definition.key] ?? ''}
+                minRows={2}
+                onChange={(event) => {
+                  const nextValue = event.currentTarget.value;
+                  setEssentialValues((current) => ({
+                    ...current,
+                    [definition.key]: nextValue,
+                  }));
+                }}
+              />
+            ) : (
+              <TextInput
+                key={definition.key}
+                label={definition.label}
+                placeholder={definition.placeholder}
+                value={essentialValues[definition.key] ?? ''}
+                onChange={(event) => {
+                  const nextValue = event.currentTarget.value;
+                  setEssentialValues((current) => ({
+                    ...current,
+                    [definition.key]: nextValue,
+                  }));
+                }}
+              />
+            )
+          ))}
+        </Stack>
+      )}
+
+      <Paper className="commune-stat-card" p="md" radius="lg">
+        <Stack gap="xs">
+          <Group justify="space-between" align="center">
+            <Text fw={700}>Starter operations board</Text>
+            <Badge variant="light" color="blue">
+              {operationTemplates.length} items
+            </Badge>
+          </Group>
+          {operationTemplates.slice(0, 3).map((template) => (
+            <Text key={template.title} size="sm" c="dimmed">
+              • {template.title}
+            </Text>
+          ))}
+          {operationTemplates.length > 3 && (
+            <Text size="sm" c="dimmed">
+              +{operationTemplates.length - 3} more starter operations
+            </Text>
+          )}
+          <Switch
+            label="Create starter operations for this group"
+            checked={includeStarterOperations}
+            onChange={(event) => setIncludeStarterOperations(event.currentTarget.checked)}
+          />
+        </Stack>
+      </Paper>
+
+      <Group grow>
+        <Button variant="default" onClick={onDone}>
+          Skip for now
+        </Button>
+        <Button onClick={handleApplyStarterPack} loading={applyStarterPack.isPending}>
+          Apply starter setup
+        </Button>
+      </Group>
+    </Stack>
   );
 }
 

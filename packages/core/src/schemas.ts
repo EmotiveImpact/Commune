@@ -4,6 +4,7 @@ import {
   ExpenseCategory,
   RecurrenceType,
   SplitMethod,
+  MemberRole,
 } from '@commune/types';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -21,19 +22,112 @@ const splitMethodValues = Object.values(SplitMethod) as [
   string,
   ...string[],
 ];
+const memberRoleValues = Object.values(MemberRole) as [string, ...string[]];
 
 const uuidRegex =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+
+const optionalTrimmedNullableString = (max: number) =>
+  z
+    .preprocess((value) => {
+      if (value == null) return null;
+      if (typeof value !== 'string') return value;
+      const trimmed = value.trim();
+      return trimmed.length > 0 ? trimmed : null;
+    }, z.string().max(max).nullable())
+    .optional()
+    .transform((value) => value ?? null);
+
+const expenseVendorInvoiceContextFieldsSchema = z.object({
+  vendor_name: optionalTrimmedNullableString(120),
+  invoice_reference: optionalTrimmedNullableString(80),
+  invoice_date: z
+    .union([z.string().regex(dateRegex, 'Must be YYYY-MM-DD format'), z.null()])
+    .optional()
+    .transform((value) => value ?? null),
+  payment_due_date: z
+    .union([z.string().regex(dateRegex, 'Must be YYYY-MM-DD format'), z.null()])
+    .optional()
+    .transform((value) => value ?? null),
+});
+
+function hasValidInvoiceDateOrder(input: {
+  invoice_date: string | null;
+  payment_due_date: string | null;
+}) {
+  return (
+    !input.invoice_date
+    || !input.payment_due_date
+    || input.payment_due_date >= input.invoice_date
+  );
+}
+
+export const expenseVendorInvoiceContextSchema =
+  expenseVendorInvoiceContextFieldsSchema.refine(hasValidInvoiceDateOrder, {
+    message: 'Payment due date cannot be before invoice date',
+    path: ['payment_due_date'],
+  });
+
+export type ExpenseVendorInvoiceContextInput =
+  z.infer<typeof expenseVendorInvoiceContextSchema>;
+
+// ─── Workspace Approval Schemas ─────────────────────────────────────────────
+
+const responsibilityLabelSchema = z.string().min(1).max(80);
+
+export const workspaceRolePresetSchema = z.object({
+  key: z.string().min(1).max(50),
+  label: z.string().min(1).max(80),
+  description: z.string().max(200).optional().nullable(),
+  responsibility_label: responsibilityLabelSchema.optional().nullable(),
+  can_approve: z.boolean().default(false),
+  is_default: z.boolean().default(false),
+});
+
+export const groupApprovalPolicySchema = z
+  .object({
+    threshold: z.number().positive().nullable().optional(),
+    allowed_roles: z.array(z.enum(memberRoleValues)).optional(),
+    allowed_labels: z.array(responsibilityLabelSchema).optional(),
+    role_presets: z.array(workspaceRolePresetSchema).optional(),
+  })
+  .transform((policy) => {
+    const rolePresets = policy.role_presets ?? [];
+    const derivedLabels = rolePresets
+      .filter(
+        (preset) => preset.can_approve && preset.responsibility_label,
+      )
+      .map((preset) => preset.responsibility_label as string);
+
+    return {
+      threshold: policy.threshold ?? null,
+      allowed_roles:
+        policy.allowed_roles && policy.allowed_roles.length > 0
+          ? policy.allowed_roles
+          : [MemberRole.ADMIN],
+      allowed_labels:
+        policy.allowed_labels && policy.allowed_labels.length > 0
+          ? policy.allowed_labels
+          : Array.from(new Set(derivedLabels)),
+      role_presets: rolePresets,
+    };
+  });
+
+export type WorkspaceRolePresetInput = z.infer<typeof workspaceRolePresetSchema>;
+export type GroupApprovalPolicyInput = z.infer<typeof groupApprovalPolicySchema>;
 
 // ─── Group Schemas ───────────────────────────────────────────────────────────
 
 export const createGroupSchema = z.object({
   name: z.string().min(1).max(100),
   type: z.enum(groupTypeValues),
+  subtype: z.string().max(80).optional().nullable(),
   description: z.string().max(500).optional(),
   cycle_date: z.number().int().min(1).max(28).default(1),
   currency: z.string().length(3).default('GBP'),
+  approval_threshold: z.number().positive().nullable().optional(),
+  approval_policy: groupApprovalPolicySchema.optional().nullable(),
 });
 
 export type CreateGroupInput = z.infer<typeof createGroupSchema>;
@@ -70,6 +164,10 @@ export const createExpenseSchema = z.object({
   participant_ids: z
     .array(z.string().regex(uuidRegex, 'Must be a valid UUID'))
     .min(1),
+  ...expenseVendorInvoiceContextFieldsSchema.shape,
+}).refine(hasValidInvoiceDateOrder, {
+  message: 'Payment due date cannot be before invoice date',
+  path: ['payment_due_date'],
 });
 
 export type CreateExpenseInput = z.infer<typeof createExpenseSchema>;
@@ -263,9 +361,13 @@ export const createChoreSchema = z.object({
   group_id: z.string().regex(uuidRegex),
   title: z.string().min(1).max(200),
   description: z.string().max(500).optional().nullable(),
+  category: z.enum(['cleaning', 'supplies', 'admin', 'setup', 'shutdown', 'maintenance', 'other']).default('other'),
+  task_type: z.enum(['recurring', 'one_off', 'checklist']).default('recurring'),
   frequency: z.enum(['daily', 'weekly', 'biweekly', 'monthly', 'once']),
   assigned_to: z.string().regex(uuidRegex).optional().nullable(),
   rotation_order: z.array(z.string()).optional().nullable(),
+  checklist_items: z.array(z.string().min(1).max(120)).max(12).optional().nullable(),
+  escalation_days: z.number().int().min(0).max(30).optional().nullable(),
   next_due: z.string().regex(dateRegex).optional(),
 });
 

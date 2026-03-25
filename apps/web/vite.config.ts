@@ -4,7 +4,9 @@ import { TanStackRouterVite } from '@tanstack/router-plugin/vite';
 
 export default defineConfig({
   plugins: [
-    TanStackRouterVite(),
+    TanStackRouterVite({
+      routeFileIgnorePattern: '\\.test\\.(ts|tsx)$',
+    }),
     react(),
   ],
   build: {

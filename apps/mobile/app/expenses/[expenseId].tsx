@@ -18,6 +18,10 @@ import { useGroupStore } from '@/stores/group';
 import { useThemeStore } from '@/stores/theme';
 import { useGroup, useUserGroups } from '@/hooks/use-groups';
 import {
+  getExpenseBillingSignals,
+  getExpenseBillingDueDate,
+  getWorkspaceExpenseContext,
+  hasWorkspaceExpenseContext,
   useArchiveExpense,
   useConfirmPayment,
   useExpenseDetail,
@@ -95,6 +99,16 @@ function getProgressStep(confirmedCount: number, paidCount: number, total: numbe
   if (paidCount > 0) return 1;
   return 0;
 }
+
+const BILLING_SIGNAL_STYLES: Record<
+  'forest' | 'sky' | 'sand' | 'neutral',
+  { bg: string; fg: string }
+> = {
+  forest: { bg: '#ECFDF5', fg: '#059669' },
+  sky: { bg: '#EFF6FF', fg: '#2563EB' },
+  sand: { bg: '#FFF7ED', fg: '#D97706' },
+  neutral: { bg: '#F3F4F6', fg: '#6B7280' },
+};
 
 /* ---------------------------------------------------------------------------
  * Shimmer skeleton
@@ -391,7 +405,8 @@ export default function ExpenseDetailScreen() {
   const isAdmin = group.members.some(
     (member) => member.user_id === user?.id && member.role === 'admin'
   );
-  const overdue = isOverdue(expenseData.due_date);
+  const billingDueDate = getExpenseBillingDueDate(expenseData) ?? expenseData.due_date;
+  const overdue = isOverdue(billingDueDate);
   const paidCount = expenseData.payment_records.filter(
     (payment) => payment.status !== 'unpaid'
   ).length;
@@ -412,12 +427,57 @@ export default function ExpenseDetailScreen() {
   const catMeta = getCategoryMeta(expenseData.category);
   const statusPill = getExpenseStatusPill(overdue, confirmedCount, paidCount, totalParticipants);
   const progressStep = getProgressStep(confirmedCount, paidCount, totalParticipants);
+  const workspaceContext = getWorkspaceExpenseContext(expenseData);
+  const showWorkspaceContext =
+    group.type === 'workspace' || hasWorkspaceExpenseContext(expenseData);
+  const billingSignals = getExpenseBillingSignals(expenseData, group.type);
+  const workspaceApprovalThreshold =
+    group.type === 'workspace' ? group.approval_threshold : null;
+  const approvalSignalLabel =
+    expenseData.approval_status === 'pending'
+      ? 'Pending approval'
+      : expenseData.approval_status === 'rejected'
+        ? 'Approval rejected'
+        : workspaceApprovalThreshold != null
+          ? `Review threshold ${formatCurrency(workspaceApprovalThreshold, group.currency)}`
+          : null;
+  const recurrenceLabel =
+    expenseData.recurrence_type !== 'none'
+      ? `${expenseData.recurrence_type.charAt(0).toUpperCase()}${expenseData.recurrence_type.slice(1)}`
+      : '';
+  const billingHeadline =
+    expenseData.recurrence_type !== 'none'
+      ? `${recurrenceLabel} recurring`
+      : showWorkspaceContext
+        ? 'Workspace bill'
+        : 'Shared expense';
+  const billingDetail = workspaceContext.payment_due_date
+    ? `Vendor due ${formatDate(workspaceContext.payment_due_date)}`
+    : overdue
+      ? 'Due date has passed'
+      : `Due ${formatDate(billingDueDate)}`;
+  const approvalDetail = group.type === 'workspace'
+    ? workspaceApprovalThreshold != null
+      ? `Expenses above ${formatCurrency(workspaceApprovalThreshold, group.currency)} move into admin approval before they settle.`
+      : 'No approval threshold is set for this workspace yet.'
+    : '';
 
   const progressSteps = [
     { label: 'Created', time: formatDate(expenseData.created_at) },
     { label: 'Partially Paid', time: paidCount > 0 ? `${paidCount}/${totalParticipants}` : '' },
     { label: 'Settled', time: confirmedCount === totalParticipants ? 'Complete' : '' },
   ];
+
+  function handleGroupSelect(nextGroupId: string | null) {
+    if (!nextGroupId || nextGroupId === activeGroupId) {
+      setActiveGroupId(nextGroupId);
+      return;
+    }
+
+    hapticLight();
+    setActiveGroupId(nextGroupId);
+    router.replace('/(tabs)/expenses');
+  }
 
   /* ------------------------------------------------------------------ */
   /*  Payment timeline from records                                      */
@@ -510,7 +570,7 @@ export default function ExpenseDetailScreen() {
           <GroupSwitcher
             groups={groups}
             activeGroupId={activeGroupId}
-            onSelect={setActiveGroupId}
+            onSelect={handleGroupSelect}
             onOpenSetup={() => router.push('/onboarding')}
           />
         </View>
@@ -620,9 +680,33 @@ export default function ExpenseDetailScreen() {
                 <Text style={{ fontSize: 12, color: textSecondary }}>
                   {formatCategoryLabel(expenseData.category)}
                   {expenseData.recurrence_type !== 'none'
-                    ? ` \u00B7 ${expenseData.recurrence_type}`
+                    ? ` \u00B7 recurring ${expenseData.recurrence_type}`
                     : ''}
                 </Text>
+                {billingSignals.length > 0 ? (
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 8 }}>
+                    {billingSignals.map((signal) => {
+                      const tone = BILLING_SIGNAL_STYLES[signal.tone];
+                      return (
+                        <View
+                          key={signal.label}
+                          style={{
+                            backgroundColor: tone.bg,
+                            borderRadius: 999,
+                            paddingHorizontal: 8,
+                            paddingVertical: 3,
+                            marginRight: 6,
+                            marginBottom: 6,
+                          }}
+                        >
+                          <Text style={{ fontSize: 10, fontWeight: '700', color: tone.fg, letterSpacing: 0.4 }}>
+                            {signal.label}
+                          </Text>
+                        </View>
+                      );
+                    })}
+                  </View>
+                ) : null}
               </View>
             </View>
             <View
@@ -791,10 +875,10 @@ export default function ExpenseDetailScreen() {
             <View style={{ flexDirection: 'row', marginBottom: 10 }}>
               <View style={{ flex: 1 }}>
                 <Text style={{ fontSize: 12, color: textSecondary, marginBottom: 4 }}>
-                  Due date
+                  {workspaceContext.payment_due_date ? 'Split due date' : 'Due date'}
                 </Text>
                 <Text style={{ fontSize: 14, fontWeight: '600', color: textPrimary }}>
-                  {formatDate(expenseData.due_date)}
+                  {workspaceContext.payment_due_date ? formatDate(expenseData.due_date) : formatDate(billingDueDate)}
                 </Text>
               </View>
               <View style={{ flex: 1 }}>
@@ -816,7 +900,116 @@ export default function ExpenseDetailScreen() {
                 </Text>
               </View>
             ) : null}
+
+            <View
+              style={{
+                marginTop: 16,
+                borderRadius: 16,
+                backgroundColor: isDark ? '#111827' : '#F8FAFC',
+                padding: 14,
+              }}
+            >
+              <Text style={{ fontSize: 12, fontWeight: '700', color: textSecondary, letterSpacing: 0.4 }}>
+                BILLING CUE
+              </Text>
+              <Text style={{ fontSize: 15, fontWeight: '700', color: textPrimary, marginTop: 6 }}>
+                {billingHeadline}
+              </Text>
+              <Text style={{ fontSize: 13, color: textSecondary, marginTop: 4, lineHeight: 18 }}>
+                {billingDetail}
+              </Text>
+            </View>
           </View>
+
+          {group.type === 'workspace' ? (
+            <View
+              style={{
+                marginTop: 16,
+                borderRadius: 16,
+                backgroundColor: isDark ? '#111827' : '#F8FAFC',
+                padding: 14,
+              }}
+            >
+              <Text style={{ fontSize: 12, fontWeight: '700', color: textSecondary, letterSpacing: 0.4 }}>
+                APPROVAL CHAIN
+              </Text>
+              <Text style={{ fontSize: 15, fontWeight: '700', color: textPrimary, marginTop: 6 }}>
+                {approvalSignalLabel ?? 'Approval review is off'}
+              </Text>
+              <Text style={{ fontSize: 13, color: textSecondary, marginTop: 4, lineHeight: 18 }}>
+                {approvalDetail}
+              </Text>
+            </View>
+          ) : null}
+
+          {showWorkspaceContext ? (
+            <View
+              style={{
+                marginTop: 16,
+                paddingTop: 16,
+                borderTopWidth: 1,
+                borderTopColor: dividerColor,
+              }}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
+                <Ionicons name="briefcase-outline" size={18} color={textPrimary} />
+                <Text
+                  style={{
+                    marginLeft: 8,
+                    fontSize: 15,
+                    fontWeight: '700',
+                    color: textPrimary,
+                  }}
+                >
+                  Workspace context
+                </Text>
+              </View>
+              {[
+                { label: 'Vendor', value: workspaceContext.vendor_name || 'Not set' },
+                { label: 'Invoice reference', value: workspaceContext.invoice_reference || 'Not set' },
+                {
+                  label: 'Invoice date',
+                  value: workspaceContext.invoice_date
+                    ? formatDate(workspaceContext.invoice_date)
+                    : 'Not set',
+                },
+                {
+                  label: 'Payment due date',
+                  value: workspaceContext.payment_due_date
+                    ? formatDate(workspaceContext.payment_due_date)
+                    : 'Not set',
+                },
+              ].map((item, index, items) => (
+                <View key={item.label}>
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      gap: 16,
+                      paddingVertical: 10,
+                    }}
+                  >
+                    <Text style={{ fontSize: 12, color: textSecondary }}>{item.label}</Text>
+                    <Text
+                      style={{
+                        flex: 1,
+                        textAlign: 'right',
+                        fontSize: 13,
+                        fontWeight: '600',
+                        color: textPrimary,
+                      }}
+                    >
+                      {item.value}
+                    </Text>
+                  </View>
+                  {index < items.length - 1 ? (
+                    <View style={{ height: 1, backgroundColor: dividerColor }} />
+                  ) : null}
+                </View>
+              ))}
+            </View>
+          ) : null}
 
           {/* Progress summary row */}
           <View

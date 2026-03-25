@@ -1,46 +1,109 @@
 import type { ExpenseWithParticipants } from '@commune/types';
 import { supabase } from './client';
+import {
+  buildWorkspaceBillingReport,
+  addUtcDays,
+  toDateKey,
+  toMonthKey,
+  type WorkspaceBillingExpenseRecord,
+  type WorkspaceBillingReport,
+} from './workspace-billing';
 
 /**
  * Returns the current month key in 'YYYY-MM' format.
  */
-function getCurrentMonthKey(): string {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+export function getCurrentMonthKey(referenceDate = new Date()): string {
+  return toMonthKey(referenceDate);
 }
 
 /**
  * Calculates the due date for a generated recurring expense based on the
  * source expense's recurrence type and original due date.
  */
+export function computeRecurringDueDate(
+  recurrenceType: string,
+  sourceDueDate: string,
+  referenceDate = new Date(),
+): string {
+  const sourceDate = new Date(`${sourceDueDate}T00:00:00.000Z`);
+  if (Number.isNaN(sourceDate.getTime())) {
+    return toDateKey(referenceDate);
+  }
+
+  if (recurrenceType === 'monthly') {
+    const year = referenceDate.getUTCFullYear();
+    const month = referenceDate.getUTCMonth();
+    // Clamp day to the last day of the current month
+    const lastDay = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+    const day = Math.min(sourceDate.getUTCDate(), lastDay);
+    return toDateKey(new Date(Date.UTC(year, month, day)));
+  }
+
+  if (recurrenceType === 'weekly') {
+    const sourceDayOfWeek = sourceDate.getUTCDay();
+    const todayDayOfWeek = referenceDate.getUTCDay();
+    let daysUntilNext = sourceDayOfWeek - todayDayOfWeek;
+    if (daysUntilNext <= 0) daysUntilNext += 7;
+    return toDateKey(addUtcDays(referenceDate, daysUntilNext));
+  }
+
+  // Fallback — use today
+  return toDateKey(referenceDate);
+}
+
 function computeDueDate(
   recurrenceType: string,
   sourceDueDate: string,
 ): string {
-  const today = new Date();
+  return computeRecurringDueDate(recurrenceType, sourceDueDate);
+}
 
-  if (recurrenceType === 'monthly') {
-    const sourceDay = new Date(sourceDueDate).getUTCDate();
-    const year = today.getFullYear();
-    const month = today.getMonth();
-    // Clamp day to the last day of the current month
-    const lastDay = new Date(year, month + 1, 0).getDate();
-    const day = Math.min(sourceDay, lastDay);
-    return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-  }
+function shiftDateByDueDateDelta(
+  date: string | null,
+  sourceDueDate: string,
+  nextDueDate: string,
+): string | null {
+  if (!date) return null;
 
-  if (recurrenceType === 'weekly') {
-    const sourceDayOfWeek = new Date(sourceDueDate).getUTCDay();
-    const todayDayOfWeek = today.getDay();
-    let daysUntilNext = sourceDayOfWeek - todayDayOfWeek;
-    if (daysUntilNext <= 0) daysUntilNext += 7;
-    const next = new Date(today);
-    next.setDate(today.getDate() + daysUntilNext);
-    return `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}-${String(next.getDate()).padStart(2, '0')}`;
-  }
+  const sourceDue = new Date(`${sourceDueDate}T00:00:00.000Z`);
+  const nextDue = new Date(`${nextDueDate}T00:00:00.000Z`);
+  const original = new Date(`${date}T00:00:00.000Z`);
+  const deltaDays = Math.round(
+    (nextDue.getTime() - sourceDue.getTime()) / (1000 * 60 * 60 * 24),
+  );
 
-  // Fallback — use today
-  return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  original.setUTCDate(original.getUTCDate() + deltaDays);
+  return toDateKey(original);
+}
+
+export interface PausedRecurringExpenseState {
+  recurrence_type: string;
+  recurrence_interval: number;
+  description: string | null;
+}
+
+const PAUSED_RECURRING_EXPENSE_PATTERN = /\[paused:([^\]:]+)(?::(\d+))?\]/;
+
+export function parsePausedRecurringExpenseState(
+  description: string | null | undefined,
+): PausedRecurringExpenseState | null {
+  const rawDescription = description ?? '';
+  const match = rawDescription.match(PAUSED_RECURRING_EXPENSE_PATTERN);
+  if (!match) return null;
+
+  const recurrenceInterval = Number.parseInt(match[2] ?? '1', 10);
+  const cleanedDescription = rawDescription
+    .replace(PAUSED_RECURRING_EXPENSE_PATTERN, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+
+  return {
+    recurrence_type: match[1]!,
+    recurrence_interval: Number.isFinite(recurrenceInterval) && recurrenceInterval > 0
+      ? recurrenceInterval
+      : 1,
+    description: cleanedDescription || null,
+  };
 }
 
 /**
@@ -131,6 +194,10 @@ export async function generateRecurringExpenses(
     recurrence_type: string;
     recurrence_interval: number;
     due_date: string;
+    vendor_name: string | null;
+    invoice_reference: string | null;
+    invoice_date: string | null;
+    payment_due_date: string | null;
     paid_by_user_id: string | null;
     participants: {
       user_id: string;
@@ -141,6 +208,16 @@ export async function generateRecurringExpenses(
     if (alreadyGenerated.has(source.id)) continue;
 
     const dueDate = computeDueDate(source.recurrence_type, source.due_date);
+    const invoiceDate = shiftDateByDueDateDelta(
+      source.invoice_date,
+      source.due_date,
+      dueDate,
+    );
+    const paymentDueDate = shiftDateByDueDateDelta(
+      source.payment_due_date,
+      source.due_date,
+      dueDate,
+    );
 
     // Insert the new expense
     const { data: newExpense, error: insertError } = await supabase
@@ -152,6 +229,10 @@ export async function generateRecurringExpenses(
         description: source.description,
         currency: source.currency,
         split_method: source.split_method,
+        vendor_name: source.vendor_name,
+        invoice_reference: source.invoice_reference,
+        invoice_date: invoiceDate,
+        payment_due_date: paymentDueDate,
         group_id: source.group_id,
         created_by: source.created_by,
         recurrence_type: 'none',
@@ -251,6 +332,18 @@ export async function getRecurringExpenses(
 }
 
 /**
+ * Returns an export-ready workspace billing report for all recurring expenses
+ * in the group. This is useful for surfacing shared subscriptions and tool
+ * costs without duplicating the dashboard/analytics plumbing.
+ */
+export async function getRecurringWorkspaceBillingReport(
+  groupId: string,
+): Promise<WorkspaceBillingReport> {
+  const recurringExpenses = await getRecurringExpenses(groupId);
+  return buildWorkspaceBillingReport(recurringExpenses as WorkspaceBillingExpenseRecord[]);
+}
+
+/**
  * Pause a recurring expense by setting its recurrence_type to 'none'.
  * The original recurrence type is stored in the description field as a tag
  * so it can be restored on resume.
@@ -259,7 +352,7 @@ export async function pauseRecurringExpense(expenseId: string): Promise<void> {
   // Fetch the current expense to save original recurrence info
   const { data: expense, error: fetchError } = await supabase
     .from('expenses')
-    .select('recurrence_type, description')
+    .select('recurrence_type, recurrence_interval, description')
     .eq('id', expenseId)
     .single();
 
@@ -269,7 +362,8 @@ export async function pauseRecurringExpense(expenseId: string): Promise<void> {
   if (originalType === 'none') return; // Already paused
 
   // Store original type as a tag in description so we can resume later
-  const pauseTag = `[paused:${originalType}]`;
+  const originalInterval = Math.max(1, expense.recurrence_interval ?? 1);
+  const pauseTag = `[paused:${originalType}:${originalInterval}]`;
   const currentDesc = expense.description ?? '';
   const newDesc = currentDesc.includes('[paused:')
     ? currentDesc
@@ -295,19 +389,15 @@ export async function resumeRecurringExpense(expenseId: string): Promise<void> {
 
   if (fetchError) throw fetchError;
 
-  const desc = expense.description ?? '';
-  const match = desc.match(/\[paused:(weekly|monthly)\]/);
-  if (!match) return; // No pause tag found
-
-  const originalType = match[1];
-  const cleanDesc = desc.replace(/\[paused:(weekly|monthly)\]\s?/, '').trim() || null;
+  const pausedState = parsePausedRecurringExpenseState(expense.description);
+  if (!pausedState) return; // No pause tag found
 
   const { error } = await supabase
     .from('expenses')
     .update({
-      recurrence_type: originalType,
-      recurrence_interval: 1,
-      description: cleanDesc,
+      recurrence_type: pausedState.recurrence_type,
+      recurrence_interval: pausedState.recurrence_interval,
+      description: pausedState.description,
     })
     .eq('id', expenseId);
 

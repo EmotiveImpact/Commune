@@ -10,12 +10,32 @@ const CATEGORY_ORDER: Record<string, ExpenseCategory[]> = {
   project: ['work_tools', 'transport', 'miscellaneous', 'utilities', 'internet', 'rent', 'cleaning', 'groceries', 'household_supplies', 'entertainment'] as ExpenseCategory[],
 };
 
-export function getCategoriesByGroupType(groupType?: string): ExpenseCategory[] {
+const SUBTYPE_CATEGORY_BOOSTS: Record<string, Record<string, ExpenseCategory[]>> = {
+  home: {
+    coliving: ['rent', 'utilities', 'groceries', 'cleaning', 'household_supplies'] as ExpenseCategory[],
+    high_turnover: ['rent', 'utilities', 'cleaning', 'household_supplies', 'internet'] as ExpenseCategory[],
+  },
+  workspace: {
+    coworking: ['internet', 'work_tools', 'cleaning', 'household_supplies', 'utilities'] as ExpenseCategory[],
+    shared_office: ['rent', 'utilities', 'internet', 'work_tools', 'cleaning'] as ExpenseCategory[],
+  },
+  project: {
+    production: ['work_tools', 'transport', 'rent', 'miscellaneous', 'utilities'] as ExpenseCategory[],
+    pop_up: ['rent', 'transport', 'work_tools', 'miscellaneous', 'utilities'] as ExpenseCategory[],
+  },
+  trip: {
+    festival: ['transport', 'entertainment', 'groceries', 'miscellaneous'] as ExpenseCategory[],
+    business_trip: ['transport', 'rent', 'work_tools', 'miscellaneous'] as ExpenseCategory[],
+  },
+};
+
+export function getCategoriesByGroupType(groupType?: string, subtype?: string | null): ExpenseCategory[] {
   if (!groupType || !CATEGORY_ORDER[groupType]) return ALL_CATEGORIES;
-  const ordered = CATEGORY_ORDER[groupType];
+  const subtypeBoosts = subtype ? SUBTYPE_CATEGORY_BOOSTS[groupType]?.[subtype] ?? [] : [];
+  const ordered = [...subtypeBoosts, ...CATEGORY_ORDER[groupType]];
   // Append any categories not in the order list (safety)
   const remaining = ALL_CATEGORIES.filter(c => !ordered.includes(c));
-  return [...ordered, ...remaining];
+  return [...new Set([...ordered, ...remaining])];
 }
 
 const ONBOARDING_TIPS: Record<string, string[]> = {
@@ -35,9 +55,9 @@ const ONBOARDING_TIPS: Record<string, string[]> = {
     'Set a monthly budget together',
   ],
   workspace: [
-    'Add shared office costs like rent and internet',
-    'Create templates for recurring charges',
-    'Invite team members to start splitting',
+    'Add shared workspace costs like rent, software, and internet',
+    'Create templates for recurring charges and invoice reviews',
+    'Assign who owns approvals, renewals, and vendor follow-up',
   ],
   project: [
     'Set a project budget to track spending',

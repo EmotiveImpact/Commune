@@ -1,6 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getProfile, updateProfile } from '@commune/api';
 import type { NotificationPreferences } from '@commune/api';
+import { groupKeys } from './use-groups';
+import { groupHubKeys } from './use-group-hub';
+import { activityKeys } from './use-activity';
 
 export const profileKeys = {
   all: ['profile'] as const,
@@ -37,6 +40,9 @@ export function useUpdateProfile() {
     }) => updateProfile(userId, data),
     onSuccess: (result) => {
       queryClient.setQueryData(profileKeys.detail(result.id), result);
+      queryClient.invalidateQueries({ queryKey: groupKeys.all });
+      queryClient.invalidateQueries({ queryKey: groupHubKeys.all });
+      queryClient.invalidateQueries({ queryKey: activityKeys.all });
     },
   });
 }

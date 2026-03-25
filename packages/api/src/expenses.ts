@@ -2,8 +2,13 @@ import type { ExpenseWithParticipants, SplitMethod } from '@commune/types';
 import {
   calculateEqualSplit,
   calculatePercentageSplit,
+  normalizeExpenseVendorInvoiceContext,
 } from '@commune/core';
 import { supabase } from './client';
+import {
+  getEffectiveApprovalThreshold,
+  getGroupApprovalSettings,
+} from './approvals';
 
 interface CreateExpenseData {
   group_id: string;
@@ -13,6 +18,10 @@ interface CreateExpenseData {
   amount: number;
   currency?: string;
   due_date: string;
+  vendor_name?: string | null;
+  invoice_reference?: string | null;
+  invoice_date?: string | null;
+  payment_due_date?: string | null;
   recurrence_type?: string;
   recurrence_interval?: number;
   paid_by_user_id?: string;
@@ -36,6 +45,13 @@ export async function createExpense(data: CreateExpenseData) {
     split_method,
     ...expenseData
   } = data;
+
+  const vendorInvoiceContext = normalizeExpenseVendorInvoiceContext({
+    vendor_name: expenseData.vendor_name,
+    invoice_reference: expenseData.invoice_reference,
+    invoice_date: expenseData.invoice_date,
+    payment_due_date: expenseData.payment_due_date,
+  });
 
   const amount = data.amount;
 
@@ -66,19 +82,16 @@ export async function createExpense(data: CreateExpenseData) {
     );
   }
 
-  // Check group's approval threshold
+  // Check the group's approval policy before writing the expense.
   let approvalStatus = 'approved';
   if (expenseData.group_id) {
-    const { data: groupData } = await supabase
-      .from('groups')
-      .select('approval_threshold')
-      .eq('id', expenseData.group_id)
-      .single();
+    const groupApprovalSettings = await getGroupApprovalSettings(expenseData.group_id);
+    const effectiveThreshold = getEffectiveApprovalThreshold(
+      groupApprovalSettings.approval_threshold,
+      groupApprovalSettings.approval_policy,
+    );
 
-    if (
-      groupData?.approval_threshold != null
-      && amount > groupData.approval_threshold
-    ) {
+    if (effectiveThreshold != null && amount > effectiveThreshold) {
       approvalStatus = 'pending';
     }
   }
@@ -87,6 +100,7 @@ export async function createExpense(data: CreateExpenseData) {
     .from('expenses')
     .insert({
       ...expenseData,
+      ...vendorInvoiceContext,
       split_method,
       created_by: user.id,
       approval_status: approvalStatus,

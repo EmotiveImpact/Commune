@@ -1,4 +1,15 @@
 import { supabase } from './client';
+import {
+  buildWorkspaceBillingReport,
+  buildWorkspaceBillingTrend,
+  isWorkspaceBillingExpense,
+  toDateKey,
+  toMonthKey,
+  type WorkspaceBillingExpenseRecord,
+  type WorkspaceBillingExportRow,
+  type WorkspaceBillingTrendPoint,
+  type WorkspaceBillingSnapshot,
+} from './workspace-billing';
 
 export interface AnalyticsData {
   spendingTrend: { month: string; amount: number }[];
@@ -13,17 +24,35 @@ export interface AnalyticsData {
   };
 }
 
+export interface AnalyticsWorkspaceBillingData {
+  workspace_billing: {
+    snapshot: WorkspaceBillingSnapshot;
+    trend: WorkspaceBillingTrendPoint[];
+    export_rows: WorkspaceBillingExportRow[];
+  };
+}
+
 function getMonthRange(offset: number): { start: string; end: string; key: string } {
   const now = new Date();
-  const d = new Date(now.getFullYear(), now.getMonth() - offset, 1);
-  const next = new Date(d.getFullYear(), d.getMonth() + 1, 1);
-  const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-  const start = `${key}-01`;
-  const end = next.toISOString().split('T')[0]!;
+  const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - offset, 1));
+  const next = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1));
+  const key = toMonthKey(d);
+  const start = toDateKey(d);
+  const end = toDateKey(next);
   return { start, end, key };
 }
 
-export async function getAnalyticsData(groupId: string): Promise<AnalyticsData> {
+type AnalyticsExpenseRow = WorkspaceBillingExpenseRecord & {
+  category: string | null;
+  recurrence_type: string | null;
+  payment_records: Array<{ status: string; paid_at: string | null; created_at: string }>;
+  created_by: string;
+  created_by_user?: { id: string; name: string; email: string } | null;
+};
+
+export async function getAnalyticsData(
+  groupId: string,
+): Promise<AnalyticsData & AnalyticsWorkspaceBillingData> {
   // Fetch last 6 months of expenses
   const sixMonthsAgo = getMonthRange(5);
   const currentMonth = getMonthRange(0);
@@ -46,8 +75,8 @@ export async function getAnalyticsData(groupId: string): Promise<AnalyticsData> 
 
   if (error) throw error;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Supabase join result has dynamic shape
-  const rows = (expenses ?? []) as any[];
+  const rows = (expenses ?? []) as AnalyticsExpenseRow[];
+  const workspaceBillingRows = rows.filter(isWorkspaceBillingExpense);
 
   // --- spendingTrend: group by month for last 6 months ---
   const monthBuckets = new Map<string, number>();
@@ -69,7 +98,8 @@ export async function getAnalyticsData(groupId: string): Promise<AnalyticsData> 
   const catMap = new Map<string, number>();
   for (const row of rows) {
     if ((row.due_date as string).startsWith(currentMonth.key)) {
-      catMap.set(row.category, (catMap.get(row.category) ?? 0) + row.amount);
+      const category = String(row.category ?? 'uncategorized');
+      catMap.set(category, (catMap.get(category) ?? 0) + row.amount);
     }
   }
   const categoryBreakdown = Array.from(catMap.entries())
@@ -123,11 +153,20 @@ export async function getAnalyticsData(groupId: string): Promise<AnalyticsData> 
   const delta = thisMonthTotal - lastMonthTotal;
   const deltaPercent = lastMonthTotal > 0 ? (delta / lastMonthTotal) * 100 : 0;
 
+  const workspaceBillingExpenses = workspaceBillingRows as WorkspaceBillingExpenseRecord[];
+  const workspaceBillingReport = buildWorkspaceBillingReport(workspaceBillingExpenses);
+  const workspaceBillingTrend = buildWorkspaceBillingTrend(workspaceBillingExpenses);
+
   return {
     spendingTrend,
     categoryBreakdown,
     topSpenders,
     complianceRate,
     monthComparison: { thisMonth: thisMonthTotal, lastMonth: lastMonthTotal, delta, deltaPercent },
+    workspace_billing: {
+      snapshot: workspaceBillingReport.snapshot,
+      trend: workspaceBillingTrend,
+      export_rows: workspaceBillingReport.export_rows,
+    },
   };
 }
