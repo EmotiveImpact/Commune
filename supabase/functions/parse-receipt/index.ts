@@ -203,9 +203,10 @@ Deno.serve(async (req) => {
       { status: 200, headers: corsHeaders },
     );
   } catch (err) {
-    console.error('parse-receipt error:', err);
+    console.error('parse-receipt error:', err instanceof Error ? err.message : err);
+    console.error('parse-receipt stack:', err instanceof Error ? err.stack : 'no stack');
     return new Response(
-      JSON.stringify({ error: 'Internal server error' }),
+      JSON.stringify({ error: 'Internal server error', detail: err instanceof Error ? err.message : String(err) }),
       { status: 500, headers: corsHeaders },
     );
   }

@@ -793,7 +793,19 @@ export function AddExpensePage() {
                             body: { image_base64: base64, mime_type: receiptFile.type },
                           });
 
-                          if (error) throw new Error(error.message ?? 'Scan failed');
+                          if (error) {
+                            // Try to extract the actual error body from FunctionsHttpError
+                            let msg = 'Scan failed';
+                            try {
+                              if ('context' in error && (error as any).context?.body) {
+                                const body = await new Response((error as any).context.body).json();
+                                msg = body?.error ?? body?.message ?? msg;
+                              } else {
+                                msg = error.message ?? msg;
+                              }
+                            } catch { /* fallback to generic message */ }
+                            throw new Error(msg);
+                          }
                           const result = data;
                           if (result.amount) form.setFieldValue('amount', result.amount);
                           if (result.vendor) form.setFieldValue('title', result.vendor);
