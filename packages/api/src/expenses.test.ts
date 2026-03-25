@@ -1,9 +1,9 @@
-// @ts-expect-error - Vitest is supplied by the workspace test runner, not this package
 import { describe, expect, it, vi } from 'vitest';
 import { createExpense } from './expenses';
 
 const getUserMock = vi.hoisted(() => vi.fn());
 const fromMock = vi.hoisted(() => vi.fn());
+const ensureGroupCycleOpenForDateMock = vi.hoisted(() => vi.fn());
 
 vi.mock('./client', () => ({
   supabase: {
@@ -12,6 +12,11 @@ vi.mock('./client', () => ({
     },
     from: fromMock,
   },
+}));
+
+vi.mock('./cycles', () => ({
+  ensureGroupCycleOpenForDate: ensureGroupCycleOpenForDateMock,
+  ensureExpenseCycleOpen: vi.fn(),
 }));
 
 type GroupRow = {
@@ -105,6 +110,7 @@ describe('createExpense approval status defaults', () => {
   it.each(cases)('$label', async (testCase: ApprovalStatusCase) => {
     const { groupRow, amount, expectedStatus } = testCase;
 
+    ensureGroupCycleOpenForDateMock.mockResolvedValue(undefined);
     getUserMock.mockResolvedValue({
       data: { user: { id: 'user-1' } },
     });
@@ -133,5 +139,32 @@ describe('createExpense approval status defaults', () => {
       created_by: 'user-1',
     });
     expect(mock.insertedParticipantsPayload()).toHaveLength(2);
+    expect(ensureGroupCycleOpenForDateMock).toHaveBeenCalledWith(
+      'group-1',
+      '2026-03-25',
+      'create an expense in this cycle',
+    );
+  });
+
+  it('blocks expense creation when the target cycle is closed', async () => {
+    ensureGroupCycleOpenForDateMock.mockRejectedValue(
+      new Error('This cycle is closed. Reopen it first.'),
+    );
+    getUserMock.mockResolvedValue({
+      data: { user: { id: 'user-1' } },
+    });
+    mockSupabase({ approval_threshold: 100 });
+
+    await expect(
+      createExpense({
+        group_id: 'group-1',
+        title: 'Office chairs',
+        category: 'work_tools',
+        amount: 150,
+        due_date: '2026-03-25',
+        split_method: 'equal',
+        participant_ids: ['member-1', 'member-2'],
+      }),
+    ).rejects.toThrow('This cycle is closed');
   });
 });

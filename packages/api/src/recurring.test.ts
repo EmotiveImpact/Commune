@@ -1,4 +1,3 @@
-// @ts-expect-error - Vitest is supplied by the workspace test runner, not this package
 import { describe, expect, it } from 'vitest';
 import {
   computeRecurringDueDate,

@@ -9,6 +9,7 @@ import {
   getEffectiveApprovalThreshold,
   getGroupApprovalSettings,
 } from './approvals';
+import { ensureGroupCycleOpenForDate } from './cycles';
 
 interface UpdateExpenseData {
   title?: string;
@@ -66,14 +67,35 @@ export async function updateExpense(expenseId: string, data: UpdateExpenseData) 
     custom_amounts !== undefined;
   const amountChanged = data.amount !== undefined;
 
-  let currentExpense:
-    | {
-        amount: number;
-        split_method: SplitMethod;
-        approval_status: 'approved' | 'pending' | 'rejected';
-        group_id: string;
-      }
-    | null = null;
+  const { data: currentExpenseData, error: fetchCurrentExpenseError } = await supabase
+    .from('expenses')
+    .select('amount, split_method, approval_status, group_id, due_date')
+    .eq('id', expenseId)
+    .single();
+
+  if (fetchCurrentExpenseError) throw fetchCurrentExpenseError;
+
+  const currentExpense = currentExpenseData as {
+    amount: number;
+    split_method: SplitMethod;
+    approval_status: 'approved' | 'pending' | 'rejected';
+    group_id: string;
+    due_date: string;
+  };
+
+  await ensureGroupCycleOpenForDate(
+    currentExpense.group_id,
+    currentExpense.due_date,
+    'edit an expense in this cycle',
+  );
+
+  if (data.due_date && data.due_date !== currentExpense.due_date) {
+    await ensureGroupCycleOpenForDate(
+      currentExpense.group_id,
+      data.due_date,
+      'move an expense into this cycle',
+    );
+  }
 
   let currentParticipants:
     | Array<{
@@ -85,20 +107,6 @@ export async function updateExpense(expenseId: string, data: UpdateExpenseData) 
 
   const needsCurrentSplitState = hasExplicitSplitChanges || amountChanged;
   if (needsCurrentSplitState) {
-    const { data: current, error: fetchCurrentError } = await supabase
-      .from('expenses')
-      .select('amount, split_method, approval_status, group_id')
-      .eq('id', expenseId)
-      .single();
-
-    if (fetchCurrentError) throw fetchCurrentError;
-    currentExpense = current as {
-      amount: number;
-      split_method: SplitMethod;
-      approval_status: 'approved' | 'pending' | 'rejected';
-      group_id: string;
-    };
-
     const { data: existingParticipants, error: pFetchError } = await supabase
       .from('expense_participants')
       .select('user_id, share_amount, share_percentage')

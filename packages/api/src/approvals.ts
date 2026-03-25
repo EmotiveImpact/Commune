@@ -1,5 +1,6 @@
 import type { GroupApprovalPolicy, GroupMember } from '@commune/types';
 import { supabase } from './client';
+import { ensureGroupCycleOpenForDate } from './cycles';
 
 type ApprovalPolicyResolution = {
   threshold: number | null;
@@ -15,6 +16,15 @@ export async function getGroupApprovalSettings(groupId: string) {
     .single();
 
   if (error) throw error;
+  if (!data) {
+    return {
+      id: groupId,
+      type: '',
+      approval_threshold: null,
+      approval_policy: null,
+    };
+  }
+
   return data as {
     id: string;
     type: string;
@@ -79,13 +89,19 @@ export async function getPendingApprovals(groupId: string) {
 async function verifyApproverForExpense(expenseId: string, userId: string) {
   const { data: expense, error: expenseError } = await supabase
     .from('expenses')
-    .select('group_id')
+    .select('group_id, due_date')
     .eq('id', expenseId)
     .single();
 
   if (expenseError || !expense) {
     throw new Error('Expense not found');
   }
+
+  await ensureGroupCycleOpenForDate(
+    expense.group_id,
+    expense.due_date,
+    'change approvals for this cycle',
+  );
 
   const settings = await getGroupApprovalSettings(expense.group_id);
 

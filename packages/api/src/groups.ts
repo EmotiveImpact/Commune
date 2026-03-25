@@ -1,5 +1,6 @@
 import type {
   Group,
+  GroupApprovalPolicy,
   GroupInvite,
   GroupMember,
   GroupWithMembers,
@@ -7,7 +8,7 @@ import type {
   SpaceEssentials,
   SetupChecklistProgress,
 } from '@commune/types';
-import { GroupType, type MemberRole } from '@commune/types';
+import { GroupType, MemberRole, type MemberRole as MemberRoleType } from '@commune/types';
 import {
   getDefaultWorkspaceRolePresets,
   normalizeGroupApprovalPolicy,
@@ -15,6 +16,13 @@ import {
   type GroupApprovalPolicyInput,
 } from '@commune/core';
 import { supabase } from './client';
+import {
+  applyGovernanceMemberPatch,
+  ensureActiveAdminCoverage,
+  ensureWorkspaceApproverCoverage,
+  getGroupGovernanceContext,
+  shouldAssignTransferredOwnerResponsibilityLabel,
+} from './group-governance';
 import { ensureProfile } from './profile';
 
 function buildWorkspaceApprovalPolicy(
@@ -265,11 +273,37 @@ export async function acceptInvite(groupId: string) {
 
 export async function updateMemberRole(
   memberId: string,
-  role: MemberRole,
+  role: MemberRoleType,
   responsibilityLabel?: string | null,
 ) {
+  const { data: currentMemberData, error: currentMemberError } = await supabase
+    .from('group_members')
+    .select('id, group_id, user_id, role, status, responsibility_label')
+    .eq('id', memberId)
+    .single();
+
+  if (currentMemberError) throw currentMemberError;
+
+  const currentMember = currentMemberData as GroupMember;
+  const { group, members } = await getGroupGovernanceContext(currentMember.group_id);
+
+  if (group.owner_id === currentMember.user_id && role !== MemberRole.ADMIN) {
+    throw new Error('Transfer ownership before changing the owner role.');
+  }
+
+  const nextMembers = applyGovernanceMemberPatch(members, memberId, {
+    role,
+    ...(responsibilityLabel !== undefined ? { responsibility_label: responsibilityLabel } : {}),
+  });
+
+  if (currentMember.status === 'active' && currentMember.role === MemberRole.ADMIN) {
+    ensureActiveAdminCoverage(nextMembers);
+  }
+
+  ensureWorkspaceApproverCoverage(group, nextMembers);
+
   const updateData: {
-    role: MemberRole;
+    role: MemberRoleType;
     responsibility_label?: string | null;
   } = { role };
 
@@ -292,6 +326,24 @@ export async function updateMemberResponsibilityLabel(
   memberId: string,
   responsibilityLabel: string | null,
 ) {
+  const { data: currentMemberData, error: currentMemberError } = await supabase
+    .from('group_members')
+    .select('id, group_id, status')
+    .eq('id', memberId)
+    .single();
+
+  if (currentMemberError) throw currentMemberError;
+
+  const currentMember = currentMemberData as Pick<GroupMember, 'id' | 'group_id' | 'status'>;
+  const { group, members } = await getGroupGovernanceContext(currentMember.group_id);
+
+  if (currentMember.status === 'active') {
+    const nextMembers = applyGovernanceMemberPatch(members, memberId, {
+      responsibility_label: responsibilityLabel,
+    });
+    ensureWorkspaceApproverCoverage(group, nextMembers);
+  }
+
   const { data, error } = await supabase
     .from('group_members')
     .update({ responsibility_label: responsibilityLabel })
@@ -304,13 +356,7 @@ export async function updateMemberResponsibilityLabel(
 }
 
 export async function transferOwnership(groupId: string, newOwnerId: string) {
-  const { data: currentGroup, error: currentGroupError } = await supabase
-    .from('groups')
-    .select('owner_id, type, subtype, approval_policy')
-    .eq('id', groupId)
-    .single();
-
-  if (currentGroupError) throw currentGroupError;
+  const { group: currentGroup, members } = await getGroupGovernanceContext(groupId);
 
   const ownerResponsibilityLabel =
     currentGroup?.type === GroupType.WORKSPACE
@@ -320,14 +366,55 @@ export async function transferOwnership(groupId: string, newOwnerId: string) {
         )
       : null;
 
-  const { data: previousOwnerMembership, error: previousOwnerMembershipError } = await supabase
-    .from('group_members')
-    .select('responsibility_label')
-    .eq('group_id', groupId)
-    .eq('user_id', currentGroup.owner_id)
-    .maybeSingle();
+  const previousOwnerMembership =
+    members.find((member) => member.user_id === currentGroup.owner_id) ?? null;
+  const nextOwnerMembership =
+    members.find((member) => member.user_id === newOwnerId) ?? null;
 
-  if (previousOwnerMembershipError) throw previousOwnerMembershipError;
+  if (!nextOwnerMembership || nextOwnerMembership.status !== 'active') {
+    throw new Error('New owner must be an active group member.');
+  }
+
+  if (currentGroup.type === GroupType.WORKSPACE) {
+    const nextMembers = members.map((member) => {
+      if (member.user_id === currentGroup.owner_id) {
+        const shouldClearOwnerLabel =
+          Boolean(
+            member.responsibility_label
+              && (member.responsibility_label === ownerResponsibilityLabel
+                || member.responsibility_label === 'owner'),
+          );
+
+        return {
+          ...member,
+          responsibility_label: shouldClearOwnerLabel ? null : member.responsibility_label,
+        };
+      }
+
+      if (member.user_id === newOwnerId) {
+        return {
+          ...member,
+          responsibility_label:
+            shouldAssignTransferredOwnerResponsibilityLabel(
+              member.responsibility_label,
+              ownerResponsibilityLabel,
+            )
+              ? ownerResponsibilityLabel
+              : member.responsibility_label,
+        };
+      }
+
+      return member;
+    });
+
+    try {
+      ensureWorkspaceApproverCoverage(currentGroup, nextMembers);
+    } catch {
+      throw new Error(
+        'Assign another approver or keep an admin fallback before transferring ownership away from the only active workspace approver.',
+      );
+    }
+  }
 
   const { error } = await supabase.rpc('fn_transfer_group_ownership', {
     p_group_id: groupId,
@@ -352,7 +439,13 @@ export async function transferOwnership(groupId: string, newOwnerId: string) {
     if (clearOwnerLabelError) throw clearOwnerLabelError;
   }
 
-  if (currentGroup?.type === GroupType.WORKSPACE && ownerResponsibilityLabel) {
+  if (
+    currentGroup?.type === GroupType.WORKSPACE
+    && shouldAssignTransferredOwnerResponsibilityLabel(
+      nextOwnerMembership?.responsibility_label,
+      ownerResponsibilityLabel,
+    )
+  ) {
     const { error: setOwnerLabelError } = await supabase
       .from('group_members')
       .update({ responsibility_label: ownerResponsibilityLabel })
@@ -392,27 +485,26 @@ export async function removeMember(memberId: string) {
     throw new Error('Only group admins can remove members.');
   }
 
-  const { data: group, error: groupError } = await supabase
-    .from('groups')
-    .select('owner_id')
-    .eq('id', member.group_id)
-    .single();
+  const { group, members } = await getGroupGovernanceContext(member.group_id);
 
-  if (groupError) throw groupError;
   if (group.owner_id === member.user_id) {
     throw new Error('Transfer ownership before removing the owner.');
   }
 
-  const { count: adminCount, error: adminCountError } = await supabase
-    .from('group_members')
-    .select('*', { count: 'exact', head: true })
-    .eq('group_id', member.group_id)
-    .eq('status', 'active')
-    .eq('role', 'admin');
+  if (member.status === 'active') {
+    const nextMembers = applyGovernanceMemberPatch(members, memberId, {
+      status: 'removed',
+    });
 
-  if (adminCountError) throw adminCountError;
-  if (member.role === 'admin' && member.status === 'active' && (adminCount ?? 0) <= 1) {
-    throw new Error('Promote another admin before removing this member.');
+    if (member.role === 'admin') {
+      try {
+        ensureActiveAdminCoverage(nextMembers);
+      } catch {
+        throw new Error('Promote another admin before removing this member.');
+      }
+    }
+
+    ensureWorkspaceApproverCoverage(group, nextMembers);
   }
 
   const { data, error } = await supabase
@@ -430,17 +522,33 @@ export async function removeMember(memberId: string) {
 }
 
 export async function leaveGroup(groupId: string, userId: string) {
-  // Prevent the owner from leaving without transferring ownership first
-  const { data: group, error: groupError } = await supabase
-    .from('groups')
-    .select('owner_id')
-    .eq('id', groupId)
-    .single();
+  const { group, members } = await getGroupGovernanceContext(groupId);
 
-  if (groupError) throw groupError;
-  if (group?.owner_id === userId) {
+  if (group.owner_id === userId) {
     throw new Error('Transfer ownership before leaving the group.');
   }
+
+  const currentMember = members.find(
+    (member) => member.user_id === userId && member.status === 'active',
+  );
+
+  if (!currentMember) {
+    throw new Error('Active membership not found.');
+  }
+
+  const nextMembers = applyGovernanceMemberPatch(members, currentMember.id, {
+    status: 'removed',
+  });
+
+  if (currentMember.role === 'admin') {
+    try {
+      ensureActiveAdminCoverage(nextMembers);
+    } catch {
+      throw new Error('Promote another admin before leaving the group.');
+    }
+  }
+
+  ensureWorkspaceApproverCoverage(group, nextMembers);
 
   const { error } = await supabase
     .from('group_members')
@@ -475,49 +583,54 @@ export async function updateGroup(
     cover_url?: string;
   },
 ) {
+  const touchesGovernance =
+    updates.approval_policy !== undefined
+    || updates.approval_threshold !== undefined
+    || updates.type !== undefined
+    || updates.subtype !== undefined;
+
   let approvalPolicy: GroupApprovalPolicyInput | null | undefined = undefined;
 
-  if (updates.approval_policy !== undefined) {
-    approvalPolicy = updates.approval_policy
-      ? normalizeGroupApprovalPolicy(
-          updates.type ?? GroupType.WORKSPACE,
-          updates.subtype ?? null,
-          updates.approval_threshold ?? null,
-          updates.approval_policy,
-        )
-      : null;
-  } else if (updates.approval_threshold !== undefined) {
-    const { data: currentGroup, error: currentGroupError } = await supabase
-      .from('groups')
-      .select('type, subtype, approval_policy')
-      .eq('id', groupId)
-      .single();
+  if (touchesGovernance) {
+    const governanceContext = await getGroupGovernanceContext(groupId);
+    const currentGroup = governanceContext.group;
+    const nextType = updates.type ?? currentGroup.type ?? null;
+    const nextSubtype = updates.subtype ?? currentGroup.subtype ?? null;
+    const nextApprovalThreshold =
+      updates.approval_threshold !== undefined
+        ? updates.approval_threshold
+        : currentGroup.approval_threshold ?? null;
 
-    if (currentGroupError) throw currentGroupError;
-
-    approvalPolicy = normalizeGroupApprovalPolicy(
-      currentGroup?.type ?? updates.type ?? null,
-      updates.subtype ?? currentGroup?.subtype ?? null,
-      updates.approval_threshold,
-      currentGroup?.approval_policy ?? null,
-    ) as GroupApprovalPolicyInput | null;
-  } else if (updates.type !== undefined || updates.subtype !== undefined) {
-    const { data: currentGroup, error: currentGroupError } = await supabase
-      .from('groups')
-      .select('type, subtype, approval_threshold, approval_policy')
-      .eq('id', groupId)
-      .single();
-
-    if (currentGroupError) throw currentGroupError;
-
-    const nextType = updates.type ?? currentGroup?.type ?? null;
     if (nextType === GroupType.WORKSPACE) {
-      approvalPolicy = normalizeGroupApprovalPolicy(
-        nextType,
-        updates.subtype ?? currentGroup?.subtype ?? null,
-        updates.approval_threshold ?? currentGroup?.approval_threshold ?? null,
-        currentGroup?.approval_policy ?? null,
-      ) as GroupApprovalPolicyInput | null;
+      if (updates.approval_policy !== undefined) {
+        approvalPolicy = updates.approval_policy
+          ? (normalizeGroupApprovalPolicy(
+              nextType,
+              nextSubtype,
+              nextApprovalThreshold,
+              updates.approval_policy,
+            ) as GroupApprovalPolicyInput | null)
+          : null;
+      } else {
+        approvalPolicy = normalizeGroupApprovalPolicy(
+          nextType,
+          nextSubtype,
+          nextApprovalThreshold,
+          currentGroup.approval_policy ?? null,
+        ) as GroupApprovalPolicyInput | null;
+      }
+
+      if (approvalPolicy) {
+        ensureWorkspaceApproverCoverage(
+          {
+            ...currentGroup,
+            type: nextType,
+            subtype: nextSubtype,
+            approval_policy: approvalPolicy as GroupApprovalPolicy,
+          },
+          governanceContext.members,
+        );
+      }
     } else {
       approvalPolicy = null;
     }

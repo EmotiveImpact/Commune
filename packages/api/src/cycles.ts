@@ -69,6 +69,70 @@ function getTodayKey(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
+export async function getGroupCycleStateForDate(
+  groupId: string,
+  referenceDate: string,
+): Promise<{
+  group: Group;
+  window: ReturnType<typeof getCycleWindow>;
+  closure: GroupCycleClosure | null;
+}> {
+  const group = await getGroupForCycle(groupId);
+  const window = getCycleWindow(referenceDate, group.cycle_date ?? 1);
+
+  const { data, error } = await supabase
+    .from('group_cycle_closures')
+    .select('*')
+    .eq('group_id', groupId)
+    .eq('cycle_start', window.start)
+    .eq('cycle_end', window.end)
+    .maybeSingle();
+
+  if (error) throw error;
+
+  return {
+    group,
+    window,
+    closure: (data ?? null) as GroupCycleClosure | null,
+  };
+}
+
+export async function ensureGroupCycleOpenForDate(
+  groupId: string,
+  referenceDate: string,
+  action: string,
+): Promise<void> {
+  const { window, closure } = await getGroupCycleStateForDate(groupId, referenceDate);
+
+  if (closure && !closure.reopened_at) {
+    throw new Error(
+      `This cycle is closed. Reopen the ${window.start} to ${window.end} cycle before you ${action}.`,
+    );
+  }
+}
+
+export async function ensureExpenseCycleOpen(
+  expenseId: string,
+  action: string,
+): Promise<{
+  group_id: string;
+  due_date: string;
+}> {
+  const { data, error } = await supabase
+    .from('expenses')
+    .select('group_id, due_date')
+    .eq('id', expenseId)
+    .single();
+
+  if (error || !data) {
+    throw error ?? new Error('Expense not found');
+  }
+
+  await ensureGroupCycleOpenForDate(data.group_id, data.due_date, action);
+
+  return data as { group_id: string; due_date: string };
+}
+
 export async function getGroupCycleSummary(
   groupId: string,
   referenceDate: string = getTodayKey(),

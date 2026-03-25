@@ -6,6 +6,11 @@ import type {
   GroupWithMembers,
 } from '@commune/types';
 import { supabase } from './client';
+import {
+  applyGovernanceMemberPatch,
+  ensureWorkspaceApproverCoverage,
+  getGroupGovernanceContext,
+} from './group-governance';
 
 function getTodayKey(): string {
   return new Date().toISOString().slice(0, 10);
@@ -175,14 +180,9 @@ export async function scheduleMemberDeparture(
 
   await ensureGroupAdmin(member.group_id, userId);
 
-  const { data: groupData, error: groupError } = await supabase
-    .from('groups')
-    .select('owner_id')
-    .eq('id', member.group_id)
-    .single();
+  const { group, members } = await getGroupGovernanceContext(member.group_id);
 
-  if (groupError) throw groupError;
-  if (groupData.owner_id === member.user_id) {
+  if (group.owner_id === member.user_id) {
     throw new Error('Transfer ownership before scheduling the owner to leave.');
   }
 
@@ -196,6 +196,13 @@ export async function scheduleMemberDeparture(
   if (adminCountError) throw adminCountError;
   if (member.role === 'admin' && member.status === 'active' && (adminCount ?? 0) <= 1) {
     throw new Error('Promote another admin before scheduling this departure.');
+  }
+
+  if (member.status === 'active' && effectiveUntil <= today) {
+    const nextMembers = applyGovernanceMemberPatch(members, memberId, {
+      status: 'removed',
+    });
+    ensureWorkspaceApproverCoverage(group, nextMembers);
   }
 
   const { data, error } = await supabase

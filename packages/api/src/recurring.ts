@@ -1,5 +1,6 @@
 import type { ExpenseWithParticipants } from '@commune/types';
 import { supabase } from './client';
+import { ensureExpenseCycleOpen, ensureGroupCycleOpenForDate } from './cycles';
 import {
   buildWorkspaceBillingReport,
   addUtcDays,
@@ -219,6 +220,12 @@ export async function generateRecurringExpenses(
       dueDate,
     );
 
+    await ensureGroupCycleOpenForDate(
+      source.group_id,
+      dueDate,
+      'generate recurring expenses for this cycle',
+    );
+
     // Insert the new expense
     const { data: newExpense, error: insertError } = await supabase
       .from('expenses')
@@ -349,6 +356,8 @@ export async function getRecurringWorkspaceBillingReport(
  * so it can be restored on resume.
  */
 export async function pauseRecurringExpense(expenseId: string): Promise<void> {
+  await ensureExpenseCycleOpen(expenseId, 'pause a recurring expense in this cycle');
+
   // Fetch the current expense to save original recurrence info
   const { data: expense, error: fetchError } = await supabase
     .from('expenses')
@@ -381,6 +390,8 @@ export async function pauseRecurringExpense(expenseId: string): Promise<void> {
  * Resume a paused recurring expense by restoring its original recurrence_type.
  */
 export async function resumeRecurringExpense(expenseId: string): Promise<void> {
+  await ensureExpenseCycleOpen(expenseId, 'resume a recurring expense in this cycle');
+
   const { data: expense, error: fetchError } = await supabase
     .from('expenses')
     .select('description')
@@ -408,6 +419,8 @@ export async function resumeRecurringExpense(expenseId: string): Promise<void> {
  * Archive (soft-delete) a recurring expense.
  */
 export async function archiveRecurringExpense(expenseId: string): Promise<void> {
+  await ensureExpenseCycleOpen(expenseId, 'archive a recurring expense in this cycle');
+
   const { error } = await supabase
     .from('expenses')
     .update({ is_active: false })

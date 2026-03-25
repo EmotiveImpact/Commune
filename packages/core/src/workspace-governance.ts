@@ -255,6 +255,10 @@ export function normalizeGroupApprovalPolicy(
   approvalThreshold?: number | null,
   policy?: GroupApprovalPolicyLike | null,
 ): GroupApprovalPolicy | null {
+  if (groupType !== GroupType.WORKSPACE) {
+    return null;
+  }
+
   const rolePresets = (policy?.role_presets?.length
     ? policy.role_presets
     : getDefaultWorkspaceRolePresets(subtype))
@@ -272,25 +276,16 @@ export function normalizeGroupApprovalPolicy(
       .map((preset) => preset.responsibility_label),
   );
   const allowedRoles = (
-    policy?.allowed_roles?.length
+    policy?.allowed_roles != null
       ? policy.allowed_roles
       : [MemberRole.ADMIN]
   ) as MemberRole[];
-
-  if (groupType !== GroupType.WORKSPACE) {
-    return {
-      threshold: policy?.threshold ?? approvalThreshold ?? null,
-      allowed_roles: allowedRoles,
-      allowed_labels: uniqueStrings(policy?.allowed_labels ?? []),
-      role_presets: rolePresets,
-    };
-  }
 
   return {
     threshold: policy?.threshold ?? approvalThreshold ?? null,
     allowed_roles: allowedRoles,
     allowed_labels:
-      policy?.allowed_labels?.length
+      policy?.allowed_labels != null
         ? uniqueStrings(policy.allowed_labels)
         : defaultApproverLabels,
     role_presets: rolePresets,

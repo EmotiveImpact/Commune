@@ -1,5 +1,6 @@
 import type { SplitwiseImportExpense } from '@commune/core';
 import { supabase } from './client';
+import { ensureGroupCycleOpenForDate } from './cycles';
 
 interface BulkCreateExpensesOptions {
   groupId: string;
@@ -41,6 +42,14 @@ export async function bulkCreateExpenses({
   // Process in batches
   for (let batchStart = 0; batchStart < total; batchStart += BATCH_SIZE) {
     const batch = expenses.slice(batchStart, batchStart + BATCH_SIZE);
+
+    for (const expense of batch) {
+      await ensureGroupCycleOpenForDate(
+        groupId,
+        expense.date,
+        'import expenses into this cycle',
+      );
+    }
 
     // Insert all expenses in this batch
     const expenseRows = batch.map((exp) => ({
