@@ -20,6 +20,9 @@ export interface UserProfile {
   default_currency: string;
   timezone: string;
   show_shared_groups: boolean;
+  is_deactivated: boolean;
+  deletion_requested_at: string | null;
+  deletion_scheduled_for: string | null;
   notification_preferences: NotificationPreferences;
   created_at: string;
 }
@@ -65,6 +68,9 @@ function buildProfileFromAuthUser(authUser: AuthUser): UserProfile {
     default_currency: 'GBP',
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     show_shared_groups: true,
+    is_deactivated: false,
+    deletion_requested_at: null,
+    deletion_scheduled_for: null,
     notification_preferences: DEFAULT_NOTIFICATION_PREFS,
     created_at: authUser.created_at ?? new Date().toISOString(),
   };
@@ -221,4 +227,25 @@ export async function updateProfile(
 export async function deleteAccount(): Promise<void> {
   const { error } = await supabase.rpc('soft_delete_account');
   if (error) throw error;
+}
+
+export async function reactivateAccount(): Promise<void> {
+  const { error } = await supabase.rpc('reactivate_account');
+  if (error) throw error;
+}
+
+export async function checkAccountStatus(): Promise<{ isDeactivated: boolean; deletionScheduledFor: string | null }> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { isDeactivated: false, deletionScheduledFor: null };
+
+  const { data } = await supabase
+    .from('users')
+    .select('is_deactivated, deletion_scheduled_for')
+    .eq('id', user.id)
+    .single();
+
+  return {
+    isDeactivated: data?.is_deactivated ?? false,
+    deletionScheduledFor: data?.deletion_scheduled_for ?? null,
+  };
 }

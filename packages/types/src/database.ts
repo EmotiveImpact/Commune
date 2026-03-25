@@ -66,6 +66,9 @@ export interface User {
   default_currency: string;
   timezone: string;
   show_shared_groups: boolean;
+  is_deactivated: boolean;
+  deletion_requested_at: string | null;
+  deletion_scheduled_for: string | null;
   created_at: string;
 }
 
