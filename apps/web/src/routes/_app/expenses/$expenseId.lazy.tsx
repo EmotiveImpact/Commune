@@ -1,6 +1,7 @@
 import { createLazyFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import {
   ActionIcon,
+  Alert,
   Avatar,
   Badge,
   Button,
@@ -24,6 +25,7 @@ import {
   IconCheckbox,
   IconEdit,
   IconExternalLink,
+  IconFlag,
   IconNote,
   IconPaperclip,
   IconReceipt,
@@ -41,7 +43,9 @@ import {
   useArchiveExpense,
   useConfirmPayment,
   useExpenseDetail,
+  useFlagExpense,
   useMarkPayment,
+  useUnflagExpense,
 } from '../../../hooks/use-expenses';
 import { useApproveExpense, useRejectExpense } from '../../../hooks/use-approvals';
 import { useGroupStore } from '../../../stores/group';
@@ -82,8 +86,12 @@ export function ExpenseDetailPage() {
   const uploadReceipt = useUploadReceipt(activeGroupId ?? '');
   const deleteReceipt = useDeleteReceipt(activeGroupId ?? '');
   const workspaceGovernance = useWorkspaceGovernance(group);
+  const flagExpenseMutation = useFlagExpense();
+  const unflagExpenseMutation = useUnflagExpense();
   const [noteOpened, { open: openNote, close: closeNote }] = useDisclosure(false);
+  const [flagOpened, { open: openFlag, close: closeFlag }] = useDisclosure(false);
   const [paymentNote, setPaymentNote] = useState('');
+  const [flagReason, setFlagReason] = useState('');
   const [pendingPayment, setPendingPayment] = useState<{ userId: string } | null>(null);
   const paidByUserId = expense?.paid_by_user_id ?? '';
   const { data: paidByMethods } = usePaymentMethods(paidByUserId);
@@ -286,6 +294,52 @@ export function ExpenseDetailPage() {
     }
   }
 
+  async function handleFlagExpense() {
+    if (!flagReason.trim()) return;
+    try {
+      await flagExpenseMutation.mutateAsync({ expenseId: expenseData.id, reason: flagReason.trim() });
+      notifications.show({
+        title: 'Expense queried',
+        message: 'Your query has been submitted for this expense.',
+        color: 'orange',
+      });
+      closeFlag();
+      setFlagReason('');
+    } catch (err) {
+      notifications.show({
+        title: 'Failed to query expense',
+        message: err instanceof Error ? err.message : 'Something went wrong',
+        color: 'red',
+      });
+    }
+  }
+
+  async function handleUnflagExpense() {
+    try {
+      await unflagExpenseMutation.mutateAsync(expenseData.id);
+      notifications.show({
+        title: 'Query dismissed',
+        message: 'The expense query has been dismissed.',
+        color: 'green',
+      });
+    } catch (err) {
+      notifications.show({
+        title: 'Failed to dismiss query',
+        message: err instanceof Error ? err.message : 'Something went wrong',
+        color: 'red',
+      });
+    }
+  }
+
+  // Resolve flagger name from group members
+  const flaggerName = expense.flagged_by.length > 0
+    ? group?.members.find((m) => m.user_id === expense.flagged_by[0])?.user?.name ?? 'A member'
+    : null;
+
+  // Resolve approver name from group members
+  const approverName = expense.approved_by
+    ? group?.members.find((m) => m.user_id === expense.approved_by)?.user?.name ?? 'Unknown'
+    : null;
 
   return (
     <Stack gap="xl">
@@ -338,8 +392,60 @@ export function ExpenseDetailPage() {
               Archive
             </Button>
           )}
+          {!isAdmin && currentMember && (
+            <Button
+              variant="light"
+              color="orange"
+              leftSection={<IconFlag size={16} />}
+              onClick={openFlag}
+            >
+              Query this expense
+            </Button>
+          )}
         </Group>
       </PageHeader>
+
+      {expense.flagged_by.length > 0 && (
+        <Alert
+          variant="light"
+          color="orange"
+          title="This expense has been queried"
+          icon={<IconFlag size={18} />}
+        >
+          <Group justify="space-between" align="center" wrap="wrap">
+            <Text size="sm">
+              Queried by {flaggerName} &mdash; {expense.flagged_reason ?? 'No reason provided'}
+            </Text>
+            {isAdmin && (
+              <Button
+                size="compact-sm"
+                variant="light"
+                color="orange"
+                onClick={handleUnflagExpense}
+                loading={unflagExpenseMutation.isPending}
+              >
+                Dismiss
+              </Button>
+            )}
+          </Group>
+        </Alert>
+      )}
+
+      {approvalStatus === 'approved' && expense.approved_by && (
+        <Alert variant="light" color="green" icon={<IconCheck size={18} />}>
+          <Text size="sm">
+            Approved by {approverName} on {expense.approved_at ? formatDate(expense.approved_at) : 'unknown date'}
+          </Text>
+        </Alert>
+      )}
+
+      {approvalStatus === 'rejected' && expense.approved_by && (
+        <Alert variant="light" color="red" icon={<IconX size={18} />}>
+          <Text size="sm">
+            Rejected by {approverName} on {expense.approved_at ? formatDate(expense.approved_at) : 'unknown date'}
+          </Text>
+        </Alert>
+      )}
 
       {approvalStatus === 'pending' && (
         <Paper className="commune-soft-panel" p="md" style={{ borderLeft: '4px solid var(--mantine-color-orange-5)' }}>
@@ -778,6 +884,26 @@ export function ExpenseDetailPage() {
                       />
           <Button onClick={handleConfirmPay} loading={markPayment.isPending} fullWidth>
             Confirm payment
+          </Button>
+        </Stack>
+      </Modal>
+
+      <Modal opened={flagOpened} onClose={closeFlag} title="Query this expense" size="sm">
+        <Stack gap="sm">
+          <TextInput
+            label="Reason for querying"
+            placeholder="e.g. The amount looks incorrect"
+            value={flagReason}
+            onChange={(event) => setFlagReason(event.currentTarget.value)}
+          />
+          <Button
+            onClick={handleFlagExpense}
+            loading={flagExpenseMutation.isPending}
+            color="orange"
+            fullWidth
+            disabled={!flagReason.trim()}
+          >
+            Submit query
           </Button>
         </Stack>
       </Modal>
