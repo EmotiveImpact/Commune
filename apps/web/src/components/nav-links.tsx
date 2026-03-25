@@ -4,6 +4,7 @@ import {
   IconChartPie,
   IconCoin,
   IconDashboard,
+  IconFileInvoice,
   IconHome2,
   IconReceipt,
   IconFileText,
@@ -44,6 +45,7 @@ export const navGroups: NavGroup[] = [
       { label: 'Recurring', to: '/recurring', icon: <IconRepeat size={20} />, 'aria-label': 'Manage recurring expenses' },
       { label: 'Templates', to: '/templates', icon: <IconTemplate size={20} />, 'aria-label': 'Manage split templates' },
       { label: 'Funds', to: '/funds', icon: <IconPigMoney size={20} />, 'aria-label': 'Manage shared funds' },
+      { label: 'Billing', to: '/billing', icon: <IconFileInvoice size={20} />, 'aria-label': 'Workspace billing dashboard' },
     ],
   },
   {

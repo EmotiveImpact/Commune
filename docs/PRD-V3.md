@@ -25,7 +25,11 @@
 
 ## What Changed in V3
 
-V3 represents a **fundamental shift** in how Commune works. The product moved from being a "shared expense tracker" to a **hub-based communal living operating system**.
+V3 represents a **fundamental shift** in how Commune works. The product moved from being a "shared expense tracker" to a **hub-based operating system for ongoing shared spaces**.
+
+The implementation in V3 is strongest for home and co-living contexts, but the underlying hub model is intended to generalise to workspaces, studios, project spaces, trips, collectives, and other recurring groups.
+
+That generalisation should happen by layering subtype-aware intelligence onto the same hub model, not by spinning up separate product branches. V3 establishes the shared core that later versions can adapt more intelligently.
 
 ### Key Shifts
 
@@ -55,19 +59,19 @@ V3 represents a **fundamental shift** in how Commune works. The product moved fr
 
 ### Concept
 
-Each user has their own account, then they can create or join multiple **Commune Hubs**. Each hub is a distinct space with its own identity, members, finances, and settings.
+Each user has their own account, then they can create or join multiple **Commune Hubs**. Each hub is a distinct shared space with its own identity, members, finances, and settings.
 
 ### User Flow
 
 ```
 Account level
   └── Multiple hubs
-        └── Hub: Free Vicarage
+        └── Hub: Studio North
               ├── Overview (hub landing page — the "hook")
               ├── Money (expenses, recurring, templates, funds)
               ├── People (members, profiles, settlement)
               ├── Activity (feed, history)
-              ├── Chores (tasks, rotation)
+              ├── Operations (tasks, chores, rotation)
               └── Settings (admin only)
 ```
 
@@ -275,7 +279,7 @@ The first screen when entering a hub. Answers the five key questions instantly:
 
 ## V3 Feature Requirements — Stage 7 (Responsibilities & Social)
 
-*Theme: Expand beyond money into shared living responsibilities.*
+*Theme: Expand beyond money into recurring group responsibilities.*
 
 ### F41: Chore Rotation (Updated — Full Implementation)
 
@@ -425,26 +429,28 @@ A comprehensive code review was conducted on 2026-03-23. All critical and high-s
 | 2 | **Receipt OCR (F26)** | Large | AI vision edge function for receipt scanning → auto-fill expense form |
 | 3 | **Trip Pass pricing (F30)** | Small | Stripe one-time payment, 14-day Pro access, pricing page UI |
 | 4 | **Mobile app parity** | Large | Analytics screen, recurring management, chores, hub features |
+| 5 | **Monthly close and member lifecycle flows** | Large | Lock cycle, finalise balances, join/leave/move-out handover, stronger proration flow |
 
 ### MEDIUM Priority
 
 | # | Feature | Effort | Description |
 |---|---------|--------|-------------|
-| 5 | **Offline expense entry (F31)** | Medium | IndexedDB storage, sync on reconnect, offline indicator |
-| 6 | **Item-level splitting (F27)** | Large | New schema, assignment UI, integrates with OCR |
-| 7 | **Chore form validation** | Small | Add Zod validation rules to prevent empty title submission |
-| 8 | **Chore completion audit trail** | Small | Record who was assigned when chore was completed |
-| 9 | **Settlement excludes pending expenses** | Small | Filter approval_status='pending' from settlement queries |
+| 6 | **Offline expense entry (F31)** | Medium | IndexedDB storage, sync on reconnect, offline indicator |
+| 7 | **Item-level splitting (F27)** | Large | New schema, assignment UI, integrates with OCR |
+| 8 | **Chore form validation** | Small | Add Zod validation rules to prevent empty title submission |
+| 9 | **Chore completion audit trail** | Small | Record who was assigned when chore was completed |
+| 10 | **Settlement excludes pending expenses** | Small | Filter approval_status='pending' from settlement queries |
+| 11 | **Configurable space essentials** | Medium | Replace house-only framing with space-type-aware essentials and templates |
 
 ### LOW Priority (future)
 
 | # | Feature | Effort | Description |
 |---|---------|--------|-------------|
-| 10 | Shopping lists (F42) | Medium | Collaborative lists with "convert to expense" |
-| 11 | Open Banking (F39) | Very large | Plaid/TrueLayer integration |
-| 12 | In-app settlement (F40) | Very large | Stripe Connect P2P |
-| 13 | Voice/NLP interface | Very large | Speech-to-text expense entry |
-| 14 | B2B2C co-living channel | Business | Operator partnerships |
+| 12 | Shopping lists (F42) | Medium | Collaborative lists with "convert to expense" |
+| 13 | Open Banking (F39) | Very large | Plaid/TrueLayer integration |
+| 14 | In-app settlement (F40) | Very large | Stripe Connect P2P |
+| 15 | Voice/NLP interface | Very large | Speech-to-text expense entry |
+| 16 | Shared-space operator channel | Business | Portfolio dashboards and operator partnerships |
 
 ### Need a Decision (carried from V2)
 
@@ -571,4 +577,4 @@ The shared groups feature on member profiles is privacy-controlled. Users can op
 
 ---
 
-*End of PRD V3. For V2 features (F20-F42) and competitive research, see [PRD V2](./PRD-V2.md). For V1 features (F1-F19), see [PRD V1.1](./PRD.md).*
+*End of PRD V3. For V2 features (F20-F42) and competitive research, see [PRD V2](./PRD-V2.md). For V1 features (F1-F19), see [PRD V1.1](./PRD.md). For the next expansion phases across shared spaces and operator tooling, see [PRD V4](./PRD-V4.md).*

@@ -120,7 +120,7 @@ export type {
 } from './splitwise-import';
 
 export { getCategoriesByGroupType, getOnboardingTips } from './group-type';
-export { getSpacePreset } from './space-presets';
+export { getSpacePreset, getSubtypePreset } from './space-presets';
 export type { SpacePreset } from './space-presets';
 export {
   getDefaultWorkspaceRolePresets,

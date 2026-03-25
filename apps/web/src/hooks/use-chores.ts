@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getGroupChores, createChore, updateChore, deleteChore, completeChore } from '@commune/api';
+import { activityKeys } from './use-activity';
 
 const choreKeys = {
   list: (groupId: string) => ['chores', groupId] as const,
@@ -29,6 +30,7 @@ export function useCompleteChore(groupId: string) {
     mutationFn: (choreId: string) => completeChore(choreId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: choreKeys.list(groupId) });
+      queryClient.invalidateQueries({ queryKey: activityKeys.all });
     },
   });
 }

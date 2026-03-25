@@ -130,13 +130,24 @@ const SUBTYPE_PRESETS: Record<string, Record<string, Partial<SpacePreset>>> = {
   home: {
     coliving: {
       title: 'Co-living starter pack',
-      summary: 'Set expectations for communal life, resident turnover, and shared notices without making the space feel bureaucratic.',
+      summary: 'Set expectations for communal life, shared meals, resident turnover, and shared notices without making the space feel bureaucratic.',
+      suggestedCategories: [
+        ExpenseCategory.GROCERIES,
+        ExpenseCategory.HOUSEHOLD_SUPPLIES,
+        ExpenseCategory.CLEANING,
+        ExpenseCategory.UTILITIES,
+        ExpenseCategory.RENT,
+      ],
       firstExpenseIdeas: [
-        'Log the recurring communal bill everyone depends on first.',
-        'Write the welcome and shared-living rules new residents need immediately.',
+        'Log the first communal meal shop or shared groceries run.',
+        'Capture the communal supplies budget — cleaning products, toiletries, shared pantry staples.',
+        'Record the recurring bill that every resident depends on (internet, utilities, cleaner).',
       ],
       essentialSeeds: {
         rules: 'Welcome norms, cleaning cadence, guest expectations, and how communal decisions get surfaced.',
+        meals: 'Communal meal schedule, dietary notes, shopping rota, and shared-kitchen expectations.',
+        supplies: 'What gets restocked communally, where it lives, and who notices when it runs low.',
+        onboarding: 'Move-in checklist, welcome tour notes, key contacts, and first-week orientation.',
       },
     },
     high_turnover: {
@@ -148,15 +159,23 @@ const SUBTYPE_PRESETS: Record<string, Record<string, Partial<SpacePreset>>> = {
         ExpenseCategory.CLEANING,
         ExpenseCategory.HOUSEHOLD_SUPPLIES,
       ],
+      firstExpenseIdeas: [
+        'Log the deposit or first rent payment so the financial baseline is clear from day one.',
+        'Record the move-in cleaning fee or key deposit before it gets lost in chat.',
+        'Capture the prorated utilities amount for the first partial month.',
+      ],
       essentialSeeds: {
         rules: 'Move-in checklist, deposit expectations, cleaning standard, and key handover process.',
+        handover: 'Key return process, forwarding address, meter readings, and room condition sign-off.',
+        deposits: 'Deposit amount per room, who holds it, deduction rules, and return timeline.',
+        inventory: 'Furnished items per room, condition notes, and what must be returned on move-out.',
       },
     },
   },
   workspace: {
     coworking: {
       title: 'Coworking starter pack',
-      summary: 'Make guest access, member etiquette, and shared-area resets obvious before the first busy week.',
+      summary: 'Make guest access, desk booking, member etiquette, and shared-area resets obvious before the first busy week.',
       suggestedCategories: [
         ExpenseCategory.INTERNET,
         ExpenseCategory.WORK_TOOLS,
@@ -164,11 +183,14 @@ const SUBTYPE_PRESETS: Record<string, Record<string, Partial<SpacePreset>>> = {
         ExpenseCategory.HOUSEHOLD_SUPPLIES,
       ],
       firstExpenseIdeas: [
-        'Log internet, rent, or coffee/supplies spend to anchor the workspace baseline.',
-        'Document guest access and shared-area reset expectations before they become Slack questions.',
+        'Log the internet or coffee/supplies subscription that keeps the space running.',
+        'Record the cleaning or consumables restock cost so the baseline is visible.',
+        'Capture any desk or meeting-room booking tool subscription.',
       ],
       essentialSeeds: {
         access: 'Front-door code, guest access rules, quiet-zone policy, and after-hours issue contact.',
+        hours: 'Core access hours, staffed hours, after-hours policy, and holiday closures.',
+        booking: 'Desk booking process, meeting-room rules, no-show policy, and how to reserve for guests.',
         subscriptions: 'Internet, coffee, cleaning, and software subscriptions with owner and renewal notes.',
         rules: 'Guest etiquette, meeting-room resets, call norms, and how shared areas should look at close.',
       },
@@ -232,15 +254,23 @@ const SUBTYPE_PRESETS: Record<string, Record<string, Partial<SpacePreset>>> = {
   project: {
     production: {
       title: 'Production starter pack',
-      summary: 'Bias setup toward budget visibility, gear accountability, and clear run-to-run handover notes.',
+      summary: 'Bias setup toward budget visibility, gear accountability, and clear run-to-run handover notes so nothing falls through between shoots or sessions.',
       suggestedCategories: [
         ExpenseCategory.WORK_TOOLS,
         ExpenseCategory.TRANSPORT,
         ExpenseCategory.RENT,
         ExpenseCategory.MISCELLANEOUS,
       ],
+      firstExpenseIdeas: [
+        'Log the first venue hire, equipment rental, or transport cost the production will need to track.',
+        'Record catering or per-diem spend so the daily run rate is visible immediately.',
+        'Capture any gear rental or insurance deposit before it disappears into personal cards.',
+      ],
       essentialSeeds: {
         handover: 'What the next run needs, what changed today, what is approved, and what is still at risk.',
+        budget: 'Total budget, spend-to-date, approval thresholds, and who signs off on overages.',
+        equipment: 'Gear list, storage location, checkout process, return condition expectations, and insurance notes.',
+        callsheet: 'Daily schedule, crew contacts, location addresses, and contingency plan if timing shifts.',
       },
     },
     pop_up: {
@@ -254,14 +284,23 @@ const SUBTYPE_PRESETS: Record<string, Record<string, Partial<SpacePreset>>> = {
   trip: {
     festival: {
       title: 'Festival trip starter pack',
+      summary: 'Keep the group connected, the shared pot visible, and the logistics clear even when signal drops and plans change fast.',
       suggestedCategories: [
         ExpenseCategory.TRANSPORT,
         ExpenseCategory.ENTERTAINMENT,
         ExpenseCategory.GROCERIES,
         ExpenseCategory.MISCELLANEOUS,
       ],
+      firstExpenseIdeas: [
+        'Log the ticket cost so the biggest shared expense is captured upfront.',
+        'Record the group transport booking — van hire, fuel split, or train tickets.',
+        'Capture the campsite or accommodation fee before it gets buried in one person\'s account.',
+      ],
       essentialSeeds: {
         meetup: 'Primary meetup point, fallback meetup point, and how to reconnect if phones die.',
+        tickets: 'Ticket type per person, booking reference, collection method, and any transfer rules.',
+        campsite: 'Pitch or accommodation location, check-in process, site rules, and nearest facilities.',
+        safety: 'Emergency contact, first-aid location, phone charging plan, and lost-person protocol.',
         rules: 'Shared spend expectations, safety boundaries, and the check-in rhythm for the group.',
       },
     },
@@ -307,6 +346,38 @@ export function getSpacePreset(
     essentialSeeds: {
       ...base.essentialSeeds,
       ...(override.essentialSeeds ?? {}),
+    },
+  };
+}
+
+/**
+ * Returns a refined subtype preset if one exists for the given groupType/subtype
+ * combination. Returns `null` when no subtype-specific preset is defined, so
+ * callers can decide whether to fall back to the base group-type preset.
+ */
+export function getSubtypePreset(
+  groupType: string,
+  subtype: string,
+): SpacePreset | null {
+  const subtypeOverride = SUBTYPE_PRESETS[groupType]?.[subtype];
+  if (!subtypeOverride) return null;
+
+  const base = PRESETS_BY_TYPE[groupType] ?? DEFAULT_PRESET;
+
+  return {
+    title: subtypeOverride.title ?? base.title,
+    summary: subtypeOverride.summary ?? base.summary,
+    suggestedCategories: uniqueCategories([
+      ...(subtypeOverride.suggestedCategories ?? []),
+      ...base.suggestedCategories,
+    ]),
+    firstExpenseIdeas: [
+      ...(subtypeOverride.firstExpenseIdeas ?? []),
+      ...base.firstExpenseIdeas,
+    ],
+    essentialSeeds: {
+      ...base.essentialSeeds,
+      ...(subtypeOverride.essentialSeeds ?? {}),
     },
   };
 }

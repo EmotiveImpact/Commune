@@ -134,5 +134,25 @@ export async function completeChore(choreId: string) {
     if (updateError) throw updateError;
   }
 
+  // Log chore completion to activity log
+  const { error: activityError } = await supabase
+    .from('activity_log')
+    .insert({
+      group_id: chore.group_id,
+      user_id: user.id,
+      action: 'chore_completed',
+      entity_type: 'chore',
+      entity_id: choreId,
+      metadata: {
+        chore_title: chore.title,
+        frequency: chore.frequency,
+      },
+    });
+
+  if (activityError) {
+    // Non-critical: don't fail the completion if activity logging fails
+    console.warn('Failed to log chore completion to activity log:', activityError.message);
+  }
+
   return { success: true };
 }

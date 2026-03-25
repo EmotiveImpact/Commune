@@ -1,6 +1,9 @@
 import {
   createSetupChecklistProgress,
   getOperationTemplates,
+  getSubtypePreset,
+  getSpacePreset,
+  type SpacePreset,
 } from '@commune/core';
 import type {
   SpaceEssentials,
@@ -18,6 +21,8 @@ export interface ApplyStarterPackInput {
 export interface ApplyStarterPackResult {
   operationsCreated: number;
   essentialsApplied: number;
+  preset: SpacePreset;
+  hasSubtypePreset: boolean;
 }
 
 function toLegacyHouseInfo(spaceEssentials: SpaceEssentials | null | undefined) {
@@ -128,10 +133,17 @@ export async function applyGroupStarterPack(
     }
   }
 
+  const subtypePreset = input.subtype
+    ? getSubtypePreset(input.groupType, input.subtype)
+    : null;
+  const preset = subtypePreset ?? getSpacePreset(input.groupType, input.subtype);
+
   return {
     operationsCreated,
     essentialsApplied: normalizedEssentials && normalizedEssentials !== null
       ? Object.keys(normalizedEssentials).length
       : 0,
+    preset,
+    hasSubtypePreset: subtypePreset !== null,
   };
 }

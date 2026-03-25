@@ -67,7 +67,7 @@ function MembersShimmer() {
   const bar = (w: string | number, h = 14) => (
     <Animated.View
       style={{
-        width: w as any,
+        width: w as number,
         height: h,
         borderRadius: 8,
         backgroundColor: '#E5E7EB',
@@ -544,7 +544,7 @@ export default function MembersScreen() {
         .slice(0, 2)
         .toUpperCase();
       const canRestoreAccess = Boolean(member.effective_until || member.status === 'removed');
-      const isOwner = member.user_id === group?.owner_id;
+      const isMemberOwner = member.user_id === group?.owner_id;
 
       return (
         <View
@@ -794,14 +794,14 @@ export default function MembersScreen() {
             </View>
           )}
 
-          {(member.effective_until || isOwner) && (
+          {(member.effective_until || isMemberOwner) && (
             <View style={{ marginTop: 10, marginLeft: 52, gap: 6 }}>
               {member.effective_until ? (
                 <Text style={{ fontSize: 12, color: '#B45309' }}>
                   Scheduled until {formatDate(member.effective_until)}
                 </Text>
               ) : null}
-              {isOwner ? (
+              {isMemberOwner ? (
                 <Text style={{ fontSize: 12, color: '#B9382F' }}>
                   Owner handover required before this member can leave.
                 </Text>

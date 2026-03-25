@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import type { ExpenseWithParticipants } from '@commune/types';
 import { formatCurrency, formatDate } from '@commune/utils';
 import { useGroupStore } from '@/stores/group';
 import { useThemeStore } from '@/stores/theme';
@@ -358,7 +359,7 @@ export default function RecurringScreen() {
   }, [archiveMutation]);
 
   const renderItem = useCallback(
-    ({ item: expense }: { item: any }) => {
+    ({ item: expense }: { item: ExpenseWithParticipants }) => {
       const freq =
         tab === 'paused'
           ? extractPausedType(expense.description)
@@ -640,7 +641,7 @@ export default function RecurringScreen() {
   }
 
   const monthlyTotal = (activeExpenses ?? []).reduce(
-    (sum: number, e: any) => sum + e.amount,
+    (sum: number, e: ExpenseWithParticipants) => sum + e.amount,
     0,
   );
 
@@ -897,7 +898,7 @@ export default function RecurringScreen() {
     <FlatList
       data={expenses}
       renderItem={renderItem}
-      keyExtractor={(item: any) => item.id}
+      keyExtractor={(item) => item.id}
       style={{ flex: 1, backgroundColor: bg }}
       contentContainerStyle={{ paddingBottom: 120 }}
       showsVerticalScrollIndicator={false}

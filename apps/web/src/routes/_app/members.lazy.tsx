@@ -52,6 +52,9 @@ import { useGroupLifecycleSummary, useRestoreMemberAccess, useScheduleMemberDepa
 import { useMemberMonthlyStats } from '../../hooks/use-member-stats';
 import { useWorkspaceGovernance } from '../../hooks/use-workspace-governance';
 import { useAuthStore } from '../../stores/auth';
+import { useRecurringExpenses } from '../../hooks/use-recurring';
+import { usePendingApprovals } from '../../hooks/use-approvals';
+import { useGroupExpenses } from '../../hooks/use-expenses';
 import { InviteMemberModal } from '../../components/invite-member-modal';
 import { MembersSkeleton } from '../../components/page-skeleton';
 import { EmptyState } from '../../components/empty-state';
@@ -83,6 +86,203 @@ function formatResponsibilityLabel(value: string): string {
     .split('_')
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(' ');
+}
+
+interface HandoverChecklistProps {
+  groupId: string;
+  departingUserId: string;
+  departingName: string;
+  isOwner: boolean;
+  isLastAdmin: boolean;
+  members: Array<{ id: string; user_id: string; role: string; status: string; user: { name: string } }>;
+  currency?: string;
+  onTransferOwnership: (userId: string, name: string) => void;
+}
+
+function HandoverChecklist({
+  groupId,
+  departingUserId,
+  departingName,
+  isOwner,
+  isLastAdmin,
+  members,
+  currency,
+  onTransferOwnership,
+}: HandoverChecklistProps) {
+  const { data: expenses = [] } = useGroupExpenses(groupId);
+  const { data: recurringExpenses = [] } = useRecurringExpenses(groupId);
+  const { data: pendingApprovals = [] } = usePendingApprovals(groupId);
+  const [handoverConfirmed, setHandoverConfirmed] = useState(false);
+
+  // Outstanding balances: expenses where the departing user owes or is owed
+  const userExpenses = expenses.filter(
+    (e: any) =>
+      e.is_active &&
+      (e.created_by === departingUserId ||
+        (e.participants ?? []).some((p: any) => p.user_id === departingUserId)),
+  );
+  const hasOutstandingBalances = userExpenses.length > 0;
+
+  // Active recurring expenses created by the departing user
+  const userRecurring = recurringExpenses.filter(
+    (e: any) => e.created_by === departingUserId && e.recurrence_type !== 'none',
+  );
+  const hasRecurringToReassign = userRecurring.length > 0;
+
+  // Pending approvals
+  const hasPendingApprovals = pendingApprovals.length > 0;
+
+  // Eligible transfer targets (active admins who are not the departing member)
+  const transferCandidates = members.filter(
+    (m) => m.user_id !== departingUserId && m.status === 'active' && m.role === 'admin',
+  );
+  // If no other admins, show active members as fallback
+  const transferTargets =
+    transferCandidates.length > 0
+      ? transferCandidates
+      : members.filter((m) => m.user_id !== departingUserId && m.status === 'active');
+
+  return (
+    <Paper withBorder radius="md" p="md" bg="var(--mantine-color-yellow-light)">
+      <Stack gap="sm">
+        <Group gap="xs">
+          <IconChecklist size={18} />
+          <Text fw={700} size="sm">
+            Owner handover checklist for {departingName}
+          </Text>
+        </Group>
+
+        <Stack gap={6}>
+          {/* 1. Outstanding balances */}
+          <Group gap="xs" align="flex-start">
+            <Badge
+              size="sm"
+              variant="light"
+              color={hasOutstandingBalances ? 'orange' : 'green'}
+            >
+              {hasOutstandingBalances ? 'Action needed' : 'Clear'}
+            </Badge>
+            <div>
+              <Text size="sm" fw={500}>Outstanding balances</Text>
+              <Text size="xs" c="dimmed">
+                {hasOutstandingBalances
+                  ? `${userExpenses.length} expense${userExpenses.length !== 1 ? 's' : ''} involve ${departingName}. Settle or reassign before departure.`
+                  : 'No outstanding balances to settle.'}
+              </Text>
+            </div>
+          </Group>
+
+          {/* 2. Active recurring expenses */}
+          <Group gap="xs" align="flex-start">
+            <Badge
+              size="sm"
+              variant="light"
+              color={hasRecurringToReassign ? 'orange' : 'green'}
+            >
+              {hasRecurringToReassign ? 'Action needed' : 'Clear'}
+            </Badge>
+            <div>
+              <Text size="sm" fw={500}>Recurring expenses</Text>
+              <Text size="xs" c="dimmed">
+                {hasRecurringToReassign
+                  ? `${userRecurring.length} recurring expense${userRecurring.length !== 1 ? 's' : ''} created by ${departingName}. Reassign ownership before departure.`
+                  : 'No recurring expenses to reassign.'}
+              </Text>
+            </div>
+          </Group>
+
+          {/* 3. Pending approvals */}
+          <Group gap="xs" align="flex-start">
+            <Badge
+              size="sm"
+              variant="light"
+              color={hasPendingApprovals ? 'orange' : 'green'}
+            >
+              {hasPendingApprovals ? 'Action needed' : 'Clear'}
+            </Badge>
+            <div>
+              <Text size="sm" fw={500}>Pending approvals</Text>
+              <Text size="xs" c="dimmed">
+                {hasPendingApprovals
+                  ? `${pendingApprovals.length} approval${pendingApprovals.length !== 1 ? 's' : ''} pending. Resolve before departure.`
+                  : 'No pending approvals to resolve.'}
+              </Text>
+            </div>
+          </Group>
+
+          {/* 4. Admin/owner role transfer */}
+          {(isOwner || isLastAdmin) && (
+            <Group gap="xs" align="flex-start">
+              <Badge size="sm" variant="light" color="red">
+                Required
+              </Badge>
+              <div>
+                <Text size="sm" fw={500}>
+                  {isOwner ? 'Transfer ownership' : 'Promote a new admin'}
+                </Text>
+                <Text size="xs" c="dimmed" mb={4}>
+                  {isOwner
+                    ? 'The group must have an owner. Select who should take over.'
+                    : 'The group must have at least one admin.'}
+                </Text>
+                {transferTargets.length > 0 ? (
+                  <Group gap="xs" wrap="wrap">
+                    {transferTargets.map((m) => (
+                      <Button
+                        key={m.user_id}
+                        size="compact-xs"
+                        variant="light"
+                        color="indigo"
+                        leftSection={<IconCrown size={12} />}
+                        onClick={(e: React.MouseEvent) => {
+                          e.stopPropagation();
+                          onTransferOwnership(m.user_id, m.user.name);
+                        }}
+                      >
+                        {m.user.name}
+                      </Button>
+                    ))}
+                  </Group>
+                ) : (
+                  <Text size="xs" c="red">
+                    No eligible members to transfer to. Invite or promote someone first.
+                  </Text>
+                )}
+              </div>
+            </Group>
+          )}
+
+          {/* 5. Essentials handover confirmation */}
+          <Group gap="xs" align="flex-start">
+            <Badge
+              size="sm"
+              variant="light"
+              color={handoverConfirmed ? 'green' : 'gray'}
+            >
+              {handoverConfirmed ? 'Confirmed' : 'Pending'}
+            </Badge>
+            <div>
+              <Text size="sm" fw={500}>Essentials handover</Text>
+              <Text size="xs" c="dimmed" mb={4}>
+                Confirm that account credentials, shared documents, and essential group info have been handed over.
+              </Text>
+              <Button
+                size="compact-xs"
+                variant={handoverConfirmed ? 'filled' : 'light'}
+                color={handoverConfirmed ? 'green' : 'gray'}
+                onClick={(e: React.MouseEvent) => {
+                  e.stopPropagation();
+                  setHandoverConfirmed(!handoverConfirmed);
+                }}
+              >
+                {handoverConfirmed ? 'Confirmed' : 'Mark as handed over'}
+              </Button>
+            </div>
+          </Group>
+        </Stack>
+      </Stack>
+    </Paper>
+  );
 }
 
 export function MembersPage() {
@@ -1160,7 +1360,26 @@ export function MembersPage() {
               Transfer ownership first. Owners cannot be scheduled to leave.
             </Badge>
           )}
-          {(departureTarget?.isOwner || departureTargetIsLastAdmin || incompleteChecklistItems.length > 0) && (
+          {(departureTarget?.isOwner || departureTargetIsLastAdmin) && activeGroupId && departureTarget && (
+            <HandoverChecklist
+              groupId={activeGroupId}
+              departingUserId={departureTarget.userId}
+              departingName={departureTarget.name}
+              isOwner={departureTarget.isOwner}
+              isLastAdmin={departureTargetIsLastAdmin}
+              members={group?.members ?? []}
+              currency={group?.currency}
+              onTransferOwnership={(userId, name) => {
+                closeDeparture();
+                setDepartureTarget(null);
+                setDepartureDate(null);
+                setTransferTarget({ userId, name });
+                openTransfer();
+              }}
+            />
+          )}
+          {!(departureTarget?.isOwner || departureTargetIsLastAdmin) &&
+            (incompleteChecklistItems.length > 0) && (
             <Alert
               color="yellow"
               variant="light"
@@ -1168,12 +1387,6 @@ export function MembersPage() {
               title="Handover checks before this departure"
             >
               <Stack gap={6}>
-                {departureTarget?.isOwner && (
-                  <Text size="sm">• Transfer ownership before scheduling this departure.</Text>
-                )}
-                {departureTargetIsLastAdmin && (
-                  <Text size="sm">• Promote another admin before the last admin leaves.</Text>
-                )}
                 {incompleteChecklistItems.slice(0, 2).map((item) => (
                   <Text key={item.id} size="sm">
                     • {item.label}

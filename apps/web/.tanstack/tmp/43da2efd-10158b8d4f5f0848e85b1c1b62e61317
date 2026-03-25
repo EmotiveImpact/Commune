@@ -31,7 +31,6 @@ import { Route as AppImportRouteImport } from './routes/_app/import'
 import { Route as AppFundsRouteImport } from './routes/_app/funds'
 import { Route as AppChoresRouteImport } from './routes/_app/chores'
 import { Route as AppBreakdownRouteImport } from './routes/_app/breakdown'
-import { Route as AppBillingRouteImport } from './routes/_app/billing'
 import { Route as AppAnalyticsRouteImport } from './routes/_app/analytics'
 import { Route as AppActivityRouteImport } from './routes/_app/activity'
 import { Route as AppGroupsIndexRouteImport } from './routes/_app/groups/index'
@@ -160,11 +159,6 @@ const AppBreakdownRoute = AppBreakdownRouteImport.update({
 } as any).lazy(() =>
   import('./routes/_app/breakdown.lazy').then((d) => d.Route),
 )
-const AppBillingRoute = AppBillingRouteImport.update({
-  id: '/billing',
-  path: '/billing',
-  getParentRoute: () => AppRoute,
-} as any).lazy(() => import('./routes/_app/billing.lazy').then((d) => d.Route))
 const AppAnalyticsRoute = AppAnalyticsRouteImport.update({
   id: '/analytics',
   path: '/analytics',
@@ -247,7 +241,6 @@ export interface FileRoutesByFullPath {
   '/privacy': typeof PrivacyRoute
   '/activity': typeof AppActivityRoute
   '/analytics': typeof AppAnalyticsRoute
-  '/billing': typeof AppBillingRoute
   '/breakdown': typeof AppBreakdownRoute
   '/chores': typeof AppChoresRoute
   '/funds': typeof AppFundsRoute
@@ -281,7 +274,6 @@ export interface FileRoutesByTo {
   '/privacy': typeof PrivacyRoute
   '/activity': typeof AppActivityRoute
   '/analytics': typeof AppAnalyticsRoute
-  '/billing': typeof AppBillingRoute
   '/breakdown': typeof AppBreakdownRoute
   '/chores': typeof AppChoresRoute
   '/funds': typeof AppFundsRoute
@@ -317,7 +309,6 @@ export interface FileRoutesById {
   '/privacy': typeof PrivacyRoute
   '/_app/activity': typeof AppActivityRoute
   '/_app/analytics': typeof AppAnalyticsRoute
-  '/_app/billing': typeof AppBillingRoute
   '/_app/breakdown': typeof AppBreakdownRoute
   '/_app/chores': typeof AppChoresRoute
   '/_app/funds': typeof AppFundsRoute
@@ -354,7 +345,6 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/activity'
     | '/analytics'
-    | '/billing'
     | '/breakdown'
     | '/chores'
     | '/funds'
@@ -388,7 +378,6 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/activity'
     | '/analytics'
-    | '/billing'
     | '/breakdown'
     | '/chores'
     | '/funds'
@@ -423,7 +412,6 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/_app/activity'
     | '/_app/analytics'
-    | '/_app/billing'
     | '/_app/breakdown'
     | '/_app/chores'
     | '/_app/funds'
@@ -617,13 +605,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppBreakdownRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/billing': {
-      id: '/_app/billing'
-      path: '/billing'
-      fullPath: '/billing'
-      preLoaderRoute: typeof AppBillingRouteImport
-      parentRoute: typeof AppRoute
-    }
     '/_app/analytics': {
       id: '/_app/analytics'
       path: '/analytics'
@@ -730,7 +711,6 @@ const AppExpensesExpenseIdRouteWithChildren =
 interface AppRouteChildren {
   AppActivityRoute: typeof AppActivityRoute
   AppAnalyticsRoute: typeof AppAnalyticsRoute
-  AppBillingRoute: typeof AppBillingRoute
   AppBreakdownRoute: typeof AppBreakdownRoute
   AppChoresRoute: typeof AppChoresRoute
   AppFundsRoute: typeof AppFundsRoute
@@ -756,7 +736,6 @@ interface AppRouteChildren {
 const AppRouteChildren: AppRouteChildren = {
   AppActivityRoute: AppActivityRoute,
   AppAnalyticsRoute: AppAnalyticsRoute,
-  AppBillingRoute: AppBillingRoute,
   AppBreakdownRoute: AppBreakdownRoute,
   AppChoresRoute: AppChoresRoute,
   AppFundsRoute: AppFundsRoute,

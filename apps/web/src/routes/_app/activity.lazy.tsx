@@ -16,6 +16,7 @@ import { notifications } from '@mantine/notifications';
 import {
   IconActivity,
   IconCash,
+  IconChecklist,
   IconCreditCard,
   IconDownload,
   IconHistory,
@@ -63,6 +64,7 @@ const actionIcons: Record<string, typeof IconReceipt> = {
   member_removed: IconUserMinus,
   group_updated: IconSettings,
   ownership_transferred: IconArrowsTransferDown,
+  chore_completed: IconChecklist,
 };
 
 const actionColors: Record<string, string> = {
@@ -77,6 +79,7 @@ const actionColors: Record<string, string> = {
   member_removed: 'red',
   group_updated: 'blue',
   ownership_transferred: 'indigo',
+  chore_completed: 'teal',
 };
 
 function describeAction(entry: ActivityEntry): string {
@@ -111,6 +114,8 @@ function describeAction(entry: ActivityEntry): string {
       return `${actorName} updated the group settings`;
     case 'ownership_transferred':
       return `${actorName} transferred group ownership to ${meta.new_owner_name ?? 'another member'}`;
+    case 'chore_completed':
+      return `${actorName} completed chore '${meta.chore_title ?? 'a task'}'`;
     default:
       return `${actorName} performed an action`;
   }
@@ -151,7 +156,7 @@ function getDateLabel(dateStr: string): string {
   return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
 }
 
-type TypeFilter = 'all' | 'expense' | 'payment' | 'member';
+type TypeFilter = 'all' | 'expense' | 'payment' | 'member' | 'chore';
 
 function ActivityPage() {
   useEffect(() => {
@@ -241,6 +246,7 @@ function ActivityPage() {
     { key: 'expense', label: 'Expenses' },
     { key: 'payment', label: 'Payments' },
     { key: 'member', label: 'Members' },
+    { key: 'chore', label: 'Chores' },
   ];
 
   return (
