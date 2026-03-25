@@ -105,7 +105,7 @@ function GroupsPage() {
           description="Create your first group to start tracking shared expenses."
         />
       ) : (
-        <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
+        <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="lg">
           {groups.map((g) => (
             <GroupCard key={g.id} groupId={g.id} name={g.name} type={g.type} />
           ))}
