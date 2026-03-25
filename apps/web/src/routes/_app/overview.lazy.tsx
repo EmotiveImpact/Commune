@@ -169,8 +169,8 @@ function CrossGroupOverviewPage() {
         <EmptyState
           icon={IconCheck}
           iconColor="emerald"
-          title="All settled up!"
-          description="You have no outstanding debts across any of your groups."
+          title="All squared away!"
+          description="No outstanding balances across any of your groups."
         />
       </Stack>
     );
@@ -443,7 +443,7 @@ function CrossGroupOverviewPage() {
               if (!status || (status.owes === 0 && status.owed === 0)) {
                 statusBadge = <Badge size="sm" variant="dot" color="green">Settled</Badge>;
               } else if (status.owes > 0) {
-                statusBadge = <Badge size="sm" variant="dot" color="red">You owe {formatCurrency(status.owes, status.currency)}</Badge>;
+                statusBadge = <Badge size="sm" variant="dot" color="red">{formatCurrency(status.owes, status.currency)} outstanding</Badge>;
               } else if (status.waiting > 0) {
                 statusBadge = <Badge size="sm" variant="dot" color="orange">Waiting on {status.waiting}</Badge>;
               }
@@ -479,7 +479,7 @@ function CrossGroupOverviewPage() {
           {/* Summary cards */}
           <Group gap="lg">
             <Paper className="commune-stat-card commune-kpi-card" p="lg" data-tone="peach" style={{ flex: 1 }}>
-              <Text size="sm" c="dimmed">You owe (total)</Text>
+              <Text size="sm" c="dimmed">Outstanding</Text>
               <Text fw={800} size="1.5rem">
                 {formatCurrencyBreakdown(
                   nettedYouOweTotals,
@@ -492,7 +492,7 @@ function CrossGroupOverviewPage() {
             </Paper>
 
             <Paper className="commune-stat-card commune-kpi-card" p="lg" data-tone="sage" style={{ flex: 1 }}>
-              <Text size="sm" c="dimmed">Owed to you (total)</Text>
+              <Text size="sm" c="dimmed">Coming your way</Text>
               <Text fw={800} size="1.5rem">
                 {formatCurrencyBreakdown(
                   nettedOwedToYouTotals,
@@ -508,7 +508,7 @@ function CrossGroupOverviewPage() {
           {/* You owe */}
           {youOwe.length > 0 && (
             <Paper className="commune-soft-panel" p="xl">
-              <Text className="commune-section-heading" mb="xs">You owe</Text>
+              <Text className="commune-section-heading" mb="xs">Outstanding</Text>
               <Text size="sm" c="dimmed" mb="lg">
                 These debts have been netted across groups. One transfer per person settles everything.
               </Text>
@@ -558,7 +558,7 @@ function CrossGroupOverviewPage() {
           {/* Owed to you */}
           {owedToYou.length > 0 && (
             <Paper className="commune-soft-panel" p="xl">
-              <Text className="commune-section-heading" mb="xs">Owed to you</Text>
+              <Text className="commune-section-heading" mb="xs">Coming your way</Text>
               <Text size="sm" c="dimmed" mb="lg">
                 People who owe you money across your groups.
               </Text>

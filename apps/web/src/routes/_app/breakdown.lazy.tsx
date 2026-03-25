@@ -99,7 +99,7 @@ function NudgeButton({
 
   function handleNudge() {
     const confirmed = window.confirm(
-      `Send reminder to ${toUserName} about ${formatCurrency(amount, currency)}?`,
+      `Send a gentle reminder to ${toUserName} about their ${formatCurrency(amount, currency)} outstanding balance?`,
     );
     if (!confirmed) return;
 
@@ -191,10 +191,10 @@ function SettlementSection({
       {settlement.isSettled ? (
         <Paper p="lg" radius="md" style={{ textAlign: 'center', border: '1px dashed var(--mantine-color-green-3)' }}>
           <Text size="xl" fw={700} c="green">
-            All settled!
+            All squared away!
           </Text>
           <Text size="sm" c="dimmed" mt={4}>
-            No outstanding balances for this period.
+            No outstanding balances — everyone's settled up.
           </Text>
         </Paper>
       ) : (
@@ -245,7 +245,7 @@ function SettlementSection({
                       </Button>
                     ) : (
                       <Badge size="sm" variant="light" color="gray">
-                        No payment link
+                        Payment link not set up yet
                       </Badge>
                     )}
                   </Group>
