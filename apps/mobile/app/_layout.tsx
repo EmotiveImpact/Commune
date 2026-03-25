@@ -266,6 +266,9 @@ export default function RootLayout() {
               <Stack.Screen name="analytics" options={{ title: 'Analytics', headerBackTitle: 'Back' }} />
               <Stack.Screen name="group-hub" options={{ title: 'Group', headerShown: false }} />
               <Stack.Screen name="command-centre" options={{ title: 'Command Centre', headerShown: false }} />
+              <Stack.Screen name="funds" options={{ title: 'Funds', headerBackTitle: 'Back' }} />
+              <Stack.Screen name="templates" options={{ title: 'Templates', headerBackTitle: 'Back' }} />
+              <Stack.Screen name="member-profile" options={{ title: 'Member', headerShown: false }} />
             </Stack>
           </QueryClientProvider>
         </SafeAreaProvider>
