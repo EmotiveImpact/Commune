@@ -262,6 +262,31 @@ function ActivityPage() {
     { key: 'chore', label: 'Chores' },
   ];
 
+  // Compute sidebar stats
+  const activityStats = useMemo(() => {
+    const now = new Date();
+    const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const thisMonthEntries = entries.filter((e) => e.created_at.startsWith(thisMonth));
+    const byMember = new Map<string, number>();
+    for (const e of thisMonthEntries) {
+      byMember.set(e.user_id, (byMember.get(e.user_id) ?? 0) + 1);
+    }
+    let mostActiveName = '';
+    let mostActiveCount = 0;
+    for (const [uid, count] of byMember) {
+      if (count > mostActiveCount) {
+        mostActiveCount = count;
+        const member = group?.members?.find((m: any) => m.user_id === uid);
+        mostActiveName = member?.user?.name ?? member?.user?.email ?? 'Unknown';
+      }
+    }
+    const byType = new Map<string, number>();
+    for (const e of thisMonthEntries) {
+      byType.set(e.entity_type ?? 'other', (byType.get(e.entity_type ?? 'other') ?? 0) + 1);
+    }
+    return { total: entries.length, thisMonth: thisMonthEntries.length, mostActiveName, mostActiveCount, byType };
+  }, [entries, group]);
+
   return (
     <Stack gap="lg">
       <PageHeader
@@ -313,6 +338,10 @@ function ActivityPage() {
           </button>
         ))}
       </div>
+
+      <SimpleGrid cols={{ base: 1, md: 2 }} spacing="lg">
+        {/* Left column — feed */}
+        <Stack gap="lg">
 
       {showWorkspaceBillingWatch && (
         <Paper className="commune-soft-panel" p="xl">
@@ -525,6 +554,66 @@ function ActivityPage() {
           />
         </Stack>
       )}
+
+        </Stack>
+
+        {/* Right column — context sidebar */}
+        <Stack gap="lg">
+          <Paper className="commune-soft-panel" p="lg" radius="lg">
+            <Text className="commune-section-heading" mb="sm">This month</Text>
+            <SimpleGrid cols={2} spacing="sm">
+              <Paper className="commune-stat-card" p="sm" radius="md">
+                <Text size="xs" c="dimmed">Events</Text>
+                <Text fw={700} size="lg">{activityStats.thisMonth}</Text>
+              </Paper>
+              <Paper className="commune-stat-card" p="sm" radius="md">
+                <Text size="xs" c="dimmed">All time</Text>
+                <Text fw={700} size="lg">{activityStats.total}</Text>
+              </Paper>
+            </SimpleGrid>
+            {activityStats.mostActiveName && (
+              <Group mt="sm" gap="xs">
+                <Text size="xs" c="dimmed">Most active:</Text>
+                <Badge size="sm" variant="light" color="green">{activityStats.mostActiveName}</Badge>
+                <Text size="xs" c="dimmed">({activityStats.mostActiveCount})</Text>
+              </Group>
+            )}
+          </Paper>
+
+          <Paper className="commune-soft-panel" p="lg" radius="lg">
+            <Text className="commune-section-heading" mb="sm">By type</Text>
+            <Stack gap="xs">
+              {Array.from(activityStats.byType.entries())
+                .sort((a, b) => b[1] - a[1])
+                .map(([type, count]) => (
+                  <Group key={type} justify="space-between">
+                    <Text size="sm" tt="capitalize">{type.replace('_', ' ')}</Text>
+                    <Badge size="sm" variant="light" color="gray">{count}</Badge>
+                  </Group>
+                ))}
+              {activityStats.byType.size === 0 && (
+                <Text size="sm" c="dimmed">No activity this month</Text>
+              )}
+            </Stack>
+          </Paper>
+
+          <Paper className="commune-soft-panel" p="lg" radius="lg">
+            <Text className="commune-section-heading" mb="sm">Members</Text>
+            <Stack gap="xs">
+              {(group?.members ?? [])
+                .filter((m: any) => m.status === 'active')
+                .slice(0, 6)
+                .map((m: any) => (
+                  <Group key={m.user_id} gap="xs">
+                    <Avatar src={m.user?.avatar_url} name={m.user?.name} color="initials" size="sm" radius="xl" />
+                    <Text size="sm" style={{ flex: 1 }} truncate>{m.user?.name ?? m.user?.email}</Text>
+                    {m.role === 'admin' && <Badge size="xs" variant="light" color="blue">Admin</Badge>}
+                  </Group>
+                ))}
+            </Stack>
+          </Paper>
+        </Stack>
+      </SimpleGrid>
     </Stack>
   );
 }
