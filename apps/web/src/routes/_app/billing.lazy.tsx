@@ -37,7 +37,6 @@ import { formatCurrency, formatDate } from '@commune/utils';
 import { GroupType } from '@commune/types';
 import { setPageTitle } from '../../utils/seo';
 import { useGroupStore } from '../../stores/group';
-import { useAuthStore } from '../../stores/auth';
 import { useGroup } from '../../hooks/use-groups';
 import { useWorkspaceBilling } from '../../hooks/use-workspace-billing';
 import { downloadWorkspaceBillingPack } from '../../utils/export-csv';
@@ -104,7 +103,6 @@ export function BillingPage() {
   }, []);
 
   const { activeGroupId } = useGroupStore();
-  const { user } = useAuthStore();
   const { data: group } = useGroup(activeGroupId ?? '');
   const {
     data: billing,

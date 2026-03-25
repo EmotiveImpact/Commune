@@ -35,12 +35,11 @@ import { useCanNudge, useNudgeHistory, useSendNudge } from '../../hooks/use-nudg
 import { BreakdownSkeleton } from '../../components/page-skeleton';
 import { EmptyState } from '../../components/empty-state';
 import { PageHeader } from '../../components/page-header';
+import { PaginationBar, paginate, PAGE_SIZE } from '../../components/pagination';
 
 export const Route = createLazyFileRoute('/_app/breakdown')({
   component: BreakdownPage,
 });
-
-import { PaginationBar, paginate, PAGE_SIZE } from '../../components/pagination';
 
 const categoryOptions = [
   { value: '', label: 'All categories' },
