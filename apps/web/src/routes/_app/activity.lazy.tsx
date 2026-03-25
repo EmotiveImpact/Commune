@@ -325,7 +325,7 @@ function ActivityPage() {
             </Group>
           </Group>
 
-          <SimpleGrid cols={{ base: 1, sm: 2, md: 4 }} spacing="md" mb="md">
+          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md" mb="md">
             <Paper className="commune-stat-card" p="md" radius="lg">
               <Text size="xs" c="dimmed">Tracked bills</Text>
               <Text fw={700} size="lg">

@@ -226,7 +226,7 @@ function MemberProfilePage() {
           <Text className="commune-section-heading" mb="md">
             In this group
           </Text>
-          <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="md">
+          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
             <Paper className="commune-stat-card" p="md">
               <Group justify="space-between">
                 <Stack gap={2}>
@@ -438,7 +438,7 @@ function MemberProfilePage() {
           <Text size="sm" c="dimmed" mb="md">
             Groups you both belong to.
           </Text>
-          <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing="sm">
+          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
             {sharedGroups.map((sg: any) => {
               const TypeIcon = GROUP_TYPE_ICONS[sg.type] ?? IconUsersGroup;
               return (

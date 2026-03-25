@@ -147,7 +147,7 @@ function CrossGroupOverviewPage() {
               <IconTarget size={18} />
               <Text className="commune-section-heading">My Groups</Text>
             </Group>
-            <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="md">
+            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
               {groups.map((g) => {
                 const GIcon = GROUP_TYPE_ICONS[g.type] ?? IconUsers;
                 return (
@@ -283,7 +283,7 @@ function CrossGroupOverviewPage() {
             </Group>
           </Group>
 
-          <SimpleGrid cols={{ base: 1, sm: 2, md: 5 }} spacing="md">
+          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
             <Paper className="commune-stat-card" p="md" radius="lg">
               <Text size="xs" c="dimmed">Tracked bills</Text>
               <Text fw={700} size="lg">
@@ -435,7 +435,7 @@ function CrossGroupOverviewPage() {
             <IconTarget size={18} />
             <Text className="commune-section-heading">My Groups</Text>
           </Group>
-          <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="md">
+          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
             {groups.map((g) => {
               const GIcon = GROUP_TYPE_ICONS[g.type] ?? IconUsers;
               const status = groupStatusMap.get(g.id);

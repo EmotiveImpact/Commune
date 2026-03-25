@@ -561,7 +561,7 @@ function DashboardPage() {
           </Paper>
         )}
 
-        <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="lg">
+        <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
           <Paper className="commune-soft-panel commune-checklist-card" p="xl">
             <ThemeIcon size={42} variant="light" color="lime">
               <IconUsers size={20} />
@@ -835,7 +835,7 @@ function DashboardPage() {
         </Paper>
       )}
 
-      <SimpleGrid cols={{ base: 1, sm: 2, xl: 4 }} spacing="lg">
+      <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
         {statCards.map((stat) => (
           <Paper key={stat.label} className="commune-stat-card commune-kpi-card" p="lg" data-tone={stat.panelTone}>
             <Group justify="space-between" align="flex-start">

@@ -389,7 +389,7 @@ export function AnalyticsPage() {
             </Group>
           </Group>
 
-          <SimpleGrid cols={{ base: 1, sm: 2, md: 5 }} spacing="md">
+          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
             <Paper className="commune-stat-card" p="md" radius="lg">
               <Text size="xs" c="dimmed">Tracked bills</Text>
               <Text fw={700} size="lg">

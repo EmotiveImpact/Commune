@@ -406,7 +406,7 @@ export function ExpenseDetailPage() {
         </Paper>
       )}
 
-      <SimpleGrid cols={{ base: 1, sm: 2, xl: 4 }} spacing="lg">
+      <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
         <Paper className="commune-stat-card" p="lg">
           <Group justify="space-between">
             <Stack gap={2}>

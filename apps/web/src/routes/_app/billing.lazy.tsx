@@ -50,7 +50,7 @@ function BillingSkeleton() {
   return (
     <Stack gap="lg">
       <Skeleton height={48} radius={12} />
-      <SimpleGrid cols={{ base: 1, sm: 2, md: 4 }} spacing="lg">
+      <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
         <Skeleton height={100} radius={14} />
         <Skeleton height={100} radius={14} />
         <Skeleton height={100} radius={14} />
@@ -238,7 +238,7 @@ export function BillingPage() {
       </PageHeader>
 
       {/* Billing snapshot stat cards */}
-      <SimpleGrid cols={{ base: 1, sm: 2, md: 4 }} spacing="lg">
+      <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
         <Paper className="commune-stat-card" p="md" radius="lg">
           <Group gap="xs" mb="xs">
             <ThemeIcon size={28} variant="light" color="emerald" radius="xl">

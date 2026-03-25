@@ -246,7 +246,7 @@ function ChoresPage() {
         </Group>
       </PageHeader>
 
-      <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
+      <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
         <Paper className="commune-stat-card" p="md" radius="lg">
           <Text size="sm" c="dimmed">Overdue</Text>
           <Text fw={800} size="1.8rem" lh={1.05}>{overdueChores.length}</Text>

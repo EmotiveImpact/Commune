@@ -193,7 +193,7 @@ function PricingPage() {
         </Alert>
       )}
 
-      <SimpleGrid cols={{ base: 1, md: 3 }} spacing="lg">
+      <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
         {PLANS.map((plan) => {
           const isCurrent = currentPlan === plan.id;
           const downgradeBlocker = getDowngradeBlocker(plan.id);

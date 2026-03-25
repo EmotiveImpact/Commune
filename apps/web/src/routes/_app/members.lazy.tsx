@@ -698,7 +698,7 @@ export function MembersPage() {
               )}
             </Group>
 
-            <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="md">
+            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
               <Paper withBorder radius="md" p="md">
                 <Text size="sm" c="dimmed">Joiners this cycle</Text>
                 <Text fw={800} size="1.75rem" lh={1.1}>

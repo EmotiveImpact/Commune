@@ -222,7 +222,7 @@ export function GroupCycleClosePage() {
         )}
       </Paper>
 
-      <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="lg">
+      <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
         <Paper className="commune-stat-card commune-kpi-card" p="lg" data-tone="sage">
           <Group justify="space-between" align="flex-start">
             <Stack gap={4}>
@@ -380,7 +380,7 @@ export function GroupCycleClosePage() {
               No participant balances were recorded for this cycle yet.
             </Text>
           ) : (
-            <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing="md">
+            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
               {currentSummary.member_balances.map((member) => (
                 <Paper key={member.user_id} withBorder radius="md" p="md">
                   <Stack gap={4}>

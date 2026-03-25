@@ -379,7 +379,7 @@ function GroupHubPage() {
       {/* ------------------------------------------------------------------ */}
       {/*  2. Key Stats Row                                                  */}
       {/* ------------------------------------------------------------------ */}
-      <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="lg">
+      <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
         <Paper className="commune-stat-card commune-kpi-card" p="lg" data-tone="sage">
           <Group justify="space-between" align="flex-start">
             <Stack gap={4}>
@@ -470,7 +470,7 @@ function GroupHubPage() {
             <IconHome2 size={16} />
             <Text size="sm" fw={600}>Space essentials</Text>
           </Group>
-          <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="xs">
+          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="xs">
             {Object.entries(spaceEssentials)
               .filter(([, item]) => item.visible)
               .map(([key, item]) => {
@@ -516,7 +516,7 @@ function GroupHubPage() {
               <IconAlertCircle size={18} />
               <Text className="commune-section-heading">Your Position</Text>
             </Group>
-            <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="md">
+            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
               <Stack gap={2} align="center">
                 <Text size="xs" c="dimmed">Your monthly share</Text>
                 <Text fw={700} size="lg">{formatCurrency(myMonthly, currency)}</Text>
@@ -631,7 +631,7 @@ function GroupHubPage() {
           <Text className="commune-section-heading">Members</Text>
         </Group>
 
-        <SimpleGrid cols={{ base: 2, sm: 3, md: 4 }} spacing="md">
+        <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
           {members.map((member: any) => {
             const memberUser = member.user;
             const isCurrentUser = memberUser?.id === user?.id;
