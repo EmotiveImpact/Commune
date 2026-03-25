@@ -340,8 +340,65 @@ function ActivityPage() {
       </div>
 
       <SimpleGrid cols={{ base: 1, md: 2 }} spacing="lg">
-        {/* Left column — feed */}
-        <Stack gap="lg">
+        {/* Right column — context sidebar */}
+        <Stack gap="lg" style={{ order: 2 }}>
+          <Paper className="commune-soft-panel" p="lg" radius="lg">
+            <Text className="commune-section-heading" mb="sm">This month</Text>
+            <SimpleGrid cols={2} spacing="sm">
+              <Paper className="commune-stat-card" p="sm" radius="md">
+                <Text size="xs" c="dimmed">Events</Text>
+                <Text fw={700} size="lg">{activityStats.thisMonth}</Text>
+              </Paper>
+              <Paper className="commune-stat-card" p="sm" radius="md">
+                <Text size="xs" c="dimmed">All time</Text>
+                <Text fw={700} size="lg">{activityStats.total}</Text>
+              </Paper>
+            </SimpleGrid>
+            {activityStats.mostActiveName && (
+              <Group mt="sm" gap="xs">
+                <Text size="xs" c="dimmed">Most active:</Text>
+                <Badge size="sm" variant="light" color="green">{activityStats.mostActiveName}</Badge>
+                <Text size="xs" c="dimmed">({activityStats.mostActiveCount})</Text>
+              </Group>
+            )}
+          </Paper>
+
+          <Paper className="commune-soft-panel" p="lg" radius="lg">
+            <Text className="commune-section-heading" mb="sm">By type</Text>
+            <Stack gap="xs">
+              {Array.from(activityStats.byType.entries())
+                .sort((a, b) => b[1] - a[1])
+                .map(([type, count]) => (
+                  <Group key={type} justify="space-between">
+                    <Text size="sm" tt="capitalize">{type.replace('_', ' ')}</Text>
+                    <Badge size="sm" variant="light" color="gray">{count}</Badge>
+                  </Group>
+                ))}
+              {activityStats.byType.size === 0 && (
+                <Text size="sm" c="dimmed">No activity this month</Text>
+              )}
+            </Stack>
+          </Paper>
+
+          <Paper className="commune-soft-panel" p="lg" radius="lg">
+            <Text className="commune-section-heading" mb="sm">Members</Text>
+            <Stack gap="xs">
+              {(group?.members ?? [])
+                .filter((m: any) => m.status === 'active')
+                .slice(0, 6)
+                .map((m: any) => (
+                  <Group key={m.user_id} gap="xs">
+                    <Avatar src={m.user?.avatar_url} name={m.user?.name} color="initials" size="sm" radius="xl" />
+                    <Text size="sm" style={{ flex: 1 }} truncate>{m.user?.name ?? m.user?.email}</Text>
+                    {m.role === 'admin' && <Badge size="xs" variant="light" color="blue">Admin</Badge>}
+                  </Group>
+                ))}
+            </Stack>
+          </Paper>
+        </Stack>
+
+        {/* Left column — activity feed (primary content) */}
+        <Stack gap="lg" style={{ order: 1 }}>
 
       {showWorkspaceBillingWatch && (
         <Paper className="commune-soft-panel" p="xl">
@@ -555,63 +612,6 @@ function ActivityPage() {
         </Stack>
       )}
 
-        </Stack>
-
-        {/* Right column — context sidebar */}
-        <Stack gap="lg">
-          <Paper className="commune-soft-panel" p="lg" radius="lg">
-            <Text className="commune-section-heading" mb="sm">This month</Text>
-            <SimpleGrid cols={2} spacing="sm">
-              <Paper className="commune-stat-card" p="sm" radius="md">
-                <Text size="xs" c="dimmed">Events</Text>
-                <Text fw={700} size="lg">{activityStats.thisMonth}</Text>
-              </Paper>
-              <Paper className="commune-stat-card" p="sm" radius="md">
-                <Text size="xs" c="dimmed">All time</Text>
-                <Text fw={700} size="lg">{activityStats.total}</Text>
-              </Paper>
-            </SimpleGrid>
-            {activityStats.mostActiveName && (
-              <Group mt="sm" gap="xs">
-                <Text size="xs" c="dimmed">Most active:</Text>
-                <Badge size="sm" variant="light" color="green">{activityStats.mostActiveName}</Badge>
-                <Text size="xs" c="dimmed">({activityStats.mostActiveCount})</Text>
-              </Group>
-            )}
-          </Paper>
-
-          <Paper className="commune-soft-panel" p="lg" radius="lg">
-            <Text className="commune-section-heading" mb="sm">By type</Text>
-            <Stack gap="xs">
-              {Array.from(activityStats.byType.entries())
-                .sort((a, b) => b[1] - a[1])
-                .map(([type, count]) => (
-                  <Group key={type} justify="space-between">
-                    <Text size="sm" tt="capitalize">{type.replace('_', ' ')}</Text>
-                    <Badge size="sm" variant="light" color="gray">{count}</Badge>
-                  </Group>
-                ))}
-              {activityStats.byType.size === 0 && (
-                <Text size="sm" c="dimmed">No activity this month</Text>
-              )}
-            </Stack>
-          </Paper>
-
-          <Paper className="commune-soft-panel" p="lg" radius="lg">
-            <Text className="commune-section-heading" mb="sm">Members</Text>
-            <Stack gap="xs">
-              {(group?.members ?? [])
-                .filter((m: any) => m.status === 'active')
-                .slice(0, 6)
-                .map((m: any) => (
-                  <Group key={m.user_id} gap="xs">
-                    <Avatar src={m.user?.avatar_url} name={m.user?.name} color="initials" size="sm" radius="xl" />
-                    <Text size="sm" style={{ flex: 1 }} truncate>{m.user?.name ?? m.user?.email}</Text>
-                    {m.role === 'admin' && <Badge size="xs" variant="light" color="blue">Admin</Badge>}
-                  </Group>
-                ))}
-            </Stack>
-          </Paper>
         </Stack>
       </SimpleGrid>
     </Stack>
