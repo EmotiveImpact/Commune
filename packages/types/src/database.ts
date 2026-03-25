@@ -202,6 +202,17 @@ export type ChoreWithDetails = Chore & {
   last_completion?: ChoreCompletion | null;
 };
 
+export interface GroupMemory {
+  id: string;
+  group_id: string;
+  title: string;
+  description: string | null;
+  photo_url: string | null;
+  memory_date: string | null;
+  created_by: string;
+  created_at: string;
+}
+
 export interface Subscription {
   id: string;
   user_id: string;

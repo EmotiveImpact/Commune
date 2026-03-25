@@ -35,3 +35,4 @@ export * from './smart-nudges';
 export * from './cycles';
 export * from './member-lifecycle';
 export * from './onboarding';
+export * from './memories';

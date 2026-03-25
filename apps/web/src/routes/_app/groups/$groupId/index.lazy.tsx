@@ -16,9 +16,13 @@ import {
   Stack,
   Text,
   ActionIcon,
+  TextInput,
+  Textarea,
+  Modal,
   Tooltip,
   useComputedColorScheme,
 } from '@mantine/core';
+import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import {
   IconUsers,
@@ -48,15 +52,17 @@ import {
   IconKey,
   IconBuilding,
   IconChecklist,
+  IconPhoto,
 } from '@tabler/icons-react';
 import { useGroupHub, useUploadGroupImage } from '../../../../hooks/use-group-hub';
 import { useGroupSettlement } from '../../../../hooks/use-settlement';
 import { useActivityLog } from '../../../../hooks/use-activity';
+import { useMemories, useAddMemory, useDeleteMemory } from '../../../../hooks/use-memories';
 import { useAuthStore } from '../../../../stores/auth';
 import { useGroupStore } from '../../../../stores/group';
 import { ContentSkeleton } from '../../../../components/page-skeleton';
 import { formatCurrency } from '@commune/utils';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 export const Route = createLazyFileRoute('/_app/groups/$groupId/')({
   component: GroupHubPage,
@@ -796,6 +802,11 @@ function GroupHubPage() {
       </Stack>
 
       {/* ------------------------------------------------------------------ */}
+      {/*  4b. Memories                                                      */}
+      {/* ------------------------------------------------------------------ */}
+      <MemoriesSection groupId={groupId} />
+
+      {/* ------------------------------------------------------------------ */}
       {/*  5. Quick Actions                                                  */}
       {/* ------------------------------------------------------------------ */}
       <Group gap="md">
@@ -832,6 +843,115 @@ function GroupHubPage() {
           Settle Up
         </Button>
       </Group>
+    </Stack>
+  );
+}
+
+/* ======================================================================== */
+/*  Memories Section                                                        */
+/* ======================================================================== */
+
+function MemoriesSection({ groupId }: { groupId: string }) {
+  const { data: memories } = useMemories(groupId);
+  const addMemoryMutation = useAddMemory(groupId);
+  const deleteMemoryMutation = useDeleteMemory(groupId);
+  const [opened, { open, close }] = useDisclosure(false);
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [memoryDate, setMemoryDate] = useState('');
+  const { user } = useAuthStore();
+
+  const handleAdd = async () => {
+    if (!title.trim()) return;
+    try {
+      await addMemoryMutation.mutateAsync({
+        title: title.trim(),
+        description: description.trim() || undefined,
+        memory_date: memoryDate || undefined,
+      });
+      setTitle('');
+      setDescription('');
+      setMemoryDate('');
+      close();
+      notifications.show({ title: 'Memory added', message: 'A new moment captured.', color: 'green' });
+    } catch {
+      notifications.show({ title: 'Failed to add memory', message: 'Something went wrong.', color: 'red' });
+    }
+  };
+
+  return (
+    <Stack gap="md">
+      <Group justify="space-between">
+        <Text className="commune-section-heading">Memories</Text>
+        <Button size="compact-sm" variant="light" leftSection={<IconPhoto size={14} />} onClick={open}>
+          Add moment
+        </Button>
+      </Group>
+
+      {(!memories || memories.length === 0) ? (
+        <Paper className="commune-soft-panel" p="lg" style={{ textAlign: 'center' }}>
+          <IconPhoto size={32} style={{ color: 'var(--commune-ink-soft)', opacity: 0.5, margin: '0 auto' }} />
+          <Text size="sm" c="dimmed" mt="xs">
+            No memories yet — capture moments that make this space special.
+          </Text>
+        </Paper>
+      ) : (
+        <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+          {(memories ?? []).slice(0, 4).map((m: any) => (
+            <Paper key={m.id} className="commune-soft-panel" p="md" radius="md">
+              <Group justify="space-between" align="flex-start">
+                <Stack gap={4} style={{ flex: 1 }}>
+                  <Text fw={600} size="sm">{m.title}</Text>
+                  {m.description && <Text size="xs" c="dimmed" lineClamp={2}>{m.description}</Text>}
+                  <Text size="xs" c="dimmed">
+                    {m.memory_date ?? m.created_at?.slice(0, 10)}
+                    {m.creator?.name ? ` · ${m.creator.name}` : ''}
+                  </Text>
+                </Stack>
+                {(m.created_by === user?.id) && (
+                  <ActionIcon
+                    size="sm"
+                    variant="subtle"
+                    color="red"
+                    onClick={() => deleteMemoryMutation.mutate(m.id)}
+                  >
+                    <IconTrash size={14} />
+                  </ActionIcon>
+                )}
+              </Group>
+            </Paper>
+          ))}
+        </SimpleGrid>
+      )}
+
+      <Modal opened={opened} onClose={close} title="Add a memory" centered>
+        <Stack gap="md">
+          <TextInput
+            label="Title"
+            placeholder="What happened?"
+            value={title}
+            onChange={(e) => setTitle(e.currentTarget.value)}
+            required
+          />
+          <Textarea
+            label="Description"
+            placeholder="Tell the story (optional)"
+            value={description}
+            onChange={(e) => setDescription(e.currentTarget.value)}
+            autosize
+            minRows={2}
+          />
+          <TextInput
+            label="Date"
+            type="date"
+            value={memoryDate}
+            onChange={(e) => setMemoryDate(e.currentTarget.value)}
+          />
+          <Button onClick={handleAdd} loading={addMemoryMutation.isPending}>
+            Save memory
+          </Button>
+        </Stack>
+      </Modal>
     </Stack>
   );
 }
