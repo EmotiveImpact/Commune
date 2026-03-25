@@ -16,11 +16,13 @@ import {
   TextInput,
   Textarea,
   Title,
+  Tooltip,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
 import { useMemo, useState, useEffect, useRef } from 'react';
-import { IconFileAlert } from '@tabler/icons-react';
+import { IconCamera, IconFileAlert } from '@tabler/icons-react';
+import { usePlanLimits } from '../../../hooks/use-plan-limits';
 import {
   calculateEqualSplit,
   calculatePercentageSplit,
@@ -136,7 +138,10 @@ export function AddExpensePage() {
   const [splitMethod, setSplitMethod] = useState<string>('equal');
   const [isRecurring, setIsRecurring] = useState(false);
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [isScanning, setIsScanning] = useState(false);
   const [draftBanner, setDraftBanner] = useState<ExpenseDraft | null>(null);
+  const planLimits = usePlanLimits(user?.id ?? '');
+  const canScanReceipts = planLimits.canAccessAnalytics; // Pro+ feature, same gate
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { data: templates } = useTemplates(activeGroupId ?? '');
   const preset = useMemo(
@@ -765,6 +770,79 @@ export function AddExpensePage() {
                   value={receiptFile}
                   onChange={setReceiptFile}
                 />
+                {receiptFile && (
+                  canScanReceipts ? (
+                    <Button
+                      leftSection={<IconCamera size={16} />}
+                      variant="light"
+                      color="green"
+                      loading={isScanning}
+                      onClick={async () => {
+                        if (!receiptFile || !activeGroupId) return;
+                        setIsScanning(true);
+                        try {
+                          const reader = new FileReader();
+                          const base64 = await new Promise<string>((resolve, reject) => {
+                            reader.onload = () => resolve((reader.result as string).split(',')[1] ?? '');
+                            reader.onerror = reject;
+                            reader.readAsDataURL(receiptFile);
+                          });
+
+                          const { data: { session } } = await (await import('@commune/api')).supabase.auth.getSession();
+                          const resp = await fetch(
+                            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/parse-receipt`,
+                            {
+                              method: 'POST',
+                              headers: {
+                                'Content-Type': 'application/json',
+                                Authorization: `Bearer ${session?.access_token}`,
+                              },
+                              body: JSON.stringify({ image_base64: base64, mime_type: receiptFile.type }),
+                            },
+                          );
+
+                          if (!resp.ok) {
+                            const err = await resp.json().catch(() => ({}));
+                            throw new Error(err.error ?? 'Scan failed');
+                          }
+
+                          const result = await resp.json();
+                          if (result.amount) form.setFieldValue('amount', result.amount);
+                          if (result.vendor) form.setFieldValue('title', result.vendor);
+                          if (result.category) form.setFieldValue('category', result.category);
+                          if (result.date) form.setFieldValue('due_date', result.date);
+
+                          notifications.show({
+                            title: 'Receipt scanned',
+                            message: 'Form pre-filled from receipt data.',
+                            color: 'green',
+                          });
+                        } catch (err) {
+                          notifications.show({
+                            title: 'Scan failed',
+                            message: err instanceof Error ? err.message : 'Could not extract receipt data.',
+                            color: 'red',
+                          });
+                        } finally {
+                          setIsScanning(false);
+                        }
+                      }}
+                    >
+                      Scan &amp; extract
+                    </Button>
+                  ) : (
+                    <Tooltip label="Pro feature — upgrade to scan receipts" withArrow>
+                      <Button
+                        leftSection={<IconCamera size={16} />}
+                        variant="light"
+                        color="gray"
+                        disabled
+                      >
+                        Scan &amp; extract
+                      </Button>
+                    </Tooltip>
+                  )
+                )}
               </Stack>
             </Paper>
           </div>
