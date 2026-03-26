@@ -340,8 +340,8 @@ function ActivityPage() {
       </div>
 
       <SimpleGrid cols={{ base: 1, md: 2 }} spacing="lg">
-        {/* Right column — context sidebar */}
-        <Stack gap="lg" style={{ order: 2 }}>
+        {/* Left column — context sidebar */}
+        <Stack gap="lg" style={{ order: 1 }}>
           <Paper className="commune-soft-panel" p="lg" radius="lg">
             <Text className="commune-section-heading" mb="sm">This month</Text>
             <SimpleGrid cols={2} spacing="sm">
@@ -397,8 +397,8 @@ function ActivityPage() {
           </Paper>
         </Stack>
 
-        {/* Left column — activity feed (primary content) */}
-        <Stack gap="lg" style={{ order: 1 }}>
+        {/* Right column — activity feed (primary content) */}
+        <Stack gap="lg" style={{ order: 2 }}>
 
       {showWorkspaceBillingWatch && (
         <Paper className="commune-soft-panel" p="xl">
