@@ -663,11 +663,33 @@ export function MembersPage() {
         title="Members"
         subtitle={`${totalMembers} people in ${group?.name ?? 'this group'}`}
       >
-        {isAdmin && (
-          <Button leftSection={<IconUserPlus size={16} />} onClick={openInvite}>
-            Invite member
-          </Button>
-        )}
+        <Group gap="sm">
+          {isAdmin && (
+            <Button
+              component={Link}
+              to={`/groups/${activeGroupId}/edit`}
+              leftSection={<IconSettings size={16} />}
+              variant="light"
+            >
+              Settings
+            </Button>
+          )}
+          {canLeave && (
+            <Button
+              leftSection={<IconDoorExit size={16} />}
+              variant="outline"
+              color="red"
+              onClick={openLeave}
+            >
+              Leave
+            </Button>
+          )}
+          {isAdmin && (
+            <Button leftSection={<IconUserPlus size={16} />} onClick={openInvite}>
+              Invite member
+            </Button>
+          )}
+        </Group>
       </PageHeader>
 
       {searchQuery && (
@@ -1245,43 +1267,11 @@ export function MembersPage() {
         </div>
       )}
 
-      {/* Group actions (kept as-is) */}
-      <Paper className="commune-soft-panel" p="xl">
-        <Text className="commune-section-heading" mb="xs">Group actions</Text>
-        <Text size="sm" c="dimmed" mb="lg">
-          Manage your relationship with this group.
+      {isAdmin && adminCount <= 1 && canLeave && (
+        <Text size="xs" c="dimmed" ta="center">
+          You are the only admin. Transfer admin to another member before you can leave.
         </Text>
-
-        <Group>
-          {isAdmin && (
-            <Button
-              component={Link}
-              to={`/groups/${activeGroupId}/edit`}
-              leftSection={<IconSettings size={16} />}
-              variant="light"
-            >
-              Edit group settings
-            </Button>
-          )}
-
-          {canLeave && (
-            <Button
-              leftSection={<IconDoorExit size={16} />}
-              variant="outline"
-              color="red"
-              onClick={openLeave}
-            >
-              Leave group
-            </Button>
-          )}
-        </Group>
-
-        {isAdmin && adminCount <= 1 && (
-          <Text size="xs" c="dimmed" mt="sm">
-            You are the only admin. Transfer admin to another member before you can leave.
-          </Text>
-        )}
-      </Paper>
+      )}
 
       <Modal opened={leaveOpened} onClose={closeLeave} title="Leave group" centered>
         <Stack gap="md">
