@@ -252,12 +252,8 @@ function ChoresPage() {
           <Text fw={800} size="1.8rem" lh={1.05}>{overdueChores.length}</Text>
         </Paper>
         <Paper className="commune-stat-card" p="md" radius="lg">
-          <Text size="sm" c="dimmed">Recurring</Text>
-          <Text fw={800} size="1.8rem" lh={1.05}>{recurringCount}</Text>
-        </Paper>
-        <Paper className="commune-stat-card" p="md" radius="lg">
-          <Text size="sm" c="dimmed">Checklists</Text>
-          <Text fw={800} size="1.8rem" lh={1.05}>{checklistCount}</Text>
+          <Text size="sm" c="dimmed">Recurring · Checklists</Text>
+          <Text fw={800} size="1.8rem" lh={1.05}>{recurringCount} · {checklistCount}</Text>
         </Paper>
       </SimpleGrid>
 

@@ -240,30 +240,7 @@ function ActivityPage() {
   const workspaceBillingSummary = getWorkspaceBillingSummary(workspaceExpenses);
   const showWorkspaceBillingWatch = group?.type === 'workspace' && workspaceBillingSummary.expenseCount > 0;
 
-  if (!activeGroupId) {
-    return (
-      <EmptyState
-        icon={IconHistory}
-        iconColor="emerald"
-        title="Select a group first"
-        description="Choose a group in the sidebar to view its activity log."
-      />
-    );
-  }
-
-  if (isLoading || groupLoading) {
-    return <ActivitySkeleton />;
-  }
-
-  const filterChips: { key: TypeFilter; label: string }[] = [
-    { key: 'all', label: 'All' },
-    { key: 'expense', label: 'Expenses' },
-    { key: 'payment', label: 'Payments' },
-    { key: 'member', label: 'Members' },
-    { key: 'chore', label: 'Chores' },
-  ];
-
-  // Compute sidebar stats
+  // Compute sidebar stats — MUST be before early returns (React hooks rules)
   const activityStats = useMemo(() => {
     const now = new Date();
     const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
@@ -287,6 +264,29 @@ function ActivityPage() {
     }
     return { total: entries.length, thisMonth: thisMonthEntries.length, mostActiveName, mostActiveCount, byType };
   }, [entries, group]);
+
+  if (!activeGroupId) {
+    return (
+      <EmptyState
+        icon={IconHistory}
+        iconColor="emerald"
+        title="Select a group first"
+        description="Choose a group in the sidebar to view its activity log."
+      />
+    );
+  }
+
+  if (isLoading || groupLoading) {
+    return <ActivitySkeleton />;
+  }
+
+  const filterChips: { key: TypeFilter; label: string }[] = [
+    { key: 'all', label: 'All' },
+    { key: 'expense', label: 'Expenses' },
+    { key: 'payment', label: 'Payments' },
+    { key: 'member', label: 'Members' },
+    { key: 'chore', label: 'Chores' },
+  ];
 
   return (
     <Stack gap="lg">

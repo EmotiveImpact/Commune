@@ -154,15 +154,9 @@ function RecurringPage() {
       {/* Stats summary */}
       <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
         <Paper className="commune-soft-panel commune-stat-card" p="lg">
-          <Text size="sm" c="dimmed">Active</Text>
+          <Text size="sm" c="dimmed">Active · Paused</Text>
           <Text fw={800} size="1.8rem" lh={1.1}>
-            {activeExpenses?.length ?? 0}
-          </Text>
-        </Paper>
-        <Paper className="commune-soft-panel commune-stat-card" p="lg">
-          <Text size="sm" c="dimmed">Paused</Text>
-          <Text fw={800} size="1.8rem" lh={1.1}>
-            {pausedExpenses?.length ?? 0}
+            {activeExpenses?.length ?? 0} · {pausedExpenses?.length ?? 0}
           </Text>
         </Paper>
         <Paper className="commune-soft-panel commune-stat-card" p="lg">
