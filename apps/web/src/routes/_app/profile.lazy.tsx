@@ -506,6 +506,10 @@ const PROVIDER_OPTIONS = [
   { value: 'revolut', label: 'Revolut' },
   { value: 'monzo', label: 'Monzo' },
   { value: 'paypal', label: 'PayPal' },
+  { value: 'wise', label: 'Wise' },
+  { value: 'starling', label: 'Starling Bank' },
+  { value: 'venmo', label: 'Venmo' },
+  { value: 'cash_app', label: 'Cash App' },
   { value: 'bank_transfer', label: 'Bank transfer' },
   { value: 'other', label: 'Other' },
 ];
@@ -634,14 +638,24 @@ function PaymentMethodModal({
             label={
               provider === 'revolut' ? 'Revolut.me username'
               : provider === 'monzo' ? 'Monzo.me username'
-              : 'PayPal.me username'
+              : provider === 'paypal' ? 'PayPal.me username'
+              : provider === 'wise' ? 'Wise pay link or username'
+              : provider === 'starling' ? 'Starling Settle Up username'
+              : provider === 'venmo' ? 'Venmo username'
+              : provider === 'cash_app' ? 'Cash App $cashtag'
+              : 'Payment link or username'
             }
             description={
               provider === 'revolut' ? 'e.g. johndoe or revolut.me/johndoe'
               : provider === 'monzo' ? 'e.g. johndoe or monzo.me/johndoe'
-              : 'e.g. johndoe or paypal.me/johndoe'
+              : provider === 'paypal' ? 'e.g. johndoe or paypal.me/johndoe'
+              : provider === 'wise' ? 'e.g. johndoe or wise.com/pay/johndoe'
+              : provider === 'starling' ? 'e.g. johndoe'
+              : provider === 'venmo' ? 'e.g. johndoe or venmo.com/johndoe'
+              : provider === 'cash_app' ? 'e.g. $johndoe or cash.app/$johndoe'
+              : 'Enter a link or username'
             }
-            placeholder="johndoe"
+            placeholder={provider === 'cash_app' ? '$johndoe' : 'johndoe'}
             leftSection={<IconLink size={16} />}
             value={link}
             onChange={(e) => setLink(e.currentTarget.value)}

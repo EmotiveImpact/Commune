@@ -80,6 +80,10 @@ export const PaymentProvider = {
   REVOLUT: 'revolut',
   MONZO: 'monzo',
   PAYPAL: 'paypal',
+  WISE: 'wise',
+  STARLING: 'starling',
+  VENMO: 'venmo',
+  CASH_APP: 'cash_app',
   BANK_TRANSFER: 'bank_transfer',
   OTHER: 'other',
 } as const;

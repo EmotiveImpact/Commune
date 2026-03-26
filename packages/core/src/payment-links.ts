@@ -15,6 +15,10 @@ const PROVIDER_LABELS: Record<PaymentProvider, string> = {
   revolut: 'Pay with Revolut',
   monzo: 'Pay with Monzo',
   paypal: 'Pay with PayPal',
+  wise: 'Pay with Wise',
+  starling: 'Pay with Starling',
+  venmo: 'Pay with Venmo',
+  cash_app: 'Pay with Cash App',
   bank_transfer: 'Bank transfer',
   other: 'Pay now',
 };
@@ -23,6 +27,10 @@ const PROVIDER_DISPLAY: Record<PaymentProvider, string> = {
   revolut: 'Revolut',
   monzo: 'Monzo',
   paypal: 'PayPal',
+  wise: 'Wise',
+  starling: 'Starling',
+  venmo: 'Venmo',
+  cash_app: 'Cash App',
   bank_transfer: 'Bank transfer',
   other: 'Other',
 };
@@ -89,6 +97,49 @@ export function buildPaymentUrl(
       break;
     }
 
+    case 'wise': {
+      // Normalize: accept "wise.com/pay/user" or just username
+      if (!url.startsWith('http')) {
+        const stripped = url.replace(/^wise\.com\/pay\//i, '');
+        url = `https://wise.com/pay/${stripped}`;
+      }
+      break;
+    }
+
+    case 'starling': {
+      // Normalize: accept "settleup.starlingbank.com/user" or just username
+      if (!url.startsWith('http')) {
+        const stripped = url.replace(/^settleup\.starlingbank\.com\//i, '');
+        url = `https://settleup.starlingbank.com/${stripped}`;
+      }
+      break;
+    }
+
+    case 'venmo': {
+      // Normalize: accept "venmo.com/user" or just username
+      if (!url.startsWith('http')) {
+        const stripped = url.replace(/^venmo\.com\//i, '');
+        url = `https://venmo.com/${stripped}`;
+      }
+      if (amount && amount > 0) {
+        const separator = url.includes('?') ? '&' : '?';
+        url = `${url}${separator}txn=pay&amount=${amount.toFixed(2)}`;
+      }
+      break;
+    }
+
+    case 'cash_app': {
+      // Normalize: accept "$cashtag", "cash.app/$tag" or just tag
+      if (!url.startsWith('http')) {
+        const stripped = url.replace(/^cash\.app\//i, '').replace(/^\$/, '');
+        url = `https://cash.app/$${stripped}`;
+      }
+      if (amount && amount > 0) {
+        url = `${url}/${amount.toFixed(2)}`;
+      }
+      break;
+    }
+
     case 'bank_transfer':
     case 'other':
       // No URL generation — these are display-only
@@ -106,7 +157,7 @@ export function buildPaymentUrl(
  * Check if a provider supports clickable payment links.
  */
 export function isClickableProvider(provider: PaymentProvider): boolean {
-  return provider === 'revolut' || provider === 'monzo' || provider === 'paypal';
+  return provider !== 'bank_transfer' && provider !== 'other';
 }
 
 /**

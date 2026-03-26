@@ -326,7 +326,7 @@ export const settlementTransactionSchema = z.object({
   toUserName: z.string().optional(),
   paymentLink: z.string().nullable().optional(),
   paymentProvider: z
-    .enum(['revolut', 'monzo', 'paypal', 'bank_transfer', 'other'])
+    .enum(['revolut', 'monzo', 'paypal', 'wise', 'starling', 'venmo', 'cash_app', 'bank_transfer', 'other'])
     .nullable()
     .optional(),
 });
@@ -343,7 +343,7 @@ export type SettlementResultInput = z.infer<typeof settlementResultSchema>;
 // ─── Payment Method Schemas ─────────────────────────────────────────────────
 
 export const createPaymentMethodSchema = z.object({
-  provider: z.enum(['revolut', 'monzo', 'paypal', 'bank_transfer', 'other']),
+  provider: z.enum(['revolut', 'monzo', 'paypal', 'wise', 'starling', 'venmo', 'cash_app', 'bank_transfer', 'other']),
   label: z.string().max(50).optional().nullable(),
   payment_link: z.string().max(200).optional().nullable(),
   payment_info: z.string().max(500).optional().nullable(),
