@@ -664,16 +664,6 @@ export function MembersPage() {
         subtitle={`${totalMembers} people in ${group?.name ?? 'this group'}`}
       >
         <Group gap="sm">
-          {isAdmin && (
-            <Button
-              component={Link}
-              to={`/groups/${activeGroupId}/edit`}
-              leftSection={<IconSettings size={16} />}
-              variant="light"
-            >
-              Settings
-            </Button>
-          )}
           {canLeave && (
             <Button
               leftSection={<IconDoorExit size={16} />}
@@ -682,6 +672,16 @@ export function MembersPage() {
               onClick={openLeave}
             >
               Leave
+            </Button>
+          )}
+          {isAdmin && (
+            <Button
+              component={Link}
+              to={`/groups/${activeGroupId}/edit`}
+              leftSection={<IconSettings size={16} />}
+              variant="light"
+            >
+              Settings
             </Button>
           )}
           {isAdmin && (
