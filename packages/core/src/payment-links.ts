@@ -47,11 +47,12 @@ export function buildPaymentUrl(
 
   switch (provider) {
     case 'revolut': {
-      // Normalize: accept "revolut.me/user", "@user", or full URL
+      // Normalize: accept "revolut.me/user", "@user", just "user", or full URL
       if (url.startsWith('@')) {
         url = `https://revolut.me/${url.slice(1)}`;
       } else if (!url.startsWith('http')) {
-        url = url.startsWith('revolut.me') ? `https://${url}` : `https://revolut.me/${url}`;
+        const stripped = url.replace(/^revolut\.me\//i, '');
+        url = `https://revolut.me/${stripped}`;
       }
       // Revolut.me supports amount as a path segment: revolut.me/user/12.50
       if (amount && amount > 0) {
@@ -61,9 +62,10 @@ export function buildPaymentUrl(
     }
 
     case 'monzo': {
-      // Normalize: accept "monzo.me/user" or full URL
+      // Normalize: accept "monzo.me/user", "Monzo.me/user", just "user", or full URL
       if (!url.startsWith('http')) {
-        url = url.startsWith('monzo.me') ? `https://${url}` : `https://monzo.me/${url}`;
+        const stripped = url.replace(/^monzo\.me\//i, '');
+        url = `https://monzo.me/${stripped}`;
       }
       // Monzo.me supports amount query param: monzo.me/user?amount=12.50
       if (amount && amount > 0) {
@@ -74,9 +76,11 @@ export function buildPaymentUrl(
     }
 
     case 'paypal': {
-      // Normalize: accept "paypal.me/user" or full URL
+      // Normalize: accept "paypal.me/user", "PayPal.me/user", just "user", or full URL
       if (!url.startsWith('http')) {
-        url = url.startsWith('paypal.me') ? `https://${url}` : `https://paypal.me/${url}`;
+        // Strip any "paypal.me/" prefix (case-insensitive) to get just the username
+        const stripped = url.replace(/^paypal\.me\//i, '');
+        url = `https://paypal.me/${stripped}`;
       }
       // PayPal.me supports amount in path: paypal.me/user/12.50
       if (amount && amount > 0) {
