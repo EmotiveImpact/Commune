@@ -4,6 +4,7 @@ import {
   Avatar,
   Badge,
   Button,
+  Grid,
   Group,
   Paper,
   SimpleGrid,
@@ -339,9 +340,10 @@ function ActivityPage() {
         ))}
       </div>
 
-      <SimpleGrid cols={{ base: 1, md: 2 }} spacing="lg">
-        {/* Left column — context sidebar */}
-        <Stack gap="lg" style={{ order: 1 }}>
+      <Grid gap="lg">
+        {/* Left column — context sidebar (1/3 width) */}
+        <Grid.Col span={{ base: 12, md: 4 }}>
+        <Stack gap="lg">
           <Paper className="commune-soft-panel" p="lg" radius="lg">
             <Text className="commune-section-heading" mb="sm">This month</Text>
             <SimpleGrid cols={2} spacing="sm">
@@ -396,9 +398,11 @@ function ActivityPage() {
             </Stack>
           </Paper>
         </Stack>
+        </Grid.Col>
 
-        {/* Right column — activity feed (primary content) */}
-        <Stack gap="lg" style={{ order: 2 }}>
+        {/* Right column — activity feed (2/3 width) */}
+        <Grid.Col span={{ base: 12, md: 8 }}>
+        <Stack gap="lg">
 
       {showWorkspaceBillingWatch && (
         <Paper className="commune-soft-panel" p="xl">
@@ -613,7 +617,8 @@ function ActivityPage() {
       )}
 
         </Stack>
-      </SimpleGrid>
+        </Grid.Col>
+      </Grid>
     </Stack>
   );
 }
