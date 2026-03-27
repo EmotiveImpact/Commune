@@ -2,11 +2,11 @@ import { useEffect } from 'react';
 import { Anchor, Select, Stack, Text } from '@mantine/core';
 import { Link } from '@tanstack/react-router';
 import { IconChevronRight } from '@tabler/icons-react';
-import { useUserGroups } from '../hooks/use-groups';
+import { useUserGroupSummaries } from '../hooks/use-groups';
 import { useGroupStore } from '../stores/group';
 
 export function GroupSelector() {
-  const { data: groups, isLoading } = useUserGroups();
+  const { data: groups, isLoading } = useUserGroupSummaries();
   const { activeGroupId, setActiveGroupId } = useGroupStore();
 
   const selectData = (groups ?? []).map((g) => ({

@@ -36,13 +36,12 @@ import { useCallback, useEffect, useState } from 'react';
 import { formatCurrency, formatDate } from '@commune/utils';
 import { setPageTitle } from '../../utils/seo';
 import { useAuthStore } from '../../stores/auth';
-import { useUserGroups } from '../../hooks/use-groups';
-import { useCrossGroupSettlements } from '../../hooks/use-cross-group';
+import { useUserGroupSummaries } from '../../hooks/use-groups';
+import { useCrossGroupOverview, useCrossGroupSettlements } from '../../hooks/use-cross-group';
 import { useSmartNudges } from '../../hooks/use-smart-nudges';
 import { useGroupStore } from '../../stores/group';
 import { useGroup } from '../../hooks/use-groups';
-import { useGroupExpenses } from '../../hooks/use-expenses';
-import { getWorkspaceBillingSummary } from '../../hooks/use-dashboard';
+import { getWorkspaceBillingSummary, useWorkspaceBillingExpenseFeed } from '../../hooks/use-dashboard';
 import { PageHeader } from '../../components/page-header';
 import { EmptyState } from '../../components/empty-state';
 import { PageLoader } from '../../components/page-loader';
@@ -91,15 +90,20 @@ function CrossGroupOverviewPage() {
   }, []);
 
   const { user } = useAuthStore();
-  const { data: groups } = useUserGroups();
+  const [nettingEnabled, setNettingEnabled] = useState(readNettingPreference);
+  const { data: groups } = useUserGroupSummaries();
   const { data: smartNudges } = useSmartNudges(user?.id ?? '');
-  const { activeGroupId, setActiveGroupId } = useGroupStore();
-  const { data: result, isLoading } = useCrossGroupSettlements(user?.id ?? '');
+  const { activeGroupId } = useGroupStore();
+  const { data: overview, isLoading } = useCrossGroupOverview(user?.id ?? '');
+  const {
+    data: detailedResult,
+    isFetching: isFetchingDetailedSettlements,
+  } = useCrossGroupSettlements(user?.id ?? '', {
+    enabled: !nettingEnabled,
+  });
   const { data: activeGroup } = useGroup(activeGroupId ?? '');
   const workspaceExpenseGroupId = activeGroup?.type === 'workspace' ? activeGroupId ?? '' : '';
-  const { data: workspaceExpenses = [] } = useGroupExpenses(workspaceExpenseGroupId);
-
-  const [nettingEnabled, setNettingEnabled] = useState(readNettingPreference);
+  const { data: workspaceBillingSnapshot = null } = useWorkspaceBillingExpenseFeed(workspaceExpenseGroupId);
 
   const handleNettingToggle = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const checked = event.currentTarget.checked;
@@ -115,24 +119,22 @@ function CrossGroupOverviewPage() {
     return <PageLoader />;
   }
 
-  const workspaceBillingSummary = getWorkspaceBillingSummary(workspaceExpenses);
+  const workspaceBillingSummary = getWorkspaceBillingSummary(workspaceBillingSnapshot);
   const showWorkspaceBillingWatch =
     activeGroup?.type === 'workspace' && workspaceBillingSummary.expenseCount > 0;
 
-  // Build group status map from perGroupData
+  // Build group status map from group-level cross-group summaries.
   const groupStatusMap = new Map<string, { owes: number; owed: number; currency: string; waiting: number }>();
-  for (const pg of result?.perGroupData ?? []) {
-    let owes = 0;
-    let owed = 0;
-    let waiting = 0;
-    for (const tx of pg.settlement.transactions) {
-      if (tx.fromUserId === user?.id) owes += tx.amount;
-      if (tx.toUserId === user?.id) { owed += tx.amount; waiting++; }
-    }
-    groupStatusMap.set(pg.groupId, { owes, owed, currency: pg.currency, waiting });
+  for (const groupSummary of overview?.groupSummaries ?? []) {
+    groupStatusMap.set(groupSummary.groupId, {
+      owes: groupSummary.owesAmount,
+      owed: groupSummary.owedAmount,
+      currency: groupSummary.currency,
+      waiting: groupSummary.waitingCount,
+    });
   }
 
-  if (!result || result.isSettled) {
+  if (!overview || overview.isSettled) {
     return (
       <Stack gap="lg">
         <PageHeader
@@ -177,11 +179,12 @@ function CrossGroupOverviewPage() {
   }
 
   // Separate into what you owe vs what others owe you
-  const youOwe = result.transactions.filter((tx) => tx.fromUserId === user?.id);
-  const owedToYou = result.transactions.filter((tx) => tx.toUserId === user?.id);
-  const otherTransactions = result.transactions.filter(
+  const youOwe = overview.transactions.filter((tx) => tx.fromUserId === user?.id);
+  const owedToYou = overview.transactions.filter((tx) => tx.toUserId === user?.id);
+  const otherTransactions = overview.transactions.filter(
     (tx) => tx.fromUserId !== user?.id && tx.toUserId !== user?.id,
   );
+  const perGroupDetails = detailedResult?.perGroupData ?? [];
 
   const nettedYouOweTotals = youOwe.reduce((totals, tx) => {
     totals.set(tx.currency, (totals.get(tx.currency) ?? 0) + tx.netAmount);
@@ -193,29 +196,26 @@ function CrossGroupOverviewPage() {
     return totals;
   }, new Map<string, number>());
 
-  const perGroupYouOweTotals = (result.perGroupData ?? []).reduce((totals, group) => {
-    const groupAmount = group.settlement.transactions
-      .filter((tx) => tx.fromUserId === user?.id)
-      .reduce((sum, tx) => sum + tx.amount, 0);
-
-    if (groupAmount > 0) {
-      totals.set(group.currency, (totals.get(group.currency) ?? 0) + groupAmount);
+  const perGroupYouOweTotals = (overview.groupSummaries ?? []).reduce((totals, group) => {
+    if (group.owesAmount > 0) {
+      totals.set(group.currency, (totals.get(group.currency) ?? 0) + group.owesAmount);
     }
 
     return totals;
   }, new Map<string, number>());
 
-  const perGroupOwedToYouTotals = (result.perGroupData ?? []).reduce((totals, group) => {
-    const groupAmount = group.settlement.transactions
-      .filter((tx) => tx.toUserId === user?.id)
-      .reduce((sum, tx) => sum + tx.amount, 0);
-
-    if (groupAmount > 0) {
-      totals.set(group.currency, (totals.get(group.currency) ?? 0) + groupAmount);
+  const perGroupOwedToYouTotals = (overview.groupSummaries ?? []).reduce((totals, group) => {
+    if (group.owedAmount > 0) {
+      totals.set(group.currency, (totals.get(group.currency) ?? 0) + group.owedAmount);
     }
 
     return totals;
   }, new Map<string, number>());
+
+  const nettedFallbackCurrency =
+    overview.transactions[0]?.currency ?? overview.groupSummaries[0]?.currency ?? 'GBP';
+  const perGroupFallbackCurrency =
+    perGroupDetails[0]?.currency ?? overview.groupSummaries[0]?.currency ?? 'GBP';
 
   return (
     <Stack gap="lg">
@@ -483,7 +483,7 @@ function CrossGroupOverviewPage() {
               <Text fw={800} size="1.5rem">
                 {formatCurrencyBreakdown(
                   nettedYouOweTotals,
-                  result.transactions[0]?.currency ?? 'GBP',
+                  nettedFallbackCurrency,
                 )}
               </Text>
               <Text size="xs" c="dimmed">
@@ -496,7 +496,7 @@ function CrossGroupOverviewPage() {
               <Text fw={800} size="1.5rem">
                 {formatCurrencyBreakdown(
                   nettedOwedToYouTotals,
-                  result.transactions[0]?.currency ?? 'GBP',
+                  nettedFallbackCurrency,
                 )}
               </Text>
               <Text size="xs" c="dimmed">
@@ -632,7 +632,7 @@ function CrossGroupOverviewPage() {
               <Text fw={800} size="1.5rem">
                 {formatCurrencyBreakdown(
                   perGroupYouOweTotals,
-                  result.perGroupData?.[0]?.currency ?? 'GBP',
+                  perGroupFallbackCurrency,
                 )}
               </Text>
             </Paper>
@@ -641,13 +641,22 @@ function CrossGroupOverviewPage() {
               <Text fw={800} size="1.5rem">
                 {formatCurrencyBreakdown(
                   perGroupOwedToYouTotals,
-                  result.perGroupData?.[0]?.currency ?? 'GBP',
+                  perGroupFallbackCurrency,
                 )}
               </Text>
             </Paper>
           </Group>
 
-          {(result.perGroupData ?? []).map((group) => {
+          {isFetchingDetailedSettlements && perGroupDetails.length === 0 && (
+            <Paper className="commune-soft-panel" p="xl">
+              <Text className="commune-section-heading" mb="xs">Per-group settlements</Text>
+              <Text size="sm" c="dimmed">
+                Loading the full un-netted settlement detail for each group.
+              </Text>
+            </Paper>
+          )}
+
+          {perGroupDetails.map((group) => {
             const GroupIcon = GROUP_TYPE_ICONS[group.groupType] ?? IconUsers;
             return (
             <Paper key={group.groupId} className="commune-soft-panel" p="xl">
@@ -706,7 +715,7 @@ function CrossGroupOverviewPage() {
             );
           })}
 
-          {(result.perGroupData ?? []).length === 0 && (
+          {!isFetchingDetailedSettlements && perGroupDetails.length === 0 && (
             <EmptyState
               icon={IconArrowsExchange}
               iconColor="emerald"

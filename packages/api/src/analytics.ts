@@ -1,14 +1,7 @@
 import { supabase } from './client';
 import {
-  buildWorkspaceBillingReport,
-  buildWorkspaceBillingTrend,
-  isWorkspaceBillingExpense,
   toDateKey,
   toMonthKey,
-  type WorkspaceBillingExpenseRecord,
-  type WorkspaceBillingExportRow,
-  type WorkspaceBillingTrendPoint,
-  type WorkspaceBillingSnapshot,
 } from './workspace-billing';
 
 export interface AnalyticsData {
@@ -24,14 +17,6 @@ export interface AnalyticsData {
   };
 }
 
-export interface AnalyticsWorkspaceBillingData {
-  workspace_billing: {
-    snapshot: WorkspaceBillingSnapshot;
-    trend: WorkspaceBillingTrendPoint[];
-    export_rows: WorkspaceBillingExportRow[];
-  };
-}
-
 function getMonthRange(offset: number): { start: string; end: string; key: string } {
   const now = new Date();
   const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - offset, 1));
@@ -42,18 +27,28 @@ function getMonthRange(offset: number): { start: string; end: string; key: strin
   return { start, end, key };
 }
 
-type AnalyticsExpenseRow = WorkspaceBillingExpenseRecord & {
+type AnalyticsExpenseRow = {
+  amount: number;
+  due_date: string;
   category: string | null;
-  recurrence_type: string | null;
   payment_records: Array<{ status: string; paid_at: string | null; created_at: string }>;
   created_by: string;
-  created_by_user?: { id: string; name: string; email: string } | null;
+  created_by_user?:
+    | { id: string; name: string | null; email: string | null }
+    | Array<{ id: string; name: string | null; email: string | null }>
+    | null;
 };
+
+function getCreator(
+  user: AnalyticsExpenseRow['created_by_user'],
+): { id: string; name: string | null; email: string | null } | null {
+  if (!user) return null;
+  return Array.isArray(user) ? user[0] ?? null : user;
+}
 
 export async function getAnalyticsData(
   groupId: string,
-): Promise<AnalyticsData & AnalyticsWorkspaceBillingData> {
-  // Fetch last 6 months of expenses
+): Promise<AnalyticsData> {
   const sixMonthsAgo = getMonthRange(5);
   const currentMonth = getMonthRange(0);
   const lastMonth = getMonthRange(1);
@@ -62,8 +57,11 @@ export async function getAnalyticsData(
     .from('expenses')
     .select(
       `
-      *,
-      payment_records(*),
+      amount,
+      due_date,
+      category,
+      created_by,
+      payment_records(status, paid_at, created_at),
       created_by_user:users!expenses_created_by_fkey(id, name, email)
     `,
     )
@@ -76,15 +74,13 @@ export async function getAnalyticsData(
   if (error) throw error;
 
   const rows = (expenses ?? []) as AnalyticsExpenseRow[];
-  const workspaceBillingRows = rows.filter(isWorkspaceBillingExpense);
 
-  // --- spendingTrend: group by month for last 6 months ---
   const monthBuckets = new Map<string, number>();
   for (let i = 5; i >= 0; i--) {
     monthBuckets.set(getMonthRange(i).key, 0);
   }
   for (const row of rows) {
-    const key = (row.due_date as string).slice(0, 7);
+    const key = row.due_date.slice(0, 7);
     if (monthBuckets.has(key)) {
       monthBuckets.set(key, (monthBuckets.get(key) ?? 0) + row.amount);
     }
@@ -94,10 +90,9 @@ export async function getAnalyticsData(
     amount,
   }));
 
-  // --- categoryBreakdown: current month expenses grouped by category ---
   const catMap = new Map<string, number>();
   for (const row of rows) {
-    if ((row.due_date as string).startsWith(currentMonth.key)) {
+    if (row.due_date.startsWith(currentMonth.key)) {
       const category = String(row.category ?? 'uncategorized');
       catMap.set(category, (catMap.get(category) ?? 0) + row.amount);
     }
@@ -106,10 +101,9 @@ export async function getAnalyticsData(
     .sort((a, b) => b[1] - a[1])
     .map(([category, amount]) => ({ category, amount }));
 
-  // --- topSpenders: sum by created_by user, top 5 ---
   const spenderMap = new Map<string, { name: string; amount: number }>();
   for (const row of rows) {
-    const user = row.created_by_user;
+    const user = getCreator(row.created_by_user);
     const userId = user?.id ?? row.created_by;
     const existing = spenderMap.get(userId);
     if (existing) {
@@ -125,7 +119,6 @@ export async function getAnalyticsData(
     .sort((a, b) => b.amount - a.amount)
     .slice(0, 5);
 
-  // --- complianceRate: payment_records paid on/before due_date vs after ---
   let onTime = 0;
   let overdue = 0;
   for (const row of rows) {
@@ -142,20 +135,15 @@ export async function getAnalyticsData(
   }
   const complianceRate = { onTime, overdue, total: onTime + overdue };
 
-  // --- monthComparison ---
   let thisMonthTotal = 0;
   let lastMonthTotal = 0;
   for (const row of rows) {
-    const dateKey = (row.due_date as string).slice(0, 7);
+    const dateKey = row.due_date.slice(0, 7);
     if (dateKey === currentMonth.key) thisMonthTotal += row.amount;
     else if (dateKey === lastMonth.key) lastMonthTotal += row.amount;
   }
   const delta = thisMonthTotal - lastMonthTotal;
   const deltaPercent = lastMonthTotal > 0 ? (delta / lastMonthTotal) * 100 : 0;
-
-  const workspaceBillingExpenses = workspaceBillingRows as WorkspaceBillingExpenseRecord[];
-  const workspaceBillingReport = buildWorkspaceBillingReport(workspaceBillingExpenses);
-  const workspaceBillingTrend = buildWorkspaceBillingTrend(workspaceBillingExpenses);
 
   return {
     spendingTrend,
@@ -163,10 +151,5 @@ export async function getAnalyticsData(
     topSpenders,
     complianceRate,
     monthComparison: { thisMonth: thisMonthTotal, lastMonth: lastMonthTotal, delta, deltaPercent },
-    workspace_billing: {
-      snapshot: workspaceBillingReport.snapshot,
-      trend: workspaceBillingTrend,
-      export_rows: workspaceBillingReport.export_rows,
-    },
   };
 }

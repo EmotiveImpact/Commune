@@ -5,6 +5,8 @@ export const settlementKeys = {
   all: ['settlement'] as const,
   group: (groupId: string, month?: string) =>
     [...settlementKeys.all, groupId, month ?? 'all'] as const,
+  groupPrefix: (groupId: string) =>
+    [...settlementKeys.all, groupId] as const,
 };
 
 export function useGroupSettlement(groupId: string, month?: string) {

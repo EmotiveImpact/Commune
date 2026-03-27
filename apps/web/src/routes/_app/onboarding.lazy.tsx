@@ -27,7 +27,7 @@ import {
   inviteMemberSchema,
   type CreateGroupInput,
 } from '@commune/core';
-import { useAcceptInvite, useCreateGroup, useInviteMember, usePendingInvites, useUserGroups } from '../../hooks/use-groups';
+import { useAcceptInvite, useCreateGroup, useInviteMember, usePendingInvites, useUserGroupSummaries } from '../../hooks/use-groups';
 import { useApplyGroupStarterPack } from '../../hooks/use-onboarding';
 import { useGroupStore } from '../../stores/group';
 import type { SpaceEssentials } from '@commune/types';
@@ -62,7 +62,7 @@ function OnboardingPage() {
   const createGroup = useCreateGroup();
   const acceptInvite = useAcceptInvite();
   const { activeGroupId, setActiveGroupId } = useGroupStore();
-  const { data: groups, isLoading: groupsLoading } = useUserGroups();
+  const { data: groups, isLoading: groupsLoading } = useUserGroupSummaries();
   const { data: pendingInvites, isLoading: invitesLoading } = usePendingInvites();
   const navigate = useNavigate();
 

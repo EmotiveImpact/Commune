@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { Center, Loader, Text, Stack } from '@mantine/core';
 import { useAuthStore } from '../../stores/auth';
 import { z } from 'zod';
+import { consumePendingInviteToken } from '../../utils/invite-token';
 
 const callbackSearchSchema = z.object({
   type: z.string().optional(),
@@ -27,9 +28,8 @@ function AuthCallback() {
     }
 
     if (isAuthenticated) {
-      const inviteToken = localStorage.getItem('commune_invite_token');
+      const inviteToken = consumePendingInviteToken();
       if (inviteToken) {
-        localStorage.removeItem('commune_invite_token');
         navigate({ to: '/invite/$token', params: { token: inviteToken } });
       } else {
         navigate({ to: '/' });

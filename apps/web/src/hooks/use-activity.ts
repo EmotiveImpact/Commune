@@ -1,6 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
-import { getActivityLog } from '@commune/api';
-import type { ActivityEntry } from '@commune/api';
+import { getActivityFeed, getActivityLog } from '@commune/api';
+import type {
+  ActivityEntry,
+  ActivityEntityFilter,
+  ActivityFeedData,
+} from '@commune/api';
 import {
   getDashboardWorkspaceExpenseContext,
   hasDashboardWorkspaceExpenseContext,
@@ -16,7 +20,15 @@ export interface ActivityWorkspaceBillingContext {
 export const activityKeys = {
   all: ['activity'] as const,
   list: (groupId: string, limit?: number) =>
-    [...activityKeys.all, 'list', groupId, limit] as const,
+    [...activityKeys.group(groupId), 'list', limit] as const,
+  feed: (
+    groupId: string,
+    limit: number,
+    offset: number,
+    entityTypes: ActivityEntityFilter[],
+  ) => [...activityKeys.group(groupId), 'feed', limit, offset, entityTypes] as const,
+  group: (groupId: string) =>
+    [...activityKeys.all, groupId] as const,
 };
 
 export function getActivityWorkspaceBillingContext(
@@ -38,5 +50,31 @@ export function useActivityLog(groupId: string, limit = 50) {
     queryKey: activityKeys.list(groupId, limit),
     queryFn: () => getActivityLog(groupId, limit),
     enabled: !!groupId,
+  });
+}
+
+export function useActivityFeed(
+  groupId: string,
+  options: {
+    limit: number;
+    offset: number;
+    entityTypes: ActivityEntityFilter[];
+  },
+) {
+  return useQuery<ActivityFeedData>({
+    queryKey: activityKeys.feed(
+      groupId,
+      options.limit,
+      options.offset,
+      options.entityTypes,
+    ),
+    queryFn: () =>
+      getActivityFeed(groupId, {
+        limit: options.limit,
+        offset: options.offset,
+        entityTypes: options.entityTypes,
+      }),
+    enabled: !!groupId,
+    placeholderData: (previousData) => previousData,
   });
 }

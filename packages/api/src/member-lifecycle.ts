@@ -158,6 +158,75 @@ export async function getGroupLifecycleSummary(
   };
 }
 
+export interface MemberHandoverSummary {
+  group_id: string;
+  user_id: string;
+  outstanding_expense_count: number;
+  recurring_expense_count: number;
+  pending_approval_count: number;
+}
+
+export async function getMemberHandoverSummary(
+  groupId: string,
+  userId: string,
+): Promise<MemberHandoverSummary> {
+  const [
+    createdExpensesResult,
+    participantExpensesResult,
+    recurringExpensesResult,
+    pendingApprovalsResult,
+  ] = await Promise.all([
+    supabase
+      .from('expenses')
+      .select('id')
+      .eq('group_id', groupId)
+      .eq('is_active', true)
+      .eq('created_by', userId),
+    supabase
+      .from('expense_participants')
+      .select('expense_id, expense:expenses!inner(id)')
+      .eq('user_id', userId)
+      .eq('expense.group_id', groupId)
+      .eq('expense.is_active', true),
+    supabase
+      .from('expenses')
+      .select('id', { count: 'exact', head: true })
+      .eq('group_id', groupId)
+      .eq('is_active', true)
+      .eq('created_by', userId)
+      .neq('recurrence_type', 'none'),
+    supabase
+      .from('expenses')
+      .select('id', { count: 'exact', head: true })
+      .eq('group_id', groupId)
+      .eq('is_active', true)
+      .eq('approval_status', 'pending'),
+  ]);
+
+  if (createdExpensesResult.error) throw createdExpensesResult.error;
+  if (participantExpensesResult.error) throw participantExpensesResult.error;
+  if (recurringExpensesResult.error) throw recurringExpensesResult.error;
+  if (pendingApprovalsResult.error) throw pendingApprovalsResult.error;
+
+  const outstandingExpenseIds = new Set(
+    (createdExpensesResult.data ?? []).map((row) => row.id as string),
+  );
+
+  for (const row of participantExpensesResult.data ?? []) {
+    if (typeof row.expense_id === 'string') {
+      outstandingExpenseIds.add(row.expense_id);
+    }
+  }
+
+  return {
+    group_id: groupId,
+    user_id: userId,
+    outstanding_expense_count: outstandingExpenseIds.size,
+    recurring_expense_count: recurringExpensesResult.count ?? 0,
+    pending_approval_count: pendingApprovalsResult.count ?? 0,
+  };
+}
+
 export async function scheduleMemberDeparture(
   memberId: string,
   effectiveUntil: string,

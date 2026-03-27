@@ -1,12 +1,12 @@
 import { MantineProvider } from '@mantine/core';
-import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { vi } from 'vitest';
 import { ExpensesPage } from './index.lazy';
 
 const navigateMock = vi.fn();
 const clearQueryMock = vi.hoisted(() => vi.fn());
 const downloadCSVMock = vi.hoisted(() => vi.fn());
+const getExpenseLedgerExportRowsMock = vi.hoisted(() => vi.fn());
 let groupMock: any = {
   id: 'group-1',
   name: 'North Dock Workspace',
@@ -33,37 +33,40 @@ vi.mock('../../../hooks/use-groups', () => ({
 }));
 
 vi.mock('../../../hooks/use-expenses', () => ({
-  useGroupExpenses: () => ({
-    data: [
-      {
-        id: 'expense-1',
-        title: 'Desk chairs',
-        category: 'work_tools',
-        due_date: '2026-03-27',
-        amount: 248,
-        currency: 'GBP',
-        approval_status: 'approved',
-        recurrence_type: 'none',
-        payment_records: [],
-        participants: [{}, {}],
-        vendor_name: 'OfficeCo',
-        invoice_reference: 'INV-1042',
-        invoice_date: '2026-03-20',
-        payment_due_date: '2026-03-26',
+  useExpenseLedger: () => ({
+    data: {
+      summary: {
+        total_count: 1,
+        total_amount: 248,
+        open_count: 1,
+        overdue_count: 0,
+        settled_count: 0,
+        workspace: {
+          linked_count: 1,
+          missing_count: 0,
+          due_soon_count: 1,
+        },
       },
-      {
-        id: 'expense-2',
-        title: 'Kitchen tea',
-        category: 'office_supplies',
-        due_date: '2026-04-05',
-        amount: 18,
-        currency: 'GBP',
-        approval_status: 'approved',
-        recurrence_type: 'none',
-        payment_records: [],
-        participants: [{}],
-      },
-    ],
+      filtered_count: 1,
+      items: [
+        {
+          id: 'expense-1',
+          title: 'Desk chairs',
+          category: 'work_tools',
+          due_date: '2026-03-27',
+          amount: 248,
+          currency: 'GBP',
+          approval_status: 'approved',
+          recurrence_type: 'none',
+          participant_count: 2,
+          paid_count: 0,
+          vendor_name: 'OfficeCo',
+          invoice_reference: 'INV-1042',
+          invoice_date: '2026-03-20',
+          payment_due_date: '2026-03-26',
+        },
+      ],
+    },
     isLoading: false,
   }),
   getWorkspaceExpenseContext: (expense: Record<string, unknown>) => ({
@@ -97,6 +100,11 @@ vi.mock('../../../hooks/use-plan-limits', () => ({
   usePlanLimits: () => ({ canExport: true, canDownloadStatements: false }),
 }));
 
+vi.mock('@commune/api', () => ({
+  downloadStatement: vi.fn(),
+  getExpenseLedgerExportRows: getExpenseLedgerExportRowsMock,
+}));
+
 vi.mock('../../../stores/group', () => ({
   useGroupStore: () => ({
     activeGroupId: 'group-1',
@@ -128,7 +136,28 @@ vi.mock('../../../stores/auth', () => ({
 
 describe('ExpensesPage', () => {
   beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-03-24T12:00:00Z'));
     downloadCSVMock.mockClear();
+    getExpenseLedgerExportRowsMock.mockReset();
+    getExpenseLedgerExportRowsMock.mockResolvedValue([
+      {
+        id: 'expense-1',
+        title: 'Desk chairs',
+        category: 'work_tools',
+        due_date: '2026-03-27',
+        amount: 248,
+        currency: 'GBP',
+        approval_status: 'approved',
+        recurrence_type: 'none',
+        participant_count: 2,
+        paid_count: 0,
+        vendor_name: 'OfficeCo',
+        invoice_reference: 'INV-1042',
+        invoice_date: '2026-03-20',
+        payment_due_date: '2026-03-26',
+      },
+    ]);
     groupMock = {
       id: 'group-1',
       name: 'North Dock Workspace',
@@ -142,6 +171,10 @@ describe('ExpensesPage', () => {
     pendingApprovalsMock = [];
   });
 
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('surfaces workspace billing signals and searches vendor metadata', () => {
     render(
       <MantineProvider>
@@ -151,7 +184,7 @@ describe('ExpensesPage', () => {
 
     expect(screen.getByText(/workspace billing/i)).toBeInTheDocument();
     expect(screen.getByText(/1 linked/i)).toBeInTheDocument();
-    expect(screen.getByText(/1 missing details/i)).toBeInTheDocument();
+    expect(screen.getByText(/0 missing details/i)).toBeInTheDocument();
     expect(screen.getByText(/1 due soon/i)).toBeInTheDocument();
     expect(screen.getByText(/workspace roles and approvals/i)).toBeInTheDocument();
     expect(screen.getByText(/spends at or below £100\.00 are auto-approved/i)).toBeInTheDocument();
@@ -162,16 +195,24 @@ describe('ExpensesPage', () => {
   });
 
   it('exports workspace vendor and invoice fields from the current filtered view', async () => {
-    const user = userEvent.setup();
-
     render(
       <MantineProvider>
         <ExpensesPage />
       </MantineProvider>,
     );
 
-    await user.click(screen.getByRole('button', { name: /export filtered csv/i }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /export filtered csv/i }));
+      await vi.dynamicImportSettled();
+      await Promise.resolve();
+    });
 
+    expect(getExpenseLedgerExportRowsMock).toHaveBeenCalledWith('group-1', {
+      isWorkspaceGroup: true,
+      search: 'officeco',
+      status: 'all',
+      workspaceView: 'all',
+    });
     expect(downloadCSVMock).toHaveBeenCalledTimes(1);
     const [csv, filename] = downloadCSVMock.mock.calls[0] as [string, string];
 

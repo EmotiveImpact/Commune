@@ -8,7 +8,27 @@ import {
   archiveRecurringExpense,
 } from '@commune/api';
 import { expenseKeys } from './use-expenses';
+import { groupHubKeys } from './use-group-hub';
 import { dashboardKeys } from './use-dashboard';
+import { notificationKeys } from './use-notifications';
+import { workspaceBillingKeys } from './use-workspace-billing';
+
+function invalidateRecurringGroupQueries(
+  queryClient: ReturnType<typeof useQueryClient>,
+  groupId: string,
+) {
+  queryClient.invalidateQueries({ queryKey: recurringKeys.list(groupId) });
+  queryClient.invalidateQueries({ queryKey: recurringKeys.paused(groupId) });
+  queryClient.invalidateQueries({ queryKey: expenseKeys.groupLists(groupId) });
+  queryClient.invalidateQueries({ queryKey: expenseKeys.groupLedger(groupId) });
+  queryClient.invalidateQueries({ queryKey: dashboardKeys.statsGroup(groupId) });
+  queryClient.invalidateQueries({ queryKey: dashboardKeys.breakdownGroup(groupId) });
+  queryClient.invalidateQueries({ queryKey: dashboardKeys.feedGroup(groupId) });
+  queryClient.invalidateQueries({ queryKey: dashboardKeys.workspaceBillingFeed(groupId) });
+  queryClient.invalidateQueries({ queryKey: workspaceBillingKeys.report(groupId) });
+  queryClient.invalidateQueries({ queryKey: notificationKeys.group(groupId) });
+  queryClient.invalidateQueries({ queryKey: groupHubKeys.detail(groupId) });
+}
 
 export const recurringKeys = {
   all: ['recurring'] as const,
@@ -21,9 +41,7 @@ export function useGenerateRecurring(groupId: string) {
   return useMutation({
     mutationFn: () => generateRecurringExpenses(groupId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: expenseKeys.list(groupId) });
-      queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
-      queryClient.invalidateQueries({ queryKey: recurringKeys.list(groupId) });
+      invalidateRecurringGroupQueries(queryClient, groupId);
     },
   });
 }
@@ -49,8 +67,7 @@ export function usePauseRecurring(groupId: string) {
   return useMutation({
     mutationFn: (expenseId: string) => pauseRecurringExpense(expenseId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: recurringKeys.list(groupId) });
-      queryClient.invalidateQueries({ queryKey: recurringKeys.paused(groupId) });
+      invalidateRecurringGroupQueries(queryClient, groupId);
     },
   });
 }
@@ -60,8 +77,7 @@ export function useResumeRecurring(groupId: string) {
   return useMutation({
     mutationFn: (expenseId: string) => resumeRecurringExpense(expenseId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: recurringKeys.list(groupId) });
-      queryClient.invalidateQueries({ queryKey: recurringKeys.paused(groupId) });
+      invalidateRecurringGroupQueries(queryClient, groupId);
     },
   });
 }
@@ -71,10 +87,7 @@ export function useArchiveRecurring(groupId: string) {
   return useMutation({
     mutationFn: (expenseId: string) => archiveRecurringExpense(expenseId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: recurringKeys.list(groupId) });
-      queryClient.invalidateQueries({ queryKey: recurringKeys.paused(groupId) });
-      queryClient.invalidateQueries({ queryKey: expenseKeys.list(groupId) });
-      queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
+      invalidateRecurringGroupQueries(queryClient, groupId);
     },
   });
 }

@@ -1,42 +1,40 @@
 import { useMemo } from 'react';
 import { getMonthKey } from '@commune/utils';
-import { useGroupExpenses } from './use-expenses';
+import { useQuery } from '@tanstack/react-query';
+import { getMemberMonthlyStats } from '@commune/api';
 
 export interface MemberStats {
   totalOwed: number;
   totalPaid: number;
 }
 
+const memberStatsKeys = {
+  all: ['member-stats'] as const,
+  monthly: (groupId: string, month: string) =>
+    [...memberStatsKeys.all, 'monthly', groupId, month] as const,
+};
+
 export function useMemberMonthlyStats(groupId: string) {
   const currentMonth = getMonthKey();
-  const { data: expenses, isLoading } = useGroupExpenses(groupId, { month: currentMonth });
+  const { data: monthlyStats, isLoading } = useQuery({
+    queryKey: memberStatsKeys.monthly(groupId, currentMonth),
+    queryFn: () => getMemberMonthlyStats(groupId, currentMonth),
+    enabled: !!groupId,
+  });
 
   const stats = useMemo(() => {
     const map = new Map<string, MemberStats>();
-    if (!expenses) return map;
+    if (!monthlyStats) return map;
 
-    for (const expense of expenses) {
-      // Sum share amounts per participant
-      for (const participant of expense.participants ?? []) {
-        const userId = participant.user_id;
-        const existing = map.get(userId) ?? { totalOwed: 0, totalPaid: 0 };
-        existing.totalOwed += Number(participant.share_amount);
-        map.set(userId, existing);
-      }
-
-      // Sum paid amounts
-      for (const payment of expense.payment_records ?? []) {
-        if (payment.status !== 'unpaid') {
-          const userId = payment.user_id;
-          const existing = map.get(userId) ?? { totalOwed: 0, totalPaid: 0 };
-          existing.totalPaid += Number(payment.amount);
-          map.set(userId, existing);
-        }
-      }
+    for (const row of monthlyStats) {
+      map.set(row.user_id, {
+        totalOwed: row.total_owed,
+        totalPaid: row.total_paid,
+      });
     }
 
     return map;
-  }, [expenses]);
+  }, [monthlyStats]);
 
   return { stats, isLoading };
 }

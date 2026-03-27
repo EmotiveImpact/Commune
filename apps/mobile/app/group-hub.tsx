@@ -42,8 +42,8 @@ export default function GroupHubScreen() {
   const accent = '#2d6a4f';
 
   const activeMembers = useMemo(
-    () => (hub?.members ?? []).filter((m: any) => m.status === 'active'),
-    [hub],
+    () => (hub?.group?.members ?? []).filter((m: any) => m.status === 'active'),
+    [hub?.group?.members],
   );
 
   const mySettlement = useMemo(() => {
@@ -146,13 +146,13 @@ export default function GroupHubScreen() {
           <View style={{ flex: 1, backgroundColor: surface, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: border }}>
             <Text style={{ fontSize: 12, color: textSoft }}>This month</Text>
             <Text style={{ fontSize: 18, fontWeight: '700', color: text, marginTop: 4 }}>
-              {formatCurrency(hub.monthlyTotal ?? 0, group.currency)}
+              {formatCurrency(hub.totalMonthly ?? 0, group.currency)}
             </Text>
           </View>
           <View style={{ flex: 1, backgroundColor: surface, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: border }}>
             <Text style={{ fontSize: 12, color: textSoft }}>Expenses</Text>
             <Text style={{ fontSize: 18, fontWeight: '700', color: text, marginTop: 4 }}>
-              {hub.expenseCount ?? 0}
+              {hub.expenses.length}
             </Text>
           </View>
         </View>
@@ -160,36 +160,40 @@ export default function GroupHubScreen() {
         {/* Members */}
         <View>
           <Text style={{ fontSize: 16, fontWeight: '700', color: text, marginBottom: 12 }}>Members</Text>
-          {activeMembers.map((m: any) => (
-            <View key={m.user_id} style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              backgroundColor: surface,
-              borderRadius: 12,
-              padding: 12,
-              marginBottom: 8,
-              borderWidth: 1,
-              borderColor: border,
-            }}>
-              <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#e8f0eb', justifyContent: 'center', alignItems: 'center', marginRight: 12 }}>
-                <Text style={{ fontSize: 14, fontWeight: '600', color: accent }}>
-                  {(m.user?.name ?? 'U')[0].toUpperCase()}
-                </Text>
+          {activeMembers.map((m: any) => {
+            const memberTotal = hub.memberTotals?.[m.user_id];
+
+            return (
+              <View key={m.user_id} style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                backgroundColor: surface,
+                borderRadius: 12,
+                padding: 12,
+                marginBottom: 8,
+                borderWidth: 1,
+                borderColor: border,
+              }}>
+                <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#e8f0eb', justifyContent: 'center', alignItems: 'center', marginRight: 12 }}>
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: accent }}>
+                    {(m.user?.name ?? 'U')[0].toUpperCase()}
+                  </Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: text }}>
+                    {m.user?.name ?? 'Unknown'}
+                    {m.user_id === user?.id ? ' (You)' : ''}
+                  </Text>
+                  <Text style={{ fontSize: 12, color: textSoft }}>{m.role === 'admin' ? 'Admin' : 'Member'}</Text>
+                </View>
+                {memberTotal != null && (
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: textSoft }}>
+                    {formatCurrency(memberTotal, group.currency)}
+                  </Text>
+                )}
               </View>
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 14, fontWeight: '600', color: text }}>
-                  {m.user?.name ?? 'Unknown'}
-                  {m.user_id === user?.id ? ' (You)' : ''}
-                </Text>
-                <Text style={{ fontSize: 12, color: textSoft }}>{m.role === 'admin' ? 'Admin' : 'Member'}</Text>
-              </View>
-              {hub.memberTotals?.[m.user_id] != null && (
-                <Text style={{ fontSize: 13, fontWeight: '600', color: textSoft }}>
-                  {formatCurrency(hub.memberTotals[m.user_id], group.currency)}
-                </Text>
-              )}
-            </View>
-          ))}
+            );
+          })}
         </View>
 
         {/* Quick actions */}

@@ -46,15 +46,12 @@ import { setPageTitle } from '../../utils/seo';
 import { formatCurrency } from '@commune/utils';
 import { useGroupStore } from '../../stores/group';
 import { useSearchStore } from '../../stores/search';
-import { useGroup, useLeaveGroup, useRemoveMember, useTransferOwnership, useUpdateMemberDates, useUpdateMemberResponsibility, useUpdateMemberRole, useUserGroups } from '../../hooks/use-groups';
+import { useGroup, useLeaveGroup, useRemoveMember, useTransferOwnership, useUpdateMemberDates, useUpdateMemberResponsibility, useUpdateMemberRole, useUserGroupSummaries } from '../../hooks/use-groups';
 import { useLinkedPairs, useLinkMembers, useUnlinkMembers } from '../../hooks/use-couple-linking';
-import { useGroupLifecycleSummary, useRestoreMemberAccess, useScheduleMemberDeparture } from '../../hooks/use-member-lifecycle';
+import { useGroupLifecycleSummary, useMemberHandoverSummary, useRestoreMemberAccess, useScheduleMemberDeparture } from '../../hooks/use-member-lifecycle';
 import { useMemberMonthlyStats } from '../../hooks/use-member-stats';
 import { useWorkspaceGovernance } from '../../hooks/use-workspace-governance';
 import { useAuthStore } from '../../stores/auth';
-import { useRecurringExpenses } from '../../hooks/use-recurring';
-import { usePendingApprovals } from '../../hooks/use-approvals';
-import { useGroupExpenses } from '../../hooks/use-expenses';
 import { InviteMemberModal } from '../../components/invite-member-modal';
 import { MembersSkeleton } from '../../components/page-skeleton';
 import { EmptyState } from '../../components/empty-state';
@@ -109,28 +106,15 @@ function HandoverChecklist({
   currency,
   onTransferOwnership,
 }: HandoverChecklistProps) {
-  const { data: expenses = [] } = useGroupExpenses(groupId);
-  const { data: recurringExpenses = [] } = useRecurringExpenses(groupId);
-  const { data: pendingApprovals = [] } = usePendingApprovals(groupId);
+  const { data: handoverSummary } = useMemberHandoverSummary(groupId, departingUserId);
   const [handoverConfirmed, setHandoverConfirmed] = useState(false);
 
-  // Outstanding balances: expenses where the departing user owes or is owed
-  const userExpenses = expenses.filter(
-    (e: any) =>
-      e.is_active &&
-      (e.created_by === departingUserId ||
-        (e.participants ?? []).some((p: any) => p.user_id === departingUserId)),
-  );
-  const hasOutstandingBalances = userExpenses.length > 0;
-
-  // Active recurring expenses created by the departing user
-  const userRecurring = recurringExpenses.filter(
-    (e: any) => e.created_by === departingUserId && e.recurrence_type !== 'none',
-  );
-  const hasRecurringToReassign = userRecurring.length > 0;
-
-  // Pending approvals
-  const hasPendingApprovals = pendingApprovals.length > 0;
+  const outstandingExpenseCount = handoverSummary?.outstanding_expense_count ?? 0;
+  const recurringExpenseCount = handoverSummary?.recurring_expense_count ?? 0;
+  const pendingApprovalCount = handoverSummary?.pending_approval_count ?? 0;
+  const hasOutstandingBalances = outstandingExpenseCount > 0;
+  const hasRecurringToReassign = recurringExpenseCount > 0;
+  const hasPendingApprovals = pendingApprovalCount > 0;
 
   // Eligible transfer targets (active admins who are not the departing member)
   const transferCandidates = members.filter(
@@ -166,7 +150,7 @@ function HandoverChecklist({
               <Text size="sm" fw={500}>Outstanding balances</Text>
               <Text size="xs" c="dimmed">
                 {hasOutstandingBalances
-                  ? `${userExpenses.length} expense${userExpenses.length !== 1 ? 's' : ''} involve ${departingName}. Settle or reassign before departure.`
+                  ? `${outstandingExpenseCount} expense${outstandingExpenseCount !== 1 ? 's' : ''} involve ${departingName}. Settle or reassign before departure.`
                   : 'No outstanding balances to settle.'}
               </Text>
             </div>
@@ -185,7 +169,7 @@ function HandoverChecklist({
               <Text size="sm" fw={500}>Recurring expenses</Text>
               <Text size="xs" c="dimmed">
                 {hasRecurringToReassign
-                  ? `${userRecurring.length} recurring expense${userRecurring.length !== 1 ? 's' : ''} created by ${departingName}. Reassign ownership before departure.`
+                  ? `${recurringExpenseCount} recurring expense${recurringExpenseCount !== 1 ? 's' : ''} created by ${departingName}. Reassign ownership before departure.`
                   : 'No recurring expenses to reassign.'}
               </Text>
             </div>
@@ -204,7 +188,7 @@ function HandoverChecklist({
               <Text size="sm" fw={500}>Pending approvals</Text>
               <Text size="xs" c="dimmed">
                 {hasPendingApprovals
-                  ? `${pendingApprovals.length} approval${pendingApprovals.length !== 1 ? 's' : ''} pending. Resolve before departure.`
+                  ? `${pendingApprovalCount} approval${pendingApprovalCount !== 1 ? 's' : ''} pending. Resolve before departure.`
                   : 'No pending approvals to resolve.'}
               </Text>
             </div>
@@ -297,7 +281,7 @@ export function MembersPage() {
     activeGroupId ?? '',
     lifecycleReferenceDate,
   );
-  const { data: userGroups } = useUserGroups();
+  const { data: userGroups } = useUserGroupSummaries();
   const { query: searchQuery } = useSearchStore();
   const { user } = useAuthStore();
   const workspaceGovernance = useWorkspaceGovernance(group);

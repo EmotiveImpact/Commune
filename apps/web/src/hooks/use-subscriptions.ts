@@ -1,6 +1,7 @@
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { getSubscription, invokeCheckout, invokePortal } from '@commune/api';
 import type { SubscriptionPlan } from '@commune/types';
+import { assertTrustedRedirectUrl, redirectToTrustedUrl } from '../utils/trusted-navigation';
 
 export const subscriptionKeys = {
   all: ['subscriptions'] as const,
@@ -17,19 +18,24 @@ export function useSubscription(userId: string) {
 
 export function useCheckout() {
   return useMutation({
-    mutationFn: ({ plan, interval }: { plan: SubscriptionPlan; interval: 'monthly' | 'annual' }) =>
-      invokeCheckout(plan, interval),
+    mutationFn: async ({
+      plan,
+      interval,
+    }: {
+      plan: SubscriptionPlan;
+      interval: 'monthly' | 'annual';
+    }) => assertTrustedRedirectUrl(await invokeCheckout(plan, interval)),
     onSuccess: (url) => {
-      window.location.href = url;
+      redirectToTrustedUrl(url);
     },
   });
 }
 
 export function usePortal() {
   return useMutation({
-    mutationFn: () => invokePortal(),
+    mutationFn: async () => assertTrustedRedirectUrl(await invokePortal()),
     onSuccess: (url) => {
-      window.location.href = url;
+      redirectToTrustedUrl(url);
     },
   });
 }

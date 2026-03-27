@@ -20,10 +20,13 @@ import { useEffect, useMemo, useState } from 'react';
 import { setPageTitle } from '../../../utils/seo';
 import { ExpenseCategory } from '@commune/types';
 import { formatCurrency, formatDate, getMonthKey, isOverdue } from '@commune/utils';
-import { generateExpenseCSV, downloadCSV, getLocalDateKey } from '../../../utils/export-csv';
-import { downloadStatement } from '@commune/api';
+import { getLocalDateKey } from '../../../utils/date-key';
+import {
+  downloadStatement,
+  getExpenseLedgerExportRows,
+  type ExpenseLedgerItem,
+} from '@commune/api';
 import { canMemberApproveWithPolicy } from '@commune/core';
-import { useSubscription } from '../../../hooks/use-subscriptions';
 import { usePlanLimits } from '../../../hooks/use-plan-limits';
 import { IconAlertTriangle, IconX } from '@tabler/icons-react';
 import { useGroupStore } from '../../../stores/group';
@@ -33,7 +36,7 @@ import { useWorkspaceGovernance } from '../../../hooks/use-workspace-governance'
 import {
   getWorkspaceExpenseContext,
   hasWorkspaceExpenseContext,
-  useGroupExpenses,
+  useExpenseLedger,
   useBatchArchive,
   useBatchMarkPaid,
 } from '../../../hooks/use-expenses';
@@ -47,7 +50,7 @@ export const Route = createLazyFileRoute('/_app/expenses/')({
   component: ExpensesPage,
 });
 
-import { PaginationBar, paginate, PAGE_SIZE } from '../../../components/pagination';
+import { PaginationBar, PAGE_SIZE } from '../../../components/pagination';
 
 const categoryOptions = [
   { value: '', label: 'All categories' },
@@ -89,19 +92,12 @@ const workspaceViewOptions: Array<{ value: WorkspaceViewFilter; label: string }>
   { value: 'due-soon', label: 'Due soon' },
 ];
 
-function getEffectiveWorkspaceDueDate(expense: Parameters<typeof getWorkspaceExpenseContext>[0]) {
-  const context = getWorkspaceExpenseContext(expense);
-  return context.payment_due_date || (expense && typeof expense === 'object' && 'due_date' in expense
-    ? String((expense as { due_date?: string }).due_date ?? '')
-    : '');
-}
-
 function isExpenseSettled(expense: {
-  payment_records?: Array<{ status: string }>;
-  participants?: Array<unknown>;
+  paid_count?: number;
+  participant_count?: number;
 }) {
-  const paidCount = expense.payment_records?.filter((payment) => payment.status !== 'unpaid').length ?? 0;
-  const totalParticipants = expense.participants?.length ?? 0;
+  const paidCount = expense.paid_count ?? 0;
+  const totalParticipants = expense.participant_count ?? 0;
   return totalParticipants > 0 && paidCount === totalParticipants;
 }
 
@@ -114,22 +110,6 @@ function isDueSoon(dateKey: string) {
   const sevenDaysAhead = todayKey + 7 * 24 * 60 * 60 * 1000;
   const targetKey = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
   return targetKey >= todayKey && targetKey <= sevenDaysAhead;
-}
-
-function getWorkspaceSearchText(expense: unknown) {
-  const context = getWorkspaceExpenseContext(expense);
-  const source = expense && typeof expense === 'object' ? (expense as Record<string, unknown>) : {};
-  return [
-    source.title,
-    source.category,
-    context.vendor_name,
-    context.invoice_reference,
-    context.invoice_date,
-    context.payment_due_date,
-  ]
-    .filter((value) => typeof value === 'string' && value.trim().length > 0)
-    .map((value) => String(value).toLowerCase())
-    .join(' ');
 }
 
 export function ExpensesPage() {
@@ -151,10 +131,10 @@ export function ExpensesPage() {
 
   // PDF export & tier gating
   const { user } = useAuthStore();
-  const { data: subscription } = useSubscription(user?.id ?? '');
   const { canExport, canDownloadStatements } = usePlanLimits(user?.id ?? '');
   const isPaidPlan = canDownloadStatements;
   const [downloadingPdf, setDownloadingPdf] = useState(false);
+  const [exportingCsv, setExportingCsv] = useState(false);
 
   // Bulk actions
   const batchArchive = useBatchArchive(activeGroupId ?? '');
@@ -181,143 +161,59 @@ export function ExpensesPage() {
 
   const monthFilter = datePreset && datePreset !== 'all' ? datePreset : undefined;
   const hasCustomDateRange = Boolean(dateRange[0] || dateRange[1]);
-  const expenseFilters = {
-    ...(categoryFilter ? { category: categoryFilter } : {}),
-    ...(monthFilter ? { month: monthFilter } : {}),
+  const ledgerFilters = useMemo(
+    () => ({
+      ...(categoryFilter ? { category: categoryFilter } : {}),
+      ...(monthFilter ? { month: monthFilter } : {}),
+      ...(dateRange[0] ? { dateFrom: dateRange[0] } : {}),
+      ...(dateRange[1] ? { dateTo: dateRange[1] } : {}),
+      ...(searchQuery ? { search: searchQuery } : {}),
+      ...(isWorkspaceGroup ? { workspaceView: workspaceViewFilter } : {}),
+      status: statusFilter,
+      isWorkspaceGroup,
+      page,
+      pageSize: PAGE_SIZE,
+    }),
+    [
+      categoryFilter,
+      monthFilter,
+      dateRange,
+      searchQuery,
+      isWorkspaceGroup,
+      workspaceViewFilter,
+      statusFilter,
+      page,
+    ],
+  );
+
+  const { data: ledger, isLoading } = useExpenseLedger(activeGroupId ?? '', ledgerFilters);
+  const paginatedExpenses = ledger?.items ?? [];
+  const filteredCount = ledger?.filtered_count ?? 0;
+  const summary = ledger?.summary;
+  const counts = {
+    openCount: summary?.open_count ?? 0,
+    overdueCount: summary?.overdue_count ?? 0,
+    settledCount: summary?.settled_count ?? 0,
   };
-  const hasFilters = Object.keys(expenseFilters).length > 0;
-
-  const { data: expenses, isLoading } = useGroupExpenses(
-    activeGroupId ?? '',
-    hasFilters ? expenseFilters : undefined,
-  );
-
-  const workspaceFiltered = useMemo(() => {
-    if (!expenses) return [];
-    let result = expenses;
-
-    // Date range filter (client-side)
-    const [rangeFrom, rangeTo] = dateRange;
-    if (rangeFrom && rangeTo) {
-      const fromDate = new Date(rangeFrom);
-      const toDate = new Date(rangeTo);
-      if (!isNaN(fromDate.getTime()) && !isNaN(toDate.getTime())) {
-        const fromStr = fromDate.toISOString().slice(0, 10);
-        const toStr = toDate.toISOString().slice(0, 10);
-        result = result.filter((e) => e.due_date >= fromStr && e.due_date <= toStr);
+  const totalAmount = summary?.total_amount ?? 0;
+  const totalLedgerCount = summary?.total_count ?? 0;
+  const workspaceSummary = isWorkspaceGroup && summary
+    ? {
+        linkedCount: summary.workspace.linked_count,
+        missingCount: summary.workspace.missing_count,
+        dueSoonCount: summary.workspace.due_soon_count,
       }
-    }
+    : null;
 
-    // Search query
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      result = result.filter((expense) =>
-        getWorkspaceSearchText(expense).includes(q),
-      );
-    }
-
-    if (isWorkspaceGroup) {
-      result = result.filter((expense) => {
-        const hasContext = hasWorkspaceExpenseContext(expense);
-        if (workspaceViewFilter === 'linked') return hasContext;
-        if (workspaceViewFilter === 'missing') return !hasContext;
-        if (workspaceViewFilter === 'due-soon') {
-          const settled = isExpenseSettled(expense);
-          if (settled) return false;
-          return isDueSoon(getEffectiveWorkspaceDueDate(expense));
-        }
-        return true;
-      });
-
-      result = [...result].sort((a, b) => {
-        const aSettled = isExpenseSettled(a);
-        const bSettled = isExpenseSettled(b);
-        if (aSettled !== bSettled) return aSettled ? 1 : -1;
-
-        const aDue = getEffectiveWorkspaceDueDate(a) || a.due_date;
-        const bDue = getEffectiveWorkspaceDueDate(b) || b.due_date;
-        if (aDue !== bDue) return aDue.localeCompare(bDue);
-
-        return a.title.localeCompare(b.title);
-      });
-    }
-
-    return result;
-  }, [expenses, isWorkspaceGroup, searchQuery, dateRange, workspaceViewFilter]);
-
-  const counts = useMemo(() => {
-    let openCount = 0;
-    let overdueCount = 0;
-    let settledCount = 0;
-
-    for (const expense of workspaceFiltered) {
-      if (expense.approval_status !== 'approved') continue;
-      const isSettled = isExpenseSettled(expense);
-
-      if (isSettled) {
-        settledCount += 1;
-      } else if (isOverdue(expense.due_date)) {
-        overdueCount += 1;
-      } else {
-        openCount += 1;
-      }
-    }
-
-    return { openCount, overdueCount, settledCount };
-  }, [workspaceFiltered]);
-
-  const filtered = useMemo(() => {
-    if (statusFilter === 'all') return workspaceFiltered;
-
-    return workspaceFiltered.filter((expense) => {
-      if (expense.approval_status !== 'approved') return false;
-
-      const isSettled = isExpenseSettled(expense);
-
-      if (statusFilter === 'settled') return isSettled;
-      if (statusFilter === 'overdue') return !isSettled && isOverdue(expense.due_date);
-      return !isSettled && !isOverdue(expense.due_date);
-    });
-  }, [workspaceFiltered, statusFilter]);
-
-  const canExportPdf = isPaidPlan && Boolean(monthFilter) && !hasCustomDateRange && filtered.length > 0;
-
-  const paginatedExpenses = useMemo(
-    () => paginate(filtered, page),
-    [filtered, page],
-  );
-
-  const totalAmount = useMemo(
-    () => workspaceFiltered.reduce((sum, expense) => sum + expense.amount, 0),
-    [workspaceFiltered],
-  );
-
-  const workspaceSummary = useMemo(() => {
-    if (!isWorkspaceGroup || !expenses) return null;
-
-    let linkedCount = 0;
-    let missingCount = 0;
-    let dueSoonCount = 0;
-
-    for (const expense of expenses) {
-      const hasContext = hasWorkspaceExpenseContext(expense);
-      if (hasContext) linkedCount += 1;
-      else missingCount += 1;
-
-      if (!isExpenseSettled(expense) && isDueSoon(getEffectiveWorkspaceDueDate(expense))) {
-        dueSoonCount += 1;
-      }
-    }
-
-    return { linkedCount, missingCount, dueSoonCount };
-  }, [expenses, isWorkspaceGroup]);
+  const canExportPdf =
+    isPaidPlan && Boolean(monthFilter) && !hasCustomDateRange && filteredCount > 0;
 
   // Clear selection when filters change
   useEffect(() => {
     setSelectedIds(new Set());
   }, [categoryFilter, statusFilter, datePreset, dateRange, searchQuery, page]);
 
-  function exportExpenseCSV(rows: typeof filtered, filenamePrefix: string, message: string) {
+  async function exportExpenseCSV(rows: ExpenseLedgerItem[], filenamePrefix: string, message: string) {
     if (rows.length === 0) {
       notifications.show({
         title: 'Nothing to export',
@@ -326,6 +222,7 @@ export function ExpensesPage() {
       });
       return;
     }
+    const { generateExpenseCSV, downloadCSV } = await import('../../../utils/export-csv');
     const csv = generateExpenseCSV(rows);
     const dateStr = getLocalDateKey();
     downloadCSV(csv, `${filenamePrefix}-${dateStr}.csv`);
@@ -336,12 +233,39 @@ export function ExpensesPage() {
     });
   }
 
-  function handleExportCSV() {
-    exportExpenseCSV(
-      filtered,
-      'expenses-filtered',
-      `${filtered.length} filtered expense${filtered.length === 1 ? '' : 's'} exported from the current view.`,
-    );
+  async function handleExportCSV() {
+    if (!activeGroupId || filteredCount === 0) {
+      await exportExpenseCSV([], 'expenses-filtered', '');
+      return;
+    }
+
+    setExportingCsv(true);
+    try {
+      const rows = await getExpenseLedgerExportRows(activeGroupId, {
+        ...(categoryFilter ? { category: categoryFilter } : {}),
+        ...(monthFilter ? { month: monthFilter } : {}),
+        ...(dateRange[0] ? { dateFrom: dateRange[0] } : {}),
+        ...(dateRange[1] ? { dateTo: dateRange[1] } : {}),
+        ...(searchQuery ? { search: searchQuery } : {}),
+        ...(isWorkspaceGroup ? { workspaceView: workspaceViewFilter } : {}),
+        status: statusFilter,
+        isWorkspaceGroup,
+      });
+
+      await exportExpenseCSV(
+        rows,
+        'expenses-filtered',
+        `${filteredCount} filtered expense${filteredCount === 1 ? '' : 's'} exported from the current view.`,
+      );
+    } catch (err) {
+      notifications.show({
+        title: 'CSV export failed',
+        message: err instanceof Error ? err.message : 'Something went wrong',
+        color: 'red',
+      });
+    } finally {
+      setExportingCsv(false);
+    }
   }
 
   async function handleExportPDF() {
@@ -427,7 +351,7 @@ export function ExpensesPage() {
   }
 
   function handleBulkExport() {
-    const selected = filtered.filter((e) => selectedIds.has(e.id));
+    const selected = paginatedExpenses.filter((expense) => selectedIds.has(expense.id));
     exportExpenseCSV(
       selected,
       'expenses-selected',
@@ -447,7 +371,7 @@ export function ExpensesPage() {
   }
 
   const chipData: { key: StatusFilter; label: string; count: number }[] = [
-    { key: 'all', label: 'All', count: workspaceFiltered.length },
+    { key: 'all', label: 'All', count: totalLedgerCount },
     { key: 'open', label: 'Open', count: counts.openCount },
     { key: 'overdue', label: 'Overdue', count: counts.overdueCount },
     { key: 'settled', label: 'Settled', count: counts.settledCount },
@@ -457,7 +381,7 @@ export function ExpensesPage() {
     <Stack gap="lg">
       <PageHeader
         title="Expenses"
-        subtitle={`${workspaceFiltered.length} expenses · ${formatCurrency(totalAmount, group?.currency)} tracked`}
+        subtitle={`${totalLedgerCount} expenses · ${formatCurrency(totalAmount, group?.currency)} tracked`}
       >
         <Group gap="sm">
           <Button component={Link} to="/expenses/new" leftSection={<IconPlus size={16} />}>
@@ -467,8 +391,11 @@ export function ExpensesPage() {
             <Button
               variant="default"
               leftSection={<IconDownload size={16} />}
-              onClick={handleExportCSV}
-              disabled={filtered.length === 0}
+              onClick={() => {
+                void handleExportCSV();
+              }}
+              loading={exportingCsv}
+              disabled={filteredCount === 0}
               title="Export the current filtered expenses to CSV"
             >
               Export filtered CSV
@@ -493,7 +420,7 @@ export function ExpensesPage() {
                 ? 'PDF statements are only available for a single month'
                 : !monthFilter
                 ? 'Select a month to export a PDF statement'
-                : filtered.length === 0
+                : filteredCount === 0
                 ? 'No expenses available for the selected month'
                 : 'Download PDF statement'
             }
@@ -654,7 +581,7 @@ export function ExpensesPage() {
       {searchQuery && (
         <Group gap="xs" align="center">
           <Text size="sm" c="dimmed">
-            {filtered.length} result{filtered.length !== 1 ? 's' : ''} for "{searchQuery}"
+            {filteredCount} result{filteredCount !== 1 ? 's' : ''} for "{searchQuery}"
           </Text>
           <Button variant="subtle" size="xs" color="gray" onClick={() => useSearchStore.getState().clearQuery()}>
             Clear
@@ -664,7 +591,7 @@ export function ExpensesPage() {
 
       {isLoading ? (
         <ExpenseListSkeleton />
-      ) : filtered.length === 0 ? (
+      ) : filteredCount === 0 ? (
         <EmptyState
           icon={IconReceipt}
           iconColor="emerald"
@@ -704,8 +631,8 @@ export function ExpensesPage() {
               <Table.Tbody>
                 {paginatedExpenses.map((expense) => {
                   const overdue = isOverdue(expense.due_date);
-                  const paidCount = expense.payment_records?.filter((payment) => payment.status !== 'unpaid').length ?? 0;
-                  const totalParticipants = expense.participants?.length ?? 0;
+                  const paidCount = expense.paid_count ?? 0;
+                  const totalParticipants = expense.participant_count ?? 0;
                   const settled = isExpenseSettled(expense);
                   const approvalStatus = expense.approval_status ?? 'approved';
                   const workspaceContext = getWorkspaceExpenseContext(expense);
@@ -771,7 +698,7 @@ export function ExpensesPage() {
                       </Table.Td>
                       <Table.Td>
                         <Badge className="commune-pill-badge" size="sm" variant="light" color="gray">
-                          {formatCategoryLabel(expense.category)}
+                          {formatCategoryLabel(expense.category ?? 'uncategorized')}
                         </Badge>
                       </Table.Td>
                       <Table.Td>
@@ -798,7 +725,7 @@ export function ExpensesPage() {
           </div>
           <PaginationBar
             page={page}
-            totalItems={filtered.length}
+            totalItems={filteredCount}
             onPageChange={setPage}
           />
         </>

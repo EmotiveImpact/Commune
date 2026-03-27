@@ -1,4 +1,3 @@
-import { useMemo } from 'react';
 import { ScrollView, Text, TouchableOpacity, View, Linking } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -6,6 +5,7 @@ import { formatCurrency, formatDate } from '@commune/utils';
 import { useThemeStore } from '@/stores/theme';
 import { useAuthStore } from '@/stores/auth';
 import { useMemberProfile } from '@/hooks/use-group-hub';
+import { useGroup } from '@/hooks/use-groups';
 
 const PROVIDER_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
   revolut: 'card-outline',
@@ -30,6 +30,7 @@ export default function MemberProfileScreen() {
   const isDark = useThemeStore((s) => s.mode) === 'dark';
   const currentUser = useAuthStore((s) => s.user);
   const { data: profile, isLoading } = useMemberProfile(userId ?? '', groupId ?? '');
+  const { data: group } = useGroup(groupId ?? '');
 
   const bg = isDark ? '#0A0A0A' : '#FAFAFA';
   const surface = isDark ? '#18181B' : '#FFFFFF';
@@ -48,9 +49,10 @@ export default function MemberProfileScreen() {
     );
   }
 
-  const member = profile.member;
+  const member = profile.membership;
   const user = profile.user;
   const initials = (user?.name ?? 'U').split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
+  const joinedAt = member?.effective_from ?? member?.joined_at ?? null;
 
   return (
     <ScrollView style={{ flex: 1, backgroundColor: bg }}>
@@ -80,10 +82,10 @@ export default function MemberProfileScreen() {
                 {member?.role === 'admin' ? 'Admin' : 'Member'}
               </Text>
             </View>
-            {member?.joined_at && (
+            {joinedAt && (
               <View style={{ backgroundColor: border, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10 }}>
                 <Text style={{ fontSize: 12, color: textSoft }}>
-                  Joined {formatDate(member.joined_at)}
+                  Joined {formatDate(joinedAt)}
                 </Text>
               </View>
             )}
@@ -163,7 +165,7 @@ export default function MemberProfileScreen() {
                   <Text style={{ fontSize: 12, color: textSoft }}>{formatDate(activity.date ?? activity.created_at)}</Text>
                   {activity.amount != null && (
                     <Text style={{ fontSize: 13, fontWeight: '600', color: text }}>
-                      {formatCurrency(activity.amount, profile.group?.currency ?? 'GBP')}
+                      {formatCurrency(activity.amount, group?.currency ?? 'GBP')}
                     </Text>
                   )}
                 </View>

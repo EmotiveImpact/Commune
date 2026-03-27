@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { Select } from '@mantine/core';
-import { useUserGroups } from '../hooks/use-groups';
+import { useUserGroupSummaries } from '../hooks/use-groups';
 import { useGroupStore } from '../stores/group';
 
 /**
@@ -8,7 +8,7 @@ import { useGroupStore } from '../stores/group';
  * Shows a small dropdown with the current workspace name.
  */
 export function HeaderGroupSelector() {
-  const { data: groups, isLoading } = useUserGroups();
+  const { data: groups, isLoading } = useUserGroupSummaries();
   const { activeGroupId, setActiveGroupId } = useGroupStore();
 
   const selectData = (groups ?? []).map((g) => ({

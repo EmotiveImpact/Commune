@@ -17,7 +17,12 @@ export function useTemplates(groupId: string) {
 export function useCreateTemplate(groupId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data: Parameters<typeof createTemplate>[0]) => createTemplate(data),
+    mutationFn: (data: {
+      group_id: string;
+      name: string;
+      split_method: string;
+      participants: { user_id: string; percentage?: number; amount?: number }[];
+    }) => createTemplate(data),
     onSuccess: () => { qc.invalidateQueries({ queryKey: templateKeys.list(groupId) }); },
   });
 }
@@ -25,7 +30,14 @@ export function useCreateTemplate(groupId: string) {
 export function useUpdateTemplate(groupId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: Parameters<typeof updateTemplate>[1] }) =>
+    mutationFn: ({ id, data }: {
+      id: string;
+      data: {
+        name?: string;
+        split_method?: string;
+        participants?: { user_id: string; percentage?: number; amount?: number }[];
+      };
+    }) =>
       updateTemplate(id, data),
     onSuccess: () => { qc.invalidateQueries({ queryKey: templateKeys.list(groupId) }); },
   });

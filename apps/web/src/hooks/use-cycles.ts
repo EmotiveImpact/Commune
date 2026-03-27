@@ -7,11 +7,14 @@ import {
 import { dashboardKeys } from './use-dashboard';
 import { groupHubKeys } from './use-group-hub';
 import { groupKeys } from './use-groups';
+import { workspaceBillingKeys } from './use-workspace-billing';
 
 export const cycleKeys = {
   all: ['group-cycles'] as const,
   summary: (groupId: string, referenceDate: string) =>
     [...cycleKeys.all, 'summary', groupId, referenceDate] as const,
+  group: (groupId: string) =>
+    [...cycleKeys.all, 'summary', groupId] as const,
 };
 
 export function useGroupCycleSummary(groupId: string, referenceDate: string) {
@@ -26,10 +29,14 @@ function invalidateCycleRelatedQueries(
   queryClient: ReturnType<typeof useQueryClient>,
   groupId: string,
 ) {
-  queryClient.invalidateQueries({ queryKey: cycleKeys.all });
+  queryClient.invalidateQueries({ queryKey: cycleKeys.group(groupId) });
   queryClient.invalidateQueries({ queryKey: groupHubKeys.detail(groupId) });
   queryClient.invalidateQueries({ queryKey: groupKeys.detail(groupId) });
-  queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
+  queryClient.invalidateQueries({ queryKey: dashboardKeys.statsGroup(groupId) });
+  queryClient.invalidateQueries({ queryKey: dashboardKeys.breakdownGroup(groupId) });
+  queryClient.invalidateQueries({ queryKey: dashboardKeys.feedGroup(groupId) });
+  queryClient.invalidateQueries({ queryKey: dashboardKeys.workspaceBillingFeed(groupId) });
+  queryClient.invalidateQueries({ queryKey: workspaceBillingKeys.report(groupId) });
 }
 
 export function useCloseGroupCycle(groupId: string, referenceDate: string) {

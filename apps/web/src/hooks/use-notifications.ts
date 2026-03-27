@@ -1,5 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getNotifications, markNotificationRead, markAllNotificationsRead } from '@commune/api';
+import {
+  getNotifications,
+  markNotificationRead,
+  markAllNotificationsRead,
+  type AppNotification,
+} from '@commune/api';
 import { useGroupStore } from '../stores/group';
 import { useAuthStore } from '../stores/auth';
 
@@ -7,6 +12,8 @@ export type { AppNotification } from '@commune/api';
 
 export const notificationKeys = {
   all: ['notifications'] as const,
+  group: (groupId: string) =>
+    [...notificationKeys.all, 'list', groupId] as const,
   list: (groupId: string, userId: string) =>
     [...notificationKeys.all, 'list', groupId, userId] as const,
 };
@@ -25,26 +32,54 @@ export function useNotifications() {
 
 export function useMarkNotificationRead() {
   const queryClient = useQueryClient();
+  const { activeGroupId } = useGroupStore();
   const { user } = useAuthStore();
+  const queryKey = notificationKeys.list(activeGroupId ?? '', user?.id ?? '');
 
   return useMutation({
     mutationFn: (notificationId: string) =>
       markNotificationRead(user!.id, notificationId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: notificationKeys.all });
+    onMutate: async (notificationId) => {
+      await queryClient.cancelQueries({ queryKey });
+      const previous = queryClient.getQueryData<AppNotification[]>(queryKey) ?? [];
+
+      queryClient.setQueryData<AppNotification[]>(queryKey, (current = []) =>
+        current.map((notification) =>
+          notification.id === notificationId
+            ? { ...notification, read: true }
+            : notification,
+        ),
+      );
+
+      return { previous };
+    },
+    onError: (_error, _notificationId, context) => {
+      queryClient.setQueryData(queryKey, context?.previous ?? []);
     },
   });
 }
 
 export function useMarkAllNotificationsRead() {
   const queryClient = useQueryClient();
+  const { activeGroupId } = useGroupStore();
   const { user } = useAuthStore();
+  const queryKey = notificationKeys.list(activeGroupId ?? '', user?.id ?? '');
 
   return useMutation({
     mutationFn: (notificationIds: string[]) =>
       markAllNotificationsRead(user!.id, notificationIds),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: notificationKeys.all });
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey });
+      const previous = queryClient.getQueryData<AppNotification[]>(queryKey) ?? [];
+
+      queryClient.setQueryData<AppNotification[]>(queryKey, (current = []) =>
+        current.map((notification) => ({ ...notification, read: true })),
+      );
+
+      return { previous };
+    },
+    onError: (_error, _notificationIds, context) => {
+      queryClient.setQueryData(queryKey, context?.previous ?? []);
     },
   });
 }

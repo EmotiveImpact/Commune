@@ -49,6 +49,7 @@ vi.mock('../../hooks/use-groups', () => ({
   useUpdateMemberResponsibility: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useUpdateMemberRole: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useUserGroups: () => ({ data: [] }),
+  useUserGroupSummaries: () => ({ data: [] }),
 }));
 
 vi.mock('../../hooks/use-couple-linking', () => ({
@@ -59,6 +60,7 @@ vi.mock('../../hooks/use-couple-linking', () => ({
 
 vi.mock('../../hooks/use-member-lifecycle', () => ({
   useGroupLifecycleSummary: () => ({ data: null, isLoading: false }),
+  useMemberHandoverSummary: () => ({ data: null, isLoading: false }),
   useRestoreMemberAccess: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useScheduleMemberDeparture: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }));

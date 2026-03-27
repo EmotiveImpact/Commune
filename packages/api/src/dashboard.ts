@@ -1,8 +1,12 @@
 import type { DashboardStats, ExpenseWithParticipants } from '@commune/types';
 import { supabase } from './client';
 import {
+  buildWorkspaceBillingExportRows,
   buildWorkspaceBillingSnapshot,
+  buildWorkspaceBillingTrend,
+  type WorkspaceBillingData,
   type WorkspaceBillingExpenseRecord,
+  type WorkspaceBillingExportRow,
   type WorkspaceBillingSnapshot,
 } from './workspace-billing';
 
@@ -11,6 +15,23 @@ export interface DashboardWorkspaceBillingData {
 }
 
 type DashboardExpenseRow = ExpenseWithParticipants & WorkspaceBillingExpenseRecord;
+
+export interface DashboardExpenseFeedItem {
+  id: string;
+  title: string;
+  category: string | null;
+  amount: number;
+  due_date: string;
+  payment_records: Array<{ status: string }>;
+}
+
+function getDashboardExpenseFeedRange(month: string): { startDate: string; endDate: string } {
+  const [year, mon] = month.split('-').map(Number);
+  return {
+    startDate: new Date(Date.UTC(year!, mon! - 6, 1)).toISOString().slice(0, 10),
+    endDate: new Date(Date.UTC(year!, mon!, 1)).toISOString().slice(0, 10),
+  };
+}
 
 export async function getDashboardStats(
   groupId: string,
@@ -91,4 +112,84 @@ export async function getDashboardStats(
     upcoming_items: upcoming,
     workspace_billing: buildWorkspaceBillingSnapshot(typed),
   };
+}
+
+export async function getDashboardExpenseFeed(
+  groupId: string,
+  month: string,
+): Promise<DashboardExpenseFeedItem[]> {
+  const { startDate, endDate } = getDashboardExpenseFeedRange(month);
+
+  const { data, error } = await supabase
+    .from('expenses')
+    .select(
+      `
+      id,
+      title,
+      category,
+      amount,
+      due_date,
+      payment_records(status)
+    `,
+    )
+    .eq('group_id', groupId)
+    .eq('is_active', true)
+    .gte('due_date', startDate)
+    .lt('due_date', endDate)
+    .order('due_date', { ascending: false });
+
+  if (error) throw error;
+  return (data ?? []) as DashboardExpenseFeedItem[];
+}
+
+export async function getWorkspaceBillingExpenseFeed(
+  groupId: string,
+): Promise<WorkspaceBillingExpenseRecord[]> {
+  const { data, error } = await supabase
+    .from('expenses')
+    .select(
+      `
+      id,
+      title,
+      amount,
+      currency,
+      due_date,
+      category,
+      recurrence_type,
+      vendor_name,
+      invoice_reference,
+      invoice_date,
+      payment_due_date
+    `,
+    )
+    .eq('group_id', groupId)
+    .eq('is_active', true)
+    .order('due_date', { ascending: false });
+
+  if (error) throw error;
+  return (data ?? []) as WorkspaceBillingExpenseRecord[];
+}
+
+export async function getWorkspaceBillingSnapshot(
+  groupId: string,
+): Promise<WorkspaceBillingSnapshot> {
+  const rows = await getWorkspaceBillingExpenseFeed(groupId);
+  return buildWorkspaceBillingSnapshot(rows);
+}
+
+export async function getWorkspaceBillingData(
+  groupId: string,
+): Promise<WorkspaceBillingData> {
+  const rows = await getWorkspaceBillingExpenseFeed(groupId);
+  return {
+    snapshot: buildWorkspaceBillingSnapshot(rows),
+    trend: buildWorkspaceBillingTrend(rows),
+  };
+}
+
+export async function getWorkspaceBillingExportRows(
+  groupId: string,
+): Promise<WorkspaceBillingExportRow[]> {
+  const rows = await getWorkspaceBillingExpenseFeed(groupId);
+  return buildWorkspaceBillingExportRows(rows);
 }

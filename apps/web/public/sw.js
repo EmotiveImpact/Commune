@@ -73,6 +73,23 @@ self.addEventListener('fetch', (event) => {
 // Default icon shown with every push notification
 const DEFAULT_ICON = '/favicon.svg';
 
+function toAppUrl(rawUrl) {
+  try {
+    const parsedUrl = new URL(
+      typeof rawUrl === 'string' && rawUrl.trim() ? rawUrl : '/',
+      self.location.origin,
+    );
+
+    if (parsedUrl.origin !== self.location.origin) {
+      return '/';
+    }
+
+    return `${parsedUrl.pathname}${parsedUrl.search}${parsedUrl.hash}`;
+  } catch {
+    return '/';
+  }
+}
+
 /**
  * Handle incoming push messages.
  * Expected push payload (JSON):
@@ -95,7 +112,7 @@ self.addEventListener('push', (event) => {
     icon: data.icon || DEFAULT_ICON,
     badge: DEFAULT_ICON,
     data: {
-      url: data.url || '/',
+      url: toAppUrl(data.url),
     },
   };
 
@@ -108,7 +125,7 @@ self.addEventListener('push', (event) => {
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
 
-  const targetUrl = event.notification.data?.url || '/';
+  const targetUrl = toAppUrl(event.notification.data?.url);
 
   event.waitUntil(
     self.clients
@@ -116,10 +133,12 @@ self.addEventListener('notificationclick', (event) => {
       .then((windowClients) => {
         // If an existing window/tab is open, focus it and navigate
         for (const client of windowClients) {
-          if (client.url.includes(self.location.origin)) {
-            client.focus();
-            client.navigate(targetUrl);
-            return;
+          try {
+            if (new URL(client.url).origin === self.location.origin) {
+              return client.focus().then(() => client.navigate(targetUrl));
+            }
+          } catch {
+            continue;
           }
         }
         // Otherwise, open a new window

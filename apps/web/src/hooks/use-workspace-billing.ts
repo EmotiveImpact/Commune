@@ -1,17 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
-import { getAnalyticsData } from '@commune/api';
-import type {
-  WorkspaceBillingSnapshot,
-  WorkspaceBillingTrendPoint,
-  WorkspaceBillingExportRow,
+import {
+  getWorkspaceBillingData,
+  type WorkspaceBillingData,
 } from '@commune/api';
-import { analyticsKeys } from './use-analytics';
-
-export interface WorkspaceBillingData {
-  snapshot: WorkspaceBillingSnapshot;
-  trend: WorkspaceBillingTrendPoint[];
-  export_rows: WorkspaceBillingExportRow[];
-}
 
 export const workspaceBillingKeys = {
   all: ['workspace-billing'] as const,
@@ -19,10 +10,10 @@ export const workspaceBillingKeys = {
 };
 
 export function useWorkspaceBilling(groupId: string) {
-  return useQuery({
-    queryKey: analyticsKeys.data(groupId),
-    queryFn: () => getAnalyticsData(groupId),
+  return useQuery<WorkspaceBillingData>({
+    queryKey: workspaceBillingKeys.report(groupId),
+    queryFn: () => getWorkspaceBillingData(groupId),
     enabled: !!groupId,
-    select: (data): WorkspaceBillingData => data.workspace_billing,
+    staleTime: 60_000,
   });
 }

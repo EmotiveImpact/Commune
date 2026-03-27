@@ -1,12 +1,12 @@
-import JSZip from 'jszip';
 import type {
-  AnalyticsWorkspaceBillingData,
+  WorkspaceBillingPackData,
   WorkspaceBillingExportRow,
   WorkspaceBillingSnapshot,
   WorkspaceBillingTrendPoint,
   WorkspaceBillingVendorSummary,
 } from '@commune/api';
 import { isOverdue } from '@commune/utils';
+import { getLocalDateKey } from './date-key';
 
 function formatCategoryLabel(category: string) {
   return category
@@ -26,13 +26,6 @@ function firstTextValue(...values: unknown[]): string {
 
 function csvCell(value: string): string {
   return `"${value.replace(/"/g, '""')}"`;
-}
-
-export function getLocalDateKey(date = new Date()): string {
-  const year = date.getFullYear();
-  const month = `${date.getMonth() + 1}`.padStart(2, '0');
-  const day = `${date.getDate()}`.padStart(2, '0');
-  return `${year}-${month}-${day}`;
 }
 
 function formatStatusLabel(status?: string | null): string {
@@ -74,8 +67,14 @@ function formatRecurrenceLabel(value?: string | null): string {
 }
 
 function getPaymentStatus(expense: ExportableExpense): string {
-  const paidCount = expense.payment_records?.filter((p) => p.status !== 'unpaid').length ?? 0;
-  const totalParticipants = expense.participants?.length ?? 0;
+  const paidCount =
+    typeof expense.paid_count === 'number'
+      ? expense.paid_count
+      : expense.payment_records?.filter((p) => p.status !== 'unpaid').length ?? 0;
+  const totalParticipants =
+    typeof expense.participant_count === 'number'
+      ? expense.participant_count
+      : expense.participants?.length ?? 0;
   const isSettled = totalParticipants > 0 && paidCount === totalParticipants;
 
   if (expense.approval_status && expense.approval_status !== 'approved') {
@@ -87,7 +86,7 @@ function getPaymentStatus(expense: ExportableExpense): string {
 
 export interface ExportableExpense {
   title: string;
-  category: string;
+  category: string | null;
   due_date: string;
   amount: number;
   approval_status?: string | null;
@@ -106,8 +105,10 @@ export interface ExportableExpense {
   document_date?: string | null;
   payment_due_date?: string | null;
   invoice_due_date?: string | null;
-  participants?: { id: string }[];
+  participants?: Array<{ id?: string; user_id?: string }>;
   payment_records?: { status: string }[];
+  participant_count?: number;
+  paid_count?: number;
 }
 
 export function generateExpenseCSV(expenses: ExportableExpense[]): string {
@@ -136,8 +137,14 @@ export function generateExpenseCSV(expenses: ExportableExpense[]): string {
     );
     const invoiceDate = firstTextValue(expense.invoice_date, expense.bill_date, expense.document_date);
     const dueDate = firstTextValue(expense.payment_due_date, expense.invoice_due_date, expense.due_date);
-    const paidCount = expense.payment_records?.filter((p) => p.status !== 'unpaid').length ?? 0;
-    const totalParticipants = expense.participants?.length ?? 0;
+    const paidCount =
+      typeof expense.paid_count === 'number'
+        ? expense.paid_count
+        : expense.payment_records?.filter((p) => p.status !== 'unpaid').length ?? 0;
+    const totalParticipants =
+      typeof expense.participant_count === 'number'
+        ? expense.participant_count
+        : expense.participants?.length ?? 0;
     const approvalStatus = formatStatusLabel(expense.approval_status);
     const paymentStatus = getPaymentStatus(expense);
     return [
@@ -146,7 +153,7 @@ export function generateExpenseCSV(expenses: ExportableExpense[]): string {
       csvCell(invoiceReference),
       csvCell(invoiceDate),
       csvCell(dueDate),
-      csvCell(formatCategoryLabel(expense.category)),
+      csvCell(formatCategoryLabel(expense.category ?? 'uncategorized')),
       String(totalParticipants),
       String(paidCount),
       csvCell(approvalStatus),
@@ -203,8 +210,6 @@ export interface WorkspaceBillingPackFile {
   filename: string;
   contents: string;
 }
-
-export type WorkspaceBillingPackData = AnalyticsWorkspaceBillingData['workspace_billing'];
 
 export function generateWorkspaceBillingLedgerCSV(rows: WorkspaceBillingExportRow[]): string {
   const headers = [
@@ -374,6 +379,7 @@ export async function downloadWorkspaceBillingPack(
   filenameBase = 'workspace-billing-pack',
 ) {
   const dateKey = getLocalDateKey();
+  const { default: JSZip } = await import('jszip');
   const zip = new JSZip();
 
   for (const file of buildWorkspaceBillingPackFiles(data, currency, dateKey)) {

@@ -19,24 +19,14 @@ import {
   IconChartBar,
   IconClockCheck,
   IconDownload,
-  IconSparkles,
   IconReceipt,
+  IconSparkles,
 } from '@tabler/icons-react';
+import { Suspense, lazy, useEffect, useState } from 'react';
 import {
-  LineChart,
-  Line,
-  PieChart,
-  Pie,
-  Cell,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  CartesianGrid,
-} from 'recharts';
-import { useEffect, useState } from 'react';
+  getWorkspaceBillingExportRows,
+  type WorkspaceBillingPackData,
+} from '@commune/api';
 import { formatCurrency, formatDate } from '@commune/utils';
 import { setPageTitle } from '../../utils/seo';
 import { useGroupStore } from '../../stores/group';
@@ -46,12 +36,30 @@ import { useSubscription } from '../../hooks/use-subscriptions';
 import { usePlanLimits } from '../../hooks/use-plan-limits';
 import { useAnalytics } from '../../hooks/use-analytics';
 import { getWorkspaceBillingSummary } from '../../hooks/use-dashboard';
-import { downloadWorkspaceBillingPack } from '../../utils/export-csv';
+import { useWorkspaceBilling } from '../../hooks/use-workspace-billing';
 import { PageHeader } from '../../components/page-header';
 
 export const Route = createLazyFileRoute('/_app/analytics')({
   component: AnalyticsPage,
 });
+
+const AnalyticsSpendingTrendChart = lazy(() =>
+  import('../../components/analytics-charts').then((module) => ({
+    default: module.AnalyticsSpendingTrendChart,
+  })),
+);
+
+const AnalyticsCategoryBreakdownChart = lazy(() =>
+  import('../../components/analytics-charts').then((module) => ({
+    default: module.AnalyticsCategoryBreakdownChart,
+  })),
+);
+
+const AnalyticsTopSpendersChart = lazy(() =>
+  import('../../components/analytics-charts').then((module) => ({
+    default: module.AnalyticsTopSpendersChart,
+  })),
+);
 
 const categoryPalette = [
   '#96E85F',
@@ -88,6 +96,10 @@ function AnalyticsSkeleton() {
       </SimpleGrid>
     </Stack>
   );
+}
+
+function ChartFallback({ height = 280 }: { height?: number }) {
+  return <Skeleton height={height} radius={14} />;
 }
 
 function UpgradeCTA() {
@@ -128,10 +140,12 @@ export function AnalyticsPage() {
 
   const { activeGroupId } = useGroupStore();
   const { user } = useAuthStore();
-  const { data: subscription, isLoading: subLoading, isError: subError, fetchStatus: subFetchStatus } = useSubscription(user?.id ?? '');
+  const { isLoading: subLoading, isError: subError, fetchStatus: subFetchStatus } = useSubscription(user?.id ?? '');
   const { canAccessAnalytics, isLoading: planLoading } = usePlanLimits(user?.id ?? '');
   const { data: group } = useGroup(activeGroupId ?? '');
   const { data: analytics, isLoading: analyticsLoading, isError: analyticsError, fetchStatus: analyticsFetchStatus } = useAnalytics(activeGroupId ?? '');
+  const workspaceBillingGroupId = group?.type === 'workspace' ? activeGroupId ?? '' : '';
+  const { data: workspaceBilling } = useWorkspaceBilling(workspaceBillingGroupId);
   const colorScheme = useComputedColorScheme('light');
   const [exportingWorkspacePack, setExportingWorkspacePack] = useState(false);
 
@@ -231,9 +245,7 @@ export function AnalyticsPage() {
     label: formatCategoryLabel(item.category),
     color: categoryPalette[i % categoryPalette.length]!,
   }));
-  const workspaceBillingSummary = getWorkspaceBillingSummary(
-    analytics.workspace_billing.export_rows,
-  );
+  const workspaceBillingSummary = getWorkspaceBillingSummary(workspaceBilling?.snapshot ?? null);
   const showWorkspaceBillingWatch = group?.type === 'workspace' && workspaceBillingSummary.expenseCount > 0;
 
   const tickFill = colorScheme === 'dark' ? '#909296' : '#667085';
@@ -242,12 +254,18 @@ export function AnalyticsPage() {
   const hasData = spendingTrend.some((item) => item.amount > 0);
 
   async function handleExportWorkspacePack() {
-    if (!showWorkspaceBillingWatch || !analytics) return;
+    if (!showWorkspaceBillingWatch || !workspaceBilling || !activeGroupId) return;
 
     setExportingWorkspacePack(true);
     try {
+      const exportRows = await getWorkspaceBillingExportRows(activeGroupId);
+      const { downloadWorkspaceBillingPack } = await import('../../utils/export-csv');
+      const pack: WorkspaceBillingPackData = {
+        ...workspaceBilling,
+        export_rows: exportRows,
+      };
       await downloadWorkspaceBillingPack(
-        analytics.workspace_billing,
+        pack,
         group?.currency ?? 'GBP',
       );
       notifications.show({
@@ -522,49 +540,14 @@ export function AnalyticsPage() {
           </Badge>
         </Group>
 
-        <ResponsiveContainer width="100%" height={280}>
-          <LineChart data={trendData} margin={{ top: 8, right: 8, bottom: 0, left: -12 }}>
-            <defs>
-              <linearGradient id="trendFill" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#2d6a4f" stopOpacity={0.3} />
-                <stop offset="100%" stopColor="#2d6a4f" stopOpacity={0.02} />
-              </linearGradient>
-            </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} vertical={false} />
-            <XAxis
-              dataKey="label"
-              axisLine={false}
-              tickLine={false}
-              tick={{ fill: tickFill, fontSize: 13, fontWeight: 500 }}
-            />
-            <YAxis
-              axisLine={false}
-              tickLine={false}
-              tick={{ fill: tickFill, fontSize: 12 }}
-              tickFormatter={(v: number) => (v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v))}
-            />
-            <Tooltip
-              contentStyle={{
-                background: '#1f2330',
-                border: 'none',
-                borderRadius: 10,
-                color: '#f8f5f0',
-                fontSize: 13,
-                boxShadow: '0 8px 24px rgba(0,0,0,.18)',
-              }}
-              formatter={(value) => [formatCurrency(Number(value), group?.currency), 'Spend']}
-            />
-            <Line
-              type="monotone"
-              dataKey="amount"
-              stroke="#2d6a4f"
-              strokeWidth={2.5}
-              dot={{ fill: '#2d6a4f', r: 4, strokeWidth: 2, stroke: '#fff' }}
-              activeDot={{ r: 6, strokeWidth: 2 }}
-              fill="url(#trendFill)"
-            />
-          </LineChart>
-        </ResponsiveContainer>
+        <Suspense fallback={<ChartFallback />}>
+          <AnalyticsSpendingTrendChart
+            currency={group?.currency}
+            data={trendData}
+            tickFill={tickFill}
+            gridStroke={gridStroke}
+          />
+        </Suspense>
       </Paper>
 
       {/* Row 3: Category pie + Top spenders bar */}
@@ -581,55 +564,12 @@ export function AnalyticsPage() {
           </Group>
 
           {pieData.length > 0 ? (
-            <Stack gap="xl" align="center">
-              <ResponsiveContainer width="100%" height={260}>
-                <PieChart>
-                  <Pie
-                    data={pieData}
-                    dataKey="amount"
-                    nameKey="label"
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={72}
-                    outerRadius={110}
-                    strokeWidth={2}
-                    stroke="rgba(255,255,255,0.8)"
-                    paddingAngle={3}
-                  >
-                    {pieData.map((entry) => (
-                      <Cell key={entry.category} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    contentStyle={{
-                      background: '#1f2330',
-                      border: 'none',
-                      borderRadius: 10,
-                      color: '#f8f5f0',
-                      fontSize: 13,
-                      boxShadow: '0 8px 24px rgba(0,0,0,.18)',
-                    }}
-                    formatter={(value) => [formatCurrency(Number(value), group?.currency), 'Spend']}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-
-              <Stack gap="sm" w="100%">
-                {pieData.map((item) => (
-                  <Group key={item.category} justify="space-between" wrap="nowrap">
-                    <Group gap="sm" wrap="nowrap">
-                      <div className="commune-legend-dot" style={{ background: item.color }} />
-                      <div>
-                        <Text fw={600}>{item.label}</Text>
-                        <Text size="xs" c="dimmed">
-                          {formatCurrency(item.amount, group?.currency)}
-                        </Text>
-                      </div>
-                    </Group>
-                  </Group>
-                ))}
-              </Stack>
-            </Stack>
+            <Suspense fallback={<ChartFallback height={320} />}>
+              <AnalyticsCategoryBreakdownChart
+                currency={group?.currency}
+                data={pieData}
+              />
+            </Suspense>
           ) : (
             <Paper className="commune-stat-card" p="lg" radius="lg">
               <Text fw={600}>No category data yet.</Text>
@@ -652,48 +592,14 @@ export function AnalyticsPage() {
           </Group>
 
           {topSpenders.length > 0 ? (
-            <ResponsiveContainer width="100%" height={280}>
-              <BarChart
+            <Suspense fallback={<ChartFallback />}>
+              <AnalyticsTopSpendersChart
+                currency={group?.currency}
                 data={topSpenders}
-                layout="vertical"
-                margin={{ top: 8, right: 8, bottom: 0, left: 4 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} horizontal={false} />
-                <XAxis
-                  type="number"
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fill: tickFill, fontSize: 12 }}
-                  tickFormatter={(v: number) => (v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v))}
-                />
-                <YAxis
-                  type="category"
-                  dataKey="name"
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fill: tickFill, fontSize: 13, fontWeight: 500 }}
-                  width={100}
-                />
-                <Tooltip
-                  contentStyle={{
-                    background: '#1f2330',
-                    border: 'none',
-                    borderRadius: 10,
-                    color: '#f8f5f0',
-                    fontSize: 13,
-                    boxShadow: '0 8px 24px rgba(0,0,0,.18)',
-                  }}
-                  formatter={(value) => [formatCurrency(Number(value), group?.currency), 'Total']}
-                />
-                <Bar dataKey="amount" radius={[0, 8, 8, 0]} maxBarSize={32} fill="url(#spenderGradient)" />
-                <defs>
-                  <linearGradient id="spenderGradient" x1="0" y1="0" x2="1" y2="0">
-                    <stop offset="0%" stopColor="#1b4332" />
-                    <stop offset="100%" stopColor="#2d6a4f" />
-                  </linearGradient>
-                </defs>
-              </BarChart>
-            </ResponsiveContainer>
+                tickFill={tickFill}
+                gridStroke={gridStroke}
+              />
+            </Suspense>
           ) : (
             <Paper className="commune-stat-card" p="lg" radius="lg">
               <Text fw={600}>No spender data yet.</Text>

@@ -5,6 +5,7 @@ import {
   Group,
   Paper,
   Progress,
+  Skeleton,
   SimpleGrid,
   Stack,
   Table,
@@ -31,26 +32,36 @@ import {
   IconUsers,
   IconWallet,
 } from '@tabler/icons-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import { formatCurrency, formatDate, getMonthKey, isOverdue } from '@commune/utils';
 import type { GroupType, ExpenseCategory } from '@commune/types';
 import { getOnboardingTips } from '@commune/core';
 import { setPageTitle } from '../../utils/seo';
 import { useGroupStore } from '../../stores/group';
 import { useAuthStore } from '../../stores/auth';
-import { useGroup, usePendingInvites, useUserGroups } from '../../hooks/use-groups';
-import { useDashboardStats } from '../../hooks/use-dashboard';
-import { useGroupExpenses } from '../../hooks/use-expenses';
+import { useGroup, usePendingInvites, useUserGroupSummaries } from '../../hooks/use-groups';
+import { useDashboardExpenseFeed, useDashboardStats } from '../../hooks/use-dashboard';
 import { DashboardSkeleton } from '../../components/page-skeleton';
 import { useGenerateRecurring } from '../../hooks/use-recurring';
 import { useGroupBudget } from '../../hooks/use-budgets';
 import { useTemplates } from '../../hooks/use-templates';
 import { SetBudgetModal } from '../../components/set-budget-modal';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell } from 'recharts';
 
 export const Route = createLazyFileRoute('/_app/')({
   component: DashboardPage,
 });
+
+const DashboardTransactionOverviewChart = lazy(() =>
+  import('../../components/dashboard-charts').then((module) => ({
+    default: module.DashboardTransactionOverviewChart,
+  })),
+);
+
+const DashboardCategoryBreakdownChart = lazy(() =>
+  import('../../components/dashboard-charts').then((module) => ({
+    default: module.DashboardCategoryBreakdownChart,
+  })),
+);
 
 const categoryPalette = [
   '#96E85F',
@@ -194,6 +205,31 @@ function getBudgetColor(pct: number): string {
   return 'green';
 }
 
+function DashboardOverviewChartFallback() {
+  return (
+    <Stack gap="md">
+      <Skeleton height={240} radius="md" />
+      <Group justify="space-between">
+        <Skeleton height={20} width={150} radius="sm" />
+        <Skeleton height={20} width={140} radius="sm" />
+      </Group>
+    </Stack>
+  );
+}
+
+function DashboardCategoryChartFallback() {
+  return (
+    <Stack gap="xl">
+      <Skeleton height={260} radius="md" />
+      <Stack gap="sm">
+        <Skeleton height={20} radius="sm" />
+        <Skeleton height={20} radius="sm" />
+        <Skeleton height={20} radius="sm" />
+      </Stack>
+    </Stack>
+  );
+}
+
 // ─── Dashboard Page ──────────────────────────────────────────────────────────
 
 function DashboardPage() {
@@ -204,7 +240,7 @@ function DashboardPage() {
   const { activeGroupId } = useGroupStore();
   const { user } = useAuthStore();
   const navigate = useNavigate();
-  const { data: groups, isLoading: groupsLoading } = useUserGroups();
+  const { data: groups, isLoading: groupsLoading } = useUserGroupSummaries();
   const { data: pendingInvites, isLoading: invitesLoading } = usePendingInvites();
   const { data: group, isLoading: groupLoading } = useGroup(activeGroupId ?? '');
   const currentMonth = getMonthKey();
@@ -213,13 +249,17 @@ function DashboardPage() {
     user?.id ?? '',
     currentMonth,
   );
-  const { data: allExpenses, isLoading: expensesLoading } = useGroupExpenses(activeGroupId ?? '');
+  const { data: allExpenses = [], isLoading: expensesLoading } = useDashboardExpenseFeed(
+    activeGroupId ?? '',
+    currentMonth,
+  );
   const generateRecurring = useGenerateRecurring(activeGroupId ?? '');
   const recurringGeneratedRef = useRef(false);
 
   // F35: Budget data
   const { data: currentBudget } = useGroupBudget(activeGroupId ?? '', currentMonth);
   const [budgetModalOpened, setBudgetModalOpened] = useState(false);
+  const [showHeavyVisuals, setShowHeavyVisuals] = useState(false);
 
   // F36: Templates for feature discovery
   const { data: templates } = useTemplates(activeGroupId ?? '');
@@ -251,7 +291,7 @@ function DashboardPage() {
   });
 
   const monthExpenses = useMemo(
-    () => (allExpenses ?? []).filter((expense) => expense.due_date.startsWith(currentMonth)),
+    () => allExpenses.filter((expense) => expense.due_date.startsWith(currentMonth)),
     [allExpenses, currentMonth],
   );
 
@@ -259,7 +299,7 @@ function DashboardPage() {
     const keys = getRecentMonthKeys(6);
     const totals = new Map(keys.map((key) => [key, 0]));
 
-    for (const expense of allExpenses ?? []) {
+    for (const expense of allExpenses) {
       const key = expense.due_date.slice(0, 7);
       if (totals.has(key)) {
         totals.set(key, (totals.get(key) ?? 0) + expense.amount);
@@ -281,11 +321,12 @@ function DashboardPage() {
   }, [allExpenses, currentMonth]);
 
   const categoryBreakdown = useMemo(() => {
-    const source = monthExpenses.length > 0 ? monthExpenses : allExpenses ?? [];
+    const source = monthExpenses.length > 0 ? monthExpenses : allExpenses;
     const grouped = new Map<string, number>();
 
     for (const expense of source) {
-      grouped.set(expense.category, (grouped.get(expense.category) ?? 0) + expense.amount);
+      const category = expense.category ?? 'uncategorized';
+      grouped.set(category, (grouped.get(category) ?? 0) + expense.amount);
     }
 
     const total = Array.from(grouped.values()).reduce((sum, value) => sum + value, 0);
@@ -303,7 +344,7 @@ function DashboardPage() {
 
   const recentExpenses = useMemo(
     () =>
-      [...(allExpenses ?? [])]
+      [...allExpenses]
         .sort((left, right) => new Date(right.due_date).getTime() - new Date(left.due_date).getTime())
         .slice(0, 5),
     [allExpenses],
@@ -327,7 +368,38 @@ function DashboardPage() {
         };
       });
   }, [monthExpenses, stats?.upcoming_items, user?.id]);
-  const hasExpenses = (allExpenses?.length ?? 0) > 0;
+  const hasExpenses = allExpenses.length > 0;
+
+  useEffect(() => {
+    setShowHeavyVisuals(false);
+
+    if (!hasExpenses || typeof window === 'undefined') {
+      return;
+    }
+
+    const idleWindow = window as Window & {
+      requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number;
+      cancelIdleCallback?: (handle: number) => void;
+    };
+
+    if (idleWindow.requestIdleCallback) {
+      const idleHandle = idleWindow.requestIdleCallback(() => {
+        setShowHeavyVisuals(true);
+      }, { timeout: 250 });
+
+      return () => {
+        idleWindow.cancelIdleCallback?.(idleHandle);
+      };
+    }
+
+    const timeoutHandle = window.setTimeout(() => {
+      setShowHeavyVisuals(true);
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timeoutHandle);
+    };
+  }, [activeGroupId, hasExpenses]);
 
   // F35: Budget calculations
   const budgetPct = currentBudget && currentBudget.budget_amount > 0
@@ -884,43 +956,19 @@ function DashboardPage() {
               </Group>
 
               {monthlyTrend.items.some((item) => item.total > 0) ? (
-                <>
-                  <ResponsiveContainer width="100%" height={240}>
-                    <BarChart data={monthlyTrend.items} margin={{ top: 8, right: 4, bottom: 0, left: -12 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} vertical={false} />
-                      <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: tickFill, fontSize: 13, fontWeight: 500 }} />
-                      <YAxis axisLine={false} tickLine={false} tick={{ fill: tickFill, fontSize: 12 }} tickFormatter={(v: number) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v)} />
-                      <Tooltip
-                        contentStyle={{ background: '#1f2330', border: 'none', borderRadius: 10, color: '#f8f5f0', fontSize: 13, boxShadow: '0 8px 24px rgba(0,0,0,.18)' }}
-                        formatter={(value) => [formatCurrency(Number(value), group?.currency), 'Spend']}
-                        cursor={{ fill: 'rgba(32,92,84,0.06)' }}
-                      />
-                      <Bar dataKey="total" radius={[8, 8, 0, 0]} maxBarSize={48} fill="url(#barGradient)" />
-                      <defs>
-                        <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#2d6a4f" />
-                          <stop offset="100%" stopColor="#1b4332" />
-                        </linearGradient>
-                      </defs>
-                    </BarChart>
-                  </ResponsiveContainer>
-
-                  <Group justify="space-between" mt="md">
-                    <div>
-                      <Text size="sm" c="dimmed">Current month total</Text>
-                      <Text fw={800} size="1.85rem">{formatCurrency(monthlyTrend.currentTotal, group?.currency)}</Text>
-                    </div>
-                    <div>
-                      <Text size="sm" c="dimmed" ta="right">Average per month</Text>
-                      <Text fw={700} ta="right">
-                        {formatCurrency(
-                          monthlyTrend.items.reduce((sum, item) => sum + item.total, 0) / monthlyTrend.items.length,
-                          group?.currency,
-                        )}
-                      </Text>
-                    </div>
-                  </Group>
-                </>
+                showHeavyVisuals ? (
+                  <Suspense fallback={<DashboardOverviewChartFallback />}>
+                    <DashboardTransactionOverviewChart
+                      currency={group?.currency}
+                      currentTotal={monthlyTrend.currentTotal}
+                      items={monthlyTrend.items}
+                      tickFill={tickFill}
+                      gridStroke={gridStroke}
+                    />
+                  </Suspense>
+                ) : (
+                  <DashboardOverviewChartFallback />
+                )
               ) : (
                 <Paper className="commune-stat-card" p="lg" radius="lg">
                   <Text fw={600}>No trend data yet.</Text>
@@ -973,7 +1021,7 @@ function DashboardPage() {
                             </Table.Td>
                             <Table.Td>
                               <Badge className="commune-pill-badge" variant="light" color="gray">
-                                {formatCategoryLabel(expense.category)}
+                                {formatCategoryLabel(expense.category ?? 'uncategorized')}
                               </Badge>
                             </Table.Td>
                             <Table.Td>
@@ -1025,49 +1073,16 @@ function DashboardPage() {
               </Group>
 
               {categoryBreakdown.length > 0 ? (
-                <Stack gap="xl" align="center">
-                  <ResponsiveContainer width="100%" height={260}>
-                    <PieChart>
-                      <Pie
-                        data={categoryBreakdown}
-                        dataKey="amount"
-                        nameKey="category"
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={72}
-                        outerRadius={110}
-                        strokeWidth={2}
-                        stroke="rgba(255,255,255,0.8)"
-                        paddingAngle={3}
-                      >
-                        {categoryBreakdown.map((entry) => (
-                          <Cell key={entry.category} fill={entry.color} />
-                        ))}
-                      </Pie>
-                      <Tooltip
-                        contentStyle={{ background: '#1f2330', border: 'none', borderRadius: 10, color: '#f8f5f0', fontSize: 13, boxShadow: '0 8px 24px rgba(0,0,0,.18)' }}
-                        formatter={(value) => [formatCurrency(Number(value), group?.currency), 'Spend']}
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
-
-                  <Stack gap="sm" w="100%">
-                    {categoryBreakdown.map((item) => (
-                      <Group key={item.category} justify="space-between" wrap="nowrap">
-                        <Group gap="sm" wrap="nowrap">
-                          <div className="commune-legend-dot" style={{ background: item.color }} />
-                          <div>
-                            <Text fw={600}>{formatCategoryLabel(item.category)}</Text>
-                            <Text size="xs" c="dimmed">
-                              {formatCurrency(item.amount, group?.currency)}
-                            </Text>
-                          </div>
-                        </Group>
-                        <Text fw={700}>{item.percent}%</Text>
-                      </Group>
-                    ))}
-                  </Stack>
-                </Stack>
+                showHeavyVisuals ? (
+                  <Suspense fallback={<DashboardCategoryChartFallback />}>
+                    <DashboardCategoryBreakdownChart
+                      currency={group?.currency}
+                      items={categoryBreakdown}
+                    />
+                  </Suspense>
+                ) : (
+                  <DashboardCategoryChartFallback />
+                )
               ) : (
                 <Paper className="commune-stat-card" p="lg" radius="lg">
                   <Text fw={600}>No category split yet.</Text>

@@ -1,4 +1,5 @@
 import { MantineProvider } from '@mantine/core';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen } from '@testing-library/react';
 import { vi } from 'vitest';
 import { AddExpensePage } from './new.lazy';
@@ -49,6 +50,22 @@ vi.mock('../../../hooks/use-templates', () => ({
   useTemplates: () => ({ data: [] }),
 }));
 
+vi.mock('../../../hooks/use-plan-limits', () => ({
+  usePlanLimits: () => ({
+    canCreateGroup: true,
+    canInviteMember: true,
+    canAccessAnalytics: true,
+    canExport: true,
+    canDownloadStatements: true,
+    groupLimit: 1,
+    memberLimit: 8,
+    currentGroups: 1,
+    currentMembers: 1,
+    plan: 'standard',
+    isLoading: false,
+  }),
+}));
+
 vi.mock('../../../stores/group', () => ({
   useGroupStore: () => ({
     activeGroupId: 'group-1',
@@ -61,13 +78,26 @@ vi.mock('../../../stores/auth', () => ({
   }),
 }));
 
-describe('AddExpensePage', () => {
-  it('shows the workspace context layer for workspace groups', () => {
-    render(
+function renderPage() {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+      mutations: { retry: false },
+    },
+  });
+
+  return render(
+    <QueryClientProvider client={queryClient}>
       <MantineProvider>
         <AddExpensePage />
-      </MantineProvider>,
-    );
+      </MantineProvider>
+    </QueryClientProvider>,
+  );
+}
+
+describe('AddExpensePage', () => {
+  it('shows the workspace context layer for workspace groups', () => {
+    renderPage();
 
     expect(screen.getByText(/workspace context/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/vendor \/ supplier/i)).toBeInTheDocument();

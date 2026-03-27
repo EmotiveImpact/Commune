@@ -1,16 +1,25 @@
 import { MantineProvider } from '@mantine/core';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
 import { AnalyticsPage } from './analytics.lazy';
 
 const downloadWorkspaceBillingPackMock = vi.hoisted(() => vi.fn());
 const notificationShowMock = vi.hoisted(() => vi.fn());
+const getWorkspaceBillingExportRowsMock = vi.hoisted(() => vi.fn());
 
 vi.mock('@tanstack/react-router', () => ({
   createLazyFileRoute: () => (config: Record<string, unknown>) => config,
   Link: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
+
+vi.mock('@commune/api', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@commune/api')>();
+  return {
+    ...actual,
+    getWorkspaceBillingExportRows: getWorkspaceBillingExportRowsMock,
+  };
+});
 
 vi.mock('recharts', () => {
   const Container = ({ children }: { children?: React.ReactNode }) => <div>{children}</div>;
@@ -97,77 +106,49 @@ vi.mock('../../hooks/use-analytics', () => ({
         delta: 140,
         deltaPercent: 17.0731707,
       },
-      workspace_billing: {
-        snapshot: {
-          total_invoiced: 960,
-          invoice_count: 2,
-          vendor_count: 2,
-          overdue_count: 1,
-          due_soon_count: 1,
-          shared_subscription_count: 1,
-          tool_cost_count: 1,
-          vendor_bill_count: 0,
-          vendors: [
-            {
-              vendor_name: 'OfficeCo',
-              total_spend: 560,
-              invoice_count: 1,
-              overdue_count: 1,
-              next_due_date: '2026-03-26',
-              latest_invoice_reference: 'INV-1042',
-              latest_invoice_date: '2026-03-20',
-              latest_payment_due_date: '2026-03-26',
-            },
-            {
-              vendor_name: 'Slack',
-              total_spend: 400,
-              invoice_count: 1,
-              overdue_count: 0,
-              next_due_date: '2026-04-01',
-              latest_invoice_reference: 'INV-1058',
-              latest_invoice_date: '2026-03-22',
-              latest_payment_due_date: '2026-04-01',
-            },
-          ],
-          upcoming_due: [],
-        },
-        trend: [
+    },
+    isLoading: false,
+    isError: false,
+    fetchStatus: 'idle',
+  }),
+}));
+
+vi.mock('../../hooks/use-workspace-billing', () => ({
+  useWorkspaceBilling: () => ({
+    data: {
+      snapshot: {
+        total_invoiced: 960,
+        invoice_count: 2,
+        vendor_count: 2,
+        overdue_count: 1,
+        due_soon_count: 1,
+        shared_subscription_count: 1,
+        tool_cost_count: 1,
+        tool_cost_spend: 960,
+        vendor_bill_count: 0,
+        vendors: [
           {
-            month: '2026-02',
-            amount: 400,
-            invoice_count: 1,
-            overdue_count: 0,
-            shared_subscription_count: 1,
-            tool_cost_count: 0,
-            vendor_bill_count: 0,
-          },
-          {
-            month: '2026-03',
-            amount: 560,
+            vendor_name: 'OfficeCo',
+            total_spend: 560,
             invoice_count: 1,
             overdue_count: 1,
-            shared_subscription_count: 0,
-            tool_cost_count: 1,
-            vendor_bill_count: 0,
+            next_due_date: '2026-03-26',
+            latest_invoice_reference: 'INV-1042',
+            latest_invoice_date: '2026-03-20',
+            latest_payment_due_date: '2026-03-26',
+          },
+          {
+            vendor_name: 'Slack',
+            total_spend: 400,
+            invoice_count: 1,
+            overdue_count: 0,
+            next_due_date: '2026-04-01',
+            latest_invoice_reference: 'INV-1058',
+            latest_invoice_date: '2026-03-22',
+            latest_payment_due_date: '2026-04-01',
           },
         ],
-        export_rows: [
-          {
-            id: 'expense-1',
-            title: 'Desk chairs',
-            amount: 560,
-            currency: 'GBP',
-            due_date: '2026-03-26',
-            effective_due_date: '2026-03-26',
-            is_overdue: true,
-            vendor_name: 'OfficeCo',
-            invoice_reference: 'INV-1042',
-            invoice_date: '2026-03-20',
-            payment_due_date: '2026-03-26',
-            category: 'work_tools',
-            recurrence_type: 'none',
-            cost_kind: 'tool_cost',
-          },
+        upcoming_due: [
           {
             id: 'expense-2',
             title: 'Slack seats',
@@ -182,14 +163,45 @@ vi.mock('../../hooks/use-analytics', () => ({
             payment_due_date: '2026-04-01',
             category: 'work_tools',
             recurrence_type: 'monthly',
-            cost_kind: 'shared_subscription',
           },
         ],
+        latest_bill: {
+          id: 'expense-1',
+          title: 'Desk chairs',
+          amount: 560,
+          currency: 'GBP',
+          due_date: '2026-03-26',
+          effective_due_date: '2026-03-26',
+          is_overdue: true,
+          vendor_name: 'OfficeCo',
+          invoice_reference: 'INV-1042',
+          invoice_date: '2026-03-20',
+          payment_due_date: '2026-03-26',
+          category: 'work_tools',
+          recurrence_type: 'none',
+        },
       },
+      trend: [
+        {
+          month: '2026-02',
+          amount: 400,
+          invoice_count: 1,
+          overdue_count: 0,
+          shared_subscription_count: 1,
+          tool_cost_count: 0,
+          vendor_bill_count: 0,
+        },
+        {
+          month: '2026-03',
+          amount: 560,
+          invoice_count: 1,
+          overdue_count: 1,
+          shared_subscription_count: 0,
+          tool_cost_count: 1,
+          vendor_bill_count: 0,
+        },
+      ],
     },
-    isLoading: false,
-    isError: false,
-    fetchStatus: 'idle',
   }),
 }));
 
@@ -205,6 +217,41 @@ describe('AnalyticsPage', () => {
   beforeEach(() => {
     downloadWorkspaceBillingPackMock.mockReset();
     notificationShowMock.mockReset();
+    getWorkspaceBillingExportRowsMock.mockReset();
+    getWorkspaceBillingExportRowsMock.mockResolvedValue([
+      {
+        id: 'expense-1',
+        title: 'Desk chairs',
+        amount: 560,
+        currency: 'GBP',
+        due_date: '2026-03-26',
+        effective_due_date: '2026-03-26',
+        is_overdue: true,
+        vendor_name: 'OfficeCo',
+        invoice_reference: 'INV-1042',
+        invoice_date: '2026-03-20',
+        payment_due_date: '2026-03-26',
+        category: 'work_tools',
+        recurrence_type: 'none',
+        cost_kind: 'tool_cost',
+      },
+      {
+        id: 'expense-2',
+        title: 'Slack seats',
+        amount: 400,
+        currency: 'GBP',
+        due_date: '2026-04-01',
+        effective_due_date: '2026-04-01',
+        is_overdue: false,
+        vendor_name: 'Slack',
+        invoice_reference: 'INV-1058',
+        invoice_date: '2026-03-22',
+        payment_due_date: '2026-04-01',
+        category: 'work_tools',
+        recurrence_type: 'monthly',
+        cost_kind: 'shared_subscription',
+      },
+    ]);
   });
 
   it('exports a workspace billing pack from the analytics workspace panel', async () => {
@@ -218,7 +265,10 @@ describe('AnalyticsPage', () => {
 
     await user.click(screen.getByRole('button', { name: /export billing pack/i }));
 
-    expect(downloadWorkspaceBillingPackMock).toHaveBeenCalledTimes(1);
+    await waitFor(() => {
+      expect(downloadWorkspaceBillingPackMock).toHaveBeenCalledTimes(1);
+    });
+    expect(getWorkspaceBillingExportRowsMock).toHaveBeenCalledWith('group-1');
     expect(downloadWorkspaceBillingPackMock).toHaveBeenCalledWith(
       expect.objectContaining({
         snapshot: expect.objectContaining({

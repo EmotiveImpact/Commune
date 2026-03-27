@@ -17,6 +17,7 @@ import { useEffect, useState } from 'react';
 import { validateInviteToken, acceptInviteByToken } from '@commune/api';
 import { useAuthStore } from '../stores/auth';
 import type { InviteValidation } from '@commune/types';
+import { storePendingInviteToken } from '../utils/invite-token';
 
 export const Route = createLazyFileRoute('/invite/$token')({
   component: InvitePage,
@@ -80,12 +81,12 @@ function InvitePage() {
   }
 
   function handleSignUp() {
-    localStorage.setItem('commune_invite_token', token);
+    storePendingInviteToken(token);
     navigate({ to: '/signup' });
   }
 
   function handleLogin() {
-    localStorage.setItem('commune_invite_token', token);
+    storePendingInviteToken(token);
     navigate({ to: '/login' });
   }
 

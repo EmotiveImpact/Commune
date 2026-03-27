@@ -332,8 +332,9 @@ export function ExpenseDetailPage() {
   }
 
   // Resolve flagger name from group members
-  const flaggerName = expense.flagged_by.length > 0
-    ? group?.members.find((m) => m.user_id === expense.flagged_by[0])?.user?.name ?? 'A member'
+  const flaggedBy = expense.flagged_by ?? [];
+  const flaggerName = flaggedBy.length > 0
+    ? group?.members.find((m) => m.user_id === flaggedBy[0])?.user?.name ?? 'A member'
     : null;
 
   // Resolve approver name from group members
@@ -405,7 +406,7 @@ export function ExpenseDetailPage() {
         </Group>
       </PageHeader>
 
-      {expense.flagged_by.length > 0 && (
+      {flaggedBy.length > 0 && (
         <Alert
           variant="light"
           color="orange"

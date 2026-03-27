@@ -14,7 +14,10 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
-          'mantine-core': ['@mantine/core', '@mantine/hooks', '@mantine/notifications', '@mantine/dates'],
+          'mantine-core': ['@mantine/core', '@mantine/hooks'],
+          'mantine-form': ['@mantine/form'],
+          'mantine-dates': ['@mantine/dates'],
+          'mantine-notifications': ['@mantine/notifications'],
           'recharts': ['recharts'],
           'tanstack': ['@tanstack/react-query', '@tanstack/react-router'],
         },

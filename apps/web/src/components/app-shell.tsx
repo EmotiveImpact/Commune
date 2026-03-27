@@ -31,26 +31,50 @@ import {
   IconSettings,
   IconUser,
 } from '@tabler/icons-react';
-import { useState, useCallback, type KeyboardEvent } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { Suspense, lazy, useCallback, useEffect, useState, type KeyboardEvent } from 'react';
 import { useAuthStore } from '../stores/auth';
 import { useGroupStore } from '../stores/group';
 import { useSearchStore } from '../stores/search';
 import { signOut } from '@commune/api';
-import { pinnedLinks, navGroups, navLinks, type NavGroup } from './nav-links';
-import { NotificationDropdown } from './notification-dropdown';
-import { GroupSelector } from './group-selector';
-import { TrialExpiryModal } from './trial-expiry-modal';
-import { useSubscription } from '../hooks/use-subscriptions';
+import { pinnedLinks, navGroups, type NavGroup } from './nav-links';
 
 const SIDEBAR_STORAGE_KEY = 'commune-sidebar-collapsed';
 const SIDEBAR_WIDTH_EXPANDED = 230;
 const SIDEBAR_WIDTH_COLLAPSED = 72;
 const SIDEBAR_PAD = 8; // fixed — never changes, so nothing jumps
 
-const ease = [0.4, 0, 0.2, 1] as [number, number, number, number];
-const sidebarTransition = { duration: 0.25, ease };
-const fadeTransition = { duration: 0.15, ease: 'easeOut' as const };
+const sidebarTransitionCss = 'all 250ms cubic-bezier(0.4, 0, 0.2, 1)';
+const fadeTransitionCss = 'opacity 150ms ease-out';
+
+const DeferredNotificationDropdown = lazy(() =>
+  import('./notification-dropdown').then((module) => ({
+    default: module.NotificationDropdown,
+  })),
+);
+
+const DeferredGroupSelector = lazy(() =>
+  import('./group-selector').then((module) => ({
+    default: module.GroupSelector,
+  })),
+);
+
+const DeferredTrialExpiryModal = lazy(() =>
+  import('./trial-expiry-modal').then((module) => ({
+    default: module.TrialExpiryModal,
+  })),
+);
+
+const DeferredSidebarPlanLabel = lazy(() =>
+  import('./app-shell-subscription').then((module) => ({
+    default: module.SidebarPlanLabel,
+  })),
+);
+
+const DeferredSidebarTrialBanner = lazy(() =>
+  import('./app-shell-subscription').then((module) => ({
+    default: module.SidebarTrialBanner,
+  })),
+);
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -59,6 +83,7 @@ interface AppShellProps {
 export function AppShell({ children }: AppShellProps) {
   const [opened, { toggle, close }] = useDisclosure();
   const isMobile = useMediaQuery('(max-width: 47.99em)') ?? false; // matches Mantine 'sm' breakpoint
+  const [showDeferredWidgets, setShowDeferredWidgets] = useState(false);
   const [desktopCollapsed, setDesktopCollapsed] = useState(() => {
     try {
       return localStorage.getItem(SIDEBAR_STORAGE_KEY) === 'true';
@@ -69,10 +94,39 @@ export function AppShell({ children }: AppShellProps) {
   // On mobile the sidebar is always full-width (expanded), never icon-only
   const collapsed = isMobile ? false : desktopCollapsed;
   const { user } = useAuthStore();
-  const { activeGroupId, setActiveGroupId } = useGroupStore();
+  const { setActiveGroupId } = useGroupStore();
   const { query, setQuery, clearQuery } = useSearchStore();
   const navigate = useNavigate();
   const location = useLocation();
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const idleWindow = window as Window & {
+      requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number;
+      cancelIdleCallback?: (handle: number) => void;
+    };
+
+    if (idleWindow.requestIdleCallback) {
+      const idleHandle = idleWindow.requestIdleCallback(() => {
+        setShowDeferredWidgets(true);
+      }, { timeout: 400 });
+
+      return () => {
+        idleWindow.cancelIdleCallback?.(idleHandle);
+      };
+    }
+
+    const timeoutHandle = window.setTimeout(() => {
+      setShowDeferredWidgets(true);
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timeoutHandle);
+    };
+  }, []);
 
   const toggleCollapsed = useCallback(() => {
     setDesktopCollapsed((prev) => {
@@ -127,7 +181,13 @@ export function AppShell({ children }: AppShellProps) {
           </Group>
           <Group gap="sm">
             <ColorSchemeToggle />
-            <NotificationDropdown />
+            {showDeferredWidgets ? (
+              <Suspense fallback={<ActionIcon variant="subtle" color="gray" size={40} disabled aria-hidden="true" />}>
+                <DeferredNotificationDropdown />
+              </Suspense>
+            ) : (
+              <ActionIcon variant="subtle" color="gray" size={40} disabled aria-hidden="true" />
+            )}
           </Group>
         </Group>
       </MantineAppShell.Header>
@@ -151,16 +211,15 @@ export function AppShell({ children }: AppShellProps) {
           {/* ── Top ── */}
           <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
             {/* Logo row — padding-left centers the 44px logo when collapsed */}
-            <motion.div
-              initial={false}
-              animate={{ paddingLeft: collapsed ? 6 : 0 }}
-              transition={sidebarTransition}
+            <div
               style={{
                 display: 'flex',
                 alignItems: 'center',
                 marginBottom: '1.5rem',
                 position: 'relative',
                 minHeight: 44,
+                paddingLeft: collapsed ? 6 : 0,
+                transition: sidebarTransitionCss,
               }}
             >
               <img
@@ -170,14 +229,17 @@ export function AppShell({ children }: AppShellProps) {
                 height={44}
                 style={{ display: 'block', borderRadius: 10, flexShrink: 0 }}
               />
-              <motion.span
-                initial={false}
-                animate={{
+              <span
+                style={{
+                  overflow: 'hidden',
+                  display: 'inline-flex',
+                  whiteSpace: 'nowrap',
+                  marginLeft: 8,
                   opacity: collapsed ? 0 : 1,
                   maxWidth: collapsed ? 0 : 160,
+                  transition: sidebarTransitionCss,
                 }}
-                transition={sidebarTransition}
-                style={{ overflow: 'hidden', display: 'inline-flex', whiteSpace: 'nowrap', marginLeft: 8 }}
+                aria-hidden={collapsed}
               >
                 <Text
                   fw={600}
@@ -192,50 +254,47 @@ export function AppShell({ children }: AppShellProps) {
                 >
                   Commune
                 </Text>
-              </motion.span>
+              </span>
 
               {/* Collapse button — desktop only, top right, hover-only, expanded only */}
-              {!isMobile && (
-                <AnimatePresence>
-                  {!collapsed && (
-                    <motion.div
-                      key="collapse-btn"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      transition={fadeTransition}
-                      style={{ position: 'absolute', right: 0, top: '50%', transform: 'translateY(-50%)' }}
-                    >
-                      <ActionIcon
-                        variant="subtle"
-                        onClick={toggleCollapsed}
-                        className="commune-sidebar-collapse-btn"
-                        aria-label="Collapse sidebar"
-                        size="sm"
-                      >
-                        <IconChevronsLeft size={16} />
-                      </ActionIcon>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+              {!isMobile && !collapsed && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    right: 0,
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    opacity: collapsed ? 0 : 1,
+                    transition: fadeTransitionCss,
+                  }}
+                >
+                  <ActionIcon
+                    variant="subtle"
+                    onClick={toggleCollapsed}
+                    className="commune-sidebar-collapse-btn"
+                    aria-label="Collapse sidebar"
+                    size="sm"
+                  >
+                    <IconChevronsLeft size={16} />
+                  </ActionIcon>
+                </div>
               )}
-            </motion.div>
+            </div>
 
             {/* Menu label */}
-            <motion.div
-              initial={false}
-              animate={{
+            <div
+              style={{
+                overflow: 'hidden',
                 opacity: collapsed ? 0 : 1,
-                height: collapsed ? 0 : 'auto',
+                maxHeight: collapsed ? 0 : 24,
                 marginBottom: collapsed ? 0 : 6,
+                transition: sidebarTransitionCss,
               }}
-              transition={sidebarTransition}
-              style={{ overflow: 'hidden' }}
             >
               <Text size="xs" fw={700} tt="uppercase" px="xs" className="commune-sidebar-label" style={{ letterSpacing: '0.12em' }}>
                 Menu
               </Text>
-            </motion.div>
+            </div>
 
             {/* Nav links — grouped with collapsible sections */}
             <Stack className="commune-sidebar-nav" gap={2}>
@@ -300,52 +359,60 @@ export function AppShell({ children }: AppShellProps) {
             </Stack>
 
             {/* Workspace selector */}
-            <motion.div
-              initial={false}
-              animate={{
+            <div
+              style={{
+                overflow: 'hidden',
                 opacity: collapsed ? 0 : 1,
-                height: collapsed ? 0 : 'auto',
+                maxHeight: collapsed ? 0 : 180,
                 marginTop: collapsed ? 0 : 24,
+                transition: sidebarTransitionCss,
               }}
-              transition={sidebarTransition}
-              style={{ overflow: 'hidden' }}
             >
               <Box px={4}>
-                <GroupSelector />
+                {showDeferredWidgets ? (
+                  <Suspense fallback={<Text size="xs" c="dimmed">Loading groups…</Text>}>
+                    <DeferredGroupSelector />
+                  </Suspense>
+                ) : (
+                  <Text size="xs" c="dimmed">Loading groups…</Text>
+                )}
               </Box>
-            </motion.div>
+            </div>
           </div>
 
           {/* ── Bottom ── */}
           <Stack gap={0} style={{ flexShrink: 0 }}>
             {/* Trial banner — only shown during active trial */}
-            <SidebarTrialBanner userId={user?.id} collapsed={collapsed} />
+            {showDeferredWidgets && user?.id ? (
+              <Suspense fallback={null}>
+                <DeferredSidebarTrialBanner userId={user.id} collapsed={collapsed} />
+              </Suspense>
+            ) : null}
 
             {/* Expand button (collapsed only) */}
-            <AnimatePresence>
-              {collapsed && (
-                <motion.div
-                  key="expand-btn"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={fadeTransition}
-                  style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}
-                >
-                  <Tooltip label="Expand sidebar" position="right" withArrow>
-                    <ActionIcon
-                      variant="subtle"
-                      onClick={toggleCollapsed}
-                      className="commune-sidebar-expand-btn"
-                      aria-label="Expand sidebar"
-                      size="md"
-                    >
-                      <IconChevronsRight size={18} />
-                    </ActionIcon>
-                  </Tooltip>
-                </motion.div>
-              )}
-            </AnimatePresence>
+            {collapsed && (
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'center',
+                  marginBottom: 8,
+                  opacity: 1,
+                  transition: fadeTransitionCss,
+                }}
+              >
+                <Tooltip label="Expand sidebar" position="right" withArrow>
+                  <ActionIcon
+                    variant="subtle"
+                    onClick={toggleCollapsed}
+                    className="commune-sidebar-expand-btn"
+                    aria-label="Expand sidebar"
+                    size="md"
+                  >
+                    <IconChevronsRight size={18} />
+                  </ActionIcon>
+                </Tooltip>
+              </div>
+            )}
 
             {/* Profile + menu */}
             <Menu
@@ -358,19 +425,16 @@ export function AppShell({ children }: AppShellProps) {
               <Menu.Target>
                 <Tooltip label={user?.name ?? 'Account'} position="right" withArrow disabled={!collapsed}>
                   <UnstyledButton className="commune-sidebar-profile-row">
-                    <motion.div
-                      initial={false}
-                      animate={{
-                        paddingLeft: collapsed ? 12 : 14,
-                        paddingRight: collapsed ? 0 : 8,
-                        paddingTop: collapsed ? 4 : 8,
-                        paddingBottom: collapsed ? 4 : 8,
-                      }}
-                      transition={sidebarTransition}
+                    <div
                       style={{
                         display: 'flex',
                         alignItems: 'center',
                         overflow: 'hidden',
+                        paddingLeft: collapsed ? 12 : 14,
+                        paddingRight: collapsed ? 0 : 8,
+                        paddingTop: collapsed ? 4 : 8,
+                        paddingBottom: collapsed ? 4 : 8,
+                        transition: sidebarTransitionCss,
                       }}
                     >
                       <Avatar
@@ -381,34 +445,46 @@ export function AppShell({ children }: AppShellProps) {
                         radius="xl"
                         style={{ flexShrink: 0 }}
                       />
-                      <motion.div
-                        initial={false}
-                        animate={{
+                      <div
+                        style={{
+                          overflow: 'hidden',
+                          whiteSpace: 'nowrap',
+                          flexShrink: 1,
+                          minWidth: 0,
                           opacity: collapsed ? 0 : 1,
                           width: collapsed ? 0 : 120,
                           marginLeft: collapsed ? 0 : 12,
+                          transition: sidebarTransitionCss,
                         }}
-                        transition={sidebarTransition}
-                        style={{ overflow: 'hidden', whiteSpace: 'nowrap', flexShrink: 1, minWidth: 0 }}
+                        aria-hidden={collapsed}
                       >
                         <Text size="sm" fw={600} truncate style={{ color: '#fff' }}>
                           {user?.name ?? 'Account'}
                         </Text>
-                        <SidebarPlanLabel userId={user?.id} />
-                      </motion.div>
-                      <motion.div
-                        initial={false}
-                        animate={{
+                        {showDeferredWidgets && user?.id ? (
+                          <Suspense fallback={<Text size="xs" style={{ color: 'rgba(255,255,255,0.45)' }}>Loading…</Text>}>
+                            <DeferredSidebarPlanLabel userId={user.id} />
+                          </Suspense>
+                        ) : (
+                          <Text size="xs" style={{ color: 'rgba(255,255,255,0.45)' }}>Loading…</Text>
+                        )}
+                      </div>
+                      <div
+                        style={{
+                          overflow: 'hidden',
+                          flexShrink: 0,
+                          display: 'flex',
+                          alignItems: 'center',
                           opacity: collapsed ? 0 : 0.5,
                           width: collapsed ? 0 : 20,
                           marginLeft: collapsed ? 0 : 8,
+                          transition: sidebarTransitionCss,
                         }}
-                        transition={sidebarTransition}
-                        style={{ overflow: 'hidden', flexShrink: 0, display: 'flex', alignItems: 'center' }}
+                        aria-hidden={collapsed}
                       >
                         <IconDotsVertical size={16} style={{ color: 'rgba(255,255,255,0.4)' }} />
-                      </motion.div>
-                    </motion.div>
+                      </div>
+                    </div>
                   </UnstyledButton>
                 </Tooltip>
               </Menu.Target>
@@ -472,7 +548,11 @@ export function AppShell({ children }: AppShellProps) {
 
       <MantineAppShell.Main className="commune-main-content" role="main">
         {children}
-        {user?.id && <TrialExpiryModal userId={user.id} />}
+        {showDeferredWidgets && user?.id ? (
+          <Suspense fallback={null}>
+            <DeferredTrialExpiryModal userId={user.id} />
+          </Suspense>
+        ) : null}
       </MantineAppShell.Main>
     </MantineAppShell>
   );
@@ -550,126 +630,41 @@ function NavGroupSection({ group, onNavigate }: { group: NavGroup; onNavigate?: 
             {group.label}
           </Text>
         </div>
-        <motion.div
-          initial={false}
-          animate={{ rotate: open ? 0 : -90 }}
-          transition={{ duration: 0.15 }}
-          style={{ display: 'flex', alignItems: 'center' }}
-        >
-          <IconChevronDown size={10} className="commune-nav-group-chevron" />
-        </motion.div>
-      </UnstyledButton>
-      <AnimatePresence initial={false}>
-        {open && (
-          <motion.div
-            key={group.label}
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
-            style={{ overflow: 'hidden' }}
-          >
-            <Stack gap={2} mt={2}>
-              {group.links.map((link) => (
-                <NavLink
-                  key={link.to}
-                  label={link.label}
-                  component={Link}
-                  to={link.to}
-                  leftSection={link.icon}
-                  variant="subtle"
-                  className="commune-sidebar-link"
-                  activeOptions={{ exact: false }}
-                  onClick={onNavigate}
-                />
-              ))}
-            </Stack>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-}
-
-/** Small plan label under the user's name — e.g. "Pro plan" or "Pro Trial" */
-function SidebarPlanLabel({ userId }: { userId?: string }) {
-  const { data: subscription } = useSubscription(userId ?? '');
-
-  const isTrialing = subscription?.status === 'trialing';
-  const isActive = subscription?.status === 'active';
-  const trialEndsAt = subscription?.trial_ends_at ? new Date(subscription.trial_ends_at) : null;
-  const trialExpired = isTrialing && trialEndsAt && trialEndsAt < new Date();
-
-  let label = 'No plan';
-  if (subscription && !trialExpired) {
-    if (isTrialing) {
-      label = 'Pro Trial';
-    } else if (isActive) {
-      label = subscription.plan === 'agency'
-        ? 'Pro Max plan'
-        : `${subscription.plan.charAt(0).toUpperCase() + subscription.plan.slice(1)} plan`;
-    }
-  }
-
-  return (
-    <Text size="xs" truncate style={{ color: 'rgba(255,255,255,0.45)' }}>
-      {label}
-    </Text>
-  );
-}
-
-/** Trial banner — only visible during active trial, with days remaining + upgrade link */
-function SidebarTrialBanner({ userId, collapsed }: { userId?: string; collapsed: boolean }) {
-  const { data: subscription } = useSubscription(userId ?? '');
-
-  const isTrialing = subscription?.status === 'trialing';
-  const trialEndsAt = subscription?.trial_ends_at ? new Date(subscription.trial_ends_at) : null;
-  const trialExpired = isTrialing && trialEndsAt && trialEndsAt < new Date();
-  const daysLeft = isTrialing && trialEndsAt && !trialExpired
-    ? Math.ceil((trialEndsAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
-    : 0;
-
-  const showBanner = isTrialing && !trialExpired;
-
-  if (!showBanner || collapsed) return null;
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, height: 0 }}
-      animate={{ opacity: 1, height: 'auto' }}
-      exit={{ opacity: 0, height: 0 }}
-      transition={sidebarTransition}
-      style={{ overflow: 'hidden', marginBottom: 8 }}
-    >
-      <Box
-        style={{
-          padding: '10px 12px',
-          borderRadius: 10,
-          background: 'rgba(255,255,255,0.06)',
-          border: '1px solid rgba(255,255,255,0.08)',
-        }}
-      >
-        <Text size="xs" fw={600} style={{ color: '#fff' }}>
-          {daysLeft}d left on trial
-        </Text>
-        <Text size="xs" style={{ color: 'rgba(255,255,255,0.5)', lineHeight: 1.4 }} mt={2}>
-          Choose a plan to keep access.
-        </Text>
-        <Text
-          component={Link}
-          to="/pricing"
-          size="xs"
-          fw={600}
-          mt={4}
+        <div
           style={{
-            color: 'var(--commune-primary-soft, #62c38a)',
-            textDecoration: 'none',
-            display: 'inline-block',
+            display: 'flex',
+            alignItems: 'center',
+            transform: open ? 'rotate(0deg)' : 'rotate(-90deg)',
+            transition: 'transform 150ms ease',
           }}
         >
-          View plans →
-        </Text>
-      </Box>
-    </motion.div>
+          <IconChevronDown size={10} className="commune-nav-group-chevron" />
+        </div>
+      </UnstyledButton>
+      <div
+        style={{
+          overflow: 'hidden',
+          maxHeight: open ? group.links.length * 48 + 12 : 0,
+          opacity: open ? 1 : 0,
+          transition: 'max-height 200ms cubic-bezier(0.4, 0, 0.2, 1), opacity 200ms cubic-bezier(0.4, 0, 0.2, 1)',
+        }}
+      >
+        <Stack gap={2} mt={2}>
+          {group.links.map((link) => (
+            <NavLink
+              key={link.to}
+              label={link.label}
+              component={Link}
+              to={link.to}
+              leftSection={link.icon}
+              variant="subtle"
+              className="commune-sidebar-link"
+              activeOptions={{ exact: false }}
+              onClick={onNavigate}
+            />
+          ))}
+        </Stack>
+      </div>
+    </div>
   );
 }

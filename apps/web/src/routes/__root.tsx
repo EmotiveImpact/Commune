@@ -1,6 +1,6 @@
+import { Suspense, lazy } from 'react';
 import { createRootRouteWithContext, Outlet, useRouterState } from '@tanstack/react-router';
 import { MantineProvider, createTheme, type MantineColorScheme } from '@mantine/core';
-import { Notifications } from '@mantine/notifications';
 import { QueryClient } from '@tanstack/react-query';
 import { AppErrorBoundary } from '../components/error-boundary';
 import { NotFound } from '../components/not-found';
@@ -8,6 +8,12 @@ import { NotFound } from '../components/not-found';
 import '@mantine/core/styles.css';
 import '@mantine/dates/styles.css';
 import '@mantine/notifications/styles.css';
+
+const DeferredNotifications = lazy(() =>
+  import('@mantine/notifications').then((module) => ({
+    default: module.Notifications,
+  })),
+);
 
 function getInitialColorScheme(): MantineColorScheme {
   if (typeof window === 'undefined') return 'auto';
@@ -90,7 +96,9 @@ function RootComponent() {
 
   return (
     <MantineProvider theme={theme} defaultColorScheme={getInitialColorScheme()}>
-      <Notifications position="top-right" />
+      <Suspense fallback={null}>
+        <DeferredNotifications position="top-right" />
+      </Suspense>
       <AppErrorBoundary key={locationKey}>
         <Outlet />
       </AppErrorBoundary>

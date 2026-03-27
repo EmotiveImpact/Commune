@@ -6,6 +6,7 @@ import {
   deleteGroup,
   getGroup,
   getPendingInvites,
+  getUserGroupSummaries,
   getUserGroups,
   inviteMember,
   leaveGroup,
@@ -26,6 +27,7 @@ import type {
 export const groupKeys = {
   all: ['groups'] as const,
   list: () => [...groupKeys.all, 'list'] as const,
+  summaries: () => [...groupKeys.all, 'summaries'] as const,
   invites: () => [...groupKeys.all, 'invites'] as const,
   detail: (id: string) => [...groupKeys.all, 'detail', id] as const,
 };
@@ -34,6 +36,13 @@ export function useUserGroups() {
   return useQuery({
     queryKey: groupKeys.list(),
     queryFn: getUserGroups,
+  });
+}
+
+export function useUserGroupSummaries() {
+  return useQuery({
+    queryKey: groupKeys.summaries(),
+    queryFn: getUserGroupSummaries,
   });
 }
 
@@ -58,6 +67,7 @@ export function useCreateGroup() {
     mutationFn: (data: CreateGroupInput) => createGroup(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: groupKeys.list() });
+      queryClient.invalidateQueries({ queryKey: groupKeys.summaries() });
     },
   });
 }
@@ -79,6 +89,7 @@ export function useAcceptInvite() {
     onSuccess: (_, groupId) => {
       queryClient.invalidateQueries({ queryKey: groupKeys.invites() });
       queryClient.invalidateQueries({ queryKey: groupKeys.list() });
+      queryClient.invalidateQueries({ queryKey: groupKeys.summaries() });
       queryClient.invalidateQueries({ queryKey: groupKeys.detail(groupId) });
     },
   });
@@ -151,6 +162,7 @@ export function useTransferOwnership(groupId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: groupKeys.detail(groupId) });
       queryClient.invalidateQueries({ queryKey: groupKeys.list() });
+      queryClient.invalidateQueries({ queryKey: groupKeys.summaries() });
     },
   });
 }
@@ -162,6 +174,7 @@ export function useLeaveGroup() {
       leaveGroup(groupId, userId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: groupKeys.list() });
+      queryClient.invalidateQueries({ queryKey: groupKeys.summaries() });
       queryClient.invalidateQueries({ queryKey: groupKeys.all });
     },
   });
@@ -173,6 +186,7 @@ export function useDeleteGroup() {
     mutationFn: (groupId: string) => deleteGroup(groupId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: groupKeys.list() });
+      queryClient.invalidateQueries({ queryKey: groupKeys.summaries() });
       queryClient.invalidateQueries({ queryKey: groupKeys.all });
     },
   });
@@ -202,6 +216,7 @@ export function useUpdateGroup(groupId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: groupKeys.detail(groupId) });
       queryClient.invalidateQueries({ queryKey: groupKeys.list() });
+      queryClient.invalidateQueries({ queryKey: groupKeys.summaries() });
     },
   });
 }
@@ -220,6 +235,7 @@ export function useAcceptInviteByToken() {
     mutationFn: (token: string) => acceptInviteByToken(token),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: groupKeys.list() });
+      queryClient.invalidateQueries({ queryKey: groupKeys.summaries() });
       queryClient.invalidateQueries({ queryKey: groupKeys.invites() });
     },
   });

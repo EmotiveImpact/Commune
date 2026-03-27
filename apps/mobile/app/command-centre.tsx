@@ -17,6 +17,19 @@ const GROUP_TYPE_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
   other: 'grid-outline',
 };
 
+function formatGroupSummary(groups: string[]) {
+  if (groups.length === 0) return 'Group';
+  if (groups.length === 1) return groups[0]!;
+  return `${groups.length} groups`;
+}
+
+function formatCurrencyBreakdown(totals: Map<string, number>) {
+  if (totals.size === 0) return formatCurrency(0, 'GBP');
+  return Array.from(totals.entries())
+    .map(([currency, amount]) => formatCurrency(amount, currency))
+    .join(' + ');
+}
+
 export default function CommandCentreScreen() {
   const router = useRouter();
   const isDark = useThemeStore((s) => s.mode) === 'dark';
@@ -33,16 +46,35 @@ export default function CommandCentreScreen() {
 
   const youOwe = useMemo(() => {
     if (!crossGroup?.transactions || !user?.id) return [];
-    return crossGroup.transactions.filter((t: any) => t.fromUserId === user.id);
+    return crossGroup.transactions.filter((t) => t.fromUserId === user.id);
   }, [crossGroup, user?.id]);
 
   const owedToYou = useMemo(() => {
     if (!crossGroup?.transactions || !user?.id) return [];
-    return crossGroup.transactions.filter((t: any) => t.toUserId === user.id);
+    return crossGroup.transactions.filter((t) => t.toUserId === user.id);
   }, [crossGroup, user?.id]);
 
-  const totalOwe = youOwe.reduce((sum: number, t: any) => sum + t.amount, 0);
-  const totalOwed = owedToYou.reduce((sum: number, t: any) => sum + t.amount, 0);
+  const totalOweByCurrency = useMemo(() => {
+    const totals = new Map<string, number>();
+    for (const transaction of youOwe) {
+      totals.set(
+        transaction.currency,
+        (totals.get(transaction.currency) ?? 0) + transaction.netAmount,
+      );
+    }
+    return totals;
+  }, [youOwe]);
+
+  const totalOwedByCurrency = useMemo(() => {
+    const totals = new Map<string, number>();
+    for (const transaction of owedToYou) {
+      totals.set(
+        transaction.currency,
+        (totals.get(transaction.currency) ?? 0) + transaction.netAmount,
+      );
+    }
+    return totals;
+  }, [owedToYou]);
 
   if (isLoading) {
     return (
@@ -66,28 +98,28 @@ export default function CommandCentreScreen() {
         <View style={{ flexDirection: 'row', gap: 12, marginBottom: 24 }}>
           <View style={{
             flex: 1,
-            backgroundColor: totalOwe > 0 ? 'rgba(239,68,68,0.08)' : surface,
+            backgroundColor: youOwe.length > 0 ? 'rgba(239,68,68,0.08)' : surface,
             borderRadius: 16,
             padding: 16,
             borderWidth: 1,
-            borderColor: totalOwe > 0 ? 'rgba(239,68,68,0.2)' : border,
+            borderColor: youOwe.length > 0 ? 'rgba(239,68,68,0.2)' : border,
           }}>
             <Text style={{ fontSize: 12, color: textSoft }}>You owe</Text>
-            <Text style={{ fontSize: 20, fontWeight: '800', color: totalOwe > 0 ? '#EF4444' : text, marginTop: 4 }}>
-              {formatCurrency(totalOwe, 'GBP')}
+            <Text style={{ fontSize: 20, fontWeight: '800', color: youOwe.length > 0 ? '#EF4444' : text, marginTop: 4 }}>
+              {formatCurrencyBreakdown(totalOweByCurrency)}
             </Text>
           </View>
           <View style={{
             flex: 1,
-            backgroundColor: totalOwed > 0 ? 'rgba(16,185,129,0.08)' : surface,
+            backgroundColor: owedToYou.length > 0 ? 'rgba(16,185,129,0.08)' : surface,
             borderRadius: 16,
             padding: 16,
             borderWidth: 1,
-            borderColor: totalOwed > 0 ? 'rgba(16,185,129,0.2)' : border,
+            borderColor: owedToYou.length > 0 ? 'rgba(16,185,129,0.2)' : border,
           }}>
             <Text style={{ fontSize: 12, color: textSoft }}>Owed to you</Text>
-            <Text style={{ fontSize: 20, fontWeight: '800', color: totalOwed > 0 ? '#10B981' : text, marginTop: 4 }}>
-              {formatCurrency(totalOwed, 'GBP')}
+            <Text style={{ fontSize: 20, fontWeight: '800', color: owedToYou.length > 0 ? '#10B981' : text, marginTop: 4 }}>
+              {formatCurrencyBreakdown(totalOwedByCurrency)}
             </Text>
           </View>
         </View>
@@ -96,8 +128,8 @@ export default function CommandCentreScreen() {
         {youOwe.length > 0 && (
           <View style={{ marginBottom: 24 }}>
             <Text style={{ fontSize: 16, fontWeight: '700', color: text, marginBottom: 12 }}>Priority payments</Text>
-            {youOwe.slice(0, 3).map((t: any, i: number) => (
-              <View key={i} style={{
+            {youOwe.slice(0, 3).map((t) => (
+              <View key={`${t.fromUserId}-${t.toUserId}-${t.currency}`} style={{
                 backgroundColor: surface,
                 borderRadius: 12,
                 padding: 14,
@@ -110,12 +142,12 @@ export default function CommandCentreScreen() {
               }}>
                 <View>
                   <Text style={{ fontSize: 14, fontWeight: '600', color: text }}>
-                    Pay {t.toUserName ?? 'someone'}
+                    Pay {t.toName ?? 'someone'}
                   </Text>
-                  <Text style={{ fontSize: 12, color: textSoft }}>{t.groupName ?? 'Group'}</Text>
+                  <Text style={{ fontSize: 12, color: textSoft }}>{formatGroupSummary(t.groups)}</Text>
                 </View>
                 <Text style={{ fontSize: 16, fontWeight: '700', color: '#EF4444' }}>
-                  {formatCurrency(t.amount, t.currency ?? 'GBP')}
+                  {formatCurrency(t.netAmount, t.currency)}
                 </Text>
               </View>
             ))}
@@ -126,8 +158,8 @@ export default function CommandCentreScreen() {
         {owedToYou.length > 0 && (
           <View style={{ marginBottom: 24 }}>
             <Text style={{ fontSize: 16, fontWeight: '700', color: text, marginBottom: 12 }}>Waiting on others</Text>
-            {owedToYou.slice(0, 3).map((t: any, i: number) => (
-              <View key={i} style={{
+            {owedToYou.slice(0, 3).map((t) => (
+              <View key={`${t.fromUserId}-${t.toUserId}-${t.currency}`} style={{
                 backgroundColor: surface,
                 borderRadius: 12,
                 padding: 14,
@@ -140,12 +172,12 @@ export default function CommandCentreScreen() {
               }}>
                 <View>
                   <Text style={{ fontSize: 14, fontWeight: '600', color: text }}>
-                    {t.fromUserName ?? 'Someone'} owes you
+                    {t.fromName ?? 'Someone'} owes you
                   </Text>
-                  <Text style={{ fontSize: 12, color: textSoft }}>{t.groupName ?? 'Group'}</Text>
+                  <Text style={{ fontSize: 12, color: textSoft }}>{formatGroupSummary(t.groups)}</Text>
                 </View>
                 <Text style={{ fontSize: 16, fontWeight: '700', color: '#10B981' }}>
-                  {formatCurrency(t.amount, t.currency ?? 'GBP')}
+                  {formatCurrency(t.netAmount, t.currency)}
                 </Text>
               </View>
             ))}
@@ -154,10 +186,11 @@ export default function CommandCentreScreen() {
 
         {/* My Groups */}
         <Text style={{ fontSize: 16, fontWeight: '700', color: text, marginBottom: 12 }}>My groups</Text>
-        {(groups ?? []).map((g: any) => {
+        {(groups ?? []).map((g) => {
           const icon = GROUP_TYPE_ICONS[g.type] ?? 'grid-outline';
-          const perGroupData = crossGroup?.perGroupData?.find((p: any) => p.groupId === g.id);
-          const hasDebts = perGroupData?.settlement?.transactions?.length > 0;
+          const perGroupData = crossGroup?.perGroupData?.find((p) => p.groupId === g.id);
+          const hasDebts = (perGroupData?.settlement?.transactions?.length ?? 0) > 0;
+          const memberCount = g.members?.filter((member) => member.status === 'active').length ?? 0;
 
           return (
             <TouchableOpacity
@@ -187,7 +220,7 @@ export default function CommandCentreScreen() {
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={{ fontSize: 15, fontWeight: '600', color: text }}>{g.name}</Text>
-                <Text style={{ fontSize: 12, color: textSoft }}>{g.members?.length ?? 0} members</Text>
+                <Text style={{ fontSize: 12, color: textSoft }}>{memberCount} members</Text>
               </View>
               <View style={{
                 paddingHorizontal: 10,

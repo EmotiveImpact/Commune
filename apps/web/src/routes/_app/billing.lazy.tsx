@@ -1,5 +1,9 @@
 import { createLazyFileRoute, Link } from '@tanstack/react-router';
 import {
+  getWorkspaceBillingExportRows,
+  type WorkspaceBillingPackData,
+} from '@commune/api';
+import {
   Badge,
   Button,
   Group,
@@ -15,7 +19,6 @@ import {
 import { notifications } from '@mantine/notifications';
 import {
   IconAlertTriangle,
-  IconArrowUpRight,
   IconCoin,
   IconDownload,
   IconFileInvoice,
@@ -23,28 +26,24 @@ import {
   IconSparkles,
   IconUsers,
 } from '@tabler/icons-react';
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  CartesianGrid,
-} from 'recharts';
-import { useEffect, useState } from 'react';
+import { Suspense, lazy, useEffect, useState } from 'react';
 import { formatCurrency, formatDate } from '@commune/utils';
 import { GroupType } from '@commune/types';
 import { setPageTitle } from '../../utils/seo';
 import { useGroupStore } from '../../stores/group';
 import { useGroup } from '../../hooks/use-groups';
 import { useWorkspaceBilling } from '../../hooks/use-workspace-billing';
-import { downloadWorkspaceBillingPack } from '../../utils/export-csv';
 import { PageHeader } from '../../components/page-header';
 
 export const Route = createLazyFileRoute('/_app/billing')({
   component: BillingPage,
 });
+
+const BillingTrendChart = lazy(() =>
+  import('../../components/billing-charts').then((module) => ({
+    default: module.BillingTrendChart,
+  })),
+);
 
 function BillingSkeleton() {
   return (
@@ -60,6 +59,10 @@ function BillingSkeleton() {
       <Skeleton height={240} radius={14} />
     </Stack>
   );
+}
+
+function BillingChartFallback() {
+  return <Skeleton height={280} radius={14} />;
 }
 
 function WorkspaceUpgradePrompt() {
@@ -103,13 +106,14 @@ export function BillingPage() {
   }, []);
 
   const { activeGroupId } = useGroupStore();
-  const { data: group } = useGroup(activeGroupId ?? '');
+  const { data: group, isLoading: groupLoading } = useGroup(activeGroupId ?? '');
+  const workspaceGroupId = group?.type === GroupType.WORKSPACE ? activeGroupId ?? '' : '';
   const {
     data: billing,
     isLoading,
     isError,
     fetchStatus,
-  } = useWorkspaceBilling(activeGroupId ?? '');
+  } = useWorkspaceBilling(workspaceGroupId);
   const colorScheme = useComputedColorScheme('light');
   const [exporting, setExporting] = useState(false);
 
@@ -134,6 +138,8 @@ export function BillingPage() {
       </Stack>
     );
   }
+
+  if (groupLoading) return <BillingSkeleton />;
 
   if (group && group.type !== GroupType.WORKSPACE) {
     return <WorkspaceUpgradePrompt />;
@@ -165,7 +171,7 @@ export function BillingPage() {
     );
   }
 
-  const { snapshot, trend, export_rows } = billing;
+  const { snapshot, trend } = billing;
   const currency = group?.currency ?? 'GBP';
   const tickFill = colorScheme === 'dark' ? '#909296' : '#667085';
   const gridStroke = colorScheme === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(22,19,29,0.06)';
@@ -178,10 +184,16 @@ export function BillingPage() {
   const hasData = snapshot.invoice_count > 0;
 
   async function handleExport() {
-    if (!billing) return;
+    if (!billing || !activeGroupId) return;
     setExporting(true);
     try {
-      await downloadWorkspaceBillingPack(billing, currency);
+      const exportRows = await getWorkspaceBillingExportRows(activeGroupId);
+      const { downloadWorkspaceBillingPack } = await import('../../utils/export-csv');
+      const pack: WorkspaceBillingPackData = {
+        ...billing,
+        export_rows: exportRows,
+      };
+      await downloadWorkspaceBillingPack(pack, currency);
       notifications.show({
         title: 'Billing pack exported',
         message: 'Workspace summary, ledger, vendor, and trend files were downloaded.',
@@ -444,46 +456,14 @@ export function BillingPage() {
         </Group>
 
         {trendData.some((item) => item.amount > 0) ? (
-          <ResponsiveContainer width="100%" height={280}>
-            <BarChart data={trendData} margin={{ top: 8, right: 8, bottom: 0, left: -12 }}>
-              <defs>
-                <linearGradient id="billingBarGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#2d6a4f" />
-                  <stop offset="100%" stopColor="#1b4332" />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} horizontal={false} />
-              <XAxis
-                dataKey="label"
-                axisLine={false}
-                tickLine={false}
-                tick={{ fill: tickFill, fontSize: 13, fontWeight: 500 }}
-              />
-              <YAxis
-                axisLine={false}
-                tickLine={false}
-                tick={{ fill: tickFill, fontSize: 12 }}
-                tickFormatter={(v: number) => (v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v))}
-              />
-              <Tooltip
-                contentStyle={{
-                  background: '#1f2330',
-                  border: 'none',
-                  borderRadius: 10,
-                  color: '#f8f5f0',
-                  fontSize: 13,
-                  boxShadow: '0 8px 24px rgba(0,0,0,.18)',
-                }}
-                formatter={(value) => [formatCurrency(Number(value), currency), 'Spend']}
-              />
-              <Bar
-                dataKey="amount"
-                fill="url(#billingBarGradient)"
-                radius={[6, 6, 0, 0]}
-                maxBarSize={48}
-              />
-            </BarChart>
-          </ResponsiveContainer>
+          <Suspense fallback={<BillingChartFallback />}>
+            <BillingTrendChart
+              currency={currency}
+              data={trendData}
+              tickFill={tickFill}
+              gridStroke={gridStroke}
+            />
+          </Suspense>
         ) : (
           <Paper className="commune-stat-card" p="lg" radius="lg">
             <Text fw={600}>No trend data yet.</Text>

@@ -39,9 +39,11 @@ export interface WorkspaceBillingSnapshot {
   due_soon_count: number;
   shared_subscription_count: number;
   tool_cost_count: number;
+  tool_cost_spend: number;
   vendor_bill_count: number;
   vendors: WorkspaceBillingVendorSummary[];
   upcoming_due: WorkspaceBillingUpcomingExpense[];
+  latest_bill: WorkspaceBillingUpcomingExpense | null;
 }
 
 export interface WorkspaceBillingTrendPoint {
@@ -73,6 +75,15 @@ export interface WorkspaceBillingExportRow {
 
 export interface WorkspaceBillingReport {
   snapshot: WorkspaceBillingSnapshot;
+  export_rows: WorkspaceBillingExportRow[];
+}
+
+export interface WorkspaceBillingData {
+  snapshot: WorkspaceBillingSnapshot;
+  trend: WorkspaceBillingTrendPoint[];
+}
+
+export interface WorkspaceBillingPackData extends WorkspaceBillingData {
   export_rows: WorkspaceBillingExportRow[];
 }
 
@@ -241,7 +252,10 @@ export function buildWorkspaceBillingSnapshot(
   let dueSoonCount = 0;
   let sharedSubscriptionCount = 0;
   let toolCostCount = 0;
+  let toolCostSpend = 0;
   let vendorBillCount = 0;
+  let latestBill: WorkspaceBillingUpcomingExpense | null = null;
+  let latestBillActivityKey = '';
 
   for (const expense of expenses) {
     if (!isWorkspaceBillingExpense(expense)) continue;
@@ -257,6 +271,7 @@ export function buildWorkspaceBillingSnapshot(
         break;
       case 'tool_cost':
         toolCostCount += 1;
+        toolCostSpend += expense.amount;
         break;
       default:
         vendorBillCount += 1;
@@ -266,17 +281,28 @@ export function buildWorkspaceBillingSnapshot(
     const effectiveDueDate = getEffectiveDueDate(expense);
     const overdue = isOverdue(expense, todayKey);
     const dueSoonFlag = isDueSoon(expense, todayKey, dueSoonKey);
+    const enrichedExpense: WorkspaceBillingUpcomingExpense = {
+      ...expense,
+      ...context,
+      effective_due_date: effectiveDueDate,
+      is_overdue: overdue,
+    };
 
     if (overdue) overdueCount += 1;
     if (dueSoonFlag) dueSoonCount += 1;
 
     if (dueSoonFlag) {
-      upcomingDue.push({
-        ...expense,
-        ...context,
-        effective_due_date: effectiveDueDate,
-        is_overdue: overdue,
-      });
+      upcomingDue.push(enrichedExpense);
+    }
+
+    const currentActivityKey = firstTextValue(
+      context.invoice_date,
+      context.payment_due_date,
+      effectiveDueDate,
+    );
+    if (!latestBill || currentActivityKey > latestBillActivityKey) {
+      latestBill = enrichedExpense;
+      latestBillActivityKey = currentActivityKey;
     }
 
     const vendorKey = context.vendor_name ?? 'Unassigned vendor';
@@ -328,11 +354,13 @@ export function buildWorkspaceBillingSnapshot(
     due_soon_count: dueSoonCount,
     shared_subscription_count: sharedSubscriptionCount,
     tool_cost_count: toolCostCount,
+    tool_cost_spend: toolCostSpend,
     vendor_bill_count: vendorBillCount,
     vendors: Array.from(vendorMap.values()).sort((a, b) => b.total_spend - a.total_spend),
     upcoming_due: upcomingDue
       .sort((a, b) => a.effective_due_date.localeCompare(b.effective_due_date) || b.amount - a.amount)
       .slice(0, 5),
+    latest_bill: latestBill,
   };
 }
 

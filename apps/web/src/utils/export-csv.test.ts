@@ -13,6 +13,7 @@ const workspaceBillingData = {
     due_soon_count: 1,
     shared_subscription_count: 1,
     tool_cost_count: 1,
+    tool_cost_spend: 920,
     vendor_bill_count: 1,
     vendors: [
       {
@@ -37,6 +38,21 @@ const workspaceBillingData = {
       },
     ],
     upcoming_due: [],
+    latest_bill: {
+      id: 'expense-2',
+      title: 'Desk chairs',
+      amount: 920,
+      currency: 'GBP',
+      due_date: '2026-03-26',
+      effective_due_date: '2026-03-26',
+      is_overdue: true,
+      vendor_name: 'OfficeCo',
+      invoice_reference: 'INV-1042',
+      invoice_date: '2026-03-20',
+      payment_due_date: '2026-03-26',
+      category: 'work_tools',
+      recurrence_type: 'none',
+    },
   },
   trend: [
     {

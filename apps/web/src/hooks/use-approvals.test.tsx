@@ -46,7 +46,7 @@ describe('use-approvals mutations', () => {
     rejectExpenseMock.mockReset();
   });
 
-  it('invalidates the pending approvals and expenses caches after approval', async () => {
+  it('invalidates the scoped approval and expense caches after approval', async () => {
     approveExpenseMock.mockResolvedValue({ id: 'expense-1' });
 
     const queryClient = new QueryClient({
@@ -74,12 +74,18 @@ describe('use-approvals mutations', () => {
         queryKey: ['approvals', 'pending', 'group-1'],
       });
       expect(invalidateSpy).toHaveBeenCalledWith({
-        queryKey: ['expenses'],
+        queryKey: ['expenses', 'list', 'group-1'],
+      });
+      expect(invalidateSpy).toHaveBeenCalledWith({
+        queryKey: ['expenses', 'detail', 'expense-1'],
+      });
+      expect(invalidateSpy).toHaveBeenCalledWith({
+        queryKey: ['dashboard', 'stats', 'group-1'],
       });
     });
   });
 
-  it('invalidates the pending approvals and expenses caches after rejection', async () => {
+  it('invalidates the scoped approval and expense caches after rejection', async () => {
     rejectExpenseMock.mockResolvedValue({ id: 'expense-1' });
 
     const queryClient = new QueryClient({
@@ -107,7 +113,13 @@ describe('use-approvals mutations', () => {
         queryKey: ['approvals', 'pending', 'group-1'],
       });
       expect(invalidateSpy).toHaveBeenCalledWith({
-        queryKey: ['expenses'],
+        queryKey: ['expenses', 'list', 'group-1'],
+      });
+      expect(invalidateSpy).toHaveBeenCalledWith({
+        queryKey: ['expenses', 'detail', 'expense-1'],
+      });
+      expect(invalidateSpy).toHaveBeenCalledWith({
+        queryKey: ['dashboard', 'stats', 'group-1'],
       });
     });
   });

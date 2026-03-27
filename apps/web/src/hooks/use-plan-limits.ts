@@ -1,8 +1,7 @@
 import { useMemo } from 'react';
 import { SubscriptionPlan } from '@commune/types';
 import { useSubscription } from './use-subscriptions';
-import { useUserGroups } from './use-groups';
-import { useGroup } from './use-groups';
+import { useUserGroupSummaries, useGroup } from './use-groups';
 import { useGroupStore } from '../stores/group';
 
 export const PLAN_LIMITS = {
@@ -14,7 +13,7 @@ export const PLAN_LIMITS = {
 
 export function usePlanLimits(userId: string) {
   const { data: subscription, isLoading: subLoading } = useSubscription(userId);
-  const { data: groups, isLoading: groupsLoading } = useUserGroups();
+  const { data: groups, isLoading: groupsLoading } = useUserGroupSummaries();
   const { activeGroupId } = useGroupStore();
   const { data: activeGroup, isLoading: groupLoading } = useGroup(activeGroupId ?? '');
 

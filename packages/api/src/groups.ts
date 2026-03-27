@@ -158,7 +158,16 @@ export async function getGroup(groupId: string) {
   return data as unknown as GroupWithMembers;
 }
 
-export async function getUserGroups() {
+export interface UserGroupSummary {
+  id: string;
+  name: string;
+  type: Group['type'];
+  subtype: string | null;
+  avatar_url: string | null;
+  currency: string;
+}
+
+export async function getUserGroupSummaries(): Promise<UserGroupSummary[]> {
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -169,7 +178,14 @@ export async function getUserGroups() {
     .from('group_members')
     .select(
       `
-      group:groups(*)
+      group:groups(
+        id,
+        name,
+        type,
+        subtype,
+        avatar_url,
+        currency
+      )
     `,
     )
     .eq('user_id', user.id)
@@ -178,7 +194,37 @@ export async function getUserGroups() {
   if (error) throw error;
 
   return (data ?? []).map(
-    (row) => (row as unknown as { group: Group }).group,
+    (row) => (row as unknown as { group: UserGroupSummary }).group,
+  );
+}
+
+export async function getUserGroups(): Promise<GroupWithMembers[]> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) throw new Error('Not authenticated');
+
+  const { data, error } = await supabase
+    .from('group_members')
+    .select(
+      `
+      group:groups(
+        *,
+        members:group_members(
+          *,
+          user:users(*)
+        )
+      )
+    `,
+    )
+    .eq('user_id', user.id)
+    .eq('status', 'active');
+
+  if (error) throw error;
+
+  return (data ?? []).map(
+    (row) => (row as unknown as { group: GroupWithMembers }).group,
   );
 }
 

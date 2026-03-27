@@ -1,17 +1,30 @@
 import { useQuery } from '@tanstack/react-query';
 import {
+  getDashboardExpenseFeed,
   getDashboardStats,
   getUserBreakdown,
+  getWorkspaceBillingSnapshot,
   getWorkspaceBillingContext as getApiWorkspaceBillingContext,
   isWorkspaceBillingExpense,
+  type WorkspaceBillingSnapshot,
 } from '@commune/api';
 
 export const dashboardKeys = {
   all: ['dashboard'] as const,
   stats: (groupId: string, userId: string, month: string) =>
     [...dashboardKeys.all, 'stats', groupId, userId, month] as const,
+  statsGroup: (groupId: string) =>
+    [...dashboardKeys.all, 'stats', groupId] as const,
   breakdown: (groupId: string, userId: string, month: string) =>
     [...dashboardKeys.all, 'breakdown', groupId, userId, month] as const,
+  breakdownGroup: (groupId: string) =>
+    [...dashboardKeys.all, 'breakdown', groupId] as const,
+  feed: (groupId: string, month: string) =>
+    [...dashboardKeys.all, 'feed', groupId, month] as const,
+  feedGroup: (groupId: string) =>
+    [...dashboardKeys.all, 'feed', groupId] as const,
+  workspaceBillingFeed: (groupId: string) =>
+    [...dashboardKeys.all, 'workspace-billing-feed', groupId] as const,
 };
 
 export interface DashboardWorkspaceExpenseContext {
@@ -100,10 +113,61 @@ function parseDateKey(value: string): number {
   return Number.isFinite(time) ? time : Number.POSITIVE_INFINITY;
 }
 
+function isWorkspaceBillingSnapshotLike(value: unknown): value is WorkspaceBillingSnapshot {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return false;
+  }
+
+  const source = value as Record<string, unknown>;
+  return (
+    typeof source.invoice_count === 'number'
+    && typeof source.total_invoiced === 'number'
+    && Array.isArray(source.vendors)
+    && Array.isArray(source.upcoming_due)
+  );
+}
+
+function getWorkspaceBillingSummaryFromSnapshot(
+  snapshot: WorkspaceBillingSnapshot,
+): WorkspaceBillingSummary {
+  const upcomingBills = snapshot.upcoming_due
+    .map((expense) => parseWorkspaceBillingItem(expense))
+    .filter((item): item is WorkspaceBillingSummaryItem => item !== null)
+    .slice(0, 3);
+  const latestBill = parseWorkspaceBillingItem(snapshot.latest_bill);
+  const topVendor = snapshot.vendors[0];
+
+  return {
+    expenseCount: snapshot.invoice_count,
+    metadataCount: snapshot.invoice_count,
+    sharedSubscriptionCount: snapshot.shared_subscription_count,
+    toolCostCount: snapshot.tool_cost_count,
+    toolCostSpend: snapshot.tool_cost_spend,
+    vendorCount: snapshot.vendor_count,
+    overdueCount: snapshot.overdue_count,
+    dueSoonCount: snapshot.due_soon_count,
+    totalSpend: snapshot.total_invoiced,
+    latestBill,
+    nextDueBill: upcomingBills[0] ?? null,
+    topVendor: topVendor
+      ? {
+          vendor_name: topVendor.vendor_name,
+          amount: topVendor.total_spend,
+          count: topVendor.invoice_count,
+        }
+      : null,
+    upcomingBills,
+  };
+}
+
 export function getWorkspaceBillingSummary(
-  expenses?: unknown[],
+  expenses?: unknown[] | WorkspaceBillingSnapshot | null,
   referenceDate = new Date(),
 ): WorkspaceBillingSummary {
+  if (isWorkspaceBillingSnapshotLike(expenses)) {
+    return getWorkspaceBillingSummaryFromSnapshot(expenses);
+  }
+
   const items = (expenses ?? [])
     .map((expense) => parseWorkspaceBillingItem(expense))
     .filter((item): item is WorkspaceBillingSummaryItem => item !== null);
@@ -195,10 +259,27 @@ export function useDashboardStats(groupId: string, userId: string, month: string
   });
 }
 
+export function useDashboardExpenseFeed(groupId: string, month: string) {
+  return useQuery({
+    queryKey: dashboardKeys.feed(groupId, month),
+    queryFn: () => getDashboardExpenseFeed(groupId, month),
+    enabled: !!groupId,
+  });
+}
+
 export function useUserBreakdown(groupId: string, userId: string, month: string) {
   return useQuery({
     queryKey: dashboardKeys.breakdown(groupId, userId, month),
     queryFn: () => getUserBreakdown(groupId, userId, month),
     enabled: !!groupId && !!userId,
+  });
+}
+
+export function useWorkspaceBillingExpenseFeed(groupId: string) {
+  return useQuery({
+    queryKey: dashboardKeys.workspaceBillingFeed(groupId),
+    queryFn: () => getWorkspaceBillingSnapshot(groupId),
+    enabled: !!groupId,
+    staleTime: 60_000,
   });
 }

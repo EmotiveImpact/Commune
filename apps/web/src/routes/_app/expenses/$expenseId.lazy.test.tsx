@@ -1,4 +1,5 @@
 import { MantineProvider } from '@mantine/core';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ExpenseDetailPage } from './$expenseId.lazy';
@@ -83,6 +84,23 @@ vi.mock('../../../stores/auth', () => ({
   }),
 }));
 
+function renderPage() {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+      mutations: { retry: false },
+    },
+  });
+
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <MantineProvider>
+        <ExpenseDetailPage />
+      </MantineProvider>
+    </QueryClientProvider>,
+  );
+}
+
 describe('ExpenseDetailPage', () => {
   beforeEach(() => {
     useExpenseDetailMock.mockReturnValue({
@@ -108,11 +126,7 @@ describe('ExpenseDetailPage', () => {
   });
 
   it('shows the workspace context card when invoice metadata is present', () => {
-    render(
-      <MantineProvider>
-        <ExpenseDetailPage />
-      </MantineProvider>,
-    );
+    renderPage();
 
     expect(
       screen.getByText(
@@ -170,11 +184,7 @@ describe('ExpenseDetailPage', () => {
       ],
     });
 
-    render(
-      <MantineProvider>
-        <ExpenseDetailPage />
-      </MantineProvider>,
-    );
+    renderPage();
 
     expect(screen.getByText(/waiting for workspace approval/i)).toBeInTheDocument();
     expect(

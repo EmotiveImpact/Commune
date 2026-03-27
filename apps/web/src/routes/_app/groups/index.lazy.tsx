@@ -23,7 +23,7 @@ import {
   IconUsers,
   IconUsersGroup,
 } from '@tabler/icons-react';
-import { useUserGroups, useGroup } from '../../../hooks/use-groups';
+import { useUserGroupSummaries, useGroup } from '../../../hooks/use-groups';
 import { useAuthStore } from '../../../stores/auth';
 import { useGroupStore } from '../../../stores/group';
 import { ContentSkeleton } from '../../../components/page-skeleton';
@@ -81,7 +81,7 @@ const GROUP_VISUALS: Record<string, { gradient: string; gradientDark: string; ic
 };
 
 function GroupsPage() {
-  const { data: groups, isLoading } = useUserGroups();
+  const { data: groups, isLoading } = useUserGroupSummaries();
   const [createOpened, { open: openCreate, close: closeCreate }] = useDisclosure(false);
 
   if (isLoading) return <ContentSkeleton />;

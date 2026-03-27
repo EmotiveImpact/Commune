@@ -1,4 +1,9 @@
-import type { ExpenseWithParticipants, SplitMethod } from '@commune/types';
+import type {
+  ExpenseListItem,
+  ExpenseVendorInvoiceContext,
+  ExpenseWithParticipants,
+  SplitMethod,
+} from '@commune/types';
 import {
   calculateEqualSplit,
   calculatePercentageSplit,
@@ -33,6 +38,140 @@ interface CreateExpenseData {
   participant_ids: string[];
   percentages?: { userId: string; percentage: number }[];
   custom_amounts?: { userId: string; amount: number }[];
+}
+
+export interface MemberMonthlyStatRow {
+  user_id: string;
+  total_owed: number;
+  total_paid: number;
+}
+
+export interface ExpenseLedgerItem extends ExpenseVendorInvoiceContext {
+  id: string;
+  title: string;
+  category: string | null;
+  amount: number;
+  currency: string;
+  due_date: string;
+  approval_status: 'approved' | 'pending' | 'rejected';
+  recurrence_type: string | null;
+  participant_count: number;
+  paid_count: number;
+}
+
+export interface ExpenseLedgerSummary {
+  total_count: number;
+  total_amount: number;
+  open_count: number;
+  overdue_count: number;
+  settled_count: number;
+  workspace: {
+    linked_count: number;
+    missing_count: number;
+    due_soon_count: number;
+  };
+}
+
+export interface ExpenseLedgerResponse {
+  summary: ExpenseLedgerSummary;
+  filtered_count: number;
+  items: ExpenseLedgerItem[];
+}
+
+export interface ExpenseLedgerFilters {
+  category?: string;
+  month?: string;
+  dateFrom?: string | null;
+  dateTo?: string | null;
+  search?: string;
+  workspaceView?: 'all' | 'linked' | 'missing' | 'due-soon';
+  status?: 'all' | 'open' | 'overdue' | 'settled';
+  isWorkspaceGroup?: boolean;
+  page?: number;
+  pageSize?: number;
+  includeAll?: boolean;
+}
+
+function toOptionalString(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function toNumber(value: unknown): number {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function toLedgerItem(value: unknown): ExpenseLedgerItem | null {
+  if (!value || typeof value !== 'object') return null;
+
+  const source = value as Record<string, unknown>;
+  const id = toOptionalString(source.id);
+  const title = toOptionalString(source.title);
+  const dueDate = toOptionalString(source.due_date);
+  const approvalStatus = toOptionalString(source.approval_status);
+
+  if (
+    !id ||
+    !title ||
+    !dueDate ||
+    (approvalStatus !== 'approved' && approvalStatus !== 'pending' && approvalStatus !== 'rejected')
+  ) {
+    return null;
+  }
+
+  return {
+    id,
+    title,
+    category: toOptionalString(source.category),
+    amount: toNumber(source.amount),
+    currency: toOptionalString(source.currency) ?? 'GBP',
+    due_date: dueDate,
+    approval_status: approvalStatus,
+    recurrence_type: toOptionalString(source.recurrence_type),
+    vendor_name: toOptionalString(source.vendor_name),
+    invoice_reference: toOptionalString(source.invoice_reference),
+    invoice_date: toOptionalString(source.invoice_date),
+    payment_due_date: toOptionalString(source.payment_due_date),
+    participant_count: Math.max(0, Math.trunc(toNumber(source.participant_count))),
+    paid_count: Math.max(0, Math.trunc(toNumber(source.paid_count))),
+  };
+}
+
+function parseExpenseLedgerResponse(value: unknown): ExpenseLedgerResponse {
+  const source = value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
+  const summarySource =
+    source.summary && typeof source.summary === 'object'
+      ? (source.summary as Record<string, unknown>)
+      : {};
+  const workspaceSource =
+    summarySource.workspace && typeof summarySource.workspace === 'object'
+      ? (summarySource.workspace as Record<string, unknown>)
+      : {};
+  const items = Array.isArray(source.items)
+    ? source.items
+        .map((item) => toLedgerItem(item))
+        .filter((item): item is ExpenseLedgerItem => item !== null)
+    : [];
+
+  return {
+    summary: {
+      total_count: Math.max(0, Math.trunc(toNumber(summarySource.total_count))),
+      total_amount: toNumber(summarySource.total_amount),
+      open_count: Math.max(0, Math.trunc(toNumber(summarySource.open_count))),
+      overdue_count: Math.max(0, Math.trunc(toNumber(summarySource.overdue_count))),
+      settled_count: Math.max(0, Math.trunc(toNumber(summarySource.settled_count))),
+      workspace: {
+        linked_count: Math.max(0, Math.trunc(toNumber(workspaceSource.linked_count))),
+        missing_count: Math.max(0, Math.trunc(toNumber(workspaceSource.missing_count))),
+        due_soon_count: Math.max(0, Math.trunc(toNumber(workspaceSource.due_soon_count))),
+      },
+    },
+    filtered_count: Math.max(0, Math.trunc(toNumber(source.filtered_count))),
+    items,
+  };
 }
 
 export async function createExpense(data: CreateExpenseData) {
@@ -151,18 +290,29 @@ export async function getGroupExpenses(
     category?: string;
     month?: string; // YYYY-MM format
   },
-) {
+): Promise<ExpenseListItem[]> {
   let query = supabase
     .from('expenses')
     .select(
       `
-      *,
+      id,
+      title,
+      category,
+      amount,
+      currency,
+      due_date,
+      approval_status,
+      recurrence_type,
+      vendor_name,
+      invoice_reference,
+      invoice_date,
+      payment_due_date,
       participants:expense_participants(
-        *,
-        user:users(*)
+        user_id
       ),
-      payment_records(*),
-      paid_by_user:users!expenses_paid_by_user_id_fkey(*)
+      payment_records(
+        status
+      )
     `,
     )
     .eq('group_id', groupId)
@@ -183,7 +333,101 @@ export async function getGroupExpenses(
   const { data, error } = await query;
 
   if (error) throw error;
-  return data as unknown as ExpenseWithParticipants[];
+  return (data ?? []) as ExpenseListItem[];
+}
+
+export async function getExpenseLedger(
+  groupId: string,
+  filters: ExpenseLedgerFilters = {},
+): Promise<ExpenseLedgerResponse> {
+  const { data, error } = await supabase.rpc('fn_get_expense_ledger', {
+    p_group_id: groupId,
+    p_category: filters.category ?? null,
+    p_month: filters.month ?? null,
+    p_date_from: filters.dateFrom ?? null,
+    p_date_to: filters.dateTo ?? null,
+    p_search: filters.search ?? null,
+    p_workspace_view: filters.workspaceView ?? 'all',
+    p_status: filters.status ?? 'all',
+    p_is_workspace_group: filters.isWorkspaceGroup ?? false,
+    p_page: filters.page ?? 0,
+    p_page_size: filters.pageSize ?? 20,
+    p_include_all: filters.includeAll ?? false,
+  });
+
+  if (error) throw error;
+  return parseExpenseLedgerResponse(data);
+}
+
+export async function getExpenseLedgerExportRows(
+  groupId: string,
+  filters: Omit<ExpenseLedgerFilters, 'page' | 'pageSize' | 'includeAll'> = {},
+): Promise<ExpenseLedgerItem[]> {
+  const result = await getExpenseLedger(groupId, {
+    ...filters,
+    includeAll: true,
+  });
+  return result.items;
+}
+
+export async function getMemberMonthlyStats(
+  groupId: string,
+  month: string,
+): Promise<MemberMonthlyStatRow[]> {
+  const startDate = `${month}-01`;
+  const [year, monthNumber] = month.split('-').map(Number);
+  const endDate = new Date(year!, monthNumber!, 1).toISOString().split('T')[0];
+
+  const [participantRowsResult, paymentRowsResult] = await Promise.all([
+    supabase
+      .from('expense_participants')
+      .select('user_id, share_amount, expense:expenses!inner(group_id, due_date, is_active)')
+      .eq('expense.group_id', groupId)
+      .eq('expense.is_active', true)
+      .gte('expense.due_date', startDate)
+      .lt('expense.due_date', endDate!),
+    supabase
+      .from('payment_records')
+      .select('user_id, amount, status, expense:expenses!inner(group_id, due_date, is_active)')
+      .eq('expense.group_id', groupId)
+      .eq('expense.is_active', true)
+      .neq('status', 'unpaid')
+      .gte('expense.due_date', startDate)
+      .lt('expense.due_date', endDate!),
+  ]);
+
+  if (participantRowsResult.error) throw participantRowsResult.error;
+  if (paymentRowsResult.error) throw paymentRowsResult.error;
+
+  const stats = new Map<string, MemberMonthlyStatRow>();
+
+  for (const row of participantRowsResult.data ?? []) {
+    const userId = typeof row.user_id === 'string' ? row.user_id : '';
+    if (!userId) continue;
+
+    const existing = stats.get(userId) ?? {
+      user_id: userId,
+      total_owed: 0,
+      total_paid: 0,
+    };
+    existing.total_owed += Number(row.share_amount ?? 0);
+    stats.set(userId, existing);
+  }
+
+  for (const row of paymentRowsResult.data ?? []) {
+    const userId = typeof row.user_id === 'string' ? row.user_id : '';
+    if (!userId) continue;
+
+    const existing = stats.get(userId) ?? {
+      user_id: userId,
+      total_owed: 0,
+      total_paid: 0,
+    };
+    existing.total_paid += Number(row.amount ?? 0);
+    stats.set(userId, existing);
+  }
+
+  return Array.from(stats.values());
 }
 
 export async function getExpenseDetail(expenseId: string) {

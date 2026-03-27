@@ -314,6 +314,25 @@ export type ExpenseWithParticipants = Expense & {
   paid_by_user: User | null;
 };
 
+export type ExpenseListItem = Pick<
+  Expense,
+  | 'id'
+  | 'title'
+  | 'category'
+  | 'amount'
+  | 'currency'
+  | 'due_date'
+  | 'approval_status'
+  | 'recurrence_type'
+  | 'vendor_name'
+  | 'invoice_reference'
+  | 'invoice_date'
+  | 'payment_due_date'
+> & {
+  participants: Pick<ExpenseParticipant, 'user_id'>[];
+  payment_records: Pick<PaymentRecord, 'status'>[];
+};
+
 export interface ProrationInfo {
   daysPresent: number;
   totalDays: number;
@@ -486,12 +505,30 @@ export interface CrossGroupPerGroupData {
   settlement: SettlementResult;
 }
 
+export interface CrossGroupGroupSummary {
+  groupId: string;
+  groupName: string;
+  groupType: string;
+  currency: string;
+  transactionCount: number;
+  owesAmount: number;
+  owedAmount: number;
+  waitingCount: number;
+}
+
 export interface CrossGroupResult {
   transactions: CrossGroupTransaction[];
   transactionCount: number;
   isSettled: boolean;
   /** Per-group settlement data before netting, so the client can show either view */
   perGroupData?: CrossGroupPerGroupData[];
+}
+
+export interface CrossGroupOverviewResult {
+  transactions: CrossGroupTransaction[];
+  transactionCount: number;
+  isSettled: boolean;
+  groupSummaries: CrossGroupGroupSummary[];
 }
 
 // ─── Couple Mode types ───────────────────────────────────────────────────────

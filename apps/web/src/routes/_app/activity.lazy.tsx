@@ -14,6 +14,7 @@ import {
   Tooltip,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
+import { getActivityExportEntries, type ActivityEntityFilter, type ActivityEntry } from '@commune/api';
 import {
   IconActivity,
   IconCash,
@@ -32,22 +33,19 @@ import {
 import { useEffect, useMemo, useState } from 'react';
 import { setPageTitle } from '../../utils/seo';
 import { formatCurrency, formatDate } from '@commune/utils';
-import type { ActivityEntry } from '@commune/api';
 import { useGroupStore } from '../../stores/group';
 import { useAuthStore } from '../../stores/auth';
 import { useGroup } from '../../hooks/use-groups';
-import { useGroupExpenses } from '../../hooks/use-expenses';
 import { usePlanLimits } from '../../hooks/use-plan-limits';
 import {
   getActivityWorkspaceBillingContext,
   hasActivityWorkspaceBillingContext,
-  useActivityLog,
+  useActivityFeed,
 } from '../../hooks/use-activity';
-import { getWorkspaceBillingSummary } from '../../hooks/use-dashboard';
+import { getWorkspaceBillingSummary, useWorkspaceBillingExpenseFeed } from '../../hooks/use-dashboard';
 import { ActivitySkeleton } from '../../components/page-skeleton';
 import { EmptyState } from '../../components/empty-state';
 import { PageHeader } from '../../components/page-header';
-import { generateActivityCSV, downloadCSV } from '../../utils/export-csv';
 
 export const Route = createLazyFileRoute('/_app/activity')({
   component: ActivityPage,
@@ -170,7 +168,17 @@ function getDateLabel(dateStr: string): string {
   return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
 }
 
-type TypeFilter = 'all' | 'expense' | 'payment' | 'member' | 'chore';
+type TypeFilter = 'all' | ActivityEntityFilter;
+
+function getSelectedEntityTypes(activeFilters: Set<TypeFilter>): ActivityEntityFilter[] {
+  if (activeFilters.has('all')) {
+    return [];
+  }
+
+  return [...activeFilters]
+    .filter((filter): filter is ActivityEntityFilter => filter !== 'all')
+    .sort();
+}
 
 function ActivityPage() {
   useEffect(() => {
@@ -182,10 +190,30 @@ function ActivityPage() {
   const { canExport } = usePlanLimits(user?.id ?? '');
   const { data: group, isLoading: groupLoading } = useGroup(activeGroupId ?? '');
   const workspaceExpenseGroupId = group?.type === 'workspace' ? activeGroupId ?? '' : '';
-  const { data: workspaceExpenses = [] } = useGroupExpenses(workspaceExpenseGroupId);
+  const { data: workspaceBillingSnapshot = null } = useWorkspaceBillingExpenseFeed(workspaceExpenseGroupId);
   const [page, setPage] = useState(0);
   const [activeFilters, setActiveFilters] = useState<Set<TypeFilter>>(new Set(['all']));
-  const { data: entries = [], isLoading } = useActivityLog(activeGroupId ?? '');
+  const [exportingCsv, setExportingCsv] = useState(false);
+  const entityTypes = useMemo(
+    () => getSelectedEntityTypes(activeFilters),
+    [activeFilters],
+  );
+  const {
+    data: activity,
+    isLoading,
+  } = useActivityFeed(activeGroupId ?? '', {
+    limit: PAGE_SIZE,
+    offset: page * PAGE_SIZE,
+    entityTypes,
+  });
+  const entries = activity?.entries ?? [];
+  const totalEntries = activity?.total ?? 0;
+  const activityStats = activity?.summary ?? {
+    thisMonth: 0,
+    mostActiveName: '',
+    mostActiveCount: 0,
+    byType: [],
+  };
 
   function toggleFilter(key: TypeFilter) {
     setPage(0);
@@ -207,25 +235,11 @@ function ActivityPage() {
     });
   }
 
-  const filteredEntries = useMemo(() => {
-    if (activeFilters.has('all')) return entries;
-    return entries.filter((e) => {
-      const type = e.entity_type;
-      if (!type) return false;
-      return activeFilters.has(type as TypeFilter);
-    });
-  }, [entries, activeFilters]);
-
-  const paginatedEntries = useMemo(
-    () => filteredEntries.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE),
-    [filteredEntries, page],
-  );
-
   const grouped = useMemo(() => {
-    const groups: { label: string; items: typeof paginatedEntries }[] = [];
+    const groups: { label: string; items: typeof entries }[] = [];
     let currentLabel = '';
 
-    for (const entry of paginatedEntries) {
+    for (const entry of entries) {
       const label = getDateLabel(entry.created_at);
       if (label !== currentLabel) {
         currentLabel = label;
@@ -235,35 +249,10 @@ function ActivityPage() {
     }
 
     return groups;
-  }, [paginatedEntries]);
+  }, [entries]);
 
-  const workspaceBillingSummary = getWorkspaceBillingSummary(workspaceExpenses);
+  const workspaceBillingSummary = getWorkspaceBillingSummary(workspaceBillingSnapshot);
   const showWorkspaceBillingWatch = group?.type === 'workspace' && workspaceBillingSummary.expenseCount > 0;
-
-  // Compute sidebar stats — MUST be before early returns (React hooks rules)
-  const activityStats = useMemo(() => {
-    const now = new Date();
-    const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-    const thisMonthEntries = entries.filter((e) => e.created_at.startsWith(thisMonth));
-    const byMember = new Map<string, number>();
-    for (const e of thisMonthEntries) {
-      byMember.set(e.user_id, (byMember.get(e.user_id) ?? 0) + 1);
-    }
-    let mostActiveName = '';
-    let mostActiveCount = 0;
-    for (const [uid, count] of byMember) {
-      if (count > mostActiveCount) {
-        mostActiveCount = count;
-        const member = group?.members?.find((m: any) => m.user_id === uid);
-        mostActiveName = member?.user?.name ?? member?.user?.email ?? 'Unknown';
-      }
-    }
-    const byType = new Map<string, number>();
-    for (const e of thisMonthEntries) {
-      byType.set(e.entity_type ?? 'other', (byType.get(e.entity_type ?? 'other') ?? 0) + 1);
-    }
-    return { total: entries.length, thisMonth: thisMonthEntries.length, mostActiveName, mostActiveCount, byType };
-  }, [entries, group]);
 
   if (!activeGroupId) {
     return (
@@ -298,16 +287,24 @@ function ActivityPage() {
           <Button
             variant="default"
             leftSection={<IconDownload size={16} />}
-            disabled={filteredEntries.length === 0}
-            onClick={() => {
-              const csv = generateActivityCSV(filteredEntries);
-              const dateStr = new Date().toISOString().slice(0, 10);
-              downloadCSV(csv, `commune-activity-${group?.name ?? 'group'}-${dateStr}.csv`);
-              notifications.show({
-                title: 'Exported',
-                message: `${filteredEntries.length} activity entries downloaded.`,
-                color: 'green',
-              });
+            disabled={totalEntries === 0}
+            loading={exportingCsv}
+            onClick={async () => {
+              setExportingCsv(true);
+              try {
+                const exportEntries = await getActivityExportEntries(activeGroupId, entityTypes);
+                const { generateActivityCSV, downloadCSV } = await import('../../utils/export-csv');
+                const csv = generateActivityCSV(exportEntries);
+                const dateStr = new Date().toISOString().slice(0, 10);
+                downloadCSV(csv, `commune-activity-${group?.name ?? 'group'}-${dateStr}.csv`);
+                notifications.show({
+                  title: 'Exported',
+                  message: `${exportEntries.length} activity entries downloaded.`,
+                  color: 'green',
+                });
+              } finally {
+                setExportingCsv(false);
+              }
             }}
           >
             Export CSV
@@ -353,7 +350,7 @@ function ActivityPage() {
               </Paper>
               <Paper className="commune-stat-card" p="sm" radius="md">
                 <Text size="xs" c="dimmed">All time</Text>
-                <Text fw={700} size="lg">{activityStats.total}</Text>
+                <Text fw={700} size="lg">{totalEntries}</Text>
               </Paper>
             </SimpleGrid>
             {activityStats.mostActiveName && (
@@ -368,15 +365,13 @@ function ActivityPage() {
           <Paper className="commune-soft-panel" p="lg" radius="lg">
             <Text className="commune-section-heading" mb="sm">By type</Text>
             <Stack gap="xs">
-              {Array.from(activityStats.byType.entries())
-                .sort((a, b) => b[1] - a[1])
-                .map(([type, count]) => (
+              {activityStats.byType.map(({ type, count }) => (
                   <Group key={type} justify="space-between">
                     <Text size="sm" tt="capitalize">{type.replace('_', ' ')}</Text>
                     <Badge size="sm" variant="light" color="gray">{count}</Badge>
                   </Group>
                 ))}
-              {activityStats.byType.size === 0 && (
+              {activityStats.byType.length === 0 && (
                 <Text size="sm" c="dimmed">No activity this month</Text>
               )}
             </Stack>
@@ -529,7 +524,7 @@ function ActivityPage() {
         </Paper>
       )}
 
-      {filteredEntries.length === 0 ? (
+      {totalEntries === 0 ? (
         <EmptyState
           icon={IconHistory}
           iconColor="gray"
@@ -610,7 +605,7 @@ function ActivityPage() {
 
           <PaginationBar
             page={page}
-            totalItems={filteredEntries.length}
+            totalItems={totalEntries}
             onPageChange={setPage}
           />
         </Stack>

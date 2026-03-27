@@ -1,6 +1,17 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { createExpense, getGroupExpenses, getExpenseDetail, archiveExpense, batchArchiveExpenses, updateExpense, flagExpense, unflagExpense } from '@commune/api';
+import {
+  createExpense,
+  getExpenseLedger,
+  getGroupExpenses,
+  getExpenseDetail,
+  archiveExpense,
+  batchArchiveExpenses,
+  updateExpense,
+  flagExpense,
+  unflagExpense,
+} from '@commune/api';
 import { markPayment, confirmPayment, batchMarkPaid } from '@commune/api';
+import type { ExpenseLedgerFilters } from '@commune/api';
 import type { SplitMethod } from '@commune/types';
 import { groupKeys } from './use-groups';
 import { dashboardKeys } from './use-dashboard';
@@ -8,11 +19,20 @@ import { settlementKeys } from './use-settlement';
 import { groupHubKeys } from './use-group-hub';
 import { activityKeys } from './use-activity';
 import { crossGroupKeys } from './use-cross-group';
+import { notificationKeys } from './use-notifications';
+import { workspaceBillingKeys } from './use-workspace-billing';
+import { useAuthStore } from '../stores/auth';
 
 export const expenseKeys = {
   all: ['expenses'] as const,
   list: (groupId: string, filters?: { category?: string; month?: string }) =>
     [...expenseKeys.all, 'list', groupId, filters] as const,
+  groupLists: (groupId: string) =>
+    [...expenseKeys.all, 'list', groupId] as const,
+  ledger: (groupId: string, filters: ExpenseLedgerFilters) =>
+    [...expenseKeys.all, 'ledger', groupId, filters] as const,
+  groupLedger: (groupId: string) =>
+    [...expenseKeys.all, 'ledger', groupId] as const,
   detail: (expenseId: string) => [...expenseKeys.all, 'detail', expenseId] as const,
 };
 
@@ -98,12 +118,61 @@ export function useGroupExpenses(groupId: string, filters?: { category?: string;
   });
 }
 
+export function useExpenseLedger(groupId: string, filters: ExpenseLedgerFilters) {
+  return useQuery({
+    queryKey: expenseKeys.ledger(groupId, filters),
+    queryFn: () => getExpenseLedger(groupId, filters),
+    enabled: !!groupId,
+    placeholderData: (previousData) => previousData,
+  });
+}
+
 export function useExpenseDetail(expenseId: string) {
   return useQuery({
     queryKey: expenseKeys.detail(expenseId),
     queryFn: () => getExpenseDetail(expenseId),
     enabled: !!expenseId,
   });
+}
+
+function getActiveUserId() {
+  return useAuthStore.getState().user?.id;
+}
+
+function invalidateExpenseDerivedQueries(
+  queryClient: ReturnType<typeof useQueryClient>,
+  groupId: string,
+  options?: {
+    expenseId?: string;
+    includeGroupDetail?: boolean;
+    userId?: string;
+  },
+) {
+  const userId = options?.userId;
+
+  queryClient.invalidateQueries({ queryKey: expenseKeys.groupLists(groupId) });
+  queryClient.invalidateQueries({ queryKey: expenseKeys.groupLedger(groupId) });
+  if (options?.expenseId) {
+    queryClient.invalidateQueries({ queryKey: expenseKeys.detail(options.expenseId) });
+  }
+  if (options?.includeGroupDetail) {
+    queryClient.invalidateQueries({ queryKey: groupKeys.detail(groupId) });
+  }
+
+  queryClient.invalidateQueries({ queryKey: dashboardKeys.statsGroup(groupId) });
+  queryClient.invalidateQueries({ queryKey: dashboardKeys.breakdownGroup(groupId) });
+  queryClient.invalidateQueries({ queryKey: dashboardKeys.feedGroup(groupId) });
+  queryClient.invalidateQueries({ queryKey: dashboardKeys.workspaceBillingFeed(groupId) });
+  queryClient.invalidateQueries({ queryKey: workspaceBillingKeys.report(groupId) });
+  queryClient.invalidateQueries({ queryKey: notificationKeys.group(groupId) });
+  queryClient.invalidateQueries({ queryKey: settlementKeys.groupPrefix(groupId) });
+  queryClient.invalidateQueries({ queryKey: groupHubKeys.detail(groupId) });
+  queryClient.invalidateQueries({ queryKey: activityKeys.group(groupId) });
+  queryClient.invalidateQueries({ queryKey: ['approvals', 'pending', groupId] });
+
+  if (userId) {
+    queryClient.invalidateQueries({ queryKey: crossGroupKeys.user(userId) });
+  }
 }
 
 export function useCreateExpense(groupId: string) {
@@ -126,13 +195,10 @@ export function useCreateExpense(groupId: string) {
       custom_amounts?: { userId: string; amount: number }[];
     } & WorkspaceExpenseContextPayload) => createExpense(data as Parameters<typeof createExpense>[0]),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: expenseKeys.list(groupId) });
-      queryClient.invalidateQueries({ queryKey: groupKeys.detail(groupId) });
-      queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
-      queryClient.invalidateQueries({ queryKey: settlementKeys.all });
-      queryClient.invalidateQueries({ queryKey: groupHubKeys.all });
-      queryClient.invalidateQueries({ queryKey: activityKeys.all });
-      queryClient.invalidateQueries({ queryKey: crossGroupKeys.all });
+      invalidateExpenseDerivedQueries(queryClient, groupId, {
+        includeGroupDetail: true,
+        userId: getActiveUserId(),
+      });
     },
   });
 }
@@ -141,13 +207,11 @@ export function useArchiveExpense(groupId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (expenseId: string) => archiveExpense(expenseId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: expenseKeys.list(groupId) });
-      queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
-      queryClient.invalidateQueries({ queryKey: settlementKeys.all });
-      queryClient.invalidateQueries({ queryKey: groupHubKeys.all });
-      queryClient.invalidateQueries({ queryKey: activityKeys.all });
-      queryClient.invalidateQueries({ queryKey: crossGroupKeys.all });
+    onSuccess: (_, expenseId) => {
+      invalidateExpenseDerivedQueries(queryClient, groupId, {
+        expenseId,
+        userId: getActiveUserId(),
+      });
     },
   });
 }
@@ -157,12 +221,9 @@ export function useBatchArchive(groupId: string) {
   return useMutation({
     mutationFn: (ids: string[]) => batchArchiveExpenses(ids),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: expenseKeys.list(groupId) });
-      queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
-      queryClient.invalidateQueries({ queryKey: settlementKeys.all });
-      queryClient.invalidateQueries({ queryKey: groupHubKeys.all });
-      queryClient.invalidateQueries({ queryKey: activityKeys.all });
-      queryClient.invalidateQueries({ queryKey: crossGroupKeys.all });
+      invalidateExpenseDerivedQueries(queryClient, groupId, {
+        userId: getActiveUserId(),
+      });
     },
   });
 }
@@ -173,12 +234,9 @@ export function useBatchMarkPaid(groupId: string) {
     mutationFn: ({ expenseIds, userId }: { expenseIds: string[]; userId: string }) =>
       batchMarkPaid(expenseIds, userId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: expenseKeys.list(groupId) });
-      queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
-      queryClient.invalidateQueries({ queryKey: settlementKeys.all });
-      queryClient.invalidateQueries({ queryKey: groupHubKeys.all });
-      queryClient.invalidateQueries({ queryKey: activityKeys.all });
-      queryClient.invalidateQueries({ queryKey: crossGroupKeys.all });
+      invalidateExpenseDerivedQueries(queryClient, groupId, {
+        userId: getActiveUserId(),
+      });
     },
   });
 }
@@ -193,13 +251,10 @@ export function useMarkPayment(groupId: string) {
       note?: string;
     }) => markPayment(expenseId, userId, status, note),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: expenseKeys.detail(variables.expenseId) });
-      queryClient.invalidateQueries({ queryKey: expenseKeys.list(groupId) });
-      queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
-      queryClient.invalidateQueries({ queryKey: settlementKeys.all });
-      queryClient.invalidateQueries({ queryKey: groupHubKeys.all });
-      queryClient.invalidateQueries({ queryKey: activityKeys.all });
-      queryClient.invalidateQueries({ queryKey: crossGroupKeys.all });
+      invalidateExpenseDerivedQueries(queryClient, groupId, {
+        expenseId: variables.expenseId,
+        userId: getActiveUserId(),
+      });
     },
   });
 }
@@ -213,13 +268,10 @@ export function useConfirmPayment(groupId: string) {
       confirmedBy: string;
     }) => confirmPayment(expenseId, userId, confirmedBy),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: expenseKeys.detail(variables.expenseId) });
-      queryClient.invalidateQueries({ queryKey: expenseKeys.list(groupId) });
-      queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
-      queryClient.invalidateQueries({ queryKey: settlementKeys.all });
-      queryClient.invalidateQueries({ queryKey: groupHubKeys.all });
-      queryClient.invalidateQueries({ queryKey: activityKeys.all });
-      queryClient.invalidateQueries({ queryKey: crossGroupKeys.all });
+      invalidateExpenseDerivedQueries(queryClient, groupId, {
+        expenseId: variables.expenseId,
+        userId: getActiveUserId(),
+      });
     },
   });
 }
@@ -232,13 +284,10 @@ export function useUpdateExpense(groupId: string) {
       data: Parameters<typeof updateExpense>[1] & WorkspaceExpenseContextPayload;
     }) => updateExpense(expenseId, data),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: expenseKeys.detail(variables.expenseId) });
-      queryClient.invalidateQueries({ queryKey: expenseKeys.list(groupId) });
-      queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
-      queryClient.invalidateQueries({ queryKey: settlementKeys.all });
-      queryClient.invalidateQueries({ queryKey: groupHubKeys.all });
-      queryClient.invalidateQueries({ queryKey: activityKeys.all });
-      queryClient.invalidateQueries({ queryKey: crossGroupKeys.all });
+      invalidateExpenseDerivedQueries(queryClient, groupId, {
+        expenseId: variables.expenseId,
+        userId: getActiveUserId(),
+      });
     },
   });
 }
