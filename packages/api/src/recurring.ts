@@ -1,5 +1,5 @@
 import type { ExpenseWithParticipants } from '@commune/types';
-import { supabase } from './client';
+import { requireSessionUser, supabase } from './client';
 import { ensureExpenseCycleOpen, ensureGroupCycleOpenForDate } from './cycles';
 import {
   buildWorkspaceBillingReport,
@@ -118,11 +118,7 @@ export function parsePausedRecurringExpenseState(
 export async function generateRecurringExpenses(
   groupId: string,
 ): Promise<string[]> {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) throw new Error('Not authenticated');
+  const user = await requireSessionUser();
 
   const currentMonth = getCurrentMonthKey();
 

@@ -39,12 +39,13 @@ import { getOnboardingTips } from '@commune/core';
 import { setPageTitle } from '../../utils/seo';
 import { useGroupStore } from '../../stores/group';
 import { useAuthStore } from '../../stores/auth';
-import { useGroup, usePendingInvites, useUserGroupSummaries } from '../../hooks/use-groups';
+import { useGroupSummary, usePendingInvites, useUserGroupSummaries } from '../../hooks/use-groups';
 import { useDashboardExpenseFeed, useDashboardStats } from '../../hooks/use-dashboard';
 import { DashboardSkeleton } from '../../components/page-skeleton';
 import { useGenerateRecurring } from '../../hooks/use-recurring';
 import { useGroupBudget } from '../../hooks/use-budgets';
 import { useTemplates } from '../../hooks/use-templates';
+import { useDeferredSection } from '../../hooks/use-deferred-section';
 import { SetBudgetModal } from '../../components/set-budget-modal';
 
 export const Route = createLazyFileRoute('/_app/')({
@@ -242,7 +243,7 @@ function DashboardPage() {
   const navigate = useNavigate();
   const { data: groups, isLoading: groupsLoading } = useUserGroupSummaries();
   const { data: pendingInvites, isLoading: invitesLoading } = usePendingInvites();
-  const { data: group, isLoading: groupLoading } = useGroup(activeGroupId ?? '');
+  const { data: group, isLoading: groupLoading } = useGroupSummary(activeGroupId ?? '');
   const currentMonth = getMonthKey();
   const { data: stats, isLoading: statsLoading } = useDashboardStats(
     activeGroupId ?? '',
@@ -259,7 +260,6 @@ function DashboardPage() {
   // F35: Budget data
   const { data: currentBudget } = useGroupBudget(activeGroupId ?? '', currentMonth);
   const [budgetModalOpened, setBudgetModalOpened] = useState(false);
-  const [showHeavyVisuals, setShowHeavyVisuals] = useState(false);
 
   // F36: Templates for feature discovery
   const { data: templates } = useTemplates(activeGroupId ?? '');
@@ -342,6 +342,21 @@ function DashboardPage() {
       }));
   }, [allExpenses, monthExpenses]);
 
+  const hasTrendData = monthlyTrend.items.some((item) => item.total > 0);
+  const hasCategoryData = categoryBreakdown.length > 0;
+  const {
+    ref: overviewChartRef,
+    ready: showOverviewChart,
+  } = useDeferredSection({
+    enabled: hasTrendData,
+  });
+  const {
+    ref: categoryChartRef,
+    ready: showCategoryChart,
+  } = useDeferredSection({
+    enabled: hasCategoryData,
+  });
+
   const recentExpenses = useMemo(
     () =>
       [...allExpenses]
@@ -369,37 +384,6 @@ function DashboardPage() {
       });
   }, [monthExpenses, stats?.upcoming_items, user?.id]);
   const hasExpenses = allExpenses.length > 0;
-
-  useEffect(() => {
-    setShowHeavyVisuals(false);
-
-    if (!hasExpenses || typeof window === 'undefined') {
-      return;
-    }
-
-    const idleWindow = window as Window & {
-      requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number;
-      cancelIdleCallback?: (handle: number) => void;
-    };
-
-    if (idleWindow.requestIdleCallback) {
-      const idleHandle = idleWindow.requestIdleCallback(() => {
-        setShowHeavyVisuals(true);
-      }, { timeout: 250 });
-
-      return () => {
-        idleWindow.cancelIdleCallback?.(idleHandle);
-      };
-    }
-
-    const timeoutHandle = window.setTimeout(() => {
-      setShowHeavyVisuals(true);
-    }, 0);
-
-    return () => {
-      window.clearTimeout(timeoutHandle);
-    };
-  }, [activeGroupId, hasExpenses]);
 
   // F35: Budget calculations
   const budgetPct = currentBudget && currentBudget.budget_amount > 0
@@ -588,7 +572,7 @@ function DashboardPage() {
                     Members
                   </Text>
                   <Text fw={700} size="lg">
-                    {group?.members.length ?? 0}
+                    {group?.active_member_count ?? 0}
                   </Text>
                 </div>
                 <div className="commune-hero-aside-stat">
@@ -955,20 +939,22 @@ function DashboardPage() {
                 </Badge>
               </Group>
 
-              {monthlyTrend.items.some((item) => item.total > 0) ? (
-                showHeavyVisuals ? (
-                  <Suspense fallback={<DashboardOverviewChartFallback />}>
-                    <DashboardTransactionOverviewChart
-                      currency={group?.currency}
-                      currentTotal={monthlyTrend.currentTotal}
-                      items={monthlyTrend.items}
-                      tickFill={tickFill}
-                      gridStroke={gridStroke}
-                    />
-                  </Suspense>
-                ) : (
-                  <DashboardOverviewChartFallback />
-                )
+              {hasTrendData ? (
+                <div ref={overviewChartRef}>
+                  {showOverviewChart ? (
+                    <Suspense fallback={<DashboardOverviewChartFallback />}>
+                      <DashboardTransactionOverviewChart
+                        currency={group?.currency}
+                        currentTotal={monthlyTrend.currentTotal}
+                        items={monthlyTrend.items}
+                        tickFill={tickFill}
+                        gridStroke={gridStroke}
+                      />
+                    </Suspense>
+                  ) : (
+                    <DashboardOverviewChartFallback />
+                  )}
+                </div>
               ) : (
                 <Paper className="commune-stat-card" p="lg" radius="lg">
                   <Text fw={600}>No trend data yet.</Text>
@@ -1072,17 +1058,19 @@ function DashboardPage() {
                 </Badge>
               </Group>
 
-              {categoryBreakdown.length > 0 ? (
-                showHeavyVisuals ? (
-                  <Suspense fallback={<DashboardCategoryChartFallback />}>
-                    <DashboardCategoryBreakdownChart
-                      currency={group?.currency}
-                      items={categoryBreakdown}
-                    />
-                  </Suspense>
-                ) : (
-                  <DashboardCategoryChartFallback />
-                )
+              {hasCategoryData ? (
+                <div ref={categoryChartRef}>
+                  {showCategoryChart ? (
+                    <Suspense fallback={<DashboardCategoryChartFallback />}>
+                      <DashboardCategoryBreakdownChart
+                        currency={group?.currency}
+                        items={categoryBreakdown}
+                      />
+                    </Suspense>
+                  ) : (
+                    <DashboardCategoryChartFallback />
+                  )}
+                </div>
               ) : (
                 <Paper className="commune-stat-card" p="lg" radius="lg">
                   <Text fw={600}>No category split yet.</Text>

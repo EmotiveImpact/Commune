@@ -1,4 +1,3 @@
-import { useEffect } from 'react';
 import { Select } from '@mantine/core';
 import { useUserGroupSummaries } from '../hooks/use-groups';
 import { useGroupStore } from '../stores/group';
@@ -15,24 +14,6 @@ export function HeaderGroupSelector() {
     value: g.id,
     label: g.name,
   }));
-
-  useEffect(() => {
-    if (isLoading) {
-      return;
-    }
-
-    if (!groups?.length) {
-      if (activeGroupId) {
-        setActiveGroupId(null);
-      }
-      return;
-    }
-
-    const firstGroupId = groups[0]?.id;
-    if (firstGroupId && (!activeGroupId || !groups.some((group) => group.id === activeGroupId))) {
-      setActiveGroupId(firstGroupId);
-    }
-  }, [activeGroupId, groups, isLoading, setActiveGroupId]);
 
   return (
     <Select

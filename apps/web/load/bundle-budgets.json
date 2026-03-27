@@ -1,0 +1,60 @@
+{
+  "assets": [
+    {
+      "name": "main-app",
+      "prefix": "index-",
+      "excludeContains": ".lazy-",
+      "maxKiB": 475
+    },
+    {
+      "name": "mantine-core",
+      "prefix": "mantine-core-",
+      "maxKiB": 350
+    },
+    {
+      "name": "recharts",
+      "prefix": "recharts-",
+      "maxKiB": 400
+    },
+    {
+      "name": "tanstack",
+      "prefix": "tanstack-",
+      "maxKiB": 150
+    },
+    {
+      "name": "mantine-dates",
+      "prefix": "mantine-dates-",
+      "maxKiB": 60
+    },
+    {
+      "name": "mantine-form",
+      "prefix": "mantine-form-",
+      "maxKiB": 25
+    },
+    {
+      "name": "mantine-notifications",
+      "prefix": "mantine-notifications-",
+      "maxKiB": 20
+    },
+    {
+      "name": "jszip",
+      "prefix": "jszip.min-",
+      "maxKiB": 105
+    },
+    {
+      "name": "overview-route",
+      "prefix": "overview.lazy-",
+      "maxKiB": 20
+    },
+    {
+      "name": "activity-route",
+      "prefix": "activity.lazy-",
+      "maxKiB": 16
+    },
+    {
+      "name": "analytics-route",
+      "prefix": "analytics.lazy-",
+      "maxKiB": 18
+    }
+  ]
+}

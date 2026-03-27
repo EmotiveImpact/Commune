@@ -13,6 +13,7 @@ export function useSubscription(userId: string) {
     queryKey: subscriptionKeys.detail(userId),
     queryFn: () => getSubscription(userId),
     enabled: !!userId,
+    staleTime: 1000 * 60 * 5,
   });
 }
 

@@ -37,6 +37,7 @@ import { useGroupStore } from '../stores/group';
 import { useSearchStore } from '../stores/search';
 import { signOut } from '@commune/api';
 import { pinnedLinks, navGroups, type NavGroup } from './nav-links';
+import { useGroupBootstrap } from '../hooks/use-group-bootstrap';
 
 const SIDEBAR_STORAGE_KEY = 'commune-sidebar-collapsed';
 const SIDEBAR_WIDTH_EXPANDED = 230;
@@ -98,6 +99,7 @@ export function AppShell({ children }: AppShellProps) {
   const { query, setQuery, clearQuery } = useSearchStore();
   const navigate = useNavigate();
   const location = useLocation();
+  useGroupBootstrap();
 
   useEffect(() => {
     if (typeof window === 'undefined') {

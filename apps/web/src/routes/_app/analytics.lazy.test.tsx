@@ -77,7 +77,7 @@ vi.mock('../../hooks/use-plan-limits', () => ({
 }));
 
 vi.mock('../../hooks/use-groups', () => ({
-  useGroup: () => ({
+  useGroupSummary: () => ({
     data: {
       id: 'group-1',
       type: 'workspace',

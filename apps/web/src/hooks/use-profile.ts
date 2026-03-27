@@ -4,17 +4,14 @@ import type { NotificationPreferences } from '@commune/api';
 import { groupKeys } from './use-groups';
 import { groupHubKeys } from './use-group-hub';
 import { activityKeys } from './use-activity';
-
-export const profileKeys = {
-  all: ['profile'] as const,
-  detail: (userId: string) => [...profileKeys.all, userId] as const,
-};
+import { profileKeys } from './profile-keys';
 
 export function useProfile(userId: string) {
   return useQuery({
     queryKey: profileKeys.detail(userId),
     queryFn: () => getProfile(userId),
     enabled: !!userId,
+    staleTime: 1000 * 60 * 5,
   });
 }
 

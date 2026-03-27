@@ -1,4 +1,3 @@
-import { useEffect } from 'react';
 import { Anchor, Select, Stack, Text } from '@mantine/core';
 import { Link } from '@tanstack/react-router';
 import { IconChevronRight } from '@tabler/icons-react';
@@ -13,24 +12,6 @@ export function GroupSelector() {
     value: g.id,
     label: g.name,
   }));
-
-  useEffect(() => {
-    if (isLoading) {
-      return;
-    }
-
-    if (!groups?.length) {
-      if (activeGroupId) {
-        setActiveGroupId(null);
-      }
-      return;
-    }
-
-    const firstGroupId = groups[0]?.id;
-    if (firstGroupId && (!activeGroupId || !groups.some((group) => group.id === activeGroupId))) {
-      setActiveGroupId(firstGroupId);
-    }
-  }, [activeGroupId, groups, isLoading, setActiveGroupId]);
 
   return (
     <Stack gap="xs">

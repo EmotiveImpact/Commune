@@ -37,3 +37,9 @@ jobs:
 
       - name: Test
         run: pnpm test
+
+      - name: Build web
+        run: pnpm --filter @commune/web build
+
+      - name: Web bundle budgets
+        run: pnpm --filter @commune/web perf:budget

@@ -5,6 +5,7 @@ import {
   createGroup,
   deleteGroup,
   getGroup,
+  getGroupSummary,
   getPendingInvites,
   getUserGroupSummaries,
   getUserGroups,
@@ -23,26 +24,37 @@ import type {
   SpaceEssentials,
   SetupChecklistProgress,
 } from '@commune/types';
+import { useAuthStore } from '../stores/auth';
 
 export const groupKeys = {
   all: ['groups'] as const,
   list: () => [...groupKeys.all, 'list'] as const,
+  listByUser: (userId: string) => [...groupKeys.list(), userId] as const,
   summaries: () => [...groupKeys.all, 'summaries'] as const,
+  summariesByUser: (userId: string) => [...groupKeys.summaries(), userId] as const,
   invites: () => [...groupKeys.all, 'invites'] as const,
+  invitesByUser: (userId: string) => [...groupKeys.invites(), userId] as const,
   detail: (id: string) => [...groupKeys.all, 'detail', id] as const,
+  summaryDetail: (id: string) => [...groupKeys.all, 'summary-detail', id] as const,
 };
 
 export function useUserGroups() {
+  const { user } = useAuthStore();
   return useQuery({
-    queryKey: groupKeys.list(),
-    queryFn: getUserGroups,
+    queryKey: groupKeys.listByUser(user?.id ?? ''),
+    queryFn: () => getUserGroups(user!.id),
+    enabled: !!user?.id,
+    staleTime: 1000 * 60 * 5,
   });
 }
 
 export function useUserGroupSummaries() {
+  const { user } = useAuthStore();
   return useQuery({
-    queryKey: groupKeys.summaries(),
-    queryFn: getUserGroupSummaries,
+    queryKey: groupKeys.summariesByUser(user?.id ?? ''),
+    queryFn: () => getUserGroupSummaries(user!.id),
+    enabled: !!user?.id,
+    staleTime: 1000 * 60 * 5,
   });
 }
 
@@ -54,10 +66,21 @@ export function useGroup(groupId: string) {
   });
 }
 
-export function usePendingInvites() {
+export function useGroupSummary(groupId: string) {
   return useQuery({
-    queryKey: groupKeys.invites(),
-    queryFn: getPendingInvites,
+    queryKey: groupKeys.summaryDetail(groupId),
+    queryFn: () => getGroupSummary(groupId),
+    enabled: !!groupId,
+  });
+}
+
+export function usePendingInvites() {
+  const { user } = useAuthStore();
+  return useQuery({
+    queryKey: groupKeys.invitesByUser(user?.id ?? ''),
+    queryFn: () => getPendingInvites(user!.id),
+    enabled: !!user?.id,
+    staleTime: 1000 * 60 * 5,
   });
 }
 
@@ -78,6 +101,7 @@ export function useInviteMember(groupId: string) {
     mutationFn: (email: string) => inviteMember(groupId, email),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: groupKeys.detail(groupId) });
+      queryClient.invalidateQueries({ queryKey: groupKeys.summaryDetail(groupId) });
     },
   });
 }
@@ -91,6 +115,7 @@ export function useAcceptInvite() {
       queryClient.invalidateQueries({ queryKey: groupKeys.list() });
       queryClient.invalidateQueries({ queryKey: groupKeys.summaries() });
       queryClient.invalidateQueries({ queryKey: groupKeys.detail(groupId) });
+      queryClient.invalidateQueries({ queryKey: groupKeys.summaryDetail(groupId) });
     },
   });
 }
@@ -109,6 +134,7 @@ export function useUpdateMemberRole(groupId: string) {
     }) => updateMemberRole(memberId, role, responsibilityLabel),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: groupKeys.detail(groupId) });
+      queryClient.invalidateQueries({ queryKey: groupKeys.summaryDetail(groupId) });
     },
   });
 }
@@ -125,6 +151,7 @@ export function useUpdateMemberResponsibility(groupId: string) {
     }) => updateMemberResponsibilityLabel(memberId, responsibilityLabel),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: groupKeys.detail(groupId) });
+      queryClient.invalidateQueries({ queryKey: groupKeys.summaryDetail(groupId) });
     },
   });
 }
@@ -141,6 +168,7 @@ export function useUpdateMemberDates(groupId: string) {
     }) => updateMemberEffectiveDates(memberId, dates),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: groupKeys.detail(groupId) });
+      queryClient.invalidateQueries({ queryKey: groupKeys.summaryDetail(groupId) });
     },
   });
 }
@@ -151,6 +179,7 @@ export function useRemoveMember(groupId: string) {
     mutationFn: (memberId: string) => removeMember(memberId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: groupKeys.detail(groupId) });
+      queryClient.invalidateQueries({ queryKey: groupKeys.summaryDetail(groupId) });
     },
   });
 }
@@ -163,6 +192,7 @@ export function useTransferOwnership(groupId: string) {
       queryClient.invalidateQueries({ queryKey: groupKeys.detail(groupId) });
       queryClient.invalidateQueries({ queryKey: groupKeys.list() });
       queryClient.invalidateQueries({ queryKey: groupKeys.summaries() });
+      queryClient.invalidateQueries({ queryKey: groupKeys.summaryDetail(groupId) });
     },
   });
 }
@@ -217,6 +247,7 @@ export function useUpdateGroup(groupId: string) {
       queryClient.invalidateQueries({ queryKey: groupKeys.detail(groupId) });
       queryClient.invalidateQueries({ queryKey: groupKeys.list() });
       queryClient.invalidateQueries({ queryKey: groupKeys.summaries() });
+      queryClient.invalidateQueries({ queryKey: groupKeys.summaryDetail(groupId) });
     },
   });
 }

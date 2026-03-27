@@ -1,9 +1,11 @@
 import { useEffect } from 'react';
 import type { Session, SupabaseAuthUser } from '@commune/api';
-import { supabase, ensureProfile } from '@commune/api';
+import { supabase, getProfile } from '@commune/api';
 import type { User } from '@commune/types';
 import { useAuthStore } from '../stores/auth';
 import { useGroupStore } from '../stores/group';
+import { queryClient } from '../lib/query-client';
+import { profileKeys } from './profile-keys';
 
 function splitName(fullName: string): { first_name: string; last_name: string } {
   const spaceIndex = fullName.indexOf(' ');
@@ -47,9 +49,9 @@ function buildFallbackUser(authUser: SupabaseAuthUser): User {
 
 async function resolveUser(authUser: SupabaseAuthUser): Promise<User> {
   try {
-    return await ensureProfile(authUser.id);
+    return await getProfile(authUser.id);
   } catch (err) {
-    console.error('Failed to ensure user profile, falling back to auth metadata.', err);
+    console.error('Failed to resolve user profile, falling back to auth metadata.', err);
     return buildFallbackUser(authUser);
   }
 }
@@ -62,6 +64,7 @@ export function useAuthListener() {
     let mounted = true;
     let initialised = false;
     let lastUserId: string | null = null;
+    let pendingUserId: string | null = null;
 
     async function syncSession(session: Session | null) {
       if (!mounted) return;
@@ -69,6 +72,8 @@ export function useAuthListener() {
       if (!session?.user) {
         if (lastUserId !== null) {
           lastUserId = null;
+          pendingUserId = null;
+          queryClient.clear();
           setActiveGroupId(null);
           setUser(null);
         }
@@ -81,11 +86,19 @@ export function useAuthListener() {
 
       // Skip if the same user is already resolved — avoids re-render on token refresh
       if (session.user.id === lastUserId && initialised) return;
+      if (session.user.id === pendingUserId) return;
 
+      if (lastUserId && lastUserId !== session.user.id) {
+        queryClient.clear();
+      }
+
+      pendingUserId = session.user.id;
       const user = await resolveUser(session.user);
       if (!mounted) return;
 
       lastUserId = session.user.id;
+      pendingUserId = null;
+      queryClient.setQueryData(profileKeys.detail(user.id), user);
       setUser(user);
 
       if (!initialised) {

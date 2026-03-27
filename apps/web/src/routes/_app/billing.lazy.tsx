@@ -31,8 +31,9 @@ import { formatCurrency, formatDate } from '@commune/utils';
 import { GroupType } from '@commune/types';
 import { setPageTitle } from '../../utils/seo';
 import { useGroupStore } from '../../stores/group';
-import { useGroup } from '../../hooks/use-groups';
+import { useGroupSummary } from '../../hooks/use-groups';
 import { useWorkspaceBilling } from '../../hooks/use-workspace-billing';
+import { useDeferredSection } from '../../hooks/use-deferred-section';
 import { PageHeader } from '../../components/page-header';
 
 export const Route = createLazyFileRoute('/_app/billing')({
@@ -106,7 +107,7 @@ export function BillingPage() {
   }, []);
 
   const { activeGroupId } = useGroupStore();
-  const { data: group, isLoading: groupLoading } = useGroup(activeGroupId ?? '');
+  const { data: group, isLoading: groupLoading } = useGroupSummary(activeGroupId ?? '');
   const workspaceGroupId = group?.type === GroupType.WORKSPACE ? activeGroupId ?? '' : '';
   const {
     data: billing,
@@ -116,6 +117,18 @@ export function BillingPage() {
   } = useWorkspaceBilling(workspaceGroupId);
   const colorScheme = useComputedColorScheme('light');
   const [exporting, setExporting] = useState(false);
+  const trendData = (billing?.trend ?? []).map((item) => ({
+    ...item,
+    label: formatMonthLabel(item.month),
+  }));
+  const tickFill = colorScheme === 'dark' ? '#909296' : '#667085';
+  const gridStroke = colorScheme === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(22,19,29,0.06)';
+  const {
+    ref: billingChartRef,
+    ready: showBillingChart,
+  } = useDeferredSection({
+    enabled: trendData.some((item) => item.amount > 0),
+  });
 
   if (!activeGroupId) {
     return (
@@ -171,15 +184,8 @@ export function BillingPage() {
     );
   }
 
-  const { snapshot, trend } = billing;
+  const { snapshot } = billing;
   const currency = group?.currency ?? 'GBP';
-  const tickFill = colorScheme === 'dark' ? '#909296' : '#667085';
-  const gridStroke = colorScheme === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(22,19,29,0.06)';
-
-  const trendData = trend.map((item) => ({
-    ...item,
-    label: formatMonthLabel(item.month),
-  }));
 
   const hasData = snapshot.invoice_count > 0;
 
@@ -456,14 +462,20 @@ export function BillingPage() {
         </Group>
 
         {trendData.some((item) => item.amount > 0) ? (
-          <Suspense fallback={<BillingChartFallback />}>
-            <BillingTrendChart
-              currency={currency}
-              data={trendData}
-              tickFill={tickFill}
-              gridStroke={gridStroke}
-            />
-          </Suspense>
+          <div ref={billingChartRef}>
+            {showBillingChart ? (
+              <Suspense fallback={<BillingChartFallback />}>
+                <BillingTrendChart
+                  currency={currency}
+                  data={trendData}
+                  tickFill={tickFill}
+                  gridStroke={gridStroke}
+                />
+              </Suspense>
+            ) : (
+              <BillingChartFallback />
+            )}
+          </div>
         ) : (
           <Paper className="commune-stat-card" p="lg" radius="lg">
             <Text fw={600}>No trend data yet.</Text>

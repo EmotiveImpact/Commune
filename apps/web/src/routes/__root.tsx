@@ -1,9 +1,10 @@
-import { Suspense, lazy } from 'react';
+import { Suspense, lazy, useEffect } from 'react';
 import { createRootRouteWithContext, Outlet, useRouterState } from '@tanstack/react-router';
 import { MantineProvider, createTheme, type MantineColorScheme } from '@mantine/core';
 import { QueryClient } from '@tanstack/react-query';
 import { AppErrorBoundary } from '../components/error-boundary';
 import { NotFound } from '../components/not-found';
+import { recordRoutePaint } from '../utils/observability';
 
 import '@mantine/core/styles.css';
 import '@mantine/dates/styles.css';
@@ -93,6 +94,26 @@ function RootComponent() {
   const locationKey = useRouterState({
     select: (state) => state.location.href,
   });
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const routeLabel = new URL(locationKey, window.location.origin).pathname;
+    const startedAt = performance.now();
+    let nextFrame = 0;
+    const firstFrame = window.requestAnimationFrame(() => {
+      nextFrame = window.requestAnimationFrame(() => {
+        recordRoutePaint(routeLabel, performance.now() - startedAt);
+      });
+    });
+
+    return () => {
+      window.cancelAnimationFrame(firstFrame);
+      window.cancelAnimationFrame(nextFrame);
+    };
+  }, [locationKey]);
 
   return (
     <MantineProvider theme={theme} defaultColorScheme={getInitialColorScheme()}>

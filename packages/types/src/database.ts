@@ -304,6 +304,19 @@ export type GroupWithMembers = Group & {
   members: (GroupMember & { user: User })[];
 };
 
+export type GroupSummary = Pick<
+  Group,
+  | 'id'
+  | 'name'
+  | 'type'
+  | 'subtype'
+  | 'avatar_url'
+  | 'currency'
+  | 'approval_policy'
+> & {
+  active_member_count: number;
+};
+
 export type GroupInvite = GroupMember & {
   group: Group;
 };
@@ -474,6 +487,25 @@ export interface SettlementResult {
   transactions: SettlementTransaction[];
   transactionCount: number;
   isSettled: boolean;
+}
+
+export interface SettlementParticipantRollup {
+  userId: string;
+  shareAmount: number;
+}
+
+export interface SettlementInputRollup {
+  payerId: string;
+  participants: SettlementParticipantRollup[];
+}
+
+export interface GroupSettlementRollup {
+  groupId: string;
+  groupName: string;
+  groupType: string;
+  currency: string;
+  settlementInputs: SettlementInputRollup[];
+  linkedPairs: LinkedPair[];
 }
 
 // ─── Cross-Group Settlement types ────────────────────────────────────────────

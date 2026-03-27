@@ -1,7 +1,7 @@
 // ─── F37: Cross-Group Debt Netting — API Layer ─────────────────────────────
-// Fetches settlements from every active group the user belongs to, batches the
-// required reads, then produces either the full per-group settlement detail or
-// a slimmer overview payload for the web command centre.
+// Fetches compact settlement rollups from Postgres, then produces either the
+// full per-group settlement detail or a slimmer overview payload for the web
+// command centre.
 
 import type {
   CrossGroupGroupSummary,
@@ -9,49 +9,12 @@ import type {
   CrossGroupPerGroupData,
   CrossGroupResult,
   GroupSettlementInput,
-  LinkedPair,
+  GroupSettlementRollup,
   PaymentProvider,
   SettlementTransaction,
 } from '@commune/types';
-import {
-  buildPaymentUrl,
-  calculateNetBalances,
-  mergeLinkedBalances,
-  netCrossGroupDebts,
-  simplifyDebts,
-} from '@commune/core';
+import { buildPaymentUrl, calculateSettlementWithCouples, netCrossGroupDebts } from '@commune/core';
 import { supabase } from './client';
-
-interface CrossGroupMembershipGroup {
-  id: string;
-  name: string;
-  type: string;
-  currency: string;
-}
-
-interface CrossGroupExpenseParticipantRow {
-  user_id: string;
-  share_amount: number;
-}
-
-interface CrossGroupPaymentRecordRow {
-  user_id: string;
-  status: string;
-}
-
-interface CrossGroupExpenseRow {
-  group_id: string;
-  paid_by_user_id: string | null;
-  participants: CrossGroupExpenseParticipantRow[] | null;
-  payment_records: CrossGroupPaymentRecordRow[] | null;
-}
-
-interface CrossGroupLinkedMemberRow {
-  group_id: string;
-  id: string;
-  user_id: string;
-  linked_partner_id: string | null;
-}
 
 interface CrossGroupPaymentMethodRow {
   user_id: string;
@@ -65,95 +28,47 @@ interface CrossGroupBuildResult {
   perGroupData: CrossGroupPerGroupData[];
 }
 
-const PAID_PAYMENT_STATUSES = new Set(['paid', 'confirmed']);
-
 function emptyCrossGroupResult(): CrossGroupResult {
   return { transactions: [], transactionCount: 0, isSettled: true };
 }
 
-function buildLinkedPairsByGroup(
-  members: CrossGroupLinkedMemberRow[],
-): Map<string, LinkedPair[]> {
-  if (members.length === 0) {
-    return new Map();
+function collectUserIdsFromRollups(rollups: GroupSettlementRollup[]): string[] {
+  const userIds = new Set<string>();
+
+  for (const rollup of rollups) {
+    for (const input of rollup.settlementInputs) {
+      if (input.payerId) {
+        userIds.add(input.payerId);
+      }
+
+      for (const participant of input.participants) {
+        userIds.add(participant.userId);
+      }
+    }
+
+    for (const pair of rollup.linkedPairs) {
+      userIds.add(pair.userIdA);
+      userIds.add(pair.userIdB);
+    }
   }
 
-  const memberMap = new Map(members.map((member) => [member.id, member]));
-  const linkedPairsByGroup = new Map<string, LinkedPair[]>();
-  const seen = new Set<string>();
-
-  for (const member of members) {
-    const partnerId = member.linked_partner_id;
-    if (!partnerId) continue;
-
-    const partner = memberMap.get(partnerId);
-    if (!partner || partner.group_id !== member.group_id) continue;
-
-    const pairKey = `${member.group_id}::${[member.id, partnerId].sort().join('::')}`;
-    if (seen.has(pairKey)) continue;
-    seen.add(pairKey);
-
-    const groupPairs = linkedPairsByGroup.get(member.group_id) ?? [];
-    groupPairs.push({
-      userIdA: member.user_id,
-      userIdB: partner.user_id,
-    });
-    linkedPairsByGroup.set(member.group_id, groupPairs);
-  }
-
-  return linkedPairsByGroup;
+  return Array.from(userIds);
 }
 
 function buildSettlementTransactions(
-  expenses: CrossGroupExpenseRow[],
-  linkedPairs: LinkedPair[],
+  rollup: GroupSettlementRollup,
   nameMap: Map<string, string>,
 ): SettlementTransaction[] {
-  if (expenses.length === 0) {
-    return [];
-  }
-
-  const expenseData = expenses
-    .filter((expense) => expense.paid_by_user_id != null)
-    .map((expense) => {
-      const paidUserIds = new Set(
-        (expense.payment_records ?? [])
-          .filter((record) => PAID_PAYMENT_STATUSES.has(record.status))
-          .map((record) => record.user_id),
-      );
-
-      return {
-        payerId: expense.paid_by_user_id!,
-        participants: (expense.participants ?? [])
-          .filter((participant) => !paidUserIds.has(participant.user_id))
-          .map((participant) => ({
-            userId: participant.user_id,
-            shareAmount: participant.share_amount,
-          })),
-      };
-    })
-    .filter((expense) => expense.participants.length > 0);
-
-  if (expenseData.length === 0) {
-    return [];
-  }
-
-  const balances = calculateNetBalances(expenseData);
-  const { mergedBalances, mergedNames } =
-    linkedPairs.length > 0
-      ? mergeLinkedBalances(balances, linkedPairs, nameMap)
-      : { mergedBalances: balances, mergedNames: nameMap };
-
-  return simplifyDebts(mergedBalances).map((transaction) => ({
-    ...transaction,
-    fromUserName: mergedNames.get(transaction.fromUserId) ?? 'Unknown',
-    toUserName: mergedNames.get(transaction.toUserId) ?? 'Unknown',
-  }));
+  return calculateSettlementWithCouples(
+    rollup.settlementInputs,
+    nameMap,
+    rollup.linkedPairs,
+  ).transactions;
 }
 
 function buildGroupSummary(
   userId: string,
-  group: CrossGroupMembershipGroup,
+  rollup: Pick<GroupSettlementRollup, 'groupId' | 'groupName' | 'groupType' | 'currency'>,
   transactions: SettlementTransaction[],
 ): CrossGroupGroupSummary {
   let owesAmount = 0;
@@ -171,10 +86,10 @@ function buildGroupSummary(
   }
 
   return {
-    groupId: group.id,
-    groupName: group.name,
-    groupType: group.type,
-    currency: group.currency,
+    groupId: rollup.groupId,
+    groupName: rollup.groupName,
+    groupType: rollup.groupType,
+    currency: rollup.currency,
     transactionCount: transactions.length,
     owesAmount,
     owedAmount,
@@ -230,22 +145,17 @@ async function buildCrossGroupData(
   options?: { includePerGroupData?: boolean },
 ): Promise<CrossGroupBuildResult> {
   const includePerGroupData = options?.includePerGroupData === true;
-  const { data: memberships, error: memberError } = await supabase
-    .from('group_members')
-    .select('group:groups(id, name, type, currency)')
-    .eq('user_id', userId)
-    .eq('status', 'active');
+  const { data: rollupRows, error: rollupError } = await supabase.rpc(
+    'fn_get_cross_group_settlement_rollup',
+    {
+      p_user_id: userId,
+    },
+  );
 
-  if (memberError) throw memberError;
+  if (rollupError) throw rollupError;
 
-  const groups = (memberships ?? [])
-    .map(
-      (membership) =>
-        (membership as unknown as { group: CrossGroupMembershipGroup | null }).group,
-    )
-    .filter((group): group is CrossGroupMembershipGroup => group !== null);
-
-  if (groups.length === 0) {
+  const rollups = (rollupRows ?? []) as unknown as GroupSettlementRollup[];
+  if (rollups.length === 0) {
     return {
       netted: emptyCrossGroupResult(),
       groupSummaries: [],
@@ -253,67 +163,13 @@ async function buildCrossGroupData(
     };
   }
 
-  const groupIds = groups.map((group) => group.id);
-  const [{ data: expenseRows, error: expenseError }, { data: linkedMemberRows, error: linkedError }] =
-    await Promise.all([
-      supabase
-        .from('expenses')
-        .select(
-          `
-          group_id,
-          paid_by_user_id,
-          participants:expense_participants(user_id, share_amount),
-          payment_records(user_id, status)
-        `,
-        )
-        .in('group_id', groupIds)
-        .eq('is_active', true)
-        .eq('approval_status', 'approved'),
-      supabase
-        .from('group_members')
-        .select('group_id, id, user_id, linked_partner_id')
-        .in('group_id', groupIds)
-        .eq('status', 'active')
-        .not('linked_partner_id', 'is', null),
-    ]);
-
-  if (expenseError) throw expenseError;
-  if (linkedError) throw linkedError;
-
-  const expensesByGroup = new Map<string, CrossGroupExpenseRow[]>();
-  const allUserIds = new Set<string>();
-
-  for (const row of (expenseRows ?? []) as unknown as CrossGroupExpenseRow[]) {
-    const groupExpenses = expensesByGroup.get(row.group_id) ?? [];
-    groupExpenses.push(row);
-    expensesByGroup.set(row.group_id, groupExpenses);
-
-    if (row.paid_by_user_id) {
-      allUserIds.add(row.paid_by_user_id);
-    }
-
-    for (const participant of row.participants ?? []) {
-      allUserIds.add(participant.user_id);
-    }
-  }
-
-  const linkedPairsByGroup = buildLinkedPairsByGroup(
-    (linkedMemberRows ?? []) as unknown as CrossGroupLinkedMemberRow[],
-  );
-
-  for (const groupPairs of linkedPairsByGroup.values()) {
-    for (const pair of groupPairs) {
-      allUserIds.add(pair.userIdA);
-      allUserIds.add(pair.userIdB);
-    }
-  }
-
+  const userIds = collectUserIdsFromRollups(rollups);
   const userNameMap = new Map<string, string>();
-  if (allUserIds.size > 0) {
+  if (userIds.length > 0) {
     const { data: users, error: userError } = await supabase
       .from('users')
       .select('id, name')
-      .in('id', Array.from(allUserIds));
+      .in('id', userIds);
 
     if (userError) throw userError;
 
@@ -326,32 +182,27 @@ async function buildCrossGroupData(
   const groupSummaries: CrossGroupGroupSummary[] = [];
   const validSettlements: GroupSettlementInput[] = [];
 
-  for (const group of groups) {
-    const transactions = buildSettlementTransactions(
-      expensesByGroup.get(group.id) ?? [],
-      linkedPairsByGroup.get(group.id) ?? [],
-      userNameMap,
-    );
-
+  for (const rollup of rollups) {
+    const transactions = buildSettlementTransactions(rollup, userNameMap);
     if (transactions.length === 0) {
       continue;
     }
 
     validSettlements.push({
-      groupId: group.id,
-      groupName: group.name,
-      currency: group.currency,
+      groupId: rollup.groupId,
+      groupName: rollup.groupName,
+      currency: rollup.currency,
       settlements: transactions,
     });
 
-    groupSummaries.push(buildGroupSummary(userId, group, transactions));
+    groupSummaries.push(buildGroupSummary(userId, rollup, transactions));
 
     if (includePerGroupData) {
       perGroupData.push({
-        groupId: group.id,
-        groupName: group.name,
-        groupType: group.type,
-        currency: group.currency,
+        groupId: rollup.groupId,
+        groupName: rollup.groupName,
+        groupType: rollup.groupType,
+        currency: rollup.currency,
         settlement: {
           transactions,
           transactionCount: transactions.length,

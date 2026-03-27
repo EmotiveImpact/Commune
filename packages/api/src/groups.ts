@@ -2,6 +2,7 @@ import type {
   Group,
   GroupApprovalPolicy,
   GroupInvite,
+  GroupSummary,
   GroupMember,
   GroupWithMembers,
   InviteValidation,
@@ -15,7 +16,7 @@ import {
   type CreateGroupInput,
   type GroupApprovalPolicyInput,
 } from '@commune/core';
-import { supabase } from './client';
+import { requireSessionUser, supabase } from './client';
 import {
   applyGovernanceMemberPatch,
   ensureActiveAdminCoverage,
@@ -79,11 +80,7 @@ function getPrimaryWorkspaceResponsibilityLabel(
 }
 
 export async function createGroup(data: CreateGroupInput) {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) throw new Error('Not authenticated');
+  const user = await requireSessionUser();
 
   await ensureProfile(user.id);
 
@@ -158,6 +155,29 @@ export async function getGroup(groupId: string) {
   return data as unknown as GroupWithMembers;
 }
 
+export async function getGroupSummary(groupId: string): Promise<GroupSummary> {
+  const [{ data: group, error: groupError }, { count, error: countError }] = await Promise.all([
+    supabase
+      .from('groups')
+      .select('id, name, type, subtype, avatar_url, currency, approval_policy')
+      .eq('id', groupId)
+      .single(),
+    supabase
+      .from('group_members')
+      .select('id', { count: 'exact', head: true })
+      .eq('group_id', groupId)
+      .eq('status', 'active'),
+  ]);
+
+  if (groupError) throw groupError;
+  if (countError) throw countError;
+
+  return {
+    ...(group as Omit<GroupSummary, 'active_member_count'>),
+    active_member_count: count ?? 0,
+  };
+}
+
 export interface UserGroupSummary {
   id: string;
   name: string;
@@ -167,12 +187,9 @@ export interface UserGroupSummary {
   currency: string;
 }
 
-export async function getUserGroupSummaries(): Promise<UserGroupSummary[]> {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) throw new Error('Not authenticated');
+export async function getUserGroupSummaries(userId?: string): Promise<UserGroupSummary[]> {
+  const resolvedUserId = userId ?? (await requireSessionUser()).id;
+  if (!resolvedUserId) throw new Error('Not authenticated');
 
   const { data, error } = await supabase
     .from('group_members')
@@ -188,7 +205,7 @@ export async function getUserGroupSummaries(): Promise<UserGroupSummary[]> {
       )
     `,
     )
-    .eq('user_id', user.id)
+    .eq('user_id', resolvedUserId)
     .eq('status', 'active');
 
   if (error) throw error;
@@ -198,12 +215,9 @@ export async function getUserGroupSummaries(): Promise<UserGroupSummary[]> {
   );
 }
 
-export async function getUserGroups(): Promise<GroupWithMembers[]> {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) throw new Error('Not authenticated');
+export async function getUserGroups(userId?: string): Promise<GroupWithMembers[]> {
+  const resolvedUserId = userId ?? (await requireSessionUser()).id;
+  if (!resolvedUserId) throw new Error('Not authenticated');
 
   const { data, error } = await supabase
     .from('group_members')
@@ -218,7 +232,7 @@ export async function getUserGroups(): Promise<GroupWithMembers[]> {
       )
     `,
     )
-    .eq('user_id', user.id)
+    .eq('user_id', resolvedUserId)
     .eq('status', 'active');
 
   if (error) throw error;
@@ -228,12 +242,9 @@ export async function getUserGroups(): Promise<GroupWithMembers[]> {
   );
 }
 
-export async function getPendingInvites() {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) throw new Error('Not authenticated');
+export async function getPendingInvites(userId?: string) {
+  const resolvedUserId = userId ?? (await requireSessionUser()).id;
+  if (!resolvedUserId) throw new Error('Not authenticated');
 
   const { data, error } = await supabase
     .from('group_members')
@@ -243,7 +254,7 @@ export async function getPendingInvites() {
       group:groups(*)
     `,
     )
-    .eq('user_id', user.id)
+    .eq('user_id', resolvedUserId)
     .eq('status', 'invited');
 
   if (error) throw error;
@@ -503,11 +514,7 @@ export async function transferOwnership(groupId: string, newOwnerId: string) {
 }
 
 export async function removeMember(memberId: string) {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) throw new Error('Not authenticated');
+  const user = await requireSessionUser();
 
   const { data: member, error: memberError } = await supabase
     .from('group_members')
@@ -728,11 +735,7 @@ export async function updateMemberEffectiveDates(
 }
 
 export async function deleteGroup(groupId: string) {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) throw new Error('Not authenticated');
+  const user = await requireSessionUser();
 
   // Verify the current user is the group owner
   const { data: group, error: groupError } = await supabase

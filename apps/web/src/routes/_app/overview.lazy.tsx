@@ -36,11 +36,10 @@ import { useCallback, useEffect, useState } from 'react';
 import { formatCurrency, formatDate } from '@commune/utils';
 import { setPageTitle } from '../../utils/seo';
 import { useAuthStore } from '../../stores/auth';
-import { useUserGroupSummaries } from '../../hooks/use-groups';
+import { useGroupSummary, useUserGroupSummaries } from '../../hooks/use-groups';
 import { useCrossGroupOverview, useCrossGroupSettlements } from '../../hooks/use-cross-group';
 import { useSmartNudges } from '../../hooks/use-smart-nudges';
 import { useGroupStore } from '../../stores/group';
-import { useGroup } from '../../hooks/use-groups';
 import { getWorkspaceBillingSummary, useWorkspaceBillingExpenseFeed } from '../../hooks/use-dashboard';
 import { PageHeader } from '../../components/page-header';
 import { EmptyState } from '../../components/empty-state';
@@ -101,7 +100,7 @@ function CrossGroupOverviewPage() {
   } = useCrossGroupSettlements(user?.id ?? '', {
     enabled: !nettingEnabled,
   });
-  const { data: activeGroup } = useGroup(activeGroupId ?? '');
+  const { data: activeGroup } = useGroupSummary(activeGroupId ?? '');
   const workspaceExpenseGroupId = activeGroup?.type === 'workspace' ? activeGroupId ?? '' : '';
   const { data: workspaceBillingSnapshot = null } = useWorkspaceBillingExpenseFeed(workspaceExpenseGroupId);
 

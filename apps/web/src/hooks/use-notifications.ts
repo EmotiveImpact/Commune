@@ -24,7 +24,7 @@ export function useNotifications() {
 
   return useQuery({
     queryKey: notificationKeys.list(activeGroupId ?? '', user?.id ?? ''),
-    queryFn: () => getNotifications(user!.id, activeGroupId!),
+    queryFn: () => getNotifications(activeGroupId!),
     enabled: !!activeGroupId && !!user,
     staleTime: 60_000,
   });

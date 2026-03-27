@@ -45,6 +45,14 @@ interface ActivityQueryOptions {
   entityTypes?: ActivityEntityFilter[];
 }
 
+interface ActivityFeedRpcResult {
+  entries?: ActivityEntry[];
+  total?: number;
+  summary?: Partial<ActivitySummary> & {
+    byType?: Array<{ type: string; count: number }>;
+  };
+}
+
 type ActivitySummaryRow = {
   user_id: string;
   entity_type: string | null;
@@ -270,15 +278,31 @@ export async function getActivityFeed(
   groupId: string,
   options: ActivityQueryOptions = {},
 ): Promise<ActivityFeedData> {
-  const [{ entries, total }, summary] = await Promise.all([
-    fetchActivityEntries(groupId, options),
-    getActivitySummary(groupId, options.entityTypes),
-  ]);
+  const limit = options.limit ?? 50;
+  const offset = options.offset ?? 0;
+  const entityTypes = normalizeActivityEntityTypes(options.entityTypes);
+  const { data, error } = await supabase.rpc('fn_get_activity_feed', {
+    p_group_id: groupId,
+    p_limit: limit,
+    p_offset: offset,
+    p_entity_types: entityTypes,
+  });
+
+  if (error) throw error;
+
+  const result = (data ?? {}) as ActivityFeedRpcResult;
+  const entries = (result.entries ?? []) as ActivityEntry[];
+  const summary = result.summary;
 
   return {
     entries,
-    total,
-    summary,
+    total: result.total ?? 0,
+    summary: {
+      thisMonth: summary?.thisMonth ?? 0,
+      mostActiveName: summary?.mostActiveName ?? '',
+      mostActiveCount: summary?.mostActiveCount ?? 0,
+      byType: summary?.byType ?? [],
+    },
   };
 }
 

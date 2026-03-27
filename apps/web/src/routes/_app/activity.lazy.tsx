@@ -206,7 +206,7 @@ function ActivityPage() {
     offset: page * PAGE_SIZE,
     entityTypes,
   });
-  const entries = activity?.entries ?? [];
+  const entries = useMemo(() => activity?.entries ?? [], [activity?.entries]);
   const totalEntries = activity?.total ?? 0;
   const activityStats = activity?.summary ?? {
     thisMonth: 0,

@@ -7,6 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint src vite.config.ts",
+    "perf:baseline": "node ./scripts/run-load-baseline.mjs",
+    "perf:budget": "node ./scripts/check-bundle-budgets.mjs",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",

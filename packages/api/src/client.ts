@@ -1,5 +1,6 @@
 import {
   createClient,
+  type User as SupabaseAuthUser,
   type SupabaseClient,
   type SupabaseClientOptions,
 } from '@supabase/supabase-js';
@@ -7,6 +8,8 @@ import {
 let _supabase: SupabaseClient | null = null;
 let _supabaseUrl: string | null = null;
 let _supabaseAnonKey: string | null = null;
+let _sessionUser: SupabaseAuthUser | null | undefined;
+let _sessionTrackingAttached = false;
 
 /**
  * Initialize the Supabase client. Must be called once before using any API functions.
@@ -25,6 +28,12 @@ export function initSupabase(
   _supabaseUrl = url;
   _supabaseAnonKey = anonKey;
   _supabase = createClient(url, anonKey, options);
+  if (!_sessionTrackingAttached) {
+    _sessionTrackingAttached = true;
+    _supabase.auth.onAuthStateChange((_event, session) => {
+      _sessionUser = session?.user ?? null;
+    });
+  }
   return _supabase;
 }
 
@@ -62,6 +71,31 @@ export function getSupabaseAnonKey(): string {
     );
   }
   return _supabaseAnonKey;
+}
+
+export async function getSessionUser(): Promise<SupabaseAuthUser | null> {
+  if (_sessionUser !== undefined) {
+    return _sessionUser;
+  }
+
+  const client = getSupabase();
+  const {
+    data: { session },
+    error,
+  } = await client.auth.getSession();
+
+  if (error) throw error;
+
+  _sessionUser = session?.user ?? null;
+  return _sessionUser;
+}
+
+export async function requireSessionUser(): Promise<SupabaseAuthUser> {
+  const user = await getSessionUser();
+  if (!user) {
+    throw new Error('Not authenticated');
+  }
+  return user;
 }
 
 /**

@@ -31,12 +31,13 @@ import { formatCurrency, formatDate } from '@commune/utils';
 import { setPageTitle } from '../../utils/seo';
 import { useGroupStore } from '../../stores/group';
 import { useAuthStore } from '../../stores/auth';
-import { useGroup } from '../../hooks/use-groups';
+import { useGroupSummary } from '../../hooks/use-groups';
 import { useSubscription } from '../../hooks/use-subscriptions';
 import { usePlanLimits } from '../../hooks/use-plan-limits';
 import { useAnalytics } from '../../hooks/use-analytics';
 import { getWorkspaceBillingSummary } from '../../hooks/use-dashboard';
 import { useWorkspaceBilling } from '../../hooks/use-workspace-billing';
+import { useDeferredSection } from '../../hooks/use-deferred-section';
 import { PageHeader } from '../../components/page-header';
 
 export const Route = createLazyFileRoute('/_app/analytics')({
@@ -142,12 +143,58 @@ export function AnalyticsPage() {
   const { user } = useAuthStore();
   const { isLoading: subLoading, isError: subError, fetchStatus: subFetchStatus } = useSubscription(user?.id ?? '');
   const { canAccessAnalytics, isLoading: planLoading } = usePlanLimits(user?.id ?? '');
-  const { data: group } = useGroup(activeGroupId ?? '');
+  const { data: group } = useGroupSummary(activeGroupId ?? '');
   const { data: analytics, isLoading: analyticsLoading, isError: analyticsError, fetchStatus: analyticsFetchStatus } = useAnalytics(activeGroupId ?? '');
   const workspaceBillingGroupId = group?.type === 'workspace' ? activeGroupId ?? '' : '';
   const { data: workspaceBilling } = useWorkspaceBilling(workspaceBillingGroupId);
   const colorScheme = useComputedColorScheme('light');
   const [exportingWorkspacePack, setExportingWorkspacePack] = useState(false);
+  const spendingTrend = analytics?.spendingTrend ?? [];
+  const categoryBreakdown = analytics?.categoryBreakdown ?? [];
+  const topSpenders = analytics?.topSpenders ?? [];
+  const complianceRate = analytics?.complianceRate ?? {
+    total: 0,
+    onTime: 0,
+    overdue: 0,
+  };
+  const monthComparison = analytics?.monthComparison ?? {
+    thisMonth: 0,
+    lastMonth: 0,
+    delta: 0,
+    deltaPercent: 0,
+  };
+  const trendData = spendingTrend.map((item) => ({
+    ...item,
+    label: formatMonthLabel(item.month),
+  }));
+  const pieData = categoryBreakdown.map((item, i) => ({
+    ...item,
+    label: formatCategoryLabel(item.category),
+    color: categoryPalette[i % categoryPalette.length]!,
+  }));
+  const workspaceBillingSummary = getWorkspaceBillingSummary(workspaceBilling?.snapshot ?? null);
+  const showWorkspaceBillingWatch = group?.type === 'workspace' && workspaceBillingSummary.expenseCount > 0;
+  const tickFill = colorScheme === 'dark' ? '#909296' : '#667085';
+  const gridStroke = colorScheme === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(22,19,29,0.06)';
+  const hasData = spendingTrend.some((item) => item.amount > 0);
+  const {
+    ref: trendChartRef,
+    ready: showTrendChart,
+  } = useDeferredSection({
+    enabled: hasData,
+  });
+  const {
+    ref: categoryChartRef,
+    ready: showCategoryChart,
+  } = useDeferredSection({
+    enabled: pieData.length > 0,
+  });
+  const {
+    ref: topSpendersChartRef,
+    ready: showTopSpendersChart,
+  } = useDeferredSection({
+    enabled: topSpenders.length > 0,
+  });
 
   if (!activeGroupId) {
     return (
@@ -226,32 +273,12 @@ export function AnalyticsPage() {
     );
   }
 
-  const { spendingTrend, categoryBreakdown, topSpenders, complianceRate, monthComparison } = analytics;
-
   const compliancePct = complianceRate.total > 0
     ? Math.round((complianceRate.onTime / complianceRate.total) * 100)
     : 100;
 
   const deltaPositive = monthComparison.delta >= 0;
   const DeltaIcon = deltaPositive ? IconArrowUpRight : IconArrowDownRight;
-
-  const trendData = spendingTrend.map((item) => ({
-    ...item,
-    label: formatMonthLabel(item.month),
-  }));
-
-  const pieData = categoryBreakdown.map((item, i) => ({
-    ...item,
-    label: formatCategoryLabel(item.category),
-    color: categoryPalette[i % categoryPalette.length]!,
-  }));
-  const workspaceBillingSummary = getWorkspaceBillingSummary(workspaceBilling?.snapshot ?? null);
-  const showWorkspaceBillingWatch = group?.type === 'workspace' && workspaceBillingSummary.expenseCount > 0;
-
-  const tickFill = colorScheme === 'dark' ? '#909296' : '#667085';
-  const gridStroke = colorScheme === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(22,19,29,0.06)';
-
-  const hasData = spendingTrend.some((item) => item.amount > 0);
 
   async function handleExportWorkspacePack() {
     if (!showWorkspaceBillingWatch || !workspaceBilling || !activeGroupId) return;
@@ -540,14 +567,20 @@ export function AnalyticsPage() {
           </Badge>
         </Group>
 
-        <Suspense fallback={<ChartFallback />}>
-          <AnalyticsSpendingTrendChart
-            currency={group?.currency}
-            data={trendData}
-            tickFill={tickFill}
-            gridStroke={gridStroke}
-          />
-        </Suspense>
+        <div ref={trendChartRef}>
+          {showTrendChart ? (
+            <Suspense fallback={<ChartFallback />}>
+              <AnalyticsSpendingTrendChart
+                currency={group?.currency}
+                data={trendData}
+                tickFill={tickFill}
+                gridStroke={gridStroke}
+              />
+            </Suspense>
+          ) : (
+            <ChartFallback />
+          )}
+        </div>
       </Paper>
 
       {/* Row 3: Category pie + Top spenders bar */}
@@ -564,12 +597,18 @@ export function AnalyticsPage() {
           </Group>
 
           {pieData.length > 0 ? (
-            <Suspense fallback={<ChartFallback height={320} />}>
-              <AnalyticsCategoryBreakdownChart
-                currency={group?.currency}
-                data={pieData}
-              />
-            </Suspense>
+            <div ref={categoryChartRef}>
+              {showCategoryChart ? (
+                <Suspense fallback={<ChartFallback height={320} />}>
+                  <AnalyticsCategoryBreakdownChart
+                    currency={group?.currency}
+                    data={pieData}
+                  />
+                </Suspense>
+              ) : (
+                <ChartFallback height={320} />
+              )}
+            </div>
           ) : (
             <Paper className="commune-stat-card" p="lg" radius="lg">
               <Text fw={600}>No category data yet.</Text>
@@ -592,14 +631,20 @@ export function AnalyticsPage() {
           </Group>
 
           {topSpenders.length > 0 ? (
-            <Suspense fallback={<ChartFallback />}>
-              <AnalyticsTopSpendersChart
-                currency={group?.currency}
-                data={topSpenders}
-                tickFill={tickFill}
-                gridStroke={gridStroke}
-              />
-            </Suspense>
+            <div ref={topSpendersChartRef}>
+              {showTopSpendersChart ? (
+                <Suspense fallback={<ChartFallback />}>
+                  <AnalyticsTopSpendersChart
+                    currency={group?.currency}
+                    data={topSpenders}
+                    tickFill={tickFill}
+                    gridStroke={gridStroke}
+                  />
+                </Suspense>
+              ) : (
+                <ChartFallback />
+              )}
+            </div>
           ) : (
             <Paper className="commune-stat-card" p="lg" radius="lg">
               <Text fw={600}>No spender data yet.</Text>
