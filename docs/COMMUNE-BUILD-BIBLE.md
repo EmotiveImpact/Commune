@@ -637,3 +637,367 @@ APP_URL=...
 ### GitHub
 - Repo: EmotiveImpact/Commune
 - Branch: main
+
+---
+
+## 19. IMPLEMENTATION DETAILS (for future sessions)
+
+### How Mobile Parity Should Be Done
+
+The web app has 31 hooks in `apps/web/src/hooks/`. Mobile has 16 in `apps/mobile/hooks/`. The pattern is identical — both use TanStack Query wrapping `@commune/api` functions.
+
+**To port a web hook to mobile, copy the pattern exactly:**
+
+```typescript
+// Web: apps/web/src/hooks/use-settlement.ts
+import { useQuery } from '@tanstack/react-query';
+import { getGroupSettlement } from '@commune/api';
+
+export const settlementKeys = {
+  all: ['settlement'] as const,
+  group: (groupId: string) => [...settlementKeys.all, groupId] as const,
+};
+
+export function useGroupSettlement(groupId: string, month?: string) {
+  return useQuery({
+    queryKey: settlementKeys.group(groupId),
+    queryFn: () => getGroupSettlement(groupId, month),
+    enabled: !!groupId,
+  });
+}
+```
+
+**Mobile version is identical** — just create `apps/mobile/hooks/use-settlement.ts` with the same code. The `@commune/api` package is shared.
+
+**15 hooks to port:**
+1. `use-approvals.ts` — `usePendingApprovals`, `useApproveExpense`, `useRejectExpense`
+2. `use-settlement.ts` — `useGroupSettlement`
+3. `use-group-hub.ts` — `useGroupHub`, `useMemberProfile`, `useUploadGroupImage`
+4. `use-templates.ts` — `useTemplates`, `useCreateTemplate`, `useUpdateTemplate`, `useDeleteTemplate`
+5. `use-funds.ts` — `useFunds`, `useFundDetails`, `useCreateFund`, `useAddContribution`, `useAddFundExpense`, `useDeleteFund`
+6. `use-budgets.ts` — `useGroupBudget`, `useSetGroupBudget`
+7. `use-workspace-billing.ts` — `useWorkspaceBilling`
+8. `use-payment-methods.ts` — `usePaymentMethods`, `useAddPaymentMethod`, `useUpdatePaymentMethod`, `useDeletePaymentMethod`
+9. `use-nudges.ts` — `useCanNudge`, `useSendNudge`, `useNudgeHistory`
+10. `use-couple-linking.ts` — `useLinkedPairs`, `useLinkMembers`, `useUnlinkMembers`
+11. `use-cross-group.ts` — `useCrossGroupSettlements`
+12. `use-smart-nudges.ts` — `useSmartNudges`
+13. `use-receipts.ts` — receipt management
+14. `use-memories.ts` — `useMemories`, `useAddMemory`, `useDeleteMemory`
+15. `use-receipt-ocr.ts` — `useReceiptScan`
+
+**7 mobile pages to create:**
+1. `apps/mobile/app/group-hub.tsx` — Full hub page (cover, avatar, tagline, health, members, breakdown, activity)
+2. `apps/mobile/app/command-centre.tsx` — Cross-group overview (priorities, nudges, group pills)
+3. `apps/mobile/app/member-profile.tsx` — Member detail (role, settlement, payment methods, shared groups)
+4. `apps/mobile/app/funds.tsx` — Fund list + detail (contributions, expenses, progress)
+5. `apps/mobile/app/templates.tsx` — Template list (split method badges, tap to apply)
+6. `apps/mobile/app/billing.tsx` — Workspace billing (vendor breakdown, trends)
+7. `apps/mobile/app/breakdown.tsx` — Settlement view (smart algorithm, pay buttons)
+
+**Navigation wiring:**
+- Register all new screens in `apps/mobile/app/_layout.tsx` as `Stack.Screen` entries
+- Add Command Centre as a tab in `apps/mobile/app/(tabs)/_layout.tsx`
+- Group Hub accessed via group-switcher tap or groups tab
+
+**Styling pattern:** All mobile pages follow the same theme from `apps/mobile/app/group-hub.tsx`:
+```typescript
+const theme = colorScheme === 'dark'
+  ? { bg: '#1a1b1e', surface: '#25262b', border: 'rgba(255,255,255,0.08)', text: '#c1c2c5', textDim: '#909296', accent: '#2d6a4f' }
+  : { bg: '#f8f5f0', surface: '#ffffff', border: 'rgba(23,27,36,0.08)', text: '#1a1e2b', textDim: '#667085', accent: '#2d6a4f' };
+```
+
+---
+
+### How the Trust Layer Works (Implementation Detail)
+
+**Edit history trigger** — `supabase/migrations/20260325070000_add_expense_update_trigger.sql`:
+```sql
+CREATE OR REPLACE FUNCTION fn_log_expense_update()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- Skip if only is_active changed (that's a soft delete, already logged)
+  IF OLD.amount = NEW.amount AND OLD.title = NEW.title AND OLD.category = NEW.category
+     AND OLD.description IS NOT DISTINCT FROM NEW.description
+     AND OLD.due_date = NEW.due_date AND OLD.approval_status IS NOT DISTINCT FROM NEW.approval_status
+  THEN RETURN NEW; END IF;
+
+  INSERT INTO activity_log (group_id, user_id, action, entity_type, entity_id, metadata)
+  VALUES (
+    NEW.group_id,
+    auth.uid(),
+    'expense_updated',
+    'expense',
+    NEW.id,
+    jsonb_build_object(
+      'title', NEW.title,
+      'changes', jsonb_build_object(
+        'amount', CASE WHEN OLD.amount != NEW.amount THEN jsonb_build_object('old', OLD.amount, 'new', NEW.amount) ELSE NULL END,
+        'title', CASE WHEN OLD.title != NEW.title THEN jsonb_build_object('old', OLD.title, 'new', NEW.title) ELSE NULL END,
+        'category', CASE WHEN OLD.category != NEW.category THEN jsonb_build_object('old', OLD.category, 'new', NEW.category) ELSE NULL END,
+        'due_date', CASE WHEN OLD.due_date != NEW.due_date THEN jsonb_build_object('old', OLD.due_date, 'new', NEW.due_date) ELSE NULL END
+      )
+    )
+  );
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE TRIGGER trg_log_expense_update
+  AFTER UPDATE ON expenses
+  FOR EACH ROW EXECUTE FUNCTION fn_log_expense_update();
+```
+
+**Expense flagging** — `supabase/migrations/20260325080000_add_expense_flagging.sql`:
+```sql
+ALTER TABLE expenses ADD COLUMN IF NOT EXISTS flagged_by uuid[] DEFAULT '{}';
+ALTER TABLE expenses ADD COLUMN IF NOT EXISTS flagged_reason text;
+```
+
+**Flag API** — `packages/api/src/expenses.ts`:
+- `flagExpense(expenseId, reason)` — appends user ID to `flagged_by` array, sets `flagged_reason`
+- `unflagExpense(expenseId)` — clears both fields
+
+**Flag UI** — `apps/web/src/routes/_app/expenses/$expenseId.lazy.tsx`:
+- Non-admin members see "Query this expense" button (orange, IconFlag)
+- Opens modal with TextInput for reason + "Submit query" button
+- When flagged: orange Alert banner shows "Queried by [name] — [reason]"
+- Admins see "Dismiss" button inside the banner
+
+**Approval visibility** — Same file:
+- Green alert: "Approved by [Name] on [Date]" (all group types, not just workspace)
+- Red alert: "Rejected by [Name] on [Date]"
+- Names resolved from `group.members` using `approved_by` user ID
+
+---
+
+### How Smart Nudges Work (Implementation Detail)
+
+**Before fix:** `packages/api/src/smart-nudges.ts` line 93 had `transactions: []` — empty array, so settlement-based nudges never fired.
+
+**After fix:** The function now calls `getGroupSettlement(groupId)` for each group and passes real transaction data:
+
+```typescript
+// For each group, get REAL settlement data
+for (const group of groups) {
+  try {
+    const settlement = await getGroupSettlement(group.id);
+    settlements.push({
+      groupId: group.id,
+      groupName: group.name,
+      transactions: settlement.transactions.map(t => ({
+        fromUserId: t.fromUserId,
+        toUserId: t.toUserId,
+        amount: t.amount,
+        currency: settlement.currency ?? group.currency,
+      })),
+    });
+  } catch {
+    // Skip groups where settlement fails
+  }
+}
+```
+
+**Nudge generation** in `packages/core/src/smart-nudges.ts`:
+- Iterates settlement transactions
+- If user owes someone (`fromUserId === userId`): generates `unsettled_purchases` nudge
+- If someone owes user (`toUserId === userId`): generates `others_pending` nudge
+- Checks budget data for `budget_warning` nudges
+- Compares month-over-month spending for `spending_spike` nudges
+
+---
+
+### How Receipt OCR Works (Implementation Detail)
+
+**Edge function:** `supabase/functions/parse-receipt/index.ts`
+
+```typescript
+// 1. Auth check (manual, function deployed with --no-verify-jwt)
+const userClient = createClient(supabaseUrl, anonKey, {
+  global: { headers: { Authorization: authHeader } },
+});
+const { data: { user } } = await userClient.auth.getUser();
+
+// 2. Scan limit check
+const { data: sub } = await supabase
+  .from('subscriptions')
+  .select('plan, receipt_scan_count, receipt_scan_reset_at')
+  .eq('user_id', user.id)
+  .single();
+
+// Reset monthly counter if needed
+const now = new Date();
+const resetAt = sub?.receipt_scan_reset_at ? new Date(sub.receipt_scan_reset_at) : null;
+if (!resetAt || resetAt.getMonth() !== now.getMonth()) {
+  await supabase.from('subscriptions').update({
+    receipt_scan_count: 0,
+    receipt_scan_reset_at: now.toISOString(),
+  }).eq('user_id', user.id);
+}
+
+// Check limit: standard=10, pro=50, agency=unlimited
+const limits = { standard: 10, pro: 50, agency: Infinity };
+const limit = limits[sub.plan] ?? 10;
+if ((sub.receipt_scan_count ?? 0) >= limit) {
+  return error('Monthly scan limit reached. Upgrade your plan for more scans.');
+}
+
+// 3. Call Gemini Flash
+const geminiResp = await fetch(
+  `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,
+  {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [{
+        parts: [
+          { inlineData: { mimeType: mime_type, data: image_base64 } },
+          { text: 'Extract from this receipt: total amount (number only), vendor/store name, date (YYYY-MM-DD), currency code (e.g. GBP, USD, EUR), and line items (array of {name, amount}). Return ONLY valid JSON.' }
+        ]
+      }]
+    }),
+  }
+);
+
+// 4. Parse response, increment counter, return structured data
+```
+
+**Client-side call** (`apps/web/src/routes/_app/expenses/new.lazy.tsx`):
+```typescript
+const { supabase } = await import('@commune/api');
+const { data, error } = await supabase.functions.invoke('parse-receipt', {
+  body: { image_base64: base64, mime_type: receiptFile.type },
+});
+// data = { amount, vendor, date, currency, line_items }
+// Pre-fill form fields
+```
+
+---
+
+### How the Activity Page 2-Column Layout Works
+
+**File:** `apps/web/src/routes/_app/activity.lazy.tsx`
+
+Uses Mantine `Grid` (not `SimpleGrid`) for unequal columns:
+```tsx
+<Grid gap="lg">
+  {/* Left — context sidebar (1/3) */}
+  <Grid.Col span={{ base: 12, md: 4 }}>
+    <Stack gap="lg">
+      {/* Quick stats: total events, most active member */}
+      {/* Filter chips: by type (expenses, payments, chores, approvals) */}
+      {/* Pending items: things waiting on you */}
+      {/* Members list: who's in this group */}
+    </Stack>
+  </Grid.Col>
+
+  {/* Right — activity feed (2/3) */}
+  <Grid.Col span={{ base: 12, md: 8 }}>
+    <Stack gap="lg">
+      {/* Timeline of events with avatars, descriptions, timestamps */}
+      {/* Pagination */}
+    </Stack>
+  </Grid.Col>
+</Grid>
+```
+
+On mobile (base), both columns stack full-width. On desktop (md+), sidebar is 4/12 and feed is 8/12.
+
+---
+
+### How the Group Hub Page Works
+
+**Route:** `apps/web/src/routes/_app/groups/$groupId/index.lazy.tsx`
+**Hook:** `useGroupHub(groupId)` → calls `getGroupHub(groupId)` from `@commune/api`
+
+**API returns:** Group details + members + this month's expense summary (per-member totals, category totals, monthly total)
+
+**Page sections (top to bottom):**
+1. **Cover photo hero** — Full-width cover (or gradient fallback by group type), overlaid avatar + name + tagline + type badge + member count + health badge
+2. **Pinned announcement** — Orange-bordered banner if `group.pinned_message` exists
+3. **House essentials** — Wi-Fi, bins, landlord, emergency (from `group.house_info` JSONB)
+4. **Key stats** — 3 cards: total monthly spend, active members, active expenses
+5. **Your position** — Settlement status card: "You owe £X" or "You're owed £X" or "All squared away"
+6. **Recent activity** — Last 5 activity log entries with avatars and relative timestamps
+7. **Members** — Grid of member cards with avatars, roles, monthly shares, settlement badges
+8. **Monthly breakdown** — Category-by-category with progress bars and per-person splits
+9. **Quick actions** — "View Dashboard" / "Add Expense" / "Settle Up" buttons
+
+**Health badge logic:**
+- Settlement has no transactions → "All settled" (green)
+- Has overdue expenses → "Bills overdue" (red)
+- Has outstanding settlements → "Payments pending" (amber)
+- Otherwise → "On track" (blue)
+
+---
+
+### How Payment Provider URLs Are Constructed
+
+**File:** `packages/api/src/payment-methods.ts` (or inline in settlement components)
+
+```typescript
+function buildPaymentUrl(provider: string, value: string): string | null {
+  switch (provider) {
+    case 'revolut': return `https://revolut.me/${value}`;
+    case 'monzo': return `https://monzo.me/${value}`;
+    case 'paypal': return `https://paypal.me/${value}`;
+    case 'wise': return `https://wise.com/pay/${value}`;
+    case 'starling': return `https://settleup.starlingbank.com/${value}`;
+    case 'venmo': return `https://venmo.com/${value}`;
+    case 'cashapp': return `https://cash.app/$${value}`;
+    case 'bank_transfer': return null; // Display only
+    default: return null;
+  }
+}
+```
+
+**Important fix:** PayPal was previously building `paypal.com/paypalme/PayPal.me/username` — now correctly builds `paypal.me/username`.
+
+---
+
+### How Soft Delete / Account Deletion Works
+
+**Migration:** Adds `deletion_requested_at` and `deletion_scheduled_for` to users table.
+
+**Flow:**
+1. User clicks "Delete account" in Settings
+2. `soft_delete_account` RPC sets `deletion_requested_at = NOW()` and `deletion_scheduled_for = NOW() + 14 days`
+3. User sees "Account scheduled for deletion on [date]" banner
+4. If user logs back in within 14 days: `deletion_requested_at` is cleared, account reactivates
+5. After 14 days: cron job (or manual process) hard deletes or anonymises the data
+
+**Why 14 days:** Legal best practice. Allows recovery from accidental deletion. Gives time for any outstanding financial disputes.
+
+---
+
+### Grid Philosophy (Design Rule)
+
+| Content Type | Grid | Example |
+|-------------|------|---------|
+| Data/content cards | `cols={{ base: 1, sm: 2 }}` | Member cards, fund cards, chore cards, stat cards |
+| Pricing plans | `cols={{ base: 1, sm: 2, md: 3 }}` | 3 plans = 3 columns |
+| Group cards | `cols={{ base: 1, sm: 2, md: 3 }}` | Multiple groups listing |
+| Small action chips | 3-col fine | Quick actions on hub |
+| Unequal layout | `Grid` with `span` | Activity: 4/12 sidebar + 8/12 feed |
+
+**Never more than 3 columns on any page.** The app should feel calm, not busy.
+
+---
+
+### Button Placement Convention
+
+**Primary actions go in `PageHeader` (top-right), not at the bottom of forms.**
+
+```tsx
+<PageHeader title="Members" subtitle="4 active members">
+  {isAdmin && (
+    <Group gap="sm">
+      <Button variant="subtle" color="red" onClick={openLeave}>Leave</Button>
+      <Button variant="light" component={Link} to={`/groups/${groupId}/edit`}>Settings</Button>
+      <Button onClick={openInvite}>Invite member</Button>
+    </Group>
+  )}
+</PageHeader>
+```
+
+**Order:** Destructive (left, subtle/outline) → Secondary (middle, light) → Primary (right, filled)
