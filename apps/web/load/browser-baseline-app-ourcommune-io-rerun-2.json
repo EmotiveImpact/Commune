@@ -1,0 +1,540 @@
+{
+  "generatedAt": "2026-03-28T18:12:11.799Z",
+  "baseUrl": "https://app.ourcommune.io",
+  "profile": "deployed",
+  "gating": true,
+  "overallPassed": false,
+  "results": [
+    {
+      "name": "sign-in-browser",
+      "skipped": false,
+      "requestCount": 4,
+      "navAvg": 4279.606729250001,
+      "navP95": 4423.141000000001,
+      "routePaintP95": null,
+      "apiP95": null,
+      "queryP95": null,
+      "apiCountP95": 0,
+      "queryCountP95": 0,
+      "requestFailureCountP95": 1,
+      "transferBytesP95": 208148,
+      "errorRate": 0,
+      "observabilityMisses": 4,
+      "redirectsToLogin": 0,
+      "passed": false
+    },
+    {
+      "name": "dashboard-browser",
+      "skipped": false,
+      "requestCount": 6,
+      "navAvg": 2464.174728833333,
+      "navP95": 2550.316499999997,
+      "routePaintP95": null,
+      "apiP95": null,
+      "queryP95": null,
+      "apiCountP95": 0,
+      "queryCountP95": 0,
+      "requestFailureCountP95": 1,
+      "transferBytesP95": 1907398,
+      "errorRate": 1,
+      "observabilityMisses": 6,
+      "redirectsToLogin": 0,
+      "passed": false
+    },
+    {
+      "name": "overview-browser",
+      "skipped": false,
+      "requestCount": 6,
+      "navAvg": 2324.737930666666,
+      "navP95": 2374.6797080000033,
+      "routePaintP95": null,
+      "apiP95": null,
+      "queryP95": null,
+      "apiCountP95": 0,
+      "queryCountP95": 0,
+      "requestFailureCountP95": 1,
+      "transferBytesP95": 1885610,
+      "errorRate": 1,
+      "observabilityMisses": 6,
+      "redirectsToLogin": 0,
+      "passed": false
+    },
+    {
+      "name": "expenses-browser",
+      "skipped": false,
+      "requestCount": 6,
+      "navAvg": 2286.7327428333315,
+      "navP95": 2357.4532499999987,
+      "routePaintP95": null,
+      "apiP95": null,
+      "queryP95": null,
+      "apiCountP95": 0,
+      "queryCountP95": 0,
+      "requestFailureCountP95": 1,
+      "transferBytesP95": 1895635,
+      "errorRate": 1,
+      "observabilityMisses": 6,
+      "redirectsToLogin": 0,
+      "passed": false
+    },
+    {
+      "name": "activity-browser",
+      "skipped": false,
+      "requestCount": 6,
+      "navAvg": 2504.7267568333336,
+      "navP95": 2817.7867499999993,
+      "routePaintP95": null,
+      "apiP95": null,
+      "queryP95": null,
+      "apiCountP95": 0,
+      "queryCountP95": 0,
+      "requestFailureCountP95": 1,
+      "transferBytesP95": 1859572,
+      "errorRate": 1,
+      "observabilityMisses": 6,
+      "redirectsToLogin": 0,
+      "passed": false
+    },
+    {
+      "name": "settings-browser",
+      "skipped": false,
+      "requestCount": 4,
+      "navAvg": 2348.568603750002,
+      "navP95": 2417.7612080000035,
+      "routePaintP95": null,
+      "apiP95": null,
+      "queryP95": null,
+      "apiCountP95": 0,
+      "queryCountP95": 0,
+      "requestFailureCountP95": 1,
+      "transferBytesP95": 1892474,
+      "errorRate": 1,
+      "observabilityMisses": 4,
+      "redirectsToLogin": 0,
+      "passed": false
+    },
+    {
+      "name": "groups-browser",
+      "skipped": false,
+      "requestCount": 6,
+      "navAvg": 2391.3850555000004,
+      "navP95": 2483.847541000003,
+      "routePaintP95": null,
+      "apiP95": null,
+      "queryP95": null,
+      "apiCountP95": 0,
+      "queryCountP95": 0,
+      "requestFailureCountP95": 1,
+      "transferBytesP95": 1928289,
+      "errorRate": 1,
+      "observabilityMisses": 6,
+      "redirectsToLogin": 0,
+      "passed": false
+    },
+    {
+      "name": "notifications-browser",
+      "skipped": false,
+      "requestCount": 3,
+      "navAvg": 2594.7936806666694,
+      "navP95": 2801.536042000007,
+      "routePaintP95": null,
+      "apiP95": null,
+      "queryP95": null,
+      "apiCountP95": 0,
+      "queryCountP95": 0,
+      "requestFailureCountP95": 1,
+      "transferBytesP95": 1907398,
+      "errorRate": 1,
+      "observabilityMisses": 3,
+      "redirectsToLogin": 0,
+      "passed": false
+    },
+    {
+      "name": "group-switch-browser",
+      "skipped": true,
+      "reason": "requires at least two available groups to switch workspaces"
+    }
+  ],
+  "rankedFailures": [
+    {
+      "name": "dashboard-browser",
+      "skipped": false,
+      "requestCount": 6,
+      "navAvg": 2464.174728833333,
+      "navP95": 2550.316499999997,
+      "routePaintP95": null,
+      "apiP95": null,
+      "queryP95": null,
+      "apiCountP95": 0,
+      "queryCountP95": 0,
+      "requestFailureCountP95": 1,
+      "transferBytesP95": 1907398,
+      "errorRate": 1,
+      "observabilityMisses": 6,
+      "redirectsToLogin": 0,
+      "passed": false,
+      "breaches": [
+        {
+          "metric": "routePaintP95",
+          "actual": null,
+          "budget": 900
+        },
+        {
+          "metric": "apiP95",
+          "actual": null,
+          "budget": 1600
+        },
+        {
+          "metric": "queryP95",
+          "actual": null,
+          "budget": 1600
+        },
+        {
+          "metric": "requestFailureCountP95",
+          "actual": 1,
+          "budget": 0
+        },
+        {
+          "metric": "errorRate",
+          "actual": 1,
+          "budget": 0.05
+        },
+        {
+          "metric": "observabilityMisses",
+          "actual": 6,
+          "budget": 0
+        }
+      ]
+    },
+    {
+      "name": "overview-browser",
+      "skipped": false,
+      "requestCount": 6,
+      "navAvg": 2324.737930666666,
+      "navP95": 2374.6797080000033,
+      "routePaintP95": null,
+      "apiP95": null,
+      "queryP95": null,
+      "apiCountP95": 0,
+      "queryCountP95": 0,
+      "requestFailureCountP95": 1,
+      "transferBytesP95": 1885610,
+      "errorRate": 1,
+      "observabilityMisses": 6,
+      "redirectsToLogin": 0,
+      "passed": false,
+      "breaches": [
+        {
+          "metric": "routePaintP95",
+          "actual": null,
+          "budget": 900
+        },
+        {
+          "metric": "apiP95",
+          "actual": null,
+          "budget": 1600
+        },
+        {
+          "metric": "queryP95",
+          "actual": null,
+          "budget": 1600
+        },
+        {
+          "metric": "requestFailureCountP95",
+          "actual": 1,
+          "budget": 0
+        },
+        {
+          "metric": "errorRate",
+          "actual": 1,
+          "budget": 0.05
+        },
+        {
+          "metric": "observabilityMisses",
+          "actual": 6,
+          "budget": 0
+        }
+      ]
+    },
+    {
+      "name": "expenses-browser",
+      "skipped": false,
+      "requestCount": 6,
+      "navAvg": 2286.7327428333315,
+      "navP95": 2357.4532499999987,
+      "routePaintP95": null,
+      "apiP95": null,
+      "queryP95": null,
+      "apiCountP95": 0,
+      "queryCountP95": 0,
+      "requestFailureCountP95": 1,
+      "transferBytesP95": 1895635,
+      "errorRate": 1,
+      "observabilityMisses": 6,
+      "redirectsToLogin": 0,
+      "passed": false,
+      "breaches": [
+        {
+          "metric": "routePaintP95",
+          "actual": null,
+          "budget": 900
+        },
+        {
+          "metric": "apiP95",
+          "actual": null,
+          "budget": 1600
+        },
+        {
+          "metric": "queryP95",
+          "actual": null,
+          "budget": 1600
+        },
+        {
+          "metric": "requestFailureCountP95",
+          "actual": 1,
+          "budget": 0
+        },
+        {
+          "metric": "errorRate",
+          "actual": 1,
+          "budget": 0.05
+        },
+        {
+          "metric": "observabilityMisses",
+          "actual": 6,
+          "budget": 0
+        }
+      ]
+    },
+    {
+      "name": "activity-browser",
+      "skipped": false,
+      "requestCount": 6,
+      "navAvg": 2504.7267568333336,
+      "navP95": 2817.7867499999993,
+      "routePaintP95": null,
+      "apiP95": null,
+      "queryP95": null,
+      "apiCountP95": 0,
+      "queryCountP95": 0,
+      "requestFailureCountP95": 1,
+      "transferBytesP95": 1859572,
+      "errorRate": 1,
+      "observabilityMisses": 6,
+      "redirectsToLogin": 0,
+      "passed": false,
+      "breaches": [
+        {
+          "metric": "routePaintP95",
+          "actual": null,
+          "budget": 900
+        },
+        {
+          "metric": "apiP95",
+          "actual": null,
+          "budget": 1600
+        },
+        {
+          "metric": "queryP95",
+          "actual": null,
+          "budget": 1600
+        },
+        {
+          "metric": "requestFailureCountP95",
+          "actual": 1,
+          "budget": 0
+        },
+        {
+          "metric": "errorRate",
+          "actual": 1,
+          "budget": 0.05
+        },
+        {
+          "metric": "observabilityMisses",
+          "actual": 6,
+          "budget": 0
+        }
+      ]
+    },
+    {
+      "name": "settings-browser",
+      "skipped": false,
+      "requestCount": 4,
+      "navAvg": 2348.568603750002,
+      "navP95": 2417.7612080000035,
+      "routePaintP95": null,
+      "apiP95": null,
+      "queryP95": null,
+      "apiCountP95": 0,
+      "queryCountP95": 0,
+      "requestFailureCountP95": 1,
+      "transferBytesP95": 1892474,
+      "errorRate": 1,
+      "observabilityMisses": 4,
+      "redirectsToLogin": 0,
+      "passed": false,
+      "breaches": [
+        {
+          "metric": "routePaintP95",
+          "actual": null,
+          "budget": 800
+        },
+        {
+          "metric": "apiP95",
+          "actual": null,
+          "budget": 1600
+        },
+        {
+          "metric": "queryP95",
+          "actual": null,
+          "budget": 1600
+        },
+        {
+          "metric": "requestFailureCountP95",
+          "actual": 1,
+          "budget": 0
+        },
+        {
+          "metric": "errorRate",
+          "actual": 1,
+          "budget": 0.05
+        },
+        {
+          "metric": "observabilityMisses",
+          "actual": 4,
+          "budget": 0
+        }
+      ]
+    },
+    {
+      "name": "groups-browser",
+      "skipped": false,
+      "requestCount": 6,
+      "navAvg": 2391.3850555000004,
+      "navP95": 2483.847541000003,
+      "routePaintP95": null,
+      "apiP95": null,
+      "queryP95": null,
+      "apiCountP95": 0,
+      "queryCountP95": 0,
+      "requestFailureCountP95": 1,
+      "transferBytesP95": 1928289,
+      "errorRate": 1,
+      "observabilityMisses": 6,
+      "redirectsToLogin": 0,
+      "passed": false,
+      "breaches": [
+        {
+          "metric": "routePaintP95",
+          "actual": null,
+          "budget": 900
+        },
+        {
+          "metric": "apiP95",
+          "actual": null,
+          "budget": 1600
+        },
+        {
+          "metric": "queryP95",
+          "actual": null,
+          "budget": 1600
+        },
+        {
+          "metric": "requestFailureCountP95",
+          "actual": 1,
+          "budget": 0
+        },
+        {
+          "metric": "errorRate",
+          "actual": 1,
+          "budget": 0.05
+        },
+        {
+          "metric": "observabilityMisses",
+          "actual": 6,
+          "budget": 0
+        }
+      ]
+    },
+    {
+      "name": "notifications-browser",
+      "skipped": false,
+      "requestCount": 3,
+      "navAvg": 2594.7936806666694,
+      "navP95": 2801.536042000007,
+      "routePaintP95": null,
+      "apiP95": null,
+      "queryP95": null,
+      "apiCountP95": 0,
+      "queryCountP95": 0,
+      "requestFailureCountP95": 1,
+      "transferBytesP95": 1907398,
+      "errorRate": 1,
+      "observabilityMisses": 3,
+      "redirectsToLogin": 0,
+      "passed": false,
+      "breaches": [
+        {
+          "metric": "routePaintP95",
+          "actual": null,
+          "budget": 900
+        },
+        {
+          "metric": "apiP95",
+          "actual": null,
+          "budget": 1600
+        },
+        {
+          "metric": "queryP95",
+          "actual": null,
+          "budget": 1600
+        },
+        {
+          "metric": "requestFailureCountP95",
+          "actual": 1,
+          "budget": 0
+        },
+        {
+          "metric": "errorRate",
+          "actual": 1,
+          "budget": 0.05
+        },
+        {
+          "metric": "observabilityMisses",
+          "actual": 3,
+          "budget": 0
+        }
+      ]
+    },
+    {
+      "name": "sign-in-browser",
+      "skipped": false,
+      "requestCount": 4,
+      "navAvg": 4279.606729250001,
+      "navP95": 4423.141000000001,
+      "routePaintP95": null,
+      "apiP95": null,
+      "queryP95": null,
+      "apiCountP95": 0,
+      "queryCountP95": 0,
+      "requestFailureCountP95": 1,
+      "transferBytesP95": 208148,
+      "errorRate": 0,
+      "observabilityMisses": 4,
+      "redirectsToLogin": 0,
+      "passed": false,
+      "breaches": [
+        {
+          "metric": "navP95",
+          "actual": 4423.141000000001,
+          "budget": 3000
+        },
+        {
+          "metric": "requestFailureCountP95",
+          "actual": 1,
+          "budget": 0
+        }
+      ]
+    }
+  ]
+}

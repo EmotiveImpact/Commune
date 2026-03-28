@@ -19,6 +19,46 @@ There is now a second, browser-driven baseline for the authenticated SPA path. U
 
 ## Usage
 
+## Required Environment Variables
+
+Runtime/build variables for the deployed web app:
+
+```bash
+VITE_SUPABASE_URL=your-supabase-url
+VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
+VITE_ENABLE_WEB_OBSERVABILITY=true
+```
+
+Optional runtime/build variables for tuning browser-baseline thresholds in the app:
+
+```bash
+VITE_API_SLOW_MS=800
+VITE_ROUTE_SLOW_MS=250
+VITE_QUERY_SLOW_MS=600
+```
+
+The deployed browser baseline depends on `VITE_ENABLE_WEB_OBSERVABILITY=true`.
+Without that flag in the deployed build, the runner can still navigate the app, but
+all protected-route observability checks will fail because `window.__COMMUNE_OBSERVABILITY__`
+is never populated.
+
+Runner-only variables for the local/browser baseline command:
+
+```bash
+COMMUNE_LOAD_BASE_URL=https://your-preview-or-prod-url
+COMMUNE_LOAD_PROFILE=deployed
+COMMUNE_LOAD_OUTPUT=./load/browser-baseline-report.json
+COMMUNE_LOAD_HEADLESS=true
+COMMUNE_LOAD_STORAGE_STATE=./load/storage-state.json
+COMMUNE_LOAD_SAVE_STORAGE_STATE=./load/storage-state.json
+COMMUNE_LOAD_EMAIL=load-test@example.com
+COMMUNE_LOAD_PASSWORD=secret-password
+```
+
+Use `COMMUNE_LOAD_STORAGE_STATE` when you already have a valid Playwright session.
+Use `COMMUNE_LOAD_EMAIL` and `COMMUNE_LOAD_PASSWORD` when you want the runner to
+log in through the real `/login` page and optionally save that session.
+
 Run against a deployed URL:
 
 ```bash
