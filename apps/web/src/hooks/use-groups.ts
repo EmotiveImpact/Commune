@@ -26,6 +26,15 @@ import type {
 } from '@commune/types';
 import { useAuthStore } from '../stores/auth';
 
+function isSingleRowNotFoundError(error: unknown): boolean {
+  return (
+    typeof error === 'object'
+    && error !== null
+    && 'code' in error
+    && error.code === 'PGRST116'
+  );
+}
+
 export const groupKeys = {
   all: ['groups'] as const,
   list: () => [...groupKeys.all, 'list'] as const,
@@ -71,6 +80,8 @@ export function useGroupSummary(groupId: string) {
     queryKey: groupKeys.summaryDetail(groupId),
     queryFn: () => getGroupSummary(groupId),
     enabled: !!groupId,
+    staleTime: 1000 * 60 * 5,
+    retry: (_failureCount, error) => !isSingleRowNotFoundError(error),
   });
 }
 

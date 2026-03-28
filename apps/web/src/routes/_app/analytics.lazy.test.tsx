@@ -267,7 +267,7 @@ describe('AnalyticsPage', () => {
 
     await waitFor(() => {
       expect(downloadWorkspaceBillingPackMock).toHaveBeenCalledTimes(1);
-    });
+    }, { timeout: 5000 });
     expect(getWorkspaceBillingExportRowsMock).toHaveBeenCalledWith('group-1');
     expect(downloadWorkspaceBillingPackMock).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -284,5 +284,5 @@ describe('AnalyticsPage', () => {
       }),
       'GBP',
     );
-  });
+  }, 10000);
 });

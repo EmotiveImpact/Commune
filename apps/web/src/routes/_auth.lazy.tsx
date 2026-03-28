@@ -1,11 +1,28 @@
-import { createLazyFileRoute, Outlet } from '@tanstack/react-router';
+import { useEffect } from 'react';
+import { createLazyFileRoute, Outlet, useRouter } from '@tanstack/react-router';
 import { Anchor, Group, Stack, Text, Title } from '@mantine/core';
+import { useAuthStore } from '../stores/auth';
 
 export const Route = createLazyFileRoute('/_auth')({
   component: AuthLayout,
 });
 
 function AuthLayout() {
+  const router = useRouter();
+  const { isAuthenticated, isLoading } = useAuthStore();
+
+  useEffect(() => {
+    if (isLoading || !isAuthenticated) {
+      return;
+    }
+
+    void router.navigate({ to: '/', replace: true });
+  }, [isAuthenticated, isLoading, router]);
+
+  if (!isLoading && isAuthenticated) {
+    return null;
+  }
+
   return (
     <div className="commune-auth-shell">
       <div className="commune-auth-brand">

@@ -36,7 +36,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { formatCurrency, formatDate } from '@commune/utils';
 import { setPageTitle } from '../../utils/seo';
 import { useAuthStore } from '../../stores/auth';
-import { useGroupSummary, useUserGroupSummaries } from '../../hooks/use-groups';
+import { useUserGroupSummaries } from '../../hooks/use-groups';
 import { useCrossGroupOverview, useCrossGroupSettlements } from '../../hooks/use-cross-group';
 import { useSmartNudges } from '../../hooks/use-smart-nudges';
 import { useGroupStore } from '../../stores/group';
@@ -91,16 +91,19 @@ function CrossGroupOverviewPage() {
   const { user } = useAuthStore();
   const [nettingEnabled, setNettingEnabled] = useState(readNettingPreference);
   const { data: groups } = useUserGroupSummaries();
-  const { data: smartNudges } = useSmartNudges(user?.id ?? '');
   const { activeGroupId } = useGroupStore();
   const { data: overview, isLoading } = useCrossGroupOverview(user?.id ?? '');
+  const { data: smartNudges } = useSmartNudges(user?.id ?? '', {
+    overview,
+    enabled: !isLoading,
+  });
   const {
     data: detailedResult,
     isFetching: isFetchingDetailedSettlements,
   } = useCrossGroupSettlements(user?.id ?? '', {
     enabled: !nettingEnabled,
   });
-  const { data: activeGroup } = useGroupSummary(activeGroupId ?? '');
+  const activeGroup = groups?.find((group) => group.id === activeGroupId) ?? null;
   const workspaceExpenseGroupId = activeGroup?.type === 'workspace' ? activeGroupId ?? '' : '';
   const { data: workspaceBillingSnapshot = null } = useWorkspaceBillingExpenseFeed(workspaceExpenseGroupId);
 

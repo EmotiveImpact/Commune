@@ -5,6 +5,7 @@ import type { User } from '@commune/types';
 import { useAuthStore } from '../stores/auth';
 import { useGroupStore } from '../stores/group';
 import { queryClient } from '../lib/query-client';
+import { router } from '../lib/router';
 import { profileKeys } from './profile-keys';
 
 function splitName(fullName: string): { first_name: string; last_name: string } {
@@ -58,7 +59,7 @@ async function resolveUser(authUser: SupabaseAuthUser): Promise<User> {
 
 export function useAuthListener() {
   const { setUser, setLoading } = useAuthStore();
-  const { setActiveGroupId } = useGroupStore();
+  const { setActiveGroupId, setActiveGroupUserId } = useGroupStore();
 
   useEffect(() => {
     let mounted = true;
@@ -75,11 +76,14 @@ export function useAuthListener() {
           pendingUserId = null;
           queryClient.clear();
           setActiveGroupId(null);
+          setActiveGroupUserId(null);
           setUser(null);
+          void router.invalidate();
         }
         if (!initialised) {
           initialised = true;
           setLoading(false);
+          void router.invalidate();
         }
         return;
       }
@@ -90,6 +94,12 @@ export function useAuthListener() {
 
       if (lastUserId && lastUserId !== session.user.id) {
         queryClient.clear();
+        setActiveGroupId(null);
+      }
+
+      const { activeGroupUserId } = useGroupStore.getState();
+      if (activeGroupUserId && activeGroupUserId !== session.user.id) {
+        setActiveGroupId(null);
       }
 
       pendingUserId = session.user.id;
@@ -99,11 +109,14 @@ export function useAuthListener() {
       lastUserId = session.user.id;
       pendingUserId = null;
       queryClient.setQueryData(profileKeys.detail(user.id), user);
+      setActiveGroupUserId(user.id);
       setUser(user);
+      void router.invalidate();
 
       if (!initialised) {
         initialised = true;
         setLoading(false);
+        void router.invalidate();
       }
     }
 
@@ -119,5 +132,5 @@ export function useAuthListener() {
       mounted = false;
       subscription.unsubscribe();
     };
-  }, [setActiveGroupId, setUser, setLoading]);
+  }, [setActiveGroupId, setActiveGroupUserId, setUser, setLoading]);
 }

@@ -1,4 +1,5 @@
-import { createLazyFileRoute, Link, Outlet, useMatchRoute } from '@tanstack/react-router';
+import { useEffect } from 'react';
+import { createLazyFileRoute, Link, Outlet, useMatchRoute, useRouter } from '@tanstack/react-router';
 import { Alert, Button } from '@mantine/core';
 import { IconClock } from '@tabler/icons-react';
 import { AppShell } from '../components/app-shell';
@@ -11,9 +12,22 @@ export const Route = createLazyFileRoute('/_app')({
 });
 
 function ProtectedLayout() {
-  const { user } = useAuthStore();
+  const router = useRouter();
+  const { user, isAuthenticated, isLoading: authLoading } = useAuthStore();
   const { data: subscription, isLoading } = useSubscription(user?.id ?? '');
   const matchRoute = useMatchRoute();
+
+  useEffect(() => {
+    if (authLoading || isAuthenticated) {
+      return;
+    }
+
+    void router.navigate({ to: '/login', replace: true });
+  }, [authLoading, isAuthenticated, router]);
+
+  if (authLoading || !isAuthenticated) {
+    return null;
+  }
 
   // Allow pricing, settings, and onboarding even when locked out
   const isExemptPage =

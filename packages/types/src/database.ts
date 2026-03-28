@@ -398,6 +398,54 @@ export interface DashboardStats {
   upcoming_items: ExpenseWithParticipants[];
 }
 
+export interface DashboardUpcomingExpenseItem {
+  id: string;
+  title: string;
+  amount: number;
+  currency: string;
+  due_date: string;
+  user_share: number;
+}
+
+export interface DashboardSummaryStats {
+  total_spend: number;
+  your_share: number;
+  amount_paid: number;
+  amount_remaining: number;
+  overdue_count: number;
+  upcoming_items: DashboardUpcomingExpenseItem[];
+}
+
+export interface DashboardTrendItem {
+  month: string;
+  total: number;
+}
+
+export interface DashboardCategoryBreakdownItem {
+  category: string;
+  amount: number;
+  percent: number;
+}
+
+export interface DashboardRecentExpenseItem {
+  id: string;
+  title: string;
+  category: string;
+  amount: number;
+  due_date: string;
+  unpaid_count: number;
+}
+
+export interface DashboardSummary {
+  expense_count: number;
+  current_month_total: number;
+  stats: DashboardSummaryStats | null;
+  trend: DashboardTrendItem[];
+  category_breakdown: DashboardCategoryBreakdownItem[];
+  current_month_category_totals: Record<string, number>;
+  recent_expenses: DashboardRecentExpenseItem[];
+}
+
 export interface GroupCycleExpenseStatus {
   id: string;
   title: string;

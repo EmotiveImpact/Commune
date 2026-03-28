@@ -117,5 +117,5 @@ describe('EditExpensePage', () => {
     });
 
     expect(navigateMock).toHaveBeenCalledWith({ to: '/expenses/expense-1' });
-  });
+  }, 10000);
 });

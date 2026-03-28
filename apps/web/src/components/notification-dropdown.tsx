@@ -61,7 +61,7 @@ export function NotificationDropdown() {
           color="red"
           offset={4}
         >
-          <ActionIcon variant="subtle" color="gray" size={40}>
+          <ActionIcon variant="subtle" color="gray" size={40} aria-label="Open notifications">
             <IconBell size={18} />
           </ActionIcon>
         </Indicator>

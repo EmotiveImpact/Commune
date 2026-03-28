@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import {
-  getDashboardExpenseFeed,
+  getDashboardSummary,
   getDashboardStats,
   getUserBreakdown,
   getWorkspaceBillingSnapshot,
@@ -251,18 +251,23 @@ export function getWorkspaceBillingSummary(
   };
 }
 
-export function useDashboardStats(groupId: string, userId: string, month: string) {
+export function useDashboardStats(
+  groupId: string,
+  userId: string,
+  month: string,
+  options?: { enabled?: boolean },
+) {
   return useQuery({
     queryKey: dashboardKeys.stats(groupId, userId, month),
     queryFn: () => getDashboardStats(groupId, userId, month),
-    enabled: !!groupId && !!userId,
+    enabled: (options?.enabled ?? true) && !!groupId && !!userId,
   });
 }
 
-export function useDashboardExpenseFeed(groupId: string, month: string) {
+export function useDashboardSummary(groupId: string, month: string) {
   return useQuery({
     queryKey: dashboardKeys.feed(groupId, month),
-    queryFn: () => getDashboardExpenseFeed(groupId, month),
+    queryFn: () => getDashboardSummary(groupId, month),
     enabled: !!groupId,
   });
 }

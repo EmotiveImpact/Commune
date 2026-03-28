@@ -8,10 +8,13 @@
     "build": "vite build",
     "lint": "eslint src vite.config.ts",
     "perf:baseline": "node ./scripts/run-load-baseline.mjs",
+    "perf:browser-baseline": "node ./scripts/run-browser-baseline.mjs",
+    "perf:browser-baseline:deployed": "COMMUNE_LOAD_PROFILE=deployed node ./scripts/run-browser-baseline.mjs",
+    "perf:browser-baseline:dev": "COMMUNE_LOAD_PROFILE=dev node ./scripts/run-browser-baseline.mjs",
     "perf:budget": "node ./scripts/check-bundle-budgets.mjs",
     "preview": "vite preview",
-    "test": "vitest run",
-    "test:watch": "vitest",
+    "test": "node ./scripts/run-vitest.mjs run",
+    "test:watch": "node ./scripts/run-vitest.mjs",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -46,6 +49,7 @@
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^4",
     "jsdom": "^29.0.1",
+    "playwright": "^1.58.2",
     "typescript": "^5.7",
     "vite": "^6",
     "vitest": "^3"

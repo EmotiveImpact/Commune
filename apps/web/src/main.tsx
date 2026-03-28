@@ -1,13 +1,13 @@
 import { StrictMode, useMemo } from 'react';
 import { createRoot } from 'react-dom/client';
-import { RouterProvider, createRouter } from '@tanstack/react-router';
+import { RouterProvider } from '@tanstack/react-router';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { initSupabase } from '@commune/api';
-import { routeTree } from './routeTree.gen';
 import { useAuthStore } from './stores/auth';
 import { useAuthListener } from './hooks/use-auth-listener';
 import { createObservedFetch, instrumentQueryClient } from './utils/observability';
 import { queryClient } from './lib/query-client';
+import { router } from './lib/router';
 import '@fontsource/inter/400.css';
 import '@fontsource/inter/500.css';
 import '@fontsource/inter/600.css';
@@ -24,24 +24,6 @@ initSupabase(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_AN
 });
 
 instrumentQueryClient(queryClient);
-
-const router = createRouter({
-  routeTree,
-  context: {
-    queryClient,
-    auth: {
-      isAuthenticated: false,
-      isLoading: true,
-      userId: null,
-    },
-  },
-});
-
-declare module '@tanstack/react-router' {
-  interface Register {
-    router: typeof router;
-  }
-}
 
 function App() {
   useAuthListener();

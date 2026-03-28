@@ -27,6 +27,7 @@ export function GroupSelector() {
         disabled={isLoading}
         searchable
         size="md"
+        aria-label="Switch workspace"
         style={{ flex: 1 }}
       />
       <Anchor

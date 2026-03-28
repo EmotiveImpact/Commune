@@ -1,126 +1,217 @@
 import { supabase } from './client';
 import { generateSmartNudges } from '@commune/core';
 import type { SmartNudgeInput } from '@commune/core';
-import { getGroupSettlement } from './settlement';
+import type { CrossGroupOverviewResult } from '@commune/types';
+import { getCrossGroupOverview } from './cross-group';
 
-export async function getUserSmartNudges(userId: string) {
-  if (!userId) return [];
+interface SmartNudgePayload {
+  groups: SmartNudgeInput['groups'];
+  thisMonthExpenses: SmartNudgeInput['thisMonthExpenses'];
+  lastMonthExpenses: SmartNudgeInput['lastMonthExpenses'];
+  recurringExpenses: SmartNudgeInput['recurringExpenses'];
+}
 
-  // Get user's groups
-  const { data: memberships } = await supabase
-    .from('group_members')
-    .select('group_id, groups(id, name, currency)')
-    .eq('user_id', userId)
-    .eq('status', 'active');
-
-  if (!memberships?.length) return [];
-
-  const groupIds = memberships.map((m) => m.group_id);
-  const groups = memberships.map((m) => {
-    const g = m.groups as any;
-    return { id: g.id, name: g.name, currency: g.currency ?? 'GBP', budgetAmount: null as number | null };
-  });
-
-  // Get this month's date range
-  const now = new Date();
-  const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
-  const thisMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10);
-  const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().slice(0, 10);
-  const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0).toISOString().slice(0, 10);
-
-  // Fetch this month's expenses
-  const { data: thisMonthExpenses } = await supabase
-    .from('expenses')
-    .select('id, group_id, title, amount, due_date, created_at')
-    .in('group_id', groupIds)
-    .eq('is_active', true)
-    .eq('approval_status', 'approved')
-    .gte('due_date', thisMonthStart)
-    .lte('due_date', thisMonthEnd);
-
-  // Fetch last month's expenses (just amounts for comparison)
-  const { data: lastMonthExpenses } = await supabase
-    .from('expenses')
-    .select('amount, group_id')
-    .in('group_id', groupIds)
-    .eq('is_active', true)
-    .gte('due_date', lastMonthStart)
-    .lte('due_date', lastMonthEnd);
-
-  // Fetch recurring expenses due soon
-  const threeDays = new Date(now);
-  threeDays.setDate(threeDays.getDate() + 3);
-  const { data: recurringExpenses } = await supabase
-    .from('expenses')
-    .select('id, title, group_id, due_date, amount')
-    .in('group_id', groupIds)
-    .eq('is_active', true)
-    .neq('recurrence_type', 'none')
-    .gte('due_date', now.toISOString().slice(0, 10))
-    .lte('due_date', threeDays.toISOString().slice(0, 10));
-
-  // Fetch budgets for this month
-  const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
-  const { data: budgets } = await supabase
-    .from('group_budgets')
-    .select('group_id, budget_amount')
-    .in('group_id', groupIds)
-    .eq('month', monthKey);
-
-  // Merge budget data into groups
-  if (budgets) {
-    for (const b of budgets) {
-      const group = groups.find((g) => g.id === b.group_id);
-      if (group) group.budgetAmount = Number(b.budget_amount);
-    }
+function parseGroups(value: unknown): SmartNudgeInput['groups'] {
+  if (!Array.isArray(value)) {
+    return [];
   }
 
-  // Build settlements from REAL settlement calculations per group
-  const settlementResults = await Promise.all(
-    groups.map(async (group) => {
-      try {
-        const result = await getGroupSettlement(group.id);
-        return { group, result };
-      } catch {
-        return { group, result: null };
+  const items: Array<SmartNudgeInput['groups'][number] | null> = value.map((item) => {
+      if (!item || typeof item !== 'object') {
+        return null;
       }
-    }),
-  );
 
-  const settlements: SmartNudgeInput['settlements'] = settlementResults
-    .filter((s) => s.result && s.result.transactions.length > 0)
-    .map((s) => ({
-      groupId: s.group.id,
-      groupName: s.group.name,
-      transactions: s.result!.transactions.map((t) => ({
-        fromUserId: t.fromUserId,
-        toUserId: t.toUserId,
-        amount: t.amount,
-      })),
+      const source = item as Record<string, unknown>;
+      const id = typeof source.id === 'string' ? source.id : '';
+      const name = typeof source.name === 'string' ? source.name : '';
+      const currency = typeof source.currency === 'string' ? source.currency : 'GBP';
+      const budgetAmount =
+        source.budgetAmount == null
+          ? null
+          : typeof source.budgetAmount === 'number'
+            ? source.budgetAmount
+            : Number(source.budgetAmount);
+
+      if (!id || !name) {
+        return null;
+      }
+
+      return {
+        id,
+        name,
+        currency,
+        budgetAmount: budgetAmount != null && Number.isFinite(budgetAmount) ? budgetAmount : null,
+      };
+    });
+
+  return items.filter((item): item is SmartNudgeInput['groups'][number] => item !== null);
+}
+
+function parseThisMonthExpenses(value: unknown): SmartNudgeInput['thisMonthExpenses'] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((item) => {
+      if (!item || typeof item !== 'object') {
+        return null;
+      }
+
+      const source = item as Record<string, unknown>;
+      const id = typeof source.id === 'string' ? source.id : '';
+      const groupId = typeof source.group_id === 'string' ? source.group_id : '';
+      const title = typeof source.title === 'string' ? source.title : '';
+      const amount = typeof source.amount === 'number' ? source.amount : Number(source.amount);
+      const dueDate = typeof source.due_date === 'string' ? source.due_date : '';
+      const createdAt = typeof source.created_at === 'string' ? source.created_at : '';
+
+      if (!id || !groupId || !title || !dueDate || !createdAt || !Number.isFinite(amount)) {
+        return null;
+      }
+
+      return {
+        id,
+        group_id: groupId,
+        title,
+        amount,
+        due_date: dueDate,
+        created_at: createdAt,
+      };
+    })
+    .filter((item): item is SmartNudgeInput['thisMonthExpenses'][number] => item !== null);
+}
+
+function parseLastMonthExpenses(value: unknown): SmartNudgeInput['lastMonthExpenses'] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((item) => {
+      if (!item || typeof item !== 'object') {
+        return null;
+      }
+
+      const source = item as Record<string, unknown>;
+      const groupId = typeof source.group_id === 'string' ? source.group_id : '';
+      const amount = typeof source.amount === 'number' ? source.amount : Number(source.amount);
+
+      if (!groupId || !Number.isFinite(amount)) {
+        return null;
+      }
+
+      return {
+        group_id: groupId,
+        amount,
+      };
+    })
+    .filter((item): item is SmartNudgeInput['lastMonthExpenses'][number] => item !== null);
+}
+
+function parseRecurringExpenses(value: unknown): SmartNudgeInput['recurringExpenses'] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((item) => {
+      if (!item || typeof item !== 'object') {
+        return null;
+      }
+
+      const source = item as Record<string, unknown>;
+      const id = typeof source.id === 'string' ? source.id : '';
+      const title = typeof source.title === 'string' ? source.title : '';
+      const groupId = typeof source.group_id === 'string' ? source.group_id : '';
+      const dueDate = typeof source.due_date === 'string' ? source.due_date : '';
+      const amount = typeof source.amount === 'number' ? source.amount : Number(source.amount);
+
+      if (!id || !title || !groupId || !dueDate || !Number.isFinite(amount)) {
+        return null;
+      }
+
+      return {
+        id,
+        title,
+        group_id: groupId,
+        due_date: dueDate,
+        amount,
+      };
+    })
+    .filter((item): item is SmartNudgeInput['recurringExpenses'][number] => item !== null);
+}
+
+function parseSmartNudgePayload(value: unknown): SmartNudgePayload {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return {
+      groups: [],
+      thisMonthExpenses: [],
+      lastMonthExpenses: [],
+      recurringExpenses: [],
+    };
+  }
+
+  const source = value as Record<string, unknown>;
+  return {
+    groups: parseGroups(source.groups),
+    thisMonthExpenses: parseThisMonthExpenses(source.this_month_expenses),
+    lastMonthExpenses: parseLastMonthExpenses(source.last_month_expenses),
+    recurringExpenses: parseRecurringExpenses(source.recurring_expenses),
+  };
+}
+
+function buildSmartNudgeSettlements(
+  userId: string,
+  overview?: CrossGroupOverviewResult | null,
+): SmartNudgeInput['settlements'] {
+  return (overview?.groupSummaries ?? [])
+    .filter((groupSummary) => groupSummary.waitingCount > 0 || groupSummary.owesAmount > 0)
+    .map((groupSummary) => ({
+      groupId: groupSummary.groupId,
+      groupName: groupSummary.groupName,
+      transactions: [
+        ...Array.from({ length: groupSummary.waitingCount }, (_value, index) => ({
+          fromUserId: `pending-${groupSummary.groupId}-${index}`,
+          toUserId: userId,
+          amount: 0,
+        })),
+        ...(groupSummary.owesAmount > 0
+          ? [{
+              fromUserId: userId,
+              toUserId: `group-${groupSummary.groupId}`,
+              amount: groupSummary.owesAmount,
+            }]
+          : []),
+      ],
     }));
+}
+
+export async function getUserSmartNudges(
+  userId: string,
+  options?: { overview?: CrossGroupOverviewResult | null },
+) {
+  if (!userId) return [];
+
+  const { data, error } = await supabase.rpc('fn_get_smart_nudge_payload', {
+    p_due_soon_days: 3,
+  });
+
+  if (error) throw error;
+
+  const payload = parseSmartNudgePayload(data);
+  if (!payload.groups.length) return [];
+
+  const settlements = options?.overview
+    ? buildSmartNudgeSettlements(userId, options.overview)
+    : buildSmartNudgeSettlements(userId, await getCrossGroupOverview(userId));
 
   const input: SmartNudgeInput = {
-    groups,
-    thisMonthExpenses: (thisMonthExpenses ?? []).map((e) => ({
-      id: e.id,
-      group_id: e.group_id,
-      title: e.title,
-      amount: Number(e.amount),
-      due_date: e.due_date,
-      created_at: e.created_at,
-    })),
-    lastMonthExpenses: (lastMonthExpenses ?? []).map((e) => ({
-      amount: Number(e.amount),
-      group_id: e.group_id,
-    })),
+    groups: payload.groups,
+    thisMonthExpenses: payload.thisMonthExpenses,
+    lastMonthExpenses: payload.lastMonthExpenses,
     settlements,
-    recurringExpenses: (recurringExpenses ?? []).map((e) => ({
-      id: e.id,
-      title: e.title,
-      group_id: e.group_id,
-      due_date: e.due_date,
-      amount: Number(e.amount),
-    })),
+    recurringExpenses: payload.recurringExpenses,
     userId,
   };
 

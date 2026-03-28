@@ -34,17 +34,16 @@ import {
 } from '@tabler/icons-react';
 import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import { formatCurrency, formatDate, getMonthKey, isOverdue } from '@commune/utils';
-import type { GroupType, ExpenseCategory } from '@commune/types';
+import type { GroupType } from '@commune/types';
 import { getOnboardingTips } from '@commune/core';
 import { setPageTitle } from '../../utils/seo';
 import { useGroupStore } from '../../stores/group';
 import { useAuthStore } from '../../stores/auth';
 import { useGroupSummary, usePendingInvites, useUserGroupSummaries } from '../../hooks/use-groups';
-import { useDashboardExpenseFeed, useDashboardStats } from '../../hooks/use-dashboard';
+import { useDashboardStats, useDashboardSummary } from '../../hooks/use-dashboard';
 import { DashboardSkeleton } from '../../components/page-skeleton';
 import { useGenerateRecurring } from '../../hooks/use-recurring';
 import { useGroupBudget } from '../../hooks/use-budgets';
-import { useTemplates } from '../../hooks/use-templates';
 import { useDeferredSection } from '../../hooks/use-deferred-section';
 import { SetBudgetModal } from '../../components/set-budget-modal';
 
@@ -243,66 +242,70 @@ function DashboardPage() {
   const navigate = useNavigate();
   const { data: groups, isLoading: groupsLoading } = useUserGroupSummaries();
   const { data: pendingInvites, isLoading: invitesLoading } = usePendingInvites();
-  const { data: group, isLoading: groupLoading } = useGroupSummary(activeGroupId ?? '');
+  const resolvedActiveGroupId = useMemo(() => {
+    if (!groups?.length) {
+      return null;
+    }
+
+    if (activeGroupId && groups.some((candidate) => candidate.id === activeGroupId)) {
+      return activeGroupId;
+    }
+
+    return groups[0]?.id ?? null;
+  }, [activeGroupId, groups]);
+  const { data: group, isLoading: groupLoading } = useGroupSummary(resolvedActiveGroupId ?? '');
   const currentMonth = getMonthKey();
-  const { data: stats, isLoading: statsLoading } = useDashboardStats(
-    activeGroupId ?? '',
+  const { data: dashboardSummary, isLoading: summaryLoading } = useDashboardSummary(
+    resolvedActiveGroupId ?? '',
+    currentMonth,
+  );
+  const needsStatsFallback = !summaryLoading && dashboardSummary?.stats == null;
+  const { data: fallbackStats, isLoading: fallbackStatsLoading } = useDashboardStats(
+    resolvedActiveGroupId ?? '',
     user?.id ?? '',
     currentMonth,
+    { enabled: needsStatsFallback },
   );
-  const { data: allExpenses = [], isLoading: expensesLoading } = useDashboardExpenseFeed(
-    activeGroupId ?? '',
-    currentMonth,
-  );
-  const generateRecurring = useGenerateRecurring(activeGroupId ?? '');
+  const generateRecurring = useGenerateRecurring(resolvedActiveGroupId ?? '');
   const recurringGeneratedRef = useRef(false);
 
   // F35: Budget data
-  const { data: currentBudget } = useGroupBudget(activeGroupId ?? '', currentMonth);
+  const { data: currentBudget } = useGroupBudget(resolvedActiveGroupId ?? '', currentMonth);
   const [budgetModalOpened, setBudgetModalOpened] = useState(false);
 
-  // F36: Templates for feature discovery
-  const { data: templates } = useTemplates(activeGroupId ?? '');
-
   useEffect(() => {
-    if (activeGroupId && !recurringGeneratedRef.current) {
+    if (resolvedActiveGroupId && !recurringGeneratedRef.current) {
       recurringGeneratedRef.current = true;
       generateRecurring.mutate();
     }
-  }, [activeGroupId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [resolvedActiveGroupId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     setPageTitle('Dashboard');
   }, []);
 
   useEffect(() => {
-    if (activeGroupId || groupsLoading || invitesLoading) {
+    if (resolvedActiveGroupId || groupsLoading || invitesLoading) {
       return;
     }
 
     if ((groups?.length ?? 0) === 0) {
       navigate({ to: '/onboarding', replace: true });
     }
-  }, [activeGroupId, groups?.length, groupsLoading, invitesLoading, navigate]);
+  }, [resolvedActiveGroupId, groups?.length, groupsLoading, invitesLoading, navigate]);
 
   const monthLabel = new Date(`${currentMonth}-01`).toLocaleDateString('en-GB', {
     month: 'long',
     year: 'numeric',
   });
 
-  const monthExpenses = useMemo(
-    () => allExpenses.filter((expense) => expense.due_date.startsWith(currentMonth)),
-    [allExpenses, currentMonth],
-  );
-
   const monthlyTrend = useMemo(() => {
     const keys = getRecentMonthKeys(6);
     const totals = new Map(keys.map((key) => [key, 0]));
 
-    for (const expense of allExpenses) {
-      const key = expense.due_date.slice(0, 7);
-      if (totals.has(key)) {
-        totals.set(key, (totals.get(key) ?? 0) + expense.amount);
+    for (const item of dashboardSummary?.trend ?? []) {
+      if (totals.has(item.month)) {
+        totals.set(item.month, item.total);
       }
     }
 
@@ -318,29 +321,16 @@ function DashboardPage() {
         total: totals.get(key) ?? 0,
       })),
     };
-  }, [allExpenses, currentMonth]);
+  }, [currentMonth, dashboardSummary?.trend]);
 
-  const categoryBreakdown = useMemo(() => {
-    const source = monthExpenses.length > 0 ? monthExpenses : allExpenses;
-    const grouped = new Map<string, number>();
-
-    for (const expense of source) {
-      const category = expense.category ?? 'uncategorized';
-      grouped.set(category, (grouped.get(category) ?? 0) + expense.amount);
-    }
-
-    const total = Array.from(grouped.values()).reduce((sum, value) => sum + value, 0);
-
-    return Array.from(grouped.entries())
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 5)
-      .map(([category, amount], index) => ({
-        category,
-        amount,
+  const categoryBreakdown = useMemo(
+    () =>
+      (dashboardSummary?.category_breakdown ?? []).map((item, index) => ({
+        ...item,
         color: categoryPalette[index % categoryPalette.length]!,
-        percent: total > 0 ? Math.round((amount / total) * 100) : 0,
-      }));
-  }, [allExpenses, monthExpenses]);
+      })),
+    [dashboardSummary?.category_breakdown],
+  );
 
   const hasTrendData = monthlyTrend.items.some((item) => item.total > 0);
   const hasCategoryData = categoryBreakdown.length > 0;
@@ -357,18 +347,25 @@ function DashboardPage() {
     enabled: hasCategoryData,
   });
 
-  const recentExpenses = useMemo(
-    () =>
-      [...allExpenses]
-        .sort((left, right) => new Date(right.due_date).getTime() - new Date(left.due_date).getTime())
-        .slice(0, 5),
-    [allExpenses],
-  );
+  const recentExpenses = dashboardSummary?.recent_expenses ?? [];
+  const stats = dashboardSummary?.stats ?? fallbackStats;
 
   const focusItems = useMemo(() => {
-    const cycleTotal = monthExpenses.reduce((sum, expense) => sum + expense.amount, 0);
+    const cycleTotal = dashboardSummary?.current_month_total ?? 0;
 
-    return (stats?.upcoming_items ?? [])
+    if (dashboardSummary?.stats) {
+      return dashboardSummary.stats.upcoming_items
+        .slice()
+        .sort((left, right) => new Date(left.due_date).getTime() - new Date(right.due_date).getTime())
+        .slice(0, 3)
+        .map((expense) => ({
+          ...expense,
+          userShare: expense.user_share,
+          weight: cycleTotal > 0 ? Math.round((expense.user_share / cycleTotal) * 100) : 0,
+        }));
+    }
+
+    return (fallbackStats?.upcoming_items ?? [])
       .slice()
       .sort((left, right) => new Date(left.due_date).getTime() - new Date(right.due_date).getTime())
       .slice(0, 3)
@@ -382,36 +379,29 @@ function DashboardPage() {
           weight: cycleTotal > 0 ? Math.round((userShare / cycleTotal) * 100) : 0,
         };
       });
-  }, [monthExpenses, stats?.upcoming_items, user?.id]);
-  const hasExpenses = allExpenses.length > 0;
+  }, [dashboardSummary?.current_month_total, dashboardSummary?.stats, fallbackStats?.upcoming_items, user?.id]);
+  const hasExpenses = (dashboardSummary?.expense_count ?? 0) > 0;
 
   // F35: Budget calculations
   const budgetPct = currentBudget && currentBudget.budget_amount > 0
-    ? Math.round((monthlyTrend.currentTotal / currentBudget.budget_amount) * 100)
+    ? Math.round(((dashboardSummary?.current_month_total ?? 0) / currentBudget.budget_amount) * 100)
     : null;
 
   // F35.7: Category budget spend breakdown
   const categorySpend = useMemo(() => {
     if (!currentBudget?.category_budgets) return [];
     const budgets = currentBudget.category_budgets as Record<string, number>;
-    const spendByCategory = new Map<string, number>();
-
-    for (const expense of monthExpenses) {
-      const cat = expense.category as ExpenseCategory;
-      if (budgets[cat] != null) {
-        spendByCategory.set(cat, (spendByCategory.get(cat) ?? 0) + expense.amount);
-      }
-    }
+    const spendByCategory = dashboardSummary?.current_month_category_totals ?? {};
 
     return Object.entries(budgets)
       .filter(([, budget]) => budget > 0)
       .map(([category, budget]) => ({
         category,
         budget,
-        spent: spendByCategory.get(category) ?? 0,
-        pct: Math.round(((spendByCategory.get(category) ?? 0) / budget) * 100),
+        spent: spendByCategory[category] ?? 0,
+        pct: Math.round(((spendByCategory[category] ?? 0) / budget) * 100),
       }));
-  }, [currentBudget?.category_budgets, monthExpenses]);
+  }, [currentBudget?.category_budgets, dashboardSummary?.current_month_category_totals]);
 
   // F36: Onboarding tips (group-type-aware)
   const onboardingTips = useMemo(
@@ -419,7 +409,7 @@ function DashboardPage() {
     [group, hasExpenses],
   );
 
-  if (!activeGroupId) {
+  if (!resolvedActiveGroupId) {
     if (groupsLoading || invitesLoading) {
       return <DashboardSkeleton />;
     }
@@ -447,7 +437,7 @@ function DashboardPage() {
     return <DashboardSkeleton />;
   }
 
-  if (groupLoading || statsLoading || expensesLoading) {
+  if (groupLoading || summaryLoading || (needsStatsFallback && fallbackStatsLoading)) {
     return <DashboardSkeleton />;
   }
 
@@ -680,7 +670,7 @@ function DashboardPage() {
         <SetBudgetModal
           opened={budgetModalOpened}
           onClose={() => setBudgetModalOpened(false)}
-          groupId={activeGroupId}
+          groupId={resolvedActiveGroupId}
           currency={group?.currency}
           currentAmount={currentBudget?.budget_amount}
           currentAlertThreshold={currentBudget?.alert_threshold}
@@ -994,7 +984,7 @@ function DashboardPage() {
                     </Table.Thead>
                     <Table.Tbody>
                       {recentExpenses.map((expense) => {
-                        const unpaid = expense.payment_records.filter((payment) => payment.status === 'unpaid').length;
+                        const unpaid = expense.unpaid_count;
                         const settled = unpaid === 0;
                         const overdue = isOverdue(expense.due_date);
 
@@ -1168,7 +1158,7 @@ function DashboardPage() {
       <SetBudgetModal
         opened={budgetModalOpened}
         onClose={() => setBudgetModalOpened(false)}
-        groupId={activeGroupId}
+        groupId={resolvedActiveGroupId}
         currency={group?.currency}
         currentAmount={currentBudget?.budget_amount}
         currentCategoryBudgets={currentBudget?.category_budgets}

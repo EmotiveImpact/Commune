@@ -43,3 +43,46 @@ jobs:
 
       - name: Web bundle budgets
         run: pnpm --filter @commune/web perf:budget
+
+  web-browser-baseline:
+    runs-on: ubuntu-latest
+    needs: validate
+    if: ${{ vars.COMMUNE_LOAD_BASE_URL != '' && secrets.COMMUNE_LOAD_EMAIL != '' && secrets.COMMUNE_LOAD_PASSWORD != '' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browser
+        run: pnpm --filter @commune/web exec playwright install chromium
+
+      - name: Browser baseline (deployed)
+        env:
+          COMMUNE_LOAD_BASE_URL: ${{ vars.COMMUNE_LOAD_BASE_URL }}
+          COMMUNE_LOAD_EMAIL: ${{ secrets.COMMUNE_LOAD_EMAIL }}
+          COMMUNE_LOAD_PASSWORD: ${{ secrets.COMMUNE_LOAD_PASSWORD }}
+          COMMUNE_LOAD_PROFILE: deployed
+          COMMUNE_LOAD_OUTPUT: ./load/browser-baseline-report.json
+        run: pnpm --filter @commune/web perf:browser-baseline -- $COMMUNE_LOAD_BASE_URL
+
+      - name: Upload browser baseline report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-browser-baseline-report
+          path: apps/web/load/browser-baseline-report.json
+          if-no-files-found: ignore

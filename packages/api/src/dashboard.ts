@@ -1,4 +1,13 @@
-import type { DashboardStats, ExpenseWithParticipants } from '@commune/types';
+import type {
+  DashboardCategoryBreakdownItem,
+  DashboardUpcomingExpenseItem,
+  DashboardSummaryStats,
+  DashboardRecentExpenseItem,
+  DashboardStats,
+  DashboardSummary,
+  DashboardTrendItem,
+  ExpenseWithParticipants,
+} from '@commune/types';
 import { supabase } from './client';
 import {
   buildWorkspaceBillingExportRows,
@@ -16,20 +25,209 @@ export interface DashboardWorkspaceBillingData {
 
 type DashboardExpenseRow = ExpenseWithParticipants & WorkspaceBillingExpenseRecord;
 
-export interface DashboardExpenseFeedItem {
-  id: string;
-  title: string;
-  category: string | null;
-  amount: number;
-  due_date: string;
-  payment_records: Array<{ status: string }>;
+function parseDashboardTrendItems(value: unknown): DashboardTrendItem[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((item) => {
+      if (!item || typeof item !== 'object') {
+        return null;
+      }
+
+      const source = item as Record<string, unknown>;
+      const month = typeof source.month === 'string' ? source.month : '';
+      const total = typeof source.total === 'number' ? source.total : Number(source.total);
+
+      if (!month || !Number.isFinite(total)) {
+        return null;
+      }
+
+      return { month, total };
+    })
+    .filter((item): item is DashboardTrendItem => item !== null);
 }
 
-function getDashboardExpenseFeedRange(month: string): { startDate: string; endDate: string } {
-  const [year, mon] = month.split('-').map(Number);
+function parseDashboardCategoryBreakdown(value: unknown): DashboardCategoryBreakdownItem[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((item) => {
+      if (!item || typeof item !== 'object') {
+        return null;
+      }
+
+      const source = item as Record<string, unknown>;
+      const category = typeof source.category === 'string' ? source.category : '';
+      const amount = typeof source.amount === 'number' ? source.amount : Number(source.amount);
+      const percent = typeof source.percent === 'number' ? source.percent : Number(source.percent);
+
+      if (!category || !Number.isFinite(amount) || !Number.isFinite(percent)) {
+        return null;
+      }
+
+      return { category, amount, percent };
+    })
+    .filter((item): item is DashboardCategoryBreakdownItem => item !== null);
+}
+
+function parseDashboardRecentExpenses(value: unknown): DashboardRecentExpenseItem[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((item) => {
+      if (!item || typeof item !== 'object') {
+        return null;
+      }
+
+      const source = item as Record<string, unknown>;
+      const id = typeof source.id === 'string' ? source.id : '';
+      const title = typeof source.title === 'string' ? source.title : '';
+      const category = typeof source.category === 'string' ? source.category : 'uncategorized';
+      const amount = typeof source.amount === 'number' ? source.amount : Number(source.amount);
+      const dueDate = typeof source.due_date === 'string' ? source.due_date : '';
+      const unpaidCount =
+        typeof source.unpaid_count === 'number' ? source.unpaid_count : Number(source.unpaid_count);
+
+      if (!id || !title || !dueDate || !Number.isFinite(amount) || !Number.isFinite(unpaidCount)) {
+        return null;
+      }
+
+      return {
+        id,
+        title,
+        category,
+        amount,
+        due_date: dueDate,
+        unpaid_count: unpaidCount,
+      };
+    })
+    .filter((item): item is DashboardRecentExpenseItem => item !== null);
+}
+
+function parseDashboardCategoryTotals(value: unknown): Record<string, number> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return {};
+  }
+
+  const source = value as Record<string, unknown>;
+  const totals: Record<string, number> = {};
+
+  for (const [key, rawValue] of Object.entries(source)) {
+    const amount = typeof rawValue === 'number' ? rawValue : Number(rawValue);
+    if (key && Number.isFinite(amount)) {
+      totals[key] = amount;
+    }
+  }
+
+  return totals;
+}
+
+function parseDashboardUpcomingItems(value: unknown): DashboardUpcomingExpenseItem[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((item) => {
+      if (!item || typeof item !== 'object') {
+        return null;
+      }
+
+      const source = item as Record<string, unknown>;
+      const id = typeof source.id === 'string' ? source.id : '';
+      const title = typeof source.title === 'string' ? source.title : '';
+      const amount = typeof source.amount === 'number' ? source.amount : Number(source.amount);
+      const currency = typeof source.currency === 'string' ? source.currency : 'GBP';
+      const dueDate = typeof source.due_date === 'string' ? source.due_date : '';
+      const userShare =
+        typeof source.user_share === 'number' ? source.user_share : Number(source.user_share);
+
+      if (!id || !title || !dueDate || !Number.isFinite(amount) || !Number.isFinite(userShare)) {
+        return null;
+      }
+
+      return {
+        id,
+        title,
+        amount,
+        currency,
+        due_date: dueDate,
+        user_share: userShare,
+      };
+    })
+    .filter((item): item is DashboardUpcomingExpenseItem => item !== null);
+}
+
+function parseDashboardSummaryStats(value: unknown): DashboardSummaryStats {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return {
+      total_spend: 0,
+      your_share: 0,
+      amount_paid: 0,
+      amount_remaining: 0,
+      overdue_count: 0,
+      upcoming_items: [],
+    };
+  }
+
+  const source = value as Record<string, unknown>;
+  const totalSpend = typeof source.total_spend === 'number' ? source.total_spend : Number(source.total_spend);
+  const yourShare = typeof source.your_share === 'number' ? source.your_share : Number(source.your_share);
+  const amountPaid = typeof source.amount_paid === 'number' ? source.amount_paid : Number(source.amount_paid);
+  const amountRemaining =
+    typeof source.amount_remaining === 'number'
+      ? source.amount_remaining
+      : Number(source.amount_remaining);
+  const overdueCount =
+    typeof source.overdue_count === 'number' ? source.overdue_count : Number(source.overdue_count);
+
   return {
-    startDate: new Date(Date.UTC(year!, mon! - 6, 1)).toISOString().slice(0, 10),
-    endDate: new Date(Date.UTC(year!, mon!, 1)).toISOString().slice(0, 10),
+    total_spend: Number.isFinite(totalSpend) ? totalSpend : 0,
+    your_share: Number.isFinite(yourShare) ? yourShare : 0,
+    amount_paid: Number.isFinite(amountPaid) ? amountPaid : 0,
+    amount_remaining: Number.isFinite(amountRemaining) ? amountRemaining : 0,
+    overdue_count: Number.isFinite(overdueCount) ? overdueCount : 0,
+    upcoming_items: parseDashboardUpcomingItems(source.upcoming_items),
+  };
+}
+
+function parseDashboardSummary(value: unknown): DashboardSummary {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return {
+      expense_count: 0,
+      current_month_total: 0,
+      stats: null,
+      trend: [],
+      category_breakdown: [],
+      current_month_category_totals: {},
+      recent_expenses: [],
+    };
+  }
+
+  const source = value as Record<string, unknown>;
+  const expenseCount =
+    typeof source.expense_count === 'number' ? source.expense_count : Number(source.expense_count);
+  const currentMonthTotal =
+    typeof source.current_month_total === 'number'
+      ? source.current_month_total
+      : Number(source.current_month_total);
+
+  return {
+    expense_count: Number.isFinite(expenseCount) ? expenseCount : 0,
+    current_month_total: Number.isFinite(currentMonthTotal) ? currentMonthTotal : 0,
+    stats: Object.prototype.hasOwnProperty.call(source, 'stats')
+      ? parseDashboardSummaryStats(source.stats)
+      : null,
+    trend: parseDashboardTrendItems(source.trend),
+    category_breakdown: parseDashboardCategoryBreakdown(source.category_breakdown),
+    current_month_category_totals: parseDashboardCategoryTotals(source.current_month_category_totals),
+    recent_expenses: parseDashboardRecentExpenses(source.recent_expenses),
   };
 }
 
@@ -46,13 +244,22 @@ export async function getDashboardStats(
     .from('expenses')
     .select(
       `
-      *,
+      id,
+      title,
+      amount,
+      currency,
+      due_date,
+      category,
+      recurrence_type,
+      vendor_name,
+      invoice_reference,
+      invoice_date,
+      payment_due_date,
       participants:expense_participants(
-        *,
-        user:users(*)
+        user_id,
+        share_amount
       ),
-      payment_records(*),
-      paid_by_user:users!expenses_paid_by_user_id_fkey(*)
+      payment_records(user_id, status)
     `,
     )
     .eq('group_id', groupId)
@@ -114,32 +321,17 @@ export async function getDashboardStats(
   };
 }
 
-export async function getDashboardExpenseFeed(
+export async function getDashboardSummary(
   groupId: string,
   month: string,
-): Promise<DashboardExpenseFeedItem[]> {
-  const { startDate, endDate } = getDashboardExpenseFeedRange(month);
-
-  const { data, error } = await supabase
-    .from('expenses')
-    .select(
-      `
-      id,
-      title,
-      category,
-      amount,
-      due_date,
-      payment_records(status)
-    `,
-    )
-    .eq('group_id', groupId)
-    .eq('is_active', true)
-    .gte('due_date', startDate)
-    .lt('due_date', endDate)
-    .order('due_date', { ascending: false });
+): Promise<DashboardSummary> {
+  const { data, error } = await supabase.rpc('fn_get_dashboard_summary', {
+    p_group_id: groupId,
+    p_month: month,
+  });
 
   if (error) throw error;
-  return (data ?? []) as DashboardExpenseFeedItem[];
+  return parseDashboardSummary(data);
 }
 
 export async function getWorkspaceBillingExpenseFeed(
