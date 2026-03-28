@@ -62,13 +62,10 @@ function AuthLayout() {
             </Text>
           </Stack>
 
-          <Group justify="space-between">
+          <Group justify="flex-start">
             <Text size="xs" c="rgba(255,255,255,0.5)">
               &copy; {new Date().getFullYear()} Commune
             </Text>
-            <Anchor href="/privacy" size="xs" c="rgba(255,255,255,0.5)">
-              Privacy Policy
-            </Anchor>
           </Group>
         </Stack>
       </div>
@@ -92,6 +89,11 @@ function AuthLayout() {
           }}
         >
           <Outlet />
+        </div>
+        <div className="commune-auth-desktop-footer">
+          <Anchor href="/privacy" size="xs" c="inherit">
+            Privacy Policy
+          </Anchor>
         </div>
         <div className="commune-auth-mobile-footer">
           <Text size="xs" c="inherit">
