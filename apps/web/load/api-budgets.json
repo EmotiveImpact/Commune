@@ -684,6 +684,128 @@
           "requiresAlternateGroup": true
         }
       ]
+    },
+    "route-bundles": {
+      "gating": false,
+      "cooldownMsBetweenScenarios": 2500,
+      "scenarios": [
+        {
+          "name": "dashboard-route",
+          "type": "bundle",
+          "concurrency": 16,
+          "requests": 64,
+          "warmupConcurrency": 4,
+          "warmupRequests": 8,
+          "budgetMsP95": 2500,
+          "maxErrorRate": 0.05,
+          "requiresAuth": true,
+          "steps": [
+            {
+              "type": "rpc",
+              "rpc": "fn_get_signed_in_bootstrap",
+              "body": {
+                "p_include_dashboard_summary": false
+              }
+            },
+            {
+              "type": "rpc",
+              "rpc": "fn_get_dashboard_core",
+              "body": {
+                "p_group_id": "$resolvedGroupId",
+                "p_month": "$month"
+              }
+            }
+          ]
+        },
+        {
+          "name": "overview-route",
+          "type": "bundle",
+          "concurrency": 12,
+          "requests": 48,
+          "warmupConcurrency": 4,
+          "warmupRequests": 8,
+          "budgetMsP95": 2500,
+          "maxErrorRate": 0.05,
+          "requiresAuth": true,
+          "steps": [
+            {
+              "type": "rpc",
+              "rpc": "fn_get_signed_in_bootstrap",
+              "body": {
+                "p_include_dashboard_summary": false
+              }
+            },
+            {
+              "type": "rpc",
+              "rpc": "fn_get_cross_group_settlement_rollup",
+              "body": {
+                "p_user_id": "$userId"
+              }
+            },
+            {
+              "type": "rpc",
+              "rpc": "fn_get_smart_nudge_payload",
+              "body": {
+                "p_due_soon_days": 3
+              }
+            }
+          ]
+        },
+        {
+          "name": "expenses-route",
+          "type": "bundle",
+          "concurrency": 16,
+          "requests": 64,
+          "warmupConcurrency": 4,
+          "warmupRequests": 8,
+          "budgetMsP95": 2500,
+          "maxErrorRate": 0.05,
+          "requiresAuth": true,
+          "steps": [
+            {
+              "type": "rpc",
+              "rpc": "fn_get_signed_in_bootstrap",
+              "body": {
+                "p_include_dashboard_summary": false
+              }
+            },
+            {
+              "type": "rpc",
+              "rpc": "fn_get_expense_ledger",
+              "body": {
+                "p_group_id": "$resolvedGroupId",
+                "p_is_workspace_group": "$isWorkspaceGroup",
+                "p_page": 0,
+                "p_page_size": 25,
+                "p_status": "all"
+              }
+            }
+          ]
+        },
+        {
+          "name": "group-switch-route",
+          "type": "bundle",
+          "concurrency": 16,
+          "requests": 64,
+          "warmupConcurrency": 4,
+          "warmupRequests": 8,
+          "budgetMsP95": 2500,
+          "maxErrorRate": 0.05,
+          "requiresAuth": true,
+          "requiresAlternateGroup": true,
+          "steps": [
+            {
+              "type": "rpc",
+              "rpc": "fn_get_signed_in_bootstrap",
+              "body": {
+                "p_active_group_id": "$alternateGroupId",
+                "p_include_dashboard_summary": false
+              },
+              "requiresAlternateGroup": true
+            }
+          ]
+        }
+      ]
     }
   }
 }

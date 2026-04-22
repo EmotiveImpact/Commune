@@ -106,6 +106,15 @@ COMMUNE_LOAD_OUTPUT=./load/api-baseline-report.json \
 pnpm --filter @commune/web perf:api-baseline -- https://your-supabase-project.supabase.co
 ```
 
+Run the realistic route-bundle profile against production-like Supabase traffic:
+
+```bash
+COMMUNE_LOAD_EMAIL="load-test@example.com" \
+COMMUNE_LOAD_PASSWORD="secret-password" \
+COMMUNE_LOAD_OUTPUT=./load/api-route-bundles-report.json \
+pnpm --filter @commune/web perf:api-route-bundles -- https://your-supabase-project.supabase.co
+```
+
 Run the relaxed dev profile against a local Vite session:
 
 ```bash
@@ -182,3 +191,10 @@ Profiles:
 - `dev`: non-gating. Use this for local smoke runs where Vite/HMR inflates bytes and request failures.
 
 Neither script replaces true production-style concurrent load infrastructure, but together they give you a cheap HTML smoke check plus a more honest SPA baseline before full-scale load testing.
+
+API/RPC profiles:
+
+- `deployed`: lightweight authenticated API sanity check.
+- `stress`: broader authenticated API pressure check.
+- `peak-rpc`: synthetic shared-burst saturation probe. Use this to look for backend/pool contention, not to judge whether a single user-facing route is healthy.
+- `route-bundles`: realistic cold-route RPC bundles for dashboard, overview, expenses, and group switching. Use this to validate whether app-owned route fan-out is actually within budget. It intentionally excludes dashboard supporting data because that payload is deferred off the cold route path in the app, models group switching as a shell bootstrap change rather than a full dashboard re-hydration, and includes a short warmup phase so first-connection pool jitter does not masquerade as route latency.

@@ -388,6 +388,158 @@ async function executeScenario(scenario, context) {
   };
 }
 
+async function executeBundleScenario(scenario, context) {
+  if (scenario.requiresAuth && !context.accessToken) {
+    return { name: scenario.name, skipped: true, reason: 'requires auth' };
+  }
+
+  if (scenario.requiresAlternateGroup && !context.alternateGroupId) {
+    return { name: scenario.name, skipped: true, reason: 'requires an alternate group' };
+  }
+
+  const durations = [];
+  const sizes = [];
+  const statuses = new Map();
+  const failureSamples = [];
+  let failures = 0;
+  let transportFailures = 0;
+  let httpFailures = 0;
+  let cursor = 0;
+  const steps = Array.isArray(scenario.steps) ? scenario.steps : [];
+
+  if (steps.length === 0) {
+    throw new Error(`Bundle scenario "${scenario.name}" is missing steps.`);
+  }
+
+  async function runBundle(recordMetrics = true) {
+    const startedAt = performance.now();
+    let totalSize = 0;
+    let bundleFailed = false;
+
+    const settled = await Promise.all(
+      steps.map(async (step) => {
+        if (step.requiresAlternateGroup && !context.alternateGroupId) {
+          return { skipped: true };
+        }
+
+        const request = buildScenarioRequest(step, context);
+
+        try {
+          const response = await fetch(request.url, {
+            method: request.method,
+            headers: request.headers,
+            body: request.body,
+          });
+          const text = await response.text();
+          totalSize += text.length;
+
+          if (recordMetrics) {
+            statuses.set(response.status, (statuses.get(response.status) ?? 0) + 1);
+          }
+
+          if (!response.ok) {
+            bundleFailed = true;
+            if (recordMetrics) {
+              failures += 1;
+              httpFailures += 1;
+              failureSamples.push({
+                status: response.status,
+                body: text.slice(0, 200),
+              });
+            }
+          }
+        } catch (error) {
+          bundleFailed = true;
+          if (recordMetrics) {
+            statuses.set(0, (statuses.get(0) ?? 0) + 1);
+            failures += 1;
+            transportFailures += 1;
+            failureSamples.push({
+              status: 0,
+              body:
+                error instanceof Error
+                  ? [
+                      error.name,
+                      error.message,
+                      error.cause && typeof error.cause === 'object' && 'code' in error.cause
+                        ? String(error.cause.code)
+                        : null,
+                      error.cause && typeof error.cause === 'object' && 'message' in error.cause
+                        ? String(error.cause.message)
+                        : null,
+                    ]
+                      .filter(Boolean)
+                      .join(' | ')
+                  : String(error),
+            });
+          }
+        }
+
+        return { skipped: false };
+      }),
+    );
+
+    if (settled.every((result) => result.skipped)) {
+      return;
+    }
+
+    const durationMs = performance.now() - startedAt;
+    if (recordMetrics) {
+      durations.push(durationMs);
+      sizes.push(totalSize);
+      if (!bundleFailed) {
+        // no-op, bundle counted as success
+      }
+    }
+  }
+
+  async function worker(totalRequests, recordMetrics) {
+    while (cursor < totalRequests) {
+      cursor += 1;
+      await runBundle(recordMetrics);
+    }
+  }
+
+  const warmupRequests = scenario.warmupRequests ?? 0;
+  const warmupConcurrency = scenario.warmupConcurrency ?? Math.min(scenario.concurrency, warmupRequests || 0);
+  if (warmupRequests > 0 && warmupConcurrency > 0) {
+    cursor = 0;
+    await Promise.all(
+      Array.from({ length: warmupConcurrency }, () => worker(warmupRequests, false)),
+    );
+  }
+
+  cursor = 0;
+  await Promise.all(Array.from({ length: scenario.concurrency }, () => worker(scenario.requests, true)));
+
+  durations.sort((a, b) => a - b);
+  sizes.sort((a, b) => a - b);
+  const requestCount = durations.length;
+  const errorRate = requestCount === 0 ? 0 : failures / requestCount;
+  const p95 = percentile(durations, 95);
+  const p50 = percentile(durations, 50);
+  const sizeP95 = percentile(sizes, 95);
+  const passed = (p95 ?? 0) <= scenario.budgetMsP95 && errorRate <= scenario.maxErrorRate;
+
+  return {
+    name: scenario.name,
+    skipped: false,
+    requestCount,
+    p50,
+    p95,
+    avg: average(durations),
+    sizeP95,
+    errorRate,
+    transportFailures,
+    httpFailures,
+    statuses: Object.fromEntries(statuses),
+    failures: failureSamples.slice(0, 5),
+    passed,
+    budgetMsP95: scenario.budgetMsP95,
+    maxErrorRate: scenario.maxErrorRate,
+  };
+}
+
 async function writeReport(outputPath, report) {
   const normalizedOutput =
     process.cwd().endsWith('/apps/web') && outputPath.startsWith('apps/web/')
@@ -419,7 +571,10 @@ async function main() {
 
   const results = [];
   for (const scenario of profile.scenarios) {
-    const result = await executeScenario(withScenarioOverrides(scenario), context);
+    const effectiveScenario = withScenarioOverrides(scenario);
+    const result = effectiveScenario.type === 'bundle'
+      ? await executeBundleScenario(effectiveScenario, context)
+      : await executeScenario(effectiveScenario, context);
     results.push(result);
 
     if (result.skipped) {
@@ -439,7 +594,7 @@ async function main() {
       ].join(' | '),
     );
 
-    const cooldownMs = scenario.cooldownMsAfter ?? profile.cooldownMsBetweenScenarios ?? 0;
+    const cooldownMs = effectiveScenario.cooldownMsAfter ?? profile.cooldownMsBetweenScenarios ?? 0;
     if (cooldownMs > 0) {
       await new Promise((resolve) => setTimeout(resolve, cooldownMs));
     }

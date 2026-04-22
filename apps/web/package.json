@@ -12,6 +12,7 @@
     "perf:api-stress": "COMMUNE_LOAD_PROFILE=stress node ./scripts/run-api-baseline.mjs",
     "perf:api-peak": "COMMUNE_LOAD_PROFILE=peak node ./scripts/run-api-baseline.mjs",
     "perf:api-peak-rpc": "COMMUNE_LOAD_PROFILE=peak-rpc node ./scripts/run-api-baseline.mjs",
+    "perf:api-route-bundles": "COMMUNE_LOAD_PROFILE=route-bundles node ./scripts/run-api-baseline.mjs",
     "perf:browser-baseline": "node ./scripts/run-browser-baseline.mjs",
     "perf:browser-baseline:deployed": "COMMUNE_LOAD_PROFILE=deployed node ./scripts/run-browser-baseline.mjs",
     "perf:browser-baseline:dev": "COMMUNE_LOAD_PROFILE=dev node ./scripts/run-browser-baseline.mjs",
