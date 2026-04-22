@@ -5,7 +5,6 @@ import {
   Outlet,
   useMatchRoute,
   useRouter,
-  useRouterState,
 } from '@tanstack/react-router';
 import { Alert, Button } from '@mantine/core';
 import { IconClock } from '@tabler/icons-react';
@@ -22,18 +21,14 @@ export const Route = createLazyFileRoute('/_app')({
 
 function ProtectedLayout() {
   const router = useRouter();
-  const pathname = useRouterState({
-    select: (state) => state.location.pathname,
-  });
   const { user, isAuthenticated, isLoading: authLoading } = useAuthStore();
   const { activeGroupId } = useGroupStore();
   const currentMonth = getMonthKey();
-  const includeDashboardSummary = pathname === '/';
   const { data: bootstrap, isLoading: bootstrapLoading } = useSignedInBootstrap(
     user?.id ?? '',
     activeGroupId,
     currentMonth,
-    includeDashboardSummary,
+    false,
     true,
   );
   const matchRoute = useMatchRoute();
