@@ -40,7 +40,7 @@ import { setPageTitle } from '../../utils/seo';
 import { useGroupStore } from '../../stores/group';
 import { useAuthStore } from '../../stores/auth';
 import { useGroupSummary, useUserGroupSummaries } from '../../hooks/use-groups';
-import { useDashboardStats, useDashboardSummary } from '../../hooks/use-dashboard';
+import { useDashboardInsights, useDashboardStats, useDashboardSummary } from '../../hooks/use-dashboard';
 import { DashboardSkeleton } from '../../components/page-skeleton';
 import { useGenerateRecurring } from '../../hooks/use-recurring';
 import { useDeferredSection } from '../../hooks/use-deferred-section';
@@ -317,12 +317,31 @@ function DashboardPage() {
     month: 'long',
     year: 'numeric',
   });
+  const hasExpenses = (dashboardSummary?.expense_count ?? 0) > 0;
+  const {
+    ref: overviewChartRef,
+    ready: showOverviewChart,
+  } = useDeferredSection({
+    enabled: hasExpenses,
+  });
+  const {
+    ref: categoryChartRef,
+    ready: showCategoryChart,
+  } = useDeferredSection({
+    enabled: hasExpenses,
+  });
+  const shouldLoadInsights = showOverviewChart || showCategoryChart;
+  const { data: dashboardInsights, isLoading: insightsLoading } = useDashboardInsights(
+    resolvedActiveGroupId ?? '',
+    currentMonth,
+    { enabled: shouldLoadInsights },
+  );
 
   const monthlyTrend = useMemo(() => {
     const keys = getRecentMonthKeys(6);
     const totals = new Map(keys.map((key) => [key, 0]));
 
-    for (const item of dashboardSummary?.trend ?? []) {
+    for (const item of dashboardInsights?.trend ?? []) {
       if (totals.has(item.month)) {
         totals.set(item.month, item.total);
       }
@@ -340,35 +359,23 @@ function DashboardPage() {
         total: totals.get(key) ?? 0,
       })),
     };
-  }, [currentMonth, dashboardSummary?.trend]);
+  }, [currentMonth, dashboardInsights?.trend]);
 
   const categoryBreakdown = useMemo(
     () =>
-      (dashboardSummary?.category_breakdown ?? []).map((item, index) => ({
+      (dashboardInsights?.category_breakdown ?? []).map((item, index) => ({
         ...item,
         color: categoryPalette[index % categoryPalette.length]!,
       })),
-    [dashboardSummary?.category_breakdown],
+    [dashboardInsights?.category_breakdown],
   );
 
   const hasTrendData = monthlyTrend.items.some((item) => item.total > 0);
   const hasCategoryData = categoryBreakdown.length > 0;
-  const {
-    ref: overviewChartRef,
-    ready: showOverviewChart,
-  } = useDeferredSection({
-    enabled: hasTrendData,
-  });
-  const {
-    ref: categoryChartRef,
-    ready: showCategoryChart,
-  } = useDeferredSection({
-    enabled: hasCategoryData,
-  });
-
-  const recentExpenses = dashboardSummary?.recent_expenses ?? [];
+  const recentExpenses = dashboardInsights?.recent_expenses ?? [];
   const stats = dashboardSummary?.stats ?? fallbackStats;
   const currentBudget = dashboardSummary?.budget ?? null;
+  const categoryTotals = dashboardInsights?.current_month_category_totals ?? {};
 
   const focusItems = useMemo(() => {
     const cycleTotal = dashboardSummary?.current_month_total ?? 0;
@@ -400,8 +407,6 @@ function DashboardPage() {
         };
       });
   }, [dashboardSummary?.current_month_total, dashboardSummary?.stats, fallbackStats?.upcoming_items, user?.id]);
-  const hasExpenses = (dashboardSummary?.expense_count ?? 0) > 0;
-
   // F35: Budget calculations
   const budgetPct = currentBudget && currentBudget.budget_amount > 0
     ? Math.round(((dashboardSummary?.current_month_total ?? 0) / currentBudget.budget_amount) * 100)
@@ -411,7 +416,7 @@ function DashboardPage() {
   const categorySpend = useMemo(() => {
     if (!currentBudget?.category_budgets) return [];
     const budgets = currentBudget.category_budgets as Record<string, number>;
-    const spendByCategory = dashboardSummary?.current_month_category_totals ?? {};
+    const spendByCategory = categoryTotals;
 
     return Object.entries(budgets)
       .filter(([, budget]) => budget > 0)
@@ -421,7 +426,7 @@ function DashboardPage() {
         spent: spendByCategory[category] ?? 0,
         pct: Math.round(((spendByCategory[category] ?? 0) / budget) * 100),
       }));
-  }, [currentBudget?.category_budgets, dashboardSummary?.current_month_category_totals]);
+  }, [categoryTotals, currentBudget?.category_budgets]);
 
   // F36: Onboarding tips (group-type-aware)
   const onboardingTips = useMemo(
@@ -810,7 +815,7 @@ function DashboardPage() {
               <div>
                 <Text className="commune-section-heading">Monthly budget</Text>
                 <Text size="sm" c="dimmed">
-                  {formatCurrency(monthlyTrend.currentTotal, group?.currency)} spent of{' '}
+                  {formatCurrency(dashboardSummary?.current_month_total ?? 0, group?.currency)} spent of{' '}
                   {formatCurrency(currentBudget.budget_amount, group?.currency)} budget
                 </Text>
               </div>
@@ -830,7 +835,7 @@ function DashboardPage() {
             />
             {budgetPct >= 100 && (
               <Text size="xs" c="red" fw={600}>
-                Over budget by {formatCurrency(monthlyTrend.currentTotal - currentBudget.budget_amount, group?.currency)}
+                Over budget by {formatCurrency((dashboardSummary?.current_month_total ?? 0) - currentBudget.budget_amount, group?.currency)}
               </Text>
             )}
             {budgetPct >= (currentBudget.alert_threshold ?? 80) && budgetPct < 100 && (
@@ -951,7 +956,7 @@ function DashboardPage() {
 
               {hasTrendData ? (
                 <div ref={overviewChartRef}>
-                  {showOverviewChart ? (
+                  {showOverviewChart && dashboardInsights ? (
                     <Suspense fallback={<DashboardOverviewChartFallback />}>
                       <DashboardTransactionOverviewChart
                         currency={group?.currency}
@@ -1039,6 +1044,15 @@ function DashboardPage() {
                     </Table.Tbody>
                   </Table>
                 </div>
+              ) : insightsLoading && shouldLoadInsights ? (
+                <Paper className="commune-stat-card" p="lg" radius="lg">
+                  <Skeleton height={18} width="40%" radius="sm" mb="md" />
+                  <Stack gap="sm">
+                    <Skeleton height={16} radius="sm" />
+                    <Skeleton height={16} radius="sm" />
+                    <Skeleton height={16} radius="sm" />
+                  </Stack>
+                </Paper>
               ) : (
                 <Paper className="commune-stat-card" p="lg" radius="lg">
                   <Text fw={600}>No expenses added yet.</Text>
@@ -1070,7 +1084,7 @@ function DashboardPage() {
 
               {hasCategoryData ? (
                 <div ref={categoryChartRef}>
-                  {showCategoryChart ? (
+                  {showCategoryChart && dashboardInsights ? (
                     <Suspense fallback={<DashboardCategoryChartFallback />}>
                       <DashboardCategoryBreakdownChart
                         currency={group?.currency}

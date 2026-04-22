@@ -379,11 +379,13 @@ export async function getDashboardStats(
 export async function getDashboardSummary(
   groupId: string,
   month: string,
+  options?: { includeInsights?: boolean },
 ): Promise<DashboardSummary> {
   const supabase = getTypedSupabase();
   const { data, error } = await supabase.rpc('fn_get_dashboard_summary', {
     p_group_id: groupId,
     p_month: month,
+    p_include_insights: options?.includeInsights ?? true,
   });
 
   if (error) throw error;

@@ -35,6 +35,7 @@ function invalidateCycleRelatedQueries(
   queryClient.invalidateQueries({ queryKey: dashboardKeys.statsGroup(groupId) });
   queryClient.invalidateQueries({ queryKey: dashboardKeys.breakdownGroup(groupId) });
   queryClient.invalidateQueries({ queryKey: dashboardKeys.feedGroup(groupId) });
+  queryClient.invalidateQueries({ queryKey: dashboardKeys.insightsGroup(groupId) });
   queryClient.invalidateQueries({ queryKey: dashboardKeys.workspaceBillingFeed(groupId) });
   queryClient.invalidateQueries({ queryKey: workspaceBillingKeys.report(groupId) });
 }

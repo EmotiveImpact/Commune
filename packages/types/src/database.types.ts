@@ -1271,7 +1271,11 @@ export type Database = {
         Returns: Json
       }
       fn_get_dashboard_summary: {
-        Args: { p_group_id: string; p_month: string }
+        Args: {
+          p_group_id: string
+          p_include_insights?: boolean
+          p_month: string
+        }
         Returns: Json
       }
       fn_get_effective_plan: {

@@ -24,6 +24,10 @@ export const dashboardKeys = {
     [...dashboardKeys.all, 'feed', groupId, month] as const,
   feedGroup: (groupId: string) =>
     [...dashboardKeys.all, 'feed', groupId] as const,
+  insights: (groupId: string, month: string) =>
+    [...dashboardKeys.all, 'insights', groupId, month] as const,
+  insightsGroup: (groupId: string) =>
+    [...dashboardKeys.all, 'insights', groupId] as const,
   workspaceBillingFeed: (groupId: string) =>
     [...dashboardKeys.all, 'workspace-billing-feed', groupId] as const,
 };
@@ -260,9 +264,25 @@ export function useDashboardSummary(groupId: string, month: string) {
   const queryClient = useQueryClient();
   return useQuery({
     queryKey: dashboardKeys.feed(groupId, month),
-    queryFn: () => getDashboardSummary(groupId, month),
+    queryFn: () => getDashboardSummary(groupId, month, { includeInsights: false }),
     initialData: () => queryClient.getQueryData(dashboardKeys.feed(groupId, month)),
     enabled: !!groupId,
+    staleTime: 1000 * 60 * 5,
+  });
+}
+
+export function useDashboardInsights(
+  groupId: string,
+  month: string,
+  options?: { enabled?: boolean },
+) {
+  const queryClient = useQueryClient();
+  return useQuery({
+    queryKey: dashboardKeys.insights(groupId, month),
+    queryFn: () => getDashboardSummary(groupId, month, { includeInsights: true }),
+    initialData: () => queryClient.getQueryData(dashboardKeys.insights(groupId, month)),
+    enabled: !!groupId && (options?.enabled ?? true),
+    staleTime: 1000 * 60 * 5,
   });
 }
 
