@@ -42,7 +42,7 @@ import { useAuthStore } from '../../stores/auth';
 import { useGroupSummary, useUserGroupSummaries } from '../../hooks/use-groups';
 import { useDashboardInsights, useDashboardStats, useDashboardSummary } from '../../hooks/use-dashboard';
 import { DashboardSkeleton } from '../../components/page-skeleton';
-import { useGenerateRecurring } from '../../hooks/use-recurring';
+import { useGenerateRecurring, usePendingRecurringGeneration } from '../../hooks/use-recurring';
 import { useDeferredSection } from '../../hooks/use-deferred-section';
 import { SetBudgetModal } from '../../components/set-budget-modal';
 
@@ -270,9 +270,17 @@ function DashboardPage() {
     currentMonth,
     { enabled: needsStatsFallback },
   );
+  const { data: hasPendingRecurringGeneration } = usePendingRecurringGeneration(
+    resolvedActiveGroupId ?? '',
+    currentMonth,
+    {
+      enabled:
+        !!resolvedActiveGroupId
+        && isActiveGroupAdmin
+        && !summaryLoading,
+    },
+  );
   const generateRecurring = useGenerateRecurring(resolvedActiveGroupId ?? '');
-  const hasPendingRecurringGeneration =
-    isActiveGroupAdmin && dashboardSummary?.has_pending_recurring_generation === true;
   const recurringGenerationKeyRef = useRef<string | null>(null);
 
   // F35: Budget data

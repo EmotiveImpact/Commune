@@ -46,14 +46,37 @@ async function loadApiConfig() {
   const raw = await readFile(filePath, 'utf8');
   const config = JSON.parse(raw);
   const profileName = process.env.COMMUNE_LOAD_PROFILE ?? config.defaultProfile ?? 'deployed';
-  const profile = config.profiles?.[profileName];
+  const baseProfile = config.profiles?.[profileName];
 
-  if (!profile) {
+  if (!baseProfile) {
     const names = Object.keys(config.profiles ?? {});
     throw new Error(`Unknown API baseline profile "${profileName}". Available: ${names.join(', ') || 'none'}.`);
   }
 
-  return { profileName, profile };
+  const scenarioFilter = process.env.COMMUNE_LOAD_ONLY
+    ?.split(',')
+    .map((value) => value.trim())
+    .filter(Boolean);
+
+  if (!scenarioFilter?.length) {
+    return { profileName, profile: baseProfile };
+  }
+
+  const scenarios = baseProfile.scenarios.filter((scenario) => scenarioFilter.includes(scenario.name));
+  if (scenarios.length === 0) {
+    throw new Error(
+      `COMMUNE_LOAD_ONLY did not match any scenarios in profile "${profileName}". Requested: ${scenarioFilter.join(', ')}.`,
+    );
+  }
+
+  return {
+    profileName,
+    profile: {
+      ...baseProfile,
+      gating: false,
+      scenarios,
+    },
+  };
 }
 
 function buildProjectHeaders(anonKey, accessToken) {
@@ -217,6 +240,31 @@ function buildScenarioRequest(scenario, context) {
   throw new Error(`Unsupported API baseline scenario type "${scenario.type}".`);
 }
 
+function withScenarioOverrides(scenario) {
+  const concurrencyOverride = Number(process.env.COMMUNE_LOAD_CONCURRENCY);
+  const requestsOverride = Number(process.env.COMMUNE_LOAD_REQUESTS);
+  const warmupConcurrencyOverride = Number(process.env.COMMUNE_LOAD_WARMUP_CONCURRENCY);
+  const warmupRequestsOverride = Number(process.env.COMMUNE_LOAD_WARMUP_REQUESTS);
+
+  return {
+    ...scenario,
+    concurrency: Number.isFinite(concurrencyOverride) && concurrencyOverride > 0
+      ? concurrencyOverride
+      : scenario.concurrency,
+    requests: Number.isFinite(requestsOverride) && requestsOverride > 0
+      ? requestsOverride
+      : scenario.requests,
+    warmupConcurrency:
+      Number.isFinite(warmupConcurrencyOverride) && warmupConcurrencyOverride > 0
+        ? warmupConcurrencyOverride
+        : scenario.warmupConcurrency,
+    warmupRequests:
+      Number.isFinite(warmupRequestsOverride) && warmupRequestsOverride >= 0
+        ? warmupRequestsOverride
+        : scenario.warmupRequests,
+  };
+}
+
 async function executeScenario(scenario, context) {
   if (scenario.requiresAuth && !context.accessToken) {
     return { name: scenario.name, skipped: true, reason: 'requires auth' };
@@ -231,6 +279,8 @@ async function executeScenario(scenario, context) {
   const sizes = [];
   const failureSamples = [];
   let failures = 0;
+  let transportFailures = 0;
+  let httpFailures = 0;
   let cursor = 0;
 
   async function runOne(recordMetrics = true) {
@@ -254,6 +304,7 @@ async function executeScenario(scenario, context) {
       if (!response.ok) {
         if (recordMetrics) {
           failures += 1;
+          httpFailures += 1;
           failureSamples.push({
             status: response.status,
             body: text.slice(0, 200),
@@ -267,9 +318,24 @@ async function executeScenario(scenario, context) {
         sizes.push(0);
         statuses.set(0, (statuses.get(0) ?? 0) + 1);
         failures += 1;
+        transportFailures += 1;
         failureSamples.push({
           status: 0,
-          body: error instanceof Error ? error.message : String(error),
+          body:
+            error instanceof Error
+              ? [
+                  error.name,
+                  error.message,
+                  error.cause && typeof error.cause === 'object' && 'code' in error.cause
+                    ? String(error.cause.code)
+                    : null,
+                  error.cause && typeof error.cause === 'object' && 'message' in error.cause
+                    ? String(error.cause.message)
+                    : null,
+                ]
+                  .filter(Boolean)
+                  .join(' | ')
+              : String(error),
         });
       }
     }
@@ -312,6 +378,8 @@ async function executeScenario(scenario, context) {
     avg: average(durations),
     sizeP95,
     errorRate,
+    transportFailures,
+    httpFailures,
     statuses: Object.fromEntries(statuses),
     failures: failureSamples.slice(0, 5),
     passed,
@@ -351,7 +419,7 @@ async function main() {
 
   const results = [];
   for (const scenario of profile.scenarios) {
-    const result = await executeScenario(scenario, context);
+    const result = await executeScenario(withScenarioOverrides(scenario), context);
     results.push(result);
 
     if (result.skipped) {
@@ -392,6 +460,25 @@ async function main() {
       isWorkspaceGroup: context.isWorkspaceGroup,
       groupCount: context.groups.length,
       authDurationMs: context.authDurationMs,
+    },
+    overrides: {
+      only: process.env.COMMUNE_LOAD_ONLY ?? null,
+      concurrency:
+        Number.isFinite(Number(process.env.COMMUNE_LOAD_CONCURRENCY))
+          ? Number(process.env.COMMUNE_LOAD_CONCURRENCY)
+          : null,
+      requests:
+        Number.isFinite(Number(process.env.COMMUNE_LOAD_REQUESTS))
+          ? Number(process.env.COMMUNE_LOAD_REQUESTS)
+          : null,
+      warmupConcurrency:
+        Number.isFinite(Number(process.env.COMMUNE_LOAD_WARMUP_CONCURRENCY))
+          ? Number(process.env.COMMUNE_LOAD_WARMUP_CONCURRENCY)
+          : null,
+      warmupRequests:
+        Number.isFinite(Number(process.env.COMMUNE_LOAD_WARMUP_REQUESTS))
+          ? Number(process.env.COMMUNE_LOAD_WARMUP_REQUESTS)
+          : null,
     },
     overallPassed: rankedFailures.length === 0,
     results,
