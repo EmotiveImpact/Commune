@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { getDashboardSummary, getSignedInBootstrap, getUserGroupSummaries } from '@commune/api';
+import { getSignedInBootstrap } from '@commune/api';
 import { subscriptionKeys } from './use-subscriptions';
 import { groupKeys } from './use-groups';
 import { dashboardKeys } from './use-dashboard';
@@ -27,29 +27,12 @@ export function useSignedInBootstrap(
   return useQuery({
     queryKey,
     queryFn: async () => {
-      const data =
-        !activeGroupId && !includeSubscription
-          ? await (async () => {
-              const groups = await getUserGroupSummaries();
-              const resolvedGroupId = groups[0]?.id ?? null;
-              const dashboardSummary =
-                includeDashboardSummary && resolvedGroupId
-                  ? await getDashboardSummary(resolvedGroupId, month, { includeInsights: false })
-                  : null;
-
-              return {
-                subscription: null,
-                groups,
-                resolved_group_id: resolvedGroupId,
-                dashboard_summary: dashboardSummary,
-              };
-            })()
-          : await getSignedInBootstrap(
-              activeGroupId,
-              month,
-              includeDashboardSummary,
-              includeSubscription,
-            );
+      const data = await getSignedInBootstrap(
+        activeGroupId,
+        month,
+        includeDashboardSummary,
+        includeSubscription,
+      );
       const shellData = {
         ...data,
         dashboard_summary: null,
