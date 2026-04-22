@@ -354,6 +354,11 @@ async function main() {
         `errorRate=${(result.errorRate * 100).toFixed(2)}%`,
       ].join(' | '),
     );
+
+    const cooldownMs = scenario.cooldownMsAfter ?? profile.cooldownMsBetweenScenarios ?? 0;
+    if (cooldownMs > 0) {
+      await new Promise((resolve) => setTimeout(resolve, cooldownMs));
+    }
   }
 
   const rankedFailures = results

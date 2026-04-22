@@ -1270,6 +1270,13 @@ export type Database = {
         Args: { p_user_id: string }
         Returns: Json
       }
+      fn_get_dashboard_core: {
+        Args: {
+          p_group_id: string
+          p_month: string
+        }
+        Returns: Json
+      }
       fn_get_dashboard_summary: {
         Args: {
           p_group_id: string
