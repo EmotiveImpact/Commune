@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import type { Session, SupabaseAuthUser } from '@commune/api';
-import { supabase, getProfile } from '@commune/api';
+import { supabase } from '@commune/api';
 import type { User } from '@commune/types';
 import { useAuthStore } from '../stores/auth';
 import { useGroupStore } from '../stores/group';
@@ -48,15 +48,6 @@ function buildFallbackUser(authUser: SupabaseAuthUser): User {
   };
 }
 
-async function resolveUser(authUser: SupabaseAuthUser): Promise<User> {
-  try {
-    return await getProfile(authUser.id);
-  } catch (err) {
-    console.error('Failed to resolve user profile, falling back to auth metadata.', err);
-    return buildFallbackUser(authUser);
-  }
-}
-
 export function useAuthListener() {
   const { setUser, setLoading } = useAuthStore();
   const { setActiveGroupId, setActiveGroupUserId } = useGroupStore();
@@ -65,7 +56,6 @@ export function useAuthListener() {
     let mounted = true;
     let initialised = false;
     let lastUserId: string | null = null;
-    let pendingUserId: string | null = null;
 
     async function syncSession(session: Session | null) {
       if (!mounted) return;
@@ -73,7 +63,6 @@ export function useAuthListener() {
       if (!session?.user) {
         if (lastUserId !== null) {
           lastUserId = null;
-          pendingUserId = null;
           queryClient.clear();
           setActiveGroupId(null);
           setActiveGroupUserId(null);
@@ -90,7 +79,6 @@ export function useAuthListener() {
 
       // Skip if the same user is already resolved — avoids re-render on token refresh
       if (session.user.id === lastUserId && initialised) return;
-      if (session.user.id === pendingUserId) return;
 
       if (lastUserId && lastUserId !== session.user.id) {
         queryClient.clear();
@@ -103,7 +91,6 @@ export function useAuthListener() {
       }
 
       const requestUserId = session.user.id;
-      pendingUserId = requestUserId;
       lastUserId = requestUserId;
       const cachedUser = queryClient.getQueryData<User>(profileKeys.detail(requestUserId));
       const optimisticUser = cachedUser ?? buildFallbackUser(session.user);
@@ -116,23 +103,6 @@ export function useAuthListener() {
         initialised = true;
         setLoading(false);
       }
-
-      void resolveUser(session.user)
-        .then((user) => {
-          if (!mounted) return;
-          // A newer auth event took over while we were resolving; drop the result
-          // rather than racing it onto the store (prevents a stale user from
-          // winning after a quick A→B→A switch).
-          if (pendingUserId !== requestUserId) return;
-
-          pendingUserId = null;
-          queryClient.setQueryData(profileKeys.detail(user.id), user);
-          setUser(user);
-        })
-        .catch((error) => {
-          pendingUserId = null;
-          console.error('Failed to resolve user profile after optimistic bootstrap.', error);
-        });
     }
 
     void supabase.auth.getSession().then(({ data: { session } }) => syncSession(session));
