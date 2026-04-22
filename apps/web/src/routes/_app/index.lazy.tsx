@@ -40,7 +40,12 @@ import { setPageTitle } from '../../utils/seo';
 import { useGroupStore } from '../../stores/group';
 import { useAuthStore } from '../../stores/auth';
 import { useGroupSummary, useUserGroupSummaries } from '../../hooks/use-groups';
-import { useDashboardInsights, useDashboardStats, useDashboardSummary } from '../../hooks/use-dashboard';
+import {
+  useDashboardInsights,
+  useDashboardStats,
+  useDashboardSummary,
+  useDashboardSupportingData,
+} from '../../hooks/use-dashboard';
 import { DashboardSkeleton } from '../../components/page-skeleton';
 import { useGenerateRecurring, usePendingRecurringGeneration } from '../../hooks/use-recurring';
 import { useDeferredSection } from '../../hooks/use-deferred-section';
@@ -270,6 +275,18 @@ function DashboardPage() {
     currentMonth,
     { enabled: needsStatsFallback },
   );
+  const [allowDashboardSupportingData, setAllowDashboardSupportingData] = useState(false);
+  const {
+    data: dashboardSupportingData,
+    isLoading: dashboardSupportingLoading,
+  } = useDashboardSupportingData(
+    resolvedActiveGroupId ?? '',
+    currentMonth,
+    {
+      enabled: !!resolvedActiveGroupId && allowDashboardSupportingData && !summaryLoading,
+    },
+  );
+  const [allowPendingRecurringCheck, setAllowPendingRecurringCheck] = useState(false);
   const { data: hasPendingRecurringGeneration } = usePendingRecurringGeneration(
     resolvedActiveGroupId ?? '',
     currentMonth,
@@ -277,6 +294,7 @@ function DashboardPage() {
       enabled:
         !!resolvedActiveGroupId
         && isActiveGroupAdmin
+        && allowPendingRecurringCheck
         && !summaryLoading,
     },
   );
@@ -285,6 +303,62 @@ function DashboardPage() {
 
   // F35: Budget data
   const [budgetModalOpened, setBudgetModalOpened] = useState(false);
+
+  useEffect(() => {
+    setAllowDashboardSupportingData(false);
+
+    if (!resolvedActiveGroupId) {
+      return undefined;
+    }
+
+    const scheduler =
+      typeof window !== 'undefined' && typeof window.requestIdleCallback === 'function'
+        ? window.requestIdleCallback(() => {
+            setAllowDashboardSupportingData(true);
+          }, { timeout: 1000 })
+        : window.setTimeout(() => {
+            setAllowDashboardSupportingData(true);
+          }, 750);
+
+    return () => {
+      if (typeof scheduler === 'number') {
+        window.clearTimeout(scheduler);
+        return;
+      }
+
+      if (typeof window !== 'undefined' && typeof window.cancelIdleCallback === 'function') {
+        window.cancelIdleCallback(scheduler);
+      }
+    };
+  }, [resolvedActiveGroupId]);
+
+  useEffect(() => {
+    setAllowPendingRecurringCheck(false);
+
+    if (!resolvedActiveGroupId || !isActiveGroupAdmin) {
+      return undefined;
+    }
+
+    const scheduler =
+      typeof window !== 'undefined' && typeof window.requestIdleCallback === 'function'
+        ? window.requestIdleCallback(() => {
+            setAllowPendingRecurringCheck(true);
+          }, { timeout: 1500 })
+        : window.setTimeout(() => {
+            setAllowPendingRecurringCheck(true);
+          }, 1000);
+
+    return () => {
+      if (typeof scheduler === 'number') {
+        window.clearTimeout(scheduler);
+        return;
+      }
+
+      if (typeof window !== 'undefined' && typeof window.cancelIdleCallback === 'function') {
+        window.cancelIdleCallback(scheduler);
+      }
+    };
+  }, [isActiveGroupAdmin, resolvedActiveGroupId]);
 
   useEffect(() => {
     const generationKey = resolvedActiveGroupId
@@ -381,22 +455,38 @@ function DashboardPage() {
   const hasTrendData = monthlyTrend.items.some((item) => item.total > 0);
   const hasCategoryData = categoryBreakdown.length > 0;
   const recentExpenses = dashboardInsights?.recent_expenses ?? [];
-  const stats = dashboardSummary?.stats ?? fallbackStats;
-  const currentBudget = dashboardSummary?.budget ?? null;
+  const stats = useMemo(() => {
+    const baseStats = dashboardSummary?.stats ?? fallbackStats;
+    if (!baseStats) {
+      return baseStats;
+    }
+
+    return {
+      ...baseStats,
+      upcoming_items: dashboardSupportingData?.upcoming_items ?? baseStats.upcoming_items ?? [],
+    };
+  }, [dashboardSummary?.stats, fallbackStats, dashboardSupportingData?.upcoming_items]);
+  const currentBudget = dashboardSupportingData?.budget ?? dashboardSummary?.budget ?? null;
+  const dashboardSupportingPending =
+    !!resolvedActiveGroupId
+    && (!allowDashboardSupportingData || (dashboardSupportingLoading && !dashboardSupportingData));
   const categoryTotals = dashboardInsights?.current_month_category_totals ?? {};
 
   const focusItems = useMemo(() => {
     const cycleTotal = dashboardSummary?.current_month_total ?? 0;
 
-    if (dashboardSummary?.stats) {
-      return dashboardSummary.stats.upcoming_items
+    if (stats) {
+      return stats.upcoming_items
         .slice()
         .sort((left, right) => new Date(left.due_date).getTime() - new Date(right.due_date).getTime())
         .slice(0, 3)
         .map((expense) => ({
           ...expense,
-          userShare: expense.user_share,
-          weight: cycleTotal > 0 ? Math.round((expense.user_share / cycleTotal) * 100) : 0,
+          userShare: 'user_share' in expense ? expense.user_share : expense.amount,
+          weight:
+            cycleTotal > 0
+              ? Math.round((('user_share' in expense ? expense.user_share : expense.amount) / cycleTotal) * 100)
+              : 0,
         }));
     }
 
@@ -414,7 +504,7 @@ function DashboardPage() {
           weight: cycleTotal > 0 ? Math.round((userShare / cycleTotal) * 100) : 0,
         };
       });
-  }, [dashboardSummary?.current_month_total, dashboardSummary?.stats, fallbackStats?.upcoming_items, user?.id]);
+  }, [dashboardSummary?.current_month_total, fallbackStats?.upcoming_items, stats, user?.id]);
   // F35: Budget calculations
   const budgetPct = currentBudget && currentBudget.budget_amount > 0
     ? Math.round(((dashboardSummary?.current_month_total ?? 0) / currentBudget.budget_amount) * 100)
@@ -795,7 +885,7 @@ function DashboardPage() {
                   Open items
                 </Text>
                 <Text fw={700} size="lg">
-                  {(stats?.upcoming_items ?? []).length}
+                  {dashboardSupportingPending ? '…' : (stats?.upcoming_items ?? []).length}
                 </Text>
               </div>
             </SimpleGrid>
@@ -817,7 +907,19 @@ function DashboardPage() {
 
       {/* F35: Budget tracking widget */}
       <Paper className="commune-soft-panel" p="lg">
-        {currentBudget && budgetPct !== null ? (
+        {dashboardSupportingPending ? (
+          <Stack gap="sm">
+            <Group justify="space-between" align="flex-start">
+              <div style={{ flex: 1 }}>
+                <Skeleton height={16} width={140} mb={8} radius="sm" />
+                <Skeleton height={14} width="60%" radius="sm" />
+              </div>
+              <Skeleton height={26} width={72} radius="xl" />
+            </Group>
+            <Skeleton height={18} radius="xl" />
+            <Skeleton height={12} width="35%" radius="sm" />
+          </Stack>
+        ) : currentBudget && budgetPct !== null ? (
           <Stack gap="sm">
             <Group justify="space-between" align="flex-start">
               <div>

@@ -41,6 +41,7 @@ export function useSetGroupBudget(groupId: string) {
       queryClient.invalidateQueries({ queryKey: budgetKeys.all });
       queryClient.invalidateQueries({ queryKey: dashboardKeys.feedGroup(groupId) });
       queryClient.invalidateQueries({ queryKey: dashboardKeys.insightsGroup(groupId) });
+      queryClient.invalidateQueries({ queryKey: dashboardKeys.supportingGroup(groupId) });
     },
   });
 }
@@ -61,6 +62,7 @@ export function useDeleteGroupBudget(groupId: string) {
       queryClient.invalidateQueries({ queryKey: budgetKeys.all });
       queryClient.invalidateQueries({ queryKey: dashboardKeys.feedGroup(groupId) });
       queryClient.invalidateQueries({ queryKey: dashboardKeys.insightsGroup(groupId) });
+      queryClient.invalidateQueries({ queryKey: dashboardKeys.supportingGroup(groupId) });
     },
   });
 }

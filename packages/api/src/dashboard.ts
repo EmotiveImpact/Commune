@@ -34,6 +34,11 @@ export interface DashboardWorkspaceBillingData {
   workspace_billing: WorkspaceBillingSnapshot;
 }
 
+export interface DashboardSupportingData {
+  budget: DashboardSummaryBudget | null;
+  upcoming_items: DashboardUpcomingExpenseItem[];
+}
+
 type DashboardExpenseRow = ExpenseWithParticipants & WorkspaceBillingExpenseRecord;
 
 function parseDashboardTrendItems(value: unknown): DashboardTrendItem[] {
@@ -288,6 +293,23 @@ export function parseDashboardSummary(value: unknown): DashboardSummary {
   };
 }
 
+function parseDashboardSupportingData(value: unknown): DashboardSupportingData {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return {
+      budget: null,
+      upcoming_items: [],
+    };
+  }
+
+  const source = value as Record<string, unknown>;
+  return {
+    budget: Object.prototype.hasOwnProperty.call(source, 'budget')
+      ? parseDashboardSummaryBudget(source.budget)
+      : null,
+    upcoming_items: parseDashboardUpcomingItems(source.upcoming_items),
+  };
+}
+
 export async function getDashboardStats(
   groupId: string,
   userId: string,
@@ -396,6 +418,25 @@ export async function getDashboardSummary(
 
   if (error) throw error;
   return parseDashboardSummary(data);
+}
+
+export async function getDashboardSupportingData(
+  groupId: string,
+  month: string,
+): Promise<DashboardSupportingData> {
+  const supabase = getTypedSupabase();
+  const { data, error } = await (supabase as typeof supabase & {
+    rpc: (
+      fn: 'fn_get_dashboard_supporting_data',
+      args: { p_group_id: string; p_month: string },
+    ) => Promise<{ data: unknown; error: unknown }>
+  }).rpc('fn_get_dashboard_supporting_data', {
+    p_group_id: groupId,
+    p_month: month,
+  });
+
+  if (error) throw error;
+  return parseDashboardSupportingData(data);
 }
 
 export async function getWorkspaceBillingExpenseFeed(

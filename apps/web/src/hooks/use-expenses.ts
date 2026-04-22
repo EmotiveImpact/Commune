@@ -162,6 +162,8 @@ function invalidateExpenseDerivedQueries(
   queryClient.invalidateQueries({ queryKey: dashboardKeys.statsGroup(groupId) });
   queryClient.invalidateQueries({ queryKey: dashboardKeys.breakdownGroup(groupId) });
   queryClient.invalidateQueries({ queryKey: dashboardKeys.feedGroup(groupId) });
+  queryClient.invalidateQueries({ queryKey: dashboardKeys.insightsGroup(groupId) });
+  queryClient.invalidateQueries({ queryKey: dashboardKeys.supportingGroup(groupId) });
   queryClient.invalidateQueries({ queryKey: dashboardKeys.workspaceBillingFeed(groupId) });
   queryClient.invalidateQueries({ queryKey: workspaceBillingKeys.report(groupId) });
   queryClient.invalidateQueries({ queryKey: notificationKeys.group(groupId) });
@@ -289,27 +291,49 @@ export function useUpdateExpense(groupId: string) {
         userId: getActiveUserId(),
       });
     },
-  });
-}
-
-export function useFlagExpense() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ expenseId, reason }: { expenseId: string; reason: string }) =>
-      flagExpense(expenseId, reason),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: expenseKeys.all });
-      queryClient.invalidateQueries({ queryKey: activityKeys.all });
+    // If the server threw mid-flight (e.g. partial metadata write before split
+    // recalc failed server-side) still refresh caches so the UI doesn't show
+    // stale-derived data.
+    onError: (_, variables) => {
+      invalidateExpenseDerivedQueries(queryClient, groupId, {
+        expenseId: variables.expenseId,
+        userId: getActiveUserId(),
+      });
     },
   });
 }
 
-export function useUnflagExpense() {
+export function useFlagExpense(groupId?: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ expenseId, reason }: { expenseId: string; reason: string }) =>
+      flagExpense(expenseId, reason),
+    onSuccess: (_, variables) => {
+      // Scope invalidation: just the affected expense + its group's activity.
+      queryClient.invalidateQueries({ queryKey: expenseKeys.detail(variables.expenseId) });
+      if (groupId) {
+        queryClient.invalidateQueries({ queryKey: expenseKeys.groupLists(groupId) });
+        queryClient.invalidateQueries({ queryKey: expenseKeys.groupLedger(groupId) });
+        queryClient.invalidateQueries({ queryKey: activityKeys.group(groupId) });
+      } else {
+        // Fallback when groupId isn't available at the call site
+        queryClient.invalidateQueries({ queryKey: activityKeys.all });
+      }
+    },
+  });
+}
+
+export function useUnflagExpense(groupId?: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (expenseId: string) => unflagExpense(expenseId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: expenseKeys.all });
+    onSuccess: (_, expenseId) => {
+      queryClient.invalidateQueries({ queryKey: expenseKeys.detail(expenseId) });
+      if (groupId) {
+        queryClient.invalidateQueries({ queryKey: expenseKeys.groupLists(groupId) });
+        queryClient.invalidateQueries({ queryKey: expenseKeys.groupLedger(groupId) });
+        queryClient.invalidateQueries({ queryKey: activityKeys.group(groupId) });
+      }
     },
   });
 }

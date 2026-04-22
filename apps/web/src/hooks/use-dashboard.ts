@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   getDashboardSummary,
+  getDashboardSupportingData,
   getDashboardStats,
   getUserBreakdown,
   getWorkspaceBillingSnapshot,
@@ -28,6 +29,10 @@ export const dashboardKeys = {
     [...dashboardKeys.all, 'insights', groupId, month] as const,
   insightsGroup: (groupId: string) =>
     [...dashboardKeys.all, 'insights', groupId] as const,
+  supporting: (groupId: string, month: string) =>
+    [...dashboardKeys.all, 'supporting', groupId, month] as const,
+  supportingGroup: (groupId: string) =>
+    [...dashboardKeys.all, 'supporting', groupId] as const,
   workspaceBillingFeed: (groupId: string) =>
     [...dashboardKeys.all, 'workspace-billing-feed', groupId] as const,
 };
@@ -281,6 +286,21 @@ export function useDashboardInsights(
     queryKey: dashboardKeys.insights(groupId, month),
     queryFn: () => getDashboardSummary(groupId, month, { includeInsights: true }),
     initialData: () => queryClient.getQueryData(dashboardKeys.insights(groupId, month)),
+    enabled: !!groupId && (options?.enabled ?? true),
+    staleTime: 1000 * 60 * 5,
+  });
+}
+
+export function useDashboardSupportingData(
+  groupId: string,
+  month: string,
+  options?: { enabled?: boolean },
+) {
+  const queryClient = useQueryClient();
+  return useQuery({
+    queryKey: dashboardKeys.supporting(groupId, month),
+    queryFn: () => getDashboardSupportingData(groupId, month),
+    initialData: () => queryClient.getQueryData(dashboardKeys.supporting(groupId, month)),
     enabled: !!groupId && (options?.enabled ?? true),
     staleTime: 1000 * 60 * 5,
   });
