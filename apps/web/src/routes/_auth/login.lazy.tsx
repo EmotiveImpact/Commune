@@ -1,5 +1,7 @@
 import { createLazyFileRoute, Link } from '@tanstack/react-router';
 import {
+  Alert,
+  Anchor,
   Paper,
   Title,
   Text,
@@ -9,13 +11,17 @@ import {
   Stack,
   Group,
   Divider,
-  Anchor,
 } from '@mantine/core';
 import { useForm, schemaResolver } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
+import { IconClock } from '@tabler/icons-react';
 import { z } from 'zod';
-import { signInWithEmail, signInWithGoogle } from '@commune/api';
-import { useEffect, useState } from 'react';
+import {
+  getAuthRateLimitCooldownMs,
+  signInWithEmail,
+  signInWithGoogle,
+} from '@commune/api';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 
 export const Route = createLazyFileRoute('/_auth/login')({
@@ -28,10 +34,19 @@ const loginSchema = z.object({
 });
 
 type LoginValues = z.infer<typeof loginSchema>;
+const LOGIN_RATE_LIMIT_STORAGE_KEY = 'commune-login-rate-limit-until';
 
 function LoginPage() {
   const [loading, setLoading] = useState(false);
+  const [rateLimitUntil, setRateLimitUntil] = useState<number | null>(null);
+  const [nowMs, setNowMs] = useState(() => Date.now());
   const navigate = useNavigate();
+
+  const remainingRateLimitMs = rateLimitUntil
+    ? Math.max(0, rateLimitUntil - nowMs)
+    : 0;
+  const remainingRateLimitSeconds = Math.ceil(remainingRateLimitMs / 1000);
+  const loginTemporarilyBlocked = remainingRateLimitMs > 0;
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -61,6 +76,53 @@ function LoginPage() {
     };
   }, []);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const stored = window.sessionStorage.getItem(LOGIN_RATE_LIMIT_STORAGE_KEY);
+    if (!stored) {
+      return;
+    }
+
+    const parsed = Number(stored);
+    if (!Number.isFinite(parsed) || parsed <= Date.now()) {
+      window.sessionStorage.removeItem(LOGIN_RATE_LIMIT_STORAGE_KEY);
+      return;
+    }
+
+    setRateLimitUntil(parsed);
+  }, []);
+
+  useEffect(() => {
+    if (!rateLimitUntil) {
+      return;
+    }
+
+    const intervalHandle = window.setInterval(() => {
+      const currentNow = Date.now();
+      setNowMs(currentNow);
+
+      if (currentNow >= rateLimitUntil) {
+        setRateLimitUntil(null);
+        window.sessionStorage.removeItem(LOGIN_RATE_LIMIT_STORAGE_KEY);
+      }
+    }, 1000);
+
+    return () => {
+      window.clearInterval(intervalHandle);
+    };
+  }, [rateLimitUntil]);
+
+  const rateLimitMessage = useMemo(() => {
+    if (!loginTemporarilyBlocked) {
+      return null;
+    }
+
+    return `Too many login attempts. Try again in ${remainingRateLimitSeconds} second${remainingRateLimitSeconds === 1 ? '' : 's'}.`;
+  }, [loginTemporarilyBlocked, remainingRateLimitSeconds]);
+
   const form = useForm<LoginValues>({
     mode: 'uncontrolled',
     initialValues: { email: '', password: '' },
@@ -68,6 +130,15 @@ function LoginPage() {
   });
 
   async function handleSubmit(values: LoginValues) {
+    if (loginTemporarilyBlocked) {
+      notifications.show({
+        title: 'Login temporarily paused',
+        message: rateLimitMessage ?? 'Too many login attempts. Please wait and try again.',
+        color: 'orange',
+      });
+      return;
+    }
+
     setLoading(true);
     try {
       await Promise.all([
@@ -77,10 +148,26 @@ function LoginPage() {
       ]);
       await navigate({ to: '/', replace: true });
     } catch (err) {
+      const cooldownMs = getAuthRateLimitCooldownMs(err);
+      if (cooldownMs && typeof window !== 'undefined') {
+        const nextRateLimitUntil = Date.now() + cooldownMs;
+        window.sessionStorage.setItem(
+          LOGIN_RATE_LIMIT_STORAGE_KEY,
+          String(nextRateLimitUntil),
+        );
+        setRateLimitUntil(nextRateLimitUntil);
+        setNowMs(Date.now());
+      }
+
       notifications.show({
         title: 'Login failed',
-        message: err instanceof Error ? err.message : 'Something went wrong',
-        color: 'red',
+        message:
+          cooldownMs != null
+            ? `Too many login attempts. Try again in ${Math.ceil(cooldownMs / 1000)} seconds.`
+            : err instanceof Error
+              ? err.message
+              : 'Something went wrong',
+        color: cooldownMs != null ? 'orange' : 'red',
       });
     } finally {
       setLoading(false);
@@ -95,6 +182,18 @@ function LoginPage() {
       <Text c="dimmed" size="sm" ta="center" mb="xl">
         Enter your email and password to access your account.
       </Text>
+
+      {rateLimitMessage ? (
+        <Alert
+          icon={<IconClock size={16} />}
+          color="orange"
+          variant="light"
+          mb="lg"
+          styles={{ root: { borderRadius: 'var(--mantine-radius-lg)' } }}
+        >
+          {rateLimitMessage}
+        </Alert>
+      ) : null}
 
       <form onSubmit={form.onSubmit(handleSubmit)}>
         <Stack gap="sm">
@@ -115,7 +214,14 @@ function LoginPage() {
               Forgot Your Password?
             </Anchor>
           </Group>
-          <Button type="submit" fullWidth mt="xs" loading={loading} styles={{ root: { backgroundColor: '#1a1e2b', color: '#ffffff' } }}>
+          <Button
+            type="submit"
+            fullWidth
+            mt="xs"
+            loading={loading}
+            disabled={loginTemporarilyBlocked}
+            styles={{ root: { backgroundColor: '#1a1e2b', color: '#ffffff' } }}
+          >
             Log In
           </Button>
         </Stack>
