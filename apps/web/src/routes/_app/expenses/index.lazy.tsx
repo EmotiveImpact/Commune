@@ -16,7 +16,7 @@ import { notifications } from '@mantine/notifications';
 import { IconCheck, IconDownload, IconFileTypePdf, IconPlus, IconReceipt, IconShieldCheck, IconTrash } from '@tabler/icons-react';
 import { DatePickerInput, DatesProvider } from '@mantine/dates';
 import 'dayjs/locale/en-gb';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { setPageTitle } from '../../../utils/seo';
 import { ExpenseCategory } from '@commune/types';
 import { formatCurrency, formatDate, getMonthKey, isOverdue } from '@commune/utils';
@@ -113,8 +113,14 @@ function isDueSoon(dateKey: string) {
 }
 
 export function ExpensesPage() {
+  const isMountedRef = useRef(true);
+
   useEffect(() => {
     setPageTitle('Expenses');
+  }, []);
+
+  useEffect(() => () => {
+    isMountedRef.current = false;
   }, []);
 
   const navigate = useNavigate();
@@ -264,7 +270,9 @@ export function ExpensesPage() {
         color: 'red',
       });
     } finally {
-      setExportingCsv(false);
+      if (isMountedRef.current) {
+        setExportingCsv(false);
+      }
     }
   }
 
@@ -290,7 +298,9 @@ export function ExpensesPage() {
         color: 'red',
       });
     } finally {
-      setDownloadingPdf(false);
+      if (isMountedRef.current) {
+        setDownloadingPdf(false);
+      }
     }
   }
 

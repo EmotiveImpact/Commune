@@ -5,7 +5,7 @@ import { IconClock } from '@tabler/icons-react';
 import { AppShell } from '../components/app-shell';
 import { Paywall } from '../components/paywall';
 import { useAuthStore } from '../stores/auth';
-import { useSubscription } from '../hooks/use-subscriptions';
+import { useSignedInBootstrap } from '../hooks/use-signed-in-bootstrap';
 
 export const Route = createLazyFileRoute('/_app')({
   component: ProtectedLayout,
@@ -14,7 +14,7 @@ export const Route = createLazyFileRoute('/_app')({
 function ProtectedLayout() {
   const router = useRouter();
   const { user, isAuthenticated, isLoading: authLoading } = useAuthStore();
-  const { data: subscription, isLoading } = useSubscription(user?.id ?? '');
+  const { data: bootstrap, isLoading: bootstrapLoading } = useSignedInBootstrap(user?.id ?? '');
   const matchRoute = useMatchRoute();
 
   useEffect(() => {
@@ -25,7 +25,7 @@ function ProtectedLayout() {
     void router.navigate({ to: '/login', replace: true });
   }, [authLoading, isAuthenticated, router]);
 
-  if (authLoading || !isAuthenticated) {
+  if (authLoading || !isAuthenticated || (!!user && bootstrapLoading)) {
     return null;
   }
 
@@ -37,8 +37,9 @@ function ProtectedLayout() {
 
   let trialBanner: React.ReactNode = null;
   let showPaywall = false;
+  const subscription = bootstrap?.subscription ?? null;
 
-  if (!isLoading && user && !isExemptPage && subscription) {
+  if (user && !isExemptPage && subscription) {
     const isFreeMember =
       subscription.plan === 'free' && subscription.status === 'active';
 
@@ -79,7 +80,7 @@ function ProtectedLayout() {
         }
       }
     }
-  } else if (!isLoading && user && !isExemptPage && !subscription) {
+  } else if (user && !isExemptPage && !subscription) {
     showPaywall = true;
   }
 

@@ -1299,6 +1299,10 @@ export type Database = {
         Args: { p_cutoff_days?: number; p_group_id: string; p_limit?: number }
         Returns: Json
       }
+      fn_get_signed_in_bootstrap: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
       fn_get_user_group_summaries: {
         Args: Record<PropertyKey, never>
         Returns: {

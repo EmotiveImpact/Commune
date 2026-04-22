@@ -4,6 +4,7 @@ export type {
   User as SupabaseAuthUser,
 } from '@supabase/supabase-js';
 export * from './auth';
+export * from './bootstrap';
 export * from './groups';
 export * from './expenses';
 export * from './payments';
