@@ -111,6 +111,7 @@ function CrossGroupOverviewPage() {
     enabled: shouldLoadWorkspaceBilling,
     idleTimeoutMs: 4_000,
     rootMargin: '0px',
+    revealOnIdle: false,
   });
   const {
     data: workspaceBillingSnapshot = null,

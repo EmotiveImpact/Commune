@@ -35,7 +35,7 @@ import { setPageTitle } from '../../utils/seo';
 import { formatCurrency, formatDate } from '@commune/utils';
 import { useGroupStore } from '../../stores/group';
 import { useAuthStore } from '../../stores/auth';
-import { useGroup } from '../../hooks/use-groups';
+import { useGroup, useGroupSummary } from '../../hooks/use-groups';
 import { usePlanLimits } from '../../hooks/use-plan-limits';
 import {
   getActivityWorkspaceBillingContext,
@@ -43,6 +43,7 @@ import {
   useActivityFeed,
 } from '../../hooks/use-activity';
 import { getWorkspaceBillingSummary, useWorkspaceBillingExpenseFeed } from '../../hooks/use-dashboard';
+import { useDeferredSection } from '../../hooks/use-deferred-section';
 import { ActivitySkeleton } from '../../components/page-skeleton';
 import { EmptyState } from '../../components/empty-state';
 import { PageHeader } from '../../components/page-header';
@@ -188,8 +189,26 @@ function ActivityPage() {
   const { activeGroupId } = useGroupStore();
   const { user } = useAuthStore();
   const { canExport } = usePlanLimits(user?.id ?? '');
-  const { data: group, isLoading: groupLoading } = useGroup(activeGroupId ?? '');
-  const workspaceExpenseGroupId = group?.type === 'workspace' ? activeGroupId ?? '' : '';
+  const { data: groupSummary, isLoading: groupSummaryLoading } = useGroupSummary(activeGroupId ?? '');
+  const {
+    ref: membersRef,
+    ready: membersReady,
+  } = useDeferredSection({
+    enabled: !!activeGroupId,
+    rootMargin: '120px',
+    revealOnIdle: false,
+  });
+  const {
+    ref: billingWatchRef,
+    ready: billingWatchReady,
+  } = useDeferredSection({
+    enabled: groupSummary?.type === 'workspace',
+    rootMargin: '120px',
+    revealOnIdle: false,
+  });
+  const { data: group } = useGroup(membersReady ? activeGroupId ?? '' : '');
+  const workspaceExpenseGroupId =
+    groupSummary?.type === 'workspace' && billingWatchReady ? activeGroupId ?? '' : '';
   const { data: workspaceBillingSnapshot = null } = useWorkspaceBillingExpenseFeed(workspaceExpenseGroupId);
   const [page, setPage] = useState(0);
   const [activeFilters, setActiveFilters] = useState<Set<TypeFilter>>(new Set(['all']));
@@ -252,7 +271,8 @@ function ActivityPage() {
   }, [entries]);
 
   const workspaceBillingSummary = getWorkspaceBillingSummary(workspaceBillingSnapshot);
-  const showWorkspaceBillingWatch = group?.type === 'workspace' && workspaceBillingSummary.expenseCount > 0;
+  const showWorkspaceBillingWatch =
+    groupSummary?.type === 'workspace' && billingWatchReady && workspaceBillingSummary.expenseCount > 0;
 
   if (!activeGroupId) {
     return (
@@ -265,7 +285,7 @@ function ActivityPage() {
     );
   }
 
-  if (isLoading || groupLoading) {
+  if (isLoading || groupSummaryLoading) {
     return <ActivitySkeleton />;
   }
 
@@ -377,19 +397,23 @@ function ActivityPage() {
             </Stack>
           </Paper>
 
-          <Paper className="commune-soft-panel" p="lg" radius="lg">
+          <Paper className="commune-soft-panel" p="lg" radius="lg" ref={membersRef}>
             <Text className="commune-section-heading" mb="sm">Members</Text>
             <Stack gap="xs">
-              {(group?.members ?? [])
-                .filter((m: any) => m.status === 'active')
-                .slice(0, 6)
-                .map((m: any) => (
-                  <Group key={m.user_id} gap="xs">
-                    <Avatar src={m.user?.avatar_url} name={m.user?.name} color="initials" size="sm" radius="xl" />
-                    <Text size="sm" style={{ flex: 1 }} truncate>{m.user?.name ?? m.user?.email}</Text>
-                    {m.role === 'admin' && <Badge size="xs" variant="light" color="blue">Admin</Badge>}
-                  </Group>
-                ))}
+              {!membersReady ? (
+                <Text size="sm" c="dimmed">Scroll here to load member details.</Text>
+              ) : (
+                (group?.members ?? [])
+                  .filter((m: any) => m.status === 'active')
+                  .slice(0, 6)
+                  .map((m: any) => (
+                    <Group key={m.user_id} gap="xs">
+                      <Avatar src={m.user?.avatar_url} name={m.user?.name} color="initials" size="sm" radius="xl" />
+                      <Text size="sm" style={{ flex: 1 }} truncate>{m.user?.name ?? m.user?.email}</Text>
+                      {m.role === 'admin' && <Badge size="xs" variant="light" color="blue">Admin</Badge>}
+                    </Group>
+                  ))
+              )}
             </Stack>
           </Paper>
         </Stack>
@@ -399,6 +423,7 @@ function ActivityPage() {
         <Grid.Col span={{ base: 12, md: 8 }}>
         <Stack gap="lg">
 
+      <div ref={billingWatchRef}>
       {showWorkspaceBillingWatch && (
         <Paper className="commune-soft-panel" p="xl">
           <Group justify="space-between" align="flex-start" mb="md">
@@ -523,6 +548,7 @@ function ActivityPage() {
           </Stack>
         </Paper>
       )}
+      </div>
 
       {totalEntries === 0 ? (
         <EmptyState

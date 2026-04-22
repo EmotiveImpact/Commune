@@ -9,12 +9,14 @@ interface UseDeferredSectionOptions {
   enabled?: boolean;
   idleTimeoutMs?: number;
   rootMargin?: string;
+  revealOnIdle?: boolean;
 }
 
 export function useDeferredSection({
   enabled = true,
   idleTimeoutMs = 250,
   rootMargin = '160px',
+  revealOnIdle = true,
 }: UseDeferredSectionOptions = {}) {
   const ref = useRef<HTMLDivElement | null>(null);
   const [ready, setReady] = useState(false);
@@ -77,17 +79,19 @@ export function useDeferredSection({
       observer.observe(node);
     }
 
-    const idleWindow = window as DeferredWindow;
-    if (idleWindow.requestIdleCallback) {
-      idleHandle = idleWindow.requestIdleCallback(() => {
-        reveal();
-      }, { timeout: idleTimeoutMs });
-    } else {
-      timeoutHandle = window.setTimeout(reveal, idleTimeoutMs);
+    if (revealOnIdle) {
+      const idleWindow = window as DeferredWindow;
+      if (idleWindow.requestIdleCallback) {
+        idleHandle = idleWindow.requestIdleCallback(() => {
+          reveal();
+        }, { timeout: idleTimeoutMs });
+      } else {
+        timeoutHandle = window.setTimeout(reveal, idleTimeoutMs);
+      }
     }
 
     return cleanup;
-  }, [enabled, idleTimeoutMs, ready, rootMargin]);
+  }, [enabled, idleTimeoutMs, ready, revealOnIdle, rootMargin]);
 
   return { ref, ready };
 }

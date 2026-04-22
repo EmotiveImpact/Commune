@@ -123,15 +123,28 @@ function SettingsPage() {
     isLoading: profileLoading,
   } = useProfile(user?.id ?? '');
   const updateProfile = useUpdateProfile();
-  const { data: subscription, isLoading: subLoading } = useSubscription(user?.id ?? '');
-  const portal = usePortal();
-  const { ref: notificationsRef, ready: notificationsReady } = useDeferredSection({
+  const {
+    ref: pushNotificationsRef,
+    ready: pushNotificationsReady,
+  } = useDeferredSection({
     enabled: !!user?.id && isPushSupported(),
-    idleTimeoutMs: 4_000,
     rootMargin: '0px',
+    revealOnIdle: false,
   });
+  const {
+    ref: billingRef,
+    ready: billingReady,
+  } = useDeferredSection({
+    enabled: !!user?.id,
+    rootMargin: '120px',
+    revealOnIdle: false,
+  });
+  const { data: subscription, isLoading: subLoading } = useSubscription(user?.id ?? '', {
+    enabled: billingReady,
+  });
+  const portal = usePortal();
   const { data: pushSubs, isLoading: pushLoading } = usePushSubscription(user?.id ?? '', {
-    enabled: notificationsReady,
+    enabled: pushNotificationsReady,
   });
   const subscribePush = useSubscribePush();
   const unsubscribePush = useUnsubscribePush();
@@ -267,7 +280,7 @@ function SettingsPage() {
         <Stack gap="lg" maw={720}>
 
           {/* ── 1. Appearance ── */}
-          <Paper className="commune-soft-panel" p="xl" ref={notificationsRef}>
+          <Paper className="commune-soft-panel" p="xl">
             <Group gap="xs" mb="md">
               <IconPalette size={20} />
               <Text className="commune-section-heading">Appearance</Text>
@@ -348,7 +361,7 @@ function SettingsPage() {
           </Paper>
 
           {/* ── 3. Notifications (email + push combined) ── */}
-          <Paper className="commune-soft-panel" p="xl">
+          <Paper className="commune-soft-panel" p="xl" ref={pushNotificationsRef}>
             <Group gap="xs" mb="md">
               <IconBell size={20} />
               <Text className="commune-section-heading">Notifications</Text>
@@ -465,7 +478,7 @@ function SettingsPage() {
           </Paper>
 
           {/* ── 3b. Privacy ── */}
-          <Paper className="commune-soft-panel" p="xl">
+          <Paper className="commune-soft-panel" p="xl" ref={billingRef}>
             <Group gap="xs" mb="md">
               <IconShield size={20} />
               <Text className="commune-section-heading">Privacy</Text>
@@ -508,7 +521,11 @@ function SettingsPage() {
               <Text className="commune-section-heading">Subscription & Billing</Text>
             </Group>
 
-            {subLoading ? (
+            {!billingReady ? (
+              <Text size="sm" c="dimmed">
+                Scroll here to load billing details.
+              </Text>
+            ) : subLoading ? (
               <SettingsSkeleton />
             ) : subscription ? (
               <Stack gap="md">

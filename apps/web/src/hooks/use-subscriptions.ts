@@ -8,11 +8,11 @@ export const subscriptionKeys = {
   detail: (userId: string) => [...subscriptionKeys.all, 'detail', userId] as const,
 };
 
-export function useSubscription(userId: string) {
+export function useSubscription(userId: string, options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: subscriptionKeys.detail(userId),
     queryFn: () => getSubscription(userId),
-    enabled: !!userId,
+    enabled: !!userId && (options?.enabled ?? true),
     staleTime: 1000 * 60 * 5,
   });
 }

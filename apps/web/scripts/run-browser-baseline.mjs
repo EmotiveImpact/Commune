@@ -145,7 +145,11 @@ function getScenarioTimeout(scenario) {
 
 function isRequestRelevant(request) {
   const resourceType = request.resourceType();
-  return resourceType !== 'image' && resourceType !== 'font' && resourceType !== 'media';
+  return (
+    resourceType === 'document' ||
+    resourceType === 'xhr' ||
+    resourceType === 'fetch'
+  );
 }
 
 function isIgnorableRequestFailure(request) {
@@ -598,7 +602,7 @@ async function executeScenario(browser, baseUrl, authStatePath, scenario) {
     (!scenario.requiresObservability || observabilityMisses === 0) &&
     redirectsToLogin === 0;
 
-  return {
+  const result = {
     name: scenario.name,
     skipped: false,
     requestCount: runnableRuns.length,
@@ -616,6 +620,12 @@ async function executeScenario(browser, baseUrl, authStatePath, scenario) {
     redirectsToLogin,
     passed,
   };
+
+  if (process.env.COMMUNE_LOAD_INCLUDE_RUNS === 'true') {
+    result.runs = runnableRuns;
+  }
+
+  return result;
 }
 
 function getResultBreaches(result, scenario) {

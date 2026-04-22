@@ -16,6 +16,7 @@ import { notifications } from '@mantine/notifications';
 import { z } from 'zod';
 import { signInWithEmail, signInWithGoogle } from '@commune/api';
 import { useEffect, useState } from 'react';
+import { useNavigate } from '@tanstack/react-router';
 
 export const Route = createLazyFileRoute('/_auth/login')({
   component: LoginPage,
@@ -30,6 +31,7 @@ type LoginValues = z.infer<typeof loginSchema>;
 
 function LoginPage() {
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -68,7 +70,12 @@ function LoginPage() {
   async function handleSubmit(values: LoginValues) {
     setLoading(true);
     try {
-      await signInWithEmail(values.email, values.password);
+      await Promise.all([
+        signInWithEmail(values.email, values.password),
+        import('../_app.lazy'),
+        import('../_app/index.lazy'),
+      ]);
+      await navigate({ to: '/', replace: true });
     } catch (err) {
       notifications.show({
         title: 'Login failed',
