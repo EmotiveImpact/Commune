@@ -421,7 +421,7 @@ async function executeScenario(browser, baseUrl, authStatePath, scenario) {
       }
     });
 
-    const startedAt = performance.now();
+    let measuredStart = performance.now();
 
     try {
       await page.goto(`${baseUrl}${scenario.path}`, {
@@ -429,6 +429,9 @@ async function executeScenario(browser, baseUrl, authStatePath, scenario) {
         timeout: timeoutMs,
       });
       await waitForScenarioSettled(page, scenario.path, timeoutMs, () => activeRelevantRequests);
+      if (scenario.action) {
+        measuredStart = performance.now();
+      }
 
       const actionOutcome = await performScenarioAction(page, baseUrl, scenario);
       if (actionOutcome.skipped) {
@@ -459,7 +462,7 @@ async function executeScenario(browser, baseUrl, authStatePath, scenario) {
 
       const run = {
         skipped: false,
-        navDurationMs: performance.now() - startedAt,
+        navDurationMs: performance.now() - measuredStart,
         ...summariseRun(snapshot, scenario, requestFailures),
       };
 
@@ -482,7 +485,7 @@ async function executeScenario(browser, baseUrl, authStatePath, scenario) {
       failures += 1;
       runs.push({
         skipped: false,
-        navDurationMs: performance.now() - startedAt,
+        navDurationMs: performance.now() - measuredStart,
         finalPath: null,
         pathMatched: false,
         titleMatched: false,
@@ -641,7 +644,11 @@ function getResultBreaches(result, scenario) {
 }
 
 async function writeReport(outputPath, report) {
-  const resolvedOutput = resolve(process.cwd(), outputPath);
+  const normalizedOutput =
+    process.cwd().endsWith('/apps/web') && outputPath.startsWith('apps/web/')
+      ? outputPath.slice('apps/web/'.length)
+      : outputPath;
+  const resolvedOutput = resolve(process.cwd(), normalizedOutput);
   await mkdir(dirname(resolvedOutput), { recursive: true });
   await writeFile(resolvedOutput, JSON.stringify(report, null, 2));
   console.log(`REPORT | ${resolvedOutput}`);
