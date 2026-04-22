@@ -86,6 +86,20 @@ export async function getPendingApprovals(groupId: string) {
   return data ?? [];
 }
 
+export async function getPendingApprovalSummary(groupId: string) {
+  const { count, error } = await supabase
+    .from('expenses')
+    .select('id', { count: 'exact', head: true })
+    .eq('group_id', groupId)
+    .eq('approval_status', 'pending')
+    .eq('is_active', true);
+
+  if (error) throw error;
+  return {
+    pending_count: count ?? 0,
+  };
+}
+
 async function verifyApproverForExpense(expenseId: string, userId: string) {
   const { data: expense, error: expenseError } = await supabase
     .from('expenses')

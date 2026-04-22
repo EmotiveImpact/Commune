@@ -40,11 +40,17 @@ import {
   useBatchArchive,
   useBatchMarkPaid,
 } from '../../../hooks/use-expenses';
-import { usePendingApprovals, useApproveExpense, useRejectExpense } from '../../../hooks/use-approvals';
+import {
+  usePendingApprovalSummary,
+  usePendingApprovals,
+  useApproveExpense,
+  useRejectExpense,
+} from '../../../hooks/use-approvals';
 import { useAuthStore } from '../../../stores/auth';
 import { ExpenseListSkeleton } from '../../../components/page-skeleton';
 import { EmptyState } from '../../../components/empty-state';
 import { PageHeader } from '../../../components/page-header';
+import { useDeferredSection } from '../../../hooks/use-deferred-section';
 
 export const Route = createLazyFileRoute('/_app/expenses/')({
   component: ExpensesPage,
@@ -155,10 +161,25 @@ export function ExpensesPage() {
   const canApprovePendingExpenses = isWorkspaceGroup
     ? canMemberApproveWithPolicy(currentMember, group?.approval_policy)
     : isAdmin;
+  const [approvalPanelOpened, setApprovalPanelOpened] = useState(false);
 
   // Approval flow
-  const { data: pendingApprovals } = usePendingApprovals(activeGroupId ?? '', {
+  const { data: pendingApprovalSummary } = usePendingApprovalSummary(activeGroupId ?? '', {
     enabled: canApprovePendingExpenses,
+  });
+  const {
+    ref: approvalsRef,
+    ready: approvalsReady,
+  } = useDeferredSection({
+    enabled: canApprovePendingExpenses && (pendingApprovalSummary?.pending_count ?? 0) > 0,
+    idleTimeoutMs: 2500,
+    rootMargin: '0px',
+  });
+  const shouldLoadPendingApprovals = canApprovePendingExpenses
+    && (pendingApprovalSummary?.pending_count ?? 0) > 0
+    && (approvalPanelOpened || approvalsReady);
+  const { data: pendingApprovals } = usePendingApprovals(activeGroupId ?? '', {
+    enabled: shouldLoadPendingApprovals,
   });
   const approveExp = useApproveExpense(activeGroupId ?? '');
   const rejectExp = useRejectExpense(activeGroupId ?? '');
@@ -481,15 +502,37 @@ export function ExpensesPage() {
       )}
 
       {/* Pending Approvals */}
-      {canApprovePendingExpenses && pendingApprovals && pendingApprovals.length > 0 && (
-        <Stack gap="xs">
-          <Group gap="xs">
-            <IconAlertTriangle size={18} color="var(--mantine-color-orange-6)" />
-            <Text fw={700} size="sm" c="orange">
-              {pendingApprovals.length} expense{pendingApprovals.length !== 1 ? 's' : ''} awaiting approval
-            </Text>
+      {canApprovePendingExpenses && (pendingApprovalSummary?.pending_count ?? 0) > 0 && (
+        <Stack gap="xs" ref={approvalsRef}>
+          <Group justify="space-between" align="center" gap="md" wrap="wrap">
+            <Group gap="xs">
+              <IconAlertTriangle size={18} color="var(--mantine-color-orange-6)" />
+              <Text fw={700} size="sm" c="orange">
+                {pendingApprovalSummary?.pending_count} expense
+                {(pendingApprovalSummary?.pending_count ?? 0) !== 1 ? 's' : ''} awaiting approval
+              </Text>
+            </Group>
+            <Button
+              size="compact-sm"
+              variant="light"
+              color="orange"
+              onClick={() => {
+                setApprovalPanelOpened((current) => !current);
+              }}
+            >
+              {approvalPanelOpened ? 'Hide approvals' : 'Review approvals'}
+            </Button>
           </Group>
-          {pendingApprovals.map((exp: any) => (
+
+          {approvalPanelOpened && !pendingApprovals ? (
+            <Paper className="commune-stat-card" p="md">
+              <Text size="sm" c="dimmed">
+                Loading pending approvals...
+              </Text>
+            </Paper>
+          ) : null}
+
+          {approvalPanelOpened && pendingApprovals?.map((exp: any) => (
             <Group key={exp.id} justify="space-between" align="center" p="sm"
               style={{ background: 'var(--commune-surface-alt)', borderRadius: 8, border: '1px solid var(--mantine-color-orange-3)' }}>
               <Stack gap={2}>

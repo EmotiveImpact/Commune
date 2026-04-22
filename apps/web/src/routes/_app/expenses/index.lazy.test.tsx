@@ -24,6 +24,7 @@ let currentMemberMock: any = {
   status: 'active',
   responsibility_label: null,
 };
+let pendingApprovalSummaryMock = { pending_count: 0 };
 let pendingApprovalsMock: any[] = [];
 
 vi.mock('@tanstack/react-router', () => ({
@@ -98,6 +99,7 @@ vi.mock('../../../hooks/use-expenses', () => ({
 }));
 
 vi.mock('../../../hooks/use-approvals', () => ({
+  usePendingApprovalSummary: () => ({ data: pendingApprovalSummaryMock }),
   usePendingApprovals: () => ({ data: pendingApprovalsMock }),
   useApproveExpense: () => ({ mutate: vi.fn(), isPending: false }),
   useRejectExpense: () => ({ mutate: vi.fn(), isPending: false }),
@@ -186,6 +188,7 @@ describe('ExpensesPage', () => {
       status: 'active',
       responsibility_label: null,
     };
+    pendingApprovalSummaryMock = { pending_count: 0 };
     pendingApprovalsMock = [];
   });
 
@@ -272,6 +275,7 @@ describe('ExpensesPage', () => {
         created_by_user: { name: 'Alice' },
       },
     ];
+    pendingApprovalSummaryMock = { pending_count: 1 };
 
     render(
       <MantineProvider>
@@ -280,6 +284,7 @@ describe('ExpensesPage', () => {
     );
 
     expect(screen.getByText(/awaiting approval/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /review approvals/i }));
     expect(screen.getByText(/printer lease/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /approve/i })).toBeInTheDocument();
   });

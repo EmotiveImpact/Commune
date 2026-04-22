@@ -1,5 +1,5 @@
 import { MantineProvider } from '@mantine/core';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NotificationDropdown } from './notification-dropdown';
 
@@ -65,6 +65,8 @@ describe('NotificationDropdown', () => {
   });
 
   it('enables the unread summary on hover before opening the menu', () => {
+    vi.useFakeTimers();
+
     render(
       <MantineProvider>
         <NotificationDropdown />
@@ -72,7 +74,12 @@ describe('NotificationDropdown', () => {
     );
 
     fireEvent.mouseEnter(screen.getByRole('button', { name: /open notifications/i }));
+    act(() => {
+      vi.advanceTimersByTime(300);
+    });
 
-    expect(useNotificationSummaryMock).toHaveBeenLastCalledWith({ enabled: true });
+    expect(useNotificationSummaryMock).toHaveBeenCalledWith({ enabled: true });
+
+    vi.useRealTimers();
   });
 });

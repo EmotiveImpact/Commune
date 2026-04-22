@@ -1,5 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getPendingApprovals, approveExpense, rejectExpense } from '@commune/api';
+import {
+  getPendingApprovals,
+  getPendingApprovalSummary,
+  approveExpense,
+  rejectExpense,
+} from '@commune/api';
 import { activityKeys } from './use-activity';
 import { crossGroupKeys } from './use-cross-group';
 import { dashboardKeys } from './use-dashboard';
@@ -12,7 +17,16 @@ import { useAuthStore } from '../stores/auth';
 export const approvalKeys = {
   all: ['approvals'] as const,
   pending: (groupId: string) => ['approvals', 'pending', groupId] as const,
+  summary: (groupId: string) => ['approvals', 'summary', groupId] as const,
 };
+
+export function usePendingApprovalSummary(groupId: string, options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: approvalKeys.summary(groupId),
+    queryFn: () => getPendingApprovalSummary(groupId),
+    enabled: !!groupId && (options?.enabled ?? true),
+  });
+}
 
 export function usePendingApprovals(groupId: string, options?: { enabled?: boolean }) {
   return useQuery({
@@ -30,6 +44,7 @@ function invalidateApprovalDependentQueries(
   const userId = useAuthStore.getState().user?.id;
 
   queryClient.invalidateQueries({ queryKey: approvalKeys.pending(groupId) });
+  queryClient.invalidateQueries({ queryKey: approvalKeys.summary(groupId) });
   queryClient.invalidateQueries({ queryKey: expenseKeys.groupLists(groupId) });
   queryClient.invalidateQueries({ queryKey: expenseKeys.groupLedger(groupId) });
   queryClient.invalidateQueries({ queryKey: expenseKeys.detail(expenseId) });
