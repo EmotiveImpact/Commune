@@ -10,6 +10,7 @@ import { useGroup } from '@/hooks/use-groups';
 import { useSubscription } from '@/hooks/use-subscriptions';
 import { useAnalytics } from '@/hooks/use-analytics';
 import { hapticMedium } from '@/lib/haptics';
+import { CategoryBreakdownCard, type CategoryItem } from '@/components/category-breakdown';
 
 const CATEGORY_COLORS = [
   '#84CC16', '#1a56db', '#C4620A', '#6D5DC7', '#0D9488',
@@ -524,6 +525,25 @@ export default function AnalyticsScreen() {
           </View>
         </View>
       </View>
+
+      {/* ========== SPENDING BY CATEGORY DONUT ========== */}
+      {categoryBreakdown.length > 0 && (() => {
+        const total = categoryBreakdown.reduce((s: number, c: { amount: number }) => s + c.amount, 0);
+        const donutItems: CategoryItem[] = categoryBreakdown.map((c: { category: string; amount: number }) => ({
+          category: c.category,
+          amount: c.amount,
+          pct: total > 0 ? Math.round((c.amount / total) * 100) : 0,
+        }));
+        return (
+          <View style={{ marginBottom: 16 }}>
+            <CategoryBreakdownCard
+              items={donutItems}
+              currency={group?.currency ?? 'GBP'}
+              scopeLabel="This month"
+            />
+          </View>
+        );
+      })()}
 
       {/* ========== CATEGORY BREAKDOWN CARD ========== */}
       <View

@@ -1,7 +1,5 @@
-import type { ComponentProps } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import Svg, { Circle, G } from 'react-native-svg';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { formatCurrency, getMonthKey } from '@commune/utils';
@@ -12,15 +10,15 @@ import { useDashboardStats } from '@/hooks/use-dashboard';
 import { getExpenseBillingDueDate, useGroupExpenses } from '@/hooks/use-expenses';
 import { useGroup, usePendingInvites, useUserGroups } from '@/hooks/use-groups';
 import { useRecurringGenerationOnMount } from '@/hooks/use-recurring';
+import { useChores } from '@/hooks/use-chores';
 import { getErrorMessage } from '@/lib/errors';
 import {
-  Badge, Card, EmptyState, IconTile, Pressable, Screen,
+  Card, EmptyState, IconTile, Pressable, Screen,
   SectionHeader, SkeletonBlock, StatusPill,
 } from '@/components/primitives';
 import {
   colors, font, getCategoryMeta, getGroupTypeMeta, radius, space,
 } from '@/constants/design';
-import { formatCategoryLabel } from '@/lib/ui';
 
 /* --- Helpers -------------------------------------------------------------- */
 
@@ -62,6 +60,12 @@ interface ExpenseLike {
   paid_by_user?: { name?: string | null } | null;
   participants?: Array<{ user_id?: string; share_amount?: number; user?: { name?: string | null } }>;
   payment_records?: Array<{ user_id?: string; status?: string }>;
+}
+
+interface ChoreLike {
+  id: string;
+  title: string;
+  next_due: string;
 }
 
 interface GroupLike {
@@ -165,31 +169,6 @@ const s = StyleSheet.create({
     letterSpacing: -0.1,
     marginLeft: 8,
   },
-  quickActionsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: 4,
-    marginBottom: 32,
-  },
-  quickActionTile: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  quickActionIconWrap: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: '#F3F4F6',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  quickActionLabel: {
-    marginTop: 8,
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#6B7280',
-    textAlign: 'center',
-  },
   attStrip: { paddingRight: space.gutter, gap: 6 },
   attCard: {
     width: 140,
@@ -211,18 +190,6 @@ const s = StyleSheet.create({
   rowInner: { flexDirection: 'row', alignItems: 'center', gap: space.md },
   focusAmount: { fontSize: 17, fontWeight: '600', color: colors.textPrimary },
   emptyFocus: { color: colors.textTertiary, paddingVertical: space.md },
-  categoryHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: space.base },
-  categoryEmpty: { alignItems: 'center', paddingVertical: space.lg, gap: 6 },
-  donutRow: { flexDirection: 'row', alignItems: 'center', gap: space.lg, marginTop: space.xs },
-  donutWrap: { width: 104, height: 104, alignItems: 'center', justifyContent: 'center' },
-  donutCenter: { position: 'absolute', alignItems: 'center', justifyContent: 'center' },
-  donutCenterLabel: { fontSize: 10, fontWeight: '600', color: colors.textTertiary, letterSpacing: 0.4, textTransform: 'uppercase' as const },
-  donutCenterValue: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, marginTop: 2 },
-  legend: { flex: 1, gap: 8 },
-  legendRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  legendDot: { width: 10, height: 10, borderRadius: 3 },
-  legendName: { flex: 1, fontSize: 13, fontWeight: '600', color: colors.textPrimary },
-  legendPct: { fontSize: 12, fontWeight: '700', color: colors.textSecondary },
   groupLabel: { fontSize: 10, fontWeight: '700', letterSpacing: 1, color: colors.textTertiary, textTransform: 'uppercase' as const, paddingTop: space.md, paddingBottom: space.xs },
   tabBar: { flexDirection: 'row', backgroundColor: colors.bgSubtle, borderRadius: 12, padding: 4, marginBottom: space.base, gap: 4 },
   tabBtn: { flex: 1, height: 32, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
@@ -316,148 +283,6 @@ function HeroBalanceCard({
   );
 }
 
-/* --- Quick actions -------------------------------------------------------- */
-
-type QuickAction = {
-  key: string;
-  label: string;
-  icon: ComponentProps<typeof Ionicons>['name'];
-  onPress: () => void;
-};
-
-function QuickActions({ items }: { items: QuickAction[] }) {
-  return (
-    <View style={s.quickActionsRow}>
-      {items.map((item) => (
-        <Pressable
-          key={item.key}
-          onPress={item.onPress}
-          style={({ pressed }) => [s.quickActionTile, pressed && { opacity: 0.7 }]}
-        >
-          <View style={s.quickActionIconWrap}>
-            <Ionicons name={item.icon} size={28} color={colors.textPrimary} />
-          </View>
-          <Text style={s.quickActionLabel} numberOfLines={1}>{item.label}</Text>
-        </Pressable>
-      ))}
-    </View>
-  );
-}
-
-/* --- Category breakdown --------------------------------------------------- */
-
-type CategoryItem = {
-  category: string;
-  amount: number;
-  pct: number;
-};
-
-function CategoryBreakdownCard({
-  items, currency, scopeLabel,
-}: {
-  items: CategoryItem[];
-  currency: string;
-  scopeLabel: string;
-}) {
-  return (
-    <Card variant="surface" padding={space.lg}>
-      <View style={s.categoryHeader}>
-        <Text style={[font.h3, { color: colors.textPrimary }]}>Spending by category</Text>
-        <Badge label={scopeLabel} tone="neutral" />
-      </View>
-      {items.length === 0 ? (
-        <View style={s.categoryEmpty}>
-          <Ionicons name="pie-chart-outline" size={28} color={colors.textSecondary} />
-          <Text style={[font.bodyStrong, { color: colors.textSecondary }]}>No categories yet</Text>
-          <Text style={[font.caption, { color: colors.textTertiary, textAlign: 'center' }]}>
-            Add an expense to see where money goes.
-          </Text>
-        </View>
-      ) : (
-        <DonutChart items={items} currency={currency} />
-      )}
-    </Card>
-  );
-}
-
-function DonutChart({ items, currency }: { items: CategoryItem[]; currency: string }) {
-  const size = 104;
-  const strokeWidth = 16;
-  const r = (size - strokeWidth) / 2;
-  const c = 2 * Math.PI * r;
-  const total = items.reduce((sum, i) => sum + i.amount, 0);
-  const top = items.slice(0, 4);
-  const restPct = items.slice(4).reduce((sum, i) => sum + i.pct, 0);
-  const restAmount = items.slice(4).reduce((sum, i) => sum + i.amount, 0);
-
-  let offset = 0;
-  const segments = items.map((item) => {
-    const meta = getCategoryMeta(item.category);
-    const length = (Math.max(0, item.pct) / 100) * c;
-    const seg = { key: item.category, color: meta.color, length, offset };
-    offset += length;
-    return seg;
-  });
-
-  return (
-    <View style={s.donutRow}>
-      <View style={s.donutWrap}>
-        <Svg width={size} height={size}>
-          <G rotation={-90} origin={`${size / 2}, ${size / 2}`}>
-            <Circle
-              cx={size / 2}
-              cy={size / 2}
-              r={r}
-              stroke={colors.bgSubtle}
-              strokeWidth={strokeWidth}
-              fill="none"
-            />
-            {segments.map((seg) => (
-              <Circle
-                key={seg.key}
-                cx={size / 2}
-                cy={size / 2}
-                r={r}
-                stroke={seg.color}
-                strokeWidth={strokeWidth}
-                fill="none"
-                strokeDasharray={`${seg.length} ${c}`}
-                strokeDashoffset={-seg.offset}
-                strokeLinecap="butt"
-              />
-            ))}
-          </G>
-        </Svg>
-        <View style={s.donutCenter}>
-          <Text style={s.donutCenterLabel}>Total</Text>
-          <Text style={s.donutCenterValue} numberOfLines={1}>
-            {formatCurrency(total, currency)}
-          </Text>
-        </View>
-      </View>
-      <View style={s.legend}>
-        {top.map((item) => {
-          const meta = getCategoryMeta(item.category);
-          return (
-            <View key={item.category} style={s.legendRow}>
-              <View style={[s.legendDot, { backgroundColor: meta.color }]} />
-              <Text style={s.legendName} numberOfLines={1}>{formatCategoryLabel(item.category)}</Text>
-              <Text style={s.legendPct}>{item.pct}%</Text>
-            </View>
-          );
-        })}
-        {items.length > 4 && (
-          <View style={s.legendRow}>
-            <View style={[s.legendDot, { backgroundColor: colors.bgSubtle }]} />
-            <Text style={s.legendName} numberOfLines={1}>+{items.length - 4} more</Text>
-            <Text style={s.legendPct}>{restPct}%</Text>
-          </View>
-        )}
-        {total > 0 && items.length <= 4 && restAmount > 0 && null}
-      </View>
-    </View>
-  );
-}
 
 function ExpenseRow({
   expense, caption, trailing, onPress, dense,
@@ -516,6 +341,7 @@ export default function HomeScreen() {
   const {
     data: expenses = [], isLoading: expensesLoading, error: expensesError, refetch: refetchExpenses,
   } = useGroupExpenses(resolvedGroupId);
+  const { data: chores = [] } = useChores(resolvedGroupId);
 
   useRecurringGenerationOnMount(resolvedGroupId);
 
@@ -554,30 +380,6 @@ export default function HomeScreen() {
         .slice(0, 5),
     [expenses],
   );
-
-  const categoryData = useMemo(() => {
-    const now = new Date();
-    const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-    const all = expenses as ExpenseLike[];
-    const inMonth = all.filter((e) => e.due_date?.startsWith(monthKey));
-    const source = inMonth.length > 0 ? inMonth : all;
-    const scopeLabel = inMonth.length > 0 ? 'This month' : 'All time';
-    const totals = new Map<string, number>();
-    let grand = 0;
-    for (const e of source) {
-      totals.set(e.category, (totals.get(e.category) ?? 0) + e.amount);
-      grand += e.amount;
-    }
-    const items: CategoryItem[] = Array.from(totals.entries())
-      .map(([category, amount]) => ({
-        category,
-        amount,
-        pct: grand > 0 ? Math.round((amount / grand) * 100) : 0,
-      }))
-      .sort((a, b) => b.amount - a.amount)
-      .slice(0, 6);
-    return { items, grand, scopeLabel };
-  }, [expenses]);
 
   const todoItems = useMemo(() => {
     const now = Date.now();
@@ -669,35 +471,6 @@ export default function HomeScreen() {
               />
             </View>
 
-            <QuickActions
-              items={[
-                {
-                  key: 'settle',
-                  label: 'Settle',
-                  icon: 'wallet-outline',
-                  onPress: () => { hapticMedium(); router.push('/command-centre'); },
-                },
-                {
-                  key: 'chores',
-                  label: 'Chores',
-                  icon: 'checkbox-outline',
-                  onPress: () => { hapticMedium(); router.push('/operations'); },
-                },
-                {
-                  key: 'analytics',
-                  label: 'Analytics',
-                  icon: 'bar-chart-outline',
-                  onPress: () => { hapticMedium(); router.push('/analytics'); },
-                },
-                {
-                  key: 'activity',
-                  label: 'Activity',
-                  icon: 'chatbubble-ellipses-outline',
-                  onPress: () => { hapticMedium(); router.push('/activity'); },
-                },
-              ]}
-            />
-
             {(() => {
               const now = Date.now();
               const attentionList = (expenses as ExpenseLike[])
@@ -710,10 +483,8 @@ export default function HomeScreen() {
                 })
                 .sort((a, b) => a.dueTs - b.dueTs)
                 .slice(0, 6);
-
-              const hasOverdue = attentionList.some((x) => x.overdue);
-
-              const attentionBlock = attentionList.length === 0 ? null : (
+              if (attentionList.length === 0) return null;
+              return (
                 <View style={{ marginBottom: space.xl }}>
                   <SectionHeader
                     title={`Needs attention · ${attentionList.length}`}
@@ -749,21 +520,54 @@ export default function HomeScreen() {
                   </ScrollView>
                 </View>
               );
+            })()}
 
-              const spendingBlock = (
+            {(() => {
+              const today = new Date().toISOString().slice(0, 10);
+              const choreList = (chores as ChoreLike[])
+                .filter((c) => !!c.next_due)
+                .map((c) => ({
+                  c,
+                  overdue: c.next_due < today,
+                }))
+                .sort((a, b) => a.c.next_due.localeCompare(b.c.next_due))
+                .slice(0, 6);
+              if (choreList.length === 0) return null;
+              return (
                 <View style={{ marginBottom: space.xl }}>
-                  <CategoryBreakdownCard
-                    items={categoryData.items}
-                    currency={group.currency}
-                    scopeLabel={categoryData.scopeLabel}
+                  <SectionHeader
+                    title={`Chores · ${choreList.length}`}
+                    actionLabel="View all"
+                    onAction={() => { hapticMedium(); router.push('/operations'); }}
                   />
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={s.attStrip}
+                  >
+                    {choreList.map(({ c, overdue }) => (
+                      <TouchableOpacity
+                        key={c.id}
+                        activeOpacity={0.8}
+                        onPress={() => { hapticMedium(); router.push('/operations'); }}
+                        style={s.attCard}
+                      >
+                        <View style={s.attCardTop}>
+                          <IconTile
+                            icon="checkmark-circle-outline"
+                            color={colors.sage}
+                            bg={colors.sageSoft}
+                            size={24}
+                          />
+                          <Text style={s.attCardTitle} numberOfLines={1}>{c.title}</Text>
+                        </View>
+                        <Text style={[s.attCardDue, overdue && s.attCardDueOverdue]} numberOfLines={1}>
+                          {overdue ? 'Overdue · ' : 'Due '}{formatDueDate(c.next_due)}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
                 </View>
-              );
-
-              return hasOverdue ? (
-                <>{attentionBlock}{spendingBlock}</>
-              ) : (
-                <>{spendingBlock}{attentionBlock}</>
               );
             })()}
 
