@@ -1300,7 +1300,7 @@ export type Database = {
         Returns: Json
       }
       fn_get_signed_in_bootstrap: {
-        Args: Record<PropertyKey, never>
+        Args: { p_active_group_id?: string; p_month?: string }
         Returns: Json
       }
       fn_get_user_group_summaries: {

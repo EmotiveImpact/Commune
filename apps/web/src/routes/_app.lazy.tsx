@@ -6,6 +6,8 @@ import { AppShell } from '../components/app-shell';
 import { Paywall } from '../components/paywall';
 import { useAuthStore } from '../stores/auth';
 import { useSignedInBootstrap } from '../hooks/use-signed-in-bootstrap';
+import { useGroupStore } from '../stores/group';
+import { getMonthKey } from '@commune/utils';
 
 export const Route = createLazyFileRoute('/_app')({
   component: ProtectedLayout,
@@ -14,7 +16,13 @@ export const Route = createLazyFileRoute('/_app')({
 function ProtectedLayout() {
   const router = useRouter();
   const { user, isAuthenticated, isLoading: authLoading } = useAuthStore();
-  const { data: bootstrap, isLoading: bootstrapLoading } = useSignedInBootstrap(user?.id ?? '');
+  const { activeGroupId, hydrated } = useGroupStore();
+  const currentMonth = getMonthKey();
+  const { data: bootstrap, isLoading: bootstrapLoading } = useSignedInBootstrap(
+    user?.id ?? '',
+    activeGroupId,
+    currentMonth,
+  );
   const matchRoute = useMatchRoute();
 
   useEffect(() => {
@@ -25,7 +33,7 @@ function ProtectedLayout() {
     void router.navigate({ to: '/login', replace: true });
   }, [authLoading, isAuthenticated, router]);
 
-  if (authLoading || !isAuthenticated || (!!user && bootstrapLoading)) {
+  if (authLoading || !hydrated || !isAuthenticated || (!!user && bootstrapLoading)) {
     return null;
   }
 

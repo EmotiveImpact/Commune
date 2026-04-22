@@ -245,7 +245,7 @@ function parseDashboardSummaryStats(value: unknown): DashboardSummaryStats {
   };
 }
 
-function parseDashboardSummary(value: unknown): DashboardSummary {
+export function parseDashboardSummary(value: unknown): DashboardSummary {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     return {
       expense_count: 0,

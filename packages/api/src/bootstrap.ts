@@ -1,11 +1,14 @@
-import type { Group, GroupApprovalPolicy, Json, Subscription } from '@commune/types';
+import type { DashboardSummary, Group, GroupApprovalPolicy, Json, Subscription } from '@commune/types';
 import { fromJson, type MemberRole as MemberRoleType } from '@commune/types';
 import { getTypedSupabase, requireSessionUser } from './client';
 import type { UserGroupSummary } from './groups';
+import { parseDashboardSummary } from './dashboard';
 
 export interface SignedInBootstrapData {
   subscription: Subscription | null;
   groups: UserGroupSummary[];
+  resolved_group_id: string | null;
+  dashboard_summary: DashboardSummary | null;
 }
 
 function parseSubscription(value: unknown): Subscription | null {
@@ -90,6 +93,8 @@ function parseSignedInBootstrap(value: unknown): SignedInBootstrapData {
     return {
       subscription: null,
       groups: [],
+      resolved_group_id: null,
+      dashboard_summary: null,
     };
   }
 
@@ -97,13 +102,24 @@ function parseSignedInBootstrap(value: unknown): SignedInBootstrapData {
   return {
     subscription: parseSubscription(source.subscription),
     groups: parseGroupSummaries(source.groups),
+    resolved_group_id: typeof source.resolved_group_id === 'string' ? source.resolved_group_id : null,
+    dashboard_summary:
+      source.dashboard_summary && typeof source.dashboard_summary === 'object' && !Array.isArray(source.dashboard_summary)
+        ? parseDashboardSummary(source.dashboard_summary)
+        : null,
   };
 }
 
-export async function getSignedInBootstrap(): Promise<SignedInBootstrapData> {
+export async function getSignedInBootstrap(
+  activeGroupId: string | null,
+  month: string,
+): Promise<SignedInBootstrapData> {
   await requireSessionUser();
   const supabase = getTypedSupabase();
-  const { data, error } = await supabase.rpc('fn_get_signed_in_bootstrap');
+  const { data, error } = await supabase.rpc('fn_get_signed_in_bootstrap', {
+    p_active_group_id: activeGroupId ?? undefined,
+    p_month: month,
+  });
 
   if (error) throw error;
   return parseSignedInBootstrap(data);

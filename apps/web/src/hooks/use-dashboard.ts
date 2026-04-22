@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   getDashboardSummary,
   getDashboardStats,
@@ -257,9 +257,11 @@ export function useDashboardStats(
 }
 
 export function useDashboardSummary(groupId: string, month: string) {
+  const queryClient = useQueryClient();
   return useQuery({
     queryKey: dashboardKeys.feed(groupId, month),
     queryFn: () => getDashboardSummary(groupId, month),
+    initialData: () => queryClient.getQueryData(dashboardKeys.feed(groupId, month)),
     enabled: !!groupId,
   });
 }
