@@ -113,12 +113,14 @@ function parseSignedInBootstrap(value: unknown): SignedInBootstrapData {
 export async function getSignedInBootstrap(
   activeGroupId: string | null,
   month: string,
+  includeDashboardSummary: boolean,
 ): Promise<SignedInBootstrapData> {
   await requireSessionUser();
   const supabase = getTypedSupabase();
   const { data, error } = await supabase.rpc('fn_get_signed_in_bootstrap', {
     p_active_group_id: activeGroupId ?? undefined,
     p_month: month,
+    p_include_dashboard_summary: includeDashboardSummary,
   });
 
   if (error) throw error;
