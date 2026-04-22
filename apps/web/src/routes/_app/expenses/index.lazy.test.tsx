@@ -15,7 +15,14 @@ let groupMock: any = {
   currency: 'GBP',
   approval_threshold: 100,
   approval_policy: null,
-  members: [],
+};
+let currentMemberMock: any = {
+  id: 'member-1',
+  group_id: 'group-1',
+  user_id: 'user-1',
+  role: 'admin',
+  status: 'active',
+  responsibility_label: null,
 };
 let pendingApprovalsMock: any[] = [];
 
@@ -26,8 +33,12 @@ vi.mock('@tanstack/react-router', () => ({
 }));
 
 vi.mock('../../../hooks/use-groups', () => ({
-  useGroup: () => ({
+  useGroupSummary: () => ({
     data: groupMock,
+    isLoading: false,
+  }),
+  useCurrentGroupMember: () => ({
+    data: currentMemberMock,
     isLoading: false,
   }),
 }));
@@ -166,7 +177,14 @@ describe('ExpensesPage', () => {
       currency: 'GBP',
       approval_threshold: 100,
       approval_policy: null,
-      members: [],
+    };
+    currentMemberMock = {
+      id: 'member-1',
+      group_id: 'group-1',
+      user_id: 'user-1',
+      role: 'admin',
+      status: 'active',
+      responsibility_label: null,
     };
     pendingApprovalsMock = [];
   });
@@ -239,15 +257,11 @@ describe('ExpensesPage', () => {
           },
         ],
       },
-      members: [
-        {
-          id: 'member-1',
-          user_id: 'user-1',
-          role: 'member',
-          status: 'active',
-          responsibility_label: 'space_lead',
-        },
-      ],
+    };
+    currentMemberMock = {
+      ...currentMemberMock,
+      role: 'member',
+      responsibility_label: 'space_lead',
     };
     pendingApprovalsMock = [
       {

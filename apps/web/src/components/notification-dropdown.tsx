@@ -1,7 +1,9 @@
 import { ActionIcon, Badge, Indicator, Menu, Text, Group, Stack, Box, UnstyledButton } from '@mantine/core';
 import { IconBell, IconReceipt, IconCheck, IconAlertTriangle, IconChecks } from '@tabler/icons-react';
 import { useNavigate } from '@tanstack/react-router';
+import { useState } from 'react';
 import {
+  useNotificationSummary,
   useNotifications,
   useMarkNotificationRead,
   useMarkAllNotificationsRead,
@@ -26,11 +28,13 @@ const iconMap: Record<AppNotification['type'], React.ReactNode> = {
 };
 
 export function NotificationDropdown() {
-  const { data: notifications = [] } = useNotifications();
+  const [opened, setOpened] = useState(false);
+  const { data: summary } = useNotificationSummary();
+  const { data: notifications = [], isLoading } = useNotifications({ enabled: opened });
   const markRead = useMarkNotificationRead();
   const markAllRead = useMarkAllNotificationsRead();
   const navigate = useNavigate();
-  const unreadCount = notifications.filter((n) => !n.read).length;
+  const unreadCount = summary?.unread_count ?? 0;
 
   const handleNotificationClick = (n: AppNotification) => {
     // Mark as read
@@ -52,7 +56,7 @@ export function NotificationDropdown() {
   };
 
   return (
-    <Menu shadow="md" width={360} position="bottom-end">
+    <Menu shadow="md" width={360} position="bottom-end" opened={opened} onChange={setOpened}>
       <Menu.Target>
         <Indicator
           size={18}
@@ -90,7 +94,13 @@ export function NotificationDropdown() {
           </Group>
         </Menu.Label>
 
-        {notifications.length === 0 ? (
+        {opened && isLoading ? (
+          <Box p="md" ta="center">
+            <Text c="dimmed" size="sm">
+              Loading notifications...
+            </Text>
+          </Box>
+        ) : notifications.length === 0 ? (
           <Box p="md" ta="center">
             <Text c="dimmed" size="sm">
               No recent notifications

@@ -31,7 +31,7 @@ import { usePlanLimits } from '../../../hooks/use-plan-limits';
 import { IconAlertTriangle, IconX } from '@tabler/icons-react';
 import { useGroupStore } from '../../../stores/group';
 import { useSearchStore } from '../../../stores/search';
-import { useGroup } from '../../../hooks/use-groups';
+import { useCurrentGroupMember, useGroupSummary } from '../../../hooks/use-groups';
 import { useWorkspaceGovernance } from '../../../hooks/use-workspace-governance';
 import {
   getWorkspaceExpenseContext,
@@ -126,7 +126,8 @@ export function ExpensesPage() {
   const navigate = useNavigate();
   const { activeGroupId } = useGroupStore();
   const { query: searchQuery } = useSearchStore();
-  const { data: group } = useGroup(activeGroupId ?? '');
+  const { data: group } = useGroupSummary(activeGroupId ?? '');
+  const { data: currentMember } = useCurrentGroupMember(activeGroupId ?? '');
   const workspaceGovernance = useWorkspaceGovernance(group);
   const [categoryFilter, setCategoryFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
@@ -149,19 +150,16 @@ export function ExpensesPage() {
   const [archiveModalOpen, setArchiveModalOpen] = useState(false);
   const [markPaidModalOpen, setMarkPaidModalOpen] = useState(false);
 
-  const isAdmin = group?.members?.some(
-    (m: { user_id: string; role: string }) => m.user_id === user?.id && m.role === 'admin',
-  ) ?? false;
+  const isAdmin = currentMember?.role === 'admin';
   const isWorkspaceGroup = group?.type === 'workspace';
-  const currentMember = group?.members?.find(
-    (member: { user_id: string }) => member.user_id === user?.id,
-  ) ?? null;
   const canApprovePendingExpenses = isWorkspaceGroup
     ? canMemberApproveWithPolicy(currentMember, group?.approval_policy)
     : isAdmin;
 
   // Approval flow
-  const { data: pendingApprovals } = usePendingApprovals(activeGroupId ?? '');
+  const { data: pendingApprovals } = usePendingApprovals(activeGroupId ?? '', {
+    enabled: canApprovePendingExpenses,
+  });
   const approveExp = useApproveExpense(activeGroupId ?? '');
   const rejectExp = useRejectExpense(activeGroupId ?? '');
 

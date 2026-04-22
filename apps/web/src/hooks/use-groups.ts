@@ -3,6 +3,7 @@ import {
   acceptInvite,
   acceptInviteByToken,
   createGroup,
+  getCurrentGroupMember,
   deleteGroup,
   getGroup,
   getGroupSummary,
@@ -19,6 +20,7 @@ import {
   updateMemberRole,
   validateInviteToken,
   type UserGroupSummary,
+  type CurrentGroupMemberSummary,
 } from '@commune/api';
 import type { CreateGroupInput, GroupApprovalPolicyInput } from '@commune/core';
 import type {
@@ -46,6 +48,8 @@ export const groupKeys = {
   invitesByUser: (userId: string) => [...groupKeys.invites(), userId] as const,
   detail: (id: string) => [...groupKeys.all, 'detail', id] as const,
   summaryDetail: (id: string) => [...groupKeys.all, 'summary-detail', id] as const,
+  currentMember: (groupId: string, userId: string) =>
+    [...groupKeys.all, 'current-member', groupId, userId] as const,
 };
 
 export function useUserGroups() {
@@ -90,6 +94,40 @@ export function useGroupSummary(groupId: string) {
     queryFn: async () => getCachedSummary() ?? getGroupSummary(groupId),
     initialData: getCachedSummary,
     enabled: !!groupId,
+    staleTime: 1000 * 60 * 5,
+    retry: (_failureCount, error) => !isSingleRowNotFoundError(error),
+  });
+}
+
+export function useCurrentGroupMember(groupId: string) {
+  const { user } = useAuthStore();
+  const queryClient = useQueryClient();
+
+  const getCachedSummary = () =>
+    queryClient
+      .getQueryData<UserGroupSummary[]>(groupKeys.summariesByUser(user?.id ?? ''))
+      ?.find((summary) => summary.id === groupId);
+
+  const fallbackMember = (() => {
+    const cachedSummary = getCachedSummary();
+    if (!cachedSummary || !user?.id) return undefined;
+
+    return {
+      id: `summary:${groupId}:${user.id}`,
+      group_id: groupId,
+      user_id: user.id,
+      role: cachedSummary.current_user_role,
+      status: 'active',
+      responsibility_label: null,
+    } satisfies CurrentGroupMemberSummary;
+  })();
+
+  return useQuery({
+    queryKey: groupKeys.currentMember(groupId, user?.id ?? ''),
+    queryFn: () => getCurrentGroupMember(groupId),
+    initialData: fallbackMember,
+    initialDataUpdatedAt: fallbackMember ? 0 : undefined,
+    enabled: !!groupId && !!user?.id,
     staleTime: 1000 * 60 * 5,
     retry: (_failureCount, error) => !isSingleRowNotFoundError(error),
   });

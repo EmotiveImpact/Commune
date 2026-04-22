@@ -1299,6 +1299,10 @@ export type Database = {
         Args: { p_cutoff_days?: number; p_group_id: string; p_limit?: number }
         Returns: Json
       }
+      fn_get_group_notification_summary: {
+        Args: { p_cutoff_days?: number; p_group_id: string; p_limit?: number }
+        Returns: Json
+      }
       fn_get_signed_in_bootstrap: {
         Args: { p_active_group_id?: string; p_month?: string; p_include_dashboard_summary?: boolean }
         Returns: Json

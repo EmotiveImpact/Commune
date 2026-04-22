@@ -165,6 +165,28 @@ export async function getGroup(groupId: string) {
   return data as unknown as GroupWithMembers;
 }
 
+export type CurrentGroupMemberSummary = Pick<
+  GroupMember,
+  'id' | 'group_id' | 'user_id' | 'role' | 'status' | 'responsibility_label'
+>;
+
+export async function getCurrentGroupMember(
+  groupId: string,
+): Promise<CurrentGroupMemberSummary | null> {
+  const supabase = getTypedSupabase();
+  const user = await requireSessionUser();
+  const { data, error } = await supabase
+    .from('group_members')
+    .select('id, group_id, user_id, role, status, responsibility_label')
+    .eq('group_id', groupId)
+    .eq('user_id', user.id)
+    .eq('status', 'active')
+    .maybeSingle();
+
+  if (error) throw error;
+  return (data as CurrentGroupMemberSummary | null) ?? null;
+}
+
 export async function getGroupSummary(groupId: string): Promise<GroupSummary> {
   const supabase = getTypedSupabase();
   const [{ data: group, error: groupError }, { count, error: countError }] = await Promise.all([

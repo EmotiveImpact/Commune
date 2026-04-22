@@ -14,11 +14,11 @@ export const approvalKeys = {
   pending: (groupId: string) => ['approvals', 'pending', groupId] as const,
 };
 
-export function usePendingApprovals(groupId: string) {
+export function usePendingApprovals(groupId: string, options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: approvalKeys.pending(groupId),
     queryFn: () => getPendingApprovals(groupId),
-    enabled: !!groupId,
+    enabled: !!groupId && (options?.enabled ?? true),
   });
 }
 

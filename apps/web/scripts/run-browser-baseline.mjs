@@ -211,6 +211,24 @@ async function waitForScenarioSettled(page, expectedPath, timeoutMs, getActiveRe
   await page.waitForTimeout(500);
 }
 
+async function waitForScenarioExpectations(page, scenario, timeoutMs) {
+  if (scenario.expectedTitleIncludes) {
+    await page.waitForFunction(
+      (expectedTitle) => document.title.includes(expectedTitle),
+      scenario.expectedTitleIncludes,
+      { timeout: Math.min(timeoutMs, 10_000) },
+    );
+  }
+
+  if (scenario.expectedTextIncludes) {
+    await page.waitForFunction(
+      (expectedText) => document.body.innerText.includes(expectedText),
+      scenario.expectedTextIncludes,
+      { timeout: Math.min(timeoutMs, 10_000) },
+    );
+  }
+}
+
 async function performScenarioAction(page, baseUrl, scenario) {
   if (!scenario.action) {
     return { skipped: false };
@@ -421,6 +439,8 @@ async function executeScenario(browser, baseUrl, authStatePath, scenario) {
         return;
       }
 
+      await waitForScenarioSettled(page, expectedPath, timeoutMs, () => activeRelevantRequests);
+      await waitForScenarioExpectations(page, scenario, timeoutMs);
       await waitForScenarioSettled(page, expectedPath, timeoutMs, () => activeRelevantRequests);
 
       const snapshot = await page.evaluate(() => ({

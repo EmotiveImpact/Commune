@@ -10,6 +10,10 @@ export interface AppNotification {
   expense_id?: string;
 }
 
+export interface NotificationSummary {
+  unread_count: number;
+}
+
 export async function getNotifications(
   groupId: string,
   limit = 30,
@@ -23,6 +27,28 @@ export async function getNotifications(
   if (error) throw error;
 
   return (data ?? []) as unknown as AppNotification[];
+}
+
+export async function getNotificationSummary(
+  groupId: string,
+  limit = 11,
+): Promise<NotificationSummary> {
+  const supabase = getTypedSupabase();
+  const { data, error } = await supabase.rpc('fn_get_group_notification_summary', {
+    p_group_id: groupId,
+    p_limit: limit,
+  });
+
+  if (error) throw error;
+
+  const unreadCount =
+    data && typeof data === 'object' && !Array.isArray(data) && 'unread_count' in data
+      ? Number((data as Record<string, unknown>).unread_count)
+      : 0;
+
+  return {
+    unread_count: Number.isFinite(unreadCount) ? unreadCount : 0,
+  };
 }
 
 /**
