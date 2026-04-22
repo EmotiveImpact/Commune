@@ -13,7 +13,6 @@ import { AppShell } from '../components/app-shell';
 import { Paywall } from '../components/paywall';
 import { useAuthStore } from '../stores/auth';
 import { useSignedInBootstrap } from '../hooks/use-signed-in-bootstrap';
-import { useSubscription } from '../hooks/use-subscriptions';
 import { useGroupStore } from '../stores/group';
 import { getMonthKey } from '@commune/utils';
 
@@ -35,9 +34,8 @@ function ProtectedLayout() {
     activeGroupId,
     currentMonth,
     includeDashboardSummary,
-    false,
+    true,
   );
-  const { data: subscription, isLoading: subscriptionLoading } = useSubscription(user?.id ?? '');
   const matchRoute = useMatchRoute();
 
   useEffect(() => {
@@ -60,6 +58,7 @@ function ProtectedLayout() {
 
   let trialBanner: React.ReactNode = null;
   let showPaywall = false;
+  const subscription = bootstrap?.subscription ?? null;
   if (user && !isExemptPage && subscription) {
     const isFreeMember =
       subscription.plan === 'free' && subscription.status === 'active';
@@ -101,7 +100,7 @@ function ProtectedLayout() {
         }
       }
     }
-  } else if (user && !isExemptPage && !subscription && !subscriptionLoading) {
+  } else if (user && !isExemptPage && bootstrap) {
     showPaywall = true;
   }
 
