@@ -19,10 +19,10 @@ export const Route = createLazyFileRoute('/_app')({
   component: ProtectedLayout,
 });
 
-function ProtectedLayout() {
+export function ProtectedLayout() {
   const router = useRouter();
   const { user, isAuthenticated, isLoading: authLoading } = useAuthStore();
-  const { activeGroupId } = useGroupStore();
+  const { activeGroupId, setActiveGroupId } = useGroupStore();
   const currentMonth = getMonthKey();
   const { data: bootstrap, isLoading: bootstrapLoading } = useSignedInBootstrap(
     user?.id ?? '',
@@ -32,6 +32,12 @@ function ProtectedLayout() {
     true,
   );
   const matchRoute = useMatchRoute();
+  const resolvedBootstrapGroupId = bootstrap?.resolved_group_id ?? null;
+  const needsGroupSync =
+    !!user
+    && !bootstrapLoading
+    && !!bootstrap
+    && resolvedBootstrapGroupId !== activeGroupId;
 
   useEffect(() => {
     if (authLoading || isAuthenticated) {
@@ -41,7 +47,20 @@ function ProtectedLayout() {
     void router.navigate({ to: '/login', replace: true });
   }, [authLoading, isAuthenticated, router]);
 
-  if (authLoading || !isAuthenticated || (!!user && bootstrapLoading)) {
+  useEffect(() => {
+    if (!needsGroupSync) {
+      return;
+    }
+
+    setActiveGroupId(resolvedBootstrapGroupId);
+  }, [needsGroupSync, resolvedBootstrapGroupId, setActiveGroupId]);
+
+  if (
+    authLoading
+    || !isAuthenticated
+    || (!!user && bootstrapLoading)
+    || needsGroupSync
+  ) {
     return null;
   }
 

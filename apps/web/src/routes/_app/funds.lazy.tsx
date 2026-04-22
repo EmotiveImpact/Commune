@@ -38,7 +38,7 @@ import { useEffect, useState } from 'react';
 import { formatCurrency } from '@commune/utils';
 import { setPageTitle } from '../../utils/seo';
 import { useGroupStore } from '../../stores/group';
-import { useGroup } from '../../hooks/use-groups';
+import { useGroupSummary } from '../../hooks/use-groups';
 import {
   useFunds,
   useFundDetails,
@@ -61,7 +61,7 @@ function FundsPage() {
   }, []);
 
   const { activeGroupId } = useGroupStore();
-  const { data: group } = useGroup(activeGroupId ?? '');
+  const { data: group } = useGroupSummary(activeGroupId ?? '');
 
   const [selectedFundId, setSelectedFundId] = useState<string | null>(null);
 
@@ -113,7 +113,13 @@ function FundListView({
   selectedFundId: string | null;
   onSelectFund: (fundId: string) => void;
 }) {
-  const { data: funds, isLoading } = useFunds(groupId);
+  const {
+    data: funds,
+    error,
+    isError,
+    isLoading,
+    refetch,
+  } = useFunds(groupId);
   const createMutation = useCreateFund(groupId);
   const deleteMutation = useDeleteFund(groupId);
 
@@ -209,6 +215,13 @@ function FundListView({
 
       {isLoading ? (
         <ExpenseListSkeleton />
+      ) : isError ? (
+        <EmptyState
+          icon={IconPigMoney}
+          title="Could not load funds"
+          description={error instanceof Error ? error.message : 'Try again in a moment.'}
+          action={{ label: 'Retry', onClick: () => void refetch() }}
+        />
       ) : !funds || funds.length === 0 ? (
         <EmptyState
           icon={IconPigMoney}
