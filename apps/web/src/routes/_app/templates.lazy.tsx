@@ -40,6 +40,7 @@ import {
 import { PageHeader } from '../../components/page-header';
 import { EmptyState } from '../../components/empty-state';
 import { ExpenseListSkeleton } from '../../components/page-skeleton';
+import { QueryErrorState } from '../../components/query-error-state';
 
 export const Route = createLazyFileRoute('/_app/templates')({
   component: TemplatesPage,
@@ -51,7 +52,12 @@ function TemplatesPage() {
   }, []);
 
   const { activeGroupId } = useGroupStore();
-  const { data: group } = useGroup(activeGroupId ?? '');
+  const {
+    data: group,
+    error: groupError,
+    isError: isGroupError,
+    refetch: refetchGroup,
+  } = useGroup(activeGroupId ?? '');
   const { data: templates, isLoading } = useTemplates(activeGroupId ?? '');
 
   const createMutation = useCreateTemplate(activeGroupId ?? '');
@@ -76,7 +82,7 @@ function TemplatesPage() {
   const memberOptions = useMemo(
     () =>
       (group?.members ?? [])
-        .filter((member) => member.status === 'active')
+        .filter((member) => member.status === 'active' && member.user)
         .map((member) => ({ value: member.user_id, label: member.user.name })),
     [group],
   );
@@ -87,6 +93,19 @@ function TemplatesPage() {
         icon={IconTemplate}
         title="Select a group first"
         description="Choose a group in the sidebar to manage split templates."
+      />
+    );
+  }
+
+  if (isGroupError) {
+    return (
+      <QueryErrorState
+        title="Failed to load templates"
+        error={groupError}
+        onRetry={() => {
+          void refetchGroup();
+        }}
+        icon={IconTemplate}
       />
     );
   }

@@ -36,6 +36,7 @@ import { BreakdownSkeleton } from '../../components/page-skeleton';
 import { EmptyState } from '../../components/empty-state';
 import { PageHeader } from '../../components/page-header';
 import { PaginationBar, paginate, PAGE_SIZE } from '../../components/pagination';
+import { QueryErrorState } from '../../components/query-error-state';
 
 export const Route = createLazyFileRoute('/_app/breakdown')({
   component: BreakdownPage,
@@ -342,7 +343,12 @@ function BreakdownPage() {
 
   const { activeGroupId } = useGroupStore();
   const { user } = useAuthStore();
-  const { data: group } = useGroup(activeGroupId ?? '');
+  const {
+    data: group,
+    error: groupError,
+    isError: isGroupError,
+    refetch: refetchGroup,
+  } = useGroup(activeGroupId ?? '');
   const [selectedMonth, setSelectedMonth] = useState(getMonthKey());
   const [categoryFilter, setCategoryFilter] = useState('');
   const [page, setPage] = useState(0);
@@ -434,9 +440,21 @@ function BreakdownPage() {
     return (
       <EmptyState
         icon={IconWallet}
-        iconColor="emerald"
         title="Select a group first"
-        description="Choose a group from the sidebar to see your personal monthly breakdown."
+        description="Choose a group in the sidebar to see your breakdown."
+      />
+    );
+  }
+
+  if (isGroupError) {
+    return (
+      <QueryErrorState
+        title="Failed to load your breakdown"
+        error={groupError}
+        onRetry={() => {
+          void refetchGroup();
+        }}
+        icon={IconWallet}
       />
     );
   }

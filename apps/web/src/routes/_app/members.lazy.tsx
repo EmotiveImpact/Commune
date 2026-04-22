@@ -35,6 +35,7 @@ import {
   IconUserMinus,
   IconUserPlus,
   IconUsers,
+  IconAlertCircle,
 } from '@tabler/icons-react';
 import { useEffect, useState } from 'react';
 import {
@@ -56,6 +57,7 @@ import { InviteMemberModal } from '../../components/invite-member-modal';
 import { MembersSkeleton } from '../../components/page-skeleton';
 import { EmptyState } from '../../components/empty-state';
 import { PageHeader } from '../../components/page-header';
+import { QueryErrorState } from '../../components/query-error-state';
 
 export const Route = createLazyFileRoute('/_app/members')({
   component: MembersLayout,
@@ -275,7 +277,13 @@ export function MembersPage() {
   }, []);
 
   const { activeGroupId, setActiveGroupId } = useGroupStore();
-  const { data: group, isLoading } = useGroup(activeGroupId ?? '');
+  const {
+    data: group,
+    error: groupError,
+    isError: isGroupError,
+    isLoading,
+    refetch: refetchGroup,
+  } = useGroup(activeGroupId ?? '');
   const lifecycleReferenceDate = new Date().toISOString().slice(0, 10);
   const { data: lifecycle } = useGroupLifecycleSummary(
     activeGroupId ?? '',
@@ -335,18 +343,34 @@ export function MembersPage() {
     return <MembersSkeleton />;
   }
 
-  const isAdmin = group?.members.some((member) => member.user_id === user?.id && member.role === 'admin');
-  const totalMembers = group?.members.length ?? 0;
-  const adminCount = group?.members.filter((member) => member.role === 'admin').length ?? 0;
+  if (isGroupError) {
+    return (
+      <QueryErrorState
+        title="Failed to load members"
+        error={groupError}
+        onRetry={() => {
+          void refetchGroup();
+        }}
+        icon={IconUsers}
+      />
+    );
+  }
+
+  const allMembers = group?.members ?? [];
+  const hydratedMembers = allMembers.filter((member) => Boolean(member.user));
+  const missingMemberProfileCount = allMembers.length - hydratedMembers.length;
+
+  const isAdmin = allMembers.some((member) => member.user_id === user?.id && member.role === 'admin');
+  const totalMembers = allMembers.length;
+  const adminCount = allMembers.filter((member) => member.role === 'admin').length;
   const filteredMembers = (() => {
-    const members = group?.members ?? [];
     const query = searchQuery.trim().toLowerCase();
 
     if (!query) {
-      return members;
+      return hydratedMembers;
     }
 
-    return members.filter((member) => {
+    return hydratedMembers.filter((member) => {
       const haystack = [
         member.user.name,
         member.user.email,
@@ -535,7 +559,7 @@ export function MembersPage() {
   }
   // Also build memberId → userId map for the linked_partner_id column
   const memberIdToUserId = new Map<string, string>();
-  for (const m of group?.members ?? []) {
+  for (const m of allMembers) {
     memberIdToUserId.set(m.id, m.user_id);
     if (m.linked_partner_id) {
       linkedMemberIdMap.set(m.user_id, m.linked_partner_id);
@@ -545,7 +569,7 @@ export function MembersPage() {
   function getPartnerName(userId: string): string | null {
     const partnerId = linkedPartnerMap.get(userId);
     if (!partnerId) return null;
-    const partner = group?.members.find((m) => m.user_id === partnerId);
+    const partner = hydratedMembers.find((m) => m.user_id === partnerId);
     return partner?.user.name ?? null;
   }
 
@@ -616,7 +640,7 @@ export function MembersPage() {
     }
   }
 
-  const canLeave = user && group?.members.some((m) => m.user_id === user.id && m.status === 'active') && (
+  const canLeave = user && allMembers.some((m) => m.user_id === user.id && m.status === 'active') && (
     !isAdmin || adminCount > 1
   );
   const incompleteChecklistItems = getIncompleteSetupChecklistItems(
@@ -627,7 +651,7 @@ export function MembersPage() {
   );
   const totalChecklistCount = Object.keys(group?.setup_checklist_progress ?? {}).length;
   const departureTargetMember = departureTarget
-    ? group?.members.find((member) => member.id === departureTarget.memberId)
+    ? allMembers.find((member) => member.id === departureTarget.memberId)
     : null;
   const departureTargetIsLastAdmin =
     Boolean(departureTargetMember?.role === 'admin' && adminCount <= 1);
@@ -636,7 +660,7 @@ export function MembersPage() {
       .filter((preset) => preset.responsibility_label)
       .map((preset) => [preset.responsibility_label as string, preset.label]),
   );
-  const currentMember = group?.members.find((member) => member.user_id === user?.id) ?? null;
+  const currentMember = allMembers.find((member) => member.user_id === user?.id) ?? null;
   const canApproveWorkspaceSpend = workspaceGovernance.isWorkspaceGroup
     ? canMemberApproveWithPolicy(currentMember, group?.approval_policy)
     : isAdmin;
@@ -685,6 +709,17 @@ export function MembersPage() {
             Clear
           </Button>
         </Group>
+      )}
+
+      {missingMemberProfileCount > 0 && (
+        <Alert
+          color="yellow"
+          variant="light"
+          icon={<IconAlertCircle size={16} />}
+          title="Some member profiles are temporarily unavailable"
+        >
+          {missingMemberProfileCount} member{missingMemberProfileCount === 1 ? '' : 's'} were hidden because their profile details did not load cleanly. This page now stays up instead of crashing, and you can retry the section once the related user rows are available again.
+        </Alert>
       )}
 
       {lifecycle && (
@@ -1341,7 +1376,7 @@ export function MembersPage() {
               departingName={departureTarget.name}
               isOwner={departureTarget.isOwner}
               isLastAdmin={departureTargetIsLastAdmin}
-              members={group?.members ?? []}
+              members={hydratedMembers}
               currency={group?.currency}
               onTransferOwnership={(userId, name) => {
                 closeDeparture();
@@ -1450,7 +1485,7 @@ export function MembersPage() {
             appear as a single unit (e.g. "John & Jane").
           </Text>
           <Stack gap="xs">
-            {(group?.members ?? [])
+            {hydratedMembers
               .filter(
                 (m) =>
                   m.status === 'active' &&

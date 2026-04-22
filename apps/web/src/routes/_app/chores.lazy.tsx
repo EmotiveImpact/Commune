@@ -37,6 +37,7 @@ import { useChores, useCreateChore, useCompleteChore, useDeleteChore } from '../
 import { ContentSkeleton } from '../../components/page-skeleton';
 import { EmptyState } from '../../components/empty-state';
 import { PageHeader } from '../../components/page-header';
+import { QueryErrorState } from '../../components/query-error-state';
 
 export const Route = createLazyFileRoute('/_app/chores')({
   component: ChoresPage,
@@ -136,7 +137,12 @@ function ChoresPage() {
   useEffect(() => { setPageTitle('Chores'); }, []);
 
   const { activeGroupId } = useGroupStore();
-  const { data: group } = useGroup(activeGroupId ?? '');
+  const {
+    data: group,
+    error: groupError,
+    isError: isGroupError,
+    refetch: refetchGroup,
+  } = useGroup(activeGroupId ?? '');
   const { user } = useAuthStore();
   const { data: chores, isLoading } = useChores(activeGroupId ?? '');
   const createChore = useCreateChore(activeGroupId ?? '');
@@ -178,6 +184,19 @@ function ChoresPage() {
         iconColor="emerald"
         title="Select a group first"
         description="Choose a group to manage its chores and tasks."
+      />
+    );
+  }
+
+  if (isGroupError) {
+    return (
+      <QueryErrorState
+        title="Failed to load operations"
+        error={groupError}
+        onRetry={() => {
+          void refetchGroup();
+        }}
+        icon={IconChecklist}
       />
     );
   }

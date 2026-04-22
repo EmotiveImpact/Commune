@@ -39,6 +39,7 @@ import {
 import { PageHeader } from '../../components/page-header';
 import { EmptyState } from '../../components/empty-state';
 import { ExpenseListSkeleton } from '../../components/page-skeleton';
+import { QueryErrorState } from '../../components/query-error-state';
 
 export const Route = createLazyFileRoute('/_app/recurring')({
   component: RecurringPage,
@@ -59,7 +60,12 @@ function RecurringPage() {
   }, []);
 
   const { activeGroupId } = useGroupStore();
-  const { data: group } = useGroup(activeGroupId ?? '');
+  const {
+    data: group,
+    error: groupError,
+    isError: isGroupError,
+    refetch: refetchGroup,
+  } = useGroup(activeGroupId ?? '');
   const { data: activeExpenses, isLoading: activeLoading } = useRecurringExpenses(activeGroupId ?? '');
   const { data: pausedExpenses, isLoading: pausedLoading } = usePausedRecurringExpenses(activeGroupId ?? '');
 
@@ -79,6 +85,19 @@ function RecurringPage() {
         icon={IconRepeat}
         title="Select a group first"
         description="Choose a group in the sidebar to manage recurring expenses."
+      />
+    );
+  }
+
+  if (isGroupError) {
+    return (
+      <QueryErrorState
+        title="Failed to load recurring expenses"
+        error={groupError}
+        onRetry={() => {
+          void refetchGroup();
+        }}
+        icon={IconRepeat}
       />
     );
   }

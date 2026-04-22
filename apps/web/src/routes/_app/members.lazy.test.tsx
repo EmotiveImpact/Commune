@@ -3,6 +3,8 @@ import { render, screen } from '@testing-library/react';
 import { vi } from 'vitest';
 import { MembersPage } from './members.lazy';
 
+const refetchGroupMock = vi.fn();
+
 let groupMock: any = {
   id: 'group-1',
   name: 'North Dock Workspace',
@@ -29,6 +31,14 @@ let groupMock: any = {
   ],
 };
 
+let useGroupResultMock: any = {
+  data: groupMock,
+  isLoading: false,
+  isError: false,
+  error: null,
+  refetch: refetchGroupMock,
+};
+
 vi.mock('@tanstack/react-router', () => ({
   createLazyFileRoute: () => (config: Record<string, unknown>) => config,
   Link: ({ children }: { children: React.ReactNode }) => children,
@@ -38,10 +48,7 @@ vi.mock('@tanstack/react-router', () => ({
 }));
 
 vi.mock('../../hooks/use-groups', () => ({
-  useGroup: () => ({
-    data: groupMock,
-    isLoading: false,
-  }),
+  useGroup: () => useGroupResultMock,
   useLeaveGroup: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useRemoveMember: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useTransferOwnership: () => ({ mutateAsync: vi.fn(), isPending: false }),
@@ -99,6 +106,7 @@ vi.mock('../../components/invite-member-modal', () => ({
 
 describe('MembersPage', () => {
   beforeEach(() => {
+    refetchGroupMock.mockReset();
     groupMock = {
       id: 'group-1',
       name: 'North Dock Workspace',
@@ -124,6 +132,13 @@ describe('MembersPage', () => {
         },
       ],
     };
+    useGroupResultMock = {
+      data: groupMock,
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: refetchGroupMock,
+    };
   });
 
   it('surfaces workspace role presets and approval chain guidance for workspace groups', () => {
@@ -148,6 +163,13 @@ describe('MembersPage', () => {
       subtype: null,
       approval_threshold: null,
     };
+    useGroupResultMock = {
+      data: groupMock,
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: refetchGroupMock,
+    };
 
     render(
       <MantineProvider>
@@ -156,5 +178,59 @@ describe('MembersPage', () => {
     );
 
     expect(screen.queryByText(/workspace roles and approvals/i)).not.toBeInTheDocument();
+  });
+
+  it('shows a retry state when the group query fails', () => {
+    useGroupResultMock = {
+      data: undefined,
+      isLoading: false,
+      isError: true,
+      error: new Error('Group fetch failed'),
+      refetch: refetchGroupMock,
+    };
+
+    render(
+      <MantineProvider>
+        <MembersPage />
+      </MantineProvider>,
+    );
+
+    expect(screen.getByText(/failed to load members/i)).toBeInTheDocument();
+    expect(screen.getByText(/group fetch failed/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /try again/i })).toBeInTheDocument();
+  });
+
+  it('keeps rendering when a member row is missing nested user details', () => {
+    groupMock = {
+      ...groupMock,
+      members: [
+        ...groupMock.members,
+        {
+          id: 'member-2',
+          user_id: 'user-2',
+          role: 'member',
+          status: 'active',
+          responsibility_label: null,
+          user: null,
+        },
+      ],
+    };
+    useGroupResultMock = {
+      data: groupMock,
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: refetchGroupMock,
+    };
+
+    render(
+      <MantineProvider>
+        <MembersPage />
+      </MantineProvider>,
+    );
+
+    expect(screen.getByText(/some member profiles are temporarily unavailable/i)).toBeInTheDocument();
+    expect(screen.getByText(/north dock workspace/i)).toBeInTheDocument();
+    expect(screen.getByText(/august usedem/i)).toBeInTheDocument();
   });
 });

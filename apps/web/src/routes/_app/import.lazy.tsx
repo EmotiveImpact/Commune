@@ -41,6 +41,7 @@ import { useAuthStore } from '../../stores/auth';
 import { useSubscription } from '../../hooks/use-subscriptions';
 import { EmptyState } from '../../components/empty-state';
 import { PageHeader } from '../../components/page-header';
+import { QueryErrorState } from '../../components/query-error-state';
 import { expenseKeys } from '../../hooks/use-expenses';
 import { dashboardKeys } from '../../hooks/use-dashboard';
 import { useQueryClient } from '@tanstack/react-query';
@@ -62,7 +63,12 @@ function ImportPage() {
   const theme = useMantineTheme();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { activeGroupId } = useGroupStore();
-  const { data: group } = useGroup(activeGroupId ?? '');
+  const {
+    data: group,
+    error: groupError,
+    isError: isGroupError,
+    refetch: refetchGroup,
+  } = useGroup(activeGroupId ?? '');
   const { user } = useAuthStore();
   const { data: subscription } = useSubscription(user?.id ?? '');
 
@@ -100,7 +106,7 @@ function ImportPage() {
   const members = useMemo(
     () =>
       (group?.members ?? [])
-        .filter((m) => m.status === 'active')
+        .filter((m) => m.status === 'active' && m.user)
         .map((m) => ({
           userId: m.user_id,
           name: m.user.name,
@@ -293,8 +299,11 @@ function ImportPage() {
       setImportResult({ created: result.created, failed: result.failed });
       setImportProgress(100);
 
-      // Invalidate expense and dashboard queries
-      queryClient.invalidateQueries({ queryKey: expenseKeys.list(activeGroupId) });
+      // Invalidate expense and dashboard queries. Use the 3-element prefix so
+      // *all* filtered list variants refetch — expenseKeys.list(groupId) would
+      // append an `undefined` tuple and only match the unfiltered list.
+      queryClient.invalidateQueries({ queryKey: expenseKeys.groupLists(activeGroupId) });
+      queryClient.invalidateQueries({ queryKey: expenseKeys.groupLedger(activeGroupId) });
       queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
 
       if (result.failed === 0) {
@@ -321,12 +330,25 @@ function ImportPage() {
     }
   }, [activeGroupId, importExpenses, queryClient]);
 
-  // ─── Guard: no group selected ──────────────────────────────────────────────
   if (!activeGroupId) {
     return (
       <EmptyState
+        icon={IconFileSpreadsheet}
         title="Select a group first"
-        description="Choose a group from the sidebar before importing expenses."
+        description="Choose a group in the sidebar before importing expenses."
+      />
+    );
+  }
+
+  if (isGroupError) {
+    return (
+      <QueryErrorState
+        title="Failed to load import settings"
+        error={groupError}
+        onRetry={() => {
+          void refetchGroup();
+        }}
+        icon={IconFileSpreadsheet}
       />
     );
   }
