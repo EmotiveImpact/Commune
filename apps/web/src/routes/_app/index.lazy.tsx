@@ -50,6 +50,7 @@ import { DashboardSkeleton } from '../../components/page-skeleton';
 import { useGenerateRecurring, usePendingRecurringGeneration } from '../../hooks/use-recurring';
 import { useDeferredSection } from '../../hooks/use-deferred-section';
 import { SetBudgetModal } from '../../components/set-budget-modal';
+import { QueryErrorState } from '../../components/query-error-state';
 
 export const Route = createLazyFileRoute('/_app/')({
   component: DashboardPage,
@@ -236,7 +237,7 @@ function DashboardCategoryChartFallback() {
 
 // ─── Dashboard Page ──────────────────────────────────────────────────────────
 
-function DashboardPage() {
+export function DashboardPage() {
   const colorScheme = useComputedColorScheme('light');
   const tickFill = colorScheme === 'dark' ? '#909296' : '#667085';
   const gridStroke = colorScheme === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(22,19,29,0.06)';
@@ -244,7 +245,13 @@ function DashboardPage() {
   const { activeGroupId } = useGroupStore();
   const { user } = useAuthStore();
   const navigate = useNavigate();
-  const { data: groups, isLoading: groupsLoading } = useUserGroupSummaries();
+  const {
+    data: groups,
+    isLoading: groupsLoading,
+    isError: isGroupsError,
+    error: groupsError,
+    refetch: refetchGroups,
+  } = useUserGroupSummaries();
   const resolvedActiveGroupId = useMemo(() => {
     if (!groups?.length) {
       return null;
@@ -256,7 +263,13 @@ function DashboardPage() {
 
     return groups[0]?.id ?? null;
   }, [activeGroupId, groups]);
-  const { data: group, isLoading: groupLoading } = useGroupSummary(resolvedActiveGroupId ?? '');
+  const {
+    data: group,
+    isLoading: groupLoading,
+    isError: isGroupError,
+    error: groupError,
+    refetch: refetchGroup,
+  } = useGroupSummary(resolvedActiveGroupId ?? '');
   const isActiveGroupAdmin = useMemo(
     () =>
       (groups?.find((candidate) => candidate.id === resolvedActiveGroupId)?.current_user_role ?? null)
@@ -264,12 +277,24 @@ function DashboardPage() {
     [groups, resolvedActiveGroupId],
   );
   const currentMonth = getMonthKey();
-  const { data: dashboardSummary, isLoading: summaryLoading } = useDashboardSummary(
+  const {
+    data: dashboardSummary,
+    isLoading: summaryLoading,
+    isError: isSummaryError,
+    error: summaryError,
+    refetch: refetchSummary,
+  } = useDashboardSummary(
     resolvedActiveGroupId ?? '',
     currentMonth,
   );
   const needsStatsFallback = !summaryLoading && dashboardSummary?.stats == null;
-  const { data: fallbackStats, isLoading: fallbackStatsLoading } = useDashboardStats(
+  const {
+    data: fallbackStats,
+    isLoading: fallbackStatsLoading,
+    isError: isFallbackStatsError,
+    error: fallbackStatsError,
+    refetch: refetchFallbackStats,
+  } = useDashboardStats(
     resolvedActiveGroupId ?? '',
     user?.id ?? '',
     currentMonth,
@@ -386,6 +411,10 @@ function DashboardPage() {
   }, []);
 
   useEffect(() => {
+    if (isGroupsError) {
+      return;
+    }
+
     if (resolvedActiveGroupId || groupsLoading) {
       return;
     }
@@ -393,7 +422,7 @@ function DashboardPage() {
     if ((groups?.length ?? 0) === 0) {
       navigate({ to: '/onboarding', replace: true });
     }
-  }, [resolvedActiveGroupId, groups?.length, groupsLoading, navigate]);
+  }, [resolvedActiveGroupId, groups?.length, groupsLoading, isGroupsError, navigate]);
 
   const monthLabel = formatMonthKey(currentMonth, 'en-GB', {
     month: 'long',
@@ -533,6 +562,19 @@ function DashboardPage() {
   );
 
   if (!resolvedActiveGroupId) {
+    if (isGroupsError) {
+      return (
+        <QueryErrorState
+          title="Failed to load dashboard"
+          error={groupsError}
+          onRetry={() => {
+            void refetchGroups();
+          }}
+          icon={IconDashboard}
+        />
+      );
+    }
+
     if (groupsLoading) {
       return <DashboardSkeleton />;
     }
@@ -562,6 +604,24 @@ function DashboardPage() {
 
   if (groupLoading || summaryLoading || (needsStatsFallback && fallbackStatsLoading)) {
     return <DashboardSkeleton />;
+  }
+
+  if (isGroupError || isSummaryError || (needsStatsFallback && isFallbackStatsError)) {
+    return (
+      <QueryErrorState
+        title="Failed to load dashboard"
+        error={groupError ?? summaryError ?? fallbackStatsError}
+        onRetry={() => {
+          void refetchGroups();
+          void refetchGroup();
+          void refetchSummary();
+          if (needsStatsFallback) {
+            void refetchFallbackStats();
+          }
+        }}
+        icon={IconDashboard}
+      />
+    );
   }
 
   const paidPct = stats && stats.your_share > 0

@@ -49,6 +49,7 @@ import {
 } from '../../hooks/use-payment-methods';
 import { SettingsSkeleton } from '../../components/page-skeleton';
 import { PageHeader } from '../../components/page-header';
+import { QueryErrorState } from '../../components/query-error-state';
 
 export const Route = createLazyFileRoute('/_app/profile')({
   component: ProfilePage,
@@ -72,7 +73,7 @@ const COUNTRY_OPTIONS = [
   { value: 'NZ', label: 'New Zealand' },
 ];
 
-function ProfilePage() {
+export function ProfilePage() {
   useEffect(() => {
     setPageTitle('Profile');
   }, []);
@@ -160,14 +161,25 @@ function ProfilePage() {
     );
   }
 
+  if (profileError) {
+    return (
+      <QueryErrorState
+        title="Failed to load profile"
+        error={profileError}
+        onRetry={() => {
+          void refetchProfile();
+        }}
+        icon={IconUser}
+      />
+    );
+  }
+
   if (!resolvedProfile) {
     return (
       <Paper className="commune-soft-panel" p="xl">
         <Text fw={600}>Could not load profile.</Text>
         <Text size="sm" c="dimmed">
-          {profileError instanceof Error
-            ? profileError.message
-            : 'Refresh the page or sign in again if this keeps happening.'}
+          Refresh the page or sign in again if this keeps happening.
         </Text>
         <Button variant="light" mt="md" onClick={() => void refetchProfile()}>
           Retry

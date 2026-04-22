@@ -35,6 +35,7 @@ import { useGroupSummary } from '../../hooks/use-groups';
 import { useWorkspaceBilling } from '../../hooks/use-workspace-billing';
 import { useDeferredSection } from '../../hooks/use-deferred-section';
 import { PageHeader } from '../../components/page-header';
+import { QueryErrorState } from '../../components/query-error-state';
 
 export const Route = createLazyFileRoute('/_app/billing')({
   component: BillingPage,
@@ -107,12 +108,20 @@ export function BillingPage() {
   }, []);
 
   const { activeGroupId } = useGroupStore();
-  const { data: group, isLoading: groupLoading } = useGroupSummary(activeGroupId ?? '');
+  const {
+    data: group,
+    isLoading: groupLoading,
+    isError: isGroupError,
+    error: groupError,
+    refetch: refetchGroup,
+  } = useGroupSummary(activeGroupId ?? '');
   const workspaceGroupId = group?.type === GroupType.WORKSPACE ? activeGroupId ?? '' : '';
   const {
     data: billing,
     isLoading,
     isError,
+    error,
+    refetch,
     fetchStatus,
   } = useWorkspaceBilling(workspaceGroupId);
   const colorScheme = useComputedColorScheme('light');
@@ -154,6 +163,19 @@ export function BillingPage() {
 
   if (groupLoading) return <BillingSkeleton />;
 
+  if (isGroupError) {
+    return (
+      <QueryErrorState
+        title="Failed to load billing"
+        error={groupError}
+        onRetry={() => {
+          void refetchGroup();
+        }}
+        icon={IconFileInvoice}
+      />
+    );
+  }
+
   if (group && group.type !== GroupType.WORKSPACE) {
     return <WorkspaceUpgradePrompt />;
   }
@@ -163,24 +185,14 @@ export function BillingPage() {
 
   if (isError || !billing) {
     return (
-      <Stack gap="xl">
-        <PageHeader
-          title="Billing"
-          subtitle="Workspace billing dashboard for vendor invoices, subscriptions, and tools."
-        />
-        <Paper className="commune-soft-panel" p="xl">
-          <Stack align="center" gap="md" py="xl">
-            <ThemeIcon size={48} variant="light" color="red" radius="xl">
-              <IconFileInvoice size={24} />
-            </ThemeIcon>
-            <Text fw={700} size="lg">Failed to load billing data</Text>
-            <Text size="sm" c="dimmed" ta="center" maw={400}>
-              Something went wrong while fetching your billing data. Please try
-              refreshing the page.
-            </Text>
-          </Stack>
-        </Paper>
-      </Stack>
+      <QueryErrorState
+        title="Failed to load billing"
+        error={error}
+        onRetry={() => {
+          void refetch();
+        }}
+        icon={IconFileInvoice}
+      />
     );
   }
 

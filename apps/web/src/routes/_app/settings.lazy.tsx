@@ -49,6 +49,7 @@ import {
 import { useDeferredSection } from '../../hooks/use-deferred-section';
 import { SettingsSkeleton } from '../../components/page-skeleton';
 import { PageHeader } from '../../components/page-header';
+import { QueryErrorState } from '../../components/query-error-state';
 
 export const Route = createLazyFileRoute('/_app/settings')({
   component: SettingsPage,
@@ -110,7 +111,7 @@ const DEFAULT_NOTIFICATION_PREFS = {
   email_on_overdue: true,
 };
 
-function SettingsPage() {
+export function SettingsPage() {
   useEffect(() => {
     setPageTitle('Settings');
   }, []);
@@ -120,7 +121,10 @@ function SettingsPage() {
   const { user, isLoading: authLoading } = useAuthStore();
   const {
     data: profile,
+    error: profileError,
     isLoading: profileLoading,
+    isError: isProfileError,
+    refetch: refetchProfile,
   } = useProfile(user?.id ?? '');
   const updateProfile = useUpdateProfile();
   const {
@@ -203,6 +207,19 @@ function SettingsPage() {
           Refresh the page or sign in again if this keeps happening.
         </Text>
       </Paper>
+    );
+  }
+
+  if (isProfileError) {
+    return (
+      <QueryErrorState
+        title="Failed to load settings"
+        error={profileError}
+        onRetry={() => {
+          void refetchProfile();
+        }}
+        icon={IconShield}
+      />
     );
   }
 

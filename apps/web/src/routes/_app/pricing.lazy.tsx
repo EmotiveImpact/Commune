@@ -23,6 +23,7 @@ import { usePlanLimits, PLAN_LIMITS } from '../../hooks/use-plan-limits';
 import { formatDate } from '@commune/utils';
 import { PricingSkeleton } from '../../components/page-skeleton';
 import { PageHeader } from '../../components/page-header';
+import { QueryErrorState } from '../../components/query-error-state';
 
 export const Route = createLazyFileRoute('/_app/pricing')({
   component: PricingPage,
@@ -98,13 +99,19 @@ const PLANS: PlanConfig[] = [
 
 const PLAN_ORDER: SubscriptionPlan[] = [SubscriptionPlan.STANDARD, SubscriptionPlan.PRO, SubscriptionPlan.AGENCY];
 
-function PricingPage() {
+export function PricingPage() {
   useEffect(() => {
     setPageTitle('Pricing');
   }, []);
 
   const { user } = useAuthStore();
-  const { data: subscription, isLoading } = useSubscription(user?.id ?? '');
+  const {
+    data: subscription,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useSubscription(user?.id ?? '');
   const { currentGroups, currentMembers } = usePlanLimits(user?.id ?? '');
   const checkout = useCheckout();
   const [billingInterval, setBillingInterval] = useState<'monthly' | 'annual'>('monthly');
@@ -115,6 +122,19 @@ function PricingPage() {
 
   if (isLoading) {
     return <PricingSkeleton />;
+  }
+
+  if (isError) {
+    return (
+      <QueryErrorState
+        title="Failed to load pricing"
+        error={error}
+        onRetry={() => {
+          void refetch();
+        }}
+        icon={IconSparkles}
+      />
+    );
   }
 
   const currentPlan = subscription?.plan;
