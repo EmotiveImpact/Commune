@@ -114,6 +114,7 @@ export async function getSignedInBootstrap(
   activeGroupId: string | null,
   month: string,
   includeDashboardSummary: boolean,
+  includeSubscription = true,
 ): Promise<SignedInBootstrapData> {
   await requireSessionUser();
   const supabase = getTypedSupabase();
@@ -121,6 +122,7 @@ export async function getSignedInBootstrap(
     p_active_group_id: activeGroupId ?? undefined,
     p_month: month,
     p_include_dashboard_summary: includeDashboardSummary,
+    p_include_subscription: includeSubscription,
   });
 
   if (error) throw error;

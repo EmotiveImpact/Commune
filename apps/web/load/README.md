@@ -17,6 +17,8 @@ These probes are intentionally lightweight. They are meant to establish a repeat
 
 There is now a second, browser-driven baseline for the authenticated SPA path. Use it when you need route paint, API, and query timing from a real hydrated session instead of just top-level HTML fetch timing.
 
+There is also a direct authenticated API/RPC baseline for the Supabase paths behind the hot routes. Use it when you need to measure auth, bootstrap, dashboard, overview, expenses, activity, notifications, and group-switch endpoints without browser render noise.
+
 ## Usage
 
 ## Required Environment Variables
@@ -55,6 +57,16 @@ COMMUNE_LOAD_EMAIL=load-test@example.com
 COMMUNE_LOAD_PASSWORD=secret-password
 ```
 
+Runner-only variables for the API/RPC baseline command:
+
+```bash
+COMMUNE_LOAD_BASE_URL=https://your-supabase-project.supabase.co
+COMMUNE_LOAD_PROFILE=deployed
+COMMUNE_LOAD_OUTPUT=./load/api-baseline-report.json
+COMMUNE_LOAD_EMAIL=load-test@example.com
+COMMUNE_LOAD_PASSWORD=secret-password
+```
+
 Use `COMMUNE_LOAD_STORAGE_STATE` when you already have a valid Playwright session.
 Use `COMMUNE_LOAD_EMAIL` and `COMMUNE_LOAD_PASSWORD` when you want the runner to
 log in through the real `/login` page and optionally save that session.
@@ -83,6 +95,15 @@ Run the browser-driven baseline:
 
 ```bash
 pnpm --filter @commune/web perf:browser-baseline -- https://your-preview-or-prod-url
+```
+
+Run the authenticated API/RPC baseline:
+
+```bash
+COMMUNE_LOAD_EMAIL="load-test@example.com" \
+COMMUNE_LOAD_PASSWORD="secret-password" \
+COMMUNE_LOAD_OUTPUT=./load/api-baseline-report.json \
+pnpm --filter @commune/web perf:api-baseline -- https://your-supabase-project.supabase.co
 ```
 
 Run the relaxed dev profile against a local Vite session:
@@ -125,6 +146,8 @@ pnpm --filter @commune/web exec playwright install chromium
 Budgets live in [budgets.json](/Users/augustusedem/Commune/apps/web/load/budgets.json).
 
 Browser-driven budgets live in [browser-budgets.json](/Users/augustusedem/Commune/apps/web/load/browser-budgets.json).
+
+API/RPC budgets live in [api-budgets.json](/Users/augustusedem/Commune/apps/web/load/api-budgets.json).
 
 Current checks:
 

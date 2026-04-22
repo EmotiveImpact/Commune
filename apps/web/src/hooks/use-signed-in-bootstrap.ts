@@ -16,6 +16,7 @@ export function useSignedInBootstrap(
   activeGroupId: string | null,
   month: string,
   includeDashboardSummary: boolean,
+  includeSubscription = true,
 ) {
   const queryClient = useQueryClient();
   const shellKey = signedInBootstrapKeys.shell(userId);
@@ -26,13 +27,20 @@ export function useSignedInBootstrap(
   return useQuery({
     queryKey,
     queryFn: async () => {
-      const data = await getSignedInBootstrap(activeGroupId, month, includeDashboardSummary);
+      const data = await getSignedInBootstrap(
+        activeGroupId,
+        month,
+        includeDashboardSummary,
+        includeSubscription,
+      );
       const shellData = {
         ...data,
         dashboard_summary: null,
       };
 
-      queryClient.setQueryData(subscriptionKeys.detail(userId), data.subscription);
+      if (includeSubscription) {
+        queryClient.setQueryData(subscriptionKeys.detail(userId), data.subscription);
+      }
       queryClient.setQueryData(groupKeys.summariesByUser(userId), data.groups);
       queryClient.setQueryData(shellKey, shellData);
       if (includeDashboardSummary && data.resolved_group_id) {

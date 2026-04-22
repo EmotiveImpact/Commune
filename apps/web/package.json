@@ -8,6 +8,7 @@
     "build": "vite build",
     "lint": "eslint src vite.config.ts",
     "perf:baseline": "node ./scripts/run-load-baseline.mjs",
+    "perf:api-baseline": "node ./scripts/run-api-baseline.mjs",
     "perf:browser-baseline": "node ./scripts/run-browser-baseline.mjs",
     "perf:browser-baseline:deployed": "COMMUNE_LOAD_PROFILE=deployed node ./scripts/run-browser-baseline.mjs",
     "perf:browser-baseline:dev": "COMMUNE_LOAD_PROFILE=dev node ./scripts/run-browser-baseline.mjs",

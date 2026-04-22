@@ -1308,7 +1308,12 @@ export type Database = {
         Returns: Json
       }
       fn_get_signed_in_bootstrap: {
-        Args: { p_active_group_id?: string; p_month?: string; p_include_dashboard_summary?: boolean }
+        Args: {
+          p_active_group_id?: string
+          p_month?: string
+          p_include_dashboard_summary?: boolean
+          p_include_subscription?: boolean
+        }
         Returns: Json
       }
       fn_get_user_group_summaries: {
