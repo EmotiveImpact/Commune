@@ -447,6 +447,7 @@ export interface DashboardSummary {
   current_month_total: number;
   stats: DashboardSummaryStats | null;
   budget: DashboardSummaryBudget | null;
+  has_pending_recurring_generation: boolean;
   trend: DashboardTrendItem[];
   category_breakdown: DashboardCategoryBreakdownItem[];
   current_month_category_totals: Record<string, number>;

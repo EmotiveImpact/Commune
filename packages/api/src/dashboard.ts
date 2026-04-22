@@ -252,6 +252,7 @@ function parseDashboardSummary(value: unknown): DashboardSummary {
       current_month_total: 0,
       stats: null,
       budget: null,
+      has_pending_recurring_generation: false,
       trend: [],
       category_breakdown: [],
       current_month_category_totals: {},
@@ -276,6 +277,10 @@ function parseDashboardSummary(value: unknown): DashboardSummary {
     budget: Object.prototype.hasOwnProperty.call(source, 'budget')
       ? parseDashboardSummaryBudget(source.budget)
       : null,
+    has_pending_recurring_generation:
+      typeof source.has_pending_recurring_generation === 'boolean'
+        ? source.has_pending_recurring_generation
+        : false,
     trend: parseDashboardTrendItems(source.trend),
     category_breakdown: parseDashboardCategoryBreakdown(source.category_breakdown),
     current_month_category_totals: parseDashboardCategoryTotals(source.current_month_category_totals),

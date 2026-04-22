@@ -42,7 +42,7 @@ import { useAuthStore } from '../../stores/auth';
 import { useGroupSummary, useUserGroupSummaries } from '../../hooks/use-groups';
 import { useDashboardStats, useDashboardSummary } from '../../hooks/use-dashboard';
 import { DashboardSkeleton } from '../../components/page-skeleton';
-import { useGenerateRecurring, usePendingRecurringGeneration } from '../../hooks/use-recurring';
+import { useGenerateRecurring } from '../../hooks/use-recurring';
 import { useDeferredSection } from '../../hooks/use-deferred-section';
 import { SetBudgetModal } from '../../components/set-budget-modal';
 
@@ -252,8 +252,10 @@ function DashboardPage() {
     return groups[0]?.id ?? null;
   }, [activeGroupId, groups]);
   const { data: group, isLoading: groupLoading } = useGroupSummary(resolvedActiveGroupId ?? '');
-  const activeGroupSummary = useMemo(
-    () => groups?.find((candidate) => candidate.id === resolvedActiveGroupId) ?? null,
+  const isActiveGroupAdmin = useMemo(
+    () =>
+      (groups?.find((candidate) => candidate.id === resolvedActiveGroupId)?.current_user_role ?? null)
+      === 'admin',
     [groups, resolvedActiveGroupId],
   );
   const currentMonth = getMonthKey();
@@ -269,11 +271,8 @@ function DashboardPage() {
     { enabled: needsStatsFallback },
   );
   const generateRecurring = useGenerateRecurring(resolvedActiveGroupId ?? '');
-  const { data: hasPendingRecurringGeneration } = usePendingRecurringGeneration(
-    resolvedActiveGroupId ?? '',
-    currentMonth,
-    { enabled: !!resolvedActiveGroupId && activeGroupSummary?.current_user_role === 'admin' },
-  );
+  const hasPendingRecurringGeneration =
+    isActiveGroupAdmin && dashboardSummary?.has_pending_recurring_generation === true;
   const recurringGenerationKeyRef = useRef<string | null>(null);
 
   // F35: Budget data

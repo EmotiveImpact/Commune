@@ -194,86 +194,45 @@ export interface UserGroupSummary extends GroupSummary {
   current_user_role: MemberRoleType;
 }
 
-export async function getUserGroupSummaries(userId?: string): Promise<UserGroupSummary[]> {
+export async function getUserGroupSummaries(_userId?: string): Promise<UserGroupSummary[]> {
   const supabase = getTypedSupabase();
-  const resolvedUserId = userId ?? (await requireSessionUser()).id;
-  if (!resolvedUserId) throw new Error('Not authenticated');
-
-  const { data: memberships, error } = await supabase
-    .from('group_members')
-    .select(
-      `
-      role,
-      group:groups(
-        id,
-        name,
-        type,
-        subtype,
-        avatar_url,
-        currency,
-        approval_policy
-      )
-    `,
-    )
-    .eq('user_id', resolvedUserId)
-    .eq('status', 'active');
+  await requireSessionUser();
+  const { data, error } = await supabase.rpc('fn_get_user_group_summaries');
 
   if (error) throw error;
 
-  const groupIds = Array.from(
-    new Set(
-      (memberships ?? [])
-        .map((row) => (row as unknown as { group: { id: string } | null }).group?.id ?? null)
-        .filter((groupId): groupId is string => Boolean(groupId)),
-    ),
-  );
-
-  if (groupIds.length === 0) {
-    return [];
-  }
-
-  const { data: activeMembers, error: countError } = await supabase
-    .from('group_members')
-    .select('group_id')
-    .in('group_id', groupIds)
-    .eq('status', 'active');
-
-  if (countError) throw countError;
-
-  const memberCounts = new Map<string, number>();
-  for (const row of activeMembers ?? []) {
-    const groupId = row.group_id;
-    memberCounts.set(groupId, (memberCounts.get(groupId) ?? 0) + 1);
-  }
-
-  return (memberships ?? []).flatMap((row) => {
+  return (data ?? []).flatMap((row) => {
     const typedRow = row as unknown as {
-      role: MemberRoleType;
-      group: {
-        id: string;
-        name: string;
-        type: Group['type'];
-        subtype: string | null;
-        avatar_url: string | null;
-        currency: string;
-        approval_policy: unknown;
-      } | null;
+      id: string | null;
+      name: string | null;
+      type: Group['type'] | null;
+      subtype: string | null;
+      avatar_url: string | null;
+      currency: string | null;
+      approval_policy: unknown;
+      active_member_count: number | string | null;
+      current_user_role: MemberRoleType | null;
     };
 
-    if (!typedRow.group) {
+    if (!typedRow.id || !typedRow.name || !typedRow.type || !typedRow.currency || !typedRow.current_user_role) {
       return [];
     }
 
+    const activeMemberCount =
+      typeof typedRow.active_member_count === 'number'
+        ? typedRow.active_member_count
+        : Number(typedRow.active_member_count);
+
     return [{
-      id: typedRow.group.id,
-      name: typedRow.group.name,
-      type: typedRow.group.type,
-      subtype: typedRow.group.subtype,
-      avatar_url: typedRow.group.avatar_url,
-      currency: typedRow.group.currency,
-      approval_policy: fromJson<GroupApprovalPolicy>(typedRow.group.approval_policy as Json),
-      active_member_count: memberCounts.get(typedRow.group.id) ?? 0,
-      current_user_role: typedRow.role,
+      id: typedRow.id,
+      name: typedRow.name,
+      type: typedRow.type,
+      subtype: typedRow.subtype,
+      avatar_url: typedRow.avatar_url,
+      currency: typedRow.currency,
+      approval_policy: fromJson<GroupApprovalPolicy>(typedRow.approval_policy as Json),
+      active_member_count: Number.isFinite(activeMemberCount) ? activeMemberCount : 0,
+      current_user_role: typedRow.current_user_role,
     }];
   });
 }
