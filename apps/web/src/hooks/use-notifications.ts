@@ -22,14 +22,14 @@ export const notificationKeys = {
     [...notificationKeys.group(groupId), 'list', userId] as const,
 };
 
-export function useNotificationSummary() {
+export function useNotificationSummary(options?: { enabled?: boolean }) {
   const { activeGroupId } = useGroupStore();
   const { user } = useAuthStore();
 
   return useQuery({
     queryKey: notificationKeys.count(activeGroupId ?? '', user?.id ?? ''),
     queryFn: () => getNotificationSummary(activeGroupId!, 11),
-    enabled: !!activeGroupId && !!user,
+    enabled: !!activeGroupId && !!user && (options?.enabled ?? true),
     staleTime: 1000 * 60 * 5,
     refetchOnWindowFocus: true,
   });

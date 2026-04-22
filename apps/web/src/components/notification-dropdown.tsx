@@ -1,7 +1,7 @@
 import { ActionIcon, Badge, Indicator, Menu, Text, Group, Stack, Box, UnstyledButton } from '@mantine/core';
 import { IconBell, IconReceipt, IconCheck, IconAlertTriangle, IconChecks } from '@tabler/icons-react';
 import { useNavigate } from '@tanstack/react-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   useNotificationSummary,
   useNotifications,
@@ -29,12 +29,27 @@ const iconMap: Record<AppNotification['type'], React.ReactNode> = {
 
 export function NotificationDropdown() {
   const [opened, setOpened] = useState(false);
-  const { data: summary } = useNotificationSummary();
+  const [summaryEnabled, setSummaryEnabled] = useState(false);
+  const { data: summary } = useNotificationSummary({ enabled: summaryEnabled });
   const { data: notifications = [], isLoading } = useNotifications({ enabled: opened });
   const markRead = useMarkNotificationRead();
   const markAllRead = useMarkAllNotificationsRead();
   const navigate = useNavigate();
   const unreadCount = summary?.unread_count ?? 0;
+
+  useEffect(() => {
+    if (summaryEnabled) return undefined;
+    if (opened) {
+      setSummaryEnabled(true);
+      return undefined;
+    }
+
+    const timer = window.setTimeout(() => {
+      setSummaryEnabled(true);
+    }, 1500);
+
+    return () => window.clearTimeout(timer);
+  }, [opened, summaryEnabled]);
 
   const handleNotificationClick = (n: AppNotification) => {
     // Mark as read
