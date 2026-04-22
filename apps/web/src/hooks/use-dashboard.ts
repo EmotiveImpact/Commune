@@ -274,11 +274,14 @@ export function useUserBreakdown(groupId: string, userId: string, month: string)
   });
 }
 
-export function useWorkspaceBillingExpenseFeed(groupId: string) {
+export function useWorkspaceBillingExpenseFeed(
+  groupId: string,
+  options?: { enabled?: boolean },
+) {
   return useQuery({
     queryKey: dashboardKeys.workspaceBillingFeed(groupId),
     queryFn: () => getWorkspaceBillingSnapshot(groupId),
-    enabled: !!groupId,
+    enabled: (options?.enabled ?? true) && !!groupId,
     staleTime: 60_000,
   });
 }

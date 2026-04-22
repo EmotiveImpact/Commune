@@ -41,6 +41,7 @@ import { useCrossGroupOverview, useCrossGroupSettlements } from '../../hooks/use
 import { useSmartNudges } from '../../hooks/use-smart-nudges';
 import { useGroupStore } from '../../stores/group';
 import { getWorkspaceBillingSummary, useWorkspaceBillingExpenseFeed } from '../../hooks/use-dashboard';
+import { useDeferredSection } from '../../hooks/use-deferred-section';
 import { PageHeader } from '../../components/page-header';
 import { EmptyState } from '../../components/empty-state';
 import { PageLoader } from '../../components/page-loader';
@@ -105,7 +106,18 @@ function CrossGroupOverviewPage() {
   });
   const activeGroup = groups?.find((group) => group.id === activeGroupId) ?? null;
   const workspaceExpenseGroupId = activeGroup?.type === 'workspace' ? activeGroupId ?? '' : '';
-  const { data: workspaceBillingSnapshot = null } = useWorkspaceBillingExpenseFeed(workspaceExpenseGroupId);
+  const shouldLoadWorkspaceBilling = activeGroup?.type === 'workspace' && !!workspaceExpenseGroupId;
+  const { ref: workspaceBillingRef, ready: workspaceBillingReady } = useDeferredSection({
+    enabled: shouldLoadWorkspaceBilling,
+    idleTimeoutMs: 4_000,
+    rootMargin: '0px',
+  });
+  const {
+    data: workspaceBillingSnapshot = null,
+    isLoading: isWorkspaceBillingLoading,
+  } = useWorkspaceBillingExpenseFeed(workspaceExpenseGroupId, {
+    enabled: workspaceBillingReady,
+  });
 
   const handleNettingToggle = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const checked = event.currentTarget.checked;
@@ -123,7 +135,8 @@ function CrossGroupOverviewPage() {
 
   const workspaceBillingSummary = getWorkspaceBillingSummary(workspaceBillingSnapshot);
   const showWorkspaceBillingWatch =
-    activeGroup?.type === 'workspace' && workspaceBillingSummary.expenseCount > 0;
+    shouldLoadWorkspaceBilling
+    && (!workspaceBillingReady || isWorkspaceBillingLoading || workspaceBillingSummary.expenseCount > 0);
 
   // Build group status map from group-level cross-group summaries.
   const groupStatusMap = new Map<string, { owes: number; owed: number; currency: string; waiting: number }>();
@@ -262,6 +275,7 @@ function CrossGroupOverviewPage() {
       )}
 
       {showWorkspaceBillingWatch && (
+        <div ref={workspaceBillingRef}>
         <Paper className="commune-soft-panel" p="xl">
           <Group justify="space-between" align="flex-start" mb="md">
             <div>
@@ -270,7 +284,8 @@ function CrossGroupOverviewPage() {
                 {activeGroup?.name ?? 'This workspace'} bills, invoice refs, due dates, recurring subscriptions, and shared tool costs.
               </Text>
             </div>
-            <Group gap="xs">
+            {workspaceBillingReady && !isWorkspaceBillingLoading ? (
+              <Group gap="xs">
               <Badge variant="light" color="indigo">
                 {workspaceBillingSummary.expenseCount} tracked
               </Badge>
@@ -282,9 +297,12 @@ function CrossGroupOverviewPage() {
               <Badge variant="light" color="teal">
                 {workspaceBillingSummary.toolCostCount} work tools
               </Badge>
-            </Group>
+              </Group>
+            ) : null}
           </Group>
 
+          {workspaceBillingReady && !isWorkspaceBillingLoading ? (
+          <>
           <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
             <Paper className="commune-stat-card" p="md" radius="lg">
               <Text size="xs" c="dimmed">Tracked bills</Text>
@@ -399,7 +417,16 @@ function CrossGroupOverviewPage() {
               </Paper>
             )}
           </Stack>
+          </>
+          ) : (
+            <Paper className="commune-stat-card" p="md" radius="lg">
+              <Text size="sm" c="dimmed">
+                Loading workspace billing watch...
+              </Text>
+            </Paper>
+          )}
         </Paper>
+        </div>
       )}
 
       {/* Next 3 Actions */}
