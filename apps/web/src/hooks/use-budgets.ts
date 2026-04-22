@@ -5,6 +5,7 @@ import {
   getBudgetHistory,
   deleteGroupBudget,
 } from '@commune/api';
+import { dashboardKeys } from './use-dashboard';
 
 export const budgetKeys = {
   all: ['budgets'] as const,
@@ -38,6 +39,7 @@ export function useSetGroupBudget(groupId: string) {
     }) => setGroupBudget(groupId, month, amount, categoryBudgets, alertThreshold),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: budgetKeys.all });
+      queryClient.invalidateQueries({ queryKey: dashboardKeys.feedGroup(groupId) });
     },
   });
 }
@@ -56,6 +58,7 @@ export function useDeleteGroupBudget(groupId: string) {
     mutationFn: (month: string) => deleteGroupBudget(groupId, month),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: budgetKeys.all });
+      queryClient.invalidateQueries({ queryKey: dashboardKeys.feedGroup(groupId) });
     },
   });
 }

@@ -1,6 +1,7 @@
 import type {
   DashboardCategoryBreakdownItem,
   DashboardUpcomingExpenseItem,
+  DashboardSummaryBudget,
   DashboardSummaryStats,
   DashboardRecentExpenseItem,
   DashboardStats,
@@ -120,6 +121,43 @@ function parseDashboardRecentExpenses(value: unknown): DashboardRecentExpenseIte
     .filter((item): item is DashboardRecentExpenseItem => item !== null);
 }
 
+function parseDashboardSummaryBudget(value: unknown): DashboardSummaryBudget | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return null;
+  }
+
+  const source = value as Record<string, unknown>;
+  const budgetAmount =
+    typeof source.budget_amount === 'number'
+      ? source.budget_amount
+      : Number(source.budget_amount);
+  const alertThreshold =
+    typeof source.alert_threshold === 'number'
+      ? source.alert_threshold
+      : Number(source.alert_threshold);
+  const categoryBudgets =
+    source.category_budgets && typeof source.category_budgets === 'object' && !Array.isArray(source.category_budgets)
+      ? Object.fromEntries(
+          Object.entries(source.category_budgets as Record<string, unknown>)
+            .map(([key, rawValue]) => {
+              const amount = typeof rawValue === 'number' ? rawValue : Number(rawValue);
+              return Number.isFinite(amount) ? [key, amount] : null;
+            })
+            .filter((entry): entry is [string, number] => entry !== null),
+        )
+      : null;
+
+  if (!Number.isFinite(budgetAmount)) {
+    return null;
+  }
+
+  return {
+    budget_amount: budgetAmount,
+    category_budgets: categoryBudgets,
+    alert_threshold: Number.isFinite(alertThreshold) ? alertThreshold : 80,
+  };
+}
+
 function parseDashboardCategoryTotals(value: unknown): Record<string, number> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     return {};
@@ -213,6 +251,7 @@ function parseDashboardSummary(value: unknown): DashboardSummary {
       expense_count: 0,
       current_month_total: 0,
       stats: null,
+      budget: null,
       trend: [],
       category_breakdown: [],
       current_month_category_totals: {},
@@ -233,6 +272,9 @@ function parseDashboardSummary(value: unknown): DashboardSummary {
     current_month_total: Number.isFinite(currentMonthTotal) ? currentMonthTotal : 0,
     stats: Object.prototype.hasOwnProperty.call(source, 'stats')
       ? parseDashboardSummaryStats(source.stats)
+      : null,
+    budget: Object.prototype.hasOwnProperty.call(source, 'budget')
+      ? parseDashboardSummaryBudget(source.budget)
       : null,
     trend: parseDashboardTrendItems(source.trend),
     category_breakdown: parseDashboardCategoryBreakdown(source.category_breakdown),

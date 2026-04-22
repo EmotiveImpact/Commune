@@ -43,7 +43,6 @@ import { useGroupSummary, useUserGroupSummaries } from '../../hooks/use-groups';
 import { useDashboardStats, useDashboardSummary } from '../../hooks/use-dashboard';
 import { DashboardSkeleton } from '../../components/page-skeleton';
 import { useGenerateRecurring, usePendingRecurringGeneration } from '../../hooks/use-recurring';
-import { useGroupBudget } from '../../hooks/use-budgets';
 import { useDeferredSection } from '../../hooks/use-deferred-section';
 import { SetBudgetModal } from '../../components/set-budget-modal';
 
@@ -278,7 +277,6 @@ function DashboardPage() {
   const recurringGenerationKeyRef = useRef<string | null>(null);
 
   // F35: Budget data
-  const { data: currentBudget } = useGroupBudget(resolvedActiveGroupId ?? '', currentMonth);
   const [budgetModalOpened, setBudgetModalOpened] = useState(false);
 
   useEffect(() => {
@@ -371,6 +369,7 @@ function DashboardPage() {
 
   const recentExpenses = dashboardSummary?.recent_expenses ?? [];
   const stats = dashboardSummary?.stats ?? fallbackStats;
+  const currentBudget = dashboardSummary?.budget ?? null;
 
   const focusItems = useMemo(() => {
     const cycleTotal = dashboardSummary?.current_month_total ?? 0;

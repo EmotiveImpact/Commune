@@ -436,10 +436,17 @@ export interface DashboardRecentExpenseItem {
   unpaid_count: number;
 }
 
+export interface DashboardSummaryBudget {
+  budget_amount: number;
+  category_budgets: Record<string, number> | null;
+  alert_threshold: number;
+}
+
 export interface DashboardSummary {
   expense_count: number;
   current_month_total: number;
   stats: DashboardSummaryStats | null;
+  budget: DashboardSummaryBudget | null;
   trend: DashboardTrendItem[];
   category_breakdown: DashboardCategoryBreakdownItem[];
   current_month_category_totals: Record<string, number>;
