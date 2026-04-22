@@ -4,6 +4,15 @@ import {
   type SupabaseClient,
   type SupabaseClientOptions,
 } from '@supabase/supabase-js';
+import type { Database } from '@commune/types';
+
+/**
+ * Strongly-typed Supabase client bound to the generated `Database` schema.
+ * Using this type (rather than the untyped `SupabaseClient`) means every
+ * `.from('…')`, `.insert(…)`, `.update(…)`, and `.select()` call is checked
+ * against the live schema.
+ */
+export type TypedSupabaseClient = SupabaseClient<Database>;
 
 let _supabase: SupabaseClient | null = null;
 let _supabaseUrl: string | null = null;
@@ -27,7 +36,11 @@ export function initSupabase(
 
   _supabaseUrl = url;
   _supabaseAnonKey = anonKey;
-  _supabase = createClient(url, anonKey, options);
+  // The runtime client is instantiated with the Database generic so the
+  // underlying PostgREST client is schema-aware. The exported types remain
+  // deliberately loose for backwards compatibility — callers that want strict
+  // table typing should use `getTypedSupabase()` from this module.
+  _supabase = createClient<Database>(url, anonKey, options) as unknown as SupabaseClient;
   if (!_sessionTrackingAttached) {
     _sessionTrackingAttached = true;
     _supabase.auth.onAuthStateChange((_event, session) => {
@@ -47,6 +60,15 @@ export function getSupabase(): SupabaseClient {
     );
   }
   return _supabase;
+}
+
+/**
+ * Strongly-typed accessor for the Supabase client. Use this in call sites that
+ * benefit from row/insert/update checking against the generated `Database`
+ * schema. Prefer this over the legacy untyped `supabase` proxy for new code.
+ */
+export function getTypedSupabase(): TypedSupabaseClient {
+  return getSupabase() as unknown as TypedSupabaseClient;
 }
 
 /**
