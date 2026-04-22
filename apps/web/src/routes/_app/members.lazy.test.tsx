@@ -4,6 +4,8 @@ import { vi } from 'vitest';
 import { MembersPage } from './members.lazy';
 
 const refetchGroupMock = vi.fn();
+const refetchLifecycleMock = vi.fn();
+const refetchLinkedPairsMock = vi.fn();
 
 let groupMock: any = {
   id: 'group-1',
@@ -38,6 +40,19 @@ let useGroupResultMock: any = {
   error: null,
   refetch: refetchGroupMock,
 };
+let useLifecycleResultMock: any = {
+  data: null,
+  isLoading: false,
+  isError: false,
+  error: null,
+  refetch: refetchLifecycleMock,
+};
+let useLinkedPairsResultMock: any = {
+  data: [],
+  isError: false,
+  error: null,
+  refetch: refetchLinkedPairsMock,
+};
 
 vi.mock('@tanstack/react-router', () => ({
   createLazyFileRoute: () => (config: Record<string, unknown>) => config,
@@ -60,13 +75,13 @@ vi.mock('../../hooks/use-groups', () => ({
 }));
 
 vi.mock('../../hooks/use-couple-linking', () => ({
-  useLinkedPairs: () => ({ data: [] }),
+  useLinkedPairs: () => useLinkedPairsResultMock,
   useLinkMembers: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useUnlinkMembers: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }));
 
 vi.mock('../../hooks/use-member-lifecycle', () => ({
-  useGroupLifecycleSummary: () => ({ data: null, isLoading: false }),
+  useGroupLifecycleSummary: () => useLifecycleResultMock,
   useMemberHandoverSummary: () => ({ data: null, isLoading: false }),
   useRestoreMemberAccess: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useScheduleMemberDeparture: () => ({ mutateAsync: vi.fn(), isPending: false }),
@@ -107,6 +122,8 @@ vi.mock('../../components/invite-member-modal', () => ({
 describe('MembersPage', () => {
   beforeEach(() => {
     refetchGroupMock.mockReset();
+    refetchLifecycleMock.mockReset();
+    refetchLinkedPairsMock.mockReset();
     groupMock = {
       id: 'group-1',
       name: 'North Dock Workspace',
@@ -138,6 +155,19 @@ describe('MembersPage', () => {
       isError: false,
       error: null,
       refetch: refetchGroupMock,
+    };
+    useLifecycleResultMock = {
+      data: null,
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: refetchLifecycleMock,
+    };
+    useLinkedPairsResultMock = {
+      data: [],
+      isError: false,
+      error: null,
+      refetch: refetchLinkedPairsMock,
     };
   });
 
@@ -232,5 +262,44 @@ describe('MembersPage', () => {
     expect(screen.getByText(/some member profiles are temporarily unavailable/i)).toBeInTheDocument();
     expect(screen.getByText(/north dock workspace/i)).toBeInTheDocument();
     expect(screen.getByText(/august usedem/i)).toBeInTheDocument();
+  });
+
+  it('shows a retry state when the lifecycle query fails', () => {
+    useLifecycleResultMock = {
+      data: null,
+      isLoading: false,
+      isError: true,
+      error: new Error('Lifecycle failed'),
+      refetch: refetchLifecycleMock,
+    };
+
+    render(
+      <MantineProvider>
+        <MembersPage />
+      </MantineProvider>,
+    );
+
+    expect(screen.getByText(/failed to load member lifecycle/i)).toBeInTheDocument();
+    expect(screen.getByText(/lifecycle failed/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /try again/i })).toBeInTheDocument();
+  });
+
+  it('shows a retry alert when linked pairs fail to load', () => {
+    useLinkedPairsResultMock = {
+      data: undefined,
+      isError: true,
+      error: new Error('Linked pairs failed'),
+      refetch: refetchLinkedPairsMock,
+    };
+
+    render(
+      <MantineProvider>
+        <MembersPage />
+      </MantineProvider>,
+    );
+
+    expect(screen.getByText(/couple linking is temporarily unavailable/i)).toBeInTheDocument();
+    expect(screen.getByText(/link and unlink actions are hidden until this section can be refreshed/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /retry/i })).toBeInTheDocument();
   });
 });

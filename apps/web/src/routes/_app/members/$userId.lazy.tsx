@@ -1,5 +1,6 @@
 import { createLazyFileRoute, Link } from '@tanstack/react-router';
 import {
+  Alert,
   Avatar,
   Badge,
   Button,
@@ -75,8 +76,19 @@ function MemberProfilePage() {
     refetch: refetchGroup,
   } = useGroup(activeGroupId ?? '');
   const { user: currentUser } = useAuthStore();
-  const { data: profile, isLoading } = useMemberProfile(userId, activeGroupId ?? '');
-  const { data: settlement } = useGroupSettlement(activeGroupId ?? '');
+  const {
+    data: profile,
+    error: profileError,
+    isError: isProfileError,
+    isLoading,
+    refetch: refetchProfile,
+  } = useMemberProfile(userId, activeGroupId ?? '');
+  const {
+    data: settlement,
+    error: settlementError,
+    isError: isSettlementError,
+    refetch: refetchSettlement,
+  } = useGroupSettlement(activeGroupId ?? '');
 
   const memberName = profile?.user?.name ?? 'Member';
 
@@ -113,6 +125,20 @@ function MemberProfilePage() {
     );
   }
 
+  if (isProfileError) {
+    return (
+      <QueryErrorState
+        title="Failed to load member profile"
+        error={profileError}
+        onRetry={() => {
+          void refetchProfile();
+        }}
+        icon={IconUsersGroup}
+        iconColor="gray"
+      />
+    );
+  }
+
   if (!profile || !profile.user) {
     return (
       <EmptyState
@@ -124,6 +150,10 @@ function MemberProfilePage() {
     );
   }
   const { user, membership, paymentMethods, recentActivity, sharedGroups } = profile;
+  const visibleSharedGroups = sharedGroups.filter(
+    (sharedGroup: any) => Boolean(sharedGroup?.id && sharedGroup?.name),
+  );
+  const hiddenSharedGroupsCount = sharedGroups.length - visibleSharedGroups.length;
   const currency = group?.currency ?? 'GBP';
   const isViewingSelf = currentUser?.id === userId;
 
@@ -215,7 +245,9 @@ function MemberProfilePage() {
                 </Badge>
               )}
               {/* Settlement status badge */}
-              {memberOwes === 0 && memberOwed === 0 ? (
+              {isSettlementError ? (
+                <Badge size="sm" variant="dot" color="gray">Settlement unavailable</Badge>
+              ) : memberOwes === 0 && memberOwed === 0 ? (
                 <Badge size="sm" variant="dot" color="green">Settled</Badge>
               ) : memberOwes > 0 ? (
                 <Badge size="sm" variant="dot" color="orange">
@@ -251,6 +283,17 @@ function MemberProfilePage() {
       </Paper>
 
       {/* 2. "In This Group" Section */}
+      {isSettlementError && (
+        <QueryErrorState
+          title="Failed to load settlement status"
+          error={settlementError}
+          onRetry={() => {
+            void refetchSettlement();
+          }}
+          icon={IconCash}
+        />
+      )}
+
       {group && membership && (
         <Paper className="commune-soft-panel" p="xl">
           <Text className="commune-section-heading" mb="md">
@@ -459,7 +502,7 @@ function MemberProfilePage() {
       )}
 
       {/* 4. Shared Groups Section (only when viewing someone else) */}
-      {!isViewingSelf && sharedGroups.length > 0 && (
+      {!isViewingSelf && visibleSharedGroups.length > 0 && (
         <Paper className="commune-soft-panel" p="xl">
           <Group gap="xs" mb="md">
             <IconUsersGroup size={20} />
@@ -468,8 +511,16 @@ function MemberProfilePage() {
           <Text size="sm" c="dimmed" mb="md">
             Groups you both belong to.
           </Text>
+          {hiddenSharedGroupsCount > 0 && (
+            <Alert color="yellow" icon={<IconAlertTriangle size={16} />} mb="md">
+              {hiddenSharedGroupsCount} shared group
+              {hiddenSharedGroupsCount === 1 ? '' : 's'} could not be shown because the group
+              details were incomplete.
+            </Alert>
+          )}
+
           <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
-            {sharedGroups.map((sg: any) => {
+            {visibleSharedGroups.map((sg: any) => {
               const TypeIcon = GROUP_TYPE_ICONS[sg.type] ?? IconUsersGroup;
               return (
                 <Paper

@@ -283,4 +283,46 @@ describe('ExpenseDetailPage', () => {
     expect(screen.getByText(/payment methods failed/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /try again/i })).toBeInTheDocument();
   });
+
+  it('keeps rendering when a participant row is missing nested user details', () => {
+    useExpenseDetailMock.mockReturnValue({
+      id: 'expense-1',
+      title: 'Desk chairs',
+      description: 'Shared chairs for the office',
+      category: 'work_tools',
+      amount: 248,
+      currency: 'GBP',
+      due_date: '2026-03-25',
+      recurrence_type: 'none',
+      paid_by_user_id: null,
+      payment_records: [],
+      participants: [
+        {
+          id: 'participant-1',
+          user_id: 'user-1',
+          share_amount: 124,
+          user: { id: 'user-1', name: 'August Usedem', avatar_url: null },
+        },
+        {
+          id: 'participant-2',
+          user_id: 'user-2',
+          share_amount: 124,
+          user: null,
+        },
+      ],
+      approval_status: 'approved',
+      receipt_url: null,
+      vendor_name: 'OfficeCo',
+      invoice_reference: 'INV-1042',
+      invoice_date: '2026-03-10',
+      payment_due_date: '2026-03-25',
+    });
+
+    renderPage();
+
+    expect(screen.getByText(/some participant profiles are temporarily unavailable/i)).toBeInTheDocument();
+    expect(screen.getByText(/were shown with fallback labels/i)).toBeInTheDocument();
+    expect(screen.getByText('August Usedem')).toBeInTheDocument();
+    expect(screen.getByText('Unknown member')).toBeInTheDocument();
+  });
 });

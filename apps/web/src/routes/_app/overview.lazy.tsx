@@ -26,6 +26,7 @@ import {
   IconHome,
   IconMap,
   IconPuzzle,
+  IconReceipt,
   IconTarget,
   IconTrendingUp,
   IconTrendingDown,
@@ -107,7 +108,10 @@ function CrossGroupOverviewPage() {
   });
   const {
     data: detailedResult,
+    error: detailedSettlementsError,
+    isError: isDetailedSettlementsError,
     isFetching: isFetchingDetailedSettlements,
+    refetch: refetchDetailedSettlements,
   } = useCrossGroupSettlements(user?.id ?? '', {
     enabled: !nettingEnabled,
   });
@@ -122,7 +126,10 @@ function CrossGroupOverviewPage() {
   });
   const {
     data: workspaceBillingSnapshot = null,
+    error: workspaceBillingError,
+    isError: isWorkspaceBillingError,
     isLoading: isWorkspaceBillingLoading,
+    refetch: refetchWorkspaceBilling,
   } = useWorkspaceBillingExpenseFeed(workspaceExpenseGroupId, {
     enabled: workspaceBillingReady,
   });
@@ -322,7 +329,16 @@ function CrossGroupOverviewPage() {
             ) : null}
           </Group>
 
-          {workspaceBillingReady && !isWorkspaceBillingLoading ? (
+          {isWorkspaceBillingError ? (
+          <QueryErrorState
+            title="Failed to load workspace billing"
+            error={workspaceBillingError}
+            onRetry={() => {
+              void refetchWorkspaceBilling();
+            }}
+            icon={IconReceipt}
+          />
+          ) : workspaceBillingReady && !isWorkspaceBillingLoading ? (
           <>
           <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
             <Paper className="commune-stat-card" p="md" radius="lg">
@@ -765,7 +781,16 @@ function CrossGroupOverviewPage() {
             );
           })}
 
-          {!isFetchingDetailedSettlements && perGroupDetails.length === 0 && (
+          {isDetailedSettlementsError ? (
+            <QueryErrorState
+              title="Failed to load per-group settlements"
+              error={detailedSettlementsError}
+              onRetry={() => {
+                void refetchDetailedSettlements();
+              }}
+              icon={IconArrowsExchange}
+            />
+          ) : !isFetchingDetailedSettlements && perGroupDetails.length === 0 && (
             <EmptyState
               icon={IconArrowsExchange}
               iconColor="emerald"

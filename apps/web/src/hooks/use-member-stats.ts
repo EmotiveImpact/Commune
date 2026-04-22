@@ -16,7 +16,13 @@ const memberStatsKeys = {
 
 export function useMemberMonthlyStats(groupId: string) {
   const currentMonth = getMonthKey();
-  const { data: monthlyStats, isLoading } = useQuery({
+  const {
+    data: monthlyStats,
+    error,
+    isError,
+    isLoading,
+    refetch,
+  } = useQuery({
     queryKey: memberStatsKeys.monthly(groupId, currentMonth),
     queryFn: () => getMemberMonthlyStats(groupId, currentMonth),
     enabled: !!groupId,
@@ -36,5 +42,5 @@ export function useMemberMonthlyStats(groupId: string) {
     return map;
   }, [monthlyStats]);
 
-  return { stats, isLoading };
+  return { stats, isLoading, isError, error, refetch };
 }

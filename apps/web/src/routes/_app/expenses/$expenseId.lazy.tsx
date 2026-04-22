@@ -21,6 +21,7 @@ import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import {
   IconArchive,
+  IconAlertCircle,
   IconCheck,
   IconCheckbox,
   IconEdit,
@@ -172,6 +173,7 @@ export function ExpenseDetailPage() {
   const confirmedCount = expense.payment_records.filter((payment) => payment.status === 'confirmed').length;
   const approvalStatus = expense.approval_status ?? 'approved';
   const isApprovalBlocked = approvalStatus !== 'approved';
+  const missingParticipantProfileCount = expense.participants.filter((participant) => !participant.user).length;
 
   // Fetch payment methods for the person who paid upfront
   const defaultMethod = paidByMethods?.find((m) => m.is_default) ?? paidByMethods?.[0] ?? null;
@@ -548,6 +550,17 @@ export function ExpenseDetailPage() {
         </Paper>
       )}
 
+      {missingParticipantProfileCount > 0 && (
+        <Alert
+          color="yellow"
+          variant="light"
+          icon={<IconAlertCircle size={18} />}
+          title="Some participant profiles are temporarily unavailable"
+        >
+          {missingParticipantProfileCount} participant{missingParticipantProfileCount === 1 ? '' : 's'} were shown with fallback labels because their profile rows did not load cleanly.
+        </Alert>
+      )}
+
       <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
         <Paper className="commune-stat-card" p="lg">
           <Group justify="space-between">
@@ -639,13 +652,15 @@ export function ExpenseDetailPage() {
                     const paymentStatus = payment?.status ?? 'unpaid';
                     const reimbursement = reimbursements.find((item) => item.userId === participant.user_id);
                     const canToggle = participant.user_id === user?.id || isAdmin;
+                    const participantName = participant.user?.name ?? 'Unknown member';
+                    const participantAvatarUrl = participant.user?.avatar_url ?? null;
 
                     return (
                       <Table.Tr key={participant.id}>
                         <Table.Td>
                           <Group gap="xs" wrap="nowrap">
-                            <Avatar src={participant.user.avatar_url} name={participant.user.name} color="initials" size="sm" />
-                            <Text size="sm" fw={600}>{participant.user.name}</Text>
+                            <Avatar src={participantAvatarUrl} name={participantName} color="initials" size="sm" />
+                            <Text size="sm" fw={600}>{participantName}</Text>
                           </Group>
                         </Table.Td>
                         <Table.Td style={{ textAlign: 'right' }}>
@@ -702,17 +717,17 @@ export function ExpenseDetailPage() {
                               </Tooltip>
                             )}
                             {!isApprovalBlocked && canToggle && paymentStatus === 'unpaid' && (
-                              <ActionIcon variant="light" color="emerald" onClick={() => handlePayClick(participant.user_id)} aria-label={`Mark ${participant.user.name} as paid`}>
+                              <ActionIcon variant="light" color="emerald" onClick={() => handlePayClick(participant.user_id)} aria-label={`Mark ${participantName} as paid`}>
                                 <IconCheck size={16} />
                               </ActionIcon>
                             )}
                             {!isApprovalBlocked && canToggle && paymentStatus === 'paid' && (
-                              <ActionIcon variant="light" color="red" onClick={() => handleUnpay(participant.user_id)} aria-label={`Mark ${participant.user.name} as unpaid`}>
+                              <ActionIcon variant="light" color="red" onClick={() => handleUnpay(participant.user_id)} aria-label={`Mark ${participantName} as unpaid`}>
                                 <IconX size={16} />
                               </ActionIcon>
                             )}
                             {!isApprovalBlocked && isAdmin && paymentStatus === 'paid' && (
-                              <ActionIcon variant="light" color="blue" onClick={() => handleConfirmPayment(participant.user_id)} aria-label={`Confirm payment from ${participant.user.name}`}>
+                              <ActionIcon variant="light" color="blue" onClick={() => handleConfirmPayment(participant.user_id)} aria-label={`Confirm payment from ${participantName}`}>
                                 <IconCheckbox size={16} />
                               </ActionIcon>
                             )}

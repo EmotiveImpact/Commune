@@ -152,7 +152,12 @@ export function AddExpensePage() {
   const planLimits = usePlanLimits(user?.id ?? '');
   const canScanReceipts = planLimits.canAccessAnalytics; // Pro+ feature, same gate
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const { data: templates } = useTemplates(activeGroupId ?? '');
+  const {
+    data: templates,
+    isError: isTemplatesError,
+    error: templatesError,
+    refetch: refetchTemplates,
+  } = useTemplates(activeGroupId ?? '');
   const preset = useMemo(
     () => getSpacePreset(group?.type, group?.subtype),
     [group?.subtype, group?.type],
@@ -517,7 +522,18 @@ export function AddExpensePage() {
         </Alert>
       )}
 
-      {templateOptions.length > 0 && (
+      {isTemplatesError && (
+        <QueryErrorState
+          title="Failed to load templates"
+          error={templatesError}
+          onRetry={() => {
+            void refetchTemplates();
+          }}
+          icon={IconFileAlert}
+        />
+      )}
+
+      {templateOptions.length > 0 && !isTemplatesError && (
         <Paper className="commune-soft-panel" p="lg">
           <Select
             label="Use a template"
@@ -823,7 +839,16 @@ export function AddExpensePage() {
                   onChange={setReceiptFile}
                 />
                 {receiptFile && (
-                  canScanReceipts ? (
+                  planLimits.isError ? (
+                    <QueryErrorState
+                      title="Failed to load receipt scanning access"
+                      error={planLimits.error}
+                      onRetry={() => {
+                        void planLimits.refetch();
+                      }}
+                      icon={IconCamera}
+                    />
+                  ) : canScanReceipts ? (
                     <Button
                       leftSection={<IconCamera size={16} />}
                       variant="light"

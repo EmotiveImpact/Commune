@@ -6,6 +6,8 @@ import { AddExpensePage } from './new.lazy';
 
 const navigateMock = vi.fn();
 const refetchGroupMock = vi.fn();
+const refetchTemplatesMock = vi.fn();
+const refetchPlanLimitsMock = vi.fn();
 let useGroupResultMock: any = {
   data: {
     id: 'group-1',
@@ -26,6 +28,28 @@ let useGroupResultMock: any = {
   isError: false,
   error: null,
   refetch: refetchGroupMock,
+};
+let useTemplatesResultMock: any = {
+  data: [],
+  isError: false,
+  error: null,
+  refetch: refetchTemplatesMock,
+};
+let usePlanLimitsResultMock: any = {
+  canCreateGroup: true,
+  canInviteMember: true,
+  canAccessAnalytics: true,
+  canExport: true,
+  canDownloadStatements: true,
+  groupLimit: 1,
+  memberLimit: 8,
+  currentGroups: 1,
+  currentMembers: 1,
+  plan: 'standard',
+  isLoading: false,
+  isError: false,
+  error: null,
+  refetch: refetchPlanLimitsMock,
 };
 
 vi.mock('@tanstack/react-router', () => ({
@@ -52,23 +76,11 @@ vi.mock('../../../hooks/use-expenses', () => ({
 }));
 
 vi.mock('../../../hooks/use-templates', () => ({
-  useTemplates: () => ({ data: [] }),
+  useTemplates: () => useTemplatesResultMock,
 }));
 
 vi.mock('../../../hooks/use-plan-limits', () => ({
-  usePlanLimits: () => ({
-    canCreateGroup: true,
-    canInviteMember: true,
-    canAccessAnalytics: true,
-    canExport: true,
-    canDownloadStatements: true,
-    groupLimit: 1,
-    memberLimit: 8,
-    currentGroups: 1,
-    currentMembers: 1,
-    plan: 'standard',
-    isLoading: false,
-  }),
+  usePlanLimits: () => usePlanLimitsResultMock,
 }));
 
 vi.mock('../../../stores/group', () => ({
@@ -103,6 +115,8 @@ function renderPage() {
 describe('AddExpensePage', () => {
   beforeEach(() => {
     refetchGroupMock.mockReset();
+    refetchTemplatesMock.mockReset();
+    refetchPlanLimitsMock.mockReset();
     useGroupResultMock = {
       data: {
         id: 'group-1',
@@ -123,6 +137,28 @@ describe('AddExpensePage', () => {
       isError: false,
       error: null,
       refetch: refetchGroupMock,
+    };
+    useTemplatesResultMock = {
+      data: [],
+      isError: false,
+      error: null,
+      refetch: refetchTemplatesMock,
+    };
+    usePlanLimitsResultMock = {
+      canCreateGroup: true,
+      canInviteMember: true,
+      canAccessAnalytics: true,
+      canExport: true,
+      canDownloadStatements: true,
+      groupLimit: 1,
+      memberLimit: 8,
+      currentGroups: 1,
+      currentMembers: 1,
+      plan: 'standard',
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: refetchPlanLimitsMock,
     };
   });
 
@@ -150,5 +186,19 @@ describe('AddExpensePage', () => {
     expect(screen.getByText(/failed to load expense form/i)).toBeInTheDocument();
     expect(screen.getByText(/group fetch failed/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /try again/i })).toBeInTheDocument();
+  });
+
+  it('shows a retry state when templates fail to load', () => {
+    useTemplatesResultMock = {
+      data: undefined,
+      isError: true,
+      error: new Error('Templates failed'),
+      refetch: refetchTemplatesMock,
+    };
+
+    renderPage();
+
+    expect(screen.getByText(/failed to load templates/i)).toBeInTheDocument();
+    expect(screen.getByText(/templates failed/i)).toBeInTheDocument();
   });
 });

@@ -49,6 +49,7 @@ import { useAuthStore } from '../../../stores/auth';
 import { ExpenseListSkeleton } from '../../../components/page-skeleton';
 import { EmptyState } from '../../../components/empty-state';
 import { PageHeader } from '../../../components/page-header';
+import { QueryErrorState } from '../../../components/query-error-state';
 
 export const Route = createLazyFileRoute('/_app/expenses/')({
   component: ExpensesPage,
@@ -141,7 +142,13 @@ export function ExpensesPage() {
 
   // PDF export & tier gating
   const { user } = useAuthStore();
-  const { canExport, canDownloadStatements } = usePlanLimits(user?.id ?? '');
+  const {
+    canExport,
+    canDownloadStatements,
+    isError: isPlanLimitsError,
+    error: planLimitsError,
+    refetch: refetchPlanLimits,
+  } = usePlanLimits(user?.id ?? '');
   const isPaidPlan = canDownloadStatements;
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [exportingCsv, setExportingCsv] = useState(false);
@@ -168,7 +175,12 @@ export function ExpensesPage() {
 
   // Approval flow
   const shouldLoadPendingApprovals = canApprovePendingExpenses && approvalPanelOpened;
-  const { data: pendingApprovals } = usePendingApprovals(activeGroupId ?? '', {
+  const {
+    data: pendingApprovals,
+    isError: isPendingApprovalsError,
+    error: pendingApprovalsError,
+    refetch: refetchPendingApprovals,
+  } = usePendingApprovals(activeGroupId ?? '', {
     enabled: shouldLoadPendingApprovals,
   });
   const approveExp = useApproveExpense(activeGroupId ?? '');
@@ -406,48 +418,63 @@ export function ExpensesPage() {
           <Button component={Link} to="/expenses/new" leftSection={<IconPlus size={16} />}>
             Add expense
           </Button>
-          {canExport ? (
-            <Button
-              variant="default"
-              leftSection={<IconDownload size={16} />}
-              onClick={() => {
-                void handleExportCSV();
-              }}
-              loading={exportingCsv}
-              disabled={filteredCount === 0}
-              title="Export the current filtered expenses to CSV"
-            >
-              Export filtered CSV
-            </Button>
-          ) : (
-            <Tooltip label="Pro feature — upgrade to unlock" withArrow>
-              <Button variant="default" leftSection={<IconDownload size={16} />} disabled data-disabled>
-                Export filtered CSV
+          {!isPlanLimitsError && (
+            <>
+              {canExport ? (
+                <Button
+                  variant="default"
+                  leftSection={<IconDownload size={16} />}
+                  onClick={() => {
+                    void handleExportCSV();
+                  }}
+                  loading={exportingCsv}
+                  disabled={filteredCount === 0}
+                  title="Export the current filtered expenses to CSV"
+                >
+                  Export filtered CSV
+                </Button>
+              ) : (
+                <Tooltip label="Pro feature — upgrade to unlock" withArrow>
+                  <Button variant="default" leftSection={<IconDownload size={16} />} disabled data-disabled>
+                    Export filtered CSV
+                  </Button>
+                </Tooltip>
+              )}
+              <Button
+                variant="default"
+                leftSection={<IconFileTypePdf size={16} />}
+                onClick={handleExportPDF}
+                loading={downloadingPdf}
+                disabled={!canExportPdf}
+                title={
+                  !isPaidPlan
+                    ? 'Upgrade to Pro to export PDF statements'
+                    : hasCustomDateRange
+                    ? 'PDF statements are only available for a single month'
+                    : !monthFilter
+                    ? 'Select a month to export a PDF statement'
+                    : filteredCount === 0
+                    ? 'No expenses available for the selected month'
+                    : 'Download PDF statement'
+                }
+              >
+                Export PDF
               </Button>
-            </Tooltip>
+            </>
           )}
-          <Button
-            variant="default"
-            leftSection={<IconFileTypePdf size={16} />}
-            onClick={handleExportPDF}
-            loading={downloadingPdf}
-            disabled={!canExportPdf}
-            title={
-              !isPaidPlan
-                ? 'Upgrade to Pro to export PDF statements'
-                : hasCustomDateRange
-                ? 'PDF statements are only available for a single month'
-                : !monthFilter
-                ? 'Select a month to export a PDF statement'
-                : filteredCount === 0
-                ? 'No expenses available for the selected month'
-                : 'Download PDF statement'
-            }
-          >
-            Export PDF
-          </Button>
         </Group>
       </PageHeader>
+
+      {isPlanLimitsError && (
+        <QueryErrorState
+          title="Failed to load export access"
+          error={planLimitsError}
+          onRetry={() => {
+            void refetchPlanLimits();
+          }}
+          icon={IconDownload}
+        />
+      )}
 
       {workspaceSummary && (
         <Paper className="commune-stat-card" p="md">
@@ -515,7 +542,18 @@ export function ExpensesPage() {
             </Button>
           </Group>
 
-          {approvalPanelOpened && !pendingApprovals ? (
+          {approvalPanelOpened && isPendingApprovalsError ? (
+            <QueryErrorState
+              title="Failed to load pending approvals"
+              error={pendingApprovalsError}
+              onRetry={() => {
+                void refetchPendingApprovals();
+              }}
+              icon={IconShieldCheck}
+            />
+          ) : null}
+
+          {approvalPanelOpened && !pendingApprovals && !isPendingApprovalsError ? (
             <Paper className="commune-stat-card" p="md">
               <Text size="sm" c="dimmed">
                 Loading pending approvals...

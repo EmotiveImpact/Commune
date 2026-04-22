@@ -157,4 +157,27 @@ describe('NotificationDropdown', () => {
     expect(screen.getByText(/notification feed failed/i)).toBeInTheDocument();
     expect(screen.getByText(/try again/i)).toBeInTheDocument();
   });
+
+  it('shows an unread-count warning when the summary query fails', () => {
+    useNotificationSummaryMock.mockReturnValue({
+      data: undefined,
+      isError: true,
+      error: new Error('Unread summary failed'),
+      refetch: vi.fn(),
+    });
+
+    render(
+      <MantineProvider>
+        <NotificationDropdown />
+      </MantineProvider>,
+    );
+
+    expect(screen.getByText('!')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /open notifications/i }));
+
+    expect(screen.getByText(/failed to load unread count/i)).toBeInTheDocument();
+    expect(screen.getByText(/unread summary failed/i)).toBeInTheDocument();
+    expect(screen.getByText(/retry unread count/i)).toBeInTheDocument();
+  });
 });

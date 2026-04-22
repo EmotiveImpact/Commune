@@ -299,7 +299,7 @@ export function TemplatesPage() {
   }
 
   function getMemberName(userId: string): string {
-    return group?.members.find((m) => m.user_id === userId)?.user.name ?? userId;
+    return group?.members.find((m) => m.user_id === userId)?.user?.name ?? userId;
   }
 
   function formatSplitMethod(method: string): string {

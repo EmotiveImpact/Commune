@@ -3,7 +3,13 @@ import { useUserGroupSummaries } from './use-groups';
 import { useGroupStore } from '../stores/group';
 
 export function useGroupBootstrap() {
-  const { data: groups, isLoading } = useUserGroupSummaries();
+  const {
+    data: groups,
+    isError,
+    error,
+    isLoading,
+    refetch,
+  } = useUserGroupSummaries();
   const { activeGroupId, setActiveGroupId } = useGroupStore();
 
   const resolvedActiveGroupId = useMemo(() => {
@@ -19,7 +25,7 @@ export function useGroupBootstrap() {
   }, [activeGroupId, groups]);
 
   useEffect(() => {
-    if (isLoading) {
+    if (isLoading || isError) {
       return;
     }
 
@@ -44,6 +50,9 @@ export function useGroupBootstrap() {
   return {
     groups,
     activeGroupId: resolvedActiveGroupId,
+    error,
+    isError,
     isLoading,
+    refetch,
   };
 }

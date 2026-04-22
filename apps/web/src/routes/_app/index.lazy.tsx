@@ -20,6 +20,7 @@ import {
   IconArrowsExchange,
   IconCash,
   IconCheck,
+  IconChartBar,
   IconCoin,
   IconDashboard,
   IconDownload,
@@ -442,7 +443,13 @@ export function DashboardPage() {
     enabled: hasExpenses,
   });
   const shouldLoadInsights = showOverviewChart || showCategoryChart;
-  const { data: dashboardInsights, isLoading: insightsLoading } = useDashboardInsights(
+  const {
+    data: dashboardInsights,
+    error: insightsError,
+    isError: isInsightsError,
+    isLoading: insightsLoading,
+    refetch: refetchInsights,
+  } = useDashboardInsights(
     resolvedActiveGroupId ?? '',
     currentMonth,
     { enabled: shouldLoadInsights },
@@ -1124,7 +1131,16 @@ export function DashboardPage() {
                 </Badge>
               </Group>
 
-              {hasTrendData ? (
+              {isInsightsError && shouldLoadInsights ? (
+                <QueryErrorState
+                  title="Failed to load spending trend"
+                  error={insightsError}
+                  onRetry={() => {
+                    void refetchInsights();
+                  }}
+                  icon={IconChartBar}
+                />
+              ) : hasTrendData ? (
                 <div ref={overviewChartRef}>
                   {showOverviewChart && dashboardInsights ? (
                     <Suspense fallback={<DashboardOverviewChartFallback />}>
@@ -1165,7 +1181,16 @@ export function DashboardPage() {
                 </Button>
               </Group>
 
-              {recentExpenses.length > 0 ? (
+              {isInsightsError && shouldLoadInsights ? (
+                <QueryErrorState
+                  title="Failed to load recent expenses"
+                  error={insightsError}
+                  onRetry={() => {
+                    void refetchInsights();
+                  }}
+                  icon={IconReceipt}
+                />
+              ) : recentExpenses.length > 0 ? (
                 <div className="commune-table-shell">
                   <Table verticalSpacing="md" horizontalSpacing="sm">
                     <Table.Thead>
@@ -1252,7 +1277,16 @@ export function DashboardPage() {
                 </Badge>
               </Group>
 
-              {hasCategoryData ? (
+              {isInsightsError && shouldLoadInsights ? (
+                <QueryErrorState
+                  title="Failed to load category insights"
+                  error={insightsError}
+                  onRetry={() => {
+                    void refetchInsights();
+                  }}
+                  icon={IconChartBar}
+                />
+              ) : hasCategoryData ? (
                 <div ref={categoryChartRef}>
                   {showCategoryChart && dashboardInsights ? (
                     <Suspense fallback={<DashboardCategoryChartFallback />}>

@@ -1,5 +1,6 @@
 import { createLazyFileRoute, useNavigate } from '@tanstack/react-router';
 import {
+  Alert,
   Badge,
   Button,
   Center,
@@ -183,8 +184,10 @@ function OnboardingPage() {
   }
 
   const inviteOptions = pendingInvites ?? [];
+  const visibleInviteOptions = inviteOptions.filter((invite) => Boolean(invite.group?.name));
+  const hiddenInviteCount = inviteOptions.length - visibleInviteOptions.length;
 
-  if (inviteOptions.length > 0 && !showCreateFlow) {
+  if (visibleInviteOptions.length > 0 && !showCreateFlow) {
     return (
       <Center mih="80vh">
         <Paper className="commune-soft-panel" p="xl" w="100%" maw={640}>
@@ -200,7 +203,14 @@ function OnboardingPage() {
             </Stack>
 
             <Stack gap="sm">
-              {inviteOptions.map((invite) => (
+              {hiddenInviteCount > 0 && (
+                <Alert color="yellow" title="Some invites could not be shown">
+                  {hiddenInviteCount} pending invite
+                  {hiddenInviteCount === 1 ? '' : 's'} were hidden because the group details were incomplete.
+                </Alert>
+              )}
+
+              {visibleInviteOptions.map((invite) => (
                 <Paper key={invite.id} className="commune-stat-card" radius="lg" p="lg">
                   <Group justify="space-between" align="flex-start">
                     <Stack gap={4}>

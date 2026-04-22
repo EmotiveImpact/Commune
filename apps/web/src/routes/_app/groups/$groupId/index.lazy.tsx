@@ -149,8 +149,18 @@ export function GroupHubPage() {
     refetch,
   } = useGroupHub(groupId);
   const uploadImage = useUploadGroupImage(groupId);
-  const { data: settlement } = useGroupSettlement(groupId);
-  const { data: activityItems } = useActivityLog(groupId, 10);
+  const {
+    data: settlement,
+    error: settlementError,
+    isError: isSettlementError,
+    refetch: refetchSettlement,
+  } = useGroupSettlement(groupId);
+  const {
+    data: activityItems,
+    error: activityError,
+    isError: isActivityError,
+    refetch: refetchActivity,
+  } = useActivityLog(groupId, 10);
 
   useEffect(() => {
     setActiveGroupId(groupId);
@@ -537,6 +547,19 @@ export function GroupHubPage() {
       {/*  2c. Your Position Card                                            */}
       {/* ------------------------------------------------------------------ */}
       {(() => {
+        if (isSettlementError) {
+          return (
+            <QueryErrorState
+              title="Failed to load settlement"
+              error={settlementError}
+              onRetry={() => {
+                void refetchSettlement();
+              }}
+              icon={IconCash}
+            />
+          );
+        }
+
         if (!settlement || !user) return null;
         const youOwe = settlement.transactions
           .filter((t: any) => t.fromUserId === user.id)
@@ -601,7 +624,16 @@ export function GroupHubPage() {
       {/* ------------------------------------------------------------------ */}
       {/*  2d. Recent Activity Feed                                          */}
       {/* ------------------------------------------------------------------ */}
-      {activityItems && activityItems.length > 0 && (
+      {isActivityError ? (
+        <QueryErrorState
+          title="Failed to load recent activity"
+          error={activityError}
+          onRetry={() => {
+            void refetchActivity();
+          }}
+          icon={IconActivity}
+        />
+      ) : activityItems && activityItems.length > 0 && (
         <Stack gap="md">
           <Group gap="xs" justify="space-between">
             <Group gap="xs">
@@ -894,7 +926,12 @@ export function GroupHubPage() {
 /* ======================================================================== */
 
 function MemoriesSection({ groupId }: { groupId: string }) {
-  const { data: memories } = useMemories(groupId);
+  const {
+    data: memories,
+    error: memoriesError,
+    isError: isMemoriesError,
+    refetch: refetchMemories,
+  } = useMemories(groupId);
   const addMemoryMutation = useAddMemory(groupId);
   const deleteMemoryMutation = useDeleteMemory(groupId);
   const [opened, { open, close }] = useDisclosure(false);
@@ -930,7 +967,16 @@ function MemoriesSection({ groupId }: { groupId: string }) {
         </Button>
       </Group>
 
-      {(!memories || memories.length === 0) ? (
+      {isMemoriesError ? (
+        <QueryErrorState
+          title="Failed to load memories"
+          error={memoriesError}
+          onRetry={() => {
+            void refetchMemories();
+          }}
+          icon={IconPhoto}
+        />
+      ) : (!memories || memories.length === 0) ? (
         <Paper className="commune-soft-panel" p="lg" style={{ textAlign: 'center' }}>
           <IconPhoto size={32} style={{ color: 'var(--commune-ink-soft)', opacity: 0.5, margin: '0 auto' }} />
           <Text size="sm" c="dimmed" mt="xs">

@@ -112,7 +112,13 @@ export function PricingPage() {
     error,
     refetch,
   } = useSubscription(user?.id ?? '');
-  const { currentGroups, currentMembers } = usePlanLimits(user?.id ?? '');
+  const {
+    currentGroups,
+    currentMembers,
+    isError: isPlanLimitsError,
+    error: planLimitsError,
+    refetch: refetchPlanLimits,
+  } = usePlanLimits(user?.id ?? '');
   const checkout = useCheckout();
   const [billingInterval, setBillingInterval] = useState<'monthly' | 'annual'>('monthly');
   const isAnnual = billingInterval === 'annual';
@@ -131,6 +137,19 @@ export function PricingPage() {
         error={error}
         onRetry={() => {
           void refetch();
+        }}
+        icon={IconSparkles}
+      />
+    );
+  }
+
+  if (isPlanLimitsError) {
+    return (
+      <QueryErrorState
+        title="Failed to load current usage"
+        error={planLimitsError}
+        onRetry={() => {
+          void refetchPlanLimits();
         }}
         icon={IconSparkles}
       />

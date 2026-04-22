@@ -7,6 +7,13 @@ import { AnalyticsPage } from './analytics.lazy';
 const downloadWorkspaceBillingPackMock = vi.hoisted(() => vi.fn());
 const notificationShowMock = vi.hoisted(() => vi.fn());
 const getWorkspaceBillingExportRowsMock = vi.hoisted(() => vi.fn());
+let usePlanLimitsResultMock: any = {
+  canAccessAnalytics: true,
+  isLoading: false,
+  isError: false,
+  error: null,
+  refetch: vi.fn(),
+};
 
 vi.mock('@tanstack/react-router', () => ({
   createLazyFileRoute: () => (config: Record<string, unknown>) => config,
@@ -70,10 +77,7 @@ vi.mock('../../hooks/use-subscriptions', () => ({
 }));
 
 vi.mock('../../hooks/use-plan-limits', () => ({
-  usePlanLimits: () => ({
-    canAccessAnalytics: true,
-    isLoading: false,
-  }),
+  usePlanLimits: () => usePlanLimitsResultMock,
 }));
 
 vi.mock('../../hooks/use-groups', () => ({
@@ -218,6 +222,13 @@ describe('AnalyticsPage', () => {
     downloadWorkspaceBillingPackMock.mockReset();
     notificationShowMock.mockReset();
     getWorkspaceBillingExportRowsMock.mockReset();
+    usePlanLimitsResultMock = {
+      canAccessAnalytics: true,
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    };
     getWorkspaceBillingExportRowsMock.mockResolvedValue([
       {
         id: 'expense-1',
@@ -285,4 +296,24 @@ describe('AnalyticsPage', () => {
       'GBP',
     );
   }, 10000);
+
+  it('shows a retry state when analytics access fails to load', () => {
+    usePlanLimitsResultMock = {
+      canAccessAnalytics: false,
+      isLoading: false,
+      isError: true,
+      error: new Error('Plan limits failed'),
+      refetch: vi.fn(),
+    };
+
+    render(
+      <MantineProvider>
+        <AnalyticsPage />
+      </MantineProvider>,
+    );
+
+    expect(screen.getByText(/failed to load analytics access/i)).toBeInTheDocument();
+    expect(screen.getByText(/plan limits failed/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /try again/i })).toBeInTheDocument();
+  });
 });

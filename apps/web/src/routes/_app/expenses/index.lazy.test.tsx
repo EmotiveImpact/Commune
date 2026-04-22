@@ -19,6 +19,19 @@ let groupMock: any = {
   current_user_responsibility_label: null,
 };
 let pendingApprovalsMock: any[] = [];
+let pendingApprovalsQueryMock: any = {
+  data: pendingApprovalsMock,
+  isError: false,
+  error: null,
+  refetch: vi.fn(),
+};
+let planLimitsMock: any = {
+  canExport: true,
+  canDownloadStatements: false,
+  isError: false,
+  error: null,
+  refetch: vi.fn(),
+};
 
 vi.mock('@tanstack/react-router', () => ({
   createLazyFileRoute: () => (config: Record<string, unknown>) => config,
@@ -88,7 +101,7 @@ vi.mock('../../../hooks/use-expenses', () => ({
 }));
 
 vi.mock('../../../hooks/use-approvals', () => ({
-  usePendingApprovals: () => ({ data: pendingApprovalsMock }),
+  usePendingApprovals: () => pendingApprovalsQueryMock,
   useApproveExpense: () => ({ mutate: vi.fn(), isPending: false }),
   useRejectExpense: () => ({ mutate: vi.fn(), isPending: false }),
 }));
@@ -98,7 +111,7 @@ vi.mock('../../../hooks/use-subscriptions', () => ({
 }));
 
 vi.mock('../../../hooks/use-plan-limits', () => ({
-  usePlanLimits: () => ({ canExport: true, canDownloadStatements: false }),
+  usePlanLimits: () => planLimitsMock,
 }));
 
 vi.mock('@commune/api', () => ({
@@ -171,6 +184,19 @@ describe('ExpensesPage', () => {
       current_user_responsibility_label: null,
     };
     pendingApprovalsMock = [];
+    pendingApprovalsQueryMock = {
+      data: pendingApprovalsMock,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    };
+    planLimitsMock = {
+      canExport: true,
+      canDownloadStatements: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    };
   });
 
   afterEach(() => {
@@ -256,6 +282,12 @@ describe('ExpensesPage', () => {
         created_by_user: { name: 'Alice' },
       },
     ];
+    pendingApprovalsQueryMock = {
+      data: pendingApprovalsMock,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    };
 
     render(
       <MantineProvider>
@@ -267,5 +299,53 @@ describe('ExpensesPage', () => {
     fireEvent.click(screen.getByRole('button', { name: /review approvals/i }));
     expect(screen.getByText(/printer lease/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /approve/i })).toBeInTheDocument();
+  });
+
+  it('shows a retry state when pending approvals fail to load', () => {
+    groupMock = {
+      ...groupMock,
+      approval_policy: {
+        threshold: 100,
+        allowed_roles: ['admin'],
+        allowed_labels: [],
+      },
+    };
+    pendingApprovalsQueryMock = {
+      data: undefined,
+      isError: true,
+      error: new Error('Pending approvals failed'),
+      refetch: vi.fn(),
+    };
+
+    render(
+      <MantineProvider>
+        <ExpensesPage />
+      </MantineProvider>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /review approvals/i }));
+
+    expect(screen.getByText(/failed to load pending approvals/i)).toBeInTheDocument();
+    expect(screen.getByText(/pending approvals failed/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /try again/i })).toBeInTheDocument();
+  });
+
+  it('shows a retry state when export access fails to load', () => {
+    planLimitsMock = {
+      canExport: false,
+      canDownloadStatements: false,
+      isError: true,
+      error: new Error('Plan limits failed'),
+      refetch: vi.fn(),
+    };
+
+    render(
+      <MantineProvider>
+        <ExpensesPage />
+      </MantineProvider>,
+    );
+
+    expect(screen.getByText(/failed to load export access/i)).toBeInTheDocument();
+    expect(screen.getByText(/plan limits failed/i)).toBeInTheDocument();
   });
 });

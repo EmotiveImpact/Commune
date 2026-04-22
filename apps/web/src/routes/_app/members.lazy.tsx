@@ -108,8 +108,26 @@ function HandoverChecklist({
   currency,
   onTransferOwnership,
 }: HandoverChecklistProps) {
-  const { data: handoverSummary } = useMemberHandoverSummary(groupId, departingUserId);
+  const {
+    data: handoverSummary,
+    error: handoverError,
+    isError: isHandoverError,
+    refetch: refetchHandoverSummary,
+  } = useMemberHandoverSummary(groupId, departingUserId);
   const [handoverConfirmed, setHandoverConfirmed] = useState(false);
+
+  if (isHandoverError) {
+    return (
+      <QueryErrorState
+        title="Failed to load handover checklist"
+        error={handoverError}
+        onRetry={() => {
+          void refetchHandoverSummary();
+        }}
+        icon={IconChecklist}
+      />
+    );
+  }
 
   const outstandingExpenseCount = handoverSummary?.outstanding_expense_count ?? 0;
   const recurringExpenseCount = handoverSummary?.recurring_expense_count ?? 0;
@@ -285,7 +303,12 @@ export function MembersPage() {
     refetch: refetchGroup,
   } = useGroup(activeGroupId ?? '');
   const lifecycleReferenceDate = new Date().toISOString().slice(0, 10);
-  const { data: lifecycle } = useGroupLifecycleSummary(
+  const {
+    data: lifecycle,
+    error: lifecycleError,
+    isError: isLifecycleError,
+    refetch: refetchLifecycle,
+  } = useGroupLifecycleSummary(
     activeGroupId ?? '',
     lifecycleReferenceDate,
   );
@@ -301,14 +324,24 @@ export function MembersPage() {
   const leaveGroupMutation = useLeaveGroup();
   const navigate = useNavigate();
   const transferOwnership = useTransferOwnership(activeGroupId ?? '');
-  const { stats: memberStats } = useMemberMonthlyStats(activeGroupId ?? '');
+  const {
+    stats: memberStats,
+    error: memberStatsError,
+    isError: isMemberStatsError,
+    refetch: refetchMemberStats,
+  } = useMemberMonthlyStats(activeGroupId ?? '');
   const [inviteOpened, { open: openInvite, close: closeInvite }] = useDisclosure(false);
   const [leaveOpened, { open: openLeave, close: closeLeave }] = useDisclosure(false);
   const [transferOpened, { open: openTransfer, close: closeTransfer }] = useDisclosure(false);
   const [transferTarget, setTransferTarget] = useState<{ userId: string; name: string } | null>(null);
 
   // ── Couple linking state ──────────────────────────────────────────────
-  const { data: linkedPairs } = useLinkedPairs(activeGroupId ?? '');
+  const {
+    data: linkedPairs,
+    error: linkedPairsError,
+    isError: isLinkedPairsError,
+    refetch: refetchLinkedPairs,
+  } = useLinkedPairs(activeGroupId ?? '');
   const linkMembersMutation = useLinkMembers(activeGroupId ?? '');
   const unlinkMembersMutation = useUnlinkMembers(activeGroupId ?? '');
   const [linkOpened, { open: openLink, close: closeLink }] = useDisclosure(false);
@@ -719,6 +752,67 @@ export function MembersPage() {
           title="Some member profiles are temporarily unavailable"
         >
           {missingMemberProfileCount} member{missingMemberProfileCount === 1 ? '' : 's'} were hidden because their profile details did not load cleanly. This page now stays up instead of crashing, and you can retry the section once the related user rows are available again.
+        </Alert>
+      )}
+
+      {isLifecycleError && (
+        <QueryErrorState
+          title="Failed to load member lifecycle"
+          error={lifecycleError}
+          onRetry={() => {
+            void refetchLifecycle();
+          }}
+          icon={IconChecklist}
+        />
+      )}
+
+      {isLinkedPairsError && (
+        <Alert
+          color="orange"
+          variant="light"
+          icon={<IconHeartOff size={16} />}
+          title="Couple linking is temporarily unavailable"
+        >
+          <Group justify="space-between" align="center" wrap="wrap">
+            <Text size="sm">
+              Linked balance data did not load cleanly, so link and unlink actions are hidden until this section can be refreshed.
+            </Text>
+            <Button
+              size="compact-xs"
+              variant="light"
+              color="orange"
+              onClick={() => {
+                void refetchLinkedPairs();
+              }}
+            >
+              Retry
+            </Button>
+          </Group>
+        </Alert>
+      )}
+
+      {isMemberStatsError && (
+        <Alert
+          color="orange"
+          variant="light"
+          icon={<IconAlertCircle size={16} />}
+          title="Member activity is temporarily unavailable"
+        >
+          <Group justify="space-between" align="center" wrap="wrap">
+            <Text size="sm">
+              Monthly owed and paid totals did not load cleanly, so activity summaries may be incomplete until this section is refreshed.
+            </Text>
+            <Button
+              size="compact-xs"
+              variant="light"
+              color="orange"
+              onClick={() => {
+                void refetchMemberStats();
+              }}
+            >
+              Retry
+            </Button>
+          </Group>
         </Alert>
       )}
 
@@ -1149,7 +1243,7 @@ export function MembersPage() {
                           </Menu.Item>
                         )}
                         {/* Couple linking actions */}
-                        {member.status === 'active' && !isLinked(member.user_id) && (
+                        {member.status === 'active' && !isLinkedPairsError && !isLinked(member.user_id) && (
                           <Menu.Item
                             leftSection={<IconLink size={14} />}
                             onClick={() => {
@@ -1160,7 +1254,7 @@ export function MembersPage() {
                             Link as couple
                           </Menu.Item>
                         )}
-                        {member.status === 'active' && isLinked(member.user_id) && member.linked_partner_id && (
+                        {member.status === 'active' && !isLinkedPairsError && isLinked(member.user_id) && member.linked_partner_id && (
                           <Menu.Item
                             leftSection={<IconHeartOff size={14} />}
                             color="orange"
@@ -1215,6 +1309,13 @@ export function MembersPage() {
               {/* Financial summary — only for active members */}
               {member.status === 'active' && (() => {
                 const stat = memberStats.get(member.user_id);
+                if (isMemberStatsError) {
+                  return (
+                    <Text size="xs" c="dimmed" mt="sm">
+                      Member activity unavailable
+                    </Text>
+                  );
+                }
                 if (!stat || stat.totalOwed === 0) {
                   return (
                     <Text size="xs" c="dimmed" mt="sm">

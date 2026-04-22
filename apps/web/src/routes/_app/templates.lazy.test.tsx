@@ -83,4 +83,53 @@ describe('TemplatesPage', () => {
     expect(screen.getByText(/failed to load templates/i)).toBeInTheDocument();
     expect(screen.getByText(/templates failed/i)).toBeInTheDocument();
   });
+
+  it('keeps rendering when a selected template member row is missing nested user details', () => {
+    useGroupResultMock = {
+      data: {
+        members: [
+          {
+            id: 'member-1',
+            user_id: 'user-1',
+            status: 'active',
+            user: { id: 'user-1', name: 'August Usedem' },
+          },
+          {
+            id: 'member-2',
+            user_id: 'user-2',
+            status: 'active',
+            user: null,
+          },
+        ],
+      },
+      error: null,
+      isError: false,
+      refetch: refetchGroupMock,
+    };
+    useTemplatesResultMock = {
+      data: [
+        {
+          id: 'template-1',
+          name: 'Couple split',
+          split_method: 'custom',
+          participants: [{ user_id: 'user-2' }],
+          participant_ids: ['user-2'],
+          percentages: {},
+          custom_amounts: { 'user-2': 42 },
+        },
+      ],
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: refetchTemplatesMock,
+    };
+
+    render(
+      <MantineProvider>
+        <TemplatesPage />
+      </MantineProvider>,
+    );
+
+    expect(screen.getByText('Couple split')).toBeInTheDocument();
+  });
 });

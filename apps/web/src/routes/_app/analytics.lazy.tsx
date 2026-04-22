@@ -16,6 +16,7 @@ import { notifications } from '@mantine/notifications';
 import {
   IconArrowDownRight,
   IconArrowUpRight,
+  IconBriefcase,
   IconChartBar,
   IconClockCheck,
   IconDownload,
@@ -39,6 +40,7 @@ import { getWorkspaceBillingSummary } from '../../hooks/use-dashboard';
 import { useWorkspaceBilling } from '../../hooks/use-workspace-billing';
 import { useDeferredSection } from '../../hooks/use-deferred-section';
 import { PageHeader } from '../../components/page-header';
+import { QueryErrorState } from '../../components/query-error-state';
 
 export const Route = createLazyFileRoute('/_app/analytics')({
   component: AnalyticsPage,
@@ -142,11 +144,22 @@ export function AnalyticsPage() {
   const { activeGroupId } = useGroupStore();
   const { user } = useAuthStore();
   const { isLoading: subLoading, isError: subError, fetchStatus: subFetchStatus } = useSubscription(user?.id ?? '');
-  const { canAccessAnalytics, isLoading: planLoading } = usePlanLimits(user?.id ?? '');
+  const {
+    canAccessAnalytics,
+    isLoading: planLoading,
+    isError: isPlanLimitsError,
+    error: planLimitsError,
+    refetch: refetchPlanLimits,
+  } = usePlanLimits(user?.id ?? '');
   const { data: group } = useGroupSummary(activeGroupId ?? '');
   const { data: analytics, isLoading: analyticsLoading, isError: analyticsError, fetchStatus: analyticsFetchStatus } = useAnalytics(activeGroupId ?? '');
   const workspaceBillingGroupId = group?.type === 'workspace' ? activeGroupId ?? '' : '';
-  const { data: workspaceBilling } = useWorkspaceBilling(workspaceBillingGroupId);
+  const {
+    data: workspaceBilling,
+    error: workspaceBillingError,
+    isError: isWorkspaceBillingError,
+    refetch: refetchWorkspaceBilling,
+  } = useWorkspaceBilling(workspaceBillingGroupId);
   const colorScheme = useComputedColorScheme('light');
   const [exportingWorkspacePack, setExportingWorkspacePack] = useState(false);
   const spendingTrend = analytics?.spendingTrend ?? [];
@@ -242,6 +255,19 @@ export function AnalyticsPage() {
           </Stack>
         </Paper>
       </Stack>
+    );
+  }
+
+  if (isPlanLimitsError) {
+    return (
+      <QueryErrorState
+        title="Failed to load analytics access"
+        error={planLimitsError}
+        onRetry={() => {
+          void refetchPlanLimits();
+        }}
+        icon={IconChartBar}
+      />
     );
   }
 
@@ -401,7 +427,7 @@ export function AnalyticsPage() {
         </Paper>
       </SimpleGrid>
 
-      {showWorkspaceBillingWatch && (
+      {(showWorkspaceBillingWatch || isWorkspaceBillingError) && (
         <Paper className="commune-soft-panel" p="xl">
           <Group justify="space-between" align="flex-start" mb="md">
             <div>
@@ -434,6 +460,16 @@ export function AnalyticsPage() {
             </Group>
           </Group>
 
+          {isWorkspaceBillingError ? (
+            <QueryErrorState
+              title="Failed to load workspace billing"
+              error={workspaceBillingError}
+              onRetry={() => {
+                void refetchWorkspaceBilling();
+              }}
+              icon={IconBriefcase}
+            />
+          ) : (
           <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
             <Paper className="commune-stat-card" p="md" radius="lg">
               <Text size="xs" c="dimmed">Tracked bills</Text>
@@ -477,6 +513,7 @@ export function AnalyticsPage() {
               </Text>
             </Paper>
           </SimpleGrid>
+          )}
 
           <Stack gap="sm" mt="lg">
             {workspaceBillingSummary.nextDueBill && (

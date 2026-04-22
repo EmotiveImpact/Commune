@@ -4,6 +4,9 @@ import { vi } from 'vitest';
 import { GroupHubPage } from './index.lazy';
 
 const refetchHubMock = vi.fn();
+const refetchSettlementMock = vi.fn();
+const refetchActivityMock = vi.fn();
+const refetchMemoriesMock = vi.fn();
 
 let hubMock: any = {
   group: {
@@ -50,6 +53,25 @@ let useGroupHubResultMock: any = {
   error: null,
   refetch: refetchHubMock,
 };
+let useGroupSettlementResultMock: any = {
+  data: { transactions: [] },
+  isError: false,
+  error: null,
+  refetch: refetchSettlementMock,
+};
+let useActivityLogResultMock: any = {
+  data: [],
+  isError: false,
+  error: null,
+  refetch: refetchActivityMock,
+};
+let useMemoriesResultMock: any = {
+  data: [],
+  isLoading: false,
+  isError: false,
+  error: null,
+  refetch: refetchMemoriesMock,
+};
 
 vi.mock('@tanstack/react-router', () => ({
   createLazyFileRoute: () => (config: Record<string, unknown>) => ({
@@ -68,22 +90,15 @@ vi.mock('../../../../hooks/use-group-hub', () => ({
 }));
 
 vi.mock('../../../../hooks/use-settlement', () => ({
-  useGroupSettlement: () => ({
-    data: { transactions: [] },
-  }),
+  useGroupSettlement: () => useGroupSettlementResultMock,
 }));
 
 vi.mock('../../../../hooks/use-activity', () => ({
-  useActivityLog: () => ({
-    data: [],
-  }),
+  useActivityLog: () => useActivityLogResultMock,
 }));
 
 vi.mock('../../../../hooks/use-memories', () => ({
-  useMemories: () => ({
-    data: [],
-    isLoading: false,
-  }),
+  useMemories: () => useMemoriesResultMock,
   useAddMemory: () => ({
     mutateAsync: vi.fn(),
     isPending: false,
@@ -115,6 +130,9 @@ vi.mock('@mantine/notifications', () => ({
 describe('GroupHubPage', () => {
   beforeEach(() => {
     refetchHubMock.mockReset();
+    refetchSettlementMock.mockReset();
+    refetchActivityMock.mockReset();
+    refetchMemoriesMock.mockReset();
     hubMock = {
       group: {
         id: 'group-1',
@@ -158,6 +176,25 @@ describe('GroupHubPage', () => {
       isError: false,
       error: null,
       refetch: refetchHubMock,
+    };
+    useGroupSettlementResultMock = {
+      data: { transactions: [] },
+      isError: false,
+      error: null,
+      refetch: refetchSettlementMock,
+    };
+    useActivityLogResultMock = {
+      data: [],
+      isError: false,
+      error: null,
+      refetch: refetchActivityMock,
+    };
+    useMemoriesResultMock = {
+      data: [],
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: refetchMemoriesMock,
     };
   });
 
@@ -217,5 +254,25 @@ describe('GroupHubPage', () => {
     expect(screen.getByText(/were hidden because their profile details did not load cleanly/i)).toBeInTheDocument();
     expect(screen.getByText('August Usedem')).toBeInTheDocument();
     expect(screen.queryByText('Unknown')).not.toBeInTheDocument();
+  });
+
+  it('shows a retry state when the memories query fails', () => {
+    useMemoriesResultMock = {
+      data: undefined,
+      isLoading: false,
+      isError: true,
+      error: new Error('Memories failed'),
+      refetch: refetchMemoriesMock,
+    };
+
+    render(
+      <MantineProvider>
+        <GroupHubPage />
+      </MantineProvider>,
+    );
+
+    expect(screen.getByText(/failed to load memories/i)).toBeInTheDocument();
+    expect(screen.getByText(/memories failed/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /try again/i })).toBeInTheDocument();
   });
 });

@@ -31,7 +31,12 @@ export function NotificationDropdown() {
   const [opened, setOpened] = useState(false);
   const [summaryEnabled, setSummaryEnabled] = useState(false);
   const hoverTimeoutRef = useRef<number | null>(null);
-  const { data: summary } = useNotificationSummary({ enabled: summaryEnabled });
+  const {
+    data: summary,
+    isError: isSummaryError,
+    error: summaryError,
+    refetch: refetchSummary,
+  } = useNotificationSummary({ enabled: summaryEnabled });
   const {
     data: notifications = [],
     isLoading,
@@ -106,9 +111,9 @@ export function NotificationDropdown() {
       <Menu.Target>
         <Indicator
           size={18}
-          label={unreadCount > 0 ? String(Math.min(unreadCount, 9)) : undefined}
-          disabled={unreadCount === 0}
-          color="red"
+          label={unreadCount > 0 ? String(Math.min(unreadCount, 9)) : isSummaryError ? '!' : undefined}
+          disabled={unreadCount === 0 && !isSummaryError}
+          color={isSummaryError ? 'orange' : 'red'}
           offset={4}
         >
           <ActionIcon
@@ -146,6 +151,26 @@ export function NotificationDropdown() {
               )}
             </Group>
           </Group>
+          {isSummaryError && (
+            <Stack gap={2} mt="xs">
+              <Text size="xs" fw={600}>
+                Failed to load unread count
+              </Text>
+              <Text size="xs" c="dimmed">
+                {summaryError instanceof Error ? summaryError.message : 'Try again in a moment.'}
+              </Text>
+              <UnstyledButton
+                onClick={() => {
+                  enableSummary();
+                  void refetchSummary();
+                }}
+              >
+                <Text size="xs" c="commune" fw={600}>
+                  Retry unread count
+                </Text>
+              </UnstyledButton>
+            </Stack>
+          )}
         </Menu.Label>
 
         {opened && isLoading ? (

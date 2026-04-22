@@ -189,7 +189,12 @@ function ActivityPage() {
 
   const { activeGroupId } = useGroupStore();
   const { user } = useAuthStore();
-  const { canExport } = usePlanLimits(user?.id ?? '');
+  const {
+    canExport,
+    error: planLimitsError,
+    isError: isPlanLimitsError,
+    refetch: refetchPlanLimits,
+  } = usePlanLimits(user?.id ?? '');
   const { data: groupSummary, isLoading: groupSummaryLoading } = useGroupSummary(activeGroupId ?? '');
   const {
     ref: membersRef,
@@ -322,7 +327,17 @@ function ActivityPage() {
         title="Activity"
         subtitle={`Everything that happened in ${group?.name ?? 'this group'}`}
       >
-        {canExport ? (
+        {isPlanLimitsError ? (
+          <Button
+            variant="default"
+            leftSection={<IconDownload size={16} />}
+            onClick={() => {
+              void refetchPlanLimits();
+            }}
+          >
+            Retry export access
+          </Button>
+        ) : canExport ? (
           <Button
             variant="default"
             leftSection={<IconDownload size={16} />}
@@ -361,6 +376,17 @@ function ActivityPage() {
           </Tooltip>
         )}
       </PageHeader>
+
+      {isPlanLimitsError && (
+        <QueryErrorState
+          title="Failed to load export access"
+          error={planLimitsError}
+          onRetry={() => {
+            void refetchPlanLimits();
+          }}
+          icon={IconDownload}
+        />
+      )}
 
       <div className="commune-filter-chips">
         {filterChips.map((chip) => (
