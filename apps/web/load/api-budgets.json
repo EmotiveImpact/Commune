@@ -13,10 +13,22 @@
           "maxErrorRate": 0.1
         },
         {
+          "name": "group-summaries-shell",
+          "type": "rpc",
+          "rpc": "fn_get_user_group_summaries",
+          "body": {},
+          "concurrency": 4,
+          "requests": 16,
+          "budgetMsP95": 1800,
+          "maxErrorRate": 0.1,
+          "requiresAuth": true
+        },
+        {
           "name": "signed-in-bootstrap",
           "type": "rpc",
           "rpc": "fn_get_signed_in_bootstrap",
           "body": {
+            "p_active_group_id": "$resolvedGroupId",
             "p_include_dashboard_summary": false
           },
           "concurrency": 4,
@@ -172,10 +184,22 @@
           "maxErrorRate": 0.05
         },
         {
+          "name": "group-summaries-shell",
+          "type": "rpc",
+          "rpc": "fn_get_user_group_summaries",
+          "body": {},
+          "concurrency": 6,
+          "requests": 24,
+          "budgetMsP95": 1000,
+          "maxErrorRate": 0.05,
+          "requiresAuth": true
+        },
+        {
           "name": "signed-in-bootstrap",
           "type": "rpc",
           "rpc": "fn_get_signed_in_bootstrap",
           "body": {
+            "p_active_group_id": "$resolvedGroupId",
             "p_include_dashboard_summary": false
           },
           "concurrency": 6,
@@ -331,10 +355,22 @@
           "maxErrorRate": 0.1
         },
         {
+          "name": "group-summaries-shell",
+          "type": "rpc",
+          "rpc": "fn_get_user_group_summaries",
+          "body": {},
+          "concurrency": 16,
+          "requests": 96,
+          "budgetMsP95": 1600,
+          "maxErrorRate": 0.1,
+          "requiresAuth": true
+        },
+        {
           "name": "signed-in-bootstrap",
           "type": "rpc",
           "rpc": "fn_get_signed_in_bootstrap",
           "body": {
+            "p_active_group_id": "$resolvedGroupId",
             "p_include_dashboard_summary": false
           },
           "concurrency": 16,
