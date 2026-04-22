@@ -15,7 +15,7 @@ import { useForm, schemaResolver } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
 import { z } from 'zod';
 import { signInWithEmail, signInWithGoogle } from '@commune/api';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 export const Route = createLazyFileRoute('/_auth/login')({
   component: LoginPage,
@@ -30,6 +30,34 @@ type LoginValues = z.infer<typeof loginSchema>;
 
 function LoginPage() {
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const idleWindow = window as Window & {
+      requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number;
+      cancelIdleCallback?: (handle: number) => void;
+    };
+
+    const preload = () => {
+      void import('../_app.lazy');
+      void import('../_app/index.lazy');
+    };
+
+    if (idleWindow.requestIdleCallback) {
+      const handle = idleWindow.requestIdleCallback(preload, { timeout: 600 });
+      return () => {
+        idleWindow.cancelIdleCallback?.(handle);
+      };
+    }
+
+    const timeoutHandle = window.setTimeout(preload, 0);
+    return () => {
+      window.clearTimeout(timeoutHandle);
+    };
+  }, []);
 
   const form = useForm<LoginValues>({
     mode: 'uncontrolled',
