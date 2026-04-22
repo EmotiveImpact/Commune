@@ -34,8 +34,13 @@ declare global {
 }
 
 const env = import.meta.env as Record<string, string | boolean | undefined>;
+const LOCAL_OBSERVABILITY_HOSTS = new Set(['localhost', '127.0.0.1']);
+const HOSTNAME_OBSERVABILITY_ENABLED =
+  typeof window !== 'undefined' && LOCAL_OBSERVABILITY_HOSTS.has(window.location.hostname);
 const OBSERVABILITY_ENABLED =
-  import.meta.env.DEV || env.VITE_ENABLE_WEB_OBSERVABILITY === 'true';
+  import.meta.env.DEV ||
+  env.VITE_ENABLE_WEB_OBSERVABILITY === 'true' ||
+  HOSTNAME_OBSERVABILITY_ENABLED;
 const API_SLOW_MS = Number(env.VITE_API_SLOW_MS ?? 800);
 const ROUTE_SLOW_MS = Number(env.VITE_ROUTE_SLOW_MS ?? 250);
 const QUERY_SLOW_MS = Number(env.VITE_QUERY_SLOW_MS ?? 600);

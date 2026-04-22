@@ -200,12 +200,12 @@ async function waitForScenarioSettled(page, expectedPath, timeoutMs, getActiveRe
 
   if (typeof getActiveRequestCount === 'function') {
     await waitForRequestDrain(page, getActiveRequestCount, timeoutMs);
-  }
-
-  try {
-    await page.waitForLoadState('networkidle', { timeout: 5_000 });
-  } catch {
-    // Some environments keep background connections open.
+  } else {
+    try {
+      await page.waitForLoadState('networkidle', { timeout: 5_000 });
+    } catch {
+      // Some environments keep background connections open.
+    }
   }
 
   await page.waitForTimeout(500);

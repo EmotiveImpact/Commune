@@ -4,7 +4,7 @@ import { useGroupStore } from '../stores/group';
 
 export function useGroupBootstrap() {
   const { data: groups, isLoading } = useUserGroupSummaries();
-  const { activeGroupId, hydrated, setActiveGroupId } = useGroupStore();
+  const { activeGroupId, setActiveGroupId } = useGroupStore();
 
   const resolvedActiveGroupId = useMemo(() => {
     if (!groups?.length) {
@@ -19,7 +19,7 @@ export function useGroupBootstrap() {
   }, [activeGroupId, groups]);
 
   useEffect(() => {
-    if (!hydrated || isLoading) {
+    if (isLoading) {
       return;
     }
 
@@ -36,7 +36,6 @@ export function useGroupBootstrap() {
   }, [
     activeGroupId,
     groups,
-    hydrated,
     isLoading,
     resolvedActiveGroupId,
     setActiveGroupId,
@@ -45,6 +44,6 @@ export function useGroupBootstrap() {
   return {
     groups,
     activeGroupId: resolvedActiveGroupId,
-    isLoading: !hydrated || isLoading,
+    isLoading,
   };
 }

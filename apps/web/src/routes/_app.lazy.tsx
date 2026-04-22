@@ -26,7 +26,7 @@ function ProtectedLayout() {
     select: (state) => state.location.pathname,
   });
   const { user, isAuthenticated, isLoading: authLoading } = useAuthStore();
-  const { activeGroupId, hydrated } = useGroupStore();
+  const { activeGroupId } = useGroupStore();
   const currentMonth = getMonthKey();
   const includeDashboardSummary = pathname === '/';
   const { data: bootstrap, isLoading: bootstrapLoading } = useSignedInBootstrap(
@@ -45,7 +45,7 @@ function ProtectedLayout() {
     void router.navigate({ to: '/login', replace: true });
   }, [authLoading, isAuthenticated, router]);
 
-  if (authLoading || !hydrated || !isAuthenticated || (!!user && bootstrapLoading)) {
+  if (authLoading || !isAuthenticated || (!!user && bootstrapLoading)) {
     return null;
   }
 

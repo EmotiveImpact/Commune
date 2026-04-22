@@ -35,6 +35,12 @@ export function useSignedInBootstrap(
       queryClient.setQueryData(subscriptionKeys.detail(userId), data.subscription);
       queryClient.setQueryData(groupKeys.summariesByUser(userId), data.groups);
       queryClient.setQueryData(shellKey, shellData);
+      if (includeDashboardSummary && data.resolved_group_id) {
+        queryClient.setQueryData(
+          signedInBootstrapKeys.dashboard(userId, data.resolved_group_id, month),
+          data,
+        );
+      }
       if (data.resolved_group_id && data.dashboard_summary) {
         queryClient.setQueryData(
           dashboardKeys.feed(data.resolved_group_id, month),
