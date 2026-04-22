@@ -7,6 +7,7 @@ import { EditGroupPage } from './$groupId.edit.lazy';
 const navigateMock = vi.fn();
 const updateGroupMutateAsyncMock = vi.fn();
 const notificationsShowMock = vi.fn();
+const refetchGroupMock = vi.fn();
 
 let groupMock: any = {
   id: 'group-1',
@@ -33,6 +34,13 @@ let groupMock: any = {
     },
   ],
 };
+let useGroupResultMock: any = {
+  data: groupMock,
+  isLoading: false,
+  isError: false,
+  error: null,
+  refetch: refetchGroupMock,
+};
 
 vi.mock('@tanstack/react-router', () => ({
   createLazyFileRoute: () => (config: Record<string, unknown>) => ({
@@ -44,10 +52,7 @@ vi.mock('@tanstack/react-router', () => ({
 }));
 
 vi.mock('../../../hooks/use-groups', () => ({
-  useGroup: () => ({
-    data: groupMock,
-    isLoading: false,
-  }),
+  useGroup: () => useGroupResultMock,
   useUpdateGroup: () => ({
     mutateAsync: updateGroupMutateAsyncMock,
     isPending: false,
@@ -88,6 +93,7 @@ describe('EditGroupPage', () => {
     navigateMock.mockReset();
     updateGroupMutateAsyncMock.mockReset();
     notificationsShowMock.mockReset();
+    refetchGroupMock.mockReset();
     groupMock = {
       id: 'group-1',
       name: 'Foundry House',
@@ -112,6 +118,13 @@ describe('EditGroupPage', () => {
           user: { id: 'user-1', name: 'August Usedem', email: 'august@example.com' },
         },
       ],
+    };
+    useGroupResultMock = {
+      data: groupMock,
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: refetchGroupMock,
     };
   });
 
@@ -169,6 +182,13 @@ describe('EditGroupPage', () => {
       subtype: 'team',
       approval_threshold: 100,
     };
+    useGroupResultMock = {
+      data: groupMock,
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: refetchGroupMock,
+    };
 
     render(
       <MantineProvider>
@@ -192,6 +212,13 @@ describe('EditGroupPage', () => {
       type: 'workspace',
       subtype: 'team',
       approval_threshold: 100,
+    };
+    useGroupResultMock = {
+      data: groupMock,
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: refetchGroupMock,
     };
     updateGroupMutateAsyncMock.mockResolvedValue({});
 
@@ -222,4 +249,24 @@ describe('EditGroupPage', () => {
       );
     });
   }, 10000);
+
+  it('shows a retry state when the group query fails', () => {
+    useGroupResultMock = {
+      data: undefined,
+      isLoading: false,
+      isError: true,
+      error: new Error('Group fetch failed'),
+      refetch: refetchGroupMock,
+    };
+
+    render(
+      <MantineProvider>
+        <EditGroupPage />
+      </MantineProvider>,
+    );
+
+    expect(screen.getByText(/failed to load group settings/i)).toBeInTheDocument();
+    expect(screen.getByText(/group fetch failed/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /try again/i })).toBeInTheDocument();
+  });
 });

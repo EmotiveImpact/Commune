@@ -6,6 +6,29 @@ import { ExpenseDetailPage } from './$expenseId.lazy';
 
 const useExpenseDetailMock = vi.hoisted(() => vi.fn());
 const usePaymentMethodsMock = vi.hoisted(() => vi.fn());
+const refetchGroupMock = vi.hoisted(() => vi.fn());
+let useGroupResultMock: any = {
+  data: {
+    id: 'group-1',
+    name: 'North Dock Workspace',
+    type: 'workspace',
+    subtype: 'coworking',
+    currency: 'GBP',
+    approval_threshold: 100,
+    members: [
+      {
+        id: 'member-1',
+        user_id: 'user-1',
+        role: 'admin',
+        status: 'active',
+        user: { id: 'user-1', name: 'August Usedem', avatar_url: null },
+      },
+    ],
+  },
+  isError: false,
+  error: null,
+  refetch: refetchGroupMock,
+};
 
 vi.mock('@tanstack/react-router', () => ({
   createLazyFileRoute: () => (config: Record<string, unknown>) => ({
@@ -17,26 +40,7 @@ vi.mock('@tanstack/react-router', () => ({
 }));
 
 vi.mock('../../../hooks/use-groups', () => ({
-  useGroup: () => ({
-    data: {
-      id: 'group-1',
-      name: 'North Dock Workspace',
-      type: 'workspace',
-      subtype: 'coworking',
-      currency: 'GBP',
-      approval_threshold: 100,
-      members: [
-        {
-          id: 'member-1',
-          user_id: 'user-1',
-          role: 'admin',
-          status: 'active',
-          user: { id: 'user-1', name: 'August Usedem', avatar_url: null },
-        },
-      ],
-    },
-    isLoading: false,
-  }),
+  useGroup: () => useGroupResultMock,
 }));
 
 vi.mock('../../../hooks/use-expenses', async () => {
@@ -103,6 +107,29 @@ function renderPage() {
 
 describe('ExpenseDetailPage', () => {
   beforeEach(() => {
+    refetchGroupMock.mockReset();
+    useGroupResultMock = {
+      data: {
+        id: 'group-1',
+        name: 'North Dock Workspace',
+        type: 'workspace',
+        subtype: 'coworking',
+        currency: 'GBP',
+        approval_threshold: 100,
+        members: [
+          {
+            id: 'member-1',
+            user_id: 'user-1',
+            role: 'admin',
+            status: 'active',
+            user: { id: 'user-1', name: 'August Usedem', avatar_url: null },
+          },
+        ],
+      },
+      isError: false,
+      error: null,
+      refetch: refetchGroupMock,
+    };
     useExpenseDetailMock.mockReturnValue({
       id: 'expense-1',
       title: 'Desk chairs',
@@ -195,5 +222,20 @@ describe('ExpenseDetailPage', () => {
     expect(screen.queryByLabelText(/mark alice as paid/i)).not.toBeInTheDocument();
     expect(screen.queryByLabelText(/pay officeco via/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/pay officeco's share directly/i)).not.toBeInTheDocument();
+  });
+
+  it('shows a retry state when the group query fails', () => {
+    useGroupResultMock = {
+      data: undefined,
+      isError: true,
+      error: new Error('Group fetch failed'),
+      refetch: refetchGroupMock,
+    };
+
+    renderPage();
+
+    expect(screen.getByText(/failed to load expense details/i)).toBeInTheDocument();
+    expect(screen.getByText(/group fetch failed/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /try again/i })).toBeInTheDocument();
   });
 });

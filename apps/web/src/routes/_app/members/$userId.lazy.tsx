@@ -43,6 +43,7 @@ import { useGroup } from '../../../hooks/use-groups';
 import { useAuthStore } from '../../../stores/auth';
 import { ContentSkeleton } from '../../../components/page-skeleton';
 import { EmptyState } from '../../../components/empty-state';
+import { QueryErrorState } from '../../../components/query-error-state';
 
 export const Route = createLazyFileRoute('/_app/members/$userId')({
   component: MemberProfilePage,
@@ -67,7 +68,12 @@ function formatCategoryLabel(category: string) {
 function MemberProfilePage() {
   const { userId } = Route.useParams();
   const { activeGroupId } = useGroupStore();
-  const { data: group } = useGroup(activeGroupId ?? '');
+  const {
+    data: group,
+    error: groupError,
+    isError: isGroupError,
+    refetch: refetchGroup,
+  } = useGroup(activeGroupId ?? '');
   const { user: currentUser } = useAuthStore();
   const { data: profile, isLoading } = useMemberProfile(userId, activeGroupId ?? '');
   const { data: settlement } = useGroupSettlement(activeGroupId ?? '');
@@ -91,6 +97,20 @@ function MemberProfilePage() {
 
   if (isLoading) {
     return <ContentSkeleton />;
+  }
+
+  if (isGroupError) {
+    return (
+      <QueryErrorState
+        title="Failed to load member profile"
+        error={groupError}
+        onRetry={() => {
+          void refetchGroup();
+        }}
+        icon={IconUsersGroup}
+        iconColor="gray"
+      />
+    );
   }
 
   if (!profile || !profile.user) {
@@ -120,7 +140,13 @@ function MemberProfilePage() {
     ?.find((t: any) => t.fromUserId === currentUser?.id && t.toUserId === userId);
   const defaultPaymentMethod = paymentMethods.find((m: any) => m.is_default) ?? paymentMethods[0];
   const quickPayUrl = currentUserOwesThisMember && defaultPaymentMethod?.payment_link
-    ? buildPaymentUrl({ provider: defaultPaymentMethod.provider, link: defaultPaymentMethod.payment_link })
+    ? buildPaymentUrl({
+        // `payment_methods.provider` is stored as a free-form string; the
+        // buildPaymentUrl helper narrows to `PaymentProvider` internally and
+        // returns null for unknown providers, so the cast is safe.
+        provider: defaultPaymentMethod.provider as PaymentProvider,
+        link: defaultPaymentMethod.payment_link,
+      })
     : null;
   const isOwner = group?.owner_id === userId;
 
@@ -132,10 +158,14 @@ function MemberProfilePage() {
         ? 'yellow'
         : 'gray';
 
+  // Fall back to `joined_at` (the actual column name) when the scheduled
+  // effective date isn't set. Previously read a non-existent `created_at`
+  // field, which silently always evaluated to `undefined` and left the
+  // "joined" card blank for every member that hadn't been scheduled to start.
   const joinedDate = membership?.effective_from
     ? new Date(membership.effective_from + 'T00:00:00')
-    : membership?.created_at
-      ? new Date(membership.created_at)
+    : membership?.joined_at
+      ? new Date(membership.joined_at)
       : null;
 
   return (
@@ -159,7 +189,7 @@ function MemberProfilePage() {
         <Group gap="lg" align="flex-start">
           <Avatar
             src={user.avatar_url}
-            name={user.name}
+            name={user.name ?? undefined}
             color="initials"
             size={80}
             radius="xl"

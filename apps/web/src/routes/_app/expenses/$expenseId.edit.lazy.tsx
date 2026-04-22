@@ -13,6 +13,7 @@ import {
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
+import { IconFileAlert } from '@tabler/icons-react';
 import { useEffect, useState } from 'react';
 import { ExpenseCategory } from '@commune/types';
 import { uploadReceipt } from '@commune/api';
@@ -29,6 +30,7 @@ import { ExpenseFormSkeleton } from '../../../components/page-skeleton';
 import { EmptyState } from '../../../components/empty-state';
 import { PageHeader } from '../../../components/page-header';
 import { ReceiptDropzone } from '../../../components/receipt-dropzone';
+import { QueryErrorState } from '../../../components/query-error-state';
 
 export const Route = createLazyFileRoute('/_app/expenses/$expenseId/edit')({
   component: EditExpensePage,
@@ -42,7 +44,12 @@ const categoryOptions = Object.entries(ExpenseCategory).map(([key, value]) => ({
 export function EditExpensePage() {
   const { expenseId } = Route.useParams();
   const { activeGroupId } = useGroupStore();
-  const { data: group } = useGroup(activeGroupId ?? '');
+  const {
+    data: group,
+    error: groupError,
+    isError: isGroupError,
+    refetch: refetchGroup,
+  } = useGroup(activeGroupId ?? '');
   const { data: expense, isLoading } = useExpenseDetail(expenseId);
   const updateExpense = useUpdateExpense(activeGroupId ?? '');
   const { user } = useAuthStore();
@@ -90,6 +97,19 @@ export function EditExpensePage() {
 
   if (isLoading) {
     return <ExpenseFormSkeleton />;
+  }
+
+  if (isGroupError) {
+    return (
+      <QueryErrorState
+        title="Failed to load expense editor"
+        error={groupError}
+        onRetry={() => {
+          void refetchGroup();
+        }}
+        icon={IconFileAlert}
+      />
+    );
   }
 
   if (!expense) {

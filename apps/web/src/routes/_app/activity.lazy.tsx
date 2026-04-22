@@ -47,6 +47,7 @@ import { useDeferredSection } from '../../hooks/use-deferred-section';
 import { ActivitySkeleton } from '../../components/page-skeleton';
 import { EmptyState } from '../../components/empty-state';
 import { PageHeader } from '../../components/page-header';
+import { QueryErrorState } from '../../components/query-error-state';
 
 export const Route = createLazyFileRoute('/_app/activity')({
   component: ActivityPage,
@@ -206,7 +207,12 @@ function ActivityPage() {
     rootMargin: '120px',
     revealOnIdle: false,
   });
-  const { data: group } = useGroup(membersReady ? activeGroupId ?? '' : '');
+  const {
+    data: group,
+    error: groupError,
+    isError: isGroupError,
+    refetch: refetchGroup,
+  } = useGroup(membersReady ? activeGroupId ?? '' : '');
   const workspaceExpenseGroupId =
     groupSummary?.type === 'workspace' && billingWatchReady ? activeGroupId ?? '' : '';
   const { data: workspaceBillingSnapshot = null } = useWorkspaceBillingExpenseFeed(workspaceExpenseGroupId);
@@ -287,6 +293,19 @@ function ActivityPage() {
 
   if (isLoading || groupSummaryLoading) {
     return <ActivitySkeleton />;
+  }
+
+  if (membersReady && isGroupError) {
+    return (
+      <QueryErrorState
+        title="Failed to load activity"
+        error={groupError}
+        onRetry={() => {
+          void refetchGroup();
+        }}
+        icon={IconHistory}
+      />
+    );
   }
 
   const filterChips: { key: TypeFilter; label: string }[] = [
@@ -405,6 +424,7 @@ function ActivityPage() {
               ) : (
                 (group?.members ?? [])
                   .filter((m: any) => m.status === 'active')
+                  .filter((m: any) => Boolean(m.user))
                   .slice(0, 6)
                   .map((m: any) => (
                     <Group key={m.user_id} gap="xs">

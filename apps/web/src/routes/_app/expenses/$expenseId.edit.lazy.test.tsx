@@ -6,6 +6,28 @@ import { EditExpensePage } from './$expenseId.edit.lazy';
 
 const navigateMock = vi.fn();
 const updateExpenseMutateAsyncMock = vi.fn();
+const refetchGroupMock = vi.fn();
+let useGroupResultMock: any = {
+  data: {
+    id: 'group-1',
+    name: 'North Dock Workspace',
+    type: 'workspace',
+    subtype: 'coworking',
+    currency: 'GBP',
+    members: [
+      {
+        id: 'member-1',
+        user_id: 'user-1',
+        role: 'admin',
+        status: 'active',
+        user: { id: 'user-1', name: 'August Usedem', email: 'august@example.com' },
+      },
+    ],
+  },
+  isError: false,
+  error: null,
+  refetch: refetchGroupMock,
+};
 
 vi.mock('@tanstack/react-router', () => ({
   createLazyFileRoute: () => (config: Record<string, unknown>) => ({
@@ -16,25 +38,7 @@ vi.mock('@tanstack/react-router', () => ({
 }));
 
 vi.mock('../../../hooks/use-groups', () => ({
-  useGroup: () => ({
-    data: {
-      id: 'group-1',
-      name: 'North Dock Workspace',
-      type: 'workspace',
-      subtype: 'coworking',
-      currency: 'GBP',
-      members: [
-        {
-          id: 'member-1',
-          user_id: 'user-1',
-          role: 'admin',
-          status: 'active',
-          user: { id: 'user-1', name: 'August Usedem', email: 'august@example.com' },
-        },
-      ],
-    },
-    isLoading: false,
-  }),
+  useGroup: () => useGroupResultMock,
 }));
 
 vi.mock('../../../hooks/use-expenses', () => ({
@@ -83,6 +87,28 @@ describe('EditExpensePage', () => {
   beforeEach(() => {
     navigateMock.mockReset();
     updateExpenseMutateAsyncMock.mockReset();
+    refetchGroupMock.mockReset();
+    useGroupResultMock = {
+      data: {
+        id: 'group-1',
+        name: 'North Dock Workspace',
+        type: 'workspace',
+        subtype: 'coworking',
+        currency: 'GBP',
+        members: [
+          {
+            id: 'member-1',
+            user_id: 'user-1',
+            role: 'admin',
+            status: 'active',
+            user: { id: 'user-1', name: 'August Usedem', email: 'august@example.com' },
+          },
+        ],
+      },
+      isError: false,
+      error: null,
+      refetch: refetchGroupMock,
+    };
   });
 
   it('prefills and saves workspace vendor and invoice context', async () => {
@@ -118,4 +144,23 @@ describe('EditExpensePage', () => {
 
     expect(navigateMock).toHaveBeenCalledWith({ to: '/expenses/expense-1' });
   }, 10000);
+
+  it('shows a retry state when the group query fails', () => {
+    useGroupResultMock = {
+      data: undefined,
+      isError: true,
+      error: new Error('Group fetch failed'),
+      refetch: refetchGroupMock,
+    };
+
+    render(
+      <MantineProvider>
+        <EditExpensePage />
+      </MantineProvider>,
+    );
+
+    expect(screen.getByText(/failed to load expense editor/i)).toBeInTheDocument();
+    expect(screen.getByText(/group fetch failed/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /try again/i })).toBeInTheDocument();
+  });
 });

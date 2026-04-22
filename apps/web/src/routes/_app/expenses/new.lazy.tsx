@@ -24,10 +24,12 @@ import { useMemo, useState, useEffect, useRef } from 'react';
 import { IconCamera, IconFileAlert } from '@tabler/icons-react';
 import { usePlanLimits } from '../../../hooks/use-plan-limits';
 import {
+  calculateCustomSplit,
   calculateEqualSplit,
   calculatePercentageSplit,
   getCategoriesByGroupType,
   getSpacePreset,
+  toSharePercentages,
 } from '@commune/core';
 import { formatCurrency } from '@commune/utils';
 import { uploadReceipt } from '@commune/api';
@@ -44,6 +46,7 @@ import { ExpenseFormSkeleton } from '../../../components/page-skeleton';
 import { EmptyState } from '../../../components/empty-state';
 import { PageHeader } from '../../../components/page-header';
 import { ReceiptDropzone } from '../../../components/receipt-dropzone';
+import { QueryErrorState } from '../../../components/query-error-state';
 
 // ─── Draft persistence helpers ──────────────────────────────────────────────
 interface ExpenseDraft {
@@ -131,7 +134,13 @@ function formatCategoryLabel(cat: string) {
 
 export function AddExpensePage() {
   const { activeGroupId } = useGroupStore();
-  const { data: group, isLoading } = useGroup(activeGroupId ?? '');
+  const {
+    data: group,
+    error: groupError,
+    isError: isGroupError,
+    isLoading,
+    refetch: refetchGroup,
+  } = useGroup(activeGroupId ?? '');
   const createExpense = useCreateExpense(activeGroupId ?? '');
   const { user } = useAuthStore();
   const navigate = useNavigate();
@@ -155,6 +164,10 @@ export function AddExpensePage() {
         label: formatCategoryLabel(cat),
       })),
     [group?.subtype, group?.type],
+  );
+  const hydratedMembers = useMemo(
+    () => (group?.members ?? []).filter((member) => Boolean(member.user)),
+    [group],
   );
 
   const form = useForm({
@@ -255,10 +268,10 @@ export function AddExpensePage() {
 
   const memberOptions = useMemo(
     () =>
-      (group?.members ?? [])
+      hydratedMembers
         .filter((member) => member.status === 'active')
         .map((member) => ({ value: member.user_id, label: member.user.name })),
-    [group],
+    [hydratedMembers],
   );
 
   const paidByOptions = useMemo(
@@ -314,42 +327,84 @@ export function AddExpensePage() {
     return <ExpenseFormSkeleton />;
   }
 
+  if (isGroupError) {
+    return (
+      <QueryErrorState
+        title="Failed to load expense form"
+        error={groupError}
+        onRetry={() => {
+          void refetchGroup();
+        }}
+        icon={IconFileAlert}
+      />
+    );
+  }
+
   const selectedParticipants = form.getValues().participant_ids;
   const amount = form.getValues().amount || 0;
+  const formPercentages = form.getValues().percentages;
+  const formCustomAmounts = form.getValues().custom_amounts;
 
-  let splitPreview: { userId: string; name: string; amount: number }[] = [];
+  function memberName(userId: string) {
+    return hydratedMembers.find((member) => member.user_id === userId)?.user.name ?? userId;
+  }
+
+  let splitPreview: { userId: string; name: string; amount: number; percentage: number }[] = [];
   if (selectedParticipants.length > 0 && amount > 0) {
     if (splitMethod === 'equal') {
+      // Canonical equal split — same function the server runs on create.
       const shares = calculateEqualSplit(amount, selectedParticipants.length);
-      splitPreview = selectedParticipants.map((id, index) => ({
+      const entries = selectedParticipants.map((id, index) => ({
         userId: id,
-        name: group?.members.find((member) => member.user_id === id)?.user.name ?? id,
         amount: shares[index] ?? 0,
       }));
-    } else if (splitMethod === 'percentage') {
-      const percentages = form.getValues().percentages;
-      const entries = selectedParticipants.map((id) => ({
-        userId: id,
-        percentage: percentages[id] ?? 0,
+      const pct = toSharePercentages(entries, amount);
+      splitPreview = entries.map((entry, index) => ({
+        userId: entry.userId,
+        name: memberName(entry.userId),
+        amount: entry.amount,
+        percentage: pct[index] ?? 0,
       }));
-      const totalPct = entries.reduce((sum, entry) => sum + entry.percentage, 0);
+    } else if (splitMethod === 'percentage') {
+      const percentageEntries = selectedParticipants.map((id) => ({
+        userId: id,
+        percentage: formPercentages[id] ?? 0,
+      }));
+      const totalPct = percentageEntries.reduce((sum, entry) => sum + entry.percentage, 0);
       if (Math.abs(totalPct - 100) < 0.01) {
-        const result = calculatePercentageSplit(amount, entries);
-        splitPreview = result.map((entry) => ({
+        // Canonical percentage split — same function the server runs on create.
+        const result = calculatePercentageSplit(amount, percentageEntries);
+        const pct = toSharePercentages(result, amount);
+        splitPreview = result.map((entry, index) => ({
           userId: entry.userId,
-          name: group?.members.find((member) => member.user_id === entry.userId)?.user.name ?? entry.userId,
+          name: memberName(entry.userId),
           amount: entry.amount,
+          percentage: pct[index] ?? 0,
         }));
       }
     } else if (splitMethod === 'custom') {
-      const customAmounts = form.getValues().custom_amounts;
-      splitPreview = selectedParticipants.map((id) => ({
-        userId: id,
-        name: group?.members.find((member) => member.user_id === id)?.user.name ?? id,
-        amount: customAmounts[id] ?? 0,
+      // Canonical custom split — matches the server's pass-through behavior.
+      // Percentages are derived from the (possibly incomplete) amounts so the
+      // footer can show a red/green total when the user has over/under-typed.
+      const customEntries = calculateCustomSplit(
+        selectedParticipants.map((id) => ({
+          userId: id,
+          amount: formCustomAmounts[id] ?? 0,
+        })),
+      );
+      const pct = toSharePercentages(customEntries, amount);
+      splitPreview = customEntries.map((entry, index) => ({
+        userId: entry.userId,
+        name: memberName(entry.userId),
+        amount: entry.amount,
+        percentage: pct[index] ?? 0,
       }));
     }
   }
+
+  const splitPreviewTotal = splitPreview.reduce((sum, p) => sum + p.amount, 0);
+  const splitPreviewTotalPercentage =
+    amount > 0 ? Number(((splitPreviewTotal / amount) * 100).toFixed(2)) : 0;
 
   async function handleSubmit(values: ReturnType<typeof form.getValues>) {
     if (!activeGroupId) return;
@@ -641,7 +696,7 @@ export function AddExpensePage() {
                     {splitMethod === 'percentage' && selectedParticipants.length > 0 && (
                       <Stack gap="xs">
                         {selectedParticipants.map((id) => {
-                          const name = group?.members.find((member) => member.user_id === id)?.user.name ?? id;
+                          const name = hydratedMembers.find((member) => member.user_id === id)?.user.name ?? id;
                           return (
                             <NumberInput
                               key={id}
@@ -664,7 +719,7 @@ export function AddExpensePage() {
                     {splitMethod === 'custom' && selectedParticipants.length > 0 && (
                       <Stack gap="xs">
                         {selectedParticipants.map((id) => {
-                          const name = group?.members.find((member) => member.user_id === id)?.user.name ?? id;
+                          const name = hydratedMembers.find((member) => member.user_id === id)?.user.name ?? id;
                           return (
                             <NumberInput
                               key={id}
@@ -715,7 +770,7 @@ export function AddExpensePage() {
                                 </Table.Td>
                                 <Table.Td style={{ textAlign: 'right' }}>
                                   <Text size="sm" c="dimmed">
-                                    {amount > 0 ? Math.round((person.amount / amount) * 100) : 0}%
+                                    {Math.round(person.percentage)}%
                                   </Text>
                                 </Table.Td>
                               </Table.Tr>
@@ -728,24 +783,21 @@ export function AddExpensePage() {
                               </Table.Td>
                               <Table.Td style={{ textAlign: 'right' }}>
                                 <Text fw={700}>
-                                  {formatCurrency(
-                                    splitPreview.reduce((sum, p) => sum + p.amount, 0),
-                                    group?.currency,
-                                  )}
+                                  {formatCurrency(splitPreviewTotal, group?.currency)}
                                 </Text>
                               </Table.Td>
                               <Table.Td style={{ textAlign: 'right' }}>
-                                <Text size="sm" fw={600} c={Math.abs(splitPreview.reduce((sum, p) => sum + p.amount, 0) - amount) < 0.01 ? 'green' : 'red'}>
-                                  {amount > 0 ? Math.round((splitPreview.reduce((sum, p) => sum + p.amount, 0) / amount) * 100) : 0}%
+                                <Text size="sm" fw={600} c={Math.abs(splitPreviewTotal - amount) < 0.01 ? 'green' : 'red'}>
+                                  {Math.round(splitPreviewTotalPercentage)}%
                                 </Text>
                               </Table.Td>
                             </Table.Tr>
                           </Table.Tfoot>
                         </Table>
                       </div>
-                      {splitMethod === 'custom' && splitPreview.length > 0 && Math.abs(splitPreview.reduce((sum, p) => sum + p.amount, 0) - amount) > 0.01 && (
+                      {splitMethod === 'custom' && splitPreview.length > 0 && Math.abs(splitPreviewTotal - amount) > 0.01 && (
                         <Text size="sm" c="red">
-                          Custom amounts ({formatCurrency(splitPreview.reduce((sum, p) => sum + p.amount, 0), group?.currency)}) don&apos;t match the expense total ({formatCurrency(amount, group?.currency)}).
+                          Custom amounts ({formatCurrency(splitPreviewTotal, group?.currency)}) don&apos;t match the expense total ({formatCurrency(amount, group?.currency)}).
                         </Text>
                       )}
                     </>

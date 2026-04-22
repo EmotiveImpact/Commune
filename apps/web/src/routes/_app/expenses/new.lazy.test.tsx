@@ -5,6 +5,28 @@ import { vi } from 'vitest';
 import { AddExpensePage } from './new.lazy';
 
 const navigateMock = vi.fn();
+const refetchGroupMock = vi.fn();
+let useGroupResultMock: any = {
+  data: {
+    id: 'group-1',
+    name: 'North Dock Workspace',
+    type: 'workspace',
+    subtype: 'coworking',
+    currency: 'GBP',
+    members: [
+      {
+        id: 'member-1',
+        user_id: 'user-1',
+        status: 'active',
+        user: { id: 'user-1', name: 'August Usedem' },
+      },
+    ],
+  },
+  isLoading: false,
+  isError: false,
+  error: null,
+  refetch: refetchGroupMock,
+};
 
 vi.mock('@tanstack/react-router', () => ({
   createLazyFileRoute: () => (config: Record<string, unknown>) => config,
@@ -12,24 +34,7 @@ vi.mock('@tanstack/react-router', () => ({
 }));
 
 vi.mock('../../../hooks/use-groups', () => ({
-  useGroup: () => ({
-    data: {
-      id: 'group-1',
-      name: 'North Dock Workspace',
-      type: 'workspace',
-      subtype: 'coworking',
-      currency: 'GBP',
-      members: [
-        {
-          id: 'member-1',
-          user_id: 'user-1',
-          status: 'active',
-          user: { id: 'user-1', name: 'August Usedem' },
-        },
-      ],
-    },
-    isLoading: false,
-  }),
+  useGroup: () => useGroupResultMock,
 }));
 
 vi.mock('../../../hooks/use-expenses', () => ({
@@ -96,6 +101,31 @@ function renderPage() {
 }
 
 describe('AddExpensePage', () => {
+  beforeEach(() => {
+    refetchGroupMock.mockReset();
+    useGroupResultMock = {
+      data: {
+        id: 'group-1',
+        name: 'North Dock Workspace',
+        type: 'workspace',
+        subtype: 'coworking',
+        currency: 'GBP',
+        members: [
+          {
+            id: 'member-1',
+            user_id: 'user-1',
+            status: 'active',
+            user: { id: 'user-1', name: 'August Usedem' },
+          },
+        ],
+      },
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: refetchGroupMock,
+    };
+  });
+
   it('shows the workspace context layer for workspace groups', () => {
     renderPage();
 
@@ -104,5 +134,21 @@ describe('AddExpensePage', () => {
     expect(screen.getByLabelText(/invoice reference/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/invoice date/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/payment due date/i)).toBeInTheDocument();
+  });
+
+  it('shows a retry state when the group query fails', () => {
+    useGroupResultMock = {
+      data: undefined,
+      isLoading: false,
+      isError: true,
+      error: new Error('Group fetch failed'),
+      refetch: refetchGroupMock,
+    };
+
+    renderPage();
+
+    expect(screen.getByText(/failed to load expense form/i)).toBeInTheDocument();
+    expect(screen.getByText(/group fetch failed/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /try again/i })).toBeInTheDocument();
   });
 });

@@ -45,6 +45,7 @@ import { useAuthStore } from '../../../stores/auth';
 import { ContentSkeleton } from '../../../components/page-skeleton';
 import { PageHeader } from '../../../components/page-header';
 import { EmptyState } from '../../../components/empty-state';
+import { QueryErrorState } from '../../../components/query-error-state';
 
 export const Route = createLazyFileRoute('/_app/groups/$groupId/edit')({
   component: EditGroupPage,
@@ -74,7 +75,13 @@ const CURRENCY_OPTIONS = [
 
 export function EditGroupPage() {
   const { groupId } = Route.useParams();
-  const { data: group, isLoading } = useGroup(groupId);
+  const {
+    data: group,
+    error: groupError,
+    isError: isGroupError,
+    isLoading,
+    refetch: refetchGroup,
+  } = useGroup(groupId);
   const updateGroup = useUpdateGroup(groupId);
   const deleteGroup = useDeleteGroup();
   const { user } = useAuthStore();
@@ -226,6 +233,19 @@ export function EditGroupPage() {
 
   if (isLoading) {
     return <ContentSkeleton />;
+  }
+
+  if (isGroupError) {
+    return (
+      <QueryErrorState
+        title="Failed to load group settings"
+        error={groupError}
+        onRetry={() => {
+          void refetchGroup();
+        }}
+        icon={IconSettings}
+      />
+    );
   }
 
   if (!group) {

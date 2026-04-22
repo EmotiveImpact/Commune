@@ -32,6 +32,7 @@ import { formatCurrency, formatDate } from '@commune/utils';
 import { EmptyState } from '../../../components/empty-state';
 import { ContentSkeleton } from '../../../components/page-skeleton';
 import { PageHeader } from '../../../components/page-header';
+import { QueryErrorState } from '../../../components/query-error-state';
 import {
   useCloseGroupCycle,
   useGroupCycleSummary,
@@ -59,7 +60,13 @@ function getOrdinalLabel(value: number) {
 export function GroupCycleClosePage() {
   const { groupId } = Route.useParams();
   const referenceDate = useMemo(() => new Date().toISOString().slice(0, 10), []);
-  const { data: group, isLoading: groupLoading } = useGroup(groupId);
+  const {
+    data: group,
+    error: groupError,
+    isError: isGroupError,
+    isLoading: groupLoading,
+    refetch: refetchGroup,
+  } = useGroup(groupId);
   const { data: summary, isLoading: summaryLoading } = useGroupCycleSummary(
     groupId,
     referenceDate,
@@ -76,6 +83,19 @@ export function GroupCycleClosePage() {
 
   if (groupLoading || summaryLoading) {
     return <ContentSkeleton />;
+  }
+
+  if (isGroupError) {
+    return (
+      <QueryErrorState
+        title="Failed to load cycle close"
+        error={groupError}
+        onRetry={() => {
+          void refetchGroup();
+        }}
+        icon={IconClock}
+      />
+    );
   }
 
   if (!group || !summary) {

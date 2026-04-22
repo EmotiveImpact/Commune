@@ -59,6 +59,7 @@ import { ReceiptDropzone } from '../../../components/receipt-dropzone';
 import { EmptyState } from '../../../components/empty-state';
 import { ExpenseDetailSkeleton } from '../../../components/page-skeleton';
 import { PageHeader } from '../../../components/page-header';
+import { QueryErrorState } from '../../../components/query-error-state';
 
 export const Route = createLazyFileRoute('/_app/expenses/$expenseId')({
   component: ExpenseDetailPage,
@@ -73,21 +74,37 @@ function formatCategoryLabel(category: string) {
 
 export function ExpenseDetailPage() {
   const { expenseId } = Route.useParams();
-  const { activeGroupId } = useGroupStore();
-  const { data: group } = useGroup(activeGroupId ?? '');
+  const { activeGroupId, setActiveGroupId } = useGroupStore();
   const { data: expense, isLoading } = useExpenseDetail(expenseId);
-  const markPayment = useMarkPayment(activeGroupId ?? '');
-  const confirmPayment = useConfirmPayment(activeGroupId ?? '');
-  const archive = useArchiveExpense(activeGroupId ?? '');
-  const approveExpense = useApproveExpense(activeGroupId ?? '');
-  const rejectExpense = useRejectExpense(activeGroupId ?? '');
+
+  // Direct-link navigation: if we landed on an expense URL with no active
+  // group selected, adopt the expense's group so subsequent mutations have
+  // a scoped cache to invalidate.
+  useEffect(() => {
+    if (expense?.group_id && expense.group_id !== activeGroupId) {
+      setActiveGroupId(expense.group_id);
+    }
+  }, [expense?.group_id, activeGroupId, setActiveGroupId]);
+
+  const effectiveGroupId = activeGroupId ?? expense?.group_id ?? '';
+  const {
+    data: group,
+    error: groupError,
+    isError: isGroupError,
+    refetch: refetchGroup,
+  } = useGroup(effectiveGroupId);
+  const markPayment = useMarkPayment(effectiveGroupId);
+  const confirmPayment = useConfirmPayment(effectiveGroupId);
+  const archive = useArchiveExpense(effectiveGroupId);
+  const approveExpense = useApproveExpense(effectiveGroupId);
+  const rejectExpense = useRejectExpense(effectiveGroupId);
   const { user } = useAuthStore();
   const navigate = useNavigate();
-  const uploadReceipt = useUploadReceipt(activeGroupId ?? '');
-  const deleteReceipt = useDeleteReceipt(activeGroupId ?? '');
+  const uploadReceipt = useUploadReceipt(effectiveGroupId);
+  const deleteReceipt = useDeleteReceipt(effectiveGroupId);
   const workspaceGovernance = useWorkspaceGovernance(group);
-  const flagExpenseMutation = useFlagExpense();
-  const unflagExpenseMutation = useUnflagExpense();
+  const flagExpenseMutation = useFlagExpense(effectiveGroupId || undefined);
+  const unflagExpenseMutation = useUnflagExpense(effectiveGroupId || undefined);
   const [noteOpened, { open: openNote, close: closeNote }] = useDisclosure(false);
   const [flagOpened, { open: openFlag, close: closeFlag }] = useDisclosure(false);
   const [paymentNote, setPaymentNote] = useState('');
@@ -113,6 +130,19 @@ export function ExpenseDetailPage() {
         iconColor="emerald"
         title="Expense not found"
         description="This expense may have been archived or you may not have access to it anymore."
+      />
+    );
+  }
+
+  if (effectiveGroupId && isGroupError) {
+    return (
+      <QueryErrorState
+        title="Failed to load expense details"
+        error={groupError}
+        onRetry={() => {
+          void refetchGroup();
+        }}
+        icon={IconReceipt}
       />
     );
   }
