@@ -35,7 +35,9 @@ export function NotificationDropdown() {
   const markRead = useMarkNotificationRead();
   const markAllRead = useMarkAllNotificationsRead();
   const navigate = useNavigate();
-  const unreadCount = summary?.unread_count ?? 0;
+  const unreadCount = opened
+    ? notifications.filter((notification) => !notification.read).length
+    : summary?.unread_count ?? 0;
 
   const enableSummary = () => {
     if (!summaryEnabled) {
@@ -70,9 +72,6 @@ export function NotificationDropdown() {
       opened={opened}
       onChange={(nextOpened) => {
         setOpened(nextOpened);
-        if (nextOpened) {
-          enableSummary();
-        }
       }}
     >
       <Menu.Target>

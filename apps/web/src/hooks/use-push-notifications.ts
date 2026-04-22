@@ -42,11 +42,11 @@ export const pushKeys = {
 /**
  * Query to check whether the user has any active push subscriptions.
  */
-export function usePushSubscription(userId: string) {
+export function usePushSubscription(userId: string, options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: pushKeys.list(userId),
     queryFn: () => getPushSubscriptions(userId),
-    enabled: !!userId && isPushSupported(),
+    enabled: !!userId && isPushSupported() && (options?.enabled ?? true),
     staleTime: 5 * 60_000,
   });
 }

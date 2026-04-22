@@ -51,7 +51,7 @@ describe('NotificationDropdown', () => {
     expect(useNotificationSummaryMock).toHaveBeenLastCalledWith({ enabled: false });
   });
 
-  it('enables notifications immediately when the menu opens', () => {
+  it('enables notifications immediately when the menu opens without forcing summary', () => {
     render(
       <MantineProvider>
         <NotificationDropdown />
@@ -61,7 +61,7 @@ describe('NotificationDropdown', () => {
     fireEvent.click(screen.getByRole('button', { name: /open notifications/i }));
 
     expect(useNotificationsMock).toHaveBeenLastCalledWith({ enabled: true });
-    expect(useNotificationSummaryMock).toHaveBeenLastCalledWith({ enabled: true });
+    expect(useNotificationSummaryMock).toHaveBeenLastCalledWith({ enabled: false });
   });
 
   it('enables the unread summary on hover before opening the menu', () => {

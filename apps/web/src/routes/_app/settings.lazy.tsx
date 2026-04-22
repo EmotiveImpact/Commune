@@ -46,6 +46,7 @@ import {
   useSubscribePush,
   useUnsubscribePush,
 } from '../../hooks/use-push-notifications';
+import { useDeferredSection } from '../../hooks/use-deferred-section';
 import { SettingsSkeleton } from '../../components/page-skeleton';
 import { PageHeader } from '../../components/page-header';
 
@@ -124,7 +125,14 @@ function SettingsPage() {
   const updateProfile = useUpdateProfile();
   const { data: subscription, isLoading: subLoading } = useSubscription(user?.id ?? '');
   const portal = usePortal();
-  const { data: pushSubs, isLoading: pushLoading } = usePushSubscription(user?.id ?? '');
+  const { ref: notificationsRef, ready: notificationsReady } = useDeferredSection({
+    enabled: !!user?.id && isPushSupported(),
+    idleTimeoutMs: 4_000,
+    rootMargin: '0px',
+  });
+  const { data: pushSubs, isLoading: pushLoading } = usePushSubscription(user?.id ?? '', {
+    enabled: notificationsReady,
+  });
   const subscribePush = useSubscribePush();
   const unsubscribePush = useUnsubscribePush();
   const lastHydratedRef = useRef<string | null>(null);
@@ -259,7 +267,7 @@ function SettingsPage() {
         <Stack gap="lg" maw={720}>
 
           {/* ── 1. Appearance ── */}
-          <Paper className="commune-soft-panel" p="xl">
+          <Paper className="commune-soft-panel" p="xl" ref={notificationsRef}>
             <Group gap="xs" mb="md">
               <IconPalette size={20} />
               <Text className="commune-section-heading">Appearance</Text>
