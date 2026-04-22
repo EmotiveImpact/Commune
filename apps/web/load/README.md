@@ -115,6 +115,15 @@ COMMUNE_LOAD_OUTPUT=./load/api-route-bundles-report.json \
 pnpm --filter @commune/web perf:api-route-bundles -- https://your-supabase-project.supabase.co
 ```
 
+Run the warmed shared-burst RPC profile for steady-state backend saturation:
+
+```bash
+COMMUNE_LOAD_EMAIL="load-test@example.com" \
+COMMUNE_LOAD_PASSWORD="secret-password" \
+COMMUNE_LOAD_OUTPUT=./load/api-peak-rpc-warm-report.json \
+pnpm --filter @commune/web perf:api-peak-rpc:warm -- https://your-supabase-project.supabase.co
+```
+
 Run the relaxed dev profile against a local Vite session:
 
 ```bash
@@ -197,4 +206,5 @@ API/RPC profiles:
 - `deployed`: lightweight authenticated API sanity check.
 - `stress`: broader authenticated API pressure check.
 - `peak-rpc`: synthetic shared-burst saturation probe. Use this to look for backend/pool contention, not to judge whether a single user-facing route is healthy.
+- `peak-rpc:warm`: the same shared-burst saturation probe with a short warmup phase. Use this to separate steady-state contention from first-connection pool jitter.
 - `route-bundles`: realistic cold-route RPC bundles for dashboard, overview, expenses, and group switching. Use this to validate whether app-owned route fan-out is actually within budget. It intentionally excludes dashboard supporting data because that payload is deferred off the cold route path in the app, models group switching as a shell bootstrap change rather than a full dashboard re-hydration, and includes a short warmup phase so first-connection pool jitter does not masquerade as route latency.
