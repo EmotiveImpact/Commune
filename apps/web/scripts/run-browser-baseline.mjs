@@ -685,6 +685,14 @@ async function writeReport(outputPath, report) {
   console.log(`REPORT | ${resolvedOutput}`);
 }
 
+async function waitForCooldown(durationMs) {
+  if (!durationMs || durationMs <= 0) {
+    return;
+  }
+
+  await new Promise((resolve) => setTimeout(resolve, durationMs));
+}
+
 async function main() {
   const baseUrl = normalizeBaseUrl();
   const { profileName, profile } = await loadBudgetProfile();
@@ -724,6 +732,9 @@ async function main() {
           `loginRedirects=${result.redirectsToLogin}`,
         ].join(' | '),
       );
+
+      const cooldownMs = scenario.cooldownMsAfter ?? profile.cooldownMsBetweenScenarios ?? 0;
+      await waitForCooldown(cooldownMs);
     }
 
     const rankedFailures = results

@@ -233,7 +233,7 @@ async function executeScenario(scenario, context) {
   let failures = 0;
   let cursor = 0;
 
-  async function runOne() {
+  async function runOne(recordMetrics = true) {
     const request = buildScenarioRequest(scenario, context);
     const startedAt = performance.now();
 
@@ -245,38 +245,54 @@ async function executeScenario(scenario, context) {
       });
       const durationMs = performance.now() - startedAt;
       const text = await response.text();
-      durations.push(durationMs);
-      sizes.push(text.length);
-      statuses.set(response.status, (statuses.get(response.status) ?? 0) + 1);
+      if (recordMetrics) {
+        durations.push(durationMs);
+        sizes.push(text.length);
+        statuses.set(response.status, (statuses.get(response.status) ?? 0) + 1);
+      }
 
       if (!response.ok) {
-        failures += 1;
-        failureSamples.push({
-          status: response.status,
-          body: text.slice(0, 200),
-        });
+        if (recordMetrics) {
+          failures += 1;
+          failureSamples.push({
+            status: response.status,
+            body: text.slice(0, 200),
+          });
+        }
       }
     } catch (error) {
       const durationMs = performance.now() - startedAt;
-      durations.push(durationMs);
-      sizes.push(0);
-      statuses.set(0, (statuses.get(0) ?? 0) + 1);
-      failures += 1;
-      failureSamples.push({
-        status: 0,
-        body: error instanceof Error ? error.message : String(error),
-      });
+      if (recordMetrics) {
+        durations.push(durationMs);
+        sizes.push(0);
+        statuses.set(0, (statuses.get(0) ?? 0) + 1);
+        failures += 1;
+        failureSamples.push({
+          status: 0,
+          body: error instanceof Error ? error.message : String(error),
+        });
+      }
     }
   }
 
-  async function worker() {
-    while (cursor < scenario.requests) {
+  async function worker(totalRequests, recordMetrics) {
+    while (cursor < totalRequests) {
       cursor += 1;
-      await runOne();
+      await runOne(recordMetrics);
     }
   }
 
-  await Promise.all(Array.from({ length: scenario.concurrency }, () => worker()));
+  const warmupRequests = scenario.warmupRequests ?? 0;
+  const warmupConcurrency = scenario.warmupConcurrency ?? Math.min(scenario.concurrency, warmupRequests || 0);
+  if (warmupRequests > 0 && warmupConcurrency > 0) {
+    cursor = 0;
+    await Promise.all(
+      Array.from({ length: warmupConcurrency }, () => worker(warmupRequests, false)),
+    );
+  }
+
+  cursor = 0;
+  await Promise.all(Array.from({ length: scenario.concurrency }, () => worker(scenario.requests, true)));
 
   durations.sort((a, b) => a - b);
   sizes.sort((a, b) => a - b);

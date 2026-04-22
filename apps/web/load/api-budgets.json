@@ -424,6 +424,8 @@
           "body": {
             "p_include_dashboard_summary": false
           },
+          "warmupConcurrency": 8,
+          "warmupRequests": 32,
           "concurrency": 32,
           "requests": 192,
           "budgetMsP95": 2500,

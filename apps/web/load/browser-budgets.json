@@ -3,6 +3,7 @@
   "profiles": {
     "dev": {
       "gating": false,
+      "cooldownMsBetweenScenarios": 750,
       "scenarios": [
         {
           "name": "sign-in-browser",
@@ -23,7 +24,7 @@
         {
           "name": "dashboard-browser",
           "path": "/",
-          "concurrency": 2,
+          "concurrency": 1,
           "requests": 4,
           "budgetNavMsP95": 6000,
           "budgetRoutePaintMsP95": 1200,
@@ -40,7 +41,7 @@
         {
           "name": "overview-browser",
           "path": "/overview",
-          "concurrency": 2,
+          "concurrency": 1,
           "requests": 4,
           "budgetNavMsP95": 6000,
           "budgetRoutePaintMsP95": 1200,
@@ -57,7 +58,7 @@
         {
           "name": "expenses-browser",
           "path": "/expenses",
-          "concurrency": 2,
+          "concurrency": 1,
           "requests": 4,
           "budgetNavMsP95": 6000,
           "budgetRoutePaintMsP95": 1200,
@@ -74,7 +75,7 @@
         {
           "name": "activity-browser",
           "path": "/activity",
-          "concurrency": 2,
+          "concurrency": 1,
           "requests": 4,
           "budgetNavMsP95": 6000,
           "budgetRoutePaintMsP95": 1200,
@@ -91,7 +92,7 @@
         {
           "name": "settings-browser",
           "path": "/settings",
-          "concurrency": 2,
+          "concurrency": 1,
           "requests": 3,
           "budgetNavMsP95": 5500,
           "budgetRoutePaintMsP95": 1000,
@@ -108,7 +109,7 @@
         {
           "name": "groups-browser",
           "path": "/groups",
-          "concurrency": 2,
+          "concurrency": 1,
           "requests": 4,
           "budgetNavMsP95": 6000,
           "budgetRoutePaintMsP95": 1200,
@@ -165,6 +166,7 @@
     },
     "deployed": {
       "gating": true,
+      "cooldownMsBetweenScenarios": 1000,
       "scenarios": [
         {
           "name": "sign-in-browser",
@@ -185,7 +187,7 @@
         {
           "name": "dashboard-browser",
           "path": "/",
-          "concurrency": 2,
+          "concurrency": 1,
           "requests": 6,
           "budgetNavMsP95": 4000,
           "budgetRoutePaintMsP95": 900,
@@ -202,7 +204,7 @@
         {
           "name": "overview-browser",
           "path": "/overview",
-          "concurrency": 2,
+          "concurrency": 1,
           "requests": 6,
           "budgetNavMsP95": 4000,
           "budgetRoutePaintMsP95": 900,
@@ -219,7 +221,7 @@
         {
           "name": "expenses-browser",
           "path": "/expenses",
-          "concurrency": 2,
+          "concurrency": 1,
           "requests": 6,
           "budgetNavMsP95": 4000,
           "budgetRoutePaintMsP95": 900,
@@ -236,7 +238,7 @@
         {
           "name": "activity-browser",
           "path": "/activity",
-          "concurrency": 2,
+          "concurrency": 1,
           "requests": 6,
           "budgetNavMsP95": 4000,
           "budgetRoutePaintMsP95": 900,
@@ -253,7 +255,7 @@
         {
           "name": "settings-browser",
           "path": "/settings",
-          "concurrency": 2,
+          "concurrency": 1,
           "requests": 4,
           "budgetNavMsP95": 3500,
           "budgetRoutePaintMsP95": 800,
@@ -270,7 +272,7 @@
         {
           "name": "groups-browser",
           "path": "/groups",
-          "concurrency": 2,
+          "concurrency": 1,
           "requests": 6,
           "budgetNavMsP95": 4000,
           "budgetRoutePaintMsP95": 900,
