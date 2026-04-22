@@ -552,7 +552,7 @@
     },
     "peak-rpc": {
       "gating": false,
-      "cooldownMsBetweenScenarios": 1500,
+      "cooldownMsBetweenScenarios": 4000,
       "scenarios": [
         {
           "name": "signed-in-bootstrap",
