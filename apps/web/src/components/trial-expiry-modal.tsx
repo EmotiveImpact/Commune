@@ -13,7 +13,13 @@ interface TrialExpiryModalProps {
 type ModalVariant = 'warning' | 'expired' | 'no_subscription' | null;
 
 export function TrialExpiryModal({ userId }: TrialExpiryModalProps) {
-  const { data: subscription, isLoading } = useSubscription(userId);
+  const {
+    data: subscription,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useSubscription(userId);
   const [dismissed, setDismissed] = useState(() => sessionStorage.getItem(DISMISSED_KEY) === 'true');
 
   const daysLeft = useMemo(() => {
@@ -23,7 +29,7 @@ export function TrialExpiryModal({ userId }: TrialExpiryModalProps) {
   }, [subscription]);
 
   const variant = useMemo<ModalVariant>(() => {
-    if (isLoading || dismissed) return null;
+    if (isLoading || dismissed || isError) return null;
     if (!subscription) return 'no_subscription';
     if (subscription.status !== 'trialing') return null;
     if (daysLeft <= 0) return 'expired';
@@ -34,6 +40,34 @@ export function TrialExpiryModal({ userId }: TrialExpiryModalProps) {
   function handleDismiss() {
     sessionStorage.setItem(DISMISSED_KEY, 'true');
     setDismissed(true);
+  }
+
+  if (isError && !dismissed) {
+    return (
+      <Modal
+        opened
+        onClose={handleDismiss}
+        title="Could not load trial status"
+        centered
+        size="sm"
+        overlayProps={{ backgroundOpacity: 0.35, blur: 3 }}
+      >
+        <Stack gap="md">
+          <Text size="sm" c="dimmed" lh={1.6}>
+            {error instanceof Error ? error.message : 'Try again in a moment.'}
+          </Text>
+
+          <Stack gap="xs" mt="xs">
+            <Button fullWidth onClick={() => void refetch()}>
+              Try again
+            </Button>
+            <Button variant="subtle" color="gray" fullWidth onClick={handleDismiss}>
+              Maybe later
+            </Button>
+          </Stack>
+        </Stack>
+      </Modal>
+    );
   }
 
   if (!variant) return null;

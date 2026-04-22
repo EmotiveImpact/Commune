@@ -7,7 +7,13 @@ import { useGroupStore } from '../stores/group';
  * Shows a small dropdown with the current workspace name.
  */
 export function HeaderGroupSelector() {
-  const { data: groups, isLoading } = useUserGroupSummaries();
+  const {
+    data: groups,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useUserGroupSummaries();
   const { activeGroupId, setActiveGroupId } = useGroupStore();
 
   const selectData = (groups ?? []).map((g) => ({
@@ -18,15 +24,17 @@ export function HeaderGroupSelector() {
   return (
     <Select
       className="commune-header-group-select"
-      placeholder="Workspace"
+      placeholder={isError ? 'Groups unavailable' : 'Workspace'}
       data={selectData}
       value={activeGroupId}
       onChange={(value) => setActiveGroupId(value)}
-      disabled={isLoading}
+      disabled={isLoading || isError}
       searchable
       size="xs"
       comboboxProps={{ withinPortal: true, shadow: 'md' }}
       aria-label="Switch workspace"
+      error={isError ? (error instanceof Error ? error.message : 'Could not load groups') : undefined}
+      onClick={isError ? () => void refetch() : undefined}
     />
   );
 }

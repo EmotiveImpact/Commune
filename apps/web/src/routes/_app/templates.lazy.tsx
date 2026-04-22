@@ -46,7 +46,7 @@ export const Route = createLazyFileRoute('/_app/templates')({
   component: TemplatesPage,
 });
 
-function TemplatesPage() {
+export function TemplatesPage() {
   useEffect(() => {
     setPageTitle('Templates');
   }, []);
@@ -58,7 +58,13 @@ function TemplatesPage() {
     isError: isGroupError,
     refetch: refetchGroup,
   } = useGroup(activeGroupId ?? '');
-  const { data: templates, isLoading } = useTemplates(activeGroupId ?? '');
+  const {
+    data: templates,
+    isLoading,
+    isError: isTemplatesError,
+    error: templatesError,
+    refetch: refetchTemplates,
+  } = useTemplates(activeGroupId ?? '');
 
   const createMutation = useCreateTemplate(activeGroupId ?? '');
   const updateMutation = useUpdateTemplate(activeGroupId ?? '');
@@ -104,6 +110,19 @@ function TemplatesPage() {
         error={groupError}
         onRetry={() => {
           void refetchGroup();
+        }}
+        icon={IconTemplate}
+      />
+    );
+  }
+
+  if (isTemplatesError) {
+    return (
+      <QueryErrorState
+        title="Failed to load templates"
+        error={templatesError}
+        onRetry={() => {
+          void refetchTemplates();
         }}
         icon={IconTemplate}
       />

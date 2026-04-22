@@ -4,6 +4,8 @@ import { vi } from 'vitest';
 import { SettingsPage } from './settings.lazy';
 
 const refetchProfileMock = vi.fn();
+const refetchSubscriptionMock = vi.fn();
+const refetchPushMock = vi.fn();
 
 let useProfileResultMock: any = {
   data: {
@@ -21,6 +23,22 @@ let useProfileResultMock: any = {
   isError: false,
   refetch: refetchProfileMock,
 };
+let useSubscriptionResultMock: any = {
+  data: null,
+  isLoading: false,
+  isError: false,
+  error: null,
+  refetch: refetchSubscriptionMock,
+};
+let usePushSubscriptionResultMock: any = {
+  data: [],
+  isLoading: false,
+  isError: false,
+  error: null,
+  refetch: refetchPushMock,
+};
+let deferredSectionReady = false;
+let pushSupported = false;
 
 vi.mock('@tanstack/react-router', () => ({
   createLazyFileRoute: () => (config: Record<string, unknown>) => config,
@@ -44,10 +62,7 @@ vi.mock('../../hooks/use-profile', () => ({
 }));
 
 vi.mock('../../hooks/use-subscriptions', () => ({
-  useSubscription: () => ({
-    data: null,
-    isLoading: false,
-  }),
+  useSubscription: () => useSubscriptionResultMock,
   usePortal: () => ({
     mutate: vi.fn(),
     isPending: false,
@@ -55,11 +70,8 @@ vi.mock('../../hooks/use-subscriptions', () => ({
 }));
 
 vi.mock('../../hooks/use-push-notifications', () => ({
-  isPushSupported: () => false,
-  usePushSubscription: () => ({
-    data: [],
-    isLoading: false,
-  }),
+  isPushSupported: () => pushSupported,
+  usePushSubscription: () => usePushSubscriptionResultMock,
   useSubscribePush: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useUnsubscribePush: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }));
@@ -67,7 +79,7 @@ vi.mock('../../hooks/use-push-notifications', () => ({
 vi.mock('../../hooks/use-deferred-section', () => ({
   useDeferredSection: () => ({
     ref: vi.fn(),
-    ready: false,
+    ready: deferredSectionReady,
   }),
 }));
 
@@ -87,6 +99,10 @@ vi.mock('../../utils/seo', () => ({
 describe('SettingsPage', () => {
   beforeEach(() => {
     refetchProfileMock.mockReset();
+    refetchSubscriptionMock.mockReset();
+    refetchPushMock.mockReset();
+    deferredSectionReady = false;
+    pushSupported = false;
     useProfileResultMock = {
       data: {
         default_currency: 'GBP',
@@ -102,6 +118,20 @@ describe('SettingsPage', () => {
       isLoading: false,
       isError: false,
       refetch: refetchProfileMock,
+    };
+    useSubscriptionResultMock = {
+      data: null,
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: refetchSubscriptionMock,
+    };
+    usePushSubscriptionResultMock = {
+      data: [],
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: refetchPushMock,
     };
   });
 
@@ -123,5 +153,46 @@ describe('SettingsPage', () => {
     expect(screen.getByText(/failed to load settings/i)).toBeInTheDocument();
     expect(screen.getByText(/settings profile failed/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /try again/i })).toBeInTheDocument();
+  });
+
+  it('shows a retry state when billing fails to load', () => {
+    deferredSectionReady = true;
+    useSubscriptionResultMock = {
+      data: null,
+      isLoading: false,
+      isError: true,
+      error: new Error('Subscription failed'),
+      refetch: refetchSubscriptionMock,
+    };
+
+    render(
+      <MantineProvider>
+        <SettingsPage />
+      </MantineProvider>,
+    );
+
+    expect(screen.getByText(/failed to load subscription/i)).toBeInTheDocument();
+    expect(screen.getByText(/subscription failed/i)).toBeInTheDocument();
+  });
+
+  it('shows a retry state when push settings fail to load', () => {
+    deferredSectionReady = true;
+    pushSupported = true;
+    usePushSubscriptionResultMock = {
+      data: [],
+      isLoading: false,
+      isError: true,
+      error: new Error('Push failed'),
+      refetch: refetchPushMock,
+    };
+
+    render(
+      <MantineProvider>
+        <SettingsPage />
+      </MantineProvider>,
+    );
+
+    expect(screen.getByText(/failed to load push settings/i)).toBeInTheDocument();
+    expect(screen.getByText(/push failed/i)).toBeInTheDocument();
   });
 });

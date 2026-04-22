@@ -43,7 +43,15 @@ export function CreateGroupModal({ opened, onClose }: CreateGroupModalProps) {
   const { setActiveGroupId } = useGroupStore();
   const navigate = useNavigate();
   const { user } = useAuthStore();
-  const { canCreateGroup, groupLimit, currentGroups, isLoading: limitsLoading } = usePlanLimits(user?.id ?? '');
+  const {
+    canCreateGroup,
+    groupLimit,
+    currentGroups,
+    isLoading: limitsLoading,
+    isError: isLimitsError,
+    error: limitsError,
+    refetch: refetchLimits,
+  } = usePlanLimits(user?.id ?? '');
   const queryClient = useQueryClient();
   const [selectedGroupType, setSelectedGroupType] = useState<CreateGroupInput['type']>('home');
   const [selectedSubtype, setSelectedSubtype] = useState<string | null>(null);
@@ -237,7 +245,19 @@ export function CreateGroupModal({ opened, onClose }: CreateGroupModalProps) {
               />
             </Stack>
           </Paper>
-          {!limitsLoading && !canCreateGroup && (
+          {isLimitsError ? (
+            <Alert icon={<IconInfoCircle size={16} />} color="red" variant="light">
+              <Stack gap={4}>
+                <Text size="sm" fw={600}>Could not load plan limits</Text>
+                <Text size="sm">
+                  {limitsError instanceof Error ? limitsError.message : 'Try again in a moment.'}
+                </Text>
+                <Anchor component="button" type="button" size="sm" fw={600} onClick={() => void refetchLimits()}>
+                  Retry
+                </Anchor>
+              </Stack>
+            </Alert>
+          ) : !limitsLoading && !canCreateGroup && (
             <Alert icon={<IconInfoCircle size={16} />} color="orange" variant="light">
               You've reached the group limit for your plan ({currentGroups}/{groupLimit === Infinity ? 'unlimited' : groupLimit}).{' '}
               <Anchor component={Link} to="/pricing" size="sm" fw={600}>
@@ -248,7 +268,7 @@ export function CreateGroupModal({ opened, onClose }: CreateGroupModalProps) {
           <Button
             type="submit"
             loading={createGroup.isPending || starterPack.isPending || limitsLoading}
-            disabled={!limitsLoading && !canCreateGroup}
+            disabled={isLimitsError || (!limitsLoading && !canCreateGroup)}
             fullWidth
             mt="sm"
           >

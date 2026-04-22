@@ -3,7 +3,23 @@ import { Link } from '@tanstack/react-router';
 import { useSubscription } from '../hooks/use-subscriptions';
 
 export function SidebarPlanLabel({ userId }: { userId?: string }) {
-  const { data: subscription } = useSubscription(userId ?? '');
+  const { data: subscription, isLoading, isError } = useSubscription(userId ?? '');
+
+  if (isLoading) {
+    return (
+      <Text size="xs" truncate style={{ color: 'rgba(255,255,255,0.45)' }}>
+        Loading plan…
+      </Text>
+    );
+  }
+
+  if (isError) {
+    return (
+      <Text size="xs" truncate style={{ color: 'rgba(255,255,255,0.45)' }}>
+        Plan unavailable
+      </Text>
+    );
+  }
 
   const isTrialing = subscription?.status === 'trialing';
   const isActive = subscription?.status === 'active';
@@ -29,7 +45,7 @@ export function SidebarPlanLabel({ userId }: { userId?: string }) {
 }
 
 export function SidebarTrialBanner({ userId, collapsed }: { userId?: string; collapsed: boolean }) {
-  const { data: subscription } = useSubscription(userId ?? '');
+  const { data: subscription, isError, error, refetch } = useSubscription(userId ?? '');
 
   const isTrialing = subscription?.status === 'trialing';
   const trialEndsAt = subscription?.trial_ends_at ? new Date(subscription.trial_ends_at) : null;
@@ -40,7 +56,48 @@ export function SidebarTrialBanner({ userId, collapsed }: { userId?: string; col
 
   const showBanner = isTrialing && !trialExpired;
 
-  if (!showBanner || collapsed) return null;
+  if (collapsed) return null;
+
+  if (isError) {
+    return (
+      <div style={{ overflow: 'hidden', marginBottom: 8 }}>
+        <Box
+          style={{
+            padding: '10px 12px',
+            borderRadius: 10,
+            background: 'rgba(255,255,255,0.06)',
+            border: '1px solid rgba(255,255,255,0.08)',
+          }}
+        >
+          <Text size="xs" fw={600} style={{ color: '#fff' }}>
+            Trial status unavailable
+          </Text>
+          <Text size="xs" style={{ color: 'rgba(255,255,255,0.5)', lineHeight: 1.4 }} mt={2}>
+            {error instanceof Error ? error.message : 'Try again in a moment.'}
+          </Text>
+          <Text
+            component="button"
+            type="button"
+            size="xs"
+            fw={600}
+            mt={4}
+            onClick={() => void refetch()}
+            style={{
+              color: 'var(--commune-primary-soft, #62c38a)',
+              background: 'transparent',
+              border: 0,
+              padding: 0,
+              cursor: 'pointer',
+            }}
+          >
+            Retry
+          </Text>
+        </Box>
+      </div>
+    );
+  }
+
+  if (!showBanner) return null;
 
   return (
     <div style={{ overflow: 'hidden', marginBottom: 8 }}>

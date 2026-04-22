@@ -10,6 +10,15 @@ const setActiveGroupIdMock = vi.fn();
 const createGroupMock = vi.fn();
 const applyGroupStarterPackMock = vi.fn();
 const notificationsShowMock = vi.fn();
+let usePlanLimitsResultMock: any = {
+  canCreateGroup: true,
+  groupLimit: 1,
+  currentGroups: 0,
+  isLoading: false,
+  isError: false,
+  error: null,
+  refetch: vi.fn(),
+};
 
 vi.mock('@tanstack/react-router', () => ({
   Link: ({ children }: { children: React.ReactNode }) => children,
@@ -52,12 +61,7 @@ vi.mock('../stores/auth', () => ({
 }));
 
 vi.mock('../hooks/use-plan-limits', () => ({
-  usePlanLimits: () => ({
-    canCreateGroup: true,
-    groupLimit: 1,
-    currentGroups: 0,
-    isLoading: false,
-  }),
+  usePlanLimits: () => usePlanLimitsResultMock,
 }));
 
 vi.mock('@commune/api', async () => {
@@ -98,6 +102,15 @@ describe('CreateGroupModal', () => {
     createGroupMock.mockReset();
     applyGroupStarterPackMock.mockReset();
     notificationsShowMock.mockReset();
+    usePlanLimitsResultMock = {
+      canCreateGroup: true,
+      groupLimit: 1,
+      currentGroups: 0,
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    };
   });
 
   it('still completes group creation when starter setup fails', async () => {
@@ -127,5 +140,28 @@ describe('CreateGroupModal', () => {
         color: 'green',
       }),
     );
+  });
+
+  it('shows a retry state when plan limits fail to load', async () => {
+    const refetchMock = vi.fn();
+    usePlanLimitsResultMock = {
+      canCreateGroup: false,
+      groupLimit: 1,
+      currentGroups: 0,
+      isLoading: false,
+      isError: true,
+      error: new Error('Plan limits failed'),
+      refetch: refetchMock,
+    };
+
+    renderModal();
+
+    expect(screen.getByText(/could not load plan limits/i)).toBeInTheDocument();
+    expect(screen.getByText(/plan limits failed/i)).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: /retry/i }));
+
+    expect(refetchMock).toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: /create group/i })).toBeDisabled();
   });
 });

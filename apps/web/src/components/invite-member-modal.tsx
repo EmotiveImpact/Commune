@@ -1,4 +1,4 @@
-import { Modal, TextInput, Button, Stack, Alert, Anchor } from '@mantine/core';
+import { Modal, TextInput, Button, Stack, Alert, Anchor, Text } from '@mantine/core';
 import { useForm, schemaResolver } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
 import { IconInfoCircle } from '@tabler/icons-react';
@@ -17,7 +17,14 @@ interface InviteMemberModalProps {
 export function InviteMemberModal({ opened, onClose, groupId }: InviteMemberModalProps) {
   const inviteMember = useInviteMember(groupId);
   const { user } = useAuthStore();
-  const { canInviteMember, memberLimit, currentMembers } = usePlanLimits(user?.id ?? '');
+  const {
+    canInviteMember,
+    memberLimit,
+    currentMembers,
+    isError: isLimitsError,
+    error: limitsError,
+    refetch: refetchLimits,
+  } = usePlanLimits(user?.id ?? '');
 
   const form = useForm<InviteMemberInput>({
     mode: 'uncontrolled',
@@ -55,7 +62,19 @@ export function InviteMemberModal({ opened, onClose, groupId }: InviteMemberModa
             key={form.key('email')}
             {...form.getInputProps('email')}
           />
-          {!canInviteMember && (
+          {isLimitsError ? (
+            <Alert icon={<IconInfoCircle size={16} />} color="red" variant="light">
+              <Stack gap={4}>
+                <Text size="sm" fw={600}>Could not load member limits</Text>
+                <Text size="sm">
+                  {limitsError instanceof Error ? limitsError.message : 'Try again in a moment.'}
+                </Text>
+                <Anchor component="button" type="button" size="sm" fw={600} onClick={() => void refetchLimits()}>
+                  Retry
+                </Anchor>
+              </Stack>
+            </Alert>
+          ) : !canInviteMember && (
             <Alert icon={<IconInfoCircle size={16} />} color="orange" variant="light">
               You've reached the member limit for your plan ({currentMembers}/{memberLimit === Infinity ? 'unlimited' : memberLimit}).{' '}
               <Anchor component={Link} to="/pricing" size="sm" fw={600}>
@@ -63,7 +82,7 @@ export function InviteMemberModal({ opened, onClose, groupId }: InviteMemberModa
               </Anchor>
             </Alert>
           )}
-          <Button type="submit" loading={inviteMember.isPending} disabled={!canInviteMember} fullWidth>
+          <Button type="submit" loading={inviteMember.isPending} disabled={isLimitsError || !canInviteMember} fullWidth>
             Send invitation
           </Button>
         </Stack>

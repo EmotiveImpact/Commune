@@ -4,6 +4,7 @@ import { vi } from 'vitest';
 import { ProfilePage } from './profile.lazy';
 
 const refetchProfileMock = vi.fn();
+const refetchPaymentMethodsMock = vi.fn();
 
 let useProfileResultMock: any = {
   data: {
@@ -20,6 +21,12 @@ let useProfileResultMock: any = {
   error: null,
   isLoading: false,
   refetch: refetchProfileMock,
+};
+let usePaymentMethodsResultMock: any = {
+  data: [],
+  isError: false,
+  error: null,
+  refetch: refetchPaymentMethodsMock,
 };
 
 vi.mock('@tanstack/react-router', () => ({
@@ -52,7 +59,7 @@ vi.mock('../../hooks/use-profile', () => ({
 }));
 
 vi.mock('../../hooks/use-payment-methods', () => ({
-  usePaymentMethods: () => ({ data: [] }),
+  usePaymentMethods: () => usePaymentMethodsResultMock,
   useCreatePaymentMethod: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useUpdatePaymentMethod: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useDeletePaymentMethod: () => ({ mutateAsync: vi.fn(), isPending: false }),
@@ -69,6 +76,7 @@ vi.mock('../../utils/seo', () => ({
 describe('ProfilePage', () => {
   beforeEach(() => {
     refetchProfileMock.mockReset();
+    refetchPaymentMethodsMock.mockReset();
     useProfileResultMock = {
       data: {
         id: 'user-1',
@@ -84,6 +92,12 @@ describe('ProfilePage', () => {
       error: null,
       isLoading: false,
       refetch: refetchProfileMock,
+    };
+    usePaymentMethodsResultMock = {
+      data: [],
+      isError: false,
+      error: null,
+      refetch: refetchPaymentMethodsMock,
     };
   });
 
@@ -104,5 +118,23 @@ describe('ProfilePage', () => {
     expect(screen.getByText(/failed to load profile/i)).toBeInTheDocument();
     expect(screen.getByText(/profile load failed/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /try again/i })).toBeInTheDocument();
+  });
+
+  it('shows a retry state when payment methods fail to load', () => {
+    usePaymentMethodsResultMock = {
+      data: [],
+      isError: true,
+      error: new Error('Payment methods failed'),
+      refetch: refetchPaymentMethodsMock,
+    };
+
+    render(
+      <MantineProvider>
+        <ProfilePage />
+      </MantineProvider>,
+    );
+
+    expect(screen.getByText(/failed to load payment methods/i)).toBeInTheDocument();
+    expect(screen.getByText(/payment methods failed/i)).toBeInTheDocument();
   });
 });

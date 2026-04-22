@@ -133,7 +133,7 @@ function getFrequencyBadgeLabel(frequency: string, nextDue: string) {
   return 'Daily';
 }
 
-function ChoresPage() {
+export function ChoresPage() {
   useEffect(() => { setPageTitle('Chores'); }, []);
 
   const { activeGroupId } = useGroupStore();
@@ -144,7 +144,13 @@ function ChoresPage() {
     refetch: refetchGroup,
   } = useGroup(activeGroupId ?? '');
   const { user } = useAuthStore();
-  const { data: chores, isLoading } = useChores(activeGroupId ?? '');
+  const {
+    data: chores,
+    isLoading,
+    isError: isChoresError,
+    error: choresError,
+    refetch: refetchChores,
+  } = useChores(activeGroupId ?? '');
   const createChore = useCreateChore(activeGroupId ?? '');
   const completeChore = useCompleteChore(activeGroupId ?? '');
   const deleteChore = useDeleteChore(activeGroupId ?? '');
@@ -195,6 +201,19 @@ function ChoresPage() {
         error={groupError}
         onRetry={() => {
           void refetchGroup();
+        }}
+        icon={IconChecklist}
+      />
+    );
+  }
+
+  if (isChoresError) {
+    return (
+      <QueryErrorState
+        title="Failed to load operations"
+        error={choresError}
+        onRetry={() => {
+          void refetchChores();
         }}
         icon={IconChecklist}
       />

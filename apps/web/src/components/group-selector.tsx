@@ -5,7 +5,13 @@ import { useUserGroupSummaries } from '../hooks/use-groups';
 import { useGroupStore } from '../stores/group';
 
 export function GroupSelector() {
-  const { data: groups, isLoading } = useUserGroupSummaries();
+  const {
+    data: groups,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useUserGroupSummaries();
   const { activeGroupId, setActiveGroupId } = useGroupStore();
 
   const selectData = (groups ?? []).map((g) => ({
@@ -20,16 +26,35 @@ export function GroupSelector() {
       </Text>
       <Select
         className="commune-group-select"
-        placeholder="Select a group"
+        placeholder={isError ? 'Groups unavailable' : 'Select a group'}
         data={selectData}
         value={activeGroupId}
         onChange={(value) => setActiveGroupId(value)}
-        disabled={isLoading}
+        disabled={isLoading || isError}
         searchable
         size="md"
         aria-label="Switch workspace"
         style={{ flex: 1 }}
+        error={isError ? (error instanceof Error ? error.message : 'Could not load groups') : undefined}
       />
+      {isError && (
+        <Anchor
+          component="button"
+          type="button"
+          size="xs"
+          onClick={() => void refetch()}
+          className="commune-sidebar-manage-link"
+          style={{
+            textAlign: 'left',
+            color: 'rgba(255,255,255,0.72)',
+            background: 'none',
+            border: 0,
+            padding: 0,
+          }}
+        >
+          Retry groups
+        </Anchor>
+      )}
       <Anchor
         component={Link}
         to="/groups"

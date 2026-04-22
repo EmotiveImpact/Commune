@@ -86,7 +86,12 @@ export function ProfilePage() {
     refetch: refetchProfile,
   } = useProfile(user?.id ?? '');
   const updateProfile = useUpdateProfile();
-  const { data: paymentMethods = [] } = usePaymentMethods(user?.id ?? '');
+  const {
+    data: paymentMethods = [],
+    isError: isPaymentMethodsError,
+    error: paymentMethodsError,
+    refetch: refetchPaymentMethods,
+  } = usePaymentMethods(user?.id ?? '');
   const createMethod = useCreatePaymentMethod(user?.id ?? '');
   const updateMethod = useUpdatePaymentMethod(user?.id ?? '');
   const deleteMethod = useDeletePaymentMethod(user?.id ?? '');
@@ -403,7 +408,16 @@ export function ProfilePage() {
               Group members will see your payment methods when settling up. You can add multiple providers.
             </Text>
 
-            {paymentMethods.length === 0 ? (
+            {isPaymentMethodsError ? (
+              <QueryErrorState
+                title="Failed to load payment methods"
+                error={paymentMethodsError}
+                onRetry={() => {
+                  void refetchPaymentMethods();
+                }}
+                icon={IconWallet}
+              />
+            ) : paymentMethods.length === 0 ? (
               <Paper p="lg" radius="md" style={{ border: '1px dashed var(--commune-border-strong)', textAlign: 'center' }}>
                 <Text size="sm" c="dimmed">No payment methods yet. Add one so members can pay you.</Text>
               </Paper>

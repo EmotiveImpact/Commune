@@ -12,8 +12,20 @@ export const PLAN_LIMITS = {
 } as const;
 
 export function usePlanLimits(userId: string) {
-  const { data: subscription, isLoading: subLoading } = useSubscription(userId);
-  const { data: groups, isLoading: groupsLoading } = useUserGroupSummaries();
+  const {
+    data: subscription,
+    isLoading: subLoading,
+    isError: isSubscriptionError,
+    error: subscriptionError,
+    refetch: refetchSubscription,
+  } = useSubscription(userId);
+  const {
+    data: groups,
+    isLoading: groupsLoading,
+    isError: isGroupsError,
+    error: groupsError,
+    refetch: refetchGroups,
+  } = useUserGroupSummaries();
   const { activeGroupId } = useGroupStore();
 
   return useMemo(() => {
@@ -41,6 +53,8 @@ export function usePlanLimits(userId: string) {
     const canAccessAnalytics = isActive && limits.proFeatures;
     const canExport = isActive && limits.proFeatures;
     const canDownloadStatements = isActive && limits.proFeatures;
+    const isError = isSubscriptionError || isGroupsError;
+    const error = subscriptionError ?? groupsError ?? null;
 
     return {
       canCreateGroup,
@@ -54,6 +68,23 @@ export function usePlanLimits(userId: string) {
       currentMembers,
       plan,
       isLoading: subLoading || groupsLoading,
+      isError,
+      error,
+      refetch: async () => {
+        await Promise.all([refetchSubscription(), refetchGroups()]);
+      },
     };
-  }, [subscription, groups, activeGroupId, subLoading, groupsLoading]);
+  }, [
+    subscription,
+    groups,
+    activeGroupId,
+    subLoading,
+    groupsLoading,
+    isSubscriptionError,
+    isGroupsError,
+    subscriptionError,
+    groupsError,
+    refetchSubscription,
+    refetchGroups,
+  ]);
 }

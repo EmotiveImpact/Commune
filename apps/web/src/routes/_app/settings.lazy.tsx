@@ -143,11 +143,23 @@ export function SettingsPage() {
     rootMargin: '120px',
     revealOnIdle: false,
   });
-  const { data: subscription, isLoading: subLoading } = useSubscription(user?.id ?? '', {
+  const {
+    data: subscription,
+    isLoading: subLoading,
+    isError: isSubscriptionError,
+    error: subscriptionError,
+    refetch: refetchSubscription,
+  } = useSubscription(user?.id ?? '', {
     enabled: billingReady,
   });
   const portal = usePortal();
-  const { data: pushSubs, isLoading: pushLoading } = usePushSubscription(user?.id ?? '', {
+  const {
+    data: pushSubs,
+    isLoading: pushLoading,
+    isError: isPushError,
+    error: pushError,
+    refetch: refetchPushSubscriptions,
+  } = usePushSubscription(user?.id ?? '', {
     enabled: pushNotificationsReady,
   });
   const subscribePush = useSubscribePush();
@@ -397,6 +409,15 @@ export function SettingsPage() {
               <Text size="sm" c="dimmed" mb="lg">
                 Push notifications are not supported in this browser.
               </Text>
+            ) : pushNotificationsReady && isPushError ? (
+              <QueryErrorState
+                title="Failed to load push settings"
+                error={pushError}
+                onRetry={() => {
+                  void refetchPushSubscriptions();
+                }}
+                icon={IconBell}
+              />
             ) : typeof Notification !== 'undefined' && Notification.permission === 'denied' ? (
               <Text size="sm" c="red" mb="lg">
                 Push notifications are blocked. Please enable them in your browser settings.
@@ -544,6 +565,15 @@ export function SettingsPage() {
               </Text>
             ) : subLoading ? (
               <SettingsSkeleton />
+            ) : isSubscriptionError ? (
+              <QueryErrorState
+                title="Failed to load subscription"
+                error={subscriptionError}
+                onRetry={() => {
+                  void refetchSubscription();
+                }}
+                icon={IconCreditCard}
+              />
             ) : subscription ? (
               <Stack gap="md">
                 <Group gap="xs">

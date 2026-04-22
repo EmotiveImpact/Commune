@@ -32,7 +32,13 @@ export function NotificationDropdown() {
   const [summaryEnabled, setSummaryEnabled] = useState(false);
   const hoverTimeoutRef = useRef<number | null>(null);
   const { data: summary } = useNotificationSummary({ enabled: summaryEnabled });
-  const { data: notifications = [], isLoading } = useNotifications({ enabled: opened });
+  const {
+    data: notifications = [],
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useNotifications({ enabled: opened });
   const markRead = useMarkNotificationRead();
   const markAllRead = useMarkAllNotificationsRead();
   const navigate = useNavigate();
@@ -147,6 +153,22 @@ export function NotificationDropdown() {
             <Text c="dimmed" size="sm">
               Loading notifications...
             </Text>
+          </Box>
+        ) : isError ? (
+          <Box p="md" ta="center">
+            <Stack gap="xs" align="center">
+              <Text size="sm" fw={600}>
+                Failed to load notifications
+              </Text>
+              <Text c="dimmed" size="xs">
+                {error instanceof Error ? error.message : 'Try again in a moment.'}
+              </Text>
+              <UnstyledButton onClick={() => void refetch()}>
+                <Text size="xs" c="commune" fw={600}>
+                  Try again
+                </Text>
+              </UnstyledButton>
+            </Stack>
           </Box>
         ) : notifications.length === 0 ? (
           <Box p="md" ta="center">

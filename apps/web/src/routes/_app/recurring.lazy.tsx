@@ -54,7 +54,7 @@ function formatCategoryLabel(category: string) {
     .join(' ');
 }
 
-function RecurringPage() {
+export function RecurringPage() {
   useEffect(() => {
     setPageTitle('Recurring');
   }, []);
@@ -66,8 +66,20 @@ function RecurringPage() {
     isError: isGroupError,
     refetch: refetchGroup,
   } = useGroup(activeGroupId ?? '');
-  const { data: activeExpenses, isLoading: activeLoading } = useRecurringExpenses(activeGroupId ?? '');
-  const { data: pausedExpenses, isLoading: pausedLoading } = usePausedRecurringExpenses(activeGroupId ?? '');
+  const {
+    data: activeExpenses,
+    isLoading: activeLoading,
+    isError: isActiveExpensesError,
+    error: activeExpensesError,
+    refetch: refetchActiveExpenses,
+  } = useRecurringExpenses(activeGroupId ?? '');
+  const {
+    data: pausedExpenses,
+    isLoading: pausedLoading,
+    isError: isPausedExpensesError,
+    error: pausedExpensesError,
+    refetch: refetchPausedExpenses,
+  } = usePausedRecurringExpenses(activeGroupId ?? '');
 
   const pauseMutation = usePauseRecurring(activeGroupId ?? '');
   const resumeMutation = useResumeRecurring(activeGroupId ?? '');
@@ -96,6 +108,20 @@ function RecurringPage() {
         error={groupError}
         onRetry={() => {
           void refetchGroup();
+        }}
+        icon={IconRepeat}
+      />
+    );
+  }
+
+  if (isActiveExpensesError || isPausedExpensesError) {
+    return (
+      <QueryErrorState
+        title="Failed to load recurring expenses"
+        error={activeExpensesError ?? pausedExpensesError}
+        onRetry={() => {
+          void refetchActiveExpenses();
+          void refetchPausedExpenses();
         }}
         icon={IconRepeat}
       />
