@@ -67,11 +67,22 @@ export function GroupCycleClosePage() {
     isLoading: groupLoading,
     refetch: refetchGroup,
   } = useGroup(groupId);
-  const { data: summary, isLoading: summaryLoading } = useGroupCycleSummary(
+  const {
+    data: summary,
+    error: summaryError,
+    isError: isSummaryError,
+    isLoading: summaryLoading,
+    refetch: refetchSummary,
+  } = useGroupCycleSummary(
     groupId,
     referenceDate,
   );
-  const { data: operations } = useChores(groupId);
+  const {
+    data: operations,
+    error: operationsError,
+    isError: isOperationsError,
+    refetch: refetchOperations,
+  } = useChores(groupId);
   const closeCycle = useCloseGroupCycle(groupId, referenceDate);
   const reopenCycle = useReopenGroupCycle(groupId, referenceDate);
   const { user } = useAuthStore();
@@ -92,6 +103,19 @@ export function GroupCycleClosePage() {
         error={groupError}
         onRetry={() => {
           void refetchGroup();
+        }}
+        icon={IconClock}
+      />
+    );
+  }
+
+  if (isSummaryError || isOperationsError) {
+    return (
+      <QueryErrorState
+        title="Failed to load cycle close"
+        error={summaryError ?? operationsError}
+        onRetry={() => {
+          void Promise.all([refetchSummary(), refetchOperations()]);
         }}
         icon={IconClock}
       />

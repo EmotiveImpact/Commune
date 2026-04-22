@@ -53,7 +53,7 @@ export const Route = createLazyFileRoute('/_app/import')({
 const MAX_EXPENSES = 5000;
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 
-function ImportPage() {
+export function ImportPage() {
   useEffect(() => {
     setPageTitle('Import from Splitwise');
   }, []);
@@ -70,7 +70,12 @@ function ImportPage() {
     refetch: refetchGroup,
   } = useGroup(activeGroupId ?? '');
   const { user } = useAuthStore();
-  const { data: subscription } = useSubscription(user?.id ?? '');
+  const {
+    data: subscription,
+    error: subscriptionError,
+    isError: isSubscriptionError,
+    refetch: refetchSubscription,
+  } = useSubscription(user?.id ?? '');
 
   // ─── Wizard state ──────────────────────────────────────────────────────────
   const [active, setActive] = useState(0);
@@ -347,6 +352,19 @@ function ImportPage() {
         error={groupError}
         onRetry={() => {
           void refetchGroup();
+        }}
+        icon={IconFileSpreadsheet}
+      />
+    );
+  }
+
+  if (isSubscriptionError) {
+    return (
+      <QueryErrorState
+        title="Failed to load import settings"
+        error={subscriptionError}
+        onRetry={() => {
+          void refetchSubscription();
         }}
         icon={IconFileSpreadsheet}
       />

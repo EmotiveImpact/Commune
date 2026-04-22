@@ -8,6 +8,34 @@ const closeCycleMutateAsyncMock = vi.fn();
 const reopenCycleMutateAsyncMock = vi.fn();
 const notificationsShowMock = vi.fn();
 const refetchGroupMock = vi.fn();
+const refetchSummaryMock = vi.fn();
+const refetchOperationsMock = vi.fn();
+let useCycleSummaryResultMock: any = {
+  data: {
+    cycle_start: '2026-03-01',
+    cycle_end: '2026-03-31',
+    cycle_date: 1,
+    is_closed: false,
+    closure: null,
+    total_spend: 420,
+    total_outstanding: 120,
+    unpaid_expense_count: 2,
+    overdue_expense_count: 1,
+    pending_expense_count: 1,
+    member_balances: [],
+    expenses: [],
+  },
+  isLoading: false,
+  isError: false,
+  error: null,
+  refetch: refetchSummaryMock,
+};
+let useChoresResultMock: any = {
+  data: [{ id: 'op-1', title: 'Kitchen reset', next_due: '2026-03-03' }],
+  isError: false,
+  error: null,
+  refetch: refetchOperationsMock,
+};
 let useGroupResultMock: any = {
   data: {
     id: 'group-1',
@@ -53,23 +81,7 @@ vi.mock('../../../hooks/use-groups', () => ({
 }));
 
 vi.mock('../../../hooks/use-cycles', () => ({
-  useGroupCycleSummary: () => ({
-    data: {
-      cycle_start: '2026-03-01',
-      cycle_end: '2026-03-31',
-      cycle_date: 1,
-      is_closed: false,
-      closure: null,
-      total_spend: 420,
-      total_outstanding: 120,
-      unpaid_expense_count: 2,
-      overdue_expense_count: 1,
-      pending_expense_count: 1,
-      member_balances: [],
-      expenses: [],
-    },
-    isLoading: false,
-  }),
+  useGroupCycleSummary: () => useCycleSummaryResultMock,
   useCloseGroupCycle: () => ({
     mutateAsync: closeCycleMutateAsyncMock,
     isPending: false,
@@ -81,9 +93,7 @@ vi.mock('../../../hooks/use-cycles', () => ({
 }));
 
 vi.mock('../../../hooks/use-chores', () => ({
-  useChores: () => ({
-    data: [{ id: 'op-1', title: 'Kitchen reset', next_due: '2026-03-03' }],
-  }),
+  useChores: () => useChoresResultMock,
 }));
 
 vi.mock('../../../stores/auth', () => ({
@@ -104,6 +114,34 @@ describe('GroupCycleClosePage', () => {
     reopenCycleMutateAsyncMock.mockReset();
     notificationsShowMock.mockReset();
     refetchGroupMock.mockReset();
+    refetchSummaryMock.mockReset();
+    refetchOperationsMock.mockReset();
+    useCycleSummaryResultMock = {
+      data: {
+        cycle_start: '2026-03-01',
+        cycle_end: '2026-03-31',
+        cycle_date: 1,
+        is_closed: false,
+        closure: null,
+        total_spend: 420,
+        total_outstanding: 120,
+        unpaid_expense_count: 2,
+        overdue_expense_count: 1,
+        pending_expense_count: 1,
+        member_balances: [],
+        expenses: [],
+      },
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: refetchSummaryMock,
+    };
+    useChoresResultMock = {
+      data: [{ id: 'op-1', title: 'Kitchen reset', next_due: '2026-03-03' }],
+      isError: false,
+      error: null,
+      refetch: refetchOperationsMock,
+    };
     useGroupResultMock = {
       data: {
         id: 'group-1',
@@ -186,6 +224,26 @@ describe('GroupCycleClosePage', () => {
 
     expect(screen.getByText(/failed to load cycle close/i)).toBeInTheDocument();
     expect(screen.getByText(/group fetch failed/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /try again/i })).toBeInTheDocument();
+  });
+
+  it('shows a retry state when the cycle summary query fails', () => {
+    useCycleSummaryResultMock = {
+      data: undefined,
+      isLoading: false,
+      isError: true,
+      error: new Error('Cycle summary failed'),
+      refetch: refetchSummaryMock,
+    };
+
+    render(
+      <MantineProvider>
+        <GroupCycleClosePage />
+      </MantineProvider>,
+    );
+
+    expect(screen.getByText(/failed to load cycle close/i)).toBeInTheDocument();
+    expect(screen.getByText(/cycle summary failed/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /try again/i })).toBeInTheDocument();
   });
 });

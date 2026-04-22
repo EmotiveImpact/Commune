@@ -28,7 +28,6 @@ import { useAuthStore } from '../../stores/auth';
 import { useGroup } from '../../hooks/use-groups';
 import { useUserBreakdown } from '../../hooks/use-dashboard';
 import { useMarkPayment } from '../../hooks/use-expenses';
-import { useSubscription } from '../../hooks/use-subscriptions';
 import { usePlanLimits } from '../../hooks/use-plan-limits';
 import { useGroupSettlement } from '../../hooks/use-settlement';
 import { useCanNudge, useNudgeHistory, useSendNudge } from '../../hooks/use-nudges';
@@ -145,12 +144,18 @@ function NudgeButton({
 function SettlementSection({
   settlement,
   isLoading,
+  error,
+  isError,
+  onRetry,
   currency,
   groupId,
   nudgesEnabled,
 }: {
   settlement: { transactions: SettlementTransaction[]; transactionCount: number; isSettled: boolean } | undefined;
   isLoading: boolean;
+  error: unknown;
+  isError: boolean;
+  onRetry: () => void;
   currency?: string;
   groupId: string;
   nudgesEnabled: boolean;
@@ -170,6 +175,17 @@ function SettlementSection({
           <Skeleton height={40} />
         </Stack>
       </Paper>
+    );
+  }
+
+  if (isError) {
+    return (
+      <QueryErrorState
+        title="Failed to load settlement"
+        error={error}
+        onRetry={onRetry}
+        icon={IconCash}
+      />
     );
   }
 
@@ -279,10 +295,16 @@ function NudgeHistorySection({
   groupId,
   members,
   currency,
+  error,
+  isError,
+  onRetry,
 }: {
   groupId: string;
   members: { user_id: string; user: { name: string } }[];
   currency?: string;
+  error: unknown;
+  isError: boolean;
+  onRetry: () => void;
 }) {
   const [opened, { toggle }] = useDisclosure(false);
   const { data: nudges, isLoading } = useNudgeHistory(groupId);
@@ -297,7 +319,20 @@ function NudgeHistorySection({
 
   const resolveName = (userId: string) => memberNameMap.get(userId) ?? 'Unknown';
 
-  if (isLoading || !nudges || nudges.length === 0) return null;
+  if (isLoading) return null;
+
+  if (isError) {
+    return (
+      <QueryErrorState
+        title="Failed to load nudge history"
+        error={error}
+        onRetry={onRetry}
+        icon={IconHistory}
+      />
+    );
+  }
+
+  if (!nudges || nudges.length === 0) return null;
 
   return (
     <Paper className="commune-soft-panel" p="md">
@@ -336,7 +371,7 @@ function NudgeHistorySection({
   );
 }
 
-function BreakdownPage() {
+export function BreakdownPage() {
   useEffect(() => {
     setPageTitle('My Breakdown');
   }, []);
@@ -353,8 +388,12 @@ function BreakdownPage() {
   const [categoryFilter, setCategoryFilter] = useState('');
   const [page, setPage] = useState(0);
   const markPayment = useMarkPayment(activeGroupId ?? '');
-  const { data: subscription } = useSubscription(user?.id ?? '');
-  const { canDownloadStatements } = usePlanLimits(user?.id ?? '');
+  const {
+    canDownloadStatements,
+    error: planLimitsError,
+    isError: isPlanLimitsError,
+    refetch: refetchPlanLimits,
+  } = usePlanLimits(user?.id ?? '');
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const isPaidPlan = canDownloadStatements;
 
@@ -362,16 +401,33 @@ function BreakdownPage() {
     (m) => m.user_id === user?.id && m.role === 'admin',
   ) ?? false;
 
-  const { data: breakdown, isLoading } = useUserBreakdown(
+  const {
+    data: breakdown,
+    error: breakdownError,
+    isError: isBreakdownError,
+    isLoading,
+    refetch: refetchBreakdown,
+  } = useUserBreakdown(
     activeGroupId ?? '',
     user?.id ?? '',
     selectedMonth,
   );
 
-  const { data: settlement, isLoading: isSettlementLoading } = useGroupSettlement(
+  const {
+    data: settlement,
+    error: settlementError,
+    isError: isSettlementError,
+    isLoading: isSettlementLoading,
+    refetch: refetchSettlement,
+  } = useGroupSettlement(
     activeGroupId ?? '',
     selectedMonth,
   );
+  const {
+    error: nudgeHistoryError,
+    isError: isNudgeHistoryError,
+    refetch: refetchNudgeHistory,
+  } = useNudgeHistory(activeGroupId ?? '');
 
   const monthOptions = useMemo(() => generateMonthOptions(), []);
 
@@ -459,6 +515,19 @@ function BreakdownPage() {
     );
   }
 
+  if (isBreakdownError) {
+    return (
+      <QueryErrorState
+        title="Failed to load your breakdown"
+        error={breakdownError}
+        onRetry={() => {
+          void refetchBreakdown();
+        }}
+        icon={IconWallet}
+      />
+    );
+  }
+
   return (
     <Stack gap="lg">
       <PageHeader
@@ -472,7 +541,19 @@ function BreakdownPage() {
             onChange={(value) => { setSelectedMonth(value ?? getMonthKey()); setPage(0); }}
             w={200}
           />
-          {isPaidPlan ? (
+          {isPlanLimitsError ? (
+            <Button
+              variant="default"
+              color="red"
+              leftSection={<IconDownload size={16} />}
+              onClick={() => {
+                void refetchPlanLimits();
+              }}
+              aria-label="Retry export access check"
+            >
+              Retry export access
+            </Button>
+          ) : isPaidPlan ? (
             <Button
               variant="default"
               leftSection={<IconDownload size={16} />}
@@ -497,6 +578,17 @@ function BreakdownPage() {
           )}
         </Group>
       </PageHeader>
+
+      {isPlanLimitsError && (
+        <QueryErrorState
+          title="Failed to load export access"
+          error={planLimitsError}
+          onRetry={() => {
+            void refetchPlanLimits();
+          }}
+          icon={IconDownload}
+        />
+      )}
 
       {isLoading ? (
         <BreakdownSkeleton />
@@ -537,6 +629,11 @@ function BreakdownPage() {
           <SettlementSection
             settlement={settlement}
             isLoading={isSettlementLoading}
+            error={settlementError}
+            isError={isSettlementError}
+            onRetry={() => {
+              void refetchSettlement();
+            }}
             currency={group?.currency}
             groupId={activeGroupId}
             nudgesEnabled={group?.nudges_enabled ?? true}
@@ -547,6 +644,11 @@ function BreakdownPage() {
               groupId={activeGroupId}
               members={group.members}
               currency={group?.currency}
+              error={nudgeHistoryError}
+              isError={isNudgeHistoryError}
+              onRetry={() => {
+                void refetchNudgeHistory();
+              }}
             />
           )}
 

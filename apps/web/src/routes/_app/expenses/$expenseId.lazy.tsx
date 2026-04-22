@@ -111,7 +111,12 @@ export function ExpenseDetailPage() {
   const [flagReason, setFlagReason] = useState('');
   const [pendingPayment, setPendingPayment] = useState<{ userId: string } | null>(null);
   const paidByUserId = expense?.paid_by_user_id ?? '';
-  const { data: paidByMethods } = usePaymentMethods(paidByUserId);
+  const {
+    data: paidByMethods,
+    error: paymentMethodsError,
+    isError: isPaymentMethodsError,
+    refetch: refetchPaymentMethods,
+  } = usePaymentMethods(paidByUserId);
   const workspaceContext = getWorkspaceExpenseContext(expense);
   const showWorkspaceContext = group?.type === 'workspace' || hasWorkspaceExpenseContext(expense);
 
@@ -834,7 +839,16 @@ export function ExpenseDetailPage() {
                 <Text fw={700} size="lg">Pay {expense.paid_by_user.name}</Text>
               </Group>
 
-              {paymentLinkResult ? (
+              {isPaymentMethodsError ? (
+                <QueryErrorState
+                  title="Failed to load payment options"
+                  error={paymentMethodsError}
+                  onRetry={() => {
+                    void refetchPaymentMethods();
+                  }}
+                  icon={IconWallet}
+                />
+              ) : paymentLinkResult ? (
                 <Stack gap="md">
                   <Text size="sm" c="dimmed">
                     {expense.paid_by_user.name} accepts payments via {getProviderDisplayName(paymentLinkResult.provider)}.

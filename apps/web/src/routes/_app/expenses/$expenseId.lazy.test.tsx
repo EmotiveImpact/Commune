@@ -238,4 +238,49 @@ describe('ExpenseDetailPage', () => {
     expect(screen.getByText(/group fetch failed/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /try again/i })).toBeInTheDocument();
   });
+
+  it('shows a retry state when payment methods fail to load', () => {
+    useExpenseDetailMock.mockReturnValue({
+      id: 'expense-1',
+      title: 'Desk chairs',
+      description: 'Shared chairs for the office',
+      category: 'work_tools',
+      amount: 248,
+      currency: 'GBP',
+      due_date: '2026-03-25',
+      recurrence_type: 'none',
+      paid_by_user_id: 'payer-1',
+      paid_by_user: {
+        id: 'payer-1',
+        name: 'OfficeCo',
+      },
+      payment_records: [],
+      participants: [
+        {
+          id: 'participant-1',
+          user_id: 'user-1',
+          share_amount: 248,
+          user: { id: 'user-1', name: 'August Usedem', avatar_url: null },
+        },
+      ],
+      approval_status: 'approved',
+      receipt_url: null,
+      vendor_name: 'OfficeCo',
+      invoice_reference: 'INV-1042',
+      invoice_date: '2026-03-10',
+      payment_due_date: '2026-03-25',
+    });
+    usePaymentMethodsMock.mockReturnValue({
+      data: undefined,
+      isError: true,
+      error: new Error('Payment methods failed'),
+      refetch: vi.fn(),
+    });
+
+    renderPage();
+
+    expect(screen.getByText(/failed to load payment options/i)).toBeInTheDocument();
+    expect(screen.getByText(/payment methods failed/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /try again/i })).toBeInTheDocument();
+  });
 });
