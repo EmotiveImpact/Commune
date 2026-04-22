@@ -102,22 +102,37 @@ export function useAuthListener() {
         setActiveGroupId(null);
       }
 
-      pendingUserId = session.user.id;
-      const user = await resolveUser(session.user);
-      if (!mounted) return;
-
-      lastUserId = session.user.id;
-      pendingUserId = null;
-      queryClient.setQueryData(profileKeys.detail(user.id), user);
-      setActiveGroupUserId(user.id);
-      setUser(user);
+      const requestUserId = session.user.id;
+      pendingUserId = requestUserId;
+      lastUserId = requestUserId;
+      const cachedUser = queryClient.getQueryData<User>(profileKeys.detail(requestUserId));
+      const optimisticUser = cachedUser ?? buildFallbackUser(session.user);
+      queryClient.setQueryData(profileKeys.detail(optimisticUser.id), optimisticUser);
+      setActiveGroupUserId(optimisticUser.id);
+      setUser(optimisticUser);
       void router.invalidate();
 
       if (!initialised) {
         initialised = true;
         setLoading(false);
-        void router.invalidate();
       }
+
+      void resolveUser(session.user)
+        .then((user) => {
+          if (!mounted) return;
+          // A newer auth event took over while we were resolving; drop the result
+          // rather than racing it onto the store (prevents a stale user from
+          // winning after a quick A→B→A switch).
+          if (pendingUserId !== requestUserId) return;
+
+          pendingUserId = null;
+          queryClient.setQueryData(profileKeys.detail(user.id), user);
+          setUser(user);
+        })
+        .catch((error) => {
+          pendingUserId = null;
+          console.error('Failed to resolve user profile after optimistic bootstrap.', error);
+        });
     }
 
     void supabase.auth.getSession().then(({ data: { session } }) => syncSession(session));

@@ -1,11 +1,8 @@
 import { useEffect, useMemo } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
-import { getGroupSummary } from '@commune/api';
-import { groupKeys, useUserGroupSummaries } from './use-groups';
+import { useUserGroupSummaries } from './use-groups';
 import { useGroupStore } from '../stores/group';
 
 export function useGroupBootstrap() {
-  const queryClient = useQueryClient();
   const { data: groups, isLoading } = useUserGroupSummaries();
   const { activeGroupId, hydrated, setActiveGroupId } = useGroupStore();
 
@@ -44,17 +41,6 @@ export function useGroupBootstrap() {
     resolvedActiveGroupId,
     setActiveGroupId,
   ]);
-
-  useEffect(() => {
-    if (!resolvedActiveGroupId) {
-      return;
-    }
-
-    void queryClient.prefetchQuery({
-      queryKey: groupKeys.summaryDetail(resolvedActiveGroupId),
-      queryFn: () => getGroupSummary(resolvedActiveGroupId),
-    });
-  }, [queryClient, resolvedActiveGroupId]);
 
   return {
     groups,

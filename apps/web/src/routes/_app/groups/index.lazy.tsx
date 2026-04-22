@@ -23,7 +23,8 @@ import {
   IconUsers,
   IconUsersGroup,
 } from '@tabler/icons-react';
-import { useUserGroupSummaries, useGroup } from '../../../hooks/use-groups';
+import type { UserGroupSummary } from '@commune/api';
+import { useUserGroupSummaries } from '../../../hooks/use-groups';
 import { useAuthStore } from '../../../stores/auth';
 import { useGroupStore } from '../../../stores/group';
 import { ContentSkeleton } from '../../../components/page-skeleton';
@@ -107,30 +108,29 @@ function GroupsPage() {
       ) : (
         <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="lg">
           {groups.map((g) => (
-            <GroupCard key={g.id} groupId={g.id} name={g.name} type={g.type} />
+            <GroupCard key={g.id} group={g} />
           ))}
         </SimpleGrid>
       )}
 
-      <CreateGroupModal opened={createOpened} onClose={closeCreate} />
+      {createOpened ? (
+        <CreateGroupModal opened={createOpened} onClose={closeCreate} />
+      ) : null}
     </Stack>
   );
 }
 
-function GroupCard({ groupId, name, type }: { groupId: string; name: string; type: string }) {
+function GroupCard({ group }: { group: UserGroupSummary }) {
   const colorScheme = useComputedColorScheme('light');
   const navigate = useNavigate();
-  const { data: group } = useGroup(groupId);
   const { user } = useAuthStore();
   const { activeGroupId, setActiveGroupId } = useGroupStore();
 
-  const memberCount = group?.members.length ?? 0;
-  const isAdmin = group?.members.some(
-    (m) => m.user_id === user?.id && m.role === 'admin',
-  ) ?? false;
-  const isActive = activeGroupId === groupId;
+  const memberCount = group.active_member_count;
+  const isAdmin = group.current_user_role === 'admin' && !!user;
+  const isActive = activeGroupId === group.id;
   const fallback = GROUP_VISUALS['other']!;
-  const visual = GROUP_VISUALS[type] ?? fallback;
+  const visual = GROUP_VISUALS[group.type] ?? fallback;
   const Icon = visual.icon;
   const cardGradient = colorScheme === 'dark' ? visual.gradientDark : visual.gradient;
 
@@ -146,8 +146,8 @@ function GroupCard({ groupId, name, type }: { groupId: string; name: string; typ
         transition: 'outline-color var(--commune-motion-fast), box-shadow var(--commune-motion-fast)',
       }}
       onClick={() => {
-        setActiveGroupId(groupId);
-        navigate({ to: '/groups/$groupId', params: { groupId } });
+        setActiveGroupId(group.id);
+        navigate({ to: '/groups/$groupId', params: { groupId: group.id } });
       }}
     >
       {/* Thumbnail header */}
@@ -189,7 +189,7 @@ function GroupCard({ groupId, name, type }: { groupId: string; name: string; typ
           <Tooltip label="Group settings" position="left" withArrow>
             <Button
               component={Link}
-              to={`/groups/${groupId}/edit`}
+              to={`/groups/${group.id}/edit`}
               variant="subtle"
               size="compact-sm"
               onClick={(e: React.MouseEvent) => e.stopPropagation()}
@@ -209,7 +209,7 @@ function GroupCard({ groupId, name, type }: { groupId: string; name: string; typ
       {/* Card body */}
       <Box p="md">
         <Text fw={600} size="md" truncate mb={2}>
-          {name}
+          {group.name}
         </Text>
 
         <Group gap="sm">

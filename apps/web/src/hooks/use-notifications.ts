@@ -24,10 +24,10 @@ export function useNotifications() {
 
   return useQuery({
     queryKey: notificationKeys.list(activeGroupId ?? '', user?.id ?? ''),
-    queryFn: () => getNotifications(activeGroupId!),
+    queryFn: () => getNotifications(activeGroupId!, 11),
     enabled: !!activeGroupId && !!user,
-    staleTime: 60_000,
-    refetchOnWindowFocus: 'always',
+    staleTime: 1000 * 60 * 5,
+    refetchOnWindowFocus: true,
   });
 }
 
@@ -57,9 +57,6 @@ export function useMarkNotificationRead() {
     onError: (_error, _notificationId, context) => {
       queryClient.setQueryData(queryKey, context?.previous ?? []);
     },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey });
-    },
   });
 }
 
@@ -84,9 +81,6 @@ export function useMarkAllNotificationsRead() {
     },
     onError: (_error, _notificationIds, context) => {
       queryClient.setQueryData(queryKey, context?.previous ?? []);
-    },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey });
     },
   });
 }

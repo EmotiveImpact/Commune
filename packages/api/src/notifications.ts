@@ -1,4 +1,4 @@
-import { supabase } from './client';
+import { getTypedSupabase } from './client';
 
 export interface AppNotification {
   id: string;
@@ -12,14 +12,17 @@ export interface AppNotification {
 
 export async function getNotifications(
   groupId: string,
+  limit = 30,
 ): Promise<AppNotification[]> {
+  const supabase = getTypedSupabase();
   const { data, error } = await supabase.rpc('fn_get_group_notifications', {
     p_group_id: groupId,
+    p_limit: limit,
   });
 
   if (error) throw error;
 
-  return (data ?? []) as AppNotification[];
+  return (data ?? []) as unknown as AppNotification[];
 }
 
 /**
@@ -29,6 +32,7 @@ export async function markNotificationRead(
   userId: string,
   notificationId: string,
 ): Promise<void> {
+  const supabase = getTypedSupabase();
   const { error } = await supabase
     .from('notification_reads')
     .upsert(
@@ -47,6 +51,7 @@ export async function markAllNotificationsRead(
 ): Promise<void> {
   if (notificationIds.length === 0) return;
 
+  const supabase = getTypedSupabase();
   const rows = notificationIds.map((nId) => ({
     user_id: userId,
     notification_id: nId,

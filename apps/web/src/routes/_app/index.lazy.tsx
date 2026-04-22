@@ -39,10 +39,10 @@ import { getOnboardingTips } from '@commune/core';
 import { setPageTitle } from '../../utils/seo';
 import { useGroupStore } from '../../stores/group';
 import { useAuthStore } from '../../stores/auth';
-import { useGroupSummary, usePendingInvites, useUserGroupSummaries } from '../../hooks/use-groups';
+import { useGroupSummary, useUserGroupSummaries } from '../../hooks/use-groups';
 import { useDashboardStats, useDashboardSummary } from '../../hooks/use-dashboard';
 import { DashboardSkeleton } from '../../components/page-skeleton';
-import { useGenerateRecurring } from '../../hooks/use-recurring';
+import { useGenerateRecurring, usePendingRecurringGeneration } from '../../hooks/use-recurring';
 import { useGroupBudget } from '../../hooks/use-budgets';
 import { useDeferredSection } from '../../hooks/use-deferred-section';
 import { SetBudgetModal } from '../../components/set-budget-modal';
@@ -241,7 +241,6 @@ function DashboardPage() {
   const { user } = useAuthStore();
   const navigate = useNavigate();
   const { data: groups, isLoading: groupsLoading } = useUserGroupSummaries();
-  const { data: pendingInvites, isLoading: invitesLoading } = usePendingInvites();
   const resolvedActiveGroupId = useMemo(() => {
     if (!groups?.length) {
       return null;
@@ -254,6 +253,10 @@ function DashboardPage() {
     return groups[0]?.id ?? null;
   }, [activeGroupId, groups]);
   const { data: group, isLoading: groupLoading } = useGroupSummary(resolvedActiveGroupId ?? '');
+  const activeGroupSummary = useMemo(
+    () => groups?.find((candidate) => candidate.id === resolvedActiveGroupId) ?? null,
+    [groups, resolvedActiveGroupId],
+  );
   const currentMonth = getMonthKey();
   const { data: dashboardSummary, isLoading: summaryLoading } = useDashboardSummary(
     resolvedActiveGroupId ?? '',
@@ -267,32 +270,51 @@ function DashboardPage() {
     { enabled: needsStatsFallback },
   );
   const generateRecurring = useGenerateRecurring(resolvedActiveGroupId ?? '');
-  const recurringGeneratedRef = useRef(false);
+  const { data: hasPendingRecurringGeneration } = usePendingRecurringGeneration(
+    resolvedActiveGroupId ?? '',
+    currentMonth,
+    { enabled: !!resolvedActiveGroupId && activeGroupSummary?.current_user_role === 'admin' },
+  );
+  const recurringGenerationKeyRef = useRef<string | null>(null);
 
   // F35: Budget data
   const { data: currentBudget } = useGroupBudget(resolvedActiveGroupId ?? '', currentMonth);
   const [budgetModalOpened, setBudgetModalOpened] = useState(false);
 
   useEffect(() => {
-    if (resolvedActiveGroupId && !recurringGeneratedRef.current) {
-      recurringGeneratedRef.current = true;
-      generateRecurring.mutate();
+    const generationKey = resolvedActiveGroupId
+      ? `${resolvedActiveGroupId}:${currentMonth}`
+      : null;
+
+    if (
+      generationKey
+      && hasPendingRecurringGeneration
+      && recurringGenerationKeyRef.current !== generationKey
+    ) {
+      recurringGenerationKeyRef.current = generationKey;
+      generateRecurring.mutate(undefined, {
+        onError: () => {
+          if (recurringGenerationKeyRef.current === generationKey) {
+            recurringGenerationKeyRef.current = null;
+          }
+        },
+      });
     }
-  }, [resolvedActiveGroupId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [currentMonth, generateRecurring, hasPendingRecurringGeneration, resolvedActiveGroupId]);
 
   useEffect(() => {
     setPageTitle('Dashboard');
   }, []);
 
   useEffect(() => {
-    if (resolvedActiveGroupId || groupsLoading || invitesLoading) {
+    if (resolvedActiveGroupId || groupsLoading) {
       return;
     }
 
     if ((groups?.length ?? 0) === 0) {
       navigate({ to: '/onboarding', replace: true });
     }
-  }, [resolvedActiveGroupId, groups?.length, groupsLoading, invitesLoading, navigate]);
+  }, [resolvedActiveGroupId, groups?.length, groupsLoading, navigate]);
 
   const monthLabel = formatMonthKey(currentMonth, 'en-GB', {
     month: 'long',
@@ -410,7 +432,7 @@ function DashboardPage() {
   );
 
   if (!resolvedActiveGroupId) {
-    if (groupsLoading || invitesLoading) {
+    if (groupsLoading) {
       return <DashboardSkeleton />;
     }
 

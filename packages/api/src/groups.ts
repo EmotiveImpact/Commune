@@ -5,18 +5,26 @@ import type {
   GroupSummary,
   GroupMember,
   GroupWithMembers,
+  GroupUpdate,
   InviteValidation,
   SpaceEssentials,
   SetupChecklistProgress,
 } from '@commune/types';
-import { GroupType, MemberRole, type MemberRole as MemberRoleType } from '@commune/types';
+import {
+  asJson,
+  fromJson,
+  GroupType,
+  MemberRole,
+  type Json,
+  type MemberRole as MemberRoleType,
+} from '@commune/types';
 import {
   getDefaultWorkspaceRolePresets,
   normalizeGroupApprovalPolicy,
   type CreateGroupInput,
   type GroupApprovalPolicyInput,
 } from '@commune/core';
-import { requireSessionUser, supabase } from './client';
+import { getTypedSupabase, requireSessionUser } from './client';
 import {
   applyGovernanceMemberPatch,
   ensureActiveAdminCoverage,
@@ -80,6 +88,7 @@ function getPrimaryWorkspaceResponsibilityLabel(
 }
 
 export async function createGroup(data: CreateGroupInput) {
+  const supabase = getTypedSupabase();
   const user = await requireSessionUser();
 
   await ensureProfile(user.id);
@@ -104,7 +113,7 @@ export async function createGroup(data: CreateGroupInput) {
     cycle_date: data.cycle_date ?? 1,
     currency: data.currency ?? 'GBP',
     approval_threshold: approvalPolicy?.threshold ?? data.approval_threshold ?? null,
-    approval_policy: approvalPolicy,
+    approval_policy: asJson(approvalPolicy),
   };
 
   const { data: insertedGroup, error } = await supabase
@@ -133,10 +142,11 @@ export async function createGroup(data: CreateGroupInput) {
     }
   }
 
-  return insertedGroup as Group;
+  return insertedGroup as unknown as Group;
 }
 
 export async function getGroup(groupId: string) {
+  const supabase = getTypedSupabase();
   const { data, error } = await supabase
     .from('groups')
     .select(
@@ -156,6 +166,7 @@ export async function getGroup(groupId: string) {
 }
 
 export async function getGroupSummary(groupId: string): Promise<GroupSummary> {
+  const supabase = getTypedSupabase();
   const [{ data: group, error: groupError }, { count, error: countError }] = await Promise.all([
     supabase
       .from('groups')
@@ -173,35 +184,34 @@ export async function getGroupSummary(groupId: string): Promise<GroupSummary> {
   if (countError) throw countError;
 
   return {
-    ...(group as Omit<GroupSummary, 'active_member_count'>),
+    ...(group as unknown as Omit<GroupSummary, 'active_member_count' | 'approval_policy'>),
+    approval_policy: fromJson<GroupApprovalPolicy>(group?.approval_policy),
     active_member_count: count ?? 0,
   };
 }
 
-export interface UserGroupSummary {
-  id: string;
-  name: string;
-  type: Group['type'];
-  subtype: string | null;
-  avatar_url: string | null;
-  currency: string;
+export interface UserGroupSummary extends GroupSummary {
+  current_user_role: MemberRoleType;
 }
 
 export async function getUserGroupSummaries(userId?: string): Promise<UserGroupSummary[]> {
+  const supabase = getTypedSupabase();
   const resolvedUserId = userId ?? (await requireSessionUser()).id;
   if (!resolvedUserId) throw new Error('Not authenticated');
 
-  const { data, error } = await supabase
+  const { data: memberships, error } = await supabase
     .from('group_members')
     .select(
       `
+      role,
       group:groups(
         id,
         name,
         type,
         subtype,
         avatar_url,
-        currency
+        currency,
+        approval_policy
       )
     `,
     )
@@ -210,12 +220,66 @@ export async function getUserGroupSummaries(userId?: string): Promise<UserGroupS
 
   if (error) throw error;
 
-  return (data ?? []).map(
-    (row) => (row as unknown as { group: UserGroupSummary }).group,
+  const groupIds = Array.from(
+    new Set(
+      (memberships ?? [])
+        .map((row) => (row as unknown as { group: { id: string } | null }).group?.id ?? null)
+        .filter((groupId): groupId is string => Boolean(groupId)),
+    ),
   );
+
+  if (groupIds.length === 0) {
+    return [];
+  }
+
+  const { data: activeMembers, error: countError } = await supabase
+    .from('group_members')
+    .select('group_id')
+    .in('group_id', groupIds)
+    .eq('status', 'active');
+
+  if (countError) throw countError;
+
+  const memberCounts = new Map<string, number>();
+  for (const row of activeMembers ?? []) {
+    const groupId = row.group_id;
+    memberCounts.set(groupId, (memberCounts.get(groupId) ?? 0) + 1);
+  }
+
+  return (memberships ?? []).flatMap((row) => {
+    const typedRow = row as unknown as {
+      role: MemberRoleType;
+      group: {
+        id: string;
+        name: string;
+        type: Group['type'];
+        subtype: string | null;
+        avatar_url: string | null;
+        currency: string;
+        approval_policy: unknown;
+      } | null;
+    };
+
+    if (!typedRow.group) {
+      return [];
+    }
+
+    return [{
+      id: typedRow.group.id,
+      name: typedRow.group.name,
+      type: typedRow.group.type,
+      subtype: typedRow.group.subtype,
+      avatar_url: typedRow.group.avatar_url,
+      currency: typedRow.group.currency,
+      approval_policy: fromJson<GroupApprovalPolicy>(typedRow.group.approval_policy as Json),
+      active_member_count: memberCounts.get(typedRow.group.id) ?? 0,
+      current_user_role: typedRow.role,
+    }];
+  });
 }
 
 export async function getUserGroups(userId?: string): Promise<GroupWithMembers[]> {
+  const supabase = getTypedSupabase();
   const resolvedUserId = userId ?? (await requireSessionUser()).id;
   if (!resolvedUserId) throw new Error('Not authenticated');
 
@@ -243,6 +307,7 @@ export async function getUserGroups(userId?: string): Promise<GroupWithMembers[]
 }
 
 export async function getPendingInvites(userId?: string) {
+  const supabase = getTypedSupabase();
   const resolvedUserId = userId ?? (await requireSessionUser()).id;
   if (!resolvedUserId) throw new Error('Not authenticated');
 
@@ -273,6 +338,7 @@ export interface InviteResult {
 }
 
 export async function inviteMember(groupId: string, email: string): Promise<InviteResult> {
+  const supabase = getTypedSupabase();
   const { data, error } = await supabase
     .rpc('invite_group_member', {
       target_group_id: groupId,
@@ -281,7 +347,7 @@ export async function inviteMember(groupId: string, email: string): Promise<Invi
 
   if (error) throw error;
 
-  const result = data as InviteResult;
+  const result = data as unknown as InviteResult;
 
   // Fire-and-forget: send invite email via edge function
   const inviteUrl = `https://app.ourcommune.io/invite/${result.token}`;
@@ -301,6 +367,7 @@ export async function inviteMember(groupId: string, email: string): Promise<Invi
 }
 
 export async function validateInviteToken(token: string): Promise<InviteValidation | null> {
+  const supabase = getTypedSupabase();
   const { data, error } = await supabase
     .rpc('validate_invite_token', { p_token: token });
 
@@ -311,21 +378,23 @@ export async function validateInviteToken(token: string): Promise<InviteValidati
 }
 
 export async function acceptInviteByToken(token: string) {
+  const supabase = getTypedSupabase();
   const { data, error } = await supabase
     .rpc('accept_invite_by_token', { p_token: token });
 
   if (error) throw error;
-  return data as GroupMember;
+  return data as unknown as GroupMember;
 }
 
 export async function acceptInvite(groupId: string) {
+  const supabase = getTypedSupabase();
   const { data, error } = await supabase
     .rpc('accept_group_invite', {
       target_group_id: groupId,
     });
 
   if (error) throw error;
-  return data as GroupMember;
+  return data as unknown as GroupMember;
 }
 
 export async function updateMemberRole(
@@ -333,6 +402,7 @@ export async function updateMemberRole(
   role: MemberRoleType,
   responsibilityLabel?: string | null,
 ) {
+  const supabase = getTypedSupabase();
   const { data: currentMemberData, error: currentMemberError } = await supabase
     .from('group_members')
     .select('id, group_id, user_id, role, status, responsibility_label')
@@ -383,6 +453,7 @@ export async function updateMemberResponsibilityLabel(
   memberId: string,
   responsibilityLabel: string | null,
 ) {
+  const supabase = getTypedSupabase();
   const { data: currentMemberData, error: currentMemberError } = await supabase
     .from('group_members')
     .select('id, group_id, status')
@@ -413,6 +484,7 @@ export async function updateMemberResponsibilityLabel(
 }
 
 export async function transferOwnership(groupId: string, newOwnerId: string) {
+  const supabase = getTypedSupabase();
   const { group: currentGroup, members } = await getGroupGovernanceContext(groupId);
 
   const ownerResponsibilityLabel =
@@ -514,6 +586,7 @@ export async function transferOwnership(groupId: string, newOwnerId: string) {
 }
 
 export async function removeMember(memberId: string) {
+  const supabase = getTypedSupabase();
   const user = await requireSessionUser();
 
   const { data: member, error: memberError } = await supabase
@@ -575,6 +648,7 @@ export async function removeMember(memberId: string) {
 }
 
 export async function leaveGroup(groupId: string, userId: string) {
+  const supabase = getTypedSupabase();
   const { group, members } = await getGroupGovernanceContext(groupId);
 
   if (group.owner_id === userId) {
@@ -636,6 +710,7 @@ export async function updateGroup(
     cover_url?: string;
   },
 ) {
+  const supabase = getTypedSupabase();
   const touchesGovernance =
     updates.approval_policy !== undefined
     || updates.approval_threshold !== undefined
@@ -689,11 +764,28 @@ export async function updateGroup(
     }
   }
 
-  const updatePayload = {
-    ...updates,
+  const {
+    house_info,
+    space_essentials,
+    setup_checklist_progress,
+    approval_policy: _droppedPolicy,
+    type: typeUpdate,
+    ...scalarUpdates
+  } = updates;
+
+  const updatePayload: GroupUpdate = {
+    ...scalarUpdates,
+    ...(typeUpdate !== undefined ? { type: typeUpdate as Group['type'] } : {}),
+    ...(house_info !== undefined ? { house_info: asJson(house_info) } : {}),
+    ...(space_essentials !== undefined
+      ? { space_essentials: asJson(space_essentials) }
+      : {}),
+    ...(setup_checklist_progress !== undefined
+      ? { setup_checklist_progress: asJson(setup_checklist_progress) }
+      : {}),
     ...(approvalPolicy !== undefined
       ? {
-          approval_policy: approvalPolicy,
+          approval_policy: asJson(approvalPolicy),
           approval_threshold:
             approvalPolicy ? approvalPolicy.threshold : updates.approval_threshold ?? null,
         }
@@ -708,13 +800,14 @@ export async function updateGroup(
     .single();
 
   if (error) throw error;
-  return data as Group;
+  return data as unknown as Group;
 }
 
 export async function updateMemberEffectiveDates(
   memberId: string,
   dates: { effective_from?: string; effective_until?: string },
 ) {
+  const supabase = getTypedSupabase();
   const updates: Record<string, string | null> = {};
   if (dates.effective_from !== undefined) {
     updates.effective_from = dates.effective_from || null;
@@ -735,6 +828,7 @@ export async function updateMemberEffectiveDates(
 }
 
 export async function deleteGroup(groupId: string) {
+  const supabase = getTypedSupabase();
   const user = await requireSessionUser();
 
   // Verify the current user is the group owner

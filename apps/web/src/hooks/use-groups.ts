@@ -18,6 +18,7 @@ import {
   updateMemberResponsibilityLabel,
   updateMemberRole,
   validateInviteToken,
+  type UserGroupSummary,
 } from '@commune/api';
 import type { CreateGroupInput, GroupApprovalPolicyInput } from '@commune/core';
 import type {
@@ -76,9 +77,18 @@ export function useGroup(groupId: string) {
 }
 
 export function useGroupSummary(groupId: string) {
+  const { user } = useAuthStore();
+  const queryClient = useQueryClient();
+
+  const getCachedSummary = () =>
+    queryClient
+      .getQueryData<UserGroupSummary[]>(groupKeys.summariesByUser(user?.id ?? ''))
+      ?.find((summary) => summary.id === groupId);
+
   return useQuery({
     queryKey: groupKeys.summaryDetail(groupId),
-    queryFn: () => getGroupSummary(groupId),
+    queryFn: async () => getCachedSummary() ?? getGroupSummary(groupId),
+    initialData: getCachedSummary,
     enabled: !!groupId,
     staleTime: 1000 * 60 * 5,
     retry: (_failureCount, error) => !isSingleRowNotFoundError(error),

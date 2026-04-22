@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   generateRecurringExpenses,
+  hasPendingRecurringGeneration,
   getRecurringExpenses,
   getPausedRecurringExpenses,
   pauseRecurringExpense,
@@ -25,6 +26,7 @@ function invalidateRecurringGroupQueries(
   queryClient.invalidateQueries({ queryKey: dashboardKeys.breakdownGroup(groupId) });
   queryClient.invalidateQueries({ queryKey: dashboardKeys.feedGroup(groupId) });
   queryClient.invalidateQueries({ queryKey: dashboardKeys.workspaceBillingFeed(groupId) });
+  queryClient.invalidateQueries({ queryKey: recurringKeys.pending(groupId) });
   queryClient.invalidateQueries({ queryKey: workspaceBillingKeys.report(groupId) });
   queryClient.invalidateQueries({ queryKey: notificationKeys.group(groupId) });
   queryClient.invalidateQueries({ queryKey: groupHubKeys.detail(groupId) });
@@ -34,6 +36,8 @@ export const recurringKeys = {
   all: ['recurring'] as const,
   list: (groupId: string) => [...recurringKeys.all, 'list', groupId] as const,
   paused: (groupId: string) => [...recurringKeys.all, 'paused', groupId] as const,
+  pending: (groupId: string, month?: string) =>
+    [...recurringKeys.all, 'pending', groupId, month ?? 'current'] as const,
 };
 
 export function useGenerateRecurring(groupId: string) {
@@ -43,6 +47,19 @@ export function useGenerateRecurring(groupId: string) {
     onSuccess: () => {
       invalidateRecurringGroupQueries(queryClient, groupId);
     },
+  });
+}
+
+export function usePendingRecurringGeneration(
+  groupId: string,
+  month: string,
+  options?: { enabled?: boolean },
+) {
+  return useQuery({
+    queryKey: recurringKeys.pending(groupId, month),
+    queryFn: () => hasPendingRecurringGeneration(groupId, month),
+    enabled: !!groupId && (options?.enabled ?? true),
+    staleTime: 1000 * 60 * 5,
   });
 }
 

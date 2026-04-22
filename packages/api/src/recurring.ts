@@ -1,5 +1,14 @@
-import type { ExpenseWithParticipants } from '@commune/types';
-import { requireSessionUser, supabase } from './client';
+import type {
+  ExpenseWithParticipants,
+  ExpenseInsert,
+  ExpenseUpdate,
+  ExpenseParticipantInsert,
+  RecurringExpenseLogInsert,
+  RecurrenceTypeEnum,
+  SplitMethodEnum,
+} from '@commune/types';
+import { toRecurrenceType, toSplitMethod } from '@commune/types';
+import { getTypedSupabase, requireSessionUser, supabase } from './client';
 import { ensureExpenseCycleOpen, ensureGroupCycleOpenForDate } from './cycles';
 import {
   buildWorkspaceBillingReport,
@@ -118,7 +127,8 @@ export function parsePausedRecurringExpenseState(
 export async function generateRecurringExpenses(
   groupId: string,
 ): Promise<string[]> {
-  const user = await requireSessionUser();
+  await requireSessionUser();
+  const supabase = getTypedSupabase();
 
   const currentMonth = getCurrentMonthKey();
 
@@ -131,9 +141,7 @@ export async function generateRecurringExpenses(
   if (genError) throw genError;
 
   const generatedExpenseIds = new Set(
-    (generatedRows ?? []).map(
-      (r: { generated_expense_id: string }) => r.generated_expense_id,
-    ),
+    (generatedRows ?? []).map((r) => r.generated_expense_id),
   );
 
   // 2. Fetch all active recurring expenses in the group
@@ -153,13 +161,13 @@ export async function generateRecurringExpenses(
 
   // Filter out any expense that was itself generated — only true sources remain
   const recurringExpenses = (allRecurring ?? []).filter(
-    (e: { id: string }) => !generatedExpenseIds.has(e.id),
+    (e) => !generatedExpenseIds.has(e.id),
   );
 
   if (recurringExpenses.length === 0) return [];
 
   // 3. Check which ones already have a log entry for this month
-  const sourceIds = recurringExpenses.map((e: { id: string }) => e.id);
+  const sourceIds = recurringExpenses.map((e) => e.id);
 
   const { data: existingLogs, error: logError } = await supabase
     .from('recurring_expense_log')
@@ -170,38 +178,13 @@ export async function generateRecurringExpenses(
   if (logError) throw logError;
 
   const alreadyGenerated = new Set(
-    (existingLogs ?? []).map(
-      (log: { source_expense_id: string }) => log.source_expense_id,
-    ),
+    (existingLogs ?? []).map((log) => log.source_expense_id),
   );
 
   // 4. Generate missing expenses
   const generatedIds: string[] = [];
 
-  for (const source of recurringExpenses as (Record<string, unknown> & {
-    id: string;
-    title: string;
-    amount: number;
-    category: string;
-    description: string | null;
-    currency: string;
-    split_method: string;
-    group_id: string;
-    created_by: string;
-    recurrence_type: string;
-    recurrence_interval: number;
-    due_date: string;
-    vendor_name: string | null;
-    invoice_reference: string | null;
-    invoice_date: string | null;
-    payment_due_date: string | null;
-    paid_by_user_id: string | null;
-    participants: {
-      user_id: string;
-      share_amount: number;
-      share_percentage: number | null;
-    }[];
-  })[]) {
+  for (const source of recurringExpenses) {
     if (alreadyGenerated.has(source.id)) continue;
 
     const dueDate = computeDueDate(source.recurrence_type, source.due_date);
@@ -222,36 +205,41 @@ export async function generateRecurringExpenses(
       'generate recurring expenses for this cycle',
     );
 
+    // Narrow the enum values loaded from the source row before writing.
+    const sourceSplitMethod: SplitMethodEnum = toSplitMethod(source.split_method);
+
+    const expensePayload: ExpenseInsert = {
+      title: source.title,
+      amount: source.amount,
+      category: source.category,
+      description: source.description,
+      currency: source.currency,
+      split_method: sourceSplitMethod,
+      vendor_name: source.vendor_name,
+      invoice_reference: source.invoice_reference,
+      invoice_date: invoiceDate,
+      payment_due_date: paymentDueDate,
+      group_id: source.group_id,
+      created_by: source.created_by,
+      recurrence_type: 'none' satisfies RecurrenceTypeEnum,
+      recurrence_interval: 0,
+      due_date: dueDate,
+      paid_by_user_id: source.paid_by_user_id,
+    };
+
     // Insert the new expense
     const { data: newExpense, error: insertError } = await supabase
       .from('expenses')
-      .insert({
-        title: source.title,
-        amount: source.amount,
-        category: source.category,
-        description: source.description,
-        currency: source.currency,
-        split_method: source.split_method,
-        vendor_name: source.vendor_name,
-        invoice_reference: source.invoice_reference,
-        invoice_date: invoiceDate,
-        payment_due_date: paymentDueDate,
-        group_id: source.group_id,
-        created_by: source.created_by,
-        recurrence_type: 'none',
-        recurrence_interval: 0,
-        due_date: dueDate,
-        paid_by_user_id: source.paid_by_user_id,
-      })
+      .insert(expensePayload)
       .select()
       .single();
 
     if (insertError) throw insertError;
 
-    const newExpenseId = (newExpense as { id: string }).id;
+    const newExpenseId = newExpense.id;
 
     // Copy participants
-    const participants = source.participants.map((p) => ({
+    const participants: ExpenseParticipantInsert[] = source.participants.map((p) => ({
       expense_id: newExpenseId,
       user_id: p.user_id,
       share_amount: p.share_amount,
@@ -266,7 +254,7 @@ export async function generateRecurringExpenses(
       // Roll back the expense on participant insert failure
       await supabase
         .from('expenses')
-        .update({ is_active: false })
+        .update({ is_active: false } satisfies ExpenseUpdate)
         .eq('id', newExpenseId);
       throw participantError;
     }
@@ -274,21 +262,52 @@ export async function generateRecurringExpenses(
     // Note: payment_records are auto-created by the trg_create_payment_record
     // trigger when expense_participants are inserted, so no manual insert needed.
 
-    // Log the generation
+    // Log the generation. If this fails we MUST roll back the expense (and
+    // its participants/payment_records cascade via FK) — otherwise the next
+    // cron invocation will re-generate the same expense because no log row
+    // exists, producing duplicates.
+    const logPayload: RecurringExpenseLogInsert = {
+      source_expense_id: source.id,
+      generated_expense_id: newExpenseId,
+      generated_for_month: currentMonth,
+    };
+
     const { error: logInsertError } = await supabase
       .from('recurring_expense_log')
-      .insert({
-        source_expense_id: source.id,
-        generated_expense_id: newExpenseId,
-        generated_for_month: currentMonth,
-      });
+      .insert(logPayload);
 
-    if (logInsertError) throw logInsertError;
+    if (logInsertError) {
+      await supabase
+        .from('expenses')
+        .update({ is_active: false } satisfies ExpenseUpdate)
+        .eq('id', newExpenseId);
+      throw logInsertError;
+    }
 
     generatedIds.push(newExpenseId);
   }
 
   return generatedIds;
+}
+
+export async function hasPendingRecurringGeneration(
+  groupId: string,
+  month = getCurrentMonthKey(),
+): Promise<boolean> {
+  await requireSessionUser();
+  const supabase = getTypedSupabase();
+  const { data, error } = await (supabase as typeof supabase & {
+    rpc: (
+      fn: 'fn_has_pending_recurring_generation',
+      args: { p_group_id: string; p_month: string },
+    ) => Promise<{ data: boolean | null; error: unknown }>
+  }).rpc('fn_has_pending_recurring_generation', {
+    p_group_id: groupId,
+    p_month: month,
+  });
+
+  if (error) throw error;
+  return Boolean(data);
 }
 
 /**
@@ -353,6 +372,7 @@ export async function getRecurringWorkspaceBillingReport(
  */
 export async function pauseRecurringExpense(expenseId: string): Promise<void> {
   await ensureExpenseCycleOpen(expenseId, 'pause a recurring expense in this cycle');
+  const supabase = getTypedSupabase();
 
   // Fetch the current expense to save original recurrence info
   const { data: expense, error: fetchError } = await supabase
@@ -374,9 +394,15 @@ export async function pauseRecurringExpense(expenseId: string): Promise<void> {
     ? currentDesc
     : `${pauseTag}${currentDesc ? ' ' + currentDesc : ''}`;
 
+  const pausePayload: ExpenseUpdate = {
+    recurrence_type: 'none' satisfies RecurrenceTypeEnum,
+    recurrence_interval: 0,
+    description: newDesc,
+  };
+
   const { error } = await supabase
     .from('expenses')
-    .update({ recurrence_type: 'none', recurrence_interval: 0, description: newDesc })
+    .update(pausePayload)
     .eq('id', expenseId);
 
   if (error) throw error;
@@ -387,6 +413,7 @@ export async function pauseRecurringExpense(expenseId: string): Promise<void> {
  */
 export async function resumeRecurringExpense(expenseId: string): Promise<void> {
   await ensureExpenseCycleOpen(expenseId, 'resume a recurring expense in this cycle');
+  const supabase = getTypedSupabase();
 
   const { data: expense, error: fetchError } = await supabase
     .from('expenses')
@@ -399,13 +426,15 @@ export async function resumeRecurringExpense(expenseId: string): Promise<void> {
   const pausedState = parsePausedRecurringExpenseState(expense.description);
   if (!pausedState) return; // No pause tag found
 
+  const resumePayload: ExpenseUpdate = {
+    recurrence_type: toRecurrenceType(pausedState.recurrence_type),
+    recurrence_interval: pausedState.recurrence_interval,
+    description: pausedState.description,
+  };
+
   const { error } = await supabase
     .from('expenses')
-    .update({
-      recurrence_type: pausedState.recurrence_type,
-      recurrence_interval: pausedState.recurrence_interval,
-      description: pausedState.description,
-    })
+    .update(resumePayload)
     .eq('id', expenseId);
 
   if (error) throw error;
@@ -416,10 +445,11 @@ export async function resumeRecurringExpense(expenseId: string): Promise<void> {
  */
 export async function archiveRecurringExpense(expenseId: string): Promise<void> {
   await ensureExpenseCycleOpen(expenseId, 'archive a recurring expense in this cycle');
+  const supabase = getTypedSupabase();
 
   const { error } = await supabase
     .from('expenses')
-    .update({ is_active: false })
+    .update({ is_active: false } satisfies ExpenseUpdate)
     .eq('id', expenseId);
 
   if (error) throw error;
