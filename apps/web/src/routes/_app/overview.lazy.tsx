@@ -45,6 +45,7 @@ import { useDeferredSection } from '../../hooks/use-deferred-section';
 import { PageHeader } from '../../components/page-header';
 import { EmptyState } from '../../components/empty-state';
 import { PageLoader } from '../../components/page-loader';
+import { QueryErrorState } from '../../components/query-error-state';
 
 const GROUP_TYPE_ICONS: Record<string, typeof IconHome> = {
   home: IconHome,
@@ -93,7 +94,13 @@ function CrossGroupOverviewPage() {
   const [nettingEnabled, setNettingEnabled] = useState(readNettingPreference);
   const { data: groups } = useUserGroupSummaries();
   const { activeGroupId } = useGroupStore();
-  const { data: overview, isLoading } = useCrossGroupOverview(user?.id ?? '');
+  const {
+    data: overview,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useCrossGroupOverview(user?.id ?? '');
   const { data: smartNudges } = useSmartNudges(user?.id ?? '', {
     overview,
     enabled: !isLoading,
@@ -132,6 +139,19 @@ function CrossGroupOverviewPage() {
 
   if (isLoading) {
     return <PageLoader />;
+  }
+
+  if (isError) {
+    return (
+      <QueryErrorState
+        title="Failed to load command centre"
+        error={error}
+        onRetry={() => {
+          void refetch();
+        }}
+        icon={IconTarget}
+      />
+    );
   }
 
   const workspaceBillingSummary = getWorkspaceBillingSummary(workspaceBillingSnapshot);

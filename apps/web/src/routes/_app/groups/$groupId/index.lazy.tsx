@@ -4,6 +4,7 @@ import {
   normalizeSpaceEssentials,
 } from '@commune/core';
 import {
+  Alert,
   Avatar,
   Badge,
   Box,
@@ -24,6 +25,7 @@ import {
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
+import { fromJson, type SetupChecklistProgress } from '@commune/types';
 import {
   IconUsers,
   IconReceipt,
@@ -61,6 +63,7 @@ import { useMemories, useAddMemory, useDeleteMemory } from '../../../../hooks/us
 import { useAuthStore } from '../../../../stores/auth';
 import { useGroupStore } from '../../../../stores/group';
 import { ContentSkeleton } from '../../../../components/page-skeleton';
+import { QueryErrorState } from '../../../../components/query-error-state';
 import { formatCurrency } from '@commune/utils';
 import { useEffect, useState } from 'react';
 
@@ -133,12 +136,18 @@ function formatDate(iso: string) {
 /*  Main page                                                                 */
 /* -------------------------------------------------------------------------- */
 
-function GroupHubPage() {
+export function GroupHubPage() {
   const { groupId } = Route.useParams();
   const colorScheme = useComputedColorScheme('light');
   const { user } = useAuthStore();
   const { setActiveGroupId } = useGroupStore();
-  const { data: hub, isLoading } = useGroupHub(groupId);
+  const {
+    data: hub,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useGroupHub(groupId);
   const uploadImage = useUploadGroupImage(groupId);
   const { data: settlement } = useGroupSettlement(groupId);
   const { data: activityItems } = useActivityLog(groupId, 10);
@@ -147,22 +156,44 @@ function GroupHubPage() {
     setActiveGroupId(groupId);
   }, [groupId, setActiveGroupId]);
 
-  if (isLoading || !hub) return <ContentSkeleton />;
+  if (isLoading) return <ContentSkeleton />;
+
+  if (isError) {
+    return (
+      <QueryErrorState
+        title="Failed to load group hub"
+        error={error}
+        onRetry={() => {
+          void refetch();
+        }}
+        icon={IconUsers}
+      />
+    );
+  }
+
+  if (!hub) return <ContentSkeleton />;
 
   const { group, expenses, memberTotals, categoryTotals, totalMonthly, activeMembers } = hub;
-  const members = (group.members as any[]).filter((m: any) => m.status === 'active');
+  const allMembers = ((group.members as any[]) ?? []).filter((member: any) => member.status === 'active');
+  const members = allMembers.filter((member: any) => Boolean(member.user));
+  const missingMemberProfileCount = allMembers.length - members.length;
+  // JSON columns from the generated schema come back as the opaque `Json`
+  // union — narrow to the domain interfaces our helpers expect.
+  const spaceEssentialsJson = fromJson<Record<string, string>>(group.space_essentials);
+  const houseInfoJson = fromJson<Record<string, string>>(group.house_info);
+  const setupChecklistJson = fromJson<SetupChecklistProgress>(group.setup_checklist_progress);
   const spaceEssentials = normalizeSpaceEssentials(
     group.type,
-    group.space_essentials,
-    group.house_info,
+    spaceEssentialsJson,
+    houseInfoJson,
   );
   const fallback = GROUP_VISUALS['other']!;
   const visual = GROUP_VISUALS[group.type] ?? fallback;
   const Icon = visual.icon;
   const coverGradient = colorScheme === 'dark' ? visual.gradientDark : visual.gradient;
   const currency = group.currency ?? 'GBP';
-  const completedChecklistCount = countCompletedSetupChecklistItems(group.setup_checklist_progress);
-  const totalChecklistCount = Object.keys(group.setup_checklist_progress ?? {}).length;
+  const completedChecklistCount = countCompletedSetupChecklistItems(setupChecklistJson);
+  const totalChecklistCount = Object.keys(setupChecklistJson ?? {}).length;
 
   const isAdmin = members.some(
     (m) => m.user_id === user?.id && m.role === 'admin',
@@ -636,6 +667,17 @@ function GroupHubPage() {
           <IconUsers size={20} />
           <Text className="commune-section-heading">Members</Text>
         </Group>
+
+        {missingMemberProfileCount > 0 && (
+          <Alert
+            color="yellow"
+            variant="light"
+            icon={<IconAlertCircle size={16} />}
+            title="Some member profiles are temporarily unavailable"
+          >
+            {missingMemberProfileCount} member{missingMemberProfileCount === 1 ? '' : 's'} were hidden because their profile details did not load cleanly. This section now stays up instead of crashing, and you can retry once those user rows are available again.
+          </Alert>
+        )}
 
         <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
           {members.map((member: any) => {

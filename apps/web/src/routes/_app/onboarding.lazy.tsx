@@ -15,6 +15,7 @@ import {
 } from '@mantine/core';
 import { useForm, schemaResolver } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
+import { IconUsersGroup } from '@tabler/icons-react';
 import { useEffect, useState } from 'react';
 import {
   createGroupSchema,
@@ -33,6 +34,7 @@ import { useGroupStore } from '../../stores/group';
 import type { SpaceEssentials } from '@commune/types';
 import { GroupType } from '@commune/types';
 import { OnboardingSkeleton } from '../../components/page-skeleton';
+import { QueryErrorState } from '../../components/query-error-state';
 import {
   shouldRedirectFromOnboarding,
   shouldResumeExistingGroup,
@@ -62,8 +64,20 @@ function OnboardingPage() {
   const createGroup = useCreateGroup();
   const acceptInvite = useAcceptInvite();
   const { activeGroupId, setActiveGroupId } = useGroupStore();
-  const { data: groups, isLoading: groupsLoading } = useUserGroupSummaries();
-  const { data: pendingInvites, isLoading: invitesLoading } = usePendingInvites();
+  const {
+    data: groups,
+    isLoading: groupsLoading,
+    isError: isGroupsError,
+    error: groupsError,
+    refetch: refetchGroups,
+  } = useUserGroupSummaries();
+  const {
+    data: pendingInvites,
+    isLoading: invitesLoading,
+    isError: isInvitesError,
+    error: invitesError,
+    refetch: refetchInvites,
+  } = usePendingInvites();
   const navigate = useNavigate();
 
   const groupForm = useForm<CreateGroupInput>({
@@ -152,6 +166,20 @@ function OnboardingPage() {
 
   if (groupsLoading || invitesLoading) {
     return <OnboardingSkeleton />;
+  }
+
+  if (isGroupsError || isInvitesError) {
+    return (
+      <QueryErrorState
+        title="Failed to load onboarding"
+        error={groupsError ?? invitesError}
+        onRetry={() => {
+          void refetchGroups();
+          void refetchInvites();
+        }}
+        icon={IconUsersGroup}
+      />
+    );
   }
 
   const inviteOptions = pendingInvites ?? [];

@@ -30,6 +30,7 @@ import { useGroupStore } from '../../../stores/group';
 import { ContentSkeleton } from '../../../components/page-skeleton';
 import { EmptyState } from '../../../components/empty-state';
 import { PageHeader } from '../../../components/page-header';
+import { QueryErrorState } from '../../../components/query-error-state';
 import { CreateGroupModal } from '../../../components/create-group-modal';
 
 export const Route = createLazyFileRoute('/_app/groups/')({
@@ -82,10 +83,29 @@ const GROUP_VISUALS: Record<string, { gradient: string; gradientDark: string; ic
 };
 
 function GroupsPage() {
-  const { data: groups, isLoading } = useUserGroupSummaries();
+  const {
+    data: groups,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useUserGroupSummaries();
   const [createOpened, { open: openCreate, close: closeCreate }] = useDisclosure(false);
 
   if (isLoading) return <ContentSkeleton />;
+
+  if (isError) {
+    return (
+      <QueryErrorState
+        title="Failed to load groups"
+        error={error}
+        onRetry={() => {
+          void refetch();
+        }}
+        icon={IconUsersGroup}
+      />
+    );
+  }
 
   return (
     <Stack gap="xl">
