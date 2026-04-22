@@ -1,376 +1,623 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import {
-  Animated,
-  Easing,
-  ScrollView,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import type { ComponentProps } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import Svg, { Circle, G } from 'react-native-svg';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import {
-  countCompletedSetupChecklistItems,
-  getIncompleteSetupChecklistItems,
-} from '@commune/core';
-import { hapticLight, hapticMedium } from '@/lib/haptics';
-import { formatCurrency, formatDate, getMonthKey, isOverdue, isUpcoming } from '@commune/utils';
+import { formatCurrency, getMonthKey } from '@commune/utils';
+import { hapticMedium } from '@/lib/haptics';
 import { useAuthStore } from '@/stores/auth';
 import { useGroupStore } from '@/stores/group';
-import { useThemeStore } from '@/stores/theme';
 import { useDashboardStats } from '@/hooks/use-dashboard';
-import {
-  getExpenseBillingDueDate,
-  hasWorkspaceExpenseContext,
-  isWorkspaceBillingExpense,
-  useGroupExpenses,
-} from '@/hooks/use-expenses';
+import { getExpenseBillingDueDate, useGroupExpenses } from '@/hooks/use-expenses';
 import { useGroup, usePendingInvites, useUserGroups } from '@/hooks/use-groups';
 import { useRecurringGenerationOnMount } from '@/hooks/use-recurring';
-import { useSubscription } from '@/hooks/use-subscriptions';
-import { EmptyState, Screen } from '@/components/ui';
 import { getErrorMessage } from '@/lib/errors';
+import {
+  Badge, Card, EmptyState, IconTile, Pressable, Screen,
+  SectionHeader, SkeletonBlock, StatusPill,
+} from '@/components/primitives';
+import {
+  colors, font, getCategoryMeta, getGroupTypeMeta, radius, space,
+} from '@/constants/design';
+import { formatCategoryLabel } from '@/lib/ui';
 
-/* ---- Constants --------------------------------------------------------- */
+/* --- Helpers -------------------------------------------------------------- */
 
-const CATEGORY_MAP: Record<
-  string,
-  { color: string; icon: keyof typeof Ionicons.glyphMap }
-> = {
-  shopping: { color: '#8B5CF6', icon: 'bag-outline' },
-  food: { color: '#3B82F6', icon: 'restaurant-outline' },
-  transport: { color: '#EF4444', icon: 'car-outline' },
-  bills: { color: '#F97316', icon: 'document-text-outline' },
-  entertainment: { color: '#10B981', icon: 'game-controller-outline' },
-  groceries: { color: '#EF4444', icon: 'cart-outline' },
-  rent: { color: '#F97316', icon: 'home-outline' },
-  utilities: { color: '#F97316', icon: 'flash-outline' },
-  internet: { color: '#3B82F6', icon: 'wifi-outline' },
-  cleaning: { color: '#10B981', icon: 'sparkles-outline' },
-  household_supplies: { color: '#8B5CF6', icon: 'bag-outline' },
-  work_tools: { color: '#8B5CF6', icon: 'school-outline' },
-  miscellaneous: { color: '#9CA3AF', icon: 'ellipsis-horizontal-outline' },
-};
+const MONTH_LABELS = [
+  'JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE',
+  'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER',
+] as const;
 
-const DEFAULT_CATEGORY = { color: '#9CA3AF', icon: 'ellipsis-horizontal-outline' as keyof typeof Ionicons.glyphMap };
+const getMonthLabel = () => MONTH_LABELS[new Date().getMonth()] ?? '';
 
-function getCat(category: string) {
-  return CATEGORY_MAP[category.toLowerCase()] ?? DEFAULT_CATEGORY;
-}
-
-const QUICK_ACTIONS: Array<{
-  label: string;
-  icon: keyof typeof Ionicons.glyphMap;
-  key: string;
-  route: string;
-}> = [
-  { label: 'Add Expense', icon: 'add-outline', key: 'add', route: '/expenses/new' },
-  { label: 'Groups', icon: 'people-outline', key: 'groups', route: '/(tabs)/groups' },
-  { label: 'Activity', icon: 'time-outline', key: 'activity', route: '/activity' },
-  { label: 'Analytics', icon: 'bar-chart-outline', key: 'analytics', route: '/analytics' },
-];
-
-/* ---- Status chip config ------------------------------------------------ */
-
-const STATUS_STYLE = {
-  PAID: { bg: '#ECFDF5', fg: '#059669' },
-  OVERDUE: { bg: '#FEF2F2', fg: '#DC2626' },
-  DUE: { bg: '#F3F4F6', fg: '#6B7280' },
-  PARTIAL: { bg: '#FFF7ED', fg: '#D97706' },
-} as const;
-
-type StatusStyleKey = keyof typeof STATUS_STYLE;
-
-/* ---- Helpers ----------------------------------------------------------- */
-
-function formatRelativeDate(dateStr: string): string {
+function formatRelative(dateStr: string): string {
   const date = new Date(dateStr);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-  if (diffDays === 0) {
-    return `Today, ${date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`;
-  }
-  if (diffDays === 1) return 'Yesterday';
-  if (diffDays < 7) return `${diffDays}d ago`;
-  if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`;
+  if (Number.isNaN(date.getTime())) return dateStr;
+  const startOfDay = (d: Date) =>
+    new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const diff = Math.round((startOfDay(new Date()) - startOfDay(date)) / 86400000);
+  if (diff === 0) return 'Today';
+  if (diff === 1) return 'Yesterday';
+  if (diff > 1 && diff < 7) return `${diff}d ago`;
+  if (diff >= 7 && diff < 30) return `${Math.floor(diff / 7)}w ago`;
+  if (diff < 0 && diff > -7) return `in ${Math.abs(diff)}d`;
   return date.toLocaleDateString('en-GB', { month: 'short', day: 'numeric' });
 }
 
-function getRecentMonthKeys(count: number) {
-  const current = new Date();
-  const keys: string[] = [];
-  for (let offset = count - 1; offset >= 0; offset -= 1) {
-    const value = new Date(current.getFullYear(), current.getMonth() - offset, 1);
-    keys.push(`${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, '0')}`);
-  }
-  return keys;
+function formatDueDate(dateStr: string): string {
+  const date = new Date(dateStr);
+  if (Number.isNaN(date.getTime())) return dateStr;
+  return date.toLocaleDateString('en-GB', { month: 'short', day: 'numeric' });
 }
 
-function getExpenseStatus(
-  dueDate: string,
-  expense: {
-    payment_records?: Array<{ status: string }>;
-    participants?: Array<unknown>;
-  },
-): { label: string; styleKey: StatusStyleKey } {
-  const records = expense.payment_records ?? [];
-  const participantCount = expense.participants?.length ?? 1;
-  const paidCount = records.filter(
+interface ExpenseLike {
+  id: string;
+  title: string;
+  amount: number;
+  currency: string;
+  category: string;
+  due_date: string;
+  paid_by_user_id?: string | null;
+  paid_by_user?: { name?: string | null } | null;
+  participants?: Array<{ user_id?: string; share_amount?: number; user?: { name?: string | null } }>;
+  payment_records?: Array<{ user_id?: string; status?: string }>;
+}
+
+interface GroupLike {
+  name: string;
+  type: string;
+  currency: string;
+  members?: Array<{ user_id: string; user?: { name?: string | null } }>;
+}
+
+function isExpenseFullyPaid(e: ExpenseLike): boolean {
+  const total = e.participants?.length ?? 0;
+  if (total === 0) return false;
+  const paid = (e.payment_records ?? []).filter(
     (r) => r.status === 'paid' || r.status === 'confirmed',
   ).length;
-
-  if (paidCount >= participantCount && participantCount > 0) {
-    return { label: 'PAID', styleKey: 'PAID' };
-  }
-  const isOverdue = new Date(dueDate) < new Date();
-  if (isOverdue && paidCount < participantCount) {
-    return { label: 'OVERDUE', styleKey: 'OVERDUE' };
-  }
-  if (paidCount > 0 && paidCount < participantCount) {
-    return { label: `${paidCount}/${participantCount}`, styleKey: 'PARTIAL' };
-  }
-  return { label: 'DUE', styleKey: 'DUE' };
+  return paid >= total;
 }
 
-/* ---- Skeleton ---------------------------------------------------------- */
-
-function SkeletonPulse({ style }: { style: object }) {
-  const anim = useRef(new Animated.Value(0.3)).current;
-
-  useEffect(() => {
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(anim, { toValue: 1, duration: 800, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-        Animated.timing(anim, { toValue: 0.3, duration: 800, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-      ]),
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [anim]);
-
-  return <Animated.View style={[style, { opacity: anim }]} />;
+function userHasPaid(e: ExpenseLike, userId?: string): boolean {
+  if (!userId) return false;
+  const r = e.payment_records?.find((x) => x.user_id === userId);
+  return r?.status === 'paid' || r?.status === 'confirmed';
 }
 
-function HomeSkeleton({ isDark }: { isDark: boolean }) {
-  const bone = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
+function getUserShare(e: ExpenseLike, userId?: string): number {
+  const count = e.participants?.length ?? 0;
+  if (count === 0) return 0;
+  const p = e.participants?.find((x) => x.user_id === userId);
+  if (p?.share_amount && Number.isFinite(p.share_amount)) return p.share_amount;
+  return e.amount / count;
+}
+
+function getPaidByName(e: ExpenseLike, userId: string | undefined, group: GroupLike | undefined): string {
+  if (e.paid_by_user_id && e.paid_by_user_id === userId) return 'You';
+  if (e.paid_by_user?.name) return e.paid_by_user.name;
+  const m = group?.members?.find((x) => x.user_id === e.paid_by_user_id);
+  return m?.user?.name ?? 'Someone';
+}
+
+/* --- Styles --------------------------------------------------------------- */
+
+const s = StyleSheet.create({
+  switcherRow: { flexDirection: 'row', alignItems: 'center', gap: space.md, paddingVertical: space.sm },
+  hero: { backgroundColor: colors.bgInk, borderRadius: radius.hero, padding: space.xl },
+  heroLabel: { color: colors.limeSoft, marginBottom: space.md },
+  heroHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: space.md },
+  heroPctPill: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.1)' },
+  heroPctPillText: { fontSize: 11, fontWeight: '700', color: colors.textInverse, letterSpacing: 0.3 },
+  heroAmount: { fontSize: 44, fontWeight: '700', color: colors.textInverse, letterSpacing: -0.8, lineHeight: 50 },
+  heroRemaining: { fontSize: 20, fontWeight: '600', color: colors.textInverse, marginTop: 4, letterSpacing: -0.3 },
+  heroRemainingMuted: { color: 'rgba(255,255,255,0.55)', fontWeight: '500' },
+  heroInlineStats: { fontSize: 14, marginTop: space.sm },
+  heroInlineStrong: { color: colors.textInverse, fontWeight: '700' },
+  heroInlineHero: { color: colors.textInverse, fontWeight: '800' },
+  heroInlineMuted: { color: 'rgba(255,255,255,0.55)', fontWeight: '500' },
+  heroCaption: { fontSize: 13, fontWeight: '500', color: 'rgba(255,255,255,0.6)', marginTop: space.xs },
+  heroTrack: { height: 6, borderRadius: 3, backgroundColor: '#374151', overflow: 'hidden', marginTop: space.base, marginBottom: space.lg },
+  heroFill: { height: '100%', backgroundColor: colors.lime, borderRadius: 3 },
+  heroDivider: { height: 1, backgroundColor: 'rgba(255,255,255,0.12)', marginTop: space.base, marginBottom: space.base },
+  heroStatsRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: space.lg },
+  heroStatCell: { flex: 1 },
+  heroStatLabel: { fontSize: 10, fontWeight: '700', color: 'rgba(255,255,255,0.55)', letterSpacing: 0.8, textTransform: 'uppercase' as const },
+  heroStatValue: { fontSize: 15, fontWeight: '700', color: colors.textInverse, marginTop: 4 },
+  heroBtnRow: { flexDirection: 'row' },
+  btnPrimary: {
+    flex: 1,
+    height: 52,
+    borderRadius: 14,
+    backgroundColor: '#eadfd4',
+    marginRight: 6,
+    shadowColor: '#000',
+    shadowOpacity: 0.18,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 3,
+  },
+  btnSecondary: {
+    flex: 1,
+    height: 52,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    marginLeft: 6,
+  },
+  btnInner: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  btnPrimaryText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#1f2330',
+    letterSpacing: -0.1,
+    marginLeft: 8,
+  },
+  btnSecondaryText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#fffaf6',
+    letterSpacing: -0.1,
+    marginLeft: 8,
+  },
+  quickActionsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 4,
+    marginBottom: 32,
+  },
+  quickActionTile: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  quickActionIconWrap: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: '#F3F4F6',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quickActionLabel: {
+    marginTop: 8,
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#6B7280',
+    textAlign: 'center',
+  },
+  attStrip: { paddingRight: space.gutter },
+  attCard: {
+    width: 200,
+    marginRight: space.md,
+    backgroundColor: colors.bgSubtle,
+    borderRadius: radius.card,
+    padding: space.base,
+  },
+  attCardTop: { flexDirection: 'row', alignItems: 'center', gap: space.sm, marginBottom: space.sm },
+  attCardTitle: { flex: 1, fontSize: 14, fontWeight: '700', color: colors.textPrimary },
+  attCardDue: { fontSize: 11, fontWeight: '600', color: colors.textTertiary, marginBottom: space.sm },
+  attCardDueOverdue: { color: '#8C2F1F' },
+  attCardAmount: { fontSize: 15, fontWeight: '800', color: colors.textPrimary },
+  todoRow: { flexDirection: 'row', alignItems: 'center', gap: space.md },
+  todoMeta: { flex: 1 },
+  todoTitle: { color: colors.textPrimary },
+  todoCaption: { color: colors.textTertiary, marginTop: 2 },
+  rowInner: { flexDirection: 'row', alignItems: 'center', gap: space.md },
+  focusAmount: { fontSize: 17, fontWeight: '600', color: colors.textPrimary },
+  emptyFocus: { color: colors.textTertiary, paddingVertical: space.md },
+  categoryHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: space.base },
+  categoryEmpty: { alignItems: 'center', paddingVertical: space.lg, gap: 6 },
+  donutRow: { flexDirection: 'row', alignItems: 'center', gap: space.lg, marginTop: space.xs },
+  donutWrap: { width: 104, height: 104, alignItems: 'center', justifyContent: 'center' },
+  donutCenter: { position: 'absolute', alignItems: 'center', justifyContent: 'center' },
+  donutCenterLabel: { fontSize: 10, fontWeight: '600', color: colors.textTertiary, letterSpacing: 0.4, textTransform: 'uppercase' as const },
+  donutCenterValue: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, marginTop: 2 },
+  legend: { flex: 1, gap: 8 },
+  legendRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  legendDot: { width: 10, height: 10, borderRadius: 3 },
+  legendName: { flex: 1, fontSize: 13, fontWeight: '600', color: colors.textPrimary },
+  legendPct: { fontSize: 12, fontWeight: '700', color: colors.textSecondary },
+  groupLabel: { fontSize: 10, fontWeight: '700', letterSpacing: 1, color: colors.textTertiary, textTransform: 'uppercase' as const, paddingTop: space.md, paddingBottom: space.xs },
+  tabBar: { flexDirection: 'row', backgroundColor: colors.bgSubtle, borderRadius: 12, padding: 4, marginBottom: space.base, gap: 4 },
+  tabBtn: { flex: 1, height: 32, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  tabBtnOn: { backgroundColor: '#fff', shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 2, shadowOffset: { width: 0, height: 1 }, elevation: 1 },
+  tabBtnText: { fontSize: 11, fontWeight: '700', color: colors.textTertiary, letterSpacing: 0.2 },
+  tabBtnTextOn: { color: colors.textPrimary },
+});
+
+/* --- Sub-components ------------------------------------------------------- */
+
+function HomeSkeleton() {
   return (
-    <ScrollView
-      style={{ flex: 1, backgroundColor: isDark ? '#0A0A0A' : '#FAFAFA' }}
-      contentContainerStyle={{ padding: 20, paddingBottom: 120 }}
-    >
-      {/* Hero card skeleton */}
-      <SkeletonPulse
-        style={{ height: 260, borderRadius: 24, backgroundColor: isDark ? '#1f2330' : '#E5E7EB', marginBottom: 24 }}
-      />
-      {/* Quick actions skeleton */}
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 8, marginBottom: 28 }}>
-        {[1, 2, 3, 4].map((i) => (
-          <View key={i} style={{ alignItems: 'center' }}>
-            <SkeletonPulse style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: bone }} />
-            <SkeletonPulse style={{ width: 48, height: 10, borderRadius: 5, backgroundColor: bone, marginTop: 8 }} />
-          </View>
-        ))}
+    <View style={{ gap: space.lg }}>
+      <SkeletonBlock height={60} radius={radius.card} />
+      <SkeletonBlock height={230} radius={radius.hero} />
+      <View style={{ flexDirection: 'row', gap: space.md }}>
+        <SkeletonBlock height={84} radius={radius.card} style={{ flex: 1 }} />
+        <SkeletonBlock height={84} radius={radius.card} style={{ flex: 1 }} />
+        <SkeletonBlock height={84} radius={radius.card} style={{ flex: 1 }} />
       </View>
-      {/* Recent expenses skeleton */}
-      <SkeletonPulse style={{ width: 160, height: 18, borderRadius: 9, backgroundColor: bone, marginBottom: 14 }} />
-      {[1, 2, 3].map((i) => (
-        <SkeletonPulse
-          key={i}
-          style={{ height: 76, borderRadius: 16, backgroundColor: bone, marginBottom: 12 }}
-        />
-      ))}
-      {/* Spending skeleton */}
-      <SkeletonPulse style={{ width: 100, height: 18, borderRadius: 9, backgroundColor: bone, marginTop: 12, marginBottom: 14 }} />
-      <SkeletonPulse style={{ height: 200, borderRadius: 24, backgroundColor: bone }} />
-    </ScrollView>
+      <SkeletonBlock height={72} radius={radius.card} />
+      <SkeletonBlock height={72} radius={radius.card} />
+      <SkeletonBlock height={72} radius={radius.card} />
+    </View>
   );
 }
 
-/* ---- Main Screen ------------------------------------------------------- */
+function GroupSwitcher({
+  group, memberCount, onPress,
+}: { group: GroupLike; memberCount: number; onPress: () => void }) {
+  const meta = getGroupTypeMeta(group.type);
+  return (
+    <Pressable onPress={onPress} style={({ pressed }) => [s.switcherRow, { opacity: pressed ? 0.7 : 1 }]}>
+      <IconTile icon={meta.icon as never} color={meta.accent} bg={meta.bg} size={44} />
+      <View style={{ flex: 1 }}>
+        <Text style={[font.h3, { color: colors.textPrimary }]} numberOfLines={1}>{group.name}</Text>
+        <Text style={[font.caption, { color: colors.textTertiary, marginTop: 2 }]} numberOfLines={1}>
+          {memberCount} {memberCount === 1 ? 'member' : 'members'} · {meta.label}
+        </Text>
+      </View>
+      <Ionicons name="chevron-down" size={20} color={colors.textTertiary} />
+    </Pressable>
+  );
+}
 
-export default function DashboardScreen() {
+function HeroBalanceCard({
+  monthLabel, amountLabel, paidPct,
+  paidLabel, remainingLabel, openCount,
+  onAdd, onSettle,
+}: {
+  monthLabel: string; amountLabel: string; paidPct: number;
+  paidLabel: string; remainingLabel: string; openCount: number;
+  onAdd: () => void; onSettle: () => void;
+}) {
+  const pct = Math.max(0, Math.min(100, paidPct));
+  return (
+    <View style={s.hero}>
+      <View style={s.heroHeaderRow}>
+        <Text style={[font.label, s.heroLabel, { marginBottom: 0 }]}>Your Share · {monthLabel}</Text>
+        <View style={s.heroPctPill}>
+          <Text style={s.heroPctPillText}>{pct}% settled</Text>
+        </View>
+      </View>
+      <Text style={s.heroAmount}>{amountLabel}</Text>
+      <Text style={s.heroInlineStats} numberOfLines={1}>
+        <Text style={s.heroInlineStrong}>{paidLabel}</Text>
+        <Text style={s.heroInlineMuted}> paid  ·  </Text>
+        <Text style={s.heroInlineHero}>{remainingLabel}</Text>
+        <Text style={s.heroInlineMuted}> left  ·  </Text>
+        <Text style={s.heroInlineStrong}>{openCount}</Text>
+        <Text style={s.heroInlineMuted}> open</Text>
+      </Text>
+      <View style={s.heroTrack}>
+        <View style={[s.heroFill, { width: `${pct}%` }]} />
+      </View>
+      <View style={s.heroBtnRow}>
+        <TouchableOpacity activeOpacity={0.85} onPress={onAdd} style={s.btnPrimary}>
+          <View style={s.btnInner}>
+            <Ionicons name="add" size={18} color="#1f2330" />
+            <Text style={s.btnPrimaryText}>Add Expense</Text>
+          </View>
+        </TouchableOpacity>
+        <TouchableOpacity activeOpacity={0.7} onPress={onSettle} style={s.btnSecondary}>
+          <View style={s.btnInner}>
+            <Ionicons name="checkmark-done" size={18} color="#fffaf6" />
+            <Text style={s.btnSecondaryText}>Settle Up</Text>
+          </View>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
+
+/* --- Quick actions -------------------------------------------------------- */
+
+type QuickAction = {
+  key: string;
+  label: string;
+  icon: ComponentProps<typeof Ionicons>['name'];
+  onPress: () => void;
+};
+
+function QuickActions({ items }: { items: QuickAction[] }) {
+  return (
+    <View style={s.quickActionsRow}>
+      {items.map((item) => (
+        <Pressable
+          key={item.key}
+          onPress={item.onPress}
+          style={({ pressed }) => [s.quickActionTile, pressed && { opacity: 0.7 }]}
+        >
+          <View style={s.quickActionIconWrap}>
+            <Ionicons name={item.icon} size={28} color={colors.textPrimary} />
+          </View>
+          <Text style={s.quickActionLabel} numberOfLines={1}>{item.label}</Text>
+        </Pressable>
+      ))}
+    </View>
+  );
+}
+
+/* --- Category breakdown --------------------------------------------------- */
+
+type CategoryItem = {
+  category: string;
+  amount: number;
+  pct: number;
+};
+
+function CategoryBreakdownCard({
+  items, currency, scopeLabel,
+}: {
+  items: CategoryItem[];
+  currency: string;
+  scopeLabel: string;
+}) {
+  return (
+    <Card variant="surface" padding={space.lg}>
+      <View style={s.categoryHeader}>
+        <Text style={[font.h3, { color: colors.textPrimary }]}>Spending by category</Text>
+        <Badge label={scopeLabel} tone="neutral" />
+      </View>
+      {items.length === 0 ? (
+        <View style={s.categoryEmpty}>
+          <Ionicons name="pie-chart-outline" size={28} color={colors.textSecondary} />
+          <Text style={[font.bodyStrong, { color: colors.textSecondary }]}>No categories yet</Text>
+          <Text style={[font.caption, { color: colors.textTertiary, textAlign: 'center' }]}>
+            Add an expense to see where money goes.
+          </Text>
+        </View>
+      ) : (
+        <DonutChart items={items} currency={currency} />
+      )}
+    </Card>
+  );
+}
+
+function DonutChart({ items, currency }: { items: CategoryItem[]; currency: string }) {
+  const size = 104;
+  const strokeWidth = 16;
+  const r = (size - strokeWidth) / 2;
+  const c = 2 * Math.PI * r;
+  const total = items.reduce((sum, i) => sum + i.amount, 0);
+  const top = items.slice(0, 4);
+  const restPct = items.slice(4).reduce((sum, i) => sum + i.pct, 0);
+  const restAmount = items.slice(4).reduce((sum, i) => sum + i.amount, 0);
+
+  let offset = 0;
+  const segments = items.map((item) => {
+    const meta = getCategoryMeta(item.category);
+    const length = (Math.max(0, item.pct) / 100) * c;
+    const seg = { key: item.category, color: meta.color, length, offset };
+    offset += length;
+    return seg;
+  });
+
+  return (
+    <View style={s.donutRow}>
+      <View style={s.donutWrap}>
+        <Svg width={size} height={size}>
+          <G rotation={-90} origin={`${size / 2}, ${size / 2}`}>
+            <Circle
+              cx={size / 2}
+              cy={size / 2}
+              r={r}
+              stroke={colors.bgSubtle}
+              strokeWidth={strokeWidth}
+              fill="none"
+            />
+            {segments.map((seg) => (
+              <Circle
+                key={seg.key}
+                cx={size / 2}
+                cy={size / 2}
+                r={r}
+                stroke={seg.color}
+                strokeWidth={strokeWidth}
+                fill="none"
+                strokeDasharray={`${seg.length} ${c}`}
+                strokeDashoffset={-seg.offset}
+                strokeLinecap="butt"
+              />
+            ))}
+          </G>
+        </Svg>
+        <View style={s.donutCenter}>
+          <Text style={s.donutCenterLabel}>Total</Text>
+          <Text style={s.donutCenterValue} numberOfLines={1}>
+            {formatCurrency(total, currency)}
+          </Text>
+        </View>
+      </View>
+      <View style={s.legend}>
+        {top.map((item) => {
+          const meta = getCategoryMeta(item.category);
+          return (
+            <View key={item.category} style={s.legendRow}>
+              <View style={[s.legendDot, { backgroundColor: meta.color }]} />
+              <Text style={s.legendName} numberOfLines={1}>{formatCategoryLabel(item.category)}</Text>
+              <Text style={s.legendPct}>{item.pct}%</Text>
+            </View>
+          );
+        })}
+        {items.length > 4 && (
+          <View style={s.legendRow}>
+            <View style={[s.legendDot, { backgroundColor: colors.bgSubtle }]} />
+            <Text style={s.legendName} numberOfLines={1}>+{items.length - 4} more</Text>
+            <Text style={s.legendPct}>{restPct}%</Text>
+          </View>
+        )}
+        {total > 0 && items.length <= 4 && restAmount > 0 && null}
+      </View>
+    </View>
+  );
+}
+
+function ExpenseRow({
+  expense, caption, trailing, onPress, dense,
+}: {
+  expense: ExpenseLike;
+  caption: string;
+  trailing: React.ReactNode;
+  onPress: () => void;
+  dense?: boolean;
+}) {
+  const meta = getCategoryMeta(expense.category);
+  return (
+    <Card padding={dense ? space.sm : space.base} onPress={onPress}>
+      <View style={[s.rowInner, dense && { gap: space.sm }]}>
+        <IconTile icon={meta.icon as never} color={meta.color} bg={meta.bg} size={dense ? 32 : undefined} />
+        <View style={{ flex: 1 }}>
+          <Text
+            style={[dense ? font.bodyStrong : font.h3, { color: colors.textPrimary }]}
+            numberOfLines={1}
+          >
+            {expense.title}
+          </Text>
+          <Text style={[font.caption, { color: colors.textTertiary, marginTop: 1 }]} numberOfLines={1}>
+            {caption}
+          </Text>
+        </View>
+        {trailing}
+      </View>
+    </Card>
+  );
+}
+
+/* --- Screen --------------------------------------------------------------- */
+
+export default function HomeScreen() {
   const router = useRouter();
   const month = getMonthKey();
   const { user } = useAuthStore();
   const { activeGroupId, setActiveGroupId } = useGroupStore();
-  const { mode } = useThemeStore();
-
-  const [balanceVisible, setBalanceVisible] = useState(true);
-
-  const isDark = mode === 'dark';
-  const bgColor = isDark ? '#0A0A0A' : '#FAFAFA';
-  const textPrimary = isDark ? '#FFFFFF' : '#111827';
-  const textSecondary = isDark ? '#9CA3AF' : '#6B7280';
-  const cardBg = isDark ? '#1A1A1A' : '#FFFFFF';
-  const trackColor = isDark ? '#374151' : '#F3F4F6';
-  const cardShadow = isDark
-    ? {}
-    : {
-        shadowColor: '#000',
-        shadowOpacity: 0.06,
-        shadowRadius: 12,
-        shadowOffset: { width: 0, height: 4 },
-        elevation: 3,
-      };
 
   const {
-    data: groups = [],
-    isLoading: groupsLoading,
-    error: groupsError,
-    refetch: refetchGroups,
+    data: groups = [], isLoading: groupsLoading, error: groupsError, refetch: refetchGroups,
   } = useUserGroups();
   const {
-    data: pendingInvites = [],
-    isLoading: invitesLoading,
-    error: invitesError,
-    refetch: refetchInvites,
+    isLoading: invitesLoading, error: invitesError, refetch: refetchInvites,
   } = usePendingInvites();
 
   const resolvedGroupId = activeGroupId ?? groups[0]?.id ?? '';
+
   const {
-    data: group,
-    isLoading: groupLoading,
-    error: groupError,
-    refetch: refetchGroup,
+    data: group, isLoading: groupLoading, error: groupError, refetch: refetchGroup,
   } = useGroup(resolvedGroupId);
   const {
-    data: stats,
-    isLoading: statsLoading,
-    error: statsError,
-    refetch: refetchStats,
+    data: stats, isLoading: statsLoading, error: statsError, refetch: refetchStats,
   } = useDashboardStats(resolvedGroupId, user?.id ?? '', month);
   const {
-    data: expenses = [],
-    isLoading: expensesLoading,
-    error: expensesError,
-    refetch: refetchExpenses,
+    data: expenses = [], isLoading: expensesLoading, error: expensesError, refetch: refetchExpenses,
   } = useGroupExpenses(resolvedGroupId);
-  useRecurringGenerationOnMount(resolvedGroupId);
 
-  const { data: subscription } = useSubscription(user?.id ?? '');
+  useRecurringGenerationOnMount(resolvedGroupId);
 
   const loadError = resolvedGroupId
     ? groupError ?? statsError ?? expensesError
     : groupsError ?? invitesError;
 
   useEffect(() => {
-    if (activeGroupId || groupsLoading || invitesLoading || groupsError || invitesError) {
-      return;
-    }
+    if (activeGroupId || groupsLoading || invitesLoading || groupsError || invitesError) return;
     if (groups[0]?.id) {
       setActiveGroupId(groups[0].id);
       return;
     }
     router.replace('/onboarding');
   }, [
-    activeGroupId,
-    groupsError,
-    groups,
-    groupsLoading,
-    invitesError,
-    invitesLoading,
-    router,
-    setActiveGroupId,
+    activeGroupId, groupsError, groups, groupsLoading,
+    invitesError, invitesLoading, router, setActiveGroupId,
   ]);
+
+  const yourShare = stats?.your_share ?? 0;
+  const amountPaid = stats?.amount_paid ?? 0;
+  const amountRemaining = stats?.amount_remaining ?? Math.max(0, yourShare - amountPaid);
+  const openCount = stats?.upcoming_items?.length ?? 0;
+  const paidPct = yourShare > 0
+    ? Math.min(100, Math.max(0, Math.round((amountPaid / yourShare) * 100)))
+    : 0;
 
   const recentExpenses = useMemo(
     () =>
-      [...expenses]
-        .sort(
-          (left, right) =>
-            new Date(getExpenseBillingDueDate(right) ?? right.due_date).getTime() -
-            new Date(getExpenseBillingDueDate(left) ?? left.due_date).getTime(),
-        )
+      ([...expenses] as ExpenseLike[])
+        .sort((a, b) => {
+          const da = getExpenseBillingDueDate(a) ?? a.due_date;
+          const db = getExpenseBillingDueDate(b) ?? b.due_date;
+          return new Date(db).getTime() - new Date(da).getTime();
+        })
         .slice(0, 5),
     [expenses],
   );
 
-  const monthlyTrend = useMemo(() => {
-    const keys = getRecentMonthKeys(6);
-    const totals = new Map(keys.map((key) => [key, 0]));
-    for (const expense of expenses) {
-      const key = (getExpenseBillingDueDate(expense) ?? expense.due_date).slice(0, 7);
-      if (totals.has(key)) {
-        totals.set(key, (totals.get(key) ?? 0) + expense.amount);
-      }
+  const categoryData = useMemo(() => {
+    const now = new Date();
+    const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const all = expenses as ExpenseLike[];
+    const inMonth = all.filter((e) => e.due_date?.startsWith(monthKey));
+    const source = inMonth.length > 0 ? inMonth : all;
+    const scopeLabel = inMonth.length > 0 ? 'This month' : 'All time';
+    const totals = new Map<string, number>();
+    let grand = 0;
+    for (const e of source) {
+      totals.set(e.category, (totals.get(e.category) ?? 0) + e.amount);
+      grand += e.amount;
     }
-    const values = keys.map((key) => totals.get(key) ?? 0);
-    const max = Math.max(...values, 1);
-    return {
-      max,
-      currentTotal: totals.get(month) ?? 0,
-      items: keys.map((key) => ({
-        key,
-        label: new Date(`${key}-01`).toLocaleDateString('en-GB', { month: 'short' }),
-        total: totals.get(key) ?? 0,
-      })),
-    };
-  }, [expenses, month]);
+    const items: CategoryItem[] = Array.from(totals.entries())
+      .map(([category, amount]) => ({
+        category,
+        amount,
+        pct: grand > 0 ? Math.round((amount / grand) * 100) : 0,
+      }))
+      .sort((a, b) => b.amount - a.amount)
+      .slice(0, 6);
+    return { items, grand, scopeLabel };
+  }, [expenses]);
 
-  const workspaceBillingSummary = useMemo(() => {
-    if (group?.type !== 'workspace') {
-      return null;
-    }
+  const todoItems = useMemo(() => {
+    const now = Date.now();
+    const weekAhead = now + 7 * 86400000;
+    return (expenses as ExpenseLike[])
+      .filter((e) => !isExpenseFullyPaid(e) && !userHasPaid(e, user?.id))
+      .map((e) => {
+        const dueStr = getExpenseBillingDueDate(e) ?? e.due_date;
+        const dueTs = new Date(dueStr).getTime();
+        const overdue = Number.isFinite(dueTs) && dueTs < now;
+        const dueSoon = Number.isFinite(dueTs) && dueTs >= now && dueTs <= weekAhead;
+        return { e, dueStr, dueTs, overdue, dueSoon };
+      })
+      .filter((x) => x.overdue || x.dueSoon)
+      .sort((a, b) => a.dueTs - b.dueTs)
+      .slice(0, 4);
+  }, [expenses, user?.id]);
 
-    const workspaceExpenses = expenses.filter((expense) => isWorkspaceBillingExpense(expense, group.type));
+  const focusItems = useMemo(
+    () =>
+      ([...expenses] as ExpenseLike[])
+        .filter((e) => !isExpenseFullyPaid(e))
+        .sort((a, b) => {
+          const da = getExpenseBillingDueDate(a) ?? a.due_date;
+          const db = getExpenseBillingDueDate(b) ?? b.due_date;
+          return new Date(da).getTime() - new Date(db).getTime();
+        })
+        .slice(0, 3),
+    [expenses],
+  );
 
-    const recurringCount = workspaceExpenses.filter((expense) => expense.recurrence_type !== 'none').length;
-    const linkedCount = workspaceExpenses.filter((expense) => hasWorkspaceExpenseContext(expense)).length;
-    const toolCostCount = workspaceExpenses.filter((expense) =>
-      expense.category === 'work_tools' || expense.category === 'internet'
-    ).length;
-    const utilityCount = workspaceExpenses.filter((expense) =>
-      expense.category === 'utilities' || expense.category === 'rent' || expense.category === 'cleaning'
-    ).length;
-    const dueSoonCount = workspaceExpenses.filter((expense) => {
-      const dueDate = getExpenseBillingDueDate(expense) ?? expense.due_date;
-      return isUpcoming(dueDate, 14);
-    }).length;
-    const overdueCount = workspaceExpenses.filter((expense) => {
-      const dueDate = getExpenseBillingDueDate(expense) ?? expense.due_date;
-      return isOverdue(dueDate);
-    }).length;
-
-    return {
-      recurringCount,
-      linkedCount,
-      toolCostCount,
-      utilityCount,
-      dueSoonCount,
-      overdueCount,
-    };
-  }, [expenses, group?.type]);
-
-  const subscriptionLabel = useMemo(() => {
-    if (!subscription) {
-      return 'No active subscription';
-    }
-
-    const plan = subscription.plan.charAt(0).toUpperCase() + subscription.plan.slice(1);
-    if (subscription.status === 'trialing') {
-      return `Trial ends ${formatDate(subscription.trial_ends_at)}`;
-    }
-    if (subscription.status === 'past_due') {
-      return `Payment due ${formatDate(subscription.current_period_end)}`;
-    }
-    return `${plan} · ${subscription.status}`;
-  }, [subscription]);
-
-  /* ---- Loading / Error / Empty ----------------------------------------- */
-
-  if (groupsLoading || invitesLoading || groupLoading || statsLoading || expensesLoading) {
-    return <HomeSkeleton isDark={isDark} />;
-  }
+  const isLoading =
+    groupsLoading || invitesLoading || groupLoading || statsLoading || expensesLoading;
 
   if (loadError) {
     return (
       <Screen>
         <EmptyState
           icon="cloud-offline-outline"
-          title="Dashboard unavailable"
-          description={getErrorMessage(loadError, 'Could not load this group right now.')}
+          title="Couldn't load dashboard"
+          description={getErrorMessage(loadError, 'Something went wrong fetching your group.')}
           actionLabel="Try again"
           onAction={() => {
             void refetchGroups();
@@ -384,688 +631,193 @@ export default function DashboardScreen() {
     );
   }
 
-  if (!resolvedGroupId || !group) {
+  if (!isLoading && (!resolvedGroupId || !group)) {
     return (
       <Screen>
         <EmptyState
           icon="home-outline"
           title="Set up your first group"
-          description="Create a group or accept an invite before tracking expenses on mobile."
-          actionLabel="Open onboarding"
+          description="Create a group or accept an invite to start tracking shared expenses."
+          actionLabel="Get started"
           onAction={() => router.push('/onboarding')}
         />
       </Screen>
     );
   }
 
-  /* ---- Derived data ---------------------------------------------------- */
-
-  const yourShare = stats?.your_share ?? 0;
-  const amountPaid = stats?.amount_paid ?? 0;
-  const paidPct = yourShare > 0 ? Math.min(Math.round((amountPaid / yourShare) * 100), 100) : 0;
-  const completedChecklistCount = countCompletedSetupChecklistItems(
-    group.setup_checklist_progress,
-  );
-  const totalChecklistCount = Object.keys(group.setup_checklist_progress ?? {}).length;
-  const incompleteChecklistItems = getIncompleteSetupChecklistItems(
-    group.setup_checklist_progress,
-  );
-
-  /* ---- Render ---------------------------------------------------------- */
-
   return (
-    <ScrollView
-      style={{ flex: 1, backgroundColor: bgColor }}
-      contentContainerStyle={{ paddingTop: 12, paddingBottom: 120, paddingHorizontal: 20 }}
-      showsVerticalScrollIndicator={false}
-    >
-      {/* ================================================================== */}
-      {/* 1. Balance Card — Dark hero card matching expenses                  */}
-      {/* ================================================================== */}
-      <View
-        style={{
-          backgroundColor: '#1F2937',
-          borderRadius: 24,
-          padding: 24,
-          marginBottom: 28,
-        }}
+    <Screen>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingTop: 12, paddingBottom: 120, paddingHorizontal: space.gutter }}
       >
-        {/* Status pill */}
-        <View
-          style={{
-            backgroundColor: '#D9F99D',
-            alignSelf: 'flex-start',
-            paddingHorizontal: 12,
-            paddingVertical: 5,
-            borderRadius: 8,
-            marginBottom: 14,
-          }}
-        >
-          <Text style={{ fontSize: 11, fontWeight: '700', color: '#365314', letterSpacing: 0.5 }}>
-            YOUR SHARE
-          </Text>
-        </View>
-
-        {/* Amount row with eye toggle */}
-        {yourShare === 0 ? (
-          <Text
-            style={{
-              fontSize: 22,
-              fontWeight: '600',
-              color: '#9CA3AF',
-              marginBottom: 20,
-            }}
-          >
-            No expenses this month
-          </Text>
+        {isLoading || !group ? (
+          <HomeSkeleton />
         ) : (
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              marginBottom: 6,
-            }}
-          >
-            <Text
-              style={{
-                fontSize: 36,
-                fontWeight: '700',
-                color: '#FFFFFF',
-                letterSpacing: -0.5,
-              }}
-            >
-              {balanceVisible
-                ? formatCurrency(yourShare, group.currency)
-                : '****'}
-            </Text>
-            <TouchableOpacity
-              activeOpacity={0.6}
-              style={{ marginLeft: 12, padding: 4 }}
-              onPress={() => { hapticLight(); setBalanceVisible((prev) => !prev); }}
-            >
-              <Ionicons
-                name={balanceVisible ? 'eye-outline' : 'eye-off-outline'}
-                size={22}
-                color="#9CA3AF"
+          <>
+            <View style={{ marginTop: space.xs, marginBottom: space.xl }}>
+              <HeroBalanceCard
+                monthLabel={getMonthLabel()}
+                amountLabel={formatCurrency(yourShare, group.currency)}
+                paidPct={paidPct}
+                paidLabel={formatCurrency(amountPaid, group.currency)}
+                remainingLabel={formatCurrency(amountRemaining, group.currency)}
+                openCount={openCount}
+                onAdd={() => { hapticMedium(); router.push('/expenses/new'); }}
+                onSettle={() => { hapticMedium(); router.push('/command-centre'); }}
               />
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {/* Subtitle */}
-        <Text style={{ fontSize: 13, color: '#9CA3AF', marginBottom: 16 }}>
-          {paidPct}% settled · {group?.name ?? 'Group'}
-        </Text>
-
-        {/* Progress bar — height 4, track #374151, fill #D9F99D */}
-        <View
-          style={{
-            height: 4,
-            borderRadius: 2,
-            backgroundColor: '#374151',
-            overflow: 'hidden',
-            marginBottom: 20,
-          }}
-        >
-          <View
-            style={{
-              height: '100%',
-              width: `${paidPct}%`,
-              backgroundColor: '#D9F99D',
-              borderRadius: 2,
-            }}
-          />
-        </View>
-
-        {/* Action buttons row — pill style */}
-        <View style={{ flexDirection: 'row', gap: 12 }}>
-          <TouchableOpacity
-            style={{
-              flex: 1,
-              backgroundColor: '#065F46',
-              borderRadius: 24,
-              paddingVertical: 14,
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 8,
-            }}
-            activeOpacity={0.7}
-            onPress={() => { hapticMedium(); router.push('/expenses/new'); }}
-          >
-            <Ionicons name="add-circle-outline" size={20} color="#FFFFFF" />
-            <Text style={{ fontSize: 15, fontWeight: '600', color: '#FFFFFF' }}>
-              Add Expense
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={{
-              flex: 1,
-              backgroundColor: '#84CC16',
-              borderRadius: 24,
-              paddingVertical: 14,
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 8,
-            }}
-            activeOpacity={0.7}
-            onPress={() => { hapticMedium(); router.push('/(tabs)/expenses'); }}
-          >
-            <Ionicons name="checkmark-done-outline" size={20} color="#FFFFFF" />
-            <Text style={{ fontSize: 15, fontWeight: '600', color: '#FFFFFF' }}>
-              Settle Up
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {group.type === 'workspace' && workspaceBillingSummary ? (
-        <View
-          style={{
-            backgroundColor: isDark ? '#111827' : '#FFFFFF',
-            borderRadius: 20,
-            padding: 20,
-            marginBottom: 24,
-            ...cardShadow,
-          }}
-        >
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-            <View
-              style={{
-                backgroundColor: '#E6F6EE',
-                alignSelf: 'flex-start',
-                paddingHorizontal: 10,
-                paddingVertical: 4,
-                borderRadius: 8,
-              }}
-            >
-              <Text style={{ fontSize: 11, fontWeight: '700', color: '#2d6a4f', letterSpacing: 0.5 }}>
-                WORKSPACE BILLING
-              </Text>
             </View>
-            <Text style={{ fontSize: 12, fontWeight: '600', color: textSecondary }}>
-              {subscriptionLabel}
-            </Text>
-          </View>
 
-          <Text style={{ fontSize: 20, fontWeight: '700', color: textPrimary, marginTop: 12 }}>
-            {workspaceBillingSummary.recurringCount} recurring bills · {workspaceBillingSummary.linkedCount} vendor-linked
-          </Text>
-          <Text style={{ fontSize: 13, color: textSecondary, marginTop: 6, lineHeight: 18 }}>
-            Keep software, tools, and vendor invoices visible so shared workspace costs do not get buried.
-            {'\n'}
-            {workspaceBillingSummary.toolCostCount} tool costs · {workspaceBillingSummary.utilityCount} rent, utilities, and cleaning
-          </Text>
+            <QuickActions
+              items={[
+                {
+                  key: 'settle',
+                  label: 'Settle',
+                  icon: 'wallet-outline',
+                  onPress: () => { hapticMedium(); router.push('/command-centre'); },
+                },
+                {
+                  key: 'chores',
+                  label: 'Chores',
+                  icon: 'checkbox-outline',
+                  onPress: () => { hapticMedium(); router.push('/operations'); },
+                },
+                {
+                  key: 'analytics',
+                  label: 'Analytics',
+                  icon: 'bar-chart-outline',
+                  onPress: () => { hapticMedium(); router.push('/analytics'); },
+                },
+                {
+                  key: 'activity',
+                  label: 'Activity',
+                  icon: 'chatbubble-ellipses-outline',
+                  onPress: () => { hapticMedium(); router.push('/activity'); },
+                },
+              ]}
+            />
 
-          <View style={{ flexDirection: 'row', gap: 10, marginTop: 16, flexWrap: 'wrap' }}>
-            <View style={{ flex: 1, minWidth: 92, backgroundColor: isDark ? '#1F2937' : '#F8FAFC', borderRadius: 16, padding: 14 }}>
-              <Text style={{ fontSize: 12, color: textSecondary }}>Tool costs</Text>
-              <Text style={{ marginTop: 4, fontSize: 22, fontWeight: '700', color: textPrimary }}>
-                {workspaceBillingSummary.toolCostCount}
-              </Text>
-            </View>
-            <View style={{ flex: 1, minWidth: 92, backgroundColor: isDark ? '#1F2937' : '#F8FAFC', borderRadius: 16, padding: 14 }}>
-              <Text style={{ fontSize: 12, color: textSecondary }}>Due soon</Text>
-              <Text style={{ marginTop: 4, fontSize: 22, fontWeight: '700', color: textPrimary }}>
-                {workspaceBillingSummary.dueSoonCount}
-              </Text>
-            </View>
-            <View style={{ flex: 1, minWidth: 92, backgroundColor: isDark ? '#1F2937' : '#F8FAFC', borderRadius: 16, padding: 14 }}>
-              <Text style={{ fontSize: 12, color: textSecondary }}>Overdue</Text>
-              <Text style={{ marginTop: 4, fontSize: 22, fontWeight: '700', color: textPrimary }}>
-                {workspaceBillingSummary.overdueCount}
-              </Text>
-            </View>
-          </View>
-
-          <TouchableOpacity
-            activeOpacity={0.8}
-            onPress={() => { hapticMedium(); router.push('/recurring'); }}
-            style={{
-              marginTop: 16,
-              backgroundColor: '#2d6a4f',
-              borderRadius: 16,
-              height: 48,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <Text style={{ fontSize: 15, fontWeight: '700', color: '#FFFFFF' }}>
-              Review recurring bills
-            </Text>
-          </TouchableOpacity>
-        </View>
-      ) : null}
-
-      {totalChecklistCount > 0 && (
-        <View
-          style={{
-            backgroundColor: incompleteChecklistItems.length > 0 ? '#FFF7ED' : '#ECFDF5',
-            borderRadius: 20,
-            padding: 20,
-            marginBottom: 24,
-            ...cardShadow,
-          }}
-        >
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'flex-start',
-              justifyContent: 'space-between',
-              gap: 12,
-            }}
-          >
-            <View style={{ flex: 1 }}>
-              <Text
-                style={{
-                  fontSize: 18,
-                  fontWeight: '700',
-                  color: incompleteChecklistItems.length > 0 ? '#9A3412' : '#166534',
-                }}
-              >
-                {incompleteChecklistItems.length > 0 ? 'Setup still needs attention' : 'Setup is in good shape'}
-              </Text>
-              <Text
-                style={{
-                  marginTop: 6,
-                  fontSize: 14,
-                  lineHeight: 22,
-                  color: incompleteChecklistItems.length > 0 ? '#9A3412' : '#166534',
-                }}
-              >
-                {completedChecklistCount}/{totalChecklistCount} setup steps complete for {group.name}.
-              </Text>
-            </View>
-            <View
-              style={{
-                paddingHorizontal: 10,
-                paddingVertical: 5,
-                borderRadius: 16,
-                backgroundColor: incompleteChecklistItems.length > 0 ? '#FED7AA' : '#BBF7D0',
-              }}
-            >
-              <Text
-                style={{
-                  fontSize: 12,
-                  fontWeight: '700',
-                  color: incompleteChecklistItems.length > 0 ? '#9A3412' : '#166534',
-                }}
-              >
-                {completedChecklistCount}/{totalChecklistCount}
-              </Text>
-            </View>
-          </View>
-
-          {incompleteChecklistItems.slice(0, 2).map((item) => (
-            <Text
-              key={item.id}
-              style={{
-                marginTop: 10,
-                fontSize: 13,
-                color: incompleteChecklistItems.length > 0 ? '#9A3412' : '#166534',
-              }}
-            >
-              • {item.label}
-            </Text>
-          ))}
-
-          <View style={{ flexDirection: 'row', gap: 12, marginTop: 16 }}>
-            <TouchableOpacity
-              style={{
-                flex: 1,
-                backgroundColor: '#FFFFFF',
-                borderRadius: 18,
-                paddingVertical: 12,
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-              activeOpacity={0.7}
-              onPress={() => {
-                hapticMedium();
-                router.push('/group-edit');
-              }}
-            >
-              <Text style={{ fontSize: 14, fontWeight: '600', color: '#374151' }}>
-                Open setup
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={{
-                flex: 1,
-                backgroundColor: '#1f2330',
-                borderRadius: 18,
-                paddingVertical: 12,
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-              activeOpacity={0.7}
-              onPress={() => {
-                hapticMedium();
-                router.push('/group-close');
-              }}
-            >
-              <Text style={{ fontSize: 14, fontWeight: '600', color: '#FFFFFF' }}>
-                Review close
-              </Text>
-            </TouchableOpacity>
-          </View>
-          <View style={{ flexDirection: 'row', gap: 16, marginTop: 14, flexWrap: 'wrap' }}>
-            <TouchableOpacity
-              activeOpacity={0.7}
-              onPress={() => {
-                hapticLight();
-                router.push('/members');
-              }}
-            >
-              <Text style={{ fontSize: 13, fontWeight: '600', color: '#2d6a4f' }}>
-                View members
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              activeOpacity={0.7}
-              onPress={() => {
-                hapticLight();
-                router.push('/operations');
-              }}
-            >
-              <Text style={{ fontSize: 13, fontWeight: '600', color: '#2d6a4f' }}>
-                Open operations
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      )}
-
-      {/* ================================================================== */}
-      {/* 2. Quick Actions — 4 circles (72px, bg #F3F4F6, borderRadius 36)  */}
-      {/* ================================================================== */}
-      <View
-        style={{
-          flexDirection: 'row',
-          justifyContent: 'space-between',
-          paddingHorizontal: 4,
-          marginBottom: 32,
-        }}
-      >
-        {QUICK_ACTIONS.map((action) => (
-          <TouchableOpacity
-            key={action.key}
-            style={{ alignItems: 'center', flex: 1 }}
-            activeOpacity={0.7}
-            onPress={() => { hapticMedium(); router.push(action.route as never); }}
-          >
-            <View
-              style={{
-                width: 72,
-                height: 72,
-                borderRadius: 36,
-                backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#F3F4F6',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <Ionicons name={action.icon} size={28} color={isDark ? '#FFFFFF' : '#111827'} />
-            </View>
-            <Text
-              style={{
-                marginTop: 8,
-                fontSize: 12,
-                fontWeight: '500',
-                color: '#6B7280',
-                textAlign: 'center',
-              }}
-              numberOfLines={1}
-            >
-              {action.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      {/* ================================================================== */}
-      {/* 3. Recent Expenses — white cards, borderRadius 16, status pills    */}
-      {/* ================================================================== */}
-      <View style={{ marginBottom: 28 }}>
-        {/* Section header */}
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            marginBottom: 16,
-          }}
-        >
-          <Text style={{ fontSize: 20, fontWeight: '700', color: textPrimary }}>
-            Recent Expenses
-          </Text>
-          <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={() => { hapticLight(); router.push('/(tabs)/expenses'); }}
-          >
-            <Text style={{ fontSize: 14, fontWeight: '600', color: '#059669' }}>
-              See all &rarr;
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {recentExpenses.length === 0 ? (
-          <View
-            style={{
-              backgroundColor: cardBg,
-              borderRadius: 16,
-              padding: 28,
-              alignItems: 'center',
-              ...cardShadow,
-            }}
-          >
-            <Ionicons name="receipt-outline" size={36} color={textSecondary} />
-            <Text style={{ fontSize: 14, color: textSecondary, marginTop: 12, textAlign: 'center' }}>
-              No expenses yet. Add your first one to get started.
-            </Text>
-          </View>
-        ) : (
-          <View style={{ gap: 10 }}>
-            {recentExpenses.map((expense) => {
-              const cat = getCat(expense.category);
-              const dueDate = getExpenseBillingDueDate(expense) ?? expense.due_date;
-              const status = getExpenseStatus(dueDate, expense);
-              const isPaid = status.styleKey === 'PAID';
-              const chipStyle = STATUS_STYLE[status.styleKey] ?? STATUS_STYLE.DUE;
-
-              return (
-                <TouchableOpacity
-                  key={expense.id}
-                  style={{
-                    backgroundColor: cardBg,
-                    borderRadius: 16,
-                    padding: 16,
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    ...cardShadow,
-                  }}
-                  activeOpacity={0.7}
-                  onPress={() => { hapticMedium(); router.push(`/expenses/${expense.id}`); }}
-                >
-                  {/* Category icon in 48px colored circle */}
-                  <View
-                    style={{
-                      width: 48,
-                      height: 48,
-                      borderRadius: 24,
-                      backgroundColor: cat.color + '1A',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      marginRight: 12,
-                    }}
-                  >
-                    <Ionicons name={cat.icon} size={22} color={cat.color} />
-                  </View>
-
-                  {/* Title + relative date */}
-                  <View style={{ flex: 1, marginRight: 8 }}>
-                    <Text
-                      style={{
-                        fontSize: 16,
-                        fontWeight: '600',
-                        color: textPrimary,
-                      }}
-                      numberOfLines={1}
-                    >
-                      {expense.title}
-                    </Text>
-                    <Text style={{ fontSize: 13, color: '#6B7280', marginTop: 3 }}>
-                      {formatRelativeDate(dueDate)}
-                    </Text>
-                  </View>
-
-                  {/* Amount + status pill */}
-                  <View style={{ alignItems: 'flex-end' }}>
-                    <Text
-                      style={{
-                        fontSize: 17,
-                        fontWeight: '700',
-                        color: isPaid ? '#059669' : textPrimary,
-                      }}
-                    >
-                      {isPaid ? '+' : '-'}
-                      {formatCurrency(expense.amount, expense.currency)}
-                    </Text>
-                    <View
-                      style={{
-                        marginTop: 4,
-                        backgroundColor: chipStyle.bg,
-                        borderRadius: 8,
-                        paddingHorizontal: 8,
-                        paddingVertical: 2,
-                      }}
-                    >
-                      <Text
-                        style={{
-                          fontSize: 11,
-                          fontWeight: '600',
-                          color: chipStyle.fg,
-                        }}
-                      >
-                        {status.label}
-                      </Text>
-                    </View>
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        )}
-      </View>
-
-      {/* ================================================================== */}
-      {/* 4. Spending Trend — White card, borderRadius 24, mini bar chart    */}
-      {/* ================================================================== */}
-      <View style={{ marginBottom: 24 }}>
-        <View
-          style={{
-            backgroundColor: cardBg,
-            borderRadius: 24,
-            padding: 24,
-            ...cardShadow,
-          }}
-        >
-          {/* Header row */}
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              marginBottom: 20,
-            }}
-          >
-            <Text style={{ fontSize: 18, fontWeight: '700', color: textPrimary }}>
-              Spending
-            </Text>
-            {monthlyTrend.currentTotal > 0 && (
-              <Text style={{ fontSize: 14, fontWeight: '600', color: textSecondary }}>
-                {formatCurrency(monthlyTrend.currentTotal, group.currency)} this month
-              </Text>
-            )}
-          </View>
-
-          {monthlyTrend.items.some((item) => item.total > 0) ? (
-            <>
-              {/* Bar chart */}
-              <View
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'flex-end',
-                  justifyContent: 'space-between',
-                  height: 120,
-                  paddingHorizontal: 4,
-                }}
-              >
-                {monthlyTrend.items.map((item) => {
-                  const barHeight = Math.max(8, Math.round((item.total / monthlyTrend.max) * 100));
-                  const isCurrent = item.key === month;
-
-                  return (
-                    <View key={item.key} style={{ flex: 1, alignItems: 'center', paddingHorizontal: 4 }}>
-                      <View
-                        style={{
-                          height: barHeight,
-                          backgroundColor: isCurrent ? '#84CC16' : (isDark ? '#374151' : '#D1FAE5'),
-                          width: '65%',
-                          borderRadius: 6,
-                        }}
+            {todoItems.length > 0 && (
+              <View style={{ marginBottom: space.xl }}>
+                <SectionHeader
+                  title={`To do · ${todoItems.length}`}
+                  actionLabel="View all"
+                  onAction={() => { hapticMedium(); router.push('/command-centre'); }}
+                />
+                <View style={{ gap: space.md }}>
+                  {todoItems.map(({ e, dueStr, overdue }) => {
+                    const share = getUserShare(e, user?.id);
+                    return (
+                      <ExpenseRow
+                        key={e.id}
+                        expense={e}
+                        caption={`${overdue ? 'Overdue · ' : 'Due '}${formatDueDate(dueStr)}`}
+                        trailing={
+                          <StatusPill
+                            amount={`-${formatCurrency(share, e.currency)}`}
+                            tone={overdue ? 'owe' : 'owe'}
+                          />
+                        }
+                        onPress={() => { hapticMedium(); router.push(`/expenses/${e.id}`); }}
                       />
-                    </View>
-                  );
-                })}
+                    );
+                  })}
+                </View>
               </View>
+            )}
 
-              {/* Month labels */}
-              <View
-                style={{
-                  flexDirection: 'row',
-                  justifyContent: 'space-between',
-                  marginTop: 12,
-                  paddingHorizontal: 4,
-                }}
-              >
-                {monthlyTrend.items.map((item) => (
-                  <View key={item.key} style={{ flex: 1, alignItems: 'center' }}>
-                    <Text
-                      style={{
-                        fontSize: 12,
-                        fontWeight: item.key === month ? '700' : '400',
-                        color: item.key === month ? textPrimary : textSecondary,
-                      }}
-                    >
-                      {item.label}
-                    </Text>
-                  </View>
-                ))}
+            {focusItems.length > 0 && (
+              <View style={{ marginBottom: space.xl }}>
+                <SectionHeader
+                  title="Focus this week"
+                  actionLabel="See all"
+                  onAction={() => { hapticMedium(); router.push('/(tabs)/expenses'); }}
+                />
+                <View style={{ gap: space.md }}>
+                  {focusItems.map((e) => {
+                    const dueDate = getExpenseBillingDueDate(e) ?? e.due_date;
+                    const paidByName = getPaidByName(e, user?.id, group as GroupLike);
+                    const share = getUserShare(e, user?.id);
+                    return (
+                      <ExpenseRow
+                        key={e.id}
+                        expense={e}
+                        caption={`${paidByName} · ${formatRelative(dueDate)}`}
+                        trailing={
+                          <StatusPill
+                            amount={`-${formatCurrency(share, e.currency)}`}
+                            tone="owe"
+                          />
+                        }
+                        onPress={() => { hapticMedium(); router.push(`/expenses/${e.id}`); }}
+                      />
+                    );
+                  })}
+                </View>
               </View>
-            </>
-          ) : (
-            <View
-              style={{
-                backgroundColor: isDark ? '#1F2937' : '#F9FAFB',
-                borderRadius: 16,
-                paddingHorizontal: 20,
-                paddingVertical: 24,
-                alignItems: 'center',
-              }}
-            >
-              <Ionicons name="trending-up-outline" size={28} color={textSecondary} />
-              <Text style={{ fontSize: 15, fontWeight: '600', color: textPrimary, marginTop: 10 }}>
-                No data yet
-              </Text>
-              <Text style={{ fontSize: 13, color: textSecondary, marginTop: 4, textAlign: 'center' }}>
-                Add expenses and this chart will show spending over time.
-              </Text>
+            )}
+
+            <View style={{ marginBottom: space.xl }}>
+              <CategoryBreakdownCard
+                items={categoryData.items}
+                currency={group.currency}
+                scopeLabel={categoryData.scopeLabel}
+              />
             </View>
-          )}
-        </View>
-      </View>
-    </ScrollView>
+
+            <View>
+              <SectionHeader
+                title="Recent activity"
+                actionLabel="See all"
+                onAction={() => { hapticMedium(); router.push('/(tabs)/expenses'); }}
+              />
+              {recentExpenses.length === 0 ? (
+                <EmptyState
+                  icon="receipt-outline"
+                  title="No expenses yet"
+                  description="Track your first shared expense to see it here."
+                  actionLabel="Add your first expense"
+                  onAction={() => { hapticMedium(); router.push('/expenses/new'); }}
+                />
+              ) : (
+                <View style={{ gap: space.md }}>
+                  {recentExpenses.map((e) => {
+                    const dueDate = getExpenseBillingDueDate(e) ?? e.due_date;
+                    const paidByName = getPaidByName(e, user?.id, group as GroupLike);
+                    const fullyPaid = isExpenseFullyPaid(e);
+                    const userSettled = userHasPaid(e, user?.id);
+                    const userPaidFor = !!e.paid_by_user_id && e.paid_by_user_id === user?.id;
+
+                    let tone: 'owe' | 'owed' | 'settled' = 'owe';
+                    let amount = '';
+                    if (fullyPaid || userSettled) {
+                      tone = 'settled';
+                      amount = 'Settled';
+                    } else if (userPaidFor) {
+                      const owed = e.amount - getUserShare(e, user?.id);
+                      tone = 'owed';
+                      amount = `+${formatCurrency(Math.max(0, owed), e.currency)}`;
+                    } else {
+                      tone = 'owe';
+                      amount = `-${formatCurrency(getUserShare(e, user?.id), e.currency)}`;
+                    }
+
+                    return (
+                      <ExpenseRow
+                        key={e.id}
+                        expense={e}
+                        caption={`${paidByName} · ${formatRelative(dueDate)}`}
+                        trailing={<StatusPill amount={amount} tone={tone} />}
+                        onPress={() => { hapticMedium(); router.push(`/expenses/${e.id}`); }}
+                      />
+                    );
+                  })}
+                </View>
+              )}
+            </View>
+          </>
+        )}
+      </ScrollView>
+    </Screen>
   );
 }
