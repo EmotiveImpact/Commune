@@ -318,6 +318,94 @@
           "requiresAlternateGroup": true
         }
       ]
+    },
+    "stress": {
+      "gating": false,
+      "scenarios": [
+        {
+          "name": "auth-password",
+          "type": "auth-password",
+          "concurrency": 6,
+          "requests": 24,
+          "budgetMsP95": 1800,
+          "maxErrorRate": 0.1
+        },
+        {
+          "name": "signed-in-bootstrap",
+          "type": "rpc",
+          "rpc": "fn_get_signed_in_bootstrap",
+          "body": {
+            "p_include_dashboard_summary": false
+          },
+          "concurrency": 16,
+          "requests": 96,
+          "budgetMsP95": 1800,
+          "maxErrorRate": 0.1,
+          "requiresAuth": true
+        },
+        {
+          "name": "dashboard-core",
+          "type": "rpc",
+          "rpc": "fn_get_dashboard_summary",
+          "body": {
+            "p_include_insights": false,
+            "p_group_id": "$resolvedGroupId",
+            "p_month": "$month"
+          },
+          "concurrency": 16,
+          "requests": 96,
+          "budgetMsP95": 1600,
+          "maxErrorRate": 0.1,
+          "requiresAuth": true
+        },
+        {
+          "name": "expense-ledger",
+          "type": "rpc",
+          "rpc": "fn_get_expense_ledger",
+          "body": {
+            "p_group_id": "$resolvedGroupId",
+            "p_is_workspace_group": "$isWorkspaceGroup",
+            "p_page": 0,
+            "p_page_size": 25,
+            "p_status": "all"
+          },
+          "concurrency": 16,
+          "requests": 96,
+          "budgetMsP95": 1600,
+          "maxErrorRate": 0.1,
+          "requiresAuth": true
+        },
+        {
+          "name": "activity-feed",
+          "type": "rpc",
+          "rpc": "fn_get_activity_feed",
+          "body": {
+            "p_group_id": "$resolvedGroupId",
+            "p_limit": 50,
+            "p_offset": 0
+          },
+          "concurrency": 16,
+          "requests": 96,
+          "budgetMsP95": 1600,
+          "maxErrorRate": 0.1,
+          "requiresAuth": true
+        },
+        {
+          "name": "group-switch-bootstrap",
+          "type": "rpc",
+          "rpc": "fn_get_signed_in_bootstrap",
+          "body": {
+            "p_active_group_id": "$alternateGroupId",
+            "p_include_dashboard_summary": false
+          },
+          "concurrency": 16,
+          "requests": 96,
+          "budgetMsP95": 1800,
+          "maxErrorRate": 0.1,
+          "requiresAuth": true,
+          "requiresAlternateGroup": true
+        }
+      ]
     }
   }
 }
