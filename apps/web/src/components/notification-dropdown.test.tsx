@@ -1,5 +1,5 @@
 import { MantineProvider } from '@mantine/core';
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NotificationDropdown } from './notification-dropdown';
 
@@ -24,7 +24,6 @@ vi.mock('../hooks/use-notifications', () => ({
 
 describe('NotificationDropdown', () => {
   beforeEach(() => {
-    vi.useFakeTimers();
     navigateMock.mockReset();
     useNotificationSummaryMock.mockReset();
     useNotificationsMock.mockReset();
@@ -42,7 +41,7 @@ describe('NotificationDropdown', () => {
     useMarkAllNotificationsReadMock.mockReturnValue({ mutate: vi.fn() });
   });
 
-  it('keeps notification summary disabled until the shell settles', () => {
+  it('keeps notification summary disabled on cold mount', () => {
     render(
       <MantineProvider>
         <NotificationDropdown />
@@ -50,12 +49,6 @@ describe('NotificationDropdown', () => {
     );
 
     expect(useNotificationSummaryMock).toHaveBeenLastCalledWith({ enabled: false });
-
-    act(() => {
-      vi.advanceTimersByTime(1500);
-    });
-
-    expect(useNotificationSummaryMock).toHaveBeenLastCalledWith({ enabled: true });
   });
 
   it('enables notifications immediately when the menu opens', () => {
@@ -68,6 +61,18 @@ describe('NotificationDropdown', () => {
     fireEvent.click(screen.getByRole('button', { name: /open notifications/i }));
 
     expect(useNotificationsMock).toHaveBeenLastCalledWith({ enabled: true });
+    expect(useNotificationSummaryMock).toHaveBeenLastCalledWith({ enabled: true });
+  });
+
+  it('enables the unread summary on hover before opening the menu', () => {
+    render(
+      <MantineProvider>
+        <NotificationDropdown />
+      </MantineProvider>,
+    );
+
+    fireEvent.mouseEnter(screen.getByRole('button', { name: /open notifications/i }));
+
     expect(useNotificationSummaryMock).toHaveBeenLastCalledWith({ enabled: true });
   });
 });

@@ -1,7 +1,7 @@
 import { ActionIcon, Badge, Indicator, Menu, Text, Group, Stack, Box, UnstyledButton } from '@mantine/core';
 import { IconBell, IconReceipt, IconCheck, IconAlertTriangle, IconChecks } from '@tabler/icons-react';
 import { useNavigate } from '@tanstack/react-router';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import {
   useNotificationSummary,
   useNotifications,
@@ -37,19 +37,11 @@ export function NotificationDropdown() {
   const navigate = useNavigate();
   const unreadCount = summary?.unread_count ?? 0;
 
-  useEffect(() => {
-    if (summaryEnabled) return undefined;
-    if (opened) {
+  const enableSummary = () => {
+    if (!summaryEnabled) {
       setSummaryEnabled(true);
-      return undefined;
     }
-
-    const timer = window.setTimeout(() => {
-      setSummaryEnabled(true);
-    }, 1500);
-
-    return () => window.clearTimeout(timer);
-  }, [opened, summaryEnabled]);
+  };
 
   const handleNotificationClick = (n: AppNotification) => {
     // Mark as read
@@ -71,7 +63,18 @@ export function NotificationDropdown() {
   };
 
   return (
-    <Menu shadow="md" width={360} position="bottom-end" opened={opened} onChange={setOpened}>
+    <Menu
+      shadow="md"
+      width={360}
+      position="bottom-end"
+      opened={opened}
+      onChange={(nextOpened) => {
+        setOpened(nextOpened);
+        if (nextOpened) {
+          enableSummary();
+        }
+      }}
+    >
       <Menu.Target>
         <Indicator
           size={18}
@@ -80,7 +83,14 @@ export function NotificationDropdown() {
           color="red"
           offset={4}
         >
-          <ActionIcon variant="subtle" color="gray" size={40} aria-label="Open notifications">
+          <ActionIcon
+            variant="subtle"
+            color="gray"
+            size={40}
+            aria-label="Open notifications"
+            onMouseEnter={enableSummary}
+            onFocus={enableSummary}
+          >
             <IconBell size={18} />
           </ActionIcon>
         </Indicator>
