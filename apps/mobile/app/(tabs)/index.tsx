@@ -190,19 +190,20 @@ const s = StyleSheet.create({
     color: '#6B7280',
     textAlign: 'center',
   },
-  attStrip: { paddingRight: space.gutter },
+  attStrip: { paddingRight: space.gutter, gap: 6 },
   attCard: {
-    width: 200,
-    marginRight: space.md,
-    backgroundColor: colors.bgSubtle,
-    borderRadius: radius.card,
-    padding: space.base,
+    width: 140,
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
-  attCardTop: { flexDirection: 'row', alignItems: 'center', gap: space.sm, marginBottom: space.sm },
-  attCardTitle: { flex: 1, fontSize: 14, fontWeight: '700', color: colors.textPrimary },
-  attCardDue: { fontSize: 11, fontWeight: '600', color: colors.textTertiary, marginBottom: space.sm },
+  attCardTop: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 },
+  attCardTitle: { flex: 1, fontSize: 12, fontWeight: '700', color: colors.textPrimary },
+  attCardDue: { fontSize: 10, fontWeight: '600', color: colors.textTertiary, marginTop: 2 },
   attCardDueOverdue: { color: '#8C2F1F' },
-  attCardAmount: { fontSize: 15, fontWeight: '800', color: colors.textPrimary },
+  attCardAmount: { fontSize: 12, fontWeight: '700', color: '#8C2F1F', marginTop: 6 },
   todoRow: { flexDirection: 'row', alignItems: 'center', gap: space.md },
   todoMeta: { flex: 1 },
   todoTitle: { color: colors.textPrimary },
@@ -697,73 +698,74 @@ export default function HomeScreen() {
               ]}
             />
 
-            {todoItems.length > 0 && (
-              <View style={{ marginBottom: space.xl }}>
-                <SectionHeader
-                  title={`To do · ${todoItems.length}`}
-                  actionLabel="View all"
-                  onAction={() => { hapticMedium(); router.push('/command-centre'); }}
-                />
-                <View style={{ gap: space.md }}>
-                  {todoItems.map(({ e, dueStr, overdue }) => {
-                    const share = getUserShare(e, user?.id);
-                    return (
-                      <ExpenseRow
-                        key={e.id}
-                        expense={e}
-                        caption={`${overdue ? 'Overdue · ' : 'Due '}${formatDueDate(dueStr)}`}
-                        trailing={
-                          <StatusPill
-                            amount={`-${formatCurrency(share, e.currency)}`}
-                            tone={overdue ? 'owe' : 'owe'}
-                          />
-                        }
-                        onPress={() => { hapticMedium(); router.push(`/expenses/${e.id}`); }}
-                      />
-                    );
-                  })}
-                </View>
-              </View>
-            )}
+            {(() => {
+              const now = Date.now();
+              const attentionList = (expenses as ExpenseLike[])
+                .filter((e) => !isExpenseFullyPaid(e))
+                .map((e) => {
+                  const dueStr = getExpenseBillingDueDate(e) ?? e.due_date;
+                  const dueTs = new Date(dueStr).getTime();
+                  const overdue = Number.isFinite(dueTs) && dueTs < now;
+                  return { e, dueStr, dueTs, overdue };
+                })
+                .sort((a, b) => a.dueTs - b.dueTs)
+                .slice(0, 6);
 
-            {focusItems.length > 0 && (
-              <View style={{ marginBottom: space.xl }}>
-                <SectionHeader
-                  title="Focus this week"
-                  actionLabel="See all"
-                  onAction={() => { hapticMedium(); router.push('/(tabs)/expenses'); }}
-                />
-                <View style={{ gap: space.md }}>
-                  {focusItems.map((e) => {
-                    const dueDate = getExpenseBillingDueDate(e) ?? e.due_date;
-                    const paidByName = getPaidByName(e, user?.id, group as GroupLike);
-                    const share = getUserShare(e, user?.id);
-                    return (
-                      <ExpenseRow
-                        key={e.id}
-                        expense={e}
-                        caption={`${paidByName} · ${formatRelative(dueDate)}`}
-                        trailing={
-                          <StatusPill
-                            amount={`-${formatCurrency(share, e.currency)}`}
-                            tone="owe"
-                          />
-                        }
-                        onPress={() => { hapticMedium(); router.push(`/expenses/${e.id}`); }}
-                      />
-                    );
-                  })}
-                </View>
-              </View>
-            )}
+              const hasOverdue = attentionList.some((x) => x.overdue);
 
-            <View style={{ marginBottom: space.xl }}>
-              <CategoryBreakdownCard
-                items={categoryData.items}
-                currency={group.currency}
-                scopeLabel={categoryData.scopeLabel}
-              />
-            </View>
+              const attentionBlock = attentionList.length === 0 ? null : (
+                <View style={{ marginBottom: space.xl }}>
+                  <SectionHeader
+                    title={`Needs attention · ${attentionList.length}`}
+                    actionLabel="View all"
+                    onAction={() => { hapticMedium(); router.push('/command-centre'); }}
+                  />
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={s.attStrip}
+                  >
+                    {attentionList.map(({ e, dueStr, overdue }) => {
+                      const meta = getCategoryMeta(e.category);
+                      const share = getUserShare(e, user?.id);
+                      return (
+                        <TouchableOpacity
+                          key={e.id}
+                          activeOpacity={0.8}
+                          onPress={() => { hapticMedium(); router.push(`/expenses/${e.id}`); }}
+                          style={s.attCard}
+                        >
+                          <View style={s.attCardTop}>
+                            <IconTile icon={meta.icon as never} color={meta.color} bg={meta.bg} size={24} />
+                            <Text style={s.attCardTitle} numberOfLines={1}>{e.title}</Text>
+                          </View>
+                          <Text style={[s.attCardDue, overdue && s.attCardDueOverdue]} numberOfLines={1}>
+                            {overdue ? 'Overdue · ' : 'Due '}{formatDueDate(dueStr)}
+                          </Text>
+                          <Text style={s.attCardAmount}>-{formatCurrency(share, e.currency)}</Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
+                </View>
+              );
+
+              const spendingBlock = (
+                <View style={{ marginBottom: space.xl }}>
+                  <CategoryBreakdownCard
+                    items={categoryData.items}
+                    currency={group.currency}
+                    scopeLabel={categoryData.scopeLabel}
+                  />
+                </View>
+              );
+
+              return hasOverdue ? (
+                <>{attentionBlock}{spendingBlock}</>
+              ) : (
+                <>{spendingBlock}{attentionBlock}</>
+              );
+            })()}
 
             <View>
               <SectionHeader
