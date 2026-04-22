@@ -88,7 +88,6 @@ export function NotificationDropdown() {
             size={40}
             aria-label="Open notifications"
             onMouseEnter={enableSummary}
-            onFocus={enableSummary}
           >
             <IconBell size={18} />
           </ActionIcon>
