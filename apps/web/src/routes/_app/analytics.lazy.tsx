@@ -27,7 +27,7 @@ import {
   getWorkspaceBillingExportRows,
   type WorkspaceBillingPackData,
 } from '@commune/api';
-import { formatCurrency, formatDate } from '@commune/utils';
+import { formatCurrency, formatDate, formatMonthKey } from '@commune/utils';
 import { setPageTitle } from '../../utils/seo';
 import { useGroupStore } from '../../stores/group';
 import { useAuthStore } from '../../stores/auth';
@@ -79,7 +79,7 @@ function formatCategoryLabel(category: string) {
 }
 
 function formatMonthLabel(monthKey: string) {
-  return new Date(`${monthKey}-01`).toLocaleDateString('en-GB', { month: 'short' });
+  return formatMonthKey(monthKey, 'en-GB', { month: 'short' });
 }
 
 function AnalyticsSkeleton() {

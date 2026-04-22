@@ -33,7 +33,7 @@ import {
   IconWallet,
 } from '@tabler/icons-react';
 import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
-import { formatCurrency, formatDate, getMonthKey, isOverdue } from '@commune/utils';
+import { formatCurrency, formatDate, formatMonthKey, getMonthKey, isOverdue } from '@commune/utils';
 import type { GroupType } from '@commune/types';
 import { getOnboardingTips } from '@commune/core';
 import { setPageTitle } from '../../utils/seo';
@@ -294,7 +294,7 @@ function DashboardPage() {
     }
   }, [resolvedActiveGroupId, groups?.length, groupsLoading, invitesLoading, navigate]);
 
-  const monthLabel = new Date(`${currentMonth}-01`).toLocaleDateString('en-GB', {
+  const monthLabel = formatMonthKey(currentMonth, 'en-GB', {
     month: 'long',
     year: 'numeric',
   });
@@ -317,7 +317,7 @@ function DashboardPage() {
       currentTotal: totals.get(currentMonth) ?? 0,
       items: keys.map((key) => ({
         key,
-        label: new Date(`${key}-01`).toLocaleDateString('en-GB', { month: 'short' }),
+        label: formatMonthKey(key, 'en-GB', { month: 'short' }),
         total: totals.get(key) ?? 0,
       })),
     };

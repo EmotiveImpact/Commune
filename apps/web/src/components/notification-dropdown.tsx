@@ -124,7 +124,7 @@ export function NotificationDropdown() {
         {notifications.length > 10 && (
           <>
             <Menu.Divider />
-            <Menu.Item ta="center" onClick={() => navigate({ to: '/expenses' })}>
+            <Menu.Item ta="center" onClick={() => navigate({ to: '/activity' })}>
               <Text size="sm" c="commune" fw={600}>
                 View all activity
               </Text>

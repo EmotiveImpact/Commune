@@ -8,6 +8,7 @@ import {
   isWorkspaceBillingExpense,
   type WorkspaceBillingSnapshot,
 } from '@commune/api';
+import { addDaysToLocalDateKey, getLocalDateKey, parseDateKey } from '../utils/date-key';
 
 export const dashboardKeys = {
   all: ['dashboard'] as const,
@@ -108,11 +109,6 @@ function parseWorkspaceBillingItem(expense?: unknown): WorkspaceBillingSummaryIt
   };
 }
 
-function parseDateKey(value: string): number {
-  const time = new Date(value).getTime();
-  return Number.isFinite(time) ? time : Number.POSITIVE_INFINITY;
-}
-
 function isWorkspaceBillingSnapshotLike(value: unknown): value is WorkspaceBillingSnapshot {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     return false;
@@ -173,12 +169,8 @@ export function getWorkspaceBillingSummary(
     .filter((item): item is WorkspaceBillingSummaryItem => item !== null);
   const billingItems = items.filter((item) => isWorkspaceBillingExpense(item));
 
-  const today = new Date(referenceDate);
-  today.setHours(0, 0, 0, 0);
-  const dueSoonCutoff = new Date(today);
-  dueSoonCutoff.setDate(dueSoonCutoff.getDate() + 7);
-  const dueSoonCutoffTime = dueSoonCutoff.getTime();
-  const todayTime = today.getTime();
+  const todayKey = getLocalDateKey(referenceDate);
+  const dueSoonCutoffKey = addDaysToLocalDateKey(todayKey, 7);
 
   const metadataCount = billingItems.filter((item) => hasDashboardWorkspaceExpenseContext(item)).length;
   const sharedSubscriptionCount = billingItems.filter(
@@ -206,10 +198,10 @@ export function getWorkspaceBillingSummary(
       });
     }
 
-    const dueTime = parseDateKey(item.payment_due_date || item.due_date);
-    if (dueTime < todayTime) {
+    const dueKey = item.payment_due_date || item.due_date;
+    if (dueKey < todayKey) {
       overdueCount += 1;
-    } else if (dueTime <= dueSoonCutoffTime) {
+    } else if (dueKey <= dueSoonCutoffKey) {
       dueSoonCount += 1;
     }
   }
@@ -221,7 +213,7 @@ export function getWorkspaceBillingSummary(
   })[0] ?? null;
 
   const upcomingBills = [...billingItems]
-    .filter((item) => parseDateKey(item.payment_due_date || item.due_date) >= todayTime)
+    .filter((item) => (item.payment_due_date || item.due_date) >= todayKey)
     .sort((a, b) => parseDateKey(a.payment_due_date || a.due_date) - parseDateKey(b.payment_due_date || b.due_date))
     .slice(0, 3);
 

@@ -77,6 +77,8 @@ or
 COMMUNE_LOAD_AUTHORIZATION="Bearer <token>" pnpm --filter @commune/web perf:baseline -- https://your-preview-or-prod-url
 ```
 
+Those cookie/header inputs apply only to `perf:baseline`, which is the raw HTTP probe. The browser-driven runner does not consume `COMMUNE_LOAD_COOKIE` or `COMMUNE_LOAD_AUTHORIZATION`.
+
 Run the browser-driven baseline:
 
 ```bash

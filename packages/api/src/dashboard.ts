@@ -8,7 +8,7 @@ import type {
   DashboardTrendItem,
   ExpenseWithParticipants,
 } from '@commune/types';
-import { supabase } from './client';
+import { getTypedSupabase } from './client';
 import {
   buildWorkspaceBillingExportRows,
   buildWorkspaceBillingSnapshot,
@@ -18,6 +18,16 @@ import {
   type WorkspaceBillingExportRow,
   type WorkspaceBillingSnapshot,
 } from './workspace-billing';
+
+function getLocalDateKey(date: Date = new Date()): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+function addDaysToDateKey(dateKey: string, days: number): string {
+  const [year, month, day] = dateKey.split('-').map(Number);
+  const next = new Date(Date.UTC(year!, (month ?? 1) - 1, (day ?? 1) + days));
+  return `${next.getUTCFullYear()}-${String(next.getUTCMonth() + 1).padStart(2, '0')}-${String(next.getUTCDate()).padStart(2, '0')}`;
+}
 
 export interface DashboardWorkspaceBillingData {
   workspace_billing: WorkspaceBillingSnapshot;
@@ -238,8 +248,9 @@ export async function getDashboardStats(
 ): Promise<DashboardStats & DashboardWorkspaceBillingData> {
   const startDate = `${month}-01`;
   const [year, mon] = month.split('-').map(Number);
-  const endDate = new Date(year!, mon!, 1).toISOString().split('T')[0];
+  const endDate = new Date(Date.UTC(year!, mon!, 1)).toISOString().split('T')[0];
 
+  const supabase = getTypedSupabase();
   const { data: expenses, error } = await supabase
     .from('expenses')
     .select(
@@ -277,10 +288,8 @@ export async function getDashboardStats(
   let overdueCount = 0;
   const upcoming: ExpenseWithParticipants[] = [];
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const weekFromNow = new Date(today);
-  weekFromNow.setDate(weekFromNow.getDate() + 7);
+  const todayKey = getLocalDateKey();
+  const weekFromNowKey = addDaysToDateKey(todayKey, 7);
 
   for (const expense of typed) {
     totalSpend += expense.amount;
@@ -299,13 +308,12 @@ export async function getDashboardStats(
       }
     }
 
-    const dueDate = new Date(expense.due_date);
-    if (dueDate < today) {
+    if (expense.due_date < todayKey) {
       const hasUnpaid = expense.payment_records.some(
         (pr) => pr.status === 'unpaid',
       );
       if (hasUnpaid) overdueCount++;
-    } else if (dueDate <= weekFromNow) {
+    } else if (expense.due_date <= weekFromNowKey) {
       upcoming.push(expense);
     }
   }
@@ -325,6 +333,7 @@ export async function getDashboardSummary(
   groupId: string,
   month: string,
 ): Promise<DashboardSummary> {
+  const supabase = getTypedSupabase();
   const { data, error } = await supabase.rpc('fn_get_dashboard_summary', {
     p_group_id: groupId,
     p_month: month,
@@ -337,6 +346,7 @@ export async function getDashboardSummary(
 export async function getWorkspaceBillingExpenseFeed(
   groupId: string,
 ): Promise<WorkspaceBillingExpenseRecord[]> {
+  const supabase = getTypedSupabase();
   const { data, error } = await supabase
     .from('expenses')
     .select(
@@ -359,7 +369,7 @@ export async function getWorkspaceBillingExpenseFeed(
     .order('due_date', { ascending: false });
 
   if (error) throw error;
-  return (data ?? []) as WorkspaceBillingExpenseRecord[];
+  return (data ?? []) as unknown as WorkspaceBillingExpenseRecord[];
 }
 
 export async function getWorkspaceBillingSnapshot(

@@ -27,6 +27,7 @@ export function useNotifications() {
     queryFn: () => getNotifications(activeGroupId!),
     enabled: !!activeGroupId && !!user,
     staleTime: 60_000,
+    refetchOnWindowFocus: 'always',
   });
 }
 
@@ -56,6 +57,9 @@ export function useMarkNotificationRead() {
     onError: (_error, _notificationId, context) => {
       queryClient.setQueryData(queryKey, context?.previous ?? []);
     },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey });
+    },
   });
 }
 
@@ -80,6 +84,9 @@ export function useMarkAllNotificationsRead() {
     },
     onError: (_error, _notificationIds, context) => {
       queryClient.setQueryData(queryKey, context?.previous ?? []);
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey });
     },
   });
 }

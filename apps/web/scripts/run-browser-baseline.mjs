@@ -1,6 +1,6 @@
 import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
 
 function percentile(sortedValues, percentileValue) {
   if (sortedValues.length === 0) return null;
@@ -76,6 +76,7 @@ async function persistStorageState(sourcePath) {
   if (!targetPath) return;
 
   const resolvedTarget = resolve(process.cwd(), targetPath);
+  await mkdir(dirname(resolvedTarget), { recursive: true });
   await copyFile(sourcePath, resolvedTarget);
 }
 
@@ -91,8 +92,8 @@ function getCredentials() {
 
 async function completeLogin(page, baseUrl, credentials, timeoutMs = 30_000) {
   await page.goto(`${baseUrl}/login`, { waitUntil: 'domcontentloaded', timeout: timeoutMs });
-  await page.getByRole('textbox', { name: 'Email', exact: true }).fill(credentials.email);
-  await page.getByRole('textbox', { name: 'Password', exact: true }).fill(credentials.password);
+  await page.getByLabel('Email', { exact: true }).fill(credentials.email);
+  await page.getByLabel('Password', { exact: true }).fill(credentials.password);
   await page.getByRole('button', { name: /log in/i }).click();
 
   await page.waitForFunction(
@@ -142,7 +143,37 @@ function getScenarioTimeout(scenario) {
   return scenario.timeoutMs ?? 30_000;
 }
 
-async function waitForScenarioSettled(page, expectedPath, timeoutMs) {
+function isRequestRelevant(request) {
+  const resourceType = request.resourceType();
+  return resourceType !== 'image' && resourceType !== 'font' && resourceType !== 'media';
+}
+
+function isIgnorableRequestFailure(request) {
+  const errorText = request.failure()?.errorText?.toLowerCase() ?? '';
+  return (
+    errorText.includes('err_aborted') ||
+    errorText.includes('aborted') ||
+    errorText.includes('cancelled') ||
+    errorText.includes('canceled')
+  );
+}
+
+async function waitForRequestDrain(page, getActiveRequestCount, timeoutMs) {
+  const deadline = Date.now() + timeoutMs;
+
+  while (Date.now() < deadline) {
+    if (getActiveRequestCount() === 0) {
+      await page.waitForTimeout(250);
+      if (getActiveRequestCount() === 0) {
+        return;
+      }
+    }
+
+    await page.waitForTimeout(100);
+  }
+}
+
+async function waitForScenarioSettled(page, expectedPath, timeoutMs, getActiveRequestCount) {
   try {
     await page.waitForFunction(
       (path) => window.location.pathname === path,
@@ -165,6 +196,10 @@ async function waitForScenarioSettled(page, expectedPath, timeoutMs) {
     );
   } catch {
     // Observability may be disabled or a route may stay busy in the background.
+  }
+
+  if (typeof getActiveRequestCount === 'function') {
+    await waitForRequestDrain(page, getActiveRequestCount, timeoutMs);
   }
 
   try {
@@ -337,16 +372,35 @@ async function executeScenario(browser, baseUrl, authStatePath, scenario) {
       scenario.requiresAuth && authStatePath ? { storageState: authStatePath } : undefined,
     );
     const page = await context.newPage();
+    let activeRelevantRequests = 0;
     const requestFailures = [];
     const timeoutMs = getScenarioTimeout(scenario);
     const expectedPath = scenario.expectedPath ?? scenario.path;
 
+    page.on('request', (request) => {
+      if (isRequestRelevant(request)) {
+        activeRelevantRequests += 1;
+      }
+    });
+
+    page.on('requestfinished', (request) => {
+      if (isRequestRelevant(request)) {
+        activeRelevantRequests = Math.max(0, activeRelevantRequests - 1);
+      }
+    });
+
     page.on('requestfailed', (request) => {
-      requestFailures.push({
-        url: request.url(),
-        method: request.method(),
-        error: request.failure()?.errorText ?? 'request failed',
-      });
+      if (isRequestRelevant(request)) {
+        activeRelevantRequests = Math.max(0, activeRelevantRequests - 1);
+      }
+
+      if (!isIgnorableRequestFailure(request)) {
+        requestFailures.push({
+          url: request.url(),
+          method: request.method(),
+          error: request.failure()?.errorText ?? 'request failed',
+        });
+      }
     });
 
     const startedAt = performance.now();
@@ -356,7 +410,7 @@ async function executeScenario(browser, baseUrl, authStatePath, scenario) {
         waitUntil: 'domcontentloaded',
         timeout: timeoutMs,
       });
-      await waitForScenarioSettled(page, scenario.path, timeoutMs);
+      await waitForScenarioSettled(page, scenario.path, timeoutMs, () => activeRelevantRequests);
 
       const actionOutcome = await performScenarioAction(page, baseUrl, scenario);
       if (actionOutcome.skipped) {
@@ -367,7 +421,7 @@ async function executeScenario(browser, baseUrl, authStatePath, scenario) {
         return;
       }
 
-      await waitForScenarioSettled(page, expectedPath, timeoutMs);
+      await waitForScenarioSettled(page, expectedPath, timeoutMs, () => activeRelevantRequests);
 
       const snapshot = await page.evaluate(() => ({
         finalPath: window.location.pathname,
@@ -568,10 +622,7 @@ function getResultBreaches(result, scenario) {
 
 async function writeReport(outputPath, report) {
   const resolvedOutput = resolve(process.cwd(), outputPath);
-  const directoryPath = resolvedOutput.slice(0, resolvedOutput.lastIndexOf('/'));
-  if (directoryPath) {
-    await mkdir(directoryPath, { recursive: true });
-  }
+  await mkdir(dirname(resolvedOutput), { recursive: true });
   await writeFile(resolvedOutput, JSON.stringify(report, null, 2));
   console.log(`REPORT | ${resolvedOutput}`);
 }
