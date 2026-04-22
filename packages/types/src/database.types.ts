@@ -1323,6 +1323,7 @@ export type Database = {
           approval_policy: Json
           avatar_url: string | null
           currency: string
+          current_user_responsibility_label: string | null
           current_user_role: string
           id: string
           name: string

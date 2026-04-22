@@ -15,16 +15,9 @@ let groupMock: any = {
   currency: 'GBP',
   approval_threshold: 100,
   approval_policy: null,
+  current_user_role: 'admin',
+  current_user_responsibility_label: null,
 };
-let currentMemberMock: any = {
-  id: 'member-1',
-  group_id: 'group-1',
-  user_id: 'user-1',
-  role: 'admin',
-  status: 'active',
-  responsibility_label: null,
-};
-let pendingApprovalSummaryMock = { pending_count: 0 };
 let pendingApprovalsMock: any[] = [];
 
 vi.mock('@tanstack/react-router', () => ({
@@ -36,10 +29,6 @@ vi.mock('@tanstack/react-router', () => ({
 vi.mock('../../../hooks/use-groups', () => ({
   useGroupSummary: () => ({
     data: groupMock,
-    isLoading: false,
-  }),
-  useCurrentGroupMember: () => ({
-    data: currentMemberMock,
     isLoading: false,
   }),
 }));
@@ -99,7 +88,6 @@ vi.mock('../../../hooks/use-expenses', () => ({
 }));
 
 vi.mock('../../../hooks/use-approvals', () => ({
-  usePendingApprovalSummary: () => ({ data: pendingApprovalSummaryMock }),
   usePendingApprovals: () => ({ data: pendingApprovalsMock }),
   useApproveExpense: () => ({ mutate: vi.fn(), isPending: false }),
   useRejectExpense: () => ({ mutate: vi.fn(), isPending: false }),
@@ -179,16 +167,9 @@ describe('ExpensesPage', () => {
       currency: 'GBP',
       approval_threshold: 100,
       approval_policy: null,
+      current_user_role: 'admin',
+      current_user_responsibility_label: null,
     };
-    currentMemberMock = {
-      id: 'member-1',
-      group_id: 'group-1',
-      user_id: 'user-1',
-      role: 'admin',
-      status: 'active',
-      responsibility_label: null,
-    };
-    pendingApprovalSummaryMock = { pending_count: 0 };
     pendingApprovalsMock = [];
   });
 
@@ -261,10 +242,10 @@ describe('ExpensesPage', () => {
         ],
       },
     };
-    currentMemberMock = {
-      ...currentMemberMock,
-      role: 'member',
-      responsibility_label: 'space_lead',
+    groupMock = {
+      ...groupMock,
+      current_user_role: 'member',
+      current_user_responsibility_label: 'space_lead',
     };
     pendingApprovalsMock = [
       {
@@ -275,7 +256,6 @@ describe('ExpensesPage', () => {
         created_by_user: { name: 'Alice' },
       },
     ];
-    pendingApprovalSummaryMock = { pending_count: 1 };
 
     render(
       <MantineProvider>
@@ -283,7 +263,7 @@ describe('ExpensesPage', () => {
       </MantineProvider>,
     );
 
-    expect(screen.getByText(/awaiting approval/i)).toBeInTheDocument();
+    expect(screen.getByText(/review pending workspace approvals/i)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /review approvals/i }));
     expect(screen.getByText(/printer lease/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /approve/i })).toBeInTheDocument();

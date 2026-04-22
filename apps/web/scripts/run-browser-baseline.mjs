@@ -173,7 +173,14 @@ async function waitForRequestDrain(page, getActiveRequestCount, timeoutMs) {
   }
 }
 
-async function waitForScenarioSettled(page, expectedPath, timeoutMs, getActiveRequestCount) {
+async function waitForScenarioSettled(
+  page,
+  expectedPath,
+  timeoutMs,
+  getActiveRequestCount,
+  options = {},
+) {
+  const waitForQueryIdle = options.waitForQueryIdle !== false;
   try {
     await page.waitForFunction(
       (path) => window.location.pathname === path,
@@ -184,18 +191,20 @@ async function waitForScenarioSettled(page, expectedPath, timeoutMs, getActiveRe
     // Final path is validated after the route settles.
   }
 
-  try {
-    await page.waitForFunction(
-      () => {
-        const buffer = window.__COMMUNE_OBSERVABILITY__;
-        if (!buffer) return true;
-        return buffer.summary.activeQueryFetches === 0;
-      },
-      undefined,
-      { timeout: timeoutMs },
-    );
-  } catch {
-    // Observability may be disabled or a route may stay busy in the background.
+  if (waitForQueryIdle) {
+    try {
+      await page.waitForFunction(
+        () => {
+          const buffer = window.__COMMUNE_OBSERVABILITY__;
+          if (!buffer) return true;
+          return buffer.summary.activeQueryFetches === 0;
+        },
+        undefined,
+        { timeout: timeoutMs },
+      );
+    } catch {
+      // Observability may be disabled or a route may stay busy in the background.
+    }
   }
 
   if (typeof getActiveRequestCount === 'function') {
@@ -428,23 +437,35 @@ async function executeScenario(browser, baseUrl, authStatePath, scenario) {
         waitUntil: 'domcontentloaded',
         timeout: timeoutMs,
       });
-      await waitForScenarioSettled(page, scenario.path, timeoutMs, () => activeRelevantRequests);
+
       if (scenario.action) {
+        await waitForScenarioSettled(
+          page,
+          scenario.path,
+          timeoutMs,
+          () => activeRelevantRequests,
+          { waitForQueryIdle: scenario.waitForQueryIdle },
+        );
         measuredStart = performance.now();
+
+        const actionOutcome = await performScenarioAction(page, baseUrl, scenario);
+        if (actionOutcome.skipped) {
+          runs.push({
+            skipped: true,
+            reason: actionOutcome.reason,
+          });
+          return;
+        }
       }
 
-      const actionOutcome = await performScenarioAction(page, baseUrl, scenario);
-      if (actionOutcome.skipped) {
-        runs.push({
-          skipped: true,
-          reason: actionOutcome.reason,
-        });
-        return;
-      }
-
-      await waitForScenarioSettled(page, expectedPath, timeoutMs, () => activeRelevantRequests);
+      await waitForScenarioSettled(
+        page,
+        expectedPath,
+        timeoutMs,
+        () => activeRelevantRequests,
+        { waitForQueryIdle: scenario.waitForQueryIdle },
+      );
       await waitForScenarioExpectations(page, scenario, timeoutMs);
-      await waitForScenarioSettled(page, expectedPath, timeoutMs, () => activeRelevantRequests);
 
       const snapshot = await page.evaluate(() => ({
         finalPath: window.location.pathname,

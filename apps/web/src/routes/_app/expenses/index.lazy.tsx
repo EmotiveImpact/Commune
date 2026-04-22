@@ -31,7 +31,7 @@ import { usePlanLimits } from '../../../hooks/use-plan-limits';
 import { IconAlertTriangle, IconX } from '@tabler/icons-react';
 import { useGroupStore } from '../../../stores/group';
 import { useSearchStore } from '../../../stores/search';
-import { useCurrentGroupMember, useGroupSummary } from '../../../hooks/use-groups';
+import { useGroupSummary } from '../../../hooks/use-groups';
 import { useWorkspaceGovernance } from '../../../hooks/use-workspace-governance';
 import {
   getWorkspaceExpenseContext,
@@ -41,7 +41,6 @@ import {
   useBatchMarkPaid,
 } from '../../../hooks/use-expenses';
 import {
-  usePendingApprovalSummary,
   usePendingApprovals,
   useApproveExpense,
   useRejectExpense,
@@ -50,7 +49,6 @@ import { useAuthStore } from '../../../stores/auth';
 import { ExpenseListSkeleton } from '../../../components/page-skeleton';
 import { EmptyState } from '../../../components/empty-state';
 import { PageHeader } from '../../../components/page-header';
-import { useDeferredSection } from '../../../hooks/use-deferred-section';
 
 export const Route = createLazyFileRoute('/_app/expenses/')({
   component: ExpensesPage,
@@ -133,7 +131,6 @@ export function ExpensesPage() {
   const { activeGroupId } = useGroupStore();
   const { query: searchQuery } = useSearchStore();
   const { data: group } = useGroupSummary(activeGroupId ?? '');
-  const { data: currentMember } = useCurrentGroupMember(activeGroupId ?? '');
   const workspaceGovernance = useWorkspaceGovernance(group);
   const [categoryFilter, setCategoryFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
@@ -156,6 +153,12 @@ export function ExpensesPage() {
   const [archiveModalOpen, setArchiveModalOpen] = useState(false);
   const [markPaidModalOpen, setMarkPaidModalOpen] = useState(false);
 
+  const currentMember = group && 'current_user_role' in group
+    ? {
+        role: group.current_user_role,
+        responsibility_label: group.current_user_responsibility_label,
+      }
+    : null;
   const isAdmin = currentMember?.role === 'admin';
   const isWorkspaceGroup = group?.type === 'workspace';
   const canApprovePendingExpenses = isWorkspaceGroup
@@ -164,20 +167,7 @@ export function ExpensesPage() {
   const [approvalPanelOpened, setApprovalPanelOpened] = useState(false);
 
   // Approval flow
-  const { data: pendingApprovalSummary } = usePendingApprovalSummary(activeGroupId ?? '', {
-    enabled: canApprovePendingExpenses,
-  });
-  const {
-    ref: approvalsRef,
-    ready: approvalsReady,
-  } = useDeferredSection({
-    enabled: canApprovePendingExpenses && (pendingApprovalSummary?.pending_count ?? 0) > 0,
-    idleTimeoutMs: 2500,
-    rootMargin: '0px',
-  });
-  const shouldLoadPendingApprovals = canApprovePendingExpenses
-    && (pendingApprovalSummary?.pending_count ?? 0) > 0
-    && (approvalPanelOpened || approvalsReady);
+  const shouldLoadPendingApprovals = canApprovePendingExpenses && approvalPanelOpened;
   const { data: pendingApprovals } = usePendingApprovals(activeGroupId ?? '', {
     enabled: shouldLoadPendingApprovals,
   });
@@ -502,14 +492,15 @@ export function ExpensesPage() {
       )}
 
       {/* Pending Approvals */}
-      {canApprovePendingExpenses && (pendingApprovalSummary?.pending_count ?? 0) > 0 && (
-        <Stack gap="xs" ref={approvalsRef}>
+      {canApprovePendingExpenses && (
+        <Stack gap="xs">
           <Group justify="space-between" align="center" gap="md" wrap="wrap">
             <Group gap="xs">
               <IconAlertTriangle size={18} color="var(--mantine-color-orange-6)" />
               <Text fw={700} size="sm" c="orange">
-                {pendingApprovalSummary?.pending_count} expense
-                {(pendingApprovalSummary?.pending_count ?? 0) !== 1 ? 's' : ''} awaiting approval
+                {approvalPanelOpened && pendingApprovals
+                  ? `${pendingApprovals.length} expense${pendingApprovals.length !== 1 ? 's' : ''} awaiting approval`
+                  : 'Review pending workspace approvals'}
               </Text>
             </Group>
             <Button
@@ -528,6 +519,14 @@ export function ExpensesPage() {
             <Paper className="commune-stat-card" p="md">
               <Text size="sm" c="dimmed">
                 Loading pending approvals...
+              </Text>
+            </Paper>
+          ) : null}
+
+          {approvalPanelOpened && pendingApprovals?.length === 0 ? (
+            <Paper className="commune-stat-card" p="md">
+              <Text size="sm" c="dimmed">
+                No pending approvals right now.
               </Text>
             </Paper>
           ) : null}

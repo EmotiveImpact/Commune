@@ -65,6 +65,10 @@ function parseGroupSummaries(value: unknown): UserGroupSummary[] {
     const currency = typeof source.currency === 'string' ? source.currency : '';
     const currentUserRole =
       typeof source.current_user_role === 'string' ? source.current_user_role : '';
+    const currentUserResponsibilityLabel =
+      typeof source.current_user_responsibility_label === 'string'
+        ? source.current_user_responsibility_label
+        : null;
     const activeMemberCount =
       typeof source.active_member_count === 'number'
         ? source.active_member_count
@@ -84,6 +88,7 @@ function parseGroupSummaries(value: unknown): UserGroupSummary[] {
       approval_policy: fromJson<GroupApprovalPolicy>(source.approval_policy as Json),
       active_member_count: activeMemberCount,
       current_user_role: currentUserRole as MemberRoleType,
+      current_user_responsibility_label: currentUserResponsibilityLabel,
     }];
   });
 }

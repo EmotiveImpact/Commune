@@ -214,6 +214,7 @@ export async function getGroupSummary(groupId: string): Promise<GroupSummary> {
 
 export interface UserGroupSummary extends GroupSummary {
   current_user_role: MemberRoleType;
+  current_user_responsibility_label: string | null;
 }
 
 export async function getUserGroupSummaries(_userId?: string): Promise<UserGroupSummary[]> {
@@ -234,6 +235,7 @@ export async function getUserGroupSummaries(_userId?: string): Promise<UserGroup
       approval_policy: unknown;
       active_member_count: number | string | null;
       current_user_role: MemberRoleType | null;
+      current_user_responsibility_label: string | null;
     };
 
     if (!typedRow.id || !typedRow.name || !typedRow.type || !typedRow.currency || !typedRow.current_user_role) {
@@ -255,6 +257,7 @@ export async function getUserGroupSummaries(_userId?: string): Promise<UserGroup
       approval_policy: fromJson<GroupApprovalPolicy>(typedRow.approval_policy as Json),
       active_member_count: Number.isFinite(activeMemberCount) ? activeMemberCount : 0,
       current_user_role: typedRow.current_user_role,
+      current_user_responsibility_label: typedRow.current_user_responsibility_label,
     }];
   });
 }

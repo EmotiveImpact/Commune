@@ -118,7 +118,7 @@ export function useCurrentGroupMember(groupId: string) {
       user_id: user.id,
       role: cachedSummary.current_user_role,
       status: 'active',
-      responsibility_label: null,
+      responsibility_label: cachedSummary.current_user_responsibility_label,
     } satisfies CurrentGroupMemberSummary;
   })();
 
