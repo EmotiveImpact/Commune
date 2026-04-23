@@ -196,32 +196,63 @@ export default function TabLayout() {
                   flexDirection: 'row',
                   alignItems: 'center',
                   justifyContent: 'space-between',
+                  position: 'relative',
+                  minHeight: 40,
                 }}
               >
-                {isHome ? (
-                  <Text
-                    style={{
-                      fontSize: 28,
-                      fontWeight: '600',
-                      color: colors.textPrimary,
-                      letterSpacing: 2.2,
-                      textTransform: 'uppercase',
-                    }}
-                  >
-                    Commune
-                  </Text>
-                ) : (
-                  <Text
-                    style={{
-                      fontSize: 28,
-                      fontWeight: '700',
-                      color: colors.textPrimary,
-                      letterSpacing: -0.3,
-                    }}
-                  >
-                    {pageTitle}
-                  </Text>
-                )}
+                <Pressable
+                  onPress={() => { hapticLight(); setMoreOpen(true); }}
+                  hitSlop={8}
+                  accessibilityLabel="Open menu"
+                  style={({ pressed }) => [
+                    {
+                      height: 32,
+                      width: 32,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      opacity: pressed ? 0.6 : 1,
+                      zIndex: 2,
+                    },
+                  ]}
+                >
+                  <Ionicons name="menu" size={28} color={colors.textPrimary} />
+                </Pressable>
+
+                <View
+                  pointerEvents="none"
+                  style={{
+                    position: 'absolute',
+                    left: 0,
+                    right: 0,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  {isHome ? (
+                    <Text
+                      style={{
+                        fontSize: 28,
+                        fontWeight: '600',
+                        color: colors.textPrimary,
+                        letterSpacing: 1.4,
+                        textTransform: 'uppercase',
+                      }}
+                    >
+                      Commune
+                    </Text>
+                  ) : (
+                    <Text
+                      style={{
+                        fontSize: 28,
+                        fontWeight: '700',
+                        color: colors.textPrimary,
+                        letterSpacing: -0.3,
+                      }}
+                    >
+                      {pageTitle}
+                    </Text>
+                  )}
+                </View>
 
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
                   <Pressable
