@@ -2,9 +2,11 @@ import { useEffect, useState } from 'react';
 import { Tabs, useRouter, usePathname } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import {
+  Image,
   Modal,
   Pressable,
   Text,
+  TouchableOpacity,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -39,36 +41,12 @@ const QUICK_ACTIONS: QuickAction[] = [
     bg: colors.sageSoft,
   },
   {
-    icon: 'wallet-outline',
-    label: 'Settle up',
-    description: 'Clear balances with members',
-    route: '/command-centre',
-    color: colors.typeWorkspace.accent,
-    bg: colors.typeWorkspace.bg,
-  },
-  {
     icon: 'repeat-outline',
     label: 'Add recurring bill',
     description: 'A cost that repeats monthly',
     route: '/recurring',
     color: colors.typeCouple.accent,
     bg: colors.typeCouple.bg,
-  },
-  {
-    icon: 'person-add-outline',
-    label: 'Invite a member',
-    description: 'Bring someone into this space',
-    route: '/members',
-    color: colors.typeTrip.accent,
-    bg: colors.typeTrip.bg,
-  },
-  {
-    icon: 'copy-outline',
-    label: 'Use a template',
-    description: 'Apply a saved expense preset',
-    route: '/templates',
-    color: colors.typeProject.accent,
-    bg: colors.typeProject.bg,
   },
   {
     icon: 'checkmark-circle-outline',
@@ -78,138 +56,93 @@ const QUICK_ACTIONS: QuickAction[] = [
     color: colors.owedText,
     bg: colors.owedBg,
   },
+  {
+    icon: 'person-add-outline',
+    label: 'Add a member',
+    description: 'Invite someone into this space',
+    route: '/members',
+    color: colors.typeTrip.accent,
+    bg: colors.typeTrip.bg,
+  },
+  {
+    icon: 'copy-outline',
+    label: 'Add from template',
+    description: 'Apply a saved expense preset',
+    route: '/templates',
+    color: colors.typeProject.accent,
+    bg: colors.typeProject.bg,
+  },
 ];
 
-type TabMeta = {
-  name: string;
-  label: string;
-  icon: React.ComponentProps<typeof Ionicons>['name'];
-};
-
-const TAB_ORDER: TabMeta[] = [
-  { name: 'index', label: 'Home', icon: 'home-outline' },
-  { name: 'expenses', label: 'Expenses', icon: 'receipt-outline' },
-  { name: 'groups', label: 'Groups', icon: 'people-outline' },
-  { name: 'chores', label: 'Chores', icon: 'checkbox-outline' },
+const MORE_ACTIONS: QuickAction[] = [
+  {
+    icon: 'checkbox-outline',
+    label: 'Chores',
+    description: 'Track non-money tasks',
+    route: '/operations',
+    color: colors.owedText,
+    bg: colors.owedBg,
+  },
+  {
+    icon: 'wallet-outline',
+    label: 'Settle up',
+    description: 'Clear balances with members',
+    route: '/command-centre',
+    color: colors.typeWorkspace.accent,
+    bg: colors.typeWorkspace.bg,
+  },
+  {
+    icon: 'bar-chart-outline',
+    label: 'Analytics',
+    description: 'Spending trends and breakdown',
+    route: '/analytics',
+    color: colors.sage,
+    bg: colors.sageSoft,
+  },
+  {
+    icon: 'chatbubble-ellipses-outline',
+    label: 'Activity',
+    description: 'Full log of recent changes',
+    route: '/activity',
+    color: colors.typeCouple.accent,
+    bg: colors.typeCouple.bg,
+  },
+  {
+    icon: 'copy-outline',
+    label: 'Templates',
+    description: 'Manage saved expense presets',
+    route: '/templates',
+    color: colors.typeProject.accent,
+    bg: colors.typeProject.bg,
+  },
+  {
+    icon: 'people-outline',
+    label: 'Members',
+    description: 'Manage people in this group',
+    route: '/members',
+    color: colors.typeTrip.accent,
+    bg: colors.typeTrip.bg,
+  },
+  {
+    icon: 'settings-outline',
+    label: 'Profile & settings',
+    description: 'Your account and preferences',
+    route: '/settings',
+    color: colors.textSecondary,
+    bg: colors.bgSubtle,
+  },
 ];
 
-type RouteMap = Record<string, string>;
-const TAB_ROUTES: RouteMap = {
-  index: '/',
-  expenses: '/expenses',
-  groups: '/groups',
-  chores: '/chores',
+const PAGE_TITLES: Record<string, string> = {
+  '/expenses': 'Expenses',
+  '/groups': 'Groups',
+  '/chores': 'More',
+  '/operations': 'Chores',
 };
-
-function FloatingTabBar({ onOpenMenu }: { onOpenMenu: () => void }) {
-  const insets = useSafeAreaInsets();
-  const router = useRouter();
-  const pathname = usePathname();
-
-  const isActive = (tabName: string) => {
-    if (tabName === 'index') return pathname === '/' || pathname === '/index';
-    return pathname.startsWith(`/${tabName}`);
-  };
-
-  return (
-    <View
-      pointerEvents="box-none"
-      style={{
-        position: 'absolute',
-        left: 0,
-        right: 0,
-        bottom: insets.bottom + 10,
-        paddingHorizontal: 16,
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 10,
-      }}
-    >
-      <View
-        style={{
-          flex: 1,
-          flexDirection: 'row',
-          backgroundColor: '#1A1E2B',
-          borderRadius: 999,
-          paddingHorizontal: 4,
-          paddingVertical: 4,
-          shadowColor: '#000',
-          shadowOpacity: 0.18,
-          shadowRadius: 16,
-          shadowOffset: { width: 0, height: 6 },
-          elevation: 8,
-        }}
-      >
-        {TAB_ORDER.map((tab) => {
-          const active = isActive(tab.name);
-          return (
-            <Pressable
-              key={tab.name}
-              onPress={() => {
-                hapticLight();
-                router.push(TAB_ROUTES[tab.name] as never);
-              }}
-              accessibilityRole="button"
-              accessibilityLabel={tab.label}
-              accessibilityState={{ selected: active }}
-              style={{
-                flex: 1,
-                height: 52,
-                borderRadius: 999,
-                alignItems: 'center',
-                justifyContent: 'center',
-                backgroundColor: active ? 'rgba(255,255,255,0.12)' : 'transparent',
-              }}
-            >
-              <Ionicons
-                name={tab.icon}
-                size={22}
-                color={active ? '#FFFFFF' : 'rgba(255,255,255,0.55)'}
-              />
-              <Text
-                style={{
-                  fontSize: 10,
-                  fontWeight: active ? '700' : '500',
-                  color: active ? '#FFFFFF' : 'rgba(255,255,255,0.55)',
-                  marginTop: 2,
-                }}
-              >
-                {tab.label}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
-
-      <Pressable
-        onPress={() => { hapticMedium(); onOpenMenu(); }}
-        accessibilityRole="button"
-        accessibilityLabel="Open quick actions"
-        style={({ pressed }) => [
-          {
-            width: 60,
-            height: 60,
-            borderRadius: 30,
-            backgroundColor: '#1A1E2B',
-            alignItems: 'center',
-            justifyContent: 'center',
-            shadowColor: '#000',
-            shadowOpacity: 0.2,
-            shadowRadius: 16,
-            shadowOffset: { width: 0, height: 6 },
-            elevation: 10,
-            opacity: pressed ? 0.85 : 1,
-          },
-        ]}
-      >
-        <Ionicons name="add" size={30} color="#FFFFFF" />
-      </Pressable>
-    </View>
-  );
-}
 
 export default function TabLayout() {
   const router = useRouter();
+  const pathname = usePathname();
   const insets = useSafeAreaInsets();
   const user = useAuthStore((s) => s.user);
   const { activeGroupId, setActiveGroupId } = useGroupStore();
@@ -221,6 +154,7 @@ export default function TabLayout() {
   );
   const unreadCount = notifications.filter((n) => !n.read).length;
   const [menuOpen, setMenuOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
 
   useEffect(() => {
     if (!activeGroupId && groups[0]?.id) {
@@ -231,6 +165,7 @@ export default function TabLayout() {
   const handleQuickAction = (action: QuickAction) => {
     hapticMedium();
     setMenuOpen(false);
+    setMoreOpen(false);
     setTimeout(() => router.push(action.route as never), 220);
   };
 
@@ -243,7 +178,11 @@ export default function TabLayout() {
           tabBarInactiveTintColor: INACTIVE_COLOR,
           headerShown: true,
           headerShadowVisible: false,
-          header: () => (
+          header: () => {
+            const isHome = pathname === '/' || pathname === '/index';
+            const derived = pathname.replace(/^\//, '').split('/')[0] ?? '';
+            const pageTitle = PAGE_TITLES[pathname] ?? (derived ? derived.charAt(0).toUpperCase() + derived.slice(1) : '');
+            return (
             <View
               style={{
                 backgroundColor: colors.bgBase,
@@ -259,33 +198,32 @@ export default function TabLayout() {
                   justifyContent: 'space-between',
                 }}
               >
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <View
-                    style={{
-                      width: 32,
-                      height: 32,
-                      borderRadius: 10,
-                      backgroundColor: colors.bgInk,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      marginRight: space.sm + 2,
-                    }}
-                  >
-                    <Ionicons name="grid" size={16} color={colors.lime} />
-                  </View>
+                {isHome ? (
                   <Text
                     style={{
-                      fontSize: 22,
-                      fontWeight: '700',
+                      fontSize: 28,
+                      fontWeight: '600',
                       color: colors.textPrimary,
-                      letterSpacing: -0.5,
+                      letterSpacing: 2.2,
+                      textTransform: 'uppercase',
                     }}
                   >
                     Commune
                   </Text>
-                </View>
+                ) : (
+                  <Text
+                    style={{
+                      fontSize: 28,
+                      fontWeight: '700',
+                      color: colors.textPrimary,
+                      letterSpacing: -0.3,
+                    }}
+                  >
+                    {pageTitle}
+                  </Text>
+                )}
 
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.xs }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
                   <Pressable
                     onPress={() => {
                       hapticLight();
@@ -293,8 +231,8 @@ export default function TabLayout() {
                     }}
                     style={({ pressed }) => [
                       {
-                        height: 40,
-                        width: 40,
+                        height: 32,
+                        width: 32,
                         alignItems: 'center',
                         justifyContent: 'center',
                         opacity: pressed ? 0.6 : 1,
@@ -303,7 +241,7 @@ export default function TabLayout() {
                   >
                     <Ionicons
                       name="notifications-outline"
-                      size={24}
+                      size={28}
                       color={colors.textPrimary}
                     />
                     {unreadCount > 0 && (
@@ -339,41 +277,159 @@ export default function TabLayout() {
 
                   <Pressable
                     onPress={() => { hapticLight(); router.push('/settings'); }}
+                    hitSlop={8}
                     style={({ pressed }) => [
                       {
-                        height: 36,
-                        width: 36,
-                        borderRadius: 18,
-                        backgroundColor: colors.bgInk,
+                        height: 32,
+                        width: 32,
+                        borderRadius: 16,
+                        backgroundColor: '#1A1E2B',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        opacity: pressed ? 0.7 : 1,
+                        overflow: 'hidden',
+                        opacity: pressed ? 0.75 : 1,
                       },
                     ]}
                     accessibilityLabel="Profile"
                   >
-                    <Text style={{ color: '#FFFFFF', fontSize: 13, fontWeight: '700' }}>
-                      {(user?.name ?? user?.email ?? '?').trim().charAt(0).toUpperCase()}
-                    </Text>
+                    {user?.avatar_url ? (
+                      <Image
+                        source={{ uri: user.avatar_url }}
+                        style={{ width: 32, height: 32, borderRadius: 16 }}
+                      />
+                    ) : (() => {
+                      const initial = (user?.name ?? user?.email ?? '').trim().charAt(0).toUpperCase();
+                      return initial ? (
+                        <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '700' }}>
+                          {initial}
+                        </Text>
+                      ) : (
+                        <Ionicons name="person" size={20} color="#FFFFFF" />
+                      );
+                    })()}
                   </Pressable>
                 </View>
               </View>
             </View>
-          ),
+            );
+          },
+          tabBarStyle: {
+            backgroundColor: TAB_BAR_BG,
+            borderTopWidth: 0,
+            height: 62 + insets.bottom,
+            paddingTop: 6,
+            paddingBottom: insets.bottom,
+            shadowColor: '#000',
+            shadowOpacity: 0.15,
+            shadowRadius: 10,
+            shadowOffset: { width: 0, height: -3 },
+            elevation: 8,
+          },
+          tabBarLabelStyle: {
+            fontSize: 10,
+            fontWeight: '500',
+            marginTop: 2,
+            letterSpacing: 0.3,
+          },
+          tabBarItemStyle: { paddingTop: 2 },
           sceneStyle: { backgroundColor: colors.bgBase },
         }}
-        tabBar={() => null}
       >
-        <Tabs.Screen name="index" options={{ title: 'Home' }} />
-        <Tabs.Screen name="expenses" options={{ title: 'Expenses' }} />
-        <Tabs.Screen name="groups" options={{ title: 'Groups' }} />
-        <Tabs.Screen name="chores" options={{ title: 'Chores' }} />
-        <Tabs.Screen name="create" options={{ href: null, headerShown: false }} />
+        {/* 1. Home */}
+        <Tabs.Screen
+          name="index"
+          options={{
+            title: 'Home',
+            tabBarLabel: 'Home',
+            tabBarIcon: ({ focused }) => (
+              <Ionicons name="home-outline" size={30} color={focused ? ACTIVE_COLOR : INACTIVE_COLOR} />
+            ),
+          }}
+        />
+
+        {/* 2. Expenses */}
+        <Tabs.Screen
+          name="expenses"
+          options={{
+            title: 'Expenses',
+            tabBarLabel: 'Expenses',
+            tabBarIcon: ({ focused }) => (
+              <Ionicons name="receipt-outline" size={30} color={focused ? ACTIVE_COLOR : INACTIVE_COLOR} />
+            ),
+          }}
+        />
+
+        {/* 3. FAB — center slot */}
+        <Tabs.Screen
+          name="create"
+          listeners={{
+            tabPress: (e) => {
+              e.preventDefault();
+              hapticMedium();
+              setMenuOpen(true);
+            },
+          }}
+          options={{
+            title: 'Quick actions',
+            headerShown: false,
+            tabBarLabel: '',
+            tabBarAccessibilityLabel: 'Open quick actions',
+            tabBarIcon: () => (
+              <View
+                pointerEvents="none"
+                style={{
+                  marginTop: -24,
+                  height: 64,
+                  width: 64,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderRadius: 32,
+                  backgroundColor: colors.sage,
+                  borderWidth: 5,
+                  borderColor: TAB_BAR_BG,
+                  ...elevation.fab,
+                }}
+              >
+                <Ionicons name="add" size={34} color="#FFFFFF" />
+              </View>
+            ),
+          }}
+        />
+
+        {/* 4. Groups */}
+        <Tabs.Screen
+          name="groups"
+          options={{
+            title: 'Groups',
+            tabBarLabel: 'Groups',
+            tabBarIcon: ({ focused }) => (
+              <Ionicons name="people-outline" size={30} color={focused ? ACTIVE_COLOR : INACTIVE_COLOR} />
+            ),
+          }}
+        />
+
+        {/* 5. More — opens the More sheet instead of navigating */}
+        <Tabs.Screen
+          name="chores"
+          listeners={{
+            tabPress: (e) => {
+              e.preventDefault();
+              hapticMedium();
+              setMoreOpen(true);
+            },
+          }}
+          options={{
+            title: 'More',
+            tabBarLabel: 'More',
+            tabBarIcon: ({ focused }) => (
+              <Ionicons name="apps-outline" size={28} color={focused ? ACTIVE_COLOR : INACTIVE_COLOR} />
+            ),
+          }}
+        />
+
         <Tabs.Screen name="analytics" options={{ href: null }} />
         <Tabs.Screen name="settings" options={{ href: null }} />
       </Tabs>
-
-      <FloatingTabBar onOpenMenu={() => setMenuOpen(true)} />
 
       {/* ─── Quick Actions Sheet ──────────────────────────────────── */}
       <Modal
@@ -393,6 +449,8 @@ export default function TabLayout() {
           <Pressable
             onPress={(e) => e.stopPropagation()}
             style={{
+              width: '100%',
+              alignSelf: 'stretch',
               backgroundColor: colors.bgSurface,
               borderTopLeftRadius: radius.sheet,
               borderTopRightRadius: radius.sheet,
@@ -416,42 +474,59 @@ export default function TabLayout() {
             {/* Header */}
             <View
               style={{
+                flexDirection: 'row',
+                alignItems: 'flex-start',
                 paddingHorizontal: space.gutter,
                 marginBottom: space.base,
               }}
             >
-              <Text style={[font.h2, { color: colors.textPrimary }]}>
-                What would you like to do?
-              </Text>
-              <Text
-                style={[
-                  font.caption,
-                  { color: colors.textTertiary, marginTop: 4 },
-                ]}
+              <View style={{ flex: 1 }}>
+                <Text style={[font.h2, { color: colors.textPrimary }]}>
+                  What would you like to do?
+                </Text>
+                <Text
+                  style={[
+                    font.caption,
+                    { color: colors.textTertiary, marginTop: 4 },
+                  ]}
+                >
+                  Pick an action to jump straight in.
+                </Text>
+              </View>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => { hapticLight(); setMenuOpen(false); }}
+                accessibilityLabel="Close"
+                style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: 16,
+                  backgroundColor: TAB_BAR_BG,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginLeft: space.sm,
+                }}
               >
-                Pick an action to jump straight in.
-              </Text>
+                <Ionicons name="close" size={20} color="#FFFFFF" />
+              </TouchableOpacity>
             </View>
 
             {/* Single-column action list */}
-            <View style={{ paddingHorizontal: space.gutter }}>
+            <View style={{ paddingHorizontal: space.gutter, width: '100%' }}>
               {QUICK_ACTIONS.map((action, idx) => {
                 const isLast = idx === QUICK_ACTIONS.length - 1;
                 return (
-                  <Pressable
+                  <TouchableOpacity
                     key={action.label}
+                    activeOpacity={0.55}
                     onPress={() => handleQuickAction(action)}
-                    style={({ pressed }) => [
-                      {
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        paddingVertical: space.md + 2,
-                        gap: space.md,
-                        borderBottomWidth: isLast ? 0 : 1,
-                        borderBottomColor: colors.borderSubtle,
-                        opacity: pressed ? 0.55 : 1,
-                      },
-                    ]}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      paddingVertical: space.md + 2,
+                      borderBottomWidth: isLast ? 0 : 1,
+                      borderBottomColor: colors.borderSubtle,
+                    }}
                   >
                     <IconTile
                       icon={action.icon}
@@ -459,18 +534,13 @@ export default function TabLayout() {
                       bg={action.bg}
                       size={44}
                     />
-                    <View style={{ flex: 1 }}>
-                      <Text
-                        style={[font.bodyStrong, { color: colors.textPrimary }]}
-                      >
+                    <View style={{ flex: 1, marginLeft: space.md, marginRight: space.md }}>
+                      <Text style={{ fontSize: 15, fontWeight: '600', color: colors.textPrimary }}>
                         {action.label}
                       </Text>
                       <Text
-                        style={[
-                          font.caption,
-                          { color: colors.textTertiary, marginTop: 2 },
-                        ]}
                         numberOfLines={1}
+                        style={{ fontSize: 13, fontWeight: '500', color: colors.textTertiary, marginTop: 2 }}
                       >
                         {action.description}
                       </Text>
@@ -480,38 +550,120 @@ export default function TabLayout() {
                       size={18}
                       color={colors.textTertiary}
                     />
-                  </Pressable>
+                  </TouchableOpacity>
                 );
               })}
             </View>
 
-            {/* Cancel */}
-            <Pressable
-              onPress={() => {
-                hapticLight();
-                setMenuOpen(false);
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* ─── More Sheet ─────────────────────────────────────────────── */}
+      <Modal
+        visible={moreOpen}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setMoreOpen(false)}
+      >
+        <Pressable
+          onPress={() => setMoreOpen(false)}
+          style={{
+            flex: 1,
+            backgroundColor: 'rgba(26,30,43,0.45)',
+            justifyContent: 'flex-end',
+          }}
+        >
+          <Pressable
+            onPress={(e) => e.stopPropagation()}
+            style={{
+              width: '100%',
+              alignSelf: 'stretch',
+              backgroundColor: colors.bgSurface,
+              borderTopLeftRadius: radius.sheet,
+              borderTopRightRadius: radius.sheet,
+              paddingTop: space.md,
+              paddingBottom: insets.bottom + space.md,
+              ...elevation.sheet,
+            }}
+          >
+            <View
+              style={{
+                alignSelf: 'center',
+                width: 40,
+                height: 4,
+                borderRadius: 2,
+                backgroundColor: colors.border,
+                marginBottom: space.lg,
               }}
-              style={({ pressed }) => [
-                {
-                  marginTop: space.md,
-                  marginHorizontal: space.gutter,
-                  paddingVertical: space.md,
-                  borderRadius: radius.button,
-                  backgroundColor: colors.bgSubtle,
-                  alignItems: 'center',
-                  opacity: pressed ? 0.6 : 1,
-                },
-              ]}
+            />
+
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'flex-start',
+                paddingHorizontal: space.gutter,
+                marginBottom: space.base,
+              }}
             >
-              <Text
-                style={[
-                  font.bodyStrong,
-                  { color: colors.textSecondary },
-                ]}
+              <View style={{ flex: 1 }}>
+                <Text style={[font.h2, { color: colors.textPrimary }]}>More</Text>
+                <Text style={[font.caption, { color: colors.textTertiary, marginTop: 4 }]}>
+                  Chores, analytics, and everything else.
+                </Text>
+              </View>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => { hapticLight(); setMoreOpen(false); }}
+                accessibilityLabel="Close"
+                style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: 16,
+                  backgroundColor: TAB_BAR_BG,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginLeft: space.sm,
+                }}
               >
-                Cancel
-              </Text>
-            </Pressable>
+                <Ionicons name="close" size={20} color="#FFFFFF" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={{ paddingHorizontal: space.gutter, width: '100%' }}>
+              {MORE_ACTIONS.map((action, idx) => {
+                const isLast = idx === MORE_ACTIONS.length - 1;
+                return (
+                  <TouchableOpacity
+                    key={action.label}
+                    activeOpacity={0.55}
+                    onPress={() => handleQuickAction(action)}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      paddingVertical: space.md + 2,
+                      borderBottomWidth: isLast ? 0 : 1,
+                      borderBottomColor: colors.borderSubtle,
+                    }}
+                  >
+                    <IconTile icon={action.icon} color={action.color} bg={action.bg} size={44} />
+                    <View style={{ flex: 1, marginLeft: space.md, marginRight: space.md }}>
+                      <Text style={{ fontSize: 15, fontWeight: '600', color: colors.textPrimary }}>
+                        {action.label}
+                      </Text>
+                      <Text
+                        numberOfLines={1}
+                        style={{ fontSize: 13, fontWeight: '500', color: colors.textTertiary, marginTop: 2 }}
+                      >
+                        {action.description}
+                      </Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
           </Pressable>
         </Pressable>
       </Modal>

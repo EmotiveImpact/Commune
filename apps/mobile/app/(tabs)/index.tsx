@@ -134,7 +134,7 @@ const s = StyleSheet.create({
   btnPrimary: {
     flex: 1,
     height: 52,
-    borderRadius: 14,
+    borderRadius: 16,
     backgroundColor: '#eadfd4',
     marginRight: 6,
     shadowColor: '#000',
@@ -146,7 +146,7 @@ const s = StyleSheet.create({
   btnSecondary: {
     flex: 1,
     height: 52,
-    borderRadius: 14,
+    borderRadius: 16,
     backgroundColor: 'rgba(255,255,255,0.08)',
     marginLeft: 6,
   },

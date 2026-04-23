@@ -1,668 +1,457 @@
 import { useCallback, useMemo, useState } from 'react';
-import { FlatList, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { ExpenseCategory } from '@commune/types';
-import type { ComponentProps } from 'react';
 import { formatCurrency, formatDate, isOverdue, isUpcoming } from '@commune/utils';
+import type { ExpenseListItem } from '@commune/types';
 import { hapticLight, hapticMedium } from '@/lib/haptics';
 import { useGroupStore } from '@/stores/group';
-import { useThemeStore } from '@/stores/theme';
 import { useGroup } from '@/hooks/use-groups';
 import {
-  getExpenseBillingSignals,
   getExpenseBillingDueDate,
   getWorkspaceExpenseContext,
-  hasWorkspaceExpenseContext,
-  isWorkspaceBillingExpense,
   useGroupExpenses,
 } from '@/hooks/use-expenses';
 import {
+  Card,
+  Divider,
   EmptyState,
-  ExpenseListSkeleton,
+  FAB,
+  IconTile,
+  Pressable,
   Screen,
-} from '@/components/ui';
+  SearchField,
+  SkeletonBlock,
+  StatusPill,
+} from '@/components/primitives';
+import { colors, font, getCategoryMeta, radius, space } from '@/constants/design';
 import { getErrorMessage } from '@/lib/errors';
 import { formatCategoryLabel } from '@/lib/ui';
 
-const categories = Object.values(ExpenseCategory);
+type StatusFilter = 'all' | 'owe' | 'owed' | 'paid';
 
-/* ---------------------------------------------------------------------------
- * Category color + icon mapping
- * --------------------------------------------------------------------------- */
-
-type IoniconsName = ComponentProps<typeof Ionicons>['name'];
-
-const CATEGORY_META: Record<string, { color: string; icon: IoniconsName }> = {
-  rent: { color: '#F97316', icon: 'home-outline' },
-  utilities: { color: '#EAB308', icon: 'flash-outline' },
-  internet: { color: '#3B82F6', icon: 'wifi-outline' },
-  cleaning: { color: '#14B8A6', icon: 'sparkles-outline' },
-  groceries: { color: '#EF4444', icon: 'cart-outline' },
-  entertainment: { color: '#8B5CF6', icon: 'game-controller-outline' },
-  household_supplies: { color: '#A855F7', icon: 'bag-outline' },
-  transport: { color: '#EC4899', icon: 'bus-outline' },
-  work_tools: { color: '#6366F1', icon: 'school-outline' },
-  miscellaneous: { color: '#9CA3AF', icon: 'ellipsis-horizontal-outline' },
-};
-
-function getCategoryMeta(category: string) {
-  return CATEGORY_META[category] ?? { color: '#9CA3AF', icon: 'ellipsis-horizontal-outline' as IoniconsName };
-}
-
-/* ---------------------------------------------------------------------------
- * Status helper
- * --------------------------------------------------------------------------- */
-
-function getStatusPill(overdue: boolean, settled: boolean, paidCount: number, participantCount: number) {
-  if (overdue) {
-    return { label: 'OVERDUE', bg: '#FEE2E2', color: '#DC2626' };
-  }
-  if (settled) {
-    return { label: 'PAID', bg: '#D9F99D', color: '#65A30D' };
-  }
-  if (paidCount > 0) {
-    return { label: `${paidCount}/${participantCount}`, bg: '#FFF7ED', color: '#D97706' };
-  }
-  return { label: 'DUE', bg: '#E9D5FF', color: '#7C3AED' };
-}
-
-/* ---------------------------------------------------------------------------
- * Quick action data
- * --------------------------------------------------------------------------- */
-
-const QUICK_ACTIONS: { key: string; icon: IoniconsName; label: string; route?: string }[] = [
-  { key: 'add', icon: 'add-outline', label: 'Add Expense', route: '/expenses/new' },
-  { key: 'settle', icon: 'swap-horizontal-outline', label: 'Settle Up' },
-  { key: 'recurring', icon: 'repeat-outline', label: 'Recurring', route: '/recurring' },
-  { key: 'filter', icon: 'options-outline', label: 'Filter' },
+const STATUS_CHIPS: { key: StatusFilter; label: string }[] = [
+  { key: 'all', label: 'All' },
+  { key: 'owe', label: 'Owe' },
+  { key: 'owed', label: 'Owed' },
+  { key: 'paid', label: 'Paid' },
 ];
 
-const BILLING_SIGNAL_STYLES: Record<
-  'forest' | 'sky' | 'sand' | 'neutral',
-  { bg: string; fg: string }
-> = {
-  forest: { bg: '#ECFDF5', fg: '#059669' },
-  sky: { bg: '#EFF6FF', fg: '#2563EB' },
-  sand: { bg: '#FFF7ED', fg: '#D97706' },
-  neutral: { bg: '#F3F4F6', fg: '#6B7280' },
-};
+type RowStatus =
+  | { tone: 'settled'; label: string; kind: 'pill' }
+  | { tone: 'warn'; label: string; kind: 'badge' }
+  | { tone: 'info'; label: string; kind: 'badge' }
+  | { tone: 'owe'; label: string; kind: 'pill' }
+  | { tone: 'owed'; label: string; kind: 'pill' };
 
-/* ---------------------------------------------------------------------------
- * Component
- * --------------------------------------------------------------------------- */
+type Expense = ExpenseListItem;
+
+function computeRowStatus(e: Expense): RowStatus {
+  const records = e.payment_records ?? [];
+  const total = e.participants?.length ?? 0;
+  const paid = records.filter((p) => p.status !== 'unpaid').length;
+  const overdue = isOverdue(getExpenseBillingDueDate(e) ?? e.due_date);
+  if (total > 0 && paid === total) return { tone: 'settled', label: 'Paid', kind: 'pill' };
+  if (overdue) return { tone: 'warn', label: 'Overdue', kind: 'badge' };
+  if (paid > 0 && paid < total) return { tone: 'info', label: `${paid}/${total} paid`, kind: 'badge' };
+  return { tone: 'owe', label: 'Open', kind: 'pill' };
+}
+
+function matchesStatus(f: StatusFilter, s: RowStatus): boolean {
+  if (f === 'all') return true;
+  if (f === 'paid') return s.tone === 'settled';
+  if (f === 'owe') return s.tone === 'owe' || s.tone === 'warn';
+  if (f === 'owed') return s.tone === 'info';
+  return true;
+}
 
 export default function ExpensesScreen() {
   const router = useRouter();
-  const { mode } = useThemeStore();
-  const isDark = mode === 'dark';
+  const insets = useSafeAreaInsets();
   const { activeGroupId } = useGroupStore();
-  const {
-    data: group,
-    isLoading: groupLoading,
-    error: groupError,
-    refetch: refetchGroup,
-  } = useGroup(activeGroupId ?? '');
+  const { data: group, isLoading: groupLoading, error: groupError, refetch: refetchGroup } =
+    useGroup(activeGroupId ?? '');
   const [searchQuery, setSearchQuery] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('');
-  const {
-    data: expenses = [],
-    isLoading,
-    error: expensesError,
-    refetch: refetchExpenses,
-  } = useGroupExpenses(
-    activeGroupId ?? '',
-    categoryFilter ? { category: categoryFilter } : undefined
-  );
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [categoryFilter, setCategoryFilter] = useState<string>('');
+  const { data: expenses = [], isLoading, error: expensesError, refetch: refetchExpenses } =
+    useGroupExpenses(activeGroupId ?? '');
+
   const loadError = groupError ?? expensesError;
 
-  const filteredExpenses = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase();
-    if (!query) return expenses;
-    return expenses.filter((expense) =>
-      [
-        expense.title,
-        expense.category,
-        expense.description ?? '',
-        getWorkspaceExpenseContext(expense).vendor_name,
-        getWorkspaceExpenseContext(expense).invoice_reference,
-        getWorkspaceExpenseContext(expense).invoice_date,
-        getWorkspaceExpenseContext(expense).payment_due_date,
-      ]
-        .join(' ')
-        .toLowerCase()
-        .includes(query)
-    );
-  }, [expenses, searchQuery]);
+  const monthLabel = useMemo(
+    () => new Date().toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }),
+    [],
+  );
+
+  const categoryOptions = useMemo(() => {
+    const set = new Set<string>();
+    for (const e of expenses) if (e.category) set.add(e.category);
+    return Array.from(set);
+  }, [expenses]);
+
+  const filtered = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    return expenses.filter((e) => {
+      if (categoryFilter && e.category !== categoryFilter) return false;
+      if (q) {
+        const c = getWorkspaceExpenseContext(e);
+        const hay = [e.title, e.category, c.vendor_name, c.invoice_reference]
+          .filter(Boolean).join(' ').toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      if (statusFilter !== 'all') {
+        if (!matchesStatus(statusFilter, computeRowStatus(e))) return false;
+      }
+      return true;
+    });
+  }, [expenses, searchQuery, statusFilter, categoryFilter]);
 
   const summary = useMemo(() => {
-    const totalAmount = filteredExpenses.reduce((sum, expense) => sum + expense.amount, 0);
-    const overdueCount = filteredExpenses.filter((expense) =>
-      isOverdue(getExpenseBillingDueDate(expense) ?? expense.due_date)
-    ).length;
-    const dueSoonCount = filteredExpenses.filter((expense) =>
-      isUpcoming(getExpenseBillingDueDate(expense) ?? expense.due_date)
-    ).length;
-    const recurringCount = filteredExpenses.filter((expense) => expense.recurrence_type !== 'none').length;
-    const paidCount = filteredExpenses.filter((expense) => {
-      const pc = expense.payment_records?.filter((p) => p.status !== 'unpaid').length ?? 0;
-      const total = expense.participants?.length ?? 0;
-      return total > 0 && pc === total;
-    }).length;
-    return { totalAmount, overdueCount, dueSoonCount, recurringCount, paidCount };
-  }, [filteredExpenses]);
-  const workspaceExpenseCount = useMemo(
-    () => filteredExpenses.filter((expense) => isWorkspaceBillingExpense(expense, group?.type)).length,
-    [filteredExpenses, group?.type],
-  );
-  const workspaceBillingSummary = useMemo(() => {
-    if (group?.type !== 'workspace') {
-      return null;
-    }
-
-    const workspaceExpenses = filteredExpenses.filter((expense) => isWorkspaceBillingExpense(expense, group.type));
-
-    const recurringCount = workspaceExpenses.filter((expense) => expense.recurrence_type !== 'none').length;
-    const dueSoonCount = workspaceExpenses.filter((expense) => {
-      const dueDate = getExpenseBillingDueDate(expense) ?? expense.due_date;
-      return isUpcoming(dueDate, 14);
-    }).length;
-    const overdueCount = workspaceExpenses.filter((expense) => {
-      const dueDate = getExpenseBillingDueDate(expense) ?? expense.due_date;
-      return isOverdue(dueDate);
-    }).length;
-    const toolCostCount = workspaceExpenses.filter((expense) =>
-      expense.category === 'work_tools' || expense.category === 'internet'
-    ).length;
-
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = now.getMonth();
+    const inMonth = expenses.filter((e) => {
+      const d = new Date(e.due_date);
+      return d.getFullYear() === y && d.getMonth() === m;
+    });
     return {
-      recurringCount,
-      dueSoonCount,
-      overdueCount,
-      toolCostCount,
-      totalCount: workspaceExpenses.length,
+      total: inMonth.reduce((s, e) => s + e.amount, 0),
+      count: inMonth.length,
+      overdue: expenses.filter((e) => isOverdue(getExpenseBillingDueDate(e) ?? e.due_date)).length,
+      dueSoon: expenses.filter((e) => isUpcoming(getExpenseBillingDueDate(e) ?? e.due_date)).length,
     };
-  }, [filteredExpenses, group?.type]);
+  }, [expenses]);
 
-  /* -- Theme-aware colors (reference design adapted) -- */
-  const bg = isDark ? '#0A0A0A' : '#F9FAFB';
-  const textPrimary = isDark ? '#FAFAFA' : '#111827';
-  const textSecondary = isDark ? '#A1A1AA' : '#6B7280';
-  const textTertiary = isDark ? '#71717A' : '#9CA3AF';
-  const searchBg = isDark ? '#27272A' : '#F3F4F6';
-  const cardBg = isDark ? '#18181B' : '#F3F4F6';
-  const heroCardBg = isDark ? '#111827' : '#1F2937';
-  const pillUnselectedBg = isDark ? '#27272A' : '#F3F4F6';
-  const quickActionBg = isDark ? '#27272A' : '#F3F4F6';
+  const resetFilters = useCallback(() => {
+    hapticLight();
+    setSearchQuery('');
+    setStatusFilter('all');
+    setCategoryFilter('');
+  }, []);
 
-  const progressPercent = filteredExpenses.length > 0
-    ? Math.round((summary.paidCount / filteredExpenses.length) * 100)
-    : 0;
-  const isWorkspaceGroup = group?.type === 'workspace';
+  const goToNew = useCallback(() => {
+    hapticMedium();
+    router.push('/expenses/new');
+  }, [router]);
 
-  /* -- Render expense items -- */
-  const renderExpenseItem = useCallback(
-    ({ item: expense }: { item: (typeof filteredExpenses)[0] }) => {
-      const paidCount = expense.payment_records?.filter((p) => p.status !== 'unpaid').length ?? 0;
-      const participantCount = expense.participants?.length ?? 0;
-      const settled = participantCount > 0 && paidCount === participantCount;
-      const dueDate = getExpenseBillingDueDate(expense) ?? expense.due_date;
-      const overdue = isOverdue(dueDate);
-      const meta = getCategoryMeta(expense.category);
-      const status = getStatusPill(overdue, settled, paidCount, participantCount);
-      const workspaceContext = getWorkspaceExpenseContext(expense);
-      const showWorkspaceContext = isWorkspaceGroup || hasWorkspaceExpenseContext(expense);
-      const billingSignals = getExpenseBillingSignals(expense, group?.type);
-
-      return (
-        <TouchableOpacity
-          activeOpacity={0.7}
-          onPress={() => { hapticMedium(); router.push(`/expenses/${expense.id}`); }}
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            backgroundColor: cardBg,
-            borderRadius: 20,
-            padding: 20,
-            marginBottom: 12,
-          }}
-        >
-          {/* Category icon circle */}
-          <View
-            style={{
-              width: 48,
-              height: 48,
-              borderRadius: 24,
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: meta.color + '20',
-              marginRight: 14,
-            }}
-          >
-            <Ionicons name={meta.icon} size={22} color={meta.color} />
-          </View>
-
-          {/* Title + date */}
-          <View style={{ flex: 1, marginRight: 12 }}>
-            <Text
-              numberOfLines={1}
-              style={{ fontSize: 15, fontWeight: '600', color: textPrimary }}
-            >
-              {expense.title}
-            </Text>
-            {showWorkspaceContext && (workspaceContext.vendor_name || workspaceContext.invoice_reference) ? (
-              <Text numberOfLines={1} style={{ fontSize: 12, color: textSecondary, marginTop: 3 }}>
-                {workspaceContext.vendor_name || 'Workspace'}
-                {workspaceContext.invoice_reference ? ` · Ref ${workspaceContext.invoice_reference}` : ''}
-              </Text>
-            ) : null}
-            {billingSignals.length > 0 ? (
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 8 }}>
-                {billingSignals.map((signal) => {
-                  const tone = BILLING_SIGNAL_STYLES[signal.tone];
-                  return (
-                    <View
-                      key={signal.label}
-                      style={{
-                        backgroundColor: tone.bg,
-                        borderRadius: 999,
-                        paddingHorizontal: 8,
-                        paddingVertical: 3,
-                        marginRight: 6,
-                        marginBottom: 6,
-                      }}
-                    >
-                      <Text style={{ fontSize: 10, fontWeight: '700', color: tone.fg, letterSpacing: 0.4 }}>
-                        {signal.label}
-                      </Text>
-                    </View>
-                  );
-                })}
-              </View>
-            ) : null}
-            <Text style={{ fontSize: 13, color: textSecondary, marginTop: 4 }}>
-              {formatDate(dueDate)}
-            </Text>
-          </View>
-
-          {/* Amount + status pill */}
-          <View style={{ alignItems: 'flex-end' }}>
-            <Text style={{ fontSize: 15, fontWeight: '700', color: textPrimary }}>
-              {formatCurrency(expense.amount, expense.currency)}
-            </Text>
-            <View
-              style={{
-                marginTop: 6,
-                paddingHorizontal: 10,
-                paddingVertical: 3,
-                borderRadius: 10,
-                backgroundColor: status.bg,
-              }}
-            >
-              <Text style={{ fontSize: 10, fontWeight: '700', color: status.color, letterSpacing: 0.5 }}>
-                {status.label}
-              </Text>
-            </View>
-          </View>
-        </TouchableOpacity>
-      );
-    },
-    [router, cardBg, group?.type, isWorkspaceGroup, textPrimary, textSecondary]
-  );
-
-  /* -- Early returns for edge cases -- */
-
-  if (!activeGroupId) {
-    return (
-      <Screen>
-        <EmptyState
-          icon="receipt-outline"
-          title="Select a group first"
-          description="Choose a group before viewing the shared expense ledger."
-          actionLabel="Open onboarding"
-          onAction={() => router.push('/onboarding')}
-        />
-      </Screen>
-    );
-  }
-
+  // Error state
   if (loadError) {
     return (
       <Screen>
-        <EmptyState
-          icon="cloud-offline-outline"
-          title="Expenses unavailable"
-          description={getErrorMessage(loadError, 'Could not load this group\u2019s expenses right now.')}
-          actionLabel="Try again"
-          onAction={() => {
-            void refetchGroup();
-            void refetchExpenses();
-          }}
-        />
+        <View style={{ paddingTop: insets.top + space.base, paddingHorizontal: space.gutter, flex: 1 }}>
+          <TitleRow onAdd={goToNew} />
+          <EmptyState
+            icon="cloud-offline-outline"
+            title="Couldn't load expenses"
+            description={getErrorMessage(loadError, 'Please try again in a moment.')}
+            actionLabel="Retry"
+            onAction={() => { void refetchGroup(); void refetchExpenses(); }}
+          />
+        </View>
       </Screen>
     );
   }
 
-  if (isLoading || groupLoading || !group) {
-    return <ExpenseListSkeleton />;
-  }
-
-  /* -- List header -- */
-  const ListHeader = (
-    <View style={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 8 }}>
-      {/* Search bar */}
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          backgroundColor: searchBg,
-          borderRadius: 16,
-          paddingHorizontal: 16,
-          paddingVertical: 12,
-        }}
-      >
-        <Ionicons name="search-outline" size={20} color={textTertiary} />
-        <TextInput
-          style={{
-            flex: 1,
-            marginLeft: 10,
-            fontSize: 15,
-            color: textPrimary,
-          }}
-          placeholder="Search expenses..."
-          placeholderTextColor={textTertiary}
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-        />
-        {searchQuery.length > 0 && (
-          <TouchableOpacity onPress={() => { hapticLight(); setSearchQuery(''); }} activeOpacity={0.7}>
-            <Ionicons name="close-circle" size={20} color={textTertiary} />
-          </TouchableOpacity>
-        )}
-      </View>
-
-      {/* Featured dark hero card */}
-      <View
-        style={{
-          marginTop: 20,
-          backgroundColor: heroCardBg,
-          borderRadius: 24,
-          padding: 20,
-          shadowColor: '#000',
-          shadowOpacity: 0.1,
-          shadowRadius: 12,
-          shadowOffset: { width: 0, height: 4 },
-          elevation: 4,
-        }}
-      >
-        {/* THIS MONTH pill */}
-        <View
-          style={{
-            alignSelf: 'flex-start',
-            backgroundColor: '#D9F99D',
-            borderRadius: 10,
-            paddingHorizontal: 10,
-            paddingVertical: 4,
-          }}
-        >
-          <Text style={{ fontSize: 10, fontWeight: '700', color: '#65A30D', letterSpacing: 0.5 }}>
-            THIS MONTH
-          </Text>
-        </View>
-
-        {/* Total spending */}
-        <Text
-          style={{
-            fontSize: 28,
-            fontWeight: '800',
-            color: '#FFFFFF',
-            marginTop: 14,
-            letterSpacing: -0.5,
-          }}
-        >
-          {formatCurrency(summary.totalAmount, group.currency)}
-        </Text>
-
-        {/* Subtitle */}
-        <Text style={{ fontSize: 13, color: '#9CA3AF', marginTop: 6 }}>
-          Overdue: {summary.overdueCount} {'\u00B7'} Due soon: {summary.dueSoonCount}
-        </Text>
-
-        {/* Progress bar */}
-        <View
-          style={{
-            marginTop: 16,
-            height: 4,
-            borderRadius: 2,
-            backgroundColor: '#374151',
-            overflow: 'hidden',
-          }}
-        >
-          <View
-            style={{
-              height: 4,
-              borderRadius: 2,
-              backgroundColor: '#D9F99D',
-              width: `${progressPercent}%`,
-            }}
+  // No group
+  if (!activeGroupId) {
+    return (
+      <Screen>
+        <View style={{ paddingTop: insets.top + space.base, paddingHorizontal: space.gutter, flex: 1 }}>
+          <TitleRow onAdd={goToNew} />
+          <EmptyState
+            icon="people-outline"
+            title="Select a group first"
+            description="Choose a group before viewing the shared expense ledger."
+            actionLabel="Open onboarding"
+            onAction={() => router.push('/onboarding')}
           />
         </View>
+      </Screen>
+    );
+  }
 
-        {/* Progress label */}
-        <Text style={{ fontSize: 11, color: '#9CA3AF', marginTop: 8 }}>
-          {summary.paidCount} of {filteredExpenses.length} settled ({progressPercent}%)
-        </Text>
-      </View>
+  const loading = isLoading || groupLoading || !group;
+  const filtersActive = Boolean(searchQuery) || statusFilter !== 'all' || Boolean(categoryFilter);
 
-      {group.type === 'workspace' ? (
-        <View
-          style={{
-            marginTop: 16,
-            backgroundColor: isDark ? '#18181B' : '#FFFFFF',
-            borderRadius: 20,
-            padding: 18,
-            shadowColor: '#000',
-            shadowOpacity: isDark ? 0.08 : 0.06,
-            shadowRadius: 10,
-            shadowOffset: { width: 0, height: 2 },
-            elevation: 2,
-          }}
-        >
-          <Text style={{ fontSize: 13, fontWeight: '700', color: '#2d6a4f' }}>
-            Workspace bills
-          </Text>
-          <Text style={{ fontSize: 18, fontWeight: '700', color: textPrimary, marginTop: 6 }}>
-            {workspaceBillingSummary?.totalCount ?? workspaceExpenseCount} workspace-linked expenses
-          </Text>
-          <Text style={{ fontSize: 13, color: textSecondary, marginTop: 6, lineHeight: 18 }}>
-            {workspaceBillingSummary?.recurringCount ?? 0} recurring · {workspaceBillingSummary?.toolCostCount ?? 0} tool costs · {workspaceBillingSummary?.dueSoonCount ?? 0} due soon · {workspaceBillingSummary?.overdueCount ?? 0} overdue
-          </Text>
-          <TouchableOpacity
-            onPress={() => { hapticLight(); router.push('/recurring'); }}
-            activeOpacity={0.78}
-            style={{
-              marginTop: 14,
-              alignSelf: 'flex-start',
-              backgroundColor: '#2d6a4f',
-              borderRadius: 12,
-              paddingHorizontal: 14,
-              paddingVertical: 10,
-            }}
-          >
-            <Text style={{ fontSize: 13, fontWeight: '700', color: '#FFFFFF' }}>
-              Open recurring bills
-            </Text>
-          </TouchableOpacity>
-        </View>
-      ) : null}
-
-      {/* Quick actions row */}
-      <View
-        style={{
-          flexDirection: 'row',
-          justifyContent: 'space-between',
-          marginTop: 24,
-          paddingHorizontal: 4,
+  return (
+    <Screen>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{
+          paddingTop: 12,
+          paddingBottom: 120,
+          paddingHorizontal: space.gutter,
+          gap: space.base,
         }}
       >
-        {QUICK_ACTIONS.map((action) => (
-          <TouchableOpacity
-            key={action.key}
-            activeOpacity={0.7}
-            onPress={() => {
-              hapticMedium();
-              if (action.route) router.push(action.route as any);
-            }}
-            style={{ alignItems: 'center', flex: 1 }}
-          >
-            <View
-              style={{
-                width: 72,
-                height: 72,
-                borderRadius: 36,
-                backgroundColor: quickActionBg,
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <Ionicons name={action.icon} size={28} color={textPrimary} />
+        <SearchField
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          placeholder="Search expenses, vendors, invoices"
+        />
+
+        {loading ? (
+          <SkeletonBlock height={132} radius={radius.card} />
+        ) : (
+          <Card variant="surface" padding={space.lg}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Text style={[font.label, { color: colors.textTertiary }]}>This month</Text>
+              <Text style={[font.caption, { color: colors.textTertiary }]}>{monthLabel}</Text>
             </View>
+            <Text style={[font.h1, { color: colors.textPrimary, marginTop: space.sm }]}>
+              {formatCurrency(summary.total, group.currency)}
+            </Text>
+            <Divider />
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <SummaryStat value={String(summary.count)} label={summary.count === 1 ? 'expense' : 'expenses'} />
+              <Dot />
+              <SummaryStat value={String(summary.overdue)} label="overdue" tone={summary.overdue > 0 ? 'warn' : 'neutral'} />
+              <Dot />
+              <SummaryStat value={String(summary.dueSoon)} label="due soon" tone={summary.dueSoon > 0 ? 'info' : 'neutral'} />
+            </View>
+          </Card>
+        )}
+
+        <HScroll>
+          {STATUS_CHIPS.map((chip) => (
+            <StatusChip
+              key={chip.key}
+              label={chip.label}
+              selected={statusFilter === chip.key}
+              onPress={() => { hapticLight(); setStatusFilter(chip.key); }}
+            />
+          ))}
+        </HScroll>
+
+        {categoryOptions.length > 0 && (
+          <HScroll>
+            <CategoryChip label="All" selected={categoryFilter === ''} onPress={() => { hapticLight(); setCategoryFilter(''); }} />
+            {categoryOptions.map((cat) => {
+              const meta = getCategoryMeta(cat);
+              return (
+                <CategoryChip
+                  key={cat}
+                  label={formatCategoryLabel(cat)}
+                  icon={meta.icon}
+                  selected={categoryFilter === cat}
+                  onPress={() => { hapticLight(); setCategoryFilter(cat); }}
+                />
+              );
+            })}
+          </HScroll>
+        )}
+
+        {loading ? (
+          <View style={{ gap: space.md }}>
+            {[0, 1, 2, 3].map((i) => <SkeletonBlock key={i} height={72} radius={radius.card} />)}
+          </View>
+        ) : filtered.length === 0 ? (
+          expenses.length === 0 ? (
+            <EmptyState
+              icon="receipt-outline"
+              title="No expenses yet"
+              description="Start tracking shared costs to keep everyone on the same page."
+              actionLabel="Add expense"
+              onAction={goToNew}
+            />
+          ) : (
+            <EmptyState
+              icon="search-outline"
+              title="No matches"
+              description="Try a different filter or search term."
+              actionLabel="Clear filters"
+              onAction={resetFilters}
+            />
+          )
+        ) : (
+          <View style={{ gap: space.md }}>
+            {filtered.map((e) => (
+              <ExpenseRow
+                key={e.id}
+                expense={e}
+                isWorkspace={group.type === 'workspace'}
+                onPress={() => { hapticMedium(); router.push(`/expenses/${e.id}` as never); }}
+              />
+            ))}
+            {filtersActive && (
+              <Pressable
+                onPress={resetFilters}
+                style={({ pressed }) => [{ alignSelf: 'center', paddingVertical: space.sm, opacity: pressed ? 0.6 : 1 }]}
+              >
+                <Text style={{ fontSize: 14, fontWeight: '600', color: colors.sage }}>Clear filters</Text>
+              </Pressable>
+            )}
+          </View>
+        )}
+      </ScrollView>
+    </Screen>
+  );
+}
+
+/* ---------------- Subcomponents ---------------- */
+
+function TitleRow({ onAdd }: { onAdd: () => void }) {
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+      <Text style={[font.h1, { color: colors.textPrimary }]}>Expenses</Text>
+      <FAB onPress={onAdd} icon="add" size={44} />
+    </View>
+  );
+}
+
+function HScroll({ children }: { children: React.ReactNode }) {
+  return (
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={{ gap: space.sm, paddingRight: space.gutter }}
+      style={{ marginHorizontal: -space.gutter, paddingHorizontal: space.gutter }}
+    >
+      {children}
+    </ScrollView>
+  );
+}
+
+function Dot() {
+  return <Text style={{ color: colors.textMuted, fontSize: 13, marginHorizontal: space.sm }}>·</Text>;
+}
+
+function SummaryStat({
+  value,
+  label,
+  tone = 'neutral',
+}: {
+  value: string;
+  label: string;
+  tone?: 'neutral' | 'warn' | 'info';
+}) {
+  const c = tone === 'warn' ? colors.warnText : tone === 'info' ? colors.infoText : colors.textPrimary;
+  return (
+    <Text style={[font.caption, { color: colors.textTertiary }]}>
+      <Text style={{ fontWeight: '700', color: c }}>{value}</Text> {label}
+    </Text>
+  );
+}
+
+function StatusChip({ label, selected, onPress }: { label: string; selected: boolean; onPress: () => void }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [{
+        height: 36,
+        paddingHorizontal: space.base,
+        borderRadius: radius.pill,
+        backgroundColor: selected ? colors.sage : colors.bgSubtle,
+        alignItems: 'center',
+        justifyContent: 'center',
+        opacity: pressed ? 0.85 : 1,
+      }]}
+    >
+      <Text style={{ fontSize: 14, fontWeight: '600', color: selected ? colors.textInverse : colors.textTertiary }}>
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
+function CategoryChip({
+  label,
+  icon,
+  selected,
+  onPress,
+}: {
+  label: string;
+  icon?: string;
+  selected: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [{
+        height: 32,
+        paddingHorizontal: space.md,
+        borderRadius: radius.pill,
+        backgroundColor: selected ? colors.sageSoft : colors.bgSubtle,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: space.xs + 2,
+        opacity: pressed ? 0.8 : 1,
+      }]}
+    >
+      {icon ? (
+        <IconTile icon={icon as never} size={20} iconSize={12} color={selected ? colors.sage : colors.textTertiary} bg="transparent" />
+      ) : null}
+      <Text style={{ fontSize: 13, fontWeight: '600', color: selected ? colors.sage : colors.textTertiary }}>
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
+function ExpenseRow({
+  expense,
+  isWorkspace,
+  onPress,
+}: {
+  expense: Expense;
+  isWorkspace: boolean;
+  onPress: () => void;
+}) {
+  const meta = getCategoryMeta(expense.category);
+  const status = computeRowStatus(expense);
+  const due = getExpenseBillingDueDate(expense) ?? expense.due_date;
+  const ctx = getWorkspaceExpenseContext(expense);
+  const showVendor = isWorkspace && Boolean(ctx.vendor_name);
+
+  return (
+    <Card onPress={onPress} variant="surface" padding={space.base}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
+        <IconTile icon={meta.icon as never} color={meta.color} bg={meta.bg} size={44} />
+        <View style={{ flex: 1 }}>
+          <Text style={[font.h3, { color: colors.textPrimary }]} numberOfLines={1}>{expense.title}</Text>
+          <Text style={[font.caption, { color: colors.textTertiary, marginTop: 2 }]} numberOfLines={1}>
+            {formatCategoryLabel(expense.category)} · {formatDate(due)}
+          </Text>
+          {showVendor && (
             <Text
-              style={{
-                fontSize: 11,
-                fontWeight: '500',
-                color: textSecondary,
-                marginTop: 8,
-                textAlign: 'center',
-              }}
+              style={{ fontSize: 11, fontWeight: '500', color: colors.textMuted, marginTop: 2 }}
               numberOfLines={1}
             >
-              {action.label}
+              {ctx.vendor_name}{ctx.invoice_reference ? ` · ${ctx.invoice_reference}` : ''}
             </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      {/* "Expenses" section header with "See all" */}
-      <View
-        style={{
-          flexDirection: 'row',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginTop: 28,
-        }}
-      >
-        <Text style={{ fontSize: 22, fontWeight: '700', color: textPrimary }}>
-          Expenses
-        </Text>
-        <TouchableOpacity activeOpacity={0.7} onPress={() => { hapticLight(); }}>
-          <Text style={{ fontSize: 14, fontWeight: '600', color: textSecondary }}>
-            See all {'\u2192'}
+          )}
+        </View>
+        <View style={{ alignItems: 'flex-end', gap: 6 }}>
+          <Text style={[font.h3, { color: colors.textPrimary }]}>
+            {formatCurrency(expense.amount, expense.currency)}
           </Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Category filter pills */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={{ marginTop: 16 }}
-        contentContainerStyle={{ paddingRight: 20 }}
-      >
-        <TouchableOpacity
-          onPress={() => { hapticLight(); setCategoryFilter(''); }}
-          activeOpacity={0.7}
-          style={{
-            backgroundColor: !categoryFilter ? '#111827' : pillUnselectedBg,
-            borderRadius: 20,
-            paddingHorizontal: 18,
-            paddingVertical: 10,
-            marginRight: 8,
-          }}
-        >
-          <Text
-            style={{
-              fontSize: 13,
-              fontWeight: '600',
-              color: !categoryFilter ? '#FFFFFF' : textSecondary,
-            }}
-          >
-            All
-          </Text>
-        </TouchableOpacity>
-        {categories.map((value) => {
-          const selected = categoryFilter === value;
-          return (
-            <TouchableOpacity
-              key={value}
-              onPress={() => { hapticLight(); setCategoryFilter(value); }}
-              activeOpacity={0.7}
+          {status.kind === 'pill' ? (
+            <StatusPill amount={status.label} tone={status.tone} />
+          ) : (
+            <View
               style={{
-                backgroundColor: selected ? '#111827' : pillUnselectedBg,
-                borderRadius: 20,
-                paddingHorizontal: 18,
-                paddingVertical: 10,
-                marginRight: 8,
+                paddingHorizontal: space.sm + 2,
+                paddingVertical: 4,
+                borderRadius: radius.pill,
+                backgroundColor: status.tone === 'warn' ? colors.warnBg : colors.infoBg,
               }}
             >
               <Text
                 style={{
-                  fontSize: 13,
-                  fontWeight: '600',
-                  color: selected ? '#FFFFFF' : textSecondary,
+                  fontSize: 11,
+                  fontWeight: '700',
+                  color: status.tone === 'warn' ? colors.warnText : colors.infoText,
+                  letterSpacing: 0.3,
                 }}
               >
-                {formatCategoryLabel(value)}
+                {status.label}
               </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
-
-      {/* Spacer before list */}
-      <View style={{ height: 16 }} />
-    </View>
-  );
-
-  /* -- Empty filtered state -- */
-  if (filteredExpenses.length === 0) {
-    return (
-      <FlatList
-        data={[]}
-        renderItem={null}
-        style={{ flex: 1, backgroundColor: bg }}
-        contentContainerStyle={{ paddingBottom: 120 }}
-        showsVerticalScrollIndicator={false}
-        ListHeaderComponent={ListHeader}
-        ListEmptyComponent={
-          <View style={{ paddingHorizontal: 20 }}>
-            <EmptyState
-              icon="receipt-outline"
-              title="No expenses match this view"
-              description="Add a new expense or change the filters to bring the ledger into view."
-              actionLabel="Create expense"
-              onAction={() => router.push('/expenses/new')}
-            />
-          </View>
-        }
-      />
-    );
-  }
-
-  /* -- Main list -- */
-  return (
-    <FlatList
-      data={filteredExpenses}
-      renderItem={renderExpenseItem}
-      keyExtractor={(item) => item.id}
-      style={{ flex: 1, backgroundColor: bg }}
-      contentContainerStyle={{ paddingBottom: 120, paddingHorizontal: 20 }}
-      showsVerticalScrollIndicator={false}
-      ListHeaderComponent={ListHeader}
-      ListHeaderComponentStyle={{ marginHorizontal: -20 }}
-      initialNumToRender={15}
-      maxToRenderPerBatch={10}
-      windowSize={5}
-    />
+            </View>
+          )}
+        </View>
+      </View>
+    </Card>
   );
 }

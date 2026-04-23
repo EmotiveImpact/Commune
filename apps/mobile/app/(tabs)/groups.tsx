@@ -1,679 +1,482 @@
 import { useCallback, useMemo, useState } from 'react';
-import { Alert, FlatList, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { Modal, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
-import { ExpenseCategory } from '@commune/types';
-import type { ComponentProps } from 'react';
-import { formatCurrency, formatDate, getMonthKey } from '@commune/utils';
-import { hapticLight, hapticMedium, hapticSelection } from '@/lib/haptics';
+import { formatCurrency, getMonthKey } from '@commune/utils';
+import type { ExpenseListItem, GroupWithMembers } from '@commune/types';
+import { colors, elevation, font, getCategoryMeta, getGroupTypeMeta, radius, space } from '@/constants/design';
+import { Avatar, Badge, Button, Card, Divider, EmptyState, IconTile, Screen, SectionHeader, SkeletonBlock, StatusPill } from '@/components/primitives';
+import { hapticLight, hapticMedium } from '@/lib/haptics';
 import { useAuthStore } from '@/stores/auth';
 import { useGroupStore } from '@/stores/group';
-import { useThemeStore } from '@/stores/theme';
-import { useUserBreakdown } from '@/hooks/use-dashboard';
-import { useGroup } from '@/hooks/use-groups';
-import { useMarkPayment } from '@/hooks/use-expenses';
-import {
-  BreakdownSkeleton,
-  EmptyState,
-  Screen,
-  StatusChip,
-} from '@/components/ui';
-import { getErrorMessage } from '@/lib/errors';
-import { formatCategoryLabel, formatMonthLabel, getRecentMonthKeys } from '@/lib/ui';
+import { dashboardKeys, useDashboardStats, useUserBreakdown } from '@/hooks/use-dashboard';
+import { useAcceptInvite, usePendingInvites, useUserGroups } from '@/hooks/use-groups';
+import { useGroupExpenses } from '@/hooks/use-expenses';
 
-const categories = Object.values(ExpenseCategory);
+/* ─── Helpers ────────────────────────────────────────────────────────────── */
 
-/* ---------------------------------------------------------------------------
- * Category color + icon mapping
- * --------------------------------------------------------------------------- */
-
-type IoniconsName = ComponentProps<typeof Ionicons>['name'];
-
-const CATEGORY_META: Record<string, { color: string; icon: IoniconsName }> = {
-  rent: { color: '#FDBA74', icon: 'home-outline' },
-  utilities: { color: '#FDBA74', icon: 'flash-outline' },
-  internet: { color: '#93C5FD', icon: 'wifi-outline' },
-  cleaning: { color: '#99F6E4', icon: 'sparkles-outline' },
-  groceries: { color: '#FCA5A5', icon: 'cart-outline' },
-  entertainment: { color: '#99F6E4', icon: 'game-controller-outline' },
-  household_supplies: { color: '#C4B5FD', icon: 'bag-outline' },
-  transport: { color: '#FCA5A5', icon: 'bus-outline' },
-  work_tools: { color: '#C4B5FD', icon: 'school-outline' },
-  miscellaneous: { color: '#D1D5DB', icon: 'ellipsis-horizontal-outline' },
-};
-
-function getCategoryMeta(category: string) {
-  return CATEGORY_META[category] ?? { color: '#D1D5DB', icon: 'ellipsis-horizontal-outline' as IoniconsName };
+function formatCreatedMonth(iso?: string | null) {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
 }
 
-/* ---------------------------------------------------------------------------
- * Helper: derive member balance status
- * --------------------------------------------------------------------------- */
-
-function getMemberBalanceInfo(balance: number) {
-  if (balance < 0) {
-    return { color: '#DC2626', label: 'OWE', bg: 'rgba(220,38,38,0.08)', pillColor: '#DC2626' };
+function formatRelative(iso?: string | null) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const ms = 86400000;
+  const sod = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const diff = Math.round((sod(new Date()) - sod(d)) / ms);
+  if (diff === 0) return 'Today';
+  if (diff === 1) return 'Yesterday';
+  if (diff > 1 && diff < 7) return `${diff}d ago`;
+  if (diff >= 7 && diff < 28) return `${Math.floor(diff / 7)}w ago`;
+  if (diff < 0) {
+    const f = Math.abs(diff);
+    if (f === 1) return 'Tomorrow';
+    if (f < 7) return `In ${f}d`;
   }
-  if (balance > 0) {
-    return { color: '#059669', label: 'OWED', bg: 'rgba(5,150,105,0.08)', pillColor: '#059669' };
-  }
-  return { color: '#9CA3AF', label: 'SETTLED', bg: 'rgba(156,163,175,0.08)', pillColor: '#9CA3AF' };
+  return d.toLocaleDateString(undefined, { day: '2-digit', month: 'short' });
 }
 
-/* ---------------------------------------------------------------------------
- * Component
- * --------------------------------------------------------------------------- */
+function toneOf(amount: number): 'owe' | 'owed' | 'settled' {
+  if (amount < -0.005) return 'owe';
+  if (amount > 0.005) return 'owed';
+  return 'settled';
+}
 
-export default function GroupsScreen() {
-  const router = useRouter();
-  const { user } = useAuthStore();
-  const { activeGroupId } = useGroupStore();
-  const mode = useThemeStore((s) => s.mode);
-  const isDark = mode === 'dark';
-  const bgColor = isDark ? '#0A0A0A' : '#F7F7F8';
-  const textColor = isDark ? '#FFFFFF' : '#111827';
-  const subTextColor = isDark ? 'rgba(255,255,255,0.5)' : '#9CA3AF';
-  const cardBg = isDark ? '#18181B' : '#FFFFFF';
-  const trackBg = isDark ? 'rgba(255,255,255,0.08)' : '#E5E7EB';
-  const dividerColor = isDark ? 'rgba(255,255,255,0.06)' : '#F3F4F6';
+function signedAmount(amount: number, currency: string, tone: 'owe' | 'owed' | 'settled') {
+  if (tone === 'settled') return 'Settled';
+  const f = formatCurrency(Math.abs(amount), currency);
+  return tone === 'owe' ? `-${f}` : `+${f}`;
+}
 
-  const {
-    data: group,
-    error: groupError,
-    refetch: refetchGroup,
-  } = useGroup(activeGroupId ?? '');
-  const [selectedMonth, setSelectedMonth] = useState(getMonthKey());
-  const [categoryFilter, setCategoryFilter] = useState('');
-  const {
-    data: breakdown,
-    isLoading,
-    error: breakdownError,
-    refetch: refetchBreakdown,
-  } = useUserBreakdown(activeGroupId ?? '', user?.id ?? '', selectedMonth);
-  const markPayment = useMarkPayment(activeGroupId ?? '');
-  const loadError = groupError ?? breakdownError;
+function titleCase(s: string) {
+  return s.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}
 
-  const filteredItems = useMemo(() => {
-    if (!breakdown?.items) return [];
-    if (!categoryFilter) return breakdown.items;
-    return breakdown.items.filter((item) => item.expense.category === categoryFilter);
-  }, [breakdown?.items, categoryFilter]);
+/* ─── Hero banner ────────────────────────────────────────────────────────── */
 
-  const paidPct =
-    breakdown && breakdown.total_owed > 0
-      ? Math.round((breakdown.total_paid / breakdown.total_owed) * 100)
-      : 0;
+function GroupHero({ group, onSwitch, onManage, onMembers }: {
+  group: GroupWithMembers; onSwitch: () => void; onManage: () => void; onMembers: () => void;
+}) {
+  const meta = getGroupTypeMeta(group.type);
+  const active = (group.members ?? []).filter((m) => m.status === 'active');
+  const visible = active.slice(0, 5);
+  const overflow = Math.max(0, active.length - visible.length);
+  const created = formatCreatedMonth(group.created_at);
 
-  /* Aggregate spend per category for the breakdown bars */
-  const categoryBreakdown = useMemo(() => {
-    if (!breakdown?.items) return [];
-    const map: Record<string, number> = {};
-    for (const item of breakdown.items) {
-      const cat = item.expense.category;
-      map[cat] = (map[cat] ?? 0) + item.share_amount;
-    }
-    const total = breakdown.total_owed || 1;
-    return Object.entries(map)
-      .sort((a, b) => b[1] - a[1])
-      .map(([category, amount]) => ({
-        category,
-        amount,
-        pct: Math.round((amount / total) * 100),
-      }));
-  }, [breakdown?.items, breakdown?.total_owed]);
-
-  const handleTogglePayment = useCallback(async (expenseId: string, status: 'unpaid' | 'paid' | 'confirmed') => {
-    if (!user) return;
-    try {
-      await markPayment.mutateAsync({
-        expenseId,
-        userId: user.id,
-        status: status === 'unpaid' ? 'paid' : 'unpaid',
-      });
-    } catch (error) {
-      Alert.alert('Payment update failed', getErrorMessage(error));
-    }
-  }, [user, markPayment]);
-
-  /* Derive per-member balances from breakdown items — must be before early returns */
-  const memberBalances = useMemo(() => {
-    if (!group?.members) return [];
-    const balanceMap: Record<string, number> = {};
-    for (const m of group.members) {
-      balanceMap[m.user_id] = 0;
-    }
-    if (breakdown?.items) {
-      for (const item of breakdown.items) {
-        if (item.paid_by_user) {
-          balanceMap[item.paid_by_user.id] =
-            (balanceMap[item.paid_by_user.id] ?? 0) + item.share_amount;
-        }
-      }
-    }
-    return group.members.map((m) => ({
-      ...m,
-      balance: balanceMap[m.user_id] ?? 0,
-    }));
-  }, [group?.members, breakdown?.items]);
-
-  const renderItem = useCallback(({ item }: { item: (typeof filteredItems)[0] }) => {
-    const paymentTone =
-      item.payment_status === 'paid'
-        ? 'emerald'
-        : item.payment_status === 'confirmed'
-          ? 'forest'
-          : 'sand';
-    const meta = getCategoryMeta(item.expense.category);
-
-    return (
-      <TouchableOpacity
-        activeOpacity={0.82}
-        style={{
-          marginHorizontal: 20,
-          marginTop: 10,
-          flexDirection: 'row',
-          alignItems: 'center',
-          borderRadius: 16,
-          backgroundColor: cardBg,
-          paddingHorizontal: 16,
-          paddingVertical: 14,
-          shadowColor: '#000',
-          shadowOpacity: isDark ? 0 : 0.04,
-          shadowRadius: 8,
-          shadowOffset: { width: 0, height: 2 },
-          elevation: 1,
-        }}
-        onPress={() => { hapticMedium(); router.push(`/expenses/${item.expense.id}`); }}
-      >
-        {/* Category icon */}
-        <View
-          style={{
-            marginRight: 12,
-            height: 40,
-            width: 40,
-            alignItems: 'center',
-            justifyContent: 'center',
-            borderRadius: 20,
-            backgroundColor: meta.color + '22',
-          }}
-        >
-          <Ionicons name={meta.icon} size={18} color={meta.color} />
-        </View>
-
-        {/* Title + date */}
-        <View style={{ flex: 1, marginRight: 12 }}>
-          <Text style={{ fontSize: 14, fontWeight: '600', color: textColor }} numberOfLines={1}>
-            {item.expense.title}
-          </Text>
-          <Text style={{ marginTop: 2, fontSize: 12, color: subTextColor }}>
-            {formatDate(item.expense.due_date)}
-          </Text>
-        </View>
-
-        {/* Amount + status */}
-        <View style={{ alignItems: 'flex-end' }}>
-          <Text style={{ fontSize: 14, fontWeight: '600', color: textColor }}>
-            {formatCurrency(item.share_amount, group?.currency ?? 'GBP')}
-          </Text>
-          <View style={{ marginTop: 4 }}>
-            <StatusChip label={item.payment_status} tone={paymentTone} />
+  return (
+    <View style={{ gap: space.md }}>
+      <Card variant="surface" padding={0} style={{ overflow: 'hidden' }}>
+        <View style={{ height: 100, backgroundColor: meta.bg, justifyContent: 'flex-end' }}>
+          <View style={{ marginLeft: space.lg, marginBottom: -32, borderWidth: 4, borderColor: colors.bgSurface, borderRadius: 20, alignSelf: 'flex-start' }}>
+            <IconTile icon={meta.icon as any} color={meta.accent} bg={meta.bg} size={64} />
           </View>
         </View>
-      </TouchableOpacity>
-    );
-  }, [group?.currency, router, isDark, cardBg, textColor, subTextColor]);
 
-  /* ---- Early returns: empty / error / loading ---- */
+        <View style={{ padding: space.lg, paddingTop: 40 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
+            <Text style={[font.h1, { color: colors.textPrimary, flex: 1 }]} numberOfLines={1}>{group.name}</Text>
+            <Pressable
+              onPress={onSwitch}
+              accessibilityRole="button"
+              accessibilityLabel="Switch group"
+              style={({ pressed }) => [
+                { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: space.sm + 2, paddingVertical: 6, borderRadius: radius.pill, backgroundColor: colors.sageSoft },
+                pressed && { opacity: 0.75 },
+              ]}
+            >
+              <Text style={{ fontSize: 13, fontWeight: '700', color: colors.sage }}>Switch</Text>
+              <Ionicons name="swap-horizontal" size={14} color={colors.sage} />
+            </Pressable>
+          </View>
 
-  if (!activeGroupId) {
-    return (
-      <Screen>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, marginTop: space.sm }}>
+            <View style={{ paddingHorizontal: space.sm + 2, paddingVertical: 4, borderRadius: radius.chip, backgroundColor: meta.bg }}>
+              <Text style={{ fontSize: 11, fontWeight: '700', color: meta.accent, letterSpacing: 0.3 }}>{meta.label}</Text>
+            </View>
+            <Text style={[font.caption, { color: colors.textTertiary, flex: 1 }]} numberOfLines={1}>
+              · {active.length} member{active.length === 1 ? '' : 's'}{created ? ` · Est. ${created}` : ''}
+            </Text>
+          </View>
+
+          <Divider />
+
+          {active.length > 0 ? (
+            <Pressable onPress={() => { hapticLight(); onMembers(); }} style={{ flexDirection: 'row', alignItems: 'center' }}>
+              {visible.map((m, i) => (
+                <View key={m.id} style={{ marginLeft: i === 0 ? 0 : -8, borderWidth: 2, borderColor: colors.bgSurface, borderRadius: 18 }}>
+                  <Avatar name={m.user?.name ?? '?'} size={32} />
+                </View>
+              ))}
+              {overflow > 0 ? (
+                <View style={{ marginLeft: -8, width: 32, height: 32, borderRadius: 16, borderWidth: 2, borderColor: colors.bgSurface, backgroundColor: colors.bgSubtle, alignItems: 'center', justifyContent: 'center' }}>
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: colors.textSecondary }}>+{overflow}</Text>
+                </View>
+              ) : null}
+            </Pressable>
+          ) : (
+            <Text style={[font.caption, { color: colors.textTertiary }]}>No members yet</Text>
+          )}
+        </View>
+      </Card>
+
+      <View style={{ flexDirection: 'row', gap: space.sm }}>
+        <Button label="Manage group" icon="settings-outline" onPress={onManage} style={{ flex: 1 }} />
+        <Button label="Members" variant="secondary" icon="people-outline" onPress={onMembers} style={{ flex: 1 }} />
+      </View>
+    </View>
+  );
+}
+
+/* ─── Stats row ──────────────────────────────────────────────────────────── */
+
+function StatsRow({ groupId, userId, currency, monthKey }: {
+  groupId: string; userId: string; currency: string; monthKey: string;
+}) {
+  const { data: stats, isLoading } = useDashboardStats(groupId, userId, monthKey);
+  const amountRemaining = stats?.amount_remaining ?? 0;
+  const amountPaid = stats?.amount_paid ?? 0;
+  const yourShare = stats?.your_share ?? 0;
+  const totalSpend = stats?.total_spend ?? 0;
+  const youOwe = Math.max(0, amountRemaining);
+  const youreOwed = Math.max(0, amountPaid - yourShare);
+
+  const tiles: { label: string; value: number; tone: 'owe' | 'owed' | 'settled' }[] = [
+    { label: 'You owe', value: youOwe, tone: 'owe' },
+    { label: "You're owed", value: youreOwed, tone: 'owed' },
+    { label: 'Total this month', value: totalSpend, tone: 'settled' },
+  ];
+  const toneColor = (t: 'owe' | 'owed' | 'settled', active: boolean) =>
+    !active ? colors.textTertiary : t === 'owe' ? colors.oweText : t === 'owed' ? colors.owedText : colors.textPrimary;
+
+  return (
+    <View style={{ flexDirection: 'row', gap: space.md }}>
+      {tiles.map((t) => {
+        const active = t.value > 0.005;
+        return (
+          <Card key={t.label} variant="surface" padding={space.base} style={{ flex: 1 }}>
+            <Text style={[font.caption, { color: colors.textTertiary }]} numberOfLines={1}>{t.label}</Text>
+            {isLoading ? (
+              <SkeletonBlock height={22} style={{ marginTop: 6 }} />
+            ) : (
+              <Text
+                style={{ fontSize: 17, fontWeight: '700', lineHeight: 22, marginTop: 4, fontVariant: ['tabular-nums'], color: toneColor(t.tone, active) }}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+              >
+                {active ? formatCurrency(t.value, currency) : '—'}
+              </Text>
+            )}
+          </Card>
+        );
+      })}
+    </View>
+  );
+}
+
+/* ─── Members section ────────────────────────────────────────────────────── */
+
+function MembersSection({ group, currentUserId, monthKey, onSeeAll, onInvite }: {
+  group: GroupWithMembers; currentUserId: string; monthKey: string; onSeeAll: () => void; onInvite: () => void;
+}) {
+  const { data: breakdown } = useUserBreakdown(group.id, currentUserId, monthKey);
+  const active = useMemo(() => (group.members ?? []).filter((m) => m.status === 'active'), [group.members]);
+  const top = useMemo(() => {
+    const withBalance = active.map((m) => ({
+      member: m,
+      share: m.user_id === currentUserId && breakdown ? breakdown.total_owed - breakdown.total_paid : 0,
+    }));
+    return withBalance.sort((a, b) => Math.abs(b.share) - Math.abs(a.share)).slice(0, 5);
+  }, [active, breakdown, currentUserId]);
+
+  return (
+    <View style={{ gap: space.md }}>
+      <SectionHeader title="Members" actionLabel="See all" onAction={onSeeAll} />
+      {active.length === 0 ? (
         <EmptyState
           icon="people-outline"
-          title="No group selected"
-          description="Join or create a group to get started."
-          actionLabel="Open onboarding"
-          onAction={() => router.push('/onboarding')}
+          title="No members yet"
+          description="Invite people to start tracking together."
+          actionLabel="Invite members"
+          onAction={onInvite}
         />
-      </Screen>
-    );
-  }
-
-  if (loadError) {
-    return (
-      <Screen>
-        <EmptyState
-          icon="cloud-offline-outline"
-          title="Groups unavailable"
-          description={getErrorMessage(loadError, 'Could not load your group right now.')}
-          actionLabel="Try again"
-          onAction={() => { void refetchGroup(); void refetchBreakdown(); }}
-        />
-      </Screen>
-    );
-  }
-
-  if (isLoading || !group) {
-    return <BreakdownSkeleton />;
-  }
-
-  const memberCount = group.members?.length ?? 0;
-  const totalThisMonth = breakdown?.total_owed ?? 0;
-  const currency = group.currency;
-  const monthKeys = getRecentMonthKeys(6);
-
-  const ListHeader = (
-    <View style={{ paddingTop: 16, paddingBottom: 8 }}>
-
-      {/* ---- 1. Page title ---- */}
-      <View style={{ paddingHorizontal: 20, marginBottom: 20 }}>
-        <Text style={{ fontSize: 28, fontWeight: '800', color: textColor, letterSpacing: -0.5 }}>
-          Groups
-        </Text>
-      </View>
-
-      {/* ---- 2. Active Group Card (elevated, prominent) ---- */}
-      <View
-        style={{
-          marginHorizontal: 20,
-          borderRadius: 20,
-          backgroundColor: cardBg,
-          padding: 20,
-          shadowColor: '#000',
-          shadowOpacity: isDark ? 0 : 0.08,
-          shadowRadius: 16,
-          shadowOffset: { width: 0, height: 4 },
-          elevation: 4,
-        }}
-      >
-        {/* Top row: icon + name + manage */}
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <View
-            style={{
-              height: 40,
-              width: 40,
-              borderRadius: 12,
-              backgroundColor: '#2d6a4f15',
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginRight: 12,
-            }}
-          >
-            <Ionicons name="home" size={18} color="#2d6a4f" />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 18, fontWeight: '600', color: textColor }} numberOfLines={1}>
-              {group.name}
-            </Text>
-            <Text style={{ fontSize: 13, color: subTextColor, marginTop: 2 }}>
-              {memberCount} member{memberCount !== 1 ? 's' : ''} · {formatCurrency(totalThisMonth, currency)} this month
-            </Text>
-          </View>
-          <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={() => { hapticMedium(); router.push('/group-edit'); }}
-            style={{
-              paddingHorizontal: 12,
-              paddingVertical: 6,
-              borderRadius: 8,
-              backgroundColor: '#2d6a4f10',
-            }}
-          >
-            <Text style={{ fontSize: 13, fontWeight: '600', color: '#2d6a4f' }}>Manage</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Progress bar */}
-        <View style={{ marginTop: 18 }}>
-          <View
-            style={{
-              height: 6,
-              borderRadius: 3,
-              backgroundColor: trackBg,
-              overflow: 'hidden',
-            }}
-          >
-            <View
-              style={{
-                height: 6,
-                borderRadius: 3,
-                backgroundColor: '#4ade80',
-                width: `${Math.min(paidPct, 100)}%`,
-              }}
-            />
-          </View>
-          <Text style={{ fontSize: 12, color: subTextColor, marginTop: 8, fontWeight: '500' }}>
-            {paidPct}% settled
-          </Text>
-        </View>
-      </View>
-
-      {/* ---- 3. Members section ---- */}
-      {memberBalances.length > 0 && (
-        <View style={{ marginTop: 28, paddingHorizontal: 20 }}>
-          {/* Section header */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-            <Text style={{ fontSize: 17, fontWeight: '700', color: textColor }}>Members</Text>
-            <TouchableOpacity activeOpacity={0.7} onPress={() => { hapticLight(); }}>
-              <Text style={{ fontSize: 13, fontWeight: '500', color: subTextColor }}>
-                See all {'>'}
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Members card */}
-          <View
-            style={{
-              borderRadius: 16,
-              backgroundColor: cardBg,
-              shadowColor: '#000',
-              shadowOpacity: isDark ? 0 : 0.05,
-              shadowRadius: 12,
-              shadowOffset: { width: 0, height: 2 },
-              elevation: 2,
-              overflow: 'hidden',
-            }}
-          >
-            {memberBalances.map((member, index) => {
-              const memberName = member.user?.name ?? 'Unknown';
-              const info = getMemberBalanceInfo(member.balance);
-              const initials = memberName
-                .split(' ')
-                .map((n: string) => n[0])
-                .join('')
-                .toUpperCase()
-                .slice(0, 2);
-              const isLast = index === memberBalances.length - 1;
-
-              return (
-                <View key={member.id}>
-                  <View
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      paddingVertical: 14,
-                      paddingHorizontal: 16,
-                    }}
-                  >
-                    {/* Avatar */}
-                    <View
-                      style={{
-                        width: 36,
-                        height: 36,
-                        borderRadius: 18,
-                        backgroundColor: '#1f2330',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        marginRight: 12,
-                      }}
-                    >
-                      <Text style={{ fontSize: 13, fontWeight: '600', color: '#FFFFFF' }}>
-                        {initials}
-                      </Text>
-                    </View>
-
-                    {/* Name */}
-                    <Text
-                      style={{ flex: 1, fontSize: 14, fontWeight: '600', color: textColor }}
-                      numberOfLines={1}
-                    >
-                      {memberName}
+      ) : (
+        <View style={{ gap: space.sm }}>
+          {top.map(({ member, share }) => {
+            const tone = toneOf(share);
+            const amount = signedAmount(share, group.currency, tone);
+            const isSelf = member.user_id === currentUserId;
+            return (
+              <Card key={member.id} variant="surface" padding={space.base}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
+                  <Avatar name={member.user?.name ?? '?'} size={44} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={[font.bodyStrong, { color: colors.textPrimary }]} numberOfLines={1}>
+                      {member.user?.name ?? 'Member'}{isSelf ? '  · You' : ''}
                     </Text>
-
-                    {/* Balance */}
-                    <Text
-                      style={{
-                        fontSize: 14,
-                        fontWeight: '600',
-                        color: info.color,
-                        marginRight: 10,
-                      }}
-                    >
-                      {member.balance < 0 ? '-' : member.balance > 0 ? '+' : ''}
-                      {formatCurrency(Math.abs(member.balance), currency)}
+                    <Text style={[font.caption, { color: colors.textTertiary, marginTop: 2 }]} numberOfLines={1}>
+                      {member.role === 'admin' ? 'Admin' : 'Member'}{member.responsibility_label ? ` · ${member.responsibility_label}` : ''}
                     </Text>
-
-                    {/* Status pill */}
-                    <View
-                      style={{
-                        paddingHorizontal: 8,
-                        paddingVertical: 3,
-                        borderRadius: 6,
-                        backgroundColor: info.bg,
-                      }}
-                    >
-                      <Text style={{ fontSize: 10, fontWeight: '700', color: info.pillColor, letterSpacing: 0.5 }}>
-                        {info.label}
-                      </Text>
-                    </View>
                   </View>
-
-                  {/* Divider (skip last) */}
-                  {!isLast && (
-                    <View style={{ height: 1, backgroundColor: dividerColor, marginLeft: 64 }} />
-                  )}
+                  {isSelf
+                    ? <StatusPill amount={amount} tone={tone} />
+                    : <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />}
                 </View>
-              );
-            })}
-          </View>
-        </View>
-      )}
-
-      {/* ---- 4. Spending Breakdown ---- */}
-      {categoryBreakdown.length > 0 && (
-        <View style={{ marginTop: 28, paddingHorizontal: 20 }}>
-          <Text style={{ fontSize: 17, fontWeight: '700', color: textColor, marginBottom: 16 }}>
-            Spending Breakdown
-          </Text>
-          {categoryBreakdown.map(({ category, amount, pct }) => {
-            const meta = getCategoryMeta(category);
-            return (
-              <TouchableOpacity
-                key={category}
-                activeOpacity={0.75}
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  marginBottom: 14,
-                }}
-                onPress={() => { hapticLight(); setCategoryFilter(categoryFilter === category ? '' : category); }}
-              >
-                {/* Icon circle */}
-                <View
-                  style={{
-                    height: 36,
-                    width: 36,
-                    borderRadius: 18,
-                    backgroundColor: meta.color + '22',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    marginRight: 12,
-                  }}
-                >
-                  <Ionicons name={meta.icon} size={16} color={meta.color} />
-                </View>
-
-                {/* Name + bar */}
-                <View style={{ flex: 1, marginRight: 14 }}>
-                  <Text style={{ fontSize: 13, fontWeight: '600', color: textColor, marginBottom: 6 }}>
-                    {formatCategoryLabel(category)}
-                  </Text>
-                  <View
-                    style={{
-                      height: 4,
-                      borderRadius: 2,
-                      backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#F3F4F6',
-                      overflow: 'hidden',
-                    }}
-                  >
-                    <View
-                      style={{
-                        height: 4,
-                        borderRadius: 2,
-                        width: `${Math.min(pct, 100)}%`,
-                        backgroundColor: meta.color,
-                      }}
-                    />
-                  </View>
-                </View>
-
-                {/* Pct + amount */}
-                <View style={{ alignItems: 'flex-end', minWidth: 60 }}>
-                  <Text style={{ fontSize: 13, fontWeight: '700', color: textColor }}>
-                    {formatCurrency(amount, currency)}
-                  </Text>
-                  <Text style={{ fontSize: 11, color: subTextColor, marginTop: 1 }}>{pct}%</Text>
-                </View>
-              </TouchableOpacity>
+              </Card>
             );
           })}
-        </View>
-      )}
-
-      {/* ---- 5. Month selector pills ---- */}
-      <View style={{ marginTop: 24, paddingLeft: 20 }}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingRight: 20 }}>
-          {monthKeys.map((month) => {
-            const isSelected = selectedMonth === month;
-            return (
-              <TouchableOpacity
-                key={month}
-                activeOpacity={0.75}
-                onPress={() => { hapticSelection(); setSelectedMonth(month); }}
-                style={{
-                  paddingHorizontal: 16,
-                  paddingVertical: 8,
-                  borderRadius: 20,
-                  backgroundColor: isSelected
-                    ? (isDark ? '#FFFFFF' : '#111827')
-                    : (isDark ? 'rgba(255,255,255,0.06)' : '#F3F4F6'),
-                  marginRight: 8,
-                }}
-              >
-                <Text
-                  style={{
-                    fontSize: 13,
-                    fontWeight: '600',
-                    color: isSelected
-                      ? (isDark ? '#111827' : '#FFFFFF')
-                      : subTextColor,
-                  }}
-                >
-                  {formatMonthLabel(month)}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-      </View>
-
-      {/* ---- 6. Category filter pills ---- */}
-      <View style={{ marginTop: 12, paddingLeft: 20 }}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingRight: 20 }}>
-          <TouchableOpacity
-            activeOpacity={0.75}
-            onPress={() => { hapticLight(); setCategoryFilter(''); }}
-            style={{
-              paddingHorizontal: 14,
-              paddingVertical: 7,
-              borderRadius: 16,
-              backgroundColor: !categoryFilter
-                ? (isDark ? '#FFFFFF' : '#111827')
-                : (isDark ? 'rgba(255,255,255,0.06)' : '#F3F4F6'),
-              marginRight: 8,
-            }}
-          >
-            <Text
-              style={{
-                fontSize: 12,
-                fontWeight: '600',
-                color: !categoryFilter
-                  ? (isDark ? '#111827' : '#FFFFFF')
-                  : subTextColor,
-              }}
-            >
-              All
-            </Text>
-          </TouchableOpacity>
-          {categories.map((value) => {
-            const isSelected = categoryFilter === value;
-            return (
-              <TouchableOpacity
-                key={value}
-                activeOpacity={0.75}
-                onPress={() => { hapticLight(); setCategoryFilter(value); }}
-                style={{
-                  paddingHorizontal: 14,
-                  paddingVertical: 7,
-                  borderRadius: 16,
-                  backgroundColor: isSelected
-                    ? (isDark ? '#FFFFFF' : '#111827')
-                    : (isDark ? 'rgba(255,255,255,0.06)' : '#F3F4F6'),
-                  marginRight: 8,
-                }}
-              >
-                <Text
-                  style={{
-                    fontSize: 12,
-                    fontWeight: '600',
-                    color: isSelected
-                      ? (isDark ? '#111827' : '#FFFFFF')
-                      : subTextColor,
-                  }}
-                >
-                  {formatCategoryLabel(value)}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-      </View>
-
-      {/* ---- 7. Section label for expense list ---- */}
-      {filteredItems.length > 0 && (
-        <View style={{ paddingHorizontal: 20, marginTop: 24, marginBottom: 4 }}>
-          <Text style={{ fontSize: 17, fontWeight: '700', color: textColor }}>
-            Expenses
-          </Text>
         </View>
       )}
     </View>
   );
+}
+
+/* ─── Recent activity ────────────────────────────────────────────────────── */
+
+function RecentActivity({ group, onSeeAll }: { group: GroupWithMembers; onSeeAll: () => void }) {
+  const { data, isLoading } = useGroupExpenses(group.id);
+  const items = useMemo(() => (data ?? []).slice(0, 4) as ExpenseListItem[], [data]);
 
   return (
-    <FlatList
-      data={filteredItems}
-      renderItem={renderItem}
-      keyExtractor={(item) => item.expense.id}
-      style={{ flex: 1, backgroundColor: bgColor }}
-      contentContainerStyle={{ paddingBottom: 120 }}
-      showsVerticalScrollIndicator={false}
-      ListHeaderComponent={ListHeader}
-      ListEmptyComponent={
-        <View style={{ paddingHorizontal: 20, marginTop: 20 }}>
-          <View
-            style={{
-              borderRadius: 16,
-              backgroundColor: cardBg,
-              padding: 24,
-              alignItems: 'center',
-              shadowColor: '#000',
-              shadowOpacity: isDark ? 0 : 0.04,
-              shadowRadius: 8,
-              shadowOffset: { width: 0, height: 2 },
-              elevation: 1,
-            }}
-          >
-            <Ionicons name="receipt-outline" size={28} color={subTextColor} />
-            <Text style={{ fontSize: 14, color: subTextColor, marginTop: 10, textAlign: 'center' }}>
-              No expenses match the current month and category filters.
-            </Text>
-          </View>
+    <View style={{ gap: space.md }}>
+      <SectionHeader title={`Recent in ${group.name}`} actionLabel="See all" onAction={onSeeAll} />
+      {isLoading ? (
+        <View style={{ gap: space.sm }}>
+          <SkeletonBlock height={72} radius={radius.card} />
+          <SkeletonBlock height={72} radius={radius.card} />
+          <SkeletonBlock height={72} radius={radius.card} />
         </View>
-      }
-      initialNumToRender={15}
-      maxToRenderPerBatch={10}
-      windowSize={5}
-    />
+      ) : items.length === 0 ? (
+        <EmptyState icon="receipt-outline" title="No activity yet" description="Expenses added to this group show up here." />
+      ) : (
+        <View style={{ gap: space.sm }}>
+          {items.map((e) => {
+            const cat = getCategoryMeta(e.category);
+            return (
+              <Card key={e.id} variant="surface" padding={space.base}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
+                  <IconTile icon={cat.icon as any} color={cat.color} bg={cat.bg} size={44} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={[font.bodyStrong, { color: colors.textPrimary }]} numberOfLines={1}>{e.title}</Text>
+                    <Text style={[font.caption, { color: colors.textTertiary, marginTop: 2 }]} numberOfLines={1}>
+                      {titleCase(e.category)} · {formatRelative(e.due_date)}
+                    </Text>
+                  </View>
+                  <Text style={[font.h3, { color: colors.textPrimary, fontVariant: ['tabular-nums'] }]} numberOfLines={1}>
+                    {formatCurrency(e.amount, e.currency)}
+                  </Text>
+                </View>
+              </Card>
+            );
+          })}
+        </View>
+      )}
+    </View>
+  );
+}
+
+/* ─── Pending invites ────────────────────────────────────────────────────── */
+
+function PendingInvites({ invites, acceptingId, isPending, onAccept }: {
+  invites: { id: string; group_id: string; group?: { name?: string; type?: string } | null }[];
+  acceptingId: string | null; isPending: boolean; onAccept: (groupId: string) => void;
+}) {
+  return (
+    <View style={{ gap: space.md }}>
+      <SectionHeader title="Pending invites" />
+      <View style={{ gap: space.sm }}>
+        {invites.map((inv) => {
+          const meta = getGroupTypeMeta(inv.group?.type);
+          const loading = isPending && acceptingId === inv.group_id;
+          return (
+            <Card key={inv.id} variant="surface" padding={space.base}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
+                <IconTile icon={meta.icon as any} color={meta.accent} bg={meta.bg} size={40} />
+                <View style={{ flex: 1 }}>
+                  <Text style={[font.bodyStrong, { color: colors.textPrimary }]} numberOfLines={1}>
+                    {inv.group?.name ?? 'New space'}
+                  </Text>
+                  <Text style={[font.caption, { color: colors.textTertiary, marginTop: 2 }]}>Invitation pending</Text>
+                </View>
+                <Button label="Accept" size="sm" loading={loading} onPress={() => onAccept(inv.group_id)} />
+              </View>
+            </Card>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
+/* ─── Switch Group Modal ─────────────────────────────────────────────────── */
+
+function SwitchGroupModal({ visible, groups, activeGroupId, onClose, onSelect, onCreate }: {
+  visible: boolean; groups: GroupWithMembers[]; activeGroupId: string | null;
+  onClose: () => void; onSelect: (groupId: string) => void; onCreate: () => void;
+}) {
+  const insets = useSafeAreaInsets();
+  return (
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+      <Pressable onPress={onClose} style={{ flex: 1, backgroundColor: 'rgba(26,30,43,0.4)', justifyContent: 'flex-end' }}>
+        <Pressable
+          onPress={(e) => e.stopPropagation()}
+          style={{
+            backgroundColor: colors.bgSurface, borderTopLeftRadius: radius.sheet, borderTopRightRadius: radius.sheet,
+            paddingTop: space.lg, paddingBottom: insets.bottom + space.lg, paddingHorizontal: space.gutter,
+            maxHeight: '85%', ...elevation.sheet,
+          }}
+        >
+          <View style={{ alignSelf: 'center', width: 44, height: 5, borderRadius: 3, backgroundColor: colors.border, marginBottom: space.lg }} />
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: space.lg }}>
+            <Text style={[font.h2, { color: colors.textPrimary }]}>Switch group</Text>
+            <Pressable
+              onPress={onClose}
+              accessibilityRole="button"
+              accessibilityLabel="Close"
+              style={({ pressed }) => [
+                { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.bgSubtle, alignItems: 'center', justifyContent: 'center' },
+                pressed && { opacity: 0.7 },
+              ]}
+            >
+              <Ionicons name="close" size={20} color={colors.textSecondary} />
+            </Pressable>
+          </View>
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: space.sm, paddingBottom: space.md }}>
+            {groups.map((g) => {
+              const meta = getGroupTypeMeta(g.type);
+              const isActive = g.id === activeGroupId;
+              const count = (g.members ?? []).filter((m) => m.status === 'active').length;
+              return (
+                <Card key={g.id} variant="surface" padding={space.base} onPress={() => onSelect(g.id)}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
+                    <IconTile icon={meta.icon as any} color={meta.accent} bg={meta.bg} size={48} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={[font.h3, { color: colors.textPrimary }]} numberOfLines={1}>{g.name}</Text>
+                      <Text style={[font.caption, { color: colors.textTertiary, marginTop: 2 }]} numberOfLines={1}>
+                        {meta.label} · {count} member{count === 1 ? '' : 's'}
+                      </Text>
+                    </View>
+                    {isActive ? <Badge label="Active" tone="sage" /> : <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />}
+                  </View>
+                </Card>
+              );
+            })}
+          </ScrollView>
+          <Button label="Create new group" variant="secondary" icon="add" fullWidth onPress={onCreate} style={{ marginTop: space.md }} />
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+
+/* ─── Skeleton ───────────────────────────────────────────────────────────── */
+
+function GroupsSkeleton() {
+  return (
+    <View style={{ gap: space.lg }}>
+      <SkeletonBlock height={180} radius={radius.card} />
+      <View style={{ flexDirection: 'row', gap: space.md }}>
+        <SkeletonBlock height={80} radius={radius.card} style={{ flex: 1 }} />
+        <SkeletonBlock height={80} radius={radius.card} style={{ flex: 1 }} />
+        <SkeletonBlock height={80} radius={radius.card} style={{ flex: 1 }} />
+      </View>
+      <View style={{ gap: space.sm }}>
+        <SkeletonBlock height={72} radius={radius.card} />
+        <SkeletonBlock height={72} radius={radius.card} />
+        <SkeletonBlock height={72} radius={radius.card} />
+      </View>
+    </View>
+  );
+}
+
+/* ─── Screen ─────────────────────────────────────────────────────────────── */
+
+export default function GroupsScreen() {
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const queryClient = useQueryClient();
+  const { user } = useAuthStore();
+  const { activeGroupId, setActiveGroupId } = useGroupStore();
+  const { data: groups, isLoading, error, refetch, isRefetching } = useUserGroups();
+  const { data: pendingInvites } = usePendingInvites();
+  const acceptInvite = useAcceptInvite();
+  const [switchOpen, setSwitchOpen] = useState(false);
+
+  const activeGroup = useMemo(() => {
+    const list = groups ?? [];
+    return list.find((g) => g.id === activeGroupId) ?? list[0] ?? null;
+  }, [groups, activeGroupId]);
+
+  const monthKey = useMemo(() => getMonthKey(), []);
+  const userId = user?.id ?? '';
+
+  const openSwitch = useCallback(() => { hapticLight(); setSwitchOpen(true); }, []);
+  const closeSwitch = useCallback(() => { hapticLight(); setSwitchOpen(false); }, []);
+
+  const handleSelectGroup = useCallback((groupId: string) => {
+    hapticMedium();
+    setActiveGroupId(groupId);
+    queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
+    setSwitchOpen(false);
+  }, [queryClient, setActiveGroupId]);
+
+  const goOnboarding = useCallback(() => { hapticMedium(); setSwitchOpen(false); router.push('/onboarding'); }, [router]);
+  const goManage = useCallback(() => { hapticMedium(); router.push('/group-edit'); }, [router]);
+  const goMembers = useCallback(() => { hapticMedium(); router.push('/members'); }, [router]);
+  const goExpenses = useCallback(() => { hapticMedium(); router.push('/(tabs)/expenses'); }, [router]);
+  const handleAcceptInvite = useCallback((groupId: string) => { hapticMedium(); acceptInvite.mutate(groupId); }, [acceptInvite]);
+
+  const onRefresh = useCallback(() => {
+    hapticLight();
+    void refetch();
+    if (activeGroup) {
+      queryClient.invalidateQueries({ queryKey: ['expenses', 'list', activeGroup.id] });
+      queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
+    }
+  }, [refetch, queryClient, activeGroup]);
+
+  const acceptingId = typeof acceptInvite.variables === 'string' ? acceptInvite.variables : null;
+
+  return (
+    <Screen>
+      <ScrollView
+        contentContainerStyle={{ paddingTop: 12, paddingBottom: 120, paddingHorizontal: space.gutter, gap: space.lg }}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={onRefresh} tintColor={colors.sage} />}
+      >
+        {isLoading ? (
+          <GroupsSkeleton />
+        ) : error ? (
+          <EmptyState icon="cloud-offline-outline" title="Couldn't load group" description="Check your connection and try again." actionLabel="Retry" onAction={() => void refetch()} />
+        ) : !activeGroup ? (
+          <EmptyState icon="people-outline" title="Set up your first group" description="Create a space to track shared expenses together." actionLabel="Get started" onAction={goOnboarding} />
+        ) : (
+          <>
+            <GroupHero group={activeGroup} onSwitch={openSwitch} onManage={goManage} onMembers={goMembers} />
+            <StatsRow groupId={activeGroup.id} userId={userId} currency={activeGroup.currency} monthKey={monthKey} />
+            <MembersSection group={activeGroup} currentUserId={userId} monthKey={monthKey} onSeeAll={goMembers} onInvite={goMembers} />
+            <RecentActivity group={activeGroup} onSeeAll={goExpenses} />
+            {pendingInvites && pendingInvites.length > 0 ? (
+              <PendingInvites invites={pendingInvites} acceptingId={acceptingId} isPending={acceptInvite.isPending} onAccept={handleAcceptInvite} />
+            ) : null}
+          </>
+        )}
+      </ScrollView>
+
+      <SwitchGroupModal
+        visible={switchOpen}
+        groups={groups ?? []}
+        activeGroupId={activeGroup?.id ?? null}
+        onClose={closeSwitch}
+        onSelect={handleSelectGroup}
+        onCreate={goOnboarding}
+      />
+    </Screen>
   );
 }
