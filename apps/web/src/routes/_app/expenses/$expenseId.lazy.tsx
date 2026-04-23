@@ -174,6 +174,7 @@ export function ExpenseDetailPage() {
   const approvalStatus = expense.approval_status ?? 'approved';
   const isApprovalBlocked = approvalStatus !== 'approved';
   const missingParticipantProfileCount = expense.participants.filter((participant) => !participant.user).length;
+  const paidByName = expense.paid_by_user?.name ?? 'the payer';
 
   // Fetch payment methods for the person who paid upfront
   const defaultMethod = paidByMethods?.find((m) => m.is_default) ?? paidByMethods?.[0] ?? null;
@@ -671,7 +672,7 @@ export function ExpenseDetailPage() {
                         {expense.paid_by_user_id && (
                           <Table.Td style={{ textAlign: 'right' }}>
                             <Text size="sm" c="dimmed">
-                              {reimbursement ? expense.paid_by_user?.name : '—'}
+                              {reimbursement ? paidByName : '—'}
                             </Text>
                           </Table.Td>
                         )}
@@ -710,7 +711,7 @@ export function ExpenseDetailPage() {
                                   href={buildPaymentUrl({ provider: paymentLinkResult.provider, link: defaultMethod?.payment_link ?? '' }, reimbursement.amount)?.url ?? '#'}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  aria-label={`Pay ${expense.paid_by_user?.name} via ${getProviderDisplayName(paymentLinkResult.provider)}`}
+                                  aria-label={`Pay ${paidByName} via ${getProviderDisplayName(paymentLinkResult.provider)}`}
                                 >
                                   <IconExternalLink size={16} />
                                 </ActionIcon>
@@ -851,7 +852,7 @@ export function ExpenseDetailPage() {
             <Paper className="commune-soft-panel" p="xl">
               <Group gap="xs" mb="md">
                 <IconWallet size={20} />
-                <Text fw={700} size="lg">Pay {expense.paid_by_user.name}</Text>
+                <Text fw={700} size="lg">Pay {paidByName}</Text>
               </Group>
 
               {isPaymentMethodsError ? (
@@ -866,7 +867,7 @@ export function ExpenseDetailPage() {
               ) : paymentLinkResult ? (
                 <Stack gap="md">
                   <Text size="sm" c="dimmed">
-                    {expense.paid_by_user.name} accepts payments via {getProviderDisplayName(paymentLinkResult.provider)}.
+                    {paidByName} accepts payments via {getProviderDisplayName(paymentLinkResult.provider)}.
                     Click below to pay your share directly.
                   </Text>
                   {reimbursements
@@ -925,7 +926,7 @@ export function ExpenseDetailPage() {
                 </Stack>
               ) : (
                 <Text size="sm" c="dimmed">
-                  {expense.paid_by_user.name} hasn&apos;t set up a payment link yet.
+                  {paidByName} hasn&apos;t set up a payment link yet.
                   {isAdmin && ' Go to Settings to add one.'}
                 </Text>
               )}

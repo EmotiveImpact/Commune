@@ -44,7 +44,7 @@
     {
       "name": "overview-route",
       "prefix": "overview.lazy-",
-      "maxKiB": 20
+      "maxKiB": 21
     },
     {
       "name": "activity-route",

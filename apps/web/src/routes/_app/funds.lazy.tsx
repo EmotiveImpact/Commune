@@ -50,18 +50,24 @@ import {
 import { PageHeader } from '../../components/page-header';
 import { EmptyState } from '../../components/empty-state';
 import { ExpenseListSkeleton } from '../../components/page-skeleton';
+import { QueryErrorState } from '../../components/query-error-state';
 
 export const Route = createLazyFileRoute('/_app/funds')({
   component: FundsPage,
 });
 
-function FundsPage() {
+export function FundsPage() {
   useEffect(() => {
     setPageTitle('Funds');
   }, []);
 
   const { activeGroupId } = useGroupStore();
-  const { data: group } = useGroupSummary(activeGroupId ?? '');
+  const {
+    data: group,
+    error: groupError,
+    isError: isGroupError,
+    refetch: refetchGroup,
+  } = useGroupSummary(activeGroupId ?? '');
 
   const [selectedFundId, setSelectedFundId] = useState<string | null>(null);
 
@@ -75,6 +81,19 @@ function FundsPage() {
         icon={IconPigMoney}
         title="Select a group first"
         description="Choose a group in the sidebar to manage shared funds."
+      />
+    );
+  }
+
+  if (isGroupError) {
+    return (
+      <QueryErrorState
+        title="Failed to load funds"
+        error={groupError}
+        onRetry={() => {
+          void refetchGroup();
+        }}
+        icon={IconPigMoney}
       />
     );
   }
