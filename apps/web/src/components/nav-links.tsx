@@ -52,7 +52,7 @@ export const navGroups: NavGroup[] = [
     label: 'Insights',
     icon: <IconChartPie size={14} />,
     links: [
-      { label: 'Command Centre', to: '/overview', icon: <IconArrowsExchange size={20} />, 'aria-label': 'Cross-group overview' },
+      { label: 'Settle up', to: '/overview', icon: <IconArrowsExchange size={20} />, 'aria-label': 'View cross-group settlement' },
       { label: 'Breakdown', to: '/breakdown', icon: <IconFileText size={20} />, 'aria-label': 'View settlement breakdown' },
       { label: 'Analytics', to: '/analytics', icon: <IconChartBar size={20} />, 'aria-label': 'View spending analytics' },
     ],

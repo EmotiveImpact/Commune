@@ -48,6 +48,7 @@ import { ActivitySkeleton } from '../../components/page-skeleton';
 import { EmptyState } from '../../components/empty-state';
 import { PageHeader } from '../../components/page-header';
 import { QueryErrorState } from '../../components/query-error-state';
+import { InlineIssue, PageStack } from '../../components/ui-primitives';
 
 export const Route = createLazyFileRoute('/_app/activity')({
   component: ActivityPage,
@@ -322,7 +323,7 @@ function ActivityPage() {
   ];
 
   return (
-    <Stack gap="lg">
+    <PageStack>
       <PageHeader
         title="Activity"
         subtitle={`Everything that happened in ${group?.name ?? 'this group'}`}
@@ -378,14 +379,25 @@ function ActivityPage() {
       </PageHeader>
 
       {isPlanLimitsError && (
-        <QueryErrorState
-          title="Failed to load export access"
-          error={planLimitsError}
-          onRetry={() => {
-            void refetchPlanLimits();
-          }}
-          icon={IconDownload}
-        />
+        <InlineIssue
+          title="Export access is temporarily unavailable"
+          color="orange"
+          icon={<IconDownload size={16} />}
+          action={(
+            <Button
+              size="compact-xs"
+              variant="light"
+              color="orange"
+              onClick={() => {
+                void refetchPlanLimits();
+              }}
+            >
+              Retry
+            </Button>
+          )}
+        >
+          {planLimitsError instanceof Error ? planLimitsError.message : 'Activity export access could not be checked.'}
+        </InlineIssue>
       )}
 
       <div className="commune-filter-chips">
@@ -686,6 +698,6 @@ function ActivityPage() {
         </Stack>
         </Grid.Col>
       </Grid>
-    </Stack>
+    </PageStack>
   );
 }

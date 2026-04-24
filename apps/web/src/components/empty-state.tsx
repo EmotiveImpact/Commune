@@ -31,7 +31,7 @@ export function EmptyState({
   h = 300,
 }: EmptyStateProps) {
   return (
-    <Center h={h}>
+    <Center h={h} className="commune-empty-state-wrap">
       <Paper className="commune-soft-panel" p="xl" maw={440} w="100%">
         <Stack align="center" gap="md">
           <ThemeIcon

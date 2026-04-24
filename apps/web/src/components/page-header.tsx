@@ -13,7 +13,7 @@ export function PageHeader({ title, subtitle, children }: PageHeaderProps) {
         <div className="commune-page-header-title">{title}</div>
         <div className="commune-page-header-subtitle">{subtitle}</div>
       </div>
-      {children && <div>{children}</div>}
+      {children && <div className="commune-page-header-actions">{children}</div>}
     </div>
   );
 }

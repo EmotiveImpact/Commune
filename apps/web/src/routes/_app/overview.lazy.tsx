@@ -88,7 +88,7 @@ export const Route = createLazyFileRoute('/_app/overview')({
 
 function CrossGroupOverviewPage() {
   useEffect(() => {
-    setPageTitle('Command Centre');
+    setPageTitle('Settle up');
   }, []);
 
   const { user } = useAuthStore();
@@ -151,7 +151,7 @@ function CrossGroupOverviewPage() {
   if (isError) {
     return (
       <QueryErrorState
-        title="Failed to load command centre"
+        title="Failed to load settle up"
         error={error}
         onRetry={() => {
           void refetch();
@@ -181,8 +181,8 @@ function CrossGroupOverviewPage() {
     return (
       <Stack gap="lg">
         <PageHeader
-          title="Command Centre"
-          subtitle="Your priorities across all groups"
+          title="Settle up"
+          subtitle="Your balances and priorities across all groups"
         />
 
         {/* My Groups (always shown) */}
@@ -263,8 +263,8 @@ function CrossGroupOverviewPage() {
   return (
     <Stack gap="lg">
       <PageHeader
-        title="Command Centre"
-        subtitle="Your priorities across all groups"
+        title="Settle up"
+        subtitle="Your balances and priorities across all groups"
       />
 
       {/* Smart Nudges */}

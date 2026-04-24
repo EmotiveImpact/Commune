@@ -50,6 +50,7 @@ import { useDeferredSection } from '../../hooks/use-deferred-section';
 import { SettingsSkeleton } from '../../components/page-skeleton';
 import { PageHeader } from '../../components/page-header';
 import { QueryErrorState } from '../../components/query-error-state';
+import { PageStack } from '../../components/ui-primitives';
 
 export const Route = createLazyFileRoute('/_app/settings')({
   component: SettingsPage,
@@ -290,7 +291,7 @@ export function SettingsPage() {
   }
 
   return (
-    <Stack gap="xl">
+    <PageStack gap="xl">
       <PageHeader
         title="Settings"
         subtitle="Manage your preferences, notifications, and account"
@@ -703,6 +704,6 @@ export function SettingsPage() {
           </Paper>
         </Stack>
       </form>
-    </Stack>
+    </PageStack>
   );
 }
