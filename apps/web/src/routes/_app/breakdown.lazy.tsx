@@ -36,6 +36,7 @@ import { EmptyState } from '../../components/empty-state';
 import { PageHeader } from '../../components/page-header';
 import { PaginationBar, paginate, PAGE_SIZE } from '../../components/pagination';
 import { QueryErrorState } from '../../components/query-error-state';
+import { FilterBar, InlineIssue, PageStack } from '../../components/ui-primitives';
 
 export const Route = createLazyFileRoute('/_app/breakdown')({
   component: BreakdownPage,
@@ -529,10 +530,10 @@ export function BreakdownPage() {
   }
 
   return (
-    <Stack gap="lg">
+    <PageStack>
       <PageHeader
-        title="Your Breakdown"
-        subtitle="What you owe and what you've paid"
+        title="Your breakdown"
+        subtitle="What you owe, what is paid, and what still needs action"
       >
         <Group gap="sm">
           <Select
@@ -580,14 +581,25 @@ export function BreakdownPage() {
       </PageHeader>
 
       {isPlanLimitsError && (
-        <QueryErrorState
-          title="Failed to load export access"
-          error={planLimitsError}
-          onRetry={() => {
-            void refetchPlanLimits();
-          }}
-          icon={IconDownload}
-        />
+        <InlineIssue
+          title="Export access is temporarily unavailable"
+          color="orange"
+          icon={<IconDownload size={16} />}
+          action={(
+            <Button
+              size="compact-xs"
+              variant="light"
+              color="orange"
+              onClick={() => {
+                void refetchPlanLimits();
+              }}
+            >
+              Retry
+            </Button>
+          )}
+        >
+          {planLimitsError instanceof Error ? planLimitsError.message : 'Statement export access could not be checked.'}
+        </InlineIssue>
       )}
 
       {isLoading ? (
@@ -652,8 +664,9 @@ export function BreakdownPage() {
             />
           )}
 
-          <Group justify="space-between" align="center">
-            <Text size="sm" c="dimmed">{filteredItems.length} expenses</Text>
+          <FilterBar
+            aside={<Text size="sm" c="dimmed">{filteredItems.length} expenses</Text>}
+          >
             <Select
               placeholder="Filter by category"
               data={categoryOptions}
@@ -662,7 +675,7 @@ export function BreakdownPage() {
               clearable
               w={220}
             />
-          </Group>
+          </FilterBar>
 
           {filteredItems.length === 0 ? (
             <EmptyState
@@ -749,6 +762,6 @@ export function BreakdownPage() {
           />
         </>
       )}
-    </Stack>
+    </PageStack>
   );
 }

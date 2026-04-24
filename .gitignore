@@ -11,7 +11,11 @@ dist
 .DS_Store
 .supabase
 .superpowers/
+.playwright-mcp/
 apps/web/.claude/
+apps/web/apps/
+apps/web/load/*.json
+apps/mobile/.claude/
 apps/mobile/.reference-backup/
 backup-anything/
 supabase/.temp/
