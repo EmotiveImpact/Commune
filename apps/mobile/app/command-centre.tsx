@@ -1,48 +1,32 @@
 import { useMemo } from 'react';
-import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { IconChevronLeft, IconSparkles } from '@tabler/icons-react-native';
 import { formatCurrency } from '@commune/utils';
-import { useThemeStore } from '@/stores/theme';
 import { useAuthStore } from '@/stores/auth';
-import { useUserGroups } from '@/hooks/use-groups';
 import { useCrossGroupSettlements } from '@/hooks/use-cross-group';
+import { colors, font, radius, space } from '@/constants/design';
+import { Avatar, EmptyState, Screen } from '@/components/primitives';
 
-const GROUP_TYPE_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
-  home: 'home-outline',
-  couple: 'heart-outline',
-  workspace: 'briefcase-outline',
-  project: 'people-outline',
-  trip: 'airplane-outline',
-  other: 'grid-outline',
-};
-
-function formatGroupSummary(groups: string[]) {
-  if (groups.length === 0) return 'Group';
+function formatGroupSummary(groups: string[] | undefined) {
+  if (!groups || groups.length === 0) return 'Across groups';
   if (groups.length === 1) return groups[0]!;
   return `${groups.length} groups`;
 }
 
-function formatCurrencyBreakdown(totals: Map<string, number>) {
-  if (totals.size === 0) return formatCurrency(0, 'GBP');
-  return Array.from(totals.entries())
-    .map(([currency, amount]) => formatCurrency(amount, currency))
-    .join(' + ');
+function formatSignedAmount(amount: number, currency: string) {
+  const formatted = formatCurrency(Math.abs(amount), currency);
+  if (amount > 0) return `+${formatted}`;
+  if (amount < 0) return `-${formatted}`;
+  return formatted;
 }
 
-export default function CommandCentreScreen() {
+export default function SettleUpScreen() {
   const router = useRouter();
-  const isDark = useThemeStore((s) => s.mode) === 'dark';
   const user = useAuthStore((s) => s.user);
-  const { data: groups } = useUserGroups();
   const { data: crossGroup, isLoading } = useCrossGroupSettlements(user?.id ?? '');
 
-  const bg = isDark ? '#0A0A0A' : '#FAFAFA';
-  const surface = isDark ? '#18181B' : '#FFFFFF';
-  const text = isDark ? '#FAFAFA' : '#171b24';
-  const textSoft = isDark ? '#A1A1AA' : '#667085';
-  const border = isDark ? 'rgba(255,255,255,0.10)' : 'rgba(23,27,36,0.10)';
-  const accent = '#2d6a4f';
+  const primaryCurrency = user?.default_currency ?? 'GBP';
 
   const youOwe = useMemo(() => {
     if (!crossGroup?.transactions || !user?.id) return [];
@@ -54,201 +38,379 @@ export default function CommandCentreScreen() {
     return crossGroup.transactions.filter((t) => t.toUserId === user.id);
   }, [crossGroup, user?.id]);
 
-  const totalOweByCurrency = useMemo(() => {
-    const totals = new Map<string, number>();
-    for (const transaction of youOwe) {
-      totals.set(
-        transaction.currency,
-        (totals.get(transaction.currency) ?? 0) + transaction.netAmount,
-      );
-    }
-    return totals;
-  }, [youOwe]);
+  const sumInPrimary = (list: typeof youOwe) =>
+    list
+      .filter((t) => t.currency === primaryCurrency)
+      .reduce((acc, t) => acc + t.netAmount, 0);
 
-  const totalOwedByCurrency = useMemo(() => {
-    const totals = new Map<string, number>();
-    for (const transaction of owedToYou) {
-      totals.set(
-        transaction.currency,
-        (totals.get(transaction.currency) ?? 0) + transaction.netAmount,
-      );
-    }
-    return totals;
-  }, [owedToYou]);
+  const owedTotal = sumInPrimary(owedToYou);
+  const oweTotal = sumInPrimary(youOwe);
+  const netBalance = owedTotal - oweTotal;
 
-  if (isLoading) {
-    return (
-      <View style={{ flex: 1, backgroundColor: bg, justifyContent: 'center', alignItems: 'center' }}>
-        <Text style={{ color: textSoft }}>Loading...</Text>
-      </View>
-    );
-  }
+  const otherCurrencies = useMemo(() => {
+    const set = new Set<string>();
+    for (const t of [...youOwe, ...owedToYou]) {
+      if (t.currency !== primaryCurrency) set.add(t.currency);
+    }
+    return Array.from(set);
+  }, [youOwe, owedToYou, primaryCurrency]);
+
+  const showSuggest = youOwe.length >= 1 && youOwe.length <= 3;
+
+  const handleHistory = () => {
+    router.push('/activity');
+  };
+
+  const handleBack = () => {
+    if (router.canGoBack()) router.back();
+    else router.replace('/(tabs)');
+  };
+
+  const netIsPositive = netBalance >= 0;
+  const netTone = netBalance === 0
+    ? colors.textInverse
+    : netIsPositive
+      ? colors.sageSoft
+      : colors.oweBg;
+
+  const nothingOutstanding =
+    youOwe.length === 0 && owedToYou.length === 0 && !isLoading;
 
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: bg }}>
-      <View style={{ padding: 20, paddingTop: 60 }}>
-        <TouchableOpacity onPress={() => router.back()} style={{ marginBottom: 16 }}>
-          <Ionicons name="arrow-back" size={24} color={text} />
-        </TouchableOpacity>
+    <Screen>
+      {/* Header */}
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          paddingHorizontal: space.gutter,
+          paddingTop: 56,
+          paddingBottom: space.sm,
+        }}
+      >
+        <Pressable
+          onPress={handleBack}
+          hitSlop={12}
+          style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1, width: 32 })}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+        >
+          <IconChevronLeft size={24} color={colors.textPrimary} />
+        </Pressable>
+        <Text style={[font.h3, { color: colors.textPrimary }]}>Settle up</Text>
+        <Pressable
+          onPress={handleHistory}
+          hitSlop={12}
+          style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1, width: 60, alignItems: 'flex-end' })}
+          accessibilityRole="button"
+          accessibilityLabel="View settlement history"
+        >
+          <Text style={{ fontSize: 14, fontWeight: '600', color: colors.sage }}>History</Text>
+        </Pressable>
+      </View>
 
-        <Text style={{ fontSize: 24, fontWeight: '800', color: text, marginBottom: 4 }}>Command Centre</Text>
-        <Text style={{ fontSize: 14, color: textSoft, marginBottom: 24 }}>Your priorities across all groups</Text>
+      <ScrollView
+        contentContainerStyle={{
+          paddingTop: 12,
+          paddingBottom: 120,
+          paddingHorizontal: space.gutter,
+        }}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Hero card */}
+        <View
+          style={{
+            backgroundColor: colors.bgInk,
+            borderRadius: radius.hero,
+            padding: 24,
+            marginBottom: space.md,
+          }}
+        >
+          <Text
+            style={{
+              fontSize: 11,
+              fontWeight: '700',
+              letterSpacing: 0.8,
+              textTransform: 'uppercase',
+              color: 'rgba(255,255,255,0.6)',
+            }}
+          >
+            Your net balance
+          </Text>
 
-        {/* Summary cards */}
-        <View style={{ flexDirection: 'row', gap: 12, marginBottom: 24 }}>
-          <View style={{
-            flex: 1,
-            backgroundColor: youOwe.length > 0 ? 'rgba(239,68,68,0.08)' : surface,
-            borderRadius: 16,
-            padding: 16,
-            borderWidth: 1,
-            borderColor: youOwe.length > 0 ? 'rgba(239,68,68,0.2)' : border,
-          }}>
-            <Text style={{ fontSize: 12, color: textSoft }}>You owe</Text>
-            <Text style={{ fontSize: 20, fontWeight: '800', color: youOwe.length > 0 ? '#EF4444' : text, marginTop: 4 }}>
-              {formatCurrencyBreakdown(totalOweByCurrency)}
+          <Text
+            style={{
+              fontSize: 34,
+              fontWeight: '700',
+              letterSpacing: -0.5,
+              color: netTone,
+              marginTop: 6,
+            }}
+          >
+            {formatSignedAmount(netBalance, primaryCurrency)}
+          </Text>
+
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 10 }}>
+            <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)' }}>
+              <Text style={{ fontWeight: '700', color: colors.textInverse }}>
+                {formatCurrency(owedTotal, primaryCurrency)}
+              </Text>
+              {' owed to you  ·  '}
+              <Text style={{ fontWeight: '700', color: colors.textInverse }}>
+                {formatCurrency(oweTotal, primaryCurrency)}
+              </Text>
+              {' you owe'}
             </Text>
           </View>
-          <View style={{
-            flex: 1,
-            backgroundColor: owedToYou.length > 0 ? 'rgba(16,185,129,0.08)' : surface,
-            borderRadius: 16,
-            padding: 16,
-            borderWidth: 1,
-            borderColor: owedToYou.length > 0 ? 'rgba(16,185,129,0.2)' : border,
-          }}>
-            <Text style={{ fontSize: 12, color: textSoft }}>Owed to you</Text>
-            <Text style={{ fontSize: 20, fontWeight: '800', color: owedToYou.length > 0 ? '#10B981' : text, marginTop: 4 }}>
-              {formatCurrencyBreakdown(totalOwedByCurrency)}
-            </Text>
-          </View>
-        </View>
 
-        {/* Priority actions */}
-        {youOwe.length > 0 && (
-          <View style={{ marginBottom: 24 }}>
-            <Text style={{ fontSize: 16, fontWeight: '700', color: text, marginBottom: 12 }}>Priority payments</Text>
-            {youOwe.slice(0, 3).map((t) => (
-              <View key={`${t.fromUserId}-${t.toUserId}-${t.currency}`} style={{
-                backgroundColor: surface,
-                borderRadius: 12,
-                padding: 14,
-                marginBottom: 8,
-                borderWidth: 1,
-                borderColor: border,
-                flexDirection: 'row',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-              }}>
-                <View>
-                  <Text style={{ fontSize: 14, fontWeight: '600', color: text }}>
-                    Pay {t.toName ?? 'someone'}
-                  </Text>
-                  <Text style={{ fontSize: 12, color: textSoft }}>{formatGroupSummary(t.groups)}</Text>
-                </View>
-                <Text style={{ fontSize: 16, fontWeight: '700', color: '#EF4444' }}>
-                  {formatCurrency(t.netAmount, t.currency)}
-                </Text>
-              </View>
-            ))}
-          </View>
-        )}
-
-        {/* Waiting on others */}
-        {owedToYou.length > 0 && (
-          <View style={{ marginBottom: 24 }}>
-            <Text style={{ fontSize: 16, fontWeight: '700', color: text, marginBottom: 12 }}>Waiting on others</Text>
-            {owedToYou.slice(0, 3).map((t) => (
-              <View key={`${t.fromUserId}-${t.toUserId}-${t.currency}`} style={{
-                backgroundColor: surface,
-                borderRadius: 12,
-                padding: 14,
-                marginBottom: 8,
-                borderWidth: 1,
-                borderColor: border,
-                flexDirection: 'row',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-              }}>
-                <View>
-                  <Text style={{ fontSize: 14, fontWeight: '600', color: text }}>
-                    {t.fromName ?? 'Someone'} owes you
-                  </Text>
-                  <Text style={{ fontSize: 12, color: textSoft }}>{formatGroupSummary(t.groups)}</Text>
-                </View>
-                <Text style={{ fontSize: 16, fontWeight: '700', color: '#10B981' }}>
-                  {formatCurrency(t.netAmount, t.currency)}
-                </Text>
-              </View>
-            ))}
-          </View>
-        )}
-
-        {/* My Groups */}
-        <Text style={{ fontSize: 16, fontWeight: '700', color: text, marginBottom: 12 }}>My groups</Text>
-        {(groups ?? []).map((g) => {
-          const icon = GROUP_TYPE_ICONS[g.type] ?? 'grid-outline';
-          const perGroupData = crossGroup?.perGroupData?.find((p) => p.groupId === g.id);
-          const hasDebts = (perGroupData?.settlement?.transactions?.length ?? 0) > 0;
-          const memberCount = g.members?.filter((member) => member.status === 'active').length ?? 0;
-
-          return (
-            <TouchableOpacity
-              key={g.id}
-              onPress={() => router.push({ pathname: '/group-hub', params: { groupId: g.id } })}
+          {otherCurrencies.length > 0 && (
+            <View
               style={{
-                backgroundColor: surface,
-                borderRadius: 14,
-                padding: 16,
-                marginBottom: 10,
-                borderWidth: 1,
-                borderColor: border,
-                flexDirection: 'row',
-                alignItems: 'center',
-              }}
-            >
-              <View style={{
-                width: 40,
-                height: 40,
-                borderRadius: 12,
-                backgroundColor: isDark ? '#1f2330' : '#e8f0eb',
-                justifyContent: 'center',
-                alignItems: 'center',
-                marginRight: 14,
-              }}>
-                <Ionicons name={icon} size={20} color={accent} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 15, fontWeight: '600', color: text }}>{g.name}</Text>
-                <Text style={{ fontSize: 12, color: textSoft }}>{memberCount} members</Text>
-              </View>
-              <View style={{
+                alignSelf: 'flex-start',
+                marginTop: 10,
                 paddingHorizontal: 10,
                 paddingVertical: 4,
-                borderRadius: 10,
-                backgroundColor: hasDebts ? 'rgba(245,158,11,0.12)' : 'rgba(16,185,129,0.12)',
-              }}>
-                <Text style={{
-                  fontSize: 11,
-                  fontWeight: '600',
-                  color: hasDebts ? '#F59E0B' : '#10B981',
-                }}>
-                  {hasDebts ? 'Active' : 'Settled'}
-                </Text>
-              </View>
-              <Ionicons name="chevron-forward" size={16} color={textSoft} style={{ marginLeft: 8 }} />
-            </TouchableOpacity>
-          );
-        })}
+                borderRadius: radius.pill,
+                backgroundColor: 'rgba(255,255,255,0.12)',
+              }}
+            >
+              <Text style={{ fontSize: 11, fontWeight: '700', color: colors.textInverse, letterSpacing: 0.3 }}>
+                +{otherCurrencies.length} more
+              </Text>
+            </View>
+          )}
+        </View>
 
-        {youOwe.length === 0 && owedToYou.length === 0 && (
-          <View style={{ alignItems: 'center', paddingVertical: 40 }}>
-            <Ionicons name="checkmark-circle" size={48} color="#10B981" />
-            <Text style={{ fontSize: 16, fontWeight: '600', color: text, marginTop: 12 }}>All settled!</Text>
-            <Text style={{ fontSize: 13, color: textSoft, marginTop: 4 }}>No outstanding balances across your groups.</Text>
+        {/* Smart suggest card */}
+        {showSuggest && (
+          <View
+            style={{
+              backgroundColor: colors.bgSurface,
+              borderRadius: 18,
+              borderWidth: 1.5,
+              borderColor: colors.sage,
+              paddingVertical: 14,
+              paddingHorizontal: 16,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 12,
+              marginBottom: space.lg,
+            }}
+          >
+            <View
+              style={{
+                width: 28,
+                height: 28,
+                borderRadius: 14,
+                backgroundColor: colors.sageSoft,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <IconSparkles size={16} color={colors.sage} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 13, fontWeight: '700', color: colors.textPrimary }}>
+                {buildSuggestTitle(youOwe)}
+              </Text>
+              <Text style={{ fontSize: 11.5, fontWeight: '500', color: colors.textMuted, marginTop: 2 }}>
+                {youOwe.length} transfer{youOwe.length === 1 ? '' : 's'} cancels out all your debts
+              </Text>
+            </View>
+            <Pressable
+              onPress={() => {
+                /* TODO: trigger batch pay flow */
+              }}
+              style={({ pressed }) => ({
+                backgroundColor: colors.sage,
+                paddingHorizontal: 12,
+                paddingVertical: 8,
+                borderRadius: 10,
+                opacity: pressed ? 0.85 : 1,
+              })}
+              accessibilityRole="button"
+              accessibilityLabel="Send all suggested payments"
+            >
+              <Text style={{ fontSize: 12, fontWeight: '700', color: colors.textInverse }}>
+                Send {youOwe.length === 1 ? 'now' : 'all'}
+              </Text>
+            </Pressable>
           </View>
         )}
+
+        {/* Empty state */}
+        {nothingOutstanding && (
+          <EmptyState
+            icon="checkmark-done-outline"
+            title="All settled"
+            description="You don't owe anyone and no one owes you."
+          />
+        )}
+
+        {/* Owes you */}
+        {owedToYou.length > 0 && (
+          <View style={{ marginTop: space.md }}>
+            <Text
+              style={{
+                fontSize: 10,
+                fontWeight: '700',
+                letterSpacing: 0.8,
+                textTransform: 'uppercase',
+                color: colors.textMuted,
+                marginBottom: space.sm,
+              }}
+            >
+              Owes you
+            </Text>
+            {owedToYou.map((t) => (
+              <PersonRow
+                key={`owed-${t.fromUserId}-${t.toUserId}-${t.currency}`}
+                name={t.fromName ?? 'Someone'}
+                meta={formatGroupSummary(t.groups)}
+                amount={formatCurrency(t.netAmount, t.currency)}
+                amountColor={colors.sageInk}
+                actionLabel="Remind"
+                actionVariant="ghost"
+                onAction={() => {
+                  /* TODO: send reminder */
+                }}
+              />
+            ))}
+          </View>
+        )}
+
+        {/* You owe */}
+        {youOwe.length > 0 && (
+          <View style={{ marginTop: space.lg }}>
+            <Text
+              style={{
+                fontSize: 10,
+                fontWeight: '700',
+                letterSpacing: 0.8,
+                textTransform: 'uppercase',
+                color: colors.textMuted,
+                marginBottom: space.sm,
+              }}
+            >
+              You owe
+            </Text>
+            {youOwe.map((t) => (
+              <PersonRow
+                key={`owe-${t.fromUserId}-${t.toUserId}-${t.currency}`}
+                name={t.toName ?? 'Someone'}
+                meta={formatGroupSummary(t.groups)}
+                amount={formatCurrency(t.netAmount, t.currency)}
+                amountColor={colors.oweText}
+                actionLabel="Pay"
+                actionVariant="primary"
+                onAction={() => {
+                  /* TODO: launch payment flow */
+                }}
+              />
+            ))}
+          </View>
+        )}
+      </ScrollView>
+    </Screen>
+  );
+}
+
+function buildSuggestTitle(
+  youOwe: ReadonlyArray<{ toName?: string | null; netAmount: number; currency: string }>,
+): string {
+  if (youOwe.length === 0) return 'You are all settled';
+  if (youOwe.length === 1) {
+    const t = youOwe[0]!;
+    return `Pay ${t.toName ?? 'them'} ${formatCurrency(t.netAmount, t.currency)} to clear everything`;
+  }
+  const a = youOwe[0]!;
+  const b = youOwe[1]!;
+  const aLabel = `${a.toName ?? 'them'} ${formatCurrency(a.netAmount, a.currency)}`;
+  const bLabel = `${b.toName ?? 'them'} ${formatCurrency(b.netAmount, b.currency)}`;
+  return `Pay ${aLabel} and ${bLabel} to clear everything`;
+}
+
+function PersonRow({
+  name,
+  meta,
+  amount,
+  amountColor,
+  actionLabel,
+  actionVariant,
+  onAction,
+}: {
+  name: string;
+  meta: string;
+  amount: string;
+  amountColor: string;
+  actionLabel: string;
+  actionVariant: 'primary' | 'ghost';
+  onAction: () => void;
+}) {
+  const isPrimary = actionVariant === 'primary';
+  return (
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: space.md,
+        backgroundColor: colors.bgSurface,
+        borderRadius: radius.card,
+        paddingVertical: 12,
+        paddingHorizontal: 14,
+        marginBottom: space.sm,
+        borderWidth: 1,
+        borderColor: colors.borderSubtle,
+      }}
+    >
+      <Avatar name={name} size={40} bg={colors.sageSoft} fg={colors.sageInk} />
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text
+          style={{ fontSize: 14, fontWeight: '700', color: colors.textPrimary }}
+          numberOfLines={1}
+        >
+          {name}
+        </Text>
+        <Text
+          style={{ fontSize: 11.5, fontWeight: '500', color: colors.textMuted, marginTop: 2 }}
+          numberOfLines={1}
+        >
+          {meta}
+        </Text>
       </View>
-    </ScrollView>
+      <Text
+        style={{
+          fontSize: 14,
+          fontWeight: '700',
+          color: amountColor,
+          fontVariant: ['tabular-nums'],
+        }}
+      >
+        {amount}
+      </Text>
+      <Pressable
+        onPress={onAction}
+        style={({ pressed }) => ({
+          paddingHorizontal: 12,
+          paddingVertical: 8,
+          borderRadius: 10,
+          backgroundColor: isPrimary ? colors.sage : '#F3F1EC',
+          opacity: pressed ? 0.85 : 1,
+        })}
+        accessibilityRole="button"
+        accessibilityLabel={`${actionLabel} ${name}`}
+      >
+        <Text
+          style={{
+            fontSize: 12,
+            fontWeight: '700',
+            color: isPrimary ? colors.textInverse : colors.textPrimary,
+          }}
+        >
+          {actionLabel}
+        </Text>
+      </Pressable>
+    </View>
   );
 }
