@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { MantineProvider } from '@mantine/core';
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NotificationDropdown } from './notification-dropdown';
 
@@ -94,17 +94,17 @@ describe('NotificationDropdown', () => {
     useMarkAllNotificationsReadMock.mockReturnValue({ mutate: vi.fn() });
   });
 
-  it('keeps notification summary disabled on cold mount', () => {
+  it('loads the unread summary on cold mount so the badge appears without interaction', () => {
     render(
       <MantineProvider>
         <NotificationDropdown />
       </MantineProvider>,
     );
 
-    expect(useNotificationSummaryMock).toHaveBeenLastCalledWith({ enabled: false });
+    expect(useNotificationSummaryMock).toHaveBeenLastCalledWith(undefined);
   });
 
-  it('enables notifications immediately when the menu opens without forcing summary', () => {
+  it('enables the full notification feed only when the menu opens', () => {
     render(
       <MantineProvider>
         <NotificationDropdown />
@@ -114,26 +114,7 @@ describe('NotificationDropdown', () => {
     fireEvent.click(screen.getByRole('button', { name: /open notifications/i }));
 
     expect(useNotificationsMock).toHaveBeenLastCalledWith({ enabled: true });
-    expect(useNotificationSummaryMock).toHaveBeenLastCalledWith({ enabled: false });
-  });
-
-  it('enables the unread summary on hover before opening the menu', () => {
-    vi.useFakeTimers();
-
-    render(
-      <MantineProvider>
-        <NotificationDropdown />
-      </MantineProvider>,
-    );
-
-    fireEvent.mouseEnter(screen.getByRole('button', { name: /open notifications/i }));
-    act(() => {
-      vi.advanceTimersByTime(300);
-    });
-
-    expect(useNotificationSummaryMock).toHaveBeenCalledWith({ enabled: true });
-
-    vi.useRealTimers();
+    expect(useNotificationSummaryMock).toHaveBeenLastCalledWith(undefined);
   });
 
   it('shows a retry state when the notifications query fails', () => {

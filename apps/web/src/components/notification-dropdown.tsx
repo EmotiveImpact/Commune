@@ -1,7 +1,7 @@
 import { ActionIcon, Badge, Indicator, Menu, Text, Group, Stack, Box, UnstyledButton } from '@mantine/core';
 import { IconBell, IconReceipt, IconCheck, IconAlertTriangle, IconChecks } from '@tabler/icons-react';
 import { useNavigate } from '@tanstack/react-router';
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import {
   useNotificationSummary,
   useNotifications,
@@ -29,14 +29,12 @@ const iconMap: Record<AppNotification['type'], React.ReactNode> = {
 
 export function NotificationDropdown() {
   const [opened, setOpened] = useState(false);
-  const [summaryEnabled, setSummaryEnabled] = useState(false);
-  const hoverTimeoutRef = useRef<number | null>(null);
   const {
     data: summary,
     isError: isSummaryError,
     error: summaryError,
     refetch: refetchSummary,
-  } = useNotificationSummary({ enabled: summaryEnabled });
+  } = useNotificationSummary();
   const {
     data: notifications = [],
     isLoading,
@@ -50,34 +48,6 @@ export function NotificationDropdown() {
   const unreadCount = opened
     ? notifications.filter((notification) => !notification.read).length
     : summary?.unread_count ?? 0;
-
-  const enableSummary = () => {
-    if (!summaryEnabled) {
-      setSummaryEnabled(true);
-    }
-  };
-
-  const scheduleSummaryPrefetch = () => {
-    if (summaryEnabled || hoverTimeoutRef.current != null) {
-      return;
-    }
-
-    hoverTimeoutRef.current = window.setTimeout(() => {
-      hoverTimeoutRef.current = null;
-      enableSummary();
-    }, 250);
-  };
-
-  const clearScheduledSummaryPrefetch = () => {
-    if (hoverTimeoutRef.current != null) {
-      window.clearTimeout(hoverTimeoutRef.current);
-      hoverTimeoutRef.current = null;
-    }
-  };
-
-  useEffect(() => () => {
-    clearScheduledSummaryPrefetch();
-  }, []);
 
   const handleNotificationClick = (n: AppNotification) => {
     // Mark as read
@@ -121,9 +91,6 @@ export function NotificationDropdown() {
             color="gray"
             size={40}
             aria-label="Open notifications"
-            onMouseEnter={scheduleSummaryPrefetch}
-            onMouseLeave={clearScheduledSummaryPrefetch}
-            onMouseDown={clearScheduledSummaryPrefetch}
           >
             <IconBell size={18} />
           </ActionIcon>
@@ -161,7 +128,6 @@ export function NotificationDropdown() {
               </Text>
               <UnstyledButton
                 onClick={() => {
-                  enableSummary();
                   void refetchSummary();
                 }}
               >
