@@ -317,12 +317,17 @@ function TypeTile({
         backgroundColor: colors.bgSurface,
         borderRadius: radius.card,
         borderWidth: selected ? 1.5 : 1,
-        borderColor: selected ? colors.sage : colors.borderSubtle,
+        borderColor: selected ? colors.sage : colors.border,
         padding: space.base,
         marginBottom: 10,
         flexDirection: 'row',
         alignItems: 'center',
         gap: space.md,
+        shadowColor: '#000',
+        shadowOpacity: 0.05,
+        shadowRadius: 10,
+        shadowOffset: { width: 0, height: 2 },
+        elevation: 2,
         opacity: pressed ? 0.92 : 1,
       })}
     >
@@ -782,6 +787,7 @@ export default function OnboardingScreen() {
   const selectedTypeOption = TYPE_OPTIONS.find((o) => o.value === type) ?? TYPE_OPTIONS[0]!;
 
   const primaryDisabled =
+    (step === 'type' && !type) ||
     (step === 'name' && (!name.trim() || createGroup.isPending || !canCreateGroup)) ||
     (step === 'invite' && inviteMember.isPending);
 
