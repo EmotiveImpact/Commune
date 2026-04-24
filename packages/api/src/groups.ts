@@ -262,7 +262,10 @@ export async function getUserGroupSummaries(_userId?: string): Promise<UserGroup
   });
 }
 
-export async function getUserGroups(userId?: string): Promise<GroupWithMembers[]> {
+export async function getUserGroups(
+  userId?: string,
+  options?: { includeArchived?: boolean },
+): Promise<GroupWithMembers[]> {
   const supabase = getTypedSupabase();
   const resolvedUserId = userId ?? (await requireSessionUser()).id;
   if (!resolvedUserId) throw new Error('Not authenticated');
@@ -285,9 +288,12 @@ export async function getUserGroups(userId?: string): Promise<GroupWithMembers[]
 
   if (error) throw error;
 
-  return (data ?? []).map(
+  const groups = (data ?? []).map(
     (row) => (row as unknown as { group: GroupWithMembers }).group,
   );
+
+  if (options?.includeArchived) return groups;
+  return groups.filter((group) => !group?.archived_at);
 }
 
 export async function getPendingInvites(userId?: string) {
@@ -830,4 +836,50 @@ export async function deleteGroup(groupId: string) {
   const { error } = await supabase.from('groups').delete().eq('id', groupId);
 
   if (error) throw error;
+}
+
+async function requireGroupOwner(groupId: string): Promise<void> {
+  const supabase = getTypedSupabase();
+  const user = await requireSessionUser();
+
+  const { data: group, error: groupError } = await supabase
+    .from('groups')
+    .select('owner_id')
+    .eq('id', groupId)
+    .single();
+
+  if (groupError) throw groupError;
+  if (group?.owner_id !== user.id) {
+    throw new Error('Only the group owner can archive this group.');
+  }
+}
+
+export async function archiveGroup(groupId: string): Promise<Group> {
+  await requireGroupOwner(groupId);
+  const supabase = getTypedSupabase();
+
+  const { data, error } = await supabase
+    .from('groups')
+    .update({ archived_at: new Date().toISOString() })
+    .eq('id', groupId)
+    .select('*')
+    .single();
+
+  if (error) throw error;
+  return data as unknown as Group;
+}
+
+export async function unarchiveGroup(groupId: string): Promise<Group> {
+  await requireGroupOwner(groupId);
+  const supabase = getTypedSupabase();
+
+  const { data, error } = await supabase
+    .from('groups')
+    .update({ archived_at: null })
+    .eq('id', groupId)
+    .select('*')
+    .single();
+
+  if (error) throw error;
+  return data as unknown as Group;
 }

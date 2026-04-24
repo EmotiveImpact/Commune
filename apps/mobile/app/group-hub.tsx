@@ -21,7 +21,7 @@ import { colors, font, radius, space } from '@/constants/design';
 import { getGroupTypeMeta } from '@/constants/design';
 import { useAuthStore } from '@/stores/auth';
 import { useGroupStore } from '@/stores/group';
-import { useGroup, useLeaveGroup, useUpdateGroup } from '@/hooks/use-groups';
+import { useArchiveGroup, useGroup, useLeaveGroup, useUpdateGroup } from '@/hooks/use-groups';
 
 const TYPE_LABELS: Record<string, string> = {
   home: 'Household',
@@ -136,6 +136,7 @@ export default function GroupHubScreen() {
   const { data: group, isLoading } = useGroup(groupId);
   const updateGroup = useUpdateGroup(groupId);
   const leaveGroup = useLeaveGroup();
+  const archiveGroup = useArchiveGroup(groupId);
 
   // Pending edits are a placeholder for future inline editing; rename/type/currency
   // currently flow through the dedicated group-edit route. The hasEdits flag is kept
@@ -147,12 +148,9 @@ export default function GroupHubScreen() {
     [group?.members],
   );
 
-  const isAdmin = useMemo(
-    () =>
-      activeMembers.some(
-        (m: any) => m.user_id === user?.id && m.role === 'admin',
-      ),
-    [activeMembers, user?.id],
+  const isOwner = useMemo(
+    () => Boolean(group?.owner_id && user?.id && group.owner_id === user.id),
+    [group?.owner_id, user?.id],
   );
 
   if (!groupId || (!isLoading && !group)) {
@@ -220,14 +218,20 @@ export default function GroupHubScreen() {
   const handleArchive = () => {
     Alert.alert(
       'Archive group?',
-      'Archiving will close the group for all members. This is permanent.',
+      'You can restore it later.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Archive',
           style: 'destructive',
-          // TODO: wire to archive/close-group mutation once available.
-          onPress: () => router.push('/group-close'),
+          onPress: async () => {
+            try {
+              await archiveGroup.mutateAsync();
+              router.replace('/(tabs)');
+            } catch (err: any) {
+              Alert.alert('Could not archive', err?.message ?? 'Please try again.');
+            }
+          },
         },
       ],
     );
@@ -437,7 +441,7 @@ export default function GroupHubScreen() {
             titleColor={colors.warnText}
             onPress={handleLeave}
           />
-          {isAdmin ? (
+          {isOwner ? (
             <Row
               tile={
                 <View
@@ -454,7 +458,7 @@ export default function GroupHubScreen() {
                 </View>
               }
               title="Archive group"
-              caption="Close for all members · permanent"
+              caption="Hide it for now · you can restore it later"
               titleColor={colors.warnText}
               onPress={handleArchive}
             />

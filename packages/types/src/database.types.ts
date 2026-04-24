@@ -718,6 +718,7 @@ export type Database = {
         Row: {
           approval_policy: Json | null
           approval_threshold: number | null
+          archived_at: string | null
           avatar_url: string | null
           cover_url: string | null
           created_at: string
@@ -739,6 +740,7 @@ export type Database = {
         Insert: {
           approval_policy?: Json | null
           approval_threshold?: number | null
+          archived_at?: string | null
           avatar_url?: string | null
           cover_url?: string | null
           created_at?: string
@@ -760,6 +762,7 @@ export type Database = {
         Update: {
           approval_policy?: Json | null
           approval_threshold?: number | null
+          archived_at?: string | null
           avatar_url?: string | null
           cover_url?: string | null
           created_at?: string

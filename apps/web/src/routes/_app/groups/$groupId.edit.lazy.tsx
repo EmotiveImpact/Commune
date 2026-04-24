@@ -21,7 +21,7 @@ import {
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
-import { IconArrowLeft, IconBriefcase, IconCamera, IconDeviceFloppy, IconHome2, IconPhone, IconPhoto, IconPin, IconSettings, IconShieldCheck, IconTrash, IconWifi } from '@tabler/icons-react';
+import { IconArchive, IconArchiveOff, IconArrowLeft, IconBriefcase, IconCamera, IconDeviceFloppy, IconHome2, IconPhone, IconPhoto, IconPin, IconSettings, IconShieldCheck, IconTrash, IconWifi } from '@tabler/icons-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   countCompletedSetupChecklistItems,
@@ -37,7 +37,7 @@ import type {
   SetupChecklistProgress,
 } from '@commune/types';
 import { GroupType } from '@commune/types';
-import { useGroup, useUpdateGroup, useDeleteGroup } from '../../../hooks/use-groups';
+import { useGroup, useUpdateGroup, useDeleteGroup, useArchiveGroup, useUnarchiveGroup } from '../../../hooks/use-groups';
 import { useUploadGroupImage } from '../../../hooks/use-group-hub';
 import { useWorkspaceGovernance } from '../../../hooks/use-workspace-governance';
 import { useGroupStore } from '../../../stores/group';
@@ -84,6 +84,8 @@ export function EditGroupPage() {
   } = useGroup(groupId);
   const updateGroup = useUpdateGroup(groupId);
   const deleteGroup = useDeleteGroup();
+  const archiveGroup = useArchiveGroup(groupId);
+  const unarchiveGroup = useUnarchiveGroup(groupId);
   const { user } = useAuthStore();
   const { setActiveGroupId } = useGroupStore();
   const navigate = useNavigate();
@@ -916,6 +918,66 @@ export function EditGroupPage() {
           )}
         </Stack>
       </Paper>
+
+      {group.owner_id === user?.id && (
+        <Paper className="commune-soft-panel" p="xl">
+          <Group gap="xs" mb="md">
+            {group.archived_at ? (
+              <IconArchiveOff size={20} color="var(--mantine-color-dimmed)" />
+            ) : (
+              <IconArchive size={20} color="var(--mantine-color-dimmed)" />
+            )}
+            <Text className="commune-section-heading">
+              {group.archived_at ? 'Restore this group' : 'Archive this group'}
+            </Text>
+          </Group>
+
+          <Text size="sm" c="dimmed" mb="md">
+            {group.archived_at
+              ? 'This group is archived and hidden from your active list. Restore it to bring it back.'
+              : 'Hide this group from your active list. You can restore it anytime — no data is deleted.'}
+          </Text>
+
+          <Button
+            variant="default"
+            leftSection={
+              group.archived_at
+                ? <IconArchiveOff size={16} />
+                : <IconArchive size={16} />
+            }
+            loading={archiveGroup.isPending || unarchiveGroup.isPending}
+            onClick={async () => {
+              try {
+                if (group.archived_at) {
+                  await unarchiveGroup.mutateAsync();
+                  notifications.show({
+                    title: 'Group restored',
+                    message: `${group.name} is back in your active list.`,
+                    color: 'green',
+                  });
+                } else {
+                  await archiveGroup.mutateAsync();
+                  notifications.show({
+                    title: 'Group archived',
+                    message: `${group.name} is hidden from your active list.`,
+                    color: 'green',
+                  });
+                  setActiveGroupId(null);
+                  navigate({ to: '/groups' });
+                }
+              } catch (err) {
+                notifications.show({
+                  title: group.archived_at ? 'Failed to restore group' : 'Failed to archive group',
+                  message: err instanceof Error ? err.message : 'Something went wrong',
+                  color: 'red',
+                });
+              }
+            }}
+          >
+            {group.archived_at ? 'Restore group' : 'Archive group'}
+          </Button>
+        </Paper>
+      )}
 
       {group.owner_id === user?.id && (
         <Paper className="commune-soft-panel" p="xl" style={{ borderColor: 'var(--mantine-color-red-4)' }}>

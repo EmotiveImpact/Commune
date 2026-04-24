@@ -103,6 +103,7 @@ export interface Group {
   avatar_url: string | null;
   cover_url: string | null;
   tagline: string | null;
+  archived_at: string | null;
   created_at: string;
 }
 
