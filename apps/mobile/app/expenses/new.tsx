@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Image,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -11,8 +12,9 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { Stack, useRouter } from 'expo-router';
-import { IconChevronRight, IconX } from '@tabler/icons-react-native';
+import { IconAlertTriangle, IconChevronRight, IconX } from '@tabler/icons-react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import {
   calculateEqualSplit,
@@ -69,7 +71,12 @@ function formatDueDate(date: Date) {
   return isToday ? `Today · ${formatted}` : formatted;
 }
 
-type SheetKey = 'category' | 'paidBy' | 'split' | 'date' | 'recurring' | null;
+type SheetKey = 'category' | 'paidBy' | 'split' | 'date' | 'recurring' | 'invoiceDate' | 'paymentDueDate' | null;
+
+function formatOptionalDate(date: Date | null) {
+  if (!date) return 'Not set';
+  return date.toLocaleDateString('en-GB', { month: 'short', day: 'numeric', year: 'numeric' });
+}
 
 /* ====================================================================== */
 /* Screen                                                                  */
@@ -95,6 +102,11 @@ export default function NewExpenseScreen() {
   const [percentages, setPercentages] = useState<Record<string, string>>({});
   const [customAmounts, setCustomAmounts] = useState<Record<string, string>>({});
   const [sheet, setSheet] = useState<SheetKey>(null);
+  const [receiptUri, setReceiptUri] = useState<string | null>(null);
+  const [vendorName, setVendorName] = useState('');
+  const [invoiceReference, setInvoiceReference] = useState('');
+  const [invoiceDate, setInvoiceDate] = useState<Date | null>(null);
+  const [paymentDueDate, setPaymentDueDate] = useState<Date | null>(null);
 
   const activeMembers = useMemo(
     () => (group?.members ?? []).filter((m) => m.status === 'active'),
@@ -109,6 +121,10 @@ export default function NewExpenseScreen() {
   const symbol = symbolFor(group?.currency);
   const isValid = numericAmount > 0 && title.trim().length > 0;
   const isRecurring = recurrenceType !== 'none';
+  const isWorkspace = group?.type === 'workspace';
+  const approvalThreshold = group?.approval_threshold ?? null;
+  const needsApproval =
+    isWorkspace && approvalThreshold != null && numericAmount >= approvalThreshold;
 
   useEffect(() => {
     if (!group?.id || activeMemberIds.length === 0) return;
@@ -141,6 +157,76 @@ export default function NewExpenseScreen() {
     return SPLIT_LABELS[splitMethod];
   }, [participantIds.length, splitMethod]);
 
+  async function pickReceiptFromLibrary() {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      hapticWarning();
+      Alert.alert('Permission needed to access photos');
+      return;
+    }
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        quality: 0.75,
+      });
+      if (!result.canceled && result.assets?.[0]?.uri) {
+        hapticSelection();
+        setReceiptUri(result.assets[0].uri);
+      }
+    } catch (e) {
+      hapticWarning();
+      Alert.alert('Could not open photos', getErrorMessage(e));
+    }
+  }
+
+  async function takeReceiptPhoto() {
+    const perm = await ImagePicker.requestCameraPermissionsAsync();
+    if (!perm.granted) {
+      hapticWarning();
+      Alert.alert('Permission needed to access photos');
+      return;
+    }
+    try {
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        quality: 0.75,
+      });
+      if (!result.canceled && result.assets?.[0]?.uri) {
+        hapticSelection();
+        setReceiptUri(result.assets[0].uri);
+      }
+    } catch (e) {
+      hapticWarning();
+      Alert.alert('Could not open camera', getErrorMessage(e));
+    }
+  }
+
+  function promptReceiptSource() {
+    hapticLight();
+    Alert.alert('Add receipt', undefined, [
+      { text: 'Choose from library', onPress: pickReceiptFromLibrary },
+      { text: 'Take photo', onPress: takeReceiptPhoto },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  }
+
+  function clearReceipt() {
+    hapticLight();
+    setReceiptUri(null);
+  }
+
+  const receiptFileName = useMemo(() => {
+    if (!receiptUri) return null;
+    try {
+      const tail = receiptUri.split('/').pop() ?? 'receipt';
+      return tail.split('?')[0] || 'receipt';
+    } catch {
+      return 'receipt';
+    }
+  }, [receiptUri]);
+
   async function handleSubmit() {
     hapticMedium();
     if (!activeGroupId || !group) return;
@@ -163,7 +249,12 @@ export default function NewExpenseScreen() {
       paid_by_user_id: paidByUserId ?? undefined,
       participant_ids: participantIds,
       ...toWorkspaceExpenseContextPayload({
-        vendor_name: '', invoice_reference: '', invoice_date: '', payment_due_date: '',
+        vendor_name: isWorkspace ? vendorName : '',
+        invoice_reference: isWorkspace ? invoiceReference : '',
+        invoice_date:
+          isWorkspace && invoiceDate ? invoiceDate.toISOString().split('T')[0]! : '',
+        payment_due_date:
+          isWorkspace && paymentDueDate ? paymentDueDate.toISOString().split('T')[0]! : '',
       }),
     };
 
@@ -178,6 +269,16 @@ export default function NewExpenseScreen() {
       ...basePayload,
       group_id: activeGroupId,
     };
+
+    // TODO(receipt upload): createExpenseSchema does not currently include a
+    // `receipt_url` field, and we have not yet wired uploads to Supabase
+    // Storage. When the schema gains `receipt_url` and the storage bucket is
+    // set up, upload `receiptUri` (if set) and attach the returned public URL
+    // to `payload.receipt_url` here.
+    if (receiptUri) {
+      // eslint-disable-next-line no-console
+      console.log('[new-expense] receipt selected but upload is not wired yet:', receiptUri);
+    }
 
     if (splitMethod === SplitMethod.PERCENTAGE) {
       const rows = participantIds.map((id) => ({ userId: id, percentage: Number(percentages[id]) || 0 }));
@@ -290,6 +391,22 @@ export default function NewExpenseScreen() {
             </View>
           </View>
 
+          {needsApproval ? (
+            <View
+              accessibilityRole="alert"
+              style={{
+                flexDirection: 'row', alignItems: 'center', gap: 10,
+                backgroundColor: colors.warnBg, borderRadius: 14,
+                paddingVertical: 12, paddingHorizontal: 14, marginBottom: 12,
+              }}
+            >
+              <IconAlertTriangle size={18} color={colors.warnText} strokeWidth={2} />
+              <Text style={{ flex: 1, fontSize: 13, fontWeight: '600', color: colors.warnText, lineHeight: 18 }}>
+                This expense needs approval before it posts.
+              </Text>
+            </View>
+          ) : null}
+
           {/* Primary rows */}
           <Row label="What">
             <TextInput
@@ -319,6 +436,40 @@ export default function NewExpenseScreen() {
             <Text style={styles.rowValue}>{formatDueDate(dueDate)}</Text>
           </Row>
 
+          {isWorkspace ? (
+            <>
+              <Text style={[styles.microLabel, { paddingTop: 16, paddingBottom: 8 }]}>
+                Workspace details
+              </Text>
+
+              <Row label="Vendor">
+                <TextInput
+                  style={styles.rowInput} placeholder="Acme Ltd"
+                  placeholderTextColor={colors.textMuted}
+                  value={vendorName} onChangeText={setVendorName}
+                />
+              </Row>
+              <Row label="Invoice no.">
+                <TextInput
+                  style={styles.rowInput} placeholder="INV-0042"
+                  placeholderTextColor={colors.textMuted}
+                  value={invoiceReference} onChangeText={setInvoiceReference}
+                  autoCapitalize="characters"
+                />
+              </Row>
+              <Row label="Invoice date" chevron onPress={() => { hapticLight(); setSheet('invoiceDate'); }}>
+                <Text style={[styles.rowValue, !invoiceDate && { color: colors.textMuted }]}>
+                  {formatOptionalDate(invoiceDate)}
+                </Text>
+              </Row>
+              <Row label="Payment due" chevron onPress={() => { hapticLight(); setSheet('paymentDueDate'); }}>
+                <Text style={[styles.rowValue, !paymentDueDate && { color: colors.textMuted }]}>
+                  {formatOptionalDate(paymentDueDate)}
+                </Text>
+              </Row>
+            </>
+          ) : null}
+
           {/* Optional */}
           <Text style={[styles.microLabel, { paddingTop: 16, paddingBottom: 8 }]}>Optional</Text>
 
@@ -337,12 +488,40 @@ export default function NewExpenseScreen() {
           <Row
             label="Receipt"
             chevron
-            onPress={() => {
-              hapticLight();
-              Alert.alert('Coming soon', 'Receipt attachments will be available in an upcoming release.');
-            }}
+            onPress={promptReceiptSource}
+            onLongPress={receiptUri ? clearReceipt : undefined}
           >
-            <Text style={[styles.rowValue, { color: colors.textMuted }]}>Add photo</Text>
+            {receiptUri ? (
+              <View style={{ position: 'relative', marginRight: 4 }}>
+                <Image
+                  source={{ uri: receiptUri }}
+                  style={{
+                    width: 40, height: 40, borderRadius: 8,
+                    backgroundColor: colors.bgSubtle,
+                  }}
+                  accessibilityLabel="Receipt preview"
+                />
+                <Pressable
+                  onPress={clearReceipt}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Remove receipt"
+                  style={{
+                    position: 'absolute', top: -6, right: -6,
+                    width: 18, height: 18, borderRadius: 9,
+                    backgroundColor: colors.textPrimary,
+                    alignItems: 'center', justifyContent: 'center',
+                  }}
+                >
+                  <IconX size={10} color={colors.textInverse} strokeWidth={3} />
+                </Pressable>
+              </View>
+            ) : null}
+            <Text style={[styles.rowValue, !receiptUri && { color: colors.textMuted }]}>
+              {receiptUri
+                ? `${receiptFileName ?? 'receipt'} · tap to change`
+                : 'Add receipt'}
+            </Text>
           </Row>
 
           <Row label="Recurring" chevron onPress={() => { hapticSelection(); setSheet('recurring'); }}>
@@ -431,6 +610,17 @@ export default function NewExpenseScreen() {
         onClose={() => setSheet(null)}
       />
 
+      <DateSheet
+        visible={sheet === 'invoiceDate'} title="Invoice date"
+        value={invoiceDate ?? new Date()} onChange={setInvoiceDate}
+        onClose={() => setSheet(null)}
+      />
+      <DateSheet
+        visible={sheet === 'paymentDueDate'} title="Payment due"
+        value={paymentDueDate ?? new Date()} onChange={setPaymentDueDate}
+        onClose={() => setSheet(null)}
+      />
+
       <PickerSheet
         visible={sheet === 'recurring'}
         title="Recurring"
@@ -486,11 +676,12 @@ function Header({
 }
 
 function Row({
-  label, children, onPress, chevron, align = 'center',
+  label, children, onPress, onLongPress, chevron, align = 'center',
 }: {
   label: string;
   children: ReactNode;
   onPress?: () => void;
+  onLongPress?: () => void;
   chevron?: boolean;
   align?: 'center' | 'top';
 }) {
@@ -524,7 +715,11 @@ function Row({
   );
   if (onPress) {
     return (
-      <Pressable onPress={onPress} style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}>
+      <Pressable
+        onPress={onPress}
+        onLongPress={onLongPress}
+        style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+      >
         {body}
       </Pressable>
     );
@@ -606,10 +801,16 @@ function PickerSheet({
 }
 
 function DateSheet({
-  visible, value, onChange, onClose,
-}: { visible: boolean; value: Date; onChange: (d: Date) => void; onClose: () => void }) {
+  visible, value, onChange, onClose, title = 'Date',
+}: {
+  visible: boolean;
+  value: Date;
+  onChange: (d: Date) => void;
+  onClose: () => void;
+  title?: string;
+}) {
   return (
-    <SheetFrame visible={visible} title="Date" onClose={onClose}>
+    <SheetFrame visible={visible} title={title} onClose={onClose}>
       <View style={{ alignItems: 'center', paddingVertical: 8 }}>
         <DateTimePicker
           value={value}

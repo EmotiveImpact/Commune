@@ -1,17 +1,32 @@
-import { useMemo } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { useMemo, useState } from 'react';
+import { Alert, Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { IconChevronLeft } from '@tabler/icons-react-native';
+import {
+  IconChevronLeft,
+  IconChevronRight,
+  IconCrown,
+  IconDotsVertical,
+  IconLogout,
+  IconShieldCheck,
+  IconX,
+} from '@tabler/icons-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { formatCurrency } from '@commune/utils';
 import { useAuthStore } from '@/stores/auth';
 import { useMemberProfile } from '@/hooks/use-group-hub';
-import { useGroup } from '@/hooks/use-groups';
+import {
+  useGroup,
+  useRemoveMember,
+  useTransferOwnership,
+  useUpdateMemberRole,
+} from '@/hooks/use-groups';
 import { useGroupSettlement } from '@/hooks/use-settlement';
 import { useActivityLog } from '@/hooks/use-activity';
-import { colors, font, radius, space, getCategoryMeta } from '@/constants/design';
+import { colors, elevation, font, radius, space, getCategoryMeta } from '@/constants/design';
 import { Avatar, EmptyState, Screen } from '@/components/primitives';
-import { hapticLight } from '@/lib/haptics';
+import { getErrorMessage } from '@/lib/errors';
+import { hapticHeavy, hapticLight, hapticMedium, hapticSuccess, hapticWarning } from '@/lib/haptics';
 
 /* ============================================================================
  * Helpers
@@ -88,6 +103,29 @@ export default function MemberProfileScreen() {
 
   const isMe = currentUser?.id === memberId;
   const currency = group?.currency ?? 'GBP';
+
+  /* -- Admin / remove menu state + mutations ------------------------------- */
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  const updateRoleMutation = useUpdateMemberRole(gId);
+  const removeMemberMutation = useRemoveMember(gId);
+  const transferOwnershipMutation = useTransferOwnership(gId);
+
+  // Membership rows (group.members uses { id, user_id, role, ... } shape)
+  const currentUserMembership = useMemo(
+    () => group?.members?.find((m) => m.user_id === currentUser?.id) ?? null,
+    [group?.members, currentUser?.id],
+  );
+  const targetMembership = useMemo(
+    () => group?.members?.find((m) => m.user_id === memberId) ?? null,
+    [group?.members, memberId],
+  );
+
+  const currentUserIsAdmin = currentUserMembership?.role === 'admin';
+  const currentUserIsOwner = currentUser?.id === group?.owner_id;
+  const targetIsAdmin = targetMembership?.role === 'admin';
+  const targetIsOwner = targetMembership?.user_id === group?.owner_id;
+  const canManage = Boolean(currentUserIsAdmin && !isMe && targetMembership);
 
   // Net balance between current user and target member within this group.
   // Positive => target owes current user. Negative => current user owes target.
@@ -183,6 +221,90 @@ export default function MemberProfileScreen() {
       : balanceAmount;
 
   /* --------------------------------------------------------------------------
+   * Admin / remove menu handlers
+   * ------------------------------------------------------------------------ */
+
+  async function handleToggleAdmin() {
+    if (!targetMembership) return;
+    const nextRole: 'admin' | 'member' = targetIsAdmin ? 'member' : 'admin';
+    hapticMedium();
+    try {
+      await updateRoleMutation.mutateAsync({
+        memberId: targetMembership.id,
+        role: nextRole,
+      });
+      hapticSuccess();
+      setMenuOpen(false);
+      Alert.alert(
+        nextRole === 'admin' ? 'Now an admin' : 'Admin rights removed',
+        nextRole === 'admin'
+          ? `${displayName} can now manage this group.`
+          : `${displayName} no longer has admin rights.`,
+      );
+    } catch (error) {
+      hapticWarning();
+      Alert.alert('Update failed', getErrorMessage(error, 'Could not update role.'));
+    }
+  }
+
+  function handleTransferOwnership() {
+    if (!targetMembership) return;
+    hapticHeavy();
+    Alert.alert(
+      'Transfer ownership',
+      `Transfer ownership of ${group?.name ?? 'this group'} to ${displayName}? You will become a regular member.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Transfer',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await transferOwnershipMutation.mutateAsync(targetMembership.user_id);
+              hapticSuccess();
+              setMenuOpen(false);
+              Alert.alert(
+                'Ownership transferred',
+                `${displayName} is now the owner of ${group?.name ?? 'the group'}.`,
+              );
+            } catch (error) {
+              hapticWarning();
+              Alert.alert('Transfer failed', getErrorMessage(error, 'Could not transfer ownership.'));
+            }
+          },
+        },
+      ],
+    );
+  }
+
+  function handleRemoveFromGroup() {
+    if (!targetMembership) return;
+    hapticHeavy();
+    Alert.alert(
+      'Remove from group',
+      `${displayName} will lose access to ${group?.name ?? 'this group'} and all its history.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await removeMemberMutation.mutateAsync(targetMembership.id);
+              hapticSuccess();
+              setMenuOpen(false);
+              router.back();
+            } catch (error) {
+              hapticWarning();
+              Alert.alert('Remove failed', getErrorMessage(error, 'Could not remove this member.'));
+            }
+          },
+        },
+      ],
+    );
+  }
+
+  /* --------------------------------------------------------------------------
    * Render
    * ------------------------------------------------------------------------ */
 
@@ -216,8 +338,26 @@ export default function MemberProfileScreen() {
             {firstName}
           </Text>
         </View>
-        {/* Right-side spacer — no admin/remove sheet exists on this screen yet. */}
-        <View style={{ width: 32 }} />
+        {/* Right-side: overflow menu (admins only, not for self) or spacer. */}
+        {canManage ? (
+          <Pressable
+            onPress={() => {
+              hapticLight();
+              setMenuOpen(true);
+            }}
+            hitSlop={10}
+            accessibilityRole="button"
+            accessibilityLabel="Member actions"
+            style={({ pressed }) => [
+              { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+              pressed && { opacity: 0.7 },
+            ]}
+          >
+            <IconDotsVertical size={22} strokeWidth={1.75} color={colors.textPrimary} />
+          </Pressable>
+        ) : (
+          <View style={{ width: 32 }} />
+        )}
       </View>
 
       <ScrollView
@@ -495,7 +635,261 @@ export default function MemberProfileScreen() {
           )}
         </View>
       </ScrollView>
+
+      {/* Admin / remove actions bottom sheet */}
+      {canManage ? (
+        <MemberActionsSheet
+          visible={menuOpen}
+          memberName={displayName}
+          targetIsAdmin={targetIsAdmin}
+          targetIsOwner={targetIsOwner}
+          currentUserIsOwner={currentUserIsOwner}
+          onClose={() => setMenuOpen(false)}
+          onToggleAdmin={handleToggleAdmin}
+          onTransferOwnership={handleTransferOwnership}
+          onRemove={handleRemoveFromGroup}
+          roleBusy={updateRoleMutation.isPending}
+          transferBusy={transferOwnershipMutation.isPending}
+          removeBusy={removeMemberMutation.isPending}
+        />
+      ) : null}
     </Screen>
+  );
+}
+
+/* ============================================================================
+ * MemberActionsSheet — bottom sheet modal with admin/remove actions
+ * ============================================================================ */
+
+function MemberActionsSheet({
+  visible,
+  memberName,
+  targetIsAdmin,
+  targetIsOwner,
+  currentUserIsOwner,
+  onClose,
+  onToggleAdmin,
+  onTransferOwnership,
+  onRemove,
+  roleBusy,
+  transferBusy,
+  removeBusy,
+}: {
+  visible: boolean;
+  memberName: string;
+  targetIsAdmin: boolean;
+  targetIsOwner: boolean;
+  currentUserIsOwner: boolean;
+  onClose: () => void;
+  onToggleAdmin: () => void;
+  onTransferOwnership: () => void;
+  onRemove: () => void;
+  roleBusy: boolean;
+  transferBusy: boolean;
+  removeBusy: boolean;
+}) {
+  const insets = useSafeAreaInsets();
+
+  // Owner cannot have their admin rights revoked (they're always an admin).
+  const roleRowDisabled = targetIsOwner || roleBusy;
+  const roleTitle = targetIsAdmin ? 'Remove admin rights' : 'Make admin';
+  const roleCaption = targetIsAdmin
+    ? `${memberName} will return to being a regular member.`
+    : `Let ${memberName} manage this group.`;
+
+  return (
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+      <Pressable
+        onPress={onClose}
+        style={{
+          flex: 1,
+          backgroundColor: 'rgba(26,30,43,0.4)',
+          justifyContent: 'flex-end',
+        }}
+      >
+        <Pressable
+          onPress={(e) => e.stopPropagation()}
+          style={{
+            backgroundColor: colors.bgSurface,
+            borderTopLeftRadius: radius.sheet,
+            borderTopRightRadius: radius.sheet,
+            paddingTop: space.lg,
+            paddingBottom: insets.bottom + space.lg,
+            paddingHorizontal: space.gutter,
+            ...elevation.sheet,
+          }}
+        >
+          {/* Grab handle */}
+          <View
+            style={{
+              alignSelf: 'center',
+              width: 44,
+              height: 5,
+              borderRadius: 3,
+              backgroundColor: colors.border,
+              marginBottom: space.lg,
+            }}
+          />
+
+          {/* Header with close button */}
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'flex-start',
+              justifyContent: 'space-between',
+              marginBottom: space.lg,
+            }}
+          >
+            <View style={{ flex: 1, paddingRight: space.md }}>
+              <Text style={{ fontSize: 18, fontWeight: '700', color: colors.textPrimary }}>
+                Member actions
+              </Text>
+              <Text
+                style={{ fontSize: 12, color: colors.textMuted, marginTop: 4 }}
+                numberOfLines={2}
+              >
+                What would you like to do with {memberName}?
+              </Text>
+            </View>
+            <Pressable
+              onPress={onClose}
+              accessibilityRole="button"
+              accessibilityLabel="Close"
+              style={({ pressed }) => [
+                {
+                  width: 32,
+                  height: 32,
+                  borderRadius: 16,
+                  backgroundColor: colors.bgInk,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                },
+                pressed && { opacity: 0.8 },
+              ]}
+            >
+              <IconX size={16} strokeWidth={2} color={colors.textInverse} />
+            </Pressable>
+          </View>
+
+          {/* Rows */}
+          <View style={{ gap: space.sm }}>
+            <SheetRow
+              iconBg={colors.sageSoft}
+              iconColor={colors.sage}
+              icon={<IconShieldCheck size={20} strokeWidth={1.75} color={colors.sage} />}
+              title={roleTitle}
+              caption={roleCaption}
+              onPress={onToggleAdmin}
+              disabled={roleRowDisabled}
+            />
+
+            {currentUserIsOwner && !targetIsOwner ? (
+              <SheetRow
+                iconBg="#F5E8DD"
+                iconColor="#8B5A3C"
+                icon={<IconCrown size={20} strokeWidth={1.75} color="#8B5A3C" />}
+                title="Transfer ownership"
+                caption={`Make ${memberName} the new owner of this group.`}
+                onPress={onTransferOwnership}
+                disabled={transferBusy}
+              />
+            ) : null}
+
+            <SheetRow
+              iconBg="#FEE9E5"
+              iconColor="#8C2F1F"
+              icon={<IconLogout size={20} strokeWidth={1.75} color="#8C2F1F" />}
+              title="Remove from group"
+              titleColor="#8C2F1F"
+              caption={`${memberName} will lose access to this group.`}
+              onPress={onRemove}
+              disabled={removeBusy || targetIsOwner}
+              destructive
+            />
+          </View>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+
+/* ============================================================================
+ * SheetRow — one action row inside MemberActionsSheet
+ * ============================================================================ */
+
+function SheetRow({
+  icon,
+  iconBg,
+  iconColor: _iconColor,
+  title,
+  caption,
+  onPress,
+  disabled = false,
+  destructive = false,
+  titleColor,
+}: {
+  icon: React.ReactNode;
+  iconBg: string;
+  iconColor: string;
+  title: string;
+  caption: string;
+  onPress: () => void;
+  disabled?: boolean;
+  destructive?: boolean;
+  titleColor?: string;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={disabled}
+      style={({ pressed }) => ({
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: colors.bgSurface,
+        borderRadius: 14,
+        borderWidth: 1,
+        borderColor: colors.borderSubtle,
+        padding: space.md,
+        opacity: disabled ? 0.4 : pressed ? 0.85 : 1,
+      })}
+    >
+      <View
+        style={{
+          width: 40,
+          height: 40,
+          borderRadius: 12,
+          backgroundColor: iconBg,
+          alignItems: 'center',
+          justifyContent: 'center',
+          marginRight: space.md,
+        }}
+      >
+        {icon}
+      </View>
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text
+          style={{
+            fontSize: 15,
+            fontWeight: '600',
+            color: titleColor ?? colors.textPrimary,
+          }}
+          numberOfLines={1}
+        >
+          {title}
+        </Text>
+        <Text
+          style={{ fontSize: 12, color: colors.textMuted, marginTop: 2 }}
+          numberOfLines={2}
+        >
+          {caption}
+        </Text>
+      </View>
+      <IconChevronRight
+        size={16}
+        strokeWidth={2}
+        color={destructive ? '#8C2F1F' : colors.textMuted}
+      />
+    </Pressable>
   );
 }
 

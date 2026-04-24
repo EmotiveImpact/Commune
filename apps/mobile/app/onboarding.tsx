@@ -1,13 +1,24 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
+  Modal,
   ScrollView,
+  Switch,
   Text,
   TextInput,
   View,
 } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import {
+  IconBriefcase,
+  IconCheck,
+  IconChevronLeft,
+  IconChevronRight,
+  IconHeart,
+  IconHome2,
+  IconPlane,
+} from '@tabler/icons-react-native';
 import {
   createGroupSchema,
   getSpaceEssentialDefinitions,
@@ -47,11 +58,70 @@ type CreatedGroupState = {
 
 type StepKey = 'type' | 'name' | 'invite' | 'done';
 
+type TablerIconComponent = React.ComponentType<{
+  size?: number;
+  color?: string;
+  strokeWidth?: number;
+}>;
+
+type CurrencyOption = {
+  code: string;
+  symbol: string;
+  label: string;
+};
+
+const CURRENCY_OPTIONS: CurrencyOption[] = [
+  { code: 'GBP', symbol: '£', label: 'British Pound' },
+  { code: 'USD', symbol: '$', label: 'US Dollar' },
+  { code: 'EUR', symbol: '€', label: 'Euro' },
+  { code: 'CAD', symbol: 'CA$', label: 'Canadian Dollar' },
+  { code: 'AUD', symbol: 'A$', label: 'Australian Dollar' },
+  { code: 'JPY', symbol: '¥', label: 'Japanese Yen' },
+  { code: 'INR', symbol: '₹', label: 'Indian Rupee' },
+];
+
+/**
+ * Best-effort device-locale currency detection — falls back to GBP.
+ * Uses Intl (no expo-localization dep) so it stays lightweight.
+ */
+function detectDefaultCurrency(): string {
+  try {
+    const locale = Intl.DateTimeFormat().resolvedOptions().locale ?? 'en-GB';
+    const region = locale.split('-')[1]?.toUpperCase();
+    const regionToCurrency: Record<string, string> = {
+      GB: 'GBP',
+      UK: 'GBP',
+      US: 'USD',
+      CA: 'CAD',
+      AU: 'AUD',
+      JP: 'JPY',
+      IN: 'INR',
+      IE: 'EUR',
+      FR: 'EUR',
+      DE: 'EUR',
+      ES: 'EUR',
+      IT: 'EUR',
+      NL: 'EUR',
+      PT: 'EUR',
+      BE: 'EUR',
+      AT: 'EUR',
+      FI: 'EUR',
+    };
+    const match = region ? regionToCurrency[region] : undefined;
+    if (match && CURRENCY_OPTIONS.some((o) => o.code === match)) {
+      return match;
+    }
+  } catch {
+    // Intl may be unavailable on some older RN runtimes — fall through.
+  }
+  return 'GBP';
+}
+
 const TYPE_OPTIONS: Array<{
   value: GroupTypeValue;
   label: string;
   caption: string;
-  icon: React.ComponentProps<typeof Ionicons>['name'];
+  icon: TablerIconComponent;
   accent: string;
   bg: string;
 }> = [
@@ -59,7 +129,7 @@ const TYPE_OPTIONS: Array<{
     value: GroupType.HOME,
     label: 'Shared home',
     caption: 'Flatmates, rent, bills, and the everyday run of the house.',
-    icon: 'home-outline',
+    icon: IconHome2,
     accent: colors.typeHome.accent,
     bg: colors.typeHome.bg,
   },
@@ -67,7 +137,7 @@ const TYPE_OPTIONS: Array<{
     value: GroupType.COUPLE,
     label: 'Couple',
     caption: 'Two-person finances, shared goals, the joint budget.',
-    icon: 'heart-outline',
+    icon: IconHeart,
     accent: colors.typeCouple.accent,
     bg: colors.typeCouple.bg,
   },
@@ -75,7 +145,7 @@ const TYPE_OPTIONS: Array<{
     value: GroupType.TRIP,
     label: 'Trip',
     caption: 'A holiday or trip with shared costs to settle at the end.',
-    icon: 'airplane-outline',
+    icon: IconPlane,
     accent: colors.typeTrip.accent,
     bg: colors.typeTrip.bg,
   },
@@ -83,7 +153,7 @@ const TYPE_OPTIONS: Array<{
     value: GroupType.PROJECT,
     label: 'Project / Business',
     caption: 'A side project, pop-up, or small team with shared operations.',
-    icon: 'briefcase-outline',
+    icon: IconBriefcase,
     accent: colors.typeProject.accent,
     bg: colors.typeProject.bg,
   },
@@ -123,7 +193,7 @@ function Header({
             }}
             style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1, padding: 4 })}
           >
-            <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
+            <IconChevronLeft size={24} color={colors.textPrimary} strokeWidth={2} />
           </Pressable>
         ) : null}
       </View>
@@ -266,7 +336,7 @@ function TypeTile({
           justifyContent: 'center',
         }}
       >
-        <Ionicons name={option.icon} size={20} color={option.accent} />
+        <option.icon size={22} color={option.accent} strokeWidth={1.75} />
       </View>
       <View style={{ flex: 1 }}>
         <Text style={{ fontSize: 14, fontWeight: '700', color: colors.textPrimary }}>
@@ -351,8 +421,16 @@ export default function OnboardingScreen() {
   const [step, setStep] = useState<StepKey>('type');
   const [type, setType] = useState<GroupTypeValue>(GroupType.HOME);
   const [name, setName] = useState('');
+  const [currency, setCurrency] = useState<string>(() => detectDefaultCurrency());
+  const [includeStarterPack, setIncludeStarterPack] = useState<boolean>(true);
+  const [currencyPickerOpen, setCurrencyPickerOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
   const [invitedEmails, setInvitedEmails] = useState<string[]>([]);
+
+  const selectedCurrency = useMemo(
+    () => CURRENCY_OPTIONS.find((o) => o.code === currency) ?? CURRENCY_OPTIONS[0]!,
+    [currency],
+  );
 
   const inviteMember = useInviteMember(createdGroup?.id ?? '');
   const applyStarterPack = useApplyGroupStarterPack(createdGroup?.id ?? '');
@@ -426,7 +504,7 @@ export default function OnboardingScreen() {
       name: trimmedName,
       type,
       subtype: null,
-      currency: 'GBP',
+      currency,
       cycle_date: 1,
     });
 
@@ -451,31 +529,34 @@ export default function OnboardingScreen() {
       setCreatedGroup(nextCreated);
       setActiveGroupId(group.id);
 
-      // Apply default starter pack silently — preserves the starter-pack mutation
-      // from the prior multi-step flow so new groups aren't left empty.
-      try {
-        const defs = getSpaceEssentialDefinitions(nextCreated.type);
-        const preset = getSpacePreset(nextCreated.type, nextCreated.subtype);
-        const spaceEssentials = defs.reduce<SpaceEssentials>((acc, def) => {
-          const seed = preset.essentialSeeds[def.key]?.trim();
-          if (seed) {
-            acc[def.key] = {
-              label: def.label,
-              value: seed,
-              visible: def.defaultVisible !== false,
-            };
-          }
-          return acc;
-        }, {});
+      // Apply default starter pack silently — only when the user opted in via the
+      // "Suggest a starter pack" toggle. Either way, mark as applied so the
+      // post-create effect doesn't loop us back to 'invite' twice.
+      if (includeStarterPack) {
+        try {
+          const defs = getSpaceEssentialDefinitions(nextCreated.type);
+          const preset = getSpacePreset(nextCreated.type, nextCreated.subtype);
+          const spaceEssentials = defs.reduce<SpaceEssentials>((acc, def) => {
+            const seed = preset.essentialSeeds[def.key]?.trim();
+            if (seed) {
+              acc[def.key] = {
+                label: def.label,
+                value: seed,
+                visible: def.defaultVisible !== false,
+              };
+            }
+            return acc;
+          }, {});
 
-        await applyStarterPack.mutateAsync({
-          groupType: nextCreated.type,
-          subtype: nextCreated.subtype,
-          includeStarterOperations: true,
-          spaceEssentials,
-        });
-      } catch {
-        // Starter pack is non-blocking; surface via Alert only on primary flow issues.
+          await applyStarterPack.mutateAsync({
+            groupType: nextCreated.type,
+            subtype: nextCreated.subtype,
+            includeStarterOperations: true,
+            spaceEssentials,
+          });
+        } catch {
+          // Starter pack is non-blocking; surface via Alert only on primary flow issues.
+        }
       }
       setStarterApplied(true);
       setStep('invite');
@@ -798,6 +879,98 @@ export default function OnboardingScreen() {
                   }}
                 />
               </View>
+
+              {/* Currency picker row — opens a modal sheet with the common options. */}
+              <Pressable
+                onPress={() => {
+                  hapticLight();
+                  setCurrencyPickerOpen(true);
+                }}
+                style={({ pressed }) => ({
+                  marginTop: space.md,
+                  backgroundColor: colors.bgSurface,
+                  borderRadius: 14,
+                  borderWidth: 1,
+                  borderColor: colors.borderSubtle,
+                  paddingHorizontal: 14,
+                  paddingVertical: 12,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  opacity: pressed ? 0.92 : 1,
+                })}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text
+                    style={{
+                      fontSize: 10,
+                      fontWeight: '700',
+                      color: colors.textMuted,
+                      letterSpacing: 0.6,
+                      textTransform: 'uppercase',
+                    }}
+                  >
+                    Currency
+                  </Text>
+                  <Text
+                    style={{
+                      marginTop: 2,
+                      fontSize: 14,
+                      fontWeight: '600',
+                      color: colors.textPrimary,
+                    }}
+                  >
+                    {selectedCurrency.code} · {selectedCurrency.symbol}
+                  </Text>
+                </View>
+                <IconChevronRight size={18} color={colors.textMuted} strokeWidth={2} />
+              </Pressable>
+
+              {/* Starter-pack toggle — defaults ON; when off, we skip the mutation. */}
+              <View
+                style={{
+                  marginTop: space.md,
+                  backgroundColor: colors.bgSurface,
+                  borderRadius: 14,
+                  borderWidth: 1,
+                  borderColor: colors.borderSubtle,
+                  padding: 14,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: space.md,
+                }}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text
+                    style={{
+                      fontSize: 14,
+                      fontWeight: '600',
+                      color: colors.textPrimary,
+                    }}
+                  >
+                    Suggest a starter pack
+                  </Text>
+                  <Text
+                    style={{
+                      marginTop: 2,
+                      fontSize: 12,
+                      lineHeight: 18,
+                      color: colors.textTertiary,
+                    }}
+                  >
+                    We'll add a few example bills and chores to get you going.
+                  </Text>
+                </View>
+                <Switch
+                  value={includeStarterPack}
+                  onValueChange={(next) => {
+                    hapticLight();
+                    setIncludeStarterPack(next);
+                  }}
+                  trackColor={{ false: '#D1D5DB', true: colors.sage }}
+                  thumbColor="#FFFFFF"
+                  ios_backgroundColor="#D1D5DB"
+                />
+              </View>
             </>
           ) : null}
 
@@ -931,6 +1104,111 @@ export default function OnboardingScreen() {
             ) : null}
           </View>
         </ScrollView>
+
+        {/* Currency picker sheet — native Modal keeps us free of extra deps. */}
+        <Modal
+          visible={currencyPickerOpen}
+          animationType="fade"
+          transparent
+          onRequestClose={() => setCurrencyPickerOpen(false)}
+        >
+          <Pressable
+            onPress={() => setCurrencyPickerOpen(false)}
+            style={{
+              flex: 1,
+              backgroundColor: 'rgba(0,0,0,0.35)',
+              justifyContent: 'flex-end',
+            }}
+          >
+            <Pressable
+              onPress={() => {}}
+              style={{
+                backgroundColor: colors.bgSurface,
+                borderTopLeftRadius: 20,
+                borderTopRightRadius: 20,
+                paddingTop: 8,
+                paddingBottom: 28,
+                paddingHorizontal: space.gutter,
+              }}
+            >
+              <View
+                style={{
+                  alignSelf: 'center',
+                  width: 36,
+                  height: 4,
+                  borderRadius: 2,
+                  backgroundColor: colors.borderSubtle,
+                  marginBottom: 12,
+                }}
+              />
+              <Text
+                style={{
+                  fontSize: 16,
+                  fontWeight: '700',
+                  color: colors.textPrimary,
+                  marginBottom: 12,
+                }}
+              >
+                Choose currency
+              </Text>
+              {CURRENCY_OPTIONS.map((option) => {
+                const active = option.code === currency;
+                return (
+                  <Pressable
+                    key={option.code}
+                    onPress={() => {
+                      hapticLight();
+                      setCurrency(option.code);
+                      setCurrencyPickerOpen(false);
+                    }}
+                    style={({ pressed }) => ({
+                      paddingVertical: 14,
+                      paddingHorizontal: 4,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: space.md,
+                      opacity: pressed ? 0.7 : 1,
+                      borderBottomWidth: 1,
+                      borderBottomColor: colors.borderSubtle,
+                    })}
+                  >
+                    <View
+                      style={{
+                        width: 36,
+                        height: 36,
+                        borderRadius: 10,
+                        backgroundColor: colors.sageSoft,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <Text
+                        style={{ fontSize: 16, fontWeight: '700', color: colors.sageInk }}
+                      >
+                        {option.symbol}
+                      </Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text
+                        style={{ fontSize: 14, fontWeight: '700', color: colors.textPrimary }}
+                      >
+                        {option.code}
+                      </Text>
+                      <Text
+                        style={{ fontSize: 12, color: colors.textTertiary, marginTop: 2 }}
+                      >
+                        {option.label}
+                      </Text>
+                    </View>
+                    {active ? (
+                      <IconCheck size={20} color={colors.sage} strokeWidth={2.25} />
+                    ) : null}
+                  </Pressable>
+                );
+              })}
+            </Pressable>
+          </Pressable>
+        </Modal>
       </Screen>
     </>
   );
