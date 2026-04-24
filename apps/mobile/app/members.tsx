@@ -3,6 +3,7 @@ import {
   Alert,
   Animated,
   FlatList,
+  Pressable,
   ScrollView,
   Text,
   TextInput,
@@ -10,8 +11,14 @@ import {
   View,
   type AlertButton,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import {
+  IconChevronLeft,
+  IconChevronRight,
+} from '@tabler/icons-react-native';
+import { Avatar, Screen } from '@/components/primitives';
+import { colors, font, radius, space } from '@/constants/design';
 import {
   canMemberApproveWithPolicy,
   countCompletedSetupChecklistItems,
@@ -537,12 +544,6 @@ export default function MembersScreen() {
       const remaining = stat ? Math.max(0, stat.totalOwed - stat.totalPaid) : 0;
       const isSettled = stat ? remaining < 0.01 : false;
 
-      const initials = member.user.name
-        .split(' ')
-        .map((n: string) => n[0])
-        .join('')
-        .slice(0, 2)
-        .toUpperCase();
       const canRestoreAccess = Boolean(member.effective_until || member.status === 'removed');
       const isMemberOwner = member.user_id === group?.owner_id;
 
@@ -550,36 +551,31 @@ export default function MembersScreen() {
         <View
           style={{
             paddingVertical: 14,
-            paddingHorizontal: 16,
-            borderBottomWidth: isLastItem ? 0 : 1,
-            borderBottomColor: '#F0F0F0',
+            paddingHorizontal: 14,
+            borderRadius: 14,
+            borderWidth: 1,
+            borderColor: colors.borderSubtle,
+            backgroundColor: colors.bgSurface,
+            marginBottom: space.sm,
+            marginHorizontal: space.gutter,
           }}
         >
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             {/* Avatar */}
-            <View
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: 20,
-                backgroundColor: '#1f2330',
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginRight: 12,
-              }}
-            >
-              <Text style={{ fontSize: 14, fontWeight: '600', color: '#FFFFFF' }}>
-                {initials}
-              </Text>
-            </View>
+            <Avatar
+              name={member.user.name}
+              uri={member.user?.avatar_url ?? null}
+              size={40}
+            />
+            <View style={{ width: 12 }} />
 
             {/* Name + email */}
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 16, fontWeight: '600', color: '#171b24' }}>
+              <Text style={{ fontSize: 16, fontWeight: '600', color: colors.textPrimary }}>
                 {member.user.name}
                 {member.user_id === user?.id ? ' (You)' : ''}
               </Text>
-              <Text style={{ fontSize: 12, marginTop: 2, color: '#667085' }}>
+              <Text style={{ fontSize: 12, marginTop: 2, color: colors.textTertiary }}>
                 {member.user.email}
               </Text>
             </View>
@@ -606,7 +602,7 @@ export default function MembersScreen() {
             </View>
 
             {/* Chevron */}
-            <Ionicons name="chevron-forward" size={16} color="#D1D5DB" />
+            <IconChevronRight size={16} color={colors.textMuted} strokeWidth={2} />
           </View>
 
           {/* Status chip row */}
@@ -862,7 +858,7 @@ export default function MembersScreen() {
   /* -- header -------------------------------------------------------------- */
 
   const ListHeader = (
-      <View style={{ paddingHorizontal: 20, paddingTop: 20 }}>
+      <View style={{ paddingHorizontal: 20, paddingTop: 0 }}>
       <GroupSwitcher
         groups={groups}
         activeGroupId={activeGroupId}
@@ -871,12 +867,9 @@ export default function MembersScreen() {
         onOpenSetup={() => router.push('/onboarding')}
       />
 
-      {/* Header */}
+      {/* Header subtitle + meta (title now lives in chrome header) */}
       <View style={{ marginBottom: 20, marginTop: 8 }}>
-        <Text style={{ fontSize: 24, fontWeight: '700', color: '#171b24' }}>
-          Members
-        </Text>
-        <Text style={{ marginTop: 4, fontSize: 14, color: '#667085' }}>
+        <Text style={{ marginTop: 0, fontSize: 14, color: colors.textTertiary }}>
           Manage who belongs to this group and who can administer it.
         </Text>
         <View style={{ marginTop: 8, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -1562,38 +1555,102 @@ export default function MembersScreen() {
   /* -- render -------------------------------------------------------------- */
 
   return (
-    <FlatList
-      data={filteredMembers}
-      renderItem={renderMember}
-      keyExtractor={(item) => item.id}
-      style={{ flex: 1, backgroundColor: '#FAFAFA' }}
-      contentContainerStyle={{ paddingBottom: 120 }}
-      showsVerticalScrollIndicator={false}
-      ListHeaderComponent={ListHeader}
-      ListEmptyComponent={
-        <View style={{ paddingHorizontal: 20 }}>
-          <View
-            style={{
-              backgroundColor: '#FFFFFF',
-              borderRadius: 16,
-              padding: 20,
-              marginBottom: 16,
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.06,
-              shadowRadius: 12,
-              elevation: 3,
-            }}
-          >
-            <Text style={{ fontSize: 14, color: '#667085' }}>
-              No members match that search.
-            </Text>
+    <Screen>
+      <Stack.Screen options={{ headerShown: false }} />
+      <MembersHeader
+        onBack={() => {
+          hapticMedium();
+          if (router.canGoBack()) router.back();
+          else router.replace('/(tabs)');
+        }}
+      />
+      <FlatList
+        data={filteredMembers}
+        renderItem={renderMember}
+        keyExtractor={(item) => item.id}
+        style={{ flex: 1, backgroundColor: colors.bgBase }}
+        contentContainerStyle={{ paddingTop: 12, paddingBottom: 120 }}
+        showsVerticalScrollIndicator={false}
+        ListHeaderComponent={ListHeader}
+        ListEmptyComponent={
+          <View style={{ paddingHorizontal: 20 }}>
+            <View
+              style={{
+                backgroundColor: colors.bgSurface,
+                borderRadius: 14,
+                borderWidth: 1,
+                borderColor: colors.borderSubtle,
+                padding: 14,
+                marginBottom: space.sm,
+              }}
+            >
+              <Text style={{ fontSize: 14, color: colors.textTertiary }}>
+                No members match that search.
+              </Text>
+            </View>
           </View>
-        </View>
-      }
-      initialNumToRender={15}
-      maxToRenderPerBatch={10}
-      windowSize={5}
-    />
+        }
+        initialNumToRender={15}
+        maxToRenderPerBatch={10}
+        windowSize={5}
+      />
+    </Screen>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Chrome header                                                             */
+/* -------------------------------------------------------------------------- */
+
+function MembersHeader({
+  onBack,
+  onInvite,
+}: {
+  onBack: () => void;
+  onInvite?: () => void;
+}) {
+  return (
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingTop: space.sm,
+        paddingBottom: space.base,
+        paddingHorizontal: space.gutter,
+        backgroundColor: colors.bgBase,
+      }}
+    >
+      <Pressable
+        onPress={onBack}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        style={{
+          width: 36,
+          height: 36,
+          alignItems: 'flex-start',
+          justifyContent: 'center',
+          marginLeft: -6,
+        }}
+      >
+        <IconChevronLeft size={24} color={colors.textPrimary} strokeWidth={2} />
+      </Pressable>
+
+      <Text style={{ fontSize: 20, fontWeight: '700', color: colors.textPrimary }}>
+        Members
+      </Text>
+
+      <View style={{ minWidth: 36, alignItems: 'flex-end' }}>
+        {onInvite ? (
+          <Pressable
+            onPress={onInvite}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Text style={{ fontSize: 12, fontWeight: '700', color: colors.sageInk }}>
+              + Invite
+            </Text>
+          </Pressable>
+        ) : null}
+      </View>
+    </View>
   );
 }

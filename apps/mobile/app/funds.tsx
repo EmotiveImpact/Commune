@@ -1,144 +1,327 @@
-import { useState } from 'react';
-import { ScrollView, Text, TouchableOpacity, View, TextInput, Alert } from 'react-native';
-import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { useMemo } from 'react';
+import { Alert, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { Stack, useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { IconCash, IconChevronLeft, IconPlus } from '@tabler/icons-react-native';
 import { formatCurrency } from '@commune/utils';
-import { useThemeStore } from '@/stores/theme';
+import { EmptyState, Screen } from '@/components/primitives';
+import { colors, font, radius, space, elevation } from '@/constants/design';
 import { useGroupStore } from '@/stores/group';
 import { useGroup } from '@/hooks/use-groups';
-import { useFunds, useCreateFund, useAddContribution } from '@/hooks/use-funds';
+import { useFunds, useCreateFund } from '@/hooks/use-funds';
+import { hapticLight, hapticMedium } from '@/lib/haptics';
+
+type FundRow = {
+  id: string;
+  name: string;
+  target_amount: number | null;
+  currency: string;
+  balance: number;
+  total_contributions: number;
+  total_expenses: number;
+};
 
 export default function FundsScreen() {
   const router = useRouter();
-  const isDark = useThemeStore((s) => s.mode) === 'dark';
+  const insets = useSafeAreaInsets();
   const activeGroupId = useGroupStore((s) => s.activeGroupId);
   const { data: group } = useGroup(activeGroupId ?? '');
   const { data: funds, isLoading } = useFunds(activeGroupId ?? '');
   const createFund = useCreateFund(activeGroupId ?? '');
-  const addContribution = useAddContribution(activeGroupId ?? '');
-  const [expandedFund, setExpandedFund] = useState<string | null>(null);
 
-  const bg = isDark ? '#0A0A0A' : '#FAFAFA';
-  const surface = isDark ? '#18181B' : '#FFFFFF';
-  const text = isDark ? '#FAFAFA' : '#171b24';
-  const textSoft = isDark ? '#A1A1AA' : '#667085';
-  const border = isDark ? 'rgba(255,255,255,0.10)' : 'rgba(23,27,36,0.10)';
-  const accent = '#2d6a4f';
   const currency = group?.currency ?? 'GBP';
 
-  const handleCreateFund = () => {
-    Alert.prompt('New Fund', 'Enter a name for this fund', (name) => {
+  const handleBack = () => {
+    hapticLight();
+    if (router.canGoBack()) router.back();
+  };
+
+  const handleNew = () => {
+    hapticMedium();
+    Alert.prompt('New fund', 'Enter a name for this fund', (name) => {
       if (name?.trim()) {
         createFund.mutate({ name: name.trim(), currency });
       }
     });
   };
 
+  const handleOpen = (fundId: string) => {
+    hapticMedium();
+    // Existing flow: the funds detail view is handled inline on this screen
+    // (previous implementation toggled an expanded row). Route to the
+    // detail page when it lands; for now, prompt to add a contribution
+    // which mirrors the current primary action.
+    Alert.prompt(
+      'Add contribution',
+      'Enter amount',
+      (val) => {
+        const amount = parseFloat(val ?? '');
+        if (!Number.isNaN(amount) && amount > 0) {
+          // Import lazily to avoid pulling mutation for all renders.
+          const { addContribution } = require('@commune/api');
+          addContribution(fundId, { amount });
+        }
+      },
+      'plain-text',
+      '',
+      'decimal-pad',
+    );
+  };
+
+  const rows = (funds ?? []) as FundRow[];
+
+  const { total, count } = useMemo(() => {
+    let sum = 0;
+    for (const f of rows) sum += Number(f.balance) || 0;
+    return { total: sum, count: rows.length };
+  }, [rows]);
+
+  /* ---------------------------------------------------------------- Header */
+
+  const header = (
+    <View
+      style={{
+        paddingTop: insets.top + space.sm,
+        paddingBottom: space.md,
+        paddingHorizontal: space.gutter,
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: colors.bgBase,
+      }}
+    >
+      <TouchableOpacity
+        onPress={handleBack}
+        hitSlop={12}
+        activeOpacity={0.7}
+        style={{ width: 32, height: 32, alignItems: 'flex-start', justifyContent: 'center' }}
+      >
+        <IconChevronLeft size={24} color={colors.textPrimary} strokeWidth={2} />
+      </TouchableOpacity>
+      <Text
+        style={[
+          font.h3,
+          { flex: 1, textAlign: 'center', color: colors.textPrimary },
+        ]}
+      >
+        Shared funds
+      </Text>
+      <TouchableOpacity
+        onPress={handleNew}
+        hitSlop={12}
+        activeOpacity={0.7}
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 2,
+          minWidth: 32,
+          justifyContent: 'flex-end',
+        }}
+      >
+        <IconPlus size={14} color={colors.sageInk} strokeWidth={2.5} />
+        <Text style={{ fontSize: 12, fontWeight: '700', color: colors.sageInk, letterSpacing: 0.2 }}>
+          New
+        </Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  /* ---------------------------------------------------------------- Guards */
+
   if (!activeGroupId) {
     return (
-      <View style={{ flex: 1, backgroundColor: bg, justifyContent: 'center', alignItems: 'center', padding: 40 }}>
-        <Ionicons name="wallet-outline" size={48} color={textSoft} />
-        <Text style={{ fontSize: 16, fontWeight: '600', color: text, marginTop: 16 }}>Select a group first</Text>
-      </View>
+      <Screen>
+        <Stack.Screen options={{ headerShown: false }} />
+        {header}
+        <EmptyState
+          icon="people-outline"
+          title="Select a group first"
+          description="Choose a group to manage shared funds."
+        />
+      </Screen>
     );
   }
 
+  const empty = !isLoading && rows.length === 0;
+
+  /* ---------------------------------------------------------------- Render */
+
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: bg }}>
-      <View style={{ padding: 20, gap: 16 }}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Text style={{ fontSize: 20, fontWeight: '700', color: text }}>Shared Funds</Text>
-          <TouchableOpacity
-            onPress={handleCreateFund}
-            style={{ backgroundColor: accent, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 10 }}
-          >
-            <Text style={{ color: '#fff', fontWeight: '600', fontSize: 13 }}>New fund</Text>
-          </TouchableOpacity>
-        </View>
+    <Screen>
+      <Stack.Screen options={{ headerShown: false }} />
+      {header}
 
-        {isLoading && (
-          <View style={{ alignItems: 'center', paddingVertical: 40 }}>
-            <Text style={{ color: textSoft }}>Loading...</Text>
-          </View>
-        )}
-
-        {!isLoading && (!funds || funds.length === 0) && (
-          <View style={{ alignItems: 'center', paddingVertical: 40 }}>
-            <Ionicons name="wallet-outline" size={40} color={textSoft} />
-            <Text style={{ fontSize: 15, fontWeight: '600', color: text, marginTop: 12 }}>No funds yet</Text>
-            <Text style={{ fontSize: 13, color: textSoft, marginTop: 4, textAlign: 'center' }}>
-              Create a shared fund for communal purchases, deposits, or savings goals.
-            </Text>
-          </View>
-        )}
-
-        {(funds ?? []).map((fund: any) => {
-          const balance = (fund.total_contributions ?? 0) - (fund.total_expenses ?? 0);
-          const target = fund.target_amount ?? 0;
-          const progress = target > 0 ? Math.min((fund.total_contributions ?? 0) / target, 1) : 0;
-          const isExpanded = expandedFund === fund.id;
-
-          return (
-            <TouchableOpacity
-              key={fund.id}
-              onPress={() => setExpandedFund(isExpanded ? null : fund.id)}
-              activeOpacity={0.7}
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{
+          paddingTop: space.md,
+          paddingBottom: 120,
+          paddingHorizontal: space.gutter,
+          gap: space.base,
+        }}
+        showsVerticalScrollIndicator={false}
+      >
+        {empty ? (
+          <EmptyState
+            icon="wallet-outline"
+            title="No shared funds yet"
+            description="Shared funds are savings pots the whole group contributes to — holidays, bills, goals."
+            actionLabel="Create first fund"
+            onAction={handleNew}
+          />
+        ) : (
+          <>
+            {/* Dark-ink hero: total across all funds */}
+            <View
               style={{
-                backgroundColor: surface,
-                borderRadius: 16,
-                padding: 16,
-                borderWidth: 1,
-                borderColor: border,
+                backgroundColor: colors.bgInk,
+                borderRadius: radius.hero,
+                padding: space.xl,
               }}
             >
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 16, fontWeight: '600', color: text }}>{fund.name}</Text>
-                  <Text style={{ fontSize: 13, color: textSoft, marginTop: 2 }}>
-                    Balance: {formatCurrency(balance, currency)}
-                  </Text>
-                </View>
-                <Ionicons name={isExpanded ? 'chevron-up' : 'chevron-down'} size={18} color={textSoft} />
-              </View>
+              <Text
+                style={{
+                  fontSize: 11,
+                  fontWeight: '700',
+                  letterSpacing: 0.8,
+                  color: 'rgba(255,255,255,0.55)',
+                  textTransform: 'uppercase',
+                }}
+              >
+                Across all funds
+              </Text>
+              <Text
+                style={{
+                  marginTop: space.sm,
+                  fontSize: 34,
+                  fontWeight: '700',
+                  lineHeight: 40,
+                  letterSpacing: -0.5,
+                  color: colors.textInverse,
+                  fontVariant: ['tabular-nums'],
+                }}
+              >
+                {formatCurrency(total, currency)}
+              </Text>
+              <Text
+                style={{
+                  marginTop: space.sm,
+                  fontSize: 13,
+                  color: 'rgba(255,255,255,0.75)',
+                }}
+                numberOfLines={1}
+              >
+                {count} {count === 1 ? 'fund' : 'funds'}
+              </Text>
+            </View>
 
-              {target > 0 && (
-                <View style={{ marginTop: 10 }}>
-                  <View style={{ height: 6, backgroundColor: border, borderRadius: 3, overflow: 'hidden' }}>
-                    <View style={{
-                      height: 6,
-                      borderRadius: 3,
-                      width: `${Math.round(progress * 100)}%` as any,
-                      backgroundColor: progress >= 1 ? '#10B981' : accent,
-                    }} />
-                  </View>
-                  <Text style={{ fontSize: 11, color: textSoft, marginTop: 4 }}>
-                    {formatCurrency(fund.total_contributions ?? 0, currency)} of {formatCurrency(target, currency)}
-                  </Text>
-                </View>
-              )}
+            {/* Section label */}
+            <Text
+              style={{
+                fontSize: 10,
+                fontWeight: '700',
+                letterSpacing: 0.6,
+                color: colors.textMuted,
+                textTransform: 'uppercase',
+                paddingTop: space.base,
+                paddingBottom: space.sm,
+              }}
+            >
+              All funds
+            </Text>
 
-              {isExpanded && (
-                <View style={{ marginTop: 14, paddingTop: 14, borderTopWidth: 1, borderTopColor: border }}>
-                  <Text style={{ fontSize: 13, fontWeight: '600', color: text, marginBottom: 8 }}>
-                    In: {formatCurrency(fund.total_contributions ?? 0, currency)} · Out: {formatCurrency(fund.total_expenses ?? 0, currency)}
-                  </Text>
+            {/* Fund rows */}
+            <View style={{ gap: space.sm }}>
+              {rows.map((fund) => {
+                const target = fund.target_amount ?? null;
+                const hasTarget = typeof target === 'number' && target > 0;
+                const pct = hasTarget
+                  ? Math.max(0, Math.min(100, (fund.balance / (target as number)) * 100))
+                  : 0;
+
+                return (
                   <TouchableOpacity
-                    onPress={() => {
-                      Alert.prompt('Add Contribution', 'Enter amount', (val) => {
-                        const amount = parseFloat(val);
-                        if (amount > 0) addContribution.mutate({ fund_id: fund.id, amount });
-                      }, 'plain-text', '', 'decimal-pad');
+                    key={fund.id}
+                    activeOpacity={0.8}
+                    onPress={() => handleOpen(fund.id)}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: space.md,
+                      backgroundColor: colors.bgSurface,
+                      borderRadius: 14,
+                      padding: 14,
+                      borderWidth: 1,
+                      borderColor: colors.borderSubtle,
+                      ...elevation.card,
                     }}
-                    style={{ backgroundColor: accent, borderRadius: 10, paddingVertical: 10, alignItems: 'center' }}
                   >
-                    <Text style={{ color: '#fff', fontWeight: '600', fontSize: 13 }}>Add contribution</Text>
+                    <View
+                      style={{
+                        width: 40,
+                        height: 40,
+                        borderRadius: 12,
+                        backgroundColor: colors.sageSoft,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <IconCash size={20} color={colors.sage} strokeWidth={2} />
+                    </View>
+
+                    <View style={{ flex: 1 }}>
+                      <Text
+                        style={{ fontSize: 15, fontWeight: '600', color: colors.textPrimary }}
+                        numberOfLines={1}
+                      >
+                        {fund.name}
+                      </Text>
+                      <Text
+                        style={{ marginTop: 2, fontSize: 12, color: colors.textTertiary }}
+                        numberOfLines={1}
+                      >
+                        {hasTarget
+                          ? `Target ${formatCurrency(target as number, fund.currency ?? currency)} · Progress ${Math.round(pct)}%`
+                          : 'No target set'}
+                      </Text>
+                      {hasTarget ? (
+                        <View
+                          style={{
+                            marginTop: 8,
+                            height: 4,
+                            borderRadius: 2,
+                            backgroundColor: colors.sageSoft,
+                            overflow: 'hidden',
+                          }}
+                        >
+                          <View
+                            style={{
+                              height: 4,
+                              borderRadius: 2,
+                              width: `${pct}%`,
+                              backgroundColor: colors.sage,
+                            }}
+                          />
+                        </View>
+                      ) : null}
+                    </View>
+
+                    <Text
+                      style={{
+                        fontSize: 14,
+                        fontWeight: '700',
+                        color: colors.textPrimary,
+                        fontVariant: ['tabular-nums'],
+                      }}
+                    >
+                      {formatCurrency(fund.balance, fund.currency ?? currency)}
+                    </Text>
                   </TouchableOpacity>
-                </View>
-              )}
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-    </ScrollView>
+                );
+              })}
+            </View>
+          </>
+        )}
+      </ScrollView>
+    </Screen>
   );
 }
