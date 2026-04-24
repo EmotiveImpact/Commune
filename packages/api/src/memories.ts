@@ -1,6 +1,7 @@
-import { supabase } from './client';
+import { getTypedSupabase } from './client';
 
 export async function getGroupMemories(groupId: string) {
+  const supabase = getTypedSupabase();
   const { data, error } = await supabase
     .from('group_memories')
     .select('*, creator:users!created_by(id, name, avatar_url)')
@@ -18,6 +19,7 @@ export async function addMemory(data: {
   description?: string;
   memory_date?: string;
 }) {
+  const supabase = getTypedSupabase();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
 
@@ -38,6 +40,7 @@ export async function addMemory(data: {
 }
 
 export async function deleteMemory(memoryId: string) {
+  const supabase = getTypedSupabase();
   const { error } = await supabase
     .from('group_memories')
     .delete()

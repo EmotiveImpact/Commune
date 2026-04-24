@@ -124,7 +124,7 @@ const s = StyleSheet.create({
   heroInlineMuted: { color: 'rgba(255,255,255,0.55)', fontWeight: '500' },
   heroCaption: { fontSize: 13, fontWeight: '500', color: 'rgba(255,255,255,0.6)', marginTop: space.xs },
   heroTrack: { height: 6, borderRadius: 3, backgroundColor: '#374151', overflow: 'hidden', marginTop: space.base, marginBottom: space.lg },
-  heroFill: { height: '100%', backgroundColor: colors.lime, borderRadius: 3 },
+  heroFill: { height: '100%', backgroundColor: '#1f7a6a', borderRadius: 3 },
   heroDivider: { height: 1, backgroundColor: 'rgba(255,255,255,0.12)', marginTop: space.base, marginBottom: space.base },
   heroStatsRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: space.lg },
   heroStatCell: { flex: 1 },

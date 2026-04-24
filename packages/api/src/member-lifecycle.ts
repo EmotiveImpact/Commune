@@ -5,7 +5,7 @@ import type {
   GroupMember,
   GroupWithMembers,
 } from '@commune/types';
-import { supabase } from './client';
+import { getTypedSupabase } from './client';
 import {
   applyGovernanceMemberPatch,
   ensureWorkspaceApproverCoverage,
@@ -21,6 +21,7 @@ function isWithinCycle(value: string | null, start: string, endExclusive: string
 }
 
 async function getAuthenticatedUserId(): Promise<string> {
+  const supabase = getTypedSupabase();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -33,6 +34,7 @@ async function getAuthenticatedUserId(): Promise<string> {
 }
 
 async function ensureGroupAdmin(groupId: string, userId: string) {
+  const supabase = getTypedSupabase();
   const { data, error } = await supabase
     .from('group_members')
     .select('id')
@@ -93,6 +95,7 @@ export async function getGroupLifecycleSummary(
   groupId: string,
   referenceDate: string = getTodayKey(),
 ): Promise<GroupLifecycleSummary> {
+  const supabase = getTypedSupabase();
   const { data, error } = await supabase
     .from('groups')
     .select(
@@ -170,6 +173,7 @@ export async function getMemberHandoverSummary(
   groupId: string,
   userId: string,
 ): Promise<MemberHandoverSummary> {
+  const supabase = getTypedSupabase();
   const [
     createdExpensesResult,
     participantExpensesResult,
@@ -234,6 +238,7 @@ export async function scheduleMemberDeparture(
   const userId = await getAuthenticatedUserId();
   const today = getTodayKey();
 
+  const supabase = getTypedSupabase();
   const { data: memberData, error: memberError } = await supabase
     .from('group_members')
     .select('id, group_id, user_id, role, status, effective_until')
@@ -291,6 +296,7 @@ export async function scheduleMemberDeparture(
 export async function restoreMemberAccess(memberId: string) {
   const userId = await getAuthenticatedUserId();
 
+  const supabase = getTypedSupabase();
   const { data: memberData, error: memberError } = await supabase
     .from('group_members')
     .select('id, group_id')

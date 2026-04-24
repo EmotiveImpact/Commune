@@ -14,7 +14,7 @@ import type {
   SettlementTransaction,
 } from '@commune/types';
 import { buildPaymentUrl, calculateSettlementWithCouples, netCrossGroupDebts } from '@commune/core';
-import { supabase } from './client';
+import { getTypedSupabase } from './client';
 
 interface CrossGroupPaymentMethodRow {
   user_id: string;
@@ -105,6 +105,7 @@ async function enrichTransactionsWithPaymentLinks(
   }
 
   const payeeIds = [...new Set(transactions.map((transaction) => transaction.toUserId))];
+  const supabase = getTypedSupabase();
   const { data: paymentMethodRows, error } = await supabase
     .from('user_payment_methods')
     .select('user_id, provider, payment_link, is_default, created_at')
@@ -145,6 +146,7 @@ async function buildCrossGroupData(
   options?: { includePerGroupData?: boolean },
 ): Promise<CrossGroupBuildResult> {
   const includePerGroupData = options?.includePerGroupData === true;
+  const supabase = getTypedSupabase();
   const { data: rollupRows, error: rollupError } = await supabase.rpc(
     'fn_get_cross_group_settlement_rollup',
     {

@@ -1,7 +1,8 @@
 import type { GroupBudget } from '@commune/types';
-import { supabase } from './client';
+import { getTypedSupabase } from './client';
 
 export async function getGroupBudget(groupId: string, month: string) {
+  const supabase = getTypedSupabase();
   const { data, error } = await supabase
     .from('group_budgets')
     .select('*')
@@ -10,7 +11,7 @@ export async function getGroupBudget(groupId: string, month: string) {
     .maybeSingle();
 
   if (error) throw error;
-  return data as GroupBudget | null;
+  return data as unknown as GroupBudget | null;
 }
 
 export async function setGroupBudget(
@@ -20,6 +21,7 @@ export async function setGroupBudget(
   categoryBudgets?: Record<string, number> | null,
   alertThreshold?: number,
 ) {
+  const supabase = getTypedSupabase();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -44,10 +46,11 @@ export async function setGroupBudget(
     .single();
 
   if (error) throw error;
-  return data as GroupBudget;
+  return data as unknown as GroupBudget;
 }
 
 export async function getBudgetHistory(groupId: string) {
+  const supabase = getTypedSupabase();
   const { data, error } = await supabase
     .from('group_budgets')
     .select('*')
@@ -55,10 +58,11 @@ export async function getBudgetHistory(groupId: string) {
     .order('month', { ascending: false });
 
   if (error) throw error;
-  return data as GroupBudget[];
+  return data as unknown as GroupBudget[];
 }
 
 export async function deleteGroupBudget(groupId: string, month: string) {
+  const supabase = getTypedSupabase();
   const { error } = await supabase
     .from('group_budgets')
     .delete()

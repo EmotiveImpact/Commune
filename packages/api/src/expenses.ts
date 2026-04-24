@@ -1,5 +1,10 @@
 import type {
+  ExpenseCategory,
+  ExpenseInsert,
   ExpenseListItem,
+  ExpenseParticipantInsert,
+  ExpenseRow,
+  ExpenseUpdate,
   ExpenseVendorInvoiceContext,
   ExpenseWithParticipants,
   SplitMethod,
@@ -9,7 +14,7 @@ import {
   calculatePercentageSplit,
   normalizeExpenseVendorInvoiceContext,
 } from '@commune/core';
-import { supabase } from './client';
+import { getTypedSupabase } from './client';
 import {
   getEffectiveApprovalThreshold,
   getGroupApprovalSettings,
@@ -175,6 +180,7 @@ function parseExpenseLedgerResponse(value: unknown): ExpenseLedgerResponse {
 }
 
 export async function createExpense(data: CreateExpenseData) {
+  const supabase = getTypedSupabase();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -245,24 +251,26 @@ export async function createExpense(data: CreateExpenseData) {
     }
   }
 
+  const expenseInsert: ExpenseInsert = {
+    ...expenseData,
+    ...vendorInvoiceContext,
+    split_method,
+    created_by: user.id,
+    approval_status: approvalStatus,
+  } as ExpenseInsert;
+
   const { data: expense, error: expenseError } = await supabase
     .from('expenses')
-    .insert({
-      ...expenseData,
-      ...vendorInvoiceContext,
-      split_method,
-      created_by: user.id,
-      approval_status: approvalStatus,
-    })
+    .insert(expenseInsert)
     .select()
     .single();
 
   if (expenseError) throw expenseError;
 
-  const expenseId = (expense as { id: string }).id;
+  const expenseId = (expense as ExpenseRow).id;
 
   // Insert expense participants
-  const participants = shares.map((s) => ({
+  const participants: ExpenseParticipantInsert[] = shares.map((s) => ({
     expense_id: expenseId,
     user_id: s.userId,
     share_amount: s.amount,
@@ -274,9 +282,10 @@ export async function createExpense(data: CreateExpenseData) {
     .insert(participants);
 
   if (participantError) {
+    const rollback: ExpenseUpdate = { is_active: false };
     await supabase
       .from('expenses')
-      .update({ is_active: false })
+      .update(rollback)
       .eq('id', expenseId);
     throw participantError;
   }
@@ -291,6 +300,7 @@ export async function getGroupExpenses(
     month?: string; // YYYY-MM format
   },
 ): Promise<ExpenseListItem[]> {
+  const supabase = getTypedSupabase();
   let query = supabase
     .from('expenses')
     .select(
@@ -307,10 +317,12 @@ export async function getGroupExpenses(
       invoice_reference,
       invoice_date,
       payment_due_date,
+      paid_by_user_id,
       participants:expense_participants(
         user_id
       ),
       payment_records(
+        user_id,
         status
       )
     `,
@@ -320,7 +332,7 @@ export async function getGroupExpenses(
     .order('due_date', { ascending: false });
 
   if (filters?.category) {
-    query = query.eq('category', filters.category);
+    query = query.eq('category', filters.category as ExpenseCategory);
   }
 
   if (filters?.month) {
@@ -340,13 +352,14 @@ export async function getExpenseLedger(
   groupId: string,
   filters: ExpenseLedgerFilters = {},
 ): Promise<ExpenseLedgerResponse> {
+  const supabase = getTypedSupabase();
   const { data, error } = await supabase.rpc('fn_get_expense_ledger', {
     p_group_id: groupId,
-    p_category: filters.category ?? null,
-    p_month: filters.month ?? null,
-    p_date_from: filters.dateFrom ?? null,
-    p_date_to: filters.dateTo ?? null,
-    p_search: filters.search ?? null,
+    p_category: filters.category ?? undefined,
+    p_month: filters.month ?? undefined,
+    p_date_from: filters.dateFrom ?? undefined,
+    p_date_to: filters.dateTo ?? undefined,
+    p_search: filters.search ?? undefined,
     p_workspace_view: filters.workspaceView ?? 'all',
     p_status: filters.status ?? 'all',
     p_is_workspace_group: filters.isWorkspaceGroup ?? false,
@@ -374,6 +387,7 @@ export async function getMemberMonthlyStats(
   groupId: string,
   month: string,
 ): Promise<MemberMonthlyStatRow[]> {
+  const supabase = getTypedSupabase();
   const startDate = `${month}-01`;
   const [year, monthNumber] = month.split('-').map(Number);
   const endDate = new Date(year!, monthNumber!, 1).toISOString().split('T')[0];
@@ -431,6 +445,7 @@ export async function getMemberMonthlyStats(
 }
 
 export async function getExpenseDetail(expenseId: string) {
+  const supabase = getTypedSupabase();
   const { data, error } = await supabase
     .from('expenses')
     .select(
@@ -453,10 +468,12 @@ export async function getExpenseDetail(expenseId: string) {
 
 export async function archiveExpense(expenseId: string) {
   await ensureExpenseCycleOpen(expenseId, 'archive an expense in this cycle');
+  const supabase = getTypedSupabase();
 
+  const update: ExpenseUpdate = { is_active: false };
   const { data, error } = await supabase
     .from('expenses')
-    .update({ is_active: false })
+    .update(update)
     .eq('id', expenseId)
     .select()
     .single();
@@ -467,6 +484,7 @@ export async function archiveExpense(expenseId: string) {
 
 export async function batchArchiveExpenses(ids: string[]): Promise<void> {
   if (ids.length === 0) return;
+  const supabase = getTypedSupabase();
 
   const { data: expenseRows, error: expenseFetchError } = await supabase
     .from('expenses')
@@ -475,11 +493,7 @@ export async function batchArchiveExpenses(ids: string[]): Promise<void> {
 
   if (expenseFetchError) throw expenseFetchError;
 
-  for (const expense of (expenseRows ?? []) as Array<{
-    id: string;
-    group_id: string;
-    due_date: string;
-  }>) {
+  for (const expense of expenseRows ?? []) {
     await ensureGroupCycleOpenForDate(
       expense.group_id,
       expense.due_date,
@@ -487,14 +501,19 @@ export async function batchArchiveExpenses(ids: string[]): Promise<void> {
     );
   }
 
+  const update: ExpenseUpdate = {
+    is_active: false,
+    updated_at: new Date().toISOString(),
+  };
   const { error } = await supabase
     .from('expenses')
-    .update({ is_active: false, updated_at: new Date().toISOString() })
+    .update(update)
     .in('id', ids);
   if (error) throw error;
 }
 
 export async function flagExpense(expenseId: string, reason: string): Promise<void> {
+  const supabase = getTypedSupabase();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
 
@@ -504,28 +523,31 @@ export async function flagExpense(expenseId: string, reason: string): Promise<vo
     .eq('id', expenseId)
     .single();
 
-  const currentFlags: string[] = (expense?.flagged_by as string[]) ?? [];
+  const currentFlags: string[] = expense?.flagged_by ?? [];
   if (currentFlags.includes(user.id)) return; // Already flagged
 
+  const flagUpdate: ExpenseUpdate = {
+    flagged_by: [...currentFlags, user.id],
+    flagged_reason: reason,
+    flagged_at: new Date().toISOString(),
+  };
   const { error } = await supabase
     .from('expenses')
-    .update({
-      flagged_by: [...currentFlags, user.id],
-      flagged_reason: reason,
-      flagged_at: new Date().toISOString(),
-    })
+    .update(flagUpdate)
     .eq('id', expenseId);
   if (error) throw error;
 }
 
 export async function unflagExpense(expenseId: string): Promise<void> {
+  const supabase = getTypedSupabase();
+  const unflagUpdate: ExpenseUpdate = {
+    flagged_by: [],
+    flagged_reason: null,
+    flagged_at: null,
+  };
   const { error } = await supabase
     .from('expenses')
-    .update({
-      flagged_by: [],
-      flagged_reason: null,
-      flagged_at: null,
-    })
+    .update(unflagUpdate)
     .eq('id', expenseId);
   if (error) throw error;
 }

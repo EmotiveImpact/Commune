@@ -4,6 +4,7 @@ import {
   calculatePercentageSplit,
   calculateCustomSplit,
   calculateReimbursements,
+  toSharePercentages,
 } from './splits';
 
 // ─── calculateEqualSplit ─────────────────────────────────────────────────────
@@ -88,6 +89,42 @@ describe('calculateCustomSplit', () => {
       { userId: 'a', amount: 70 },
       { userId: 'b', amount: 30 },
     ]);
+  });
+});
+
+// ─── toSharePercentages ──────────────────────────────────────────────────────
+
+describe('toSharePercentages', () => {
+  it('returns the percentage each share represents of the total', () => {
+    const shares = [{ amount: 25 }, { amount: 50 }, { amount: 25 }];
+    expect(toSharePercentages(shares, 100)).toEqual([25, 50, 25]);
+  });
+
+  it('rounds to 2 decimal places', () => {
+    const shares = calculateEqualSplit(100, 3); // [33.34, 33.33, 33.33]
+    const pct = toSharePercentages(shares.map((a) => ({ amount: a })), 100);
+    expect(pct).toEqual([33.34, 33.33, 33.33]);
+  });
+
+  it('returns zeros when total is 0', () => {
+    const shares = [{ amount: 10 }, { amount: 20 }];
+    expect(toSharePercentages(shares, 0)).toEqual([0, 0]);
+  });
+
+  it('returns zeros when total is negative', () => {
+    const shares = [{ amount: 10 }];
+    expect(toSharePercentages(shares, -5)).toEqual([0]);
+  });
+
+  it('handles empty shares', () => {
+    expect(toSharePercentages([], 100)).toEqual([]);
+  });
+
+  it('handles custom-amount drift (shares sum != total)', () => {
+    // e.g. user typed 40 + 40 for a 100 expense → preview shows under 100%
+    const shares = [{ amount: 40 }, { amount: 40 }];
+    const pct = toSharePercentages(shares, 100);
+    expect(pct).toEqual([40, 40]);
   });
 });
 

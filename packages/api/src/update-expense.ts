@@ -1,10 +1,15 @@
-import type { SplitMethod } from '@commune/types';
+import type {
+  ExpenseParticipantInsert,
+  ExpenseRow,
+  ExpenseUpdate,
+  SplitMethod,
+} from '@commune/types';
 import {
   calculateEqualSplit,
   calculatePercentageSplit,
   pickExpenseVendorInvoiceContextUpdates,
 } from '@commune/core';
-import { supabase } from './client';
+import { getTypedSupabase } from './client';
 import {
   getEffectiveApprovalThreshold,
   getGroupApprovalSettings,
@@ -29,6 +34,7 @@ interface UpdateExpenseData {
 }
 
 export async function updateExpense(expenseId: string, data: UpdateExpenseData) {
+  const supabase = getTypedSupabase();
   const {
     participant_ids,
     percentages,
@@ -75,13 +81,11 @@ export async function updateExpense(expenseId: string, data: UpdateExpenseData) 
 
   if (fetchCurrentExpenseError) throw fetchCurrentExpenseError;
 
-  const currentExpense = currentExpenseData as {
-    amount: number;
-    split_method: SplitMethod;
-    approval_status: 'approved' | 'pending' | 'rejected';
-    group_id: string;
-    due_date: string;
-  };
+  type CurrentExpenseSlice = Pick<
+    ExpenseRow,
+    'amount' | 'split_method' | 'group_id' | 'due_date'
+  > & { approval_status: 'approved' | 'pending' | 'rejected' };
+  const currentExpense = currentExpenseData as CurrentExpenseSlice;
 
   await ensureGroupCycleOpenForDate(
     currentExpense.group_id,
@@ -118,6 +122,39 @@ export async function updateExpense(expenseId: string, data: UpdateExpenseData) 
       share_amount: number;
       share_percentage: number | null;
     }>;
+  }
+
+  // Pre-validate recalc preconditions BEFORE any write so a throw can't leave
+  // the metadata row updated while the split rows remain stale.
+  if (needsCurrentSplitState) {
+    if (!currentParticipants) {
+      throw new Error('Could not load the current split state for this expense');
+    }
+    const effectiveMethod = split_method ?? currentExpense.split_method;
+    const effectiveParticipantIds =
+      participant_ids ?? currentParticipants.map((p) => p.user_id);
+
+    if (effectiveParticipantIds.length === 0) {
+      throw new Error('Expense must have at least one participant');
+    }
+
+    if (effectiveMethod === 'percentage') {
+      const effectivePercentages =
+        percentages ??
+        currentParticipants.map((participant) => ({
+          userId: participant.user_id,
+          percentage: participant.share_percentage ?? 0,
+        }));
+
+      const hasAllPercentages = effectivePercentages.every((entry) => entry.percentage > 0);
+      if (!hasAllPercentages || effectivePercentages.length !== effectiveParticipantIds.length) {
+        throw new Error('Percentage splits require percentage values for every participant');
+      }
+    } else if (effectiveMethod === 'custom' && !custom_amounts) {
+      throw new Error(
+        'This expense uses a custom split. Edit the split details directly or create a new expense.',
+      );
+    }
   }
 
   let approvalStatusUpdate:
@@ -158,12 +195,12 @@ export async function updateExpense(expenseId: string, data: UpdateExpenseData) 
     || Object.keys(vendorInvoiceUpdates).length > 0
     || split_method
   ) {
-    const updateData = {
+    const updateData: ExpenseUpdate = {
       ...expenseFields,
       ...vendorInvoiceUpdates,
       ...(split_method && { split_method }),
       ...approvalStatusUpdate,
-    };
+    } as ExpenseUpdate;
     const { error } = await supabase
       .from('expenses')
       .update(updateData)
@@ -242,7 +279,7 @@ export async function updateExpense(expenseId: string, data: UpdateExpenseData) 
     if (deletePaymentsError) throw deletePaymentsError;
 
     // Re-insert participants
-    const participants = shares.map((s) => ({
+    const participants: ExpenseParticipantInsert[] = shares.map((s) => ({
       expense_id: expenseId,
       user_id: s.userId,
       share_amount: s.amount,

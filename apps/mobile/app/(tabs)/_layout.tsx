@@ -2,6 +2,26 @@ import { useEffect, useState } from 'react';
 import { Tabs, useRouter, usePathname } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import {
+  IconBell,
+  IconChartBar,
+  IconChecklist,
+  IconCopy,
+  IconHome2,
+  IconLayoutDashboard,
+  IconLifebuoy,
+  IconMenu2,
+  IconMessageCircle,
+  IconCash,
+  IconPlus,
+  IconReceipt,
+  IconRepeat,
+  IconSettings,
+  IconUserPlus,
+  IconUsers,
+  IconUsersGroup,
+  IconWallet,
+} from '@tabler/icons-react-native';
+import {
   Image,
   Modal,
   Pressable,
@@ -17,6 +37,7 @@ import { useAuthStore } from '@/stores/auth';
 import { useGroupStore } from '@/stores/group';
 import { colors, elevation, font, radius, space } from '@/constants/design';
 import { IconTile } from '@/components/primitives';
+import { SideDrawer } from '@/components/side-drawer';
 
 const TAB_BAR_BG = '#1d2130';
 const ACTIVE_COLOR = '#FFFFFF';
@@ -138,6 +159,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/groups': 'Groups',
   '/chores': 'More',
   '/operations': 'Chores',
+  '/settings': 'Profile',
 };
 
 export default function TabLayout() {
@@ -155,6 +177,7 @@ export default function TabLayout() {
   const unreadCount = notifications.filter((n) => !n.read).length;
   const [menuOpen, setMenuOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   useEffect(() => {
     if (!activeGroupId && groups[0]?.id) {
@@ -186,8 +209,8 @@ export default function TabLayout() {
             <View
               style={{
                 backgroundColor: colors.bgBase,
-                paddingTop: insets.top + space.md,
-                paddingBottom: space.base,
+                paddingTop: insets.top + space.xs,
+                paddingBottom: space.xs,
                 paddingHorizontal: space.gutter,
               }}
             >
@@ -201,7 +224,7 @@ export default function TabLayout() {
                 }}
               >
                 <Pressable
-                  onPress={() => { hapticLight(); setMoreOpen(true); }}
+                  onPress={() => { hapticLight(); setDrawerOpen(true); }}
                   hitSlop={8}
                   accessibilityLabel="Open menu"
                   style={({ pressed }) => [
@@ -215,7 +238,7 @@ export default function TabLayout() {
                     },
                   ]}
                 >
-                  <Ionicons name="menu" size={28} color={colors.textPrimary} />
+                  <IconMenu2 size={26} strokeWidth={2} color={colors.textPrimary} />
                 </Pressable>
 
                 <View
@@ -270,11 +293,7 @@ export default function TabLayout() {
                       },
                     ]}
                   >
-                    <Ionicons
-                      name="notifications-outline"
-                      size={28}
-                      color={colors.textPrimary}
-                    />
+                    <IconBell size={26} strokeWidth={1.75} color={colors.textPrimary} />
                     {unreadCount > 0 && (
                     <View
                       style={{
@@ -304,40 +323,6 @@ export default function TabLayout() {
                       </Text>
                     </View>
                   )}
-                  </Pressable>
-
-                  <Pressable
-                    onPress={() => { hapticLight(); router.push('/settings'); }}
-                    hitSlop={8}
-                    style={({ pressed }) => [
-                      {
-                        height: 32,
-                        width: 32,
-                        borderRadius: 16,
-                        backgroundColor: '#1A1E2B',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        overflow: 'hidden',
-                        opacity: pressed ? 0.75 : 1,
-                      },
-                    ]}
-                    accessibilityLabel="Profile"
-                  >
-                    {user?.avatar_url ? (
-                      <Image
-                        source={{ uri: user.avatar_url }}
-                        style={{ width: 32, height: 32, borderRadius: 16 }}
-                      />
-                    ) : (() => {
-                      const initial = (user?.name ?? user?.email ?? '').trim().charAt(0).toUpperCase();
-                      return initial ? (
-                        <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '700' }}>
-                          {initial}
-                        </Text>
-                      ) : (
-                        <Ionicons name="person" size={20} color="#FFFFFF" />
-                      );
-                    })()}
                   </Pressable>
                 </View>
               </View>
@@ -373,7 +358,7 @@ export default function TabLayout() {
             title: 'Home',
             tabBarLabel: 'Home',
             tabBarIcon: ({ focused }) => (
-              <Ionicons name="home-outline" size={30} color={focused ? ACTIVE_COLOR : INACTIVE_COLOR} />
+              <IconLayoutDashboard size={28} strokeWidth={1.75} color={focused ? ACTIVE_COLOR : INACTIVE_COLOR} />
             ),
           }}
         />
@@ -384,8 +369,9 @@ export default function TabLayout() {
           options={{
             title: 'Expenses',
             tabBarLabel: 'Expenses',
+            tabBarItemStyle: { paddingTop: 2, paddingLeft: 24 },
             tabBarIcon: ({ focused }) => (
-              <Ionicons name="receipt-outline" size={30} color={focused ? ACTIVE_COLOR : INACTIVE_COLOR} />
+              <IconReceipt size={28} strokeWidth={1.75} color={focused ? ACTIVE_COLOR : INACTIVE_COLOR} />
             ),
           }}
         />
@@ -421,7 +407,7 @@ export default function TabLayout() {
                   ...elevation.fab,
                 }}
               >
-                <Ionicons name="add" size={34} color="#FFFFFF" />
+                <IconPlus size={30} strokeWidth={2.25} color="#FFFFFF" />
               </View>
             ),
           }}
@@ -433,33 +419,62 @@ export default function TabLayout() {
           options={{
             title: 'Groups',
             tabBarLabel: 'Groups',
+            tabBarItemStyle: { paddingTop: 2, paddingRight: 24 },
             tabBarIcon: ({ focused }) => (
-              <Ionicons name="people-outline" size={30} color={focused ? ACTIVE_COLOR : INACTIVE_COLOR} />
+              <IconUsers size={28} strokeWidth={1.75} color={focused ? ACTIVE_COLOR : INACTIVE_COLOR} />
             ),
           }}
         />
 
-        {/* 5. More — opens the More sheet instead of navigating */}
+        {/* 5. Profile — tapping the avatar opens settings */}
         <Tabs.Screen
-          name="chores"
-          listeners={{
-            tabPress: (e) => {
-              e.preventDefault();
-              hapticMedium();
-              setMoreOpen(true);
-            },
-          }}
+          name="settings"
           options={{
-            title: 'More',
-            tabBarLabel: 'More',
-            tabBarIcon: ({ focused }) => (
-              <Ionicons name="apps-outline" size={28} color={focused ? ACTIVE_COLOR : INACTIVE_COLOR} />
-            ),
+            title: 'Profile',
+            tabBarLabel: 'Profile',
+            tabBarIcon: ({ focused }) => {
+              const initial = (user?.name ?? user?.email ?? '').trim().charAt(0).toUpperCase();
+              if (user?.avatar_url) {
+                return (
+                  <Image
+                    source={{ uri: user.avatar_url }}
+                    style={{
+                      width: 28,
+                      height: 28,
+                      borderRadius: 14,
+                      opacity: focused ? 1 : 0.6,
+                    }}
+                  />
+                );
+              }
+              return (
+                <View
+                  style={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: 14,
+                    backgroundColor: 'rgba(255,255,255,0.12)',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Text
+                    style={{
+                      color: focused ? ACTIVE_COLOR : INACTIVE_COLOR,
+                      fontSize: 12,
+                      fontWeight: '700',
+                    }}
+                  >
+                    {initial || '?'}
+                  </Text>
+                </View>
+              );
+            },
           }}
         />
 
         <Tabs.Screen name="analytics" options={{ href: null }} />
-        <Tabs.Screen name="settings" options={{ href: null }} />
+        <Tabs.Screen name="chores" options={{ href: null }} />
       </Tabs>
 
       {/* ─── Quick Actions Sheet ──────────────────────────────────── */}
@@ -698,6 +713,183 @@ export default function TabLayout() {
           </Pressable>
         </Pressable>
       </Modal>
+
+      <SideDrawer
+        visible={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        userLabel={user?.name ?? user?.email ?? undefined}
+        userCaption={user?.email ?? undefined}
+        userAvatarUrl={user?.avatar_url ?? null}
+        panels={[
+          {
+            key: 'main',
+            title: 'Menu',
+            items: [
+              {
+                type: 'nested',
+                key: 'groups',
+                Icon: IconUsersGroup,
+                label: 'Switch group',
+                caption: 'See all your groups',
+                color: colors.typeWorkspace.accent,
+                bg: colors.typeWorkspace.bg,
+                panel: 'groups',
+              },
+              {
+                type: 'action',
+                key: 'chores',
+                Icon: IconChecklist,
+                label: 'Chores',
+                color: colors.owedText,
+                bg: colors.owedBg,
+                onPress: () => {
+                  setDrawerOpen(false);
+                  setTimeout(() => router.push('/operations'), 220);
+                },
+              },
+              {
+                type: 'action',
+                key: 'analytics',
+                Icon: IconChartBar,
+                label: 'Analytics',
+                color: colors.sage,
+                bg: colors.sageSoft,
+                onPress: () => {
+                  setDrawerOpen(false);
+                  setTimeout(() => router.push('/analytics'), 220);
+                },
+              },
+              {
+                type: 'action',
+                key: 'activity',
+                Icon: IconMessageCircle,
+                label: 'Activity',
+                color: colors.typeCouple.accent,
+                bg: colors.typeCouple.bg,
+                onPress: () => {
+                  setDrawerOpen(false);
+                  setTimeout(() => router.push('/activity'), 220);
+                },
+              },
+              {
+                type: 'action',
+                key: 'settle',
+                Icon: IconWallet,
+                label: 'Settle up',
+                color: colors.sage,
+                bg: colors.sageSoft,
+                onPress: () => {
+                  setDrawerOpen(false);
+                  setTimeout(() => router.push('/command-centre'), 220);
+                },
+              },
+              {
+                type: 'action',
+                key: 'templates',
+                Icon: IconCopy,
+                label: 'Templates',
+                color: colors.typeProject.accent,
+                bg: colors.typeProject.bg,
+                onPress: () => {
+                  setDrawerOpen(false);
+                  setTimeout(() => router.push('/templates'), 220);
+                },
+              },
+              {
+                type: 'action',
+                key: 'recurring',
+                Icon: IconRepeat,
+                label: 'Recurring expenses',
+                color: colors.typeCouple.accent,
+                bg: colors.typeCouple.bg,
+                onPress: () => {
+                  setDrawerOpen(false);
+                  setTimeout(() => router.push('/recurring'), 220);
+                },
+              },
+              {
+                type: 'action',
+                key: 'funds',
+                Icon: IconCash,
+                label: 'Shared funds',
+                color: colors.sage,
+                bg: colors.sageSoft,
+                onPress: () => {
+                  setDrawerOpen(false);
+                  setTimeout(() => router.push('/funds'), 220);
+                },
+              },
+              {
+                type: 'action',
+                key: 'members',
+                Icon: IconUserPlus,
+                label: 'Members',
+                color: colors.infoText,
+                bg: colors.infoBg,
+                onPress: () => {
+                  setDrawerOpen(false);
+                  setTimeout(() => router.push('/members'), 220);
+                },
+              },
+              {
+                type: 'action',
+                key: 'support',
+                Icon: IconLifebuoy,
+                label: 'Help & support',
+                color: colors.infoText,
+                bg: colors.infoBg,
+                onPress: () => {
+                  setDrawerOpen(false);
+                },
+              },
+              {
+                type: 'action',
+                key: 'settings',
+                Icon: IconSettings,
+                label: 'Settings',
+                color: colors.textSecondary,
+                bg: colors.bgSubtle,
+                onPress: () => {
+                  setDrawerOpen(false);
+                  setTimeout(() => router.push('/settings'), 220);
+                },
+              },
+            ],
+          },
+          {
+            key: 'groups',
+            title: 'Switch group',
+            subtitle: `${groups.length} ${groups.length === 1 ? 'group' : 'groups'}`,
+            items: [
+              ...groups.map((g) => ({
+                type: 'action' as const,
+                key: g.id,
+                Icon: IconHome2,
+                label: g.name,
+                caption: g.id === activeGroupId ? 'Active' : undefined,
+                color: colors.sage,
+                bg: colors.sageSoft,
+                onPress: () => {
+                  setActiveGroupId(g.id);
+                  setDrawerOpen(false);
+                },
+              })),
+              {
+                type: 'action' as const,
+                key: 'create-group',
+                Icon: IconPlus,
+                label: 'Create new group',
+                color: colors.sage,
+                bg: colors.sageSoft,
+                onPress: () => {
+                  setDrawerOpen(false);
+                  setTimeout(() => router.push('/onboarding'), 220);
+                },
+              },
+            ],
+          },
+        ]}
+      />
     </>
   );
 }

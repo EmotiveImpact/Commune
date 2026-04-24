@@ -1,5 +1,6 @@
 import type { SplitwiseImportExpense } from '@commune/core';
-import { supabase } from './client';
+import type { ExpenseInsert } from '@commune/types';
+import { getTypedSupabase } from './client';
 import { ensureGroupCycleOpenForDate } from './cycles';
 
 interface BulkCreateExpensesOptions {
@@ -28,6 +29,7 @@ export async function bulkCreateExpenses({
   expenses,
   onProgress,
 }: BulkCreateExpensesOptions): Promise<BulkCreateResult> {
+  const supabase = getTypedSupabase();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -60,7 +62,7 @@ export async function bulkCreateExpenses({
       amount: exp.cost,
       currency: exp.currency,
       due_date: exp.date,
-      recurrence_type: 'none',
+      recurrence_type: 'none' as const,
       recurrence_interval: 0,
       paid_by_user_id: null,
       split_method: 'custom' as const,
@@ -70,7 +72,7 @@ export async function bulkCreateExpenses({
 
     const { data: insertedExpenses, error: insertError } = await supabase
       .from('expenses')
-      .insert(expenseRows)
+      .insert(expenseRows as unknown as ExpenseInsert[])
       .select('id');
 
     if (insertError) {
@@ -86,7 +88,7 @@ export async function bulkCreateExpenses({
       continue;
     }
 
-    const insertedIds = (insertedExpenses as { id: string }[]).map((e) => e.id);
+    const insertedIds = (insertedExpenses ?? []).map((e) => e.id);
 
     // Build participant rows for the whole batch
     const participantRows: {

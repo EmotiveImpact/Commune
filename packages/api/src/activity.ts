@@ -1,4 +1,4 @@
-import { supabase } from './client';
+import { getTypedSupabase } from './client';
 import {
   createWorkspaceBillingContext,
   type WorkspaceBillingContext,
@@ -99,6 +99,7 @@ async function attachWorkspaceBillingContext(
     return entries;
   }
 
+  const supabase = getTypedSupabase();
   const expenseIds = [
     ...new Set(
       entries
@@ -141,12 +142,12 @@ async function attachWorkspaceBillingContext(
   if (relatedExpenses.error) throw relatedExpenses.error;
 
   const billingByExpenseId = new Map<string, ActivityWorkspaceBillingContext>();
-  for (const row of (relatedExpenses.data ?? []) as WorkspaceBillingExpenseRecord[]) {
+  for (const row of (relatedExpenses.data ?? []) as unknown as WorkspaceBillingExpenseRecord[]) {
     billingByExpenseId.set(row.id, createWorkspaceBillingContext(row));
   }
 
   const billingByPaymentId = new Map<string, ActivityWorkspaceBillingContext>();
-  for (const row of (paymentRows.data ?? []) as Array<{ id: string; expense_id: string }>) {
+  for (const row of (paymentRows.data ?? []) as unknown as Array<{ id: string; expense_id: string }>) {
     const context = billingByExpenseId.get(row.expense_id);
     if (context) {
       billingByPaymentId.set(row.id, context);
@@ -180,6 +181,7 @@ async function fetchActivityEntries(
   const offset = options.offset ?? 0;
   const entityTypes = normalizeActivityEntityTypes(options.entityTypes);
 
+  const supabase = getTypedSupabase();
   let query = supabase
     .from('activity_log')
     .select(
@@ -194,7 +196,7 @@ async function fetchActivityEntries(
     .range(offset, offset + limit - 1);
 
   if (entityTypes.length === 1) {
-    query = query.eq('entity_type', entityTypes[0]);
+    query = query.eq('entity_type', entityTypes[0]!);
   } else if (entityTypes.length > 1) {
     query = query.in('entity_type', entityTypes);
   }
@@ -203,7 +205,7 @@ async function fetchActivityEntries(
 
   if (error) throw error;
 
-  const entries = await attachWorkspaceBillingContext((data ?? []) as ActivityEntry[]);
+  const entries = await attachWorkspaceBillingContext((data ?? []) as unknown as ActivityEntry[]);
   return {
     entries,
     total: count ?? 0,
@@ -217,6 +219,7 @@ async function getActivitySummary(
   const normalizedTypes = normalizeActivityEntityTypes(entityTypes);
   const monthStart = getActivityMonthStartKey();
 
+  const supabase = getTypedSupabase();
   let query = supabase
     .from('activity_log')
     .select(
@@ -230,7 +233,7 @@ async function getActivitySummary(
     .gte('created_at', monthStart);
 
   if (normalizedTypes.length === 1) {
-    query = query.eq('entity_type', normalizedTypes[0]);
+    query = query.eq('entity_type', normalizedTypes[0]!);
   } else if (normalizedTypes.length > 1) {
     query = query.in('entity_type', normalizedTypes);
   }
@@ -239,7 +242,7 @@ async function getActivitySummary(
 
   if (error) throw error;
 
-  const rows = (data ?? []) as ActivitySummaryRow[];
+  const rows = (data ?? []) as unknown as ActivitySummaryRow[];
   const byMember = new Map<string, { count: number; name: string }>();
   const byType = new Map<string, number>();
 
@@ -281,6 +284,7 @@ export async function getActivityFeed(
   const limit = options.limit ?? 50;
   const offset = options.offset ?? 0;
   const entityTypes = normalizeActivityEntityTypes(options.entityTypes);
+  const supabase = getTypedSupabase();
   const { data, error } = await supabase.rpc('fn_get_activity_feed', {
     p_group_id: groupId,
     p_limit: limit,
@@ -290,7 +294,7 @@ export async function getActivityFeed(
 
   if (error) throw error;
 
-  const result = (data ?? {}) as ActivityFeedRpcResult;
+  const result = (data ?? {}) as unknown as ActivityFeedRpcResult;
   const entries = (result.entries ?? []) as ActivityEntry[];
   const summary = result.summary;
 

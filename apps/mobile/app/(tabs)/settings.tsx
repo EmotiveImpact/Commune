@@ -1,831 +1,405 @@
-import { useEffect, useMemo, useState } from 'react';
-import {
-  Alert,
-  Linking,
-  Platform,
-  ScrollView,
-  Switch,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import type { ComponentProps } from 'react';
+import { Alert, Linking, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { formatDate } from '@commune/utils';
 import { signOut } from '@commune/api';
 import { useQueryClient } from '@tanstack/react-query';
-import { hapticHeavy, hapticLight, hapticMedium } from '@/lib/haptics';
+
+import { colors, font, space } from '@/constants/design';
+import {
+  Avatar,
+  Badge,
+  Button,
+  Card,
+  IconTile,
+  Pressable,
+  Screen,
+  SectionHeader,
+} from '@/components/primitives';
+import { hapticHeavy, hapticLight } from '@/lib/haptics';
 import { useAuthStore } from '@/stores/auth';
 import { useGroupStore } from '@/stores/group';
-import { useThemeStore } from '@/stores/theme';
-import { useProfile, useUpdateProfile } from '@/hooks/use-profile';
-import { usePortal, useSubscription } from '@/hooks/use-subscriptions';
-import { EmptyState, SettingsSkeleton } from '@/components/ui';
-import { getErrorMessage } from '@/lib/errors';
+import { useProfile } from '@/hooks/use-profile';
+import { useSubscription } from '@/hooks/use-subscriptions';
 
-const planLabels: Record<string, string> = {
+type IconName = ComponentProps<typeof Ionicons>['name'];
+
+type Row = {
+  icon: IconName;
+  label: string;
+  color: string;
+  bg: string;
+  onPress: () => void;
+};
+
+/* ---------------------------------------------------------------------------
+ * Helpers
+ * --------------------------------------------------------------------------- */
+
+const PLAN_LABELS: Record<string, string> = {
   standard: 'Standard',
   pro: 'Pro',
   agency: 'Agency',
 };
 
-const defaultNotifications = {
-  email_on_new_expense: true,
-  email_on_payment_received: true,
-  email_on_payment_reminder: true,
-  email_on_overdue: true,
-};
-
-type QuickLink = {
-  icon: React.ComponentProps<typeof Ionicons>['name'];
-  label: string;
-  route: string;
-};
-
-const quickLinks: QuickLink[] = [
-  { icon: 'checkmark-circle-outline', label: 'Operations', route: '/operations' },
-  { icon: 'calendar-outline', label: 'Cycle close', route: '/group-close' },
-  { icon: 'repeat-outline', label: 'Recurring expenses', route: '/recurring' },
-  { icon: 'bar-chart-outline', label: 'Analytics', route: '/analytics' },
-  { icon: 'time-outline', label: 'Activity log', route: '/activity' },
-  { icon: 'people-outline', label: 'Members', route: '/members' },
-  { icon: 'create-outline', label: 'Edit group', route: '/group-edit' },
-];
-
-function shadow(elevation: number = 1) {
-  if (Platform.OS === 'android') {
-    return { elevation: elevation * 2 };
-  }
-  return {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: elevation },
-    shadowOpacity: 0.06 * elevation,
-    shadowRadius: 4 * elevation,
-  };
+function formatMemberSince(iso?: string | null): string {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
 }
 
-export default function SettingsScreen() {
+/* ---------------------------------------------------------------------------
+ * Section container — grouped rows inside one surface card
+ * --------------------------------------------------------------------------- */
+
+function GroupedRows({ rows }: { rows: Row[] }) {
+  return (
+    <Card padding={0}>
+      {rows.map((row, idx) => (
+        <View key={row.label}>
+          <Pressable
+            onPress={() => { hapticLight(); row.onPress(); }}
+            style={({ pressed }) => [{ opacity: pressed ? 0.65 : 1 }]}
+          >
+            <View style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              paddingVertical: space.md + 2,
+              paddingHorizontal: space.base,
+              gap: space.md,
+            }}>
+              <IconTile icon={row.icon} color={row.color} bg={row.bg} size={36} />
+              <Text style={[font.bodyStrong, { color: colors.textPrimary, flex: 1 }]} numberOfLines={1}>
+                {row.label}
+              </Text>
+              <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
+            </View>
+          </Pressable>
+          {idx < rows.length - 1 ? (
+            <View style={{
+              height: 1,
+              backgroundColor: colors.borderSubtle,
+              marginLeft: space.base + 36 + space.md,
+            }} />
+          ) : null}
+        </View>
+      ))}
+    </Card>
+  );
+}
+
+/* ---------------------------------------------------------------------------
+ * Screen
+ * --------------------------------------------------------------------------- */
+
+export default function ProfileScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { user, setUser } = useAuthStore();
-  const setActiveGroupId = useGroupStore((state) => state.setActiveGroupId);
-  const themeMode = useThemeStore((state) => state.mode);
-  const toggleTheme = useThemeStore((state) => state.toggle);
-  const { data: profile, isLoading } = useProfile(user?.id ?? '');
-  const updateProfile = useUpdateProfile();
-  const { data: subscription, isLoading: subscriptionLoading } = useSubscription(
-    user?.id ?? ''
-  );
-  const portal = usePortal();
+  const { setActiveGroupId } = useGroupStore();
 
-  const isDark = themeMode === 'dark';
+  const { data: profile } = useProfile(user?.id ?? '');
+  const { data: subscription } = useSubscription(user?.id ?? '');
 
-  // -- Theme tokens --
-  const bg = isDark ? '#0A0A0A' : '#F2F4F7';
-  const cardBg = isDark ? '#1A1A1A' : '#FFFFFF';
-  const textPrimary = isDark ? '#F5F5F5' : '#171b24';
-  const textSecondary = isDark ? '#A1A1AA' : '#6B7280';
-  const textMuted = isDark ? '#71717A' : '#9CA3AF';
-  const borderColor = isDark ? '#2A2A2A' : '#F0F0F0';
-  const inputBg = isDark ? '#111111' : '#F9FAFB';
-  const inputBorder = isDark ? '#333' : '#E5E7EB';
-  const chevronColor = isDark ? '#555' : '#D1D5DB';
+  const displayName = profile?.name ?? user?.name ?? 'User';
+  const email = profile?.email ?? user?.email ?? '';
+  const planKey = subscription?.plan;
+  const planLabel = planKey ? PLAN_LABELS[planKey] ?? planKey : 'Standard';
+  const memberSince = formatMemberSince(profile?.created_at);
 
-  const resolvedProfile = useMemo(
-    () =>
-      profile ??
-      (user
-        ? {
-            id: user.id,
-            first_name: user.first_name,
-            last_name: user.last_name,
-            name: user.name,
-            email: user.email,
-            avatar_url: user.avatar_url,
-            phone: user.phone ?? null,
-            country: user.country ?? null,
-            notification_preferences: defaultNotifications,
-            created_at: user.created_at,
-          }
-        : null),
-    [profile, user]
-  );
-
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [avatarUrl, setAvatarUrl] = useState('');
-  const [phone, setPhone] = useState('');
-  const [country, setCountry] = useState('');
-  const [notifications, setNotifications] = useState(defaultNotifications);
-  const [editingProfile, setEditingProfile] = useState(false);
-
-  useEffect(() => {
-    if (!resolvedProfile) return;
-    setFirstName(resolvedProfile.first_name ?? '');
-    setLastName(resolvedProfile.last_name ?? '');
-    setAvatarUrl(resolvedProfile.avatar_url ?? '');
-    setPhone(resolvedProfile.phone ?? '');
-    setCountry(resolvedProfile.country ?? '');
-    setNotifications(
-      resolvedProfile.notification_preferences ?? defaultNotifications
-    );
-  }, [resolvedProfile]);
-
-  const displayName =
-    `${resolvedProfile?.first_name ?? ''} ${resolvedProfile?.last_name ?? ''}`.trim() ||
-    resolvedProfile?.name ||
-    '';
-
-  async function handleSave() {
-    hapticMedium();
-    if (!user) return;
-    try {
-      const result = await updateProfile.mutateAsync({
-        userId: user.id,
-        data: {
-          first_name: firstName.trim(),
-          last_name: lastName.trim(),
-          avatar_url: avatarUrl.trim() || null,
-          phone: phone.trim() || null,
-          country: country.trim() || null,
-          notification_preferences: notifications,
-        },
-      });
-      setUser({
-        ...user,
-        first_name: result.first_name,
-        last_name: result.last_name,
-        name: result.name,
-        avatar_url: result.avatar_url,
-        phone: result.phone,
-        country: result.country,
-      });
-      setEditingProfile(false);
-      Alert.alert('Saved', 'Your settings have been updated.');
-    } catch (error) {
-      Alert.alert('Save failed', getErrorMessage(error));
-    }
-  }
-
-  async function handleManageBilling() {
-    hapticMedium();
-    try {
-      const url = await portal.mutateAsync();
-      await Linking.openURL(url);
-    } catch (error) {
-      Alert.alert(
-        'Billing unavailable',
-        getErrorMessage(error, 'Could not open the billing portal.')
-      );
-    }
-  }
-
-  function handleSignOut() {
-    hapticHeavy();
-    Alert.alert('Sign out', 'You will need to log in again to access Commune.', [
+  const handleSignOut = () => {
+    Alert.alert('Sign out', 'You will be returned to the login screen.', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Sign out',
         style: 'destructive',
         onPress: async () => {
+          hapticHeavy();
           try {
             await signOut();
+            queryClient.clear();
             setUser(null);
             setActiveGroupId(null);
-            queryClient.clear();
-          } catch (error) {
-            Alert.alert('Could not sign out', getErrorMessage(error));
+            router.replace('/(auth)/login');
+          } catch {
+            Alert.alert('Error', 'Could not sign out. Please try again.');
           }
         },
       },
     ]);
-  }
-
-  // ── Guards ──
-  if (!user) {
-    return (
-      <View style={{ flex: 1, backgroundColor: bg }}>
-        <EmptyState
-          icon="settings-outline"
-          title="Session not ready"
-          description="Sign in again if settings do not load."
-        />
-      </View>
-    );
-  }
-
-  if (isLoading || subscriptionLoading || !resolvedProfile) {
-    return <SettingsSkeleton />;
-  }
-
-  // ── Helpers ──
-  const cardStyle = {
-    backgroundColor: cardBg,
-    borderRadius: 16,
-    ...shadow(2),
-    marginBottom: 24,
   };
 
-  function renderRow(
-    label: string,
-    value: string,
-    onPress?: () => void,
-    isLast?: boolean
-  ) {
-    return (
-      <TouchableOpacity
-        key={label}
-        onPress={onPress ? () => { hapticLight(); onPress(); } : undefined}
-        activeOpacity={onPress ? 0.6 : 1}
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          paddingVertical: 16,
-          paddingHorizontal: 16,
-          borderBottomWidth: isLast ? 0 : 1,
-          borderBottomColor: borderColor,
-        }}
-      >
-        <Text style={{ flex: 1, fontSize: 14, color: textSecondary }}>{label}</Text>
-        <Text
-          style={{
-            fontSize: 14,
-            color: textPrimary,
-            marginRight: 8,
-            maxWidth: 180,
-          }}
-          numberOfLines={1}
-        >
-          {value || '--'}
-        </Text>
-        <Ionicons name="chevron-forward" size={16} color={chevronColor} />
-      </TouchableOpacity>
-    );
-  }
+  /* --- Account rows ------------------------------------------------------ */
+  const accountRows: Row[] = [
+    {
+      icon: 'person-outline',
+      label: 'Edit profile',
+      color: colors.sage,
+      bg: colors.sageSoft,
+      onPress: () => router.push('/group-edit'),
+    },
+    {
+      icon: 'notifications-outline',
+      label: 'Notifications',
+      color: colors.warnText,
+      bg: colors.warnBg,
+      onPress: () => router.push('/notifications'),
+    },
+    {
+      icon: 'diamond-outline',
+      label: 'Subscription & billing',
+      color: colors.sage,
+      bg: colors.sageSoft,
+      onPress: () => router.push('/pricing'),
+    },
+    {
+      icon: 'help-circle-outline',
+      label: 'Help & support',
+      color: colors.infoText,
+      bg: colors.infoBg,
+      onPress: () => {
+        Linking.openURL('mailto:support@ourcommune.io').catch(() => {
+          Alert.alert('Unavailable', 'No email app is configured on this device.');
+        });
+      },
+    },
+  ];
 
-  function renderNotificationRow(
-    label: string,
-    subtitle: string,
-    key: keyof typeof defaultNotifications,
-    isLast?: boolean
-  ) {
-    return (
-      <View
-        key={key}
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          paddingVertical: 14,
-          paddingHorizontal: 16,
-          borderBottomWidth: isLast ? 0 : 1,
-          borderBottomColor: borderColor,
-        }}
-      >
-        <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 14, color: textPrimary }}>{label}</Text>
-          <Text style={{ fontSize: 12, color: textMuted, marginTop: 2 }}>
-            {subtitle}
-          </Text>
-        </View>
-        <Switch
-          value={notifications[key]}
-          onValueChange={(val) => {
-            hapticLight();
-            setNotifications((prev) => ({ ...prev, [key]: val }));
-          }}
-          trackColor={{ false: '#E5E7EB', true: '#d7e6dd' }}
-          thumbColor={notifications[key] ? '#2d6a4f' : '#FFFFFF'}
-          ios_backgroundColor="#E5E7EB"
-        />
-      </View>
-    );
-  }
 
-  // ── Render ──
   return (
-    <ScrollView
-      style={{ flex: 1, backgroundColor: bg }}
-      contentContainerStyle={{ padding: 20, paddingBottom: 120 }}
-      showsVerticalScrollIndicator={false}
-    >
-      {/* ── Profile Card ── */}
-      <View
-        style={{
-          backgroundColor: cardBg,
-          borderRadius: 20,
-          ...shadow(3),
-          padding: 24,
-          marginBottom: 28,
-          alignItems: 'center',
+    <Screen>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{
+          paddingTop: 12,
+          paddingBottom: 120,
+          paddingHorizontal: space.gutter,
+          gap: space.xl,
         }}
       >
+        {/* ── Profile hero (P-B style) ─────────────────────────── */}
         <View
           style={{
-            width: 64,
-            height: 64,
-            borderRadius: 32,
-            backgroundColor: '#1f2330',
+            backgroundColor: colors.bgInk,
+            borderRadius: 24,
+            paddingTop: space.xl,
+            paddingBottom: space.lg,
+            paddingHorizontal: space.lg,
             alignItems: 'center',
-            justifyContent: 'center',
           }}
         >
-          <Text style={{ fontSize: 22, fontWeight: '700', color: '#FFFFFF' }}>
-            {getInitials(displayName)}
-          </Text>
-        </View>
-
-        <Text
-          style={{
-            fontSize: 20,
-            fontWeight: '600',
-            color: textPrimary,
-            marginTop: 14,
-          }}
-        >
-          {displayName}
-        </Text>
-        <Text style={{ fontSize: 14, color: textMuted, marginTop: 4 }}>
-          {resolvedProfile.email}
-        </Text>
-        <Text
-          style={{
-            fontSize: 12,
-            color: textMuted,
-            marginTop: 6,
-          }}
-        >
-          Member since {formatDate(resolvedProfile.created_at)}
-        </Text>
-
-        <TouchableOpacity
-          onPress={() => { hapticLight(); setEditingProfile(!editingProfile); }}
-          activeOpacity={0.7}
-          style={{
-            marginTop: 16,
-            borderWidth: 1,
-            borderColor: isDark ? '#333' : '#D1D5DB',
-            borderRadius: 12,
-            paddingVertical: 10,
-            paddingHorizontal: 24,
-          }}
-        >
+          <View style={{ alignItems: 'center' }}>
+            <Avatar
+              name={displayName}
+              size={72}
+              bg="#EADFD4"
+              fg="#1A1E2B"
+              uri={profile?.avatar_url ?? user?.avatar_url ?? null}
+            />
+          </View>
           <Text
             style={{
-              fontSize: 14,
-              fontWeight: '500',
-              color: textPrimary,
+              marginTop: space.md,
+              fontSize: 22,
+              fontWeight: '700',
+              color: '#FFFFFF',
+              letterSpacing: -0.2,
+              textAlign: 'center',
             }}
+            numberOfLines={1}
           >
-            {editingProfile ? 'Cancel editing' : 'Edit Profile'}
+            {displayName}
           </Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* ── Edit Profile Form (conditional) ── */}
-      {editingProfile && (
-        <View style={{ ...cardStyle, padding: 20 }}>
-          <Text
-            style={{
-              fontSize: 13,
-              fontWeight: '600',
-              color: textMuted,
-              textTransform: 'uppercase',
-              letterSpacing: 1,
-              marginBottom: 16,
-            }}
-          >
-            Edit Profile
-          </Text>
-
-          <View style={{ gap: 14 }}>
-            <View style={{ flexDirection: 'row', gap: 12 }}>
-              <View style={{ flex: 1 }}>
-                <Text
-                  style={{
-                    fontSize: 12,
-                    color: textSecondary,
-                    marginBottom: 6,
-                    fontWeight: '500',
-                  }}
-                >
-                  First name
-                </Text>
-                <TextInput
-                  value={firstName}
-                  onChangeText={setFirstName}
-                  placeholder="First name"
-                  placeholderTextColor={textMuted}
-                  style={{
-                    fontSize: 14,
-                    color: textPrimary,
-                    backgroundColor: inputBg,
-                    borderWidth: 1,
-                    borderColor: inputBorder,
-                    borderRadius: 12,
-                    paddingHorizontal: 14,
-                    paddingVertical: 12,
-                  }}
-                />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text
-                  style={{
-                    fontSize: 12,
-                    color: textSecondary,
-                    marginBottom: 6,
-                    fontWeight: '500',
-                  }}
-                >
-                  Last name
-                </Text>
-                <TextInput
-                  value={lastName}
-                  onChangeText={setLastName}
-                  placeholder="Last name"
-                  placeholderTextColor={textMuted}
-                  style={{
-                    fontSize: 14,
-                    color: textPrimary,
-                    backgroundColor: inputBg,
-                    borderWidth: 1,
-                    borderColor: inputBorder,
-                    borderRadius: 12,
-                    paddingHorizontal: 14,
-                    paddingVertical: 12,
-                  }}
-                />
-              </View>
-            </View>
-
-            <View>
-              <Text
-                style={{
-                  fontSize: 12,
-                  color: textSecondary,
-                  marginBottom: 6,
-                  fontWeight: '500',
-                }}
-              >
-                Phone
-              </Text>
-              <TextInput
-                value={phone}
-                onChangeText={setPhone}
-                placeholder="+44 7700 900000"
-                placeholderTextColor={textMuted}
-                keyboardType="phone-pad"
-                style={{
-                  fontSize: 14,
-                  color: textPrimary,
-                  backgroundColor: inputBg,
-                  borderWidth: 1,
-                  borderColor: inputBorder,
-                  borderRadius: 12,
-                  paddingHorizontal: 14,
-                  paddingVertical: 12,
-                }}
-              />
-            </View>
-
-            <View>
-              <Text
-                style={{
-                  fontSize: 12,
-                  color: textSecondary,
-                  marginBottom: 6,
-                  fontWeight: '500',
-                }}
-              >
-                Country
-              </Text>
-              <TextInput
-                value={country}
-                onChangeText={setCountry}
-                placeholder="e.g. United Kingdom"
-                placeholderTextColor={textMuted}
-                style={{
-                  fontSize: 14,
-                  color: textPrimary,
-                  backgroundColor: inputBg,
-                  borderWidth: 1,
-                  borderColor: inputBorder,
-                  borderRadius: 12,
-                  paddingHorizontal: 14,
-                  paddingVertical: 12,
-                }}
-              />
-            </View>
-
-            <View>
-              <Text
-                style={{
-                  fontSize: 12,
-                  color: textSecondary,
-                  marginBottom: 6,
-                  fontWeight: '500',
-                }}
-              >
-                Avatar URL
-              </Text>
-              <TextInput
-                value={avatarUrl}
-                onChangeText={setAvatarUrl}
-                placeholder="Optional"
-                placeholderTextColor={textMuted}
-                autoCapitalize="none"
-                keyboardType="url"
-                style={{
-                  fontSize: 14,
-                  color: textPrimary,
-                  backgroundColor: inputBg,
-                  borderWidth: 1,
-                  borderColor: inputBorder,
-                  borderRadius: 12,
-                  paddingHorizontal: 14,
-                  paddingVertical: 12,
-                }}
-              />
-            </View>
-          </View>
-
-          <TouchableOpacity
-            onPress={handleSave}
-            disabled={updateProfile.isPending}
-            activeOpacity={0.8}
-            style={{
-              marginTop: 20,
-              backgroundColor: '#2d6a4f',
-              borderRadius: 12,
-              paddingVertical: 14,
-              alignItems: 'center',
-              opacity: updateProfile.isPending ? 0.6 : 1,
-            }}
-          >
-            <Text style={{ fontSize: 15, fontWeight: '600', color: '#FFFFFF' }}>
-              {updateProfile.isPending ? 'Saving...' : 'Save profile'}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {/* ── Profile Section (read-only rows) ── */}
-      <Text
-        style={{
-          fontSize: 13,
-          fontWeight: '600',
-          color: textMuted,
-          textTransform: 'uppercase',
-          letterSpacing: 1,
-          marginBottom: 8,
-        }}
-      >
-        Profile
-      </Text>
-      <View style={cardStyle}>
-        {renderRow('First name', firstName, () => setEditingProfile(true))}
-        {renderRow('Last name', lastName, () => setEditingProfile(true))}
-        {renderRow('Phone', phone, () => setEditingProfile(true))}
-        {renderRow('Country', country, () => setEditingProfile(true), true)}
-      </View>
-
-      {/* ── Notifications ── */}
-      <Text
-        style={{
-          fontSize: 13,
-          fontWeight: '600',
-          color: textMuted,
-          textTransform: 'uppercase',
-          letterSpacing: 1,
-          marginBottom: 8,
-        }}
-      >
-        Notifications
-      </Text>
-      <View style={cardStyle}>
-        {renderNotificationRow(
-          'New expenses',
-          'Email when a new expense is added',
-          'email_on_new_expense'
-        )}
-        {renderNotificationRow(
-          'Payments received',
-          'Notified when someone marks a payment',
-          'email_on_payment_received'
-        )}
-        {renderNotificationRow(
-          'Payment reminders',
-          'Reminders for upcoming or missed payments',
-          'email_on_payment_reminder'
-        )}
-        {renderNotificationRow(
-          'Overdue alerts',
-          'When shared expenses slip overdue',
-          'email_on_overdue',
-          true
-        )}
-      </View>
-
-      {/* ── Appearance ── */}
-      <Text
-        style={{
-          fontSize: 13,
-          fontWeight: '600',
-          color: textMuted,
-          textTransform: 'uppercase',
-          letterSpacing: 1,
-          marginBottom: 8,
-        }}
-      >
-        Appearance
-      </Text>
-      <View style={cardStyle}>
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            paddingVertical: 14,
-            paddingHorizontal: 16,
-          }}
-        >
-          <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 14, color: textPrimary }}>Dark mode</Text>
-            <Text style={{ fontSize: 12, color: textMuted, marginTop: 2 }}>
-              Switch between light and dark themes
-            </Text>
-          </View>
-          <Switch
-            value={isDark}
-            onValueChange={() => { hapticLight(); toggleTheme(); }}
-            trackColor={{ false: '#E5E7EB', true: '#d7e6dd' }}
-            thumbColor={isDark ? '#2d6a4f' : '#FFFFFF'}
-            ios_backgroundColor="#E5E7EB"
-          />
-        </View>
-      </View>
-
-      {/* ── Billing ── */}
-      <Text
-        style={{
-          fontSize: 13,
-          fontWeight: '600',
-          color: textMuted,
-          textTransform: 'uppercase',
-          letterSpacing: 1,
-          marginBottom: 8,
-        }}
-      >
-        Billing
-      </Text>
-      <View style={{ ...cardStyle, padding: 16 }}>
-        <Text
-          style={{
-            fontSize: 14,
-            color: textSecondary,
-            marginBottom: 4,
-          }}
-        >
-          {subscription
-            ? `${planLabels[subscription.plan] ?? subscription.plan} plan \u00B7 ${subscription.status.replace(/_/g, ' ')}`
-            : 'No active subscription found for this account.'}
-        </Text>
-        {subscription && (
-          <Text style={{ fontSize: 13, color: textMuted, marginBottom: 16 }}>
-            Current period ends {formatDate(subscription.current_period_end)}
-          </Text>
-        )}
-        <View style={{ gap: 10 }}>
-          {subscription && (
-            <TouchableOpacity
-              onPress={handleManageBilling}
-              disabled={portal.isPending}
-              activeOpacity={0.7}
+          {email ? (
+            <Text
               style={{
-                borderWidth: 1,
-                borderColor: isDark ? '#333' : '#D1D5DB',
-                borderRadius: 12,
-                paddingVertical: 12,
-                alignItems: 'center',
-                opacity: portal.isPending ? 0.6 : 1,
+                marginTop: 4,
+                fontSize: 13,
+                fontWeight: '500',
+                color: 'rgba(255,255,255,0.55)',
+                textAlign: 'center',
               }}
+              numberOfLines={1}
             >
-              <Text style={{ fontSize: 14, fontWeight: '500', color: textPrimary }}>
-                {portal.isPending ? 'Opening...' : 'Manage billing'}
-              </Text>
-            </TouchableOpacity>
-          )}
-          <TouchableOpacity
-            onPress={() => { hapticMedium(); router.push('/pricing'); }}
-            activeOpacity={0.7}
-            style={{
-              borderWidth: 1,
-              borderColor: isDark ? '#333' : '#D1D5DB',
-              borderRadius: 12,
-              paddingVertical: 12,
-              alignItems: 'center',
-            }}
-          >
-            <Text style={{ fontSize: 14, fontWeight: '500', color: textPrimary }}>
-              View Plans
+              {email}
             </Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+          ) : null}
 
-      {/* ── Quick Links ── */}
-      <Text
-        style={{
-          fontSize: 13,
-          fontWeight: '600',
-          color: textMuted,
-          textTransform: 'uppercase',
-          letterSpacing: 1,
-          marginBottom: 8,
-        }}
-      >
-        Quick links
-      </Text>
-      <View style={cardStyle}>
-        {quickLinks.map((link, index) => (
-          <TouchableOpacity
-            key={link.route}
-            onPress={() => { hapticMedium(); router.push(link.route as never); }}
-            activeOpacity={0.6}
+          <Pressable
+            onPress={() => {
+              hapticLight();
+              router.push('/group-hub');
+            }}
+            style={({ pressed }) => [
+              {
+                marginTop: space.md,
+                paddingVertical: 6,
+                paddingHorizontal: space.md,
+                borderRadius: 999,
+                backgroundColor: 'rgba(255,255,255,0.12)',
+                opacity: pressed ? 0.7 : 1,
+              },
+            ]}
+          >
+            <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: '700', letterSpacing: 0.4 }}>
+              Edit profile
+            </Text>
+          </Pressable>
+
+          <View
             style={{
+              height: 1,
+              backgroundColor: 'rgba(255,255,255,0.08)',
+              alignSelf: 'stretch',
+              marginVertical: space.lg,
+            }}
+          />
+
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start', alignSelf: 'stretch' }}>
+            <DarkStatCell label="Member since" value={memberSince} />
+            <DarkVerticalRule />
+            <DarkStatCell label="Plan" value={planLabel} badge />
+            <DarkVerticalRule />
+            <DarkStatCell
+              label="Status"
+              value={subscription?.status === 'active' ? 'Active' : 'Free'}
+            />
+          </View>
+        </View>
+
+        {/* ── Account ──────────────────────────────────────────── */}
+        <View>
+          <SectionHeader title="Account" />
+          <GroupedRows rows={accountRows} />
+        </View>
+
+        {/* ── Sign out ─────────────────────────────────────────── */}
+        <Pressable
+          onPress={handleSignOut}
+          accessibilityLabel="Sign out"
+          style={({ pressed }) => [
+            {
+              height: 56,
+              borderRadius: 16,
+              backgroundColor: '#C74A3A',
               flexDirection: 'row',
               alignItems: 'center',
-              paddingVertical: 14,
-              paddingHorizontal: 16,
-              borderBottomWidth: index < quickLinks.length - 1 ? 1 : 0,
-              borderBottomColor: borderColor,
-            }}
-          >
-            <View
-              style={{
-                width: 32,
-                height: 32,
-                borderRadius: 8,
-                backgroundColor: isDark ? '#1f2330' : '#F3F4F6',
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginRight: 12,
-              }}
-            >
-              <Ionicons name={link.icon} size={18} color={textSecondary} />
-            </View>
-            <Text style={{ flex: 1, fontSize: 14, color: textPrimary }}>
-              {link.label}
-            </Text>
-            <Ionicons name="chevron-forward" size={16} color={chevronColor} />
-          </TouchableOpacity>
-        ))}
-      </View>
+              justifyContent: 'center',
+              gap: 10,
+              shadowColor: '#000',
+              shadowOpacity: 0.12,
+              shadowRadius: 8,
+              shadowOffset: { width: 0, height: 3 },
+              elevation: 3,
+              opacity: pressed ? 0.85 : 1,
+            },
+          ]}
+        >
+          <Ionicons name="log-out-outline" size={20} color="#FFFFFF" />
+          <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '700' }}>Sign out</Text>
+        </Pressable>
 
-      {/* ── Save Notifications (auto-save trigger) ── */}
-      <TouchableOpacity
-        onPress={handleSave}
-        disabled={updateProfile.isPending}
-        activeOpacity={0.8}
-        style={{
-          backgroundColor: '#2d6a4f',
-          borderRadius: 14,
-          paddingVertical: 16,
-          alignItems: 'center',
-          marginBottom: 16,
-          opacity: updateProfile.isPending ? 0.6 : 1,
-          ...shadow(2),
-        }}
-      >
-        <Text style={{ fontSize: 15, fontWeight: '600', color: '#FFFFFF' }}>
-          {updateProfile.isPending ? 'Saving...' : 'Save all changes'}
+        {/* ── Footer ───────────────────────────────────────────── */}
+        <Text
+          style={[
+            font.caption,
+            {
+              color: colors.textTertiary,
+              textAlign: 'center',
+              marginTop: -space.sm,
+            },
+          ]}
+        >
+          Commune · v1.0.0
         </Text>
-      </TouchableOpacity>
-
-      {/* ── Sign Out ── */}
-      <TouchableOpacity
-        onPress={handleSignOut}
-        activeOpacity={0.7}
-        style={{
-          paddingVertical: 16,
-          alignItems: 'center',
-          marginBottom: 20,
-        }}
-      >
-        <Text style={{ fontSize: 15, fontWeight: '500', color: '#EF4444' }}>
-          Sign out
-        </Text>
-      </TouchableOpacity>
-    </ScrollView>
+      </ScrollView>
+    </Screen>
   );
 }
 
-function getInitials(name: string): string {
+/* ---------------------------------------------------------------------------
+ * Inline helpers for the profile card bottom row
+ * --------------------------------------------------------------------------- */
+
+function StatCell({ label, value, badge }: { label: string; value: string; badge?: boolean }) {
   return (
-    name
-      .split(' ')
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((part) => part.charAt(0).toUpperCase())
-      .join('') || 'C'
+    <View style={{ flex: 1, alignItems: 'flex-start' }}>
+      <Text style={{
+        fontSize: 11,
+        fontWeight: '700',
+        color: colors.textTertiary,
+        letterSpacing: 0.6,
+        textTransform: 'uppercase',
+      }}>
+        {label}
+      </Text>
+      {badge ? (
+        <Badge label={value} tone="sage" style={{ marginTop: 6 }} />
+      ) : (
+        <Text style={[font.bodyStrong, { color: colors.textPrimary, marginTop: 4 }]} numberOfLines={1}>
+          {value}
+        </Text>
+      )}
+    </View>
+  );
+}
+
+function VerticalRule() {
+  return (
+    <View style={{
+      width: 1,
+      alignSelf: 'stretch',
+      backgroundColor: colors.borderSubtle,
+      marginHorizontal: space.md,
+    }} />
+  );
+}
+
+function DarkStatCell({ label, value, badge }: { label: string; value: string; badge?: boolean }) {
+  return (
+    <View style={{ flex: 1, alignItems: 'center' }}>
+      <Text style={{
+        fontSize: 10,
+        fontWeight: '700',
+        color: 'rgba(255,255,255,0.45)',
+        letterSpacing: 0.6,
+        textTransform: 'uppercase',
+        textAlign: 'center',
+      }}>
+        {label}
+      </Text>
+      {badge ? (
+        <View style={{
+          marginTop: 6,
+          paddingVertical: 3,
+          paddingHorizontal: 9,
+          borderRadius: 999,
+          backgroundColor: 'rgba(255,255,255,0.12)',
+        }}>
+          <Text style={{ fontSize: 11, fontWeight: '700', color: '#FFFFFF' }} numberOfLines={1}>
+            {value}
+          </Text>
+        </View>
+      ) : (
+        <Text
+          style={{ fontSize: 14, fontWeight: '600', color: '#FFFFFF', marginTop: 4, textAlign: 'center' }}
+          numberOfLines={1}
+        >
+          {value}
+        </Text>
+      )}
+    </View>
+  );
+}
+
+function DarkVerticalRule() {
+  return (
+    <View style={{
+      width: 1,
+      alignSelf: 'stretch',
+      backgroundColor: 'rgba(255,255,255,0.08)',
+      marginHorizontal: space.sm,
+    }} />
   );
 }

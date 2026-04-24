@@ -341,9 +341,10 @@ export type ExpenseListItem = Pick<
   | 'invoice_reference'
   | 'invoice_date'
   | 'payment_due_date'
+  | 'paid_by_user_id'
 > & {
   participants: Pick<ExpenseParticipant, 'user_id'>[];
-  payment_records: Pick<PaymentRecord, 'status'>[];
+  payment_records: Pick<PaymentRecord, 'user_id' | 'status'>[];
 };
 
 export interface ProrationInfo {

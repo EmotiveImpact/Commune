@@ -1,4 +1,4 @@
-import { supabase } from './client';
+import { getTypedSupabase } from './client';
 import { generateSmartNudges } from '@commune/core';
 import type { SmartNudgeInput } from '@commune/core';
 import type { CrossGroupOverviewResult } from '@commune/types';
@@ -193,6 +193,7 @@ export async function getUserSmartNudges(
 ) {
   if (!userId) return [];
 
+  const supabase = getTypedSupabase();
   const { data, error } = await supabase.rpc('fn_get_smart_nudge_payload', {
     p_due_soon_days: 3,
   });

@@ -1,5 +1,15 @@
-import type { SplitTemplate } from '@commune/types';
-import { supabase } from './client';
+import type { Database, SplitTemplate, SplitMethodEnum } from '@commune/types';
+import { asJson, toSplitMethod } from '@commune/types';
+import { getTypedSupabase, supabase } from './client';
+
+type SplitTemplateInsert = Database['public']['Tables']['split_templates']['Insert'];
+type SplitTemplateUpdate = Database['public']['Tables']['split_templates']['Update'];
+
+interface TemplateParticipant {
+  user_id: string;
+  percentage?: number;
+  amount?: number;
+}
 
 export async function getGroupTemplates(groupId: string) {
   const { data, error } = await supabase
@@ -16,29 +26,30 @@ interface CreateTemplateData {
   group_id: string;
   name: string;
   split_method: string;
-  participants: {
-    user_id: string;
-    percentage?: number;
-    amount?: number;
-  }[];
+  participants: TemplateParticipant[];
 }
 
 export async function createTemplate(data: CreateTemplateData) {
+  const supabase = getTypedSupabase();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
   if (!user) throw new Error('Not authenticated');
 
+  const splitMethod: SplitMethodEnum = toSplitMethod(data.split_method);
+
+  const insertPayload: SplitTemplateInsert = {
+    group_id: data.group_id,
+    name: data.name,
+    split_method: splitMethod,
+    participants: asJson(data.participants),
+    created_by: user.id,
+  };
+
   const { data: template, error } = await supabase
     .from('split_templates')
-    .insert({
-      group_id: data.group_id,
-      name: data.name,
-      split_method: data.split_method,
-      participants: data.participants,
-      created_by: user.id,
-    })
+    .insert(insertPayload)
     .select()
     .single();
 
@@ -49,18 +60,20 @@ export async function createTemplate(data: CreateTemplateData) {
 interface UpdateTemplateData {
   name?: string;
   split_method?: string;
-  participants?: {
-    user_id: string;
-    percentage?: number;
-    amount?: number;
-  }[];
+  participants?: TemplateParticipant[];
 }
 
 export async function updateTemplate(id: string, data: UpdateTemplateData) {
-  const updatePayload: Record<string, unknown> = {};
+  const supabase = getTypedSupabase();
+
+  const updatePayload: SplitTemplateUpdate = {};
   if (data.name !== undefined) updatePayload.name = data.name;
-  if (data.split_method !== undefined) updatePayload.split_method = data.split_method;
-  if (data.participants !== undefined) updatePayload.participants = data.participants;
+  if (data.split_method !== undefined) {
+    updatePayload.split_method = toSplitMethod(data.split_method);
+  }
+  if (data.participants !== undefined) {
+    updatePayload.participants = asJson(data.participants);
+  }
 
   const { data: template, error } = await supabase
     .from('split_templates')
@@ -74,6 +87,7 @@ export async function updateTemplate(id: string, data: UpdateTemplateData) {
 }
 
 export async function deleteTemplate(id: string) {
+  const supabase = getTypedSupabase();
   const { error } = await supabase
     .from('split_templates')
     .delete()

@@ -18,6 +18,24 @@
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["--filter", "@commune/mobile", "dev"],
       "port": 8081
+    },
+    {
+      "name": "mobile-v2",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@commune/mobile-v2", "dev", "--", "--port", "8082"],
+      "port": 8082
+    },
+    {
+      "name": "supabase",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["db:start"],
+      "port": 54321
+    },
+    {
+      "name": "all (turbo)",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["dev"],
+      "port": 5173
     }
   ]
 }

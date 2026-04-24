@@ -8,6 +8,9 @@ vi.mock('./client', () => ({
   supabase: {
     from: fromMock,
   },
+  getTypedSupabase: () => ({
+    from: fromMock,
+  }),
 }));
 
 describe('group governance mutations', () => {

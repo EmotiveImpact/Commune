@@ -1,4 +1,12 @@
-import { supabase } from './client';
+import { fromJson } from '@commune/types';
+import { getTypedSupabase } from './client';
+
+interface RecipientNotificationPreferences {
+  email_on_new_expense?: boolean;
+  email_on_payment_received?: boolean;
+  email_on_payment_reminder?: boolean;
+  email_on_overdue?: boolean;
+}
 
 /** Minimum interval between nudges to the same user (in days). */
 const NUDGE_COOLDOWN_DAYS = 3;
@@ -23,6 +31,7 @@ export async function canNudge(
   groupId: string,
   toUserId: string,
 ): Promise<{ allowed: boolean; lastSentAt?: string }> {
+  const supabase = getTypedSupabase();
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - NUDGE_COOLDOWN_DAYS);
 
@@ -54,6 +63,7 @@ export async function sendNudge(
   amount: number,
   expenseId?: string,
 ): Promise<PaymentNudge> {
+  const supabase = getTypedSupabase();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -91,9 +101,13 @@ export async function sendNudge(
         .eq('id', toUserId)
         .single();
 
+      const recipientPrefs = fromJson<RecipientNotificationPreferences>(
+        recipient?.notification_preferences,
+      );
+
       if (
         recipient?.email &&
-        recipient.notification_preferences?.email_on_payment_reminder !== false
+        recipientPrefs?.email_on_payment_reminder !== false
       ) {
         const senderName = sender?.name ?? 'A group member';
         const formattedAmount = new Intl.NumberFormat('en-GB', {
@@ -129,6 +143,7 @@ export async function sendNudge(
 export async function getNudgeHistory(
   groupId: string,
 ): Promise<PaymentNudge[]> {
+  const supabase = getTypedSupabase();
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - 30);
 

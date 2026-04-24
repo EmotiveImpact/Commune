@@ -111,7 +111,7 @@ function GroupHero({ group, onSwitch, onManage, onMembers }: {
             <Pressable onPress={() => { hapticLight(); onMembers(); }} style={{ flexDirection: 'row', alignItems: 'center' }}>
               {visible.map((m, i) => (
                 <View key={m.id} style={{ marginLeft: i === 0 ? 0 : -8, borderWidth: 2, borderColor: colors.bgSurface, borderRadius: 18 }}>
-                  <Avatar name={m.user?.name ?? '?'} size={32} />
+                  <Avatar name={m.user?.name ?? '?'} size={32} uri={m.user?.avatar_url ?? null} />
                 </View>
               ))}
               {overflow > 0 ? (
@@ -215,7 +215,7 @@ function MembersSection({ group, currentUserId, monthKey, onSeeAll, onInvite }: 
             return (
               <Card key={member.id} variant="surface" padding={space.base}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
-                  <Avatar name={member.user?.name ?? '?'} size={44} />
+                  <Avatar name={member.user?.name ?? '?'} size={44} uri={member.user?.avatar_url ?? null} />
                   <View style={{ flex: 1 }}>
                     <Text style={[font.bodyStrong, { color: colors.textPrimary }]} numberOfLines={1}>
                       {member.user?.name ?? 'Member'}{isSelf ? '  · You' : ''}

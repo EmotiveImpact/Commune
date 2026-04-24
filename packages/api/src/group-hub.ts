@@ -1,4 +1,4 @@
-import { supabase } from './client';
+import { getTypedSupabase } from './client';
 
 /**
  * Upload a group image (avatar or cover) and update the group record.
@@ -8,6 +8,7 @@ export async function uploadGroupImage(
   file: File,
   type: 'avatar' | 'cover',
 ) {
+  const supabase = getTypedSupabase();
   const ext = file.name.split('.').pop();
   const path = `${groupId}/${type}.${ext}`;
 
@@ -37,6 +38,7 @@ export async function uploadGroupImage(
  * Get full hub data for a group: group details, members, and this month's expense summary.
  */
 export async function getGroupHub(groupId: string) {
+  const supabase = getTypedSupabase();
   const { data: group, error: groupError } = await supabase
     .from('groups')
     .select(
@@ -117,6 +119,7 @@ export async function getGroupHub(groupId: string) {
  * Get member profile data within a group context.
  */
 export async function getMemberProfile(userId: string, groupId: string) {
+  const supabase = getTypedSupabase();
   // Get user info
   const { data: user, error: userError } = await supabase
     .from('users')

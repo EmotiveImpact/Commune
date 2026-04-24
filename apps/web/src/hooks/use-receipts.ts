@@ -17,7 +17,11 @@ export function useUploadReceipt(groupId: string) {
     }) => uploadReceipt(file, userId, expenseId),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: expenseKeys.detail(variables.expenseId) });
-      queryClient.invalidateQueries({ queryKey: expenseKeys.list(groupId) });
+      // groupLists is the 3-element prefix — matches *all* filtered list
+      // variants. expenseKeys.list(groupId) would add a trailing `undefined`
+      // and only match the unfiltered list.
+      queryClient.invalidateQueries({ queryKey: expenseKeys.groupLists(groupId) });
+      queryClient.invalidateQueries({ queryKey: expenseKeys.groupLedger(groupId) });
       queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
     },
   });
@@ -29,7 +33,8 @@ export function useDeleteReceipt(groupId: string) {
     mutationFn: (expenseId: string) => deleteReceipt(expenseId),
     onSuccess: (_, expenseId) => {
       queryClient.invalidateQueries({ queryKey: expenseKeys.detail(expenseId) });
-      queryClient.invalidateQueries({ queryKey: expenseKeys.list(groupId) });
+      queryClient.invalidateQueries({ queryKey: expenseKeys.groupLists(groupId) });
+      queryClient.invalidateQueries({ queryKey: expenseKeys.groupLedger(groupId) });
       queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
     },
   });

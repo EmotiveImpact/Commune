@@ -27,6 +27,7 @@ import {
 import { colors, font, getCategoryMeta, radius, space } from '@/constants/design';
 import { getErrorMessage } from '@/lib/errors';
 import { formatCategoryLabel } from '@/lib/ui';
+import { CategoryBreakdownCard, type CategoryItem } from '@/components/category-breakdown';
 
 type StatusFilter = 'all' | 'owe' | 'owed' | 'paid';
 
@@ -107,6 +108,29 @@ export default function ExpensesScreen() {
     });
   }, [expenses, searchQuery, statusFilter, categoryFilter]);
 
+  const categoryData = useMemo(() => {
+    const now = new Date();
+    const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const inMonth = expenses.filter((e) => e.due_date?.startsWith(monthKey));
+    const source = inMonth.length > 0 ? inMonth : expenses;
+    const scopeLabel = inMonth.length > 0 ? 'This month' : 'All time';
+    const totals = new Map<string, number>();
+    let grand = 0;
+    for (const e of source) {
+      totals.set(e.category, (totals.get(e.category) ?? 0) + e.amount);
+      grand += e.amount;
+    }
+    const items: CategoryItem[] = Array.from(totals.entries())
+      .map(([category, amount]) => ({
+        category,
+        amount,
+        pct: grand > 0 ? Math.round((amount / grand) * 100) : 0,
+      }))
+      .sort((a, b) => b.amount - a.amount)
+      .slice(0, 6);
+    return { items, scopeLabel };
+  }, [expenses]);
+
   const summary = useMemo(() => {
     const now = new Date();
     const y = now.getFullYear();
@@ -185,6 +209,14 @@ export default function ExpensesScreen() {
           gap: space.base,
         }}
       >
+        {!loading && categoryData.items.length > 0 && (
+          <CategoryBreakdownCard
+            items={categoryData.items}
+            currency={group?.currency ?? 'GBP'}
+            scopeLabel={categoryData.scopeLabel}
+          />
+        )}
+
         <SearchField
           value={searchQuery}
           onChangeText={setSearchQuery}

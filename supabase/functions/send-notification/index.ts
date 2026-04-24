@@ -64,6 +64,26 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Minimal RFC-5321-ish address check. Blocks comma- and newline-injection
+    // (prevents a caller from smuggling a BCC into the recipient list, or
+    // header-injecting into the SMTP envelope via a \r\n).
+    const addressRegex = /^[^\s,<>"@]+@[^\s,<>"@]+\.[^\s,<>"@]+$/;
+    if (typeof to !== 'string' || !addressRegex.test(to)) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid "to" address' }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } },
+      );
+    }
+
+    // Subject goes in an email header. CR/LF are the classic header-injection
+    // sequence — reject rather than sanitise so a surprising payload is loud.
+    if (/[\r\n]/.test(subject)) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid subject' }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } },
+      );
+    }
+
     const htmlBody = wrapInTemplate(subject, body, { payment_url, payment_provider, amount, invite_url });
 
     const payload: ResendPayload = {
@@ -241,23 +261,78 @@ const PROVIDER_LABELS: Record<string, string> = {
   paypal: 'Pay with PayPal',
 };
 
+/**
+ * Escape a user-controlled string so it is safe to interpolate into HTML text
+ * or attribute values. Every caller that passes user data into the template
+ * below MUST go through this first.
+ */
+function escapeHtml(value: string | undefined | null): string {
+  if (value == null) return '';
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+/**
+ * Only allow http/https URLs in CTA buttons. Rejecting `javascript:`, `data:`,
+ * and other dangerous schemes here prevents a malicious caller from smuggling
+ * a `javascript:` URL into an anchor href.
+ */
+function sanitizeUrl(value: string | undefined | null): string | null {
+  if (!value) return null;
+  try {
+    const parsed = new URL(value);
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return null;
+    return parsed.toString();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Body HTML is composed by trusted server-side callers (groups.ts, nudges.ts,
+ * payment-reminders) and can therefore contain a small, known set of tags
+ * (<p>, <strong>, <em>, <br>). This allow-list strips everything else so a
+ * user name like `<script>...` baked into a body string by a caller cannot
+ * escape into executable HTML.
+ */
+const BODY_ALLOWED_TAGS = /<\/?(?:p|strong|em|br)\s*\/?>/gi;
+function sanitizeBody(value: string | undefined | null): string {
+  if (!value) return '';
+  // First: fully escape everything.
+  const escaped = escapeHtml(value);
+  // Then: restore the small whitelist of benign tags by unescaping only those
+  // exact sequences the callers produce.
+  return escaped
+    .replace(/&lt;(\/?)(p|strong|em|br)\s*(\/?)&gt;/gi, '<$1$2$3>');
+}
+
 function wrapInTemplate(subject: string, body: string, options?: TemplateOptions): string {
   let ctaButtonHtml = '';
 
-  if (options?.invite_url) {
+  const safeInviteUrl = sanitizeUrl(options?.invite_url);
+  const safePaymentUrl = sanitizeUrl(options?.payment_url);
+  const safeAmount = escapeHtml(options?.amount);
+  const safeProvider = options?.payment_provider ?? '';
+  const providerLabel = PROVIDER_LABELS[safeProvider] ?? 'Pay now';
+
+  if (safeInviteUrl) {
     ctaButtonHtml = `<div style="text-align: center; margin-top: 24px;">
-        <a href="${options.invite_url}" target="_blank" rel="noopener noreferrer"
+        <a href="${escapeHtml(safeInviteUrl)}" target="_blank" rel="noopener noreferrer"
            style="display: inline-block; background-color: #6366f1; color: #ffffff; text-decoration: none;
                   padding: 14px 36px; border-radius: 8px; font-weight: 600; font-size: 16px;">
           Accept Invitation
         </a>
       </div>`;
-  } else if (options?.payment_url) {
+  } else if (safePaymentUrl) {
     ctaButtonHtml = `<div style="text-align: center; margin-top: 24px;">
-        <a href="${options.payment_url}" target="_blank" rel="noopener noreferrer"
+        <a href="${escapeHtml(safePaymentUrl)}" target="_blank" rel="noopener noreferrer"
            style="display: inline-block; background-color: #6366f1; color: #ffffff; text-decoration: none;
                   padding: 12px 32px; border-radius: 6px; font-weight: 600; font-size: 15px;">
-          ${PROVIDER_LABELS[options.payment_provider ?? ''] ?? 'Pay now'}${options.amount ? ` — £${options.amount}` : ''}
+          ${providerLabel}${safeAmount ? ` — £${safeAmount}` : ''}
         </a>
       </div>`;
   }
@@ -267,7 +342,7 @@ function wrapInTemplate(subject: string, body: string, options?: TemplateOptions
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${subject}</title>
+  <title>${escapeHtml(subject)}</title>
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; background-color: #f5f5f5; }
     .container { max-width: 600px; margin: 0 auto; padding: 40px 20px; }
@@ -281,7 +356,7 @@ function wrapInTemplate(subject: string, body: string, options?: TemplateOptions
   <div class="container">
     <div class="card">
       <div class="header">Commune</div>
-      <div class="content">${body}</div>
+      <div class="content">${sanitizeBody(body)}</div>
       ${ctaButtonHtml}
     </div>
     <div class="footer">

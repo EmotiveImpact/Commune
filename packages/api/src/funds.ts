@@ -7,9 +7,10 @@ import type {
   FundExpense,
   FundExpenseWithUser,
 } from '@commune/types';
-import { supabase } from './client';
+import { getTypedSupabase } from './client';
 
 export async function getGroupFunds(groupId: string) {
+  const supabase = getTypedSupabase();
   const { data: funds, error } = await supabase
     .from('group_funds')
     .select('*')
@@ -19,7 +20,7 @@ export async function getGroupFunds(groupId: string) {
   if (error) throw error;
 
   // Fetch totals for each fund
-  const fundIds = (funds as GroupFund[]).map((f) => f.id);
+  const fundIds = (funds as unknown as GroupFund[]).map((f) => f.id);
 
   if (fundIds.length === 0) return [] as GroupFundWithTotals[];
 
@@ -48,7 +49,7 @@ export async function getGroupFunds(groupId: string) {
     expTotals[e.fund_id] = (expTotals[e.fund_id] ?? 0) + Number(e.amount);
   }
 
-  return (funds as GroupFund[]).map((fund) => {
+  return (funds as unknown as GroupFund[]).map((fund) => {
     const totalContributions = contTotals[fund.id] ?? 0;
     const totalExpenses = expTotals[fund.id] ?? 0;
     return {
@@ -68,6 +69,7 @@ interface CreateFundData {
 }
 
 export async function createFund(data: CreateFundData) {
+  const supabase = getTypedSupabase();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -91,6 +93,7 @@ export async function createFund(data: CreateFundData) {
 }
 
 export async function getFundDetails(fundId: string, groupId?: string) {
+  const supabase = getTypedSupabase();
   let fundQuery = supabase
     .from('group_funds')
     .select('*')
@@ -150,6 +153,7 @@ interface AddContributionData {
 }
 
 export async function addContribution(fundId: string, data: AddContributionData) {
+  const supabase = getTypedSupabase();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -178,6 +182,7 @@ interface AddFundExpenseData {
 }
 
 export async function addFundExpense(fundId: string, data: AddFundExpenseData) {
+  const supabase = getTypedSupabase();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -201,6 +206,7 @@ export async function addFundExpense(fundId: string, data: AddFundExpenseData) {
 }
 
 export async function deleteFund(fundId: string) {
+  const supabase = getTypedSupabase();
   const { error } = await supabase
     .from('group_funds')
     .delete()

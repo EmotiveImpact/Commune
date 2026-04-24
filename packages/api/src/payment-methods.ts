@@ -1,4 +1,4 @@
-import { supabase } from './client';
+import { getTypedSupabase } from './client';
 import {
   createPaymentMethodSchema,
   isClickableProvider,
@@ -7,6 +7,7 @@ import {
 import type { UserPaymentMethod } from '@commune/types';
 
 export async function getUserPaymentMethods(userId: string): Promise<UserPaymentMethod[]> {
+  const supabase = getTypedSupabase();
   const { data, error } = await supabase
     .from('user_payment_methods')
     .select('*')
@@ -15,7 +16,7 @@ export async function getUserPaymentMethods(userId: string): Promise<UserPayment
     .order('created_at', { ascending: true });
 
   if (error) throw error;
-  return (data ?? []) as UserPaymentMethod[];
+  return (data ?? []) as unknown as UserPaymentMethod[];
 }
 
 async function ensureSingleDefaultPaymentMethod(
@@ -33,6 +34,7 @@ async function ensureSingleDefaultPaymentMethod(
 
   if (!nextDefaultId) return;
 
+  const supabase = getTypedSupabase();
   const { error } = await supabase
     .from('user_payment_methods')
     .update({ is_default: true })
@@ -78,6 +80,7 @@ export async function createPaymentMethod(
   const existingMethods = await getUserPaymentMethods(userId);
   const shouldBeDefault = parsed.data.is_default || existingMethods.length === 0;
 
+  const supabase = getTypedSupabase();
   if (shouldBeDefault) {
     const { error: clearDefaultsError } = await supabase
       .from('user_payment_methods')
@@ -103,7 +106,7 @@ export async function createPaymentMethod(
 
   if (error) throw error;
   await ensureSingleDefaultPaymentMethod(userId, data.id);
-  return data as UserPaymentMethod;
+  return data as unknown as UserPaymentMethod;
 }
 
 export async function updatePaymentMethod(
@@ -122,6 +125,7 @@ export async function updatePaymentMethod(
     throw new Error(parsed.error.issues[0]?.message ?? 'Invalid payment method');
   }
 
+  const supabase = getTypedSupabase();
   const existingMethod = await supabase
     .from('user_payment_methods')
     .select('provider, payment_link, payment_info')
@@ -162,10 +166,11 @@ export async function updatePaymentMethod(
     parsed.data.is_default ? methodId : undefined,
   );
 
-  return data as UserPaymentMethod;
+  return data as unknown as UserPaymentMethod;
 }
 
 export async function deletePaymentMethod(methodId: string, userId: string): Promise<void> {
+  const supabase = getTypedSupabase();
   const { data: method, error: lookupError } = await supabase
     .from('user_payment_methods')
     .select('id, is_default')

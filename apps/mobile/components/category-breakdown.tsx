@@ -3,7 +3,7 @@ import { Ionicons } from '@expo/vector-icons';
 import Svg, { Circle, G } from 'react-native-svg';
 import { colors, font, getCategoryMeta, space } from '@/constants/design';
 import { formatCategoryLabel } from '@/lib/ui';
-import { formatCurrency } from '@commune/core';
+import { formatCurrency } from '@commune/utils';
 import { Badge, Card } from './primitives';
 
 export type CategoryItem = {
