@@ -38,6 +38,8 @@ import { useGroupStore } from '@/stores/group';
 import { colors, elevation, font, radius, space } from '@/constants/design';
 import { IconTile } from '@/components/primitives';
 import { SideDrawer } from '@/components/side-drawer';
+import { SpeedDial, type SpeedDialAction } from '@/components/speed-dial';
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
 const TAB_BAR_BG = '#1d2130';
 const ACTIVE_COLOR = '#FFFFFF';
@@ -94,6 +96,51 @@ const QUICK_ACTIONS: QuickAction[] = [
     bg: colors.typeProject.bg,
   },
 ];
+
+function buildSpeedDialActions(router: ReturnType<typeof useRouter>): SpeedDialAction[] {
+  return [
+    {
+      key: 'expense',
+      Icon: IconReceipt,
+      label: 'Add expense',
+      color: colors.sage,
+      bg: colors.sageSoft,
+      onPress: () => router.push('/expenses/new'),
+    },
+    {
+      key: 'recurring',
+      Icon: IconRepeat,
+      label: 'Add recurring bill',
+      color: colors.typeCouple.accent,
+      bg: colors.typeCouple.bg,
+      onPress: () => router.push('/recurring'),
+    },
+    {
+      key: 'chore',
+      Icon: IconChecklist,
+      label: 'Add a chore',
+      color: colors.owedText,
+      bg: colors.owedBg,
+      onPress: () => router.push('/operations'),
+    },
+    {
+      key: 'member',
+      Icon: IconUserPlus,
+      label: 'Add a member',
+      color: colors.typeTrip.accent,
+      bg: colors.typeTrip.bg,
+      onPress: () => router.push('/members'),
+    },
+    {
+      key: 'template',
+      Icon: IconCopy,
+      label: 'Add from template',
+      color: colors.typeProject.accent,
+      bg: colors.typeProject.bg,
+      onPress: () => router.push('/templates'),
+    },
+  ];
+}
 
 const MORE_ACTIONS: QuickAction[] = [
   {
@@ -178,6 +225,16 @@ export default function TabLayout() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
+
+  const fabRotation = useSharedValue(0);
+  useEffect(() => {
+    fabRotation.value = withTiming(menuOpen ? 45 : 0, { duration: 200 });
+  }, [menuOpen, fabRotation]);
+  const fabIconStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${fabRotation.value}deg` }],
+  }));
+
+  const speedDialActions = buildSpeedDialActions(router);
 
   useEffect(() => {
     if (!activeGroupId && groups[0]?.id) {
@@ -383,7 +440,7 @@ export default function TabLayout() {
             tabPress: (e) => {
               e.preventDefault();
               hapticMedium();
-              setMenuOpen(true);
+              setMenuOpen((open) => !open);
             },
           }}
           options={{
@@ -407,7 +464,9 @@ export default function TabLayout() {
                   ...elevation.fab,
                 }}
               >
-                <IconPlus size={30} strokeWidth={2.25} color="#FFFFFF" />
+                <Animated.View style={fabIconStyle}>
+                  <IconPlus size={30} strokeWidth={2.25} color="#FFFFFF" />
+                </Animated.View>
               </View>
             ),
           }}
@@ -477,133 +536,13 @@ export default function TabLayout() {
         <Tabs.Screen name="chores" options={{ href: null }} />
       </Tabs>
 
-      {/* ─── Quick Actions Sheet ──────────────────────────────────── */}
-      <Modal
+      {/* ─── Quick Actions · Speed Dial ─────────────────────────── */}
+      <SpeedDial
         visible={menuOpen}
-        animationType="slide"
-        transparent
-        onRequestClose={() => setMenuOpen(false)}
-      >
-        <Pressable
-          onPress={() => setMenuOpen(false)}
-          style={{
-            flex: 1,
-            backgroundColor: 'rgba(26,30,43,0.45)',
-            justifyContent: 'flex-end',
-          }}
-        >
-          <Pressable
-            onPress={(e) => e.stopPropagation()}
-            style={{
-              width: '100%',
-              alignSelf: 'stretch',
-              backgroundColor: colors.bgSurface,
-              borderTopLeftRadius: radius.sheet,
-              borderTopRightRadius: radius.sheet,
-              paddingTop: space.md,
-              paddingBottom: insets.bottom + space.md,
-              ...elevation.sheet,
-            }}
-          >
-            {/* Grabber */}
-            <View
-              style={{
-                alignSelf: 'center',
-                width: 40,
-                height: 4,
-                borderRadius: 2,
-                backgroundColor: colors.border,
-                marginBottom: space.lg,
-              }}
-            />
-
-            {/* Header */}
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'flex-start',
-                paddingHorizontal: space.gutter,
-                marginBottom: space.base,
-              }}
-            >
-              <View style={{ flex: 1 }}>
-                <Text style={[font.h2, { color: colors.textPrimary }]}>
-                  What would you like to do?
-                </Text>
-                <Text
-                  style={[
-                    font.caption,
-                    { color: colors.textTertiary, marginTop: 4 },
-                  ]}
-                >
-                  Pick an action to jump straight in.
-                </Text>
-              </View>
-              <TouchableOpacity
-                activeOpacity={0.7}
-                onPress={() => { hapticLight(); setMenuOpen(false); }}
-                accessibilityLabel="Close"
-                style={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: 16,
-                  backgroundColor: TAB_BAR_BG,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  marginLeft: space.sm,
-                }}
-              >
-                <Ionicons name="close" size={20} color="#FFFFFF" />
-              </TouchableOpacity>
-            </View>
-
-            {/* Single-column action list */}
-            <View style={{ paddingHorizontal: space.gutter, width: '100%' }}>
-              {QUICK_ACTIONS.map((action, idx) => {
-                const isLast = idx === QUICK_ACTIONS.length - 1;
-                return (
-                  <TouchableOpacity
-                    key={action.label}
-                    activeOpacity={0.55}
-                    onPress={() => handleQuickAction(action)}
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      paddingVertical: space.md + 2,
-                      borderBottomWidth: isLast ? 0 : 1,
-                      borderBottomColor: colors.borderSubtle,
-                    }}
-                  >
-                    <IconTile
-                      icon={action.icon}
-                      color={action.color}
-                      bg={action.bg}
-                      size={44}
-                    />
-                    <View style={{ flex: 1, marginLeft: space.md, marginRight: space.md }}>
-                      <Text style={{ fontSize: 15, fontWeight: '600', color: colors.textPrimary }}>
-                        {action.label}
-                      </Text>
-                      <Text
-                        numberOfLines={1}
-                        style={{ fontSize: 13, fontWeight: '500', color: colors.textTertiary, marginTop: 2 }}
-                      >
-                        {action.description}
-                      </Text>
-                    </View>
-                    <Ionicons
-                      name="chevron-forward"
-                      size={18}
-                      color={colors.textTertiary}
-                    />
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-
-          </Pressable>
-        </Pressable>
-      </Modal>
+        onClose={() => setMenuOpen(false)}
+        actions={speedDialActions}
+        fabOffsetFromBottom={insets.bottom + 52}
+      />
 
       {/* ─── More Sheet ─────────────────────────────────────────────── */}
       <Modal
@@ -764,6 +703,136 @@ export default function TabLayout() {
                 key: 'activity',
                 Icon: IconMessageCircle,
                 label: 'Activity',
+                color: colors.typeCouple.accent,
+                bg: colors.typeCouple.bg,
+                onPress: () => {
+                  setDrawerOpen(false);
+                  setTimeout(() => router.push('/activity'), 220);
+                },
+              },
+              {
+                type: 'action',
+                key: 'settle',
+                Icon: IconWallet,
+                label: 'Settle up',
+                color: colors.sage,
+                bg: colors.sageSoft,
+                onPress: () => {
+                  setDrawerOpen(false);
+                  setTimeout(() => router.push('/command-centre'), 220);
+                },
+              },
+              {
+                type: 'action',
+                key: 'templates',
+                Icon: IconCopy,
+                label: 'Templates',
+                color: colors.typeProject.accent,
+                bg: colors.typeProject.bg,
+                onPress: () => {
+                  setDrawerOpen(false);
+                  setTimeout(() => router.push('/templates'), 220);
+                },
+              },
+              {
+                type: 'action',
+                key: 'recurring',
+                Icon: IconRepeat,
+                label: 'Recurring expenses',
+                color: colors.typeCouple.accent,
+                bg: colors.typeCouple.bg,
+                onPress: () => {
+                  setDrawerOpen(false);
+                  setTimeout(() => router.push('/recurring'), 220);
+                },
+              },
+              {
+                type: 'action',
+                key: 'funds',
+                Icon: IconCash,
+                label: 'Shared funds',
+                color: colors.sage,
+                bg: colors.sageSoft,
+                onPress: () => {
+                  setDrawerOpen(false);
+                  setTimeout(() => router.push('/funds'), 220);
+                },
+              },
+              {
+                type: 'action',
+                key: 'members',
+                Icon: IconUserPlus,
+                label: 'Members',
+                color: colors.infoText,
+                bg: colors.infoBg,
+                onPress: () => {
+                  setDrawerOpen(false);
+                  setTimeout(() => router.push('/members'), 220);
+                },
+              },
+              {
+                type: 'action',
+                key: 'support',
+                Icon: IconLifebuoy,
+                label: 'Help & support',
+                color: colors.infoText,
+                bg: colors.infoBg,
+                onPress: () => {
+                  setDrawerOpen(false);
+                },
+              },
+              {
+                type: 'action',
+                key: 'settings',
+                Icon: IconSettings,
+                label: 'Settings',
+                color: colors.textSecondary,
+                bg: colors.bgSubtle,
+                onPress: () => {
+                  setDrawerOpen(false);
+                  setTimeout(() => router.push('/settings'), 220);
+                },
+              },
+            ],
+          },
+          {
+            key: 'groups',
+            title: 'Switch group',
+            subtitle: `${groups.length} ${groups.length === 1 ? 'group' : 'groups'}`,
+            items: [
+              ...groups.map((g) => ({
+                type: 'action' as const,
+                key: g.id,
+                Icon: IconHome2,
+                label: g.name,
+                caption: g.id === activeGroupId ? 'Active' : undefined,
+                color: colors.sage,
+                bg: colors.sageSoft,
+                onPress: () => {
+                  setActiveGroupId(g.id);
+                  setDrawerOpen(false);
+                },
+              })),
+              {
+                type: 'action' as const,
+                key: 'create-group',
+                Icon: IconPlus,
+                label: 'Create new group',
+                color: colors.sage,
+                bg: colors.sageSoft,
+                onPress: () => {
+                  setDrawerOpen(false);
+                  setTimeout(() => router.push('/onboarding'), 220);
+                },
+              },
+            ],
+          },
+        ]}
+      />
+    </>
+  );
+}
+ity',
                 color: colors.typeCouple.accent,
                 bg: colors.typeCouple.bg,
                 onPress: () => {
