@@ -1,0 +1,593 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Commune — All screens</title>
+<style>
+  :root{
+    --bg:#FAF9F7; --surface:#ffffff; --ink:#171b24; --ink-soft:#323847;
+    --muted:#6b7280; --muted-soft:#9ca3af;
+    --border:#eceae5; --border-soft:#f1efe9;
+    --sage:#1f7a6a; --sage-soft:#E8F3EC; --sage-ink:#14594e;
+    --lime:#96E85F; --cream:#eadfd4; --danger:#E35D5D; --warn:#8C2F1F;
+    --navy:#1A1E2B;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:#efece6;color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Inter",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+  .page{max-width:1600px;margin:0 auto;padding:48px 24px 96px}
+  h1{font-size:36px;letter-spacing:-0.8px;margin:0 0 6px;font-weight:700}
+  .lede{color:var(--muted);font-size:15px;margin:0 0 32px;max-width:760px}
+  h2.sub{font-size:22px;letter-spacing:-0.4px;margin:48px 0 12px;font-weight:700}
+  .section-lede{color:var(--muted);font-size:14px;margin:0 0 20px}
+  .row{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:24px}
+
+  /* variant card */
+  .card{background:var(--surface);border-radius:24px;border:1px solid var(--border);padding:18px;display:flex;flex-direction:column}
+  .tag{display:inline-block;background:var(--ink);color:#fff;font-size:10px;font-weight:700;letter-spacing:0.5px;padding:4px 8px;border-radius:6px;margin-bottom:8px;align-self:flex-start}
+  .card h3{font-size:15px;margin:0 0 2px;font-weight:700}
+  .card p{color:var(--muted);font-size:12.5px;margin:0 0 12px;line-height:1.45}
+
+  /* phone frame */
+  .frame{background:var(--bg);border-radius:30px;border:1px solid var(--border-soft);overflow:hidden;height:640px;display:flex;flex-direction:column}
+  .sb{display:flex;align-items:center;justify-content:space-between;padding:12px 18px 0;color:var(--ink);font-size:10px;font-weight:600}
+  .hdr{display:flex;align-items:center;justify-content:space-between;padding:14px 18px 16px;position:relative;min-height:52px}
+  .hdr .ham{width:26px;height:26px;font-size:20px;color:var(--ink);display:flex;align-items:center;justify-content:center}
+  .hdr .title{position:absolute;left:0;right:0;display:flex;align-items:center;justify-content:center;pointer-events:none}
+  .hdr .brand{font-size:18px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase}
+  .hdr .name{font-size:18px;font-weight:700;letter-spacing:-0.2px}
+  .hdr .bell{width:26px;height:26px;font-size:18px;display:flex;align-items:center;justify-content:center;position:relative}
+  .hdr .bell .d{position:absolute;top:-3px;right:-3px;background:var(--danger);color:#fff;font-size:8px;font-weight:700;min-width:12px;height:12px;border-radius:6px;border:1.5px solid var(--bg);display:flex;align-items:center;justify-content:center;padding:0 3px}
+
+  .body{flex:1;overflow:auto;padding:0 14px;scrollbar-width:none}
+  .body::-webkit-scrollbar{display:none}
+
+  .tabbar{background:var(--navy);padding:10px 14px 18px;display:flex;align-items:center;justify-content:space-between;gap:6px}
+  .tabbar .t{display:flex;flex-direction:column;align-items:center;gap:2px;flex:1;color:rgba(255,255,255,0.45);font-size:9px;font-weight:500}
+  .tabbar .t.on{color:#fff;font-weight:700}
+  .tabbar .fab{width:48px;height:48px;border-radius:24px;background:var(--sage);color:#fff;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;box-shadow:0 4px 14px rgba(0,0,0,0.3);flex:0 0 48px;margin-top:-4px}
+  .tabbar .avatar{width:24px;height:24px;border-radius:12px;background:rgba(255,255,255,0.15);color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700}
+
+  /* === HERO === */
+  .hero{background:var(--navy);border-radius:22px;padding:18px;color:#fff;margin:4px 0 16px}
+  .hero .top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+  .hero .lab{font-size:10px;font-weight:700;letter-spacing:0.6px;color:rgba(255,255,255,0.55);text-transform:uppercase}
+  .hero .pct{background:rgba(255,255,255,0.1);color:#fff;padding:3px 9px;border-radius:999px;font-size:10px;font-weight:700}
+  .hero .amt{font-size:32px;font-weight:700;letter-spacing:-0.5px}
+  .hero .inl{font-size:11px;color:rgba(255,255,255,0.55);margin-top:4px}
+  .hero .inl b{color:#fff;font-weight:700}
+  .hero .bar{height:6px;background:rgba(255,255,255,0.12);border-radius:3px;overflow:hidden;margin:10px 0 12px}
+  .hero .bar i{display:block;width:40%;height:100%;background:var(--sage)}
+  .hero .btns{display:flex;gap:6px}
+  .hero .bp{flex:1;height:44px;border-radius:16px;background:var(--cream);color:#1f2330;font-weight:600;font-size:13px;display:flex;align-items:center;justify-content:center;gap:6px}
+  .hero .bs{flex:1;height:44px;border-radius:16px;background:rgba(255,255,255,0.08);color:#fff;font-weight:600;font-size:13px;display:flex;align-items:center;justify-content:center;gap:6px}
+  .hero .bs-solo{flex:2}
+
+  /* For-you tabs */
+  .foryou-tabs{display:flex;gap:8px;margin-bottom:10px}
+  .foryou-tabs .tb{height:34px;padding:0 12px;border-radius:999px;background:#F3F1EC;display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;color:var(--muted);position:relative}
+  .foryou-tabs .tb.on{background:var(--navy);color:#fff}
+  .foryou-tabs .tb .dot{background:var(--danger);color:#fff;font-size:8px;min-width:14px;height:14px;border-radius:7px;display:flex;align-items:center;justify-content:center;padding:0 3px;position:absolute;top:-4px;right:-4px;border:1.5px solid var(--bg);font-weight:700}
+  .foryou-row{background:#fff;border-radius:14px;padding:10px;display:flex;align-items:center;gap:10px;margin-bottom:6px}
+  .foryou-row .ic{width:36px;height:36px;border-radius:10px;background:var(--sage-soft);display:flex;align-items:center;justify-content:center;font-size:16px}
+  .foryou-row .meta{flex:1;min-width:0}
+  .foryou-row .t{font-size:13px;font-weight:600}
+  .foryou-row .c{font-size:11px;color:var(--muted);margin-top:1px}
+  .foryou-row .amt{font-size:13px;font-weight:700;color:var(--warn)}
+
+  /* Stat cards */
+  .statgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+  .statcard{background:#fff;border-radius:16px;padding:14px;border:1px solid var(--border-soft)}
+  .statcard .lab{font-size:10px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:0.4px}
+  .statcard .val{font-size:20px;font-weight:700;margin-top:2px}
+  .statcard .trend{font-size:10px;color:var(--sage);margin-top:2px}
+  .statcard .trend.down{color:var(--warn)}
+
+  /* Feed-style */
+  .feed-hdr{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;padding:16px 0 6px}
+  .feed-row{background:#fff;border-radius:14px;padding:12px;display:flex;align-items:center;gap:10px;margin-bottom:6px}
+  .feed-row .ic{width:32px;height:32px;border-radius:8px;background:var(--sage-soft);display:flex;align-items:center;justify-content:center;font-size:14px}
+  .feed-row .t{font-size:13px;font-weight:600;flex:1}
+  .feed-row .amt{font-size:13px;font-weight:700}
+
+  /* Chip row */
+  .chips{display:flex;gap:6px;margin-bottom:10px;overflow-x:auto;scrollbar-width:none}
+  .chip{background:#fff;border:1px solid var(--border);padding:6px 12px;border-radius:999px;font-size:11px;font-weight:600;color:var(--ink);white-space:nowrap}
+  .chip.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+
+  /* Search field */
+  .search{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:10px 12px;margin:4px 0 12px}
+  .search .mag{font-size:14px;color:var(--muted)}
+  .search .ph{font-size:13px;color:var(--muted)}
+
+  /* Group hero */
+  .ghero{background:var(--navy);border-radius:22px;padding:18px;color:#fff;margin:4px 0 14px;position:relative}
+  .ghero .name{font-size:22px;font-weight:700;letter-spacing:-0.3px}
+  .ghero .meta{font-size:11px;color:rgba(255,255,255,0.6);margin-top:2px}
+  .ghero .members{display:flex;margin-top:12px}
+  .ghero .members .a{width:26px;height:26px;border-radius:13px;background:var(--cream);border:2px solid var(--navy);color:var(--ink);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;margin-left:-6px}
+  .ghero .members .a:first-child{margin-left:0}
+  .ghero .action{position:absolute;top:16px;right:16px;background:rgba(255,255,255,0.12);width:32px;height:32px;border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:16px}
+
+  /* Group-list card */
+  .gcard{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px;margin-bottom:8px;display:flex;align-items:center;gap:12px}
+  .gcard .ic{width:42px;height:42px;border-radius:12px;background:var(--sage-soft);color:var(--sage-ink);display:flex;align-items:center;justify-content:center;font-size:19px}
+  .gcard .info{flex:1}
+  .gcard .n{font-size:14px;font-weight:700}
+  .gcard .c{font-size:11px;color:var(--muted);margin-top:1px}
+  .gcard .bal{font-size:13px;font-weight:700}
+  .gcard .bal.owed{color:var(--sage-ink)}
+  .gcard .bal.owe{color:var(--warn)}
+
+  /* People-centric balance row */
+  .prow{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px;margin-bottom:8px;display:flex;align-items:center;gap:12px}
+  .prow .a{width:38px;height:38px;border-radius:19px;background:var(--sage-soft);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;color:var(--sage-ink)}
+  .prow .n{flex:1;font-size:13px;font-weight:700}
+  .prow .n .grp{font-size:10px;color:var(--muted);font-weight:500;margin-top:1px}
+  .prow .bal{font-size:14px;font-weight:700}
+  .prow .bal.owed{color:var(--sage-ink)}
+  .prow .bal.owe{color:var(--warn)}
+
+  /* Profile */
+  .pcard{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:16px;margin:4px 0 12px;display:flex;align-items:center;gap:12px}
+  .pcard .a{width:54px;height:54px;border-radius:27px;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700}
+  .pcard .info .n{font-size:16px;font-weight:700}
+  .pcard .info .e{font-size:12px;color:var(--muted);margin-top:2px}
+  .prow-a{background:var(--surface);border:1px solid var(--border);border-radius:14px;margin-bottom:6px;display:flex;align-items:center;padding:12px 14px;gap:12px}
+  .prow-a .ic{width:32px;height:32px;border-radius:8px;background:var(--sage-soft);color:var(--sage-ink);display:flex;align-items:center;justify-content:center;font-size:14px}
+  .prow-a .lab{flex:1;font-size:13px;font-weight:600}
+  .prow-a .chev{color:var(--muted);font-size:14px}
+
+  /* Quick-action grid */
+  .qgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+  .qtile{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:8px}
+  .qtile .ic{width:34px;height:34px;border-radius:10px;background:var(--sage-soft);color:var(--sage-ink);display:flex;align-items:center;justify-content:center;font-size:16px}
+  .qtile .lab{font-size:13px;font-weight:700}
+  .qtile .cap{font-size:11px;color:var(--muted)}
+
+  /* Section labels */
+  .section-lbl{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;padding:8px 0 6px}
+
+  /* Donut chart */
+  .donut-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px;display:flex;align-items:center;gap:14px;margin-bottom:10px}
+  .donut{width:74px;height:74px;border-radius:50%;background:conic-gradient(var(--sage) 0 68%, #96E85F 68% 87%, var(--cream) 87% 100%);display:flex;align-items:center;justify-content:center}
+  .donut .hole{width:52px;height:52px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700}
+  .donut-leg{flex:1;display:flex;flex-direction:column;gap:4px}
+  .donut-leg div{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:600}
+  .donut-leg div i{width:8px;height:8px;border-radius:2px;display:inline-block}
+
+  .pros{color:var(--sage-ink);font-size:11px;margin-top:12px}
+  .cons{color:#9a4a3a;font-size:11px;margin-top:2px}
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>Commune — all screens</h1>
+  <p class="lede">Every main screen with 3 possible compositions. Pick the one that fits each surface; mix and match.</p>
+
+  <!-- =========================== HOME =========================== -->
+  <h2 class="sub">1 · Home</h2>
+  <p class="section-lede">What the user sees on the Home tab. All variants share the header + tab bar.</p>
+  <div class="row">
+
+    <!-- HOME A: current -->
+    <div class="card">
+      <span class="tag">H-A Current</span>
+      <h3>Dark hero + For You tabs</h3>
+      <p>What we have: dark balance hero with two CTAs, then a tabbed list of Bills / Chores / Upcoming / Activity.</p>
+      <div class="frame">
+        <div class="sb"><span>9:41</span><span>●●●</span></div>
+        <div class="hdr"><div class="ham">☰</div><div class="title"><span class="brand">Commune</span></div><div class="bell">🔔<div class="d">3</div></div></div>
+        <div class="body">
+          <div class="hero">
+            <div class="top"><span class="lab">Your Share · April</span><span class="pct">40% settled</span></div>
+            <div class="amt">£500.00</div>
+            <div class="inl"><b>£200</b> paid · <b>£300</b> left · <b>5</b> open</div>
+            <div class="bar"><i></i></div>
+            <div class="btns"><div class="bp">+ Add Expense</div><div class="bs">✓ Settle Up</div></div>
+          </div>
+          <div class="foryou-tabs">
+            <div class="tb on">Bills<div class="dot">2</div></div>
+            <div class="tb">Chores<div class="dot">1</div></div>
+            <div class="tb">Upcoming</div>
+            <div class="tb">Activity</div>
+          </div>
+          <div class="foryou-row"><div class="ic">🛒</div><div class="meta"><div class="t">Groceries</div><div class="c">Overdue · Apr 18</div></div><div class="amt">-£42</div></div>
+          <div class="foryou-row"><div class="ic">🏠</div><div class="meta"><div class="t">Rent</div><div class="c">Due Apr 28</div></div><div class="amt">-£650</div></div>
+        </div>
+        <div class="tabbar">
+          <div class="t on">🏠<span>Home</span></div>
+          <div class="t">🧾<span>Expenses</span></div>
+          <div class="fab">+</div>
+          <div class="t">👥<span>Groups</span></div>
+          <div class="t"><div class="avatar">JD</div><span>Profile</span></div>
+        </div>
+      </div>
+      <div class="pros">+ Works today · clear hierarchy</div>
+      <div class="cons">− Empty-state feels flat when fully settled</div>
+    </div>
+
+    <!-- HOME B: stat-grid dashboard -->
+    <div class="card">
+      <span class="tag">H-B Dashboard</span>
+      <h3>Stat grid + quick actions</h3>
+      <p>Four glanceable metrics on top (paid/left/chores/overdue), compact quick-action tiles, then feed.</p>
+      <div class="frame">
+        <div class="sb"><span>9:41</span><span>●●●</span></div>
+        <div class="hdr"><div class="ham">☰</div><div class="title"><span class="brand">Commune</span></div><div class="bell">🔔<div class="d">3</div></div></div>
+        <div class="body">
+          <div class="statgrid" style="margin-top:4px">
+            <div class="statcard"><div class="lab">Your share</div><div class="val">£500</div><div class="trend">This month</div></div>
+            <div class="statcard"><div class="lab">Outstanding</div><div class="val">£300</div><div class="trend down">60% left</div></div>
+            <div class="statcard"><div class="lab">Chores</div><div class="val">2</div><div class="trend down">1 overdue</div></div>
+            <div class="statcard"><div class="lab">Activity</div><div class="val">12</div><div class="trend">this week</div></div>
+          </div>
+          <div class="qgrid">
+            <div class="qtile"><div class="ic">+</div><div class="lab">Add expense</div><div class="cap">Log a new cost</div></div>
+            <div class="qtile"><div class="ic">✓</div><div class="lab">Settle up</div><div class="cap">Clear balances</div></div>
+          </div>
+          <div class="feed-hdr">Needs attention</div>
+          <div class="feed-row"><div class="ic">🛒</div><div class="t">Groceries · Overdue</div><div class="amt" style="color:var(--warn)">-£42</div></div>
+          <div class="feed-row"><div class="ic">🏠</div><div class="t">Rent · Apr 28</div><div class="amt">-£650</div></div>
+        </div>
+        <div class="tabbar">
+          <div class="t on">🏠<span>Home</span></div>
+          <div class="t">🧾<span>Expenses</span></div>
+          <div class="fab">+</div>
+          <div class="t">👥<span>Groups</span></div>
+          <div class="t"><div class="avatar">JD</div><span>Profile</span></div>
+        </div>
+      </div>
+      <div class="pros">+ Glanceable · stats are specific</div>
+      <div class="cons">− Spreadsheet-feel · less emotional hook</div>
+    </div>
+
+    <!-- HOME C: feed-first -->
+    <div class="card">
+      <span class="tag">H-C Feed-first</span>
+      <h3>Compact status bar + activity feed</h3>
+      <p>One-line status bar at the top (balance + pct), then a chronological activity feed as the dominant surface.</p>
+      <div class="frame">
+        <div class="sb"><span>9:41</span><span>●●●</span></div>
+        <div class="hdr"><div class="ham">☰</div><div class="title"><span class="brand">Commune</span></div><div class="bell">🔔<div class="d">3</div></div></div>
+        <div class="body">
+          <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--navy);color:#fff;border-radius:14px;margin-top:4px">
+            <div style="flex:1">
+              <div style="font-size:11px;color:rgba(255,255,255,0.55);font-weight:600">Your share · April</div>
+              <div style="font-size:18px;font-weight:700">£300 left</div>
+            </div>
+            <div style="background:rgba(255,255,255,0.12);padding:5px 10px;border-radius:999px;font-size:10px;font-weight:700">40% settled</div>
+          </div>
+          <div class="feed-hdr">Today</div>
+          <div class="feed-row"><div class="ic">🛒</div><div class="t">You added Groceries</div><div class="amt" style="color:var(--warn)">-£42</div></div>
+          <div class="feed-hdr">Yesterday</div>
+          <div class="feed-row"><div class="ic">🏠</div><div class="t">Sam paid Rent</div><div class="amt" style="color:var(--sage-ink)">Settled</div></div>
+          <div class="feed-row"><div class="ic">⚡</div><div class="t">Electric due in 5d</div><div class="amt">-£60</div></div>
+        </div>
+        <div class="tabbar">
+          <div class="t on">🏠<span>Home</span></div>
+          <div class="t">🧾<span>Expenses</span></div>
+          <div class="fab">+</div>
+          <div class="t">👥<span>Groups</span></div>
+          <div class="t"><div class="avatar">JD</div><span>Profile</span></div>
+        </div>
+      </div>
+      <div class="pros">+ Rewards opening the app · always fresh</div>
+      <div class="cons">− Can feel noisy · state is secondary</div>
+    </div>
+
+  </div>
+
+  <!-- =========================== EXPENSES =========================== -->
+  <h2 class="sub">2 · Expenses</h2>
+  <p class="section-lede">The Expenses tab — list of everything with search, filters and a summary.</p>
+  <div class="row">
+
+    <!-- EXP A: current -->
+    <div class="card">
+      <span class="tag">E-A List</span>
+      <h3>Search + filters + roomy rows</h3>
+      <p>Current approach: search field at top, status chips, then a list of expense cards.</p>
+      <div class="frame">
+        <div class="sb"><span>9:41</span><span>●●●</span></div>
+        <div class="hdr"><div class="ham">☰</div><div class="title"><span class="name">Expenses</span></div><div class="bell">🔔<div class="d">3</div></div></div>
+        <div class="body">
+          <div class="search"><span class="mag">🔍</span><span class="ph">Search expenses, vendors</span></div>
+          <div class="chips">
+            <div class="chip on">All</div>
+            <div class="chip">Overdue</div>
+            <div class="chip">Due soon</div>
+            <div class="chip">Settled</div>
+          </div>
+          <div class="foryou-row"><div class="ic">🛒</div><div class="meta"><div class="t">Groceries</div><div class="c">You · Today</div></div><div class="amt">-£42</div></div>
+          <div class="foryou-row"><div class="ic">🏠</div><div class="meta"><div class="t">Rent</div><div class="c">Sam · 2d</div></div><div class="amt" style="color:var(--sage-ink)">Settled</div></div>
+          <div class="foryou-row"><div class="ic">⚡</div><div class="meta"><div class="t">Electric</div><div class="c">You · 5d</div></div><div class="amt" style="color:var(--sage-ink)">+£60</div></div>
+        </div>
+        <div class="tabbar">
+          <div class="t">🏠<span>Home</span></div>
+          <div class="t on">🧾<span>Expenses</span></div>
+          <div class="fab">+</div>
+          <div class="t">👥<span>Groups</span></div>
+          <div class="t"><div class="avatar">JD</div><span>Profile</span></div>
+        </div>
+      </div>
+      <div class="pros">+ Familiar · searchable · scalable</div>
+      <div class="cons">− No sense of time or category at a glance</div>
+    </div>
+
+    <!-- EXP B: date-grouped -->
+    <div class="card">
+      <span class="tag">E-B Date-grouped</span>
+      <h3>Grouped by day, denser rows</h3>
+      <p>Chronological sections. No search by default — tap the 🔍 icon to reveal. Better for reviewing.</p>
+      <div class="frame">
+        <div class="sb"><span>9:41</span><span>●●●</span></div>
+        <div class="hdr"><div class="ham">☰</div><div class="title"><span class="name">Expenses</span></div><div class="bell">🔔<div class="d">3</div></div></div>
+        <div class="body">
+          <div class="feed-hdr">April 23 · Today</div>
+          <div class="feed-row"><div class="ic">🛒</div><div class="t">Groceries · You</div><div class="amt" style="color:var(--warn)">-£42</div></div>
+          <div class="feed-hdr">April 21</div>
+          <div class="feed-row"><div class="ic">🏠</div><div class="t">Rent · Sam</div><div class="amt" style="color:var(--sage-ink)">Settled</div></div>
+          <div class="feed-hdr">April 18</div>
+          <div class="feed-row"><div class="ic">⚡</div><div class="t">Electric · You</div><div class="amt" style="color:var(--sage-ink)">+£60</div></div>
+          <div class="feed-row"><div class="ic">📶</div><div class="t">Broadband · Sam</div><div class="amt">-£22</div></div>
+        </div>
+        <div class="tabbar">
+          <div class="t">🏠<span>Home</span></div>
+          <div class="t on">🧾<span>Expenses</span></div>
+          <div class="fab">+</div>
+          <div class="t">👥<span>Groups</span></div>
+          <div class="t"><div class="avatar">JD</div><span>Profile</span></div>
+        </div>
+      </div>
+      <div class="pros">+ Naturally scan-able · time-first narrative</div>
+      <div class="cons">− Harder to find "that one Uber last Friday"</div>
+    </div>
+
+    <!-- EXP C: category-first -->
+    <div class="card">
+      <span class="tag">E-C Category-first</span>
+      <h3>Tab by category + donut header</h3>
+      <p>Donut summary at the top, category tabs to filter. "By month" drops under each.</p>
+      <div class="frame">
+        <div class="sb"><span>9:41</span><span>●●●</span></div>
+        <div class="hdr"><div class="ham">☰</div><div class="title"><span class="name">Expenses</span></div><div class="bell">🔔<div class="d">3</div></div></div>
+        <div class="body">
+          <div class="donut-card">
+            <div class="donut"><div class="hole">£950</div></div>
+            <div class="donut-leg">
+              <div><i style="background:var(--sage)"></i> Housing · 68%</div>
+              <div><i style="background:#96E85F"></i> Groceries · 19%</div>
+              <div><i style="background:var(--cream)"></i> Utilities · 13%</div>
+            </div>
+          </div>
+          <div class="chips">
+            <div class="chip on">All</div>
+            <div class="chip">🏠 Housing</div>
+            <div class="chip">🛒 Groceries</div>
+            <div class="chip">⚡ Utilities</div>
+          </div>
+          <div class="foryou-row"><div class="ic">🏠</div><div class="meta"><div class="t">Rent</div><div class="c">Apr 21 · Sam</div></div><div class="amt" style="color:var(--sage-ink)">Settled</div></div>
+          <div class="foryou-row"><div class="ic">🛒</div><div class="meta"><div class="t">Groceries</div><div class="c">Apr 23 · You</div></div><div class="amt" style="color:var(--warn)">-£42</div></div>
+        </div>
+        <div class="tabbar">
+          <div class="t">🏠<span>Home</span></div>
+          <div class="t on">🧾<span>Expenses</span></div>
+          <div class="fab">+</div>
+          <div class="t">👥<span>Groups</span></div>
+          <div class="t"><div class="avatar">JD</div><span>Profile</span></div>
+        </div>
+      </div>
+      <div class="pros">+ Reveals spending shape at a glance</div>
+      <div class="cons">− Duplicates Analytics · tabs add a cognitive step</div>
+    </div>
+
+  </div>
+
+  <!-- =========================== GROUPS =========================== -->
+  <h2 class="sub">3 · Groups</h2>
+  <p class="section-lede">The Groups tab — a surface for seeing and switching between your groups.</p>
+  <div class="row">
+
+    <!-- GROUPS A -->
+    <div class="card">
+      <span class="tag">G-A Active group</span>
+      <h3>One group at a time (current)</h3>
+      <p>Focus on the currently-active group — hero + members + recent expenses. Switch via the drawer.</p>
+      <div class="frame">
+        <div class="sb"><span>9:41</span><span>●●●</span></div>
+        <div class="hdr"><div class="ham">☰</div><div class="title"><span class="name">Groups</span></div><div class="bell">🔔<div class="d">3</div></div></div>
+        <div class="body">
+          <div class="ghero">
+            <div class="name">Shared Flat</div>
+            <div class="meta">4 members · Home group</div>
+            <div class="members"><div class="a">JD</div><div class="a">S</div><div class="a">A</div><div class="a">+1</div></div>
+            <div class="action">⚙️</div>
+          </div>
+          <div class="section-lbl">Members</div>
+          <div class="prow"><div class="a">JD</div><div class="n">Jordan (you)<div class="grp">Paid £200</div></div><div class="bal owed">£0</div></div>
+          <div class="prow"><div class="a">S</div><div class="n">Sam<div class="grp">Owes £120</div></div><div class="bal owe">-£120</div></div>
+          <div class="prow"><div class="a">A</div><div class="n">Alex<div class="grp">Owes £80</div></div><div class="bal owe">-£80</div></div>
+        </div>
+        <div class="tabbar">
+          <div class="t">🏠<span>Home</span></div>
+          <div class="t">🧾<span>Expenses</span></div>
+          <div class="fab">+</div>
+          <div class="t on">👥<span>Groups</span></div>
+          <div class="t"><div class="avatar">JD</div><span>Profile</span></div>
+        </div>
+      </div>
+      <div class="pros">+ Focused · matches single-group users</div>
+      <div class="cons">− Multi-group people need to switch to see others</div>
+    </div>
+
+    <!-- GROUPS B: multi -->
+    <div class="card">
+      <span class="tag">G-B Multi-group</span>
+      <h3>All groups as cards</h3>
+      <p>Each group is a card with balance-at-a-glance. Tap to deep-dive. Scales better for multi-group households.</p>
+      <div class="frame">
+        <div class="sb"><span>9:41</span><span>●●●</span></div>
+        <div class="hdr"><div class="ham">☰</div><div class="title"><span class="name">Groups</span></div><div class="bell">🔔<div class="d">3</div></div></div>
+        <div class="body">
+          <div class="section-lbl">Your groups</div>
+          <div class="gcard"><div class="ic">🏠</div><div class="info"><div class="n">Shared Flat</div><div class="c">4 members · 3 open</div></div><div class="bal owe">-£300</div></div>
+          <div class="gcard"><div class="ic">✈️</div><div class="info"><div class="n">Lisbon 2026</div><div class="c">6 members · 0 open</div></div><div class="bal owed">+£45</div></div>
+          <div class="gcard"><div class="ic">💼</div><div class="info"><div class="n">Dev project</div><div class="c">3 members · 1 open</div></div><div class="bal owe">-£12</div></div>
+          <div class="gcard" style="border-style:dashed;justify-content:center;color:var(--muted);font-size:13px;font-weight:600">+ Create new group</div>
+        </div>
+        <div class="tabbar">
+          <div class="t">🏠<span>Home</span></div>
+          <div class="t">🧾<span>Expenses</span></div>
+          <div class="fab">+</div>
+          <div class="t on">👥<span>Groups</span></div>
+          <div class="t"><div class="avatar">JD</div><span>Profile</span></div>
+        </div>
+      </div>
+      <div class="pros">+ Whole portfolio at a glance · switch by tap</div>
+      <div class="cons">− Extra tap to see any group detail</div>
+    </div>
+
+    <!-- GROUPS C: people-centric -->
+    <div class="card">
+      <span class="tag">G-C People</span>
+      <h3>By person, across groups</h3>
+      <p>Who owes you what, merged across every group. Zooms in on Sam → shows the breakdown per group.</p>
+      <div class="frame">
+        <div class="sb"><span>9:41</span><span>●●●</span></div>
+        <div class="hdr"><div class="ham">☰</div><div class="title"><span class="name">Balances</span></div><div class="bell">🔔<div class="d">3</div></div></div>
+        <div class="body">
+          <div class="section-lbl">Owes you</div>
+          <div class="prow"><div class="a">S</div><div class="n">Sam<div class="grp">Shared Flat · Lisbon</div></div><div class="bal owed">+£165</div></div>
+          <div class="prow"><div class="a">A</div><div class="n">Alex<div class="grp">Shared Flat</div></div><div class="bal owed">+£80</div></div>
+          <div class="section-lbl">You owe</div>
+          <div class="prow"><div class="a">M</div><div class="n">Mia<div class="grp">Dev project</div></div><div class="bal owe">-£12</div></div>
+          <div class="prow"><div class="a">R</div><div class="n">Ravi<div class="grp">Lisbon</div></div><div class="bal owe">-£42</div></div>
+        </div>
+        <div class="tabbar">
+          <div class="t">🏠<span>Home</span></div>
+          <div class="t">🧾<span>Expenses</span></div>
+          <div class="fab">+</div>
+          <div class="t on">👥<span>Groups</span></div>
+          <div class="t"><div class="avatar">JD</div><span>Profile</span></div>
+        </div>
+      </div>
+      <div class="pros">+ Fixes "who owes me what" — the actual question</div>
+      <div class="cons">− Rename tab to "People"? · loses group-level structure</div>
+    </div>
+
+  </div>
+
+  <!-- =========================== PROFILE =========================== -->
+  <h2 class="sub">4 · Profile / Settings</h2>
+  <p class="section-lede">The 5th tab — tap the avatar. Settings, plan, preferences.</p>
+  <div class="row">
+
+    <!-- PROFILE A: list -->
+    <div class="card">
+      <span class="tag">P-A List</span>
+      <h3>Simple settings list</h3>
+      <p>What we have. Avatar card at top, then rows for each setting group. Easy to extend.</p>
+      <div class="frame">
+        <div class="sb"><span>9:41</span><span>●●●</span></div>
+        <div class="hdr"><div class="ham">☰</div><div class="title"><span class="name">Profile</span></div><div class="bell">🔔<div class="d">3</div></div></div>
+        <div class="body">
+          <div class="pcard">
+            <div class="a">JD</div>
+            <div class="info"><div class="n">Jordan Doe</div><div class="e">jordan@example.com</div></div>
+          </div>
+          <div class="section-lbl">Account</div>
+          <div class="prow-a"><div class="ic">👤</div><div class="lab">Profile details</div><div class="chev">›</div></div>
+          <div class="prow-a"><div class="ic">💳</div><div class="lab">Payment methods</div><div class="chev">›</div></div>
+          <div class="prow-a"><div class="ic">💰</div><div class="lab">Subscription · Free</div><div class="chev">›</div></div>
+          <div class="section-lbl">Preferences</div>
+          <div class="prow-a"><div class="ic">🔔</div><div class="lab">Notifications</div><div class="chev">›</div></div>
+          <div class="prow-a"><div class="ic">🌙</div><div class="lab">Appearance</div><div class="chev">›</div></div>
+        </div>
+        <div class="tabbar">
+          <div class="t">🏠<span>Home</span></div>
+          <div class="t">🧾<span>Expenses</span></div>
+          <div class="fab">+</div>
+          <div class="t">👥<span>Groups</span></div>
+          <div class="t on"><div class="avatar">JD</div><span>Profile</span></div>
+        </div>
+      </div>
+      <div class="pros">+ Familiar · fastest to scan</div>
+      <div class="cons">− All items look equally weighty</div>
+    </div>
+
+    <!-- PROFILE B: cards -->
+    <div class="card">
+      <span class="tag">P-B Card</span>
+      <h3>Profile card + modular sections</h3>
+      <p>Hero-style profile card with edit. Below, each settings section is a distinct card (plan, payments, account).</p>
+      <div class="frame">
+        <div class="sb"><span>9:41</span><span>●●●</span></div>
+        <div class="hdr"><div class="ham">☰</div><div class="title"><span class="name">Profile</span></div><div class="bell">🔔<div class="d">3</div></div></div>
+        <div class="body">
+          <div class="ghero" style="text-align:center;padding:22px 18px 18px">
+            <div style="width:64px;height:64px;border-radius:32px;background:var(--cream);color:var(--ink);display:flex;align-items:center;justify-content:center;margin:0 auto;font-size:22px;font-weight:700">JD</div>
+            <div class="name" style="margin-top:10px">Jordan Doe</div>
+            <div class="meta">jordan@example.com</div>
+            <div style="margin-top:10px;display:inline-block;background:rgba(255,255,255,0.15);color:#fff;padding:4px 10px;border-radius:999px;font-size:10px;font-weight:700">Edit profile</div>
+          </div>
+          <div class="gcard"><div class="ic">💰</div><div class="info"><div class="n">Plan · Free</div><div class="c">Upgrade for cross-group</div></div><div class="bal owed">Upgrade</div></div>
+          <div class="gcard"><div class="ic">💳</div><div class="info"><div class="n">Payment methods</div><div class="c">2 saved · add more</div></div><div class="chev" style="color:var(--muted);font-size:16px">›</div></div>
+          <div class="gcard"><div class="ic">🔔</div><div class="info"><div class="n">Notifications</div><div class="c">Push · email · in-app</div></div><div class="chev" style="color:var(--muted);font-size:16px">›</div></div>
+        </div>
+        <div class="tabbar">
+          <div class="t">🏠<span>Home</span></div>
+          <div class="t">🧾<span>Expenses</span></div>
+          <div class="fab">+</div>
+          <div class="t">👥<span>Groups</span></div>
+          <div class="t on"><div class="avatar">JD</div><span>Profile</span></div>
+        </div>
+      </div>
+      <div class="pros">+ Marketing-y · plan upgrade is prominent</div>
+      <div class="cons">− Cards take vertical space</div>
+    </div>
+
+    <!-- PROFILE C: action-first -->
+    <div class="card">
+      <span class="tag">P-C Actions</span>
+      <h3>Account-first with destructive zone</h3>
+      <p>Compact profile at the top, most-used actions highlighted, destructive actions pushed to a "Danger zone" panel.</p>
+      <div class="frame">
+        <div class="sb"><span>9:41</span><span>●●●</span></div>
+        <div class="hdr"><div class="ham">☰</div><div class="title"><span class="name">Profile</span></div><div class="bell">🔔<div class="d">3</div></div></div>
+        <div class="body">
+          <div class="pcard">
+            <div class="a">JD</div>
+            <div class="info" style="flex:1"><div class="n">Jordan Doe</div><div class="e">jordan@example.com</div></div>
+            <div style="color:var(--muted);font-size:14px">›</div>
+          </div>
+          <div class="qgrid">
+            <div class="qtile"><div class="ic">💳</div><div class="lab">Payment methods</div></div>
+            <div class="qtile"><div class="ic">🔔</div><div class="lab">Notifications</div></div>
+            <div class="qtile"><div class="ic">🌐</div><div class="lab">Currency</div></div>
+            <div class="qtile"><div class="ic">🌙</div><div class="lab">Theme</div></div>
+          </div>
+          <div class="section-lbl">About</div>
+          <div class="prow-a"><div class="ic">ⓘ</div><div class="lab">Help &amp; feedback</div><div class="chev">›</div></div>
+          <div class="prow-a"><div class="ic">📄</div><div class="lab">Terms · Privacy</div><div class="chev">›</div></div>
+          <div class="section-lbl" style="color:var(--warn)">Danger zone</div>
+          <div class="prow-a"><div class="ic" style="background:#FEE9E5;color:var(--warn)">⇤</div><div class="lab">Sign out</div><div class="chev">›</div></div>
+          <div class="prow-a"><div class="ic" style="background:#FEE9E5;color:var(--warn)">⌫</div><div class="lab" style="color:var(--warn)">Delete account</div><div class="chev">›</div></div>
+        </div>
+        <div class="tabbar">
+          <div class="t">🏠<span>Home</span></div>
+          <div class="t">🧾<span>Expenses</span></div>
+          <div class="fab">+</div>
+          <div class="t">👥<span>Groups</span></div>
+          <div class="t on"><div class="avatar">JD</div><span>Profile</span></div>
+        </div>
+      </div>
+      <div class="pros">+ Most-used actions first · destructive is clearly framed</div>
+      <div class="cons">− Destructive pill can feel scary</div>
+    </div>
+
+  </div>
+
+</div>
+</body>
+</html>

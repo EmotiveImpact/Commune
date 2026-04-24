@@ -807,22 +807,6 @@ export default function OnboardingScreen() {
             skipLabel="Skip"
           />
 
-          <View
-            style={{
-              alignSelf: 'center',
-              backgroundColor: '#FF3B30',
-              paddingHorizontal: 12,
-              paddingVertical: 4,
-              borderRadius: 999,
-              marginTop: 4,
-              marginBottom: 8,
-            }}
-          >
-            <Text style={{ color: '#fff', fontSize: 10, fontWeight: '800', letterSpacing: 0.5 }}>
-              BUILD v4 · CARDS + SHADOW
-            </Text>
-          </View>
-
           {step === 'type' ? (
             <>
               <Hero
@@ -832,6 +816,19 @@ export default function OnboardingScreen() {
                 activeIndex={0}
                 totalDots={totalDots}
               />
+              <Text
+                style={{
+                  fontSize: 10,
+                  fontWeight: '700',
+                  color: colors.textTertiary,
+                  textTransform: 'uppercase',
+                  letterSpacing: 0.6,
+                  marginTop: space.base,
+                  marginBottom: space.sm,
+                }}
+              >
+                Choose a type
+              </Text>
               {TYPE_OPTIONS.map((option) => (
                 <TypeTile
                   key={option.value}

@@ -1,0 +1,337 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Commune — Header left-side options</title>
+<style>
+  :root{
+    --bg:#FAF9F7; --surface:#ffffff; --ink:#171b24; --ink-soft:#323847;
+    --muted:#6b7280; --muted-soft:#9ca3af;
+    --border:#eceae5; --border-soft:#f1efe9;
+    --sage:#2d6a4f; --sage-soft:#E8F3EC; --sage-ink:#1F4D38;
+    --lime:#96E85F; --cream:#eadfd4; --danger:#E35D5D;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:#f3f1ec;color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Inter",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+  .page{max-width:1280px;margin:0 auto;padding:48px 24px 96px}
+  h1{font-size:34px;letter-spacing:-0.8px;margin:0 0 8px;font-weight:700}
+  .lede{color:var(--muted);font-size:15px;margin:0 0 32px;max-width:720px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:24px}
+  .card{background:var(--surface);border-radius:20px;border:1px solid var(--border);padding:20px;display:flex;flex-direction:column}
+  .tag{display:inline-block;background:var(--ink);color:#fff;font-size:10px;font-weight:700;letter-spacing:0.5px;padding:4px 8px;border-radius:6px;margin-bottom:10px;align-self:flex-start}
+  .card h2{font-size:16px;margin:0 0 4px;font-weight:700}
+  .card p{color:var(--muted);font-size:13px;margin:0 0 16px;line-height:1.45}
+  .frame{background:var(--bg);border-radius:28px;padding:12px 0 0;flex:1;border:1px solid var(--border-soft);overflow:hidden}
+  .statusbar{display:flex;align-items:center;justify-content:space-between;padding:0 18px;color:var(--ink);font-size:10px;font-weight:600;margin-bottom:4px}
+  .hdr{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:14px 18px 16px;position:relative;min-height:52px;
+  }
+  .hdr .center{position:absolute;left:0;right:0;top:0;bottom:0;display:flex;align-items:center;justify-content:center;pointer-events:none}
+  .hdr .left,.hdr .right{display:flex;align-items:center;gap:8px;z-index:1}
+  .wordmark{font-size:18px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase}
+  .pagetitle{font-size:18px;font-weight:700;letter-spacing:-0.2px}
+  .bell{width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:18px;position:relative}
+  .bell .dot{position:absolute;top:-2px;right:-2px;background:var(--danger);color:#fff;font-size:8px;font-weight:700;min-width:12px;height:12px;border-radius:6px;border:1.5px solid var(--bg);display:flex;align-items:center;justify-content:center}
+  .avatar{width:26px;height:26px;border-radius:50%;background:var(--ink);color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700}
+  .hero{
+    margin:4px 14px 0;background:var(--ink);border-radius:18px;padding:16px;color:#fff;
+  }
+  .hero .lab{font-size:9px;font-weight:700;letter-spacing:0.5px;color:rgba(255,255,255,0.55);text-transform:uppercase}
+  .hero .big{font-size:26px;font-weight:700;margin-top:2px}
+  .hero .inl{font-size:10px;color:rgba(255,255,255,0.55);margin-top:4px}
+  .hero .inl b{color:#fff;font-weight:700}
+
+  /* === left-side widgets === */
+  .lx-icon{width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:18px;color:var(--ink)}
+  .lx-avatar{width:26px;height:26px;border-radius:50%;background:var(--ink);color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700}
+  .lx-group{display:flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--border);border-radius:999px;padding:3px 8px 3px 3px}
+  .lx-group .g-ic{width:20px;height:20px;border-radius:6px;background:var(--sage-soft);color:var(--sage-ink);display:flex;align-items:center;justify-content:center;font-size:10px}
+  .lx-group .g-name{font-size:11px;font-weight:700;color:var(--ink)}
+  .lx-group .g-chev{font-size:9px;color:var(--muted);margin-left:2px}
+  .lx-group-compact{width:28px;height:28px;border-radius:9px;background:var(--sage-soft);color:var(--sage-ink);display:flex;align-items:center;justify-content:center;font-size:13px}
+  .lx-chip{display:flex;align-items:center;gap:4px;background:var(--surface);border:1px solid var(--border);border-radius:999px;padding:4px 10px;font-size:11px;font-weight:700;color:var(--ink)}
+  .lx-chip .ch-chev{font-size:9px;color:var(--muted)}
+  .lx-badge{background:var(--sage-soft);color:var(--sage-ink);padding:4px 9px;border-radius:999px;font-size:10px;font-weight:700;letter-spacing:0.2px}
+  .lx-stamp{font-size:10px;color:var(--muted);font-weight:500}
+
+  .pros{color:var(--sage-ink);font-size:11.5px;margin-top:12px}
+  .cons{color:#9a4a3a;font-size:11.5px;margin-top:3px}
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>Header left-side options</h1>
+  <p class="lede">The title sits absolute-centered. What goes on the left? Each card is a small phone frame showing the top of the Home screen. Right side stays the same (🔔 bell + profile avatar). Left side is what varies.</p>
+
+  <div class="grid">
+
+    <!-- L1 Empty -->
+    <div class="card">
+      <span class="tag">L1</span>
+      <h2>Empty</h2>
+      <p>No left-side element. The centered title has the most breathing room.</p>
+      <div class="frame">
+        <div class="statusbar"><span>9:41</span><span>●●●</span></div>
+        <div class="hdr">
+          <div class="left"></div>
+          <div class="center"><span class="wordmark">Commune</span></div>
+          <div class="right"><div class="bell">🔔<div class="dot">3</div></div><div class="avatar">JD</div></div>
+        </div>
+        <div class="hero">
+          <div class="lab">Your Share · April</div>
+          <div class="big">£500</div>
+          <div class="inl"><b>£200</b> paid · <b>£300</b> left · <b>5</b> open</div>
+        </div>
+      </div>
+      <div class="pros">+ Cleanest · maximum centering</div>
+      <div class="cons">− Wastes half the header</div>
+    </div>
+
+    <!-- L2 Group switcher full -->
+    <div class="card">
+      <span class="tag">L2</span>
+      <h2>Group switcher (full)</h2>
+      <p>Icon + group name + chevron. Tap to switch groups. Most informative.</p>
+      <div class="frame">
+        <div class="statusbar"><span>9:41</span><span>●●●</span></div>
+        <div class="hdr">
+          <div class="left"><div class="lx-group"><div class="g-ic">🏠</div><div class="g-name">Shared Flat</div><div class="g-chev">▾</div></div></div>
+          <div class="center"><span class="wordmark">Commune</span></div>
+          <div class="right"><div class="bell">🔔<div class="dot">3</div></div><div class="avatar">JD</div></div>
+        </div>
+        <div class="hero">
+          <div class="lab">Your Share · April</div>
+          <div class="big">£500</div>
+          <div class="inl"><b>£200</b> paid · <b>£300</b> left · <b>5</b> open</div>
+        </div>
+      </div>
+      <div class="pros">+ Fixes real navigation gap · always visible context</div>
+      <div class="cons">− Long names truncate · wasted on solo-group users</div>
+    </div>
+
+    <!-- L3 Group switcher compact -->
+    <div class="card">
+      <span class="tag">L3</span>
+      <h2>Group switcher (compact)</h2>
+      <p>Just the group icon tile. Tap opens a sheet with all groups.</p>
+      <div class="frame">
+        <div class="statusbar"><span>9:41</span><span>●●●</span></div>
+        <div class="hdr">
+          <div class="left"><div class="lx-group-compact">🏠</div></div>
+          <div class="center"><span class="wordmark">Commune</span></div>
+          <div class="right"><div class="bell">🔔<div class="dot">3</div></div><div class="avatar">JD</div></div>
+        </div>
+        <div class="hero">
+          <div class="lab">Your Share · April</div>
+          <div class="big">£500</div>
+          <div class="inl"><b>£200</b> paid · <b>£300</b> left · <b>5</b> open</div>
+        </div>
+      </div>
+      <div class="pros">+ Compact · mirrors the profile avatar on the right</div>
+      <div class="cons">− Icon alone might not signal "switch group"</div>
+    </div>
+
+    <!-- L4 Notification on the left -->
+    <div class="card">
+      <span class="tag">L4</span>
+      <h2>Notification bell (left)</h2>
+      <p>Bell moves from right to left, avatar stays right. Balances the two single-icon chrome elements.</p>
+      <div class="frame">
+        <div class="statusbar"><span>9:41</span><span>●●●</span></div>
+        <div class="hdr">
+          <div class="left"><div class="bell" style="color:var(--ink)">🔔<div class="dot">3</div></div></div>
+          <div class="center"><span class="wordmark">Commune</span></div>
+          <div class="right"><div class="avatar">JD</div></div>
+        </div>
+        <div class="hero">
+          <div class="lab">Your Share · April</div>
+          <div class="big">£500</div>
+          <div class="inl"><b>£200</b> paid · <b>£300</b> left · <b>5</b> open</div>
+        </div>
+      </div>
+      <div class="pros">+ Symmetric · one action each side</div>
+      <div class="cons">− Unusual · users expect notifications top-right on iOS</div>
+    </div>
+
+    <!-- L5 Profile on the left -->
+    <div class="card">
+      <span class="tag">L5</span>
+      <h2>Profile avatar (left)</h2>
+      <p>Profile on the left, bell on the right (inverted from L4). Native-app convention in many messaging apps.</p>
+      <div class="frame">
+        <div class="statusbar"><span>9:41</span><span>●●●</span></div>
+        <div class="hdr">
+          <div class="left"><div class="avatar">JD</div></div>
+          <div class="center"><span class="wordmark">Commune</span></div>
+          <div class="right"><div class="bell">🔔<div class="dot">3</div></div></div>
+        </div>
+        <div class="hero">
+          <div class="lab">Your Share · April</div>
+          <div class="big">£500</div>
+          <div class="inl"><b>£200</b> paid · <b>£300</b> left · <b>5</b> open</div>
+        </div>
+      </div>
+      <div class="pros">+ WhatsApp / IG style · "who am I" is first</div>
+      <div class="cons">− Profile is lower-priority than notifications for a money app</div>
+    </div>
+
+    <!-- L6 Hamburger -->
+    <div class="card">
+      <span class="tag">L6</span>
+      <h2>Hamburger menu</h2>
+      <p>Opens a side drawer with Chores, Analytics, Activity, Settle up, Profile etc. Redundant with the More tab.</p>
+      <div class="frame">
+        <div class="statusbar"><span>9:41</span><span>●●●</span></div>
+        <div class="hdr">
+          <div class="left"><div class="lx-icon">☰</div></div>
+          <div class="center"><span class="wordmark">Commune</span></div>
+          <div class="right"><div class="bell">🔔<div class="dot">3</div></div><div class="avatar">JD</div></div>
+        </div>
+        <div class="hero">
+          <div class="lab">Your Share · April</div>
+          <div class="big">£500</div>
+          <div class="inl"><b>£200</b> paid · <b>£300</b> left · <b>5</b> open</div>
+        </div>
+      </div>
+      <div class="pros">+ Familiar · holds many destinations</div>
+      <div class="cons">− Duplicates the More tab · hidden nav is an anti-pattern here</div>
+    </div>
+
+    <!-- L7 Search -->
+    <div class="card">
+      <span class="tag">L7</span>
+      <h2>Search</h2>
+      <p>Magnifier icon that opens a global search across expenses, chores, people.</p>
+      <div class="frame">
+        <div class="statusbar"><span>9:41</span><span>●●●</span></div>
+        <div class="hdr">
+          <div class="left"><div class="lx-icon">🔍</div></div>
+          <div class="center"><span class="wordmark">Commune</span></div>
+          <div class="right"><div class="bell">🔔<div class="dot">3</div></div><div class="avatar">JD</div></div>
+        </div>
+        <div class="hero">
+          <div class="lab">Your Share · April</div>
+          <div class="big">£500</div>
+          <div class="inl"><b>£200</b> paid · <b>£300</b> left · <b>5</b> open</div>
+        </div>
+      </div>
+      <div class="pros">+ Scales as expense volume grows</div>
+      <div class="cons">− Requires building a whole search surface · premature</div>
+    </div>
+
+    <!-- L8 Month picker chip -->
+    <div class="card">
+      <span class="tag">L8</span>
+      <h2>Month picker</h2>
+      <p>"April ▾" chip. Tap to browse prior months. Only useful on Home.</p>
+      <div class="frame">
+        <div class="statusbar"><span>9:41</span><span>●●●</span></div>
+        <div class="hdr">
+          <div class="left"><div class="lx-chip">April <span class="ch-chev">▾</span></div></div>
+          <div class="center"><span class="wordmark">Commune</span></div>
+          <div class="right"><div class="bell">🔔<div class="dot">3</div></div><div class="avatar">JD</div></div>
+        </div>
+        <div class="hero">
+          <div class="lab">Your Share · April</div>
+          <div class="big">£500</div>
+          <div class="inl"><b>£200</b> paid · <b>£300</b> left · <b>5</b> open</div>
+        </div>
+      </div>
+      <div class="pros">+ Makes month navigation a first-class action</div>
+      <div class="cons">− Home-only · duplicates the hero's "Your Share · April" label</div>
+    </div>
+
+    <!-- L9 Status badge -->
+    <div class="card">
+      <span class="tag">L9</span>
+      <h2>Status pill</h2>
+      <p>"40% settled" — moves the settled-pct pill out of the hero into the header. Saves hero space.</p>
+      <div class="frame">
+        <div class="statusbar"><span>9:41</span><span>●●●</span></div>
+        <div class="hdr">
+          <div class="left"><div class="lx-badge">40% settled</div></div>
+          <div class="center"><span class="wordmark">Commune</span></div>
+          <div class="right"><div class="bell">🔔<div class="dot">3</div></div><div class="avatar">JD</div></div>
+        </div>
+        <div class="hero">
+          <div class="lab">Your Share · April</div>
+          <div class="big">£500</div>
+          <div class="inl"><b>£200</b> paid · <b>£300</b> left · <b>5</b> open</div>
+        </div>
+      </div>
+      <div class="pros">+ Promotes the most glanceable metric</div>
+      <div class="cons">− Changing value in the header feels "busy" · noisy</div>
+    </div>
+
+    <!-- L10 Calendar icon -->
+    <div class="card">
+      <span class="tag">L10</span>
+      <h2>Calendar icon</h2>
+      <p>Same idea as L8 but reduced to a single icon; opens a month picker modal.</p>
+      <div class="frame">
+        <div class="statusbar"><span>9:41</span><span>●●●</span></div>
+        <div class="hdr">
+          <div class="left"><div class="lx-icon">📅</div></div>
+          <div class="center"><span class="wordmark">Commune</span></div>
+          <div class="right"><div class="bell">🔔<div class="dot">3</div></div><div class="avatar">JD</div></div>
+        </div>
+        <div class="hero">
+          <div class="lab">Your Share · April</div>
+          <div class="big">£500</div>
+          <div class="inl"><b>£200</b> paid · <b>£300</b> left · <b>5</b> open</div>
+        </div>
+      </div>
+      <div class="pros">+ Compact</div>
+      <div class="cons">− Ambiguous icon meaning · vague</div>
+    </div>
+
+    <!-- L11 Quick-add button -->
+    <div class="card">
+      <span class="tag">L11</span>
+      <h2>Quick-add "+"</h2>
+      <p>Shortcut to add an expense directly from the header. Duplicates the FAB.</p>
+      <div class="frame">
+        <div class="statusbar"><span>9:41</span><span>●●●</span></div>
+        <div class="hdr">
+          <div class="left"><div class="lx-icon" style="background:var(--sage);color:#fff;border-radius:50%;width:28px;height:28px;font-weight:700">+</div></div>
+          <div class="center"><span class="wordmark">Commune</span></div>
+          <div class="right"><div class="bell">🔔<div class="dot">3</div></div><div class="avatar">JD</div></div>
+        </div>
+        <div class="hero">
+          <div class="lab">Your Share · April</div>
+          <div class="big">£500</div>
+          <div class="inl"><b>£200</b> paid · <b>£300</b> left · <b>5</b> open</div>
+        </div>
+      </div>
+      <div class="pros">+ Adds a second +-button for one-handed reach</div>
+      <div class="cons">− Redundant with the tab-bar FAB</div>
+    </div>
+
+    <!-- L12 Last sync -->
+    <div class="card">
+      <span class="tag">L12</span>
+      <h2>Sync status</h2>
+      <p>Tiny "Synced 2m ago" timestamp. Signals data freshness.</p>
+      <div class="frame">
+        <div class="statusbar"><span>9:41</span><span>●●●</span></div>
+        <div class="hdr">
+          <div class="left"><span class="lx-stamp">● Synced 2m ago</span></div>
+          <div class="center"><span class="wordmark">Commune</span></div>
+          <div class="right"><div class="bell">🔔<div class="dot">3</div></div><div class="avatar">JD</div></div>
+        </div>
+        <div class="hero">
+          <div class="lab">Your Share · April</div>
+          <div class="big">£500</div>
+          <div class="inl"><b>£200</b> paid · <b>£300</b> left · <b>5</b> open</div>
+        </div>
+      </div>
+      <div class="pros">+ Trust signal for shared money data</div>
+      <div class="cons">− Text on the left + text in the centre reads cluttered</div>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

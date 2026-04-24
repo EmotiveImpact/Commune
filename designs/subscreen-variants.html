@@ -1,0 +1,498 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Commune — Sub-screen variants</title>
+<style>
+  :root{
+    --bg:#FAF9F7; --surface:#ffffff; --ink:#171b24; --muted:#6b7280;
+    --border:#eceae5; --border-soft:#f1efe9;
+    --sage:#1f7a6a; --sage-soft:#E8F3EC; --sage-ink:#14594e;
+    --lime:#96E85F; --cream:#eadfd4; --danger:#E35D5D; --warn:#8C2F1F;
+    --navy:#1A1E2B;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:#efece6;color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Inter",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+  .page{max-width:1600px;margin:0 auto;padding:48px 24px 96px}
+  h1{font-size:34px;letter-spacing:-0.8px;margin:0 0 6px;font-weight:700}
+  .lede{color:var(--muted);font-size:15px;margin:0 0 32px;max-width:760px}
+  h2.sub{font-size:22px;letter-spacing:-0.4px;margin:56px 0 6px;font-weight:700}
+  .sublede{color:var(--muted);font-size:14px;margin:0 0 18px}
+  .row{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:24px}
+
+  .card{background:var(--surface);border-radius:22px;border:1px solid var(--border);padding:16px;display:flex;flex-direction:column}
+  .tag{display:inline-block;background:var(--ink);color:#fff;font-size:10px;font-weight:700;letter-spacing:0.5px;padding:4px 8px;border-radius:6px;margin-bottom:6px;align-self:flex-start}
+  .card h3{font-size:15px;margin:0 0 2px;font-weight:700}
+  .card p{color:var(--muted);font-size:12.5px;margin:0 0 12px;line-height:1.45}
+
+  .frame{background:var(--bg);border-radius:30px;border:1px solid var(--border-soft);overflow:hidden;height:660px;display:flex;flex-direction:column}
+  .sb{display:flex;align-items:center;justify-content:space-between;padding:12px 18px 0;color:var(--ink);font-size:10px;font-weight:600}
+  .hdr{display:flex;align-items:center;justify-content:space-between;padding:10px 18px 10px;position:relative;min-height:44px}
+  .hdr .ham{font-size:22px;color:var(--ink)}
+  .hdr .title{position:absolute;left:0;right:0;display:flex;align-items:center;justify-content:center;pointer-events:none;font-size:18px;font-weight:700;letter-spacing:-0.2px}
+  .hdr .bell{font-size:18px;position:relative}
+  .hdr .bell .d{position:absolute;top:-3px;right:-3px;background:var(--danger);color:#fff;font-size:8px;font-weight:700;min-width:12px;height:12px;border-radius:6px;border:1.5px solid var(--bg);display:flex;align-items:center;justify-content:center;padding:0 3px}
+  .body{flex:1;overflow:auto;padding:4px 14px;scrollbar-width:none}
+  .body::-webkit-scrollbar{display:none}
+
+  .seclbl{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;padding:12px 0 6px}
+  .row-item{background:#fff;border-radius:14px;padding:12px;display:flex;align-items:center;gap:10px;margin-bottom:6px;border:1px solid var(--border-soft)}
+  .row-item .ic{width:36px;height:36px;border-radius:10px;background:var(--sage-soft);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+  .row-item .meta{flex:1;min-width:0}
+  .row-item .t{font-size:13px;font-weight:600;line-height:1.25}
+  .row-item .c{font-size:11px;color:var(--muted);margin-top:1px}
+  .row-item .amt{font-size:13px;font-weight:700}
+  .row-item.unread{background:var(--sage-soft)}
+  .row-item.unread .t{font-weight:700}
+  .row-item.unread .ic{background:#fff}
+
+  .tabs{display:flex;gap:6px;margin:4px 0 10px;padding:4px;background:#F3F1EC;border-radius:12px}
+  .tabs .t{flex:1;padding:8px;font-size:11px;font-weight:700;color:var(--muted);text-align:center;border-radius:8px;position:relative}
+  .tabs .t.on{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,0.04)}
+  .tabs .t .ct{display:inline-block;background:var(--danger);color:#fff;font-size:9px;min-width:14px;height:14px;border-radius:7px;padding:0 3px;margin-left:4px;vertical-align:middle;line-height:14px}
+
+  .hero-small{background:var(--navy);border-radius:18px;padding:14px 16px;color:#fff;margin:4px 0 12px}
+  .hero-small .lab{font-size:10px;font-weight:700;letter-spacing:0.5px;color:rgba(255,255,255,0.55);text-transform:uppercase}
+  .hero-small .big{font-size:24px;font-weight:700;margin-top:2px}
+  .hero-small .inl{font-size:11px;color:rgba(255,255,255,0.5);margin-top:4px}
+  .hero-small .inl b{color:#fff;font-weight:700}
+  .hero-small .btns{display:flex;gap:6px;margin-top:10px}
+  .hero-small .bp{flex:1;height:38px;border-radius:12px;background:var(--cream);color:#1f2330;font-weight:700;font-size:12px;display:flex;align-items:center;justify-content:center}
+  .hero-small .bs{flex:1;height:38px;border-radius:12px;background:rgba(255,255,255,0.1);color:#fff;font-weight:700;font-size:12px;display:flex;align-items:center;justify-content:center}
+
+  .cta-row{display:flex;align-items:center;justify-content:space-between;background:#fff;border:1px solid var(--border);border-radius:14px;padding:12px;margin-bottom:6px}
+  .cta-row .info{flex:1}
+  .cta-row .t{font-size:13px;font-weight:700}
+  .cta-row .c{font-size:11px;color:var(--muted);margin-top:1px}
+  .cta-row .btn{background:var(--sage);color:#fff;padding:8px 14px;border-radius:10px;font-size:12px;font-weight:700}
+  .cta-row .btn.ghost{background:#F3F1EC;color:var(--ink)}
+
+  .donut-card{background:#fff;border:1px solid var(--border-soft);border-radius:16px;padding:14px;display:flex;align-items:center;gap:14px;margin-bottom:10px}
+  .donut{width:80px;height:80px;border-radius:50%;background:conic-gradient(var(--sage) 0 68%, #96E85F 68% 87%, var(--cream) 87% 100%);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .donut .hole{width:56px;height:56px;border-radius:50%;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center}
+  .donut .hole .sm{font-size:9px;color:var(--muted);font-weight:600;text-transform:uppercase}
+  .donut .hole .lg{font-size:13px;font-weight:700}
+  .donut-leg{flex:1;display:flex;flex-direction:column;gap:4px}
+  .donut-leg div{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:600}
+  .donut-leg i{width:8px;height:8px;border-radius:2px;display:inline-block;flex-shrink:0}
+
+  .stat2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
+  .statcard{background:#fff;border:1px solid var(--border-soft);border-radius:14px;padding:12px}
+  .statcard .l{font-size:10px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:0.4px}
+  .statcard .v{font-size:18px;font-weight:700;margin-top:2px}
+  .statcard .s{font-size:10px;color:var(--sage);margin-top:2px}
+  .statcard .s.d{color:var(--warn)}
+
+  .bar-chart{background:#fff;border:1px solid var(--border-soft);border-radius:14px;padding:14px;margin-bottom:10px}
+  .bar-chart .hdr2{display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px}
+  .bar-chart .hdr2 b{color:var(--ink);font-size:14px;text-transform:none;letter-spacing:0}
+  .bars{display:flex;align-items:flex-end;gap:4px;height:80px}
+  .bars .b{flex:1;background:var(--sage);border-radius:4px 4px 0 0;min-height:4px}
+  .bars .b.dim{background:#E8E6E1}
+  .bars .b.now{background:var(--navy)}
+  .bars-x{display:flex;gap:4px;margin-top:6px}
+  .bars-x span{flex:1;font-size:9px;color:var(--muted);text-align:center}
+
+  .mini-cal{background:#fff;border:1px solid var(--border-soft);border-radius:14px;padding:12px;margin-bottom:10px}
+  .mini-cal .t{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:8px;letter-spacing:0.4px}
+  .mini-cal .grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+  .mini-cal .grid .d{aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--muted)}
+  .mini-cal .grid .d.has{background:var(--sage-soft);color:var(--sage-ink);font-weight:700;border-radius:6px}
+  .mini-cal .grid .d.today{background:var(--navy);color:#fff;font-weight:700;border-radius:6px}
+
+  .empty{text-align:center;padding:32px 16px;color:var(--muted)}
+  .empty .ic{font-size:36px;margin-bottom:8px}
+  .empty .t{font-size:15px;font-weight:700;color:var(--ink)}
+  .empty .c{font-size:12px;margin-top:4px}
+
+  .pros{color:var(--sage-ink);font-size:11.5px;margin-top:10px}
+  .cons{color:#9a4a3a;font-size:11.5px;margin-top:2px}
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>Sub-screen variants</h1>
+  <p class="lede">For the 5 high-priority screens, here are 3 composition variants each — all following current mobile UX best practices (scannable rows, one primary action, date grouping for temporal data, empty states as nudges). Pick a direction per screen.</p>
+
+  <!-- ============================================================
+       NOTIFICATIONS
+       ============================================================ -->
+  <h2 class="sub">1 · Notifications</h2>
+  <p class="sublede">Opened from the bell. Users want to triage fast.</p>
+  <div class="row">
+
+    <div class="card">
+      <span class="tag">N1 Inbox (recommended)</span>
+      <h3>Single list, date-grouped, unread highlighted</h3>
+      <p>Default inbox pattern (Gmail / iOS Mail). Unread items use a subtle sage fill so they pop without being noisy. "Mark all read" top-right.</p>
+      <div class="frame">
+        <div class="sb"><span>9:41</span><span>●●●</span></div>
+        <div class="hdr"><div class="ham">←</div><div class="title">Notifications</div><div class="bell" style="font-size:11px;color:var(--sage-ink);font-weight:700">Mark all read</div></div>
+        <div class="body">
+          <div class="seclbl">Today</div>
+          <div class="row-item unread"><div class="ic">💳</div><div class="meta"><div class="t">Sam paid you £120 for Groceries</div><div class="c">Just now</div></div></div>
+          <div class="row-item unread"><div class="ic">🏠</div><div class="meta"><div class="t">Rent is due in 3 days</div><div class="c">9:12 AM</div></div></div>
+          <div class="row-item unread"><div class="ic">✅</div><div class="meta"><div class="t">Alex completed "Take bins out"</div><div class="c">8:40 AM</div></div></div>
+          <div class="seclbl">Yesterday</div>
+          <div class="row-item"><div class="ic">📸</div><div class="meta"><div class="t">Mia added a receipt for Electric</div><div class="c">Apr 22 · 4:22 PM</div></div></div>
+          <div class="row-item"><div class="ic">👥</div><div class="meta"><div class="t">Ravi joined Lisbon 2026</div><div class="c">Apr 22</div></div></div>
+        </div>
+      </div>
+      <div class="pros">+ Fast triage · familiar · scales to volume</div>
+      <div class="cons">− No grouping by type</div>
+    </div>
+
+    <div class="card">
+      <span class="tag">N2 Tabbed</span>
+      <h3>All · Unread · Mentions</h3>
+      <p>Segmented control for triage. Unread badge count lives in the tab. Matches Slack/Teams.</p>
+      <div class="frame">
+        <div class="sb"><span>9:41</span><span>●●●</span></div>
+        <div class="hdr"><div class="ham">←</div><div class="title">Notifications</div><div class="bell"></div></div>
+        <div class="body">
+          <div class="tabs"><div class="t on">All</div><div class="t">Unread<span class="ct">3</span></div><div class="t">Mentions</div></div>
+          <div class="row-item unread"><div class="ic">💳</div><div class="meta"><div class="t">Sam paid you £120</div><div class="c">Just now</div></div></div>
+          <div class="row-item unread"><div class="ic">🏠</div><div class="meta"><div class="t">Rent due in 3 days</div><div class="c">9:12 AM</div></div></div>
+          <div class="row-item"><div class="ic">✅</div><div class="meta"><div class="t">Alex completed a chore</div><div class="c">8:40 AM</div></div></div>
+          <div class="row-item"><div class="ic">📸</div><div class="meta"><div class="t">Mia added a receipt</div><div class="c">Yesterday</div></div></div>
+        </div>
+      </div>
+      <div class="pros">+ Unread tab is the "inbox zero" magnet</div>
+      <div class="cons">− Three filter states is one too many for most users</div>
+    </div>
+
+    <div class="card">
+      <span class="tag">N3 Grouped by type</span>
+      <h3>Bills · Chores · People · System</h3>
+      <p>Categorical grouping. Best if users have a lot of notifications and want to triage one type at a time.</p>
+      <div class="frame">
+        <div class="sb"><span>9:41</span><span>●●●</span></div>
+        <div class="hdr"><div class="ham">←</div><div class="title">Notifications</div><div class="bell"></div></div>
+        <div class="body">
+          <div class="seclbl">💸 Bills · 2</div>
+          <div class="row-item unread"><div class="ic">💳</div><div class="meta"><div class="t">Sam paid you £120</div><div class="c">Just now</div></div></div>
+          <div class="row-item unread"><div class="ic">🏠</div><div class="meta"><div class="t">Rent due in 3 days</div><div class="c">9:12 AM</div></div></div>
+          <div class="seclbl">✅ Chores · 1</div>
+          <div class="row-item unread"><div class="ic">✅</div><div class="meta"><div class="t">Alex did "Take bins out"</div><div class="c">8:40 AM</div></div></div>
+          <div class="seclbl">👥 People · 1</div>
+          <div class="row-item"><div class="ic">👥</div><div class="meta"><div class="t">Ravi joined Lisbon 2026</div><div class="c">Yesterday</div></div></div>
+        </div>
+      </div>
+      <div class="pros">+ Easy to scan a category · collapsible sections</div>
+      <div class="cons">− Loses chronology · noise for low-volume users</div>
+    </div>
+
+  </div>
+
+  <!-- ============================================================
+       SETTLE UP
+       ============================================================ -->
+  <h2 class="sub">2 · Settle up <span style="font-size:11px;color:var(--muted);font-weight:500;letter-spacing:0">(rename from Command Centre)</span></h2>
+  <p class="sublede">Opened from the hero's "Settle Up" button. Users want to pay or get paid fast.</p>
+  <div class="row">
+
+    <div class="card">
+      <span class="tag">S1 Minimal</span>
+      <h3>Net balance + per-person rows</h3>
+      <p>Dark ink hero with net balance across groups. Below: a single list of people you owe or who owe you, each with a primary action.</p>
+      <div class="frame">
+        <div class="sb"><span>9:41</span><span>●●●</span></div>
+        <div class="hdr"><div class="ham">←</div><div class="title">Settle up</div><div class="bell"></div></div>
+        <div class="body">
+          <div class="hero-small">
+            <div class="lab">Your net balance</div>
+            <div class="big">+£85</div>
+            <div class="inl"><b>£300</b> owed to you · <b>£215</b> you owe</div>
+          </div>
+          <div class="seclbl">Owes you · 2</div>
+          <div class="cta-row"><div class="info"><div class="t">Sam</div><div class="c">Shared Flat · Lisbon</div></div><div class="btn ghost">Remind</div></div>
+          <div class="cta-row"><div class="info"><div class="t">Alex <span style="color:var(--sage-ink)">+£80</span></div><div class="c">Shared Flat</div></div><div class="btn ghost">Remind</div></div>
+          <div class="seclbl">You owe · 2</div>
+          <div class="cta-row"><div class="info"><div class="t">Mia <span style="color:var(--warn)">-£12</span></div><div class="c">Dev project</div></div><div class="btn">Pay</div></div>
+          <div class="cta-row"><div class="info"><div class="t">Ravi <span style="color:var(--warn)">-£42</span></div><div class="c">Lisbon</div></div><div class="btn">Pay</div></div>
+        </div>
+      </div>
+      <div class="pros">+ Clearest · one tap to act per person</div>
+      <div class="cons">− Scales less well with 20+ people</div>
+    </div>
+
+    <div class="card">
+      <span class="tag">S2 Smart suggest</span>
+      <h3>Optimal-payment suggestion at top</h3>
+      <p>If you owe multiple people, the app suggests the minimum set of transfers to clear the slate. Wise/Splitwise-style.</p>
+      <div class="frame">
+        <div class="sb"><span>9:41</span><span>●●●</span></div>
+        <div class="hdr"><div class="ham">←</div><div class="title">Settle up</div><div class="bell"></div></div>
+        <div class="body">
+          <div style="background:var(--navy);border-radius:18px;padding:14px 16px;color:#fff;margin:4px 0 10px">
+            <div class="lab" style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.55);text-transform:uppercase;letter-spacing:0.5px">Suggested to clear</div>
+            <div style="font-size:14px;color:#fff;margin-top:6px;line-height:1.4"><b>Pay Ravi £42</b> and <b>Mia £12</b>.<br/><span style="color:rgba(255,255,255,0.6);font-size:12px">2 transfers clears everything.</span></div>
+            <div class="btns" style="margin-top:10px"><div class="bp" style="flex:1">Send both now</div></div>
+          </div>
+          <div class="seclbl">Or settle manually</div>
+          <div class="cta-row"><div class="info"><div class="t">Mia</div><div class="c">-£12 · Dev project</div></div><div class="btn">Pay</div></div>
+          <div class="cta-row"><div class="info"><div class="t">Ravi</div><div class="c">-£42 · Lisbon</div></div><div class="btn">Pay</div></div>
+          <div class="seclbl">Owes you</div>
+          <div class="cta-row"><div class="info"><div class="t">Sam · +£165</div></div><div class="btn ghost">Remind</div></div>
+        </div>
+      </div>
+      <div class="pros">+ Magic moment · minimizes transactions</div>
+      <div class="cons">− Requires reliable payout integration</div>
+    </div>
+
+    <div class="card">
+      <span class="tag">S3 Per-group cards</span>
+      <h3>Grouped by group</h3>
+      <p>If you have multiple groups, each group gets its own settle-up card with an expand. Good for power users with many groups.</p>
+      <div class="frame">
+        <div class="sb"><span>9:41</span><span>●●●</span></div>
+        <div class="hdr"><div class="ham">←</div><div class="title">Settle up</div><div class="bell"></div></div>
+        <div class="body">
+          <div class="hero-small" style="padding:12px 14px"><div class="lab">Net across groups</div><div class="big" style="font-size:22px">+£85</div></div>
+          <div style="background:#fff;border:1px solid var(--border-soft);border-radius:14px;padding:12px;margin-bottom:8px">
+            <div style="display:flex;justify-content:space-between;align-items:center"><div><div class="t" style="font-size:13px;font-weight:700">🏠 Shared Flat</div><div class="c" style="font-size:11px;color:var(--muted);margin-top:1px">Net +£245</div></div><div class="btn" style="background:var(--sage);color:#fff;padding:8px 14px;border-radius:10px;font-size:12px;font-weight:700">Clear</div></div>
+          </div>
+          <div style="background:#fff;border:1px solid var(--border-soft);border-radius:14px;padding:12px;margin-bottom:8px">
+            <div style="display:flex;justify-content:space-between;align-items:center"><div><div class="t" style="font-size:13px;font-weight:700">✈️ Lisbon 2026</div><div class="c" style="font-size:11px;color:var(--muted);margin-top:1px">You owe -£42</div></div><div class="btn" style="background:var(--sage);color:#fff;padding:8px 14px;border-radius:10px;font-size:12px;font-weight:700">Pay</div></div>
+          </div>
+          <div style="background:#fff;border:1px solid var(--border-soft);border-radius:14px;padding:12px;margin-bottom:8px">
+            <div style="display:flex;justify-content:space-between;align-items:center"><div><div class="t" style="font-size:13px;font-weight:700">💼 Dev project</div><div class="c" style="font-size:11px;color:var(--muted);margin-top:1px">You owe -£12</div></div><div class="btn" style="background:var(--sage);color:#fff;padding:8px 14px;border-radius:10px;font-size:12px;font-weight:700">Pay</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="pros">+ Clear per-group context</div>
+      <div class="cons">− Hides person-level relationships</div>
+    </div>
+
+  </div>
+
+  <!-- ============================================================
+       ANALYTICS
+       ============================================================ -->
+  <h2 class="sub">3 · Analytics</h2>
+  <p class="sublede">Reached from the drawer. Not a daily destination — needs to feel rewarding when opened.</p>
+  <div class="row">
+
+    <div class="card">
+      <span class="tag">A1 Donut-first</span>
+      <h3>One big picture at the top, month-over-month below</h3>
+      <p>Category donut anchors the screen. A small trend card below compares this month to last. Great for quick "where did my money go?" answers.</p>
+      <div class="frame">
+        <div class="sb"><span>9:41</span><span>●●●</span></div>
+        <div class="hdr"><div class="ham">←</div><div class="title">Analytics</div><div class="bell"></div></div>
+        <div class="body">
+          <div class="donut-card"><div class="donut"><div class="hole"><div class="sm">Apr</div><div class="lg">£950</div></div></div><div class="donut-leg"><div><i style="background:var(--sage)"></i> Housing 68%</div><div><i style="background:#96E85F"></i> Groceries 19%</div><div><i style="background:var(--cream)"></i> Utilities 13%</div></div></div>
+          <div class="bar-chart">
+            <div class="hdr2"><span>Last 6 months</span><b>£6,120</b></div>
+            <div class="bars"><div class="b dim" style="height:60%"></div><div class="b dim" style="height:75%"></div><div class="b dim" style="height:55%"></div><div class="b dim" style="height:90%"></div><div class="b dim" style="height:70%"></div><div class="b now" style="height:85%"></div></div>
+            <div class="bars-x"><span>Nov</span><span>Dec</span><span>Jan</span><span>Feb</span><span>Mar</span><span>Apr</span></div>
+          </div>
+          <div class="seclbl">Top categories · April</div>
+          <div class="row-item"><div class="ic" style="background:var(--sage-soft)">🏠</div><div class="meta"><div class="t">Housing</div><div class="c">£650 · 68%</div></div><div class="amt" style="color:var(--warn)">↑ 4%</div></div>
+          <div class="row-item"><div class="ic" style="background:#E8F7D4">🛒</div><div class="meta"><div class="t">Groceries</div><div class="c">£180 · 19%</div></div><div class="amt" style="color:var(--sage-ink)">↓ 12%</div></div>
+        </div>
+      </div>
+      <div class="pros">+ Story-led · hierarchy is clear</div>
+      <div class="cons">− Only one view</div>
+    </div>
+
+    <div class="card">
+      <span class="tag">A2 Stat-grid</span>
+      <h3>Four KPIs + a bar chart</h3>
+      <p>Small cards at the top (Total · Average · Biggest · Fastest grower). Good for users who want numbers first.</p>
+      <div class="frame">
+        <div class="sb"><span>9:41</span><span>●●●</span></div>
+        <div class="hdr"><div class="ham">←</div><div class="title">Analytics</div><div class="bell"></div></div>
+        <div class="body">
+          <div class="stat2"><div class="statcard"><div class="l">Total · Apr</div><div class="v">£950</div><div class="s d">↑ 4%</div></div><div class="statcard"><div class="l">Daily avg</div><div class="v">£31</div><div class="s">↓ 2%</div></div></div>
+          <div class="stat2"><div class="statcard"><div class="l">Biggest</div><div class="v">£650</div><div class="s">Rent · 21 Apr</div></div><div class="statcard"><div class="l">Fastest grower</div><div class="v">Housing</div><div class="s d">+4% MoM</div></div></div>
+          <div class="bar-chart" style="margin-top:8px">
+            <div class="hdr2"><span>Daily · this week</span><b>£230</b></div>
+            <div class="bars" style="height:60px"><div class="b" style="height:40%"></div><div class="b" style="height:70%"></div><div class="b" style="height:25%"></div><div class="b" style="height:80%"></div><div class="b" style="height:55%"></div><div class="b now" style="height:30%"></div><div class="b dim" style="height:5%"></div></div>
+            <div class="bars-x"><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="pros">+ Dense · specific · pro-user feel</div>
+      <div class="cons">− More to read · less emotional hook</div>
+    </div>
+
+    <div class="card">
+      <span class="tag">A3 Timeline</span>
+      <h3>Calendar heatmap of spending days</h3>
+      <p>GitHub-contributions style: each day tinted by spend. Tap a day to drill down. Under it, a single trend line.</p>
+      <div class="frame">
+        <div class="sb"><span>9:41</span><span>●●●</span></div>
+        <div class="hdr"><div class="ham">←</div><div class="title">Analytics</div><div class="bell"></div></div>
+        <div class="body">
+          <div class="mini-cal">
+            <div class="t">Spending · April</div>
+            <div class="grid">
+              <div class="d">1</div><div class="d has">2</div><div class="d">3</div><div class="d">4</div><div class="d has">5</div><div class="d">6</div><div class="d">7</div>
+              <div class="d has">8</div><div class="d">9</div><div class="d">10</div><div class="d has">11</div><div class="d">12</div><div class="d has">13</div><div class="d">14</div>
+              <div class="d">15</div><div class="d">16</div><div class="d has">17</div><div class="d has">18</div><div class="d">19</div><div class="d">20</div><div class="d has">21</div>
+              <div class="d">22</div><div class="d today">23</div><div class="d">24</div><div class="d">25</div><div class="d">26</div><div class="d">27</div><div class="d">28</div>
+            </div>
+          </div>
+          <div class="stat2"><div class="statcard"><div class="l">Most spent</div><div class="v">Apr 21</div><div class="s">£650 rent</div></div><div class="statcard"><div class="l">Quiet days</div><div class="v">16</div><div class="s">no activity</div></div></div>
+          <div class="seclbl">Trend · 6 months</div>
+          <div class="bar-chart" style="margin-top:0"><div class="bars" style="height:50px"><div class="b dim" style="height:55%"></div><div class="b dim" style="height:70%"></div><div class="b dim" style="height:50%"></div><div class="b dim" style="height:85%"></div><div class="b dim" style="height:65%"></div><div class="b now" style="height:80%"></div></div><div class="bars-x"><span>Nov</span><span>Dec</span><span>Jan</span><span>Feb</span><span>Mar</span><span>Apr</span></div></div>
+        </div>
+      </div>
+      <div class="pros">+ Novel · tap-any-day UX</div>
+      <div class="cons">− Heatmap noise on quiet months</div>
+    </div>
+
+  </div>
+
+  <!-- ============================================================
+       RECURRING
+       ============================================================ -->
+  <h2 class="sub">4 · Recurring expenses</h2>
+  <p class="sublede">The "bills on autopilot" screen. Users come here to set it and forget it.</p>
+  <div class="row">
+
+    <div class="card">
+      <span class="tag">R1 Simple list</span>
+      <h3>All recurring items as rows + "Next billing" header</h3>
+      <p>Dark ink hero shows next billing total + date. Each item is a row with frequency and next date. Add via FAB.</p>
+      <div class="frame">
+        <div class="sb"><span>9:41</span><span>●●●</span></div>
+        <div class="hdr"><div class="ham">←</div><div class="title">Recurring</div><div class="bell"></div></div>
+        <div class="body">
+          <div class="hero-small"><div class="lab">Next billing · May 1</div><div class="big">£870</div><div class="inl">4 items · auto-generated</div></div>
+          <div class="row-item"><div class="ic">🏠</div><div class="meta"><div class="t">Rent</div><div class="c">Monthly · Next May 1</div></div><div class="amt">£650</div></div>
+          <div class="row-item"><div class="ic">⚡</div><div class="meta"><div class="t">Electric</div><div class="c">Monthly · Next May 4</div></div><div class="amt">£60</div></div>
+          <div class="row-item"><div class="ic">📶</div><div class="meta"><div class="t">Broadband</div><div class="c">Monthly · Next May 8</div></div><div class="amt">£42</div></div>
+          <div class="row-item"><div class="ic">🧼</div><div class="meta"><div class="t">Cleaner</div><div class="c">Biweekly · Next May 2</div></div><div class="amt">£50</div></div>
+        </div>
+      </div>
+      <div class="pros">+ Simplest · sums next billing · FAB adds new</div>
+      <div class="cons">− No timeline view</div>
+    </div>
+
+    <div class="card">
+      <span class="tag">R2 Calendar strip</span>
+      <h3>Horizontal date strip showing when bills land</h3>
+      <p>Like a calendar app: a horizontal strip shows upcoming billing days. Tap a date to see items due that day.</p>
+      <div class="frame">
+        <div class="sb"><span>9:41</span><span>●●●</span></div>
+        <div class="hdr"><div class="ham">←</div><div class="title">Recurring</div><div class="bell"></div></div>
+        <div class="body">
+          <div class="hero-small"><div class="lab">May</div><div class="big">£870</div><div class="inl">across 4 dates</div></div>
+          <div style="background:#fff;border:1px solid var(--border-soft);border-radius:14px;padding:12px;margin-bottom:10px">
+            <div class="seclbl" style="padding:0 0 8px">Upcoming dates</div>
+            <div style="display:flex;gap:6px;overflow-x:auto">
+              <div style="min-width:56px;text-align:center;padding:8px 6px;border-radius:10px;background:var(--navy);color:#fff"><div style="font-size:10px;color:rgba(255,255,255,0.55)">MAY</div><div style="font-size:18px;font-weight:700">1</div><div style="font-size:10px">£650</div></div>
+              <div style="min-width:56px;text-align:center;padding:8px 6px;border-radius:10px;background:var(--sage-soft);color:var(--sage-ink)"><div style="font-size:10px">MAY</div><div style="font-size:18px;font-weight:700">2</div><div style="font-size:10px">£50</div></div>
+              <div style="min-width:56px;text-align:center;padding:8px 6px;border-radius:10px;background:var(--sage-soft);color:var(--sage-ink)"><div style="font-size:10px">MAY</div><div style="font-size:18px;font-weight:700">4</div><div style="font-size:10px">£60</div></div>
+              <div style="min-width:56px;text-align:center;padding:8px 6px;border-radius:10px;background:var(--sage-soft);color:var(--sage-ink)"><div style="font-size:10px">MAY</div><div style="font-size:18px;font-weight:700">8</div><div style="font-size:10px">£42</div></div>
+            </div>
+          </div>
+          <div class="seclbl">Due May 1</div>
+          <div class="row-item"><div class="ic">🏠</div><div class="meta"><div class="t">Rent</div><div class="c">Monthly · £650</div></div></div>
+        </div>
+      </div>
+      <div class="pros">+ Timeline clarity · tap-a-date interaction</div>
+      <div class="cons">− More chrome · harder for new users</div>
+    </div>
+
+    <div class="card">
+      <span class="tag">R3 Grouped by cadence</span>
+      <h3>Monthly · Biweekly · Weekly</h3>
+      <p>Category-style grouping by how often things recur. Good for understanding the rhythm.</p>
+      <div class="frame">
+        <div class="sb"><span>9:41</span><span>●●●</span></div>
+        <div class="hdr"><div class="ham">←</div><div class="title">Recurring</div><div class="bell"></div></div>
+        <div class="body">
+          <div class="hero-small" style="padding:12px 14px"><div class="lab">4 recurring items</div><div class="big" style="font-size:22px">£870 / mo</div></div>
+          <div class="seclbl">Monthly · 3</div>
+          <div class="row-item"><div class="ic">🏠</div><div class="meta"><div class="t">Rent</div><div class="c">1st of every month</div></div><div class="amt">£650</div></div>
+          <div class="row-item"><div class="ic">⚡</div><div class="meta"><div class="t">Electric</div><div class="c">4th</div></div><div class="amt">£60</div></div>
+          <div class="row-item"><div class="ic">📶</div><div class="meta"><div class="t">Broadband</div><div class="c">8th</div></div><div class="amt">£42</div></div>
+          <div class="seclbl">Biweekly · 1</div>
+          <div class="row-item"><div class="ic">🧼</div><div class="meta"><div class="t">Cleaner</div><div class="c">Every 2 weeks</div></div><div class="amt">£50</div></div>
+        </div>
+      </div>
+      <div class="pros">+ Surfaces cadence patterns</div>
+      <div class="cons">− Extra grouping for not much value</div>
+    </div>
+
+  </div>
+
+  <!-- ============================================================
+       ACTIVITY
+       ============================================================ -->
+  <h2 class="sub">5 · Activity feed</h2>
+  <p class="sublede">The "what happened recently" log. Should read like Venmo — casual and social.</p>
+  <div class="row">
+
+    <div class="card">
+      <span class="tag">V1 Chronological</span>
+      <h3>Date-grouped log, human-readable sentences</h3>
+      <p>Each event as a single sentence ("You added Groceries — Sam paid Rent"). Dated groups. Matches Home's Activity tab.</p>
+      <div class="frame">
+        <div class="sb"><span>9:41</span><span>●●●</span></div>
+        <div class="hdr"><div class="ham">←</div><div class="title">Activity</div><div class="bell"></div></div>
+        <div class="body">
+          <div class="seclbl">Today</div>
+          <div class="row-item"><div class="ic">🛒</div><div class="meta"><div class="t">You added Groceries</div><div class="c">£42 · just now</div></div></div>
+          <div class="seclbl">Yesterday</div>
+          <div class="row-item"><div class="ic">🏠</div><div class="meta"><div class="t">Sam paid Rent</div><div class="c">£650 · Apr 22</div></div></div>
+          <div class="row-item"><div class="ic">✅</div><div class="meta"><div class="t">Alex completed "Take bins"</div><div class="c">Apr 22</div></div></div>
+          <div class="seclbl">This week</div>
+          <div class="row-item"><div class="ic">⚡</div><div class="meta"><div class="t">You paid Electric</div><div class="c">£60 · Apr 18</div></div></div>
+          <div class="row-item"><div class="ic">👥</div><div class="meta"><div class="t">Ravi joined Lisbon 2026</div><div class="c">Apr 17</div></div></div>
+        </div>
+      </div>
+      <div class="pros">+ Readable · familiar · low-effort to ship</div>
+      <div class="cons">− No filtering</div>
+    </div>
+
+    <div class="card">
+      <span class="tag">V2 You · Group · System</span>
+      <h3>Three tabs: yours, everyone else's, system events</h3>
+      <p>Tabs filter the log. "You" is your actions, "Group" is everyone else, "System" is auto-generated events (recurring, reminders).</p>
+      <div class="frame">
+        <div class="sb"><span>9:41</span><span>●●●</span></div>
+        <div class="hdr"><div class="ham">←</div><div class="title">Activity</div><div class="bell"></div></div>
+        <div class="body">
+          <div class="tabs"><div class="t on">Group</div><div class="t">You</div><div class="t">System</div></div>
+          <div class="row-item"><div class="ic">🏠</div><div class="meta"><div class="t">Sam paid Rent</div><div class="c">£650 · Apr 22</div></div></div>
+          <div class="row-item"><div class="ic">✅</div><div class="meta"><div class="t">Alex did "Take bins"</div><div class="c">Apr 22</div></div></div>
+          <div class="row-item"><div class="ic">📸</div><div class="meta"><div class="t">Mia added a receipt</div><div class="c">Apr 21</div></div></div>
+          <div class="row-item"><div class="ic">👥</div><div class="meta"><div class="t">Ravi joined</div><div class="c">Apr 17</div></div></div>
+        </div>
+      </div>
+      <div class="pros">+ Filter relevance · "just what I did" view</div>
+      <div class="cons">− Three-tab filter bar might be overkill</div>
+    </div>
+
+    <div class="card">
+      <span class="tag">V3 Dense log</span>
+      <h3>Compact single-line entries, no icons</h3>
+      <p>Slack-style log with timestamps and dense text. Maximum information density. Best for power users.</p>
+      <div class="frame">
+        <div class="sb"><span>9:41</span><span>●●●</span></div>
+        <div class="hdr"><div class="ham">←</div><div class="title">Activity</div><div class="bell"></div></div>
+        <div class="body">
+          <div class="seclbl">Today</div>
+          <div style="padding:6px 0;border-bottom:1px solid var(--border-soft);font-size:12.5px"><span style="color:var(--muted);font-weight:600;width:54px;display:inline-block">9:41 AM</span> You added <b>Groceries</b> · £42</div>
+          <div class="seclbl">Yesterday</div>
+          <div style="padding:6px 0;border-bottom:1px solid var(--border-soft);font-size:12.5px"><span style="color:var(--muted);font-weight:600;width:54px;display:inline-block">11:02 PM</span> Sam paid <b>Rent</b> · £650</div>
+          <div style="padding:6px 0;border-bottom:1px solid var(--border-soft);font-size:12.5px"><span style="color:var(--muted);font-weight:600;width:54px;display:inline-block">4:40 PM</span> Alex did <b>Take bins</b></div>
+          <div style="padding:6px 0;border-bottom:1px solid var(--border-soft);font-size:12.5px"><span style="color:var(--muted);font-weight:600;width:54px;display:inline-block">2:18 PM</span> Mia added <b>Electric receipt</b></div>
+          <div class="seclbl">Apr 17</div>
+          <div style="padding:6px 0;border-bottom:1px solid var(--border-soft);font-size:12.5px"><span style="color:var(--muted);font-weight:600;width:54px;display:inline-block">7:22 AM</span> Ravi joined <b>Lisbon 2026</b></div>
+        </div>
+      </div>
+      <div class="pros">+ Dense · audit-log feel · fast scan</div>
+      <div class="cons">− Cold · no visual anchor per row</div>
+    </div>
+
+  </div>
+
+</div>
+</body>
+</html>

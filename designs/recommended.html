@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Commune — Recommended designs</title>
+<style>
+  :root{
+    --bg:#FAF9F7; --surface:#ffffff; --ink:#171b24; --muted:#6b7280;
+    --border:#eceae5; --border-soft:#f1efe9;
+    --sage:#1f7a6a; --sage-soft:#E8F3EC; --sage-ink:#14594e;
+    --lime:#96E85F; --cream:#eadfd4; --danger:#E35D5D; --warn:#8C2F1F;
+    --navy:#1A1E2B;
+    --bill-bg:#FEE9E5; --bill-ink:#8C2F1F;
+    --chore-bg:#E8F3EC; --chore-ink:var(--sage-ink);
+    --people-bg:#E4EDFD; --people-ink:#1a56db;
+    --system-bg:#F3F1EC; --system-ink:#4B4E57;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:#efece6;color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Inter",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+  .page{max-width:1600px;margin:0 auto;padding:48px 24px 96px}
+  h1{font-size:38px;letter-spacing:-0.8px;margin:0 0 6px;font-weight:700}
+  .lede{color:var(--muted);font-size:15px;margin:0 0 36px;max-width:780px;line-height:1.55}
+
+  h2.sub{font-size:24px;letter-spacing:-0.4px;margin:60px 0 6px;font-weight:700}
+  .why{background:var(--sage-soft);border-radius:14px;padding:14px 18px;margin:10px 0 20px;color:var(--sage-ink);font-size:13.5px;line-height:1.55;max-width:640px;border:1px solid #cfe3d5}
+  .why b{font-weight:700}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,420px));gap:28px;justify-content:start}
+
+  .frame{background:var(--bg);border-radius:38px;border:1px solid var(--border-soft);overflow:hidden;height:780px;display:flex;flex-direction:column;box-shadow:0 8px 28px rgba(0,0,0,0.06)}
+  .sb{display:flex;align-items:center;justify-content:space-between;padding:14px 22px 0;color:var(--ink);font-size:11px;font-weight:600}
+  .hdr{display:flex;align-items:center;justify-content:space-between;padding:12px 20px 14px;position:relative;min-height:48px}
+  .hdr .back{font-size:22px;color:var(--ink);width:28px}
+  .hdr .title{position:absolute;left:0;right:0;display:flex;align-items:center;justify-content:center;pointer-events:none;font-size:20px;font-weight:700;letter-spacing:-0.3px}
+  .hdr .action{font-size:12px;color:var(--sage-ink);font-weight:700}
+  .body{flex:1;overflow:auto;padding:4px 16px 24px;scrollbar-width:none}
+  .body::-webkit-scrollbar{display:none}
+
+  .seclbl{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px;padding:16px 0 8px;display:flex;justify-content:space-between;align-items:center}
+  .seclbl .ct{color:var(--muted);font-size:10px;font-weight:600;text-transform:none;letter-spacing:0.2px}
+
+  /* Compact row */
+  .r{background:#fff;border-radius:14px;padding:12px;display:flex;align-items:center;gap:12px;margin-bottom:6px;border:1px solid var(--border-soft)}
+  .r .ic{width:40px;height:40px;border-radius:12px;background:var(--sage-soft);display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
+  .r .ic.bill{background:var(--bill-bg)}
+  .r .ic.chore{background:var(--chore-bg)}
+  .r .ic.people{background:var(--people-bg)}
+  .r .ic.system{background:var(--system-bg)}
+  .r .meta{flex:1;min-width:0}
+  .r .t{font-size:14px;font-weight:600;line-height:1.3;color:var(--ink)}
+  .r .c{font-size:12px;color:var(--muted);margin-top:2px}
+  .r.unread{background:#F6FAF7;border-color:#D9EADF}
+  .r.unread .t{font-weight:700}
+  .r .amt{font-size:13px;font-weight:700;color:var(--ink)}
+  .r .amt.owe{color:var(--warn)}
+  .r .amt.owed{color:var(--sage-ink)}
+  .r .amt.settled{color:var(--muted)}
+  .r .dot{width:8px;height:8px;border-radius:4px;background:var(--sage);flex-shrink:0;margin-left:4px}
+
+  /* Hero ink card */
+  .hero{background:var(--navy);border-radius:22px;padding:18px;color:#fff;margin:4px 0 14px;position:relative;overflow:hidden}
+  .hero .lab{font-size:11px;font-weight:700;letter-spacing:0.6px;color:rgba(255,255,255,0.55);text-transform:uppercase}
+  .hero .big{font-size:34px;font-weight:700;letter-spacing:-0.5px;margin-top:2px}
+  .hero .inl{font-size:12px;color:rgba(255,255,255,0.55);margin-top:6px}
+  .hero .inl b{color:#fff;font-weight:700}
+
+  /* Suggest card */
+  .suggest{background:#fff;border-radius:18px;border:1.5px solid var(--sage);padding:14px 16px;margin-bottom:14px;display:flex;gap:12px;align-items:flex-start}
+  .suggest .spark{width:28px;height:28px;border-radius:14px;background:var(--sage-soft);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px}
+  .suggest .t{font-size:13px;font-weight:700;line-height:1.35;color:var(--ink)}
+  .suggest .c{font-size:11.5px;color:var(--muted);margin-top:2px}
+  .suggest .act{background:var(--sage);color:#fff;font-size:12px;font-weight:700;padding:8px 12px;border-radius:10px;flex-shrink:0}
+
+  /* Per-person CTA row */
+  .p{background:#fff;border:1px solid var(--border-soft);border-radius:14px;padding:12px;display:flex;align-items:center;gap:12px;margin-bottom:6px}
+  .p .a{width:40px;height:40px;border-radius:20px;background:#E8F3EC;color:var(--sage-ink);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;flex-shrink:0}
+  .p .info{flex:1;min-width:0}
+  .p .n{font-size:14px;font-weight:700}
+  .p .m{font-size:11.5px;color:var(--muted);margin-top:2px}
+  .p .amt{font-size:14px;font-weight:700;margin-right:8px}
+  .p .amt.owe{color:var(--warn)}
+  .p .amt.owed{color:var(--sage-ink)}
+  .p .btn{padding:8px 14px;border-radius:10px;font-size:12px;font-weight:700;flex-shrink:0}
+  .p .btn.primary{background:var(--sage);color:#fff}
+  .p .btn.ghost{background:#F3F1EC;color:var(--ink)}
+
+  /* Donut */
+  .donut-card{background:#fff;border:1px solid var(--border-soft);border-radius:18px;padding:16px;display:flex;align-items:center;gap:16px;margin-bottom:10px}
+  .donut{width:94px;height:94px;border-radius:50%;background:conic-gradient(var(--sage) 0 68%, #96E85F 68% 87%, var(--cream) 87% 100%);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .donut .hole{width:68px;height:68px;border-radius:50%;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center}
+  .donut .hole .sm{font-size:10px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:0.4px}
+  .donut .hole .lg{font-size:15px;font-weight:700}
+  .donut-leg{flex:1;display:flex;flex-direction:column;gap:7px}
+  .donut-leg div{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;color:var(--ink)}
+  .donut-leg div .pct{margin-left:auto;color:var(--muted);font-weight:500}
+  .donut-leg i{width:10px;height:10px;border-radius:3px;display:inline-block;flex-shrink:0}
+
+  /* Stat mini grid (two cards) */
+  .stat2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+  .statcard{background:#fff;border:1px solid var(--border-soft);border-radius:14px;padding:14px}
+  .statcard .l{font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:0.4px}
+  .statcard .v{font-size:20px;font-weight:700;margin-top:3px}
+  .statcard .s{font-size:11px;color:var(--sage-ink);margin-top:3px;font-weight:600}
+  .statcard .s.d{color:var(--warn)}
+
+  /* Bar chart */
+  .bars-card{background:#fff;border:1px solid var(--border-soft);border-radius:14px;padding:14px;margin-bottom:10px}
+  .bars-hdr{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px}
+  .bars-hdr .lbl{font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:0.4px}
+  .bars-hdr .v{font-size:15px;font-weight:700}
+  .bars{display:flex;align-items:flex-end;gap:5px;height:90px}
+  .bars .b{flex:1;background:#E8E6E1;border-radius:5px 5px 0 0;min-height:4px}
+  .bars .b.now{background:var(--navy)}
+  .bars-x{display:flex;gap:5px;margin-top:6px}
+  .bars-x span{flex:1;font-size:10px;color:var(--muted);text-align:center;font-weight:600}
+
+  /* Date strip for recurring */
+  .date-strip{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;margin-bottom:12px;padding-bottom:2px}
+  .date-strip::-webkit-scrollbar{display:none}
+  .date-strip .d{min-width:68px;background:#fff;border:1px solid var(--border-soft);border-radius:14px;padding:10px 8px;text-align:center}
+  .date-strip .d.now{background:var(--navy);color:#fff;border-color:var(--navy)}
+  .date-strip .d .m{font-size:9px;font-weight:700;letter-spacing:0.4px;text-transform:uppercase;color:var(--muted)}
+  .date-strip .d.now .m{color:rgba(255,255,255,0.55)}
+  .date-strip .d .day{font-size:22px;font-weight:700;margin-top:2px;color:var(--ink);line-height:1.1}
+  .date-strip .d.now .day{color:#fff}
+  .date-strip .d .sum{font-size:10px;color:var(--muted);margin-top:2px;font-weight:600}
+  .date-strip .d.now .sum{color:rgba(255,255,255,0.7)}
+
+  /* Segmented control */
+  .seg{display:flex;gap:6px;background:#F3F1EC;border-radius:12px;padding:4px;margin:4px 0 10px}
+  .seg .s{flex:1;padding:8px;font-size:12px;font-weight:700;color:var(--muted);text-align:center;border-radius:8px}
+  .seg .s.on{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,0.05)}
+
+  /* Swipe hint on notification row */
+  .swipe-hint{font-size:10px;color:var(--muted);margin-top:4px;font-weight:500}
+
+  .caption{font-size:12px;color:var(--muted);margin-top:8px;line-height:1.5;max-width:360px}
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>Recommended designs</h1>
+  <p class="lede">One synthesised design per screen. Built from the parts of the variants that proved out (from an IA + UX perspective) and tuned for what feels native on iOS — familiar patterns, single primary action per view, scannable rows, and temporal grouping for time-based content.</p>
+
+  <div class="grid">
+
+    <!-- 1 NOTIFICATIONS -->
+    <div>
+      <h2 class="sub">1 · Notifications</h2>
+      <div class="why"><b>Synthesis:</b> N1's date-grouped inbox as the spine, with N3's type-coded icon tints (bill red · chore sage · people blue · system grey) so users can still sub-scan by type without an extra filter UI. Unread rows get a subtle sage-tinted fill (not noisy). Swipe to dismiss per iOS convention. "Mark all read" as the header's right action.</div>
+      <div class="frame">
+        <div class="sb"><span>9:41</span><span>●●●</span></div>
+        <div class="hdr"><div class="back">←</div><div class="title">Notifications</div><div class="action">Mark all read</div></div>
+        <div class="body">
+          <div class="seclbl">Today <span class="ct">3 new</span></div>
+          <div class="r unread"><div class="ic bill">💳</div><div class="meta"><div class="t">Sam paid you £120 for Groceries</div><div class="c">Just now</div></div><div class="dot"></div></div>
+          <div class="r unread"><div class="ic bill">🏠</div><div class="meta"><div class="t">Rent is due in 3 days</div><div class="c">9:12 AM · Shared Flat</div></div><div class="dot"></div></div>
+          <div class="r unread"><div class="ic chore">✅</div><div class="meta"><div class="t">Alex completed "Take bins out"</div><div class="c">8:40 AM</div></div><div class="dot"></div></div>
+          <div class="seclbl">Yesterday</div>
+          <div class="r"><div class="ic people">📸</div><div class="meta"><div class="t">Mia added a receipt for Electric</div><div class="c">Apr 22 · 4:22 PM</div></div></div>
+          <div class="r"><div class="ic people">👥</div><div class="meta"><div class="t">Ravi joined Lisbon 2026</div><div class="c">Apr 22</div></div></div>
+          <div class="seclbl">This week</div>
+          <div class="r"><div class="ic system">🔁</div><div class="meta"><div class="t">Monthly recurring bills were generated</div><div class="c">Apr 21 · System</div></div></div>
+        </div>
+      </div>
+      <div class="caption">Header: <b>Mark all read</b> pill-colored sage. Rows: swipe-left to mark read or dismiss. Unread items have a sage dot + tinted background so they pop at a glance without screaming.</div>
+    </div>
+
+    <!-- 2 SETTLE UP -->
+    <div>
+      <h2 class="sub">2 · Settle up</h2>
+      <div class="why"><b>Synthesis:</b> S1's net-balance ink hero + per-person rows as the spine. When the graph can be simplified, S2's smart-suggest card appears as a dismissable "one tap to clear" helper just under the hero. Two clear sections: "Owes you" (Remind, ghost button) and "You owe" (Pay, sage primary). Amounts colour-coded inline. Rename from Command Centre.</div>
+      <div class="frame">
+        <div class="sb"><span>9:41</span><span>●●●</span></div>
+        <div class="hdr"><div class="back">←</div><div class="title">Settle up</div><div class="action">History</div></div>
+        <div class="body">
+          <div class="hero">
+            <div class="lab">Your net balance</div>
+            <div class="big">+£85</div>
+            <div class="inl"><b>£300</b> owed to you · <b>£215</b> you owe</div>
+          </div>
+          <div class="suggest">
+            <div class="spark">✨</div>
+            <div style="flex:1">
+              <div class="t">Pay Ravi £42 and Mia £12 to clear everything</div>
+              <div class="c">2 transfers cancels out all your debts</div>
+            </div>
+            <div class="act">Send both</div>
+          </div>
+          <div class="seclbl">Owes you</div>
+          <div class="p"><div class="a">S</div><div class="info"><div class="n">Sam</div><div class="m">Shared Flat · Lisbon</div></div><div class="amt owed">+£165</div><div class="btn ghost">Remind</div></div>
+          <div class="p"><div class="a">A</div><div class="info"><div class="n">Alex</div><div class="m">Shared Flat</div></div><div class="amt owed">+£135</div><div class="btn ghost">Remind</div></div>
+          <div class="seclbl">You owe</div>
+          <div class="p"><div class="a">M</div><div class="info"><div class="n">Mia</div><div class="m">Dev project</div></div><div class="amt owe">-£12</div><div class="btn primary">Pay</div></div>
+          <div class="p"><div class="a">R</div><div class="info"><div class="n">Ravi</div><div class="m">Lisbon 2026</div></div><div class="amt owe">-£42</div><div class="btn primary">Pay</div></div>
+        </div>
+      </div>
+      <div class="caption">The suggest card only appears when the graph can be simplified. If you owe nobody, hero shows "All clear" and the list hides.</div>
+    </div>
+
+    <!-- 3 ANALYTICS -->
+    <div>
+      <h2 class="sub">3 · Analytics</h2>
+      <div class="why"><b>Synthesis:</b> A1's donut as the hero moment + two tight KPIs from A2 (Total + Biggest — not four, don't split attention). A 6-month trend bar anchors context. Below, top categories as the same row style we use elsewhere so the page feels continuous with the rest of the app. Drops A3's heatmap — novel, but low signal on quiet months.</div>
+      <div class="frame">
+        <div class="sb"><span>9:41</span><span>●●●</span></div>
+        <div class="hdr"><div class="back">←</div><div class="title">Analytics</div><div class="action">April ⌄</div></div>
+        <div class="body">
+          <div class="donut-card">
+            <div class="donut"><div class="hole"><div class="sm">April</div><div class="lg">£950</div></div></div>
+            <div class="donut-leg">
+              <div><i style="background:var(--sage)"></i> Housing <span class="pct">68%</span></div>
+              <div><i style="background:#96E85F"></i> Groceries <span class="pct">19%</span></div>
+              <div><i style="background:var(--cream)"></i> Utilities <span class="pct">13%</span></div>
+            </div>
+          </div>
+          <div class="stat2">
+            <div class="statcard"><div class="l">Total · April</div><div class="v">£950</div><div class="s d">↑ 4% vs March</div></div>
+            <div class="statcard"><div class="l">Biggest expense</div><div class="v">£650</div><div class="s">Rent · 21 Apr</div></div>
+          </div>
+          <div class="bars-card">
+            <div class="bars-hdr"><span class="lbl">Last 6 months</span><span class="v">£6,120</span></div>
+            <div class="bars">
+              <div class="b" style="height:60%"></div><div class="b" style="height:75%"></div><div class="b" style="height:55%"></div><div class="b" style="height:90%"></div><div class="b" style="height:70%"></div><div class="b now" style="height:85%"></div>
+            </div>
+            <div class="bars-x"><span>Nov</span><span>Dec</span><span>Jan</span><span>Feb</span><span>Mar</span><span>Apr</span></div>
+          </div>
+          <div class="seclbl">Top categories</div>
+          <div class="r"><div class="ic" style="background:var(--sage-soft)">🏠</div><div class="meta"><div class="t">Housing</div><div class="c">£650 · 68%</div></div><div class="amt owe">↑ 4%</div></div>
+          <div class="r"><div class="ic" style="background:#E8F7D4">🛒</div><div class="meta"><div class="t">Groceries</div><div class="c">£180 · 19%</div></div><div class="amt owed">↓ 12%</div></div>
+        </div>
+      </div>
+      <div class="caption">"April ⌄" in the header is a month picker. Tapping a category row drills into an expense list filtered to that category.</div>
+    </div>
+
+    <!-- 4 RECURRING -->
+    <div>
+      <h2 class="sub">4 · Recurring expenses</h2>
+      <div class="why"><b>Synthesis:</b> R1's "next billing" ink hero gives you the single number you care about (what's next, when, how much). Below, a slim version of R2's horizontal date strip shows upcoming billing days at a glance — tap a date to jump to those items. Full list is date-grouped so cadence is implicit. Drops R3 (cadence grouping is intellectually neat but low-value in practice).</div>
+      <div class="frame">
+        <div class="sb"><span>9:41</span><span>●●●</span></div>
+        <div class="hdr"><div class="back">←</div><div class="title">Recurring</div><div class="action">+ Add</div></div>
+        <div class="body">
+          <div class="hero">
+            <div class="lab">Next billing · May 1</div>
+            <div class="big">£650</div>
+            <div class="inl"><b>Rent</b> · auto-generates in 8 days</div>
+          </div>
+          <div class="seclbl">Upcoming in May <span class="ct">£870 total</span></div>
+          <div class="date-strip">
+            <div class="d now"><div class="m">MAY</div><div class="day">1</div><div class="sum">£650</div></div>
+            <div class="d"><div class="m">MAY</div><div class="day">2</div><div class="sum">£50</div></div>
+            <div class="d"><div class="m">MAY</div><div class="day">4</div><div class="sum">£60</div></div>
+            <div class="d"><div class="m">MAY</div><div class="day">8</div><div class="sum">£42</div></div>
+          </div>
+          <div class="seclbl">All recurring</div>
+          <div class="r"><div class="ic" style="background:var(--sage-soft)">🏠</div><div class="meta"><div class="t">Rent</div><div class="c">Monthly · 1st · Next May 1</div></div><div class="amt">£650</div></div>
+          <div class="r"><div class="ic" style="background:var(--chore-bg)">🧼</div><div class="meta"><div class="t">Cleaner</div><div class="c">Biweekly · Next May 2</div></div><div class="amt">£50</div></div>
+          <div class="r"><div class="ic" style="background:#F3E4D8">⚡</div><div class="meta"><div class="t">Electric</div><div class="c">Monthly · 4th · Next May 4</div></div><div class="amt">£60</div></div>
+          <div class="r"><div class="ic" style="background:var(--people-bg)">📶</div><div class="meta"><div class="t">Broadband</div><div class="c">Monthly · 8th · Next May 8</div></div><div class="amt">£42</div></div>
+        </div>
+      </div>
+      <div class="caption">Hero speaks to the next thing, not the month total — answers "what's coming?" before "how much am I spending on subscriptions?"</div>
+    </div>
+
+    <!-- 5 ACTIVITY -->
+    <div>
+      <h2 class="sub">5 · Activity feed</h2>
+      <div class="why"><b>Synthesis:</b> V1's chronological date-grouped rows (human sentences, not audit-log shorthand) + a simple 2-pill segmented control borrowed from V2 — just <b>All / You</b>, not three filters. Avatars used when it's an action by a person (instead of category icon), which is more social and closer to Venmo's feel. Drops V3 (too cold for a consumer app).</div>
+      <div class="frame">
+        <div class="sb"><span>9:41</span><span>●●●</span></div>
+        <div class="hdr"><div class="back">←</div><div class="title">Activity</div><div class="action">Filter</div></div>
+        <div class="body">
+          <div class="seg"><div class="s on">All</div><div class="s">Just you</div></div>
+          <div class="seclbl">Today</div>
+          <div class="r"><div class="ic"><div style="width:32px;height:32px;border-radius:16px;background:#E8F3EC;color:var(--sage-ink);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700">JD</div></div><div class="meta"><div class="t">You added <b>Groceries</b></div><div class="c">£42 · just now</div></div></div>
+          <div class="seclbl">Yesterday</div>
+          <div class="r"><div class="ic"><div style="width:32px;height:32px;border-radius:16px;background:#F3E4D8;color:#8a593b;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700">S</div></div><div class="meta"><div class="t">Sam paid <b>Rent</b></div><div class="c">£650 · 11:02 PM</div></div><div class="amt settled">Settled</div></div>
+          <div class="r"><div class="ic"><div style="width:32px;height:32px;border-radius:16px;background:var(--people-bg);color:var(--people-ink);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700">A</div></div><div class="meta"><div class="t">Alex completed <b>Take bins out</b></div><div class="c">4:40 PM</div></div></div>
+          <div class="seclbl">This week</div>
+          <div class="r"><div class="ic"><div style="width:32px;height:32px;border-radius:16px;background:#E8F3EC;color:var(--sage-ink);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700">JD</div></div><div class="meta"><div class="t">You paid <b>Electric</b></div><div class="c">£60 · Apr 18</div></div></div>
+          <div class="r"><div class="ic"><div style="width:32px;height:32px;border-radius:16px;background:var(--people-bg);color:var(--people-ink);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700">R</div></div><div class="meta"><div class="t">Ravi joined <b>Lisbon 2026</b></div><div class="c">Apr 17</div></div></div>
+        </div>
+      </div>
+      <div class="caption">Person-colored avatar initials make the feed feel social. "All / Just you" toggle is the lightest filter that still covers the two most common intents.</div>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

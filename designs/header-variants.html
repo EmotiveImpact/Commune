@@ -1,0 +1,1149 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Commune — Header options</title>
+<style>
+  :root{
+    --bg:#FAF9F7; --surface:#ffffff; --ink:#171b24; --ink-soft:#323847;
+    --muted:#6b7280; --muted-soft:#9ca3af;
+    --border:#eceae5; --border-soft:#f1efe9;
+    --sage:#2d6a4f; --sage-soft:#E8F3EC; --sage-ink:#1F4D38;
+    --lime:#96E85F; --cream:#eadfd4; --danger:#E35D5D;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:#f3f1ec;color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Inter",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+  .page{max-width:1120px;margin:0 auto;padding:48px 24px 96px}
+  h1{font-size:34px;letter-spacing:-0.8px;margin:0 0 8px;font-weight:700}
+  .lede{color:var(--muted);font-size:15px;margin:0 0 32px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:24px}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:22px;box-shadow:0 1px 2px rgba(0,0,0,0.02)}
+  .card h2{margin:0 0 4px;font-size:16px;font-weight:700;letter-spacing:-0.2px}
+  .card .tag{display:inline-block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--sage);background:var(--sage-soft);padding:3px 8px;border-radius:6px;margin-bottom:10px}
+  .card p{margin:8px 0 0;font-size:13px;color:var(--muted);line-height:1.5}
+  .card .pros{margin-top:10px;font-size:12px;color:var(--sage-ink)}
+  .card .cons{margin-top:4px;font-size:12px;color:#9a4a3a}
+
+  /* Phone frame */
+  .phone{margin:16px auto 0;width:320px;border-radius:32px;background:var(--bg);border:8px solid #111418;box-shadow:inset 0 0 0 1px rgba(255,255,255,0.04),0 10px 30px rgba(0,0,0,0.25);overflow:hidden}
+  .statusbar{height:32px;display:flex;align-items:center;justify-content:space-between;padding:0 16px;font-size:12px;font-weight:600;color:var(--ink)}
+  .statusbar .dots{display:flex;gap:3px}
+  .statusbar .dots span{width:4px;height:4px;background:var(--ink);border-radius:50%}
+  .header{padding:14px 16px 12px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .brand{display:flex;align-items:center;gap:10px}
+  .brand .logo{width:30px;height:30px;border-radius:9px;background:var(--ink);display:flex;align-items:center;justify-content:center}
+  .brand .logo svg{width:14px;height:14px;color:var(--lime)}
+  .brand .name{font-weight:700;font-size:19px;letter-spacing:-0.4px}
+  .actions{display:flex;align-items:center;gap:8px}
+  .ibtn{width:36px;height:36px;border-radius:10px;background:transparent;border:none;display:flex;align-items:center;justify-content:center;color:var(--ink);position:relative}
+  .ibtn svg{width:20px;height:20px}
+  .ibtn .dot{position:absolute;top:6px;right:6px;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:var(--danger);border:2px solid var(--surface);color:#fff;font-size:9px;font-weight:800;display:flex;align-items:center;justify-content:center}
+  .avatar{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#F3D2A7,#E6A26B);color:#5A2F10;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;letter-spacing:0.4px}
+  .chip{height:32px;padding:0 10px;border-radius:10px;background:var(--border-soft);display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--ink)}
+  .chip .tile{width:22px;height:22px;border-radius:6px;background:var(--sage-soft);display:flex;align-items:center;justify-content:center}
+  .chip .tile svg{width:12px;height:12px;color:var(--sage)}
+  .chip svg.chev{width:12px;height:12px;color:var(--muted)}
+  .pill{height:32px;padding:0 10px;border-radius:16px;display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;background:#FEE9E5;color:#8C2F1F}
+  .pill.owed{background:#E5F3EA;color:#1F4D38}
+  .pill .dot2{width:6px;height:6px;border-radius:50%;background:currentColor}
+  .search{flex:1;height:36px;border-radius:10px;background:var(--border-soft);display:flex;align-items:center;gap:8px;padding:0 12px;font-size:13px;color:var(--muted-soft)}
+  .search svg{width:14px;height:14px;color:var(--muted)}
+  .fake-body{padding:0 16px 16px}
+  .hero{background:#171b24;border-radius:20px;padding:20px;color:#fff;height:148px;display:flex;flex-direction:column;justify-content:space-between}
+  .hero small{font-size:10px;font-weight:700;letter-spacing:1px;color:#E8F7D4}
+  .hero .amt{font-size:32px;font-weight:700;letter-spacing:-0.6px}
+
+  .pick{margin-top:18px;display:flex;gap:8px;align-items:center}
+  .pick button{flex:1;height:40px;border-radius:12px;border:1px solid var(--border);background:#fff;font-weight:600;font-size:13px;color:var(--ink);cursor:pointer}
+  .pick button:hover{background:var(--border-soft)}
+  .pick button.accent{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .note{margin-top:16px;padding:14px 16px;background:#fff;border:1px solid var(--border);border-radius:14px;font-size:13px;color:var(--muted)}
+  .intro{display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap;margin-bottom:24px}
+  .counter{font-size:12px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="intro">
+    <div>
+      <h1>Top-right: five options</h1>
+      <p class="lede">Current header uses the bell only and leaves ~150px unused. Pick the one you like, or mix.</p>
+    </div>
+  </div>
+
+  <div class="grid">
+
+    <!-- Variant A: Group switcher + Bell -->
+    <div class="card">
+      <span class="tag">Option A</span>
+      <h2>Group switcher + bell</h2>
+      <p>Swap active group from any screen. Keeps Groups tab for deep detail.</p>
+      <div class="phone">
+        <div class="statusbar"><span>9:41</span><div class="dots"><span></span><span></span><span></span><span></span></div></div>
+        <div class="header">
+          <div class="brand">
+            <div class="logo"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"/></svg></div>
+            <span class="name">Commune</span>
+          </div>
+          <div class="actions">
+            <div class="chip"><div class="tile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l9-8 9 8M5 10v10h5v-6h4v6h5V10"/></svg></div>Flat 7<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="6 9 12 15 18 9"/></svg></div>
+            <button class="ibtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></svg><span class="dot">3</span></button>
+          </div>
+        </div>
+        <div class="fake-body"><div class="hero"><small>YOUR SHARE · APRIL</small><div class="amt">£0.00</div><div style="font-size:11px;opacity:0.6">0% settled</div></div></div>
+      </div>
+      <div class="pros">+ Fast context switch · good for users in multiple groups</div>
+      <div class="cons">− Slightly busier header</div>
+    </div>
+
+    <!-- Variant B: Balance pill + Bell -->
+    <div class="card">
+      <span class="tag">Option B</span>
+      <h2>Balance pill + bell</h2>
+      <p>At-a-glance net position ("you're owed £42"). Tap → Command Centre.</p>
+      <div class="phone">
+        <div class="statusbar"><span>9:41</span><div class="dots"><span></span><span></span><span></span><span></span></div></div>
+        <div class="header">
+          <div class="brand">
+            <div class="logo"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"/></svg></div>
+            <span class="name">Commune</span>
+          </div>
+          <div class="actions">
+            <div class="pill owed"><span class="dot2"></span>+£42</div>
+            <button class="ibtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></svg><span class="dot">3</span></button>
+          </div>
+        </div>
+        <div class="fake-body"><div class="hero"><small>YOUR SHARE · APRIL</small><div class="amt">£0.00</div><div style="font-size:11px;opacity:0.6">0% settled</div></div></div>
+      </div>
+      <div class="pros">+ Surfaces the most useful number · invites action</div>
+      <div class="cons">− Redundant with hero once it's populated</div>
+    </div>
+
+    <!-- Variant C: Search + Bell + Avatar -->
+    <div class="card">
+      <span class="tag">Option C</span>
+      <h2>Search + bell + avatar</h2>
+      <p>Full toolbar. Best if search becomes important (receipts, members, notes).</p>
+      <div class="phone">
+        <div class="statusbar"><span>9:41</span><div class="dots"><span></span><span></span><span></span><span></span></div></div>
+        <div class="header">
+          <div class="brand">
+            <div class="logo"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"/></svg></div>
+            <span class="name">Commune</span>
+          </div>
+          <div class="actions">
+            <button class="ibtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></button>
+            <button class="ibtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></svg><span class="dot">3</span></button>
+            <div class="avatar">AE</div>
+          </div>
+        </div>
+        <div class="fake-body"><div class="hero"><small>YOUR SHARE · APRIL</small><div class="amt">£0.00</div><div style="font-size:11px;opacity:0.6">0% settled</div></div></div>
+      </div>
+      <div class="pros">+ All key actions available · avatar = profile shortcut</div>
+      <div class="cons">− Crowds the bar · Profile tab already exists</div>
+    </div>
+
+    <!-- Variant D: Month/Cycle pill + Bell -->
+    <div class="card">
+      <span class="tag">Option D</span>
+      <h2>Cycle pill + bell</h2>
+      <p>Shows current cycle ("Apr · 12d left") — scan the time pressure at a glance.</p>
+      <div class="phone">
+        <div class="statusbar"><span>9:41</span><div class="dots"><span></span><span></span><span></span><span></span></div></div>
+        <div class="header">
+          <div class="brand">
+            <div class="logo"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"/></svg></div>
+            <span class="name">Commune</span>
+          </div>
+          <div class="actions">
+            <div class="chip"><div class="tile" style="background:#EAF2FF"><svg viewBox="0 0 24 24" fill="none" stroke="#3B6BE8" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M8 2v4M16 2v4M3 10h18"/></svg></div>Apr · 12d</div>
+            <button class="ibtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></svg><span class="dot">3</span></button>
+          </div>
+        </div>
+        <div class="fake-body"><div class="hero"><small>YOUR SHARE · APRIL</small><div class="amt">£0.00</div><div style="font-size:11px;opacity:0.6">0% settled</div></div></div>
+      </div>
+      <div class="pros">+ Subtle cycle awareness · calm design</div>
+      <div class="cons">− Hero already shows the month</div>
+    </div>
+
+    <!-- Variant E: Minimal avatar only -->
+    <div class="card">
+      <span class="tag">Option E</span>
+      <h2>Avatar opens everything</h2>
+      <p>Single avatar. Taps opens a sheet: notifications, search, profile, sign out.</p>
+      <div class="phone">
+        <div class="statusbar"><span>9:41</span><div class="dots"><span></span><span></span><span></span><span></span></div></div>
+        <div class="header">
+          <div class="brand">
+            <div class="logo"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"/></svg></div>
+            <span class="name">Commune</span>
+          </div>
+          <div class="actions">
+            <div class="avatar" style="position:relative">AE<span class="dot" style="top:-2px;right:-2px;border-color:#FAF9F7">3</span></div>
+          </div>
+        </div>
+        <div class="fake-body"><div class="hero"><small>YOUR SHARE · APRIL</small><div class="amt">£0.00</div><div style="font-size:11px;opacity:0.6">0% settled</div></div></div>
+      </div>
+      <div class="pros">+ Cleanest header · more breathing room for brand</div>
+      <div class="cons">− Notifications one tap further away</div>
+    </div>
+
+    <!-- Variant F: Current (baseline) -->
+    <div class="card">
+      <span class="tag">Baseline</span>
+      <h2>Current (bell only)</h2>
+      <p>What's shipped today. Lots of empty space on the right.</p>
+      <div class="phone">
+        <div class="statusbar"><span>9:41</span><div class="dots"><span></span><span></span><span></span><span></span></div></div>
+        <div class="header">
+          <div class="brand">
+            <div class="logo"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"/></svg></div>
+            <span class="name">Commune</span>
+          </div>
+          <div class="actions">
+            <button class="ibtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></svg><span class="dot">3</span></button>
+          </div>
+        </div>
+        <div class="fake-body"><div class="hero"><small>YOUR SHARE · APRIL</small><div class="amt">£0.00</div><div style="font-size:11px;opacity:0.6">0% settled</div></div></div>
+      </div>
+      <div class="pros">+ Minimal · lots of space for brand</div>
+      <div class="cons">− Wasted real estate · no quick context</div>
+    </div>
+
+  </div>
+
+  <div class="note">
+    <strong>Header rec:</strong> Option A (group switcher) + Option B's balance pill consolidated — shows the group chip on the left side of the actions AND a compact balance pill when non-zero. Falls back to just the bell on empty state.
+  </div>
+
+  <div style="height:64px"></div>
+  <div class="intro" style="margin-top:32px">
+    <div>
+      <h1>Hero card: eight layouts</h1>
+      <p class="lede">Same info (share amount, progress, three stats, two CTAs) — eight ways to arrange it. Most also address your "Paid £0 vs main £0" redundancy.</p>
+    </div>
+  </div>
+
+  <style>
+    /* Hero card preview helpers */
+    .h-phone{margin:16px auto 0;width:320px;border-radius:32px;background:var(--bg);border:8px solid #111418;box-shadow:inset 0 0 0 1px rgba(255,255,255,0.04),0 10px 30px rgba(0,0,0,0.25);overflow:hidden;padding:12px 16px 18px}
+    .h-hero{background:#171b24;border-radius:22px;padding:20px;color:#fff}
+    .h-label{font-size:10px;font-weight:700;letter-spacing:1px;color:#E8F7D4;text-transform:uppercase}
+    .h-amount{font-size:38px;font-weight:700;letter-spacing:-0.8px;line-height:1.05;margin-top:8px}
+    .h-amount-sm{font-size:28px;font-weight:700;letter-spacing:-0.6px;line-height:1.05}
+    .h-cap{font-size:12px;color:rgba(255,255,255,0.6);margin-top:6px}
+    .h-track{height:6px;border-radius:3px;background:#374151;overflow:hidden;margin-top:14px}
+    .h-fill{height:100%;background:var(--lime);width:32%}
+    .h-divider{height:1px;background:rgba(255,255,255,0.12);margin:16px 0}
+    .h-stats{display:flex}
+    .h-stat{flex:1}
+    .h-stat .k{font-size:10px;font-weight:700;color:rgba(255,255,255,0.55);letter-spacing:0.8px;text-transform:uppercase}
+    .h-stat .v{font-size:15px;font-weight:700;color:#fff;margin-top:4px}
+    .h-btnrow{display:flex;gap:12px;margin-top:16px}
+    .h-btnP{flex:1;height:48px;border-radius:14px;background:#eadfd4;color:#1f2330;display:flex;align-items:center;justify-content:center;gap:8px;font-weight:700;font-size:14px}
+    .h-btnS{flex:1;height:48px;border-radius:14px;background:rgba(255,255,255,0.08);color:#fffaf6;display:flex;align-items:center;justify-content:center;gap:8px;font-weight:600;font-size:14px}
+    .h-chip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:rgba(255,255,255,0.08);font-size:11px;color:rgba(255,255,255,0.85);font-weight:600}
+    .h-tiles{display:flex;gap:8px;margin-top:14px}
+    .h-tile{flex:1;background:rgba(255,255,255,0.06);border-radius:12px;padding:10px 12px}
+    .h-tile .k{font-size:10px;color:rgba(255,255,255,0.55);font-weight:700;letter-spacing:0.6px;text-transform:uppercase}
+    .h-tile .v{font-size:14px;color:#fff;font-weight:700;margin-top:2px}
+    .h-link{color:#E8F7D4;font-weight:600;font-size:13px;text-align:center;margin-top:12px}
+    .h-iconsm{width:14px;height:14px}
+    .h-inline{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-top:8px}
+    .h-inline .seg{font-size:12px;color:rgba(255,255,255,0.65)}
+    .h-inline .seg b{color:#fff;font-weight:700}
+    .h-row2{display:flex;gap:12px;margin-top:14px}
+    .h-col{flex:1}
+    .h-settle-ic{width:40px;height:40px;border-radius:12px;background:rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;color:#fff}
+    .h-segment{background:rgba(255,255,255,0.06);border-radius:14px;padding:4px;display:flex;margin-top:14px}
+    .h-segment .opt{flex:1;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;color:rgba(255,255,255,0.7)}
+    .h-segment .opt.on{background:#eadfd4;color:#1f2330}
+  </style>
+
+  <div class="grid">
+
+    <!-- H1 current -->
+    <div class="card">
+      <span class="tag">H1 · Baseline</span>
+      <h2>Current — 3 stats + 2 buttons</h2>
+      <p>What's in the app now. Paid=£0 and main=£0 look redundant in empty state.</p>
+      <div class="h-phone">
+        <div class="h-hero">
+          <div class="h-label">Your Share · April</div>
+          <div class="h-amount">£0.00</div>
+          <div class="h-cap">0% settled</div>
+          <div class="h-track"><div class="h-fill" style="width:0%"></div></div>
+          <div class="h-divider"></div>
+          <div class="h-stats">
+            <div class="h-stat"><div class="k">Paid</div><div class="v">£0.00</div></div>
+            <div class="h-stat"><div class="k">Remaining</div><div class="v">£0.00</div></div>
+            <div class="h-stat"><div class="k">Open</div><div class="v">0</div></div>
+          </div>
+          <div class="h-btnrow">
+            <div class="h-btnP">+ Add Expense</div>
+            <div class="h-btnS">✓ Settle Up</div>
+          </div>
+        </div>
+      </div>
+      <div class="cons">− Redundant empty values · busy vertical stack</div>
+    </div>
+
+    <!-- H2 no Paid -->
+    <div class="card">
+      <span class="tag">H2</span>
+      <h2>Drop "Paid" — keep Remaining + Open</h2>
+      <p>Main amount already tells you total. Show only what's actionable.</p>
+      <div class="h-phone">
+        <div class="h-hero">
+          <div class="h-label">Your Share · April</div>
+          <div class="h-amount">£500.00</div>
+          <div class="h-cap">40% settled · £200 paid</div>
+          <div class="h-track"><div class="h-fill" style="width:40%"></div></div>
+          <div class="h-divider"></div>
+          <div class="h-stats">
+            <div class="h-stat"><div class="k">Remaining</div><div class="v">£300.00</div></div>
+            <div class="h-stat"><div class="k">Open items</div><div class="v">5</div></div>
+          </div>
+          <div class="h-btnrow">
+            <div class="h-btnP">+ Add Expense</div>
+            <div class="h-btnS">✓ Settle Up</div>
+          </div>
+        </div>
+      </div>
+      <div class="pros">+ Removes redundancy · Paid already implied by the bar</div>
+      <div class="cons">− Some users like seeing "I paid X" explicitly</div>
+    </div>
+
+    <!-- H3 inline stats -->
+    <div class="card">
+      <span class="tag">H3</span>
+      <h2>Stats inline with amount</h2>
+      <p>Caption under the big number shows all three stats as a sentence.</p>
+      <div class="h-phone">
+        <div class="h-hero">
+          <div class="h-label">Your Share · April</div>
+          <div class="h-amount">£500.00</div>
+          <div class="h-inline">
+            <span class="seg"><b>£200</b> paid</span>
+            <span class="seg">· <b>£300</b> remaining</span>
+            <span class="seg">· <b>5</b> open</span>
+          </div>
+          <div class="h-track"><div class="h-fill" style="width:40%"></div></div>
+          <div class="h-btnrow">
+            <div class="h-btnP">+ Add Expense</div>
+            <div class="h-btnS">✓ Settle Up</div>
+          </div>
+        </div>
+      </div>
+      <div class="pros">+ Compact · reads naturally</div>
+      <div class="cons">− Harder to scan at a glance</div>
+    </div>
+
+    <!-- H4 stat tiles -->
+    <div class="card">
+      <span class="tag">H4</span>
+      <h2>Stat tiles (cards within card)</h2>
+      <p>Each stat gets a subtle panel. More "dashboard" feel.</p>
+      <div class="h-phone">
+        <div class="h-hero">
+          <div class="h-label">Your Share · April</div>
+          <div class="h-amount">£500.00</div>
+          <div class="h-cap">40% settled</div>
+          <div class="h-track"><div class="h-fill" style="width:40%"></div></div>
+          <div class="h-tiles">
+            <div class="h-tile"><div class="k">Paid</div><div class="v">£200</div></div>
+            <div class="h-tile"><div class="k">Left</div><div class="v">£300</div></div>
+            <div class="h-tile"><div class="k">Open</div><div class="v">5</div></div>
+          </div>
+          <div class="h-btnrow">
+            <div class="h-btnP">+ Add Expense</div>
+            <div class="h-btnS">✓ Settle Up</div>
+          </div>
+        </div>
+      </div>
+      <div class="pros">+ Visually structured · tap-friendly targets</div>
+      <div class="cons">− More height</div>
+    </div>
+
+    <!-- H5 2-col -->
+    <div class="card">
+      <span class="tag">H5</span>
+      <h2>Two-column: headline vs. stats</h2>
+      <p>Amount on left, small stats column on right. Buttons full-width below.</p>
+      <div class="h-phone">
+        <div class="h-hero">
+          <div class="h-label">Your Share · April</div>
+          <div class="h-row2">
+            <div class="h-col">
+              <div class="h-amount-sm">£500.00</div>
+              <div class="h-cap" style="margin-top:4px">40% settled</div>
+              <div class="h-track" style="margin-top:8px"><div class="h-fill" style="width:40%"></div></div>
+            </div>
+            <div class="h-col" style="flex:0 0 auto;display:flex;flex-direction:column;gap:6px;align-items:flex-end">
+              <div><span class="h-chip">£200 paid</span></div>
+              <div><span class="h-chip">£300 left</span></div>
+              <div><span class="h-chip">5 open</span></div>
+            </div>
+          </div>
+          <div class="h-btnrow">
+            <div class="h-btnP">+ Add Expense</div>
+            <div class="h-btnS">✓ Settle Up</div>
+          </div>
+        </div>
+      </div>
+      <div class="pros">+ Space efficient · reads fast</div>
+      <div class="cons">− Amount font smaller</div>
+    </div>
+
+    <!-- H6 primary + settle link -->
+    <div class="card">
+      <span class="tag">H6</span>
+      <h2>Hero primary + ghost link</h2>
+      <p>One dominant CTA. "Settle up" is a text link so it reads lower-priority.</p>
+      <div class="h-phone">
+        <div class="h-hero">
+          <div class="h-label">Your Share · April</div>
+          <div class="h-amount">£500.00</div>
+          <div class="h-cap">40% settled</div>
+          <div class="h-track"><div class="h-fill" style="width:40%"></div></div>
+          <div class="h-divider"></div>
+          <div class="h-stats">
+            <div class="h-stat"><div class="k">Paid</div><div class="v">£200</div></div>
+            <div class="h-stat"><div class="k">Remaining</div><div class="v">£300</div></div>
+            <div class="h-stat"><div class="k">Open</div><div class="v">5</div></div>
+          </div>
+          <div class="h-btnP" style="margin-top:14px">+ Add Expense</div>
+          <div class="h-link">Settle up →</div>
+        </div>
+      </div>
+      <div class="pros">+ Clear single action · calmer hierarchy</div>
+      <div class="cons">− Settle gets less real estate</div>
+    </div>
+
+    <!-- H7 primary + icon secondary -->
+    <div class="card">
+      <span class="tag">H7</span>
+      <h2>Primary + icon-only Settle</h2>
+      <p>Big "Add Expense" plus a tight circular Settle icon to its right.</p>
+      <div class="h-phone">
+        <div class="h-hero">
+          <div class="h-label">Your Share · April</div>
+          <div class="h-amount">£500.00</div>
+          <div class="h-cap">40% settled</div>
+          <div class="h-track"><div class="h-fill" style="width:40%"></div></div>
+          <div class="h-divider"></div>
+          <div class="h-stats">
+            <div class="h-stat"><div class="k">Paid</div><div class="v">£200</div></div>
+            <div class="h-stat"><div class="k">Remaining</div><div class="v">£300</div></div>
+            <div class="h-stat"><div class="k">Open</div><div class="v">5</div></div>
+          </div>
+          <div class="h-btnrow" style="align-items:stretch">
+            <div class="h-btnP" style="flex:1">+ Add Expense</div>
+            <div class="h-settle-ic" style="height:48px;width:48px;border-radius:14px">✓</div>
+          </div>
+        </div>
+      </div>
+      <div class="pros">+ Saves width · keeps Settle accessible</div>
+      <div class="cons">− Icon-only may need a tooltip/label</div>
+    </div>
+
+    <!-- H8 segmented -->
+    <div class="card">
+      <span class="tag">H8</span>
+      <h2>Segmented toggle ("This cycle" / "All time")</h2>
+      <p>Top-right segment swaps the stats period. Buttons unchanged.</p>
+      <div class="h-phone">
+        <div class="h-hero">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <div class="h-label">Your Share</div>
+            <div class="h-chip">April ▾</div>
+          </div>
+          <div class="h-amount">£500.00</div>
+          <div class="h-cap">40% settled</div>
+          <div class="h-track"><div class="h-fill" style="width:40%"></div></div>
+          <div class="h-segment">
+            <div class="opt on">This cycle</div>
+            <div class="opt">All time</div>
+          </div>
+          <div class="h-stats" style="margin-top:14px">
+            <div class="h-stat"><div class="k">Paid</div><div class="v">£200</div></div>
+            <div class="h-stat"><div class="k">Remaining</div><div class="v">£300</div></div>
+            <div class="h-stat"><div class="k">Open</div><div class="v">5</div></div>
+          </div>
+          <div class="h-btnrow">
+            <div class="h-btnP">+ Add Expense</div>
+            <div class="h-btnS">✓ Settle Up</div>
+          </div>
+        </div>
+      </div>
+      <div class="pros">+ Power feature · period switching in one tap</div>
+      <div class="cons">− Tallest variant · adds cognitive load</div>
+    </div>
+
+  </div>
+
+  <div class="note" style="margin-top:24px">
+    <strong>Hero chosen:</strong> H3-style inline stats (under big amount), H2 data (Paid/Remaining/Open), % settled pill in card top-right.
+  </div>
+
+  <hr style="margin:56px 0 32px;border:none;border-top:1px solid #e3ded4" />
+
+  <div class="intro">
+    <div>
+      <h1>Everything below the hero</h1>
+      <p class="lede">Quick actions, sections, category card, recent list. Pick one per section.</p>
+    </div>
+  </div>
+
+  <style>
+    .sub{font-size:18px;font-weight:700;letter-spacing:-0.3px;margin:0 0 12px;padding-top:8px}
+    .sub small{color:var(--muted);font-weight:500;font-size:13px;margin-left:8px}
+    .mini{width:300px;margin:12px auto 0;background:#fff;border-radius:18px;padding:14px;box-shadow:0 2px 10px rgba(0,0,0,0.05)}
+    .mini .row{display:flex;align-items:center;gap:10px}
+    .mini .label{font-size:10px;font-weight:700;letter-spacing:1px;color:var(--muted);text-transform:uppercase;margin-bottom:8px}
+
+    /* Quick action styles */
+    .qa4{display:flex;justify-content:space-between;gap:8px}
+    .qa4 .a{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px}
+    .qa4 .c{width:54px;height:54px;border-radius:27px;background:#f1efe9;display:flex;align-items:center;justify-content:center;font-size:22px}
+    .qa4 .t{font-size:11px;font-weight:600;color:#555}
+
+    .qaPill{display:flex;gap:6px;flex-wrap:wrap}
+    .qaPill .p{flex:1;min-width:calc(50% - 3px);height:42px;border-radius:12px;background:#f5f2ec;display:flex;align-items:center;justify-content:center;gap:6px;font-size:13px;font-weight:600}
+
+    .qaGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .qaGrid .t{height:76px;border-radius:14px;background:#f5f2ec;padding:10px;display:flex;flex-direction:column;justify-content:space-between}
+    .qaGrid .t .ic{font-size:18px}
+    .qaGrid .t .lbl{font-size:12px;font-weight:700}
+    .qaGrid .t .sub2{font-size:10px;color:var(--muted)}
+
+    .qaHero{display:flex;gap:8px}
+    .qaHero .big{flex:1.4;height:64px;border-radius:14px;background:var(--sage-soft);display:flex;align-items:center;padding:0 14px;gap:10px;font-weight:700;font-size:13px;color:var(--sage-ink)}
+    .qaHero .rest{display:flex;gap:6px;flex:1}
+    .qaHero .rest .c{flex:1;height:64px;border-radius:14px;background:#f5f2ec;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:10px;font-weight:600;color:#555}
+
+    /* Attention section styles */
+    .att-sec{background:#f5f2ec;border-radius:14px;padding:4px}
+    .att-tab{display:flex;gap:4px;margin-bottom:8px}
+    .att-tab .tb{flex:1;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700}
+    .att-tab .tb.on{background:#fff;color:var(--ink)}
+    .att-tab .tb.off{color:var(--muted)}
+    .att-row{display:flex;align-items:center;gap:10px;padding:10px;background:#fff;border-radius:10px;margin-bottom:4px}
+    .att-row .ic{width:32px;height:32px;border-radius:8px;background:#E8F3EC;display:flex;align-items:center;justify-content:center;font-size:14px}
+    .att-row .meta{flex:1}
+    .att-row .t{font-size:13px;font-weight:600}
+    .att-row .c{font-size:11px;color:var(--muted)}
+    .att-row .amt{font-size:12px;font-weight:700;color:#8C2F1F}
+
+    .att-strip{display:flex;gap:6px;overflow:hidden}
+    .att-strip .card2{flex:0 0 140px;background:#fff;border-radius:12px;padding:10px;border:1px solid var(--border)}
+    .att-strip .card2 .t{font-size:12px;font-weight:700}
+    .att-strip .card2 .c{font-size:10px;color:var(--muted);margin-top:2px}
+    .att-strip .card2 .amt{font-size:12px;font-weight:700;color:#8C2F1F;margin-top:6px}
+
+    /* Category card variants */
+    .cat-bar{display:flex;gap:8px;align-items:center;margin-bottom:6px}
+    .cat-bar .n{flex:1;font-size:12px;font-weight:600}
+    .cat-bar .v{font-size:12px;font-weight:700}
+    .cat-bar .bar{height:5px;border-radius:3px;background:#f1efe9;overflow:hidden}
+    .cat-bar .bar i{display:block;height:100%;background:var(--sage)}
+
+    .donut{width:80px;height:80px;border-radius:50%;background:conic-gradient(#2d6a4f 0 40%,#96E85F 40% 60%,#F3D2A7 60% 80%,#E35D5D 80% 100%);display:flex;align-items:center;justify-content:center}
+    .donut .hole{width:56px;height:56px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700}
+    .donutRow{display:flex;gap:12px;align-items:center}
+    .donut-leg{flex:1;font-size:11px}
+    .donut-leg div{display:flex;align-items:center;gap:6px;margin-bottom:3px}
+    .donut-leg i{width:8px;height:8px;border-radius:2px}
+
+    .cat-pills{display:flex;gap:6px;flex-wrap:wrap}
+    .cat-pills .p{padding:6px 10px;border-radius:999px;background:#f5f2ec;font-size:11px;font-weight:600;display:flex;align-items:center;gap:6px}
+    .cat-pills .p b{font-weight:800}
+
+    /* Recent list density */
+    .rec-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border-soft)}
+    .rec-row:last-child{border:none}
+    .rec-row .ic{width:36px;height:36px;border-radius:10px;background:#f5f2ec;display:flex;align-items:center;justify-content:center;font-size:14px}
+    .rec-row .t{font-size:13px;font-weight:600}
+    .rec-row .c{font-size:11px;color:var(--muted)}
+    .rec-row .amt{font-size:13px;font-weight:700}
+
+    .rec-dense{padding:6px 0;font-size:12px}
+    .rec-dense .ic{width:28px;height:28px}
+
+    .rec-group-label{font-size:10px;font-weight:700;letter-spacing:1px;color:var(--muted);text-transform:uppercase;padding:10px 0 4px}
+  </style>
+
+  <h2 class="sub">1. Quick actions <small>(row of entry points below hero)</small></h2>
+  <div class="grid">
+    <div class="card">
+      <span class="tag">Q1 Baseline</span>
+      <h2>4 circles · icon + label</h2>
+      <p>What you have today.</p>
+      <div class="mini">
+        <div class="qa4">
+          <div class="a"><div class="c">💳</div><div class="t">Settle</div></div>
+          <div class="a"><div class="c">✅</div><div class="t">Chores</div></div>
+          <div class="a"><div class="c">📊</div><div class="t">Analytics</div></div>
+          <div class="a"><div class="c">💬</div><div class="t">Activity</div></div>
+        </div>
+      </div>
+      <div class="pros">+ Familiar · clear</div>
+      <div class="cons">− Takes vertical space · all four weighted equally</div>
+    </div>
+
+    <div class="card">
+      <span class="tag">Q2 Pill row</span>
+      <h2>Text pills (2×2)</h2>
+      <p>Flatter, lighter — no circles.</p>
+      <div class="mini">
+        <div class="qaPill">
+          <div class="p">💳 Settle</div>
+          <div class="p">✅ Chores</div>
+          <div class="p">📊 Analytics</div>
+          <div class="p">💬 Activity</div>
+        </div>
+      </div>
+      <div class="pros">+ Compact · modern · matches button language of hero</div>
+      <div class="cons">− Less "tap target" affordance than circles</div>
+    </div>
+
+    <div class="card">
+      <span class="tag">Q3 Tile grid</span>
+      <h2>2×2 data tiles</h2>
+      <p>Each tile shows a count or status beside the label.</p>
+      <div class="mini">
+        <div class="qaGrid">
+          <div class="t"><div class="ic">💳</div><div><div class="lbl">Settle up</div><div class="sub2">£300 · 5 open</div></div></div>
+          <div class="t"><div class="ic">✅</div><div><div class="lbl">Chores</div><div class="sub2">2 due today</div></div></div>
+          <div class="t"><div class="ic">📊</div><div><div class="lbl">Analytics</div><div class="sub2">This month</div></div></div>
+          <div class="t"><div class="ic">💬</div><div><div class="lbl">Activity</div><div class="sub2">3 new</div></div></div>
+        </div>
+      </div>
+      <div class="pros">+ Tiles carry data · feels like a real dashboard</div>
+      <div class="cons">− More height than Q1/Q2</div>
+    </div>
+
+    <div class="card">
+      <span class="tag">Q4 Hero action</span>
+      <h2>Primary "Settle" + 3 mini</h2>
+      <p>One big "Settle up" CTA (the most frequent action) with three small icons beside it.</p>
+      <div class="mini">
+        <div class="qaHero">
+          <div class="big">💳 Settle up · £300</div>
+          <div class="rest">
+            <div class="c">✅<span>Chores</span></div>
+            <div class="c">📊<span>Stats</span></div>
+            <div class="c">💬<span>Feed</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="pros">+ Emphasises the #1 action · reinforces hero Remaining value</div>
+      <div class="cons">− Duplicates Settle action already in hero button</div>
+    </div>
+  </div>
+
+  <h2 class="sub" style="margin-top:40px">2. "Things to do" + "Focus" <small>(currently two sections showing due items)</small></h2>
+  <div class="grid">
+    <div class="card">
+      <span class="tag">A1 Baseline</span>
+      <h2>Two separate sections</h2>
+      <p>Today: "Things to do" list above, "Focus" list below.</p>
+      <div class="mini">
+        <div class="label">Things to do</div>
+        <div class="att-row"><div class="ic">🛒</div><div class="meta"><div class="t">Groceries</div><div class="c">Overdue · Apr 18</div></div><div class="amt">-£42</div></div>
+        <div class="att-row"><div class="ic">🏠</div><div class="meta"><div class="t">Rent</div><div class="c">Due Apr 28</div></div><div class="amt">-£650</div></div>
+        <div class="label" style="margin-top:12px">Focus</div>
+        <div class="att-row"><div class="ic">⚡</div><div class="meta"><div class="t">Electric</div><div class="c">Due Apr 30</div></div><div class="amt">£120</div></div>
+      </div>
+      <div class="pros">+ Clear mental model</div>
+      <div class="cons">− Redundant — both are "stuff due soon" with different pivots</div>
+    </div>
+
+    <div class="card">
+      <span class="tag">A2 Merge</span>
+      <h2>One "Needs attention" section</h2>
+      <p>Combine both lists, sort by urgency (overdue first), cap at 4.</p>
+      <div class="mini">
+        <div class="label">Needs attention · 4</div>
+        <div class="att-row"><div class="ic" style="background:#FEE9E5">🛒</div><div class="meta"><div class="t">Groceries</div><div class="c" style="color:#8C2F1F">Overdue · Apr 18</div></div><div class="amt">-£42</div></div>
+        <div class="att-row"><div class="ic">🏠</div><div class="meta"><div class="t">Rent</div><div class="c">Due Apr 28</div></div><div class="amt">-£650</div></div>
+        <div class="att-row"><div class="ic">⚡</div><div class="meta"><div class="t">Electric</div><div class="c">Due Apr 30</div></div><div class="amt">-£120</div></div>
+        <div class="att-row"><div class="ic">🌐</div><div class="meta"><div class="t">Internet</div><div class="c">Due May 2</div></div><div class="amt">-£45</div></div>
+      </div>
+      <div class="pros">+ Single actionable list · less scrolling · clearer priority</div>
+      <div class="cons">− Loses the "Focus" pivot (big-ticket items separately)</div>
+    </div>
+
+    <div class="card">
+      <span class="tag">A3 Tabbed</span>
+      <h2>One section, tabs</h2>
+      <p>"All / Overdue / This week" toggle on a single list.</p>
+      <div class="mini">
+        <div class="att-sec">
+          <div class="att-tab">
+            <div class="tb on">Overdue · 1</div>
+            <div class="tb off">This week · 2</div>
+            <div class="tb off">Later · 3</div>
+          </div>
+          <div class="att-row"><div class="ic" style="background:#FEE9E5">🛒</div><div class="meta"><div class="t">Groceries</div><div class="c" style="color:#8C2F1F">Apr 18</div></div><div class="amt">-£42</div></div>
+        </div>
+      </div>
+      <div class="pros">+ Compact · user controls scope</div>
+      <div class="cons">− Extra tap to reveal content · empty tabs look awkward</div>
+    </div>
+
+    <div class="card">
+      <span class="tag">A4 Horizontal</span>
+      <h2>Swipeable attention strip</h2>
+      <p>Cards you can swipe through; each is a due item.</p>
+      <div class="mini">
+        <div class="label">Needs attention</div>
+        <div class="att-strip">
+          <div class="card2"><div class="t">🛒 Groceries</div><div class="c">Overdue · Apr 18</div><div class="amt">-£42</div></div>
+          <div class="card2"><div class="t">🏠 Rent</div><div class="c">Due Apr 28</div><div class="amt">-£650</div></div>
+          <div class="card2" style="opacity:0.5"><div class="t">⚡ Electric</div></div>
+        </div>
+      </div>
+      <div class="pros">+ Fun · fits a lot in a small space</div>
+      <div class="cons">− Swipe = hidden · discoverability</div>
+    </div>
+  </div>
+
+  <h2 class="sub" style="margin-top:40px">3. Category breakdown card</h2>
+  <div class="grid">
+    <div class="card">
+      <span class="tag">C1 Baseline</span>
+      <h2>Horizontal bars</h2>
+      <p>What you have today — stacked bars per category.</p>
+      <div class="mini">
+        <div class="label">Categories · This month</div>
+        <div class="cat-bar"><div class="n">🏠 Housing</div><div class="v">£650</div></div>
+        <div class="cat-bar"><div class="bar"><i style="width:80%"></i></div></div>
+        <div class="cat-bar"><div class="n">🍽️ Groceries</div><div class="v">£180</div></div>
+        <div class="cat-bar"><div class="bar"><i style="width:22%;background:#96E85F"></i></div></div>
+        <div class="cat-bar"><div class="n">⚡ Utilities</div><div class="v">£120</div></div>
+        <div class="cat-bar"><div class="bar"><i style="width:15%;background:#F3D2A7"></i></div></div>
+      </div>
+      <div class="pros">+ Familiar · accurate proportions</div>
+      <div class="cons">− Repetitive when you have many categories</div>
+    </div>
+
+    <div class="card">
+      <span class="tag">C2 Donut</span>
+      <h2>Donut + legend</h2>
+      <p>Single-glance share view with coloured legend on the right.</p>
+      <div class="mini">
+        <div class="label">Spend · This month</div>
+        <div class="donutRow">
+          <div class="donut"><div class="hole">£950</div></div>
+          <div class="donut-leg">
+            <div><i style="background:#2d6a4f"></i> Housing 68%</div>
+            <div><i style="background:#96E85F"></i> Groceries 19%</div>
+            <div><i style="background:#F3D2A7"></i> Utilities 13%</div>
+          </div>
+        </div>
+      </div>
+      <div class="pros">+ Visual · instant share-of-spend</div>
+      <div class="cons">− Donuts are harder than bars to compare precisely</div>
+    </div>
+
+    <div class="card">
+      <span class="tag">C3 Top pills</span>
+      <h2>Top-3 category pills</h2>
+      <p>Just the three highest spend categories as pills. Rest hidden behind "more".</p>
+      <div class="mini">
+        <div class="label">Top spend · This month</div>
+        <div class="cat-pills">
+          <div class="p">🏠 Housing <b>£650</b></div>
+          <div class="p">🍽️ Groceries <b>£180</b></div>
+          <div class="p">⚡ Utilities <b>£120</b></div>
+          <div class="p" style="color:var(--muted)">+3 more</div>
+        </div>
+      </div>
+      <div class="pros">+ Most compact · focuses attention</div>
+      <div class="cons">− No sense of proportion without bars</div>
+    </div>
+  </div>
+
+  <h2 class="sub" style="margin-top:40px">4. Recent activity list</h2>
+  <div class="grid">
+    <div class="card">
+      <span class="tag">R1 Baseline</span>
+      <h2>Roomy rows</h2>
+      <p>36px icon · title · meta · amount. What you have today.</p>
+      <div class="mini">
+        <div class="label">Recent activity</div>
+        <div class="rec-row"><div class="ic">🛒</div><div style="flex:1"><div class="t">Groceries</div><div class="c">You · Today</div></div><div class="amt" style="color:#8C2F1F">-£42</div></div>
+        <div class="rec-row"><div class="ic">🏠</div><div style="flex:1"><div class="t">Rent</div><div class="c">Sam · 2d</div></div><div class="amt">Settled</div></div>
+        <div class="rec-row"><div class="ic">⚡</div><div style="flex:1"><div class="t">Electric</div><div class="c">You · 5d</div></div><div class="amt" style="color:#1F4D38">+£60</div></div>
+      </div>
+      <div class="pros">+ Comfortable · clear</div>
+      <div class="cons">− Only 3 visible without scrolling</div>
+    </div>
+
+    <div class="card">
+      <span class="tag">R2 Dense</span>
+      <h2>Compact rows</h2>
+      <p>28px icon · tighter padding. Shows 2 extra items in the same height.</p>
+      <div class="mini">
+        <div class="label">Recent activity</div>
+        <div class="rec-row rec-dense"><div class="ic">🛒</div><div style="flex:1"><div class="t">Groceries</div><div class="c">You · Today</div></div><div class="amt" style="color:#8C2F1F">-£42</div></div>
+        <div class="rec-row rec-dense"><div class="ic">🏠</div><div style="flex:1"><div class="t">Rent</div><div class="c">Sam · 2d</div></div><div class="amt">Settled</div></div>
+        <div class="rec-row rec-dense"><div class="ic">⚡</div><div style="flex:1"><div class="t">Electric</div><div class="c">You · 5d</div></div><div class="amt" style="color:#1F4D38">+£60</div></div>
+        <div class="rec-row rec-dense"><div class="ic">🌐</div><div style="flex:1"><div class="t">Internet</div><div class="c">Alex · 1w</div></div><div class="amt">Settled</div></div>
+        <div class="rec-row rec-dense"><div class="ic">🍽️</div><div style="flex:1"><div class="t">Dinner</div><div class="c">You · 1w</div></div><div class="amt" style="color:#8C2F1F">-£28</div></div>
+      </div>
+      <div class="pros">+ More visible · less scrolling</div>
+      <div class="cons">− Less breathing room · amounts feel cramped next to meta</div>
+    </div>
+
+    <div class="card">
+      <span class="tag">R3 Grouped</span>
+      <h2>Grouped by date</h2>
+      <p>Section labels (Today / Yesterday / This week).</p>
+      <div class="mini">
+        <div class="label">Recent activity</div>
+        <div class="rec-group-label">Today</div>
+        <div class="rec-row"><div class="ic">🛒</div><div style="flex:1"><div class="t">Groceries</div><div class="c">You</div></div><div class="amt" style="color:#8C2F1F">-£42</div></div>
+        <div class="rec-group-label">This week</div>
+        <div class="rec-row"><div class="ic">🏠</div><div style="flex:1"><div class="t">Rent</div><div class="c">Sam · Mon</div></div><div class="amt">Settled</div></div>
+        <div class="rec-row"><div class="ic">⚡</div><div style="flex:1"><div class="t">Electric</div><div class="c">You · Tue</div></div><div class="amt" style="color:#1F4D38">+£60</div></div>
+      </div>
+      <div class="pros">+ Provides temporal rhythm · good for scanning</div>
+      <div class="cons">− Adds header rows · not great when all items are same-day</div>
+    </div>
+  </div>
+
+  <div class="note" style="margin-top:32px">
+    <strong>My recommended combo:</strong> <b>Q2 · A2 · C1 · R1</b>. Full-screen combos below.
+  </div>
+
+  <hr style="margin:56px 0 32px;border:none;border-top:1px solid #e3ded4" />
+
+  <div class="intro">
+    <div>
+      <h1>Full-screen combinations</h1>
+      <p class="lede">Five complete home screens using the chosen hero. Pick one, or mix.</p>
+    </div>
+  </div>
+
+  <style>
+    .full-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:32px}
+    .fs{background:#fff;border-radius:20px;padding:20px;border:1px solid var(--border)}
+    .fs h3{margin:0 0 4px;font-size:17px;font-weight:700;letter-spacing:-0.3px}
+    .fs .combo{display:inline-block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--sage);background:var(--sage-soft);padding:3px 8px;border-radius:6px;margin-bottom:6px}
+    .fs p{margin:4px 0 14px;font-size:13px;color:var(--muted);line-height:1.4}
+
+    /* full phone */
+    .fp{width:310px;margin:0 auto;border-radius:38px;background:var(--bg);border:8px solid #111418;box-shadow:inset 0 0 0 1px rgba(255,255,255,0.04),0 12px 30px rgba(0,0,0,0.25);overflow:hidden}
+    .fp .sb{height:28px;display:flex;align-items:center;justify-content:space-between;padding:0 16px;font-size:11px;font-weight:600}
+    .fp .hd{display:flex;align-items:center;justify-content:space-between;padding:8px 14px 10px}
+    .fp .hd .logo{width:28px;height:28px;border-radius:8px;background:var(--ink);display:flex;align-items:center;justify-content:center;color:var(--lime);font-size:14px;font-weight:800}
+    .fp .hd .name{font-weight:700;font-size:17px;margin-left:8px;flex:1;letter-spacing:-0.3px}
+    .fp .hd .bell{width:32px;height:32px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;position:relative}
+    .fp .hd .bell .b{position:absolute;top:3px;right:3px;min-width:14px;height:14px;padding:0 3px;border-radius:7px;background:var(--danger);color:#fff;font-size:8px;font-weight:800;display:flex;align-items:center;justify-content:center}
+    .fp .body{padding:4px 14px 20px}
+
+    /* hero (chosen design: H3 inline + % pill top-right) */
+    .fhero{background:#171b24;border-radius:18px;padding:16px;color:#fff;margin-bottom:14px}
+    .fhero .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+    .fhero .lab{font-size:9px;font-weight:700;letter-spacing:0.8px;color:#E8F7D4;text-transform:uppercase}
+    .fhero .pct{font-size:10px;font-weight:700;background:rgba(255,255,255,0.1);padding:3px 8px;border-radius:999px}
+    .fhero .amt{font-size:32px;font-weight:700;letter-spacing:-0.6px;line-height:1.05}
+    .fhero .inl{font-size:12px;margin-top:6px;color:rgba(255,255,255,0.55)}
+    .fhero .inl b{color:#fff;font-weight:800}
+    .fhero .bar{height:5px;border-radius:3px;background:#374151;margin:10px 0 12px;overflow:hidden}
+    .fhero .bar i{display:block;height:100%;background:#96E85F;width:40%}
+    .fhero .btns{display:flex;gap:10px}
+    .fhero .bp{flex:1;height:38px;border-radius:10px;background:#eadfd4;color:#1f2330;font-weight:700;font-size:12px;display:flex;align-items:center;justify-content:center;gap:6px}
+    .fhero .bs{flex:1;height:38px;border-radius:10px;background:rgba(255,255,255,0.08);color:#fffaf6;font-weight:600;font-size:12px;display:flex;align-items:center;justify-content:center;gap:6px}
+    .fhero .bsIc{width:38px;height:38px;border-radius:10px;background:rgba(255,255,255,0.08);color:#fffaf6;display:flex;align-items:center;justify-content:center}
+
+    .fsec{margin-bottom:14px}
+    .fseclbl{font-size:10px;font-weight:700;letter-spacing:1px;color:var(--muted);text-transform:uppercase;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
+    .fseclbl .link{font-size:11px;font-weight:600;color:var(--sage);text-transform:none;letter-spacing:0}
+
+    /* variants reuse existing classes where possible */
+  </style>
+
+  <div class="full-grid">
+
+    <!-- F1: Airy -->
+    <div class="fs">
+      <span class="combo">F1</span>
+      <h3>Airy modern</h3>
+      <p>Q2 pills · A2 merged · C1 bars · R1 roomy. My pick — cleanest reading experience.</p>
+      <div class="fp">
+        <div class="sb"><span>9:41</span><span>●●●</span></div>
+        <div class="hd"><div style="display:flex;align-items:center"><div class="logo">✦</div><div class="name">Shared Flat</div></div><div class="bell">🔔<div class="b">3</div></div></div>
+        <div class="body">
+          <div class="fhero">
+            <div class="top"><div class="lab">Your Share · April</div><div class="pct">40% settled</div></div>
+            <div class="amt">£500.00</div>
+            <div class="inl"><b>£200</b> paid  ·  <b>£300</b> left  ·  <b>5</b> open</div>
+            <div class="bar"><i></i></div>
+            <div class="btns"><div class="bp">+ Add Expense</div><div class="bs">✓ Settle Up</div></div>
+          </div>
+
+          <div class="fsec">
+            <div class="qaPill" style="gap:5px"><div class="p" style="font-size:11px;height:36px">💳 Settle</div><div class="p" style="font-size:11px;height:36px">✅ Chores</div><div class="p" style="font-size:11px;height:36px">📊 Stats</div><div class="p" style="font-size:11px;height:36px">💬 Feed</div></div>
+          </div>
+
+          <div class="fsec">
+            <div class="fseclbl"><span>Needs attention · 3</span><span class="link">View all</span></div>
+            <div class="att-row" style="background:#fff;border:1px solid var(--border)"><div class="ic" style="background:#FEE9E5">🛒</div><div class="meta"><div class="t">Groceries</div><div class="c" style="color:#8C2F1F">Overdue · Apr 18</div></div><div class="amt">-£42</div></div>
+            <div class="att-row" style="background:#fff;border:1px solid var(--border)"><div class="ic">🏠</div><div class="meta"><div class="t">Rent</div><div class="c">Due Apr 28</div></div><div class="amt">-£650</div></div>
+            <div class="att-row" style="background:#fff;border:1px solid var(--border)"><div class="ic">⚡</div><div class="meta"><div class="t">Electric</div><div class="c">Due Apr 30</div></div><div class="amt">-£120</div></div>
+          </div>
+
+          <div class="fsec">
+            <div class="fseclbl"><span>Categories · April</span></div>
+            <div class="cat-bar"><div class="n">🏠 Housing</div><div class="v">£650</div></div>
+            <div class="cat-bar"><div class="bar" style="background:#f1efe9"><i style="width:80%;background:#2d6a4f"></i></div></div>
+            <div class="cat-bar" style="margin-top:4px"><div class="n">🍽️ Groceries</div><div class="v">£180</div></div>
+            <div class="cat-bar"><div class="bar" style="background:#f1efe9"><i style="width:22%;background:#96E85F"></i></div></div>
+          </div>
+
+          <div class="fsec">
+            <div class="fseclbl"><span>Recent activity</span><span class="link">See all</span></div>
+            <div class="rec-row"><div class="ic">🏠</div><div style="flex:1"><div class="t">Rent</div><div class="c">Sam · 2d</div></div><div class="amt">Settled</div></div>
+            <div class="rec-row"><div class="ic">⚡</div><div style="flex:1"><div class="t">Electric</div><div class="c">You · 5d</div></div><div class="amt" style="color:#1F4D38">+£60</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- F2: Dashboard -->
+    <div class="fs">
+      <span class="combo">F2</span>
+      <h3>Power dashboard</h3>
+      <p>Q3 tiles · A2 merged · C2 donut · R2 dense. Data-rich — every element carries numbers.</p>
+      <div class="fp">
+        <div class="sb"><span>9:41</span><span>●●●</span></div>
+        <div class="hd"><div style="display:flex;align-items:center"><div class="logo">✦</div><div class="name">Shared Flat</div></div><div class="bell">🔔<div class="b">3</div></div></div>
+        <div class="body">
+          <div class="fhero">
+            <div class="top"><div class="lab">Your Share · April</div><div class="pct">40% settled</div></div>
+            <div class="amt">£500.00</div>
+            <div class="inl"><b>£200</b> paid  ·  <b>£300</b> left  ·  <b>5</b> open</div>
+            <div class="bar"><i></i></div>
+            <div class="btns"><div class="bp">+ Add Expense</div><div class="bs">✓ Settle Up</div></div>
+          </div>
+
+          <div class="fsec">
+            <div class="qaGrid">
+              <div class="t"><div class="ic">💳</div><div><div class="lbl">Settle up</div><div class="sub2">£300 · 5 open</div></div></div>
+              <div class="t"><div class="ic">✅</div><div><div class="lbl">Chores</div><div class="sub2">2 due today</div></div></div>
+              <div class="t"><div class="ic">📊</div><div><div class="lbl">Analytics</div><div class="sub2">This month</div></div></div>
+              <div class="t"><div class="ic">💬</div><div><div class="lbl">Activity</div><div class="sub2">3 new</div></div></div>
+            </div>
+          </div>
+
+          <div class="fsec">
+            <div class="fseclbl"><span>Needs attention · 3</span></div>
+            <div class="att-row" style="background:#fff;border:1px solid var(--border)"><div class="ic" style="background:#FEE9E5">🛒</div><div class="meta"><div class="t">Groceries</div><div class="c" style="color:#8C2F1F">Overdue · Apr 18</div></div><div class="amt">-£42</div></div>
+            <div class="att-row" style="background:#fff;border:1px solid var(--border)"><div class="ic">🏠</div><div class="meta"><div class="t">Rent</div><div class="c">Due Apr 28</div></div><div class="amt">-£650</div></div>
+          </div>
+
+          <div class="fsec">
+            <div class="fseclbl"><span>Spend · April</span></div>
+            <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:12px">
+              <div class="donutRow">
+                <div class="donut" style="width:64px;height:64px"><div class="hole" style="width:44px;height:44px;font-size:10px">£950</div></div>
+                <div class="donut-leg">
+                  <div><i style="background:#2d6a4f"></i> Housing 68%</div>
+                  <div><i style="background:#96E85F"></i> Groceries 19%</div>
+                  <div><i style="background:#F3D2A7"></i> Utilities 13%</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="fsec">
+            <div class="fseclbl"><span>Recent</span><span class="link">See all</span></div>
+            <div class="rec-row rec-dense"><div class="ic">🛒</div><div style="flex:1"><div class="t">Groceries</div><div class="c">You · Today</div></div><div class="amt" style="color:#8C2F1F">-£42</div></div>
+            <div class="rec-row rec-dense"><div class="ic">🏠</div><div style="flex:1"><div class="t">Rent</div><div class="c">Sam · 2d</div></div><div class="amt">Settled</div></div>
+            <div class="rec-row rec-dense"><div class="ic">⚡</div><div style="flex:1"><div class="t">Electric</div><div class="c">You · 5d</div></div><div class="amt" style="color:#1F4D38">+£60</div></div>
+            <div class="rec-row rec-dense"><div class="ic">🌐</div><div style="flex:1"><div class="t">Internet</div><div class="c">Alex · 1w</div></div><div class="amt">Settled</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- F3: Minimal -->
+    <div class="fs">
+      <span class="combo">F3</span>
+      <h3>Minimal focused</h3>
+      <p>Q4 hero-action · A3 tabbed · C3 pills · R1 roomy. Least cognitive load — one big CTA, everything else quiet.</p>
+      <div class="fp">
+        <div class="sb"><span>9:41</span><span>●●●</span></div>
+        <div class="hd"><div style="display:flex;align-items:center"><div class="logo">✦</div><div class="name">Shared Flat</div></div><div class="bell">🔔<div class="b">3</div></div></div>
+        <div class="body">
+          <div class="fhero">
+            <div class="top"><div class="lab">Your Share · April</div><div class="pct">40% settled</div></div>
+            <div class="amt">£500.00</div>
+            <div class="inl"><b>£200</b> paid  ·  <b>£300</b> left  ·  <b>5</b> open</div>
+            <div class="bar"><i></i></div>
+            <div class="btns"><div class="bp">+ Add Expense</div><div class="bsIc">✓</div></div>
+          </div>
+
+          <div class="fsec">
+            <div class="qaHero">
+              <div class="big">💳 Settle up · £300</div>
+              <div class="rest">
+                <div class="c">✅<span>Chores</span></div>
+                <div class="c">📊<span>Stats</span></div>
+                <div class="c">💬<span>Feed</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="fsec">
+            <div class="fseclbl"><span>Attention</span></div>
+            <div class="att-sec">
+              <div class="att-tab">
+                <div class="tb on">Overdue · 1</div>
+                <div class="tb off">This week · 2</div>
+                <div class="tb off">Later · 2</div>
+              </div>
+              <div class="att-row"><div class="ic" style="background:#FEE9E5">🛒</div><div class="meta"><div class="t">Groceries</div><div class="c" style="color:#8C2F1F">Apr 18</div></div><div class="amt">-£42</div></div>
+            </div>
+          </div>
+
+          <div class="fsec">
+            <div class="fseclbl"><span>Top spend · April</span></div>
+            <div class="cat-pills">
+              <div class="p">🏠 Housing <b>£650</b></div>
+              <div class="p">🍽️ Groceries <b>£180</b></div>
+              <div class="p">⚡ Utilities <b>£120</b></div>
+              <div class="p" style="color:var(--muted)">+3 more</div>
+            </div>
+          </div>
+
+          <div class="fsec">
+            <div class="fseclbl"><span>Recent activity</span></div>
+            <div class="rec-row"><div class="ic">🛒</div><div style="flex:1"><div class="t">Groceries</div><div class="c">You · Today</div></div><div class="amt" style="color:#8C2F1F">-£42</div></div>
+            <div class="rec-row"><div class="ic">🏠</div><div style="flex:1"><div class="t">Rent</div><div class="c">Sam · 2d</div></div><div class="amt">Settled</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- F4: Classic refined -->
+    <div class="fs">
+      <span class="combo">F4</span>
+      <h3>Classic refined</h3>
+      <p>Q1 circles · A1 two sections · C1 bars · R3 grouped. Familiar pattern, just polished.</p>
+      <div class="fp">
+        <div class="sb"><span>9:41</span><span>●●●</span></div>
+        <div class="hd"><div style="display:flex;align-items:center"><div class="logo">✦</div><div class="name">Shared Flat</div></div><div class="bell">🔔<div class="b">3</div></div></div>
+        <div class="body">
+          <div class="fhero">
+            <div class="top"><div class="lab">Your Share · April</div><div class="pct">40% settled</div></div>
+            <div class="amt">£500.00</div>
+            <div class="inl"><b>£200</b> paid  ·  <b>£300</b> left  ·  <b>5</b> open</div>
+            <div class="bar"><i></i></div>
+            <div class="btns"><div class="bp">+ Add Expense</div><div class="bs">✓ Settle Up</div></div>
+          </div>
+
+          <div class="fsec">
+            <div class="qa4">
+              <div class="a"><div class="c">💳</div><div class="t">Settle</div></div>
+              <div class="a"><div class="c">✅</div><div class="t">Chores</div></div>
+              <div class="a"><div class="c">📊</div><div class="t">Stats</div></div>
+              <div class="a"><div class="c">💬</div><div class="t">Activity</div></div>
+            </div>
+          </div>
+
+          <div class="fsec">
+            <div class="fseclbl"><span>Things to do</span><span class="link">View all</span></div>
+            <div class="att-row" style="background:#fff;border:1px solid var(--border)"><div class="ic" style="background:#FEE9E5">🛒</div><div class="meta"><div class="t">Groceries</div><div class="c" style="color:#8C2F1F">Overdue</div></div><div class="amt">-£42</div></div>
+          </div>
+
+          <div class="fsec">
+            <div class="fseclbl"><span>Focus</span></div>
+            <div class="att-row" style="background:#fff;border:1px solid var(--border)"><div class="ic">🏠</div><div class="meta"><div class="t">Rent</div><div class="c">Due Apr 28</div></div><div class="amt">-£650</div></div>
+          </div>
+
+          <div class="fsec">
+            <div class="fseclbl"><span>Categories · April</span></div>
+            <div class="cat-bar"><div class="n">🏠 Housing</div><div class="v">£650</div></div>
+            <div class="cat-bar"><div class="bar" style="background:#f1efe9"><i style="width:80%;background:#2d6a4f"></i></div></div>
+            <div class="cat-bar" style="margin-top:4px"><div class="n">🍽️ Groceries</div><div class="v">£180</div></div>
+            <div class="cat-bar"><div class="bar" style="background:#f1efe9"><i style="width:22%;background:#96E85F"></i></div></div>
+          </div>
+
+          <div class="fsec">
+            <div class="fseclbl"><span>Recent activity</span></div>
+            <div class="rec-group-label">Today</div>
+            <div class="rec-row"><div class="ic">🛒</div><div style="flex:1"><div class="t">Groceries</div><div class="c">You</div></div><div class="amt" style="color:#8C2F1F">-£42</div></div>
+            <div class="rec-group-label">This week</div>
+            <div class="rec-row"><div class="ic">🏠</div><div style="flex:1"><div class="t">Rent</div><div class="c">Sam · Mon</div></div><div class="amt">Settled</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- F5: Mobile-native -->
+    <div class="fs">
+      <span class="combo">F5</span>
+      <h3>Mobile-native</h3>
+      <p>Q2 pills · A4 swipe strip · C2 donut · R2 dense. Swipes + horizontal strips — feels like a native iOS app.</p>
+      <div class="fp">
+        <div class="sb"><span>9:41</span><span>●●●</span></div>
+        <div class="hd"><div style="display:flex;align-items:center"><div class="logo">✦</div><div class="name">Shared Flat</div></div><div class="bell">🔔<div class="b">3</div></div></div>
+        <div class="body">
+          <div class="fhero">
+            <div class="top"><div class="lab">Your Share · April</div><div class="pct">40% settled</div></div>
+            <div class="amt">£500.00</div>
+            <div class="inl"><b>£200</b> paid  ·  <b>£300</b> left  ·  <b>5</b> open</div>
+            <div class="bar"><i></i></div>
+            <div class="btns"><div class="bp">+ Add Expense</div><div class="bs">✓ Settle Up</div></div>
+          </div>
+
+          <div class="fsec">
+            <div class="qaPill" style="gap:5px"><div class="p" style="font-size:11px;height:36px">💳 Settle</div><div class="p" style="font-size:11px;height:36px">✅ Chores</div><div class="p" style="font-size:11px;height:36px">📊 Stats</div><div class="p" style="font-size:11px;height:36px">💬 Feed</div></div>
+          </div>
+
+          <div class="fsec">
+            <div class="fseclbl"><span>Needs attention</span></div>
+            <div class="att-strip">
+              <div class="card2"><div class="t">🛒 Groceries</div><div class="c" style="color:#8C2F1F">Overdue · Apr 18</div><div class="amt">-£42</div></div>
+              <div class="card2"><div class="t">🏠 Rent</div><div class="c">Due Apr 28</div><div class="amt">-£650</div></div>
+              <div class="card2" style="opacity:0.6"><div class="t">⚡ Electric</div></div>
+            </div>
+          </div>
+
+          <div class="fsec">
+            <div class="fseclbl"><span>Spend · April</span></div>
+            <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:12px">
+              <div class="donutRow">
+                <div class="donut" style="width:64px;height:64px"><div class="hole" style="width:44px;height:44px;font-size:10px">£950</div></div>
+                <div class="donut-leg">
+                  <div><i style="background:#2d6a4f"></i> Housing 68%</div>
+                  <div><i style="background:#96E85F"></i> Grocery 19%</div>
+                  <div><i style="background:#F3D2A7"></i> Utils 13%</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="fsec">
+            <div class="fseclbl"><span>Recent</span></div>
+            <div class="rec-row rec-dense"><div class="ic">🛒</div><div style="flex:1"><div class="t">Groceries</div><div class="c">Today</div></div><div class="amt" style="color:#8C2F1F">-£42</div></div>
+            <div class="rec-row rec-dense"><div class="ic">🏠</div><div style="flex:1"><div class="t">Rent</div><div class="c">2d</div></div><div class="amt">Settled</div></div>
+            <div class="rec-row rec-dense"><div class="ic">⚡</div><div style="flex:1"><div class="t">Electric</div><div class="c">5d</div></div><div class="amt" style="color:#1F4D38">+£60</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="note" style="margin-top:32px">
+    <strong>My pick:</strong> <b>F1 Airy modern</b>. Clean, modern, all information legible without being busy. F3 Minimal is the best if you want to push discipline — one CTA, everything quiet. Reply with F1/F2/F3/F4/F5 (or mix sections) and I'll implement it.
+  </div>
+</div>
+</body>
+</html>
