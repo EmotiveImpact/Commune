@@ -26,7 +26,8 @@ import {
   inviteMemberSchema,
 } from '@commune/core';
 import { GroupType, type SpaceEssentials } from '@commune/types';
-import { Screen, Button, EmptyState, Pressable } from '@/components/primitives';
+import { Screen, EmptyState, Pressable } from '@/components/primitives';
+import { Button as HButton, Card as HCard } from 'heroui-native';
 import { colors, radius, space } from '@/constants/design';
 import { useGroupStore } from '@/stores/group';
 import { useAuthStore } from '@/stores/auth';
@@ -311,66 +312,61 @@ function TypeTile({
   onPress: () => void;
 }) {
   return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => ({
-        backgroundColor: colors.bgSurface,
-        borderRadius: radius.card,
-        borderWidth: selected ? 1.5 : 1,
-        borderColor: selected ? colors.sage : colors.border,
-        padding: space.base,
-        marginBottom: 10,
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: space.md,
-        shadowColor: '#000',
-        shadowOpacity: 0.05,
-        shadowRadius: 10,
-        shadowOffset: { width: 0, height: 2 },
-        elevation: 2,
-        opacity: pressed ? 0.92 : 1,
-      })}
-    >
-      <View
-        style={{
-          width: 40,
-          height: 40,
-          borderRadius: 12,
-          backgroundColor: option.bg,
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <option.icon size={22} color={option.accent} strokeWidth={1.75} />
-      </View>
-      <View style={{ flex: 1 }}>
-        <Text style={{ fontSize: 14, fontWeight: '700', color: colors.textPrimary }}>
-          {option.label}
-        </Text>
-        <Text
+    <Pressable onPress={onPress} style={{ marginBottom: 10 }}>
+      {({ pressed }) => (
+        <HCard
           style={{
-            fontSize: 12,
-            lineHeight: 18,
-            color: colors.textTertiary,
-            marginTop: 2,
+            borderRadius: radius.card,
+            borderWidth: selected ? 2 : 1,
+            borderColor: selected ? colors.sage : colors.border,
+            opacity: pressed ? 0.85 : 1,
           }}
         >
-          {option.caption}
-        </Text>
-      </View>
-      {selected ? (
-        <View
-          style={{
-            position: 'absolute',
-            top: 10,
-            right: 10,
-            width: 10,
-            height: 10,
-            borderRadius: 5,
-            backgroundColor: colors.sage,
-          }}
-        />
-      ) : null}
+          <HCard.Body style={{ flexDirection: 'row', alignItems: 'center', gap: space.md, padding: space.base }}>
+            <View
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 12,
+                backgroundColor: option.bg,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <option.icon size={22} color={option.accent} strokeWidth={1.75} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 14, fontWeight: '700', color: colors.textPrimary }}>
+                {option.label}
+              </Text>
+              <Text
+                style={{
+                  fontSize: 12,
+                  lineHeight: 18,
+                  color: colors.textTertiary,
+                  marginTop: 2,
+                }}
+              >
+                {option.caption}
+              </Text>
+            </View>
+            {selected ? (
+              <View
+                style={{
+                  width: 22,
+                  height: 22,
+                  borderRadius: 11,
+                  backgroundColor: colors.sage,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <IconCheck size={14} color="#fff" strokeWidth={2.5} />
+              </View>
+            ) : null}
+          </HCard.Body>
+        </HCard>
+      )}
     </Pressable>
   );
 }
@@ -811,6 +807,22 @@ export default function OnboardingScreen() {
             skipLabel="Skip"
           />
 
+          <View
+            style={{
+              alignSelf: 'center',
+              backgroundColor: '#FF3B30',
+              paddingHorizontal: 12,
+              paddingVertical: 4,
+              borderRadius: 999,
+              marginTop: 4,
+              marginBottom: 8,
+            }}
+          >
+            <Text style={{ color: '#fff', fontSize: 10, fontWeight: '800', letterSpacing: 0.5 }}>
+              BUILD v4 · CARDS + SHADOW
+            </Text>
+          </View>
+
           {step === 'type' ? (
             <>
               <Hero
@@ -1067,34 +1079,23 @@ export default function OnboardingScreen() {
           ) : null}
 
           <View style={{ marginTop: space.lg }}>
-            <Pressable
+            <HButton
+              variant="primary"
+              size="lg"
               onPress={handlePrimary}
-              disabled={primaryDisabled}
-              style={({ pressed }) => ({
-                height: 56,
-                borderRadius: 16,
-                backgroundColor: colors.sage,
-                alignItems: 'center',
-                justifyContent: 'center',
-                opacity: primaryDisabled ? 0.5 : pressed ? 0.9 : 1,
-              })}
+              isDisabled={primaryDisabled}
+              className="w-full"
             >
-              <Text
-                style={{
-                  fontSize: 16,
-                  fontWeight: '700',
-                  color: colors.textInverse,
-                }}
-              >
+              <HButton.Label>
                 {step === 'done'
                   ? 'Open Commune'
                   : step === 'name' && createGroup.isPending
                   ? 'Creating…'
                   : step === 'invite'
                   ? (invitedEmails.length > 0 ? 'Finish' : 'Continue')
-                  : 'Continue →'}
-              </Text>
-            </Pressable>
+                  : 'Continue'}
+              </HButton.Label>
+            </HButton>
 
             {step === 'name' && !canCreateGroup ? (
               <Text
