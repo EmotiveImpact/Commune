@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
-import { Alert, Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import { Alert, ScrollView, Text, View } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { IconArrowDown, IconArrowUp } from '@tabler/icons-react-native';
 import {
   IconChevronLeft,
   IconChevronRight,
@@ -9,6 +9,7 @@ import {
   IconDotsVertical,
   IconLogout,
   IconShieldCheck,
+  IconUser,
   IconX,
 } from '@tabler/icons-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -24,7 +25,8 @@ import {
 import { useGroupSettlement } from '@/hooks/use-settlement';
 import { useActivityLog } from '@/hooks/use-activity';
 import { colors, elevation, font, radius, space, getCategoryMeta } from '@/constants/design';
-import { Avatar, EmptyState, Screen } from '@/components/primitives';
+import { Avatar, EmptyState, Pressable, Screen } from '@/components/primitives';
+import { BottomSheet, SheetRow } from '@/components/bottom-sheet';
 import { getErrorMessage } from '@/lib/errors';
 import { hapticHeavy, hapticLight, hapticMedium, hapticSuccess, hapticWarning } from '@/lib/haptics';
 
@@ -89,6 +91,7 @@ function describeActivityTitle(action: string, meta: Record<string, unknown>): {
  * ============================================================================ */
 
 export default function MemberProfileScreen() {
+  const insets = useSafeAreaInsets();
   const { userId, groupId } = useLocalSearchParams<{ userId: string; groupId: string }>();
   const router = useRouter();
   const currentUser = useAuthStore((s) => s.user);
@@ -192,7 +195,7 @@ export default function MemberProfileScreen() {
       <Screen>
         <Stack.Screen options={{ headerShown: false }} />
         <EmptyState
-          icon="person-outline"
+          icon={IconUser}
           title="Member not found"
           description="This person may have left the group or the link is out of date."
           actionLabel="Go back"
@@ -318,9 +321,8 @@ export default function MemberProfileScreen() {
           flexDirection: 'row',
           alignItems: 'center',
           paddingHorizontal: space.gutter,
-          paddingTop: 8,
+          paddingTop: insets.top + 12,
           paddingBottom: space.sm,
-          height: 52,
         }}
       >
         <Pressable
@@ -328,10 +330,11 @@ export default function MemberProfileScreen() {
             hapticLight();
             router.back();
           }}
-          hitSlop={12}
-          style={{ width: 32, height: 32, alignItems: 'center', justifyContent: 'center' }}
+          hitSlop={10}
+          style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 2, paddingVertical: 6, paddingRight: 10, marginLeft: -4, opacity: pressed ? 0.6 : 1, zIndex: 2 })}
         >
-          <IconChevronLeft size={24} strokeWidth={2} color={colors.textPrimary} />
+          <IconChevronLeft size={22} strokeWidth={2} color={colors.textPrimary} />
+          <Text style={{ fontSize: 15, fontWeight: '600', color: colors.textPrimary }}>Back</Text>
         </Pressable>
         <View style={{ flex: 1, alignItems: 'center' }}>
           <Text style={[font.h3, { color: colors.textPrimary }]} numberOfLines={1}>
@@ -494,11 +497,11 @@ export default function MemberProfileScreen() {
                   marginRight: space.md,
                 }}
               >
-                <Ionicons
-                  name={balanceTone === 'owed' ? 'arrow-down-outline' : 'arrow-up-outline'}
-                  size={20}
-                  color={balanceTone === 'owed' ? colors.oweText : colors.sage}
-                />
+                {balanceTone === 'owed' ? (
+                  <IconArrowDown size={20} color={colors.oweText} strokeWidth={1.7} />
+                ) : (
+                  <IconArrowUp size={20} color={colors.sage} strokeWidth={1.7} />
+                )}
               </View>
               <View style={{ flex: 1, minWidth: 0 }}>
                 <Text
@@ -596,11 +599,10 @@ export default function MemberProfileScreen() {
                       marginRight: space.md,
                     }}
                   >
-                    <Ionicons
-                      name={cat.icon as keyof typeof Ionicons.glyphMap}
-                      size={20}
-                      color={cat.color}
-                    />
+                    {(() => {
+                      const CatIcon = cat.icon;
+                      return <CatIcon size={20} color={cat.color} strokeWidth={1.7} />;
+                    })()}
                   </View>
                   <View style={{ flex: 1, minWidth: 0 }}>
                     <Text
@@ -688,8 +690,6 @@ function MemberActionsSheet({
   transferBusy: boolean;
   removeBusy: boolean;
 }) {
-  const insets = useSafeAreaInsets();
-
   // Owner cannot have their admin rights revoked (they're always an admin).
   const roleRowDisabled = targetIsOwner || roleBusy;
   const roleTitle = targetIsAdmin ? 'Remove admin rights' : 'Make admin';
@@ -697,199 +697,46 @@ function MemberActionsSheet({
     ? `${memberName} will return to being a regular member.`
     : `Let ${memberName} manage this group.`;
 
+  const showTransfer = currentUserIsOwner && !targetIsOwner;
+
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <Pressable
-        onPress={onClose}
-        style={{
-          flex: 1,
-          backgroundColor: 'rgba(26,30,43,0.4)',
-          justifyContent: 'flex-end',
-        }}
-      >
-        <Pressable
-          onPress={(e) => e.stopPropagation()}
-          style={{
-            backgroundColor: colors.bgSurface,
-            borderTopLeftRadius: radius.sheet,
-            borderTopRightRadius: radius.sheet,
-            paddingTop: space.lg,
-            paddingBottom: insets.bottom + space.lg,
-            paddingHorizontal: space.gutter,
-            ...elevation.sheet,
-          }}
-        >
-          {/* Grab handle */}
-          <View
-            style={{
-              alignSelf: 'center',
-              width: 44,
-              height: 5,
-              borderRadius: 3,
-              backgroundColor: colors.border,
-              marginBottom: space.lg,
-            }}
-          />
-
-          {/* Header with close button */}
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'flex-start',
-              justifyContent: 'space-between',
-              marginBottom: space.lg,
-            }}
-          >
-            <View style={{ flex: 1, paddingRight: space.md }}>
-              <Text style={{ fontSize: 18, fontWeight: '700', color: colors.textPrimary }}>
-                Member actions
-              </Text>
-              <Text
-                style={{ fontSize: 12, color: colors.textMuted, marginTop: 4 }}
-                numberOfLines={2}
-              >
-                What would you like to do with {memberName}?
-              </Text>
-            </View>
-            <Pressable
-              onPress={onClose}
-              accessibilityRole="button"
-              accessibilityLabel="Close"
-              style={({ pressed }) => [
-                {
-                  width: 32,
-                  height: 32,
-                  borderRadius: 16,
-                  backgroundColor: colors.bgInk,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                },
-                pressed && { opacity: 0.8 },
-              ]}
-            >
-              <IconX size={16} strokeWidth={2} color={colors.textInverse} />
-            </Pressable>
-          </View>
-
-          {/* Rows */}
-          <View style={{ gap: space.sm }}>
-            <SheetRow
-              iconBg={colors.sageSoft}
-              iconColor={colors.sage}
-              icon={<IconShieldCheck size={20} strokeWidth={1.75} color={colors.sage} />}
-              title={roleTitle}
-              caption={roleCaption}
-              onPress={onToggleAdmin}
-              disabled={roleRowDisabled}
-            />
-
-            {currentUserIsOwner && !targetIsOwner ? (
-              <SheetRow
-                iconBg="#F5E8DD"
-                iconColor="#8B5A3C"
-                icon={<IconCrown size={20} strokeWidth={1.75} color="#8B5A3C" />}
-                title="Transfer ownership"
-                caption={`Make ${memberName} the new owner of this group.`}
-                onPress={onTransferOwnership}
-                disabled={transferBusy}
-              />
-            ) : null}
-
-            <SheetRow
-              iconBg="#FEE9E5"
-              iconColor="#8C2F1F"
-              icon={<IconLogout size={20} strokeWidth={1.75} color="#8C2F1F" />}
-              title="Remove from group"
-              titleColor="#8C2F1F"
-              caption={`${memberName} will lose access to this group.`}
-              onPress={onRemove}
-              disabled={removeBusy || targetIsOwner}
-              destructive
-            />
-          </View>
-        </Pressable>
-      </Pressable>
-    </Modal>
-  );
-}
-
-/* ============================================================================
- * SheetRow — one action row inside MemberActionsSheet
- * ============================================================================ */
-
-function SheetRow({
-  icon,
-  iconBg,
-  iconColor: _iconColor,
-  title,
-  caption,
-  onPress,
-  disabled = false,
-  destructive = false,
-  titleColor,
-}: {
-  icon: React.ReactNode;
-  iconBg: string;
-  iconColor: string;
-  title: string;
-  caption: string;
-  onPress: () => void;
-  disabled?: boolean;
-  destructive?: boolean;
-  titleColor?: string;
-}) {
-  return (
-    <Pressable
-      onPress={onPress}
-      disabled={disabled}
-      style={({ pressed }) => ({
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: colors.bgSurface,
-        borderRadius: 14,
-        borderWidth: 1,
-        borderColor: colors.borderSubtle,
-        padding: space.md,
-        opacity: disabled ? 0.4 : pressed ? 0.85 : 1,
-      })}
+    <BottomSheet
+      visible={visible}
+      onClose={onClose}
+      title="Member actions"
+      subtitle={`What would you like to do with ${memberName}?`}
     >
-      <View
-        style={{
-          width: 40,
-          height: 40,
-          borderRadius: 12,
-          backgroundColor: iconBg,
-          alignItems: 'center',
-          justifyContent: 'center',
-          marginRight: space.md,
-        }}
-      >
-        {icon}
-      </View>
-      <View style={{ flex: 1, minWidth: 0 }}>
-        <Text
-          style={{
-            fontSize: 15,
-            fontWeight: '600',
-            color: titleColor ?? colors.textPrimary,
-          }}
-          numberOfLines={1}
-        >
-          {title}
-        </Text>
-        <Text
-          style={{ fontSize: 12, color: colors.textMuted, marginTop: 2 }}
-          numberOfLines={2}
-        >
-          {caption}
-        </Text>
-      </View>
-      <IconChevronRight
-        size={16}
-        strokeWidth={2}
-        color={destructive ? '#8C2F1F' : colors.textMuted}
+      <SheetRow
+        icon={IconShieldCheck}
+        title={roleTitle}
+        subtitle={roleCaption}
+        onPress={onToggleAdmin}
+        disabled={roleRowDisabled}
+        isLast={!showTransfer && targetIsOwner}
       />
-    </Pressable>
+      {showTransfer ? (
+        <SheetRow
+          icon={IconCrown}
+          iconColor={colors.typeProject.accent}
+          iconBg={colors.typeProject.bg}
+          title="Transfer ownership"
+          subtitle={`Make ${memberName} the new owner of this group.`}
+          onPress={onTransferOwnership}
+          disabled={transferBusy}
+        />
+      ) : null}
+      {!targetIsOwner ? (
+        <SheetRow
+          icon={IconLogout}
+          destructive
+          title="Remove from group"
+          subtitle={`${memberName} will lose access to this group.`}
+          onPress={onRemove}
+          disabled={removeBusy}
+          isLast
+        />
+      ) : null}
+    </BottomSheet>
   );
 }
 

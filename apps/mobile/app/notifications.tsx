@@ -1,9 +1,17 @@
 import { useCallback, useMemo } from 'react';
-import { Pressable, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { IconChevronLeft } from '@tabler/icons-react-native';
-import { Screen, EmptyState } from '@/components/primitives';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import {
+  IconBell,
+  IconChevronLeft,
+  IconCircleCheck,
+  IconCreditCard,
+  IconRefresh,
+  IconUser,
+  type Icon as TablerIcon,
+} from '@tabler/icons-react-native';
+import { Screen, EmptyState, Pressable } from '@/components/primitives';
 import { colors, font, radius, space } from '@/constants/design';
 import { useAuthStore } from '@/stores/auth';
 import { useGroupStore } from '@/stores/group';
@@ -30,7 +38,7 @@ type TypeCategory = 'bills' | 'chores' | 'people' | 'system';
 
 type TypeMeta = {
   category: TypeCategory;
-  icon: keyof typeof Ionicons.glyphMap;
+  Icon: TablerIcon;
   bg: string;
   ink: string;
 };
@@ -42,11 +50,11 @@ type TypeMeta = {
  * System   → colors.bgSubtle / colors.textSecondary
  */
 
-const CATEGORY_STYLE: Record<TypeCategory, { bg: string; ink: string; icon: keyof typeof Ionicons.glyphMap }> = {
-  bills: { bg: '#FEE9E5', ink: '#8C2F1F', icon: 'card-outline' },
-  chores: { bg: '#E8F3EC', ink: '#14594E', icon: 'checkbox-outline' },
-  people: { bg: '#E4EDFD', ink: '#1a56db', icon: 'person-outline' },
-  system: { bg: colors.bgSubtle, ink: colors.textSecondary, icon: 'sync-outline' },
+const CATEGORY_STYLE: Record<TypeCategory, { bg: string; ink: string; Icon: TablerIcon }> = {
+  bills: { bg: '#FEE9E5', ink: '#8C2F1F', Icon: IconCreditCard },
+  chores: { bg: '#E8F3EC', ink: '#14594E', Icon: IconCircleCheck },
+  people: { bg: '#E4EDFD', ink: '#1a56db', Icon: IconUser },
+  system: { bg: colors.bgSubtle, ink: colors.textSecondary, Icon: IconRefresh },
 };
 
 function getTypeMeta(type: string): TypeMeta {
@@ -143,6 +151,7 @@ function NotificationRow({
 }) {
   const meta = getTypeMeta(item.type);
   const isUnread = !item.read;
+  const Icon = meta.Icon;
 
   return (
     <TouchableOpacity
@@ -171,7 +180,7 @@ function NotificationRow({
           justifyContent: 'center',
         }}
       >
-        <Ionicons name={meta.icon} size={18} color={meta.ink} />
+        <Icon size={18} color={meta.ink} strokeWidth={1.7} />
       </View>
 
       {/* Content */}
@@ -247,24 +256,40 @@ function NotificationsHeader({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingBottom: space.base,
+        height: 48,
+        position: 'relative',
       }}
     >
       <Pressable
         onPress={onBack}
-        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        style={{
-          width: 36,
-          height: 36,
+        hitSlop={10}
+        style={({ pressed }) => ({
+          flexDirection: 'row',
           alignItems: 'center',
-          justifyContent: 'center',
-          marginLeft: -6,
-        }}
+          gap: 2,
+          paddingVertical: 6,
+          paddingRight: 10,
+          marginLeft: -4,
+          opacity: pressed ? 0.6 : 1,
+          zIndex: 2,
+        })}
       >
-        <IconChevronLeft size={24} color={colors.textPrimary} />
+        <IconChevronLeft size={22} color={colors.textPrimary} strokeWidth={2} />
+        <Text style={{ fontSize: 15, fontWeight: '600', color: colors.textPrimary }}>Back</Text>
       </Pressable>
 
-      <Text style={[font.h3, { color: colors.textPrimary }]}>Notifications</Text>
+      <View
+        pointerEvents="none"
+        style={{
+          position: 'absolute',
+          left: 0,
+          right: 0,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <Text style={[font.h3, { color: colors.textPrimary }]}>Notifications</Text>
+      </View>
 
       <Pressable
         onPress={onMarkAllRead}
@@ -274,6 +299,7 @@ function NotificationsHeader({
           minWidth: 36,
           alignItems: 'flex-end',
           opacity: canMarkAll ? 1 : 0.4,
+          zIndex: 2,
         }}
       >
         <Text style={{ fontSize: 12, fontWeight: '700', color: colors.sageInk }}>
@@ -288,6 +314,7 @@ function NotificationsHeader({
 
 export default function NotificationsScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const user = useAuthStore((s) => s.user);
   const activeGroupId = useGroupStore((s) => s.activeGroupId);
 
@@ -353,29 +380,36 @@ export default function NotificationsScreen() {
 
   return (
     <Screen>
-      <ScrollView
-        contentContainerStyle={{
-          paddingTop: 12,
-          paddingBottom: 120,
+      <View
+        style={{
+          paddingTop: insets.top + 12,
           paddingHorizontal: space.gutter,
+          backgroundColor: colors.bgBase,
         }}
-        showsVerticalScrollIndicator={false}
       >
         <NotificationsHeader
           onBack={handleBack}
           onMarkAllRead={handleMarkAllRead}
           canMarkAll={unreadIds.length > 0}
         />
-
+      </View>
+      <ScrollView
+        contentContainerStyle={{
+          paddingTop: 4,
+          paddingBottom: 120,
+          paddingHorizontal: space.gutter,
+        }}
+        showsVerticalScrollIndicator={false}
+      >
         {!user ? (
           <EmptyState
-            icon="notifications-outline"
+            icon={IconBell}
             title="Not signed in"
             description="Sign in to view your notifications."
           />
         ) : isLoading ? null : items.length === 0 ? (
           <EmptyState
-            icon="notifications-outline"
+            icon={IconBell}
             title="You're all caught up"
             description="We'll let you know when something needs you."
           />

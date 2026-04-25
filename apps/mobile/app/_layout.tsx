@@ -100,6 +100,7 @@ function toMobileUser(user: SupabaseAuthUser | null): User | null {
     is_deactivated: false,
     deletion_requested_at: null,
     deletion_scheduled_for: null,
+    acquisition_source: typeof meta.acquisition_source === 'string' ? meta.acquisition_source : null,
     created_at: user.created_at,
   };
 }
@@ -247,28 +248,33 @@ export default function RootLayout() {
                 headerStyle: { backgroundColor: bgColor },
                 headerTintColor: textColor,
                 headerTitleStyle: { fontWeight: '700' },
+                gestureEnabled: true,
+                fullScreenGestureEnabled: true,
+                animation: 'slide_from_right',
               }}
             >
               <Stack.Screen name="(auth)" options={{ headerShown: false }} />
               <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-              <Stack.Screen name="onboarding" options={{ title: 'Get Started', headerBackTitle: 'Back' }} />
-              <Stack.Screen name="members" options={{ title: 'Members', headerBackTitle: 'Back' }} />
-              <Stack.Screen name="group-edit" options={{ title: 'Edit Group', headerBackTitle: 'Back' }} />
-              <Stack.Screen name="group-close" options={{ title: 'Cycle Close', headerBackTitle: 'Back' }} />
-              <Stack.Screen name="operations" options={{ title: 'Operations', headerBackTitle: 'Back' }} />
-              <Stack.Screen name="expenses/new" options={{ title: 'New Expense', headerBackTitle: 'Back' }} />
-              <Stack.Screen name="expenses/[expenseId]" options={{ title: 'Expense Detail', headerBackTitle: 'Back' }} />
-              <Stack.Screen name="expenses/[expenseId]/edit" options={{ title: 'Edit Expense', headerBackTitle: 'Back' }} />
-              <Stack.Screen name="activity" options={{ title: 'Activity', headerBackTitle: 'Back' }} />
-              <Stack.Screen name="notifications" options={{ title: 'Notifications', headerBackTitle: 'Back' }} />
-              <Stack.Screen name="pricing" options={{ title: 'Pricing', headerBackTitle: 'Back' }} />
-              <Stack.Screen name="recurring" options={{ title: 'Recurring', headerBackTitle: 'Back' }} />
-              <Stack.Screen name="analytics" options={{ title: 'Analytics', headerBackTitle: 'Back' }} />
-              <Stack.Screen name="group-hub" options={{ title: 'Group', headerShown: false }} />
-              <Stack.Screen name="command-centre" options={{ title: 'Command Centre', headerShown: false }} />
-              <Stack.Screen name="funds" options={{ title: 'Funds', headerBackTitle: 'Back' }} />
-              <Stack.Screen name="templates" options={{ title: 'Templates', headerBackTitle: 'Back' }} />
-              <Stack.Screen name="member-profile" options={{ title: 'Member', headerShown: false }} />
+              <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+              <Stack.Screen name="members" options={{ headerShown: false }} />
+              <Stack.Screen name="group-edit" options={{ headerShown: false }} />
+              <Stack.Screen name="group-close" options={{ headerShown: false }} />
+              <Stack.Screen name="operations" options={{ headerShown: false }} />
+              <Stack.Screen name="expenses/new" options={{ headerShown: false }} />
+              <Stack.Screen name="expenses/[expenseId]" options={{ headerShown: false }} />
+              <Stack.Screen name="expenses/[expenseId]/edit" options={{ headerShown: false }} />
+              <Stack.Screen name="activity" options={{ headerShown: false }} />
+              <Stack.Screen name="notifications" options={{ headerShown: false }} />
+              <Stack.Screen name="pricing" options={{ headerShown: false }} />
+              <Stack.Screen name="recurring" options={{ headerShown: false }} />
+              <Stack.Screen name="analytics" options={{ headerShown: false }} />
+              <Stack.Screen name="group-hub" options={{ headerShown: false }} />
+              <Stack.Screen name="settle-up" options={{ headerShown: false }} />
+              <Stack.Screen name="funds" options={{ headerShown: false }} />
+              <Stack.Screen name="templates" options={{ headerShown: false }} />
+              <Stack.Screen name="member-profile" options={{ headerShown: false }} />
+              <Stack.Screen name="payment-methods" options={{ headerShown: false }} />
+              <Stack.Screen name="edit-profile" options={{ headerShown: false }} />
             </Stack>
           </QueryClientProvider>
         </SafeAreaProvider>

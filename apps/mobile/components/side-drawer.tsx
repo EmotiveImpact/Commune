@@ -1,6 +1,7 @@
 import type { ComponentType } from 'react';
 import { useEffect, useMemo, useState } from 'react';
-import { Dimensions, Image, Modal, Pressable, Text, TouchableOpacity, View } from 'react-native';
+import { Dimensions, Image, Modal, Text, TouchableOpacity, View } from 'react-native';
+import { Pressable } from '@/components/primitives';
 import Animated, {
   Easing,
   runOnJS,

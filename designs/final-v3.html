@@ -1,0 +1,577 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Commune — Final v3: Edit Profile · Edit Group · Members</title>
+<style>
+  :root{
+    --bg:#FAF9F7; --surface:#ffffff; --ink:#171b24; --muted:#6b7280; --muted2:#9aa0aa;
+    --border:#eceae5; --border-soft:#f1efe9; --border-row:#f4f2ec;
+    --sage:#1f7a6a; --sage-soft:#E8F3EC; --sage-ink:#14594e; --sage-mid:#4FB3A0;
+    --cream:#eadfd4; --danger:#E35D5D; --warn:#8C2F1F; --warn-bg:#FEE9E5;
+    --navy:#1A1E2B;
+    --travel-bg:#FFF3D9; --travel-ink:#a16207;
+    --partner-bg:#FCE7F3; --partner-ink:#9d174d;
+    --work-bg:#E0E7FF; --work-ink:#4338ca;
+    --home-bg:#E8F3EC; --home-ink:#14594e;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:#efece6;color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Inter",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+  .page{max-width:1640px;margin:0 auto;padding:48px 24px 96px}
+  h1{font-size:38px;letter-spacing:-0.8px;margin:0 0 6px;font-weight:700}
+  .lede{color:var(--muted);font-size:15px;margin:0 0 28px;max-width:860px;line-height:1.55}
+  .changelog{background:#fff;border:1px solid var(--border);border-radius:16px;padding:18px 22px;margin:0 0 36px;max-width:960px}
+  .changelog h3{margin:0 0 8px;font-size:14px;font-weight:700;letter-spacing:0.3px;text-transform:uppercase;color:var(--sage-ink)}
+  .changelog ul{margin:0;padding-left:18px;font-size:13.5px;line-height:1.65;color:var(--ink)}
+  .changelog ul li b{font-weight:700}
+  .changelog .pill{display:inline-block;background:var(--warn-bg);color:var(--warn);font-size:11px;font-weight:700;padding:2px 10px;border-radius:10px;letter-spacing:0.3px;margin-right:6px;vertical-align:middle;text-transform:uppercase}
+
+  h2.sub{font-size:24px;letter-spacing:-0.4px;margin:60px 0 6px;font-weight:700}
+  .why{background:var(--sage-soft);border-radius:14px;padding:14px 18px;margin:10px 0 20px;color:var(--sage-ink);font-size:13.5px;line-height:1.55;max-width:720px;border:1px solid #cfe3d5}
+  .why b{font-weight:700}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,420px));gap:28px;justify-content:start}
+
+  .frame{background:var(--bg);border-radius:38px;border:1px solid var(--border-soft);overflow:hidden;height:860px;display:flex;flex-direction:column;box-shadow:0 8px 28px rgba(0,0,0,0.06)}
+  .sb{display:flex;align-items:center;justify-content:space-between;padding:14px 22px 0;color:var(--ink);font-size:11px;font-weight:600}
+  .hdr{display:flex;align-items:center;justify-content:space-between;padding:8px 20px 14px;position:relative;min-height:48px}
+  .hdr .back{display:flex;align-items:center;gap:2px;font-size:15px;color:var(--ink);font-weight:600}
+  .hdr .back .chev{font-size:22px;margin-right:-2px;line-height:1}
+  .hdr .title{position:absolute;left:0;right:0;display:flex;align-items:center;justify-content:center;pointer-events:none;font-size:17px;font-weight:700;letter-spacing:-0.2px}
+  .hdr .action{font-size:13px;color:var(--sage-ink);font-weight:700}
+  .hdr .action.disabled{color:var(--muted2);font-weight:600}
+  .body{flex:1;overflow:auto;padding:4px 16px 24px;scrollbar-width:none}
+  .body::-webkit-scrollbar{display:none}
+
+  .seclbl{font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px;padding:18px 4px 8px}
+
+  /* Tabler-style icon */
+  .ic-svg{width:20px;height:20px;stroke:currentColor;stroke-width:1.7;fill:none;stroke-linecap:round;stroke-linejoin:round}
+  .ic-tile{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .ic-tile.sage{background:var(--sage-soft);color:var(--sage-ink)}
+  .ic-tile.warn{background:var(--warn-bg);color:var(--warn)}
+  .ic-tile.travel{background:var(--travel-bg);color:var(--travel-ink)}
+  .ic-tile.work{background:var(--work-bg);color:var(--work-ink)}
+  .ic-tile.partner{background:var(--partner-bg);color:var(--partner-ink)}
+  .ic-tile.home{background:var(--home-bg);color:var(--home-ink)}
+
+  /* ─── Hero with avatar + cover ─────────────────────────── */
+  .hero-cover{position:relative;height:140px;background:linear-gradient(135deg,#EADFD4 0%,#d4c0b0 100%);border-radius:18px;margin-bottom:44px;overflow:hidden}
+  .hero-cover.group-home{background:linear-gradient(135deg,#d1ead9 0%,#a8d0b3 100%)}
+  .hero-cover.group-travel{background:linear-gradient(135deg,#ffe8b5 0%,#e8c568 100%)}
+  .hero-cover .edit-cover{position:absolute;top:12px;right:12px;background:rgba(0,0,0,0.55);color:#fff;border-radius:999px;padding:6px 12px;display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;backdrop-filter:blur(8px)}
+  .hero-cover .avatar-wrap{position:absolute;bottom:-36px;left:16px}
+  .hero-cover .avatar{width:84px;height:84px;border-radius:24px;background:var(--cream);border:4px solid var(--bg);display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:700;color:var(--ink);overflow:hidden}
+  .hero-cover .avatar.sage{background:var(--sage-soft);color:var(--sage-ink)}
+  .hero-cover .avatar.home{background:var(--home-bg);color:var(--home-ink)}
+  .hero-cover .avatar.travel{background:var(--travel-bg);color:var(--travel-ink)}
+  .hero-cover .edit-avatar{position:absolute;bottom:-28px;left:80px;width:28px;height:28px;border-radius:14px;background:var(--ink);color:#fff;display:flex;align-items:center;justify-content:center;border:3px solid var(--bg)}
+
+  /* Input rows (form fields) */
+  .inrow{background:#fff;border-radius:14px;padding:14px 14px;display:flex;align-items:center;gap:12px;margin-bottom:2px;border-bottom:1px solid var(--border-row)}
+  .inrow:first-of-type{border-top-left-radius:14px;border-top-right-radius:14px}
+  .inrow:last-of-type{border-bottom:0;border-bottom-left-radius:14px;border-bottom-right-radius:14px;margin-bottom:0}
+  .inrow .lbl{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.4px;width:100px;flex-shrink:0}
+  .inrow .val{font-size:15px;font-weight:600;color:var(--ink);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .inrow .val.placeholder{color:var(--muted2);font-weight:400}
+  .inrow .chev{color:var(--muted2);font-size:18px;flex-shrink:0}
+  .formgroup{background:#fff;border-radius:14px;border:1px solid var(--border-soft);overflow:hidden;margin-bottom:8px}
+
+  /* Pill switcher (group type) */
+  .typepill{display:inline-flex;align-items:center;gap:6px;padding:7px 14px 7px 11px;border-radius:999px;font-size:13px;font-weight:600;background:var(--bg);color:var(--muted);border:1px solid var(--border-soft)}
+  .typepill.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .typerow{display:flex;flex-wrap:wrap;gap:6px;padding:12px 14px;background:#fff;border-radius:14px;border:1px solid var(--border-soft);margin-bottom:2px}
+
+  /* Pinned CTA bar */
+  .ctabar{padding:12px 16px 20px;border-top:1px solid var(--border);background:var(--bg)}
+  .ctabar .cta{height:52px;border-radius:14px;background:var(--ink);color:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700}
+  .ctabar .cta.disabled{background:#d1cfc9;color:#8c8b86}
+  .ctabar .row{display:flex;gap:8px}
+  .ctabar .cta.secondary{background:#fff;color:var(--ink);border:1px solid var(--border);flex:1}
+  .ctabar .cta.primary{flex:2}
+
+  /* Member row */
+  .mrow{background:#fff;border-radius:14px;padding:12px 14px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--border-row)}
+  .mrow:first-child{border-top-left-radius:14px;border-top-right-radius:14px}
+  .mrow:last-child{border-bottom:0;border-bottom-left-radius:14px;border-bottom-right-radius:14px}
+  .mrow .av{width:40px;height:40px;border-radius:20px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;flex-shrink:0}
+  .mrow .info{flex:1;min-width:0}
+  .mrow .name{font-size:14px;font-weight:700;color:var(--ink)}
+  .mrow .sub{font-size:11.5px;color:var(--muted);margin-top:2px}
+  .mrow .tag{background:var(--sage-soft);color:var(--sage-ink);font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px;letter-spacing:0.3px;text-transform:uppercase}
+  .mrow .tag.pending{background:var(--warn-bg);color:var(--warn)}
+  .mrow .more{color:var(--muted2)}
+  .mgroup{background:#fff;border-radius:14px;border:1px solid var(--border-soft);overflow:hidden}
+
+  /* Invite card */
+  .invite{background:#fff;border:1px dashed var(--border);border-radius:14px;padding:14px;display:flex;align-items:center;gap:12px;margin-top:4px}
+  .invite .ic{width:40px;height:40px;border-radius:20px;background:var(--sage-soft);color:var(--sage-ink);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .invite .info{flex:1}
+  .invite .t{font-size:14px;font-weight:700}
+  .invite .c{font-size:11.5px;color:var(--muted);margin-top:2px}
+  .invite .btn{background:var(--sage);color:#fff;font-size:12px;font-weight:700;padding:8px 14px;border-radius:10px}
+
+  /* Danger row */
+  .danger-tile{background:var(--warn-bg);border:1px solid #F4C7BF;border-radius:14px;padding:13px;display:flex;align-items:center;gap:12px;margin-bottom:6px;color:var(--warn)}
+  .danger-tile .lbl{font-size:13px;font-weight:700}
+  .danger-tile .sub{font-size:11.5px;color:#a04438;margin-top:2px}
+
+  /* Profile specific */
+  .profile-hero{background:linear-gradient(180deg,var(--bg) 0%,#f4f0e7 100%);height:120px;border-radius:18px;margin-bottom:44px;position:relative}
+  .profile-hero .av{position:absolute;bottom:-36px;left:50%;transform:translateX(-50%);width:88px;height:88px;border-radius:44px;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:700;border:4px solid var(--bg)}
+  .profile-hero .edit-avatar{position:absolute;bottom:-40px;left:calc(50% + 28px);width:32px;height:32px;border-radius:16px;background:var(--ink);color:#fff;display:flex;align-items:center;justify-content:center;border:3px solid var(--bg)}
+
+  /* Status label (readonly row) */
+  .readonly{font-size:11.5px;color:var(--muted);margin-top:6px;padding:0 4px;line-height:1.45}
+  .readonly b{color:var(--ink);font-weight:600}
+
+  /* Segmented */
+  .seg{display:flex;background:#F3F1EC;border-radius:11px;padding:3px;margin-bottom:12px}
+  .seg .opt{flex:1;text-align:center;font-size:12.5px;font-weight:700;color:var(--muted);padding:8px 6px;border-radius:9px}
+  .seg .opt.on{background:#fff;color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,0.06)}
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>Commune — Final v3</h1>
+  <p class="lede">Mockups for three screens you flagged as needing work: user profile editor (doesn't exist yet — the Settings row currently mis-routes to the group editor), group editor with avatar + cover upload, and the members screen. Review and reply with "go" before I touch code.</p>
+
+  <div class="changelog">
+    <h3>What's in this set</h3>
+    <ul>
+      <li><b>Edit profile</b> <span class="pill">new</span> — doesn't exist today. Settings' "Edit profile" row currently routes to <code>/group-edit</code> (bug). New screen: avatar upload, cover, name/email/currency/timezone, notification preferences, danger zone (deactivate).</li>
+      <li><b>Edit group</b> <span class="pill">redesign</span> — 1,335-line screen currently uses hardcoded hex colors. Rebuild with design tokens + NEW: group avatar upload + group cover upload (schema already supports <code>avatar_url</code>/<code>cover_url</code>).</li>
+      <li><b>Members</b> <span class="pill">redesign</span> — cleaner list with role chips, pending-invite tag, admin kebab, pinned "Invite people" CTA, and a segmented control for All / Active / Pending.</li>
+    </ul>
+  </div>
+
+  <h2 class="sub">Edit profile · new screen</h2>
+  <div class="why"><b>Why:</b> Today's Settings "Edit profile" row routes to the <em>group</em> editor. That's a clear bug. This is the new dedicated user editor. Avatar sits on top of a subtle cover; below are grouped form rows broken into Account / Preferences / Security / Danger zone. Pinned Save bar at the bottom — only enabled when something changed.</div>
+  <div class="grid">
+
+    <div class="frame">
+      <div class="sb"><span>9:41</span><span>● ● ●</span></div>
+      <div class="hdr">
+        <div class="back"><span class="chev">‹</span>Back</div>
+        <div class="title">Edit profile</div>
+        <div class="action disabled">Save</div>
+      </div>
+      <div class="body">
+        <div class="profile-hero">
+          <div class="av">AE</div>
+          <div class="edit-avatar">
+            <svg style="width:14px;height:14px;stroke:#fff;stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4"/></svg>
+          </div>
+        </div>
+        <div class="seclbl">Account</div>
+        <div class="formgroup">
+          <div class="inrow">
+            <div class="lbl">Name</div>
+            <div class="val">Augustus Edem</div>
+          </div>
+          <div class="inrow">
+            <div class="lbl">Email</div>
+            <div class="val">emotiveimpact@gmail.com</div>
+          </div>
+          <div class="inrow">
+            <div class="lbl">Phone</div>
+            <div class="val placeholder">Add phone</div>
+            <div class="chev">›</div>
+          </div>
+        </div>
+        <div class="seclbl">Preferences</div>
+        <div class="formgroup">
+          <div class="inrow">
+            <div class="lbl">Currency</div>
+            <div class="val">£ GBP</div>
+            <div class="chev">›</div>
+          </div>
+          <div class="inrow">
+            <div class="lbl">Country</div>
+            <div class="val">United Kingdom</div>
+            <div class="chev">›</div>
+          </div>
+          <div class="inrow">
+            <div class="lbl">Timezone</div>
+            <div class="val">Europe/London (GMT+0)</div>
+            <div class="chev">›</div>
+          </div>
+          <div class="inrow">
+            <div class="lbl">Theme</div>
+            <div class="val">System</div>
+            <div class="chev">›</div>
+          </div>
+        </div>
+        <div class="seclbl">Danger zone</div>
+        <div class="danger-tile">
+          <svg style="width:20px;height:20px;stroke:currentColor;stroke-width:1.7;fill:none;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><path d="M12 9v4"/><path d="M12 16v.01"/><path d="M12 3a9 9 0 1 0 0 18a9 9 0 0 0 0 -18z"/></svg>
+          <div><div class="lbl">Deactivate account</div><div class="sub">30-day soft delete · recoverable until</div></div>
+        </div>
+      </div>
+      <div class="ctabar"><div class="cta disabled">Save changes</div></div>
+    </div>
+
+    <div class="frame">
+      <div class="sb"><span>9:41</span><span>● ● ●</span></div>
+      <div class="hdr">
+        <div class="back"><span class="chev">‹</span>Back</div>
+        <div class="title">Edit profile</div>
+        <div class="action">Save</div>
+      </div>
+      <div class="body">
+        <div class="profile-hero">
+          <div class="av">AE</div>
+          <div class="edit-avatar">
+            <svg style="width:14px;height:14px;stroke:#fff;stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4"/></svg>
+          </div>
+        </div>
+        <div class="seclbl">Account</div>
+        <div class="formgroup">
+          <div class="inrow">
+            <div class="lbl">Name</div>
+            <div class="val">Augustus E.</div>
+          </div>
+          <div class="inrow">
+            <div class="lbl">Email</div>
+            <div class="val">emotiveimpact@gmail.com</div>
+          </div>
+        </div>
+        <p class="readonly">Email change requires verification. We'll send a confirm link to the new address.</p>
+        <div class="seclbl">Notifications</div>
+        <div class="formgroup">
+          <div class="inrow">
+            <div class="val">Push notifications</div>
+            <div style="width:42px;height:24px;border-radius:12px;background:var(--sage);position:relative;flex-shrink:0">
+              <div style="position:absolute;width:20px;height:20px;border-radius:10px;background:#fff;top:2px;right:2px;box-shadow:0 1px 2px rgba(0,0,0,0.2)"></div>
+            </div>
+          </div>
+          <div class="inrow">
+            <div class="val">Email digest (weekly)</div>
+            <div style="width:42px;height:24px;border-radius:12px;background:var(--sage);position:relative;flex-shrink:0">
+              <div style="position:absolute;width:20px;height:20px;border-radius:10px;background:#fff;top:2px;right:2px;box-shadow:0 1px 2px rgba(0,0,0,0.2)"></div>
+            </div>
+          </div>
+          <div class="inrow">
+            <div class="val">Payment reminders</div>
+            <div style="width:42px;height:24px;border-radius:12px;background:#e0ddd5;position:relative;flex-shrink:0">
+              <div style="position:absolute;width:20px;height:20px;border-radius:10px;background:#fff;top:2px;left:2px;box-shadow:0 1px 2px rgba(0,0,0,0.2)"></div>
+            </div>
+          </div>
+        </div>
+        <div class="seclbl">Security</div>
+        <div class="formgroup">
+          <div class="inrow">
+            <div class="val">Change password</div>
+            <div class="chev">›</div>
+          </div>
+          <div class="inrow">
+            <div class="val">Active sessions</div>
+            <div style="color:var(--muted);font-size:12px">2 ›</div>
+          </div>
+        </div>
+      </div>
+      <div class="ctabar"><div class="cta">Save changes</div></div>
+    </div>
+
+  </div>
+
+  <h2 class="sub">Edit group · redesign + avatar/cover upload</h2>
+  <div class="why"><b>Why:</b> Current screen is 1,335 lines of hardcoded hex colors. Rebuild with design tokens. <b>New:</b> group avatar upload + group cover upload (both in schema as <code>avatar_url</code>/<code>cover_url</code> — just not wired). The hero frames the group's identity; below are the editable fields grouped by concern. Members gets its own row that deep-links to the full Members screen.</div>
+  <div class="grid">
+
+    <div class="frame">
+      <div class="sb"><span>9:41</span><span>● ● ●</span></div>
+      <div class="hdr">
+        <div class="back"><span class="chev">‹</span>Back</div>
+        <div class="title">Edit group</div>
+        <div class="action">Save</div>
+      </div>
+      <div class="body">
+        <div class="hero-cover group-home">
+          <div class="edit-cover">
+            <svg style="width:14px;height:14px;stroke:#fff;stroke-width:1.8;fill:none;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><path d="M15 8h.01"/><path d="M3 6a3 3 0 0 1 3 -3h12a3 3 0 0 1 3 3v12a3 3 0 0 1 -3 3h-12a3 3 0 0 1 -3 -3v-12z"/><path d="M3 16l5 -5c.928 -.893 2.072 -.893 3 0l5 5"/><path d="M14 14l1 -1c.928 -.893 2.072 -.893 3 0l3 3"/></svg>
+            <span>Change cover</span>
+          </div>
+          <div class="avatar-wrap">
+            <div class="avatar home">
+              <svg style="width:36px;height:36px;stroke:currentColor;stroke-width:1.6;fill:none;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><path d="M5 12l-2 0 9 -9 9 9 -2 0"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-7"/><path d="M9 21v-6a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v6"/></svg>
+            </div>
+          </div>
+          <div class="edit-avatar">
+            <svg style="width:14px;height:14px;stroke:#fff;stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4"/></svg>
+          </div>
+        </div>
+        <div class="seclbl">About</div>
+        <div class="formgroup">
+          <div class="inrow">
+            <div class="lbl">Name</div>
+            <div class="val">Sunset Drive</div>
+          </div>
+          <div class="inrow">
+            <div class="lbl">Description</div>
+            <div class="val placeholder">Optional — e.g. "Flat 3A"</div>
+          </div>
+        </div>
+        <div class="seclbl">Type</div>
+        <div class="typerow">
+          <div class="typepill on">
+            <svg style="width:14px;height:14px;stroke:currentColor;stroke-width:1.8;fill:none;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><path d="M5 12l-2 0 9 -9 9 9 -2 0"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-7"/></svg>
+            Flatmates
+          </div>
+          <div class="typepill">
+            <svg style="width:14px;height:14px;stroke:currentColor;stroke-width:1.8;fill:none;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><path d="M12 6l-3.5 -3a3.5 3.5 0 0 0 -5 5l5 5h7l5 -5a3.5 3.5 0 0 0 -5 -5l-3.5 3"/></svg>
+            Partners
+          </div>
+          <div class="typepill">
+            <svg style="width:14px;height:14px;stroke:currentColor;stroke-width:1.8;fill:none;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><path d="M16 10h4.5a1.5 1.5 0 0 1 0 3h-4.5l-4 7h-3l2 -7h-4l-2 2h-3l2 -3.5l-2 -3.5h3l2 2h4l-2 -7h3l4 7"/></svg>
+            Travel
+          </div>
+          <div class="typepill">
+            <svg style="width:14px;height:14px;stroke:currentColor;stroke-width:1.8;fill:none;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><path d="M3 7m0 2a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2v9a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2z"/></svg>
+            Workspace
+          </div>
+        </div>
+        <div class="seclbl">Settings</div>
+        <div class="formgroup">
+          <div class="inrow">
+            <div class="lbl">Currency</div>
+            <div class="val">£ GBP</div>
+            <div class="chev">›</div>
+          </div>
+          <div class="inrow">
+            <div class="lbl">Cycle</div>
+            <div class="val">Monthly</div>
+            <div class="chev">›</div>
+          </div>
+          <div class="inrow">
+            <div class="val" style="flex:1;color:var(--ink);font-weight:600">Members</div>
+            <div style="color:var(--muted);font-size:13px">4 ›</div>
+          </div>
+        </div>
+        <div class="seclbl">Danger zone</div>
+        <div class="danger-tile">
+          <svg style="width:20px;height:20px;stroke:currentColor;stroke-width:1.7;fill:none;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><path d="M3 7v13a1 1 0 0 0 1 1h16a1 1 0 0 0 1 -1v-13"/><path d="M5 4h14"/><path d="M9 12l6 0"/></svg>
+          <div><div class="lbl">Archive group</div><div class="sub">Hide from list, keep history</div></div>
+        </div>
+        <div class="danger-tile" style="background:#FFF4F4">
+          <svg style="width:20px;height:20px;stroke:currentColor;stroke-width:1.7;fill:none;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><path d="M4 7l16 0"/><path d="M10 11l0 6"/><path d="M14 11l0 6"/><path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12"/></svg>
+          <div><div class="lbl">Delete group</div><div class="sub">Permanent · cannot be undone</div></div>
+        </div>
+      </div>
+      <div class="ctabar"><div class="cta">Save changes</div></div>
+    </div>
+
+    <div class="frame">
+      <div class="sb"><span>9:41</span><span>● ● ●</span></div>
+      <div class="hdr">
+        <div class="back"><span class="chev">‹</span>Back</div>
+        <div class="title">Edit group</div>
+        <div class="action disabled">Save</div>
+      </div>
+      <div class="body">
+        <div class="hero-cover group-travel">
+          <div class="edit-cover">
+            <svg style="width:14px;height:14px;stroke:#fff;stroke-width:1.8;fill:none;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><path d="M15 8h.01"/><path d="M3 6a3 3 0 0 1 3 -3h12a3 3 0 0 1 3 3v12a3 3 0 0 1 -3 3h-12a3 3 0 0 1 -3 -3v-12z"/><path d="M3 16l5 -5c.928 -.893 2.072 -.893 3 0l5 5"/></svg>
+            <span>Change cover</span>
+          </div>
+          <div class="avatar-wrap">
+            <div class="avatar travel">
+              <svg style="width:36px;height:36px;stroke:currentColor;stroke-width:1.6;fill:none;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><path d="M16 10h4.5a1.5 1.5 0 0 1 0 3h-4.5l-4 7h-3l2 -7h-4l-2 2h-3l2 -3.5l-2 -3.5h3l2 2h4l-2 -7h3l4 7"/></svg>
+            </div>
+          </div>
+          <div class="edit-avatar">
+            <svg style="width:14px;height:14px;stroke:#fff;stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4"/></svg>
+          </div>
+        </div>
+        <div class="seclbl">About</div>
+        <div class="formgroup">
+          <div class="inrow">
+            <div class="lbl">Name</div>
+            <div class="val">Lisbon trip</div>
+          </div>
+          <div class="inrow">
+            <div class="lbl">Description</div>
+            <div class="val">May 18–24 · 4 of us</div>
+          </div>
+        </div>
+        <div class="seclbl">Upload options</div>
+        <div style="background:#fff;border-radius:14px;border:1px solid var(--border-soft);padding:14px;margin-bottom:4px">
+          <div style="display:flex;gap:10px;margin-bottom:10px">
+            <div style="flex:1;background:var(--bg);border-radius:10px;padding:10px;display:flex;align-items:center;gap:8px">
+              <svg style="width:16px;height:16px;stroke:var(--ink);stroke-width:1.7;fill:none;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><path d="M15 8h.01"/><path d="M12 21h-5a3 3 0 0 1 -3 -3v-12a3 3 0 0 1 3 -3h10a3 3 0 0 1 3 3v8"/><path d="M3 16l5 -5c.928 -.893 2.072 -.893 3 0l4 4"/><path d="M14 14l1 -1c.3 -.29 .677 -.436 1.054 -.439"/><path d="M19 22v-6"/><path d="M22 19l-3 -3l-3 3"/></svg>
+              <span style="font-size:12px;font-weight:600">Library</span>
+            </div>
+            <div style="flex:1;background:var(--bg);border-radius:10px;padding:10px;display:flex;align-items:center;gap:8px">
+              <svg style="width:16px;height:16px;stroke:var(--ink);stroke-width:1.7;fill:none;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><path d="M5 7h1a2 2 0 0 0 2 -2a1 1 0 0 1 1 -1h6a1 1 0 0 1 1 1a2 2 0 0 0 2 2h1a2 2 0 0 1 2 2v9a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-9a2 2 0 0 1 2 -2"/><circle cx="12" cy="13" r="3"/></svg>
+              <span style="font-size:12px;font-weight:600">Camera</span>
+            </div>
+          </div>
+          <p style="margin:0;font-size:11px;color:var(--muted);line-height:1.45">PNG or JPG, up to 8 MB. The cover shows behind the group name on the Groups tab.</p>
+        </div>
+      </div>
+      <div class="ctabar">
+        <div class="row">
+          <div class="cta secondary">Cancel</div>
+          <div class="cta primary">Save</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <h2 class="sub">Members</h2>
+  <div class="why"><b>Why:</b> Current screen is 1,673 lines. Simplify: segmented control for All / Active / Pending, list grouped by role (admins first), role chips inline on each row, kebab menu for admin actions (make admin / revoke / transfer ownership / remove). Pinned "Invite people" CTA at the bottom.</div>
+  <div class="grid">
+
+    <div class="frame">
+      <div class="sb"><span>9:41</span><span>● ● ●</span></div>
+      <div class="hdr">
+        <div class="back"><span class="chev">‹</span>Back</div>
+        <div class="title">Members</div>
+        <div class="action">Invite</div>
+      </div>
+      <div class="body">
+        <div class="seg">
+          <div class="opt on">All · 4</div>
+          <div class="opt">Active · 3</div>
+          <div class="opt">Pending · 1</div>
+        </div>
+        <div class="seclbl">Admins</div>
+        <div class="mgroup">
+          <div class="mrow">
+            <div class="av" style="background:var(--navy);color:#fff">AE</div>
+            <div class="info">
+              <div class="name">Augustus E. <span style="font-weight:500;color:var(--muted);font-size:12px">· You</span></div>
+              <div class="sub">Owner · since Mar 2026</div>
+            </div>
+            <div class="tag">Owner</div>
+          </div>
+          <div class="mrow">
+            <div class="av" style="background:var(--sage-soft);color:var(--sage-ink)">MP</div>
+            <div class="info">
+              <div class="name">Maya Patel</div>
+              <div class="sub">Admin · joined 2 Mar</div>
+            </div>
+            <div class="tag">Admin</div>
+            <div class="more">⋯</div>
+          </div>
+        </div>
+        <div class="seclbl">Members</div>
+        <div class="mgroup">
+          <div class="mrow">
+            <div class="av" style="background:var(--travel-bg);color:var(--travel-ink)">JL</div>
+            <div class="info">
+              <div class="name">Jordan Lee</div>
+              <div class="sub">Member · joined 12 Mar</div>
+            </div>
+            <div class="more">⋯</div>
+          </div>
+          <div class="mrow">
+            <div class="av" style="background:var(--partner-bg);color:var(--partner-ink)">SC</div>
+            <div class="info">
+              <div class="name">Sam Chen</div>
+              <div class="sub">Member · joined 18 Mar</div>
+            </div>
+            <div class="more">⋯</div>
+          </div>
+        </div>
+        <div class="seclbl">Pending invites</div>
+        <div class="mgroup">
+          <div class="mrow">
+            <div class="av" style="background:var(--warn-bg);color:var(--warn)">?</div>
+            <div class="info">
+              <div class="name" style="color:var(--muted)">alex@example.com</div>
+              <div class="sub">Invited 2 days ago</div>
+            </div>
+            <div class="tag pending">Pending</div>
+            <div class="more">⋯</div>
+          </div>
+        </div>
+      </div>
+      <div class="ctabar">
+        <div class="cta">
+          <svg style="width:18px;height:18px;stroke:#fff;stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round;margin-right:8px" viewBox="0 0 24 24"><path d="M12 5l0 14"/><path d="M5 12l14 0"/></svg>
+          Invite people
+        </div>
+      </div>
+    </div>
+
+    <div class="frame">
+      <div class="sb"><span>9:41</span><span>● ● ●</span></div>
+      <div class="hdr">
+        <div class="back"><span class="chev">‹</span>Back</div>
+        <div class="title">Member</div>
+        <div class="action">⋯</div>
+      </div>
+      <div class="body">
+        <div style="background:var(--navy);border-radius:22px;padding:22px 18px 18px;color:#fff;margin:4px 0 14px;display:flex;flex-direction:column;align-items:center;gap:8px">
+          <div style="width:80px;height:80px;border-radius:40px;background:var(--sage-soft);color:var(--sage-ink);display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:700">MP</div>
+          <div style="font-size:20px;font-weight:700">Maya Patel</div>
+          <div style="font-size:11.5px;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:0.5px">Admin · joined 2 Mar</div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:0 0 14px">
+          <div style="background:#fff;border:1px solid var(--border-soft);border-radius:14px;padding:14px;text-align:center">
+            <div style="font-size:20px;font-weight:700;color:var(--sage-ink)">+£18</div>
+            <div style="font-size:10.5px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.4px;margin-top:4px">Owes you</div>
+          </div>
+          <div style="background:#fff;border:1px solid var(--border-soft);border-radius:14px;padding:14px;text-align:center">
+            <div style="font-size:20px;font-weight:700;color:var(--ink)">12</div>
+            <div style="font-size:10.5px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.4px;margin-top:4px">Expenses</div>
+          </div>
+          <div style="background:#fff;border:1px solid var(--border-soft);border-radius:14px;padding:14px;text-align:center">
+            <div style="font-size:20px;font-weight:700;color:var(--ink)">8</div>
+            <div style="font-size:10.5px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.4px;margin-top:4px">Chores done</div>
+          </div>
+        </div>
+        <div class="seclbl">Admin actions</div>
+        <div class="mgroup">
+          <div class="mrow">
+            <div class="ic-tile sage" style="width:36px;height:36px">
+              <svg class="ic-svg" viewBox="0 0 24 24"><path d="M12 3l4 4l-4 4"/><path d="M16 7h-9a4 4 0 0 0 0 8h1"/></svg>
+            </div>
+            <div class="info"><div class="name">Revoke admin</div><div class="sub">Will become a regular member</div></div>
+            <div class="more">›</div>
+          </div>
+          <div class="mrow">
+            <div class="ic-tile sage" style="width:36px;height:36px">
+              <svg class="ic-svg" viewBox="0 0 24 24"><path d="M12 3v18"/><path d="M3 12h18"/></svg>
+            </div>
+            <div class="info"><div class="name">Transfer ownership</div><div class="sub">You stay as admin</div></div>
+            <div class="more">›</div>
+          </div>
+          <div class="mrow" style="color:var(--warn)">
+            <div class="ic-tile warn" style="width:36px;height:36px">
+              <svg class="ic-svg" viewBox="0 0 24 24"><path d="M14 8v-2a2 2 0 0 0 -2 -2h-7a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h7a2 2 0 0 0 2 -2v-2"/><path d="M9 12h12l-3 -3"/></svg>
+            </div>
+            <div class="info"><div class="name" style="color:var(--warn)">Remove from group</div><div class="sub">Settles balance, removes access</div></div>
+            <div class="more" style="color:var(--warn)">›</div>
+          </div>
+        </div>
+      </div>
+      <div class="ctabar">
+        <div class="row">
+          <div class="cta secondary">Remind to settle</div>
+          <div class="cta primary">Pay</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <h2 class="sub">What other screens are "next"?</h2>
+  <div class="why"><b>Ranked by impact:</b></div>
+  <ol style="max-width:720px;color:var(--ink);font-size:14px;line-height:1.7;padding-left:22px">
+    <li><b>Edit profile</b> (new) — fixes the Settings mis-route bug</li>
+    <li><b>Edit group</b> — avatar + cover upload, token cleanup</li>
+    <li><b>Members screen</b> — list polish + invite flow</li>
+    <li><b>Home tab</b> (<code>(tabs)/index.tsx</code>) — most-viewed screen, last pass still pending</li>
+    <li><b>Expenses tab</b> (<code>(tabs)/expenses.tsx</code>) — list density and filter bar</li>
+    <li><b>Settings tab</b> (<code>(tabs)/settings.tsx</code>) — just fixed Edit-profile route, hero needs a light touch</li>
+    <li><b>Pricing</b>, <b>operations</b>, <b>funds</b>, <b>templates</b>, <b>group-close</b> — mid-tier, rarely visited</li>
+    <li><b>Group hub</b> — <span style="color:var(--muted)">skipped per your instruction</span></li>
+  </ol>
+
+</div>
+</body>
+</html>

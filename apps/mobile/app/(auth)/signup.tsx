@@ -7,11 +7,12 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  TouchableOpacity,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Link } from 'expo-router';
-import { signInWithGoogle, signUpWithEmail } from '@commune/api';
+import { signUpWithEmail } from '@commune/api';
+import { signInWithGoogleMobile } from '@/lib/google-auth';
+import { Button, Pressable } from '@/components/primitives';
 import { getErrorMessage } from '@/lib/errors';
 import { hapticLight, hapticMedium, hapticWarning, hapticError } from '@/lib/haptics';
 
@@ -54,7 +55,12 @@ export default function SignupScreen() {
     setGoogleLoading(true);
     setError('');
     try {
-      await signInWithGoogle();
+      const result = await signInWithGoogleMobile();
+      if (result.type === 'error') {
+        hapticError();
+        setError(result.message);
+      }
+      // 'cancel' is silent. 'success' lets the auth listener route to /(tabs).
     } catch (err) {
       hapticError();
       setError(getErrorMessage(err, 'Google sign-up failed'));
@@ -253,33 +259,15 @@ export default function SignupScreen() {
           </View>
 
           {/* Create account button */}
-          <TouchableOpacity
+          <Button
+            label={loading ? 'Creating account...' : 'Create account'}
             onPress={handleSignup}
+            variant="ink"
+            size="lg"
+            loading={loading}
             disabled={loading}
-            activeOpacity={0.8}
-            style={{
-              backgroundColor: '#1f2330',
-              height: 52,
-              borderRadius: 14,
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexDirection: 'row',
-              opacity: loading ? 0.7 : 1,
-            }}
-          >
-            {loading ? (
-              <ActivityIndicator color="#FFFFFF" style={{ marginRight: 8 }} />
-            ) : null}
-            <Text
-              style={{
-                color: '#FFFFFF',
-                fontSize: 16,
-                fontWeight: '600',
-              }}
-            >
-              {loading ? 'Creating account...' : 'Create account'}
-            </Text>
-          </TouchableOpacity>
+            fullWidth
+          />
 
           {/* Divider */}
           <View
@@ -303,22 +291,23 @@ export default function SignupScreen() {
             <View style={{ flex: 1, height: 1, backgroundColor: '#E5E7EB' }} />
           </View>
 
-          {/* Google button */}
-          <TouchableOpacity
+          {/* Google button — kept inline due to brand-icon + custom style needs */}
+          <Pressable
             onPress={handleGoogleSignUp}
             disabled={googleLoading}
-            activeOpacity={0.8}
-            style={{
-              backgroundColor: '#FFFFFF',
-              height: 52,
-              borderRadius: 14,
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexDirection: 'row',
-              borderWidth: 1,
-              borderColor: '#E5E7EB',
-              opacity: googleLoading ? 0.7 : 1,
-            }}
+            style={({ pressed }) => [
+              {
+                backgroundColor: '#FFFFFF',
+                height: 52,
+                borderRadius: 14,
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexDirection: 'row',
+                borderWidth: 1,
+                borderColor: '#E5E7EB',
+                opacity: googleLoading ? 0.7 : pressed ? 0.85 : 1,
+              },
+            ]}
           >
             {googleLoading ? (
               <ActivityIndicator color="#374151" style={{ marginRight: 8 }} />
@@ -339,7 +328,7 @@ export default function SignupScreen() {
             >
               {googleLoading ? 'Signing up...' : 'Continue with Google'}
             </Text>
-          </TouchableOpacity>
+          </Pressable>
 
           {/* Sign in link */}
           <View
@@ -353,7 +342,7 @@ export default function SignupScreen() {
               Already have an account?{' '}
             </Text>
             <Link href="/(auth)/login" asChild>
-              <TouchableOpacity onPress={hapticLight}>
+              <Pressable onPress={hapticLight}>
                 <Text
                   style={{
                     fontWeight: '600',
@@ -363,7 +352,7 @@ export default function SignupScreen() {
                 >
                   Sign in
                 </Text>
-              </TouchableOpacity>
+              </Pressable>
             </Link>
           </View>
         </View>

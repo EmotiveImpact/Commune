@@ -169,6 +169,8 @@ export function useUpdateGroup(groupId: string) {
       setup_checklist_progress?: SetupChecklistProgress | null;
       approval_threshold?: number | null;
       approval_policy?: GroupApprovalPolicyInput | null;
+      avatar_url?: string;
+      cover_url?: string;
     }) =>
       updateGroup(groupId, updates),
     onSuccess: () => {

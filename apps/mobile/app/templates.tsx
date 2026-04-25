@@ -1,7 +1,7 @@
-import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { Pressable, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { IconChevronLeft, IconPlus } from '@tabler/icons-react-native';
+import { IconChevronLeft, IconCopy, IconPlus, IconUsers } from '@tabler/icons-react-native';
 import { EmptyState, IconTile, Screen } from '@/components/primitives';
 import { colors, font, radius, space, getCategoryMeta } from '@/constants/design';
 import { useGroupStore } from '@/stores/group';
@@ -56,7 +56,7 @@ export default function TemplatesScreen() {
   const header = (
     <View
       style={{
-        paddingTop: insets.top + space.sm,
+        paddingTop: insets.top + 12,
         paddingBottom: space.md,
         paddingHorizontal: space.gutter,
         flexDirection: 'row',
@@ -64,14 +64,14 @@ export default function TemplatesScreen() {
         backgroundColor: colors.bgBase,
       }}
     >
-      <TouchableOpacity
+      <Pressable
         onPress={handleBack}
-        hitSlop={12}
-        activeOpacity={0.7}
-        style={{ width: 32, height: 32, alignItems: 'flex-start', justifyContent: 'center' }}
+        hitSlop={10}
+        style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 2, paddingVertical: 6, paddingRight: 10, marginLeft: -4, opacity: pressed ? 0.6 : 1, zIndex: 2 })}
       >
-        <IconChevronLeft size={24} color={colors.textPrimary} strokeWidth={2} />
-      </TouchableOpacity>
+        <IconChevronLeft size={22} color={colors.textPrimary} strokeWidth={2} />
+        <Text style={{ fontSize: 15, fontWeight: '600', color: colors.textPrimary }}>Back</Text>
+      </Pressable>
       <Text
         style={{
           flex: 1,
@@ -112,7 +112,7 @@ export default function TemplatesScreen() {
         <Stack.Screen options={{ headerShown: false }} />
         {header}
         <EmptyState
-          icon="people-outline"
+          icon={IconUsers}
           title="Select a group first"
           description="Choose a group to see its saved templates."
         />
@@ -141,7 +141,7 @@ export default function TemplatesScreen() {
       >
         {empty ? (
           <EmptyState
-            icon="copy-outline"
+            icon={IconCopy}
             title="No templates yet"
             description="Save an expense as a template to quickly reuse it later."
             actionLabel="Learn how"

@@ -69,6 +69,7 @@ export interface User {
   is_deactivated: boolean;
   deletion_requested_at: string | null;
   deletion_scheduled_for: string | null;
+  acquisition_source: string | null;
   created_at: string;
 }
 
@@ -344,8 +345,8 @@ export type ExpenseListItem = Pick<
   | 'payment_due_date'
   | 'paid_by_user_id'
 > & {
-  participants: Pick<ExpenseParticipant, 'user_id'>[];
-  payment_records: Pick<PaymentRecord, 'user_id' | 'status'>[];
+  participants: Pick<ExpenseParticipant, 'user_id' | 'share_amount'>[];
+  payment_records: Pick<PaymentRecord, 'user_id' | 'status' | 'amount'>[];
 };
 
 export interface ProrationInfo {

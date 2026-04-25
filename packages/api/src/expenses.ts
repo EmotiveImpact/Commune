@@ -319,11 +319,13 @@ export async function getGroupExpenses(
       payment_due_date,
       paid_by_user_id,
       participants:expense_participants(
-        user_id
+        user_id,
+        share_amount
       ),
       payment_records(
         user_id,
-        status
+        status,
+        amount
       )
     `,
     )

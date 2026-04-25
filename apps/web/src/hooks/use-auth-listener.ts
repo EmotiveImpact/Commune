@@ -44,6 +44,7 @@ function buildFallbackUser(authUser: SupabaseAuthUser): User {
     is_deactivated: false,
     deletion_requested_at: null,
     deletion_scheduled_for: null,
+    acquisition_source: typeof metadata.acquisition_source === 'string' ? metadata.acquisition_source : null,
     created_at: authUser.created_at ?? new Date().toISOString(),
   };
 }

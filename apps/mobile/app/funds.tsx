@@ -1,14 +1,14 @@
 import { useMemo } from 'react';
-import { Alert, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Pressable, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { IconCash, IconChevronLeft, IconPlus } from '@tabler/icons-react-native';
+import { IconCash, IconChevronLeft, IconPlus, IconUsers, IconWallet } from '@tabler/icons-react-native';
 import { formatCurrency } from '@commune/utils';
 import { EmptyState, Screen } from '@/components/primitives';
 import { colors, font, radius, space, elevation } from '@/constants/design';
 import { useGroupStore } from '@/stores/group';
 import { useGroup } from '@/hooks/use-groups';
-import { useFunds, useCreateFund } from '@/hooks/use-funds';
+import { useFunds, useCreateFund, useAddContribution } from '@/hooks/use-funds';
 import { hapticLight, hapticMedium } from '@/lib/haptics';
 
 type FundRow = {
@@ -28,6 +28,7 @@ export default function FundsScreen() {
   const { data: group } = useGroup(activeGroupId ?? '');
   const { data: funds, isLoading } = useFunds(activeGroupId ?? '');
   const createFund = useCreateFund(activeGroupId ?? '');
+  const addContribution = useAddContribution(activeGroupId ?? '');
 
   const currency = group?.currency ?? 'GBP';
 
@@ -57,9 +58,7 @@ export default function FundsScreen() {
       (val) => {
         const amount = parseFloat(val ?? '');
         if (!Number.isNaN(amount) && amount > 0) {
-          // Import lazily to avoid pulling mutation for all renders.
-          const { addContribution } = require('@commune/api');
-          addContribution(fundId, { amount });
+          addContribution.mutate({ fund_id: fundId, amount });
         }
       },
       'plain-text',
@@ -68,7 +67,7 @@ export default function FundsScreen() {
     );
   };
 
-  const rows = (funds ?? []) as FundRow[];
+  const rows = useMemo(() => (funds ?? []) as FundRow[], [funds]);
 
   const { total, count } = useMemo(() => {
     let sum = 0;
@@ -81,7 +80,7 @@ export default function FundsScreen() {
   const header = (
     <View
       style={{
-        paddingTop: insets.top + space.sm,
+        paddingTop: insets.top + 12,
         paddingBottom: space.md,
         paddingHorizontal: space.gutter,
         flexDirection: 'row',
@@ -89,14 +88,14 @@ export default function FundsScreen() {
         backgroundColor: colors.bgBase,
       }}
     >
-      <TouchableOpacity
+      <Pressable
         onPress={handleBack}
-        hitSlop={12}
-        activeOpacity={0.7}
-        style={{ width: 32, height: 32, alignItems: 'flex-start', justifyContent: 'center' }}
+        hitSlop={10}
+        style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 2, paddingVertical: 6, paddingRight: 10, marginLeft: -4, opacity: pressed ? 0.6 : 1, zIndex: 2 })}
       >
-        <IconChevronLeft size={24} color={colors.textPrimary} strokeWidth={2} />
-      </TouchableOpacity>
+        <IconChevronLeft size={22} color={colors.textPrimary} strokeWidth={2} />
+        <Text style={{ fontSize: 15, fontWeight: '600', color: colors.textPrimary }}>Back</Text>
+      </Pressable>
       <Text
         style={[
           font.h3,
@@ -133,7 +132,7 @@ export default function FundsScreen() {
         <Stack.Screen options={{ headerShown: false }} />
         {header}
         <EmptyState
-          icon="people-outline"
+          icon={IconUsers}
           title="Select a group first"
           description="Choose a group to manage shared funds."
         />
@@ -162,7 +161,7 @@ export default function FundsScreen() {
       >
         {empty ? (
           <EmptyState
-            icon="wallet-outline"
+            icon={IconWallet}
             title="No shared funds yet"
             description="Shared funds are savings pots the whole group contributes to — holidays, bills, goals."
             actionLabel="Create first fund"

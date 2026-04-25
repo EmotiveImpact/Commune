@@ -5,7 +5,32 @@
  * No screen should define its own colors, sizes, or spacing.
  */
 
+import type { ComponentType } from 'react';
 import { Platform } from 'react-native';
+import {
+  IconBolt,
+  IconBriefcase,
+  IconBuildingStore,
+  IconCar,
+  IconCategory,
+  IconFileText,
+  IconHeart,
+  IconHammer,
+  IconHome2,
+  IconMovie,
+  IconPlane,
+  IconShoppingBag,
+  IconShoppingCart,
+  IconSparkles,
+  IconToolsKitchen2,
+  IconWifi,
+} from '@tabler/icons-react-native';
+
+type TablerIcon = ComponentType<{
+  size?: number;
+  color?: string;
+  strokeWidth?: number;
+}>;
 
 /* ============================================================================
  * COLORS
@@ -32,8 +57,10 @@ export const colors = {
 
   // Brand
   sage: '#2D6A4F',
+  sageMid: '#4FB3A0',
   sageSoft: '#E8F0EB',
   sageInk: '#1F4D38',
+  cream: '#EADFD4',
   lime: '#96E85F',
   limeSoft: '#E8F7D4',
 
@@ -190,45 +217,46 @@ export const height = {
  * Replaces emoji categories with a consistent icon system.
  * ============================================================================ */
 
-export const categoryMeta = {
-  rent: { icon: 'home-outline', color: '#8B5A3C', bg: '#F5E8DD' },
-  utilities: { icon: 'flash-outline', color: '#C9821A', bg: '#FBF0D9' },
-  internet: { icon: 'wifi-outline', color: '#2B5F8C', bg: '#DEECF7' },
-  cleaning: { icon: 'sparkles-outline', color: '#2D6A4F', bg: '#E8F0EB' },
-  groceries: { icon: 'basket-outline', color: '#C74A3A', bg: '#FBE4DF' },
-  entertainment: { icon: 'film-outline', color: '#6D5DC7', bg: '#E9E5F7' },
-  household_supplies: { icon: 'bag-outline', color: '#8B5A3C', bg: '#F5E8DD' },
-  transport: { icon: 'car-outline', color: '#B84870', bg: '#FBE3ED' },
-  work_tools: { icon: 'briefcase-outline', color: '#2B5F8C', bg: '#DEECF7' },
-  food: { icon: 'restaurant-outline', color: '#C74A3A', bg: '#FBE4DF' },
-  shopping: { icon: 'bag-handle-outline', color: '#B84870', bg: '#FBE3ED' },
-  bills: { icon: 'document-text-outline', color: '#C9821A', bg: '#FBF0D9' },
-  miscellaneous: { icon: 'ellipsis-horizontal-outline', color: '#6B6D73', bg: '#F0EEEA' },
-} as const;
+type CategoryMeta = { icon: TablerIcon; color: string; bg: string };
 
-export function getCategoryMeta(category: string) {
+export const categoryMeta: Record<string, CategoryMeta> = {
+  rent: { icon: IconHome2, color: '#8B5A3C', bg: '#F5E8DD' },
+  utilities: { icon: IconBolt, color: '#C9821A', bg: '#FBF0D9' },
+  internet: { icon: IconWifi, color: '#2B5F8C', bg: '#DEECF7' },
+  cleaning: { icon: IconSparkles, color: '#2D6A4F', bg: '#E8F0EB' },
+  groceries: { icon: IconShoppingCart, color: '#C74A3A', bg: '#FBE4DF' },
+  entertainment: { icon: IconMovie, color: '#6D5DC7', bg: '#E9E5F7' },
+  household_supplies: { icon: IconShoppingBag, color: '#8B5A3C', bg: '#F5E8DD' },
+  transport: { icon: IconCar, color: '#B84870', bg: '#FBE3ED' },
+  work_tools: { icon: IconBriefcase, color: '#2B5F8C', bg: '#DEECF7' },
+  food: { icon: IconToolsKitchen2, color: '#C74A3A', bg: '#FBE4DF' },
+  shopping: { icon: IconBuildingStore, color: '#B84870', bg: '#FBE3ED' },
+  bills: { icon: IconFileText, color: '#C9821A', bg: '#FBF0D9' },
+  miscellaneous: { icon: IconCategory, color: '#6B6D73', bg: '#F0EEEA' },
+};
+
+export function getCategoryMeta(category: string): CategoryMeta {
   const key = category.toLowerCase().replace(/[\s-]/g, '_');
-  return (categoryMeta as Record<string, { icon: string; color: string; bg: string }>)[key] ?? categoryMeta.miscellaneous;
+  return categoryMeta[key] ?? categoryMeta.miscellaneous!;
 }
 
 /* ============================================================================
  * GROUP TYPE META
  * ============================================================================ */
 
-export const groupTypeMeta = {
-  home: { label: 'Home', icon: 'home-outline', accent: colors.typeHome.accent, bg: colors.typeHome.bg },
-  couple: { label: 'Couple', icon: 'heart-outline', accent: colors.typeCouple.accent, bg: colors.typeCouple.bg },
-  workspace: { label: 'Workspace', icon: 'briefcase-outline', accent: colors.typeWorkspace.accent, bg: colors.typeWorkspace.bg },
-  project: { label: 'Project', icon: 'construct-outline', accent: colors.typeProject.accent, bg: colors.typeProject.bg },
-  trip: { label: 'Trip', icon: 'airplane-outline', accent: colors.typeTrip.accent, bg: colors.typeTrip.bg },
-  other: { label: 'Other', icon: 'grid-outline', accent: colors.typeOther.accent, bg: colors.typeOther.bg },
-} as const;
+type GroupTypeMeta = { label: string; icon: TablerIcon; accent: string; bg: string };
 
-type GroupTypeMeta = { label: string; icon: string; accent: string; bg: string };
+export const groupTypeMeta: Record<string, GroupTypeMeta> = {
+  home: { label: 'Home', icon: IconHome2, accent: colors.typeHome.accent, bg: colors.typeHome.bg },
+  couple: { label: 'Couple', icon: IconHeart, accent: colors.typeCouple.accent, bg: colors.typeCouple.bg },
+  workspace: { label: 'Workspace', icon: IconBriefcase, accent: colors.typeWorkspace.accent, bg: colors.typeWorkspace.bg },
+  project: { label: 'Project', icon: IconHammer, accent: colors.typeProject.accent, bg: colors.typeProject.bg }, // note: Ionicons "construct-outline" -> Tabler IconHammer
+  trip: { label: 'Trip', icon: IconPlane, accent: colors.typeTrip.accent, bg: colors.typeTrip.bg },
+  other: { label: 'Other', icon: IconCategory, accent: colors.typeOther.accent, bg: colors.typeOther.bg },
+};
 
 export function getGroupTypeMeta(type?: string): GroupTypeMeta {
-  const map = groupTypeMeta as unknown as Record<string, GroupTypeMeta>;
-  return map[type ?? 'other'] ?? map.other!;
+  return groupTypeMeta[type ?? 'other'] ?? groupTypeMeta.other!;
 }
 
 /* ============================================================================

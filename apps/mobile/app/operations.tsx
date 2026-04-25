@@ -7,6 +7,11 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { IconChevronLeft, IconCircleCheck, IconCloudOff } from '@tabler/icons-react-native';
+import { Pressable } from '@/components/primitives';
+import { colors, font, space, radius } from '@/constants/design';
 import {
   createChoreSchema,
   getOperationTemplates,
@@ -64,11 +69,11 @@ function OperationsCard({
     <View
       style={[
         {
-          backgroundColor: '#FFFFFF',
-          borderRadius: 16,
-          padding: 20,
-          marginBottom: 16,
-          shadowColor: '#000',
+          backgroundColor: colors.bgSurface,
+          borderRadius: radius.card,
+          padding: space.lg,
+          marginBottom: space.base,
+          shadowColor: colors.textPrimary,
           shadowOffset: { width: 0, height: 2 },
           shadowOpacity: 0.06,
           shadowRadius: 12,
@@ -114,7 +119,53 @@ function dueLabel(nextDue: string) {
   });
 }
 
+function ScreenHeader({ title, onBack, topInset }: { title: string; onBack: () => void; topInset: number }) {
+  return (
+    <View
+      style={{
+        paddingTop: topInset + 12,
+        paddingHorizontal: space.gutter,
+        backgroundColor: colors.bgBase,
+      }}
+    >
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          height: 48,
+          position: 'relative',
+        }}
+      >
+        <Pressable
+          onPress={onBack}
+          hitSlop={10}
+          style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 2, paddingVertical: 6, paddingRight: 10, marginLeft: -4, opacity: pressed ? 0.6 : 1, zIndex: 2 })}
+        >
+          <IconChevronLeft size={22} color={colors.textPrimary} strokeWidth={2} />
+          <Text style={{ fontSize: 15, fontWeight: '600', color: colors.textPrimary }}>Back</Text>
+        </Pressable>
+        <View
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Text style={[font.h3, { color: colors.textPrimary }]}>{title}</Text>
+        </View>
+        <View style={{ width: 36, zIndex: 2 }} />
+      </View>
+    </View>
+  );
+}
+
 export default function OperationsScreen() {
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { user } = useAuthStore();
   const { activeGroupId } = useGroupStore();
   const {
@@ -297,7 +348,7 @@ export default function OperationsScreen() {
     return (
       <Screen>
         <EmptyState
-          icon="checkmark-circle-outline"
+          icon={IconCircleCheck}
           title="No group selected"
           description="Pick a group before managing its operations board."
         />
@@ -308,18 +359,18 @@ export default function OperationsScreen() {
   if (groupLoading || choresLoading) {
     return (
       <ScrollView
-        style={{ flex: 1, backgroundColor: '#FAFAFA' }}
-        contentContainerStyle={{ padding: 20, paddingBottom: 120 }}
+        style={{ flex: 1, backgroundColor: colors.bgBase }}
+        contentContainerStyle={{ padding: space.lg, paddingBottom: 120 }}
       >
         {[1, 2, 3].map((i) => (
           <View
             key={i}
             style={{
               height: 140,
-              borderRadius: 16,
-              backgroundColor: '#E5E7EB',
+              borderRadius: radius.card,
+              backgroundColor: colors.border,
               opacity: 0.5,
-              marginBottom: 16,
+              marginBottom: space.base,
             }}
           />
         ))}
@@ -331,7 +382,7 @@ export default function OperationsScreen() {
     return (
       <Screen>
         <EmptyState
-          icon="cloud-offline-outline"
+          icon={IconCloudOff}
           title="Operations unavailable"
           description={getErrorMessage(loadError, 'Could not load the operations board right now.')}
           actionLabel="Try again"
@@ -345,36 +396,38 @@ export default function OperationsScreen() {
   }
 
   return (
+    <View style={{ flex: 1, backgroundColor: colors.bgBase }}>
+      <ScreenHeader title="Operations" topInset={insets.top} onBack={() => router.back()} />
     <ScrollView
-      style={{ flex: 1, backgroundColor: '#FAFAFA' }}
-      contentContainerStyle={{ padding: 20, paddingBottom: 120 }}
+      style={{ flex: 1, backgroundColor: colors.bgBase }}
+      contentContainerStyle={{ padding: space.lg, paddingBottom: 120 }}
       showsVerticalScrollIndicator={false}
     >
-      <View style={{ marginBottom: 20 }}>
-        <Text style={{ fontSize: 24, fontWeight: '700', color: '#171b24' }}>
+      <View style={{ marginBottom: space.lg }}>
+        <Text style={{ fontSize: 24, fontWeight: '700', color: colors.textPrimary }}>
           Operations
         </Text>
-        <Text style={{ marginTop: 4, fontSize: 14, color: '#667085' }}>
+        <Text style={{ marginTop: 4, fontSize: 14, color: colors.textTertiary }}>
           Keep recurring shared work visible so the space does not drift.
         </Text>
       </View>
 
-      <View style={{ flexDirection: 'row', gap: 12, marginBottom: 16 }}>
+      <View style={{ flexDirection: 'row', gap: 12, marginBottom: space.base }}>
         <OperationsCard style={{ flex: 1, marginBottom: 0 }}>
-          <Text style={{ fontSize: 13, color: '#667085' }}>Overdue</Text>
-          <Text style={{ marginTop: 6, fontSize: 24, fontWeight: '800', color: '#171b24' }}>
+          <Text style={{ fontSize: 13, color: colors.textTertiary }}>Overdue</Text>
+          <Text style={{ marginTop: 6, fontSize: 24, fontWeight: '800', color: colors.textPrimary }}>
             {overdueChores.length}
           </Text>
         </OperationsCard>
         <OperationsCard style={{ flex: 1, marginBottom: 0 }}>
-          <Text style={{ fontSize: 13, color: '#667085' }}>Recurring</Text>
-          <Text style={{ marginTop: 6, fontSize: 24, fontWeight: '800', color: '#171b24' }}>
+          <Text style={{ fontSize: 13, color: colors.textTertiary }}>Recurring</Text>
+          <Text style={{ marginTop: 6, fontSize: 24, fontWeight: '800', color: colors.textPrimary }}>
             {recurringCount}
           </Text>
         </OperationsCard>
         <OperationsCard style={{ flex: 1, marginBottom: 0 }}>
-          <Text style={{ fontSize: 13, color: '#667085' }}>Checklists</Text>
-          <Text style={{ marginTop: 6, fontSize: 24, fontWeight: '800', color: '#171b24' }}>
+          <Text style={{ fontSize: 13, color: colors.textTertiary }}>Checklists</Text>
+          <Text style={{ marginTop: 6, fontSize: 24, fontWeight: '800', color: colors.textPrimary }}>
             {checklistCount}
           </Text>
         </OperationsCard>
@@ -390,17 +443,17 @@ export default function OperationsScreen() {
           }}
         >
           <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 18, fontWeight: '600', color: '#171b24' }}>
+            <Text style={{ fontSize: 18, fontWeight: '600', color: colors.textPrimary }}>
               Starter board
             </Text>
-            <Text style={{ marginTop: 4, fontSize: 14, lineHeight: 22, color: '#667085' }}>
+            <Text style={{ marginTop: 4, fontSize: 14, lineHeight: 22, color: colors.textTertiary }}>
               {starterTemplates.length} recommended starter operations for this space type.
             </Text>
           </View>
           {isAdmin ? (
             <TouchableOpacity
               style={{
-                backgroundColor: '#EEF6F3',
+                backgroundColor: colors.sageSoft,
                 borderRadius: 14,
                 paddingHorizontal: 14,
                 paddingVertical: 10,
@@ -408,7 +461,7 @@ export default function OperationsScreen() {
               onPress={handleLoadStarterBoard}
               activeOpacity={0.7}
             >
-              <Text style={{ fontSize: 13, fontWeight: '600', color: '#2d6a4f' }}>
+              <Text style={{ fontSize: 13, fontWeight: '600', color: colors.sage }}>
                 Load starter board
               </Text>
             </TouchableOpacity>
@@ -417,7 +470,7 @@ export default function OperationsScreen() {
 
         <View style={{ marginTop: 14, gap: 8 }}>
           {starterTemplates.slice(0, 3).map((template) => (
-            <Text key={template.title} style={{ fontSize: 13, color: '#667085' }}>
+            <Text key={template.title} style={{ fontSize: 13, color: colors.textTertiary }}>
               • {template.title}
             </Text>
           ))}
@@ -436,16 +489,16 @@ export default function OperationsScreen() {
             }}
           >
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 18, fontWeight: '600', color: '#171b24' }}>
+              <Text style={{ fontSize: 18, fontWeight: '600', color: colors.textPrimary }}>
                 Add operation
               </Text>
-              <Text style={{ marginTop: 4, fontSize: 14, color: '#667085' }}>
+              <Text style={{ marginTop: 4, fontSize: 14, color: colors.textTertiary }}>
                 Create recurring work, one-off tasks, or checklist-based operations.
               </Text>
             </View>
             <TouchableOpacity
               style={{
-                backgroundColor: showCreateForm ? '#F3F4F6' : '#1f2330',
+                backgroundColor: showCreateForm ? colors.bgSubtle : colors.bgInk,
                 borderRadius: 14,
                 paddingHorizontal: 14,
                 paddingVertical: 10,
@@ -460,7 +513,7 @@ export default function OperationsScreen() {
                 style={{
                   fontSize: 13,
                   fontWeight: '600',
-                  color: showCreateForm ? '#374151' : '#FFFFFF',
+                  color: showCreateForm ? colors.textSecondary : colors.textInverse,
                 }}
               >
                 {showCreateForm ? 'Close' : 'New operation'}
@@ -470,20 +523,20 @@ export default function OperationsScreen() {
 
           {showCreateForm ? (
             <>
-              <Text style={{ fontSize: 14, fontWeight: '600', color: '#374151', marginBottom: 8 }}>
+              <Text style={{ fontSize: 14, fontWeight: '600', color: colors.textSecondary, marginBottom: 8 }}>
                 Title
               </Text>
               <TextInput
                 style={{
-                  backgroundColor: '#F3F4F6',
+                  backgroundColor: colors.bgSubtle,
                   borderRadius: 12,
                   height: 50,
                   paddingHorizontal: 16,
                   fontSize: 16,
-                  color: '#111827',
+                  color: colors.textPrimary,
                 }}
                 placeholder="Kitchen reset"
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor={colors.textMuted}
                 value={title}
                 onChangeText={setTitle}
               />
@@ -492,7 +545,7 @@ export default function OperationsScreen() {
                 style={{
                   fontSize: 14,
                   fontWeight: '600',
-                  color: '#374151',
+                  color: colors.textSecondary,
                   marginBottom: 8,
                   marginTop: 16,
                 }}
@@ -501,17 +554,17 @@ export default function OperationsScreen() {
               </Text>
               <TextInput
                 style={{
-                  backgroundColor: '#F3F4F6',
+                  backgroundColor: colors.bgSubtle,
                   borderRadius: 12,
                   minHeight: 80,
                   paddingHorizontal: 16,
                   paddingVertical: 14,
                   fontSize: 16,
-                  color: '#111827',
+                  color: colors.textPrimary,
                   textAlignVertical: 'top',
                 }}
                 placeholder="Optional details"
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor={colors.textMuted}
                 value={description}
                 onChangeText={setDescription}
                 multiline
@@ -521,7 +574,7 @@ export default function OperationsScreen() {
                 style={{
                   fontSize: 14,
                   fontWeight: '600',
-                  color: '#374151',
+                  color: colors.textSecondary,
                   marginBottom: 8,
                   marginTop: 16,
                 }}
@@ -536,7 +589,7 @@ export default function OperationsScreen() {
                       paddingHorizontal: 14,
                       paddingVertical: 10,
                       borderRadius: 18,
-                      backgroundColor: category === option.value ? '#1f2330' : '#F3F4F6',
+                      backgroundColor: category === option.value ? colors.bgInk : colors.bgSubtle,
                     }}
                     onPress={() => {
                       hapticLight();
@@ -548,7 +601,7 @@ export default function OperationsScreen() {
                       style={{
                         fontSize: 13,
                         fontWeight: '500',
-                        color: category === option.value ? '#FFFFFF' : '#6B7280',
+                        color: category === option.value ? colors.textInverse : colors.textTertiary,
                       }}
                     >
                       {option.label}
@@ -561,7 +614,7 @@ export default function OperationsScreen() {
                 style={{
                   fontSize: 14,
                   fontWeight: '600',
-                  color: '#374151',
+                  color: colors.textSecondary,
                   marginBottom: 8,
                   marginTop: 16,
                 }}
@@ -576,7 +629,7 @@ export default function OperationsScreen() {
                       flex: 1,
                       paddingVertical: 10,
                       borderRadius: 14,
-                      backgroundColor: taskType === option.value ? '#EEF6F3' : '#F3F4F6',
+                      backgroundColor: taskType === option.value ? colors.sageSoft : colors.bgSubtle,
                       alignItems: 'center',
                     }}
                     onPress={() => {
@@ -589,7 +642,7 @@ export default function OperationsScreen() {
                       style={{
                         fontSize: 13,
                         fontWeight: '600',
-                        color: taskType === option.value ? '#2d6a4f' : '#6B7280',
+                        color: taskType === option.value ? colors.sage : colors.textTertiary,
                       }}
                     >
                       {option.label}
@@ -602,7 +655,7 @@ export default function OperationsScreen() {
                 style={{
                   fontSize: 14,
                   fontWeight: '600',
-                  color: '#374151',
+                  color: colors.textSecondary,
                   marginBottom: 8,
                   marginTop: 16,
                 }}
@@ -617,7 +670,7 @@ export default function OperationsScreen() {
                       paddingHorizontal: 14,
                       paddingVertical: 10,
                       borderRadius: 18,
-                      backgroundColor: frequency === option.value ? '#EEF6F3' : '#F3F4F6',
+                      backgroundColor: frequency === option.value ? colors.sageSoft : colors.bgSubtle,
                     }}
                     onPress={() => {
                       hapticLight();
@@ -629,7 +682,7 @@ export default function OperationsScreen() {
                       style={{
                         fontSize: 13,
                         fontWeight: '500',
-                        color: frequency === option.value ? '#2d6a4f' : '#6B7280',
+                        color: frequency === option.value ? colors.sage : colors.textTertiary,
                       }}
                     >
                       {option.label}
@@ -645,7 +698,7 @@ export default function OperationsScreen() {
                 hint={getFrequencyLabel(frequency, nextDueDate.toISOString().slice(0, 10))}
               />
 
-              <Text style={{ fontSize: 14, fontWeight: '600', color: '#374151', marginBottom: 8 }}>
+              <Text style={{ fontSize: 14, fontWeight: '600', color: colors.textSecondary, marginBottom: 8 }}>
                 Assign to
               </Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
@@ -654,7 +707,7 @@ export default function OperationsScreen() {
                     paddingHorizontal: 14,
                     paddingVertical: 10,
                     borderRadius: 18,
-                    backgroundColor: assignedTo === null ? '#1f2330' : '#F3F4F6',
+                    backgroundColor: assignedTo === null ? colors.bgInk : colors.bgSubtle,
                   }}
                   onPress={() => {
                     hapticLight();
@@ -666,7 +719,7 @@ export default function OperationsScreen() {
                     style={{
                       fontSize: 13,
                       fontWeight: '500',
-                      color: assignedTo === null ? '#FFFFFF' : '#6B7280',
+                      color: assignedTo === null ? colors.textInverse : colors.textTertiary,
                     }}
                   >
                     Unassigned
@@ -679,7 +732,7 @@ export default function OperationsScreen() {
                       paddingHorizontal: 14,
                       paddingVertical: 10,
                       borderRadius: 18,
-                      backgroundColor: assignedTo === member.value ? '#1f2330' : '#F3F4F6',
+                      backgroundColor: assignedTo === member.value ? colors.bgInk : colors.bgSubtle,
                     }}
                     onPress={() => {
                       hapticLight();
@@ -691,7 +744,7 @@ export default function OperationsScreen() {
                       style={{
                         fontSize: 13,
                         fontWeight: '500',
-                        color: assignedTo === member.value ? '#FFFFFF' : '#6B7280',
+                        color: assignedTo === member.value ? colors.textInverse : colors.textTertiary,
                       }}
                     >
                       {member.label}
@@ -706,7 +759,7 @@ export default function OperationsScreen() {
                     style={{
                       fontSize: 14,
                       fontWeight: '600',
-                      color: '#374151',
+                      color: colors.textSecondary,
                       marginBottom: 8,
                       marginTop: 16,
                     }}
@@ -715,17 +768,17 @@ export default function OperationsScreen() {
                   </Text>
                   <TextInput
                     style={{
-                      backgroundColor: '#F3F4F6',
+                      backgroundColor: colors.bgSubtle,
                       borderRadius: 12,
                       minHeight: 88,
                       paddingHorizontal: 16,
                       paddingVertical: 14,
                       fontSize: 16,
-                      color: '#111827',
+                      color: colors.textPrimary,
                       textAlignVertical: 'top',
                     }}
                     placeholder={'Open space\nRestock supplies\nLock up'}
-                    placeholderTextColor="#9CA3AF"
+                    placeholderTextColor={colors.textMuted}
                     value={checklistText}
                     onChangeText={setChecklistText}
                     multiline
@@ -737,7 +790,7 @@ export default function OperationsScreen() {
                 style={{
                   fontSize: 14,
                   fontWeight: '600',
-                  color: '#374151',
+                  color: colors.textSecondary,
                   marginBottom: 8,
                   marginTop: 16,
                 }}
@@ -746,15 +799,15 @@ export default function OperationsScreen() {
               </Text>
               <TextInput
                 style={{
-                  backgroundColor: '#F3F4F6',
+                  backgroundColor: colors.bgSubtle,
                   borderRadius: 12,
                   height: 50,
                   paddingHorizontal: 16,
                   fontSize: 16,
-                  color: '#111827',
+                  color: colors.textPrimary,
                 }}
                 placeholder="Optional, e.g. 2"
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor={colors.textMuted}
                 value={escalationDays}
                 onChangeText={setEscalationDays}
                 keyboardType="number-pad"
@@ -763,7 +816,7 @@ export default function OperationsScreen() {
               <TouchableOpacity
                 style={{
                   marginTop: 20,
-                  backgroundColor: '#1f2330',
+                  backgroundColor: colors.bgInk,
                   height: 52,
                   borderRadius: 14,
                   alignItems: 'center',
@@ -774,7 +827,7 @@ export default function OperationsScreen() {
                 }}
                 activeOpacity={0.8}
               >
-                <Text style={{ fontSize: 16, fontWeight: '600', color: '#FFFFFF' }}>
+                <Text style={{ fontSize: 16, fontWeight: '600', color: colors.textInverse }}>
                   Create operation
                 </Text>
               </TouchableOpacity>
@@ -785,10 +838,10 @@ export default function OperationsScreen() {
 
       {!chores.length ? (
         <OperationsCard>
-          <Text style={{ fontSize: 16, fontWeight: '600', color: '#171b24' }}>
+          <Text style={{ fontSize: 16, fontWeight: '600', color: colors.textPrimary }}>
             No operations yet
           </Text>
-          <Text style={{ marginTop: 6, fontSize: 14, lineHeight: 22, color: '#667085' }}>
+          <Text style={{ marginTop: 6, fontSize: 14, lineHeight: 22, color: colors.textTertiary }}>
             Add recurring and one-off operations to keep this space running smoothly.
           </Text>
         </OperationsCard>
@@ -796,7 +849,7 @@ export default function OperationsScreen() {
         <>
           {overdueChores.length > 0 ? (
             <View style={{ marginBottom: 8 }}>
-              <Text style={{ marginBottom: 10, fontSize: 13, fontWeight: '700', color: '#DC2626' }}>
+              <Text style={{ marginBottom: 10, fontSize: 13, fontWeight: '700', color: colors.dangerText }}>
                 Overdue ({overdueChores.length})
               </Text>
               {overdueChores.map((chore: any) => (
@@ -814,7 +867,7 @@ export default function OperationsScreen() {
 
           {upcomingChores.length > 0 ? (
             <View>
-              <Text style={{ marginBottom: 10, fontSize: 13, fontWeight: '700', color: '#6B7280' }}>
+              <Text style={{ marginBottom: 10, fontSize: 13, fontWeight: '700', color: colors.textTertiary }}>
                 Upcoming ({upcomingChores.length})
               </Text>
               {upcomingChores.map((chore: any) => (
@@ -832,6 +885,7 @@ export default function OperationsScreen() {
         </>
       )}
     </ScrollView>
+    </View>
   );
 }
 
@@ -859,7 +913,7 @@ function OperationItem({
     overdueDays >= chore.escalation_days;
 
   return (
-    <OperationsCard style={isOverdue ? { borderWidth: 1, borderColor: '#FCA5A5' } : undefined}>
+    <OperationsCard style={isOverdue ? { borderWidth: 1, borderColor: colors.dangerText } : undefined}>
       <View
         style={{
           flexDirection: 'row',
@@ -875,14 +929,14 @@ function OperationItem({
                 paddingHorizontal: 10,
                 paddingVertical: 4,
                 borderRadius: 16,
-                backgroundColor: isOverdue ? '#FEF2F2' : '#F3F4F6',
+                backgroundColor: isOverdue ? colors.dangerBg : colors.bgSubtle,
               }}
             >
               <Text
                 style={{
                   fontSize: 12,
                   fontWeight: '600',
-                  color: isOverdue ? '#DC2626' : '#6B7280',
+                  color: isOverdue ? colors.dangerText : colors.textTertiary,
                 }}
               >
                 {isOverdue ? 'Overdue' : `Due ${dueLabel(chore.next_due)}`}
@@ -893,10 +947,10 @@ function OperationItem({
                 paddingHorizontal: 10,
                 paddingVertical: 4,
                 borderRadius: 16,
-                backgroundColor: '#EEF6F3',
+                backgroundColor: colors.sageSoft,
               }}
             >
-              <Text style={{ fontSize: 12, fontWeight: '600', color: '#2d6a4f' }}>
+              <Text style={{ fontSize: 12, fontWeight: '600', color: colors.sage }}>
                 {formatCategoryLabel(chore.category)}
               </Text>
             </View>
@@ -906,30 +960,30 @@ function OperationItem({
                   paddingHorizontal: 10,
                   paddingVertical: 4,
                   borderRadius: 16,
-                  backgroundColor: '#FEF2F2',
+                  backgroundColor: colors.dangerBg,
                 }}
               >
-                <Text style={{ fontSize: 12, fontWeight: '600', color: '#DC2626' }}>
+                <Text style={{ fontSize: 12, fontWeight: '600', color: colors.dangerText }}>
                   Escalated
                 </Text>
               </View>
             ) : null}
           </View>
 
-          <Text style={{ fontSize: 16, fontWeight: '700', color: '#171b24' }}>
+          <Text style={{ fontSize: 16, fontWeight: '700', color: colors.textPrimary }}>
             {chore.title}
           </Text>
           {chore.description ? (
-            <Text style={{ marginTop: 6, fontSize: 14, lineHeight: 22, color: '#667085' }}>
+            <Text style={{ marginTop: 6, fontSize: 14, lineHeight: 22, color: colors.textTertiary }}>
               {chore.description}
             </Text>
           ) : null}
 
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
-            <Text style={{ fontSize: 12, color: '#98a1b0' }}>
+            <Text style={{ fontSize: 12, color: colors.textMuted }}>
               {getFrequencyLabel(chore.frequency, chore.next_due)}
             </Text>
-            <Text style={{ fontSize: 12, color: '#98a1b0' }}>
+            <Text style={{ fontSize: 12, color: colors.textMuted }}>
               {chore.task_type === 'checklist'
                 ? 'Checklist'
                 : chore.task_type === 'one_off'
@@ -937,25 +991,25 @@ function OperationItem({
                   : 'Recurring'}
             </Text>
             {checklistCount > 0 ? (
-              <Text style={{ fontSize: 12, color: '#98a1b0' }}>
+              <Text style={{ fontSize: 12, color: colors.textMuted }}>
                 {checklistCount} item{checklistCount === 1 ? '' : 's'}
               </Text>
             ) : null}
             {chore.assigned_user?.name ? (
-              <Text style={{ fontSize: 12, color: '#98a1b0' }}>
+              <Text style={{ fontSize: 12, color: colors.textMuted }}>
                 {chore.assigned_user.name}
               </Text>
             ) : null}
           </View>
 
           {chore.last_completion?.completed_user?.name ? (
-            <Text style={{ marginTop: 8, fontSize: 12, color: '#98a1b0' }}>
+            <Text style={{ marginTop: 8, fontSize: 12, color: colors.textMuted }}>
               Last done by {chore.last_completion.completed_user.name}
             </Text>
           ) : null}
 
           {checklistCount > 0 ? (
-            <Text style={{ marginTop: 8, fontSize: 12, lineHeight: 18, color: '#98a1b0' }}>
+            <Text style={{ marginTop: 8, fontSize: 12, lineHeight: 18, color: colors.textMuted }}>
               {chore.checklist_items.join(' • ')}
             </Text>
           ) : null}
@@ -964,7 +1018,7 @@ function OperationItem({
         <View style={{ alignItems: 'flex-end', gap: 8 }}>
           <TouchableOpacity
             style={{
-              backgroundColor: '#ECFDF5',
+              backgroundColor: colors.owedBg,
               borderRadius: 12,
               paddingHorizontal: 12,
               paddingVertical: 8,
@@ -972,14 +1026,14 @@ function OperationItem({
             onPress={onComplete}
             activeOpacity={0.7}
           >
-            <Text style={{ fontSize: 13, fontWeight: '600', color: '#059669' }}>
+            <Text style={{ fontSize: 13, fontWeight: '600', color: colors.owedText }}>
               Done
             </Text>
           </TouchableOpacity>
           {isAdmin ? (
             <TouchableOpacity
               style={{
-                backgroundColor: '#FEF2F2',
+                backgroundColor: colors.dangerBg,
                 borderRadius: 12,
                 paddingHorizontal: 12,
                 paddingVertical: 8,
@@ -987,7 +1041,7 @@ function OperationItem({
               onPress={onDelete}
               activeOpacity={0.7}
             >
-              <Text style={{ fontSize: 13, fontWeight: '600', color: '#DC2626' }}>
+              <Text style={{ fontSize: 13, fontWeight: '600', color: colors.dangerText }}>
                 Remove
               </Text>
             </TouchableOpacity>

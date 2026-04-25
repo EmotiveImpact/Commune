@@ -124,6 +124,18 @@ export { getCategoriesByGroupType, getOnboardingTips } from './group-type';
 export { getSpacePreset, getSubtypePreset } from './space-presets';
 export type { SpacePreset } from './space-presets';
 export {
+  SUBTYPE_OPTIONS_BY_TYPE,
+  ACQUISITION_SOURCES,
+  ACQUISITION_SOURCE_OPTIONS,
+  getContextualSellCopy,
+} from './onboarding-copy';
+export type {
+  ContextualSellCopy,
+  SubtypeOption,
+  AcquisitionSource,
+  AcquisitionSourceOption,
+} from './onboarding-copy';
+export {
   getDefaultWorkspaceRolePresets,
   getWorkspaceGovernancePreview,
   normalizeGroupApprovalPolicy,

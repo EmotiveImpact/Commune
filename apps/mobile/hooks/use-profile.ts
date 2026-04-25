@@ -33,6 +33,7 @@ export function useUpdateProfile() {
         default_currency?: string;
         timezone?: string;
         notification_preferences?: NotificationPreferences;
+        acquisition_source?: string | null;
       };
     }) => updateProfile(userId, data),
     onSuccess: (result) => {

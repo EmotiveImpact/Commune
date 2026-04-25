@@ -25,6 +25,7 @@ export interface UserProfile {
   deletion_requested_at: string | null;
   deletion_scheduled_for: string | null;
   notification_preferences: NotificationPreferences;
+  acquisition_source: string | null;
   created_at: string;
 }
 
@@ -73,6 +74,7 @@ function buildProfileFromAuthUser(authUser: AuthUser): UserProfile {
     deletion_requested_at: null,
     deletion_scheduled_for: null,
     notification_preferences: DEFAULT_NOTIFICATION_PREFS,
+    acquisition_source: null,
     created_at: authUser.created_at ?? new Date().toISOString(),
   };
 }
@@ -206,6 +208,7 @@ export async function updateProfile(
     timezone?: string;
     show_shared_groups?: boolean;
     notification_preferences?: NotificationPreferences;
+    acquisition_source?: string | null;
   },
 ): Promise<UserProfile> {
   const supabase = getTypedSupabase();

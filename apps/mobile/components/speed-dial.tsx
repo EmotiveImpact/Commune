@@ -1,6 +1,6 @@
 import type { ComponentType } from 'react';
 import { useEffect } from 'react';
-import { Modal, Pressable, Text, View } from 'react-native';
+import { Modal, Text, View } from 'react-native';
 import Animated, {
   Easing,
   interpolate,
@@ -10,6 +10,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { colors, elevation, space } from '@/constants/design';
+import { Pressable } from '@/components/primitives';
 import { hapticMedium } from '@/lib/haptics';
 
 type TablerIcon = ComponentType<{ size?: number; strokeWidth?: number; color?: string }>;

@@ -1,12 +1,13 @@
 import { useMemo, useState } from 'react';
-import { Alert, Linking, Pressable, ScrollView, Text, View } from 'react-native';
+import { Alert, Linking, ScrollView, Text, View } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
-import { IconCheck, IconChevronLeft } from '@tabler/icons-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { IconCheck, IconChevronLeft, IconTag } from '@tabler/icons-react-native';
 import { SubscriptionPlan } from '@commune/types';
 import { useAuthStore } from '@/stores/auth';
 import { useCheckout, useSubscription } from '@/hooks/use-subscriptions';
 import { colors, font, radius, space } from '@/constants/design';
-import { Button, EmptyState, Screen, SkeletonBlock } from '@/components/primitives';
+import { Button, EmptyState, Pressable, Screen, SkeletonBlock } from '@/components/primitives';
 import { getErrorMessage } from '@/lib/errors';
 import { hapticLight, hapticMedium, hapticWarning } from '@/lib/haptics';
 
@@ -283,6 +284,7 @@ function PlanCard({
 
 export default function PricingScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const user = useAuthStore((s) => s.user);
   const { data: subscription, isLoading } = useSubscription(user?.id ?? '');
   const checkout = useCheckout();
@@ -318,33 +320,33 @@ export default function PricingScreen() {
       {/* In-screen header */}
       <View
         style={{
-          flexDirection: 'row',
-          alignItems: 'center',
+          paddingTop: insets.top + 12,
           paddingHorizontal: space.gutter,
-          paddingTop: 8,
-          paddingBottom: space.sm,
-          height: 52,
+          backgroundColor: colors.bgBase,
         }}
       >
-        <Pressable
-          onPress={() => {
-            hapticLight();
-            router.back();
-          }}
-          hitSlop={12}
+        <View
           style={{
-            width: 32,
-            height: 32,
+            flexDirection: 'row',
             alignItems: 'center',
-            justifyContent: 'center',
+            justifyContent: 'space-between',
+            height: 48,
           }}
         >
-          <IconChevronLeft size={24} strokeWidth={2} color={colors.textPrimary} />
-        </Pressable>
-        <View style={{ flex: 1, alignItems: 'center' }}>
+          <Pressable
+            onPress={() => {
+              hapticLight();
+              router.back();
+            }}
+            hitSlop={10}
+            style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 2, paddingVertical: 6, paddingRight: 10, marginLeft: -4, opacity: pressed ? 0.6 : 1, zIndex: 2 })}
+          >
+            <IconChevronLeft size={22} color={colors.textPrimary} strokeWidth={2} />
+            <Text style={{ fontSize: 15, fontWeight: '600', color: colors.textPrimary }}>Back</Text>
+          </Pressable>
           <Text style={[font.h3, { color: colors.textPrimary }]}>Plans</Text>
+          <View style={{ width: 36 }} />
         </View>
-        <View style={{ width: 32 }} />
       </View>
 
       <ScrollView
@@ -358,7 +360,7 @@ export default function PricingScreen() {
       >
         {!user ? (
           <EmptyState
-            icon="pricetag-outline"
+            icon={IconTag}
             title="Not signed in"
             description="Sign in to view pricing plans."
           />

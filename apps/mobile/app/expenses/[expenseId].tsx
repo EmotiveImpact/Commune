@@ -1,11 +1,11 @@
 import { useMemo, type ReactNode } from 'react';
-import { Alert, Linking, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, ActivityIndicator, Linking, Pressable, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { IconChevronLeft, IconReceipt } from '@tabler/icons-react-native';
+import { IconCalendar, IconChevronLeft, IconReceipt } from '@tabler/icons-react-native';
 import type { PaymentRecord } from '@commune/types';
 import { formatCurrency, formatDate } from '@commune/utils';
-import { Button, EmptyState, IconTile, Screen, SkeletonBlock } from '@/components/primitives';
+import { EmptyState, IconTile, Screen, SkeletonBlock } from '@/components/primitives';
 import { colors, radius, space, getCategoryMeta } from '@/constants/design';
 import { useAuthStore } from '@/stores/auth';
 import { useGroupStore } from '@/stores/group';
@@ -158,7 +158,7 @@ export default function ExpenseDetailScreen() {
   const headerNode = (
     <View
       style={{
-        paddingTop: insets.top + space.sm,
+        paddingTop: insets.top + 12,
         paddingBottom: space.md,
         paddingHorizontal: space.gutter,
         flexDirection: 'row',
@@ -166,17 +166,17 @@ export default function ExpenseDetailScreen() {
         backgroundColor: colors.bgBase,
       }}
     >
-      <TouchableOpacity
+      <Pressable
         onPress={() => {
           hapticLight();
           router.back();
         }}
-        hitSlop={12}
-        activeOpacity={0.7}
-        style={{ width: 32, height: 32, alignItems: 'flex-start', justifyContent: 'center' }}
+        hitSlop={10}
+        style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 2, paddingVertical: 6, paddingRight: 10, marginLeft: -4, opacity: pressed ? 0.6 : 1, zIndex: 2 })}
       >
-        <IconChevronLeft size={24} color={colors.textPrimary} strokeWidth={2} />
-      </TouchableOpacity>
+        <IconChevronLeft size={22} color={colors.textPrimary} strokeWidth={2} />
+        <Text style={{ fontSize: 15, fontWeight: '600', color: colors.textPrimary }}>Back</Text>
+      </Pressable>
       <Text
         style={{
           flex: 1,
@@ -236,7 +236,7 @@ export default function ExpenseDetailScreen() {
         <Stack.Screen options={{ headerShown: false }} />
         {headerNode}
         <EmptyState
-          icon="receipt-outline"
+          icon={IconReceipt}
           title="Expense not found"
           description={
             expenseError
@@ -303,6 +303,12 @@ export default function ExpenseDetailScreen() {
   const payerInitialColors = personColors(expense.paid_by_user_id, paidByIsYou);
 
   /* ── Render ── */
+  const myShareAmount = myParticipant?.share_amount ?? 0;
+  const ctaAmountLabel = formatCurrency(myShareAmount, expense.currency);
+  const ctaLabel = myIsPaid
+    ? `Mark as unpaid · ${ctaAmountLabel}`
+    : `Mark as paid · ${ctaAmountLabel}`;
+
   return (
     <Screen>
       <Stack.Screen options={{ headerShown: false }} />
@@ -312,7 +318,7 @@ export default function ExpenseDetailScreen() {
         style={{ flex: 1 }}
         contentContainerStyle={{
           paddingTop: space.md,
-          paddingBottom: 120,
+          paddingBottom: 24,
           paddingHorizontal: space.gutter,
           gap: space.base,
         }}
@@ -416,7 +422,7 @@ export default function ExpenseDetailScreen() {
           <DetailRow
             tile={
               <IconTile
-                icon="calendar-outline"
+                icon={IconCalendar}
                 color={colors.warnText}
                 bg={colors.warnBg}
                 size={40}
@@ -565,28 +571,39 @@ export default function ExpenseDetailScreen() {
         ) : null}
       </ScrollView>
 
-      {/* Pinned bottom action */}
+      {/* Pinned bottom action — sibling to ScrollView, lives outside scroll */}
       {showMarkCta ? (
         <View
           style={{
-            position: 'absolute',
-            left: 0,
-            right: 0,
-            bottom: 0,
-            paddingHorizontal: space.base,
-            paddingTop: space.md,
-            paddingBottom: Math.max(insets.bottom, space.base),
+            paddingHorizontal: space.gutter,
+            paddingTop: 12,
+            paddingBottom: insets.bottom + 12,
+            borderTopWidth: 1,
+            borderTopColor: colors.border,
             backgroundColor: colors.bgBase,
           }}
         >
-          <Button
-            label={myIsPaid ? 'Mark as unpaid' : 'Mark as paid'}
-            variant="primary"
-            size="lg"
-            fullWidth
-            loading={markPayment.isPending}
+          <TouchableOpacity
             onPress={handleToggleMarkPaid}
-          />
+            activeOpacity={0.85}
+            disabled={markPayment.isPending}
+            style={{
+              height: 52,
+              borderRadius: 14,
+              backgroundColor: '#1f2330',
+              alignItems: 'center',
+              justifyContent: 'center',
+              opacity: markPayment.isPending ? 0.7 : 1,
+            }}
+          >
+            {markPayment.isPending ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '700' }}>
+                {ctaLabel}
+              </Text>
+            )}
+          </TouchableOpacity>
         </View>
       ) : null}
     </Screen>

@@ -1,13 +1,41 @@
 import { useCallback, useMemo, useState } from 'react';
-import { Modal, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
+import { RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQueryClient } from '@tanstack/react-query';
-import { Ionicons } from '@expo/vector-icons';
+import {
+  IconArrowsLeftRight,
+  IconBriefcase,
+  IconChevronRight,
+  IconCloudOff,
+  IconGridDots,
+  IconHeart,
+  IconHome2,
+  IconPlane,
+  IconPlus,
+  IconReceipt,
+  IconSettings,
+  IconTool,
+  IconUsers,
+} from '@tabler/icons-react-native';
 import { formatCurrency, getMonthKey } from '@commune/utils';
 import type { ExpenseListItem, GroupWithMembers } from '@commune/types';
 import { colors, elevation, font, getCategoryMeta, getGroupTypeMeta, radius, space } from '@/constants/design';
-import { Avatar, Badge, Button, Card, Divider, EmptyState, IconTile, Screen, SectionHeader, SkeletonBlock, StatusPill } from '@/components/primitives';
+import { Avatar, Badge, Button, Card, EmptyState, IconTile, Pressable, Screen, SectionHeader, SkeletonBlock, StatusPill, type TablerIcon } from '@/components/primitives';
+import { BottomSheet, SheetRow } from '@/components/bottom-sheet';
+
+const GROUP_TYPE_TABLER_ICONS: Record<string, TablerIcon> = {
+  home: IconHome2,
+  couple: IconHeart,
+  workspace: IconBriefcase,
+  project: IconTool,
+  trip: IconPlane,
+  other: IconGridDots,
+};
+
+function getGroupTypeTablerIcon(type?: string): TablerIcon {
+  return GROUP_TYPE_TABLER_ICONS[type ?? 'other'] ?? GROUP_TYPE_TABLER_ICONS.other!;
+}
 import { hapticLight, hapticMedium } from '@/lib/haptics';
 import { useAuthStore } from '@/stores/auth';
 import { useGroupStore } from '@/stores/group';
@@ -73,13 +101,13 @@ function GroupHero({ group, onSwitch, onManage, onMembers }: {
   return (
     <View style={{ gap: space.md }}>
       <Card variant="surface" padding={0} style={{ overflow: 'hidden' }}>
-        <View style={{ height: 100, backgroundColor: meta.bg, justifyContent: 'flex-end' }}>
-          <View style={{ marginLeft: space.lg, marginBottom: -32, borderWidth: 4, borderColor: colors.bgSurface, borderRadius: 20, alignSelf: 'flex-start' }}>
-            <IconTile icon={meta.icon as any} color={meta.accent} bg={meta.bg} size={64} />
+        <View style={{ height: 72, backgroundColor: meta.bg, justifyContent: 'flex-end' }}>
+          <View style={{ marginLeft: space.lg, marginBottom: -20, borderWidth: 3, borderColor: colors.bgSurface, borderRadius: 18, alignSelf: 'flex-start' }}>
+            <IconTile icon={meta.icon} color={meta.accent} bg={meta.bg} size={56} />
           </View>
         </View>
 
-        <View style={{ padding: space.lg, paddingTop: 40 }}>
+        <View style={{ padding: space.lg, paddingTop: 28 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
             <Text style={[font.h1, { color: colors.textPrimary, flex: 1 }]} numberOfLines={1}>{group.name}</Text>
             <Pressable
@@ -92,7 +120,7 @@ function GroupHero({ group, onSwitch, onManage, onMembers }: {
               ]}
             >
               <Text style={{ fontSize: 13, fontWeight: '700', color: colors.sage }}>Switch</Text>
-              <Ionicons name="swap-horizontal" size={14} color={colors.sage} />
+              <IconArrowsLeftRight size={14} color={colors.sage} strokeWidth={1.7} />
             </Pressable>
           </View>
 
@@ -105,7 +133,7 @@ function GroupHero({ group, onSwitch, onManage, onMembers }: {
             </Text>
           </View>
 
-          <Divider />
+          <View style={{ height: space.md }} />
 
           {active.length > 0 ? (
             <Pressable onPress={() => { hapticLight(); onMembers(); }} style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -127,8 +155,8 @@ function GroupHero({ group, onSwitch, onManage, onMembers }: {
       </Card>
 
       <View style={{ flexDirection: 'row', gap: space.sm }}>
-        <Button label="Manage group" icon="settings-outline" onPress={onManage} style={{ flex: 1 }} />
-        <Button label="Members" variant="secondary" icon="people-outline" onPress={onMembers} style={{ flex: 1 }} />
+        <Button label="Manage group" icon={IconSettings} onPress={onManage} style={{ flex: 1 }} />
+        <Button label="Members" variant="secondary" icon={IconUsers} onPress={onMembers} style={{ flex: 1 }} />
       </View>
     </View>
   );
@@ -150,23 +178,23 @@ function StatsRow({ groupId, userId, currency, monthKey }: {
   const tiles: { label: string; value: number; tone: 'owe' | 'owed' | 'settled' }[] = [
     { label: 'You owe', value: youOwe, tone: 'owe' },
     { label: "You're owed", value: youreOwed, tone: 'owed' },
-    { label: 'Total this month', value: totalSpend, tone: 'settled' },
+    { label: 'Total', value: totalSpend, tone: 'settled' },
   ];
   const toneColor = (t: 'owe' | 'owed' | 'settled', active: boolean) =>
     !active ? colors.textTertiary : t === 'owe' ? colors.oweText : t === 'owed' ? colors.owedText : colors.textPrimary;
 
   return (
-    <View style={{ flexDirection: 'row', gap: space.md }}>
+    <View style={{ flexDirection: 'row', gap: space.sm }}>
       {tiles.map((t) => {
         const active = t.value > 0.005;
         return (
-          <Card key={t.label} variant="surface" padding={space.base} style={{ flex: 1 }}>
+          <Card key={t.label} variant="surface" padding={space.lg} style={{ flex: 1 }}>
             <Text style={[font.caption, { color: colors.textTertiary }]} numberOfLines={1}>{t.label}</Text>
             {isLoading ? (
-              <SkeletonBlock height={22} style={{ marginTop: 6 }} />
+              <SkeletonBlock height={26} style={{ marginTop: 8 }} />
             ) : (
               <Text
-                style={{ fontSize: 17, fontWeight: '700', lineHeight: 22, marginTop: 4, fontVariant: ['tabular-nums'], color: toneColor(t.tone, active) }}
+                style={{ fontSize: 20, fontWeight: '700', lineHeight: 26, marginTop: 8, fontVariant: ['tabular-nums'], color: toneColor(t.tone, active) }}
                 numberOfLines={1}
                 adjustsFontSizeToFit
               >
@@ -200,7 +228,7 @@ function MembersSection({ group, currentUserId, monthKey, onSeeAll, onInvite }: 
       <SectionHeader title="Members" actionLabel="See all" onAction={onSeeAll} />
       {active.length === 0 ? (
         <EmptyState
-          icon="people-outline"
+          icon={IconUsers}
           title="No members yet"
           description="Invite people to start tracking together."
           actionLabel="Invite members"
@@ -226,7 +254,7 @@ function MembersSection({ group, currentUserId, monthKey, onSeeAll, onInvite }: 
                   </View>
                   {isSelf
                     ? <StatusPill amount={amount} tone={tone} />
-                    : <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />}
+                    : <IconChevronRight size={18} color={colors.textTertiary} strokeWidth={1.7} />}
                 </View>
               </Card>
             );
@@ -253,7 +281,7 @@ function RecentActivity({ group, onSeeAll }: { group: GroupWithMembers; onSeeAll
           <SkeletonBlock height={72} radius={radius.card} />
         </View>
       ) : items.length === 0 ? (
-        <EmptyState icon="receipt-outline" title="No activity yet" description="Expenses added to this group show up here." />
+        <EmptyState icon={IconReceipt} title="No activity yet" description="Expenses added to this group show up here." />
       ) : (
         <View style={{ gap: space.sm }}>
           {items.map((e) => {
@@ -261,7 +289,7 @@ function RecentActivity({ group, onSeeAll }: { group: GroupWithMembers; onSeeAll
             return (
               <Card key={e.id} variant="surface" padding={space.base}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
-                  <IconTile icon={cat.icon as any} color={cat.color} bg={cat.bg} size={44} />
+                  <IconTile icon={cat.icon} color={cat.color} bg={cat.bg} size={44} />
                   <View style={{ flex: 1 }}>
                     <Text style={[font.bodyStrong, { color: colors.textPrimary }]} numberOfLines={1}>{e.title}</Text>
                     <Text style={[font.caption, { color: colors.textTertiary, marginTop: 2 }]} numberOfLines={1}>
@@ -297,7 +325,7 @@ function PendingInvites({ invites, acceptingId, isPending, onAccept }: {
           return (
             <Card key={inv.id} variant="surface" padding={space.base}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
-                <IconTile icon={meta.icon as any} color={meta.accent} bg={meta.bg} size={40} />
+                <IconTile icon={meta.icon} color={meta.accent} bg={meta.bg} size={40} />
                 <View style={{ flex: 1 }}>
                   <Text style={[font.bodyStrong, { color: colors.textPrimary }]} numberOfLines={1}>
                     {inv.group?.name ?? 'New space'}
@@ -320,58 +348,41 @@ function SwitchGroupModal({ visible, groups, activeGroupId, onClose, onSelect, o
   visible: boolean; groups: GroupWithMembers[]; activeGroupId: string | null;
   onClose: () => void; onSelect: (groupId: string) => void; onCreate: () => void;
 }) {
-  const insets = useSafeAreaInsets();
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <Pressable onPress={onClose} style={{ flex: 1, backgroundColor: 'rgba(26,30,43,0.4)', justifyContent: 'flex-end' }}>
-        <Pressable
-          onPress={(e) => e.stopPropagation()}
-          style={{
-            backgroundColor: colors.bgSurface, borderTopLeftRadius: radius.sheet, borderTopRightRadius: radius.sheet,
-            paddingTop: space.lg, paddingBottom: insets.bottom + space.lg, paddingHorizontal: space.gutter,
-            maxHeight: '85%', ...elevation.sheet,
-          }}
-        >
-          <View style={{ alignSelf: 'center', width: 44, height: 5, borderRadius: 3, backgroundColor: colors.border, marginBottom: space.lg }} />
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: space.lg }}>
-            <Text style={[font.h2, { color: colors.textPrimary }]}>Switch group</Text>
-            <Pressable
-              onPress={onClose}
-              accessibilityRole="button"
-              accessibilityLabel="Close"
-              style={({ pressed }) => [
-                { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.bgSubtle, alignItems: 'center', justifyContent: 'center' },
-                pressed && { opacity: 0.7 },
-              ]}
-            >
-              <Ionicons name="close" size={20} color={colors.textSecondary} />
-            </Pressable>
-          </View>
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: space.sm, paddingBottom: space.md }}>
-            {groups.map((g) => {
-              const meta = getGroupTypeMeta(g.type);
-              const isActive = g.id === activeGroupId;
-              const count = (g.members ?? []).filter((m) => m.status === 'active').length;
-              return (
-                <Card key={g.id} variant="surface" padding={space.base} onPress={() => onSelect(g.id)}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
-                    <IconTile icon={meta.icon as any} color={meta.accent} bg={meta.bg} size={48} />
-                    <View style={{ flex: 1 }}>
-                      <Text style={[font.h3, { color: colors.textPrimary }]} numberOfLines={1}>{g.name}</Text>
-                      <Text style={[font.caption, { color: colors.textTertiary, marginTop: 2 }]} numberOfLines={1}>
-                        {meta.label} · {count} member{count === 1 ? '' : 's'}
-                      </Text>
-                    </View>
-                    {isActive ? <Badge label="Active" tone="sage" /> : <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />}
-                  </View>
-                </Card>
-              );
-            })}
-          </ScrollView>
-          <Button label="Create new group" variant="secondary" icon="add" fullWidth onPress={onCreate} style={{ marginTop: space.md }} />
-        </Pressable>
-      </Pressable>
-    </Modal>
+    <BottomSheet visible={visible} onClose={onClose} title="Switch group">
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        style={{ maxHeight: 480 }}
+        contentContainerStyle={{ paddingBottom: space.sm }}
+      >
+        {groups.map((g, idx) => {
+          const meta = getGroupTypeMeta(g.type);
+          const isActive = g.id === activeGroupId;
+          const count = (g.members ?? []).filter((m) => m.status === 'active').length;
+          return (
+            <SheetRow
+              key={g.id}
+              icon={getGroupTypeTablerIcon(g.type)}
+              iconColor={meta.accent}
+              iconBg={meta.bg}
+              title={g.name}
+              subtitle={`${meta.label} · ${count} member${count === 1 ? '' : 's'}`}
+              onPress={() => onSelect(g.id)}
+              isLast={idx === groups.length - 1}
+              trailing={isActive ? <Badge label="Active" tone="sage" /> : null}
+            />
+          );
+        })}
+      </ScrollView>
+      <Button
+        label="Create new group"
+        variant="secondary"
+        icon={IconPlus}
+        fullWidth
+        onPress={onCreate}
+        style={{ marginTop: space.md }}
+      />
+    </BottomSheet>
   );
 }
 
@@ -446,16 +457,16 @@ export default function GroupsScreen() {
   return (
     <Screen>
       <ScrollView
-        contentContainerStyle={{ paddingTop: 12, paddingBottom: 120, paddingHorizontal: space.gutter, gap: space.lg }}
+        contentContainerStyle={{ paddingTop: 12, paddingBottom: 120, paddingHorizontal: space.gutter, gap: space.md }}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={onRefresh} tintColor={colors.sage} />}
       >
         {isLoading ? (
           <GroupsSkeleton />
         ) : error ? (
-          <EmptyState icon="cloud-offline-outline" title="Couldn't load group" description="Check your connection and try again." actionLabel="Retry" onAction={() => void refetch()} />
+          <EmptyState icon={IconCloudOff} title="Couldn't load group" description="Check your connection and try again." actionLabel="Retry" onAction={() => void refetch()} />
         ) : !activeGroup ? (
-          <EmptyState icon="people-outline" title="Set up your first group" description="Create a space to track shared expenses together." actionLabel="Get started" onAction={goOnboarding} />
+          <EmptyState icon={IconUsers} title="Set up your first group" description="Create a space to track shared expenses together." actionLabel="Get started" onAction={goOnboarding} />
         ) : (
           <>
             <GroupHero group={activeGroup} onSwitch={openSwitch} onManage={goManage} onMembers={goMembers} />

@@ -1,10 +1,11 @@
 import { useMemo, useState, type ReactNode } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { IconChevronLeft } from '@tabler/icons-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { IconActivity, IconChevronLeft } from '@tabler/icons-react-native';
 import type { ActivityEntry } from '@commune/api';
 import { colors, font, radius, space } from '@/constants/design';
-import { EmptyState, Screen } from '@/components/primitives';
+import { EmptyState, Pressable, Screen, SegmentedControl } from '@/components/primitives';
 import { useActivityLog } from '@/hooks/use-activity';
 import { useGroupStore } from '@/stores/group';
 import { useAuthStore } from '@/stores/auth';
@@ -281,61 +282,6 @@ function describeEntry(entry: ActivityEntry, currentUserId: string | null): Desc
  * Components
  * ============================================================================ */
 
-function SegmentedControl({
-  value,
-  onChange,
-}: {
-  value: 'all' | 'you';
-  onChange: (v: 'all' | 'you') => void;
-}) {
-  const pills: Array<{ key: 'all' | 'you'; label: string }> = [
-    { key: 'all', label: 'All' },
-    { key: 'you', label: 'Just you' },
-  ];
-  return (
-    <View
-      style={{
-        flexDirection: 'row',
-        backgroundColor: '#F3F1EC',
-        borderRadius: 12,
-        padding: 4,
-        alignSelf: 'stretch',
-      }}
-    >
-      {pills.map((p) => {
-        const active = p.key === value;
-        return (
-          <Pressable
-            key={p.key}
-            onPress={() => {
-              hapticLight();
-              onChange(p.key);
-            }}
-            style={{
-              flex: 1,
-              paddingVertical: 8,
-              alignItems: 'center',
-              justifyContent: 'center',
-              borderRadius: 8,
-              backgroundColor: active ? colors.bgSurface : 'transparent',
-            }}
-          >
-            <Text
-              style={{
-                fontSize: 13,
-                fontWeight: '600',
-                color: active ? colors.textPrimary : colors.textMuted,
-              }}
-            >
-              {p.label}
-            </Text>
-          </Pressable>
-        );
-      })}
-    </View>
-  );
-}
-
 function SectionLabel({ title }: { title: string }) {
   return (
     <Text
@@ -432,6 +378,7 @@ function ActivityRow({
 
 export default function ActivityScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const activeGroupId = useGroupStore((s) => s.activeGroupId);
   const currentUser = useAuthStore((s) => s.user);
   const currentUserId = currentUser?.id ?? null;
@@ -468,29 +415,46 @@ export default function ActivityScreen() {
       {/* Header */}
       <View
         style={{
-          flexDirection: 'row',
-          alignItems: 'center',
+          paddingTop: insets.top + 12,
           paddingHorizontal: space.gutter,
-          paddingTop: 8,
-          paddingBottom: space.sm,
-          height: 52,
+          backgroundColor: colors.bgBase,
         }}
       >
-        <Pressable
-          onPress={() => {
-            hapticLight();
-            router.back();
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            height: 48,
+            position: 'relative',
           }}
-          hitSlop={12}
-          style={{ width: 32, height: 32, alignItems: 'center', justifyContent: 'center' }}
         >
-          <IconChevronLeft size={24} strokeWidth={2} color={colors.textPrimary} />
-        </Pressable>
-        <View style={{ flex: 1, alignItems: 'center' }}>
-          <Text style={[font.h3, { color: colors.textPrimary }]}>Activity</Text>
-        </View>
-        <View style={{ width: 44, alignItems: 'flex-end' }}>
-          <Text style={{ fontSize: 14, fontWeight: '500', color: colors.textTertiary }}>Filter</Text>
+          <Pressable
+            onPress={() => {
+              hapticLight();
+              router.back();
+            }}
+            hitSlop={10}
+            style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 2, paddingVertical: 6, paddingRight: 10, marginLeft: -4, opacity: pressed ? 0.6 : 1, zIndex: 2 })}
+          >
+            <IconChevronLeft size={22} strokeWidth={2} color={colors.textPrimary} />
+            <Text style={{ fontSize: 15, fontWeight: '600', color: colors.textPrimary }}>Back</Text>
+          </Pressable>
+          <View
+            pointerEvents="none"
+            style={{
+              position: 'absolute',
+              left: 0,
+              right: 0,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Text style={[font.h3, { color: colors.textPrimary }]}>Activity</Text>
+          </View>
+          <View style={{ minWidth: 44, alignItems: 'flex-end', zIndex: 2 }}>
+            <Text style={{ fontSize: 14, fontWeight: '500', color: colors.textTertiary }}>Filter</Text>
+          </View>
         </View>
       </View>
 
@@ -502,7 +466,17 @@ export default function ActivityScreen() {
         }}
         showsVerticalScrollIndicator={false}
       >
-        <SegmentedControl value={segment} onChange={setSegment} />
+        <SegmentedControl
+          value={segment}
+          options={[
+            { value: 'all', label: 'All' },
+            { value: 'you', label: 'Just you' },
+          ]}
+          onChange={(v) => {
+            hapticLight();
+            setSegment(v);
+          }}
+        />
 
         {isLoading ? (
           <View style={{ paddingTop: space.xl }}>
@@ -521,7 +495,7 @@ export default function ActivityScreen() {
           </View>
         ) : grouped.length === 0 ? (
           <EmptyState
-            icon="pulse-outline"
+            icon={IconActivity}
             title="Nothing happening yet"
             description="Activity from you and the group will show up here."
           />

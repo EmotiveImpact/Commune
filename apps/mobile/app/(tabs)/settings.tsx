@@ -1,7 +1,15 @@
-import type { ComponentProps } from 'react';
-import { Alert, Linking, ScrollView, Text, View } from 'react-native';
+import { Alert, Linking, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import {
+  IconBell,
+  IconChevronRight,
+  IconDiamond,
+  IconHelp,
+  IconLogout,
+  IconRefresh,
+  IconUser,
+  IconWallet,
+} from '@tabler/icons-react-native';
 import { signOut } from '@commune/api';
 import { useQueryClient } from '@tanstack/react-query';
 
@@ -9,12 +17,12 @@ import { colors, font, space } from '@/constants/design';
 import {
   Avatar,
   Badge,
-  Button,
   Card,
   IconTile,
   Pressable,
   Screen,
   SectionHeader,
+  type TablerIcon,
 } from '@/components/primitives';
 import { hapticHeavy, hapticLight } from '@/lib/haptics';
 import { useAuthStore } from '@/stores/auth';
@@ -22,10 +30,8 @@ import { useGroupStore } from '@/stores/group';
 import { useProfile } from '@/hooks/use-profile';
 import { useSubscription } from '@/hooks/use-subscriptions';
 
-type IconName = ComponentProps<typeof Ionicons>['name'];
-
 type Row = {
-  icon: IconName;
+  icon: TablerIcon;
   label: string;
   color: string;
   bg: string;
@@ -73,7 +79,7 @@ function GroupedRows({ rows }: { rows: Row[] }) {
               <Text style={[font.bodyStrong, { color: colors.textPrimary, flex: 1 }]} numberOfLines={1}>
                 {row.label}
               </Text>
-              <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
+              <IconChevronRight size={18} color={colors.textTertiary} strokeWidth={1.7} />
             </View>
           </Pressable>
           {idx < rows.length - 1 ? (
@@ -133,28 +139,35 @@ export default function ProfileScreen() {
   /* --- Account rows ------------------------------------------------------ */
   const accountRows: Row[] = [
     {
-      icon: 'person-outline',
+      icon: IconUser,
       label: 'Edit profile',
       color: colors.sage,
       bg: colors.sageSoft,
-      onPress: () => router.push('/group-edit'),
+      onPress: () => router.push('/edit-profile'),
     },
     {
-      icon: 'notifications-outline',
+      icon: IconWallet,
+      label: 'Payment methods',
+      color: colors.sage,
+      bg: colors.sageSoft,
+      onPress: () => router.push('/payment-methods'),
+    },
+    {
+      icon: IconBell,
       label: 'Notifications',
       color: colors.warnText,
       bg: colors.warnBg,
       onPress: () => router.push('/notifications'),
     },
     {
-      icon: 'diamond-outline',
+      icon: IconDiamond,
       label: 'Subscription & billing',
       color: colors.sage,
       bg: colors.sageSoft,
       onPress: () => router.push('/pricing'),
     },
     {
-      icon: 'help-circle-outline',
+      icon: IconHelp,
       label: 'Help & support',
       color: colors.infoText,
       bg: colors.infoBg,
@@ -162,6 +175,16 @@ export default function ProfileScreen() {
         Linking.openURL('mailto:support@ourcommune.io').catch(() => {
           Alert.alert('Unavailable', 'No email app is configured on this device.');
         });
+      },
+    },
+    {
+      icon: IconRefresh,
+      label: 'Replay onboarding',
+      color: colors.sage,
+      bg: colors.sageSoft,
+      onPress: () => {
+        hapticLight();
+        router.push('/onboarding?preview=true');
       },
     },
   ];
@@ -275,30 +298,30 @@ export default function ProfileScreen() {
         </View>
 
         {/* ── Sign out ─────────────────────────────────────────── */}
-        <Pressable
+        <TouchableOpacity
           onPress={handleSignOut}
           accessibilityLabel="Sign out"
-          style={({ pressed }) => [
-            {
-              height: 56,
-              borderRadius: 16,
-              backgroundColor: '#C74A3A',
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 10,
-              shadowColor: '#000',
-              shadowOpacity: 0.12,
-              shadowRadius: 8,
-              shadowOffset: { width: 0, height: 3 },
-              elevation: 3,
-              opacity: pressed ? 0.85 : 1,
-            },
-          ]}
+          accessibilityRole="button"
+          activeOpacity={0.85}
+          style={{
+            alignSelf: 'stretch',
+            minHeight: 56,
+            borderRadius: 16,
+            backgroundColor: '#C74A3A',
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 10,
+            shadowColor: '#000',
+            shadowOpacity: 0.12,
+            shadowRadius: 8,
+            shadowOffset: { width: 0, height: 3 },
+            elevation: 3,
+          }}
         >
-          <Ionicons name="log-out-outline" size={20} color="#FFFFFF" />
+          <IconLogout size={20} color="#FFFFFF" strokeWidth={1.7} />
           <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '700' }}>Sign out</Text>
-        </Pressable>
+        </TouchableOpacity>
 
         {/* ── Footer ───────────────────────────────────────────── */}
         <Text

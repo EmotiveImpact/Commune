@@ -5,22 +5,74 @@
  * All consume tokens from constants/design.ts — never hardcode.
  */
 
-import type { ComponentProps, ReactNode } from 'react';
+import { type ComponentType, type ReactNode, useState } from 'react';
 import {
   ActivityIndicator,
+  type GestureResponderEvent,
   Image,
-  Pressable,
-  PressableProps,
+  Platform,
+  Pressable as RNPressable,
+  type PressableProps,
   StyleProp,
   Text,
+  TextInput,
   TextStyle,
   View,
   ViewStyle,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker, {
+  type DateTimePickerEvent,
+} from '@react-native-community/datetimepicker';
+import { Picker as RNPicker } from '@react-native-picker/picker';
+import { IconCalendar, IconChevronDown, IconPlus, IconSearch, IconSparkles } from '@tabler/icons-react-native';
+import { formatDate } from '@commune/utils';
 import { colors, elevation, font, height, radius, space } from '@/constants/design';
 
-type IconName = ComponentProps<typeof Ionicons>['name'];
+export type TablerIcon = ComponentType<{
+  size?: number;
+  color?: string;
+  strokeWidth?: number;
+}>;
+
+/**
+ * NativeWind's Metro interop has been dropping Pressable callback styles in
+ * this app, which leaves children visible but strips button backgrounds/layout.
+ * Resolve the pressed state here and pass React Native a plain style instead.
+ */
+export function Pressable({
+  children,
+  onPressIn,
+  onPressOut,
+  style,
+  ...props
+}: PressableProps) {
+  const [pressed, setPressed] = useState(false);
+  const state = { pressed };
+  const resolvedStyle = typeof style === 'function' ? style(state) : style;
+  const resolvedChildren =
+    typeof children === 'function' ? children(state) : children;
+
+  function handlePressIn(event: GestureResponderEvent) {
+    setPressed(true);
+    onPressIn?.(event);
+  }
+
+  function handlePressOut(event: GestureResponderEvent) {
+    setPressed(false);
+    onPressOut?.(event);
+  }
+
+  return (
+    <RNPressable
+      {...props}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+      style={resolvedStyle}
+    >
+      {resolvedChildren}
+    </RNPressable>
+  );
+}
 
 /* ============================================================================
  * Screen — base container
@@ -110,8 +162,8 @@ export function Button({
   onPress?: () => void;
   variant?: ButtonVariant;
   size?: ButtonSize;
-  icon?: IconName;
-  trailingIcon?: IconName;
+  icon?: TablerIcon;
+  trailingIcon?: TablerIcon;
   loading?: boolean;
   disabled?: boolean;
   fullWidth?: boolean;
@@ -162,9 +214,9 @@ export function Button({
         <ActivityIndicator color={fg} size="small" />
       ) : (
         <>
-          {icon && <Ionicons name={icon} size={fs + 3} color={fg} />}
+          {icon ? (() => { const Icon = icon; return <Icon size={fs + 3} color={fg} strokeWidth={1.7} />; })() : null}
           <Text style={{ fontSize: fs, fontWeight: '600', color: fg }}>{label}</Text>
-          {trailingIcon && <Ionicons name={trailingIcon} size={fs + 3} color={fg} />}
+          {trailingIcon ? (() => { const Icon = trailingIcon; return <Icon size={fs + 3} color={fg} strokeWidth={1.7} />; })() : null}
         </>
       )}
     </Pressable>
@@ -299,13 +351,13 @@ export function Avatar({
  * ============================================================================ */
 
 export function IconTile({
-  icon,
+  icon: Icon,
   color = colors.sage,
   bg = colors.sageSoft,
   size = 40,
   iconSize,
 }: {
-  icon: IconName;
+  icon: TablerIcon;
   color?: string;
   bg?: string;
   size?: number;
@@ -322,7 +374,7 @@ export function IconTile({
         justifyContent: 'center',
       }}
     >
-      <Ionicons name={icon} size={iconSize ?? Math.round(size * 0.5)} color={color} />
+      <Icon size={iconSize ?? Math.round(size * 0.5)} color={color} strokeWidth={1.7} />
     </View>
   );
 }
@@ -466,8 +518,6 @@ export function SearchField({
   placeholder?: string;
   onSubmitEditing?: () => void;
 }) {
-  // Lightweight searchfield using TextInput; kept here to avoid TextInput sprawl.
-  const { TextInput } = require('react-native');
   return (
     <View
       style={{
@@ -479,7 +529,7 @@ export function SearchField({
         height: height.input,
       }}
     >
-      <Ionicons name="search-outline" size={18} color={colors.textTertiary} />
+      <IconSearch size={18} color={colors.textTertiary} strokeWidth={1.7} />
       <TextInput
         value={value}
         onChangeText={onChangeText}
@@ -502,13 +552,13 @@ export function SearchField({
  * ============================================================================ */
 
 export function EmptyState({
-  icon = 'sparkles-outline',
+  icon: Icon = IconSparkles,
   title,
   description,
   actionLabel,
   onAction,
 }: {
-  icon?: IconName;
+  icon?: TablerIcon;
   title: string;
   description?: string;
   actionLabel?: string;
@@ -533,7 +583,7 @@ export function EmptyState({
           marginBottom: space.lg,
         }}
       >
-        <Ionicons name={icon} size={32} color={colors.sage} />
+        <Icon size={32} color={colors.sage} strokeWidth={1.7} />
       </View>
       <Text style={[font.h3, { color: colors.textPrimary, textAlign: 'center' }]}>
         {title}
@@ -591,12 +641,12 @@ export function SkeletonBlock({
 
 export function FAB({
   onPress,
-  icon = 'add',
+  icon: Icon = IconPlus,
   size = height.fab,
   style,
 }: {
   onPress?: () => void;
-  icon?: IconName;
+  icon?: TablerIcon;
   size?: number;
   style?: StyleProp<ViewStyle>;
 }) {
@@ -617,7 +667,7 @@ export function FAB({
         style,
       ]}
     >
-      <Ionicons name={icon} size={26} color={colors.textInverse} />
+      <Icon size={26} color={colors.textInverse} strokeWidth={1.7} />
     </Pressable>
   );
 }
@@ -667,6 +717,344 @@ export function Divider({ style }: { style?: StyleProp<ViewStyle> }) {
   );
 }
 
-/* Re-export so screens can `import { Pressable } from '@/components/primitives'` */
-export { Pressable };
+/* ============================================================================
+ * DateField — labeled date input that opens a native DateTimePicker
+ * ============================================================================ */
+
+export function DateField({
+  label,
+  value,
+  onChange,
+  hint,
+  minimumDate,
+  maximumDate,
+  placeholder = 'Select date',
+}: {
+  label?: string;
+  value: Date | null;
+  onChange: (date: Date) => void;
+  hint?: string;
+  minimumDate?: Date;
+  maximumDate?: Date;
+  placeholder?: string;
+}) {
+  const [open, setOpen] = useState(false);
+
+  function handleChange(event: DateTimePickerEvent, selected?: Date) {
+    if (Platform.OS === 'android') {
+      setOpen(false);
+      if (event.type === 'set' && selected) onChange(selected);
+      return;
+    }
+    // iOS inline picker fires onChange continuously as the user picks.
+    if (selected) onChange(selected);
+  }
+
+  const displayText = value
+    ? formatDate(toLocalDateKey(value))
+    : placeholder;
+
+  return (
+    <View style={{ marginBottom: space.base }}>
+      {label ? (
+        <Text
+          style={[
+            font.caption,
+            { marginBottom: space.sm, color: colors.textPrimary, fontWeight: '600' },
+          ]}
+        >
+          {label}
+        </Text>
+      ) : null}
+      <Pressable
+        onPress={() => setOpen((prev) => !prev)}
+        accessibilityLabel={label ? `${label}: ${displayText}` : displayText}
+        accessibilityRole="button"
+        style={({ pressed }) => ({
+          minHeight: height.input + 8,
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          borderRadius: radius.button,
+          borderWidth: 1,
+          borderColor: colors.border,
+          backgroundColor: colors.bgSubtle,
+          paddingHorizontal: space.base,
+          opacity: pressed ? 0.86 : 1,
+        })}
+      >
+        <Text
+          style={{
+            fontSize: 16,
+            color: value ? colors.textPrimary : colors.textTertiary,
+          }}
+        >
+          {displayText}
+        </Text>
+        <IconCalendar size={20} color={colors.textTertiary} strokeWidth={1.7} />
+      </Pressable>
+      {open ? (
+        Platform.OS === 'ios' ? (
+          <View
+            style={{
+              marginTop: space.sm,
+              backgroundColor: colors.bgSurface,
+              borderRadius: radius.card,
+              borderWidth: 1,
+              borderColor: colors.borderSubtle,
+              overflow: 'hidden',
+            }}
+          >
+            <DateTimePicker
+              value={value ?? new Date()}
+              mode="date"
+              display="inline"
+              onChange={handleChange}
+              minimumDate={minimumDate}
+              maximumDate={maximumDate}
+              accentColor={colors.sage}
+              themeVariant="light"
+            />
+            <View
+              style={{
+                flexDirection: 'row',
+                justifyContent: 'flex-end',
+                paddingHorizontal: space.sm,
+                paddingVertical: space.xs,
+                borderTopWidth: 1,
+                borderTopColor: colors.borderSubtle,
+              }}
+            >
+              <Pressable
+                onPress={() => setOpen(false)}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel="Done selecting date"
+                style={({ pressed }) => ({
+                  opacity: pressed ? 0.6 : 1,
+                  paddingHorizontal: 12,
+                  paddingVertical: 6,
+                })}
+              >
+                <Text style={{ fontSize: 14, fontWeight: '700', color: colors.sage }}>
+                  Done
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        ) : (
+          <DateTimePicker
+            value={value ?? new Date()}
+            mode="date"
+            display="default"
+            onChange={handleChange}
+            minimumDate={minimumDate}
+            maximumDate={maximumDate}
+          />
+        )
+      ) : null}
+      {hint ? (
+        <Text style={[font.caption, { marginTop: space.sm, color: colors.textTertiary }]}>
+          {hint}
+        </Text>
+      ) : null}
+    </View>
+  );
+}
+
+/**
+ * Convert a Date to its local-time YYYY-MM-DD key. Avoids the timezone shift
+ * caused by `.toISOString().split('T')[0]` for negative-offset locales (e.g.
+ * picking "Apr 24" in PST returned "Apr 23" because UTC midnight had
+ * already rolled).
+ */
+function toLocalDateKey(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+/* ============================================================================
+ * Picker — iOS-native wheel picker (SwiftUI Picker analog)
+ *
+ * Press to expand inline; wheel + Done button. Use for 3+ mutually-exclusive
+ * choices where a segmented control would be too wide (currency, category,
+ * group type, payer).
+ * ============================================================================ */
+
+export function Picker<T extends string>({
+  label,
+  value,
+  options,
+  onChange,
+  placeholder = 'Select…',
+}: {
+  label?: string;
+  value: T | null;
+  options: Array<{ value: T; label: string }>;
+  onChange: (v: T) => void;
+  placeholder?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const selectedLabel = options.find((o) => o.value === value)?.label ?? placeholder;
+  return (
+    <View>
+      {label ? (
+        <Text
+          style={{
+            fontSize: 11,
+            fontWeight: '700',
+            textTransform: 'uppercase',
+            letterSpacing: 0.4,
+            color: colors.textMuted,
+            marginBottom: 6,
+          }}
+        >
+          {label}
+        </Text>
+      ) : null}
+      <Pressable
+        onPress={() => setOpen((v) => !v)}
+        accessibilityRole="button"
+        accessibilityLabel={label ? `${label}: ${selectedLabel}` : selectedLabel}
+        style={({ pressed }) => ({
+          backgroundColor: colors.bgSurface,
+          borderRadius: radius.button,
+          borderWidth: 1,
+          borderColor: colors.borderSubtle,
+          paddingHorizontal: space.base,
+          height: height.input,
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          opacity: pressed ? 0.85 : 1,
+        })}
+      >
+        <Text
+          style={{
+            fontSize: 15,
+            color: value ? colors.textPrimary : colors.textMuted,
+          }}
+        >
+          {selectedLabel}
+        </Text>
+        <IconChevronDown size={16} color={colors.textTertiary} strokeWidth={2} />
+      </Pressable>
+      {open ? (
+        <View
+          style={{
+            marginTop: 8,
+            backgroundColor: colors.bgSurface,
+            borderRadius: radius.card,
+            borderWidth: 1,
+            borderColor: colors.borderSubtle,
+            overflow: 'hidden',
+          }}
+        >
+          <RNPicker
+            selectedValue={value ?? options[0]?.value}
+            onValueChange={(v) => onChange(v as T)}
+            itemStyle={{ fontSize: 17 }}
+          >
+            {options.map((opt) => (
+              <RNPicker.Item key={opt.value} label={opt.label} value={opt.value} />
+            ))}
+          </RNPicker>
+          <View
+            style={{
+              flexDirection: 'row',
+              justifyContent: 'flex-end',
+              padding: 8,
+              borderTopWidth: 1,
+              borderTopColor: colors.borderSubtle,
+            }}
+          >
+            <Pressable
+              onPress={() => setOpen(false)}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Done"
+              style={({ pressed }) => ({
+                opacity: pressed ? 0.6 : 1,
+                paddingHorizontal: 12,
+                paddingVertical: 6,
+              })}
+            >
+              <Text style={{ fontSize: 14, fontWeight: '700', color: colors.sage }}>Done</Text>
+            </Pressable>
+          </View>
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+/* ============================================================================
+ * SegmentedControl — iOS-native segmented control (UISegmentedControl analog)
+ *
+ * Use for 2-3 short, mutually-exclusive options where all choices fit on one
+ * row (filter toggles, view modes).
+ * ============================================================================ */
+
+export function SegmentedControl<T extends string>({
+  value,
+  options,
+  onChange,
+}: {
+  value: T;
+  options: Array<{ value: T; label: string }>;
+  onChange: (v: T) => void;
+}) {
+  return (
+    <View
+      style={{
+        flexDirection: 'row',
+        backgroundColor: colors.bgSubtle,
+        borderRadius: 11,
+        padding: 3,
+      }}
+    >
+      {options.map((opt) => {
+        const on = opt.value === value;
+        return (
+          <Pressable
+            key={opt.value}
+            onPress={() => onChange(opt.value)}
+            accessibilityRole="button"
+            accessibilityState={{ selected: on }}
+            accessibilityLabel={opt.label}
+            style={{
+              flex: 1,
+              alignItems: 'center',
+              justifyContent: 'center',
+              paddingVertical: 7,
+              borderRadius: 9,
+              backgroundColor: on ? colors.bgSurface : 'transparent',
+              ...(on
+                ? {
+                    shadowColor: '#000',
+                    shadowOpacity: 0.06,
+                    shadowRadius: 2,
+                    shadowOffset: { width: 0, height: 1 },
+                  }
+                : {}),
+            }}
+          >
+            <Text
+              style={{
+                fontSize: 12,
+                fontWeight: '700',
+                color: on ? colors.textPrimary : colors.textMuted,
+              }}
+            >
+              {opt.label}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
 export type { PressableProps };

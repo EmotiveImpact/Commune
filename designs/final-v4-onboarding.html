@@ -1,0 +1,557 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Commune — Onboarding v4 (deeper · sell · acquire · setup)</title>
+<style>
+  :root{
+    --bg:#FAF9F7; --surface:#ffffff; --ink:#171b24; --muted:#6b7280; --muted2:#9aa0aa;
+    --border:#eceae5; --border-soft:#f1efe9; --border-row:#f4f2ec;
+    --sage:#1f7a6a; --sage-soft:#E8F3EC; --sage-ink:#14594e; --sage-mid:#4FB3A0;
+    --cream:#eadfd4; --warn:#8C2F1F; --warn-bg:#FEE9E5;
+    --navy:#1A1E2B;
+    --travel-bg:#FFF3D9; --travel-ink:#a16207;
+    --partner-bg:#FCE7F3; --partner-ink:#9d174d;
+    --work-bg:#E0E7FF; --work-ink:#4338ca;
+    --home-bg:#E8F3EC; --home-ink:#14594e;
+    --peach:#FFE8D8; --peach-ink:#8C4F2F;
+    --plum:#EAE0FA; --plum-ink:#6B3FA0;
+    --mint:#D4F1E5; --mint-ink:#0F7355;
+    --sky:#DAE9FA; --sky-ink:#1E5A99;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:#efece6;color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Inter",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+  .page{max-width:1800px;margin:0 auto;padding:48px 24px 96px}
+  h1{font-size:38px;letter-spacing:-0.8px;margin:0 0 6px;font-weight:700}
+  .lede{color:var(--muted);font-size:15px;margin:0 0 28px;max-width:920px;line-height:1.55}
+
+  .changelog{background:#fff;border:1px solid var(--border);border-radius:16px;padding:18px 22px;margin:0 0 36px;max-width:1080px}
+  .changelog h3{margin:0 0 8px;font-size:14px;font-weight:700;letter-spacing:0.3px;text-transform:uppercase;color:var(--sage-ink)}
+  .changelog ul{margin:0;padding-left:18px;font-size:13.5px;line-height:1.65;color:var(--ink)}
+  .changelog ul li b{font-weight:700}
+
+  h2.sub{font-size:24px;letter-spacing:-0.4px;margin:60px 0 6px;font-weight:700}
+  .why{background:var(--sage-soft);border-radius:14px;padding:14px 18px;margin:10px 0 20px;color:var(--sage-ink);font-size:13.5px;line-height:1.55;max-width:780px;border:1px solid #cfe3d5}
+  .why b{font-weight:700}
+
+  /* Phone grid: 8 phones for the mobile flow */
+  .phone-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,340px));gap:24px;justify-content:start;margin-bottom:36px}
+
+  .frame{background:var(--bg);border-radius:38px;border:1px solid var(--border-soft);overflow:hidden;height:720px;display:flex;flex-direction:column;box-shadow:0 8px 28px rgba(0,0,0,0.06);position:relative}
+  .frame.tall{height:760px}
+  .sb{display:flex;align-items:center;justify-content:space-between;padding:12px 18px 0;color:var(--ink);font-size:11px;font-weight:600}
+  .step-no{position:absolute;top:14px;left:50%;transform:translateX(-50%);font-size:10px;font-weight:700;letter-spacing:0.6px;color:var(--muted);text-transform:uppercase;background:var(--bg);padding:0 8px;z-index:5}
+
+  /* Top nav row: Back · (dots) · Skip */
+  .topnav{display:flex;align-items:center;justify-content:space-between;padding:12px 18px 6px;min-height:36px}
+  .topnav .btn{font-size:13px;font-weight:600;color:var(--ink);display:flex;align-items:center;gap:2px}
+  .topnav .btn .chev{font-size:18px;line-height:1;margin-right:-2px}
+  .topnav .btn.muted{color:var(--muted)}
+  .topnav .btn.invisible{visibility:hidden}
+  .topnav .dots{display:flex;gap:5px}
+  .topnav .dots i{width:6px;height:6px;border-radius:3px;background:var(--border);display:inline-block}
+  .topnav .dots i.on{width:18px;background:var(--ink)}
+
+  /* Sell-page structure: illustration + headline + body + CTA */
+  .body{flex:1;overflow:auto;padding:0 22px 16px;scrollbar-width:none}
+  .body::-webkit-scrollbar{display:none}
+
+  .illu{aspect-ratio:1.2/1;border-radius:24px;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;margin:8px 0 20px}
+  .illu.peach{background:linear-gradient(135deg,#FFE8D8 0%,#F8C9A8 100%)}
+  .illu.mint{background:linear-gradient(135deg,#D4F1E5 0%,#9ED9BD 100%)}
+  .illu.plum{background:linear-gradient(135deg,#EAE0FA 0%,#C4ACE9 100%)}
+  .illu.sage{background:linear-gradient(135deg,#E8F3EC 0%,#A6CDB1 100%)}
+  .illu .product-card{position:absolute;background:#fff;border-radius:14px;padding:10px 12px;box-shadow:0 8px 24px rgba(20,20,30,0.18);font-size:11px}
+  .illu .product-card .lab{font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.4px}
+  .illu .product-card .v{font-weight:700;font-size:13px;margin-top:2px}
+  .illu .floating-icon{position:absolute;background:#fff;width:48px;height:48px;border-radius:14px;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 18px rgba(20,20,30,0.12)}
+
+  .headline{font-size:26px;font-weight:700;letter-spacing:-0.6px;line-height:1.2;color:var(--ink);margin-bottom:8px}
+  .subline{font-size:14.5px;line-height:1.55;color:var(--muted);margin-bottom:14px}
+  .subline b{color:var(--ink);font-weight:600}
+
+  /* Mini bullet rows (used on feature pages) */
+  .bullet{display:flex;gap:10px;padding:8px 0;align-items:flex-start}
+  .bullet .ic{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--sage-ink);background:var(--sage-soft)}
+  .bullet .t{font-size:13px;color:var(--ink);font-weight:500;line-height:1.4}
+
+  /* Pinned bottom CTA */
+  .ctabar{padding:12px 18px 22px;border-top:1px solid var(--border-soft);background:var(--bg)}
+  .ctabar .cta{height:52px;border-radius:14px;background:var(--ink);color:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700}
+  .ctabar .cta.sage{background:var(--sage)}
+  .ctabar .cta.disabled{background:#d1cfc9;color:#8c8b86}
+  .ctabar .row{display:flex;gap:8px}
+  .ctabar .secondary{background:transparent;color:var(--muted);font-size:13px;font-weight:600;padding:8px 0;text-align:center}
+
+  /* Acquisition grid */
+  .acq-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0}
+  .acq-tile{background:#fff;border:1px solid var(--border-soft);border-radius:14px;padding:14px 12px;display:flex;align-items:center;gap:10px}
+  .acq-tile.on{border:2px solid var(--sage);padding:13px 11px}
+  .acq-tile .ic{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .acq-tile .t{font-size:13px;font-weight:600;color:var(--ink)}
+
+  /* Type tiles */
+  .otile{background:#fff;border:1px solid var(--border-soft);border-radius:16px;padding:14px;display:flex;gap:14px;align-items:center;margin-bottom:8px}
+  .otile.sel{border:2px solid var(--sage)}
+  .ic-tile{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .ic-tile.home{background:var(--home-bg);color:var(--home-ink)}
+  .ic-tile.partner{background:var(--partner-bg);color:var(--partner-ink)}
+  .ic-tile.travel{background:var(--travel-bg);color:var(--travel-ink)}
+  .ic-tile.work{background:var(--work-bg);color:var(--work-ink)}
+  .otile .info{flex:1}
+  .otile .ttl{font-size:14px;font-weight:700;color:var(--ink)}
+  .otile .sub{font-size:12px;color:var(--muted);margin-top:2px;line-height:1.4}
+  .otile .check{width:22px;height:22px;border-radius:11px;background:var(--sage);color:#fff;display:flex;align-items:center;justify-content:center}
+
+  /* Form rows */
+  .inrow{background:#fff;border-bottom:1px solid var(--border-row);padding:14px 14px;display:flex;align-items:center;gap:12px}
+  .inrow:first-child{border-top-left-radius:14px;border-top-right-radius:14px}
+  .inrow:last-child{border-bottom:0;border-bottom-left-radius:14px;border-bottom-right-radius:14px}
+  .inrow .lbl{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.4px;width:100px;flex-shrink:0}
+  .inrow .val{font-size:15px;font-weight:600;color:var(--ink);flex:1}
+  .inrow .val.placeholder{color:var(--muted2);font-weight:400}
+  .inrow .chev{color:var(--muted2);font-size:18px}
+  .formgroup{background:#fff;border-radius:14px;border:1px solid var(--border-soft);overflow:hidden;margin-bottom:8px}
+
+  .toggle-row{background:#fff;border:1px solid var(--border-soft);border-radius:14px;padding:14px;display:flex;align-items:center;gap:12px;margin-bottom:6px}
+  .toggle-row .info{flex:1}
+  .toggle-row .info .t{font-size:13.5px;font-weight:700;color:var(--ink)}
+  .toggle-row .info .c{font-size:11.5px;color:var(--muted);margin-top:2px;line-height:1.4}
+  .reassurance{font-size:11.5px;color:var(--muted);text-align:center;margin-top:6px;padding:0 8px}
+
+  /* Done / celebration */
+  .done-illu{aspect-ratio:1/1;border-radius:24px;background:linear-gradient(135deg,#E8F3EC 0%,#A6CDB1 100%);display:flex;align-items:center;justify-content:center;margin:24px 0 20px;position:relative}
+
+  /* Web frames */
+  .web-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(640px,720px));gap:24px;justify-content:start;margin-bottom:36px}
+  .web-frame{background:#fff;border-radius:18px;border:1px solid var(--border-soft);overflow:hidden;height:520px;box-shadow:0 8px 28px rgba(0,0,0,0.06);display:flex}
+  .web-side{width:42%;padding:32px;background:linear-gradient(135deg,#FFE8D8 0%,#F8C9A8 100%);display:flex;flex-direction:column;justify-content:space-between;position:relative}
+  .web-side.mint{background:linear-gradient(135deg,#D4F1E5 0%,#9ED9BD 100%)}
+  .web-side.plum{background:linear-gradient(135deg,#EAE0FA 0%,#C4ACE9 100%)}
+  .web-side.sage{background:linear-gradient(135deg,#E8F3EC 0%,#A6CDB1 100%)}
+  .web-side .brand{font-size:18px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;color:var(--ink)}
+  .web-side .copy h2{font-size:32px;font-weight:700;letter-spacing:-0.6px;line-height:1.15;margin:0 0 10px;color:var(--ink)}
+  .web-side .copy p{font-size:14px;line-height:1.55;color:var(--ink);opacity:0.7;margin:0;max-width:280px}
+  .web-side .dots{display:flex;gap:6px}
+  .web-side .dots i{width:8px;height:8px;border-radius:4px;background:rgba(20,20,30,0.18)}
+  .web-side .dots i.on{width:24px;background:var(--ink)}
+  .web-main{flex:1;padding:48px 56px;display:flex;flex-direction:column;justify-content:space-between;background:var(--bg)}
+  .web-main h3{font-size:22px;font-weight:700;letter-spacing:-0.3px;margin:0 0 6px;color:var(--ink)}
+  .web-main .helper{font-size:13.5px;color:var(--muted);margin-bottom:18px;line-height:1.5}
+  .web-main .acq-grid-wide{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+  .web-main .topbar{display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--muted);font-weight:600}
+  .web-main .topbar .skip{color:var(--ink)}
+
+  .footer-note{margin-top:30px;padding:18px 22px;background:#fff;border:1px solid var(--border);border-radius:14px;max-width:1080px;font-size:13.5px;line-height:1.6;color:var(--ink)}
+  .footer-note h3{margin:0 0 8px;font-size:14px;font-weight:700;letter-spacing:0.3px;text-transform:uppercase;color:var(--sage-ink)}
+  .footer-note code{background:var(--bg);padding:2px 6px;border-radius:4px;font-family:"SF Mono",Menlo,monospace;font-size:12px}
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>Commune — Onboarding v4</h1>
+  <p class="lede">A deeper onboarding that introduces the product before asking for setup. Eight screens, three acts: <b>sell</b> (1–4), <b>acquire attribution</b> (5), <b>setup</b> (6–8). Every screen has explicit Back + Skip controls in the safe area, dot-indicators between, and a pinned Continue CTA at the bottom. Web mirrors the sell + acquire screens via a split-pane layout so the brand carries across both surfaces.</p>
+
+  <div class="changelog">
+    <h3>Key decisions</h3>
+    <ul>
+      <li><b>No paper-fold library.</b> Build screens 1–4 with <code>react-native-pager-view</code> + reanimated dot-indicator. Screens 5–8 are stacked navigation. ~80 lines of new code, full design control, no stale deps.</li>
+      <li><b>Explicit Back + Skip in the top safe-area row.</b> Back hides on screen 1; Skip text changes from "Skip" (sell screens) to "Skip step" (setup screens) to "Done" (final).</li>
+      <li><b>Illustrations, not the dark hero.</b> Each sell-screen has a coloured tinted card with a floating product chip + iconography. Warm, editorial, never flat.</li>
+      <li><b>Reframe the starter pack.</b> Toggle copy: "Skip the empty start" + "You can rename, add, or remove anything later."</li>
+      <li><b>Acquisition step is optional + skippable</b> with a "Prefer not to say" tile. Captured to <code>profiles.acquisition_source</code> (needs a one-line migration).</li>
+    </ul>
+  </div>
+
+  <h2 class="sub">Mobile · 8-screen flow</h2>
+  <div class="why"><b>Note on starter packs:</b> Everything a starter pack installs (suggested categories, space-essentials seeds) is editable later from <code>/group-edit</code> — the toggle copy now says so. Nothing locks once set.</div>
+
+  <div class="phone-row">
+
+    <!-- 1. Welcome -->
+    <div class="frame tall">
+      <div class="sb"><span>9:41</span><span>● ● ●</span></div>
+      <div class="step-no">Step 1 of 8</div>
+      <div class="topnav">
+        <div class="btn invisible"><span class="chev">‹</span>Back</div>
+        <div class="dots"><i class="on"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        <div class="btn muted">Skip</div>
+      </div>
+      <div class="body">
+        <div class="illu peach" style="aspect-ratio:1/1;margin-top:18px">
+          <div class="floating-icon" style="top:18%;left:14%;background:#fff">
+            <svg style="width:24px;height:24px;stroke:var(--sage-ink);stroke-width:1.7;fill:none;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><path d="M3 5a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-14z"/><path d="M3 10h18"/><path d="M7 15l.01 0"/><path d="M11 15l2 0"/></svg>
+          </div>
+          <div class="floating-icon" style="bottom:22%;right:18%;background:#fff;width:56px;height:56px">
+            <svg style="width:28px;height:28px;stroke:var(--peach-ink);stroke-width:1.7;fill:none;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><path d="M12 6l-3.5 -3a3.5 3.5 0 0 0 -5 5l5 5h7l5 -5a3.5 3.5 0 0 0 -5 -5l-3.5 3"/></svg>
+          </div>
+          <div class="product-card" style="top:46%;left:34%">
+            <div class="lab">Net</div>
+            <div class="v" style="color:var(--sage-ink)">+£42.30</div>
+          </div>
+        </div>
+        <div class="headline">Money with the people you live with — without the awkward bit.</div>
+        <p class="subline">Track shared expenses, split fairly, settle in one tap. <b>Free for up to 3 groups.</b></p>
+      </div>
+      <div class="ctabar">
+        <div class="cta">Get started</div>
+        <div class="secondary">I already have an account</div>
+      </div>
+    </div>
+
+    <!-- 2. Feature: split anything -->
+    <div class="frame tall">
+      <div class="sb"><span>9:41</span><span>● ● ●</span></div>
+      <div class="step-no">Step 2 of 8</div>
+      <div class="topnav">
+        <div class="btn"><span class="chev">‹</span>Back</div>
+        <div class="dots"><i></i><i class="on"></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        <div class="btn muted">Skip</div>
+      </div>
+      <div class="body">
+        <div class="illu mint">
+          <div class="floating-icon" style="top:18%;left:24%;background:#fff;width:54px;height:54px">
+            <svg style="width:26px;height:26px;stroke:var(--mint-ink);stroke-width:1.7;fill:none;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><path d="M5 21h14"/><path d="M5 21v-13l-2 0l9 -6l9 6l-2 0v13"/><path d="M9 9l1 0"/><path d="M9 12l1 0"/><path d="M9 15l1 0"/><path d="M9 18l1 0"/><path d="M14 9l1 0"/><path d="M14 12l1 0"/></svg>
+          </div>
+          <div class="product-card" style="top:50%;right:18%;width:140px">
+            <div class="lab">Tesco · 23 Apr</div>
+            <div class="v">£42.10</div>
+            <div style="display:flex;gap:-4px;margin-top:8px">
+              <div style="width:22px;height:22px;border-radius:11px;background:var(--sage-soft);color:var(--sage-ink);font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid #fff;margin-right:-6px">A</div>
+              <div style="width:22px;height:22px;border-radius:11px;background:var(--travel-bg);color:var(--travel-ink);font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid #fff;margin-right:-6px">M</div>
+              <div style="width:22px;height:22px;border-radius:11px;background:var(--partner-bg);color:var(--partner-ink);font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid #fff">S</div>
+            </div>
+          </div>
+        </div>
+        <div class="headline">Split anything fairly.</div>
+        <p class="subline">Equal, percentages, fixed amounts, or one person paid. Commune does the maths.</p>
+        <div class="bullet"><div class="ic"><svg style="width:14px;height:14px;stroke:currentColor;stroke-width:1.7;fill:none;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><path d="M5 12l5 5l10 -10"/></svg></div><div class="t">No more "what did I owe again?"</div></div>
+        <div class="bullet"><div class="ic"><svg style="width:14px;height:14px;stroke:currentColor;stroke-width:1.7;fill:none;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><path d="M5 12l5 5l10 -10"/></svg></div><div class="t">Receipts attached, vendor + invoice when you need it</div></div>
+        <div class="bullet"><div class="ic"><svg style="width:14px;height:14px;stroke:currentColor;stroke-width:1.7;fill:none;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><path d="M5 12l5 5l10 -10"/></svg></div><div class="t">Recurring bills auto-split every month</div></div>
+      </div>
+      <div class="ctabar"><div class="cta">Continue</div></div>
+    </div>
+
+    <!-- 3. Feature: settle up -->
+    <div class="frame tall">
+      <div class="sb"><span>9:41</span><span>● ● ●</span></div>
+      <div class="step-no">Step 3 of 8</div>
+      <div class="topnav">
+        <div class="btn"><span class="chev">‹</span>Back</div>
+        <div class="dots"><i></i><i></i><i class="on"></i><i></i><i></i><i></i><i></i><i></i></div>
+        <div class="btn muted">Skip</div>
+      </div>
+      <div class="body">
+        <div class="illu plum">
+          <div class="floating-icon" style="top:14%;left:14%;background:#fff;width:50px;height:50px">
+            <svg style="width:22px;height:22px;stroke:var(--plum-ink);stroke-width:1.7;fill:none;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><path d="M19 5l-14 14"/><path d="M5 5h14v14"/></svg>
+          </div>
+          <div class="product-card" style="top:32%;left:18%;width:180px">
+            <div style="display:flex;align-items:center;gap:10px"><div style="width:30px;height:30px;border-radius:15px;background:var(--sage-soft);color:var(--sage-ink);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center">M</div><div><div style="font-weight:700;font-size:11px">Maya</div><div style="color:var(--muted);font-size:9.5px">+£18.00</div></div><div style="margin-left:auto;background:var(--sage);color:#fff;font-size:9.5px;font-weight:700;padding:5px 9px;border-radius:8px">Pay</div></div>
+          </div>
+          <div class="product-card" style="bottom:14%;right:14%;width:160px;border:1.5px solid var(--sage)">
+            <div class="lab" style="color:var(--sage-ink)">⚡ Smart suggest</div>
+            <div class="v" style="font-size:11.5px;margin-top:3px">Settle in 2 payments</div>
+          </div>
+        </div>
+        <div class="headline">Settle in one tap.</div>
+        <p class="subline">Pay through Revolut, Monzo, PayPal, Venmo — directly from the app. <b>Commune never holds your money.</b></p>
+        <div class="bullet"><div class="ic"><svg style="width:14px;height:14px;stroke:currentColor;stroke-width:1.7;fill:none;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><path d="M5 12l5 5l10 -10"/></svg></div><div class="t">Smart-suggest minimises the number of payments</div></div>
+        <div class="bullet"><div class="ic"><svg style="width:14px;height:14px;stroke:currentColor;stroke-width:1.7;fill:none;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><path d="M5 12l5 5l10 -10"/></svg></div><div class="t">Free P2P on most rails</div></div>
+        <div class="bullet"><div class="ic"><svg style="width:14px;height:14px;stroke:currentColor;stroke-width:1.7;fill:none;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><path d="M5 12l5 5l10 -10"/></svg></div><div class="t">Mark-as-paid for offline transfers too</div></div>
+      </div>
+      <div class="ctabar"><div class="cta">Continue</div></div>
+    </div>
+
+    <!-- 4. Feature: see everything -->
+    <div class="frame tall">
+      <div class="sb"><span>9:41</span><span>● ● ●</span></div>
+      <div class="step-no">Step 4 of 8</div>
+      <div class="topnav">
+        <div class="btn"><span class="chev">‹</span>Back</div>
+        <div class="dots"><i></i><i></i><i></i><i class="on"></i><i></i><i></i><i></i><i></i></div>
+        <div class="btn muted">Skip</div>
+      </div>
+      <div class="body">
+        <div class="illu sage">
+          <div class="product-card" style="top:14%;left:14%;width:160px">
+            <div class="lab">This month</div>
+            <div class="v" style="font-size:18px">£842.10</div>
+            <div style="font-size:9.5px;color:var(--sage-ink);font-weight:700;margin-top:2px">↑ 12% vs Mar</div>
+          </div>
+          <div class="floating-icon" style="bottom:24%;right:18%;background:#fff;width:62px;height:62px">
+            <svg style="width:32px;height:32px;stroke:var(--sage);stroke-width:1.7;fill:none;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 9 9"/></svg>
+          </div>
+          <div class="product-card" style="top:54%;left:26%;width:140px">
+            <div class="lab">Bills · 62%</div>
+            <div class="v" style="font-size:11.5px;color:var(--sage-ink)">£521</div>
+          </div>
+        </div>
+        <div class="headline">See everything in one place.</div>
+        <p class="subline">Recurring bills, who owes whom, monthly rhythm, analytics — all in one dashboard.</p>
+        <div class="bullet"><div class="ic"><svg style="width:14px;height:14px;stroke:currentColor;stroke-width:1.7;fill:none;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><path d="M5 12l5 5l10 -10"/></svg></div><div class="t">Spending breakdown by category</div></div>
+        <div class="bullet"><div class="ic"><svg style="width:14px;height:14px;stroke:currentColor;stroke-width:1.7;fill:none;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><path d="M5 12l5 5l10 -10"/></svg></div><div class="t">Cycle close, archive, restore — full lifecycle</div></div>
+        <div class="bullet"><div class="ic"><svg style="width:14px;height:14px;stroke:currentColor;stroke-width:1.7;fill:none;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><path d="M5 12l5 5l10 -10"/></svg></div><div class="t">Workspace mode for vendors + invoices</div></div>
+      </div>
+      <div class="ctabar"><div class="cta">Continue</div></div>
+    </div>
+
+    <!-- 5. Acquisition -->
+    <div class="frame tall">
+      <div class="sb"><span>9:41</span><span>● ● ●</span></div>
+      <div class="step-no">Step 5 of 8</div>
+      <div class="topnav">
+        <div class="btn"><span class="chev">‹</span>Back</div>
+        <div class="dots"><i></i><i></i><i></i><i></i><i class="on"></i><i></i><i></i><i></i></div>
+        <div class="btn muted">Skip</div>
+      </div>
+      <div class="body">
+        <div style="margin-top:20px;margin-bottom:12px">
+          <div class="headline" style="font-size:24px">Where did you hear about us?</div>
+          <p class="subline">Helps us know what's working. Pick one — or skip.</p>
+        </div>
+        <div class="acq-grid">
+          <div class="acq-tile on">
+            <div class="ic" style="background:#000;color:#fff"><svg style="width:18px;height:18px;fill:currentColor" viewBox="0 0 24 24"><path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z"/></svg></div>
+            <div class="t">TikTok</div>
+          </div>
+          <div class="acq-tile">
+            <div class="ic" style="background:#FFF1F4;color:#E1306C"><svg style="width:18px;height:18px;stroke:currentColor;stroke-width:1.7;fill:none;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="4"/><circle cx="12" cy="12" r="3"/><circle cx="16.5" cy="7.5" r="1" fill="currentColor"/></svg></div>
+            <div class="t">Instagram</div>
+          </div>
+          <div class="acq-tile">
+            <div class="ic" style="background:#E8F0FE;color:#1A73E8"><svg style="width:18px;height:18px;stroke:currentColor;stroke-width:1.7;fill:none;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="M21 21l-5.2 -5.2"/></svg></div>
+            <div class="t">Search</div>
+          </div>
+          <div class="acq-tile">
+            <div class="ic" style="background:#FFF0E5;color:#FF4500"><svg style="width:18px;height:18px;stroke:currentColor;stroke-width:1.7;fill:none;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 12a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"/><path d="M15.5 8.5l1 -3"/></svg></div>
+            <div class="t">Reddit</div>
+          </div>
+          <div class="acq-tile">
+            <div class="ic" style="background:#E8F3EC;color:var(--sage-ink)"><svg style="width:18px;height:18px;stroke:currentColor;stroke-width:1.7;fill:none;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/><path d="M21 21v-2a4 4 0 0 0 -3 -3.85"/></svg></div>
+            <div class="t">Friend / family</div>
+          </div>
+          <div class="acq-tile">
+            <div class="ic" style="background:#E0E7FF;color:#4338ca"><svg style="width:18px;height:18px;stroke:currentColor;stroke-width:1.7;fill:none;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M11 18h2"/></svg></div>
+            <div class="t">App Store</div>
+          </div>
+          <div class="acq-tile">
+            <div class="ic" style="background:#FFE4E4;color:#FF0000"><svg style="width:18px;height:18px;stroke:currentColor;stroke-width:1.7;fill:none;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M10 9l5 3l-5 3z"/></svg></div>
+            <div class="t">YouTube</div>
+          </div>
+          <div class="acq-tile">
+            <div class="ic" style="background:var(--bg);color:var(--muted)"><svg style="width:18px;height:18px;stroke:currentColor;stroke-width:1.7;fill:none;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0"/><path d="M12 8v.01"/><path d="M12 12v4"/></svg></div>
+            <div class="t">Other</div>
+          </div>
+        </div>
+      </div>
+      <div class="ctabar"><div class="cta">Continue</div></div>
+    </div>
+
+    <!-- 6. Choose a type -->
+    <div class="frame tall">
+      <div class="sb"><span>9:41</span><span>● ● ●</span></div>
+      <div class="step-no">Step 6 of 8</div>
+      <div class="topnav">
+        <div class="btn"><span class="chev">‹</span>Back</div>
+        <div class="dots"><i></i><i></i><i></i><i></i><i></i><i class="on"></i><i></i><i></i></div>
+        <div class="btn invisible">Skip</div>
+      </div>
+      <div class="body">
+        <div style="margin-top:20px;margin-bottom:12px">
+          <div class="headline" style="font-size:24px">What kind of group?</div>
+          <p class="subline">We'll set up suggested categories and a starter pack so you can hit the ground running.</p>
+        </div>
+        <div class="otile sel">
+          <div class="ic-tile home"><svg style="width:22px;height:22px;stroke:currentColor;stroke-width:1.7;fill:none;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><path d="M5 12l-2 0 9 -9 9 9 -2 0"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-7"/><path d="M9 21v-6a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v6"/></svg></div>
+          <div class="info"><div class="ttl">Flatmates</div><div class="sub">Rent, bills, chores. Roll over month-to-month.</div></div>
+          <div class="check"><svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:#fff;stroke-width:2.5;fill:none;stroke-linecap:round;stroke-linejoin:round"><path d="M5 12l5 5l10 -10"/></svg></div>
+        </div>
+        <div class="otile">
+          <div class="ic-tile partner"><svg style="width:22px;height:22px;stroke:currentColor;stroke-width:1.7;fill:none;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><path d="M12 6l-3.5 -3a3.5 3.5 0 0 0 -5 5l5 5h7l5 -5a3.5 3.5 0 0 0 -5 -5l-3.5 3"/></svg></div>
+          <div class="info"><div class="ttl">Partners</div><div class="sub">Shared life — recurring bills, savings goals.</div></div>
+        </div>
+        <div class="otile">
+          <div class="ic-tile travel"><svg style="width:22px;height:22px;stroke:currentColor;stroke-width:1.7;fill:none;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><path d="M16 10h4.5a1.5 1.5 0 0 1 0 3h-4.5l-4 7h-3l2 -7h-4l-2 2h-3l2 -3.5l-2 -3.5h3l2 2h4l-2 -7h3l4 7"/></svg></div>
+          <div class="info"><div class="ttl">Travel</div><div class="sub">Trips with one-off expenses. Auto-archive on close.</div></div>
+        </div>
+        <div class="otile">
+          <div class="ic-tile work"><svg style="width:22px;height:22px;stroke:currentColor;stroke-width:1.7;fill:none;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><path d="M3 7m0 2a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2v9a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2z"/><path d="M8 7v-2a2 2 0 0 1 2 -2h4a2 2 0 0 1 2 2v2"/></svg></div>
+          <div class="info"><div class="ttl">Workspace</div><div class="sub">Vendors, invoices, approval thresholds.</div></div>
+        </div>
+      </div>
+      <div class="ctabar"><div class="cta">Continue</div></div>
+    </div>
+
+    <!-- 7. Name + currency + starter pack -->
+    <div class="frame tall">
+      <div class="sb"><span>9:41</span><span>● ● ●</span></div>
+      <div class="step-no">Step 7 of 8</div>
+      <div class="topnav">
+        <div class="btn"><span class="chev">‹</span>Back</div>
+        <div class="dots"><i></i><i></i><i></i><i></i><i></i><i></i><i class="on"></i><i></i></div>
+        <div class="btn invisible">Skip</div>
+      </div>
+      <div class="body">
+        <div style="margin-top:20px;margin-bottom:12px">
+          <div class="headline" style="font-size:24px">Name your group</div>
+          <p class="subline">You can change this any time.</p>
+        </div>
+        <div class="formgroup">
+          <div class="inrow">
+            <div class="lbl">Name</div>
+            <div class="val">Sunset Drive</div>
+          </div>
+          <div class="inrow">
+            <div class="lbl">Currency</div>
+            <div class="val">£ GBP</div>
+            <div class="chev">›</div>
+          </div>
+        </div>
+        <div class="toggle-row">
+          <div class="info">
+            <div class="t">Skip the empty start</div>
+            <div class="c">Add suggested categories + first-expense ideas. Rename, edit or remove anything later.</div>
+          </div>
+          <div style="width:42px;height:24px;border-radius:12px;background:var(--sage);position:relative;flex-shrink:0">
+            <div style="position:absolute;width:20px;height:20px;border-radius:10px;background:#fff;top:2px;right:2px;box-shadow:0 1px 2px rgba(0,0,0,0.2)"></div>
+          </div>
+        </div>
+        <p class="reassurance">No expenses are created until you log them. The starter pack just adds suggestions to choose from.</p>
+      </div>
+      <div class="ctabar"><div class="cta">Create group</div></div>
+    </div>
+
+    <!-- 8. Invite + Done -->
+    <div class="frame tall">
+      <div class="sb"><span>9:41</span><span>● ● ●</span></div>
+      <div class="step-no">Step 8 of 8</div>
+      <div class="topnav">
+        <div class="btn"><span class="chev">‹</span>Back</div>
+        <div class="dots"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i class="on"></i></div>
+        <div class="btn muted">Skip step</div>
+      </div>
+      <div class="body">
+        <div class="done-illu">
+          <div style="width:96px;height:96px;border-radius:48px;background:var(--sage);color:#fff;display:flex;align-items:center;justify-content:center">
+            <svg style="width:48px;height:48px;stroke:currentColor;stroke-width:2.5;fill:none;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><path d="M5 12l5 5l10 -10"/></svg>
+          </div>
+        </div>
+        <div class="headline" style="font-size:22px;text-align:center">You're all set, Augustus.</div>
+        <p class="subline" style="text-align:center">Invite your flatmates so everyone can see and add expenses.</p>
+        <div class="formgroup">
+          <div class="inrow">
+            <div class="val placeholder">Email or phone number</div>
+            <div style="background:var(--ink);color:#fff;font-size:12px;font-weight:700;padding:7px 12px;border-radius:8px">Add</div>
+          </div>
+        </div>
+      </div>
+      <div class="ctabar">
+        <div class="cta sage">Open Commune</div>
+      </div>
+    </div>
+
+  </div>
+
+  <h2 class="sub">Web · split-pane carrying the same brand</h2>
+  <div class="why"><b>Why:</b> Web onboarding currently lives at <code>apps/web/src/routes/_app/onboarding.tsx</code>. The split-pane keeps the same illustrated coloured panel + headline copy from mobile (left), with the active form on the right. Same dot-indicator, same sequencing, same starter-pack toggle copy.</div>
+
+  <div class="web-row">
+
+    <!-- Web: Welcome -->
+    <div class="web-frame">
+      <div class="web-side">
+        <div class="brand">Commune</div>
+        <div class="copy">
+          <h2>Money with the people you live with — without the awkward bit.</h2>
+          <p>Track shared expenses, split fairly, settle in one tap. Free for up to 3 groups.</p>
+        </div>
+        <div class="dots"><i class="on"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+      </div>
+      <div class="web-main">
+        <div class="topbar">
+          <div></div>
+          <div>Already have an account? <span class="skip">Sign in</span></div>
+        </div>
+        <div>
+          <h3>Get started</h3>
+          <p class="helper">Email or phone — we'll set you up in under a minute.</p>
+          <div style="background:#fff;border:1px solid var(--border-soft);border-radius:12px;padding:14px 16px;margin-bottom:10px;font-size:14px;color:var(--muted2)">you@example.com</div>
+          <div style="background:var(--ink);color:#fff;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:14.5px;font-weight:700">Continue with email</div>
+          <div style="display:flex;align-items:center;gap:12px;margin:14px 0;color:var(--muted);font-size:12px"><div style="flex:1;height:1px;background:var(--border-soft)"></div>or<div style="flex:1;height:1px;background:var(--border-soft)"></div></div>
+          <div style="background:#fff;border:1px solid var(--border-soft);height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;gap:8px">
+            <svg style="width:16px;height:16px" viewBox="0 0 24 24"><path d="M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.147 1.147-2.933 2.4-6.053 2.4-4.827 0-8.6-3.893-8.6-8.72s3.773-8.72 8.6-8.72c2.6 0 4.507 1.027 5.907 2.347l2.307-2.307C18.747 1.44 16.133 0 12.48 0 5.867 0 .307 5.387.307 12s5.56 12 12.173 12c3.573 0 6.267-1.173 8.373-3.36 2.16-2.16 2.84-5.213 2.84-7.667 0-.76-.053-1.467-.173-2.053H12.48z" fill="#4285F4"/></svg>
+            Continue with Google
+          </div>
+        </div>
+        <div></div>
+      </div>
+    </div>
+
+    <!-- Web: Acquisition -->
+    <div class="web-frame">
+      <div class="web-side mint">
+        <div class="brand">Commune</div>
+        <div class="copy">
+          <h2>One question before we go.</h2>
+          <p>Where did you hear about us? Helps us put time into what's working.</p>
+        </div>
+        <div class="dots"><i></i><i></i><i></i><i></i><i class="on"></i><i></i><i></i><i></i></div>
+      </div>
+      <div class="web-main">
+        <div class="topbar">
+          <div style="display:flex;align-items:center;gap:6px"><span style="font-size:18px">‹</span> Back</div>
+          <div class="skip">Skip</div>
+        </div>
+        <div>
+          <h3>Where did you hear about us?</h3>
+          <p class="helper">Pick one — or skip if you'd rather not say.</p>
+          <div class="acq-grid-wide">
+            <div class="acq-tile"><div class="ic" style="background:#000;color:#fff;width:28px;height:28px"><svg style="width:14px;height:14px;fill:currentColor" viewBox="0 0 24 24"><path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z"/></svg></div><div class="t">TikTok</div></div>
+            <div class="acq-tile on"><div class="ic" style="background:#E8F0FE;color:#1A73E8;width:28px;height:28px"><svg style="width:14px;height:14px;stroke:currentColor;stroke-width:1.7;fill:none;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="M21 21l-5.2 -5.2"/></svg></div><div class="t">Search</div></div>
+            <div class="acq-tile"><div class="ic" style="background:#FFF1F4;color:#E1306C;width:28px;height:28px"><svg style="width:14px;height:14px;stroke:currentColor;stroke-width:1.7;fill:none;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="4"/><circle cx="12" cy="12" r="3"/></svg></div><div class="t">Instagram</div></div>
+            <div class="acq-tile"><div class="ic" style="background:#FFF0E5;color:#FF4500;width:28px;height:28px"><svg style="width:14px;height:14px;stroke:currentColor;stroke-width:1.7;fill:none;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/></svg></div><div class="t">Reddit</div></div>
+            <div class="acq-tile"><div class="ic" style="background:#E8F3EC;color:var(--sage-ink);width:28px;height:28px"><svg style="width:14px;height:14px;stroke:currentColor;stroke-width:1.7;fill:none;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2"/></svg></div><div class="t">Friend</div></div>
+            <div class="acq-tile"><div class="ic" style="background:var(--bg);color:var(--muted);width:28px;height:28px">·</div><div class="t">Other</div></div>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:flex-end"><div style="background:var(--ink);color:#fff;font-size:14px;font-weight:700;padding:12px 24px;border-radius:12px">Continue</div></div>
+      </div>
+    </div>
+
+    <!-- Web: Sell screen 2 (split anything) -->
+    <div class="web-frame">
+      <div class="web-side plum">
+        <div class="brand">Commune</div>
+        <div class="copy">
+          <h2>Settle in one tap.</h2>
+          <p>Pay through Revolut, Monzo, PayPal, Venmo — directly from the app. Commune never holds your money.</p>
+        </div>
+        <div class="dots"><i></i><i></i><i class="on"></i><i></i><i></i><i></i><i></i><i></i></div>
+      </div>
+      <div class="web-main" style="background:linear-gradient(135deg,#EAE0FA 0%,#C4ACE9 100%);position:relative">
+        <div style="position:absolute;top:60px;left:60px;right:60px;height:380px;display:flex;align-items:center;justify-content:center">
+          <div style="background:#fff;border-radius:18px;padding:18px;box-shadow:0 20px 50px rgba(20,20,30,0.18);width:280px">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px"><div style="width:36px;height:36px;border-radius:18px;background:var(--sage-soft);color:var(--sage-ink);font-weight:700;display:flex;align-items:center;justify-content:center">M</div><div><div style="font-weight:700;font-size:14px">Maya Patel</div><div style="color:var(--muted);font-size:11.5px">Owes you</div></div><div style="margin-left:auto;font-weight:700;color:var(--sage-ink);font-size:14px">+£18.00</div></div>
+            <div style="background:var(--sage);color:#fff;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700">Pay through Revolut</div>
+            <div style="font-size:10.5px;color:var(--muted);text-align:center;margin-top:8px">Opens directly in Maya's wallet · amount prefilled</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="footer-note">
+    <h3>Implementation notes</h3>
+    <p><b>Acquisition source storage.</b> Add column <code>acquisition_source TEXT</code> to <code>profiles</code> via a 1-line migration. Save as enum-ish string (<code>tiktok | instagram | search | reddit | friend | app_store | youtube | other | null</code>). Useful for future filtering.</p>
+    <p><b>Pager mechanics.</b> Use <code>react-native-pager-view</code> for screens 1–4 (already Reanimated-3 compatible). Bind <code>currentPage</code> to the dot-indicator. Screens 5–8 are stacked navigation steps as today.</p>
+    <p><b>Back / Skip semantics.</b> Back: hidden on screen 1; otherwise pops to previous step (pager goes left). Skip: visible on screens 1–5 (jumps straight to step 6). Replaced with "Skip step" on screen 8 (skips invite). Final CTA is "Open Commune" → routes to <code>/(tabs)</code>.</p>
+    <p><b>Web parity.</b> <code>apps/web/src/routes/_app/onboarding.tsx</code> rebuilds with the same 8-step state machine, but rendered as a <b>split-pane</b> (<code>2fr / 3fr</code>): left = illustrated panel from mobile sell screens; right = active step. Top bar inside the right panel carries Back/Skip buttons.</p>
+    <p><b>Illustrations.</b> The four sell-screen "illustrations" in this mock are hand-drawn with floating product cards. Production version: commission a four-piece illustration set OR use a Lucide / Storyset / unDraw kit and tint to our palette. Budget for ~$200 if commissioning, free if curating.</p>
+  </div>
+
+</div>
+</body>
+</html>

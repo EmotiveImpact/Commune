@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
-import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
+import { Alert, ScrollView, Text, View } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   IconAdjustments,
   IconAlertTriangle,
@@ -14,9 +15,12 @@ import {
   IconLogout,
   IconRefresh,
   IconTag,
+  IconUserPlus,
+  IconUsers,
+  IconGitBranch,
 } from '@tabler/icons-react-native';
 import { formatCurrency } from '@commune/utils';
-import { Avatar, EmptyState, IconTile, Screen } from '@/components/primitives';
+import { Avatar, EmptyState, IconTile, Pressable, Screen } from '@/components/primitives';
 import { colors, font, radius, space } from '@/constants/design';
 import { getGroupTypeMeta } from '@/constants/design';
 import { useAuthStore } from '@/stores/auth';
@@ -127,6 +131,7 @@ function Row({
 }
 
 export default function GroupHubScreen() {
+  const insets = useSafeAreaInsets();
   const { groupId: routeGroupId } = useLocalSearchParams<{ groupId?: string }>();
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
@@ -159,7 +164,7 @@ export default function GroupHubScreen() {
         <Stack.Screen options={{ headerShown: false }} />
         <View style={{ flex: 1, justifyContent: 'center' }}>
           <EmptyState
-            icon="people-outline"
+            icon={IconUsers}
             title="No active group"
             description="Create or join a group to get started."
             actionLabel="Get started"
@@ -248,28 +253,33 @@ export default function GroupHubScreen() {
           alignItems: 'center',
           justifyContent: 'space-between',
           paddingHorizontal: space.gutter,
-          paddingTop: space.base,
+          paddingTop: insets.top + 12,
           paddingBottom: space.sm,
+          position: 'relative',
         }}
       >
-        <Pressable onPress={() => router.back()} hitSlop={8} style={{ width: 40 }}>
-          <IconChevronLeft size={24} color={colors.textPrimary} strokeWidth={2} />
+        <Pressable
+          onPress={() => router.back()}
+          hitSlop={10}
+          style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 2, paddingVertical: 6, paddingRight: 10, marginLeft: -4, opacity: pressed ? 0.6 : 1, zIndex: 2 })}
+        >
+          <IconChevronLeft size={22} strokeWidth={2} color={colors.textPrimary} />
+          <Text style={{ fontSize: 15, fontWeight: '600', color: colors.textPrimary }}>Back</Text>
         </Pressable>
-        <Text style={{ fontSize: 20, fontWeight: '700', color: colors.textPrimary }}>
-          Group
-        </Text>
-        <View style={{ width: 40, alignItems: 'flex-end' }}>
+        <View
+          pointerEvents="none"
+          style={{ position: 'absolute', left: 0, right: 0, top: insets.top + 12, bottom: 0, alignItems: 'center', justifyContent: 'center' }}
+        >
+          <Text style={{ fontSize: 17, fontWeight: '700', color: colors.textPrimary }}>Group</Text>
+        </View>
+        <View style={{ width: 40, alignItems: 'flex-end', zIndex: 2 }}>
           {hasEdits ? (
             <Pressable onPress={handleSave} hitSlop={8}>
               <Text style={{ fontSize: 12, fontWeight: '700', color: colors.sageInk }}>
                 Save
               </Text>
             </Pressable>
-          ) : (
-            <Text style={{ fontSize: 12, fontWeight: '700', color: colors.textMuted }}>
-              Save
-            </Text>
-          )}
+          ) : null}
         </View>
       </View>
 
@@ -332,7 +342,7 @@ export default function GroupHubScreen() {
         <View>
           <SectionLabel title="Details" />
           <Row
-            tile={<IconTile icon="pricetag-outline" color={colors.sage} bg={colors.sageSoft} />}
+            tile={<IconTile icon={IconTag} color={colors.sage} bg={colors.sageSoft} />}
             title="Name"
             caption={group.name}
             onPress={() => router.push('/group-edit')}
@@ -340,7 +350,7 @@ export default function GroupHubScreen() {
           <Row
             tile={
               <IconTile
-                icon={typeMeta.icon as any}
+                icon={typeMeta.icon}
                 color={typeMeta.accent}
                 bg={typeMeta.bg}
               />
@@ -350,7 +360,7 @@ export default function GroupHubScreen() {
             onPress={() => router.push('/group-edit')}
           />
           <Row
-            tile={<IconTile icon="cash-outline" color={colors.warnText} bg={colors.warnBg} />}
+            tile={<IconTile icon={IconCash} color={colors.warnText} bg={colors.warnBg} />}
             title="Currency"
             caption={group.currency}
             onPress={() => router.push('/group-edit')}
@@ -365,7 +375,7 @@ export default function GroupHubScreen() {
           />
           {previewMembers.length === 0 ? (
             <Row
-              tile={<IconTile icon="person-add-outline" color={colors.sage} bg={colors.sageSoft} />}
+              tile={<IconTile icon={IconUserPlus} color={colors.sage} bg={colors.sageSoft} />}
               title="Invite members"
               caption="Your group is just you right now"
               onPress={() => router.push('/members')}
@@ -401,13 +411,13 @@ export default function GroupHubScreen() {
         <View>
           <SectionLabel title="Policies" />
           <Row
-            tile={<IconTile icon="git-branch-outline" color={colors.sage} bg={colors.sageSoft} />}
+            tile={<IconTile icon={IconGitBranch} color={colors.sage} bg={colors.sageSoft} />}
             title="Split rule"
             caption="Equal by default"
             onPress={() => router.push('/group-edit')}
           />
           <Row
-            tile={<IconTile icon="refresh-outline" color={colors.infoText} bg={colors.infoBg} />}
+            tile={<IconTile icon={IconRefresh} color={colors.infoText} bg={colors.infoBg} />}
             title="Cycle"
             caption={
               group.cycle_date

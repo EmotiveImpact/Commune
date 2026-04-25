@@ -8,7 +8,10 @@ import {
   View,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { IconAlertCircle, IconCalendar, IconChevronLeft, IconCloudOff } from '@tabler/icons-react-native';
+import { Pressable } from '@/components/primitives';
+import { colors, font, space, radius } from '@/constants/design';
 import {
   countCompletedSetupChecklistItems,
   getIncompleteSetupChecklistItems,
@@ -42,11 +45,11 @@ function CycleCard({
     <View
       style={[
         {
-          backgroundColor: '#FFFFFF',
-          borderRadius: 16,
-          padding: 20,
-          marginBottom: 16,
-          shadowColor: '#000',
+          backgroundColor: colors.bgSurface,
+          borderRadius: radius.card,
+          padding: space.lg,
+          marginBottom: space.base,
+          shadowColor: colors.textPrimary,
           shadowOffset: { width: 0, height: 2 },
           shadowOpacity: 0.06,
           shadowRadius: 12,
@@ -71,8 +74,53 @@ function getOrdinalLabel(value: number) {
   return `${value}th`;
 }
 
+function ScreenHeader({ title, onBack, topInset }: { title: string; onBack: () => void; topInset: number }) {
+  return (
+    <View
+      style={{
+        paddingTop: topInset + 12,
+        paddingHorizontal: space.gutter,
+        backgroundColor: colors.bgBase,
+      }}
+    >
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          height: 48,
+          position: 'relative',
+        }}
+      >
+        <Pressable
+          onPress={onBack}
+          hitSlop={10}
+          style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 2, paddingVertical: 6, paddingRight: 10, marginLeft: -4, opacity: pressed ? 0.6 : 1, zIndex: 2 })}
+        >
+          <IconChevronLeft size={22} color={colors.textPrimary} strokeWidth={2} />
+          <Text style={{ fontSize: 15, fontWeight: '600', color: colors.textPrimary }}>Back</Text>
+        </Pressable>
+        <View
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Text style={[font.h3, { color: colors.textPrimary }]}>{title}</Text>
+        </View>
+        <View style={{ width: 36, zIndex: 2 }} />
+      </View>
+    </View>
+  );
+}
+
 export default function GroupCloseScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { user } = useAuthStore();
   const { activeGroupId } = useGroupStore();
   const referenceDate = useMemo(() => new Date().toISOString().slice(0, 10), []);
@@ -101,7 +149,7 @@ export default function GroupCloseScreen() {
     return (
       <Screen>
         <EmptyState
-          icon="calendar-outline"
+          icon={IconCalendar}
           title="No group selected"
           description="Pick a group from the dashboard before reviewing cycle close."
           actionLabel="Open dashboard"
@@ -114,18 +162,18 @@ export default function GroupCloseScreen() {
   if (groupLoading || summaryLoading) {
     return (
       <ScrollView
-        style={{ flex: 1, backgroundColor: '#FAFAFA' }}
-        contentContainerStyle={{ padding: 20, paddingBottom: 120 }}
+        style={{ flex: 1, backgroundColor: colors.bgBase }}
+        contentContainerStyle={{ padding: space.lg, paddingBottom: 120 }}
       >
         {[1, 2, 3].map((i) => (
           <View
             key={i}
             style={{
               height: 150,
-              borderRadius: 16,
-              backgroundColor: '#E5E7EB',
+              borderRadius: radius.card,
+              backgroundColor: colors.border,
               opacity: 0.5,
-              marginBottom: 16,
+              marginBottom: space.base,
             }}
           />
         ))}
@@ -138,7 +186,7 @@ export default function GroupCloseScreen() {
     return (
       <Screen>
         <EmptyState
-          icon="cloud-offline-outline"
+          icon={IconCloudOff}
           title="Cycle close unavailable"
           description={getErrorMessage(loadError, 'Could not load this cycle summary right now.')}
           actionLabel="Try again"
@@ -199,16 +247,18 @@ export default function GroupCloseScreen() {
   }
 
   return (
+    <View style={{ flex: 1, backgroundColor: colors.bgBase }}>
+      <ScreenHeader title="Cycle close" topInset={insets.top} onBack={() => router.back()} />
     <ScrollView
-      style={{ flex: 1, backgroundColor: '#FAFAFA' }}
-      contentContainerStyle={{ padding: 20, paddingBottom: 120 }}
+      style={{ flex: 1, backgroundColor: colors.bgBase }}
+      contentContainerStyle={{ padding: space.lg, paddingBottom: 120 }}
       showsVerticalScrollIndicator={false}
     >
-      <View style={{ marginBottom: 20 }}>
-        <Text style={{ fontSize: 24, fontWeight: '700', color: '#171b24' }}>
+      <View style={{ marginBottom: space.lg }}>
+        <Text style={{ fontSize: 24, fontWeight: '700', color: colors.textPrimary }}>
           Cycle close
         </Text>
-        <Text style={{ marginTop: 4, fontSize: 14, color: '#667085' }}>
+        <Text style={{ marginTop: 4, fontSize: 14, color: colors.textTertiary }}>
           Review this cycle before you lock it. Shared-space setup warnings are surfaced here on purpose.
         </Text>
       </View>
@@ -224,10 +274,10 @@ export default function GroupCloseScreen() {
           }}
         >
           <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 18, fontWeight: '600', color: '#171b24' }}>
+            <Text style={{ fontSize: 18, fontWeight: '600', color: colors.textPrimary }}>
               {group.name}
             </Text>
-            <Text style={{ marginTop: 4, fontSize: 14, color: '#667085' }}>
+            <Text style={{ marginTop: 4, fontSize: 14, color: colors.textTertiary }}>
               {formatCycleRange(summary.cycle_start, summary.cycle_end)} · settles on the {getOrdinalLabel(summary.cycle_date)}
             </Text>
           </View>
@@ -236,14 +286,14 @@ export default function GroupCloseScreen() {
               paddingHorizontal: 12,
               paddingVertical: 6,
               borderRadius: 20,
-              backgroundColor: summary.is_closed ? '#ECFDF5' : '#FFF7ED',
+              backgroundColor: summary.is_closed ? colors.owedBg : colors.warnBg,
             }}
           >
             <Text
               style={{
                 fontSize: 12,
                 fontWeight: '700',
-                color: summary.is_closed ? '#059669' : '#D97706',
+                color: summary.is_closed ? colors.owedText : colors.warnText,
               }}
             >
               {summary.is_closed ? 'Closed' : 'Open'}
@@ -257,10 +307,10 @@ export default function GroupCloseScreen() {
               paddingHorizontal: 10,
               paddingVertical: 4,
               borderRadius: 16,
-              backgroundColor: '#F3F4F6',
+              backgroundColor: colors.bgSubtle,
             }}
           >
-            <Text style={{ fontSize: 12, fontWeight: '500', color: '#6B7280' }}>
+            <Text style={{ fontSize: 12, fontWeight: '500', color: colors.textTertiary }}>
               {summary.pending_expense_count} pending approvals
             </Text>
           </View>
@@ -269,14 +319,14 @@ export default function GroupCloseScreen() {
               paddingHorizontal: 10,
               paddingVertical: 4,
               borderRadius: 16,
-              backgroundColor: overdueOperations.length > 0 ? '#FFF7ED' : '#ECFDF5',
+              backgroundColor: overdueOperations.length > 0 ? colors.warnBg : colors.owedBg,
             }}
           >
             <Text
               style={{
                 fontSize: 12,
                 fontWeight: '500',
-                color: overdueOperations.length > 0 ? '#D97706' : '#059669',
+                color: overdueOperations.length > 0 ? colors.warnText : colors.owedText,
               }}
             >
               {overdueOperations.length} overdue operations
@@ -287,14 +337,14 @@ export default function GroupCloseScreen() {
               paddingHorizontal: 10,
               paddingVertical: 4,
               borderRadius: 16,
-              backgroundColor: incompleteChecklistItems.length > 0 ? '#FFF7ED' : '#ECFDF5',
+              backgroundColor: incompleteChecklistItems.length > 0 ? colors.warnBg : colors.owedBg,
             }}
           >
             <Text
               style={{
                 fontSize: 12,
                 fontWeight: '500',
-                color: incompleteChecklistItems.length > 0 ? '#D97706' : '#059669',
+                color: incompleteChecklistItems.length > 0 ? colors.warnText : colors.owedText,
               }}
             >
               {completedChecklistCount}/{totalChecklistCount} setup complete
@@ -304,23 +354,23 @@ export default function GroupCloseScreen() {
       </CycleCard>
 
       {(incompleteChecklistItems.length > 0 || overdueOperations.length > 0) && (
-        <CycleCard style={{ backgroundColor: '#FFF7ED' }}>
+        <CycleCard style={{ backgroundColor: colors.warnBg }}>
           <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
-            <Ionicons name="alert-circle-outline" size={22} color="#D97706" style={{ marginTop: 2 }} />
+            <IconAlertCircle size={22} color={colors.warnText} strokeWidth={1.7} style={{ marginTop: 2 }} />
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 16, fontWeight: '700', color: '#9A3412' }}>
+              <Text style={{ fontSize: 16, fontWeight: '700', color: colors.warnText }}>
                 Close warnings
               </Text>
-              <Text style={{ marginTop: 4, fontSize: 14, lineHeight: 22, color: '#9A3412' }}>
+              <Text style={{ marginTop: 4, fontSize: 14, lineHeight: 22, color: colors.warnText }}>
                 This cycle can still be closed, but setup and operations are not fully squared away.
               </Text>
               {incompleteChecklistItems.slice(0, 3).map((item) => (
-                <Text key={item.id} style={{ marginTop: 8, fontSize: 13, color: '#9A3412' }}>
+                <Text key={item.id} style={{ marginTop: 8, fontSize: 13, color: colors.warnText }}>
                   • {item.label}
                 </Text>
               ))}
               {overdueOperations.slice(0, 2).map((operation) => (
-                <Text key={operation.id} style={{ marginTop: 8, fontSize: 13, color: '#9A3412' }}>
+                <Text key={operation.id} style={{ marginTop: 8, fontSize: 13, color: colors.warnText }}>
                   • {operation.title} is overdue
                 </Text>
               ))}
@@ -332,7 +382,7 @@ export default function GroupCloseScreen() {
                   }}
                   activeOpacity={0.7}
                 >
-                  <Text style={{ fontSize: 13, fontWeight: '600', color: '#B45309' }}>
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: colors.warnText }}>
                     Open setup checklist
                   </Text>
                 </TouchableOpacity>
@@ -343,7 +393,7 @@ export default function GroupCloseScreen() {
                   }}
                   activeOpacity={0.7}
                 >
-                  <Text style={{ fontSize: 13, fontWeight: '600', color: '#B45309' }}>
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: colors.warnText }}>
                     Open handover
                   </Text>
                 </TouchableOpacity>
@@ -354,7 +404,7 @@ export default function GroupCloseScreen() {
                   }}
                   activeOpacity={0.7}
                 >
-                  <Text style={{ fontSize: 13, fontWeight: '600', color: '#B45309' }}>
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: colors.warnText }}>
                     Open operations
                   </Text>
                 </TouchableOpacity>
@@ -364,57 +414,57 @@ export default function GroupCloseScreen() {
         </CycleCard>
       )}
 
-      <View style={{ flexDirection: 'row', gap: 12, marginBottom: 16 }}>
+      <View style={{ flexDirection: 'row', gap: 12, marginBottom: space.base }}>
         <CycleCard style={{ flex: 1, marginBottom: 0 }}>
-          <Text style={{ fontSize: 13, color: '#667085' }}>Approved spend</Text>
-          <Text style={{ marginTop: 6, fontSize: 24, fontWeight: '800', color: '#171b24' }}>
+          <Text style={{ fontSize: 13, color: colors.textTertiary }}>Approved spend</Text>
+          <Text style={{ marginTop: 6, fontSize: 24, fontWeight: '800', color: colors.textPrimary }}>
             {formatCurrency(summary.total_spend, group.currency)}
           </Text>
         </CycleCard>
         <CycleCard style={{ flex: 1, marginBottom: 0 }}>
-          <Text style={{ fontSize: 13, color: '#667085' }}>Outstanding</Text>
-          <Text style={{ marginTop: 6, fontSize: 24, fontWeight: '800', color: '#171b24' }}>
+          <Text style={{ fontSize: 13, color: colors.textTertiary }}>Outstanding</Text>
+          <Text style={{ marginTop: 6, fontSize: 24, fontWeight: '800', color: colors.textPrimary }}>
             {formatCurrency(summary.total_outstanding, group.currency)}
           </Text>
         </CycleCard>
       </View>
 
-      <View style={{ flexDirection: 'row', gap: 12, marginBottom: 16 }}>
+      <View style={{ flexDirection: 'row', gap: 12, marginBottom: space.base }}>
         <CycleCard style={{ flex: 1, marginBottom: 0 }}>
-          <Text style={{ fontSize: 13, color: '#667085' }}>Unpaid expenses</Text>
-          <Text style={{ marginTop: 6, fontSize: 24, fontWeight: '800', color: '#171b24' }}>
+          <Text style={{ fontSize: 13, color: colors.textTertiary }}>Unpaid expenses</Text>
+          <Text style={{ marginTop: 6, fontSize: 24, fontWeight: '800', color: colors.textPrimary }}>
             {summary.unpaid_expense_count}
           </Text>
         </CycleCard>
         <CycleCard style={{ flex: 1, marginBottom: 0 }}>
-          <Text style={{ fontSize: 13, color: '#667085' }}>Overdue expenses</Text>
-          <Text style={{ marginTop: 6, fontSize: 24, fontWeight: '800', color: '#171b24' }}>
+          <Text style={{ fontSize: 13, color: colors.textTertiary }}>Overdue expenses</Text>
+          <Text style={{ marginTop: 6, fontSize: 24, fontWeight: '800', color: colors.textPrimary }}>
             {summary.overdue_expense_count}
           </Text>
         </CycleCard>
       </View>
 
       <CycleCard>
-        <Text style={{ fontSize: 18, fontWeight: '600', color: '#171b24', marginBottom: 8 }}>
+        <Text style={{ fontSize: 18, fontWeight: '600', color: colors.textPrimary, marginBottom: 8 }}>
           Close notes
         </Text>
-        <Text style={{ marginBottom: 12, fontSize: 14, color: '#667085' }}>
+        <Text style={{ marginBottom: 12, fontSize: 14, color: colors.textTertiary }}>
           Capture anything the next admin or reviewer should know about this cycle.
         </Text>
         <TextInput
           style={{
             minHeight: 110,
             borderRadius: 12,
-            backgroundColor: '#F3F4F6',
+            backgroundColor: colors.bgSubtle,
             paddingHorizontal: 16,
             paddingVertical: 14,
             fontSize: 16,
-            color: '#111827',
+            color: colors.textPrimary,
             textAlignVertical: 'top',
           }}
           multiline
           placeholder="Late approvals, unresolved balances, handover notes..."
-          placeholderTextColor="#9CA3AF"
+          placeholderTextColor={colors.textMuted}
           value={notes}
           onChangeText={setNotes}
         />
@@ -422,7 +472,7 @@ export default function GroupCloseScreen() {
 
       {summary.member_balances.length > 0 && (
         <CycleCard>
-          <Text style={{ fontSize: 18, fontWeight: '600', color: '#171b24', marginBottom: 12 }}>
+          <Text style={{ fontSize: 18, fontWeight: '600', color: colors.textPrimary, marginBottom: 12 }}>
             Member balances
           </Text>
           {summary.member_balances.slice(0, 5).map((memberBalance, index) => (
@@ -435,18 +485,18 @@ export default function GroupCloseScreen() {
                 paddingTop: index === 0 ? 0 : 12,
                 paddingBottom: 12,
                 borderTopWidth: index === 0 ? 0 : 1,
-                borderTopColor: '#F0F0F0',
+                borderTopColor: colors.borderSubtle,
               }}
             >
               <View style={{ flex: 1, paddingRight: 12 }}>
-                <Text style={{ fontSize: 14, fontWeight: '600', color: '#171b24' }}>
+                <Text style={{ fontSize: 14, fontWeight: '600', color: colors.textPrimary }}>
                   {memberBalance.user_name}
                 </Text>
-                <Text style={{ marginTop: 2, fontSize: 12, color: '#667085' }}>
+                <Text style={{ marginTop: 2, fontSize: 12, color: colors.textTertiary }}>
                   {memberBalance.overdue_expense_count} overdue items
                 </Text>
               </View>
-              <Text style={{ fontSize: 14, fontWeight: '700', color: '#B9382F' }}>
+              <Text style={{ fontSize: 14, fontWeight: '700', color: colors.dangerText }}>
                 {formatCurrency(memberBalance.remaining_amount, group.currency)}
               </Text>
             </View>
@@ -456,7 +506,7 @@ export default function GroupCloseScreen() {
 
       {summary.expenses.length > 0 && (
         <CycleCard>
-          <Text style={{ fontSize: 18, fontWeight: '600', color: '#171b24', marginBottom: 12 }}>
+          <Text style={{ fontSize: 18, fontWeight: '600', color: colors.textPrimary, marginBottom: 12 }}>
             Cycle expenses
           </Text>
           {summary.expenses.slice(0, 5).map((expense, index) => (
@@ -466,7 +516,7 @@ export default function GroupCloseScreen() {
                 paddingTop: index === 0 ? 0 : 12,
                 paddingBottom: 12,
                 borderTopWidth: index === 0 ? 0 : 1,
-                borderTopColor: '#F0F0F0',
+                borderTopColor: colors.borderSubtle,
               }}
             >
               <View
@@ -478,14 +528,14 @@ export default function GroupCloseScreen() {
                 }}
               >
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 14, fontWeight: '600', color: '#171b24' }}>
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: colors.textPrimary }}>
                     {expense.title}
                   </Text>
-                  <Text style={{ marginTop: 2, fontSize: 12, color: '#667085' }}>
+                  <Text style={{ marginTop: 2, fontSize: 12, color: colors.textTertiary }}>
                     {formatDate(expense.due_date)} · {formatLabel(expense.category)}
                   </Text>
                 </View>
-                <Text style={{ fontSize: 14, fontWeight: '700', color: '#171b24' }}>
+                <Text style={{ fontSize: 14, fontWeight: '700', color: colors.textPrimary }}>
                   {formatCurrency(expense.remaining_amount, group.currency)}
                 </Text>
               </View>
@@ -498,7 +548,7 @@ export default function GroupCloseScreen() {
         <>
           <TouchableOpacity
             style={{
-              backgroundColor: summary.is_closed ? '#84CC16' : '#1f2330',
+              backgroundColor: summary.is_closed ? colors.lime : colors.bgInk,
               height: 52,
               borderRadius: 14,
               alignItems: 'center',
@@ -510,7 +560,7 @@ export default function GroupCloseScreen() {
             disabled={closeCycle.isPending || reopenCycle.isPending}
             activeOpacity={0.8}
           >
-            <Text style={{ fontSize: 16, fontWeight: '600', color: '#FFFFFF' }}>
+            <Text style={{ fontSize: 16, fontWeight: '600', color: colors.textInverse }}>
               {summary.is_closed ? 'Reopen cycle' : incompleteChecklistItems.length > 0 ? 'Close cycle with warnings' : 'Close cycle'}
             </Text>
           </TouchableOpacity>
@@ -521,9 +571,9 @@ export default function GroupCloseScreen() {
               borderRadius: 14,
               alignItems: 'center',
               justifyContent: 'center',
-              backgroundColor: '#FFFFFF',
+              backgroundColor: colors.bgSurface,
               borderWidth: 1,
-              borderColor: '#E5E7EB',
+              borderColor: colors.border,
             }}
             onPress={() => {
               hapticMedium();
@@ -531,7 +581,7 @@ export default function GroupCloseScreen() {
             }}
             activeOpacity={0.7}
           >
-            <Text style={{ fontSize: 15, fontWeight: '600', color: '#374151' }}>
+            <Text style={{ fontSize: 15, fontWeight: '600', color: colors.textSecondary }}>
               Open group settings
             </Text>
           </TouchableOpacity>
@@ -542,9 +592,9 @@ export default function GroupCloseScreen() {
               borderRadius: 14,
               alignItems: 'center',
               justifyContent: 'center',
-              backgroundColor: '#FFFFFF',
+              backgroundColor: colors.bgSurface,
               borderWidth: 1,
-              borderColor: '#E5E7EB',
+              borderColor: colors.border,
             }}
             onPress={() => {
               hapticMedium();
@@ -552,19 +602,20 @@ export default function GroupCloseScreen() {
             }}
             activeOpacity={0.7}
           >
-            <Text style={{ fontSize: 15, fontWeight: '600', color: '#374151' }}>
+            <Text style={{ fontSize: 15, fontWeight: '600', color: colors.textSecondary }}>
               Open operations board
             </Text>
           </TouchableOpacity>
         </>
       ) : (
-        <CycleCard style={{ backgroundColor: '#F3F4F6' }}>
-          <Text style={{ fontSize: 14, color: '#667085' }}>
+        <CycleCard style={{ backgroundColor: colors.bgSubtle }}>
+          <Text style={{ fontSize: 14, color: colors.textTertiary }}>
             You can review the cycle statement here, but only group admins can close or reopen the cycle.
           </Text>
         </CycleCard>
       )}
     </ScrollView>
+    </View>
   );
 }
 

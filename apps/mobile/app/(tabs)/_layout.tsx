@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { Tabs, useRouter, usePathname } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
 import {
   IconBell,
   IconChartBar,
@@ -23,10 +22,7 @@ import {
 } from '@tabler/icons-react-native';
 import {
   Image,
-  Modal,
-  Pressable,
   Text,
-  TouchableOpacity,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -35,18 +31,42 @@ import { usePendingInvites, useUserGroups } from '@/hooks/use-groups';
 import { useNotifications } from '@/hooks/use-notifications';
 import { useAuthStore } from '@/stores/auth';
 import { useGroupStore } from '@/stores/group';
-import { colors, elevation, font, radius, space } from '@/constants/design';
-import { IconTile } from '@/components/primitives';
+import { colors, elevation, space } from '@/constants/design';
+import { Pressable, type TablerIcon } from '@/components/primitives';
+import { BottomSheet, SheetRow } from '@/components/bottom-sheet';
 import { SideDrawer } from '@/components/side-drawer';
 import { SpeedDial, type SpeedDialAction } from '@/components/speed-dial';
-import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useSharedValue, withTiming, withSpring } from 'react-native-reanimated';
 
 const TAB_BAR_BG = '#1d2130';
 const ACTIVE_COLOR = '#FFFFFF';
 const INACTIVE_COLOR = 'rgba(255,255,255,0.45)';
 
+/**
+ * Animated tab icon — gently springs to scale 1.12 on focus, settles to 1.0
+ * when inactive. Subtle fade between active/inactive colour states. Keeps
+ * the tab bar feeling alive without being distracting. ~25 lines.
+ */
+function AnimatedTabIcon({ Icon, focused }: { Icon: TablerIcon; focused: boolean }) {
+  const scale = useSharedValue(focused ? 1.12 : 1);
+  const opacity = useSharedValue(focused ? 1 : 0.45);
+  useEffect(() => {
+    scale.value = withSpring(focused ? 1.12 : 1, { damping: 14, stiffness: 220 });
+    opacity.value = withTiming(focused ? 1 : 0.45, { duration: 180 });
+  }, [focused, opacity, scale]);
+  const style = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+    opacity: opacity.value,
+  }));
+  return (
+    <Animated.View style={style}>
+      <Icon size={28} strokeWidth={1.75} color={ACTIVE_COLOR} />
+    </Animated.View>
+  );
+}
+
 type QuickAction = {
-  icon: React.ComponentProps<typeof Ionicons>['name'];
+  icon: TablerIcon;
   label: string;
   description: string;
   route: string;
@@ -56,7 +76,7 @@ type QuickAction = {
 
 const QUICK_ACTIONS: QuickAction[] = [
   {
-    icon: 'add-circle-outline',
+    icon: IconReceipt,
     label: 'Add expense',
     description: 'Log a new shared cost',
     route: '/expenses/new',
@@ -64,7 +84,7 @@ const QUICK_ACTIONS: QuickAction[] = [
     bg: colors.sageSoft,
   },
   {
-    icon: 'repeat-outline',
+    icon: IconRepeat,
     label: 'Add recurring bill',
     description: 'A cost that repeats monthly',
     route: '/recurring',
@@ -72,7 +92,7 @@ const QUICK_ACTIONS: QuickAction[] = [
     bg: colors.typeCouple.bg,
   },
   {
-    icon: 'checkmark-circle-outline',
+    icon: IconChecklist,
     label: 'Add a chore',
     description: 'Track a non-money task',
     route: '/operations',
@@ -80,7 +100,7 @@ const QUICK_ACTIONS: QuickAction[] = [
     bg: colors.owedBg,
   },
   {
-    icon: 'person-add-outline',
+    icon: IconUserPlus,
     label: 'Add a member',
     description: 'Invite someone into this space',
     route: '/members',
@@ -88,7 +108,7 @@ const QUICK_ACTIONS: QuickAction[] = [
     bg: colors.typeTrip.bg,
   },
   {
-    icon: 'copy-outline',
+    icon: IconCopy,
     label: 'Add from template',
     description: 'Apply a saved expense preset',
     route: '/templates',
@@ -144,7 +164,7 @@ function buildSpeedDialActions(router: ReturnType<typeof useRouter>): SpeedDialA
 
 const MORE_ACTIONS: QuickAction[] = [
   {
-    icon: 'checkbox-outline',
+    icon: IconChecklist,
     label: 'Chores',
     description: 'Track non-money tasks',
     route: '/operations',
@@ -152,15 +172,15 @@ const MORE_ACTIONS: QuickAction[] = [
     bg: colors.owedBg,
   },
   {
-    icon: 'wallet-outline',
+    icon: IconWallet,
     label: 'Settle up',
     description: 'Clear balances with members',
-    route: '/command-centre',
+    route: '/settle-up',
     color: colors.typeWorkspace.accent,
     bg: colors.typeWorkspace.bg,
   },
   {
-    icon: 'bar-chart-outline',
+    icon: IconChartBar,
     label: 'Analytics',
     description: 'Spending trends and breakdown',
     route: '/analytics',
@@ -168,7 +188,7 @@ const MORE_ACTIONS: QuickAction[] = [
     bg: colors.sageSoft,
   },
   {
-    icon: 'chatbubble-ellipses-outline',
+    icon: IconMessageCircle,
     label: 'Activity',
     description: 'Full log of recent changes',
     route: '/activity',
@@ -176,7 +196,7 @@ const MORE_ACTIONS: QuickAction[] = [
     bg: colors.typeCouple.bg,
   },
   {
-    icon: 'copy-outline',
+    icon: IconCopy,
     label: 'Templates',
     description: 'Manage saved expense presets',
     route: '/templates',
@@ -184,7 +204,7 @@ const MORE_ACTIONS: QuickAction[] = [
     bg: colors.typeProject.bg,
   },
   {
-    icon: 'people-outline',
+    icon: IconUsersGroup,
     label: 'Members',
     description: 'Manage people in this group',
     route: '/members',
@@ -192,7 +212,7 @@ const MORE_ACTIONS: QuickAction[] = [
     bg: colors.typeTrip.bg,
   },
   {
-    icon: 'settings-outline',
+    icon: IconSettings,
     label: 'Profile & settings',
     description: 'Your account and preferences',
     route: '/settings',
@@ -311,11 +331,11 @@ export default function TabLayout() {
                   {isHome ? (
                     <Text
                       style={{
-                        fontSize: 28,
-                        fontWeight: '600',
+                        fontSize: 21,
+                        lineHeight: 26,
+                        fontWeight: '700',
                         color: colors.textPrimary,
-                        letterSpacing: 1.4,
-                        textTransform: 'uppercase',
+                        letterSpacing: 0.2,
                       }}
                     >
                       Commune
@@ -323,10 +343,11 @@ export default function TabLayout() {
                   ) : (
                     <Text
                       style={{
-                        fontSize: 28,
+                        fontSize: 21,
+                        lineHeight: 26,
                         fontWeight: '700',
                         color: colors.textPrimary,
-                        letterSpacing: -0.3,
+                        letterSpacing: 0,
                       }}
                     >
                       {pageTitle}
@@ -355,8 +376,8 @@ export default function TabLayout() {
                     <View
                       style={{
                         position: 'absolute',
-                        top: 2,
-                        right: 4,
+                        top: -2,
+                        right: -2,
                         minWidth: 16,
                         height: 16,
                         borderRadius: 8,
@@ -415,7 +436,7 @@ export default function TabLayout() {
             title: 'Home',
             tabBarLabel: 'Home',
             tabBarIcon: ({ focused }) => (
-              <IconLayoutDashboard size={28} strokeWidth={1.75} color={focused ? ACTIVE_COLOR : INACTIVE_COLOR} />
+              <AnimatedTabIcon Icon={IconLayoutDashboard} focused={focused} />
             ),
           }}
         />
@@ -426,9 +447,9 @@ export default function TabLayout() {
           options={{
             title: 'Expenses',
             tabBarLabel: 'Expenses',
-            tabBarItemStyle: { paddingTop: 2, paddingLeft: 24 },
+            tabBarItemStyle: { paddingTop: 2, paddingLeft: 12 },
             tabBarIcon: ({ focused }) => (
-              <IconReceipt size={28} strokeWidth={1.75} color={focused ? ACTIVE_COLOR : INACTIVE_COLOR} />
+              <AnimatedTabIcon Icon={IconReceipt} focused={focused} />
             ),
           }}
         />
@@ -478,9 +499,9 @@ export default function TabLayout() {
           options={{
             title: 'Groups',
             tabBarLabel: 'Groups',
-            tabBarItemStyle: { paddingTop: 2, paddingRight: 24 },
+            tabBarItemStyle: { paddingTop: 2, paddingRight: 12 },
             tabBarIcon: ({ focused }) => (
-              <IconUsers size={28} strokeWidth={1.75} color={focused ? ACTIVE_COLOR : INACTIVE_COLOR} />
+              <AnimatedTabIcon Icon={IconUsers} focused={focused} />
             ),
           }}
         />
@@ -545,113 +566,25 @@ export default function TabLayout() {
       />
 
       {/* ─── More Sheet ─────────────────────────────────────────────── */}
-      <Modal
+      <BottomSheet
         visible={moreOpen}
-        animationType="slide"
-        transparent
-        onRequestClose={() => setMoreOpen(false)}
+        onClose={() => setMoreOpen(false)}
+        title="More"
+        subtitle="Chores, analytics, and everything else."
       >
-        <Pressable
-          onPress={() => setMoreOpen(false)}
-          style={{
-            flex: 1,
-            backgroundColor: 'rgba(26,30,43,0.45)',
-            justifyContent: 'flex-end',
-          }}
-        >
-          <Pressable
-            onPress={(e) => e.stopPropagation()}
-            style={{
-              width: '100%',
-              alignSelf: 'stretch',
-              backgroundColor: colors.bgSurface,
-              borderTopLeftRadius: radius.sheet,
-              borderTopRightRadius: radius.sheet,
-              paddingTop: space.md,
-              paddingBottom: insets.bottom + space.md,
-              ...elevation.sheet,
-            }}
-          >
-            <View
-              style={{
-                alignSelf: 'center',
-                width: 40,
-                height: 4,
-                borderRadius: 2,
-                backgroundColor: colors.border,
-                marginBottom: space.lg,
-              }}
-            />
-
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'flex-start',
-                paddingHorizontal: space.gutter,
-                marginBottom: space.base,
-              }}
-            >
-              <View style={{ flex: 1 }}>
-                <Text style={[font.h2, { color: colors.textPrimary }]}>More</Text>
-                <Text style={[font.caption, { color: colors.textTertiary, marginTop: 4 }]}>
-                  Chores, analytics, and everything else.
-                </Text>
-              </View>
-              <TouchableOpacity
-                activeOpacity={0.7}
-                onPress={() => { hapticLight(); setMoreOpen(false); }}
-                accessibilityLabel="Close"
-                style={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: 16,
-                  backgroundColor: TAB_BAR_BG,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  marginLeft: space.sm,
-                }}
-              >
-                <Ionicons name="close" size={20} color="#FFFFFF" />
-              </TouchableOpacity>
-            </View>
-
-            <View style={{ paddingHorizontal: space.gutter, width: '100%' }}>
-              {MORE_ACTIONS.map((action, idx) => {
-                const isLast = idx === MORE_ACTIONS.length - 1;
-                return (
-                  <TouchableOpacity
-                    key={action.label}
-                    activeOpacity={0.55}
-                    onPress={() => handleQuickAction(action)}
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      paddingVertical: space.md + 2,
-                      borderBottomWidth: isLast ? 0 : 1,
-                      borderBottomColor: colors.borderSubtle,
-                    }}
-                  >
-                    <IconTile icon={action.icon} color={action.color} bg={action.bg} size={44} />
-                    <View style={{ flex: 1, marginLeft: space.md, marginRight: space.md }}>
-                      <Text style={{ fontSize: 15, fontWeight: '600', color: colors.textPrimary }}>
-                        {action.label}
-                      </Text>
-                      <Text
-                        numberOfLines={1}
-                        style={{ fontSize: 13, fontWeight: '500', color: colors.textTertiary, marginTop: 2 }}
-                      >
-                        {action.description}
-                      </Text>
-                    </View>
-                    <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-
-          </Pressable>
-        </Pressable>
-      </Modal>
+        {MORE_ACTIONS.map((action, idx) => (
+          <SheetRow
+            key={action.label}
+            icon={action.icon}
+            iconColor={action.color}
+            iconBg={action.bg}
+            title={action.label}
+            subtitle={action.description}
+            onPress={() => handleQuickAction(action)}
+            isLast={idx === MORE_ACTIONS.length - 1}
+          />
+        ))}
+      </BottomSheet>
 
       <SideDrawer
         visible={drawerOpen}
@@ -719,7 +652,7 @@ export default function TabLayout() {
                 bg: colors.sageSoft,
                 onPress: () => {
                   setDrawerOpen(false);
-                  setTimeout(() => router.push('/command-centre'), 220);
+                  setTimeout(() => router.push('/settle-up'), 220);
                 },
               },
               {

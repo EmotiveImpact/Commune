@@ -5,13 +5,12 @@ import {
   View,
   Text,
   TextInput,
-  TouchableOpacity,
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { updatePassword } from '@commune/api';
+import { Button } from '@/components/primitives';
 import { getErrorMessage } from '@/lib/errors';
 import { hapticMedium, hapticSuccess, hapticWarning, hapticError } from '@/lib/haptics';
 
@@ -208,33 +207,15 @@ export default function ResetPasswordScreen() {
           </View>
 
           {/* Update password button */}
-          <TouchableOpacity
+          <Button
+            label={loading ? 'Updating...' : 'Update password'}
             onPress={handleUpdate}
+            variant="ink"
+            size="lg"
+            loading={loading}
             disabled={loading}
-            activeOpacity={0.8}
-            style={{
-              backgroundColor: '#1f2330',
-              height: 52,
-              borderRadius: 14,
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexDirection: 'row',
-              opacity: loading ? 0.7 : 1,
-            }}
-          >
-            {loading ? (
-              <ActivityIndicator color="#FFFFFF" style={{ marginRight: 8 }} />
-            ) : null}
-            <Text
-              style={{
-                color: '#FFFFFF',
-                fontSize: 16,
-                fontWeight: '600',
-              }}
-            >
-              {loading ? 'Updating...' : 'Update password'}
-            </Text>
-          </TouchableOpacity>
+            fullWidth
+          />
         </View>
       </ScrollView>
     </KeyboardAvoidingView>

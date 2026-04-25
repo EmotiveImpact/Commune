@@ -1,6 +1,9 @@
 import { useMemo } from 'react';
 import { Linking, Text, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { IconAlertCircle, IconClock, IconSparkles } from '@tabler/icons-react-native';
+import type { ComponentType } from 'react';
+
+type TablerIcon = ComponentType<{ size?: number; color?: string; strokeWidth?: number }>;
 import { Button, Chip, Card } from 'heroui-native';
 import { useSubscription } from '@/hooks/use-subscriptions';
 import { useThemeStore } from '@/stores/theme';
@@ -34,29 +37,36 @@ export function TrialExpiryBanner({ userId }: TrialExpiryBannerProps) {
 
   if (!variant) return null;
 
-  const config = {
+  const config: {
+    icon: TablerIcon;
+    chipLabel: string;
+    chipColor: 'warning' | 'danger' | 'success';
+    message: string;
+    borderColor: string;
+  } = {
     warning: {
-      icon: 'time-outline' as const,
+      icon: IconClock,
       chipLabel: `${daysLeft} day${daysLeft === 1 ? '' : 's'} left`,
       chipColor: 'warning' as const,
       message: `Your free trial ends in ${daysLeft} day${daysLeft === 1 ? '' : 's'}. Upgrade now to keep access to all features.`,
       borderColor: '#F5A623',
     },
     expired: {
-      icon: 'alert-circle-outline' as const,
+      icon: IconAlertCircle,
       chipLabel: 'Expired',
       chipColor: 'danger' as const,
       message: 'Your free trial has ended. Upgrade to continue using Commune.',
       borderColor: '#B9382F',
     },
     no_subscription: {
-      icon: 'sparkles-outline' as const,
+      icon: IconSparkles,
       chipLabel: '7 days free',
       chipColor: 'success' as const,
       message: 'Pick a plan to start your 7-day free trial and unlock all of Commune.',
       borderColor: '#2d6a4f',
     },
   }[variant];
+  const ConfigIcon = config.icon;
 
   function handleUpgrade() {
     void Linking.openURL(PRICING_URL);
@@ -66,7 +76,7 @@ export function TrialExpiryBanner({ userId }: TrialExpiryBannerProps) {
     <Card style={{ marginBottom: 16, padding: 16,  borderWidth: 1, borderColor: config.borderColor }}
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-        <Ionicons name={config.icon} size={20} color={config.borderColor} />
+        <ConfigIcon size={20} color={config.borderColor} strokeWidth={1.7} />
         <Chip color={config.chipColor} variant="soft" size="sm">
           {config.chipLabel}
         </Chip>

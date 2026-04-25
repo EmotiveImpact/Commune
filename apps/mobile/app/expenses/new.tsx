@@ -6,7 +6,6 @@ import {
   KeyboardAvoidingView,
   Modal,
   Platform,
-  Pressable,
   ScrollView,
   Text,
   TextInput,
@@ -14,7 +13,8 @@ import {
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Stack, useRouter } from 'expo-router';
-import { IconAlertTriangle, IconChevronRight, IconX } from '@tabler/icons-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { IconAlertTriangle, IconChevronRight, IconCloudOff, IconUsers, IconX } from '@tabler/icons-react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import {
   calculateEqualSplit,
@@ -28,7 +28,7 @@ import { useAuthStore } from '@/stores/auth';
 import { useGroupStore } from '@/stores/group';
 import { toWorkspaceExpenseContextPayload, useCreateExpense } from '@/hooks/use-expenses';
 import { useGroup } from '@/hooks/use-groups';
-import { EmptyState, Screen } from '@/components/primitives';
+import { EmptyState, Picker, Pressable, Screen } from '@/components/primitives';
 import { colors, radius, space } from '@/constants/design';
 import { getErrorMessage } from '@/lib/errors';
 import { formatCategoryLabel } from '@/lib/ui';
@@ -71,7 +71,7 @@ function formatDueDate(date: Date) {
   return isToday ? `Today · ${formatted}` : formatted;
 }
 
-type SheetKey = 'category' | 'paidBy' | 'split' | 'date' | 'recurring' | 'invoiceDate' | 'paymentDueDate' | null;
+type SheetKey = 'split' | 'date' | 'invoiceDate' | 'paymentDueDate' | null;
 
 function formatOptionalDate(date: Date | null) {
   if (!date) return 'Not set';
@@ -84,6 +84,7 @@ function formatOptionalDate(date: Date | null) {
 
 export default function NewExpenseScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { user } = useAuthStore();
   const { activeGroupId } = useGroupStore();
 
@@ -276,7 +277,6 @@ export default function NewExpenseScreen() {
     // set up, upload `receiptUri` (if set) and attach the returned public URL
     // to `payload.receipt_url` here.
     if (receiptUri) {
-      // eslint-disable-next-line no-console
       console.log('[new-expense] receipt selected but upload is not wired yet:', receiptUri);
     }
 
@@ -321,9 +321,9 @@ export default function NewExpenseScreen() {
     return (
       <Screen>
         <Stack.Screen options={{ headerShown: false }} />
-        <Header onClose={() => router.back()} onSave={() => {}} canSave={false} />
+        <Header topInset={insets.top} onClose={() => router.back()} onSave={() => {}} canSave={false} />
         <EmptyState
-          icon="albums-outline"
+          icon={IconUsers}
           title="Select a group first"
           description="Create or join a group before adding a shared expense."
           actionLabel="Open onboarding"
@@ -337,9 +337,9 @@ export default function NewExpenseScreen() {
     return (
       <Screen>
         <Stack.Screen options={{ headerShown: false }} />
-        <Header onClose={() => router.back()} onSave={() => {}} canSave={false} />
+        <Header topInset={insets.top} onClose={() => router.back()} onSave={() => {}} canSave={false} />
         <EmptyState
-          icon="cloud-offline-outline"
+          icon={IconCloudOff}
           title="Expense form unavailable"
           description={getErrorMessage(groupError, 'Could not load the selected group.')}
         />
@@ -363,7 +363,7 @@ export default function NewExpenseScreen() {
   return (
     <Screen>
       <Stack.Screen options={{ headerShown: false }} />
-      <Header onClose={() => router.back()} onSave={handleSubmit} canSave={isValid && !createExpense.isPending} />
+      <Header topInset={insets.top} onClose={() => router.back()} onSave={handleSubmit} canSave={isValid && !createExpense.isPending} />
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}
@@ -418,15 +418,36 @@ export default function NewExpenseScreen() {
             />
           </Row>
 
-          <Row label="Category" chevron onPress={() => { hapticSelection(); setSheet('category'); }}>
-            <Text style={styles.rowValue}>{formatCategoryLabel(category)}</Text>
-          </Row>
+          <View style={{ marginBottom: 8 }}>
+            <Picker
+              label="Category"
+              value={category}
+              options={categories.map((c) => ({ value: c, label: formatCategoryLabel(c) }))}
+              onChange={(v) => {
+                hapticSelection();
+                setCategory(v as ExpenseCategoryType);
+              }}
+            />
+          </View>
 
-          <Row label="Paid by" chevron onPress={() => { hapticSelection(); setSheet('paidBy'); }}>
-            <Text style={[styles.rowValue, !paidByUserId && { color: colors.textMuted }]}>
-              {paidByLabel}
-            </Text>
-          </Row>
+          <View style={{ marginBottom: 8 }}>
+            <Picker
+              label="Paid by"
+              value={paidByUserId ?? ''}
+              placeholder="Choose a payer"
+              options={[
+                { value: '', label: 'Nobody yet' },
+                ...activeMembers.map((m) => ({
+                  value: m.user_id,
+                  label: m.user_id === user?.id ? `${m.user.name} (you)` : m.user.name,
+                })),
+              ]}
+              onChange={(v) => {
+                hapticSelection();
+                setPaidByUserId(v === '' ? null : v);
+              }}
+            />
+          </View>
 
           <Row label="Split" chevron onPress={() => { hapticSelection(); setSheet('split'); }}>
             <Text style={styles.rowValue}>{splitSummary}</Text>
@@ -524,11 +545,17 @@ export default function NewExpenseScreen() {
             </Text>
           </Row>
 
-          <Row label="Recurring" chevron onPress={() => { hapticSelection(); setSheet('recurring'); }}>
-            <Text style={styles.rowValue}>
-              {RECURRENCE_OPTIONS.find((o) => o.value === recurrenceType)?.label ?? 'One-off'}
-            </Text>
-          </Row>
+          <View style={{ marginTop: 8, marginBottom: 8 }}>
+            <Picker
+              label="Recurring"
+              value={recurrenceType}
+              options={RECURRENCE_OPTIONS}
+              onChange={(v) => {
+                hapticSelection();
+                setRecurrenceType(v);
+              }}
+            />
+          </View>
         </ScrollView>
 
         {/* Bottom CTA */}
@@ -562,30 +589,6 @@ export default function NewExpenseScreen() {
       </KeyboardAvoidingView>
 
       {/* Sheets */}
-      <PickerSheet
-        visible={sheet === 'category'}
-        title="Category"
-        options={categories.map((c) => ({ value: c, label: formatCategoryLabel(c) }))}
-        selected={category}
-        onSelect={(v) => { setCategory(v as ExpenseCategoryType); setSheet(null); }}
-        onClose={() => setSheet(null)}
-      />
-
-      <PickerSheet
-        visible={sheet === 'paidBy'}
-        title="Paid by"
-        options={[
-          { value: '', label: 'Nobody yet' },
-          ...activeMembers.map((m) => ({
-            value: m.user_id,
-            label: m.user_id === user?.id ? `${m.user.name} (you)` : m.user.name,
-          })),
-        ]}
-        selected={paidByUserId ?? ''}
-        onSelect={(v) => { setPaidByUserId(v === '' ? null : v); setSheet(null); }}
-        onClose={() => setSheet(null)}
-      />
-
       <SplitSheet
         visible={sheet === 'split'}
         splitMethod={splitMethod}
@@ -621,14 +624,6 @@ export default function NewExpenseScreen() {
         onClose={() => setSheet(null)}
       />
 
-      <PickerSheet
-        visible={sheet === 'recurring'}
-        title="Recurring"
-        options={RECURRENCE_OPTIONS}
-        selected={recurrenceType}
-        onSelect={(v) => { setRecurrenceType(v); setSheet(null); }}
-        onClose={() => setSheet(null)}
-      />
     </Screen>
   );
 }
@@ -638,14 +633,20 @@ export default function NewExpenseScreen() {
 /* ====================================================================== */
 
 function Header({
-  onClose, onSave, canSave,
-}: { onClose: () => void; onSave: () => void; canSave: boolean }) {
+  onClose, onSave, canSave, topInset = 0,
+}: { onClose: () => void; onSave: () => void; canSave: boolean; topInset?: number }) {
   return (
     <View
       style={{
+        paddingTop: topInset + 12,
+        paddingHorizontal: space.gutter,
+        backgroundColor: colors.bgBase,
+      }}
+    >
+    <View
+      style={{
         flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-        paddingTop: Platform.OS === 'ios' ? 56 : 24,
-        paddingHorizontal: space.gutter, paddingBottom: 12,
+        height: 48,
       }}
     >
       <Pressable
@@ -671,6 +672,7 @@ function Header({
       >
         <Text style={{ fontSize: 12, fontWeight: '700', color: colors.sageInk }}>Save</Text>
       </Pressable>
+    </View>
     </View>
   );
 }
@@ -758,48 +760,6 @@ function SheetFrame({
   );
 }
 
-function PickerSheet({
-  visible, title, options, selected, onSelect, onClose,
-}: {
-  visible: boolean;
-  title: string;
-  options: { value: string; label: string }[];
-  selected: string;
-  onSelect: (value: string) => void;
-  onClose: () => void;
-}) {
-  return (
-    <SheetFrame visible={visible} title={title} onClose={onClose}>
-      <ScrollView keyboardShouldPersistTaps="handled">
-        {options.map((opt) => {
-          const sel = opt.value === selected;
-          return (
-            <Pressable
-              key={opt.value || '__none'}
-              onPress={() => { hapticSelection(); onSelect(opt.value); }}
-              style={({ pressed }) => ({
-                flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-                paddingVertical: 14, paddingHorizontal: 14, borderRadius: 12,
-                backgroundColor: sel ? colors.sageSoft : 'transparent',
-                marginBottom: 4, opacity: pressed ? 0.7 : 1,
-              })}
-            >
-              <Text style={{ fontSize: 15, fontWeight: sel ? '700' : '500', color: sel ? colors.sageInk : colors.textPrimary }}>
-                {opt.label}
-              </Text>
-              {sel ? (
-                <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: colors.sage, alignItems: 'center', justifyContent: 'center' }}>
-                  <Text style={{ color: colors.textInverse, fontSize: 12, fontWeight: '700' }}>✓</Text>
-                </View>
-              ) : null}
-            </Pressable>
-          );
-        })}
-      </ScrollView>
-    </SheetFrame>
-  );
-}
-
 function DateSheet({
   visible, value, onChange, onClose, title = 'Date',
 }: {
@@ -809,18 +769,36 @@ function DateSheet({
   onClose: () => void;
   title?: string;
 }) {
+  // Android: skip the bottom-sheet modal entirely. The platform's native date
+  // dialog floats above all content, so layering it inside a Modal causes
+  // dismissed-but-still-visible races and double-tap dismissals.
+  if (Platform.OS === 'android') {
+    if (!visible) return null;
+    return (
+      <DateTimePicker
+        value={value}
+        mode="date"
+        display="default"
+        onChange={(event, selected) => {
+          onClose();
+          if (event.type === 'set' && selected) onChange(selected);
+        }}
+      />
+    );
+  }
+
   return (
     <SheetFrame visible={visible} title={title} onClose={onClose}>
       <View style={{ alignItems: 'center', paddingVertical: 8 }}>
         <DateTimePicker
           value={value}
           mode="date"
-          display={Platform.OS === 'ios' ? 'inline' : 'default'}
+          display="inline"
           onChange={(_e, selected) => {
             if (selected) onChange(selected);
-            if (Platform.OS === 'android') onClose();
           }}
           accentColor={colors.sage}
+          themeVariant="light"
         />
       </View>
       <Pressable

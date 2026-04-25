@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { IconChevronLeft, IconPlus } from '@tabler/icons-react-native';
+import { IconChevronLeft, IconPlus, IconRepeat, IconUsers } from '@tabler/icons-react-native';
 import type { ExpenseWithParticipants } from '@commune/types';
 import { formatCurrency } from '@commune/utils';
 import { EmptyState, IconTile, Screen } from '@/components/primitives';
@@ -209,35 +209,44 @@ export default function RecurringScreen() {
   const header = (
     <View
       style={{
-        paddingTop: insets.top + space.sm,
+        paddingTop: insets.top + 12,
         paddingBottom: space.md,
         paddingHorizontal: space.gutter,
         flexDirection: 'row',
         alignItems: 'center',
+        justifyContent: 'space-between',
         backgroundColor: colors.bgBase,
+        position: 'relative',
       }}
     >
       <TouchableOpacity
         onPress={handleBack}
-        hitSlop={12}
-        activeOpacity={0.7}
-        style={{ width: 32, height: 32, alignItems: 'flex-start', justifyContent: 'center' }}
+        hitSlop={10}
+        activeOpacity={0.6}
+        style={{ flexDirection: 'row', alignItems: 'center', gap: 2, paddingVertical: 6, paddingRight: 10, marginLeft: -4, zIndex: 2 }}
       >
-        <IconChevronLeft size={24} color={colors.textPrimary} strokeWidth={2} />
+        <IconChevronLeft size={22} color={colors.textPrimary} strokeWidth={2} />
+        <Text style={{ fontSize: 15, fontWeight: '600', color: colors.textPrimary }}>Back</Text>
       </TouchableOpacity>
-      <Text
-        style={[
-          font.h3,
-          { flex: 1, textAlign: 'center', color: colors.textPrimary },
-        ]}
+      <View
+        pointerEvents="none"
+        style={{
+          position: 'absolute',
+          left: 0,
+          right: 0,
+          top: 0,
+          bottom: 0,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
       >
-        Recurring
-      </Text>
+        <Text style={[font.h3, { color: colors.textPrimary }]}>Recurring</Text>
+      </View>
       <TouchableOpacity
         onPress={handleAdd}
         hitSlop={12}
         activeOpacity={0.7}
-        style={{ flexDirection: 'row', alignItems: 'center', gap: 2, minWidth: 32, justifyContent: 'flex-end' }}
+        style={{ flexDirection: 'row', alignItems: 'center', gap: 2, minWidth: 32, justifyContent: 'flex-end', zIndex: 2 }}
       >
         <IconPlus size={14} color={colors.sageInk} strokeWidth={2.5} />
         <Text style={{ fontSize: 12, fontWeight: '700', color: colors.sageInk, letterSpacing: 0.2 }}>
@@ -255,7 +264,7 @@ export default function RecurringScreen() {
         <Stack.Screen options={{ headerShown: false }} />
         {header}
         <EmptyState
-          icon="people-outline"
+          icon={IconUsers}
           title="Select a group first"
           description="Choose a group to manage recurring bills."
         />
@@ -283,7 +292,7 @@ export default function RecurringScreen() {
       >
         {empty ? (
           <EmptyState
-            icon="repeat-outline"
+            icon={IconRepeat}
             title="No recurring bills"
             description="Turn any expense into a recurring bill and we'll auto-generate it each cycle."
             actionLabel="Add recurring bill"

@@ -1,7 +1,8 @@
 import { useMemo } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { IconChevronDown, IconChevronLeft } from '@tabler/icons-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { IconChartBar, IconChevronDown, IconChevronLeft, IconSparkles } from '@tabler/icons-react-native';
 import { formatCurrency } from '@commune/utils';
 import { useAuthStore } from '@/stores/auth';
 import { useGroupStore } from '@/stores/group';
@@ -13,7 +14,7 @@ import { hapticMedium } from '@/lib/haptics';
 import { formatCategoryLabel } from '@/lib/ui';
 import { CategoryBreakdownCard, type CategoryItem } from '@/components/category-breakdown';
 import { EmptyState, IconTile, Screen } from '@/components/primitives';
-import { colors, getCategoryMeta, radius, space } from '@/constants/design';
+import { colors, font, getCategoryMeta, radius, space } from '@/constants/design';
 
 const MONTH_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -39,6 +40,7 @@ function formatDayMonth(isoDate: string): string {
 
 export default function AnalyticsScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { user } = useAuthStore();
   const { activeGroupId } = useGroupStore();
 
@@ -51,8 +53,14 @@ export default function AnalyticsScreen() {
   const monthLabel = currentMonthLabel();
 
   // --- Derivations (hooks must run every render; compute upfront) ---
-  const categoryBreakdown = analytics?.categoryBreakdown ?? [];
-  const spendingTrend = analytics?.spendingTrend ?? [];
+  const categoryBreakdown = useMemo(
+    () => analytics?.categoryBreakdown ?? [],
+    [analytics?.categoryBreakdown],
+  );
+  const spendingTrend = useMemo(
+    () => analytics?.spendingTrend ?? [],
+    [analytics?.spendingTrend],
+  );
   const monthComparison = analytics?.monthComparison;
 
   const totalThisMonth = useMemo(
@@ -99,9 +107,9 @@ export default function AnalyticsScreen() {
   if (!activeGroupId) {
     return (
       <Screen>
-        <Header monthLabel={monthLabel} onBack={() => router.back()} />
+        <Header monthLabel={monthLabel} onBack={() => router.back()} topInset={insets.top} />
         <EmptyState
-          icon="bar-chart-outline"
+          icon={IconChartBar}
           title="Select a group first"
           description="Choose a group to view analytics."
         />
@@ -113,7 +121,7 @@ export default function AnalyticsScreen() {
   if (subLoading || analyticsLoading) {
     return (
       <Screen>
-        <Header monthLabel={monthLabel} onBack={() => router.back()} />
+        <Header monthLabel={monthLabel} onBack={() => router.back()} topInset={insets.top} />
         <View style={{ padding: space.gutter, gap: space.base }}>
           <View style={[s.skeleton, { height: 220 }]} />
           <View style={{ flexDirection: 'row', gap: space.base }}>
@@ -133,11 +141,11 @@ export default function AnalyticsScreen() {
   if (!isProOrAgency) {
     return (
       <Screen>
-        <Header monthLabel={monthLabel} onBack={() => router.back()} />
+        <Header monthLabel={monthLabel} onBack={() => router.back()} topInset={insets.top} />
         <ScrollView contentContainerStyle={s.scrollContent}>
           <View style={s.card}>
             <View style={s.paywallIconWrap}>
-              <IconTile icon="sparkles-outline" color={colors.sage} bg={colors.sageSoft} size={56} />
+              <IconTile icon={IconSparkles} color={colors.sage} bg={colors.sageSoft} size={56} />
             </View>
             <Text style={s.paywallTitle}>Upgrade to Pro</Text>
             <Text style={s.paywallBody}>
@@ -185,7 +193,7 @@ export default function AnalyticsScreen() {
 
   return (
     <Screen>
-      <Header monthLabel={monthLabel} onBack={() => router.back()} />
+      <Header monthLabel={monthLabel} onBack={() => router.back()} topInset={insets.top} />
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={s.scrollContent}
@@ -248,7 +256,7 @@ export default function AnalyticsScreen() {
                             s.barFill,
                             {
                               height: h,
-                              backgroundColor: isLatest ? colors.bgInk : '#E8E6E1',
+                              backgroundColor: isLatest ? colors.sage : colors.cream,
                             },
                           ]}
                         />
@@ -306,22 +314,57 @@ export default function AnalyticsScreen() {
  * Header — back + centered title + month picker action
  * ========================================================================== */
 
-function Header({ monthLabel, onBack }: { monthLabel: string; onBack: () => void }) {
+function Header({
+  monthLabel,
+  onBack,
+  topInset,
+}: {
+  monthLabel: string;
+  onBack: () => void;
+  topInset: number;
+}) {
   return (
-    <View style={s.header}>
-      <TouchableOpacity onPress={onBack} hitSlop={12} style={s.headerIconBtn}>
-        <IconChevronLeft size={24} color={colors.textPrimary} />
-      </TouchableOpacity>
-      <Text style={s.headerTitle}>Analytics</Text>
-      <TouchableOpacity
-        activeOpacity={0.7}
-        onPress={hapticMedium}
-        hitSlop={12}
-        style={s.monthPicker}
+    <View style={{ paddingTop: topInset + 12, paddingHorizontal: space.gutter, backgroundColor: colors.bgBase }}>
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          height: 48,
+          position: 'relative',
+        }}
       >
-        <Text style={s.monthPickerLabel}>{monthLabel}</Text>
-        <IconChevronDown size={14} color={colors.textSecondary} />
-      </TouchableOpacity>
+        <TouchableOpacity
+          onPress={onBack}
+          hitSlop={10}
+          activeOpacity={0.6}
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 2, paddingVertical: 6, paddingRight: 10, marginLeft: -4, zIndex: 2 }}
+        >
+          <IconChevronLeft size={22} color={colors.textPrimary} strokeWidth={2} />
+          <Text style={{ fontSize: 15, fontWeight: '600', color: colors.textPrimary }}>Back</Text>
+        </TouchableOpacity>
+        <View
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Text style={[font.h3, { color: colors.textPrimary }]}>Analytics</Text>
+        </View>
+        <TouchableOpacity
+          activeOpacity={0.7}
+          onPress={hapticMedium}
+          hitSlop={12}
+          style={s.monthPicker}
+        >
+          <Text style={s.monthPickerLabel}>{monthLabel}</Text>
+          <IconChevronDown size={14} color={colors.sage} strokeWidth={2} />
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
