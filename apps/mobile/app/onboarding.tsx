@@ -34,6 +34,7 @@ import {
   IconBriefcase,
   IconCheck,
   IconChevronLeft,
+  IconChevronRight,
   IconHeart,
   IconHome2,
   IconPlane,
@@ -65,6 +66,7 @@ import {
   useUserGroups,
 } from '@/hooks/use-groups';
 import { useApplyGroupStarterPack } from '@/hooks/use-onboarding';
+import { useOnboardingCompletion } from '@/hooks/use-onboarding-completion';
 import { useUpdateProfile } from '@/hooks/use-profile';
 import { usePlanLimits } from '@/hooks/use-plan-limits';
 import { getErrorMessage } from '@/lib/errors';
@@ -359,6 +361,9 @@ function CtaBar({
   disabled,
   loading,
   variant = 'ink',
+  /** Show a chevron-right glyph after the label (for "next page" CTAs
+   *  during the sell pager so the button reads as forward motion). */
+  showNextChevron = false,
 }: {
   bottomInset: number;
   label: string;
@@ -366,8 +371,10 @@ function CtaBar({
   disabled?: boolean;
   loading?: boolean;
   variant?: 'ink' | 'sage';
+  showNextChevron?: boolean;
 }) {
   const bg = disabled ? colors.border : variant === 'sage' ? colors.sage : colors.bgInk;
+  const fg = disabled ? colors.textMuted : colors.textInverse;
   return (
     <View
       style={{
@@ -390,6 +397,7 @@ function CtaBar({
           alignItems: 'center',
           justifyContent: 'center',
           flexDirection: 'row',
+          gap: 6,
         }}
       >
         {loading ? (
@@ -397,13 +405,16 @@ function CtaBar({
         ) : null}
         <Text
           style={{
-            color: disabled ? colors.textMuted : colors.textInverse,
+            color: fg,
             fontSize: 15,
             fontWeight: '700',
           }}
         >
           {label}
         </Text>
+        {showNextChevron && !loading ? (
+          <IconChevronRight size={18} color={fg} strokeWidth={2.4} />
+        ) : null}
       </TouchableOpacity>
     </View>
   );
@@ -1186,6 +1197,11 @@ export default function OnboardingScreen() {
   const params = useLocalSearchParams<{ preview?: string }>();
   const isPreview = params.preview === 'true';
   const insets = useSafeAreaInsets();
+  const {
+    hasCompleted: hasCompletedOnboarding,
+    isLoading: completionLoading,
+    markCompleted: markOnboardingCompleted,
+  } = useOnboardingCompletion();
 
   const { user } = useAuthStore();
   const firstName = (user?.first_name?.trim() || 'there').split(' ')[0] ?? 'there';
@@ -1216,6 +1232,18 @@ export default function OnboardingScreen() {
   // PagerView.onPageScroll while in the sell phase, sprung to dotIndex
   // for stacked phases.
   const pagerProgress = useSharedValue(0);
+
+  // Fast-path for returning users: if they completed the tour before
+  // (e.g. they deleted their last group and ended up back here), skip
+  // the marketing pages and drop straight into "pick a group type".
+  // Preview mode (Settings → Replay onboarding) ignores this so the
+  // tour can be re-watched on demand.
+  useEffect(() => {
+    if (completionLoading || isPreview) return;
+    if (hasCompletedOnboarding && phase === 'pager') {
+      setPhase('type');
+    }
+  }, [completionLoading, hasCompletedOnboarding, isPreview, phase]);
 
   const [acquisition, setAcquisition] = useState<AcquisitionSource | null>(null);
   const [type, setType] = useState<GroupTypeValue | null>(null);
@@ -1310,7 +1338,10 @@ export default function OnboardingScreen() {
 
   function handleSkip() {
     // Skip on screens 1–4 (pager): jump to acquisition (step 5).
+    // The user has seen all the marketing material at this point — record
+    // completion so a future cold-start doesn't show the tour again.
     if (phase === 'pager') {
+      void markOnboardingCompleted();
       setPhase('acquisition');
       return;
     }
@@ -1439,6 +1470,7 @@ export default function OnboardingScreen() {
 
   function handleOpenCommune() {
     hapticMedium();
+    void markOnboardingCompleted();
     router.replace('/(tabs)');
   }
 
@@ -2221,6 +2253,7 @@ export default function OnboardingScreen() {
             disabled={ctaDisabled}
             loading={ctaLoading}
             variant={ctaVariant}
+            showNextChevron={phase === 'pager'}
           />
         </Screen>
       )}
