@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   type GestureResponderEvent,
   Image,
+  Modal,
   Platform,
   Pressable as RNPressable,
   type PressableProps,
@@ -23,10 +24,10 @@ import {
 import DateTimePicker, {
   type DateTimePickerEvent,
 } from '@react-native-community/datetimepicker';
-import { Picker as RNPicker } from '@react-native-picker/picker';
 import { IconCalendar, IconChevronDown, IconPlus, IconSearch, IconSparkles } from '@tabler/icons-react-native';
 import { formatDate } from '@commune/utils';
 import { colors, elevation, font, height, radius, space } from '@/constants/design';
+import { WheelPicker } from '@/components/wheel-picker';
 
 export type TablerIcon = ComponentType<{
   size?: number;
@@ -876,11 +877,16 @@ function toLocalDateKey(d: Date): string {
 }
 
 /* ============================================================================
- * Picker — iOS-native wheel picker (SwiftUI Picker analog)
+ * Picker — iOS-native wheel picker that opens in a floating bottom sheet.
  *
- * Press to expand inline; wheel + Done button. Use for 3+ mutually-exclusive
- * choices where a segmented control would be too wide (currency, category,
- * group type, payer).
+ * Renders a compact field row (label + current value + chevron). Tap →
+ * a bottom sheet slides up with the WheelPicker filling its width and a
+ * sage Done button to confirm. Drag-to-dismiss the sheet by tapping the
+ * backdrop. The wheel commits selections live as the user spins; Done
+ * just dismisses.
+ *
+ * iOS convention: wheels never live inline in a form. They always
+ * present modally from the bottom (Calendar, Reminders, Settings).
  * ============================================================================ */
 
 export function Picker<T extends string>({
@@ -915,7 +921,7 @@ export function Picker<T extends string>({
         </Text>
       ) : null}
       <Pressable
-        onPress={() => setOpen((v) => !v)}
+        onPress={() => setOpen(true)}
         accessibilityRole="button"
         accessibilityLabel={label ? `${label}: ${selectedLabel}` : selectedLabel}
         style={({ pressed }) => ({
@@ -934,6 +940,7 @@ export function Picker<T extends string>({
         <Text
           style={{
             fontSize: 15,
+            fontWeight: value ? '600' : '400',
             color: value ? colors.textPrimary : colors.textMuted,
           }}
         >
@@ -941,51 +948,58 @@ export function Picker<T extends string>({
         </Text>
         <IconChevronDown size={16} color={colors.textTertiary} strokeWidth={2} />
       </Pressable>
-      {open ? (
-        <View
-          style={{
-            marginTop: 8,
-            backgroundColor: colors.bgSurface,
-            borderRadius: radius.card,
-            borderWidth: 1,
-            borderColor: colors.borderSubtle,
-            overflow: 'hidden',
-          }}
-        >
-          <RNPicker
-            selectedValue={value ?? options[0]?.value}
-            onValueChange={(v) => onChange(v as T)}
-            itemStyle={{ fontSize: 17 }}
-          >
-            {options.map((opt) => (
-              <RNPicker.Item key={opt.value} label={opt.label} value={opt.value} />
-            ))}
-          </RNPicker>
+
+      <Modal
+        visible={open}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setOpen(false)}
+        statusBarTranslucent
+      >
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.35)' }}>
+          <Pressable style={{ flex: 1 }} onPress={() => setOpen(false)} />
           <View
             style={{
-              flexDirection: 'row',
-              justifyContent: 'flex-end',
-              padding: 8,
-              borderTopWidth: 1,
-              borderTopColor: colors.borderSubtle,
+              backgroundColor: colors.bgSurface,
+              borderTopLeftRadius: 18,
+              borderTopRightRadius: 18,
+              paddingBottom: 24,
             }}
           >
-            <Pressable
-              onPress={() => setOpen(false)}
-              hitSlop={8}
-              accessibilityRole="button"
-              accessibilityLabel="Done"
-              style={({ pressed }) => ({
-                opacity: pressed ? 0.6 : 1,
-                paddingHorizontal: 12,
-                paddingVertical: 6,
-              })}
+            <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: colors.borderSubtle, alignSelf: 'center', marginTop: 10, marginBottom: 6 }} />
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                paddingHorizontal: space.base,
+                paddingVertical: 8,
+                borderBottomWidth: 1,
+                borderBottomColor: colors.borderSubtle,
+              }}
             >
-              <Text style={{ fontSize: 14, fontWeight: '700', color: colors.sage }}>Done</Text>
-            </Pressable>
+              <Text style={{ fontSize: 16, fontWeight: '700', color: colors.textPrimary }}>
+                {label ?? 'Select'}
+              </Text>
+              <Pressable
+                onPress={() => setOpen(false)}
+                hitSlop={10}
+                accessibilityRole="button"
+                accessibilityLabel="Done"
+                style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1, padding: 6 })}
+              >
+                <Text style={{ fontSize: 16, fontWeight: '700', color: colors.sage }}>Done</Text>
+              </Pressable>
+            </View>
+            <WheelPicker<T>
+              options={options}
+              value={value}
+              onChange={onChange}
+              backgroundColor={colors.bgSurface}
+            />
           </View>
         </View>
-      ) : null}
+      </Modal>
     </View>
   );
 }

@@ -196,7 +196,7 @@ export function PricingPage() {
     <Stack gap="xl">
       <PageHeader
         title="Choose your plan"
-        subtitle="Every plan starts with a 7-day free trial. Pick the level that matches your needs."
+        subtitle="Every plan starts with a 3-day free trial. Pick the level that matches your needs."
       >
         {isActive && currentPlan && (
           <Group gap="xs">
@@ -241,7 +241,7 @@ export function PricingPage() {
             ? isTrialing ? 'Current plan (trial)' : 'Current plan'
             : isActive
               ? isDowngrade(plan.id) ? 'Downgrade' : 'Switch plan'
-              : 'Start 7-day trial';
+              : 'Start 3-day trial';
 
           return (
             <Paper

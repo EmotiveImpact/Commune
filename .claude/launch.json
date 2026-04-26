@@ -2,10 +2,10 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "web",
-      "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["--filter", "@commune/web", "dev"],
-      "port": 5173
+      "name": "web-review",
+      "runtimeExecutable": "/bin/bash",
+      "runtimeArgs": ["-c", "cd /Users/augustusedem/Commune/apps/web && exec ./node_modules/.bin/vite --port 5500 --host 127.0.0.1"],
+      "port": 5500
     },
     {
       "name": "landing",
@@ -36,6 +36,12 @@
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["dev"],
       "port": 5173
+    },
+    {
+      "name": "design-mocks",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "5600", "--directory", "/tmp/commune-design-mocks", "--bind", "127.0.0.1"],
+      "port": 5600
     }
   ]
 }

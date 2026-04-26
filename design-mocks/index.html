@@ -1,0 +1,1840 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Commune — Per-screen Landmarks</title>
+<style>
+  :root {
+    --bg-page: #FAF7F2;
+    --bg-surface: #FFFFFF;
+    --bg-board: #F4EFE7;
+    --text-primary: #1A1A1A;
+    --text-secondary: #4A4A4A;
+    --text-tertiary: #6E6E6E;
+    --text-muted: #9A958D;
+    --sage: #1F7A6A;
+    --sage-soft: #E5F0EC;
+    --sage-soft-2: #DCEAE5;
+    --coral: #D85A4A;
+    --coral-soft: #FCE9E5;
+    --amber: #C58A2D;
+    --amber-soft: #F8ECD2;
+    --border-subtle: #ECE6DC;
+    --border-hairline: rgba(60,60,67,0.20);
+    --shadow-card: 0 1px 2px rgba(40,30,20,0.04), 0 4px 18px rgba(40,30,20,0.06);
+    --shadow-fab: 0 6px 24px rgba(31,122,106,0.45);
+    --radius-card: 14px;
+    --radius-button: 12px;
+    --radius-pill: 999px;
+  }
+  html, body {
+    margin: 0;
+    background: var(--bg-board);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, sans-serif;
+    color: var(--text-primary);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  .page {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 56px 32px 96px;
+  }
+  .page-h {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 48px;
+  }
+  .page-h h1 {
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    margin: 0;
+  }
+  .page-h p {
+    margin: 0;
+    color: var(--text-tertiary);
+    font-size: 15px;
+    max-width: 720px;
+    line-height: 1.55;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 56px 40px;
+  }
+  .mock {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    align-items: center;
+  }
+  .mock-anno {
+    text-align: center;
+    width: 100%;
+    max-width: 360px;
+  }
+  .mock-anno .badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: var(--radius-pill);
+    background: var(--sage);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+  .mock-anno h3 {
+    margin: 0 0 4px;
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: -0.2px;
+  }
+  .mock-anno p {
+    margin: 0;
+    color: var(--text-tertiary);
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  /* Phone frame */
+  .phone {
+    width: 360px;
+    height: 740px;
+    background: #0F0F12;
+    border-radius: 46px;
+    padding: 12px;
+    box-shadow: 0 30px 60px -20px rgba(0,0,0,0.30), 0 16px 30px -10px rgba(0,0,0,0.22);
+    position: relative;
+  }
+  .screen {
+    width: 100%;
+    height: 100%;
+    background: var(--bg-page);
+    border-radius: 36px;
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+  }
+  /* Notch */
+  .phone::before {
+    content: "";
+    position: absolute;
+    top: 22px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 110px;
+    height: 28px;
+    background: #0F0F12;
+    border-radius: 14px;
+    z-index: 5;
+  }
+  /* Status bar */
+  .status {
+    height: 44px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    padding: 0 22px 6px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .status .time { font-variant-numeric: tabular-nums; }
+  .status .icons {
+    display: flex;
+    gap: 5px;
+    align-items: center;
+    color: var(--text-primary);
+  }
+  /* Top nav */
+  .nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 18px 10px;
+    height: 44px;
+  }
+  .nav .title {
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: -0.2px;
+  }
+  .nav .nav-link {
+    font-size: 15px;
+    color: var(--sage);
+    font-weight: 600;
+  }
+  .nav .nav-link.muted { color: var(--text-tertiary); font-weight: 500; }
+  .nav .icon-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-pill);
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-secondary);
+  }
+
+  /* Body & cards */
+  .body {
+    flex: 1;
+    overflow: hidden;
+    padding: 4px 16px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .card {
+    background: var(--bg-surface);
+    border-radius: var(--radius-card);
+    border: 1px solid var(--border-subtle);
+    box-shadow: var(--shadow-card);
+  }
+
+  /* === MOCK 1: GROUP DETAIL — HERO BALANCE === */
+  .hero {
+    background: linear-gradient(135deg, #1F7A6A 0%, #2A8A78 60%, #36A08C 100%);
+    border-radius: 18px;
+    padding: 18px 18px 20px;
+    color: #fff;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(120% 80% at 100% 0%, rgba(255,255,255,0.18), transparent 60%);
+    pointer-events: none;
+  }
+  .hero .label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    opacity: 0.78;
+  }
+  .hero .amount {
+    font-size: 38px;
+    font-weight: 700;
+    letter-spacing: -1.2px;
+    margin: 4px 0 12px;
+    font-variant-numeric: tabular-nums;
+  }
+  .hero .meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 12px;
+    opacity: 0.86;
+  }
+  .avatars {
+    display: flex;
+  }
+  .avatars .av {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #ddd;
+    border: 2px solid #fff;
+    margin-left: -7px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 700;
+    color: #1F7A6A;
+  }
+  .avatars .av:first-child { margin-left: 0; }
+  .avatars .av.a1 { background: #FCD3CB; color: #B85543; }
+  .avatars .av.a2 { background: #DDEBE5; color: #1F7A6A; }
+  .avatars .av.a3 { background: #FBE6BB; color: #8A5A12; }
+  .avatars .av.a4 { background: #DDD8F0; color: #5448A0; }
+  .avatars .av.a5 { background: #ffffff44; color: #fff; font-weight: 600; backdrop-filter: blur(2px); }
+
+  .tabs {
+    display: flex;
+    gap: 4px;
+    padding: 4px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-pill);
+  }
+  .tabs .tab {
+    flex: 1;
+    text-align: center;
+    padding: 7px 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-tertiary);
+    border-radius: var(--radius-pill);
+  }
+  .tabs .tab.active {
+    background: var(--sage-soft);
+    color: var(--sage);
+  }
+
+  .row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .row:last-child { border-bottom: none; }
+  .row .row-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: var(--sage-soft);
+    color: var(--sage);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .row .row-icon.amber { background: var(--amber-soft); color: var(--amber); }
+  .row .row-icon.coral { background: var(--coral-soft); color: var(--coral); }
+  .row .row-main {
+    flex: 1;
+    min-width: 0;
+  }
+  .row .row-title {
+    font-size: 14.5px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 2px;
+  }
+  .row .row-sub {
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+  .row .row-amt {
+    font-variant-numeric: tabular-nums;
+    font-size: 14.5px;
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+
+  .fab {
+    position: absolute;
+    bottom: 22px;
+    right: 22px;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: var(--sage);
+    color: #fff;
+    box-shadow: var(--shadow-fab);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 26px;
+    font-weight: 300;
+  }
+
+  /* Section header */
+  .sec-h {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    padding: 4px 4px 6px;
+  }
+  .sec-h .lbl {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.7px;
+    color: var(--text-muted);
+  }
+  .sec-h .more {
+    font-size: 12px;
+    color: var(--text-tertiary);
+  }
+
+  /* === MOCK 2: GROUPS LIST — DENSITY === */
+  .pill {
+    padding: 4px 10px;
+    border-radius: var(--radius-pill);
+    font-size: 12px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+  .pill.owed { background: var(--sage-soft); color: var(--sage); }
+  .pill.owe { background: var(--coral-soft); color: var(--coral); }
+  .pill.zero { background: #F1ECE3; color: var(--text-muted); }
+
+  .list-card {
+    background: var(--bg-surface);
+    border-radius: var(--radius-card);
+    border: 1px solid var(--border-subtle);
+    box-shadow: var(--shadow-card);
+    overflow: hidden;
+  }
+
+  .gp-row .row-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    font-size: 17px;
+  }
+  .gp-row .row-icon.beach { background: #DCEEE7; color: #1F7A6A; }
+  .gp-row .row-icon.house { background: #F0E6D5; color: #8A5A12; }
+  .gp-row .row-icon.brunch { background: #F8DDDA; color: var(--coral); }
+  .gp-row .row-icon.work { background: #DEDAEF; color: #5448A0; }
+  .gp-row .row-title { font-size: 15px; }
+
+  /* Search */
+  .search {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-pill);
+    padding: 9px 14px;
+    color: var(--text-muted);
+    font-size: 14px;
+  }
+  .search svg { flex-shrink: 0; opacity: 0.7; }
+
+  /* === MOCK 3: ADD EXPENSE — AMOUNT-FIRST === */
+  .amount-hero {
+    text-align: center;
+    padding: 22px 16px 8px;
+  }
+  .amount-hero .lbl {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+  }
+  .amount-hero .row-amt-big {
+    font-size: 64px;
+    font-weight: 700;
+    letter-spacing: -2.4px;
+    color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+  }
+  .amount-hero .row-amt-big .cur {
+    color: var(--text-muted);
+    font-weight: 600;
+    margin-right: 2px;
+  }
+  .amount-hero .cycle {
+    margin-top: 8px;
+    display: inline-flex;
+    gap: 6px;
+    align-items: center;
+    padding: 5px 11px;
+    border-radius: var(--radius-pill);
+    background: var(--sage-soft);
+    color: var(--sage);
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .field {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-button);
+    padding: 12px 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 14.5px;
+  }
+  .field .k {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.7px;
+    color: var(--text-muted);
+  }
+  .field .v { color: var(--text-primary); font-weight: 600; }
+  .field .v.placeholder { color: var(--text-muted); font-weight: 500; }
+
+  .chips {
+    display: flex;
+    gap: 6px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .chips::-webkit-scrollbar { display: none; }
+  .chip {
+    padding: 7px 12px;
+    border-radius: var(--radius-pill);
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    white-space: nowrap;
+  }
+  .chip.active {
+    background: var(--text-primary);
+    color: #fff;
+    border-color: var(--text-primary);
+  }
+
+  /* === MOCK 4: SETTLE UP FLOW === */
+  .progress {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 18px 0 14px;
+  }
+  .progress .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--border-subtle);
+  }
+  .progress .dot.done { background: var(--sage); }
+  .progress .dot.active {
+    background: var(--sage);
+    width: 28px;
+    border-radius: 4px;
+  }
+  .step-h {
+    padding: 16px 8px 4px;
+    text-align: left;
+  }
+  .step-h .eyebrow {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.7px;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+  }
+  .step-h h2 {
+    font-size: 26px;
+    font-weight: 700;
+    letter-spacing: -0.6px;
+    margin: 0 0 6px;
+  }
+  .step-h p {
+    margin: 0;
+    color: var(--text-tertiary);
+    font-size: 14px;
+    line-height: 1.45;
+  }
+  .input-hero {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-card);
+    padding: 22px 16px;
+    text-align: center;
+    margin-top: 18px;
+  }
+  .input-hero .row-amt-big {
+    font-size: 56px;
+    font-weight: 700;
+    letter-spacing: -2px;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-primary);
+    line-height: 1;
+  }
+  .input-hero .row-amt-big .cur {
+    color: var(--text-muted);
+    margin-right: 2px;
+  }
+  .input-hero .from-to {
+    margin-top: 12px;
+    color: var(--text-tertiary);
+    font-size: 13px;
+  }
+  .quick-chips {
+    display: flex;
+    gap: 8px;
+    margin-top: 14px;
+    justify-content: center;
+  }
+  .quick-chips .chip { padding: 8px 14px; }
+  .quick-chips .chip.sage {
+    background: var(--sage-soft);
+    border-color: var(--sage-soft-2);
+    color: var(--sage);
+  }
+  .cta {
+    width: calc(100% - 32px);
+    margin: 0 16px 26px;
+    padding: 15px 0;
+    background: var(--sage);
+    color: #fff;
+    text-align: center;
+    border-radius: 14px;
+    font-size: 15.5px;
+    font-weight: 700;
+    letter-spacing: -0.1px;
+    box-shadow: 0 4px 18px rgba(31,122,106,0.25);
+  }
+
+  /* Why-this-works section */
+  .legend {
+    margin-top: 64px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: 18px;
+    padding: 28px 28px 24px;
+    box-shadow: var(--shadow-card);
+  }
+  .legend h2 {
+    font-size: 18px;
+    font-weight: 700;
+    margin: 0 0 6px;
+    letter-spacing: -0.2px;
+  }
+  .legend > p {
+    color: var(--text-tertiary);
+    font-size: 14px;
+    margin: 0 0 18px;
+    line-height: 1.55;
+  }
+  .legend .lg {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px 32px;
+  }
+  .legend .lg .it {
+    border-left: 3px solid var(--sage);
+    padding-left: 14px;
+  }
+  .legend .lg .it h4 {
+    margin: 0 0 4px;
+    font-size: 14px;
+    font-weight: 700;
+  }
+  .legend .lg .it p {
+    margin: 0;
+    color: var(--text-tertiary);
+    font-size: 13.5px;
+    line-height: 1.5;
+  }
+
+  /* Compact icons */
+  .ic { display: inline-flex; }
+
+  /* === AUDIT PANEL === */
+  .audit {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: 18px;
+    padding: 22px 26px 24px;
+    margin-bottom: 56px;
+    box-shadow: var(--shadow-card);
+  }
+  .audit h3 {
+    margin: 0 0 6px;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: -0.1px;
+  }
+  .audit > p { margin: 0 0 16px; font-size: 13.5px; color: var(--text-tertiary); line-height: 1.55; }
+  .audit-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px 32px; }
+  .audit-it h4 { margin: 0 0 6px; font-size: 13px; font-weight: 700; }
+  .audit-it p { margin: 4px 0; font-size: 12.5px; color: var(--text-secondary); line-height: 1.5; }
+  .audit-it .tag { display: inline-block; padding: 1px 7px; border-radius: 4px; font-size: 10.5px; font-weight: 700; letter-spacing: 0.4px; margin-right: 6px; vertical-align: 1px; }
+  .audit-it .tag.kept { background: #F1ECE3; color: var(--text-tertiary); }
+  .audit-it .tag.added { background: var(--sage-soft); color: var(--sage); }
+  .audit-it .tag.removed { background: var(--coral-soft); color: var(--coral); }
+
+  /* Section divider */
+  .divider { display: flex; align-items: center; gap: 16px; margin: 64px 0 36px; }
+  .divider .line { flex: 1; height: 1px; background: var(--border-subtle); }
+  .divider span { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); }
+
+  /* Empty state */
+  .illu { background: var(--sage-soft); border-radius: 18px; padding: 38px 0; display: flex; align-items: center; justify-content: center; }
+  .empty-headline { text-align: center; padding: 24px 16px 4px; }
+  .empty-headline h2 { margin: 0 0 6px; font-size: 22px; font-weight: 700; letter-spacing: -0.4px; }
+  .empty-headline p { margin: 0; color: var(--text-tertiary); font-size: 14px; line-height: 1.5; }
+  .cta-stack { margin: 18px 16px 0; display: flex; flex-direction: column; gap: 10px; }
+  .cta-secondary {
+    background: var(--bg-surface);
+    color: var(--sage);
+    border: 1px solid var(--sage-soft-2);
+    text-align: center;
+    padding: 14px 0;
+    border-radius: 14px;
+    font-size: 14.5px;
+    font-weight: 700;
+  }
+  .cta-primary {
+    background: var(--sage);
+    color: #fff;
+    text-align: center;
+    padding: 15px 0;
+    border-radius: 14px;
+    font-size: 15px;
+    font-weight: 700;
+    box-shadow: 0 4px 18px rgba(31,122,106,0.22);
+  }
+
+  /* Onboarding hero question */
+  .q-hero { padding: 26px 18px 8px; }
+  .q-hero .eyebrow { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.7px; color: var(--text-muted); margin-bottom: 10px; }
+  .q-hero h1 { margin: 0 0 8px; font-size: 28px; font-weight: 700; letter-spacing: -0.6px; line-height: 1.18; }
+  .q-hero p { margin: 0; color: var(--text-tertiary); font-size: 14px; line-height: 1.5; }
+  .q-input {
+    background: var(--bg-surface);
+    border: 1.5px solid var(--sage);
+    border-radius: 14px;
+    padding: 16px 18px;
+    margin: 22px 18px 0;
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--text-primary);
+    box-shadow: 0 0 0 4px rgba(31,122,106,0.08);
+  }
+  .q-input .cursor { color: var(--sage); font-weight: 400; margin-left: 2px; animation: blink 1.1s infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  /* Activity feed rows */
+  .act-row .row-icon { background: var(--bg-surface); border: 1px solid var(--border-subtle); }
+  .act-row .row-title { font-weight: 500; font-size: 13.5px; line-height: 1.35; color: var(--text-secondary); }
+  .act-row .row-title strong { color: var(--text-primary); font-weight: 700; }
+  .act-row .row-title .amt { color: var(--sage); font-weight: 700; }
+  .act-row .row-title .amt.owe { color: var(--coral); }
+  .act-row .row-sub { font-size: 11.5px; }
+  .act-row .unread { width: 7px; height: 7px; border-radius: 50%; background: var(--sage); flex-shrink: 0; }
+
+  /* Expense detail */
+  .exp-hero { text-align: center; padding: 12px 16px 8px; }
+  .exp-hero .row-icon { width: 52px; height: 52px; border-radius: 16px; font-size: 24px; margin: 0 auto 14px; }
+  .exp-hero .row-amt-big { font-size: 48px; font-weight: 700; letter-spacing: -1.6px; line-height: 1; font-variant-numeric: tabular-nums; }
+  .exp-hero .row-amt-big .cur { color: var(--text-muted); margin-right: 2px; }
+  .exp-hero .what { margin-top: 10px; color: var(--text-secondary); font-size: 15px; font-weight: 500; }
+  .exp-hero .meta { margin-top: 4px; color: var(--text-muted); font-size: 12.5px; }
+  .exp-hero .meta strong { color: var(--text-secondary); font-weight: 600; }
+  .split-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px 4px; padding: 14px 14px; }
+  .split-grid .person { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .split-grid .av { margin: 0; width: 32px; height: 32px; font-size: 11px; }
+  .split-grid .person-name { font-size: 11px; color: var(--text-muted); font-weight: 500; }
+  .split-grid .person-amt { font-size: 12.5px; font-weight: 700; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+  .split-grid .person.you .person-name { color: var(--sage); font-weight: 700; }
+  .split-grid .person.you .person-amt { color: var(--sage); }
+  .action-bar { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; padding: 0 4px; }
+  .action-bar .ab-btn {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    padding: 11px 0;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary);
+  }
+  .action-bar .ab-btn.danger { color: var(--coral); border-color: var(--coral-soft); background: var(--coral-soft); }
+
+  /* Profile hero */
+  .pf-hero { text-align: center; padding: 16px 16px 12px; }
+  .pf-hero .av-big {
+    width: 76px;
+    height: 76px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #DDEBE5, #B5D7CC);
+    color: var(--sage);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 14px;
+    border: 3px solid #fff;
+    box-shadow: 0 2px 14px rgba(31,122,106,0.22);
+  }
+  .pf-hero h2 { margin: 0 0 2px; font-size: 19px; font-weight: 700; letter-spacing: -0.2px; }
+  .pf-hero p { margin: 0; color: var(--text-muted); font-size: 13px; }
+  .pf-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: 14px;
+    overflow: hidden;
+  }
+  .pf-stats .st { text-align: center; padding: 12px 4px; border-right: 1px solid var(--border-subtle); }
+  .pf-stats .st:last-child { border-right: none; }
+  .pf-stats .st .v { font-size: 17px; font-weight: 700; letter-spacing: -0.3px; font-variant-numeric: tabular-nums; }
+  .pf-stats .st .k { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-muted); margin-top: 2px; }
+  .pf-stats .st.coral .v { color: var(--coral); }
+  .pf-stats .st.sage .v { color: var(--sage); }
+
+  /* Settings rows */
+  .set-group { margin-top: 14px; }
+  .set-group > .lbl {
+    display: block;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.7px;
+    color: var(--text-muted);
+    padding: 0 6px 8px;
+  }
+  .set-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 13px 14px;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .set-row:last-child { border-bottom: none; }
+  .set-row .left { display: flex; align-items: center; gap: 12px; }
+  .set-row .ic-sm {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    background: var(--sage-soft);
+    color: var(--sage);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+  }
+  .set-row .ic-sm.coral { background: var(--coral-soft); color: var(--coral); }
+  .set-row .ic-sm.amber { background: var(--amber-soft); color: var(--amber); }
+  .set-row .lbl-row { font-size: 14.5px; font-weight: 500; color: var(--text-primary); }
+  .set-row .v { color: var(--text-muted); font-size: 13px; font-weight: 500; }
+  .set-row .v.danger { color: var(--coral); font-weight: 600; }
+  .set-row .chev { color: var(--text-tertiary); font-size: 16px; }
+
+  /* Onboarding "or" divider */
+  .or-divider {
+    text-align: center;
+    margin: 16px 0 12px;
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    position: relative;
+  }
+  .or-divider::before, .or-divider::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    width: 30%;
+    height: 1px;
+    background: var(--border-subtle);
+  }
+  .or-divider::before { left: 12%; }
+  .or-divider::after { right: 12%; }
+
+  /* Trial paywall feature rows */
+  .feat-list { padding: 16px 6px 6px; }
+  .feat-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 6px;
+    font-size: 14px;
+    color: var(--text-secondary);
+    font-weight: 500;
+  }
+  .feat-row .check {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--sage-soft);
+    color: var(--sage);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .price-card {
+    background: var(--bg-surface);
+    border: 1.5px solid var(--sage);
+    border-radius: 14px;
+    padding: 14px 16px;
+    margin: 14px 4px 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .price-card .lbl { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-muted); }
+  .price-card .price { font-size: 17px; font-weight: 700; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+  .price-card .price small { font-size: 12px; font-weight: 500; color: var(--text-tertiary); }
+
+  /* Settle-up success big check */
+  .big-check {
+    width: 96px;
+    height: 96px;
+    border-radius: 50%;
+    background: var(--sage-soft);
+    color: var(--sage);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 50px auto 22px;
+    box-shadow: 0 6px 30px rgba(31,122,106,0.22);
+  }
+  .big-check svg { width: 48px; height: 48px; }
+  .success-headline { text-align: center; padding: 0 24px; }
+  .success-headline h2 { margin: 0 0 8px; font-size: 26px; font-weight: 700; letter-spacing: -0.4px; }
+  .success-headline p { margin: 0; color: var(--text-tertiary); font-size: 14.5px; line-height: 1.55; }
+  .receipt-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .receipt-row:last-child { border-bottom: none; }
+  .receipt-row .k { font-size: 12.5px; color: var(--text-muted); }
+  .receipt-row .v { font-size: 13.5px; font-weight: 600; color: var(--text-primary); }
+
+  /* Pricing — plan selector (mirrors apps/web pricing page) */
+  .plan-card {
+    background: var(--bg-surface);
+    border: 1.5px solid var(--border-subtle);
+    border-radius: 14px;
+    padding: 12px 14px;
+    margin: 0 4px 8px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: relative;
+  }
+  .plan-card.selected {
+    border-color: var(--sage);
+    background: var(--sage-soft);
+    box-shadow: 0 0 0 4px rgba(31,122,106,0.10);
+  }
+  .plan-card .radio {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 1.5px solid var(--border-hairline);
+    flex-shrink: 0;
+    background: var(--bg-surface);
+  }
+  .plan-card.selected .radio {
+    border-color: var(--sage);
+    background: var(--sage);
+    box-shadow: inset 0 0 0 4px var(--bg-surface);
+  }
+  .plan-card .pc-main { flex: 1; min-width: 0; }
+  .plan-card .pc-name { font-size: 14.5px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 6px; }
+  .plan-card .pc-name .pop {
+    font-size: 9.5px; font-weight: 800; color: #fff; background: var(--sage);
+    padding: 2px 6px; border-radius: 4px; letter-spacing: 0.4px;
+  }
+  .plan-card .pc-limits { font-size: 11.5px; color: var(--text-tertiary); margin-top: 2px; line-height: 1.35; }
+  .plan-card .pc-price { text-align: right; flex-shrink: 0; }
+  .plan-card .pc-price .v { font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text-primary); }
+  .plan-card .pc-price .s { font-size: 10.5px; color: var(--text-muted); font-weight: 600; }
+  .billing-toggle {
+    display: flex;
+    background: var(--bg-board);
+    border-radius: 999px;
+    padding: 3px;
+    margin: 0 4px 14px;
+  }
+  .billing-toggle .seg {
+    flex: 1;
+    text-align: center;
+    padding: 7px 0;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--text-tertiary);
+    border-radius: 999px;
+  }
+  .billing-toggle .seg.active {
+    background: var(--bg-surface);
+    color: var(--text-primary);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  }
+  .billing-toggle .seg .save {
+    font-size: 9.5px; color: var(--sage); font-weight: 700; margin-left: 4px;
+    padding: 1px 5px; background: var(--sage-soft); border-radius: 4px;
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <header class="page-h">
+    <h1>Per-screen-type landmarks</h1>
+    <p>Same shell — same palette, type, surfaces — but each screen type has a distinct landmark so you instantly know where you are. Detail screens hero a single number; lists hero scannable balance pills; forms hero the amount; flows hero the next decision.</p>
+  </header>
+
+  <!-- AUDIT: are we losing anything? -->
+  <div class="audit">
+    <h3>Have we lost anything? No — we've reorganised, not removed.</h3>
+    <p>Every existing data point still appears on every screen. The landmarks promote what was already there to a more prominent position, and demote what was competing with it. Below is the receipt for each of the four mocks above.</p>
+    <div class="audit-grid">
+      <div class="audit-it">
+        <h4>Group detail</h4>
+        <p><span class="tag kept">KEPT</span>Group title, members, expense list, tabs, FAB, "you owe / are owed" net balance.</p>
+        <p><span class="tag added">ADDED</span>Hero card promotes the net balance from a sub-line to the primary landmark; meta line collapses the previously scattered "X members · Y expenses · last activity" into one row.</p>
+        <p><span class="tag removed">REMOVED</span><em>Nothing.</em> Per-member balance breakdown still lives one tap away under the Balances tab.</p>
+      </div>
+      <div class="audit-it">
+        <h4>Groups list</h4>
+        <p><span class="tag kept">KEPT</span>Group icon, name, last-activity timestamp, balance amount, search, FAB.</p>
+        <p><span class="tag added">ADDED</span>Active / Settled section grouping; colour-coded balance pills (sage = owed to you, coral = you owe, grey = settled) for right-edge scannability.</p>
+        <p><span class="tag removed">REMOVED</span><em>Nothing.</em> Recent-expense preview and member-count chip can still be added beneath the title in a denser variant if needed.</p>
+      </div>
+      <div class="audit-it">
+        <h4>Add expense</h4>
+        <p><span class="tag kept">KEPT</span>Amount, currency, description ("What"), category, paid-by, split mode, date, Save.</p>
+        <p><span class="tag added">ADDED</span>Amount-as-hero (64px display); horizontal scrolling category chips for the most-used 6 — the wheel picker still opens for "More…".</p>
+        <p><span class="tag removed">REMOVED</span><em>Nothing.</em> Notes, recurring frequency, and receipt attachment still expand below the date row when a user opts in.</p>
+      </div>
+      <div class="audit-it">
+        <h4>Settle up</h4>
+        <p><span class="tag kept">KEPT</span>All steps (who → how much → method → confirm), amount input, from/to people, Continue/Back.</p>
+        <p><span class="tag added">ADDED</span>Progress dots for orientation; "Step X of N" eyebrow; quick-amount chips (Full / Half / Custom) — manual entry still active above them.</p>
+        <p><span class="tag removed">REMOVED</span><em>Nothing.</em> Payment-method selector becomes step 3, not a sidebar.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid">
+
+    <!-- ===================== MOCK 1: GROUP DETAIL ===================== -->
+    <div class="mock">
+      <div class="phone">
+        <div class="screen">
+          <div class="status">
+            <span class="time">9:41</span>
+            <span class="icons">
+              <svg width="16" height="11" viewBox="0 0 16 11" fill="none"><rect x="0" y="6" width="3" height="5" rx="0.5" fill="currentColor"/><rect x="4" y="4" width="3" height="7" rx="0.5" fill="currentColor"/><rect x="8" y="2" width="3" height="9" rx="0.5" fill="currentColor"/><rect x="12" y="0" width="3" height="11" rx="0.5" fill="currentColor"/></svg>
+              <svg width="14" height="10" viewBox="0 0 14 10" fill="none"><path d="M7 9l-2-2c-1.1-1.1-2.9-1.1-4 0M7 6l-1-1c-1.7-1.7-4.3-1.7-6 0M7 3L6 2c-2.2-2.2-5.8-2.2-8 0" stroke="currentColor" stroke-width="1" fill="none"/></svg>
+              <svg width="22" height="11" viewBox="0 0 22 11" fill="none"><rect x="0.5" y="0.5" width="18" height="10" rx="2.5" stroke="currentColor"/><rect x="2" y="2" width="14" height="7" rx="1.2" fill="currentColor"/><rect x="19.5" y="3.5" width="1.5" height="4" rx="0.5" fill="currentColor"/></svg>
+            </span>
+          </div>
+          <div class="nav">
+            <span class="nav-link">‹ Back</span>
+            <span class="title">Beach trip</span>
+            <span class="nav-link muted">⋯</span>
+          </div>
+
+          <div class="body">
+            <!-- HERO -->
+            <div class="hero">
+              <div class="label">You are owed</div>
+              <div class="amount">£142.50</div>
+              <div class="meta">
+                <span class="avatars">
+                  <span class="av a1">SK</span>
+                  <span class="av a2">JM</span>
+                  <span class="av a3">RT</span>
+                  <span class="av a4">AL</span>
+                  <span class="av a5">+2</span>
+                </span>
+                <span>6 members · 23 expenses</span>
+              </div>
+            </div>
+
+            <!-- TABS -->
+            <div class="tabs">
+              <div class="tab active">Expenses</div>
+              <div class="tab">Balances</div>
+              <div class="tab">Activity</div>
+            </div>
+
+            <!-- LIST -->
+            <div class="card">
+              <div class="row">
+                <div class="row-icon">🛒</div>
+                <div class="row-main">
+                  <div class="row-title">Food shopping for party</div>
+                  <div class="row-sub">Sarah · 23 Apr</div>
+                </div>
+                <div class="row-amt">£143.00</div>
+              </div>
+              <div class="row">
+                <div class="row-icon amber">🏠</div>
+                <div class="row-main">
+                  <div class="row-title">Beach house Airbnb</div>
+                  <div class="row-sub">You · 21 Apr</div>
+                </div>
+                <div class="row-amt">£820.00</div>
+              </div>
+              <div class="row">
+                <div class="row-icon coral">🚗</div>
+                <div class="row-main">
+                  <div class="row-title">Petrol on drive down</div>
+                  <div class="row-sub">James · 21 Apr</div>
+                </div>
+                <div class="row-amt">£62.40</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="fab">+</div>
+        </div>
+      </div>
+      <div class="mock-anno">
+        <span class="badge">Detail screen</span>
+        <h3>Hero balance dominates</h3>
+        <p>One huge number tells you what matters in &lt; 1 second. Members and stats are secondary; the list is supporting evidence.</p>
+      </div>
+    </div>
+
+    <!-- ===================== MOCK 2: GROUPS LIST ===================== -->
+    <div class="mock">
+      <div class="phone">
+        <div class="screen">
+          <div class="status">
+            <span class="time">9:41</span>
+            <span class="icons">
+              <svg width="16" height="11" viewBox="0 0 16 11" fill="none"><rect x="0" y="6" width="3" height="5" rx="0.5" fill="currentColor"/><rect x="4" y="4" width="3" height="7" rx="0.5" fill="currentColor"/><rect x="8" y="2" width="3" height="9" rx="0.5" fill="currentColor"/><rect x="12" y="0" width="3" height="11" rx="0.5" fill="currentColor"/></svg>
+              <svg width="14" height="10" viewBox="0 0 14 10" fill="none"><path d="M7 9l-2-2c-1.1-1.1-2.9-1.1-4 0M7 6l-1-1c-1.7-1.7-4.3-1.7-6 0M7 3L6 2c-2.2-2.2-5.8-2.2-8 0" stroke="currentColor" stroke-width="1" fill="none"/></svg>
+              <svg width="22" height="11" viewBox="0 0 22 11" fill="none"><rect x="0.5" y="0.5" width="18" height="10" rx="2.5" stroke="currentColor"/><rect x="2" y="2" width="14" height="7" rx="1.2" fill="currentColor"/><rect x="19.5" y="3.5" width="1.5" height="4" rx="0.5" fill="currentColor"/></svg>
+            </span>
+          </div>
+          <div class="nav">
+            <span style="width:32px"></span>
+            <span class="title">Groups</span>
+            <span class="icon-btn">⚙</span>
+          </div>
+
+          <div class="body">
+            <div class="search">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="6" cy="6" r="4.5" stroke="currentColor"/><path d="M9.5 9.5l3 3" stroke="currentColor" stroke-linecap="round"/></svg>
+              <span>Search groups</span>
+            </div>
+
+            <div>
+              <div class="sec-h"><span class="lbl">Active · 3</span><span class="more">Sort</span></div>
+              <div class="list-card gp-row">
+                <div class="row">
+                  <div class="row-icon beach">🏖</div>
+                  <div class="row-main">
+                    <div class="row-title">Beach trip 2026</div>
+                    <div class="row-sub">last activity 2h ago</div>
+                  </div>
+                  <span class="pill owed">+£142.50</span>
+                </div>
+                <div class="row">
+                  <div class="row-icon house">🏠</div>
+                  <div class="row-main">
+                    <div class="row-title">Apartment 4B</div>
+                    <div class="row-sub">last activity yesterday</div>
+                  </div>
+                  <span class="pill owe">−£15.20</span>
+                </div>
+                <div class="row">
+                  <div class="row-icon brunch">🥐</div>
+                  <div class="row-main">
+                    <div class="row-title">Sunday brunch crew</div>
+                    <div class="row-sub">last activity 3d ago</div>
+                  </div>
+                  <span class="pill owed">+£8.75</span>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <div class="sec-h"><span class="lbl">Settled · 1</span></div>
+              <div class="list-card gp-row">
+                <div class="row">
+                  <div class="row-icon work">💼</div>
+                  <div class="row-main">
+                    <div class="row-title">Team offsite Q1</div>
+                    <div class="row-sub">settled · 2 weeks ago</div>
+                  </div>
+                  <span class="pill zero">£0.00</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="fab">+</div>
+        </div>
+      </div>
+      <div class="mock-anno">
+        <span class="badge">List screen</span>
+        <h3>Density &amp; balance pills scan</h3>
+        <p>Eyes flow down the right edge — green = you're owed, coral = you owe, grey = settled. No need to read titles to triage.</p>
+      </div>
+    </div>
+
+    <!-- ===================== MOCK 3: ADD EXPENSE ===================== -->
+    <div class="mock">
+      <div class="phone">
+        <div class="screen">
+          <div class="status">
+            <span class="time">9:41</span>
+            <span class="icons">
+              <svg width="16" height="11" viewBox="0 0 16 11" fill="none"><rect x="0" y="6" width="3" height="5" rx="0.5" fill="currentColor"/><rect x="4" y="4" width="3" height="7" rx="0.5" fill="currentColor"/><rect x="8" y="2" width="3" height="9" rx="0.5" fill="currentColor"/><rect x="12" y="0" width="3" height="11" rx="0.5" fill="currentColor"/></svg>
+              <svg width="14" height="10" viewBox="0 0 14 10" fill="none"><path d="M7 9l-2-2c-1.1-1.1-2.9-1.1-4 0M7 6l-1-1c-1.7-1.7-4.3-1.7-6 0M7 3L6 2c-2.2-2.2-5.8-2.2-8 0" stroke="currentColor" stroke-width="1" fill="none"/></svg>
+              <svg width="22" height="11" viewBox="0 0 22 11" fill="none"><rect x="0.5" y="0.5" width="18" height="10" rx="2.5" stroke="currentColor"/><rect x="2" y="2" width="14" height="7" rx="1.2" fill="currentColor"/><rect x="19.5" y="3.5" width="1.5" height="4" rx="0.5" fill="currentColor"/></svg>
+            </span>
+          </div>
+          <div class="nav">
+            <span class="nav-link muted">Cancel</span>
+            <span class="title">Add expense</span>
+            <span class="nav-link">Save</span>
+          </div>
+
+          <div class="body" style="gap:18px;">
+            <!-- AMOUNT HERO -->
+            <div class="amount-hero">
+              <div class="lbl">Amount</div>
+              <div class="row-amt-big"><span class="cur">£</span>143</div>
+              <div class="cycle">GBP · United Kingdom ⌄</div>
+            </div>
+
+            <!-- CATEGORY chips -->
+            <div>
+              <div class="sec-h"><span class="lbl">Category</span></div>
+              <div class="chips">
+                <span class="chip active">🛒 Groceries</span>
+                <span class="chip">🏠 Rent</span>
+                <span class="chip">🚗 Transport</span>
+                <span class="chip">🍽 Eating out</span>
+                <span class="chip">⚡ Utilities</span>
+              </div>
+            </div>
+
+            <div class="field">
+              <div>
+                <div class="k">What</div>
+                <div class="v">Food shopping for party</div>
+              </div>
+              <span style="color:var(--text-tertiary);font-size:18px;">›</span>
+            </div>
+            <div class="field">
+              <div>
+                <div class="k">Paid by</div>
+                <div class="v">You</div>
+              </div>
+              <span class="avatars" style="transform:scale(0.85);"><span class="av a2">YO</span></span>
+            </div>
+            <div class="field">
+              <div>
+                <div class="k">Split</div>
+                <div class="v">Equal · 6 ways</div>
+              </div>
+              <span style="color:var(--text-tertiary);font-size:18px;">›</span>
+            </div>
+            <div class="field">
+              <div>
+                <div class="k">Date</div>
+                <div class="v">Today · 23 Apr</div>
+              </div>
+              <span style="color:var(--text-tertiary);font-size:18px;">›</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="mock-anno">
+        <span class="badge">Form screen</span>
+        <h3>Amount-first hierarchy</h3>
+        <p>The form's job is unambiguous from the first frame. Big amount + currency owns the top half; everything else is sequenced below at one weight.</p>
+      </div>
+    </div>
+
+    <!-- ===================== MOCK 4: SETTLE UP FLOW ===================== -->
+    <div class="mock">
+      <div class="phone">
+        <div class="screen">
+          <div class="status">
+            <span class="time">9:41</span>
+            <span class="icons">
+              <svg width="16" height="11" viewBox="0 0 16 11" fill="none"><rect x="0" y="6" width="3" height="5" rx="0.5" fill="currentColor"/><rect x="4" y="4" width="3" height="7" rx="0.5" fill="currentColor"/><rect x="8" y="2" width="3" height="9" rx="0.5" fill="currentColor"/><rect x="12" y="0" width="3" height="11" rx="0.5" fill="currentColor"/></svg>
+              <svg width="14" height="10" viewBox="0 0 14 10" fill="none"><path d="M7 9l-2-2c-1.1-1.1-2.9-1.1-4 0M7 6l-1-1c-1.7-1.7-4.3-1.7-6 0M7 3L6 2c-2.2-2.2-5.8-2.2-8 0" stroke="currentColor" stroke-width="1" fill="none"/></svg>
+              <svg width="22" height="11" viewBox="0 0 22 11" fill="none"><rect x="0.5" y="0.5" width="18" height="10" rx="2.5" stroke="currentColor"/><rect x="2" y="2" width="14" height="7" rx="1.2" fill="currentColor"/><rect x="19.5" y="3.5" width="1.5" height="4" rx="0.5" fill="currentColor"/></svg>
+            </span>
+          </div>
+          <div class="nav">
+            <span class="nav-link muted">‹ Back</span>
+            <span class="title" style="opacity:0;">_</span>
+            <span class="nav-link muted">Cancel</span>
+          </div>
+
+          <div class="body" style="gap:0;">
+            <div class="progress">
+              <span class="dot done"></span>
+              <span class="dot active"></span>
+              <span class="dot"></span>
+            </div>
+
+            <div class="step-h">
+              <div class="eyebrow">Step 2 of 3</div>
+              <h2>How much?</h2>
+              <p>You owe Sarah £45.00 for last month. Pay it all back, or just part.</p>
+            </div>
+
+            <div class="input-hero">
+              <div class="row-amt-big"><span class="cur">£</span>45.00</div>
+              <div class="from-to">From <strong style="color:var(--text-secondary)">You</strong> → <strong style="color:var(--text-secondary)">Sarah</strong></div>
+            </div>
+
+            <div class="quick-chips">
+              <span class="chip sage">Full balance</span>
+              <span class="chip">Half</span>
+              <span class="chip">Custom</span>
+            </div>
+          </div>
+
+          <div class="cta">Continue</div>
+        </div>
+      </div>
+      <div class="mock-anno">
+        <span class="badge">Flow screen</span>
+        <h3>One decision per step</h3>
+        <p>Progress dots set context. The screen asks one question; the answer is obvious; Continue is the only forward action. Nothing else competes.</p>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ============================================================== -->
+  <!-- SECTION 2: ADDITIONAL SCREENS THAT NEED THE SAME UPGRADE        -->
+  <!-- ============================================================== -->
+  <div class="divider"><div class="line"></div><span>More screens that needed the same upgrade</span><div class="line"></div></div>
+
+  <div class="grid">
+
+    <!-- ===================== MOCK 5: ONBOARDING — NAME ===================== -->
+    <div class="mock">
+      <div class="phone">
+        <div class="screen">
+          <div class="status">
+            <span class="time">9:41</span>
+            <span class="icons">
+              <svg width="16" height="11" viewBox="0 0 16 11" fill="none"><rect x="0" y="6" width="3" height="5" rx="0.5" fill="currentColor"/><rect x="4" y="4" width="3" height="7" rx="0.5" fill="currentColor"/><rect x="8" y="2" width="3" height="9" rx="0.5" fill="currentColor"/><rect x="12" y="0" width="3" height="11" rx="0.5" fill="currentColor"/></svg>
+              <svg width="14" height="10" viewBox="0 0 14 10" fill="none"><path d="M7 9l-2-2c-1.1-1.1-2.9-1.1-4 0M7 6l-1-1c-1.7-1.7-4.3-1.7-6 0M7 3L6 2c-2.2-2.2-5.8-2.2-8 0" stroke="currentColor" stroke-width="1" fill="none"/></svg>
+              <svg width="22" height="11" viewBox="0 0 22 11" fill="none"><rect x="0.5" y="0.5" width="18" height="10" rx="2.5" stroke="currentColor"/><rect x="2" y="2" width="14" height="7" rx="1.2" fill="currentColor"/><rect x="19.5" y="3.5" width="1.5" height="4" rx="0.5" fill="currentColor"/></svg>
+            </span>
+          </div>
+          <div class="nav">
+            <span class="nav-link muted">‹ Back</span>
+            <span class="title" style="opacity:0;">_</span>
+            <span class="nav-link muted" style="opacity:0;">_</span>
+          </div>
+          <div class="body" style="gap:0;">
+            <div class="progress">
+              <span class="dot active"></span>
+              <span class="dot"></span>
+              <span class="dot"></span>
+              <span class="dot"></span>
+            </div>
+            <div class="q-hero">
+              <div class="eyebrow">Step 1 of 4</div>
+              <h1>What should we call you?</h1>
+              <p>This is how friends will see you in groups. You can change it later.</p>
+            </div>
+            <div class="q-input">Augustus<span class="cursor">|</span></div>
+          </div>
+          <div class="cta">Continue</div>
+        </div>
+      </div>
+      <div class="mock-anno">
+        <span class="badge">Onboarding</span>
+        <h3>One question per step, hero-typography</h3>
+        <p>The first frame of the app sets the tone — warm copy, big question, focused input. Progress dots show how short the path is.</p>
+      </div>
+    </div>
+
+    <!-- ===================== MOCK 6: ONBOARDING — JOIN OR CREATE ===================== -->
+    <div class="mock">
+      <div class="phone">
+        <div class="screen">
+          <div class="status">
+            <span class="time">9:41</span>
+            <span class="icons">
+              <svg width="16" height="11" viewBox="0 0 16 11" fill="none"><rect x="0" y="6" width="3" height="5" rx="0.5" fill="currentColor"/><rect x="4" y="4" width="3" height="7" rx="0.5" fill="currentColor"/><rect x="8" y="2" width="3" height="9" rx="0.5" fill="currentColor"/><rect x="12" y="0" width="3" height="11" rx="0.5" fill="currentColor"/></svg>
+              <svg width="14" height="10" viewBox="0 0 14 10" fill="none"><path d="M7 9l-2-2c-1.1-1.1-2.9-1.1-4 0M7 6l-1-1c-1.7-1.7-4.3-1.7-6 0M7 3L6 2c-2.2-2.2-5.8-2.2-8 0" stroke="currentColor" stroke-width="1" fill="none"/></svg>
+              <svg width="22" height="11" viewBox="0 0 22 11" fill="none"><rect x="0.5" y="0.5" width="18" height="10" rx="2.5" stroke="currentColor"/><rect x="2" y="2" width="14" height="7" rx="1.2" fill="currentColor"/><rect x="19.5" y="3.5" width="1.5" height="4" rx="0.5" fill="currentColor"/></svg>
+            </span>
+          </div>
+          <div class="nav">
+            <span class="nav-link muted">‹ Back</span>
+            <span class="title" style="opacity:0;">_</span>
+            <span class="nav-link muted">Skip</span>
+          </div>
+          <div class="body" style="gap:0;">
+            <div class="progress">
+              <span class="dot done"></span>
+              <span class="dot done"></span>
+              <span class="dot done"></span>
+              <span class="dot active"></span>
+            </div>
+            <div class="q-hero">
+              <div class="eyebrow">Step 4 of 4 · last one</div>
+              <h1>Join a group, or start one.</h1>
+              <p>Got a code from a friend? Join their group — <strong style="color:var(--sage);">free, forever</strong>. Or start your own with a 3-day trial.</p>
+            </div>
+            <div class="q-input" style="font-family: ui-monospace, SF Mono, monospace; letter-spacing: 4px; text-align:center; font-size:24px;">BEACH-TRIP<span class="cursor">|</span></div>
+            <div class="or-divider">or</div>
+            <div style="margin: 0 18px;">
+              <div class="cta-secondary">+ Start a new group</div>
+              <p style="text-align:center; margin: 10px 0 0; font-size:11.5px; color:var(--text-muted);">3 days free · plans from £4.99/mo · cancel anytime</p>
+            </div>
+          </div>
+          <div class="cta">Join group</div>
+        </div>
+      </div>
+      <div class="mock-anno">
+        <span class="badge">Onboarding · final step</span>
+        <h3>Two divergent paths, one screen</h3>
+        <p>Joiners stay free under the paying member's umbrella — make that the headline path. The "start your own" route leads to the trial paywall (next mock).</p>
+      </div>
+    </div>
+
+    <!-- ===================== MOCK 7: ACTIVITY FEED ===================== -->
+    <div class="mock">
+      <div class="phone">
+        <div class="screen">
+          <div class="status">
+            <span class="time">9:41</span>
+            <span class="icons">
+              <svg width="16" height="11" viewBox="0 0 16 11" fill="none"><rect x="0" y="6" width="3" height="5" rx="0.5" fill="currentColor"/><rect x="4" y="4" width="3" height="7" rx="0.5" fill="currentColor"/><rect x="8" y="2" width="3" height="9" rx="0.5" fill="currentColor"/><rect x="12" y="0" width="3" height="11" rx="0.5" fill="currentColor"/></svg>
+              <svg width="14" height="10" viewBox="0 0 14 10" fill="none"><path d="M7 9l-2-2c-1.1-1.1-2.9-1.1-4 0M7 6l-1-1c-1.7-1.7-4.3-1.7-6 0M7 3L6 2c-2.2-2.2-5.8-2.2-8 0" stroke="currentColor" stroke-width="1" fill="none"/></svg>
+              <svg width="22" height="11" viewBox="0 0 22 11" fill="none"><rect x="0.5" y="0.5" width="18" height="10" rx="2.5" stroke="currentColor"/><rect x="2" y="2" width="14" height="7" rx="1.2" fill="currentColor"/><rect x="19.5" y="3.5" width="1.5" height="4" rx="0.5" fill="currentColor"/></svg>
+            </span>
+          </div>
+          <div class="nav">
+            <span style="width:32px"></span>
+            <span class="title">Activity</span>
+            <span class="nav-link">Mark all read</span>
+          </div>
+          <div class="body">
+            <div>
+              <div class="sec-h"><span class="lbl">Today</span></div>
+              <div class="list-card act-row">
+                <div class="row">
+                  <span class="avatars" style="margin-right:2px;"><span class="av a1">SK</span></span>
+                  <div class="row-main">
+                    <div class="row-title"><strong>Sarah</strong> added <strong>Food shopping</strong> · you owe <span class="amt owe">£23.83</span></div>
+                    <div class="row-sub">Beach trip 2026 · 2h ago</div>
+                  </div>
+                  <span class="unread"></span>
+                </div>
+                <div class="row">
+                  <span class="avatars" style="margin-right:2px;"><span class="av a3">RT</span></span>
+                  <div class="row-main">
+                    <div class="row-title"><strong>Ryan</strong> paid you <span class="amt">£15.00</span></div>
+                    <div class="row-sub">Apartment 4B · 4h ago</div>
+                  </div>
+                  <span class="unread"></span>
+                </div>
+              </div>
+            </div>
+            <div>
+              <div class="sec-h"><span class="lbl">Yesterday</span></div>
+              <div class="list-card act-row">
+                <div class="row">
+                  <span class="avatars" style="margin-right:2px;"><span class="av a4">AL</span></span>
+                  <div class="row-main">
+                    <div class="row-title"><strong>Alex</strong> joined <strong>Sunday brunch crew</strong></div>
+                    <div class="row-sub">15h ago</div>
+                  </div>
+                </div>
+                <div class="row">
+                  <span class="avatars" style="margin-right:2px;"><span class="av a2">JM</span></span>
+                  <div class="row-main">
+                    <div class="row-title"><strong>James</strong> settled up · <span class="amt">£42.00</span> received</div>
+                    <div class="row-sub">Beach trip 2026 · 22h ago</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div>
+              <div class="sec-h"><span class="lbl">Earlier this week</span></div>
+              <div class="list-card act-row">
+                <div class="row">
+                  <span class="avatars" style="margin-right:2px;"><span class="av a1">SK</span></span>
+                  <div class="row-main">
+                    <div class="row-title"><strong>Sarah</strong> updated the split on <strong>Beach house Airbnb</strong></div>
+                    <div class="row-sub">3 days ago</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="mock-anno">
+        <span class="badge">Activity feed</span>
+        <h3>Time-grouped, actor-led, amount-coloured</h3>
+        <p>Sections orient you in time. Each row leads with the actor's avatar, surfaces the amount in colour (sage = inbound, coral = you owe), and ends with an unread dot.</p>
+      </div>
+    </div>
+
+    <!-- ===================== MOCK 8: EXPENSE DETAIL ===================== -->
+    <div class="mock">
+      <div class="phone">
+        <div class="screen">
+          <div class="status">
+            <span class="time">9:41</span>
+            <span class="icons">
+              <svg width="16" height="11" viewBox="0 0 16 11" fill="none"><rect x="0" y="6" width="3" height="5" rx="0.5" fill="currentColor"/><rect x="4" y="4" width="3" height="7" rx="0.5" fill="currentColor"/><rect x="8" y="2" width="3" height="9" rx="0.5" fill="currentColor"/><rect x="12" y="0" width="3" height="11" rx="0.5" fill="currentColor"/></svg>
+              <svg width="14" height="10" viewBox="0 0 14 10" fill="none"><path d="M7 9l-2-2c-1.1-1.1-2.9-1.1-4 0M7 6l-1-1c-1.7-1.7-4.3-1.7-6 0M7 3L6 2c-2.2-2.2-5.8-2.2-8 0" stroke="currentColor" stroke-width="1" fill="none"/></svg>
+              <svg width="22" height="11" viewBox="0 0 22 11" fill="none"><rect x="0.5" y="0.5" width="18" height="10" rx="2.5" stroke="currentColor"/><rect x="2" y="2" width="14" height="7" rx="1.2" fill="currentColor"/><rect x="19.5" y="3.5" width="1.5" height="4" rx="0.5" fill="currentColor"/></svg>
+            </span>
+          </div>
+          <div class="nav">
+            <span class="nav-link">‹ Back</span>
+            <span class="title">Expense</span>
+            <span class="nav-link muted">⋯</span>
+          </div>
+          <div class="body" style="gap:14px;">
+            <!-- HERO -->
+            <div class="exp-hero">
+              <div class="row-icon">🛒</div>
+              <div class="row-amt-big"><span class="cur">£</span>143.00</div>
+              <div class="what">Food shopping for party</div>
+              <div class="meta">Paid by <strong>Sarah</strong> · 23 Apr · Beach trip 2026</div>
+            </div>
+
+            <!-- SPLIT BREAKDOWN -->
+            <div>
+              <div class="sec-h"><span class="lbl">Split equally · 6 ways</span><span class="more">£23.83 each</span></div>
+              <div class="card">
+                <div class="split-grid">
+                  <div class="person you">
+                    <span class="av a2">YO</span>
+                    <span class="person-name">You</span>
+                    <span class="person-amt">£23.83</span>
+                  </div>
+                  <div class="person">
+                    <span class="av a1">SK</span>
+                    <span class="person-name">Sarah</span>
+                    <span class="person-amt">£23.83</span>
+                  </div>
+                  <div class="person">
+                    <span class="av a3">RT</span>
+                    <span class="person-name">Ryan</span>
+                    <span class="person-amt">£23.83</span>
+                  </div>
+                  <div class="person">
+                    <span class="av a4">AL</span>
+                    <span class="person-name">Alex</span>
+                    <span class="person-amt">£23.83</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- ACTIONS -->
+            <div class="action-bar">
+              <div class="ab-btn">Edit</div>
+              <div class="ab-btn">Mark settled</div>
+              <div class="ab-btn danger">Delete</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="mock-anno">
+        <span class="badge">Expense detail</span>
+        <h3>Receipt-style: amount + visual split</h3>
+        <p>The single biggest answer (the amount) tops the screen. The split breakdown shows each person's avatar with their share underneath — your row reads sage so you spot it instantly.</p>
+      </div>
+    </div>
+
+    <!-- ===================== MOCK 9: PROFILE / SETTINGS ===================== -->
+    <div class="mock">
+      <div class="phone">
+        <div class="screen">
+          <div class="status">
+            <span class="time">9:41</span>
+            <span class="icons">
+              <svg width="16" height="11" viewBox="0 0 16 11" fill="none"><rect x="0" y="6" width="3" height="5" rx="0.5" fill="currentColor"/><rect x="4" y="4" width="3" height="7" rx="0.5" fill="currentColor"/><rect x="8" y="2" width="3" height="9" rx="0.5" fill="currentColor"/><rect x="12" y="0" width="3" height="11" rx="0.5" fill="currentColor"/></svg>
+              <svg width="14" height="10" viewBox="0 0 14 10" fill="none"><path d="M7 9l-2-2c-1.1-1.1-2.9-1.1-4 0M7 6l-1-1c-1.7-1.7-4.3-1.7-6 0M7 3L6 2c-2.2-2.2-5.8-2.2-8 0" stroke="currentColor" stroke-width="1" fill="none"/></svg>
+              <svg width="22" height="11" viewBox="0 0 22 11" fill="none"><rect x="0.5" y="0.5" width="18" height="10" rx="2.5" stroke="currentColor"/><rect x="2" y="2" width="14" height="7" rx="1.2" fill="currentColor"/><rect x="19.5" y="3.5" width="1.5" height="4" rx="0.5" fill="currentColor"/></svg>
+            </span>
+          </div>
+          <div class="nav">
+            <span class="nav-link muted">‹ Back</span>
+            <span class="title">You</span>
+            <span class="nav-link">Edit</span>
+          </div>
+          <div class="body" style="gap:0;">
+            <!-- IDENTITY HERO -->
+            <div class="pf-hero">
+              <div class="av-big">AE</div>
+              <h2>Augustus Edem</h2>
+              <p>emotiveimpact@gmail.com</p>
+            </div>
+
+            <!-- STATS -->
+            <div class="pf-stats">
+              <div class="st sage"><div class="v">+£135.50</div><div class="k">Owed to you</div></div>
+              <div class="st"><div class="v">4</div><div class="k">Groups</div></div>
+              <div class="st coral"><div class="v">−£15.20</div><div class="k">You owe</div></div>
+            </div>
+
+            <!-- SETTINGS GROUPS -->
+            <div class="set-group">
+              <span class="lbl">Account</span>
+              <div class="card">
+                <div class="set-row">
+                  <div class="left"><span class="ic-sm">£</span><span class="lbl-row">Default currency</span></div>
+                  <span class="v">GBP <span class="chev">›</span></span>
+                </div>
+                <div class="set-row">
+                  <div class="left"><span class="ic-sm">🌍</span><span class="lbl-row">Country</span></div>
+                  <span class="v">United Kingdom <span class="chev">›</span></span>
+                </div>
+                <div class="set-row">
+                  <div class="left"><span class="ic-sm">🕓</span><span class="lbl-row">Time zone</span></div>
+                  <span class="v">Europe/London <span class="chev">›</span></span>
+                </div>
+              </div>
+            </div>
+
+            <div class="set-group">
+              <span class="lbl">Preferences</span>
+              <div class="card">
+                <div class="set-row">
+                  <div class="left"><span class="ic-sm amber">🌗</span><span class="lbl-row">Theme</span></div>
+                  <span class="v">System <span class="chev">›</span></span>
+                </div>
+                <div class="set-row">
+                  <div class="left"><span class="ic-sm">🔔</span><span class="lbl-row">Notifications</span></div>
+                  <span class="v">On <span class="chev">›</span></span>
+                </div>
+              </div>
+            </div>
+
+            <div class="set-group">
+              <span class="lbl">Account</span>
+              <div class="card">
+                <div class="set-row">
+                  <div class="left"><span class="ic-sm coral">↪</span><span class="lbl-row">Sign out</span></div>
+                  <span class="v danger">›</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="mock-anno">
+        <span class="badge">Profile / Settings</span>
+        <h3>Identity hero + grouped rows</h3>
+        <p>Big avatar and name say "this is you", three-up stats answer the question users actually open this screen for, then iOS-style grouped rows for the chores.</p>
+      </div>
+    </div>
+
+    <!-- ===================== MOCK 10: TRIAL PAYWALL ===================== -->
+    <div class="mock">
+      <div class="phone">
+        <div class="screen">
+          <div class="status">
+            <span class="time">9:41</span>
+            <span class="icons">
+              <svg width="16" height="11" viewBox="0 0 16 11" fill="none"><rect x="0" y="6" width="3" height="5" rx="0.5" fill="currentColor"/><rect x="4" y="4" width="3" height="7" rx="0.5" fill="currentColor"/><rect x="8" y="2" width="3" height="9" rx="0.5" fill="currentColor"/><rect x="12" y="0" width="3" height="11" rx="0.5" fill="currentColor"/></svg>
+              <svg width="14" height="10" viewBox="0 0 14 10" fill="none"><path d="M7 9l-2-2c-1.1-1.1-2.9-1.1-4 0M7 6l-1-1c-1.7-1.7-4.3-1.7-6 0M7 3L6 2c-2.2-2.2-5.8-2.2-8 0" stroke="currentColor" stroke-width="1" fill="none"/></svg>
+              <svg width="22" height="11" viewBox="0 0 22 11" fill="none"><rect x="0.5" y="0.5" width="18" height="10" rx="2.5" stroke="currentColor"/><rect x="2" y="2" width="14" height="7" rx="1.2" fill="currentColor"/><rect x="19.5" y="3.5" width="1.5" height="4" rx="0.5" fill="currentColor"/></svg>
+            </span>
+          </div>
+          <div class="nav">
+            <span class="nav-link muted">✕</span>
+            <span class="title" style="opacity:0;">_</span>
+            <span class="nav-link muted">Restore</span>
+          </div>
+          <div class="body" style="gap:0;">
+            <div class="q-hero" style="padding: 16px 18px 4px;">
+              <div class="eyebrow">3 days free, then pick a plan</div>
+              <h1 style="font-size:24px; letter-spacing:-0.4px;">Start your trial</h1>
+              <p style="font-size:13.5px;">People you invite to join are <strong style="color:var(--sage);">free, forever</strong>. You only pay to create groups.</p>
+            </div>
+
+            <div style="padding: 16px 0 0;">
+              <div class="billing-toggle">
+                <div class="seg active">Monthly</div>
+                <div class="seg">Annual <span class="save">save ~17%</span></div>
+              </div>
+
+              <div class="plan-card">
+                <div class="radio"></div>
+                <div class="pc-main">
+                  <div class="pc-name">Standard</div>
+                  <div class="pc-limits">1 group · up to 8 members</div>
+                </div>
+                <div class="pc-price"><div class="v">£4.99</div><div class="s">/mo</div></div>
+              </div>
+
+              <div class="plan-card selected">
+                <div class="radio"></div>
+                <div class="pc-main">
+                  <div class="pc-name">Pro <span class="pop">MOST POPULAR</span></div>
+                  <div class="pc-limits">3 groups · up to 15 members · analytics &amp; exports</div>
+                </div>
+                <div class="pc-price"><div class="v">£9.99</div><div class="s">/mo</div></div>
+              </div>
+
+              <div class="plan-card">
+                <div class="radio"></div>
+                <div class="pc-main">
+                  <div class="pc-name">Pro Max</div>
+                  <div class="pc-limits">Unlimited groups &amp; members · priority support</div>
+                </div>
+                <div class="pc-price"><div class="v">£29.99</div><div class="s">/mo</div></div>
+              </div>
+
+              <p style="text-align:center; margin: 14px 16px 0; font-size:11.5px; color:var(--text-muted); line-height:1.5;">
+                3 days free · cancel anytime in Settings · we'll remind you 24h before billing.
+              </p>
+            </div>
+          </div>
+          <div class="cta">Start 3-day free trial · Pro</div>
+        </div>
+      </div>
+      <div class="mock-anno">
+        <span class="badge">Trial paywall</span>
+        <h3>Pick a plan, mirroring web</h3>
+        <p>Three real tiers (Standard £4.99 / Pro £9.99 / Pro Max £29.99), monthly &amp; annual toggle, the "free for joiners" line stays as the differentiator. Source: <code>apps/web/.../pricing.lazy.tsx</code>.</p>
+      </div>
+    </div>
+
+    <!-- ===================== MOCK 11: SETTLE-UP SUCCESS ===================== -->
+    <div class="mock">
+      <div class="phone">
+        <div class="screen">
+          <div class="status">
+            <span class="time">9:41</span>
+            <span class="icons">
+              <svg width="16" height="11" viewBox="0 0 16 11" fill="none"><rect x="0" y="6" width="3" height="5" rx="0.5" fill="currentColor"/><rect x="4" y="4" width="3" height="7" rx="0.5" fill="currentColor"/><rect x="8" y="2" width="3" height="9" rx="0.5" fill="currentColor"/><rect x="12" y="0" width="3" height="11" rx="0.5" fill="currentColor"/></svg>
+              <svg width="14" height="10" viewBox="0 0 14 10" fill="none"><path d="M7 9l-2-2c-1.1-1.1-2.9-1.1-4 0M7 6l-1-1c-1.7-1.7-4.3-1.7-6 0M7 3L6 2c-2.2-2.2-5.8-2.2-8 0" stroke="currentColor" stroke-width="1" fill="none"/></svg>
+              <svg width="22" height="11" viewBox="0 0 22 11" fill="none"><rect x="0.5" y="0.5" width="18" height="10" rx="2.5" stroke="currentColor"/><rect x="2" y="2" width="14" height="7" rx="1.2" fill="currentColor"/><rect x="19.5" y="3.5" width="1.5" height="4" rx="0.5" fill="currentColor"/></svg>
+            </span>
+          </div>
+          <div class="nav">
+            <span style="width:32px"></span>
+            <span class="title" style="opacity:0;">_</span>
+            <span style="width:32px"></span>
+          </div>
+          <div class="body" style="gap:0;">
+            <div class="big-check">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            <div class="success-headline">
+              <h2>Settled!</h2>
+              <p>You paid <strong style="color:var(--text-secondary)">Sarah</strong> <strong style="color:var(--text-primary)">£45.00</strong> for last month's expenses.</p>
+            </div>
+            <div class="card" style="margin: 28px 16px 0;">
+              <div class="receipt-row"><span class="k">From</span><span class="v">You</span></div>
+              <div class="receipt-row"><span class="k">To</span><span class="v">Sarah</span></div>
+              <div class="receipt-row"><span class="k">Method</span><span class="v">Revolut</span></div>
+              <div class="receipt-row"><span class="k">Reference</span><span class="v" style="font-variant-numeric: tabular-nums;">#A7K-2204</span></div>
+            </div>
+          </div>
+          <div class="cta">Done</div>
+        </div>
+      </div>
+      <div class="mock-anno">
+        <span class="badge">Settle-up · success</span>
+        <h3>One emotion, then the receipt</h3>
+        <p>Big sage check + headline does the celebration in one beat. The receipt below confirms what happened for the user's records and trust.</p>
+      </div>
+    </div>
+
+    <!-- ===================== MOCK 12: MEMBER DETAIL ===================== -->
+    <div class="mock">
+      <div class="phone">
+        <div class="screen">
+          <div class="status">
+            <span class="time">9:41</span>
+            <span class="icons">
+              <svg width="16" height="11" viewBox="0 0 16 11" fill="none"><rect x="0" y="6" width="3" height="5" rx="0.5" fill="currentColor"/><rect x="4" y="4" width="3" height="7" rx="0.5" fill="currentColor"/><rect x="8" y="2" width="3" height="9" rx="0.5" fill="currentColor"/><rect x="12" y="0" width="3" height="11" rx="0.5" fill="currentColor"/></svg>
+              <svg width="14" height="10" viewBox="0 0 14 10" fill="none"><path d="M7 9l-2-2c-1.1-1.1-2.9-1.1-4 0M7 6l-1-1c-1.7-1.7-4.3-1.7-6 0M7 3L6 2c-2.2-2.2-5.8-2.2-8 0" stroke="currentColor" stroke-width="1" fill="none"/></svg>
+              <svg width="22" height="11" viewBox="0 0 22 11" fill="none"><rect x="0.5" y="0.5" width="18" height="10" rx="2.5" stroke="currentColor"/><rect x="2" y="2" width="14" height="7" rx="1.2" fill="currentColor"/><rect x="19.5" y="3.5" width="1.5" height="4" rx="0.5" fill="currentColor"/></svg>
+            </span>
+          </div>
+          <div class="nav">
+            <span class="nav-link">‹ Beach trip</span>
+            <span class="title" style="opacity:0;">_</span>
+            <span class="nav-link muted">⋯</span>
+          </div>
+          <div class="body" style="gap:14px;">
+            <div class="pf-hero" style="padding: 4px 16px 4px;">
+              <div class="av-big" style="background: linear-gradient(135deg, #FCD3CB, #F2A99C); color:#B85543;">SK</div>
+              <h2>Sarah King</h2>
+              <p>sarah@example.com · group admin</p>
+            </div>
+            <div class="hero" style="padding: 16px;">
+              <div class="label">She owes you</div>
+              <div class="amount" style="font-size:34px;">£24.50</div>
+              <div class="meta">across 4 shared expenses</div>
+            </div>
+            <div class="action-bar">
+              <div class="ab-btn" style="background: var(--sage); color:#fff; border-color: var(--sage);">Remind</div>
+              <div class="ab-btn">Settle</div>
+              <div class="ab-btn">View all</div>
+            </div>
+            <div>
+              <div class="sec-h"><span class="lbl">Recent shared</span></div>
+              <div class="card">
+                <div class="row">
+                  <div class="row-icon">🛒</div>
+                  <div class="row-main">
+                    <div class="row-title">Food shopping for party</div>
+                    <div class="row-sub">23 Apr · she paid £143.00</div>
+                  </div>
+                  <span class="pill owe">−£23.83</span>
+                </div>
+                <div class="row">
+                  <div class="row-icon amber">🏠</div>
+                  <div class="row-main">
+                    <div class="row-title">Beach house Airbnb</div>
+                    <div class="row-sub">21 Apr · you paid £820.00</div>
+                  </div>
+                  <span class="pill owed">+£136.67</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="mock-anno">
+        <span class="badge">Member detail</span>
+        <h3>Two heroes: identity, then balance</h3>
+        <p>Avatar + name says <em>who</em>. Sage hero card answers <em>what's the situation</em>. Action bar gives the three things you'd actually do here.</p>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- WHY THIS WORKS -->
+  <div class="legend">
+    <h2>The principle</h2>
+    <p>Consistency is the shell. Distinctiveness is the content. Same palette, same surfaces, same grid — but each screen type leads with its own landmark so the user always knows what kind of screen they're on, even at a glance.</p>
+    <div class="lg">
+      <div class="it">
+        <h4>Detail = hero a number</h4>
+        <p>Group balance, total spent, who owes whom. The screen exists to answer one question — give that answer huge.</p>
+      </div>
+      <div class="it">
+        <h4>List = scan, don't read</h4>
+        <p>Right-aligned balance pills with three colours. Decision-making happens on the right edge before users read titles.</p>
+      </div>
+      <div class="it">
+        <h4>Form = lead with intent</h4>
+        <p>The amount IS the form's purpose. Make it gigantic at the top so the form's identity is unmistakable on first paint.</p>
+      </div>
+      <div class="it">
+        <h4>Flow = one question, one CTA</h4>
+        <p>Progress dots. One headline. One input. One Continue button. Strip everything else — flows fail when they ask two things at once.</p>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

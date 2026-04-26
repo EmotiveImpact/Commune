@@ -60,9 +60,9 @@ export function TrialExpiryBanner({ userId }: TrialExpiryBannerProps) {
     },
     no_subscription: {
       icon: IconSparkles,
-      chipLabel: '7 days free',
+      chipLabel: '3 days free',
       chipColor: 'success' as const,
-      message: 'Pick a plan to start your 7-day free trial and unlock all of Commune.',
+      message: 'Pick a plan to start your 3-day free trial and unlock all of Commune.',
       borderColor: '#2d6a4f',
     },
   }[variant];

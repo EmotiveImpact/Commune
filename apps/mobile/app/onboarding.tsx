@@ -364,6 +364,10 @@ function CtaBar({
   /** Show a chevron-right glyph after the label (for "next page" CTAs
    *  during the sell pager so the button reads as forward motion). */
   showNextChevron = false,
+  /** When provided, render a slim back-arrow button next to the main CTA.
+   *  Used on sell pages 2–4 so users have a discoverable bottom-row Back
+   *  in addition to the top-bar one. */
+  onBack,
 }: {
   bottomInset: number;
   label: string;
@@ -372,9 +376,43 @@ function CtaBar({
   loading?: boolean;
   variant?: 'ink' | 'sage';
   showNextChevron?: boolean;
+  onBack?: () => void;
 }) {
   const bg = disabled ? colors.border : variant === 'sage' ? colors.sage : colors.bgInk;
   const fg = disabled ? colors.textMuted : colors.textInverse;
+  const mainCta = (
+    <TouchableOpacity
+      onPress={onPress}
+      disabled={disabled || loading}
+      activeOpacity={0.85}
+      style={{
+        flex: onBack ? 1 : undefined,
+        backgroundColor: bg,
+        height: 52,
+        borderRadius: 14,
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexDirection: 'row',
+        gap: 6,
+      }}
+    >
+      {loading ? (
+        <ActivityIndicator color={colors.textInverse} style={{ marginRight: 8 }} />
+      ) : null}
+      <Text
+        style={{
+          color: fg,
+          fontSize: 15,
+          fontWeight: '700',
+        }}
+      >
+        {label}
+      </Text>
+      {showNextChevron && !loading ? (
+        <IconChevronRight size={18} color={fg} strokeWidth={2.4} />
+      ) : null}
+    </TouchableOpacity>
+  );
   return (
     <View
       style={{
@@ -386,36 +424,31 @@ function CtaBar({
         borderTopColor: colors.borderSubtle,
       }}
     >
-      <TouchableOpacity
-        onPress={onPress}
-        disabled={disabled || loading}
-        activeOpacity={0.85}
-        style={{
-          backgroundColor: bg,
-          height: 52,
-          borderRadius: 14,
-          alignItems: 'center',
-          justifyContent: 'center',
-          flexDirection: 'row',
-          gap: 6,
-        }}
-      >
-        {loading ? (
-          <ActivityIndicator color={colors.textInverse} style={{ marginRight: 8 }} />
-        ) : null}
-        <Text
-          style={{
-            color: fg,
-            fontSize: 15,
-            fontWeight: '700',
-          }}
-        >
-          {label}
-        </Text>
-        {showNextChevron && !loading ? (
-          <IconChevronRight size={18} color={fg} strokeWidth={2.4} />
-        ) : null}
-      </TouchableOpacity>
+      {onBack ? (
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          <TouchableOpacity
+            onPress={onBack}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Back"
+            style={{
+              width: 60,
+              height: 52,
+              borderRadius: 14,
+              backgroundColor: colors.bgSurface,
+              borderWidth: 1,
+              borderColor: colors.borderSubtle,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <IconChevronLeft size={20} color={colors.textPrimary} strokeWidth={2.2} />
+          </TouchableOpacity>
+          {mainCta}
+        </View>
+      ) : (
+        mainCta
+      )}
     </View>
   );
 }
@@ -1245,6 +1278,15 @@ export default function OnboardingScreen() {
     }
   }, [completionLoading, hasCompletedOnboarding, isPreview, phase]);
 
+  // Worm-spring effect for non-pager phases. Must be declared at the top
+  // of the component before any early-return so the hook order stays
+  // stable on every render (rules of hooks).
+  const wormDotIndex = dotIndexFor(phase, pagerPage);
+  useEffect(() => {
+    if (phase === 'pager') return;
+    pagerProgress.value = withSpring(wormDotIndex, { damping: 18, stiffness: 220 });
+  }, [phase, wormDotIndex, pagerProgress]);
+
   const [acquisition, setAcquisition] = useState<AcquisitionSource | null>(null);
   const [type, setType] = useState<GroupTypeValue | null>(null);
   const [subtype, setSubtype] = useState<string | null>(null);
@@ -1647,16 +1689,9 @@ export default function OnboardingScreen() {
 
   /* ---------- Top-nav state per phase ---------- */
 
-  const dotIndex = dotIndexFor(phase, pagerPage);
+  const dotIndex = wormDotIndex;
   // Back hidden on welcome (page 0) and celebration.
   const showBack = !(phase === 'pager' && pagerPage === 0) && phase !== 'celebration';
-
-  // For non-pager phases, animate the worm to the new dot index. The
-  // pager phase drives the value continuously via onPageScroll below.
-  useEffect(() => {
-    if (phase === 'pager') return;
-    pagerProgress.value = withSpring(dotIndex, { damping: 18, stiffness: 220 });
-  }, [phase, dotIndex, pagerProgress]);
 
   // Skip rules:
   // - pager (1–4): "Skip tour"
@@ -1694,7 +1729,13 @@ export default function OnboardingScreen() {
   let ctaOnPress: () => void = () => {};
 
   if (phase === 'pager') {
-    ctaLabel = 'Continue';
+    // Escalating copy ladder: each sell page raises the stakes a notch
+    // so the user feels they're crossing thresholds, not just clicking
+    // through. Final sell page uses sage variant to signal "we're moving
+    // from marketing into setup".
+    const PAGER_LABELS = ['Continue', 'Show me more', 'Keep going', 'Get me set up'];
+    ctaLabel = PAGER_LABELS[pagerPage] ?? 'Continue';
+    if (pagerPage === 3) ctaVariant = 'sage';
     ctaOnPress = () => {
       if (pagerPage < 3) {
         const next = pagerPage + 1;

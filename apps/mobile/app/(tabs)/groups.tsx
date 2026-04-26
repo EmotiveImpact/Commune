@@ -344,9 +344,69 @@ function PendingInvites({ invites, acceptingId, isPending, onAccept }: {
 
 /* ─── Switch Group Modal ─────────────────────────────────────────────────── */
 
-function SwitchGroupModal({ visible, groups, activeGroupId, onClose, onSelect, onCreate }: {
-  visible: boolean; groups: GroupWithMembers[]; activeGroupId: string | null;
-  onClose: () => void; onSelect: (groupId: string) => void; onCreate: () => void;
+/**
+ * Row inside the SwitchGroupModal. Fetches its own dashboard stats so the
+ * sheet can show a colour-coded balance pill per group — the "list of groups
+ * scans on the right edge" pattern from the design mocks. Each row is its
+ * own component so React Query dedups and caches each fetch independently.
+ */
+function GroupSheetRow({
+  group, currentUserId, monthKey, isActive, isLast, onPress,
+}: {
+  group: GroupWithMembers;
+  currentUserId: string;
+  monthKey: string;
+  isActive: boolean;
+  isLast: boolean;
+  onPress: () => void;
+}) {
+  const meta = getGroupTypeMeta(group.type);
+  const count = (group.members ?? []).filter((m) => m.status === 'active').length;
+  const { data: stats, isLoading } = useDashboardStats(group.id, currentUserId, monthKey);
+
+  const net = useMemo(() => {
+    if (!stats) return 0;
+    return (stats.amount_paid ?? 0) - (stats.your_share ?? 0);
+  }, [stats]);
+
+  const tone: 'owe' | 'owed' | 'settled' =
+    Math.abs(net) < 0.01 ? 'settled' : net > 0 ? 'owed' : 'owe';
+  const sign = tone === 'owed' ? '+' : tone === 'owe' ? '−' : '';
+  const pillAmount = tone === 'settled'
+    ? formatCurrency(0, group.currency)
+    : `${sign}${formatCurrency(Math.abs(net), group.currency)}`;
+
+  return (
+    <SheetRow
+      icon={getGroupTypeTablerIcon(group.type)}
+      iconColor={meta.accent}
+      iconBg={meta.bg}
+      title={group.name}
+      subtitle={`${meta.label} · ${count} member${count === 1 ? '' : 's'}`}
+      onPress={onPress}
+      isLast={isLast}
+      trailing={
+        <View style={{ alignItems: 'flex-end', gap: 4 }}>
+          {isActive ? <Badge label="Active" tone="sage" /> : null}
+          {isLoading
+            ? <SkeletonBlock width={68} height={22} radius={radius.pill} />
+            : <StatusPill amount={pillAmount} tone={tone} />}
+        </View>
+      }
+    />
+  );
+}
+
+function SwitchGroupModal({ visible, groups, activeGroupId, currentUserId, monthKey, onClose, onSelect, onCreate, onViewAll }: {
+  visible: boolean;
+  groups: GroupWithMembers[];
+  activeGroupId: string | null;
+  currentUserId: string;
+  monthKey: string;
+  onClose: () => void;
+  onSelect: (groupId: string) => void;
+  onCreate: () => void;
+  onViewAll: () => void;
 }) {
   return (
     <BottomSheet visible={visible} onClose={onClose} title="Switch group">
@@ -355,33 +415,34 @@ function SwitchGroupModal({ visible, groups, activeGroupId, onClose, onSelect, o
         style={{ maxHeight: 480 }}
         contentContainerStyle={{ paddingBottom: space.sm }}
       >
-        {groups.map((g, idx) => {
-          const meta = getGroupTypeMeta(g.type);
-          const isActive = g.id === activeGroupId;
-          const count = (g.members ?? []).filter((m) => m.status === 'active').length;
-          return (
-            <SheetRow
-              key={g.id}
-              icon={getGroupTypeTablerIcon(g.type)}
-              iconColor={meta.accent}
-              iconBg={meta.bg}
-              title={g.name}
-              subtitle={`${meta.label} · ${count} member${count === 1 ? '' : 's'}`}
-              onPress={() => onSelect(g.id)}
-              isLast={idx === groups.length - 1}
-              trailing={isActive ? <Badge label="Active" tone="sage" /> : null}
-            />
-          );
-        })}
+        {groups.map((g, idx) => (
+          <GroupSheetRow
+            key={g.id}
+            group={g}
+            currentUserId={currentUserId}
+            monthKey={monthKey}
+            isActive={g.id === activeGroupId}
+            isLast={idx === groups.length - 1}
+            onPress={() => onSelect(g.id)}
+          />
+        ))}
       </ScrollView>
-      <Button
-        label="Create new group"
-        variant="secondary"
-        icon={IconPlus}
-        fullWidth
-        onPress={onCreate}
-        style={{ marginTop: space.md }}
-      />
+      <View style={{ flexDirection: 'row', gap: space.sm, marginTop: space.md }}>
+        <Button
+          label="View all"
+          variant="secondary"
+          icon={IconGridDots}
+          onPress={onViewAll}
+          style={{ flex: 1 }}
+        />
+        <Button
+          label="Create new"
+          variant="secondary"
+          icon={IconPlus}
+          onPress={onCreate}
+          style={{ flex: 1 }}
+        />
+      </View>
     </BottomSheet>
   );
 }
@@ -438,6 +499,7 @@ export default function GroupsScreen() {
   }, [queryClient, setActiveGroupId]);
 
   const goOnboarding = useCallback(() => { hapticMedium(); setSwitchOpen(false); router.push('/onboarding'); }, [router]);
+  const goAllGroups = useCallback(() => { hapticMedium(); setSwitchOpen(false); router.push('/groups-list'); }, [router]);
   const goManage = useCallback(() => { hapticMedium(); router.push('/group-edit'); }, [router]);
   const goMembers = useCallback(() => { hapticMedium(); router.push('/members'); }, [router]);
   const goExpenses = useCallback(() => { hapticMedium(); router.push('/(tabs)/expenses'); }, [router]);
@@ -484,9 +546,12 @@ export default function GroupsScreen() {
         visible={switchOpen}
         groups={groups ?? []}
         activeGroupId={activeGroup?.id ?? null}
+        currentUserId={userId}
+        monthKey={monthKey}
         onClose={closeSwitch}
         onSelect={handleSelectGroup}
         onCreate={goOnboarding}
+        onViewAll={goAllGroups}
       />
     </Screen>
   );
