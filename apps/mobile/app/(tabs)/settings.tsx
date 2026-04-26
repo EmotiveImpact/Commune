@@ -1,20 +1,16 @@
-import { useMemo } from 'react';
-import { Alert, Linking, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { useMemo, useState } from 'react';
+import { Alert, Linking, ScrollView, Switch, Text, TouchableOpacity, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
   IconBell,
   IconChevronRight,
-  IconCoin,
   IconDiamond,
   IconHelp,
-  IconLanguage,
   IconLogout,
-  IconMoon,
   IconRefresh,
   IconUser,
   IconWallet,
-  IconWorld,
 } from '@tabler/icons-react-native';
 import { signOut } from '@commune/api';
 import { useQueryClient } from '@tanstack/react-query';
@@ -32,7 +28,7 @@ import {
 import { hapticHeavy, hapticLight } from '@/lib/haptics';
 import { useAuthStore } from '@/stores/auth';
 import { useGroupStore } from '@/stores/group';
-import { useProfile } from '@/hooks/use-profile';
+import { useProfile, useUpdateProfile } from '@/hooks/use-profile';
 import { useSubscription } from '@/hooks/use-subscriptions';
 import { useUserGroups } from '@/hooks/use-groups';
 import { useCrossGroupSettlements } from '@/hooks/use-cross-group';
@@ -496,7 +492,37 @@ export default function ProfileScreen() {
     ]);
   };
 
-  /* --- Row groups ------------------------------------------------------- */
+  /* --- Master notification toggle --------------------------------------- */
+  // Optimistic state so the Switch flips instantly; we write through to the
+  // profile's notification_preferences (sets all channels to the new value).
+  const updateProfile = useUpdateProfile();
+  const [notifOptimistic, setNotifOptimistic] = useState<boolean | null>(null);
+  const notifOn = notifOptimistic ?? notificationsOn;
+  const handleNotifToggle = (next: boolean) => {
+    if (!user?.id) return;
+    hapticLight();
+    setNotifOptimistic(next);
+    updateProfile.mutate(
+      {
+        userId: user.id,
+        data: {
+          notification_preferences: {
+            email_on_payment_reminder: next,
+            email_on_new_expense: next,
+            email_on_payment_received: notifPrefs?.email_on_payment_received ?? next,
+            email_on_overdue: notifPrefs?.email_on_overdue ?? next,
+          },
+        },
+      },
+      { onError: () => setNotifOptimistic(null) },
+    );
+  };
+
+  /* --- Drill-down row groups -------------------------------------------- */
+  // Preferences (currency/country/timezone/theme) live in /edit-profile —
+  // intentionally NOT duplicated here. Notifications collapses to a quick
+  // master Switch above; detailed per-channel toggles also live in
+  // /edit-profile.
   const profileRows: Row[] = [
     {
       icon: IconUser,
@@ -511,52 +537,6 @@ export default function ProfileScreen() {
       iconColor: colors.sage,
       iconBg: colors.sageSoft,
       onPress: () => router.push('/payment-methods'),
-    },
-  ];
-
-  const preferencesRows: Row[] = [
-    {
-      icon: IconCoin,
-      label: 'Default currency',
-      iconColor: colors.sage,
-      iconBg: colors.sageSoft,
-      value: currency,
-      onPress: () => router.push('/edit-profile'),
-    },
-    {
-      icon: IconWorld,
-      label: 'Country',
-      iconColor: colors.sage,
-      iconBg: colors.sageSoft,
-      value: country,
-      onPress: () => router.push('/edit-profile'),
-    },
-    {
-      icon: IconLanguage,
-      label: 'Timezone',
-      iconColor: colors.sage,
-      iconBg: colors.sageSoft,
-      value: timezone,
-      onPress: () => router.push('/edit-profile'),
-    },
-    {
-      icon: IconMoon,
-      label: 'Theme',
-      iconColor: colors.sage,
-      iconBg: colors.sageSoft,
-      value: themeLabel,
-      onPress: () => router.push('/edit-profile'),
-    },
-  ];
-
-  const notificationRows: Row[] = [
-    {
-      icon: IconBell,
-      label: 'Notifications',
-      iconColor: colors.warnText,
-      iconBg: colors.warnBg,
-      value: notificationsOn ? 'On' : 'Off',
-      onPress: () => router.push('/notifications'),
     },
   ];
 
@@ -595,17 +575,6 @@ export default function ProfileScreen() {
     },
   ];
 
-  const accountRows: Row[] = [
-    {
-      icon: IconLogout,
-      label: 'Sign out',
-      iconColor: colors.dangerText,
-      iconBg: colors.dangerBg,
-      onPress: handleSignOut,
-      destructive: true,
-    },
-  ];
-
   return (
     <Screen>
       <ScrollView
@@ -639,14 +608,36 @@ export default function ProfileScreen() {
         <GroupedRows rows={profileRows} />
         <View style={{ height: space.lg }} />
 
-        {/* ── Preferences ───────────────────────────────────────── */}
-        <SectionLabel>Preferences</SectionLabel>
-        <GroupedRows rows={preferencesRows} />
-        <View style={{ height: space.lg }} />
-
-        {/* ── Notifications ─────────────────────────────────────── */}
+        {/* ── Notifications (master Switch) ─────────────────────── */}
         <SectionLabel>Notifications</SectionLabel>
-        <GroupedRows rows={notificationRows} />
+        <View
+          style={{
+            backgroundColor: colors.bgSurface,
+            borderRadius: radius.card,
+            borderWidth: 1,
+            borderColor: colors.borderSubtle,
+            paddingHorizontal: space.base,
+            paddingVertical: space.md,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: space.md,
+          }}
+        >
+          <IconTile icon={IconBell} color={colors.warnText} bg={colors.warnBg} size={36} />
+          <View style={{ flex: 1 }}>
+            <Text style={[font.bodyStrong, { color: colors.textPrimary }]}>Notifications</Text>
+            <Text style={[font.caption, { color: colors.textTertiary, marginTop: 2 }]}>
+              {notifOn ? 'You’ll get reminders and updates.' : 'Reminders and updates are paused.'}
+            </Text>
+          </View>
+          <Switch
+            value={notifOn}
+            onValueChange={handleNotifToggle}
+            trackColor={{ false: colors.borderSubtle, true: colors.sage }}
+            thumbColor={colors.bgSurface}
+            ios_backgroundColor={colors.borderSubtle}
+          />
+        </View>
         <View style={{ height: space.lg }} />
 
         {/* ── Plan ──────────────────────────────────────────────── */}
@@ -657,11 +648,33 @@ export default function ProfileScreen() {
         {/* ── Support ───────────────────────────────────────────── */}
         <SectionLabel>Support</SectionLabel>
         <GroupedRows rows={supportRows} />
-        <View style={{ height: space.lg }} />
+        <View style={{ height: space.xl }} />
 
-        {/* ── Account (Sign out) ────────────────────────────────── */}
-        <SectionLabel>Account</SectionLabel>
-        <GroupedRows rows={accountRows} />
+        {/* ── Sign out (visually distinct, destructive CTA) ────── */}
+        <TouchableOpacity
+          onPress={handleSignOut}
+          accessibilityLabel="Sign out"
+          accessibilityRole="button"
+          activeOpacity={0.85}
+          style={{
+            alignSelf: 'stretch',
+            minHeight: 56,
+            borderRadius: 16,
+            backgroundColor: '#C74A3A',
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 10,
+            shadowColor: '#000',
+            shadowOpacity: 0.12,
+            shadowRadius: 8,
+            shadowOffset: { width: 0, height: 3 },
+            elevation: 3,
+          }}
+        >
+          <IconLogout size={20} color="#FFFFFF" strokeWidth={1.7} />
+          <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '700' }}>Sign out</Text>
+        </TouchableOpacity>
 
         {/* ── Footer ────────────────────────────────────────────── */}
         <Text
@@ -670,7 +683,7 @@ export default function ProfileScreen() {
             {
               color: colors.textTertiary,
               textAlign: 'center',
-              marginTop: space.xl,
+              marginTop: space.lg,
             },
           ]}
         >
