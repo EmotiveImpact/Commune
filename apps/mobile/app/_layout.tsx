@@ -270,6 +270,7 @@ export default function RootLayout() {
               <Stack.Screen name="analytics" options={{ headerShown: false }} />
               <Stack.Screen name="group-hub" options={{ headerShown: false }} />
               <Stack.Screen name="settle-up" options={{ headerShown: false }} />
+              <Stack.Screen name="settle-up-success" options={{ headerShown: false }} />
               <Stack.Screen name="funds" options={{ headerShown: false }} />
               <Stack.Screen name="templates" options={{ headerShown: false }} />
               <Stack.Screen name="member-profile" options={{ headerShown: false }} />

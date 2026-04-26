@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import { RefreshControl, ScrollView, Text, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQueryClient } from '@tanstack/react-query';
@@ -159,6 +160,139 @@ function GroupHero({ group, onSwitch, onManage, onMembers }: {
         <Button label="Members" variant="secondary" icon={IconUsers} onPress={onMembers} style={{ flex: 1 }} />
       </View>
     </View>
+  );
+}
+
+/* ─── Hero balance card (Mock 1) ─────────────────────────────────────────── */
+
+/**
+ * Sage-gradient hero balance card. Sits between GroupHero and StatsRow.
+ * Shows the user's net position in this group (paid − share) as a single
+ * dominant amount with an uppercase eyebrow and a meta line of context.
+ *
+ * Uses inline gradient hex stops (not colors.*) because those three values
+ * ARE the gradient definition — they're not theme tokens, they're a recipe.
+ */
+function HeroBalanceCard({ group, userId, monthKey }: {
+  group: GroupWithMembers; userId: string; monthKey: string;
+}) {
+  const { data: stats, isLoading: statsLoading } = useDashboardStats(group.id, userId, monthKey);
+  const { data: expenses } = useGroupExpenses(group.id);
+
+  const active = useMemo(
+    () => (group.members ?? []).filter((m) => m.status === 'active'),
+    [group.members],
+  );
+  const visibleAvatars = active.slice(0, 5);
+  const overflow = Math.max(0, active.length - visibleAvatars.length);
+
+  const net = (stats?.amount_paid ?? 0) - (stats?.your_share ?? 0);
+  const tone: 'owed' | 'owe' | 'settled' =
+    net > 0.005 ? 'owed' : net < -0.005 ? 'owe' : 'settled';
+
+  const eyebrow = tone === 'owed' ? 'You are owed' : tone === 'owe' ? 'You owe' : 'All settled';
+  const amountText = tone === 'settled'
+    ? formatCurrency(0, group.currency)
+    : formatCurrency(Math.abs(net), group.currency);
+
+  const expenseCount = expenses?.length ?? null;
+  const memberLabel = `${active.length} member${active.length === 1 ? '' : 's'}`;
+  const expenseLabel = expenseCount !== null
+    ? ` · ${expenseCount} expense${expenseCount === 1 ? '' : 's'}`
+    : '';
+
+  return (
+    <LinearGradient
+      colors={['#1F7A6A', '#2A8A78', '#36A08C']}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={{ borderRadius: 18, padding: 18 }}
+    >
+      <Text
+        style={{
+          fontSize: 11,
+          fontWeight: '700',
+          letterSpacing: 0.8,
+          color: 'rgba(255,255,255,0.78)',
+          textTransform: 'uppercase',
+        }}
+      >
+        {eyebrow}
+      </Text>
+
+      {statsLoading ? (
+        <SkeletonBlock
+          height={44}
+          width="60%"
+          radius={radius.chip}
+          style={{ marginTop: 8, backgroundColor: 'rgba(255,255,255,0.18)' }}
+        />
+      ) : (
+        <Text
+          style={{
+            fontSize: 38,
+            fontWeight: '700',
+            letterSpacing: -1.2,
+            color: '#FFFFFF',
+            marginTop: 6,
+            fontVariant: ['tabular-nums'],
+          }}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+        >
+          {tone === 'settled' ? '—' : amountText}
+        </Text>
+      )}
+
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12, gap: space.sm }}>
+        <Text
+          style={{
+            fontSize: 12,
+            color: 'rgba(255,255,255,0.86)',
+            flexShrink: 1,
+          }}
+          numberOfLines={1}
+        >
+          {memberLabel}{expenseLabel}{active.length > 0 ? ' · ' : ''}
+        </Text>
+        {active.length > 0 ? (
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            {visibleAvatars.map((m, i) => (
+              <View
+                key={m.id}
+                style={{
+                  marginLeft: i === 0 ? 0 : -6,
+                  borderWidth: 1.5,
+                  borderColor: '#2A8A78',
+                  borderRadius: 12,
+                }}
+              >
+                <Avatar name={m.user?.name ?? '?'} size={22} uri={m.user?.avatar_url ?? null} />
+              </View>
+            ))}
+            {overflow > 0 ? (
+              <View
+                style={{
+                  marginLeft: -6,
+                  width: 22,
+                  height: 22,
+                  borderRadius: 11,
+                  borderWidth: 1.5,
+                  borderColor: '#2A8A78',
+                  backgroundColor: 'rgba(255,255,255,0.22)',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Text style={{ fontSize: 9, fontWeight: '700', color: '#FFFFFF' }}>
+                  +{overflow}
+                </Text>
+              </View>
+            ) : null}
+          </View>
+        ) : null}
+      </View>
+    </LinearGradient>
   );
 }
 
@@ -532,6 +666,7 @@ export default function GroupsScreen() {
         ) : (
           <>
             <GroupHero group={activeGroup} onSwitch={openSwitch} onManage={goManage} onMembers={goMembers} />
+            <HeroBalanceCard group={activeGroup} userId={userId} monthKey={monthKey} />
             <StatsRow groupId={activeGroup.id} userId={userId} currency={activeGroup.currency} monthKey={monthKey} />
             <MembersSection group={activeGroup} currentUserId={userId} monthKey={monthKey} onSeeAll={goMembers} onInvite={goMembers} />
             <RecentActivity group={activeGroup} onSeeAll={goExpenses} />

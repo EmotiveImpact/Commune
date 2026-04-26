@@ -1,16 +1,18 @@
-import { useMemo, type ReactNode } from 'react';
+import { useMemo } from 'react';
 import { Alert, ActivityIndicator, Linking, Pressable, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { IconCalendar, IconChevronLeft, IconReceipt } from '@tabler/icons-react-native';
+import { IconChevronLeft, IconReceipt } from '@tabler/icons-react-native';
 import type { PaymentRecord } from '@commune/types';
+import { SplitMethod } from '@commune/types';
 import { formatCurrency, formatDate } from '@commune/utils';
-import { EmptyState, IconTile, Screen, SkeletonBlock } from '@/components/primitives';
+import { Avatar, EmptyState, Screen, SkeletonBlock } from '@/components/primitives';
 import { colors, radius, space, getCategoryMeta } from '@/constants/design';
 import { useAuthStore } from '@/stores/auth';
 import { useGroupStore } from '@/stores/group';
 import {
   getExpenseBillingDueDate,
+  useArchiveExpense,
   useExpenseDetail,
   useMarkPayment,
 } from '@/hooks/use-expenses';
@@ -37,41 +39,12 @@ function personColors(userId: string | null | undefined, isYou: boolean) {
   return PERSON_PALETTE[hashId(userId) % PERSON_PALETTE.length]!;
 }
 
-function initial(name: string | null | undefined) {
-  return name?.trim().charAt(0).toUpperCase() || '?';
-}
-
-/* ── Date helpers ─────────────────────────────────────────────────────────── */
-function todayKey(): string {
-  const n = new Date();
-  return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`;
-}
-
-function dayDelta(fromKey: string, toKey: string): number {
-  const [ay, am, ad] = fromKey.split('-').map(Number);
-  const [by, bm, bd] = toKey.split('-').map(Number);
-  return Math.round(
-    (Date.UTC(by!, (bm ?? 1) - 1, bd ?? 1) - Date.UTC(ay!, (am ?? 1) - 1, ad ?? 1)) /
-      86_400_000,
-  );
-}
-
-function heroStatusLabel(dueKey: string | null, fullyPaid: boolean): string {
-  if (fullyPaid) return 'SETTLED';
-  if (!dueKey) return 'DUE';
-  const d = dayDelta(todayKey(), dueKey);
-  if (d < 0) return `OVERDUE · ${Math.abs(d)}d`;
-  if (d === 0) return 'DUE TODAY';
-  return `DUE IN ${d}d`;
-}
-
-function dueRowState(dueKey: string | null): { title: string; caption: string } {
-  if (!dueKey) return { title: 'No due date', caption: '' };
-  const d = dayDelta(todayKey(), dueKey);
-  const formatted = formatDate(dueKey);
-  if (d < 0) return { title: formatted, caption: `Overdue by ${Math.abs(d)} day${Math.abs(d) === 1 ? '' : 's'}` };
-  if (d === 0) return { title: formatted, caption: 'Due today' };
-  return { title: formatted, caption: `Due in ${d} day${d === 1 ? '' : 's'}` };
+/* ── Mock 8 hero amount: split currency symbol from digits ────────────────── */
+function splitFormattedAmount(formatted: string): { symbol: string; digits: string } {
+  // formatCurrency('GBP') → "£1,234.56"; pull off the leading non-digit run.
+  const m = formatted.match(/^([^\d-]*)(.+)$/);
+  if (!m) return { symbol: '', digits: formatted };
+  return { symbol: (m[1] ?? '').trim(), digits: m[2] ?? formatted };
 }
 
 function deriveReceiptFilename(url: string | null | undefined): string {
@@ -84,18 +57,7 @@ function deriveReceiptFilename(url: string | null | undefined): string {
   }
 }
 
-/* ── Shared inline styles ─────────────────────────────────────────────────── */
-const cardStyle = {
-  backgroundColor: colors.bgSurface,
-  borderRadius: 14,
-  borderWidth: 1,
-  borderColor: colors.borderSubtle,
-  padding: 12,
-  flexDirection: 'row' as const,
-  alignItems: 'center' as const,
-  gap: space.md,
-};
-
+/* ── Section header used across non-hero sections ─────────────────────────── */
 const sectionLabelStyle = {
   fontSize: 11,
   fontWeight: '700' as const,
@@ -104,31 +66,6 @@ const sectionLabelStyle = {
   color: colors.textTertiary,
   marginBottom: space.xs,
 };
-
-/* ── Detail row component ─────────────────────────────────────────────────── */
-function DetailRow({ tile, title, caption }: { tile: ReactNode; title: string; caption: string }) {
-  return (
-    <View style={cardStyle}>
-      {tile}
-      <View style={{ flex: 1 }}>
-        <Text
-          style={{ fontSize: 14, fontWeight: '700', color: colors.textPrimary }}
-          numberOfLines={1}
-        >
-          {title}
-        </Text>
-        {caption ? (
-          <Text
-            style={{ fontSize: 12, color: colors.textTertiary, marginTop: 2 }}
-            numberOfLines={1}
-          >
-            {caption}
-          </Text>
-        ) : null}
-      </View>
-    </View>
-  );
-}
 
 /* ─────────────────────────────────────────────────────────────────────────── */
 /*  Screen                                                                      */
@@ -147,6 +84,7 @@ export default function ExpenseDetailScreen() {
     error: expenseError,
   } = useExpenseDetail(expenseId);
   const markPayment = useMarkPayment(activeGroupId ?? '');
+  const archiveExpense = useArchiveExpense(activeGroupId ?? '');
 
   const paymentIndex = useMemo(() => {
     const map = new Map<string, PaymentRecord>();
@@ -189,26 +127,7 @@ export default function ExpenseDetailScreen() {
       >
         Expense
       </Text>
-      <TouchableOpacity
-        onPress={() => {
-          if (!expense) return;
-          hapticMedium();
-          router.push(`/expenses/${expense.id}/edit`);
-        }}
-        hitSlop={12}
-        activeOpacity={0.7}
-        disabled={!expense}
-        style={{
-          minWidth: 32,
-          alignItems: 'flex-end',
-          justifyContent: 'center',
-          opacity: expense ? 1 : 0.4,
-        }}
-      >
-        <Text style={{ fontSize: 12, fontWeight: '700', color: colors.sageInk, letterSpacing: 0.2 }}>
-          Edit
-        </Text>
-      </TouchableOpacity>
+      <View style={{ minWidth: 32 }} />
     </View>
   );
 
@@ -254,27 +173,48 @@ export default function ExpenseDetailScreen() {
   }
 
   /* ── Derived data ── */
-  const dueKey = getExpenseBillingDueDate(expense) ?? expense.due_date ?? null;
   const totalParticipants = expense.participants.length;
   const paidIds = new Set(
     expense.payment_records.filter((p) => p.status !== 'unpaid').map((p) => p.user_id),
   );
   const fullyPaid =
     totalParticipants > 0 && expense.participants.every((p) => paidIds.has(p.user_id));
-  const heroLabel = heroStatusLabel(dueKey, fullyPaid);
   const catMeta = getCategoryMeta(expense.category);
-  const paidByName = expense.paid_by_user?.name ?? null;
+  const CatIcon = catMeta.icon;
+  const paidByName = expense.paid_by_user?.name ?? 'Unknown';
   const paidByIsYou = !!user && expense.paid_by_user_id === user.id;
-  const categoryLabel = formatCategoryLabel(expense.category);
-  const due = dueRowState(dueKey);
 
   const myParticipant =
     user != null ? expense.participants.find((p) => p.user_id === user.id) ?? null : null;
   const myStatus = user ? paymentIndex.get(user.id)?.status ?? 'unpaid' : 'unpaid';
   const myIsPaid = myStatus !== 'unpaid';
-  // Hide CTA if the user is the upfront payer AND already paid — nothing for them to toggle
-  // meaningfully when they paid the vendor and also covered their share.
-  const showMarkCta = !!myParticipant && !(paidByIsYou && myIsPaid);
+
+  // Settle-all: only meaningful if there's anything left to settle for the
+  // current user. We reuse the same handler the previous screen used.
+  const canMarkSettled = !!myParticipant && !(paidByIsYou && myIsPaid) && !fullyPaid;
+
+  const groupBillingDueKey = getExpenseBillingDueDate(expense) ?? expense.due_date ?? null;
+  const dateForMeta = groupBillingDueKey ?? expense.created_at;
+
+  /* ── Group/note line: "Paid by Sarah · 23 Apr · <group/category>" ── */
+  // We don't have a populated `group_name` field guaranteed on the detail
+  // payload, so we fall back to the category label. This keeps the third
+  // segment populated and meaningful even when the group label isn't
+  // hydrated by the API.
+  const expenseRecord = expense as unknown as Record<string, unknown>;
+  const rawGroupName = expenseRecord.group_name;
+  const rawGroup = expenseRecord.group;
+  const groupNameFromObject =
+    rawGroup && typeof rawGroup === 'object' && 'name' in rawGroup
+      ? (rawGroup as { name?: unknown }).name
+      : undefined;
+  const groupNameCandidate =
+    typeof rawGroupName === 'string' && rawGroupName.trim().length > 0
+      ? rawGroupName.trim()
+      : typeof groupNameFromObject === 'string' && groupNameFromObject.trim().length > 0
+        ? groupNameFromObject.trim()
+        : null;
+  const groupName = groupNameCandidate ?? formatCategoryLabel(expense.category);
 
   async function handleToggleMarkPaid() {
     if (!user || !myParticipant || !expense) return;
@@ -292,6 +232,38 @@ export default function ExpenseDetailScreen() {
     }
   }
 
+  function handleEdit() {
+    if (!expense) return;
+    hapticMedium();
+    router.push(`/expenses/${expense.id}/edit`);
+  }
+
+  function handleDelete() {
+    if (!expense) return;
+    hapticWarning();
+    Alert.alert(
+      'Delete expense?',
+      'This will archive the expense for everyone in the group. You can’t undo this.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await archiveExpense.mutateAsync(expense.id);
+              hapticSuccess();
+              router.back();
+            } catch (err) {
+              hapticWarning();
+              Alert.alert('Delete failed', getErrorMessage(err));
+            }
+          },
+        },
+      ],
+    );
+  }
+
   const receiptUrl = expense.receipt_url;
   function handleOpenReceipt() {
     if (!receiptUrl) return;
@@ -300,14 +272,30 @@ export default function ExpenseDetailScreen() {
   }
 
   const hasReceipt = !!receiptUrl;
-  const payerInitialColors = personColors(expense.paid_by_user_id, paidByIsYou);
 
-  /* ── Render ── */
-  const myShareAmount = myParticipant?.share_amount ?? 0;
-  const ctaAmountLabel = formatCurrency(myShareAmount, expense.currency);
-  const ctaLabel = myIsPaid
-    ? `Mark as unpaid · ${ctaAmountLabel}`
-    : `Mark as paid · ${ctaAmountLabel}`;
+  /* ── Hero amount: split currency symbol from digits (Mock 8) ── */
+  const formattedAmount = formatCurrency(expense.amount, expense.currency);
+  const { symbol: amountSymbol, digits: amountDigits } = splitFormattedAmount(formattedAmount);
+
+  /* ── Split breakdown (Mock 8): 4-col grid, equal-share label ── */
+  // Reuse server-computed share amounts; never recompute splits on-device.
+  const isEqualSplit = expense.split_method === SplitMethod.EQUAL;
+  const equalShareAmount = isEqualSplit
+    ? expense.participants[0]?.share_amount ?? 0
+    : null;
+  const splitHeaderLabel = (() => {
+    if (expense.split_method === SplitMethod.PERCENTAGE) {
+      return `Split by % · ${totalParticipants} ${totalParticipants === 1 ? 'way' : 'ways'}`;
+    }
+    if (expense.split_method === SplitMethod.CUSTOM) {
+      return `Custom split · ${totalParticipants} ${totalParticipants === 1 ? 'way' : 'ways'}`;
+    }
+    return `Split equally · ${totalParticipants} ${totalParticipants === 1 ? 'way' : 'ways'}`;
+  })();
+  const splitHeaderRight =
+    isEqualSplit && equalShareAmount != null
+      ? `${formatCurrency(equalShareAmount, expense.currency)} each`
+      : null;
 
   return (
     <Screen>
@@ -317,231 +305,223 @@ export default function ExpenseDetailScreen() {
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{
-          paddingTop: space.md,
+          paddingTop: space.lg,
           paddingBottom: 24,
           paddingHorizontal: space.gutter,
-          gap: space.base,
+          gap: space.lg,
         }}
         showsVerticalScrollIndicator={false}
       >
-        {/* Dark-ink hero */}
-        <View
-          style={{
-            backgroundColor: colors.bgInk,
-            borderRadius: radius.hero,
-            padding: space.xl,
-          }}
-        >
-          <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: space.md }}>
-            <View style={{ flex: 1 }}>
+        {/* ─── Hero (centered, receipt-style) ────────────────────────────── */}
+        <View style={{ alignItems: 'center', paddingVertical: space.md }}>
+          {/* 52×52 category icon-tile */}
+          <View
+            style={{
+              width: 52,
+              height: 52,
+              borderRadius: 16,
+              backgroundColor: catMeta.bg,
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginBottom: space.base,
+            }}
+          >
+            <CatIcon size={26} color={catMeta.color} strokeWidth={1.7} />
+          </View>
+
+          {/* 50px tabular-nums amount with currency symbol in textMuted */}
+          <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
+            {amountSymbol ? (
+              <Text
+                style={{
+                  fontSize: 28,
+                  fontWeight: '600',
+                  color: colors.textMuted,
+                  marginRight: 2,
+                  fontVariant: ['tabular-nums'],
+                  letterSpacing: -0.5,
+                }}
+              >
+                {amountSymbol}
+              </Text>
+            ) : null}
+            <Text
+              style={{
+                fontSize: 50,
+                fontWeight: '700',
+                color: colors.textPrimary,
+                letterSpacing: -1.2,
+                fontVariant: ['tabular-nums'],
+                lineHeight: 56,
+              }}
+              numberOfLines={1}
+            >
+              {amountDigits}
+            </Text>
+          </View>
+
+          {/* "what" line */}
+          <Text
+            style={{
+              fontSize: 15,
+              fontWeight: '500',
+              color: colors.textSecondary,
+              marginTop: 6,
+              textAlign: 'center',
+              maxWidth: '90%',
+            }}
+            numberOfLines={2}
+          >
+            {expense.title}
+          </Text>
+
+          {/* Meta line: "Paid by Sarah · 23 Apr · <group>" */}
+          <Text
+            style={{
+              fontSize: 12,
+              color: colors.textMuted,
+              marginTop: 6,
+              textAlign: 'center',
+            }}
+            numberOfLines={2}
+          >
+            {'Paid by '}
+            <Text style={{ fontWeight: '700', color: colors.textMuted }}>
+              {paidByIsYou ? 'You' : paidByName}
+            </Text>
+            {`  ·  ${formatDate(dateForMeta)}  ·  ${groupName}`}
+          </Text>
+        </View>
+
+        {/* ─── Split breakdown card (Mock 8) ─────────────────────────────── */}
+        <View style={{ gap: space.sm }}>
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              paddingHorizontal: 2,
+            }}
+          >
+            <Text style={sectionLabelStyle}>{splitHeaderLabel}</Text>
+            {splitHeaderRight ? (
               <Text
                 style={{
                   fontSize: 11,
                   fontWeight: '700',
-                  letterSpacing: 0.8,
-                  color: 'rgba(255,255,255,0.55)',
+                  color: colors.textTertiary,
+                  letterSpacing: 0.4,
+                  fontVariant: ['tabular-nums'],
                   textTransform: 'uppercase',
-                }}
-                numberOfLines={1}
-              >
-                {expense.title}
-              </Text>
-              <Text
-                style={{
-                  marginTop: space.sm,
-                  fontSize: 32,
-                  fontWeight: '700',
-                  color: colors.textInverse,
-                  letterSpacing: -0.5,
-                }}
-                numberOfLines={1}
-              >
-                {formatCurrency(expense.amount, expense.currency)}
-              </Text>
-            </View>
-            <View
-              style={{
-                backgroundColor: 'rgba(255,255,255,0.12)',
-                borderRadius: radius.pill,
-                paddingHorizontal: 10,
-                paddingVertical: 5,
-              }}
-            >
-              <Text
-                style={{
-                  fontSize: 10,
-                  fontWeight: '700',
-                  color: colors.textInverse,
-                  letterSpacing: 0.3,
-                  textTransform: 'uppercase',
+                  marginBottom: space.xs,
                 }}
               >
-                {heroLabel}
+                {splitHeaderRight}
               </Text>
-            </View>
+            ) : null}
           </View>
 
-          <Text
+          <View
             style={{
-              marginTop: space.lg,
-              fontSize: 12,
-              lineHeight: 18,
-              color: 'rgba(255,255,255,0.72)',
+              backgroundColor: colors.bgSurface,
+              borderRadius: radius.card,
+              borderWidth: 1,
+              borderColor: colors.borderSubtle,
+              paddingVertical: space.lg,
+              paddingHorizontal: space.md,
+              flexDirection: 'row',
+              flexWrap: 'wrap',
+              rowGap: space.lg,
             }}
           >
-            {'Paid by '}
-            <Text style={{ fontWeight: '700', color: colors.textInverse }}>
-              {paidByName ?? '—'}
-            </Text>
-            {' · '}
-            <Text style={{ fontWeight: '700', color: colors.textInverse }}>
-              {formatDate(expense.created_at)}
-            </Text>
-            {' · '}
-            {categoryLabel}
-          </Text>
-        </View>
-
-        {/* Details */}
-        <View style={{ gap: space.sm, marginTop: space.sm }}>
-          <Text style={sectionLabelStyle}>Details</Text>
-
-          <DetailRow
-            tile={
-              <IconTile
-                icon={catMeta.icon as never}
-                color={catMeta.color}
-                bg={catMeta.bg}
-                size={40}
-              />
-            }
-            title={categoryLabel}
-            caption="Category"
-          />
-
-          <DetailRow
-            tile={
-              <IconTile
-                icon={IconCalendar}
-                color={colors.warnText}
-                bg={colors.warnBg}
-                size={40}
-              />
-            }
-            title={due.title}
-            caption={due.caption || 'Due date'}
-          />
-
-          <DetailRow
-            tile={
-              <View
-                style={{
-                  width: 40,
-                  height: 40,
-                  borderRadius: 12,
-                  backgroundColor: payerInitialColors.bg,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <Text style={{ fontSize: 15, fontWeight: '700', color: payerInitialColors.fg }}>
-                  {initial(paidByName)}
-                </Text>
-              </View>
-            }
-            title={`${paidByName ?? 'Unknown'}${paidByIsYou ? ' · You' : ''}`}
-            caption="Paid by"
-          />
-        </View>
-
-        {/* Split */}
-        <View style={{ gap: space.sm, marginTop: space.sm }}>
-          <Text style={sectionLabelStyle}>
-            Split · {totalParticipants} member{totalParticipants === 1 ? '' : 's'}
-          </Text>
-
-          {expense.participants.map((participant) => {
-            const isYou = !!user && participant.user_id === user.id;
-            const status = paymentIndex.get(participant.user_id)?.status ?? 'unpaid';
-            const paid = status !== 'unpaid';
-            const pc = personColors(participant.user_id, isYou);
-            const name = participant.user?.name ?? 'Unknown';
-            return (
-              <View
-                key={participant.id}
-                style={{
-                  backgroundColor: colors.bgSurface,
-                  borderRadius: 14,
-                  borderWidth: 1,
-                  borderColor: colors.borderSubtle,
-                  paddingVertical: 12,
-                  paddingHorizontal: 14,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: space.md,
-                }}
-              >
+            {expense.participants.map((participant) => {
+              const isYou = !!user && participant.user_id === user.id;
+              const pc = personColors(participant.user_id, isYou);
+              const name = participant.user?.name ?? 'Unknown';
+              const displayName = isYou ? 'You' : name.split(/\s+/)[0] ?? name;
+              return (
                 <View
+                  key={participant.id}
                   style={{
-                    width: 32,
-                    height: 32,
-                    borderRadius: 16,
-                    backgroundColor: pc.bg,
+                    width: '25%',
                     alignItems: 'center',
-                    justifyContent: 'center',
+                    paddingHorizontal: 2,
                   }}
                 >
-                  <Text style={{ fontSize: 13, fontWeight: '700', color: pc.fg }}>
-                    {initial(name)}
-                  </Text>
-                </View>
-                <Text
-                  style={{ fontSize: 13, fontWeight: '700', color: colors.textPrimary, flex: 1 }}
-                  numberOfLines={1}
-                >
-                  {name}
-                  {isYou ? (
-                    <Text style={{ fontWeight: '500', color: colors.textTertiary }}> · you</Text>
-                  ) : null}
-                </Text>
-                <Text
-                  style={{
-                    fontSize: 12,
-                    color: colors.textTertiary,
-                    fontVariant: ['tabular-nums'],
-                  }}
-                >
-                  {formatCurrency(participant.share_amount, expense.currency)}
-                </Text>
-                <View
-                  style={{
-                    paddingHorizontal: 10,
-                    paddingVertical: 4,
-                    borderRadius: radius.pill,
-                    backgroundColor: paid ? colors.sageSoft : '#F3F1EC',
-                  }}
-                >
+                  <Avatar name={name} size={44} bg={pc.bg} fg={pc.fg} />
                   <Text
                     style={{
                       fontSize: 11,
-                      fontWeight: '700',
-                      letterSpacing: 0.3,
-                      color: paid ? colors.sageInk : colors.warnText,
+                      fontWeight: '500',
+                      color: isYou ? colors.sage : colors.textMuted,
+                      marginTop: 6,
+                      textAlign: 'center',
                     }}
+                    numberOfLines={1}
                   >
-                    {paid ? 'Paid' : 'Owes'}
+                    {displayName}
+                  </Text>
+                  <Text
+                    style={{
+                      fontSize: 12.5,
+                      fontWeight: '700',
+                      color: isYou ? colors.sage : colors.textPrimary,
+                      marginTop: 2,
+                      fontVariant: ['tabular-nums'],
+                      textAlign: 'center',
+                    }}
+                    numberOfLines={1}
+                  >
+                    {formatCurrency(participant.share_amount, expense.currency)}
                   </Text>
                 </View>
-              </View>
-            );
-          })}
+              );
+            })}
+          </View>
         </View>
 
-        {/* Receipt (only if URL exists) */}
+        {/* ─── Action bar: Edit / Mark settled / Delete ─────────────────── */}
+        <View style={{ flexDirection: 'row', gap: space.sm, marginTop: space.xs }}>
+          <ActionButton
+            label="Edit"
+            tone="subtle"
+            onPress={handleEdit}
+            disabled={false}
+          />
+          <ActionButton
+            label={fullyPaid ? 'Settled' : myIsPaid ? 'Mark unpaid' : 'Mark settled'}
+            tone="subtle"
+            onPress={handleToggleMarkPaid}
+            disabled={!canMarkSettled || markPayment.isPending}
+            loading={markPayment.isPending}
+          />
+          <ActionButton
+            label="Delete"
+            tone="danger"
+            onPress={handleDelete}
+            disabled={archiveExpense.isPending}
+            loading={archiveExpense.isPending}
+          />
+        </View>
+
+        {/* ─── Receipt (preserved from existing screen) ─────────────────── */}
         {hasReceipt ? (
           <View style={{ gap: space.sm, marginTop: space.sm }}>
             <Text style={sectionLabelStyle}>Receipt</Text>
-            <TouchableOpacity onPress={handleOpenReceipt} activeOpacity={0.7} style={cardStyle}>
+            <TouchableOpacity
+              onPress={handleOpenReceipt}
+              activeOpacity={0.7}
+              style={{
+                backgroundColor: colors.bgSurface,
+                borderRadius: 14,
+                borderWidth: 1,
+                borderColor: colors.borderSubtle,
+                padding: 12,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: space.md,
+              }}
+            >
               <View
                 style={{
                   width: 40,
@@ -570,42 +550,53 @@ export default function ExpenseDetailScreen() {
           </View>
         ) : null}
       </ScrollView>
-
-      {/* Pinned bottom action — sibling to ScrollView, lives outside scroll */}
-      {showMarkCta ? (
-        <View
-          style={{
-            paddingHorizontal: space.gutter,
-            paddingTop: 12,
-            paddingBottom: insets.bottom + 12,
-            borderTopWidth: 1,
-            borderTopColor: colors.border,
-            backgroundColor: colors.bgBase,
-          }}
-        >
-          <TouchableOpacity
-            onPress={handleToggleMarkPaid}
-            activeOpacity={0.85}
-            disabled={markPayment.isPending}
-            style={{
-              height: 52,
-              borderRadius: 14,
-              backgroundColor: '#1f2330',
-              alignItems: 'center',
-              justifyContent: 'center',
-              opacity: markPayment.isPending ? 0.7 : 1,
-            }}
-          >
-            {markPayment.isPending ? (
-              <ActivityIndicator color="#FFFFFF" />
-            ) : (
-              <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '700' }}>
-                {ctaLabel}
-              </Text>
-            )}
-          </TouchableOpacity>
-        </View>
-      ) : null}
     </Screen>
+  );
+}
+
+/* ── ActionButton: Edit / Mark settled / Delete ───────────────────────────── */
+function ActionButton({
+  label,
+  tone,
+  onPress,
+  disabled,
+  loading,
+}: {
+  label: string;
+  tone: 'subtle' | 'danger';
+  onPress: () => void;
+  disabled?: boolean;
+  loading?: boolean;
+}) {
+  const isDanger = tone === 'danger';
+  const bg = isDanger ? colors.dangerBg : colors.bgSurface;
+  const fg = isDanger ? colors.dangerText : colors.textPrimary;
+  const borderColor = isDanger ? 'transparent' : colors.border;
+
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      disabled={disabled || loading}
+      activeOpacity={0.7}
+      style={{
+        flex: 1,
+        height: 46,
+        borderRadius: 14,
+        backgroundColor: bg,
+        borderWidth: 1,
+        borderColor,
+        alignItems: 'center',
+        justifyContent: 'center',
+        opacity: disabled || loading ? 0.5 : 1,
+      }}
+    >
+      {loading ? (
+        <ActivityIndicator color={fg} size="small" />
+      ) : (
+        <Text style={{ fontSize: 13.5, fontWeight: '700', color: fg, letterSpacing: 0.1 }}>
+          {label}
+        </Text>
+      )}
+    </TouchableOpacity>
   );
 }

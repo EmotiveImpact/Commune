@@ -3,18 +3,20 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
   ScrollView,
   Text,
   TextInput,
+  TouchableWithoutFeedback,
   View,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Stack, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { IconAlertTriangle, IconChevronRight, IconCloudOff, IconUsers, IconX } from '@tabler/icons-react-native';
+import { IconAlertTriangle, IconChevronDown, IconChevronRight, IconCloudOff, IconUsers, IconX } from '@tabler/icons-react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import {
   calculateEqualSplit,
@@ -29,7 +31,7 @@ import { useGroupStore } from '@/stores/group';
 import { toWorkspaceExpenseContextPayload, useCreateExpense } from '@/hooks/use-expenses';
 import { useGroup } from '@/hooks/use-groups';
 import { EmptyState, Picker, Pressable, Screen } from '@/components/primitives';
-import { colors, radius, space } from '@/constants/design';
+import { colors, getCategoryMeta, radius, space } from '@/constants/design';
 import { getErrorMessage } from '@/lib/errors';
 import { formatCategoryLabel } from '@/lib/ui';
 import {
@@ -48,6 +50,25 @@ const CURRENCY_SYMBOLS: Record<string, string> = {
 };
 const symbolFor = (code?: string) =>
   code ? CURRENCY_SYMBOLS[code] ?? `${code} ` : '£';
+
+const CURRENCY_COUNTRIES: Record<string, string> = {
+  GBP: 'United Kingdom',
+  USD: 'United States',
+  EUR: 'Eurozone',
+  CAD: 'Canada',
+  AUD: 'Australia',
+  NZD: 'New Zealand',
+  JPY: 'Japan',
+  CHF: 'Switzerland',
+  SEK: 'Sweden',
+  NOK: 'Norway',
+  DKK: 'Denmark',
+};
+
+const CURRENCY_OPTIONS = Object.keys(CURRENCY_SYMBOLS).map((code) => ({
+  value: code,
+  label: `${code} · ${CURRENCY_COUNTRIES[code] ?? code}`,
+}));
 
 const SPLIT_LABELS: Record<SplitMethod, string> = {
   [SplitMethod.EQUAL]: 'Equal',
@@ -71,7 +92,11 @@ function formatDueDate(date: Date) {
   return isToday ? `Today · ${formatted}` : formatted;
 }
 
-type SheetKey = 'split' | 'date' | 'invoiceDate' | 'paymentDueDate' | null;
+type SheetKey = 'split' | 'date' | 'invoiceDate' | 'paymentDueDate' | 'currency' | null;
+
+function categoriesSorted(active: ExpenseCategoryType): ExpenseCategoryType[] {
+  return [active, ...categories.filter((c) => c !== active)];
+}
 
 function formatOptionalDate(date: Date | null) {
   if (!date) return 'Not set';
@@ -118,8 +143,13 @@ export default function NewExpenseScreen() {
     [activeMembers]
   );
 
+  const [currencyOverride, setCurrencyOverride] = useState<string | null>(null);
+  const effectiveCurrency = currencyOverride ?? group?.currency ?? 'GBP';
   const numericAmount = Number(amount) || 0;
-  const symbol = symbolFor(group?.currency);
+  const symbol = symbolFor(effectiveCurrency);
+  const currencyChipLabel = `${effectiveCurrency} · ${
+    CURRENCY_COUNTRIES[effectiveCurrency] ?? effectiveCurrency
+  }`;
   const isValid = numericAmount > 0 && title.trim().length > 0;
   const isRecurring = recurrenceType !== 'none';
   const isWorkspace = group?.type === 'workspace';
@@ -242,7 +272,7 @@ export default function NewExpenseScreen() {
       description: description.trim() || undefined,
       category,
       amount: numericAmount,
-      currency: group.currency,
+      currency: effectiveCurrency,
       due_date: dueDate.toISOString().split('T')[0]!,
       recurrence_type: isRecurring ? recurrenceType : 'none',
       recurrence_interval: isRecurring ? 1 : undefined,
@@ -298,7 +328,7 @@ export default function NewExpenseScreen() {
         hapticWarning();
         Alert.alert(
           'Split must add up',
-          `Custom amounts must sum to ${formatCurrency(numericAmount, group.currency)}.`
+          `Custom amounts must sum to ${formatCurrency(numericAmount, effectiveCurrency)}.`
         );
         return;
       }
@@ -371,26 +401,109 @@ export default function NewExpenseScreen() {
       >
         <ScrollView
           style={{ flex: 1 }}
-          contentContainerStyle={{ paddingTop: 12, paddingBottom: 120, paddingHorizontal: space.gutter }}
+          contentContainerStyle={{ paddingTop: 12, paddingBottom: 120 }}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
         >
-          {/* Amount hero */}
-          <View style={{ alignItems: 'center', paddingTop: 24, paddingBottom: 16 }}>
-            <Text style={styles.microLabel}>Amount</Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8 }}>
-              <Text style={[styles.hero, { color: colors.textMuted, marginRight: 4 }]}>{symbol}</Text>
-              <TextInput
-                style={[styles.hero, { color: colors.textPrimary, textAlign: 'center', minWidth: 80, padding: 0 }]}
-                placeholder="0"
-                placeholderTextColor={colors.textMuted}
-                value={amount}
-                onChangeText={setAmount}
-                keyboardType="decimal-pad"
-                selectionColor={colors.sage}
-              />
-            </View>
-          </View>
+          {/* Amount hero — amount-first hierarchy */}
+          <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+            <View style={{ alignItems: 'center', paddingTop: 28, paddingBottom: 20, paddingHorizontal: space.gutter }}>
+              <Text style={styles.eyebrow}>Amount</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'baseline', marginTop: 10 }}>
+                <Text style={[styles.heroAmount, { color: colors.textMuted, marginRight: 2 }]}>{symbol}</Text>
+                <TextInput
+                  style={[styles.heroAmount, { color: colors.textPrimary, textAlign: 'left', minWidth: 80, padding: 0 }]}
+                  placeholder="0"
+                  placeholderTextColor={colors.textMuted}
+                  value={amount}
+                  onChangeText={setAmount}
+                  keyboardType="decimal-pad"
+                  selectionColor={colors.sage}
+                  accessibilityLabel="Amount"
+                />
+              </View>
 
+              {/* Currency / country chip */}
+              <Pressable
+                onPress={() => { hapticSelection(); setSheet('currency'); }}
+                accessibilityRole="button"
+                accessibilityLabel={`Currency ${currencyChipLabel}. Tap to change.`}
+                style={({ pressed }) => ({
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 6,
+                  marginTop: 14,
+                  paddingHorizontal: 12,
+                  paddingVertical: 7,
+                  borderRadius: radius.pill,
+                  backgroundColor: colors.sageSoft,
+                  opacity: pressed ? 0.8 : 1,
+                })}
+              >
+                <Text style={{ fontSize: 12, fontWeight: '700', color: colors.sageInk, letterSpacing: 0.2 }}>
+                  {currencyChipLabel}
+                </Text>
+                <IconChevronDown size={13} color={colors.sageInk} strokeWidth={2.5} />
+              </Pressable>
+            </View>
+          </TouchableWithoutFeedback>
+
+          {/* Category chips — horizontal scroll */}
+          <View style={{ paddingHorizontal: space.gutter, marginBottom: 16 }}>
+            <Text style={[styles.eyebrow, { textAlign: 'left', marginBottom: 10 }]}>Category</Text>
+          </View>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={{ paddingHorizontal: space.gutter, gap: 8, paddingBottom: 4 }}
+            style={{ marginBottom: 16 }}
+          >
+            {categoriesSorted(category).map((c) => {
+              const sel = c === category;
+              const meta = getCategoryMeta(c);
+              const Icon = meta.icon;
+              return (
+                <Pressable
+                  key={c}
+                  onPress={() => {
+                    hapticSelection();
+                    setCategory(c);
+                  }}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: sel }}
+                  accessibilityLabel={formatCategoryLabel(c)}
+                  style={({ pressed }) => ({
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 6,
+                    paddingHorizontal: 14,
+                    height: 36,
+                    borderRadius: radius.pill,
+                    backgroundColor: sel ? colors.sage : colors.bgSurface,
+                    borderWidth: 1,
+                    borderColor: sel ? colors.sage : colors.borderSubtle,
+                    opacity: pressed ? 0.85 : 1,
+                  })}
+                >
+                  <Icon size={14} color={sel ? colors.textInverse : meta.color} strokeWidth={2} />
+                  <Text
+                    style={{
+                      fontSize: 13,
+                      fontWeight: '700',
+                      color: sel ? colors.textInverse : colors.textPrimary,
+                      letterSpacing: 0.1,
+                    }}
+                  >
+                    {formatCategoryLabel(c)}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+
+          {/* Field rows */}
+          <View style={{ paddingHorizontal: space.gutter }}>
           {needsApproval ? (
             <View
               accessibilityRole="alert"
@@ -417,18 +530,6 @@ export default function NewExpenseScreen() {
               onChangeText={setTitle}
             />
           </Row>
-
-          <View style={{ marginBottom: 8 }}>
-            <Picker
-              label="Category"
-              value={category}
-              options={categories.map((c) => ({ value: c, label: formatCategoryLabel(c) }))}
-              onChange={(v) => {
-                hapticSelection();
-                setCategory(v as ExpenseCategoryType);
-              }}
-            />
-          </View>
 
           <View style={{ marginBottom: 8 }}>
             <Picker
@@ -556,6 +657,7 @@ export default function NewExpenseScreen() {
               }}
             />
           </View>
+          </View>
         </ScrollView>
 
         {/* Bottom CTA */}
@@ -602,7 +704,7 @@ export default function NewExpenseScreen() {
         customAmounts={customAmounts}
         setCustomAmounts={setCustomAmounts}
         numericAmount={numericAmount}
-        currency={group.currency}
+        currency={effectiveCurrency}
         onClose={() => setSheet(null)}
       />
 
@@ -621,6 +723,16 @@ export default function NewExpenseScreen() {
       <DateSheet
         visible={sheet === 'paymentDueDate'} title="Payment due"
         value={paymentDueDate ?? new Date()} onChange={setPaymentDueDate}
+        onClose={() => setSheet(null)}
+      />
+
+      <CurrencySheet
+        visible={sheet === 'currency'}
+        value={effectiveCurrency}
+        onChange={(code) => {
+          hapticSelection();
+          setCurrencyOverride(code);
+        }}
         onClose={() => setSheet(null)}
       />
 
@@ -652,25 +764,25 @@ function Header({
       <Pressable
         onPress={onClose}
         hitSlop={12}
-        style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1, width: 40 })}
+        style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1, minWidth: 64 })}
         accessibilityRole="button"
-        accessibilityLabel="Close"
+        accessibilityLabel="Cancel"
       >
-        <IconX size={24} color={colors.textPrimary} strokeWidth={2} />
+        <Text style={{ fontSize: 15, fontWeight: '500', color: colors.textTertiary }}>Cancel</Text>
       </Pressable>
-      <Text style={{ fontSize: 20, fontWeight: '700', color: colors.textPrimary }}>Add expense</Text>
+      <Text style={{ fontSize: 17, fontWeight: '700', color: colors.textPrimary }}>Add expense</Text>
       <Pressable
         onPress={onSave}
         hitSlop={12}
         disabled={!canSave}
         style={({ pressed }) => ({
           opacity: !canSave ? 0.4 : pressed ? 0.6 : 1,
-          width: 40, alignItems: 'flex-end',
+          minWidth: 64, alignItems: 'flex-end',
         })}
         accessibilityRole="button"
         accessibilityLabel="Save expense"
       >
-        <Text style={{ fontSize: 12, fontWeight: '700', color: colors.sageInk }}>Save</Text>
+        <Text style={{ fontSize: 15, fontWeight: '700', color: colors.sageInk }}>Save</Text>
       </Pressable>
     </View>
     </View>
@@ -810,6 +922,51 @@ function DateSheet({
       >
         <Text style={{ fontSize: 15, fontWeight: '700', color: colors.textInverse }}>Done</Text>
       </Pressable>
+    </SheetFrame>
+  );
+}
+
+function CurrencySheet({
+  visible, value, onChange, onClose,
+}: {
+  visible: boolean;
+  value: string;
+  onChange: (code: string) => void;
+  onClose: () => void;
+}) {
+  return (
+    <SheetFrame visible={visible} title="Currency" onClose={onClose}>
+      <ScrollView keyboardShouldPersistTaps="handled" style={{ maxHeight: 420 }}>
+        {CURRENCY_OPTIONS.map((opt) => {
+          const sel = value === opt.value;
+          return (
+            <Pressable
+              key={opt.value}
+              onPress={() => {
+                onChange(opt.value);
+                onClose();
+              }}
+              style={{
+                flexDirection: 'row', alignItems: 'center', gap: 12,
+                paddingVertical: 14, paddingHorizontal: 14, borderRadius: 12,
+                backgroundColor: sel ? colors.sageSoft : colors.bgSurface,
+                borderWidth: 1, borderColor: sel ? colors.sage : colors.borderSubtle,
+                marginBottom: 6,
+              }}
+            >
+              <Text style={{ width: 38, fontSize: 15, fontWeight: '700', color: colors.textPrimary }}>
+                {CURRENCY_SYMBOLS[opt.value] ?? opt.value}
+              </Text>
+              <Text style={{ flex: 1, fontSize: 14, fontWeight: '600', color: colors.textPrimary }}>
+                {opt.label}
+              </Text>
+              {sel ? (
+                <Text style={{ color: colors.sageInk, fontSize: 13, fontWeight: '700' }}>Selected</Text>
+              ) : null}
+            </Pressable>
+          );
+        })}
+      </ScrollView>
     </SheetFrame>
   );
 }
@@ -983,8 +1140,15 @@ const styles = {
     fontSize: 10, fontWeight: '700' as const, letterSpacing: 0.5,
     color: colors.textMuted, textTransform: 'uppercase' as const,
   },
-  hero: {
-    fontSize: 54, fontWeight: '700' as const, letterSpacing: -1.5,
+  eyebrow: {
+    fontSize: 11, fontWeight: '700' as const, letterSpacing: 0.8,
+    color: colors.textMuted, textTransform: 'uppercase' as const,
+    textAlign: 'center' as const,
+  },
+  heroAmount: {
+    fontSize: 64, fontWeight: '700' as const, letterSpacing: -2,
+    lineHeight: 72, includeFontPadding: false,
+    fontVariant: ['tabular-nums'] as ['tabular-nums'],
   },
   rowInput: {
     flex: 1, fontSize: 14, fontWeight: '600' as const, color: colors.textPrimary, padding: 0,

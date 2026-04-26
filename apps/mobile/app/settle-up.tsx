@@ -274,6 +274,47 @@ export default function SettleUpScreen() {
         }}
         showsVerticalScrollIndicator={false}
       >
+        {/* Step header — orients the user (Mock 4) */}
+        <View style={{ marginBottom: space.lg }}>
+          <Text
+            style={{
+              fontSize: 11,
+              fontWeight: '700',
+              letterSpacing: 0.7,
+              textTransform: 'uppercase',
+              color: colors.textMuted,
+            }}
+          >
+            Settle up
+          </Text>
+          <Text
+            style={{
+              fontSize: 26,
+              fontWeight: '700',
+              letterSpacing: -0.6,
+              color: colors.textPrimary,
+              marginTop: 6,
+            }}
+          >
+            {netIsZero && transactions.length === 0
+              ? "You're all settled"
+              : 'Who do you want to settle with?'}
+          </Text>
+          <Text
+            style={{
+              fontSize: 14,
+              fontWeight: '500',
+              color: colors.textTertiary,
+              lineHeight: 20,
+              marginTop: 6,
+            }}
+          >
+            {netIsZero && transactions.length === 0
+              ? 'Nothing is outstanding across your groups right now.'
+              : 'Pick a person below to pay them or send a reminder. One payment closes one balance.'}
+          </Text>
+        </View>
+
         {/* Hero card */}
         <View
           style={{

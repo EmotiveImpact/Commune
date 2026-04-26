@@ -1,16 +1,18 @@
-import { useMemo, useState } from 'react';
+import { type ComponentType, useMemo, useRef, useState } from 'react';
 import { Alert, ScrollView, Text, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { IconArrowDown, IconArrowUp } from '@tabler/icons-react-native';
 import {
+  IconBell,
   IconChevronLeft,
-  IconChevronRight,
   IconCrown,
   IconDotsVertical,
+  IconList,
   IconLogout,
   IconShieldCheck,
+  IconSparkles,
   IconUser,
-  IconX,
 } from '@tabler/icons-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { formatCurrency } from '@commune/utils';
@@ -95,6 +97,8 @@ export default function MemberProfileScreen() {
   const { userId, groupId } = useLocalSearchParams<{ userId: string; groupId: string }>();
   const router = useRouter();
   const currentUser = useAuthStore((s) => s.user);
+  const scrollRef = useRef<ScrollView | null>(null);
+  const activityYRef = useRef(0);
 
   const memberId = userId ?? '';
   const gId = groupId ?? '';
@@ -364,6 +368,7 @@ export default function MemberProfileScreen() {
       </View>
 
       <ScrollView
+        ref={scrollRef}
         contentContainerStyle={{
           paddingTop: 12,
           paddingBottom: 120,
@@ -371,31 +376,45 @@ export default function MemberProfileScreen() {
         }}
         showsVerticalScrollIndicator={false}
       >
-        {/* Dark-ink hero */}
+        {/* Identity hero */}
         <View
           style={{
-            backgroundColor: colors.bgInk,
-            borderRadius: radius.hero,
-            paddingTop: space.xl,
-            paddingBottom: space.lg,
-            paddingHorizontal: space.lg,
             alignItems: 'center',
+            paddingTop: space.md,
+            paddingBottom: space.lg,
           }}
         >
-          <Avatar
-            uri={user.avatar_url ?? null}
-            name={displayName}
-            size={80}
-            bg="#EADFD4"
-            fg="#1A1E2B"
-          />
+          <View
+            style={[
+              {
+                width: 84,
+                height: 84,
+                borderRadius: 42,
+                backgroundColor: colors.sageSoft,
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderWidth: 3,
+                borderColor: colors.bgSurface,
+              },
+              elevation.card,
+            ]}
+          >
+            <Avatar
+              uri={user.avatar_url ?? null}
+              name={displayName}
+              size={76}
+              bg={colors.sageSoft}
+              fg={colors.sageInk}
+            />
+          </View>
           <Text
             style={{
-              fontSize: 22,
+              fontSize: 19,
               fontWeight: '700',
-              color: colors.textInverse,
+              color: colors.textPrimary,
               marginTop: space.md,
               textAlign: 'center',
+              letterSpacing: -0.2,
             }}
             numberOfLines={1}
           >
@@ -406,7 +425,7 @@ export default function MemberProfileScreen() {
             <Text
               style={{
                 fontSize: 13,
-                color: 'rgba(255,255,255,0.6)',
+                color: colors.textMuted,
                 marginTop: 4,
                 textAlign: 'center',
               }}
@@ -415,52 +434,174 @@ export default function MemberProfileScreen() {
               {subtitle}
             </Text>
           ) : null}
-
-          {/* See all activity pill */}
-          <Pressable
-            onPress={() => {
-              hapticLight();
-              router.push('/activity');
-            }}
-            style={({ pressed }) => [
-              {
-                marginTop: space.md,
-                backgroundColor: 'rgba(255,255,255,0.12)',
-                paddingHorizontal: 14,
-                paddingVertical: 6,
-                borderRadius: 999,
-              },
-              pressed && { opacity: 0.85 },
-            ]}
-          >
-            <Text style={{ fontSize: 12, fontWeight: '700', color: colors.textInverse }}>
-              See all activity
-            </Text>
-          </Pressable>
-
-          {/* Divider */}
-          <View
-            style={{
-              height: 1,
-              backgroundColor: 'rgba(255,255,255,0.08)',
-              alignSelf: 'stretch',
-              marginTop: space.lg,
-              marginBottom: space.md,
-            }}
-          />
-
-          {/* 3-stat bar */}
-          <View style={{ flexDirection: 'row', alignSelf: 'stretch' }}>
-            <HeroStat
-              value={isMe ? '—' : balanceAmount}
-              label={isMe ? 'You' : balanceLabel}
-            />
-            <HeroStat value={String(expensesInvolvedCount)} label="Expenses" />
-            <HeroStat value={String(choresDoneCount || '—')} label="Chores done" />
-          </View>
         </View>
 
-        {/* Balance section */}
+        {/* Balance hero — sage gradient */}
+        {!isMe ? (
+          <LinearGradient
+            colors={['#1F7A6A', '#2A8A78', '#36A08C']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={[
+              {
+                borderRadius: radius.hero,
+                paddingHorizontal: space.lg,
+                paddingVertical: space.xl,
+                alignItems: 'center',
+              },
+              elevation.raised,
+            ]}
+          >
+            <Text
+              style={{
+                fontSize: 11,
+                fontWeight: '700',
+                letterSpacing: 0.8,
+                textTransform: 'uppercase',
+                color: 'rgba(255,255,255,0.75)',
+                marginBottom: space.sm,
+              }}
+              numberOfLines={1}
+            >
+              {balanceTone === 'owed'
+                ? `${firstName} owes you`
+                : balanceTone === 'owe'
+                ? `You owe ${firstName}`
+                : `Settled with ${firstName}`}
+            </Text>
+            <Text
+              style={{
+                fontSize: 38,
+                fontWeight: '700',
+                color: colors.textInverse,
+                fontVariant: ['tabular-nums'],
+                letterSpacing: -0.5,
+              }}
+              numberOfLines={1}
+            >
+              {balanceAmount}
+            </Text>
+            <Text
+              style={{
+                fontSize: 13,
+                color: 'rgba(255,255,255,0.75)',
+                marginTop: space.sm,
+                textAlign: 'center',
+              }}
+              numberOfLines={1}
+            >
+              {balanceTone === 'settled'
+                ? `across ${expensesInvolvedCount} shared ${expensesInvolvedCount === 1 ? 'expense' : 'expenses'}`
+                : `across ${unsettledBetweenCount} unsettled ${unsettledBetweenCount === 1 ? 'expense' : 'expenses'}`}
+            </Text>
+          </LinearGradient>
+        ) : (
+          // Self-view: show simple stat band instead of balance hero
+          <View
+            style={{
+              flexDirection: 'row',
+              backgroundColor: colors.bgSurface,
+              borderRadius: radius.card,
+              borderWidth: 1,
+              borderColor: colors.borderSubtle,
+              padding: space.lg,
+            }}
+          >
+            <HeroStatLight value={String(expensesInvolvedCount)} label="Expenses" />
+            <HeroStatLight value={String(choresDoneCount || '—')} label="Chores done" />
+          </View>
+        )}
+
+        {/* Action bar — Remind / Settle / View all */}
+        {!isMe ? (
+          <View
+            style={{
+              flexDirection: 'row',
+              gap: space.sm,
+              marginTop: space.lg,
+            }}
+          >
+            <ActionButton
+              icon={IconBell}
+              label="Remind"
+              tone="primary"
+              disabled={balanceTone !== 'owed'}
+              onPress={() => {
+                hapticMedium();
+                Alert.alert(
+                  'Remind',
+                  `We'll let ${firstName} know about the outstanding balance.`,
+                );
+              }}
+            />
+            <ActionButton
+              icon={IconSparkles}
+              label="Settle"
+              tone="outline"
+              disabled={balanceTone === 'settled'}
+              onPress={() => {
+                hapticLight();
+                router.push('/settle-up');
+              }}
+            />
+            <ActionButton
+              icon={IconList}
+              label="View all"
+              tone="outline"
+              onPress={() => {
+                hapticLight();
+                scrollRef.current?.scrollTo({ y: activityYRef.current, animated: true });
+              }}
+            />
+          </View>
+        ) : null}
+
+        {/* Self-view: secondary "See all activity" link */}
+        {isMe ? (
+          <View style={{ alignItems: 'center', marginTop: space.lg }}>
+            <Pressable
+              onPress={() => {
+                hapticLight();
+                router.push('/activity');
+              }}
+              style={({ pressed }) => [
+                {
+                  paddingHorizontal: 14,
+                  paddingVertical: 8,
+                  borderRadius: 999,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                },
+                pressed && { opacity: 0.7 },
+              ]}
+            >
+              <Text style={{ fontSize: 12, fontWeight: '700', color: colors.textPrimary }}>
+                See all activity
+              </Text>
+            </Pressable>
+          </View>
+        ) : null}
+
+        {/* Member stats row (expenses + chores) — visible for non-self only,
+            self already has them above. */}
+        {!isMe ? (
+          <View
+            style={{
+              flexDirection: 'row',
+              backgroundColor: colors.bgSurface,
+              borderRadius: radius.card,
+              borderWidth: 1,
+              borderColor: colors.borderSubtle,
+              padding: space.lg,
+              marginTop: space.lg,
+            }}
+          >
+            <HeroStatLight value={String(expensesInvolvedCount)} label="Expenses" />
+            <HeroStatLight value={String(choresDoneCount || '—')} label="Chores done" />
+          </View>
+        ) : null}
+
+        {/* Balance breakdown — preserves original "Balance in this group" detail row */}
         {!isMe && balanceTone !== 'settled' ? (
           <View style={{ marginTop: space.xl }}>
             <Text
@@ -534,7 +675,12 @@ export default function MemberProfileScreen() {
         ) : null}
 
         {/* Recent activity section */}
-        <View style={{ marginTop: space.xl }}>
+        <View
+          style={{ marginTop: space.xl }}
+          onLayout={(e) => {
+            activityYRef.current = e.nativeEvent.layout.y;
+          }}
+        >
           <Text
             style={{
               fontSize: 10,
@@ -741,17 +887,17 @@ function MemberActionsSheet({
 }
 
 /* ============================================================================
- * HeroStat — one of the 3 columns in the hero stats bar
+ * HeroStatLight — one column in the light stat band
  * ============================================================================ */
 
-function HeroStat({ value, label }: { value: string; label: string }) {
+function HeroStatLight({ value, label }: { value: string; label: string }) {
   return (
     <View style={{ flex: 1, alignItems: 'center' }}>
       <Text
         style={{
-          fontSize: 16,
+          fontSize: 18,
           fontWeight: '700',
-          color: colors.textInverse,
+          color: colors.textPrimary,
           fontVariant: ['tabular-nums'],
         }}
         numberOfLines={1}
@@ -764,7 +910,7 @@ function HeroStat({ value, label }: { value: string; label: string }) {
           fontWeight: '700',
           letterSpacing: 0.6,
           textTransform: 'uppercase',
-          color: 'rgba(255,255,255,0.45)',
+          color: colors.textMuted,
           marginTop: 4,
         }}
         numberOfLines={1}
@@ -772,5 +918,66 @@ function HeroStat({ value, label }: { value: string; label: string }) {
         {label}
       </Text>
     </View>
+  );
+}
+
+/* ============================================================================
+ * ActionButton — one button in the 3-up Remind / Settle / View all bar
+ * ============================================================================ */
+
+function ActionButton({
+  icon: Icon,
+  label,
+  tone,
+  disabled,
+  onPress,
+}: {
+  icon: ComponentType<{ size?: number; color?: string; strokeWidth?: number }>;
+  label: string;
+  tone: 'primary' | 'outline';
+  disabled?: boolean;
+  onPress: () => void;
+}) {
+  const isPrimary = tone === 'primary';
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={disabled}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      style={({ pressed }) => [
+        {
+          flex: 1,
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 6,
+          height: 44,
+          borderRadius: radius.button,
+          backgroundColor: isPrimary ? colors.sage : colors.bgSurface,
+          borderWidth: isPrimary ? 0 : 1,
+          borderColor: colors.border,
+        },
+        pressed && !disabled && { opacity: 0.85 },
+        disabled && { opacity: 0.4 },
+      ]}
+    >
+      <Icon
+        size={16}
+        strokeWidth={1.9}
+        color={isPrimary ? colors.textInverse : colors.textPrimary}
+      />
+      <Text
+        style={{
+          fontSize: 13,
+          fontWeight: '700',
+          color: isPrimary ? colors.textInverse : colors.textPrimary,
+          letterSpacing: 0.1,
+        }}
+        numberOfLines={1}
+      >
+        {label}
+      </Text>
+    </Pressable>
   );
 }
