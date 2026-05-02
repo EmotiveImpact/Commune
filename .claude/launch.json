@@ -3,9 +3,9 @@
   "configurations": [
     {
       "name": "web-review",
-      "runtimeExecutable": "/bin/bash",
-      "runtimeArgs": ["-c", "cd /Users/augustusedem/Commune/apps/web && exec ./node_modules/.bin/vite --port 5500 --host 127.0.0.1"],
-      "port": 5500
+      "runtimeExecutable": "/usr/bin/tail",
+      "runtimeArgs": ["-f", "/dev/null"],
+      "port": 5180
     },
     {
       "name": "landing",
