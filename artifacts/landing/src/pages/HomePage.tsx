@@ -293,96 +293,66 @@ function Statement() {
 }
 
 /* ═══════════════════════════════════════════════════════════
-   STATS
+   WHY COMMUNE
    ═══════════════════════════════════════════════════════════ */
-const STATS = [
-  { n: '2,400+', l: 'Active groups' },
-  { n: '£4.2M',  l: 'Tracked & split' },
-  { n: '5',      l: 'Shared-life use cases' },
-  { n: '7 days', l: 'Free to try' },
-];
-
-function Stats() {
-  return (
-    <section className="stats">
-      <div className="stats__inner">
-        {STATS.map((s, i) => (
-          <FadeUp key={s.l} delay={i * 0.08}>
-            <div className="stats__item">
-              <span className="stats__n">{s.n}</span>
-              <span className="stats__l">{s.l}</span>
-            </div>
-          </FadeUp>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-/* ═══════════════════════════════════════════════════════════
-   WHY COMMUNE — BENTO GRID
-   ═══════════════════════════════════════════════════════════ */
-const FEATURES = [
-  {
-    id: 'finance',
-    tag: 'Finance',
-    title: 'Communal finance that actually works',
-    desc: 'Track recurring bills, split costs fairly, automate reimbursements, and maintain one financial truth across every member.',
-    img: 'https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?w=800&q=80&auto=format&fit=crop',
-  },
-  {
-    id: 'spaces',
-    tag: 'Spaces',
-    title: 'Space hubs with full context',
-    desc: 'Every space gets its own hub — members, roles, pinned notices, essentials, and shared identity in one place.',
-    img: 'https://images.unsplash.com/photo-1513694203232-719a280e022f?w=1200&q=80&auto=format&fit=crop',
-  },
-  {
-    id: 'ownership',
-    tag: 'Ownership',
-    title: 'Clear responsibilities & ownership',
-    desc: 'Assign tasks, track who owns what, set reminders, and know what needs attention before it becomes a problem.',
-    img: 'https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?w=1200&q=80&auto=format&fit=crop',
-  },
-  {
-    id: 'command',
-    tag: 'Command',
-    title: 'One centre, many spaces',
-    desc: 'Switch between a home, studio, and trip in seconds. See what is owed across all your spaces at once.',
-    img: 'https://images.unsplash.com/photo-1600880292203-757bb62b4baf?w=800&q=80&auto=format&fit=crop',
-  },
+const WHY = [
+  { n: '01', t: 'Communal finance that actually works', d: 'Track recurring bills, split costs fairly, automate reimbursements, and maintain one financial truth across every member.' },
+  { n: '02', t: 'Space hubs with full context',         d: 'Every space gets its own hub — members, roles, pinned notices, essentials, and shared identity in one place.' },
+  { n: '03', t: 'Clear responsibilities & ownership',   d: 'Assign tasks, track who owns what, set reminders, and know what needs approval before it becomes a problem.' },
+  { n: '04', t: 'One command centre, many spaces',      d: 'Switch between a home, studio, and trip in seconds. See what is owed and what needs attention across all your spaces at once.' },
 ];
 
 function Why() {
+  const [open, setOpen] = useState<number | null>(0);
+  const headRef = useRef(null);
+  const headInView = useInView(headRef, { once: true, margin: '-80px' });
+
   return (
     <section id="why" className="why">
       <div className="why__inner">
-        <FadeUp className="why__head">
-          <p className="eyebrow why__eyebrow">Why Commune</p>
-          <h2 className="why__big">Built for<br />shared life.</h2>
-          <p className="why__lead">Everything a group needs — finance, spaces, and responsibilities — in one clear place.</p>
-        </FadeUp>
+        <motion.h2
+          ref={headRef}
+          className="why__big"
+          initial={{ opacity: 0, scale: 0.88, y: 40 }}
+          animate={headInView ? { opacity: 1, scale: 1, y: 0 } : {}}
+          transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
+        >
+          WHY<br />COMMUNE?
+        </motion.h2>
 
-        <StaggerGrid className="why__bento">
-          {FEATURES.map((f) => (
-            <StaggerItem key={f.id}>
-              <motion.div
-                className="why__card"
-                whileHover={{ y: -5 }}
-                transition={{ type: 'spring', stiffness: 280, damping: 22 }}
-              >
-                <div className="why__card-img">
-                  <img src={f.img} alt={f.title} loading="lazy" />
-                </div>
-                <div className="why__card-copy">
-                  <span className="why__card-tag">{f.tag}</span>
-                  <h3 className="why__card-title">{f.title}</h3>
-                  <p className="why__card-desc">{f.desc}</p>
-                </div>
-              </motion.div>
-            </StaggerItem>
+        <div className="why__items">
+          {WHY.map((w, i) => (
+            <FadeUp key={w.n} delay={i * 0.07}>
+              <div className={`why__item ${open === i ? 'is-open' : ''}`}>
+                <button className="why__q" onClick={() => setOpen(open === i ? null : i)}>
+                  <span className="why__n">{w.n}</span>
+                  <span className="why__title">{w.t}</span>
+                  <motion.span
+                    className="why__chevron"
+                    animate={{ rotate: open === i ? 45 : 0 }}
+                    transition={{ duration: 0.25, ease: 'easeInOut' }}
+                  >
+                    +
+                  </motion.span>
+                </button>
+                <AnimatePresence initial={false}>
+                  {open === i && (
+                    <motion.p
+                      className="why__ans"
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+                      style={{ overflow: 'hidden' }}
+                    >
+                      {w.d}
+                    </motion.p>
+                  )}
+                </AnimatePresence>
+              </div>
+            </FadeUp>
           ))}
-        </StaggerGrid>
+        </div>
       </div>
     </section>
   );
@@ -586,7 +556,6 @@ export default function HomePage() {
       <main>
         <Hero />
         <Statement />
-        <Stats />
         <Why />
         <UseCases />
         <PhotoCta />
