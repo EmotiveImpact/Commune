@@ -146,12 +146,6 @@ function Hero() {
       <div className="hero__overlay" />
 
       <div className="hero__body">
-        <div className="hero__meta">
-          <span className="hero__idx">{s.idx} / 0{SLIDES.length}</span>
-          <span className="hero__rule" />
-          <span className="hero__label">{s.label}</span>
-        </div>
-
         <div className="hero__txt-wrap">
           {SLIDES.map((sl, i) => (
             <div key={sl.id} className={`hero__txt ${i === cur ? 'is-in' : ''}`}>
