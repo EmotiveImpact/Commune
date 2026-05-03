@@ -141,7 +141,7 @@ const AVATARS = [
   'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=80&h=80&q=80&auto=format&fit=crop&crop=face',
 ];
 
-const SLIDE_MS = 5500;
+const SLIDE_MS = 3500;
 
 function Hero() {
   const [cur, setCur] = useState(0);

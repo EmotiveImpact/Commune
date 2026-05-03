@@ -134,11 +134,11 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 }
 
 /* Start animation only on the active slide */
-.hero__slide.is-active .hero__img[data-pan="tl"] { animation: kb-tl 8s ease-out forwards; }
-.hero__slide.is-active .hero__img[data-pan="tr"] { animation: kb-tr 8s ease-out forwards; }
-.hero__slide.is-active .hero__img[data-pan="bl"] { animation: kb-bl 8s ease-out forwards; }
-.hero__slide.is-active .hero__img[data-pan="br"] { animation: kb-br 8s ease-out forwards; }
-.hero__slide.is-active .hero__img[data-pan="c"]  { animation: kb-c  8s ease-out forwards; }
+.hero__slide.is-active .hero__img[data-pan="tl"] { animation: kb-tl 18s ease-out forwards; }
+.hero__slide.is-active .hero__img[data-pan="tr"] { animation: kb-tr 18s ease-out forwards; }
+.hero__slide.is-active .hero__img[data-pan="bl"] { animation: kb-bl 18s ease-out forwards; }
+.hero__slide.is-active .hero__img[data-pan="br"] { animation: kb-br 18s ease-out forwards; }
+.hero__slide.is-active .hero__img[data-pan="c"]  { animation: kb-c  18s ease-out forwards; }
 
 /* Reset on inactive slides so animation replays on re-enter */
 .hero__slide:not(.is-active) .hero__img { animation: none; transform: scale(1.12); }
