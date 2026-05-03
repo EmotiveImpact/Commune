@@ -250,43 +250,85 @@ function Hero() {
 }
 
 /* ═══════════════════════════════════════════════════════════
-   STATEMENT
+   STATEMENT — full-width cinematic
    ═══════════════════════════════════════════════════════════ */
 function Statement() {
-  const imgRef = useRef(null);
-  const imgInView = useInView(imgRef, { once: true, margin: '-80px' });
+  const ref = useRef(null);
+  const inView = useInView(ref, { once: true, margin: '-100px' });
   return (
-    <section className="stmt">
-      <div className="stmt__inner">
-        <div className="stmt__left">
-          <FadeUp>
-            <p className="eyebrow">About Commune</p>
-            <h2 className="stmt__h2">
-              Managing shared money and shared spaces shouldn't be complicated.
-            </h2>
-          </FadeUp>
-          <FadeUp delay={0.1}>
-            <p className="stmt__body">
-              Whether you share a home, run a studio, travel in groups, or manage a
-              creative project — Commune gives you one clear place for every cost,
-              every responsibility, and every person involved.
-            </p>
-            <a href="#usecases" className="link-arrow">Explore use cases →</a>
-          </FadeUp>
-        </div>
-
+    <section className="stmt" ref={ref}>
+      <div className="stmt__bg">
+        <img
+          src="https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=1800&q=85&auto=format&fit=crop"
+          alt="People sharing life together"
+        />
+      </div>
+      <div className="stmt__overlay" />
+      <div className="stmt__body">
         <motion.div
-          ref={imgRef}
-          className="stmt__img"
-          initial={{ opacity: 0, x: 40 }}
-          animate={imgInView ? { opacity: 1, x: 0 } : {}}
-          transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
+          initial={{ opacity: 0, y: 40 }}
+          animate={inView ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.9, ease: EASE }}
         >
-          <img
-            src="https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=900&q=85&auto=format&fit=crop"
-            alt="Person living life"
-          />
+          <p className="eyebrow stmt__eyebrow">About Commune</p>
+          <h2 className="stmt__h2">
+            Simplifying shared<br />life, together.
+          </h2>
         </motion.div>
+        <motion.div
+          initial={{ opacity: 0, y: 28 }}
+          animate={inView ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.8, delay: 0.18, ease: EASE }}
+        >
+          <p className="stmt__sub">
+            Whether you share a home, run a studio, travel in groups, or manage a
+            creative project — Commune gives you one clear place for every cost,
+            every responsibility, and every person involved.
+          </p>
+          <a href="#usecases" className="btn-outline-white">Explore use cases →</a>
+        </motion.div>
+      </div>
+    </section>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   STEPS
+   ═══════════════════════════════════════════════════════════ */
+const STEPS = [
+  { n: '01', t: 'Create your space',       d: 'Name it, describe it, pick a type. Up and running in 60 seconds.' },
+  { n: '02', t: 'Invite your people',      d: 'Share a link — members join instantly, no app download required.' },
+  { n: '03', t: 'Add your costs & bills',  d: 'Connect recurring bills, one-off expenses, and shared subscriptions.' },
+  { n: '04', t: 'Assign responsibilities', d: 'Set who owns what, add reminders, and track every task to completion.' },
+  { n: '05', t: 'Stay in the loop',        d: 'Everyone sees the same live picture — balances, tasks, and updates.' },
+];
+
+function Steps() {
+  return (
+    <section className="steps">
+      <div className="steps__inner">
+        <FadeUp className="steps__left">
+          <p className="eyebrow">How it works</p>
+          <h2 className="steps__h2">Up and running<br />in minutes.</h2>
+          <p className="steps__lead">
+            No spreadsheets. No group chats. Just one place for everyone who shares your life.
+          </p>
+          <a href="https://app.ourcommune.io/signup" className="btn-dark">Start for free →</a>
+        </FadeUp>
+
+        <StaggerGrid className="steps__list">
+          {STEPS.map((s) => (
+            <StaggerItem key={s.n}>
+              <div className="step">
+                <span className="step__n">{s.n}</span>
+                <div className="step__body">
+                  <h3 className="step__t">{s.t}</h3>
+                  <p className="step__d">{s.d}</p>
+                </div>
+              </div>
+            </StaggerItem>
+          ))}
+        </StaggerGrid>
       </div>
     </section>
   );
@@ -589,6 +631,7 @@ export default function HomePage() {
         <Stats />
         <Why />
         <UseCases />
+        <Steps />
         <PhotoCta />
         <Pricing />
       </main>
