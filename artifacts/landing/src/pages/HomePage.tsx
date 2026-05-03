@@ -1,56 +1,52 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 
-/* ═══════════════════════════════════════════════════════════
-   REVEAL
-   ═══════════════════════════════════════════════════════════ */
-
+/* ─── REVEAL ─── */
 function useReveal() {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => { if (entry.isIntersecting) { el.classList.add('visible'); observer.unobserve(el); } },
-      { threshold: 0.12, rootMargin: '0px 0px -40px 0px' }
+    const obs = new IntersectionObserver(
+      ([e]) => { if (e.isIntersecting) { el.classList.add('visible'); obs.unobserve(el); } },
+      { threshold: 0.1, rootMargin: '0px 0px -48px 0px' }
     );
-    observer.observe(el);
-    return () => observer.disconnect();
+    obs.observe(el);
+    return () => obs.disconnect();
   }, []);
   return ref;
 }
-
 function Reveal({ children, className = '', delay = 0 }: { children: React.ReactNode; className?: string; delay?: number }) {
   const ref = useReveal();
-  return <div ref={ref} className={`reveal ${delay ? `reveal-delay-${delay}` : ''} ${className}`}>{children}</div>;
+  return <div ref={ref} className={`reveal ${delay ? `d${delay}` : ''} ${className}`}>{children}</div>;
 }
 
 /* ═══════════════════════════════════════════════════════════
    HEADER
    ═══════════════════════════════════════════════════════════ */
-
 function Header() {
+  const [solid, setSolid] = useState(false);
+  useEffect(() => {
+    const fn = () => setSolid(window.scrollY > 60);
+    window.addEventListener('scroll', fn, { passive: true });
+    fn();
+    return () => window.removeEventListener('scroll', fn);
+  }, []);
+
   return (
-    <header className="site-header">
-      <div className="header-inner">
-        <a href="#" className="header-logo">
-          <img src="/logo.png" alt="Commune" width={30} height={30} />
+    <header className={`hdr ${solid ? 'hdr--solid' : ''}`}>
+      <div className="hdr__inner">
+        <a href="#" className="hdr__logo">
+          <img src="/logo.png" alt="Commune" />
           <span>Commune</span>
         </a>
-
-        <nav className="header-nav">
-          <a href="#features">Features</a>
-          <a href="#how">How it works</a>
+        <nav className="hdr__nav">
+          <a href="#why">Why Commune</a>
+          <a href="#usecases">Use cases</a>
           <a href="#pricing">Pricing</a>
         </nav>
-
-        <div className="header-actions">
-          <a href="https://app.ourcommune.io" className="header-signin">Sign in</a>
-          <a href="https://app.ourcommune.io/signup" className="header-cta">
-            Get started
-            <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
-              <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </a>
+        <div className="hdr__actions">
+          <a href="https://app.ourcommune.io" className="hdr__signin">Sign in</a>
+          <a href="https://app.ourcommune.io/signup" className="hdr__cta">Get started</a>
         </div>
       </div>
     </header>
@@ -60,47 +56,46 @@ function Header() {
 /* ═══════════════════════════════════════════════════════════
    HERO SLIDESHOW
    ═══════════════════════════════════════════════════════════ */
-
-const slides = [
+const SLIDES = [
   {
     id: 'home',
     label: 'House shares',
-    index: '01',
-    image: 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=1920&q=90&auto=format&fit=crop',
-    headline: 'Your home,\nrun smoothly.',
+    idx: '01',
+    img: 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=1920&q=85&auto=format&fit=crop',
+    h: 'Your home,\nrun smoothly.',
     sub: 'Split rent, track bills, keep everyone on the same page.',
   },
   {
     id: 'couple',
     label: 'Couples',
-    index: '02',
-    image: 'https://images.unsplash.com/photo-1576502200916-3808e07386a5?w=1920&q=90&auto=format&fit=crop',
-    headline: 'Money together,\nno awkwardness.',
+    idx: '02',
+    img: 'https://images.unsplash.com/photo-1516627145497-ae6968895b74?w=1920&q=85&auto=format&fit=crop',
+    h: 'Money, together.\nNo awkwardness.',
     sub: 'Share expenses, set budgets, and settle up fairly.',
   },
   {
     id: 'workspace',
     label: 'Studios & workspaces',
-    index: '03',
-    image: 'https://images.unsplash.com/photo-1497366858526-0766f6d2769a?w=1920&q=90&auto=format&fit=crop',
-    headline: 'Your workspace,\none hub.',
-    sub: 'Shared costs, pooled subscriptions, and who owns what.',
+    idx: '03',
+    img: 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=1920&q=85&auto=format&fit=crop',
+    h: 'Your workspace,\none hub.',
+    sub: 'Shared costs, pooled tools, and clear ownership.',
   },
   {
     id: 'trip',
     label: 'Group trips',
-    index: '04',
-    image: 'https://images.unsplash.com/photo-1530789253388-582c481c54b0?w=1920&q=90&auto=format&fit=crop',
-    headline: 'Every trip,\nfully settled.',
+    idx: '04',
+    img: 'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=1920&q=85&auto=format&fit=crop',
+    h: 'Every trip,\nfully settled.',
     sub: 'Log on the go, split instantly, settle before you land.',
   },
   {
     id: 'project',
     label: 'Creative projects',
-    index: '05',
-    image: 'https://images.unsplash.com/photo-1542744173-8e7e53415bb0?w=1920&q=90&auto=format&fit=crop',
-    headline: 'Projects that\ndon\'t fall apart.',
-    sub: 'Budget visibility, task ownership, nothing lost between sessions.',
+    idx: '05',
+    img: 'https://images.unsplash.com/photo-1521737604893-d14cc237f11d?w=1920&q=85&auto=format&fit=crop',
+    h: 'Projects that\ndon\'t fall apart.',
+    sub: 'Budget visibility and shared ownership, from start to finish.',
   },
 ];
 
@@ -113,21 +108,17 @@ const AVATARS = [
 
 const SLIDE_MS = 5500;
 
-function HeroSlideshow() {
-  const [current, setCurrent] = useState(0);
+function Hero() {
+  const [cur, setCur] = useState(0);
   const [prev, setPrev] = useState<number | null>(null);
   const [progress, setProgress] = useState(0);
   const [paused, setPaused] = useState(false);
-  const startRef = useRef(Date.now());
+  const t0 = useRef(Date.now());
 
-  const goTo = useCallback((idx: number) => {
-    setPrev(current);
-    setCurrent(idx);
-    setProgress(0);
-    startRef.current = Date.now();
-  }, [current]);
-
-  const next = useCallback(() => goTo((current + 1) % slides.length), [current, goTo]);
+  const goTo = useCallback((i: number) => {
+    setPrev(cur); setCur(i); setProgress(0); t0.current = Date.now();
+  }, [cur]);
+  const next = useCallback(() => goTo((cur + 1) % SLIDES.length), [cur, goTo]);
 
   useEffect(() => {
     if (paused) return;
@@ -136,84 +127,58 @@ function HeroSlideshow() {
   }, [paused, next]);
 
   useEffect(() => {
-    setProgress(0);
-    startRef.current = Date.now();
+    setProgress(0); t0.current = Date.now();
     if (paused) return;
-    const id = setInterval(() => {
-      setProgress(Math.min(((Date.now() - startRef.current) / SLIDE_MS) * 100, 100));
-    }, 40);
+    const id = setInterval(() => setProgress(Math.min(((Date.now() - t0.current) / SLIDE_MS) * 100, 100)), 40);
     return () => clearInterval(id);
-  }, [current, paused]);
+  }, [cur, paused]);
 
-  const s = slides[current]!;
+  const s = SLIDES[cur]!;
 
   return (
-    <section
-      className="hero"
-      onMouseEnter={() => setPaused(true)}
-      onMouseLeave={() => setPaused(false)}
-    >
-      {/* Slides */}
-      {slides.map((slide, i) => (
-        <div key={slide.id} className={`hero-slide ${i === current ? 'active' : ''} ${i === prev ? 'exit' : ''}`}>
-          <img src={slide.image} alt={slide.label} className="hero-img" loading={i === 0 ? 'eager' : 'lazy'} />
+    <section className="hero" onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}>
+      {SLIDES.map((sl, i) => (
+        <div key={sl.id} className={`hero__slide ${i === cur ? 'is-active' : ''} ${i === prev ? 'is-exit' : ''}`}>
+          <img src={sl.img} alt={sl.label} className="hero__img" loading={i === 0 ? 'eager' : 'lazy'} />
         </div>
       ))}
 
-      {/* Overlay */}
-      <div className="hero-overlay" />
+      <div className="hero__overlay" />
 
-      {/* Content */}
-      <div className="hero-body">
-        <div className="hero-meta">
-          <span className="hero-index">{s.index} / 0{slides.length}</span>
-          <span className="hero-divider" />
-          <span className="hero-label">{s.label}</span>
+      <div className="hero__body">
+        <div className="hero__meta">
+          <span className="hero__idx">{s.idx} / 0{SLIDES.length}</span>
+          <span className="hero__rule" />
+          <span className="hero__label">{s.label}</span>
         </div>
 
-        <div className="hero-text">
-          {slides.map((slide, i) => (
-            <div key={slide.id} className={`hero-text-slide ${i === current ? 'in' : ''}`}>
-              <h1 className="hero-h1">
-                {slide.headline.split('\n').map((l, li) => <span key={li}>{l}<br /></span>)}
+        <div className="hero__txt-wrap">
+          {SLIDES.map((sl, i) => (
+            <div key={sl.id} className={`hero__txt ${i === cur ? 'is-in' : ''}`}>
+              <h1 className="hero__h1">
+                {sl.h.split('\n').map((l, j) => <span key={j}>{l}<br /></span>)}
               </h1>
-              <p className="hero-sub">{slide.sub}</p>
+              <p className="hero__sub">{sl.sub}</p>
             </div>
           ))}
         </div>
 
-        <div className="hero-bottom">
-          <div className="hero-proof">
-            <div className="hero-avatars">
-              {AVATARS.map((src, i) => (
-                <img key={i} src={src} alt="Member" className="hero-avatar" />
-              ))}
+        <div className="hero__foot">
+          <div className="hero__proof">
+            <div className="hero__avs">
+              {AVATARS.map((src, i) => <img key={i} src={src} alt="" className="hero__av" />)}
             </div>
-            <span className="hero-proof-text"><strong>2,400+</strong> groups doing life together</span>
+            <span className="hero__proof-txt"><strong>2,400+</strong> groups doing life together</span>
           </div>
-
-          <a href="https://app.ourcommune.io/signup" className="btn-hero">
-            Start for free
-            <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
-              <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </a>
+          <a href="https://app.ourcommune.io/signup" className="btn-hero">Start for free →</a>
         </div>
       </div>
 
       {/* Progress track */}
-      <div className="hero-track">
-        {slides.map((slide, i) => (
-          <button
-            key={slide.id}
-            className={`hero-track-item ${i === current ? 'active' : ''}`}
-            onClick={() => goTo(i)}
-            aria-label={slide.label}
-          >
-            <span
-              className="hero-track-fill"
-              style={i === current ? { width: `${progress}%` } : i < current ? { width: '100%' } : { width: '0%' }}
-            />
+      <div className="hero__track">
+        {SLIDES.map((sl, i) => (
+          <button key={sl.id} className={`hero__seg ${i === cur ? 'is-cur' : ''}`} onClick={() => goTo(i)} aria-label={sl.label}>
+            <span className="hero__fill" style={{ width: i === cur ? `${progress}%` : i < cur ? '100%' : '0%' }} />
           </button>
         ))}
       </div>
@@ -222,131 +187,43 @@ function HeroSlideshow() {
 }
 
 /* ═══════════════════════════════════════════════════════════
-   FEATURES
+   STATEMENT — big editorial block
    ═══════════════════════════════════════════════════════════ */
-
-const features = [
-  {
-    icon: '⟳',
-    title: 'Communal finance',
-    desc: 'Track recurring bills, split fairly, reimburse cleanly, and keep one financial truth across the whole group.',
-  },
-  {
-    icon: '◫',
-    title: 'Space hubs',
-    desc: 'Every space has its own hub — members, roles, pinned notices, essentials, and shared identity.',
-  },
-  {
-    icon: '◎',
-    title: 'Responsibilities & roles',
-    desc: 'Track who owns what, what needs doing, and which approvals or follow-ups are blocking the group.',
-  },
-  {
-    icon: '⌖',
-    title: 'Command centre',
-    desc: 'See what is owed, overdue, or needs attention across one or many spaces — from a single view.',
-  },
-  {
-    icon: '⊞',
-    title: 'Multi-space by design',
-    desc: 'One account can run a house, studio, workspace, trip, or project — each with its own rules.',
-  },
-  {
-    icon: '◈',
-    title: 'Trust & controls',
-    desc: 'Approvals, member roles, payment methods, and audit-friendly history — shared admin, dependable.',
-  },
+const USE_CASE_PHOTOS = [
+  { label: 'House shares', img: 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=600&q=80&auto=format&fit=crop' },
+  { label: 'Studios', img: 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=600&q=80&auto=format&fit=crop' },
+  { label: 'Group trips', img: 'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=600&q=80&auto=format&fit=crop' },
 ];
 
-function Features() {
+function Statement() {
   return (
-    <section id="features" className="section features-section">
-      <div className="section-inner">
-        <Reveal className="section-header">
-          <p className="eyebrow">Features</p>
-          <h2 className="section-h2">Everything to run a shared space</h2>
-          <p className="section-body">Built for how groups actually operate — no spreadsheets, no scattered admin.</p>
-        </Reveal>
-        <div className="features-grid">
-          {features.map((f, i) => (
-            <Reveal key={f.title} delay={Math.min(i + 1, 5) as 1 | 2 | 3 | 4 | 5}>
-              <div className="feature-card">
-                <div className="feature-glyph">{f.icon}</div>
-                <h3>{f.title}</h3>
-                <p>{f.desc}</p>
-              </div>
-            </Reveal>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ═══════════════════════════════════════════════════════════
-   HOW IT WORKS
-   ═══════════════════════════════════════════════════════════ */
-
-const steps = [
-  { n: '01', title: 'Create your space', desc: 'Set up a home, studio, workspace, project, or trip in seconds. Invite by email or link.' },
-  { n: '02', title: 'Set rules & context', desc: 'Add expenses, assign responsibilities, save key details, and define how the group runs.' },
-  { n: '03', title: 'Run the group', desc: 'See what is owed, what is due, and what needs attention — from one clear hub.' },
-];
-
-function HowItWorks() {
-  return (
-    <section id="how" className="section dark-section">
-      <div className="section-inner">
-        <Reveal className="section-header">
-          <p className="eyebrow eyebrow-light">How it works</p>
-          <h2 className="section-h2 light">Three steps to clarity</h2>
-          <p className="section-body light">From first sign-up to settled balances in under two minutes.</p>
-        </Reveal>
-        <div className="steps-grid">
-          {steps.map((s, i) => (
-            <Reveal key={s.n} delay={Math.min(i + 1, 3) as 1 | 2 | 3}>
-              <div className="step-card">
-                <p className="step-n">{s.n}</p>
-                <h3>{s.title}</h3>
-                <p>{s.desc}</p>
-              </div>
-            </Reveal>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ═══════════════════════════════════════════════════════════
-   SHOWCASE
-   ═══════════════════════════════════════════════════════════ */
-
-function Showcase() {
-  return (
-    <section className="section showcase-section">
-      <div className="section-inner">
-        <div className="showcase-grid">
+    <section className="stmt">
+      <div className="stmt__inner">
+        <div className="stmt__left">
           <Reveal>
-            <div className="showcase-img-wrap">
-              <img src="/light-app.png" alt="Commune app" />
-            </div>
+            <p className="eyebrow">About Commune</p>
+            <h2 className="stmt__h2">
+              Managing shared money and shared spaces shouldn't be complicated.
+            </h2>
           </Reveal>
-          <div className="showcase-copy">
-            <Reveal>
-              <p className="eyebrow">Built for shared spaces</p>
-              <h2 className="section-h2">One hub for homes, studios, workspaces & groups</h2>
-              <p className="section-body">Bills, responsibilities, notices, and priorities all in one place. No more screenshots, group chats, or spreadsheets nobody keeps up.</p>
-            </Reveal>
-            <Reveal delay={1}>
-              <div className="stats-row">
-                <div className="stat"><p className="stat-val">∞</p><p className="stat-lbl">Groups per account</p></div>
-                <div className="stat"><p className="stat-val">2m</p><p className="stat-lbl">Average setup time</p></div>
-                <div className="stat"><p className="stat-val">£4.2M</p><p className="stat-lbl">Expenses tracked</p></div>
-                <div className="stat"><p className="stat-val">4.9★</p><p className="stat-lbl">Average rating</p></div>
+          <Reveal delay={1}>
+            <p className="stmt__body">
+              Whether you share a home, run a studio, travel in groups, or manage a
+              creative project — Commune gives you one clear place for every cost,
+              every responsibility, and every person involved.
+            </p>
+            <a href="#usecases" className="link-arrow">Explore use cases →</a>
+          </Reveal>
+        </div>
+        <div className="stmt__photos">
+          {USE_CASE_PHOTOS.map((p, i) => (
+            <Reveal key={p.label} delay={Math.min(i + 1, 3) as 1 | 2 | 3}>
+              <div className="stmt__photo">
+                <img src={p.img} alt={p.label} />
+                <span>{p.label}</span>
               </div>
             </Reveal>
-          </div>
+          ))}
         </div>
       </div>
     </section>
@@ -354,54 +231,98 @@ function Showcase() {
 }
 
 /* ═══════════════════════════════════════════════════════════
-   TESTIMONIALS
+   WHY COMMUNE — bold + accordion
    ═══════════════════════════════════════════════════════════ */
-
-const testimonials = [
-  {
-    quote: 'Commune gave our collective one place for money, roles, and the small stuff that usually gets lost in chat. The whole group got calmer.',
-    name: 'Priya M.',
-    role: 'Creative collective, London',
-    avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=80&h=80&q=80&auto=format&fit=crop&crop=face',
-  },
-  {
-    quote: 'We used to have arguments about who paid what. Now we just open Commune. It takes ten seconds. No drama.',
-    name: 'Marcus T.',
-    role: 'House share, Manchester',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&h=80&q=80&auto=format&fit=crop&crop=face',
-  },
-  {
-    quote: 'Running a shared studio across five freelancers was chaos until Commune. Now every cost, tool, and task has a home.',
-    name: 'Aisha K.',
-    role: 'Freelancer studio, Bristol',
-    avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=80&h=80&q=80&auto=format&fit=crop&crop=face',
-  },
+const WHY = [
+  { n: '01', t: 'Communal finance that actually works', d: 'Track recurring bills, split costs fairly, automate reimbursements, and maintain one financial truth across every member.' },
+  { n: '02', t: 'Space hubs with full context', d: 'Every space gets its own hub — members, roles, pinned notices, essentials, and shared identity in one place.' },
+  { n: '03', t: 'Clear responsibilities & ownership', d: 'Assign tasks, track who owns what, set reminders, and know what needs approval before it becomes a problem.' },
+  { n: '04', t: 'One command centre, many spaces', d: 'Switch between a home, studio, and trip in seconds. See what is owed and what needs attention across all your spaces at once.' },
 ];
 
-function Testimonials() {
+function Why() {
+  const [open, setOpen] = useState<number | null>(0);
   return (
-    <section className="section testimonials-section">
-      <div className="section-inner">
-        <Reveal className="section-header">
-          <p className="eyebrow">What people say</p>
-          <h2 className="section-h2">People doing life, together</h2>
+    <section id="why" className="why">
+      <div className="why__inner">
+        <Reveal>
+          <h2 className="why__big">WHY<br />COMMUNE?</h2>
         </Reveal>
-        <div className="testimonials-grid">
-          {testimonials.map((t, i) => (
-            <Reveal key={t.name} delay={Math.min(i + 1, 3) as 1 | 2 | 3}>
-              <div className="t-card">
-                <p className="t-quote">"{t.quote}"</p>
-                <div className="t-author">
-                  <img src={t.avatar} alt={t.name} className="t-avatar" />
-                  <div>
-                    <p className="t-name">{t.name}</p>
-                    <p className="t-role">{t.role}</p>
-                  </div>
+        <div className="why__items">
+          {WHY.map((w, i) => (
+            <Reveal key={w.n} delay={Math.min(i + 1, 4) as 1 | 2 | 3 | 4}>
+              <div className={`why__item ${open === i ? 'is-open' : ''}`}>
+                <button className="why__q" onClick={() => setOpen(open === i ? null : i)}>
+                  <span className="why__n">{w.n}</span>
+                  <span className="why__title">{w.t}</span>
+                  <span className="why__chevron">{open === i ? '−' : '+'}</span>
+                </button>
+                {open === i && <p className="why__ans">{w.d}</p>}
+              </div>
+            </Reveal>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   USE CASES — photo grid
+   ═══════════════════════════════════════════════════════════ */
+const CASES = [
+  { id: 'home',      label: 'House shares',       sub: 'Rent · Bills · Chores',          img: 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=700&q=80&auto=format&fit=crop' },
+  { id: 'couple',    label: 'Couples',             sub: 'Budgets · Joint expenses',       img: 'https://images.unsplash.com/photo-1516627145497-ae6968895b74?w=700&q=80&auto=format&fit=crop' },
+  { id: 'workspace', label: 'Studios & offices',   sub: 'Shared costs · Tools · Roles',  img: 'https://images.unsplash.com/photo-1497366858526-0766f6d2769a?w=700&q=80&auto=format&fit=crop' },
+  { id: 'trip',      label: 'Group trips',         sub: 'Expenses on the go · Settle up', img: 'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=700&q=80&auto=format&fit=crop' },
+  { id: 'project',   label: 'Creative projects',   sub: 'Budget · Ownership · Handover', img: 'https://images.unsplash.com/photo-1542744173-8e7e53415bb0?w=700&q=80&auto=format&fit=crop' },
+];
+
+function UseCases() {
+  return (
+    <section id="usecases" className="cases">
+      <div className="cases__inner">
+        <Reveal className="cases__hdr">
+          <p className="eyebrow">Use cases</p>
+          <h2 className="cases__h2">Built for every way<br />people share space</h2>
+        </Reveal>
+        <div className="cases__grid">
+          {CASES.map((c, i) => (
+            <Reveal key={c.id} delay={Math.min(i + 1, 5) as 1 | 2 | 3 | 4 | 5}>
+              <div className="case-card">
+                <div className="case-card__img">
+                  <img src={c.img} alt={c.label} />
+                </div>
+                <div className="case-card__copy">
+                  <p className="case-card__label">{c.label}</p>
+                  <p className="case-card__sub">{c.sub}</p>
                 </div>
               </div>
             </Reveal>
           ))}
         </div>
+      </div>
+    </section>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   FULL-BLEED CTA PHOTO
+   ═══════════════════════════════════════════════════════════ */
+function PhotoCta() {
+  return (
+    <section className="photo-cta">
+      <img
+        src="https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=1920&q=85&auto=format&fit=crop"
+        alt="Modern shared living"
+        className="photo-cta__img"
+      />
+      <div className="photo-cta__overlay" />
+      <div className="photo-cta__body">
+        <Reveal>
+          <h2 className="photo-cta__h2">Live Clearly,<br />Together.</h2>
+          <a href="https://app.ourcommune.io/signup" className="btn-outline-white">Start your space →</a>
+        </Reveal>
       </div>
     </section>
   );
@@ -410,62 +331,52 @@ function Testimonials() {
 /* ═══════════════════════════════════════════════════════════
    PRICING
    ═══════════════════════════════════════════════════════════ */
-
-const plans = [
+const PLANS = [
   {
-    name: 'Standard',
-    price: '£4.99',
-    period: '/month',
-    featured: false,
-    features: ['1 space', 'Up to 8 members', 'Communal finance & splits', 'Responsibilities & reminders', 'Monthly breakdown', 'Group hub'],
+    name: 'Standard', price: '£4.99', mo: '/mo', featured: false,
+    items: ['1 space', 'Up to 8 members', 'Communal finance & splits', 'Responsibilities & reminders', 'Monthly breakdown', 'Group hub'],
   },
   {
-    name: 'Pro',
-    price: '£9.99',
-    period: '/month',
-    featured: true,
-    features: ['Up to 3 spaces', 'Up to 15 members', 'Everything in Standard', 'Advanced analytics', 'Exports & templates', 'Priority support'],
+    name: 'Pro', price: '£9.99', mo: '/mo', featured: true,
+    items: ['Up to 3 spaces', 'Up to 15 members', 'Everything in Standard', 'Advanced analytics', 'Exports & templates', 'Priority support'],
   },
   {
-    name: 'Agency',
-    price: '£29.99',
-    period: '/month',
-    featured: false,
-    features: ['Unlimited spaces', 'Unlimited members', 'Everything in Pro', 'Priority workflows', 'Operator-ready growth', 'Dedicated onboarding'],
+    name: 'Agency', price: '£29.99', mo: '/mo', featured: false,
+    items: ['Unlimited spaces', 'Unlimited members', 'Everything in Pro', 'Priority workflows', 'Dedicated onboarding', 'Operator-ready path'],
   },
 ];
 
 function Pricing() {
   return (
-    <section id="pricing" className="section pricing-section">
-      <div className="section-inner">
-        <Reveal className="section-header pricing-header">
-          <p className="eyebrow">Pricing</p>
-          <h2 className="section-h2">Simple, transparent pricing</h2>
-          <p className="section-body">7-day free trial on your first space. No card required.</p>
+    <section id="pricing" className="pricing">
+      <div className="pricing__inner">
+        <Reveal className="pricing__hdr">
+          <p className="eyebrow">Membership</p>
+          <h2 className="pricing__h2">Simple,<br />transparent pricing.</h2>
+          <p className="pricing__sub">7-day free trial on your first space. No card required.</p>
         </Reveal>
-        <div className="pricing-grid">
-          {plans.map((p, i) => (
+        <div className="pricing__grid">
+          {PLANS.map((p, i) => (
             <Reveal key={p.name} delay={Math.min(i + 1, 3) as 1 | 2 | 3}>
-              <div className={`plan ${p.featured ? 'plan-featured' : ''}`}>
-                {p.featured && <span className="plan-badge">Most popular</span>}
-                <p className="plan-name">{p.name}</p>
-                <div className="plan-price-row">
-                  <span className="plan-price">{p.price}</span>
-                  <span className="plan-period">{p.period}</span>
+              <div className={`plan ${p.featured ? 'plan--feat' : ''}`}>
+                {p.featured && <span className="plan__badge">Most popular</span>}
+                <p className="plan__name">{p.name}</p>
+                <div className="plan__price-row">
+                  <span className="plan__price">{p.price}</span>
+                  <span className="plan__mo">{p.mo}</span>
                 </div>
-                <hr className="plan-rule" />
-                <ul className="plan-list">
-                  {p.features.map((f) => (
-                    <li key={f}>
-                      <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-                        <path d="M3 8l3.5 3.5L13 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                <hr className="plan__rule" />
+                <ul className="plan__list">
+                  {p.items.map((it) => (
+                    <li key={it}>
+                      <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
+                        <path d="M2 7l3.5 3.5L12 3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
                       </svg>
-                      {f}
+                      {it}
                     </li>
                   ))}
                 </ul>
-                <a href="https://app.ourcommune.io/signup" className={`plan-cta ${p.featured ? 'plan-cta-featured' : ''}`}>
+                <a href="https://app.ourcommune.io/signup" className={`plan__cta ${p.featured ? 'plan__cta--feat' : ''}`}>
                   Start 7-day trial
                 </a>
               </div>
@@ -478,58 +389,41 @@ function Pricing() {
 }
 
 /* ═══════════════════════════════════════════════════════════
-   CTA BANNER
-   ═══════════════════════════════════════════════════════════ */
-
-function CtaBanner() {
-  return (
-    <section className="cta-band">
-      <div className="cta-band-inner">
-        <Reveal>
-          <h2>For people who do life, together.</h2>
-          <p>Join thousands of groups who replaced scattered admin with one clear, shared hub.</p>
-          <a href="https://app.ourcommune.io/signup" className="btn-band">
-            Get started free
-            <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
-              <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </a>
-        </Reveal>
-      </div>
-    </section>
-  );
-}
-
-/* ═══════════════════════════════════════════════════════════
    FOOTER
    ═══════════════════════════════════════════════════════════ */
-
 function Footer() {
   return (
-    <footer className="site-footer">
-      <div className="footer-inner">
-        <div className="footer-brand">
-          <div className="footer-logo">
-            <img src="/logo.png" alt="Commune" width={26} height={26} />
-            <span>Commune</span>
-          </div>
-          <p>For people who share space, money, and responsibility.</p>
+    <footer className="footer">
+      <div className="footer__top">
+        <div className="footer__connected">
+          <h3>STAY CONNECTED</h3>
+          <p>Get updates on new features and spaces.</p>
+          <form className="footer__form" onSubmit={(e) => e.preventDefault()}>
+            <input type="email" placeholder="Your email address" />
+            <button type="submit">Subscribe</button>
+          </form>
         </div>
-        {[
-          { title: 'Product', links: [['Features', '#features'], ['How it works', '#how'], ['Pricing', '#pricing'], ['Sign in', 'https://app.ourcommune.io']] },
-          { title: 'Company', links: [['About', '#'], ['Blog', '#'], ['Careers', '#'], ['Contact', 'mailto:support@ourcommune.io']] },
-          { title: 'Legal', links: [['Privacy', '#'], ['Terms', '#'], ['Cookies', '#']] },
-        ].map((col) => (
-          <div key={col.title} className="footer-col">
-            <h4>{col.title}</h4>
-            <ul>{col.links.map(([label, href]) => <li key={label}><a href={href}>{label}</a></li>)}</ul>
-          </div>
-        ))}
+        <div className="footer__links">
+          {[
+            { title: 'Product', links: [['Features', '#why'], ['Use cases', '#usecases'], ['Pricing', '#pricing'], ['Sign in', 'https://app.ourcommune.io']] },
+            { title: 'Company', links: [['About', '#'], ['Blog', '#'], ['Careers', '#'], ['Contact', 'mailto:support@ourcommune.io']] },
+            { title: 'Legal', links: [['Privacy', '#'], ['Terms', '#'], ['Cookies', '#']] },
+          ].map((col) => (
+            <div key={col.title} className="footer__col">
+              <h4>{col.title}</h4>
+              <ul>{col.links.map(([l, h]) => <li key={l}><a href={h}>{l}</a></li>)}</ul>
+            </div>
+          ))}
+        </div>
       </div>
-      <div className="footer-bar">
-        <p>© {new Date().getFullYear()} Commune. All rights reserved.</p>
-        <div className="footer-socials">
-          <a href="#">Twitter / X</a>
+      <div className="footer__bar">
+        <div className="footer__logo">
+          <img src="/logo.png" alt="Commune" width={22} height={22} />
+          <span>Commune</span>
+        </div>
+        <p className="footer__copy">© {new Date().getFullYear()} Commune. All rights reserved.</p>
+        <div className="footer__socials">
+          <a href="#">Twitter</a>
           <a href="#">Instagram</a>
           <a href="#">LinkedIn</a>
         </div>
@@ -541,19 +435,17 @@ function Footer() {
 /* ═══════════════════════════════════════════════════════════
    PAGE
    ═══════════════════════════════════════════════════════════ */
-
 export default function HomePage() {
   return (
     <>
       <Header />
       <main>
-        <HeroSlideshow />
-        <Features />
-        <HowItWorks />
-        <Showcase />
-        <Testimonials />
+        <Hero />
+        <Statement />
+        <Why />
+        <UseCases />
+        <PhotoCta />
         <Pricing />
-        <CtaBanner />
       </main>
       <Footer />
     </>
