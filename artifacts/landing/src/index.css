@@ -1,15 +1,4 @@
 /* ═══════════════════════════════════════════════════════════
-   FONTS
-   ═══════════════════════════════════════════════════════════ */
-@font-face {
-  font-family: 'Gotham';
-  src: url('/GothamMedium.ttf') format('truetype');
-  font-weight: 400 700;
-  font-style: normal;
-  font-display: swap;
-}
-
-/* ═══════════════════════════════════════════════════════════
    COMMUNE — TOKENS
    ═══════════════════════════════════════════════════════════ */
 :root {
@@ -21,8 +10,8 @@
   --muted:  #888880;
   --forest: #1a1e2e;
   --sage:   #2d6a4f;
-  --f:      'Gotham', 'Montserrat', -apple-system, BlinkMacSystemFont, sans-serif;
-  --fd:     'Gotham', 'Montserrat', sans-serif;
+  --f:      'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --fd:     'Inter', sans-serif;
   --hdr:    68px;
   --max:    1280px;
   --r:      10px;
