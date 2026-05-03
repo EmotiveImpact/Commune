@@ -1,0 +1,66 @@
+[
+  {
+    "id": "c7d4a1b2-3e5f-4890-abcd-ef1234560001",
+    "position": 1,
+    "filepath": "src/pages/slides/Slide1Cover.tsx",
+    "title": "Cover",
+    "description": "Commune pitch deck cover — Live Clearly, Together.",
+    "speakerNotes": ""
+  },
+  {
+    "id": "c7d4a1b2-3e5f-4890-abcd-ef1234560002",
+    "position": 2,
+    "filepath": "src/pages/slides/Slide2Problem.tsx",
+    "title": "The Problem",
+    "description": "Shared life is financially and logistically complicated.",
+    "speakerNotes": ""
+  },
+  {
+    "id": "c7d4a1b2-3e5f-4890-abcd-ef1234560003",
+    "position": 3,
+    "filepath": "src/pages/slides/Slide3Solution.tsx",
+    "title": "The Solution",
+    "description": "One clear place for every cost, every responsibility, every person.",
+    "speakerNotes": ""
+  },
+  {
+    "id": "c7d4a1b2-3e5f-4890-abcd-ef1234560004",
+    "position": 4,
+    "filepath": "src/pages/slides/Slide4Features.tsx",
+    "title": "Core Features",
+    "description": "The four pillars of Commune.",
+    "speakerNotes": ""
+  },
+  {
+    "id": "c7d4a1b2-3e5f-4890-abcd-ef1234560005",
+    "position": 5,
+    "filepath": "src/pages/slides/Slide5UseCases.tsx",
+    "title": "Use Cases",
+    "description": "Built for every way people share space.",
+    "speakerNotes": ""
+  },
+  {
+    "id": "c7d4a1b2-3e5f-4890-abcd-ef1234560006",
+    "position": 6,
+    "filepath": "src/pages/slides/Slide6HowItWorks.tsx",
+    "title": "How It Works",
+    "description": "Three steps to a well-run shared space.",
+    "speakerNotes": ""
+  },
+  {
+    "id": "c7d4a1b2-3e5f-4890-abcd-ef1234560007",
+    "position": 7,
+    "filepath": "src/pages/slides/Slide7Pricing.tsx",
+    "title": "Pricing",
+    "description": "Simple, transparent pricing with a 7-day free trial.",
+    "speakerNotes": ""
+  },
+  {
+    "id": "c7d4a1b2-3e5f-4890-abcd-ef1234560008",
+    "position": 8,
+    "filepath": "src/pages/slides/Slide8CTA.tsx",
+    "title": "Get Started",
+    "description": "Closing slide with call to action.",
+    "speakerNotes": ""
+  }
+]
