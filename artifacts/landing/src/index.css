@@ -11,7 +11,7 @@
   --forest: #1a1e2e;
   --sage:   #2d6a4f;
   --f:      'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  --fd:     'Cormorant Garamond', Georgia, serif;
+  --fd:     'Lato', 'Inter', sans-serif;
   --hdr:    68px;
   --max:    1280px;
   --r:      10px;
@@ -138,8 +138,8 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 .hero__h1 {
   font-family: var(--fd);
   font-size: clamp(3.8rem, 9.5vw, 9rem);
-  font-weight: 600; font-style: italic;
-  line-height: 0.95; letter-spacing: -0.01em;
+  font-weight: 900;
+  line-height: 0.95; letter-spacing: -0.04em;
   color: var(--white); margin-bottom: 20px;
   text-shadow: 0 2px 60px rgba(0,0,0,0.25);
 }
@@ -206,8 +206,8 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 
 .stmt__h2 {
   font-family: var(--fd);
-  font-size: clamp(2.2rem, 4vw, 3.6rem); font-weight: 500;
-  line-height: 1.15; letter-spacing: -0.01em;
+  font-size: clamp(2.2rem, 4vw, 3.6rem); font-weight: 700;
+  line-height: 1.15; letter-spacing: -0.03em;
   color: var(--black); margin-bottom: 28px;
 }
 .stmt__body {
@@ -237,8 +237,8 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 
 .why__big {
   font-family: var(--fd);
-  font-size: clamp(4.5rem, 10vw, 10rem); font-weight: 400; font-style: italic;
-  line-height: 0.9; letter-spacing: -0.02em;
+  font-size: clamp(4.5rem, 10vw, 10rem); font-weight: 900;
+  line-height: 0.9; letter-spacing: -0.05em;
   color: var(--white);
 }
 
@@ -266,8 +266,8 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 .cases__hdr { margin-bottom: 64px; }
 .cases__h2 {
   font-family: var(--fd);
-  font-size: clamp(2.6rem, 5.5vw, 5rem); font-weight: 500;
-  letter-spacing: -0.01em; line-height: 1.0; color: var(--black);
+  font-size: clamp(2.6rem, 5.5vw, 5rem); font-weight: 900;
+  letter-spacing: -0.04em; line-height: 1.0; color: var(--black);
 }
 
 .cases__grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
@@ -296,8 +296,8 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 }
 .photo-cta__h2 {
   font-family: var(--fd);
-  font-size: clamp(3.5rem, 8vw, 7.5rem); font-weight: 400; font-style: italic;
-  letter-spacing: -0.01em; line-height: 0.95;
+  font-size: clamp(3.5rem, 8vw, 7.5rem); font-weight: 900;
+  letter-spacing: -0.05em; line-height: 0.95;
   color: var(--white); margin-bottom: 32px;
   text-shadow: 0 2px 48px rgba(0,0,0,0.2);
 }
@@ -319,8 +319,8 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 .pricing__hdr { margin-bottom: 60px; }
 .pricing__h2 {
   font-family: var(--fd);
-  font-size: clamp(3rem, 6vw, 5.5rem); font-weight: 400; font-style: italic;
-  letter-spacing: -0.01em; line-height: 1.0;
+  font-size: clamp(3rem, 6vw, 5.5rem); font-weight: 900;
+  letter-spacing: -0.05em; line-height: 1.0;
   color: var(--black); margin-bottom: 14px;
 }
 .pricing__sub { font-size: 0.875rem; color: var(--muted); letter-spacing: 0.01em; }
@@ -350,7 +350,7 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 .plan__price-row { display: flex; align-items: baseline; gap: 4px; margin-bottom: 4px; }
 .plan__price {
   font-family: var(--fd);
-  font-size: 3.2rem; font-weight: 400; letter-spacing: -0.02em;
+  font-size: 3.2rem; font-weight: 900; letter-spacing: -0.04em;
   color: var(--black);
 }
 .plan--feat .plan__price { color: var(--white); }
@@ -389,8 +389,8 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 
 .footer__connected h3 {
   font-family: var(--fd);
-  font-size: clamp(2rem, 4.5vw, 3.5rem); font-weight: 400; font-style: italic;
-  letter-spacing: -0.01em; line-height: 1.1;
+  font-size: clamp(2rem, 4.5vw, 3.5rem); font-weight: 900;
+  letter-spacing: -0.04em; line-height: 1.1;
   color: var(--white); margin-bottom: 14px;
 }
 .footer__connected p { font-size: 0.825rem; color: rgba(255,255,255,0.35); margin-bottom: 28px; line-height: 1.6; }
