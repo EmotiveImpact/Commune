@@ -1,33 +1,19 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence, useInView } from 'framer-motion';
 
+const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1];
+
 /* ─── ANIMATION HELPERS ─── */
-const fadeUp = {
-  hidden:  { opacity: 0, y: 32 },
-  visible: (delay = 0) => ({ opacity: 1, y: 0, transition: { duration: 0.7, ease: [0.16, 1, 0.3, 1], delay } }),
-};
-
-const staggerContainer = {
-  hidden: {},
-  visible: { transition: { staggerChildren: 0.1 } },
-};
-
-const staggerItem = {
-  hidden:  { opacity: 0, y: 28 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.65, ease: [0.16, 1, 0.3, 1] } },
-};
-
 function FadeUp({ children, delay = 0, className = '' }: { children: React.ReactNode; delay?: number; className?: string }) {
   const ref = useRef(null);
   const inView = useInView(ref, { once: true, margin: '-60px' });
   return (
     <motion.div
       ref={ref}
-      initial="hidden"
-      animate={inView ? 'visible' : 'hidden'}
-      custom={delay}
-      variants={fadeUp}
       className={className}
+      initial={{ opacity: 0, y: 32 }}
+      animate={inView ? { opacity: 1, y: 0 } : {}}
+      transition={{ duration: 0.7, ease: EASE, delay }}
     >
       {children}
     </motion.div>
@@ -41,9 +27,9 @@ function StaggerGrid({ children, className = '' }: { children: React.ReactNode; 
     <motion.div
       ref={ref}
       className={className}
-      variants={staggerContainer}
       initial="hidden"
       animate={inView ? 'visible' : 'hidden'}
+      variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.1 } } }}
     >
       {children}
     </motion.div>
@@ -52,7 +38,13 @@ function StaggerGrid({ children, className = '' }: { children: React.ReactNode; 
 
 function StaggerItem({ children, className = '' }: { children: React.ReactNode; className?: string }) {
   return (
-    <motion.div variants={staggerItem} className={className}>
+    <motion.div
+      variants={{
+        hidden:  { opacity: 0, y: 28 },
+        visible: { opacity: 1, y: 0, transition: { duration: 0.65, ease: EASE } },
+      }}
+      className={className}
+    >
       {children}
     </motion.div>
   );
@@ -249,13 +241,9 @@ function Hero() {
 /* ═══════════════════════════════════════════════════════════
    STATEMENT
    ═══════════════════════════════════════════════════════════ */
-const USE_CASE_PHOTOS = [
-  { label: 'House shares', img: 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=600&q=80&auto=format&fit=crop' },
-  { label: 'Studios',      img: 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=600&q=80&auto=format&fit=crop' },
-  { label: 'Group trips',  img: 'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=600&q=80&auto=format&fit=crop' },
-];
-
 function Statement() {
+  const imgRef = useRef(null);
+  const imgInView = useInView(imgRef, { once: true, margin: '-80px' });
   return (
     <section className="stmt">
       <div className="stmt__inner">
@@ -276,20 +264,18 @@ function Statement() {
           </FadeUp>
         </div>
 
-        <StaggerGrid className="stmt__photos">
-          {USE_CASE_PHOTOS.map((p) => (
-            <StaggerItem key={p.label}>
-              <motion.div
-                className="stmt__photo"
-                whileHover={{ scale: 1.03 }}
-                transition={{ type: 'spring', stiffness: 300, damping: 24 }}
-              >
-                <img src={p.img} alt={p.label} />
-                <span>{p.label}</span>
-              </motion.div>
-            </StaggerItem>
-          ))}
-        </StaggerGrid>
+        <motion.div
+          ref={imgRef}
+          className="stmt__img"
+          initial={{ opacity: 0, x: 40 }}
+          animate={imgInView ? { opacity: 1, x: 0 } : {}}
+          transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
+        >
+          <img
+            src="https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=900&q=85&auto=format&fit=crop"
+            alt="Person living life"
+          />
+        </motion.div>
       </div>
     </section>
   );
