@@ -351,11 +351,11 @@ function Why() {
    USE CASES
    ═══════════════════════════════════════════════════════════ */
 const CASES = [
-  { id: 'home',      label: 'House shares',     sub: 'Rent · Bills · Chores',           img: 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=700&q=80&auto=format&fit=crop' },
-  { id: 'couple',    label: 'Couples',           sub: 'Budgets · Joint expenses',        img: 'https://images.unsplash.com/photo-1516627145497-ae6968895b74?w=700&q=80&auto=format&fit=crop' },
-  { id: 'workspace', label: 'Studios & offices', sub: 'Shared costs · Tools · Roles',   img: 'https://images.unsplash.com/photo-1497366858526-0766f6d2769a?w=700&q=80&auto=format&fit=crop' },
-  { id: 'trip',      label: 'Group trips',       sub: 'Expenses on the go · Settle up', img: 'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=700&q=80&auto=format&fit=crop' },
-  { id: 'project',   label: 'Creative projects', sub: 'Budget · Ownership · Handover',  img: 'https://images.unsplash.com/photo-1542744173-8e7e53415bb0?w=700&q=80&auto=format&fit=crop' },
+  { id: 'home',      label: 'House shares',     sub: 'Rent · Bills · Chores',           img: 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=700&q=80&auto=format&fit=crop' },
+  { id: 'couple',    label: 'Couples',           sub: 'Budgets · Joint expenses',        img: 'https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?w=700&q=80&auto=format&fit=crop' },
+  { id: 'workspace', label: 'Studios & offices', sub: 'Shared costs · Tools · Roles',   img: 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?w=700&q=80&auto=format&fit=crop' },
+  { id: 'trip',      label: 'Group trips',       sub: 'Expenses on the go · Settle up', img: 'https://images.unsplash.com/photo-1527631746610-bca00a040d60?w=700&q=80&auto=format&fit=crop' },
+  { id: 'project',   label: 'Creative projects', sub: 'Budget · Ownership · Handover',  img: 'https://images.unsplash.com/photo-1561070791-2526d30994b5?w=700&q=80&auto=format&fit=crop' },
 ];
 
 function UseCases() {
