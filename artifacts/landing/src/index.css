@@ -64,10 +64,10 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 }
 .hdr__logo img { width: 26px; height: 26px; border-radius: 6px; }
 
-.hdr__nav { display: flex; gap: 32px; }
+.hdr__nav { display: flex; gap: 36px; }
 .hdr__nav a {
-  font-size: 0.78rem; font-weight: 500; letter-spacing: 0.01em;
-  color: rgba(255,255,255,0.45);
+  font-size: 0.875rem; font-weight: 500; letter-spacing: 0.005em;
+  color: rgba(255,255,255,0.78);
   transition: color 0.2s;
 }
 .hdr__nav a:hover { color: var(--white); }
@@ -75,14 +75,14 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 .hdr__actions { display: flex; align-items: center; gap: 8px; }
 
 .hdr__signin {
-  font-size: 0.78rem; font-weight: 500; color: rgba(255,255,255,0.45);
+  font-size: 0.875rem; font-weight: 500; color: rgba(255,255,255,0.78);
   padding: 8px 16px; border-radius: 999px;
   transition: color 0.2s, background 0.2s;
 }
 .hdr__signin:hover { color: var(--white); background: rgba(255,255,255,0.08); }
 
 .hdr__cta {
-  font-size: 0.78rem; font-weight: 600; letter-spacing: 0.02em;
+  font-size: 0.875rem; font-weight: 600; letter-spacing: 0.02em;
   color: var(--black); background: var(--white);
   padding: 8px 20px; border-radius: 999px;
   transition: opacity 0.2s, transform 0.2s;
@@ -104,13 +104,19 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 .hero__slide.is-active { opacity: 1; z-index: 1; }
 .hero__slide.is-exit   { opacity: 0; z-index: 0; }
 
-.hero__img {
+.hero__img,
+.hero__vid {
+  position: absolute; inset: 0;
   width: 100%; height: 100%;
   object-fit: cover; object-position: center 35%;
+}
+.hero__img {
   transform: scale(1.06);
   transition: transform 7s cubic-bezier(0.16,1,0.3,1);
 }
 .hero__slide.is-active .hero__img { transform: scale(1); }
+.hero__vid { opacity: 0; transition: opacity 0.8s ease; }
+.hero__slide.is-active .hero__vid { opacity: 1; }
 
 .hero__overlay {
   position: absolute; inset: 0; z-index: 2;
