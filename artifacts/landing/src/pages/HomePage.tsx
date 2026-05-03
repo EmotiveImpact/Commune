@@ -96,7 +96,7 @@ const SLIDES = [
     id: 'home',
     label: 'House shares',
     img: 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=1920&q=85&auto=format&fit=crop',
-    video: 'https://assets.mixkit.co/videos/preview/mixkit-living-room-with-plants-and-furniture-34664-large.mp4',
+    pan: 'tl',
     h: 'Your home,\nrun smoothly.',
     sub: 'Split rent, track bills, keep everyone on the same page.',
   },
@@ -104,7 +104,7 @@ const SLIDES = [
     id: 'couple',
     label: 'Couples',
     img: 'https://images.unsplash.com/photo-1516627145497-ae6968895b74?w=1920&q=85&auto=format&fit=crop',
-    video: 'https://assets.mixkit.co/videos/preview/mixkit-couple-talking-in-the-living-room-4422-large.mp4',
+    pan: 'tr',
     h: 'Money, together.\nNo awkwardness.',
     sub: 'Share expenses, set budgets, and settle up fairly.',
   },
@@ -112,7 +112,7 @@ const SLIDES = [
     id: 'workspace',
     label: 'Studios & workspaces',
     img: 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=1920&q=85&auto=format&fit=crop',
-    video: 'https://assets.mixkit.co/videos/preview/mixkit-programmer-typing-on-computer-1185-large.mp4',
+    pan: 'bl',
     h: 'Your workspace,\none hub.',
     sub: 'Shared costs, pooled tools, and clear ownership.',
   },
@@ -120,7 +120,7 @@ const SLIDES = [
     id: 'trip',
     label: 'Group trips',
     img: 'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=1920&q=85&auto=format&fit=crop',
-    video: 'https://assets.mixkit.co/videos/preview/mixkit-traveling-by-train-from-above-4890-large.mp4',
+    pan: 'br',
     h: 'Every trip,\nfully settled.',
     sub: 'Log on the go, split instantly, settle before you land.',
   },
@@ -128,7 +128,7 @@ const SLIDES = [
     id: 'project',
     label: 'Creative projects',
     img: 'https://images.unsplash.com/photo-1521737604893-d14cc237f11d?w=1920&q=85&auto=format&fit=crop',
-    video: 'https://assets.mixkit.co/videos/preview/mixkit-group-of-people-in-a-meeting-3060-large.mp4',
+    pan: 'c',
     h: "Projects that\ndon't fall apart.",
     sub: 'Budget visibility and shared ownership, from start to finish.',
   },
@@ -173,18 +173,12 @@ function Hero() {
       {/* Background slides */}
       {SLIDES.map((sl, i) => (
         <div key={sl.id} className={`hero__slide ${i === cur ? 'is-active' : ''} ${i === prev ? 'is-exit' : ''}`}>
-          {/* Photo always renders as poster/fallback */}
-          <img src={sl.img} alt={sl.label} className="hero__img" loading={i === 0 ? 'eager' : 'lazy'} />
-          {/* Video fades in on top once loaded */}
-          <video
-            className="hero__vid"
-            src={sl.video}
-            autoPlay
-            muted
-            loop
-            playsInline
-            poster={sl.img}
-            preload={i === 0 ? 'auto' : 'none'}
+          <img
+            src={sl.img}
+            alt={sl.label}
+            className="hero__img"
+            data-pan={sl.pan}
+            loading={i === 0 ? 'eager' : 'lazy'}
           />
         </div>
       ))}

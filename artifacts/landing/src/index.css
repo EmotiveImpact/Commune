@@ -104,19 +104,44 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 .hero__slide.is-active { opacity: 1; z-index: 1; }
 .hero__slide.is-exit   { opacity: 0; z-index: 0; }
 
-.hero__img,
-.hero__vid {
+/* Ken Burns keyframes — one per pan direction */
+@keyframes kb-tl {
+  from { transform: scale(1.12) translate(2%, 2%);  }
+  to   { transform: scale(1.0)  translate(0%, 0%);  }
+}
+@keyframes kb-tr {
+  from { transform: scale(1.12) translate(-2%, 2%); }
+  to   { transform: scale(1.0)  translate(0%, 0%);  }
+}
+@keyframes kb-bl {
+  from { transform: scale(1.12) translate(2%, -2%); }
+  to   { transform: scale(1.0)  translate(0%, 0%);  }
+}
+@keyframes kb-br {
+  from { transform: scale(1.12) translate(-2%, -2%);}
+  to   { transform: scale(1.0)  translate(0%, 0%);  }
+}
+@keyframes kb-c {
+  from { transform: scale(1.10); }
+  to   { transform: scale(1.0);  }
+}
+
+.hero__img {
   position: absolute; inset: 0;
   width: 100%; height: 100%;
   object-fit: cover; object-position: center 35%;
+  transform-origin: center center;
 }
-.hero__img {
-  transform: scale(1.06);
-  transition: transform 7s cubic-bezier(0.16,1,0.3,1);
-}
-.hero__slide.is-active .hero__img { transform: scale(1); }
-.hero__vid { opacity: 0; transition: opacity 0.8s ease; }
-.hero__slide.is-active .hero__vid { opacity: 1; }
+
+/* Start animation only on the active slide */
+.hero__slide.is-active .hero__img[data-pan="tl"] { animation: kb-tl 8s ease-out forwards; }
+.hero__slide.is-active .hero__img[data-pan="tr"] { animation: kb-tr 8s ease-out forwards; }
+.hero__slide.is-active .hero__img[data-pan="bl"] { animation: kb-bl 8s ease-out forwards; }
+.hero__slide.is-active .hero__img[data-pan="br"] { animation: kb-br 8s ease-out forwards; }
+.hero__slide.is-active .hero__img[data-pan="c"]  { animation: kb-c  8s ease-out forwards; }
+
+/* Reset on inactive slides so animation replays on re-enter */
+.hero__slide:not(.is-active) .hero__img { animation: none; transform: scale(1.12); }
 
 .hero__overlay {
   position: absolute; inset: 0; z-index: 2;
