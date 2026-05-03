@@ -1,23 +1,61 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { motion, AnimatePresence, useInView } from 'framer-motion';
 
-/* ─── REVEAL ─── */
-function useReveal() {
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const obs = new IntersectionObserver(
-      ([e]) => { if (e.isIntersecting) { el.classList.add('visible'); obs.unobserve(el); } },
-      { threshold: 0.1, rootMargin: '0px 0px -48px 0px' }
-    );
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, []);
-  return ref;
+/* ─── ANIMATION HELPERS ─── */
+const fadeUp = {
+  hidden:  { opacity: 0, y: 32 },
+  visible: (delay = 0) => ({ opacity: 1, y: 0, transition: { duration: 0.7, ease: [0.16, 1, 0.3, 1], delay } }),
+};
+
+const staggerContainer = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.1 } },
+};
+
+const staggerItem = {
+  hidden:  { opacity: 0, y: 28 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.65, ease: [0.16, 1, 0.3, 1] } },
+};
+
+function FadeUp({ children, delay = 0, className = '' }: { children: React.ReactNode; delay?: number; className?: string }) {
+  const ref = useRef(null);
+  const inView = useInView(ref, { once: true, margin: '-60px' });
+  return (
+    <motion.div
+      ref={ref}
+      initial="hidden"
+      animate={inView ? 'visible' : 'hidden'}
+      custom={delay}
+      variants={fadeUp}
+      className={className}
+    >
+      {children}
+    </motion.div>
+  );
 }
-function Reveal({ children, className = '', delay = 0 }: { children: React.ReactNode; className?: string; delay?: number }) {
-  const ref = useReveal();
-  return <div ref={ref} className={`reveal ${delay ? `d${delay}` : ''} ${className}`}>{children}</div>;
+
+function StaggerGrid({ children, className = '' }: { children: React.ReactNode; className?: string }) {
+  const ref = useRef(null);
+  const inView = useInView(ref, { once: true, margin: '-60px' });
+  return (
+    <motion.div
+      ref={ref}
+      className={className}
+      variants={staggerContainer}
+      initial="hidden"
+      animate={inView ? 'visible' : 'hidden'}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
+function StaggerItem({ children, className = '' }: { children: React.ReactNode; className?: string }) {
+  return (
+    <motion.div variants={staggerItem} className={className}>
+      {children}
+    </motion.div>
+  );
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -33,11 +71,16 @@ function Header() {
   }, []);
 
   return (
-    <header className={`hdr ${solid ? 'hdr--solid' : ''}`}>
+    <motion.header
+      className={`hdr ${solid ? 'hdr--solid' : ''}`}
+      initial={{ opacity: 0, y: -16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+    >
       <div className="hdr__inner">
         <a href="#" className="hdr__logo">
           <img src="/logo.png" alt="Commune" />
-          <span>Commune</span>
+          <span>COMMUNE</span>
         </a>
         <nav className="hdr__nav">
           <a href="#why">Why Commune</a>
@@ -49,7 +92,7 @@ function Header() {
           <a href="https://app.ourcommune.io/signup" className="hdr__cta">Get started</a>
         </div>
       </div>
-    </header>
+    </motion.header>
   );
 }
 
@@ -60,7 +103,6 @@ const SLIDES = [
   {
     id: 'home',
     label: 'House shares',
-    idx: '01',
     img: 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=1920&q=85&auto=format&fit=crop',
     h: 'Your home,\nrun smoothly.',
     sub: 'Split rent, track bills, keep everyone on the same page.',
@@ -68,7 +110,6 @@ const SLIDES = [
   {
     id: 'couple',
     label: 'Couples',
-    idx: '02',
     img: 'https://images.unsplash.com/photo-1516627145497-ae6968895b74?w=1920&q=85&auto=format&fit=crop',
     h: 'Money, together.\nNo awkwardness.',
     sub: 'Share expenses, set budgets, and settle up fairly.',
@@ -76,7 +117,6 @@ const SLIDES = [
   {
     id: 'workspace',
     label: 'Studios & workspaces',
-    idx: '03',
     img: 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=1920&q=85&auto=format&fit=crop',
     h: 'Your workspace,\none hub.',
     sub: 'Shared costs, pooled tools, and clear ownership.',
@@ -84,7 +124,6 @@ const SLIDES = [
   {
     id: 'trip',
     label: 'Group trips',
-    idx: '04',
     img: 'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=1920&q=85&auto=format&fit=crop',
     h: 'Every trip,\nfully settled.',
     sub: 'Log on the go, split instantly, settle before you land.',
@@ -92,9 +131,8 @@ const SLIDES = [
   {
     id: 'project',
     label: 'Creative projects',
-    idx: '05',
     img: 'https://images.unsplash.com/photo-1521737604893-d14cc237f11d?w=1920&q=85&auto=format&fit=crop',
-    h: 'Projects that\ndon\'t fall apart.',
+    h: "Projects that\ndon't fall apart.",
     sub: 'Budget visibility and shared ownership, from start to finish.',
   },
 ];
@@ -133,39 +171,67 @@ function Hero() {
     return () => clearInterval(id);
   }, [cur, paused]);
 
-  const s = SLIDES[cur]!;
-
   return (
     <section className="hero" onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}>
+      {/* Background slides */}
       {SLIDES.map((sl, i) => (
         <div key={sl.id} className={`hero__slide ${i === cur ? 'is-active' : ''} ${i === prev ? 'is-exit' : ''}`}>
           <img src={sl.img} alt={sl.label} className="hero__img" loading={i === 0 ? 'eager' : 'lazy'} />
         </div>
       ))}
-
       <div className="hero__overlay" />
 
+      {/* Content */}
       <div className="hero__body">
         <div className="hero__txt-wrap">
-          {SLIDES.map((sl, i) => (
-            <div key={sl.id} className={`hero__txt ${i === cur ? 'is-in' : ''}`}>
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={cur}
+              initial={{ opacity: 0, y: 40, filter: 'blur(4px)' }}
+              animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+              exit={{ opacity: 0, y: -24, filter: 'blur(4px)' }}
+              transition={{ duration: 0.65, ease: [0.16, 1, 0.3, 1] }}
+            >
               <h1 className="hero__h1">
-                {sl.h.split('\n').map((l, j) => <span key={j}>{l}<br /></span>)}
+                {SLIDES[cur]!.h.split('\n').map((l, j) => <span key={j}>{l}<br /></span>)}
               </h1>
-              <p className="hero__sub">{sl.sub}</p>
-            </div>
-          ))}
+              <p className="hero__sub">{SLIDES[cur]!.sub}</p>
+            </motion.div>
+          </AnimatePresence>
         </div>
 
-        <div className="hero__foot">
+        <motion.div
+          className="hero__foot"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
+        >
           <div className="hero__proof">
             <div className="hero__avs">
-              {AVATARS.map((src, i) => <img key={i} src={src} alt="" className="hero__av" />)}
+              {AVATARS.map((src, i) => (
+                <motion.img
+                  key={i}
+                  src={src}
+                  alt=""
+                  className="hero__av"
+                  initial={{ opacity: 0, x: -8 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.5 + i * 0.06, duration: 0.5 }}
+                />
+              ))}
             </div>
             <span className="hero__proof-txt"><strong>2,400+</strong> groups doing life together</span>
           </div>
-          <a href="https://app.ourcommune.io/signup" className="btn-hero">Start for free →</a>
-        </div>
+          <motion.a
+            href="https://app.ourcommune.io/signup"
+            className="btn-hero"
+            whileHover={{ scale: 1.04, y: -2 }}
+            whileTap={{ scale: 0.97 }}
+            transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+          >
+            Start for free →
+          </motion.a>
+        </motion.div>
       </div>
 
       {/* Progress track */}
@@ -181,12 +247,12 @@ function Hero() {
 }
 
 /* ═══════════════════════════════════════════════════════════
-   STATEMENT — big editorial block
+   STATEMENT
    ═══════════════════════════════════════════════════════════ */
 const USE_CASE_PHOTOS = [
   { label: 'House shares', img: 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=600&q=80&auto=format&fit=crop' },
-  { label: 'Studios', img: 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=600&q=80&auto=format&fit=crop' },
-  { label: 'Group trips', img: 'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=600&q=80&auto=format&fit=crop' },
+  { label: 'Studios',      img: 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=600&q=80&auto=format&fit=crop' },
+  { label: 'Group trips',  img: 'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=600&q=80&auto=format&fit=crop' },
 ];
 
 function Statement() {
@@ -194,66 +260,100 @@ function Statement() {
     <section className="stmt">
       <div className="stmt__inner">
         <div className="stmt__left">
-          <Reveal>
+          <FadeUp>
             <p className="eyebrow">About Commune</p>
             <h2 className="stmt__h2">
               Managing shared money and shared spaces shouldn't be complicated.
             </h2>
-          </Reveal>
-          <Reveal delay={1}>
+          </FadeUp>
+          <FadeUp delay={0.1}>
             <p className="stmt__body">
               Whether you share a home, run a studio, travel in groups, or manage a
               creative project — Commune gives you one clear place for every cost,
               every responsibility, and every person involved.
             </p>
             <a href="#usecases" className="link-arrow">Explore use cases →</a>
-          </Reveal>
+          </FadeUp>
         </div>
-        <div className="stmt__photos">
-          {USE_CASE_PHOTOS.map((p, i) => (
-            <Reveal key={p.label} delay={Math.min(i + 1, 3) as 1 | 2 | 3}>
-              <div className="stmt__photo">
+
+        <StaggerGrid className="stmt__photos">
+          {USE_CASE_PHOTOS.map((p) => (
+            <StaggerItem key={p.label}>
+              <motion.div
+                className="stmt__photo"
+                whileHover={{ scale: 1.03 }}
+                transition={{ type: 'spring', stiffness: 300, damping: 24 }}
+              >
                 <img src={p.img} alt={p.label} />
                 <span>{p.label}</span>
-              </div>
-            </Reveal>
+              </motion.div>
+            </StaggerItem>
           ))}
-        </div>
+        </StaggerGrid>
       </div>
     </section>
   );
 }
 
 /* ═══════════════════════════════════════════════════════════
-   WHY COMMUNE — bold + accordion
+   WHY COMMUNE
    ═══════════════════════════════════════════════════════════ */
 const WHY = [
   { n: '01', t: 'Communal finance that actually works', d: 'Track recurring bills, split costs fairly, automate reimbursements, and maintain one financial truth across every member.' },
-  { n: '02', t: 'Space hubs with full context', d: 'Every space gets its own hub — members, roles, pinned notices, essentials, and shared identity in one place.' },
-  { n: '03', t: 'Clear responsibilities & ownership', d: 'Assign tasks, track who owns what, set reminders, and know what needs approval before it becomes a problem.' },
-  { n: '04', t: 'One command centre, many spaces', d: 'Switch between a home, studio, and trip in seconds. See what is owed and what needs attention across all your spaces at once.' },
+  { n: '02', t: 'Space hubs with full context',         d: 'Every space gets its own hub — members, roles, pinned notices, essentials, and shared identity in one place.' },
+  { n: '03', t: 'Clear responsibilities & ownership',   d: 'Assign tasks, track who owns what, set reminders, and know what needs approval before it becomes a problem.' },
+  { n: '04', t: 'One command centre, many spaces',      d: 'Switch between a home, studio, and trip in seconds. See what is owed and what needs attention across all your spaces at once.' },
 ];
 
 function Why() {
   const [open, setOpen] = useState<number | null>(0);
+  const headRef = useRef(null);
+  const headInView = useInView(headRef, { once: true, margin: '-80px' });
+
   return (
     <section id="why" className="why">
       <div className="why__inner">
-        <Reveal>
-          <h2 className="why__big">WHY<br />COMMUNE?</h2>
-        </Reveal>
+        <motion.h2
+          ref={headRef}
+          className="why__big"
+          initial={{ opacity: 0, scale: 0.88, y: 40 }}
+          animate={headInView ? { opacity: 1, scale: 1, y: 0 } : {}}
+          transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
+        >
+          WHY<br />COMMUNE?
+        </motion.h2>
+
         <div className="why__items">
           {WHY.map((w, i) => (
-            <Reveal key={w.n} delay={Math.min(i + 1, 4) as 1 | 2 | 3 | 4}>
+            <FadeUp key={w.n} delay={i * 0.07}>
               <div className={`why__item ${open === i ? 'is-open' : ''}`}>
                 <button className="why__q" onClick={() => setOpen(open === i ? null : i)}>
                   <span className="why__n">{w.n}</span>
                   <span className="why__title">{w.t}</span>
-                  <span className="why__chevron">{open === i ? '−' : '+'}</span>
+                  <motion.span
+                    className="why__chevron"
+                    animate={{ rotate: open === i ? 45 : 0 }}
+                    transition={{ duration: 0.25, ease: 'easeInOut' }}
+                  >
+                    +
+                  </motion.span>
                 </button>
-                {open === i && <p className="why__ans">{w.d}</p>}
+                <AnimatePresence initial={false}>
+                  {open === i && (
+                    <motion.p
+                      className="why__ans"
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+                      style={{ overflow: 'hidden' }}
+                    >
+                      {w.d}
+                    </motion.p>
+                  )}
+                </AnimatePresence>
               </div>
-            </Reveal>
+            </FadeUp>
           ))}
         </div>
       </div>
@@ -262,28 +362,31 @@ function Why() {
 }
 
 /* ═══════════════════════════════════════════════════════════
-   USE CASES — photo grid
+   USE CASES
    ═══════════════════════════════════════════════════════════ */
 const CASES = [
-  { id: 'home',      label: 'House shares',       sub: 'Rent · Bills · Chores',          img: 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=700&q=80&auto=format&fit=crop' },
-  { id: 'couple',    label: 'Couples',             sub: 'Budgets · Joint expenses',       img: 'https://images.unsplash.com/photo-1516627145497-ae6968895b74?w=700&q=80&auto=format&fit=crop' },
-  { id: 'workspace', label: 'Studios & offices',   sub: 'Shared costs · Tools · Roles',  img: 'https://images.unsplash.com/photo-1497366858526-0766f6d2769a?w=700&q=80&auto=format&fit=crop' },
-  { id: 'trip',      label: 'Group trips',         sub: 'Expenses on the go · Settle up', img: 'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=700&q=80&auto=format&fit=crop' },
-  { id: 'project',   label: 'Creative projects',   sub: 'Budget · Ownership · Handover', img: 'https://images.unsplash.com/photo-1542744173-8e7e53415bb0?w=700&q=80&auto=format&fit=crop' },
+  { id: 'home',      label: 'House shares',     sub: 'Rent · Bills · Chores',           img: 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=700&q=80&auto=format&fit=crop' },
+  { id: 'couple',    label: 'Couples',           sub: 'Budgets · Joint expenses',        img: 'https://images.unsplash.com/photo-1516627145497-ae6968895b74?w=700&q=80&auto=format&fit=crop' },
+  { id: 'workspace', label: 'Studios & offices', sub: 'Shared costs · Tools · Roles',   img: 'https://images.unsplash.com/photo-1497366858526-0766f6d2769a?w=700&q=80&auto=format&fit=crop' },
+  { id: 'trip',      label: 'Group trips',       sub: 'Expenses on the go · Settle up', img: 'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=700&q=80&auto=format&fit=crop' },
+  { id: 'project',   label: 'Creative projects', sub: 'Budget · Ownership · Handover',  img: 'https://images.unsplash.com/photo-1542744173-8e7e53415bb0?w=700&q=80&auto=format&fit=crop' },
 ];
 
 function UseCases() {
   return (
     <section id="usecases" className="cases">
       <div className="cases__inner">
-        <Reveal className="cases__hdr">
+        <FadeUp className="cases__hdr">
           <p className="eyebrow">Use cases</p>
           <h2 className="cases__h2">Built for every way<br />people share space</h2>
-        </Reveal>
-        <div className="cases__grid">
-          {CASES.map((c, i) => (
-            <Reveal key={c.id} delay={Math.min(i + 1, 5) as 1 | 2 | 3 | 4 | 5}>
-              <div className="case-card">
+        </FadeUp>
+        <StaggerGrid className="cases__grid">
+          {CASES.map((c) => (
+            <StaggerItem key={c.id}>
+              <motion.div
+                className="case-card"
+                whileHover={{ y: -6, transition: { type: 'spring', stiffness: 300, damping: 22 } }}
+              >
                 <div className="case-card__img">
                   <img src={c.img} alt={c.label} />
                 </div>
@@ -291,21 +394,23 @@ function UseCases() {
                   <p className="case-card__label">{c.label}</p>
                   <p className="case-card__sub">{c.sub}</p>
                 </div>
-              </div>
-            </Reveal>
+              </motion.div>
+            </StaggerItem>
           ))}
-        </div>
+        </StaggerGrid>
       </div>
     </section>
   );
 }
 
 /* ═══════════════════════════════════════════════════════════
-   FULL-BLEED CTA PHOTO
+   PHOTO CTA
    ═══════════════════════════════════════════════════════════ */
 function PhotoCta() {
+  const ref = useRef(null);
+  const inView = useInView(ref, { once: true, margin: '-100px' });
   return (
-    <section className="photo-cta">
+    <section className="photo-cta" ref={ref}>
       <img
         src="https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=1920&q=85&auto=format&fit=crop"
         alt="Modern shared living"
@@ -313,10 +418,25 @@ function PhotoCta() {
       />
       <div className="photo-cta__overlay" />
       <div className="photo-cta__body">
-        <Reveal>
-          <h2 className="photo-cta__h2">Live Clearly,<br />Together.</h2>
-          <a href="https://app.ourcommune.io/signup" className="btn-outline-white">Start your space →</a>
-        </Reveal>
+        <motion.h2
+          className="photo-cta__h2"
+          initial={{ opacity: 0, y: 48 }}
+          animate={inView ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
+        >
+          Live Clearly,<br />Together.
+        </motion.h2>
+        <motion.a
+          href="https://app.ourcommune.io/signup"
+          className="btn-outline-white"
+          initial={{ opacity: 0, y: 24 }}
+          animate={inView ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.8, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+          whileHover={{ scale: 1.04, backgroundColor: 'rgba(255,255,255,1)', color: '#0a0a0a' }}
+          whileTap={{ scale: 0.97 }}
+        >
+          Start your space →
+        </motion.a>
       </div>
     </section>
   );
@@ -344,15 +464,18 @@ function Pricing() {
   return (
     <section id="pricing" className="pricing">
       <div className="pricing__inner">
-        <Reveal className="pricing__hdr">
+        <FadeUp className="pricing__hdr">
           <p className="eyebrow">Membership</p>
           <h2 className="pricing__h2">Simple,<br />transparent pricing.</h2>
           <p className="pricing__sub">7-day free trial on your first space. No card required.</p>
-        </Reveal>
-        <div className="pricing__grid">
-          {PLANS.map((p, i) => (
-            <Reveal key={p.name} delay={Math.min(i + 1, 3) as 1 | 2 | 3}>
-              <div className={`plan ${p.featured ? 'plan--feat' : ''}`}>
+        </FadeUp>
+        <StaggerGrid className="pricing__grid">
+          {PLANS.map((p) => (
+            <StaggerItem key={p.name}>
+              <motion.div
+                className={`plan ${p.featured ? 'plan--feat' : ''}`}
+                whileHover={{ y: p.featured ? -6 : -4, transition: { type: 'spring', stiffness: 300, damping: 22 } }}
+              >
                 {p.featured && <span className="plan__badge">Most popular</span>}
                 <p className="plan__name">{p.name}</p>
                 <div className="plan__price-row">
@@ -373,10 +496,10 @@ function Pricing() {
                 <a href="https://app.ourcommune.io/signup" className={`plan__cta ${p.featured ? 'plan__cta--feat' : ''}`}>
                   Start 7-day trial
                 </a>
-              </div>
-            </Reveal>
+              </motion.div>
+            </StaggerItem>
           ))}
-        </div>
+        </StaggerGrid>
       </div>
     </section>
   );
@@ -401,7 +524,7 @@ function Footer() {
           {[
             { title: 'Product', links: [['Features', '#why'], ['Use cases', '#usecases'], ['Pricing', '#pricing'], ['Sign in', 'https://app.ourcommune.io']] },
             { title: 'Company', links: [['About', '#'], ['Blog', '#'], ['Careers', '#'], ['Contact', 'mailto:support@ourcommune.io']] },
-            { title: 'Legal', links: [['Privacy', '#'], ['Terms', '#'], ['Cookies', '#']] },
+            { title: 'Legal',   links: [['Privacy', '#'], ['Terms', '#'], ['Cookies', '#']] },
           ].map((col) => (
             <div key={col.title} className="footer__col">
               <h4>{col.title}</h4>
@@ -413,7 +536,7 @@ function Footer() {
       <div className="footer__bar">
         <div className="footer__logo">
           <img src="/logo.png" alt="Commune" width={22} height={22} />
-          <span>Commune</span>
+          <span>COMMUNE</span>
         </div>
         <p className="footer__copy">© {new Date().getFullYear()} Commune. All rights reserved.</p>
         <div className="footer__socials">
