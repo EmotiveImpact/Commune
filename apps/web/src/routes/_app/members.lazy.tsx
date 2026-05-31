@@ -827,10 +827,10 @@ export function MembersPage() {
               )}
             </Group>
 
-            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+            <SimpleGrid cols={{ base: 2, md: 4 }} spacing="md">
               <Paper withBorder radius="lg" p="md">
                 <Text size="sm" c="dimmed">Joiners this cycle</Text>
-                <Text fw={800} size="1.75rem" lh={1.1}>
+                <Text fw={800} size="1.4rem" lh={1.1}>
                   {lifecycle.joiners_this_cycle.length}
                 </Text>
                 <Text size="xs" c="dimmed">
@@ -845,7 +845,7 @@ export function MembersPage() {
 
               <Paper withBorder radius="lg" p="md">
                 <Text size="sm" c="dimmed">Departures this cycle</Text>
-                <Text fw={800} size="1.75rem" lh={1.1}>
+                <Text fw={800} size="1.4rem" lh={1.1}>
                   {lifecycle.departures_this_cycle.length}
                 </Text>
                 <Text size="xs" c="dimmed">
@@ -860,7 +860,7 @@ export function MembersPage() {
 
               <Paper withBorder radius="lg" p="md">
                 <Text size="sm" c="dimmed">Prorated members</Text>
-                <Text fw={800} size="1.75rem" lh={1.1}>
+                <Text fw={800} size="1.4rem" lh={1.1}>
                   {lifecycle.proration_members.length}
                 </Text>
                 <Text size="xs" c="dimmed">
@@ -872,7 +872,7 @@ export function MembersPage() {
 
               <Paper withBorder radius="lg" p="md">
                 <Text size="sm" c="dimmed">Admins on duty</Text>
-                <Text fw={800} size="1.75rem" lh={1.1}>
+                <Text fw={800} size="1.4rem" lh={1.1}>
                   {lifecycle.admin_count}
                 </Text>
                 <Text size="xs" c="dimmed">
