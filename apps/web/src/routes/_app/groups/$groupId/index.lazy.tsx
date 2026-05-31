@@ -446,12 +446,12 @@ export function GroupHubView({ groupId }: { groupId: string }) {
       {/* ------------------------------------------------------------------ */}
       {/*  2. Key Stats Row                                                  */}
       {/* ------------------------------------------------------------------ */}
-      <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
-        <Paper className="commune-stat-card commune-kpi-card" p="lg">
+      <SimpleGrid cols={{ base: 2, md: 4 }} spacing="md">
+        <Paper className="commune-stat-card commune-kpi-card" p="md">
           <Group justify="space-between" align="flex-start">
             <Stack gap={4}>
               <Text size="sm" c="dimmed">Total monthly spend</Text>
-              <Text fw={800} size="2rem" lh={1.05}>
+              <Text fw={800} size="1.5rem" lh={1.05}>
                 {formatCurrency(totalMonthly, currency)}
               </Text>
               {activeMembers > 0 && (
@@ -464,11 +464,11 @@ export function GroupHubView({ groupId }: { groupId: string }) {
           </Group>
         </Paper>
 
-        <Paper className="commune-stat-card commune-kpi-card" p="lg">
+        <Paper className="commune-stat-card commune-kpi-card" p="md">
           <Group justify="space-between" align="flex-start">
             <Stack gap={4}>
               <Text size="sm" c="dimmed">Active members</Text>
-              <Text fw={800} size="2rem" lh={1.05}>
+              <Text fw={800} size="1.5rem" lh={1.05}>
                 {activeMembers}
               </Text>
             </Stack>
@@ -476,12 +476,12 @@ export function GroupHubView({ groupId }: { groupId: string }) {
           </Group>
         </Paper>
 
-        <Paper className="commune-stat-card commune-kpi-card" p="lg">
+        <Paper className="commune-stat-card commune-kpi-card" p="md">
           <Group justify="space-between" align="flex-start">
             <Stack gap={4}>
               <Text size="sm" c="dimmed">Active expenses</Text>
               <Text size="xs" c="dimmed">This month</Text>
-              <Text fw={800} size="2rem" lh={1.05}>
+              <Text fw={800} size="1.5rem" lh={1.05}>
                 {expenses.length}
               </Text>
             </Stack>
@@ -489,11 +489,11 @@ export function GroupHubView({ groupId }: { groupId: string }) {
           </Group>
         </Paper>
 
-        <Paper className="commune-stat-card commune-kpi-card" p="lg">
+        <Paper className="commune-stat-card commune-kpi-card" p="md">
           <Group justify="space-between" align="flex-start">
             <Stack gap={4}>
               <Text size="sm" c="dimmed">Setup progress</Text>
-              <Text fw={800} size="2rem" lh={1.05}>
+              <Text fw={800} size="1.5rem" lh={1.05}>
                 {completedChecklistCount}/{totalChecklistCount}
               </Text>
               <Text size="xs" c="dimmed">
