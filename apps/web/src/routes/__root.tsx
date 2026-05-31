@@ -37,10 +37,10 @@ const theme = createTheme({
   primaryShade: { light: 7, dark: 5 },
   defaultRadius: 'md',
   fontFamily:
-    'Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif',
+    "'Avenir Next', 'Nunito Sans', Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
   headings: {
     fontFamily:
-      'Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif',
+      "'Avenir Next', 'Nunito Sans', Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
     fontWeight: '700',
   },
   colors: {

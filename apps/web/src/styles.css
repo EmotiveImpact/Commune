@@ -655,11 +655,11 @@ div:hover > .commune-avatar-overlay {
 }
 
 .commune-table-shell {
-  border: 1px solid rgba(22, 19, 29, 0.06);
-  border-radius: 12px;
+  border: 1px solid var(--commune-border);
+  border-radius: 14px;
   overflow-x: auto;
   overflow-y: hidden;
-  background: rgba(255, 255, 255, 0.72);
+  background: var(--commune-paper-strong);
   -webkit-overflow-scrolling: touch;
 }
 
@@ -669,23 +669,24 @@ div:hover > .commune-avatar-overlay {
 }
 
 .commune-table-shell th {
-  background: rgba(255, 248, 240, 0.9);
+  background: var(--commune-paper-soft);
   color: var(--commune-ink-soft);
-  font-size: 0.75rem;
-  padding: 0.65rem 0.85rem;
+  font-size: 0.7rem;
+  padding: 0.7rem 0.85rem;
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+  border-bottom: 1px solid var(--commune-border);
 }
 
 .commune-table-shell tr:not(:last-child) td {
-  border-bottom: 1px solid rgba(22, 19, 29, 0.06);
+  border-bottom: 1px solid var(--commune-border);
 }
 
 .commune-table-shell td {
   background: transparent;
   font-size: 0.875rem;
-  padding: 0.6rem 0.85rem;
+  padding: 0.7rem 0.85rem;
 }
 
 .commune-kpi-stack {
