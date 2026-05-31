@@ -578,136 +578,202 @@ export function GroupHubView({ groupId }: { groupId: string }) {
       </Stack>
 
       {/* ------------------------------------------------------------------ */}
-      {/*  2b. Pinned Announcement                                           */}
+      {/*  3. Finance + context — two columns                               */}
+      {/*     LEFT: your money in this group · RIGHT: group context         */}
       {/* ------------------------------------------------------------------ */}
-      {group.pinned_message && (
-        <Paper
-          className="commune-soft-panel"
-          p="md"
-          radius="md"
-          style={{ borderLeft: '4px solid var(--commune-primary)' }}
-        >
-          <Group gap="xs" align="flex-start">
-            <IconPin size={18} style={{ color: 'var(--commune-primary)', flexShrink: 0, marginTop: 2 }} />
-            <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>
-              {group.pinned_message}
-            </Text>
-          </Group>
-        </Paper>
-      )}
+      <div className="commune-dashboard-grid">
+        {/* ---- Main column: your position + this month's breakdown ---- */}
+        <Stack gap="lg">
+          {(() => {
+            if (isSettlementError) {
+              return (
+                <QueryErrorState
+                  title="Failed to load settlement"
+                  error={settlementError}
+                  onRetry={() => {
+                    void refetchSettlement();
+                  }}
+                  icon={IconCash}
+                />
+              );
+            }
 
-      {/* ------------------------------------------------------------------ */}
-      {/*  2b2. Space Essentials Strip                                       */}
-      {/* ------------------------------------------------------------------ */}
-      {Object.keys(spaceEssentials).length > 0 && (
-        <Paper className="commune-soft-panel" p="md" radius="md">
-          <Group gap="xs" mb="sm">
-            <IconHome2 size={16} />
-            <Text size="sm" fw={600}>Space essentials</Text>
-          </Group>
-          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="xs">
-            {Object.entries(spaceEssentials)
-              .filter(([, item]) => item.visible)
-              .map(([key, item]) => {
-                const IconForItem = essentialIconMap[key] ?? IconHome2;
-                const spanWide =
-                  item.value.length > 70 || key === 'rules' || key === 'instructions' || key === 'handover';
+            if (!settlement || !user) return null;
+            const youOwe = settlement.transactions
+              .filter((t: any) => t.fromUserId === user.id)
+              .reduce((sum: number, t: any) => sum + t.amount, 0);
+            const owedToYou = settlement.transactions
+              .filter((t: any) => t.toUserId === user.id)
+              .reduce((sum: number, t: any) => sum + t.amount, 0);
+            const isSettled = youOwe === 0 && owedToYou === 0;
+            const myMonthly = memberTotals[user.id] ?? 0;
 
-                return (
-                  <Group
-                    key={key}
-                    gap="xs"
-                    wrap="nowrap"
-                    style={spanWide ? { gridColumn: 'span 2' } : undefined}
-                  >
-                    <IconForItem size={14} style={{ color: 'var(--commune-ink-soft)', flexShrink: 0 }} />
-                    <Text size="xs">
-                      <Text span fw={600} size="xs">{item.label}:</Text> {item.value}
+            return (
+              <Paper className="commune-soft-panel" p="lg" radius="md">
+                <Group gap="xs" mb="sm">
+                  <IconAlertCircle size={18} />
+                  <Text className="commune-section-heading">Your position</Text>
+                </Group>
+                <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+                  <Stack gap={2} align="center">
+                    <Text size="xs" c="dimmed">Your monthly share</Text>
+                    <Text fw={700} size="lg">{formatCurrency(myMonthly, currency)}</Text>
+                  </Stack>
+                  <Stack gap={2} align="center">
+                    <Text size="xs" c="dimmed">Status</Text>
+                    {isSettled ? (
+                      <Badge color="green" variant="light" size="lg" leftSection={<IconCheck size={14} />}>
+                        Settled
+                      </Badge>
+                    ) : youOwe > 0 ? (
+                      <Badge color="orange" variant="light" size="lg">
+                        You owe {formatCurrency(youOwe, currency)}
+                      </Badge>
+                    ) : (
+                      <Badge color="blue" variant="light" size="lg">
+                        Owed {formatCurrency(owedToYou, currency)}
+                      </Badge>
+                    )}
+                  </Stack>
+                  <Stack gap={2} align="center">
+                    <Text size="xs" c="dimmed">Payments needed</Text>
+                    <Text fw={700} size="lg">
+                      {settlement.transactions.filter((t: any) => t.fromUserId === user.id).length}
                     </Text>
-                  </Group>
-                );
-              })}
-          </SimpleGrid>
-        </Paper>
-      )}
+                  </Stack>
+                  <Stack gap={2} align="center">
+                    <Button
+                      component={Link}
+                      to="/breakdown"
+                      variant="light"
+                      color="orange"
+                      size="sm"
+                      leftSection={<IconCash size={16} />}
+                      onClick={() => setActiveGroupId(groupId)}
+                    >
+                      Settle up
+                    </Button>
+                  </Stack>
+                </SimpleGrid>
+              </Paper>
+            );
+          })()}
 
-      {/* ------------------------------------------------------------------ */}
-      {/*  2c. Your Position Card                                            */}
-      {/* ------------------------------------------------------------------ */}
-      {(() => {
-        if (isSettlementError) {
-          return (
-            <QueryErrorState
-              title="Failed to load settlement"
-              error={settlementError}
-              onRetry={() => {
-                void refetchSettlement();
-              }}
-              icon={IconCash}
-            />
-          );
-        }
-
-        if (!settlement || !user) return null;
-        const youOwe = settlement.transactions
-          .filter((t: any) => t.fromUserId === user.id)
-          .reduce((sum: number, t: any) => sum + t.amount, 0);
-        const owedToYou = settlement.transactions
-          .filter((t: any) => t.toUserId === user.id)
-          .reduce((sum: number, t: any) => sum + t.amount, 0);
-        const isSettled = youOwe === 0 && owedToYou === 0;
-        const myMonthly = memberTotals[user.id] ?? 0;
-
-        return (
-          <Paper className="commune-soft-panel" p="lg" radius="md">
-            <Group gap="xs" mb="sm">
-              <IconAlertCircle size={18} />
-              <Text className="commune-section-heading">Your Position</Text>
+          <Stack gap="md">
+            <Group gap="xs">
+              <IconReceipt size={20} />
+              <Text className="commune-section-heading">This month's breakdown</Text>
             </Group>
-            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-              <Stack gap={2} align="center">
-                <Text size="xs" c="dimmed">Your monthly share</Text>
-                <Text fw={700} size="lg">{formatCurrency(myMonthly, currency)}</Text>
-              </Stack>
-              <Stack gap={2} align="center">
-                <Text size="xs" c="dimmed">Status</Text>
-                {isSettled ? (
-                  <Badge color="green" variant="light" size="lg" leftSection={<IconCheck size={14} />}>
-                    Settled
-                  </Badge>
-                ) : youOwe > 0 ? (
-                  <Badge color="orange" variant="light" size="lg">
-                    You owe {formatCurrency(youOwe, currency)}
-                  </Badge>
-                ) : (
-                  <Badge color="blue" variant="light" size="lg">
-                    Owed {formatCurrency(owedToYou, currency)}
-                  </Badge>
-                )}
-              </Stack>
-              <Stack gap={2} align="center">
-                <Text size="xs" c="dimmed">Payments needed</Text>
-                <Text fw={700} size="lg">
-                  {settlement.transactions.filter((t: any) => t.fromUserId === user.id).length}
+            <Paper className="commune-soft-panel" p="lg">
+              {Object.keys(categoryTotals).length > 0 ? (
+                <Stack gap="sm">
+                  {Object.entries(categoryTotals)
+                    .sort(([, a], [, b]) => (b as number) - (a as number))
+                    .map(([category, total]) => {
+                      const pct = totalMonthly > 0
+                        ? Math.round(((total as number) / totalMonthly) * 100)
+                        : 0;
+                      const perPerson = activeMembers > 0
+                        ? (total as number) / activeMembers
+                        : 0;
+
+                      return (
+                        <Box key={category}>
+                          <Group justify="space-between" mb={4}>
+                            <Group gap="xs">
+                              <Text size="sm" fw={500} tt="capitalize">
+                                {category}
+                              </Text>
+                              <Badge size="xs" variant="light" color="gray" radius="sm">
+                                {pct}%
+                              </Badge>
+                            </Group>
+                            <Group gap="xs">
+                              <Text size="sm" fw={600}>
+                                {formatCurrency(total as number, currency)}
+                              </Text>
+                              <Text size="xs" c="dimmed">
+                                ({formatCurrency(perPerson, currency)}/person)
+                              </Text>
+                            </Group>
+                          </Group>
+                          <Progress value={pct} size="sm" color="commune" />
+                        </Box>
+                      );
+                    })}
+
+                  <Group
+                    justify="space-between"
+                    pt="sm"
+                    mt="xs"
+                    style={{ borderTop: '1px solid var(--mantine-color-default-border)' }}
+                  >
+                    <Text size="sm" fw={700}>Total</Text>
+                    <Group gap="xs">
+                      <Text size="sm" fw={700}>
+                        {formatCurrency(totalMonthly, currency)}
+                      </Text>
+                      <Text size="xs" c="dimmed">
+                        ({formatCurrency(activeMembers > 0 ? totalMonthly / activeMembers : 0, currency)}/person)
+                      </Text>
+                    </Group>
+                  </Group>
+                </Stack>
+              ) : (
+                <Stack align="center" gap="xs" py="lg">
+                  <Text fw={600} c="dimmed">No expenses this month</Text>
+                  <Text size="sm" c="dimmed">
+                    Add expenses and the monthly breakdown will appear here.
+                  </Text>
+                </Stack>
+              )}
+            </Paper>
+          </Stack>
+        </Stack>
+
+        {/* ---- Sidebar column: pinned + space essentials ---- */}
+        <Stack gap="lg">
+          {group.pinned_message && (
+            <Paper
+              className="commune-soft-panel"
+              p="md"
+              radius="md"
+              style={{ borderLeft: '4px solid var(--commune-primary)' }}
+            >
+              <Group gap="xs" align="flex-start">
+                <IconPin size={18} style={{ color: 'var(--commune-primary)', flexShrink: 0, marginTop: 2 }} />
+                <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>
+                  {group.pinned_message}
                 </Text>
-              </Stack>
-              <Stack gap={2} align="center">
-                <Button
-                  component={Link}
-                  to="/breakdown"
-                  variant="light"
-                  color="orange"
-                  size="sm"
-                  leftSection={<IconCash size={16} />}
-                  onClick={() => setActiveGroupId(groupId)}
-                >
-                  Settle Up
-                </Button>
-              </Stack>
-            </SimpleGrid>
-          </Paper>
-        );
-      })()}
+              </Group>
+            </Paper>
+          )}
+
+          {Object.keys(spaceEssentials).length > 0 && (
+            <Paper className="commune-soft-panel" p="md" radius="md">
+              <Group gap="xs" mb="sm">
+                <IconHome2 size={16} />
+                <Text size="sm" fw={600}>Space essentials</Text>
+              </Group>
+              <SimpleGrid cols={1} spacing="xs">
+                {Object.entries(spaceEssentials)
+                  .filter(([, item]) => item.visible)
+                  .map(([key, item]) => {
+                    const IconForItem = essentialIconMap[key] ?? IconHome2;
+                    return (
+                      <Group key={key} gap="xs" wrap="nowrap">
+                        <IconForItem size={14} style={{ color: 'var(--commune-ink-soft)', flexShrink: 0 }} />
+                        <Text size="xs">
+                          <Text span fw={600} size="xs">{item.label}:</Text> {item.value}
+                        </Text>
+                      </Group>
+                    );
+                  })}
+              </SimpleGrid>
+            </Paper>
+          )}
+        </Stack>
+      </div>
 
       {/* ------------------------------------------------------------------ */}
       {/*  2d. Recent Activity Feed                                          */}
@@ -886,81 +952,6 @@ export function GroupHubView({ groupId }: { groupId: string }) {
             );
           })}
         </SimpleGrid>
-      </Stack>
-
-      {/* ------------------------------------------------------------------ */}
-      {/*  4. Monthly Breakdown Section                                      */}
-      {/* ------------------------------------------------------------------ */}
-      <Stack gap="md">
-        <Group gap="xs">
-          <IconReceipt size={20} />
-          <Text className="commune-section-heading">This Month's Breakdown</Text>
-        </Group>
-
-        <Paper className="commune-soft-panel" p="lg">
-          {Object.keys(categoryTotals).length > 0 ? (
-            <Stack gap="sm">
-              {Object.entries(categoryTotals)
-                .sort(([, a], [, b]) => (b as number) - (a as number))
-                .map(([category, total]) => {
-                  const pct = totalMonthly > 0
-                    ? Math.round(((total as number) / totalMonthly) * 100)
-                    : 0;
-                  const perPerson = activeMembers > 0
-                    ? (total as number) / activeMembers
-                    : 0;
-
-                  return (
-                    <Box key={category}>
-                      <Group justify="space-between" mb={4}>
-                        <Group gap="xs">
-                          <Text size="sm" fw={500} tt="capitalize">
-                            {category}
-                          </Text>
-                          <Badge size="xs" variant="light" color="gray" radius="sm">
-                            {pct}%
-                          </Badge>
-                        </Group>
-                        <Group gap="xs">
-                          <Text size="sm" fw={600}>
-                            {formatCurrency(total as number, currency)}
-                          </Text>
-                          <Text size="xs" c="dimmed">
-                            ({formatCurrency(perPerson, currency)}/person)
-                          </Text>
-                        </Group>
-                      </Group>
-                      <Progress value={pct} size="sm" color="commune" />
-                    </Box>
-                  );
-                })}
-
-              <Group
-                justify="space-between"
-                pt="sm"
-                mt="xs"
-                style={{ borderTop: '1px solid var(--mantine-color-default-border)' }}
-              >
-                <Text size="sm" fw={700}>Total</Text>
-                <Group gap="xs">
-                  <Text size="sm" fw={700}>
-                    {formatCurrency(totalMonthly, currency)}
-                  </Text>
-                  <Text size="xs" c="dimmed">
-                    ({formatCurrency(activeMembers > 0 ? totalMonthly / activeMembers : 0, currency)}/person)
-                  </Text>
-                </Group>
-              </Group>
-            </Stack>
-          ) : (
-            <Stack align="center" gap="xs" py="lg">
-              <Text fw={600} c="dimmed">No expenses this month</Text>
-              <Text size="sm" c="dimmed">
-                Add expenses and the monthly breakdown will appear here.
-              </Text>
-            </Stack>
-          )}
-        </Paper>
       </Stack>
 
       {/* ------------------------------------------------------------------ */}
