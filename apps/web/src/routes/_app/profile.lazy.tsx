@@ -50,6 +50,7 @@ import {
 import { SettingsSkeleton } from '../../components/page-skeleton';
 import { PageHeader } from '../../components/page-header';
 import { QueryErrorState } from '../../components/query-error-state';
+import '../../account.css';
 
 export const Route = createLazyFileRoute('/_app/profile')({
   component: ProfilePage,
@@ -100,6 +101,12 @@ export function ProfilePage() {
   const lastHydratedProfileRef = useRef<string | null>(null);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // Local UI state for the preference + notification sections (display today;
+  // persistence wires into the settings backend next).
+  const [prefs, setPrefs] = useState({ currency: 'GBP', timezone: 'Europe/London', language: 'en-GB', weekStart: 'monday' });
+  const [notif, setNotif] = useState({
+    newExpense: true, settleUp: true, reminders: true, recurring: true, weekly: false, product: false,
+  });
 
   const resolvedProfile = useMemo(
     () => profile ?? (user ? {
@@ -266,245 +273,330 @@ export function ProfilePage() {
   }
 
   return (
-    <Stack gap="xl">
-      {/* ── Profile hero — brand cover + identity ── */}
-      <Paper className="commune-soft-panel" p={0} style={{ overflow: 'hidden' }}>
+    <div className="commune-account">
+      {/* Cover */}
+      <div className="cover">
+        <div className="cover-img" />
+      </div>
+
+      {/* Identity header */}
+      <div className="id">
         <div
-          style={{
-            height: 92,
-            background: 'linear-gradient(120deg, var(--commune-forest) 0%, var(--commune-primary) 100%)',
-          }}
-        />
-        <Group
-          justify="space-between"
-          align="flex-end"
-          wrap="nowrap"
-          px="xl"
-          pb="lg"
-          style={{ marginTop: -46 }}
+          className="id-av"
+          onClick={() => fileInputRef.current?.click()}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') fileInputRef.current?.click(); }}
+          style={{ cursor: 'pointer', opacity: isUploadingAvatar ? 0.6 : 1 }}
         >
-          <Group gap="lg" align="flex-end" wrap="nowrap">
-            <div
-              style={{ position: 'relative', cursor: 'pointer', flexShrink: 0 }}
-              onClick={() => fileInputRef.current?.click()}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') fileInputRef.current?.click(); }}
-            >
-              <Avatar
-                src={form.getValues().avatar_url || undefined}
-                name={`${form.getValues().first_name} ${form.getValues().last_name}`.trim()}
-                color="initials"
-                size={96}
-                style={{
-                  opacity: isUploadingAvatar ? 0.5 : 1,
-                  transition: 'opacity 150ms',
-                  border: '4px solid var(--commune-paper-strong)',
-                }}
-              />
-              <div
-                style={{
-                  position: 'absolute',
-                  inset: 0,
-                  borderRadius: '50%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  background: 'rgba(0,0,0,0.35)',
-                  opacity: 0,
-                  transition: 'opacity 150ms',
-                }}
-                className="commune-avatar-overlay"
-              >
-                <IconCamera size={22} color="white" />
-              </div>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                style={{ display: 'none' }}
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) void handleAvatarUpload(file);
-                  e.target.value = '';
-                }}
-              />
+          {form.getValues().avatar_url ? (
+            <img src={form.getValues().avatar_url || undefined} alt="" />
+          ) : (
+            `${(form.getValues().first_name?.[0] ?? '').toUpperCase()}${(form.getValues().last_name?.[0] ?? '').toUpperCase()}` || '🙂'
+          )}
+          <span className="cam">📷</span>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            style={{ display: 'none' }}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) void handleAvatarUpload(file);
+              e.target.value = '';
+            }}
+          />
+        </div>
+        <div className="id-meta">
+          <div className="id-name">
+            <h1>{`${form.getValues().first_name} ${form.getValues().last_name}`.trim() || 'Your profile'}</h1>
+            <span className="verified">✓ Verified</span>
+          </div>
+          <div className="id-sub">
+            <span className="mi">✉ {resolvedProfile.email}</span>
+            {resolvedProfile.country ? <span className="mi">📍 {resolvedProfile.country}</span> : null}
+            <span className="mi">🕒 Member since {formatDate(resolvedProfile.created_at)}</span>
+          </div>
+        </div>
+        <div className="id-actions">
+          <button type="submit" form="profile-form" className="abtn pri" disabled={updateProfile.isPending}>
+            ✓ Save changes
+          </button>
+        </div>
+      </div>
+
+      <div className="acc-grid">
+        <nav className="snav">
+          <div className="nlab">Account</div>
+          <a href="#profile" className="on"><span className="si">👤</span> Profile</a>
+          <a href="#preferences"><span className="si">🌐</span> Preferences</a>
+          <a href="#payment"><span className="si">💳</span> Payment methods</a>
+          <div className="nlab">System</div>
+          <a href="#notifications"><span className="si">🔔</span> Notifications</a>
+          <a href="#security"><span className="si">🔒</span> Security</a>
+          <a href="#danger"><span className="si">⚠️</span> Danger zone</a>
+        </nav>
+
+        <div className="col">
+          {/* PROFILE */}
+          <section className="section" id="profile">
+            <div className="section-h">
+              <h2>Profile</h2>
+              <p>Your personal details, shown to others in your households.</p>
             </div>
-            <Stack gap={2} pb={6}>
-              <Group gap="xs" align="center">
-                <Text fw={800} size="xl">
-                  {`${form.getValues().first_name} ${form.getValues().last_name}`.trim() || 'Your profile'}
-                </Text>
-                <Badge color="commune" variant="light" radius="sm">Verified</Badge>
-              </Group>
-              <Text size="sm" c="dimmed">{resolvedProfile.email}</Text>
-              <Text size="xs" c="dimmed">
-                Member since {formatDate(resolvedProfile.created_at)}
-              </Text>
-            </Stack>
-          </Group>
-          <Button
-            type="submit"
-            form="profile-form"
-            leftSection={<IconDeviceFloppy size={16} />}
-            loading={updateProfile.isPending}
-            visibleFrom="sm"
-          >
-            Save changes
-          </Button>
-        </Group>
-      </Paper>
+            <form id="profile-form" onSubmit={form.onSubmit(handleSubmit)}>
+              <div className="scard">
+                <div className="frow">
+                  <div>
+                    <div className="lab">Full name</div>
+                    <div className="hint">Appears on expenses, settle-up requests and member lists.</div>
+                  </div>
+                  <div className="ctl">
+                    <div className="two-up">
+                      <div className="field">
+                        <label>First name</label>
+                        <input className="inp" placeholder="First name" key={form.key('first_name')} {...form.getInputProps('first_name')} />
+                      </div>
+                      <div className="field">
+                        <label>Last name</label>
+                        <input className="inp" placeholder="Last name" key={form.key('last_name')} {...form.getInputProps('last_name')} />
+                      </div>
+                    </div>
+                  </div>
+                </div>
 
-      <form id="profile-form" onSubmit={form.onSubmit(handleSubmit)}>
-        <Stack gap="lg" maw={720}>
-          {/* ── Personal details ── */}
-          <Paper className="commune-soft-panel" p="xl">
-            <Group gap="xs" mb="md">
-              <IconUser size={20} />
-              <Text className="commune-section-heading">Personal details</Text>
-            </Group>
+                <div className="frow">
+                  <div>
+                    <div className="lab">Email address</div>
+                    <div className="hint">Used to sign in and receive receipts. Verified — contact support to change.</div>
+                  </div>
+                  <div className="ctl">
+                    <div className="inp-icon">
+                      <span className="il">✉</span>
+                      <input className="inp ro" value={resolvedProfile.email} readOnly />
+                      <span className="ir"><span className="abadge green dot">Verified</span></span>
+                    </div>
+                  </div>
+                </div>
 
-            <Stack gap="lg">
-              <SimpleGrid cols={2}>
-                <TextInput
-                  label="First name"
-                  placeholder="Enter your first name"
-                  withAsterisk
-                  key={form.key('first_name')}
-                  {...form.getInputProps('first_name')}
-                />
-                <TextInput
-                  label="Last name"
-                  placeholder="Enter your last name"
-                  key={form.key('last_name')}
-                  {...form.getInputProps('last_name')}
-                />
-              </SimpleGrid>
+                <div className="frow">
+                  <div>
+                    <div className="lab">Phone number</div>
+                    <div className="hint">For settle-up reminders and account recovery. Never shared publicly.</div>
+                  </div>
+                  <div className="ctl">
+                    <div className="field">
+                      <label>Mobile</label>
+                      <input className="inp" placeholder="+44 7700 900000" key={form.key('phone')} {...form.getInputProps('phone')} />
+                    </div>
+                  </div>
+                </div>
 
-              <SimpleGrid cols={2}>
-                <TextInput
-                  label="Phone number"
-                  placeholder="+44 7700 900000"
-                  leftSection={<IconPhone size={16} />}
-                  key={form.key('phone')}
-                  {...form.getInputProps('phone')}
-                />
-                <Select
-                  label="Country"
-                  placeholder="Select your country"
-                  data={COUNTRY_OPTIONS}
-                  key={form.key('country')}
-                  {...form.getInputProps('country')}
-                  searchable
-                  clearable
-                />
-              </SimpleGrid>
-            </Stack>
-          </Paper>
+                <div className="frow">
+                  <div>
+                    <div className="lab">Country</div>
+                    <div className="hint">Sets your region for tax categories and date formatting.</div>
+                  </div>
+                  <div className="ctl">
+                    <select className="inp sel" key={form.key('country')} {...form.getInputProps('country')}>
+                      <option value="">Select your country…</option>
+                      {COUNTRY_OPTIONS.map((c) => (
+                        <option key={c.value} value={c.value}>{c.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </form>
+          </section>
 
-          {/* ── Payment methods ── */}
-          <Paper className="commune-soft-panel" p="xl">
-            <Group justify="space-between" mb="md">
-              <Group gap="xs">
-                <IconWallet size={20} />
-                <Text className="commune-section-heading">Payment methods</Text>
-              </Group>
-              <Button
-                variant="light"
-                size="xs"
-                leftSection={<IconPlus size={14} />}
-                onClick={() => {
-                  setEditingMethod(null);
-                  openMethodModal();
-                }}
-              >
-                Add method
-              </Button>
-            </Group>
-            <Text size="sm" c="dimmed" mb="lg">
-              Group members will see your payment methods when settling up. You can add multiple providers.
-            </Text>
+          {/* PREFERENCES */}
+          <section className="section" id="preferences">
+            <div className="section-h">
+              <h2>Preferences</h2>
+              <p>Currency, language and how dates &amp; times appear.</p>
+            </div>
+            <div className="scard">
+              <div className="frow">
+                <div>
+                  <div className="lab">Default currency</div>
+                  <div className="hint">New expenses default to this. Each household can override it.</div>
+                </div>
+                <div className="ctl">
+                  <select className="inp sel" value={prefs.currency} onChange={(e) => setPrefs((p) => ({ ...p, currency: e.currentTarget.value }))}>
+                    <option value="GBP">£  British Pound (GBP)</option>
+                    <option value="EUR">€  Euro (EUR)</option>
+                    <option value="USD">$  US Dollar (USD)</option>
+                    <option value="NGN">₦  Nigerian Naira (NGN)</option>
+                  </select>
+                </div>
+              </div>
+              <div className="frow">
+                <div>
+                  <div className="lab">Timezone</div>
+                  <div className="hint">Reminders and recurring bills run on this clock.</div>
+                </div>
+                <div className="ctl">
+                  <select className="inp sel" value={prefs.timezone} onChange={(e) => setPrefs((p) => ({ ...p, timezone: e.currentTarget.value }))}>
+                    <option value="Europe/London">(GMT+00:00) London</option>
+                    <option value="Europe/Berlin">(GMT+01:00) Berlin, Paris</option>
+                    <option value="America/New_York">(GMT−05:00) New York</option>
+                    <option value="Africa/Lagos">(GMT+01:00) Lagos</option>
+                  </select>
+                </div>
+              </div>
+              <div className="frow">
+                <div>
+                  <div className="lab">First day of the week</div>
+                  <div className="hint">Used across calendars and the recurring-bill schedule.</div>
+                </div>
+                <div className="ctl">
+                  <div className="seg">
+                    <button type="button" className={prefs.weekStart === 'monday' ? 'on' : ''} onClick={() => setPrefs((p) => ({ ...p, weekStart: 'monday' }))}>Monday</button>
+                    <button type="button" className={prefs.weekStart === 'sunday' ? 'on' : ''} onClick={() => setPrefs((p) => ({ ...p, weekStart: 'sunday' }))}>Sunday</button>
+                    <button type="button" className={prefs.weekStart === 'saturday' ? 'on' : ''} onClick={() => setPrefs((p) => ({ ...p, weekStart: 'saturday' }))}>Saturday</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
 
+          {/* PAYMENT METHODS */}
+          <section className="section" id="payment">
+            <div className="section-h">
+              <h2>Payment methods</h2>
+              <p>How housemates settle up with you. Commune never moves money — these route them to your app.</p>
+            </div>
             {isPaymentMethodsError ? (
               <QueryErrorState
                 title="Failed to load payment methods"
                 error={paymentMethodsError}
-                onRetry={() => {
-                  void refetchPaymentMethods();
-                }}
+                onRetry={() => { void refetchPaymentMethods(); }}
                 icon={IconWallet}
               />
-            ) : paymentMethods.length === 0 ? (
-              <Paper p="lg" radius="md" style={{ border: '1px dashed var(--commune-border-strong)', textAlign: 'center' }}>
-                <Text size="sm" c="dimmed">No payment methods yet. Add one so members can pay you.</Text>
-              </Paper>
             ) : (
-              <Stack gap="sm">
+              <div className="scard">
+                {paymentMethods.length === 0 && (
+                  <div className="pm"><div className="pm-bd"><div className="s">No payment methods yet. Add one so members can pay you.</div></div></div>
+                )}
                 {paymentMethods.map((method) => (
-                  <Paper key={method.id} className="commune-stat-card" p="md" radius="md">
-                    <Group justify="space-between" wrap="nowrap">
-                      <Stack gap={2}>
-                        <Group gap="xs">
-                          <Text fw={600} size="sm">
-                            {getProviderDisplayName(method.provider as PaymentProvider)}
-                          </Text>
-                          {method.label && (
-                            <Text size="xs" c="dimmed">({method.label})</Text>
-                          )}
-                          {method.is_default && (
-                            <Badge size="xs" variant="light" color="yellow" leftSection={<IconStar size={10} />}>
-                              Default
-                            </Badge>
-                          )}
-                        </Group>
-                        <Text size="xs" c="dimmed" truncate maw={300}>
-                          {method.payment_link || method.payment_info || 'No details set'}
-                        </Text>
-                      </Stack>
-                      <Group gap={4}>
-                        <Tooltip label="Edit">
-                          <ActionIcon
-                            variant="subtle"
-                            size="sm"
-                            onClick={() => {
-                              setEditingMethod(method);
-                              openMethodModal();
-                            }}
-                          >
-                            <IconEdit size={14} />
-                          </ActionIcon>
-                        </Tooltip>
-                        <Tooltip label="Delete">
-                          <ActionIcon
-                            variant="subtle"
-                            size="sm"
-                            color="red"
-                            onClick={() => {
-                              if (window.confirm('Remove this payment method?')) {
-                                deleteMethod.mutate(method.id, {
-                                  onSuccess: () => {
-                                    notifications.show({
-                                      title: 'Payment method removed',
-                                      message: `${getProviderDisplayName(method.provider as PaymentProvider)} has been removed.`,
-                                      color: 'green',
-                                    });
-                                  },
-                                });
-                              }
-                            }}
-                          >
-                            <IconTrash size={14} />
-                          </ActionIcon>
-                        </Tooltip>
-                      </Group>
-                    </Group>
-                  </Paper>
+                  <div className={`pm${method.is_default ? ' pm-default' : ''}`} key={method.id}>
+                    <div className="pm-logo">{getProviderDisplayName(method.provider as PaymentProvider).charAt(0)}</div>
+                    <div className="pm-bd">
+                      <div className="t">
+                        {getProviderDisplayName(method.provider as PaymentProvider)}
+                        {method.is_default && <span className="abadge green dot">Default</span>}
+                        {method.label && <span className="abadge neutral">{method.label}</span>}
+                      </div>
+                      <div className="s">{method.payment_link || method.payment_info || 'No details set'}</div>
+                    </div>
+                    <div className="pm-act">
+                      {!method.is_default && (
+                        <button type="button" className="linkbtn" onClick={() => updateMethod.mutate({ methodId: method.id, data: { is_default: true } }, { onSuccess: () => notifications.show({ title: 'Default updated', message: `${getProviderDisplayName(method.provider as PaymentProvider)} is now your default.`, color: 'green' }) })}>Make default</button>
+                      )}
+                      <button type="button" className="linkbtn" onClick={() => { setEditingMethod(method); openMethodModal(); }}>Edit</button>
+                      <button type="button" className="linkbtn del" onClick={() => { if (window.confirm('Remove this payment method?')) { deleteMethod.mutate(method.id, { onSuccess: () => notifications.show({ title: 'Payment method removed', message: `${getProviderDisplayName(method.provider as PaymentProvider)} has been removed.`, color: 'green' }) }); } }}>Remove</button>
+                    </div>
+                  </div>
                 ))}
-              </Stack>
+                <button type="button" className="pm-add" onClick={() => { setEditingMethod(null); openMethodModal(); }}>＋ Add a payment method</button>
+              </div>
             )}
-          </Paper>
-        </Stack>
-      </form>
+          </section>
+
+          {/* NOTIFICATIONS */}
+          <section className="section" id="notifications">
+            <div className="section-h">
+              <h2>Notifications</h2>
+              <p>Choose what reaches you.</p>
+            </div>
+            <div className="scard">
+              {([
+                { k: 'newExpense', i: '💸', t: 'New expense added', s: "When a housemate logs a shared cost you're part of." },
+                { k: 'settleUp', i: '⇄', t: 'Settle-up requests', s: 'Someone asks you to pay, or marks a debt as settled.' },
+                { k: 'reminders', i: '⏰', t: 'Payment reminders', s: 'Nudges when you owe money or a bill is overdue.' },
+                { k: 'recurring', i: '📋', t: 'Recurring bills due', s: 'A heads-up before rent, utilities or subscriptions post.' },
+                { k: 'weekly', i: '📊', t: 'Weekly summary', s: 'A Monday digest of household spending and balances.' },
+                { k: 'product', i: '📣', t: 'Product updates & tips', s: 'Occasional news about new Commune features.' },
+              ] as const).map((row) => (
+                <div className="nrow" key={row.k}>
+                  <div className="ni">{row.i}</div>
+                  <div className="nb"><div className="t">{row.t}</div><div className="s">{row.s}</div></div>
+                  <label className="toggle">
+                    <input type="checkbox" checked={notif[row.k]} onChange={(e) => setNotif((n) => ({ ...n, [row.k]: e.currentTarget.checked }))} />
+                    <span className="tk" />
+                  </label>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {/* SECURITY */}
+          <section className="section" id="security">
+            <div className="section-h">
+              <h2>Security</h2>
+              <p>Keep your account locked down.</p>
+            </div>
+            <div className="scard">
+              <div className="frow">
+                <div>
+                  <div className="lab">Password</div>
+                  <div className="hint">Use 12+ characters with a mix of symbols. You'll be signed out of other devices after changing.</div>
+                </div>
+                <div className="ctl">
+                  <div className="two-up">
+                    <div className="field"><label>New password</label><input className="inp" type="password" placeholder="••••••••••••" /></div>
+                    <div className="field"><label>Confirm new</label><input className="inp" type="password" placeholder="••••••••••••" /></div>
+                  </div>
+                  <button type="button" className="abtn ghost sm" style={{ alignSelf: 'flex-start' }} onClick={() => notifications.show({ title: 'Password reset', message: 'Use “Forgot password” on the login screen to set a new one securely.', color: 'blue' })}>Update password</button>
+                </div>
+              </div>
+              <div className="frow">
+                <div>
+                  <div className="lab">Two-factor authentication</div>
+                  <div className="hint">Require a code from your authenticator app at sign-in.</div>
+                </div>
+                <div className="ctl" style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+                  <span className="abadge neutral">Not set up</span>
+                  <button type="button" className="abtn ghost sm" onClick={() => notifications.show({ title: 'Coming soon', message: 'Two-factor setup is on the way.', color: 'blue' })}>Enable</button>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* DANGER ZONE */}
+          <section className="section" id="danger">
+            <div className="danger-zone">
+              <div className="dz-h">
+                <div className="dz-ic">⚠️</div>
+                <h2>Danger zone</h2>
+              </div>
+              <div className="dz-row">
+                <div className="dz-bd">
+                  <div className="t">Export your data</div>
+                  <div className="s">Download a copy of your expenses, balances and payment history as CSV.</div>
+                </div>
+                <button type="button" className="abtn ghost" onClick={() => notifications.show({ title: 'Export requested', message: "We'll email you a download link shortly.", color: 'green' })}>⤓ Export data</button>
+              </div>
+              <div className="dz-row">
+                <div className="dz-bd">
+                  <div className="t">Delete account</div>
+                  <div className="s">Permanently erase your account and personal data. This cannot be undone, and any debts you owe remain visible to housemates.</div>
+                </div>
+                <button type="button" className="abtn danger" onClick={() => notifications.show({ title: 'Confirm via support', message: 'For your safety, account deletion is confirmed with support — contact us to proceed.', color: 'red' })}>Delete account</button>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+
+      {/* Sticky save bar */}
+      <div className="savebar">
+        <span className="sv-dot" />
+        <span className="sv-t">Changes to your profile aren't saved until you hit save.</span>
+        <span className="sv-sp" />
+        <button type="submit" form="profile-form" className="abtn pri" disabled={updateProfile.isPending}>✓ Save changes</button>
+      </div>
 
       {/* ── Add / Edit payment method modal ── */}
       <PaymentMethodModal
@@ -539,7 +631,7 @@ export function ProfilePage() {
         }}
         isLoading={createMethod.isPending || updateMethod.isPending}
       />
-    </Stack>
+    </div>
   );
 }
 

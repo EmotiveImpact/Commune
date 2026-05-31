@@ -1,0 +1,219 @@
+/* ============================================================
+   Commune — Account/Profile page styles (ported from the
+   profile-v2 mock's own CSS so the real page MATCHES the mock).
+   All scoped under .commune-account to avoid any collision with
+   Mantine / commune-* classes. Vars map to the app palette.
+   ============================================================ */
+.commune-account {
+  --acc-green: var(--commune-primary);
+  --acc-green-strong: var(--commune-primary-strong);
+  --acc-green-bright: var(--commune-accent);
+  --acc-green-bg: var(--commune-primary-tint);
+  --acc-green-tint: var(--commune-primary-tint-strong);
+  --acc-green-line: color-mix(in srgb, var(--commune-primary) 28%, transparent);
+  --acc-navy: var(--commune-forest);
+  --acc-red: var(--commune-danger);
+  --acc-red-strong: var(--commune-danger-strong);
+  --acc-red-bg: var(--commune-danger-bg);
+  --acc-red-line: var(--commune-danger-border);
+  --acc-amber: var(--commune-warning);
+  --acc-amber-bg: var(--commune-warning-bg);
+  --acc-amber-line: var(--commune-warning-border);
+  --acc-card: var(--commune-paper-strong);
+  --acc-card-2: var(--commune-paper-soft);
+  --acc-ink: var(--commune-ink);
+  --acc-ink-2: var(--commune-ink-soft);
+  --acc-ink-soft: var(--commune-ink-soft);
+  --acc-line: var(--commune-border);
+  --acc-line-2: var(--commune-border-strong);
+  --acc-sh-sm: var(--commune-shadow-sm);
+  --acc-sh: var(--commune-shadow);
+  --acc-sh-md: var(--commune-shadow-md);
+  --acc-r: 14px;
+  --acc-r-lg: 18px;
+}
+
+/* Cover + identity */
+.commune-account .cover { position: relative; border-radius: var(--acc-r-lg); overflow: hidden; box-shadow: var(--acc-sh); }
+.commune-account .cover-img {
+  height: 184px; position: relative;
+  background:
+    radial-gradient(120% 160% at 12% -10%, color-mix(in srgb, var(--acc-green-bright) 55%, transparent), transparent 55%),
+    radial-gradient(130% 180% at 88% 120%, color-mix(in srgb, var(--acc-navy) 85%, transparent), transparent 60%),
+    linear-gradient(120deg, var(--acc-green-strong) 0%, var(--acc-green) 42%, var(--acc-navy) 100%);
+}
+.commune-account .cover-img::after {
+  content: ''; position: absolute; inset: 0;
+  background-image: radial-gradient(rgba(255,255,255,.10) 1px, transparent 1.4px);
+  background-size: 22px 22px; opacity: .5;
+}
+.commune-account .cover-edit {
+  position: absolute; top: 14px; right: 14px; z-index: 2; display: inline-flex; align-items: center; gap: 7px;
+  padding: 8px 13px; border-radius: 10px; font-size: 12.5px; font-weight: 600; color: #fff; cursor: pointer;
+  background: rgba(20,36,43,.42); border: 1px solid rgba(255,255,255,.22); backdrop-filter: blur(6px);
+}
+.commune-account .cover-edit:hover { background: rgba(20,36,43,.6); }
+.commune-account .id { position: relative; padding: 0 26px 22px; margin-top: -46px; display: flex; align-items: flex-end; gap: 18px; flex-wrap: wrap; }
+.commune-account .id-av {
+  width: 104px; height: 104px; border-radius: 26px;
+  background: linear-gradient(140deg, var(--acc-green-bright), var(--acc-green));
+  color: #fff; display: flex; align-items: center; justify-content: center; font-size: 38px; font-weight: 800; letter-spacing: -.02em;
+  border: 4px solid var(--acc-card); box-shadow: var(--acc-sh-md); flex-shrink: 0; position: relative; overflow: hidden;
+}
+.commune-account .id-av img { width: 100%; height: 100%; object-fit: cover; }
+.commune-account .id-av .cam {
+  position: absolute; bottom: -4px; right: -4px; width: 32px; height: 32px; border-radius: 50%; background: var(--acc-card);
+  border: 1px solid var(--acc-line-2); display: flex; align-items: center; justify-content: center; font-size: 14px; box-shadow: var(--acc-sh-sm); cursor: pointer;
+}
+.commune-account .id-meta { flex: 1; min-width: 220px; padding-bottom: 4px; }
+.commune-account .id-name { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.commune-account .id-name h1 { font-size: 25px; font-weight: 800; letter-spacing: -.025em; color: var(--acc-ink); }
+.commune-account .id-sub { font-size: 13.5px; color: var(--acc-ink-2); margin-top: 5px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.commune-account .id-sub .mi { display: inline-flex; align-items: center; gap: 6px; }
+.commune-account .id-actions { display: flex; gap: 9px; padding-bottom: 6px; }
+.commune-account .verified {
+  font-size: 11px; font-weight: 700; letter-spacing: .02em; padding: 4px 10px; border-radius: 999px;
+  background: var(--acc-green-bg); color: var(--acc-green-strong); border: 1px solid var(--acc-green-line); display: inline-flex; align-items: center; gap: 5px;
+}
+
+/* Buttons */
+.commune-account .abtn {
+  font-size: 13.5px; font-weight: 600; height: 42px; padding: 0 18px; border-radius: 11px; border: 1px solid transparent;
+  cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none; color: var(--acc-ink);
+  transition: filter .12s, box-shadow .12s, background .12s, border-color .12s; line-height: 1;
+}
+.commune-account .abtn.pri { background: var(--acc-green); color: #fff; box-shadow: 0 1px 0 rgba(15,63,42,.4), var(--acc-sh-sm); }
+.commune-account .abtn.pri:hover { filter: brightness(1.08); box-shadow: var(--acc-sh); }
+.commune-account .abtn.ghost { background: var(--acc-card); border-color: var(--acc-line-2); color: var(--acc-ink); }
+.commune-account .abtn.ghost:hover { border-color: var(--acc-green); color: var(--acc-green-strong); background: var(--acc-green-bg); }
+.commune-account .abtn.soft { background: var(--acc-green-bg); color: var(--acc-green-strong); border-color: var(--acc-green-line); }
+.commune-account .abtn.danger { background: var(--acc-red); color: #fff; }
+.commune-account .abtn.danger:hover { filter: brightness(1.06); }
+.commune-account .abtn.danger-ghost { background: var(--acc-card); border-color: var(--acc-red-line); color: var(--acc-red-strong); }
+.commune-account .abtn.danger-ghost:hover { background: var(--acc-red-bg); }
+.commune-account .abtn.sm { height: 34px; padding: 0 13px; font-size: 12.5px; border-radius: 9px; }
+.commune-account .abtn.full { width: 100%; }
+.commune-account .abtn:disabled { opacity: .6; cursor: default; }
+
+/* Two-column layout */
+.commune-account .acc-grid { display: grid; grid-template-columns: 208px minmax(0,1fr); gap: 30px; margin-top: 26px; align-items: start; }
+.commune-account .snav { position: sticky; top: 78px; display: flex; flex-direction: column; gap: 1px; }
+.commune-account .snav a { display: flex; align-items: center; gap: 11px; padding: 9px 12px; border-radius: 10px; font-size: 13.5px; font-weight: 600; color: var(--acc-ink-2); text-decoration: none; border: 1px solid transparent; cursor: pointer; }
+.commune-account .snav a:hover { background: var(--acc-card); color: var(--acc-ink); }
+.commune-account .snav a.on { background: var(--acc-green-bg); color: var(--acc-green-strong); border-color: var(--acc-green-line); }
+.commune-account .snav a .si { width: 18px; text-align: center; font-size: 15px; }
+.commune-account .snav .nlab { font-size: 10.5px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--acc-ink-soft); padding: 14px 12px 6px; }
+.commune-account .snav .nlab:first-child { padding-top: 2px; }
+
+.commune-account .col { display: flex; flex-direction: column; gap: 26px; }
+.commune-account .section { scroll-margin-top: 80px; }
+.commune-account .section-h { display: flex; align-items: baseline; gap: 12px; margin-bottom: 13px; flex-wrap: wrap; }
+.commune-account .section-h h2 { font-size: 18px; font-weight: 800; letter-spacing: -.02em; color: var(--acc-ink); }
+.commune-account .section-h p { font-size: 13px; color: var(--acc-ink-soft); }
+.commune-account .scard { background: var(--acc-card); border: 1px solid var(--acc-line); border-radius: var(--acc-r); box-shadow: var(--acc-sh-sm); overflow: hidden; }
+
+/* Form rows */
+.commune-account .frow { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1.25fr); gap: 24px; padding: 20px 24px; border-bottom: 1px solid var(--acc-line); align-items: start; }
+.commune-account .frow:last-child { border-bottom: none; }
+.commune-account .frow .lab { font-size: 13.5px; font-weight: 700; color: var(--acc-ink); }
+.commune-account .frow .hint { font-size: 12.5px; color: var(--acc-ink-soft); margin-top: 4px; line-height: 1.45; }
+.commune-account .frow .ctl { display: flex; flex-direction: column; gap: 8px; }
+.commune-account .two-up { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+/* Inputs */
+.commune-account .field { display: flex; flex-direction: column; gap: 6px; }
+.commune-account .field > label { font-size: 11.5px; font-weight: 700; letter-spacing: .02em; color: var(--acc-ink-2); }
+.commune-account .inp {
+  height: 44px; width: 100%; padding: 0 14px; font-size: 14px; font-family: inherit; color: var(--acc-ink);
+  background: var(--acc-card); border: 1.5px solid var(--acc-line-2); border-radius: 11px; outline: none; transition: border-color .12s, box-shadow .12s;
+}
+.commune-account .inp:focus { border-color: var(--acc-green); box-shadow: 0 0 0 3px color-mix(in srgb, var(--acc-green) 16%, transparent); }
+.commune-account .inp::placeholder { color: var(--acc-ink-soft); }
+.commune-account .inp.ro { background: var(--acc-card-2); color: var(--acc-ink-2); border-style: dashed; cursor: not-allowed; }
+.commune-account .inp-icon { position: relative; }
+.commune-account .inp-icon .il { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); font-size: 15px; color: var(--acc-ink-soft); pointer-events: none; }
+.commune-account .inp-icon .inp { padding-left: 38px; }
+.commune-account .inp-icon .ir { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); }
+.commune-account .sel {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%236b6d73' stroke-width='1.7' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 14px center; padding-right: 38px; cursor: pointer;
+}
+.commune-account .help { font-size: 11.5px; color: var(--acc-ink-soft); }
+.commune-account .ferr { font-size: 11.5px; color: var(--acc-red-strong); }
+
+/* Badges */
+.commune-account .abadge { font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 999px; display: inline-flex; align-items: center; gap: 5px; }
+.commune-account .abadge.green { background: var(--acc-green-bg); color: var(--acc-green-strong); border: 1px solid var(--acc-green-line); }
+.commune-account .abadge.red { background: var(--acc-red-bg); color: var(--acc-red-strong); border: 1px solid var(--acc-red-line); }
+.commune-account .abadge.amber { background: var(--acc-amber-bg); color: var(--acc-amber); border: 1px solid var(--acc-amber-line); }
+.commune-account .abadge.neutral { background: var(--acc-card-2); color: var(--acc-ink-2); border: 1px solid var(--acc-line-2); }
+.commune-account .abadge.dot::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+/* Payment methods */
+.commune-account .pm-default { background: linear-gradient(135deg, var(--acc-green-bg), var(--acc-card)); }
+.commune-account .pm { display: flex; align-items: center; gap: 14px; padding: 16px 20px; border-bottom: 1px solid var(--acc-line); }
+.commune-account .pm:last-of-type { border-bottom: none; }
+.commune-account .pm-logo { width: 46px; height: 46px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 800; color: #fff; flex-shrink: 0; box-shadow: var(--acc-sh-sm); background: var(--acc-green); }
+.commune-account .pm-bd { flex: 1; min-width: 0; }
+.commune-account .pm-bd .t { font-size: 14px; font-weight: 700; color: var(--acc-ink); display: flex; align-items: center; gap: 8px; }
+.commune-account .pm-bd .s { font-size: 12.5px; color: var(--acc-ink-soft); margin-top: 2px; }
+.commune-account .pm-act { display: flex; align-items: center; gap: 8px; flex-shrink: 0; flex-wrap: wrap; justify-content: flex-end; }
+.commune-account .linkbtn { font-size: 12.5px; font-weight: 600; color: var(--acc-ink-2); background: none; border: none; cursor: pointer; padding: 6px 4px; }
+.commune-account .linkbtn:hover { color: var(--acc-green-strong); }
+.commune-account .linkbtn.del:hover { color: var(--acc-red-strong); }
+.commune-account .pm-add { display: flex; align-items: center; justify-content: center; gap: 9px; padding: 15px; font-size: 13.5px; font-weight: 700; color: var(--acc-green-strong); border-top: 1px dashed var(--acc-green-line); cursor: pointer; background: none; width: 100%; }
+.commune-account .pm-add:hover { background: var(--acc-green-bg); }
+
+/* Toggles / notification rows */
+.commune-account .toggle { position: relative; width: 46px; height: 27px; flex-shrink: 0; }
+.commune-account .toggle input { opacity: 0; width: 0; height: 0; position: absolute; }
+.commune-account .toggle .tk { position: absolute; inset: 0; background: var(--acc-line-2); border-radius: 999px; transition: background .15s; cursor: pointer; }
+.commune-account .toggle .tk::before { content: ''; position: absolute; left: 3px; top: 3px; width: 21px; height: 21px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.22); transition: transform .15s; }
+.commune-account .toggle input:checked + .tk { background: var(--acc-green); }
+.commune-account .toggle input:checked + .tk::before { transform: translateX(19px); }
+.commune-account .nrow { display: flex; align-items: center; gap: 14px; padding: 15px 24px; border-bottom: 1px solid var(--acc-line); }
+.commune-account .nrow:last-child { border-bottom: none; }
+.commune-account .nrow .ni { width: 38px; height: 38px; border-radius: 11px; background: var(--acc-green-bg); color: var(--acc-green); display: flex; align-items: center; justify-content: center; font-size: 17px; flex-shrink: 0; }
+.commune-account .nrow .nb { flex: 1; min-width: 0; }
+.commune-account .nrow .nb .t { font-size: 13.5px; font-weight: 700; color: var(--acc-ink); }
+.commune-account .nrow .nb .s { font-size: 12px; color: var(--acc-ink-soft); margin-top: 2px; line-height: 1.4; }
+.commune-account .seg { display: inline-flex; background: var(--acc-card-2); border: 1px solid var(--acc-line-2); border-radius: 10px; padding: 3px; gap: 2px; }
+.commune-account .seg button { font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 7px; border: none; background: none; color: var(--acc-ink-2); cursor: pointer; }
+.commune-account .seg button.on { background: var(--acc-card); color: var(--acc-green-strong); box-shadow: var(--acc-sh-sm); }
+
+/* Security sessions */
+.commune-account .sess { display: flex; align-items: center; gap: 14px; padding: 15px 24px; border-bottom: 1px solid var(--acc-line); }
+.commune-account .sess:last-child { border-bottom: none; }
+.commune-account .sess .di { width: 40px; height: 40px; border-radius: 11px; background: var(--acc-card-2); color: var(--acc-ink-2); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+.commune-account .sess .db { flex: 1; min-width: 0; }
+.commune-account .sess .db .t { font-size: 13.5px; font-weight: 700; color: var(--acc-ink); display: flex; align-items: center; gap: 9px; }
+.commune-account .sess .db .s { font-size: 12px; color: var(--acc-ink-soft); margin-top: 2px; }
+
+/* Danger zone */
+.commune-account .danger-zone { border: 1.5px solid var(--acc-red-line); border-radius: var(--acc-r); background: linear-gradient(180deg, var(--acc-red-bg), var(--acc-card) 70%); overflow: hidden; box-shadow: var(--acc-sh-sm); }
+.commune-account .danger-zone .dz-h { display: flex; align-items: center; gap: 11px; padding: 18px 24px 14px; }
+.commune-account .danger-zone .dz-h .dz-ic { width: 34px; height: 34px; border-radius: 10px; background: var(--acc-red-bg); color: var(--acc-red-strong); display: flex; align-items: center; justify-content: center; font-size: 17px; border: 1px solid var(--acc-red-line); }
+.commune-account .danger-zone .dz-h h2 { font-size: 16px; font-weight: 800; color: var(--acc-red-strong); letter-spacing: -.01em; }
+.commune-account .dz-row { display: flex; align-items: center; gap: 18px; padding: 16px 24px; border-top: 1px solid var(--acc-red-line); flex-wrap: wrap; }
+.commune-account .dz-row .dz-bd { flex: 1; min-width: 200px; }
+.commune-account .dz-row .dz-bd .t { font-size: 14px; font-weight: 700; color: var(--acc-ink); }
+.commune-account .dz-row .dz-bd .s { font-size: 12.5px; color: var(--acc-ink-soft); margin-top: 3px; line-height: 1.45; max-width: 52ch; }
+
+/* Sticky save bar */
+.commune-account .savebar { position: sticky; bottom: 16px; z-index: 6; margin-top: 30px; display: flex; align-items: center; gap: 14px; background: color-mix(in srgb, var(--acc-card) 92%, transparent); backdrop-filter: blur(10px); border: 1px solid var(--acc-line-2); border-radius: 14px; padding: 13px 18px; box-shadow: var(--acc-sh-md); }
+.commune-account .savebar .sv-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--acc-amber); box-shadow: 0 0 0 4px var(--acc-amber-bg); }
+.commune-account .savebar .sv-t { font-size: 13px; font-weight: 600; color: var(--acc-ink); }
+.commune-account .savebar .sv-sp { flex: 1; }
+.commune-account .foot-note { font-size: 12px; color: var(--acc-ink-soft); text-align: center; margin: 26px 0 8px; }
+
+@media (max-width: 920px) {
+  .commune-account .acc-grid { grid-template-columns: 1fr; gap: 18px; }
+  .commune-account .snav { position: static; flex-direction: row; flex-wrap: wrap; gap: 6px; }
+  .commune-account .snav .nlab { display: none; }
+  .commune-account .frow { grid-template-columns: 1fr; gap: 12px; }
+}
+@media (max-width: 600px) {
+  .commune-account .two-up { grid-template-columns: 1fr; }
+  .commune-account .id-actions { width: 100%; }
+}
