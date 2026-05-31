@@ -828,7 +828,7 @@ export function DashboardPage() {
 
         <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
           <Paper className="commune-soft-panel commune-checklist-card" p="xl">
-            <ThemeIcon size={42} variant="light" color="lime">
+            <ThemeIcon size={42} variant="light" color="gray">
               <IconUsers size={20} />
             </ThemeIcon>
             <Text fw={700} size="lg" mt="md">Invite the group</Text>
@@ -841,7 +841,7 @@ export function DashboardPage() {
           </Paper>
 
           <Paper className="commune-soft-panel commune-checklist-card" p="xl">
-            <ThemeIcon size={42} variant="light" color="commune">
+            <ThemeIcon size={42} variant="light" color="gray">
               <IconReceipt size={20} />
             </ThemeIcon>
             <Text fw={700} size="lg" mt="md">Add the first expense</Text>
@@ -854,7 +854,7 @@ export function DashboardPage() {
           </Paper>
 
           <Paper className="commune-soft-panel commune-checklist-card" p="xl">
-            <ThemeIcon size={42} variant="light" color="green">
+            <ThemeIcon size={42} variant="light" color="gray">
               <IconCheck size={20} />
             </ThemeIcon>
             <Text fw={700} size="lg" mt="md">Mark the first payment</Text>
@@ -1114,7 +1114,7 @@ export function DashboardPage() {
 
       <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
         {statCards.map((stat) => (
-          <Paper key={stat.label} className="commune-stat-card commune-kpi-card" p="lg" data-tone={stat.panelTone}>
+          <Paper key={stat.label} className="commune-stat-card commune-kpi-card" p="lg">
             <Group justify="space-between" align="flex-start">
               <Stack gap={4}>
                 <Text size="sm" c="dimmed">
@@ -1355,7 +1355,7 @@ export function DashboardPage() {
                 </Group>
 
                 <SimpleGrid cols={2} spacing="md">
-                  <Paper className="commune-stat-card commune-kpi-card" p="md" radius="lg" data-tone="sage">
+                  <Paper className="commune-stat-card commune-kpi-card" p="md" radius="lg">
                     <Text size="sm" c="dimmed">
                       Paid so far
                     </Text>
@@ -1363,7 +1363,7 @@ export function DashboardPage() {
                       {formatCurrency(stats?.amount_paid ?? 0, group?.currency)}
                     </Text>
                   </Paper>
-                  <Paper className="commune-stat-card commune-kpi-card" p="md" radius="lg" data-tone="peach">
+                  <Paper className="commune-stat-card commune-kpi-card" p="md" radius="lg">
                     <Text size="sm" c="dimmed">
                       Still remaining
                     </Text>

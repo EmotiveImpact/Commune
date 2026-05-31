@@ -544,7 +544,7 @@ function CrossGroupOverviewPage() {
         <>
           {/* Summary cards */}
           <Group gap="lg">
-            <Paper className="commune-stat-card commune-kpi-card" p="lg" data-tone="peach" style={{ flex: 1 }}>
+            <Paper className="commune-stat-card commune-kpi-card" p="lg" style={{ flex: 1 }}>
               <Text size="sm" c="dimmed">Outstanding</Text>
               <Text fw={800} size="1.5rem">
                 {formatCurrencyBreakdown(
@@ -557,7 +557,7 @@ function CrossGroupOverviewPage() {
               </Text>
             </Paper>
 
-            <Paper className="commune-stat-card commune-kpi-card" p="lg" data-tone="sage" style={{ flex: 1 }}>
+            <Paper className="commune-stat-card commune-kpi-card" p="lg" style={{ flex: 1 }}>
               <Text size="sm" c="dimmed">Coming your way</Text>
               <Text fw={800} size="1.5rem">
                 {formatCurrencyBreakdown(
@@ -693,7 +693,7 @@ function CrossGroupOverviewPage() {
         <>
           {/* Per-group summary */}
           <Group gap="lg">
-            <Paper className="commune-stat-card commune-kpi-card" p="lg" data-tone="peach" style={{ flex: 1 }}>
+            <Paper className="commune-stat-card commune-kpi-card" p="lg" style={{ flex: 1 }}>
               <Text size="sm" c="dimmed">Total you owe</Text>
               <Text fw={800} size="1.5rem">
                 {formatCurrencyBreakdown(
@@ -702,7 +702,7 @@ function CrossGroupOverviewPage() {
                 )}
               </Text>
             </Paper>
-            <Paper className="commune-stat-card commune-kpi-card" p="lg" data-tone="sage" style={{ flex: 1 }}>
+            <Paper className="commune-stat-card commune-kpi-card" p="lg" style={{ flex: 1 }}>
               <Text size="sm" c="dimmed">Total owed to you</Text>
               <Text fw={800} size="1.5rem">
                 {formatCurrencyBreakdown(

@@ -76,7 +76,7 @@ function WorkspaceUpgradePrompt() {
       />
       <Paper className="commune-soft-panel" p="xl">
         <Stack align="center" gap="lg" py="xl">
-          <ThemeIcon size={64} variant="light" color="commune" radius="xl">
+          <ThemeIcon size={64} variant="light" color="gray" radius="xl">
             <IconFileInvoice size={32} />
           </ThemeIcon>
           <Stack align="center" gap="xs">
@@ -271,7 +271,7 @@ export function BillingPage() {
       <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
         <Paper className="commune-stat-card" p="md" radius="lg">
           <Group gap="xs" mb="xs">
-            <ThemeIcon size={28} variant="light" color="emerald" radius="xl">
+            <ThemeIcon size={28} variant="light" color="gray" radius="xl">
               <IconCoin size={14} />
             </ThemeIcon>
             <Text size="xs" c="dimmed">Total spend</Text>
@@ -286,7 +286,7 @@ export function BillingPage() {
 
         <Paper className="commune-stat-card" p="md" radius="lg">
           <Group gap="xs" mb="xs">
-            <ThemeIcon size={28} variant="light" color="indigo" radius="xl">
+            <ThemeIcon size={28} variant="light" color="gray" radius="xl">
               <IconUsers size={14} />
             </ThemeIcon>
             <Text size="xs" c="dimmed">Vendors</Text>

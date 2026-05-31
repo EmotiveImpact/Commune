@@ -364,7 +364,7 @@ export function AnalyticsPage() {
 
       {/* Row 1: Stat cards */}
       <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
-        <Paper className="commune-soft-panel commune-kpi-card" p="xl" data-tone="sage">
+        <Paper className="commune-soft-panel commune-kpi-card" p="xl">
           <Group justify="space-between" align="flex-start">
             <Stack gap={4}>
               <Text size="sm" c="dimmed">This month</Text>
@@ -398,7 +398,7 @@ export function AnalyticsPage() {
           </Group>
         </Paper>
 
-        <Paper className="commune-soft-panel commune-kpi-card" p="xl" data-tone="lilac">
+        <Paper className="commune-soft-panel commune-kpi-card" p="xl">
           <Group justify="space-between" align="flex-start">
             <Stack gap={4}>
               <Text size="sm" c="dimmed">Payment compliance</Text>
@@ -412,7 +412,7 @@ export function AnalyticsPage() {
             <ThemeIcon
               size={42}
               variant="light"
-              color="emerald"
+              color="gray"
               style={{ backgroundColor: 'var(--commune-icon-bg-primary)' }}
             >
               <IconClockCheck size={20} />
@@ -551,7 +551,7 @@ export function AnalyticsPage() {
                 <Group justify="space-between" align="flex-start" wrap="nowrap">
                   <Stack gap={2}>
                     <Group gap="xs">
-                      <ThemeIcon size={20} variant="light" color="indigo" radius="xl">
+                      <ThemeIcon size={20} variant="light" color="gray" radius="xl">
                         <IconReceipt size={12} />
                       </ThemeIcon>
                       <Text fw={700}>Latest invoice</Text>
