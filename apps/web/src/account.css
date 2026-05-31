@@ -38,7 +38,7 @@
 /* Cover + identity */
 .commune-account .cover { position: relative; border-radius: var(--acc-r-lg); overflow: hidden; box-shadow: var(--acc-sh); }
 .commune-account .cover-img {
-  height: 184px; position: relative;
+  height: 156px; position: relative;
   background:
     radial-gradient(120% 160% at 12% -10%, color-mix(in srgb, var(--acc-green-bright) 55%, transparent), transparent 55%),
     radial-gradient(130% 180% at 88% 120%, color-mix(in srgb, var(--acc-navy) 85%, transparent), transparent 60%),
@@ -55,11 +55,11 @@
   background: rgba(20,36,43,.42); border: 1px solid rgba(255,255,255,.22); backdrop-filter: blur(6px);
 }
 .commune-account .cover-edit:hover { background: rgba(20,36,43,.6); }
-.commune-account .id { position: relative; padding: 0 26px 22px; margin-top: -46px; display: flex; align-items: flex-end; gap: 18px; flex-wrap: wrap; }
+.commune-account .id { position: relative; padding: 0 26px 18px; margin-top: 0; display: flex; align-items: flex-end; gap: 18px; flex-wrap: wrap; }
 .commune-account .id-av {
-  width: 104px; height: 104px; border-radius: 26px;
+  width: 96px; height: 96px; border-radius: 24px; margin-top: -52px;
   background: linear-gradient(140deg, var(--acc-green-bright), var(--acc-green));
-  color: #fff; display: flex; align-items: center; justify-content: center; font-size: 38px; font-weight: 800; letter-spacing: -.02em;
+  color: #fff; display: flex; align-items: center; justify-content: center; font-size: 34px; font-weight: 800; letter-spacing: -.02em;
   border: 4px solid var(--acc-card); box-shadow: var(--acc-sh-md); flex-shrink: 0; position: relative; overflow: hidden;
 }
 .commune-account .id-av img { width: 100%; height: 100%; object-fit: cover; }
