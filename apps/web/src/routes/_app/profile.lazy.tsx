@@ -31,6 +31,22 @@ import {
   IconTrash,
   IconUser,
   IconWallet,
+  IconMail,
+  IconMapPin,
+  IconClock,
+  IconCheck,
+  IconRosetteDiscountCheckFilled,
+  IconAdjustmentsHorizontal,
+  IconCreditCard,
+  IconBell,
+  IconLock,
+  IconAlertTriangle,
+  IconArrowsExchange,
+  IconCash,
+  IconReceipt,
+  IconChartBar,
+  IconSpeakerphone,
+  IconDownload,
 } from '@tabler/icons-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { setPageTitle } from '../../utils/seo';
@@ -294,7 +310,7 @@ export function ProfilePage() {
           ) : (
             `${(form.getValues().first_name?.[0] ?? '').toUpperCase()}${(form.getValues().last_name?.[0] ?? '').toUpperCase()}` || '🙂'
           )}
-          <span className="cam">📷</span>
+          <span className="cam"><IconCamera size={14} /></span>
           <input
             ref={fileInputRef}
             type="file"
@@ -310,17 +326,17 @@ export function ProfilePage() {
         <div className="id-meta">
           <div className="id-name">
             <h1>{`${form.getValues().first_name} ${form.getValues().last_name}`.trim() || 'Your profile'}</h1>
-            <span className="verified">✓ Verified</span>
+            <span className="verified"><IconRosetteDiscountCheckFilled size={13} /> Verified</span>
           </div>
           <div className="id-sub">
-            <span className="mi">✉ {resolvedProfile.email}</span>
-            {resolvedProfile.country ? <span className="mi">📍 {resolvedProfile.country}</span> : null}
-            <span className="mi">🕒 Member since {formatDate(resolvedProfile.created_at)}</span>
+            <span className="mi"><IconMail size={14} /> {resolvedProfile.email}</span>
+            {resolvedProfile.country ? <span className="mi"><IconMapPin size={14} /> {resolvedProfile.country}</span> : null}
+            <span className="mi"><IconClock size={14} /> Member since {formatDate(resolvedProfile.created_at)}</span>
           </div>
         </div>
         <div className="id-actions">
           <button type="submit" form="profile-form" className="abtn pri" disabled={updateProfile.isPending}>
-            ✓ Save changes
+            <IconCheck size={16} /> Save changes
           </button>
         </div>
       </div>
@@ -328,13 +344,13 @@ export function ProfilePage() {
       <div className="acc-grid">
         <nav className="snav">
           <div className="nlab">Account</div>
-          <a href="#profile" className="on"><span className="si">👤</span> Profile</a>
-          <a href="#preferences"><span className="si">🌐</span> Preferences</a>
-          <a href="#payment"><span className="si">💳</span> Payment methods</a>
+          <a href="#profile" className="on"><span className="si"><IconUser size={16} /></span> Profile</a>
+          <a href="#preferences"><span className="si"><IconAdjustmentsHorizontal size={16} /></span> Preferences</a>
+          <a href="#payment"><span className="si"><IconCreditCard size={16} /></span> Payment methods</a>
           <div className="nlab">System</div>
-          <a href="#notifications"><span className="si">🔔</span> Notifications</a>
-          <a href="#security"><span className="si">🔒</span> Security</a>
-          <a href="#danger"><span className="si">⚠️</span> Danger zone</a>
+          <a href="#notifications"><span className="si"><IconBell size={16} /></span> Notifications</a>
+          <a href="#security"><span className="si"><IconLock size={16} /></span> Security</a>
+          <a href="#danger"><span className="si"><IconAlertTriangle size={16} /></span> Danger zone</a>
         </nav>
 
         <div className="col">
@@ -372,7 +388,7 @@ export function ProfilePage() {
                   </div>
                   <div className="ctl">
                     <div className="inp-icon">
-                      <span className="il">✉</span>
+                      <span className="il"><IconMail size={15} /></span>
                       <input className="inp ro" value={resolvedProfile.email} readOnly />
                       <span className="ir"><span className="abadge green dot">Verified</span></span>
                     </div>
@@ -499,7 +515,7 @@ export function ProfilePage() {
                     </div>
                   </div>
                 ))}
-                <button type="button" className="pm-add" onClick={() => { setEditingMethod(null); openMethodModal(); }}>＋ Add a payment method</button>
+                <button type="button" className="pm-add" onClick={() => { setEditingMethod(null); openMethodModal(); }}><IconPlus size={16} /> Add a payment method</button>
               </div>
             )}
           </section>
@@ -512,15 +528,15 @@ export function ProfilePage() {
             </div>
             <div className="scard">
               {([
-                { k: 'newExpense', i: '💸', t: 'New expense added', s: "When a housemate logs a shared cost you're part of." },
-                { k: 'settleUp', i: '⇄', t: 'Settle-up requests', s: 'Someone asks you to pay, or marks a debt as settled.' },
-                { k: 'reminders', i: '⏰', t: 'Payment reminders', s: 'Nudges when you owe money or a bill is overdue.' },
-                { k: 'recurring', i: '📋', t: 'Recurring bills due', s: 'A heads-up before rent, utilities or subscriptions post.' },
-                { k: 'weekly', i: '📊', t: 'Weekly summary', s: 'A Monday digest of household spending and balances.' },
-                { k: 'product', i: '📣', t: 'Product updates & tips', s: 'Occasional news about new Commune features.' },
+                { k: 'newExpense', Icon: IconCash, t: 'New expense added', s: "When a housemate logs a shared cost you're part of." },
+                { k: 'settleUp', Icon: IconArrowsExchange, t: 'Settle-up requests', s: 'Someone asks you to pay, or marks a debt as settled.' },
+                { k: 'reminders', Icon: IconClock, t: 'Payment reminders', s: 'Nudges when you owe money or a bill is overdue.' },
+                { k: 'recurring', Icon: IconReceipt, t: 'Recurring bills due', s: 'A heads-up before rent, utilities or subscriptions post.' },
+                { k: 'weekly', Icon: IconChartBar, t: 'Weekly summary', s: 'A Monday digest of household spending and balances.' },
+                { k: 'product', Icon: IconSpeakerphone, t: 'Product updates & tips', s: 'Occasional news about new Commune features.' },
               ] as const).map((row) => (
                 <div className="nrow" key={row.k}>
-                  <div className="ni">{row.i}</div>
+                  <div className="ni"><row.Icon size={17} /></div>
                   <div className="nb"><div className="t">{row.t}</div><div className="s">{row.s}</div></div>
                   <label className="toggle">
                     <input type="checkbox" checked={notif[row.k]} onChange={(e) => setNotif((n) => ({ ...n, [row.k]: e.currentTarget.checked }))} />
@@ -568,7 +584,7 @@ export function ProfilePage() {
           <section className="section" id="danger">
             <div className="danger-zone">
               <div className="dz-h">
-                <div className="dz-ic">⚠️</div>
+                <div className="dz-ic"><IconAlertTriangle size={17} /></div>
                 <h2>Danger zone</h2>
               </div>
               <div className="dz-row">
@@ -576,7 +592,7 @@ export function ProfilePage() {
                   <div className="t">Export your data</div>
                   <div className="s">Download a copy of your expenses, balances and payment history as CSV.</div>
                 </div>
-                <button type="button" className="abtn ghost" onClick={() => notifications.show({ title: 'Export requested', message: "We'll email you a download link shortly.", color: 'green' })}>⤓ Export data</button>
+                <button type="button" className="abtn ghost" onClick={() => notifications.show({ title: 'Export requested', message: "We'll email you a download link shortly.", color: 'green' })}><IconDownload size={16} /> Export data</button>
               </div>
               <div className="dz-row">
                 <div className="dz-bd">
@@ -595,7 +611,7 @@ export function ProfilePage() {
         <span className="sv-dot" />
         <span className="sv-t">Changes to your profile aren't saved until you hit save.</span>
         <span className="sv-sp" />
-        <button type="submit" form="profile-form" className="abtn pri" disabled={updateProfile.isPending}>✓ Save changes</button>
+        <button type="submit" form="profile-form" className="abtn pri" disabled={updateProfile.isPending}><IconCheck size={16} /> Save changes</button>
       </div>
 
       {/* ── Add / Edit payment method modal ── */}
