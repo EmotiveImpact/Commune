@@ -40,9 +40,9 @@
 .commune-account .cover-img {
   height: 156px; position: relative;
   background:
-    radial-gradient(120% 160% at 12% -10%, color-mix(in srgb, var(--acc-green-bright) 55%, transparent), transparent 55%),
-    radial-gradient(130% 180% at 88% 120%, color-mix(in srgb, var(--acc-navy) 85%, transparent), transparent 60%),
-    linear-gradient(120deg, var(--acc-green-strong) 0%, var(--acc-green) 42%, var(--acc-navy) 100%);
+    radial-gradient(110% 160% at 85% 120%, color-mix(in srgb, var(--acc-navy) 60%, transparent), transparent 58%),
+    radial-gradient(90% 130% at 8% -20%, color-mix(in srgb, var(--acc-green-bright) 65%, transparent), transparent 60%),
+    linear-gradient(115deg, var(--acc-green-strong) 0%, var(--acc-green) 48%, var(--acc-green-bright) 100%);
 }
 .commune-account .cover-img::after {
   content: ''; position: absolute; inset: 0;
