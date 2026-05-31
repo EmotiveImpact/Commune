@@ -828,7 +828,7 @@ export function MembersPage() {
             </Group>
 
             <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-              <Paper withBorder radius="md" p="md">
+              <Paper withBorder radius="lg" p="md">
                 <Text size="sm" c="dimmed">Joiners this cycle</Text>
                 <Text fw={800} size="1.75rem" lh={1.1}>
                   {lifecycle.joiners_this_cycle.length}
@@ -843,7 +843,7 @@ export function MembersPage() {
                 </Text>
               </Paper>
 
-              <Paper withBorder radius="md" p="md">
+              <Paper withBorder radius="lg" p="md">
                 <Text size="sm" c="dimmed">Departures this cycle</Text>
                 <Text fw={800} size="1.75rem" lh={1.1}>
                   {lifecycle.departures_this_cycle.length}
@@ -858,7 +858,7 @@ export function MembersPage() {
                 </Text>
               </Paper>
 
-              <Paper withBorder radius="md" p="md">
+              <Paper withBorder radius="lg" p="md">
                 <Text size="sm" c="dimmed">Prorated members</Text>
                 <Text fw={800} size="1.75rem" lh={1.1}>
                   {lifecycle.proration_members.length}
@@ -870,7 +870,7 @@ export function MembersPage() {
                 </Text>
               </Paper>
 
-              <Paper withBorder radius="md" p="md">
+              <Paper withBorder radius="lg" p="md">
                 <Text size="sm" c="dimmed">Admins on duty</Text>
                 <Text fw={800} size="1.75rem" lh={1.1}>
                   {lifecycle.admin_count}
@@ -919,7 +919,7 @@ export function MembersPage() {
             )}
 
             {(incompleteChecklistItems.length > 0 || lifecycle.owner_transition_required) && (
-              <Paper withBorder radius="md" p="md">
+              <Paper withBorder radius="lg" p="md">
                 <Stack gap="sm">
                   <Group justify="space-between" align="center">
                     <div>
@@ -987,7 +987,7 @@ export function MembersPage() {
 
             <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md">
               {workspaceGovernance.rolePresets.slice(0, 2).map((role) => (
-                <Paper key={role.label} withBorder radius="md" p="md">
+                <Paper key={role.label} withBorder radius="lg" p="md">
                   <Text fw={700}>{role.label}</Text>
                   <Text size="sm" c="dimmed" mt={4}>
                     {role.description}
@@ -1008,7 +1008,7 @@ export function MembersPage() {
               ))}
             </SimpleGrid>
 
-            <Paper withBorder radius="md" p="md">
+            <Paper withBorder radius="lg" p="md">
               <Group justify="space-between" align="flex-start" gap="sm">
                 <div>
                   <Text fw={700}>Approval chain</Text>

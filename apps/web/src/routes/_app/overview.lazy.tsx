@@ -88,7 +88,7 @@ export const Route = createLazyFileRoute('/_app/overview')({
 
 function CrossGroupOverviewPage() {
   useEffect(() => {
-    setPageTitle('Settle up');
+    setPageTitle('Balances');
   }, []);
 
   const { user } = useAuthStore();
@@ -181,8 +181,8 @@ function CrossGroupOverviewPage() {
     return (
       <Stack gap="lg">
         <PageHeader
-          title="Settle up"
-          subtitle="Your balances and priorities across all groups"
+          title="Balances"
+          subtitle="Where you stand and what to settle across all groups"
         />
 
         {/* My Groups (always shown) */}

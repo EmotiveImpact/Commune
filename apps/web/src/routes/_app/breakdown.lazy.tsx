@@ -374,7 +374,7 @@ function NudgeHistorySection({
 
 export function BreakdownPage() {
   useEffect(() => {
-    setPageTitle('My Breakdown');
+    setPageTitle('Settle up');
   }, []);
 
   const { activeGroupId } = useGroupStore();
@@ -532,7 +532,7 @@ export function BreakdownPage() {
   return (
     <PageStack>
       <PageHeader
-        title="Your breakdown"
+        title="Settle up"
         subtitle="What you owe, what is paid, and what still needs action"
       >
         <Group gap="sm">

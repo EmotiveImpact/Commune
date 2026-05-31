@@ -52,10 +52,39 @@ import { useGenerateRecurring, usePendingRecurringGeneration } from '../../hooks
 import { useDeferredSection } from '../../hooks/use-deferred-section';
 import { SetBudgetModal } from '../../components/set-budget-modal';
 import { QueryErrorState } from '../../components/query-error-state';
+import { GroupHubView } from './groups/$groupId/index.lazy';
+import { CommandCentre } from '../../components/command-centre';
 
 export const Route = createLazyFileRoute('/_app/')({
-  component: DashboardPage,
+  component: HomePage,
 });
+
+/**
+ * Adaptive home. The surface you land on depends on how many groups you're in:
+ *   0 groups  → the dashboard's onboarding / empty state (unchanged)
+ *   1 group   → that group's hub IS your home (Standard tier, focused)
+ *   2+ groups → the cross-group command centre (Pro / Agency)
+ */
+export function HomePage() {
+  const { data: groups, isLoading } = useUserGroupSummaries();
+
+  if (isLoading) {
+    return <DashboardSkeleton />;
+  }
+
+  const groupCount = groups?.length ?? 0;
+
+  if (groupCount === 1 && groups) {
+    return <GroupHubView groupId={groups[0]!.id} />;
+  }
+
+  if (groupCount >= 2 && groups) {
+    return <CommandCentre groups={groups} />;
+  }
+
+  // Zero groups (or load error) → existing dashboard owns the onboarding/empty UX.
+  return <DashboardPage />;
+}
 
 const DashboardTransactionOverviewChart = lazy(() =>
   import('../../components/dashboard-charts').then((module) => ({

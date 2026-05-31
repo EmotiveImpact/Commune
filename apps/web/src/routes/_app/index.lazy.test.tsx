@@ -1,7 +1,7 @@
 import { MantineProvider } from '@mantine/core';
 import { render, screen } from '@testing-library/react';
 import { vi } from 'vitest';
-import { DashboardPage } from './index.lazy';
+import { DashboardPage, HomePage } from './index.lazy';
 
 const navigateMock = vi.fn();
 const refetchGroupsMock = vi.fn();
@@ -29,6 +29,18 @@ vi.mock('../../hooks/use-groups', () => ({
     error: null,
     refetch: vi.fn(),
   }),
+}));
+
+vi.mock('./groups/$groupId/index.lazy', () => ({
+  GroupHubView: ({ groupId }: { groupId: string }) => (
+    <div data-testid="group-hub-view">hub:{groupId}</div>
+  ),
+}));
+
+vi.mock('../../components/command-centre', () => ({
+  CommandCentre: ({ groups }: { groups: Array<{ id: string }> }) => (
+    <div data-testid="command-centre">centre:{groups.length}</div>
+  ),
 }));
 
 vi.mock('../../hooks/use-dashboard', () => ({
@@ -123,5 +135,62 @@ describe('DashboardPage', () => {
     expect(screen.getByText(/failed to load dashboard/i)).toBeInTheDocument();
     expect(screen.getByText(/group bootstrap failed/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /try again/i })).toBeInTheDocument();
+  });
+});
+
+describe('HomePage (adaptive home)', () => {
+  beforeEach(() => {
+    useUserGroupSummariesResultMock = {
+      data: [],
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: refetchGroupsMock,
+    };
+  });
+
+  function renderHome() {
+    return render(
+      <MantineProvider>
+        <HomePage />
+      </MantineProvider>,
+    );
+  }
+
+  it('lands a single-group user on that group hub', () => {
+    useUserGroupSummariesResultMock = {
+      data: [{ id: 'group-A' }],
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: refetchGroupsMock,
+    };
+
+    renderHome();
+
+    expect(screen.getByTestId('group-hub-view')).toHaveTextContent('hub:group-A');
+    expect(screen.queryByTestId('command-centre')).not.toBeInTheDocument();
+  });
+
+  it('lands a multi-group user on the command centre', () => {
+    useUserGroupSummariesResultMock = {
+      data: [{ id: 'group-A' }, { id: 'group-B' }, { id: 'group-C' }],
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: refetchGroupsMock,
+    };
+
+    renderHome();
+
+    expect(screen.getByTestId('command-centre')).toHaveTextContent('centre:3');
+    expect(screen.queryByTestId('group-hub-view')).not.toBeInTheDocument();
+  });
+
+  it('falls back to the dashboard onboarding when the user has no groups', () => {
+    renderHome();
+
+    expect(screen.queryByTestId('group-hub-view')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('command-centre')).not.toBeInTheDocument();
   });
 });

@@ -108,7 +108,7 @@ function GroupsPage() {
   }
 
   return (
-    <Stack gap="xl">
+    <Stack gap="xl" className="commune-page-stack">
       <PageHeader
         title="Groups"
         subtitle={`${groups?.length ?? 0} workspace${groups?.length === 1 ? '' : 's'}`}

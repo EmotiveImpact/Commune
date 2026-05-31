@@ -33,11 +33,23 @@ export function ProtectedLayout() {
   );
   const matchRoute = useMatchRoute();
   const resolvedBootstrapGroupId = bootstrap?.resolved_group_id ?? null;
+  const activeGroupIsValid =
+    activeGroupId !== null
+    && (bootstrap?.groups ?? []).some((group) => group.id === activeGroupId);
+  // Correct the active group from bootstrap ONLY when the current selection is
+  // missing or stale (not in the user's group list) and bootstrap resolved a
+  // real group. We must NOT override a valid selection or force `null` here:
+  // useGroupBootstrap (mounted in AppShell) also reconciles activeGroupId
+  // against the live group list, and if both run unconditionally they ping-pong
+  // forever ("Maximum update depth exceeded"). Requiring an invalid current
+  // selection means this effect goes quiet as soon as a valid group is set.
   const needsGroupSync =
     !!user
     && !bootstrapLoading
     && !!bootstrap
-    && resolvedBootstrapGroupId !== activeGroupId;
+    && resolvedBootstrapGroupId !== null
+    && resolvedBootstrapGroupId !== activeGroupId
+    && !activeGroupIsValid;
 
   useEffect(() => {
     if (authLoading || isAuthenticated) {

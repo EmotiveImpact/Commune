@@ -85,4 +85,54 @@ describe('ProtectedLayout', () => {
     expect(setActiveGroupIdMock).not.toHaveBeenCalled();
     expect(screen.getByText('Protected outlet')).toBeInTheDocument();
   });
+
+  // Regression: ProtectedLayout and useGroupBootstrap both reconcile the active
+  // group. If ProtectedLayout overrides a VALID selection, the two ping-pong
+  // forever ("Maximum update depth exceeded"). It must stay quiet here.
+  it('does not override a valid active group that differs from bootstrap', () => {
+    useSignedInBootstrapMock.mockReturnValue({
+      data: {
+        subscription: { plan: 'free', status: 'active', trial_ends_at: null },
+        groups: [
+          { id: 'group-1', name: 'South Dock' },
+          { id: 'group-2', name: 'North Dock' },
+        ],
+        resolved_group_id: 'group-2',
+        dashboard_summary: null,
+      },
+      isLoading: false,
+    });
+    useGroupStoreMock.mockReturnValue({
+      activeGroupId: 'group-1', // valid (in groups) but != resolved 'group-2'
+      setActiveGroupId: setActiveGroupIdMock,
+    });
+
+    render(<ProtectedLayout />);
+
+    expect(setActiveGroupIdMock).not.toHaveBeenCalled();
+    expect(screen.getByText('Protected outlet')).toBeInTheDocument();
+  });
+
+  // Regression: bootstrap resolving null must never force activeGroupId to null
+  // when a valid group is already selected — that was half of the loop.
+  it('does not clear a valid active group when bootstrap resolves null', () => {
+    useSignedInBootstrapMock.mockReturnValue({
+      data: {
+        subscription: { plan: 'free', status: 'active', trial_ends_at: null },
+        groups: [{ id: 'group-2', name: 'North Dock' }],
+        resolved_group_id: null,
+        dashboard_summary: null,
+      },
+      isLoading: false,
+    });
+    useGroupStoreMock.mockReturnValue({
+      activeGroupId: 'group-2',
+      setActiveGroupId: setActiveGroupIdMock,
+    });
+
+    render(<ProtectedLayout />);
+
+    expect(setActiveGroupIdMock).not.toHaveBeenCalled();
+    expect(screen.getByText('Protected outlet')).toBeInTheDocument();
+  });
 });

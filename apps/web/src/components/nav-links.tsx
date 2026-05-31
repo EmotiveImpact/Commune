@@ -31,7 +31,7 @@ export interface NavGroup {
 
 /** Top-level links — always visible, not inside any group */
 export const pinnedLinks: NavLink[] = [
-  { label: 'Dashboard', to: '/', icon: <IconDashboard size={20} />, 'aria-label': 'Go to dashboard' },
+  { label: 'Home', to: '/', icon: <IconDashboard size={20} />, 'aria-label': 'Go to home' },
   { label: 'My Groups', to: '/groups', icon: <IconHome2 size={20} />, 'aria-label': 'View all groups' },
 ];
 
@@ -52,8 +52,8 @@ export const navGroups: NavGroup[] = [
     label: 'Insights',
     icon: <IconChartPie size={14} />,
     links: [
-      { label: 'Settle up', to: '/overview', icon: <IconArrowsExchange size={20} />, 'aria-label': 'View cross-group settlement' },
-      { label: 'Breakdown', to: '/breakdown', icon: <IconFileText size={20} />, 'aria-label': 'View settlement breakdown' },
+      { label: 'Balances', to: '/overview', icon: <IconArrowsExchange size={20} />, 'aria-label': 'View balances across all groups' },
+      { label: 'Settle up', to: '/breakdown', icon: <IconFileText size={20} />, 'aria-label': 'Settle up within this group' },
       { label: 'Analytics', to: '/analytics', icon: <IconChartBar size={20} />, 'aria-label': 'View spending analytics' },
     ],
   },

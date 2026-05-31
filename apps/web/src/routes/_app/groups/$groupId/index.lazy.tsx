@@ -16,6 +16,7 @@ import {
   SimpleGrid,
   Stack,
   Text,
+  ThemeIcon,
   ActionIcon,
   TextInput,
   Textarea,
@@ -54,10 +55,17 @@ import {
   IconKey,
   IconBuilding,
   IconChecklist,
+  IconChartBar,
+  IconRepeat,
+  IconPigMoney,
+  IconChevronRight,
   IconPhoto,
 } from '@tabler/icons-react';
 import { useGroupHub, useUploadGroupImage } from '../../../../hooks/use-group-hub';
 import { useGroupSettlement } from '../../../../hooks/use-settlement';
+import { useChores } from '../../../../hooks/use-chores';
+import { useFunds } from '../../../../hooks/use-funds';
+import { useRecurringExpenses } from '../../../../hooks/use-recurring';
 import { useActivityLog } from '../../../../hooks/use-activity';
 import { useMemories, useAddMemory, useDeleteMemory } from '../../../../hooks/use-memories';
 import { useAuthStore } from '../../../../stores/auth';
@@ -138,6 +146,14 @@ function formatDate(iso: string) {
 
 export function GroupHubPage() {
   const { groupId } = Route.useParams();
+  return <GroupHubView groupId={groupId} />;
+}
+
+/**
+ * The group hub body, decoupled from the route so it can also serve as the
+ * adaptive home surface for single-group users (see _app/index.lazy.tsx).
+ */
+export function GroupHubView({ groupId }: { groupId: string }) {
   const colorScheme = useComputedColorScheme('light');
   const { user } = useAuthStore();
   const { setActiveGroupId } = useGroupStore();
@@ -161,6 +177,10 @@ export function GroupHubPage() {
     isError: isActivityError,
     refetch: refetchActivity,
   } = useActivityLog(groupId, 10);
+  // Live counts for the "group toolkit" — connects the other pillars to the hub.
+  const { data: chores } = useChores(groupId);
+  const { data: funds } = useFunds(groupId);
+  const { data: recurring } = useRecurringExpenses(groupId);
 
   useEffect(() => {
     setActiveGroupId(groupId);
@@ -427,7 +447,7 @@ export function GroupHubPage() {
       {/*  2. Key Stats Row                                                  */}
       {/* ------------------------------------------------------------------ */}
       <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
-        <Paper className="commune-stat-card commune-kpi-card" p="lg" data-tone="sage">
+        <Paper className="commune-stat-card commune-kpi-card" p="lg">
           <Group justify="space-between" align="flex-start">
             <Stack gap={4}>
               <Text size="sm" c="dimmed">Total monthly spend</Text>
@@ -444,7 +464,7 @@ export function GroupHubPage() {
           </Group>
         </Paper>
 
-        <Paper className="commune-stat-card commune-kpi-card" p="lg" data-tone="peach">
+        <Paper className="commune-stat-card commune-kpi-card" p="lg">
           <Group justify="space-between" align="flex-start">
             <Stack gap={4}>
               <Text size="sm" c="dimmed">Active members</Text>
@@ -469,7 +489,7 @@ export function GroupHubPage() {
           </Group>
         </Paper>
 
-        <Paper className="commune-stat-card commune-kpi-card" p="lg" data-tone="sky">
+        <Paper className="commune-stat-card commune-kpi-card" p="lg">
           <Group justify="space-between" align="flex-start">
             <Stack gap={4}>
               <Text size="sm" c="dimmed">Setup progress</Text>
@@ -488,6 +508,74 @@ export function GroupHubPage() {
           </Group>
         </Paper>
       </SimpleGrid>
+
+      {/* ------------------------------------------------------------------ */}
+      {/*  2a. Primary actions + group toolkit (high on the page)            */}
+      {/* ------------------------------------------------------------------ */}
+      <Group gap="sm">
+        <Button
+          component={Link}
+          to="/expenses/new"
+          color="green"
+          leftSection={<IconEdit size={16} />}
+          onClick={() => setActiveGroupId(groupId)}
+        >
+          Add expense
+        </Button>
+        <Button
+          component={Link}
+          to="/breakdown"
+          variant="default"
+          leftSection={<IconCash size={16} />}
+          onClick={() => setActiveGroupId(groupId)}
+        >
+          Settle up
+        </Button>
+      </Group>
+
+      <Stack gap="md">
+        <Text className="commune-section-heading">Group toolkit</Text>
+        <SimpleGrid cols={{ base: 2, sm: 3 }} spacing="md">
+          {([
+            { to: '/expenses', icon: IconReceipt, label: 'Expenses', meta: `${expenses.length} this month` },
+            { to: '/recurring', icon: IconRepeat, label: 'Recurring', meta: recurring?.length ? `${recurring.length} active` : 'Set up bills' },
+            { to: '/chores', icon: IconChecklist, label: 'Operations', meta: chores?.length ? `${chores.length} task${chores.length === 1 ? '' : 's'}` : 'Add chores' },
+            { to: '/funds', icon: IconPigMoney, label: 'Funds', meta: funds?.length ? `${funds.length} fund${funds.length === 1 ? '' : 's'}` : 'Start a pot' },
+            { to: '/members', icon: IconUsers, label: 'Members', meta: `${activeMembers} member${activeMembers === 1 ? '' : 's'}` },
+            { to: '/analytics', icon: IconChartBar, label: 'Analytics', meta: 'Spending insights' },
+          ] as const).map((item) => {
+            const ItemIcon = item.icon;
+            return (
+              <Paper
+                key={item.to}
+                component={Link}
+                to={item.to}
+                onClick={() => setActiveGroupId(groupId)}
+                className="commune-stat-card commune-group-card"
+                p="md"
+                radius="lg"
+                style={{ textDecoration: 'none' }}
+              >
+                <Group justify="space-between" wrap="nowrap" align="center">
+                  <Group gap="sm" wrap="nowrap">
+                    <ThemeIcon size={38} radius="md" variant="light" color="gray">
+                      <ItemIcon size={18} />
+                    </ThemeIcon>
+                    <div>
+                      <Text fw={700} size="sm">{item.label}</Text>
+                      <Text size="xs" c="dimmed">{item.meta}</Text>
+                    </div>
+                  </Group>
+                  <IconChevronRight
+                    size={16}
+                    style={{ color: 'var(--commune-ink-soft)', opacity: 0.5, flexShrink: 0 }}
+                  />
+                </Group>
+              </Paper>
+            );
+          })}
+        </SimpleGrid>
+      </Stack>
 
       {/* ------------------------------------------------------------------ */}
       {/*  2b. Pinned Announcement                                           */}
@@ -879,44 +967,6 @@ export function GroupHubPage() {
       {/*  4b. Memories                                                      */}
       {/* ------------------------------------------------------------------ */}
       <MemoriesSection groupId={groupId} />
-
-      {/* ------------------------------------------------------------------ */}
-      {/*  5. Quick Actions                                                  */}
-      {/* ------------------------------------------------------------------ */}
-      <Group gap="md">
-        <Button
-          component={Link}
-          to="/"
-          variant="light"
-          leftSection={<IconHome size={16} />}
-          rightSection={<IconArrowRight size={14} />}
-          onClick={() => setActiveGroupId(groupId)}
-        >
-          View Dashboard
-        </Button>
-
-        <Button
-          component={Link}
-          to="/expenses/new"
-          variant="light"
-          color="green"
-          leftSection={<IconEdit size={16} />}
-          rightSection={<IconArrowRight size={14} />}
-        >
-          Add Expense
-        </Button>
-
-        <Button
-          component={Link}
-          to="/breakdown"
-          variant="light"
-          color="orange"
-          leftSection={<IconCash size={16} />}
-          rightSection={<IconArrowRight size={14} />}
-        >
-          Settle Up
-        </Button>
-      </Group>
     </Stack>
   );
 }

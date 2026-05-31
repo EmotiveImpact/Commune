@@ -1040,9 +1040,9 @@ div:hover > .commune-avatar-overlay {
 }
 
 .commune-page-header-subtitle {
-  font-size: 0.875rem;
+  font-size: 0.9375rem;
   color: var(--commune-ink-soft);
-  margin-top: 2px;
+  margin-top: 3px;
 }
 
 .commune-page-header-actions {
