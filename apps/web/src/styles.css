@@ -6,9 +6,10 @@
   --commune-primary-tint-strong: #cfe3d7;
   --commune-accent: #2e8b6a;
 
-  /* ── Dark surfaces — navy forest ── */
-  --commune-forest: #142a22;
-  --commune-forest-soft: #1c3a2f;
+  /* ── Dark surfaces — navy (menus/sidebar). Green is the brand accent,
+     not the menu chrome. ── */
+  --commune-forest: #171b26;
+  --commune-forest-soft: #232838;
   --commune-forest-line: rgba(255, 255, 255, 0.1);
   --commune-on-forest: rgba(255, 255, 255, 0.92);
   --commune-on-forest-soft: rgba(255, 255, 255, 0.62);
@@ -71,12 +72,12 @@
   --commune-primary-tint-strong: rgba(63, 179, 137, 0.26);
   --commune-accent: #52c79a;
 
-  /* Surfaces — near-black green-navy, never pure black */
-  --commune-paper: #101713;
-  --commune-paper-strong: #172019;
-  --commune-paper-soft: #131a16;
-  --commune-forest: #0e1612;
-  --commune-forest-soft: #1a241e;
+  /* Surfaces — near-black navy, never pure black */
+  --commune-paper: #0f1115;
+  --commune-paper-strong: #171a21;
+  --commune-paper-soft: #131519;
+  --commune-forest: #0e1015;
+  --commune-forest-soft: #1c2130;
   --commune-forest-line: rgba(255, 255, 255, 0.1);
   --commune-on-forest: rgba(255, 255, 255, 0.92);
   --commune-on-forest-soft: rgba(255, 255, 255, 0.62);
@@ -360,9 +361,9 @@ a {
 
 .commune-soft-panel {
   border: 1px solid var(--commune-border);
-  background: rgba(255, 255, 255, 0.9);
+  background: var(--commune-paper-strong);
   box-shadow: var(--commune-shadow-sm);
-  border-radius: 16px;
+  border-radius: 14px;
   transition:
     box-shadow var(--commune-motion-medium),
     border-color var(--commune-motion-fast);
@@ -371,11 +372,11 @@ a {
 .commune-stat-card {
   border: 1px solid var(--commune-border);
   background: var(--commune-paper-strong);
-  box-shadow: none;
+  box-shadow: var(--commune-shadow-sm);
   transition:
     box-shadow var(--commune-motion-medium),
     border-color var(--commune-motion-fast);
-  border-radius: 16px;
+  border-radius: 14px;
 }
 
 .commune-app-shell-header {
@@ -612,9 +613,10 @@ div:hover > .commune-avatar-overlay {
 }
 
 .commune-section-heading {
-  font-size: 1.1rem;
+  font-size: 1rem;
   font-weight: 700;
   line-height: 1.3;
+  letter-spacing: -0.01em;
 }
 
 .commune-page-stack {
@@ -690,8 +692,9 @@ div:hover > .commune-avatar-overlay {
 
 .commune-kpi-card {
   padding: 1rem;
-  border-radius: 12px;
-  border: 1px solid rgba(22, 19, 29, 0.08);
+  border-radius: 14px;
+  border: 1px solid var(--commune-border);
+  background: var(--commune-paper-strong);
 }
 
 /* Calm pass: KPI tones unified to one subtle neutral card. Colour is
