@@ -93,6 +93,18 @@ vi.mock('../../../../hooks/use-settlement', () => ({
   useGroupSettlement: () => useGroupSettlementResultMock,
 }));
 
+vi.mock('../../../../hooks/use-chores', () => ({
+  useChores: () => ({ data: [] }),
+}));
+
+vi.mock('../../../../hooks/use-funds', () => ({
+  useFunds: () => ({ data: [] }),
+}));
+
+vi.mock('../../../../hooks/use-recurring', () => ({
+  useRecurringExpenses: () => ({ data: [] }),
+}));
+
 vi.mock('../../../../hooks/use-activity', () => ({
   useActivityLog: () => useActivityLogResultMock,
 }));
