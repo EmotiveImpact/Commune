@@ -167,7 +167,7 @@ export function CommandCentre({ groups }: { groups: UserGroupSummary[] }) {
 
       {/* KPI row */}
       <SimpleGrid cols={{ base: 2, md: 4 }} spacing="md">
-        <Paper className="commune-kpi-card" data-tone="peach" p="md">
+        <Paper className="commune-kpi-card" p="md">
           <Group justify="space-between" align="flex-start">
             <div>
               <Text size="sm" c="dimmed">You owe</Text>
@@ -186,7 +186,7 @@ export function CommandCentre({ groups }: { groups: UserGroupSummary[] }) {
           </Group>
         </Paper>
 
-        <Paper className="commune-kpi-card" data-tone="sage" p="md">
+        <Paper className="commune-kpi-card" p="md">
           <Group justify="space-between" align="flex-start">
             <div>
               <Text size="sm" c="dimmed">Owed to you</Text>
@@ -201,7 +201,7 @@ export function CommandCentre({ groups }: { groups: UserGroupSummary[] }) {
           </Group>
         </Paper>
 
-        <Paper className="commune-kpi-card" data-tone="lilac" p="md">
+        <Paper className="commune-kpi-card" p="md">
           <Group justify="space-between" align="flex-start">
             <div>
               <Text size="sm" c="dimmed">Active groups</Text>
@@ -212,7 +212,7 @@ export function CommandCentre({ groups }: { groups: UserGroupSummary[] }) {
           </Group>
         </Paper>
 
-        <Paper className="commune-kpi-card" data-tone="gold" p="md">
+        <Paper className="commune-kpi-card" p="md">
           <Group justify="space-between" align="flex-start">
             <div>
               <Text size="sm" c="dimmed">Need attention</Text>
