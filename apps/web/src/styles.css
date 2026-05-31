@@ -380,7 +380,9 @@ a {
 }
 
 .commune-app-shell-header {
-  background: var(--commune-paper);
+  background: color-mix(in srgb, var(--commune-paper) 85%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   border-bottom: 1px solid var(--commune-border);
 }
 
@@ -428,8 +430,9 @@ div:hover > .commune-avatar-overlay {
   margin: 0;
   padding: 1.25rem 0.85rem;
   border-radius: 0;
-  background: linear-gradient(180deg, #1a1e2b 0%, #21262f 100%);
-  color: rgba(255, 255, 255, 0.92);
+  background: var(--commune-forest);
+  border-right: 1px solid var(--commune-forest-line);
+  color: var(--commune-on-forest);
 }
 
 .commune-sidebar-label {
