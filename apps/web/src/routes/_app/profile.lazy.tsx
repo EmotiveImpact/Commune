@@ -267,19 +267,93 @@ export function ProfilePage() {
 
   return (
     <Stack gap="xl">
-      <PageHeader
-        title="Profile"
-        subtitle="Your personal details and payment information"
-      >
-        <Button
-          type="submit"
-          form="profile-form"
-          leftSection={<IconDeviceFloppy size={16} />}
-          loading={updateProfile.isPending}
+      {/* ── Profile hero — brand cover + identity ── */}
+      <Paper className="commune-soft-panel" p={0} style={{ overflow: 'hidden' }}>
+        <div
+          style={{
+            height: 92,
+            background: 'linear-gradient(120deg, var(--commune-forest) 0%, var(--commune-primary) 100%)',
+          }}
+        />
+        <Group
+          justify="space-between"
+          align="flex-end"
+          wrap="nowrap"
+          px="xl"
+          pb="lg"
+          style={{ marginTop: -46 }}
         >
-          Save changes
-        </Button>
-      </PageHeader>
+          <Group gap="lg" align="flex-end" wrap="nowrap">
+            <div
+              style={{ position: 'relative', cursor: 'pointer', flexShrink: 0 }}
+              onClick={() => fileInputRef.current?.click()}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') fileInputRef.current?.click(); }}
+            >
+              <Avatar
+                src={form.getValues().avatar_url || undefined}
+                name={`${form.getValues().first_name} ${form.getValues().last_name}`.trim()}
+                color="initials"
+                size={96}
+                style={{
+                  opacity: isUploadingAvatar ? 0.5 : 1,
+                  transition: 'opacity 150ms',
+                  border: '4px solid var(--commune-paper-strong)',
+                }}
+              />
+              <div
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  background: 'rgba(0,0,0,0.35)',
+                  opacity: 0,
+                  transition: 'opacity 150ms',
+                }}
+                className="commune-avatar-overlay"
+              >
+                <IconCamera size={22} color="white" />
+              </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                style={{ display: 'none' }}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) void handleAvatarUpload(file);
+                  e.target.value = '';
+                }}
+              />
+            </div>
+            <Stack gap={2} pb={6}>
+              <Group gap="xs" align="center">
+                <Text fw={800} size="xl">
+                  {`${form.getValues().first_name} ${form.getValues().last_name}`.trim() || 'Your profile'}
+                </Text>
+                <Badge color="commune" variant="light" radius="sm">Verified</Badge>
+              </Group>
+              <Text size="sm" c="dimmed">{resolvedProfile.email}</Text>
+              <Text size="xs" c="dimmed">
+                Member since {formatDate(resolvedProfile.created_at)}
+              </Text>
+            </Stack>
+          </Group>
+          <Button
+            type="submit"
+            form="profile-form"
+            leftSection={<IconDeviceFloppy size={16} />}
+            loading={updateProfile.isPending}
+            visibleFrom="sm"
+          >
+            Save changes
+          </Button>
+        </Group>
+      </Paper>
 
       <form id="profile-form" onSubmit={form.onSubmit(handleSubmit)}>
         <Stack gap="lg" maw={720}>
@@ -291,63 +365,6 @@ export function ProfilePage() {
             </Group>
 
             <Stack gap="lg">
-              <Group wrap="nowrap" gap="lg">
-                <div
-                  style={{ position: 'relative', cursor: 'pointer', flexShrink: 0 }}
-                  onClick={() => fileInputRef.current?.click()}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') fileInputRef.current?.click(); }}
-                >
-                  <Avatar
-                    src={form.getValues().avatar_url || undefined}
-                    name={`${form.getValues().first_name} ${form.getValues().last_name}`.trim()}
-                    color="initials"
-                    size={80}
-                    style={{ opacity: isUploadingAvatar ? 0.5 : 1, transition: 'opacity 150ms' }}
-                  />
-                  <div
-                    style={{
-                      position: 'absolute',
-                      inset: 0,
-                      borderRadius: '50%',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      background: 'rgba(0,0,0,0.35)',
-                      opacity: 0,
-                      transition: 'opacity 150ms',
-                    }}
-                    className="commune-avatar-overlay"
-                  >
-                    <IconCamera size={22} color="white" />
-                  </div>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp"
-                    style={{ display: 'none' }}
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) void handleAvatarUpload(file);
-                      e.target.value = '';
-                    }}
-                  />
-                </div>
-
-                <div>
-                  <Text fw={600}>{resolvedProfile.email}</Text>
-                  <Text size="sm" c="dimmed">
-                    Member since {formatDate(resolvedProfile.created_at)}
-                  </Text>
-                  <Text size="xs" c="dimmed" mt={4}>
-                    Click avatar to change. JPG, PNG, or WebP up to 1 MB.
-                  </Text>
-                </div>
-              </Group>
-
-              <Divider />
-
               <SimpleGrid cols={2}>
                 <TextInput
                   label="First name"
