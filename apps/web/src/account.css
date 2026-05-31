@@ -5,6 +5,8 @@
    Mantine / commune-* classes. Vars map to the app palette.
    ============================================================ */
 .commune-account {
+  max-width: 1080px;
+  margin-inline: auto;
   --acc-green: var(--commune-primary);
   --acc-green-strong: var(--commune-primary-strong);
   --acc-green-bright: var(--commune-accent);
