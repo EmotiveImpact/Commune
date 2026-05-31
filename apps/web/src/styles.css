@@ -480,6 +480,14 @@ div:hover > .commune-avatar-overlay {
   padding-top: calc(var(--app-shell-header-offset, 0rem) + 1.5rem);
 }
 
+/* Calm pass: every in-app screen shares one centred 1280px content column,
+   so the layout width doesn't jump between pages (some screens used to render
+   full-bleed). Screens already using .commune-page-stack are unaffected. */
+.commune-main-content > * {
+  max-width: 1280px;
+  margin-inline: auto;
+}
+
 .commune-dashboard-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.55fr) minmax(320px, 0.95fr);
