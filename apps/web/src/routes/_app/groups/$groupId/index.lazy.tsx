@@ -516,7 +516,6 @@ export function GroupHubView({ groupId }: { groupId: string }) {
         <Button
           component={Link}
           to="/expenses/new"
-          color="green"
           leftSection={<IconEdit size={16} />}
           onClick={() => setActiveGroupId(groupId)}
         >
@@ -558,7 +557,7 @@ export function GroupHubView({ groupId }: { groupId: string }) {
               >
                 <Group justify="space-between" wrap="nowrap" align="center">
                   <Group gap="sm" wrap="nowrap">
-                    <ThemeIcon size={38} radius="md" variant="light" color="gray">
+                    <ThemeIcon size={38} radius="md" variant="light" color="commune">
                       <ItemIcon size={18} />
                     </ThemeIcon>
                     <div>

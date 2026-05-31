@@ -34,6 +34,7 @@ export interface RouterContext {
 
 const theme = createTheme({
   primaryColor: 'commune',
+  primaryShade: { light: 7, dark: 5 },
   defaultRadius: 'md',
   fontFamily:
     'Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif',
@@ -44,16 +45,16 @@ const theme = createTheme({
   },
   colors: {
     commune: [
-      '#eef6f3',
-      '#d8ebe4',
-      '#c1dfd7',
-      '#9dcabf',
-      '#76b4a4',
-      '#4c9a89',
-      '#1f7a6a',
-      '#1a6658',
-      '#14594e',
-      '#10473f',
+      '#e8f1ec',
+      '#cfe3d7',
+      '#a8ccba',
+      '#7eb39b',
+      '#549a7f',
+      '#2e8b6a',
+      '#1e7a55',
+      '#15573e',
+      '#0f4030',
+      '#0a2e22',
     ],
     emerald: [
       '#ecfdf5',

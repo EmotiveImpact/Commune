@@ -1,64 +1,124 @@
 :root {
-  --commune-paper: #faf9f7;
+  /* ── Brand — deep forest green ── */
+  --commune-primary: #15573e;
+  --commune-primary-strong: #0f4030;
+  --commune-primary-tint: #e6f0ea;
+  --commune-primary-tint-strong: #cfe3d7;
+  --commune-accent: #2e8b6a;
+
+  /* ── Dark surfaces — navy forest ── */
+  --commune-forest: #142a22;
+  --commune-forest-soft: #1c3a2f;
+  --commune-forest-line: rgba(255, 255, 255, 0.1);
+  --commune-on-forest: rgba(255, 255, 255, 0.92);
+  --commune-on-forest-soft: rgba(255, 255, 255, 0.62);
+
+  /* ── Status — intent only ── */
+  --commune-danger: #c2374a;
+  --commune-danger-strong: #9e2a3a;
+  --commune-danger-bg: #fbecee;
+  --commune-danger-border: rgba(194, 55, 74, 0.22);
+  --commune-warning: #b5663d;
+  --commune-warning-bg: #f7ede4;
+  --commune-warning-border: rgba(181, 102, 61, 0.22);
+  --commune-success: #1e7a52;
+  --commune-success-bg: #e4f2ea;
+  --commune-success-border: rgba(30, 122, 82, 0.22);
+  --commune-info: #2b6cb0;
+  --commune-info-bg: #e7f0f9;
+  --commune-info-border: rgba(43, 108, 176, 0.22);
+
+  /* ── Neutrals ── */
+  --commune-paper: #f9f8f5;
   --commune-paper-strong: #ffffff;
-  --commune-paper-soft: #f5f3ef;
-  --commune-mist: #d9ebe5;
-  --commune-sage: #e8f0eb;
-  --commune-primary: #2d6a4f;
-  --commune-primary-strong: #1f4d38;
-  --commune-forest: #1a1e2b;
-  --commune-forest-soft: #2c3140;
-  --commune-ink: #1a1e2b;
-  --commune-ink-soft: #6b6d73;
-  --commune-peach: #efdccf;
-  --commune-lilac: #e8e1ef;
-  --commune-gold: #f1e5bf;
-  --commune-coral: #eaa681;
-  --commune-surface-alt: rgba(245, 243, 239, 0.72);
-  --commune-border: #e8e6e1;
-  --commune-border-strong: #d8d5ce;
-  --commune-shadow-sm: 0 1px 3px rgba(23, 27, 36, 0.06), 0 1px 2px rgba(23, 27, 36, 0.04);
-  --commune-shadow: 0 4px 12px rgba(23, 27, 36, 0.07), 0 1px 3px rgba(23, 27, 36, 0.05);
-  --commune-shadow-md: 0 8px 24px rgba(23, 27, 36, 0.09), 0 2px 6px rgba(23, 27, 36, 0.04);
-  --commune-icon-bg-primary: rgba(16, 185, 129, 0.1);
-  --commune-icon-bg-forest: rgba(16, 69, 54, 0.1);
-  --commune-icon-bg-success: rgba(98, 195, 138, 0.16);
-  --commune-icon-bg-info: rgba(66, 153, 225, 0.16);
-  --commune-icon-info: #2B6CB0;
-  --commune-danger-border: rgba(239, 68, 68, 0.2);
+  --commune-paper-soft: #f2f1ec;
+  --commune-ink: #16241d;
+  --commune-ink-soft: #5c6661;
+  --commune-border: #e7e5df;
+  --commune-border-strong: #d6d3cb;
+  --commune-surface-alt: rgba(242, 241, 236, 0.72);
+
+  /* ── Legacy aliases (keep old class usage working) ── */
+  --commune-mist: var(--commune-primary-tint);
+  --commune-sage: var(--commune-primary-tint-strong);
+  --commune-coral: var(--commune-warning);
+  --commune-gold: var(--commune-warning-bg);
+  --commune-peach: var(--commune-paper-soft);
+  --commune-lilac: var(--commune-paper-soft);
+
+  /* ── Shadows (green-undertoned) ── */
+  --commune-shadow-sm: 0 1px 3px rgba(20, 42, 34, 0.06), 0 1px 2px rgba(20, 42, 34, 0.04);
+  --commune-shadow: 0 4px 12px rgba(20, 42, 34, 0.08), 0 1px 3px rgba(20, 42, 34, 0.05);
+  --commune-shadow-md: 0 10px 28px rgba(20, 42, 34, 0.1), 0 2px 6px rgba(20, 42, 34, 0.05);
+
+  /* ── Icon backgrounds ── */
+  --commune-icon-bg-primary: rgba(21, 87, 62, 0.1);
+  --commune-icon-bg-forest: rgba(20, 42, 34, 0.1);
+  --commune-icon-bg-success: rgba(30, 122, 82, 0.14);
+  --commune-icon-bg-info: rgba(43, 108, 176, 0.14);
+  --commune-icon-info: #2b6cb0;
+
   --commune-motion-fast: 160ms ease;
   --commune-motion-medium: 220ms ease;
 }
 
 /* ── Dark mode overrides ── */
 [data-mantine-color-scheme="dark"] {
-  --commune-paper: #1a1b1e;
-  --commune-paper-strong: #25262b;
-  --commune-paper-soft: #1e1f23;
-  --commune-mist: rgba(45, 106, 79, 0.18);
-  --commune-sage: rgba(45, 106, 79, 0.22);
-  --commune-primary: #4c9a89;
+  /* Brand — lifted so it stays vivid on the green-navy bg */
+  --commune-primary: #3fb389;
   --commune-primary-strong: #6ee7b7;
-  --commune-forest: #1a1b1e;
-  --commune-forest-soft: #2c2e33;
-  --commune-ink: #c1c2c5;
-  --commune-ink-soft: #909296;
-  --commune-peach: rgba(239, 220, 207, 0.15);
-  --commune-lilac: rgba(232, 225, 239, 0.15);
-  --commune-gold: rgba(241, 229, 191, 0.12);
-  --commune-coral: #eaa681;
-  --commune-surface-alt: rgba(37, 38, 43, 0.6);
-  --commune-border: rgba(255, 255, 255, 0.08);
-  --commune-border-strong: rgba(255, 255, 255, 0.14);
+  --commune-primary-tint: rgba(63, 179, 137, 0.16);
+  --commune-primary-tint-strong: rgba(63, 179, 137, 0.26);
+  --commune-accent: #52c79a;
+
+  /* Surfaces — near-black green-navy, never pure black */
+  --commune-paper: #101713;
+  --commune-paper-strong: #172019;
+  --commune-paper-soft: #131a16;
+  --commune-forest: #0e1612;
+  --commune-forest-soft: #1a241e;
+  --commune-forest-line: rgba(255, 255, 255, 0.1);
+  --commune-on-forest: rgba(255, 255, 255, 0.92);
+  --commune-on-forest-soft: rgba(255, 255, 255, 0.62);
+
+  /* Status — lifted hues */
+  --commune-danger: #f06a78;
+  --commune-danger-strong: #f58a95;
+  --commune-danger-bg: rgba(240, 106, 120, 0.15);
+  --commune-danger-border: rgba(240, 106, 120, 0.3);
+  --commune-warning: #e08a52;
+  --commune-warning-bg: rgba(224, 138, 82, 0.15);
+  --commune-warning-border: rgba(224, 138, 82, 0.3);
+  --commune-success: #46c98a;
+  --commune-success-bg: rgba(70, 201, 138, 0.15);
+  --commune-success-border: rgba(70, 201, 138, 0.3);
+  --commune-info: #63b3ed;
+  --commune-info-bg: rgba(99, 179, 237, 0.15);
+  --commune-info-border: rgba(99, 179, 237, 0.3);
+
+  /* Neutrals */
+  --commune-ink: #e6e8e6;
+  --commune-ink-soft: #9ba39e;
+  --commune-border: rgba(255, 255, 255, 0.09);
+  --commune-border-strong: rgba(255, 255, 255, 0.15);
+  --commune-surface-alt: rgba(23, 32, 25, 0.6);
+
+  /* Legacy aliases */
+  --commune-mist: var(--commune-primary-tint);
+  --commune-sage: var(--commune-primary-tint-strong);
+  --commune-coral: var(--commune-warning);
+  --commune-gold: var(--commune-warning-bg);
+  --commune-peach: var(--commune-paper-soft);
+  --commune-lilac: var(--commune-paper-soft);
+
   --commune-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.2), 0 1px 2px rgba(0, 0, 0, 0.15);
   --commune-shadow: 0 4px 12px rgba(0, 0, 0, 0.25), 0 1px 3px rgba(0, 0, 0, 0.15);
   --commune-shadow-md: 0 8px 24px rgba(0, 0, 0, 0.3), 0 2px 6px rgba(0, 0, 0, 0.15);
-  --commune-icon-bg-primary: rgba(76, 154, 137, 0.15);
-  --commune-icon-bg-forest: rgba(76, 154, 137, 0.12);
-  --commune-icon-bg-success: rgba(110, 231, 183, 0.12);
+  --commune-icon-bg-primary: rgba(63, 179, 137, 0.15);
+  --commune-icon-bg-forest: rgba(63, 179, 137, 0.12);
+  --commune-icon-bg-success: rgba(70, 201, 138, 0.14);
   --commune-icon-bg-info: rgba(99, 179, 237, 0.15);
   --commune-icon-info: #63b3ed;
-  --commune-danger-border: rgba(239, 68, 68, 0.3);
 }
 
 [data-mantine-color-scheme="dark"] body {
@@ -664,8 +724,43 @@ div:hover > .commune-avatar-overlay {
 }
 
 .mantine-Button-root {
-  border-radius: 16px;
+  border-radius: 14px;
   font-weight: 600;
+}
+
+/* Filled primary buttons read deeper + with weight (were flat & thin) */
+.mantine-Button-root[data-variant='filled'] {
+  font-weight: 700;
+  box-shadow: 0 1px 2px rgba(15, 64, 48, 0.16), 0 2px 8px rgba(15, 64, 48, 0.12);
+}
+.mantine-Button-root[data-variant='filled']:hover {
+  box-shadow: 0 2px 4px rgba(15, 64, 48, 0.2), 0 4px 14px rgba(15, 64, 48, 0.16);
+}
+
+/* ── Segmented control — was an unstyled, thin Mantine default ── */
+.mantine-SegmentedControl-root {
+  background: var(--commune-paper-soft);
+  border: 1px solid var(--commune-border);
+  padding: 4px;
+  border-radius: 12px;
+}
+.mantine-SegmentedControl-control {
+  min-height: 36px;
+}
+.mantine-SegmentedControl-label {
+  font-weight: 600;
+  font-size: 0.85rem;
+  padding: 7px 18px;
+  color: var(--commune-ink-soft);
+}
+.mantine-SegmentedControl-label[data-active] {
+  color: #fff;
+}
+/* the moving indicator becomes the brand green instead of plain white */
+.mantine-SegmentedControl-indicator {
+  background: var(--commune-primary);
+  border-radius: 9px;
+  box-shadow: 0 1px 3px rgba(15, 64, 48, 0.25);
 }
 
 .mantine-ActionIcon-root {
