@@ -290,12 +290,7 @@ export function ProfilePage() {
 
   return (
     <div className="commune-account">
-      {/* Cover */}
-      <div className="cover">
-        <div className="cover-img" />
-      </div>
-
-      {/* Identity header */}
+      {/* Identity header (no cover) */}
       <div className="id">
         <div
           className="id-av"

@@ -557,7 +557,7 @@ export function GroupHubView({ groupId }: { groupId: string }) {
               >
                 <Group justify="space-between" wrap="nowrap" align="center">
                   <Group gap="sm" wrap="nowrap">
-                    <ThemeIcon size={38} radius="md" variant="light" color="commune">
+                    <ThemeIcon size={38} radius="md" variant="default" color="gray">
                       <ItemIcon size={18} />
                     </ThemeIcon>
                     <div>
