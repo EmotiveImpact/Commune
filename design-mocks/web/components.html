@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Commune — Small Components (calm)</title>
+<link rel="stylesheet" href="ds.css">
+<style>
+  /* a few extras specific to small components, in the same calm language */
+  .demo-wrap{max-width:880px;margin:0 auto;padding:30px 28px 80px;}
+  .demo-h1{font-size:26px;font-weight:800;letter-spacing:-.02em;}
+  .demo-lead{font-size:14px;color:var(--ink2);margin:6px 0 28px;}
+  .block{margin-bottom:36px;}
+  .block .lbl{font-size:12px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:12px;}
+  .block .was{font-size:11.5px;color:var(--ink-soft);font-style:italic;margin-top:8px;}
+
+  /* Filter bar (the screenshot) */
+  .filterbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;box-shadow:var(--sh-sm);}
+  .selectx{position:relative;}
+  .selectx select{appearance:none;-webkit-appearance:none;background:var(--card);border:1px solid var(--line-2);border-radius:10px;padding:9px 32px 9px 13px;font-size:13px;color:var(--ink);font-family:inherit;cursor:pointer;min-width:150px;}
+  .selectx::after{content:'⌄';position:absolute;right:12px;top:50%;transform:translateY(-60%);color:var(--ink-soft);pointer-events:none;font-size:14px;}
+  .chips{display:flex;gap:7px;margin-left:auto;flex-wrap:wrap;}
+  .chip{font-size:12px;font-weight:600;padding:6px 13px;border-radius:999px;background:#f3f2ee;color:var(--ink2);cursor:pointer;border:1px solid transparent;}
+  .chip.on{background:var(--green-bg);color:var(--green-s);border-color:var(--green-tint);}
+
+  /* Cover + avatar upload */
+  .cover{position:relative;height:160px;border-radius:16px;overflow:hidden;background:linear-gradient(135deg,#e6ece8,#eef3f0 60%,#f2f6f3);border:1px solid var(--line);}
+  .cover .camera{position:absolute;top:12px;right:12px;width:34px;height:34px;border-radius:10px;background:rgba(22,25,31,.55);color:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;cursor:pointer;backdrop-filter:blur(4px);}
+  .cover .av-wrap{position:absolute;bottom:14px;left:18px;}
+  .cover .av-up{width:66px;height:66px;border-radius:18px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:28px;box-shadow:var(--sh-sm);position:relative;}
+  .cover .av-cam{position:absolute;bottom:-4px;right:-4px;width:24px;height:24px;border-radius:8px;background:var(--green);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;border:2px solid #fff;}
+  .upload-hint{font-size:11.5px;color:var(--ink-soft);margin-top:8px;display:flex;align-items:center;gap:6px;}
+
+  /* Form */
+  .form{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:22px;box-shadow:var(--sh-sm);}
+  .form-sec{padding-bottom:18px;margin-bottom:18px;border-bottom:1px solid var(--line);}
+  .form-sec:last-of-type{border:none;margin:0;padding:0;}
+  .form-sec .st{font-size:12px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:14px;}
+  .field{margin-bottom:14px;}
+  .field label{display:block;font-size:12.5px;font-weight:600;color:var(--ink2);margin-bottom:6px;}
+  .input{width:100%;background:var(--card);border:1px solid var(--line-2);border-radius:10px;padding:10px 13px;font-size:13.5px;color:var(--ink);font-family:inherit;}
+  .input:focus{outline:none;border-color:var(--green);box-shadow:0 0 0 3px rgba(45,106,79,.12);}
+  .input.amount{font-size:20px;font-weight:700;}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .split-opts{display:flex;gap:8px;}
+  .split-opt{flex:1;text-align:center;padding:9px;border:1px solid var(--line-2);border-radius:10px;font-size:12.5px;font-weight:600;cursor:pointer;color:var(--ink2);}
+  .split-opt.on{border-color:var(--green);background:var(--green-bg);color:var(--green-s);}
+  .who{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line);font-size:13px;}
+  .who:last-child{border:none;}
+  .form-foot{display:flex;justify-content:flex-end;gap:10px;margin-top:6px;}
+
+  /* Empty state */
+  .empty{background:var(--card);border:1px dashed var(--line-2);border-radius:16px;padding:40px 24px;text-align:center;}
+  .empty .ei{font-size:40px;}
+  .empty .et{font-size:16px;font-weight:700;margin-top:10px;}
+  .empty .ed{font-size:13px;color:var(--ink-soft);margin-top:5px;max-width:320px;margin-left:auto;margin-right:auto;line-height:1.5;}
+  .empty .ea{margin-top:16px;}
+
+  /* Modal */
+  .modal-bg{background:rgba(22,25,31,.12);border-radius:16px;padding:30px;display:flex;justify-content:center;}
+  .modal{background:var(--card);border-radius:16px;box-shadow:var(--sh-md);width:380px;max-width:100%;border:1px solid var(--line);}
+  .modal-h{padding:16px 18px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;}
+  .modal-h b{font-size:15px;}
+  .modal-b{padding:18px;}
+  .modal-f{padding:14px 18px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;gap:10px;}
+
+  /* Bulk bar */
+  .bulk{display:inline-flex;align-items:center;gap:16px;background:#16191f;color:#fff;border-radius:14px;padding:11px 18px;box-shadow:var(--sh-md);}
+  .bulk .bn{font-size:13px;font-weight:600;}
+  .bulk .bsp{width:1px;height:20px;background:rgba(255,255,255,.15);}
+  .bulk .ba{font-size:12.5px;font-weight:600;color:rgba(255,255,255,.85);cursor:pointer;display:flex;align-items:center;gap:5px;}
+
+  .badges-row{display:flex;gap:10px;flex-wrap:wrap;}
+</style></head>
+<body style="display:block;background:var(--paper);">
+<div class="demo-wrap">
+  <div class="demo-h1">Small components — calm pass</div>
+  <div class="demo-lead">The bits the screen mockups didn't cover: filters, image upload, forms, empty states, modals. Same system — neutral, one green accent, colour only for status.</div>
+
+  <!-- FILTER BAR -->
+  <div class="block">
+    <div class="lbl">Filter bar <span style="color:var(--green);font-weight:700">· the one you screenshotted</span></div>
+    <div class="filterbar">
+      <div class="selectx"><select><option>All categories</option><option>Rent</option><option>Utilities</option></select></div>
+      <div class="selectx"><select><option>Period</option><option>This month</option><option>Last 3 months</option></select></div>
+      <div class="selectx"><select><option>Date range</option></select></div>
+      <div class="chips"><span class="chip on">All</span><span class="chip">Open</span><span class="chip">Overdue</span><span class="chip">Settled</span></div>
+    </div>
+    <div class="was">Before: three pale, inconsistent dropdowns floating on a faint strip. Now: one calm card, rounded controls, status chips aligned right, green focus.</div>
+  </div>
+
+  <!-- COVER + AVATAR -->
+  <div class="block">
+    <div class="lbl">Group cover &amp; avatar upload <span style="color:var(--green);font-weight:700">· "the picture"</span></div>
+    <div class="cover">
+      <div class="camera">📷</div>
+      <div class="av-wrap"><div class="av-up">🏡<div class="av-cam">📷</div></div></div>
+    </div>
+    <div class="upload-hint">📷 Hover shows the camera · drag an image or click to upload · JPG/PNG/WebP</div>
+    <div class="was">Before: a bare action-icon. Now: clear hover affordance on both cover and avatar, with a hint line.</div>
+  </div>
+
+  <!-- FORM -->
+  <div class="block">
+    <div class="lbl">Add expense form (sectioned)</div>
+    <div class="form">
+      <div class="form-sec">
+        <div class="st">What &amp; how much</div>
+        <div class="field"><label>Description</label><input class="input" value="Electricity" /></div>
+        <div class="two">
+          <div class="field"><label>Amount</label><input class="input amount" value="£64.00" /></div>
+          <div class="field"><label>Category</label><input class="input" value="Utilities" /></div>
+        </div>
+      </div>
+      <div class="form-sec">
+        <div class="st">How to split</div>
+        <div class="split-opts"><div class="split-opt on">Equal</div><div class="split-opt">Percentages</div><div class="split-opt">Fixed</div></div>
+        <div style="margin-top:14px;">
+          <div class="who"><span>August (you)</span><b>£16.00</b></div>
+          <div class="who"><span>Priya</span><b>£16.00</b></div>
+          <div class="who"><span>Jordan</span><b>£16.00</b></div>
+          <div class="who"><span>Sam</span><b>£16.00</b></div>
+        </div>
+      </div>
+      <div class="form-foot"><button class="btn ghost">Cancel</button><button class="btn pri">Add expense</button></div>
+    </div>
+    <div class="was">Before: one long flat list of inputs. Now: grouped sections, a prominent amount, a clear split toggle.</div>
+  </div>
+
+  <!-- EMPTY + MODAL side by side -->
+  <div class="block">
+    <div class="lbl">Empty state &amp; modal</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start;">
+      <div class="empty">
+        <div class="ei">🧾</div>
+        <div class="et">No expenses yet</div>
+        <div class="ed">Add the first shared cost and Commune starts tracking who owes what.</div>
+        <div class="ea"><button class="btn pri">＋ Add expense</button></div>
+      </div>
+      <div class="modal-bg">
+        <div class="modal">
+          <div class="modal-h"><b>Add a memory</b><span style="color:var(--ink-soft);cursor:pointer;">✕</span></div>
+          <div class="modal-b">
+            <div class="field"><label>Title</label><input class="input" placeholder="What happened?" /></div>
+            <div class="field"><label>Date</label><input class="input" value="31 May 2026" /></div>
+          </div>
+          <div class="modal-f"><button class="btn ghost">Cancel</button><button class="btn pri">Save</button></div>
+        </div>
+      </div>
+    </div>
+    <div class="was">Calm empty states (one icon, one line, one action) and quiet modals — no heavy chrome.</div>
+  </div>
+
+  <!-- BULK BAR + BADGES -->
+  <div class="block">
+    <div class="lbl">Bulk-action bar &amp; status badges</div>
+    <div style="display:flex;justify-content:center;margin-bottom:18px;">
+      <div class="bulk"><span class="bn">3 selected</span><span class="bsp"></span><span class="ba">✓ Mark paid</span><span class="ba">🗑 Delete</span><span class="ba" style="color:rgba(255,255,255,.5)">✕ Clear</span></div>
+    </div>
+    <div class="badges-row">
+      <span class="badge red">Overdue</span>
+      <span class="badge amber">Due soon</span>
+      <span class="badge green">Settled</span>
+      <span class="badge neutral">Draft</span>
+      <span class="badge dot green">Paid</span>
+      <span class="badge dot amber">Pending</span>
+      <span class="badge dot neutral">New</span>
+    </div>
+    <div class="was">Status is the ONLY place colour lives: red=overdue, amber=due/pending, green=settled, neutral=info.</div>
+  </div>
+
+</div>
+</body></html>

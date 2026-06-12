@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Commune — Colour Palette</title>
+<style>
+  :root{
+    --paper:#f9f8f5;--card:#fff;--soft:#f2f1ec;
+    --ink:#16241d;--ink2:#5c6661;--mute:#8a948e;
+    --line:#e7e5df;--line2:#d6d3cb;
+    --green:#15573e;--green-s:#0f4030;--green-bg:#e6f0ea;
+    --sh:0 2px 10px rgba(20,42,34,.06);--shsm:0 1px 2px rgba(20,42,34,.05);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Avenir Next','Nunito Sans',Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:var(--ink);background:var(--paper);padding:48px 24px 100px;-webkit-font-smoothing:antialiased;}
+  .wrap{max-width:1180px;margin:0 auto;}
+  .eyebrow{font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--green);}
+  h1{font-size:34px;font-weight:800;letter-spacing:-.025em;margin:6px 0 10px;}
+  .lead{font-size:15px;color:var(--ink2);max-width:760px;line-height:1.6;}
+  .lead b{color:var(--ink);font-weight:700;}
+
+  /* mode banner */
+  .modebar{display:flex;align-items:center;gap:12px;margin:30px 0 4px;padding:16px 20px;border-radius:14px;}
+  .modebar.light{background:var(--card);border:1px solid var(--line);box-shadow:var(--shsm);}
+  .modebar.dark{background:#101713;border:1px solid rgba(255,255,255,.1);}
+  .modebar .dot{width:32px;height:32px;border-radius:9px;flex-shrink:0;}
+  .modebar .mt{font-size:17px;font-weight:800;letter-spacing:-.01em;}
+  .modebar.dark .mt{color:#e6e8e6;}
+  .modebar .ms{font-size:12.5px;}
+  .modebar.light .ms{color:var(--ink2);}
+  .modebar.dark .ms{color:#9ba39e;}
+
+  /* group heading */
+  .grp{font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--mute);margin:30px 0 14px;display:flex;align-items:center;gap:10px;}
+  .grp::after{content:"";flex:1;height:1px;background:var(--line);}
+  .dark-sec .grp{color:#7e8b84;}
+  .dark-sec .grp::after{background:rgba(255,255,255,.1);}
+
+  /* swatch grid */
+  .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;}
+  @media(max-width:980px){.grid{grid-template-columns:repeat(3,1fr);}}
+  @media(max-width:720px){.grid{grid-template-columns:repeat(2,1fr);}}
+  @media(max-width:460px){.grid{grid-template-columns:1fr;}}
+
+  .sw{border-radius:14px;overflow:hidden;border:1px solid var(--line);background:var(--card);box-shadow:var(--shsm);}
+  .dark-sec .sw{border-color:rgba(255,255,255,.09);background:#172019;box-shadow:0 1px 2px rgba(0,0,0,.3);}
+  .sw .chip{height:78px;display:flex;align-items:flex-end;justify-content:flex-end;padding:8px 10px;position:relative;}
+  .sw .chip .ck{font-size:10px;font-weight:700;padding:2px 7px;border-radius:999px;background:rgba(255,255,255,.86);color:#16241d;letter-spacing:.02em;}
+  .sw .chip.onlight .ck{background:rgba(22,36,29,.08);color:#16241d;}
+  .sw .body{padding:11px 13px 13px;}
+  .sw .nm{font-size:13.5px;font-weight:800;letter-spacing:-.01em;display:flex;align-items:center;gap:7px;}
+  .sw .hex{font-size:11.5px;font-weight:600;color:var(--ink2);font-family:'SF Mono',ui-monospace,Menlo,monospace;margin-top:3px;}
+  .dark-sec .sw .nm{color:#e6e8e6;}
+  .dark-sec .sw .hex{color:#9ba39e;}
+  .sw .var{font-size:10.5px;color:var(--mute);font-family:'SF Mono',ui-monospace,Menlo,monospace;margin-top:5px;word-break:break-all;}
+  .dark-sec .sw .var{color:#6f7c75;}
+  .sw .use{font-size:11.5px;line-height:1.45;color:var(--ink2);margin-top:8px;}
+  .dark-sec .sw .use{color:#9ba39e;}
+  .star{font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--green-s);background:var(--green-bg);padding:2px 6px;border-radius:6px;}
+  .dark-sec .star{color:#101713;background:#6ee7b7;}
+
+  /* tint pairing strip on status chips */
+  .sw .chip .tintbar{position:absolute;left:0;bottom:0;height:22px;width:100%;display:flex;align-items:center;padding-left:10px;font-size:10px;font-weight:700;}
+
+  /* usage callout */
+  .note{margin-top:46px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:24px 26px;box-shadow:var(--shsm);}
+  .note h3{font-size:15px;font-weight:800;margin-bottom:4px;}
+  .note .nsub{font-size:12.5px;color:var(--mute);margin-bottom:16px;}
+  .rules{display:grid;grid-template-columns:1fr 1fr;gap:12px 28px;}
+  @media(max-width:760px){.rules{grid-template-columns:1fr;}}
+  .rule{display:flex;gap:11px;font-size:13px;line-height:1.5;color:var(--ink2);}
+  .rule .rk{flex-shrink:0;width:8px;height:8px;border-radius:999px;margin-top:6px;}
+  .rule b{color:var(--ink);font-weight:700;}
+
+  .foot{margin-top:34px;font-size:12px;color:var(--mute);text-align:center;line-height:1.6;}
+  .foot a{color:var(--green);text-decoration:none;}
+</style></head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">Commune · Colour palette</div>
+  <h1>Deep green, navy green, signal red</h1>
+  <p class="lead">The definitive brand palette — built on a <b>deep forest green</b> as the brand, a <b>navy-green</b> for dark surfaces, and a <b>strong red</b> for owe / overdue. Confident like a good fintech app: colour carries <b>intent</b>, not decoration — but the brand greens are present and saturated, never greyed out. Every token below maps to a <code>--commune-*</code> CSS variable.</p>
+
+  <!-- ============ LIGHT ============ -->
+  <div class="modebar light">
+    <div class="dot" style="background:#f9f8f5;border:1px solid #e7e5df;"></div>
+    <div>
+      <div class="mt">Light mode</div>
+      <div class="ms">Warm paper canvas · saturated forest brand · status reserved for intent</div>
+    </div>
+  </div>
+
+  <!-- Brand -->
+  <div class="grp">Brand</div>
+  <div class="grid">
+    <div class="sw"><div class="chip" style="background:#15573e;"><span class="ck">#15573E</span></div><div class="body"><div class="nm">Forest <span class="star">the brand</span></div><div class="hex">#15573E</div><div class="var">--commune-primary</div><div class="use">Primary buttons, active nav, key headings, links, focus, selected states.</div></div></div>
+    <div class="sw"><div class="chip" style="background:#0f4030;"><span class="ck">#0F4030</span></div><div class="body"><div class="nm">Forest Deep</div><div class="hex">#0F4030</div><div class="var">--commune-primary-strong</div><div class="use">Hover / active / pressed on primary; large brand fills.</div></div></div>
+    <div class="sw"><div class="chip onlight" style="background:#e6f0ea;"><span class="ck">#E6F0EA</span></div><div class="body"><div class="nm">Forest Tint</div><div class="hex">#E6F0EA</div><div class="var">--commune-primary-tint</div><div class="use">Selected rows, brand chips, icon backgrounds, soft highlights.</div></div></div>
+    <div class="sw"><div class="chip" style="background:#2e8b6a;"><span class="ck">#2E8B6A</span></div><div class="body"><div class="nm">Spring Green</div><div class="hex">#2E8B6A</div><div class="var">--commune-accent</div><div class="use">Progress fills, sparklines, one emphasised metric. Used sparingly.</div></div></div>
+  </div>
+
+  <!-- Surfaces -->
+  <div class="grp">Surfaces · navy green</div>
+  <div class="grid">
+    <div class="sw"><div class="chip" style="background:#142a22;"><span class="ck">#142A22</span></div><div class="body"><div class="nm">Navy Forest</div><div class="hex">#142A22</div><div class="var">--commune-forest</div><div class="use">Sidebar, auth brand panel, dark hero, profile menu, dark toolbars.</div></div></div>
+    <div class="sw"><div class="chip" style="background:#1c3a2f;"><span class="ck">#1C3A2F</span></div><div class="body"><div class="nm">Navy Forest Soft</div><div class="hex">#1C3A2F</div><div class="var">--commune-forest-soft</div><div class="use">Raised elements inside dark surfaces: nav hover, sidebar cards.</div></div></div>
+    <div class="sw"><div class="chip" style="background:#142a22;"><span class="tintbar" style="background:rgba(255,255,255,.10);color:rgba(255,255,255,.85);">hairline 10% white</span></div><div class="body"><div class="nm">On-forest hairline</div><div class="hex">rgba(255,255,255,.10)</div><div class="var">--commune-forest-line</div><div class="use">Dividers and borders on dark surfaces.</div></div></div>
+    <div class="sw"><div class="chip" style="background:#142a22;"><span class="tintbar" style="color:rgba(255,255,255,.92);">Aa  text 92% white</span></div><div class="body"><div class="nm">On-forest text</div><div class="hex">rgba(255,255,255,.92 / .62)</div><div class="var">--commune-on-forest / -soft</div><div class="use">Primary &amp; muted text drawn on dark navy surfaces.</div></div></div>
+  </div>
+
+  <!-- Status -->
+  <div class="grp">Status · intent only</div>
+  <div class="grid">
+    <div class="sw"><div class="chip" style="background:#c2374a;"><span class="ck">#C2374A</span><span class="tintbar" style="background:#fbecee;color:#c2374a;">chip · #FBECEE bg</span></div><div class="body"><div class="nm">Signal Red</div><div class="hex">#C2374A</div><div class="var">--commune-danger</div><div class="use">Owe / overdue / destructive. Negative balances, delete. Keep it rare.</div></div></div>
+    <div class="sw"><div class="chip" style="background:#b5663d;"><span class="ck">#B5663D</span><span class="tintbar" style="background:#f7ede4;color:#b5663d;">chip · #F7EDE4 bg</span></div><div class="body"><div class="nm">Amber</div><div class="hex">#B5663D</div><div class="var">--commune-warning</div><div class="use">Due soon / pending / partial / needs attention.</div></div></div>
+    <div class="sw"><div class="chip" style="background:#1e7a52;"><span class="ck">#1E7A52</span><span class="tintbar" style="background:#e4f2ea;color:#1e7a52;">chip · #E4F2EA bg</span></div><div class="body"><div class="nm">Success Green</div><div class="hex">#1E7A52</div><div class="var">--commune-success</div><div class="use">Settled / paid / they-owe-you / done. Cooler &amp; lighter than the brand.</div></div></div>
+    <div class="sw"><div class="chip" style="background:#2b6cb0;"><span class="ck">#2B6CB0</span><span class="tintbar" style="background:#e7f0f9;color:#2b6cb0;">chip · #E7F0F9 bg</span></div><div class="body"><div class="nm">Info Blue</div><div class="hex">#2B6CB0</div><div class="var">--commune-info</div><div class="use">Neutral system messages and body-copy links only.</div></div></div>
+  </div>
+
+  <!-- Neutrals -->
+  <div class="grp">Neutrals</div>
+  <div class="grid">
+    <div class="sw"><div class="chip onlight" style="background:#f9f8f5;"><span class="ck">#F9F8F5</span></div><div class="body"><div class="nm">Paper</div><div class="hex">#F9F8F5</div><div class="var">--commune-paper</div><div class="use">App background — warm off-white.</div></div></div>
+    <div class="sw"><div class="chip onlight" style="background:#fff;border-bottom:1px solid #e7e5df;"><span class="ck">#FFFFFF</span></div><div class="body"><div class="nm">Card</div><div class="hex">#FFFFFF</div><div class="var">--commune-paper-strong</div><div class="use">Cards, panels, inputs, raised surfaces.</div></div></div>
+    <div class="sw"><div class="chip onlight" style="background:#f2f1ec;"><span class="ck">#F2F1EC</span></div><div class="body"><div class="nm">Paper Soft</div><div class="hex">#F2F1EC</div><div class="var">--commune-paper-soft</div><div class="use">Inset surfaces, table headers, unified KPI cards.</div></div></div>
+    <div class="sw"><div class="chip" style="background:#16241d;"><span class="ck">#16241D</span></div><div class="body"><div class="nm">Ink</div><div class="hex">#16241D</div><div class="var">--commune-ink</div><div class="use">Primary text, headings, big numbers. Green-undertone near-black.</div></div></div>
+    <div class="sw"><div class="chip" style="background:#5c6661;"><span class="ck">#5C6661</span></div><div class="body"><div class="nm">Ink Soft</div><div class="hex">#5C6661</div><div class="var">--commune-ink-soft</div><div class="use">Secondary text, labels, captions, muted meta.</div></div></div>
+    <div class="sw"><div class="chip onlight" style="background:#e7e5df;"><span class="ck">#E7E5DF</span></div><div class="body"><div class="nm">Border</div><div class="hex">#E7E5DF</div><div class="var">--commune-border</div><div class="use">Default card / input / divider border.</div></div></div>
+    <div class="sw"><div class="chip onlight" style="background:#d6d3cb;"><span class="ck">#D6D3CB</span></div><div class="body"><div class="nm">Border Strong</div><div class="hex">#D6D3CB</div><div class="var">--commune-border-strong</div><div class="use">Emphasised borders, dashed placeholders, bulk bar.</div></div></div>
+  </div>
+
+  <!-- ============ DARK ============ -->
+  <div class="dark-sec">
+  <div class="modebar dark">
+    <div class="dot" style="background:#101713;border:1px solid rgba(255,255,255,.14);"></div>
+    <div>
+      <div class="mt">Dark mode</div>
+      <div class="ms">Near-black green-navy · brand green lifted so it stays vivid · never pure black</div>
+    </div>
+  </div>
+
+  <!-- Brand dark -->
+  <div class="grp">Brand</div>
+  <div class="grid">
+    <div class="sw"><div class="chip" style="background:#3fb389;"><span class="ck">#3FB389</span></div><div class="body"><div class="nm">Forest (lifted) <span class="star">the brand</span></div><div class="hex">#3FB389</div><div class="var">--commune-primary</div><div class="use">Buttons, active nav, links, focus on dark.</div></div></div>
+    <div class="sw"><div class="chip" style="background:#6ee7b7;"><span class="ck" style="background:rgba(16,23,19,.14);">#6EE7B7</span></div><div class="body"><div class="nm">Forest Bright</div><div class="hex">#6EE7B7</div><div class="var">--commune-primary-strong</div><div class="use">Hover / active, key accent text, emphasis.</div></div></div>
+    <div class="sw"><div class="chip" style="background:#172019;"><span class="tintbar" style="background:rgba(63,179,137,.16);color:#6ee7b7;">tint 16% over card</span></div><div class="body"><div class="nm">Forest Tint</div><div class="hex">rgba(63,179,137,.16)</div><div class="var">--commune-primary-tint</div><div class="use">Selected rows, brand chip bg, icon bg on dark.</div></div></div>
+    <div class="sw"><div class="chip" style="background:#52c79a;"><span class="ck" style="background:rgba(16,23,19,.14);">#52C79A</span></div><div class="body"><div class="nm">Spring Green</div><div class="hex">#52C79A</div><div class="var">--commune-accent</div><div class="use">Progress fills, sparklines, one emphasised metric.</div></div></div>
+  </div>
+
+  <!-- Surfaces dark -->
+  <div class="grp">Surfaces · navy green</div>
+  <div class="grid">
+    <div class="sw"><div class="chip" style="background:#0e1612;"><span class="ck" style="background:rgba(255,255,255,.86);">#0E1612</span></div><div class="body"><div class="nm">Navy Forest</div><div class="hex">#0E1612</div><div class="var">--commune-forest</div><div class="use">Sidebar / dark brand panel — darker than cards for depth.</div></div></div>
+    <div class="sw"><div class="chip" style="background:#1a241e;"><span class="ck" style="background:rgba(255,255,255,.86);">#1A241E</span></div><div class="body"><div class="nm">Navy Forest Soft</div><div class="hex">#1A241E</div><div class="var">--commune-forest-soft</div><div class="use">Raised elements inside the sidebar.</div></div></div>
+    <div class="sw"><div class="chip" style="background:#101713;"><span class="ck" style="background:rgba(255,255,255,.86);">#101713</span></div><div class="body"><div class="nm">App background</div><div class="hex">#101713</div><div class="var">--commune-paper</div><div class="use">Near-black green-navy app canvas.</div></div></div>
+    <div class="sw"><div class="chip" style="background:#172019;"><span class="ck" style="background:rgba(255,255,255,.86);">#172019</span></div><div class="body"><div class="nm">Card</div><div class="hex">#172019</div><div class="var">--commune-paper-strong</div><div class="use">Cards, panels, inputs on dark.</div></div></div>
+  </div>
+
+  <!-- Status dark -->
+  <div class="grp">Status · intent only</div>
+  <div class="grid">
+    <div class="sw"><div class="chip" style="background:#f06a78;"><span class="ck" style="background:rgba(16,23,19,.14);">#F06A78</span><span class="tintbar" style="background:rgba(240,106,120,.15);color:#f06a78;">wash 15% bg</span></div><div class="body"><div class="nm">Signal Red (lifted)</div><div class="hex">#F06A78</div><div class="var">--commune-danger</div><div class="use">Owe / overdue / destructive on dark.</div></div></div>
+    <div class="sw"><div class="chip" style="background:#e08a52;"><span class="ck" style="background:rgba(16,23,19,.14);">#E08A52</span><span class="tintbar" style="background:rgba(224,138,82,.15);color:#e08a52;">wash 15% bg</span></div><div class="body"><div class="nm">Amber (lifted)</div><div class="hex">#E08A52</div><div class="var">--commune-warning</div><div class="use">Due / pending on dark.</div></div></div>
+    <div class="sw"><div class="chip" style="background:#46c98a;"><span class="ck" style="background:rgba(16,23,19,.14);">#46C98A</span><span class="tintbar" style="background:rgba(70,201,138,.15);color:#46c98a;">wash 15% bg</span></div><div class="body"><div class="nm">Success Green (lifted)</div><div class="hex">#46C98A</div><div class="var">--commune-success</div><div class="use">Settled / paid on dark.</div></div></div>
+    <div class="sw"><div class="chip" style="background:#63b3ed;"><span class="ck" style="background:rgba(16,23,19,.14);">#63B3ED</span><span class="tintbar" style="background:rgba(99,179,237,.15);color:#63b3ed;">wash 15% bg</span></div><div class="body"><div class="nm">Info Blue (lifted)</div><div class="hex">#63B3ED</div><div class="var">--commune-info</div><div class="use">Info / system on dark.</div></div></div>
+  </div>
+
+  <!-- Neutrals dark -->
+  <div class="grp">Neutrals</div>
+  <div class="grid">
+    <div class="sw"><div class="chip" style="background:#e6e8e6;"><span class="ck" style="background:rgba(16,23,19,.10);">#E6E8E6</span></div><div class="body"><div class="nm">Ink</div><div class="hex">#E6E8E6</div><div class="var">--commune-ink</div><div class="use">Primary text on dark.</div></div></div>
+    <div class="sw"><div class="chip" style="background:#9ba39e;"><span class="ck" style="background:rgba(16,23,19,.12);">#9BA39E</span></div><div class="body"><div class="nm">Ink Soft</div><div class="hex">#9BA39E</div><div class="var">--commune-ink-soft</div><div class="use">Secondary text on dark.</div></div></div>
+    <div class="sw"><div class="chip" style="background:#172019;"><span class="tintbar" style="background:rgba(255,255,255,.09);color:rgba(255,255,255,.7);">border 9% white</span></div><div class="body"><div class="nm">Border</div><div class="hex">rgba(255,255,255,.09)</div><div class="var">--commune-border</div><div class="use">Default border on dark.</div></div></div>
+    <div class="sw"><div class="chip" style="background:#172019;"><span class="tintbar" style="background:rgba(255,255,255,.15);color:rgba(255,255,255,.8);">border 15% white</span></div><div class="body"><div class="nm">Border Strong</div><div class="hex">rgba(255,255,255,.15)</div><div class="var">--commune-border-strong</div><div class="use">Emphasised border on dark.</div></div></div>
+  </div>
+  </div>
+
+  <!-- ============ USAGE ============ -->
+  <div class="note">
+    <h3>Usage &amp; restraint</h3>
+    <div class="nsub">Colour = intent. The brand greens should be present and confident — but never sprinkled as decoration.</div>
+    <div class="rules">
+      <div class="rule"><span class="rk" style="background:#15573e;"></span><div><b>Forest green is the brand.</b> Primary buttons, active nav, key headings, links, focus, selected rows. Be confident — saturated, not a washed pastel.</div></div>
+      <div class="rule"><span class="rk" style="background:#142a22;"></span><div><b>Navy forest carries weight.</b> Sidebar, auth brand panel, dark hero, profile menu. Raised bits inside use Navy Forest Soft.</div></div>
+      <div class="rule"><span class="rk" style="background:#c2374a;"></span><div><b>Red is status only.</b> Owe, overdue, destructive. Keep it rare so it reads as an alarm and actually means something.</div></div>
+      <div class="rule"><span class="rk" style="background:#1e7a52;"></span><div><b>Success ≠ brand.</b> Settled / paid uses the cooler, lighter Success Green so a "paid" badge never looks like a primary button.</div></div>
+      <div class="rule"><span class="rk" style="background:#16241d;"></span><div><b>Numbers stay neutral ink.</b> Totals and tables on ink for AA contrast; the status hue lives in the chip beside the number, not in the number.</div></div>
+      <div class="rule"><span class="rk" style="background:#b5663d;"></span><div><b>Status chips are tint + text.</b> Background <code>*-bg</code>, text the base hue, optional <code>*-border</code> — full fills are for the one destructive button only.</div></div>
+    </div>
+  </div>
+
+  <p class="foot">Maps to <code>--commune-primary</code>, <code>--commune-primary-strong</code>, <code>--commune-forest</code>, <code>--commune-ink</code>, <code>--commune-ink-soft</code>, <code>--commune-border</code> &amp; the status/tint tokens. Full spec, contrast notes &amp; drop-in CSS in <a href="palette.md">palette.md</a>.</p>
+</div>
+</body></html>
