@@ -6,7 +6,7 @@
   <title>Command — 12 Grove</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
   <style>
     * {
       margin: 0;
@@ -14,24 +14,18 @@
       box-sizing: border-box;
     }
 
-    :root {
-      --sage: #2d6a4f;
-      --navy: #1a1e2e;
-      --cream: #f5f3ef;
-      --muted: #888880;
-    }
-
     body {
-      font-family: 'DM Sans', sans-serif;
-      background: var(--cream);
-      color: var(--navy);
+      font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #FAF9F7;
+      color: #1A1E2B;
       line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
     }
 
     header {
-      background: var(--cream);
-      border-bottom: 1px solid rgba(26, 30, 46, 0.1);
-      padding: 1rem 2rem;
+      background: #FAF9F7;
+      border-bottom: 1px solid #E8E6E1;
+      padding: 16px 20px;
     }
 
     .header-inner {
@@ -39,82 +33,93 @@
       margin: 0 auto;
       display: flex;
       align-items: center;
-      gap: 3rem;
+      gap: 24px;
     }
 
     .house-name {
       font-family: 'DM Serif Display', serif;
-      font-size: 1rem;
+      font-size: 17px;
       font-weight: 400;
-      color: var(--navy);
+      color: #1A1E2B;
     }
 
     nav {
       display: flex;
-      gap: 1.5rem;
+      gap: 24px;
       flex: 1;
     }
 
     nav a {
-      color: var(--muted);
+      color: #6B6D73;
       text-decoration: none;
-      font-size: 0.9375rem;
+      font-size: 15px;
       font-weight: 500;
+      transition: color 0.15s;
+    }
+
+    nav a:hover {
+      color: #1A1E2B;
     }
 
     nav a.active {
-      color: var(--sage);
+      color: #2D6A4F;
+      font-weight: 600;
     }
 
     .user-name {
-      color: var(--navy);
-      font-size: 0.9375rem;
+      color: #1A1E2B;
+      font-size: 15px;
       font-weight: 500;
     }
 
     main {
       max-width: 900px;
       margin: 0 auto;
-      padding: 2.5rem 2rem;
+      padding: 32px 20px 80px;
     }
 
     .lead {
-      font-size: 1.25rem;
+      font-size: 20px;
       line-height: 1.6;
-      color: var(--navy);
-      margin-bottom: 2.5rem;
+      color: #1A1E2B;
+      font-weight: 600;
+      margin-bottom: 32px;
     }
 
-    .item {
-      padding: 1.5rem 0;
-      border-bottom: 1px solid rgba(26, 30, 46, 0.08);
+    .card {
+      background: #FFFFFF;
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 12px;
+      box-shadow: 0 1px 2px rgba(26, 30, 43, 0.04);
     }
 
-    .item:first-child {
-      padding-top: 0;
-    }
-
-    .item-text {
-      font-size: 1rem;
+    .card-text {
+      font-size: 15px;
       line-height: 1.6;
-      color: var(--navy);
-      margin-bottom: 0.5rem;
+      color: #1A1E2B;
     }
 
-    .item-detail {
-      font-size: 0.875rem;
-      color: var(--muted);
-      margin-top: 0.75rem;
+    .card-caption {
+      font-size: 13px;
+      color: #6B6D73;
+      margin-top: 8px;
+      font-weight: 500;
     }
 
     .amount {
-      color: var(--sage);
+      color: #2D6A4F;
+      font-weight: 600;
+    }
+
+    .amount-owe {
+      color: #C74A3A;
       font-weight: 600;
     }
 
     .name {
       font-weight: 600;
-      color: var(--navy);
+      color: #1A1E2B;
     }
   </style>
 </head>
@@ -135,26 +140,26 @@
   <main>
     <p class="lead">Bins go out tonight. Rent is due Friday.</p>
 
-    <div class="item">
-      <p class="item-text">It's <span class="name">Maya's</span> turn to take the bins down tonight.</p>
+    <div class="card">
+      <p class="card-text">It's <span class="name">Maya's</span> turn to take the bins down tonight.</p>
     </div>
 
-    <div class="item">
-      <p class="item-text">Rent is <span class="amount">£1,840</span> due Friday. Split four ways, everyone pays <span class="amount">£460</span>.</p>
-      <p class="item-detail"><span class="name">Maya</span> hasn't paid yet. <span class="name">Jordan</span>, <span class="name">Sam</span>, and <span class="name">Priya</span> have paid.</p>
+    <div class="card">
+      <p class="card-text">Rent is <span class="amount-owe">£1,840</span> due Friday. Split four ways, everyone pays <span class="amount-owe">£460</span>.</p>
+      <p class="card-caption"><span class="name">Maya</span> hasn't paid yet. <span class="name">Jordan</span>, <span class="name">Sam</span>, and <span class="name">Priya</span> have paid.</p>
     </div>
 
-    <div class="item">
-      <p class="item-text"><span class="name">Maya</span> covered wifi this month at <span class="amount">£32</span>.</p>
-      <p class="item-detail"><span class="name">Jordan</span>, <span class="name">Sam</span>, and <span class="name">Priya</span> each owe her <span class="amount">£8</span>.</p>
+    <div class="card">
+      <p class="card-text"><span class="name">Maya</span> covered wifi this month at <span class="amount">£32</span>.</p>
+      <p class="card-caption"><span class="name">Jordan</span>, <span class="name">Sam</span>, and <span class="name">Priya</span> each owe her <span class="amount">£8</span>.</p>
     </div>
 
-    <div class="item">
-      <p class="item-text">Boiler service Thursday at 10am. Someone needs to be in.</p>
+    <div class="card">
+      <p class="card-text">Boiler service Thursday at 10am. Someone needs to be in.</p>
     </div>
 
-    <div class="item">
-      <p class="item-text">Kitchen <span class="name">Jordan</span> · Bathroom <span class="name">Sam</span></p>
+    <div class="card">
+      <p class="card-text">Kitchen <span class="name">Jordan</span> · Bathroom <span class="name">Sam</span></p>
     </div>
   </main>
 </body>
