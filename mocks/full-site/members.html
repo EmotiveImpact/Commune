@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Members — Commune</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f5f1ea;
+      color: #171b24;
+      min-height: 100vh;
+      display: flex;
+    }
+
+    .sidebar {
+      width: 230px;
+      background: #1f2330;
+      color: rgba(255, 255, 255, 0.92);
+      padding: 20px 14px;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      position: fixed;
+      left: 0;
+      top: 0;
+      overflow-y: auto;
+    }
+
+    .logo {
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #fff;
+      margin-bottom: 24px;
+    }
+
+    .nav-label {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 8px;
+      margin-top: 16px;
+    }
+
+    .nav-label:first-of-type { margin-top: 0; }
+
+    .nav-link {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 14px;
+      border-radius: 10px;
+      color: rgba(255, 255, 255, 0.76);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 2px;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .nav-link:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: #ffffff;
+    }
+
+    .nav-link.active {
+      background: rgba(255, 255, 255, 0.12);
+      color: #ffffff;
+    }
+
+    .user-profile {
+      margin-top: auto;
+      padding: 10px 14px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: #fff;
+    }
+
+    .avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .plan-badge {
+      font-size: 11px;
+      color: rgba(255, 255, 255, 0.45);
+    }
+
+    .main {
+      margin-left: 230px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .header {
+      height: 64px;
+      background: #f5f1ea;
+      border-bottom: 1px solid rgba(23, 27, 36, 0.06);
+      padding: 0 32px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .search {
+      flex: 1;
+      max-width: 460px;
+      padding: 10px 16px;
+      background: #ffffff;
+      border: 1px solid rgba(23, 27, 36, 0.06);
+      border-radius: 10px;
+      font-family: inherit;
+      font-size: 14px;
+      color: #171b24;
+    }
+
+    .search::placeholder { color: #667085; }
+
+    .content {
+      padding: 24px 48px;
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    .page-header {
+      padding-bottom: 16px;
+      margin-bottom: 24px;
+      border-bottom: 1px solid rgba(23, 27, 36, 0.06);
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+
+    .page-title {
+      font-size: 24px;
+      font-weight: 800;
+      line-height: 1.2;
+      letter-spacing: -0.01em;
+      color: #171b24;
+    }
+
+    .page-subtitle {
+      font-size: 14px;
+      color: #667085;
+      margin-top: 2px;
+    }
+
+    .btn {
+      padding: 8px 16px;
+      border-radius: 8px;
+      border: 1px solid rgba(23, 27, 36, 0.1);
+      background: #2d6a4f;
+      color: #ffffff;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .btn:hover { background: #25543f; }
+
+    .section {
+      background: rgba(255, 255, 255, 0.82);
+      border: 1px solid rgba(23, 27, 36, 0.06);
+      border-radius: 14px;
+      padding: 24px;
+      margin-bottom: 24px;
+      box-shadow: 0 1px 3px rgba(23, 27, 36, 0.06);
+    }
+
+    .section-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #171b24;
+      margin-bottom: 4px;
+    }
+
+    .section-subtitle {
+      font-size: 13px;
+      color: #667085;
+      margin-bottom: 20px;
+    }
+
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .stat-card {
+      background: rgba(45, 106, 79, 0.04);
+      border: 1px solid rgba(45, 106, 79, 0.08);
+      border-radius: 10px;
+      padding: 14px;
+    }
+
+    .stat-label {
+      font-size: 11px;
+      color: #667085;
+      margin-bottom: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+
+    .stat-value {
+      font-size: 22px;
+      font-weight: 700;
+      color: #171b24;
+    }
+
+    .members-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 16px;
+    }
+
+    .member-card {
+      background: rgba(255, 255, 255, 0.82);
+      border: 1px solid rgba(23, 27, 36, 0.06);
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 1px 3px rgba(23, 27, 36, 0.06);
+    }
+
+    .member-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .member-avatar {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #2d6a4f 0%, #16a34a 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      font-weight: 700;
+      color: white;
+      flex-shrink: 0;
+    }
+
+    .member-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .member-name {
+      font-size: 15px;
+      font-weight: 700;
+      color: #171b24;
+      margin-bottom: 2px;
+    }
+
+    .member-email {
+      font-size: 12px;
+      color: #667085;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      margin-right: 4px;
+      margin-bottom: 4px;
+    }
+
+    .badge-green {
+      background: rgba(22, 163, 74, 0.1);
+      color: #16a34a;
+    }
+
+    .badge-blue {
+      background: rgba(59, 130, 246, 0.1);
+      color: #3b82f6;
+    }
+
+    .badge-gray {
+      background: rgba(100, 116, 139, 0.1);
+      color: #64748b;
+    }
+
+    .financial-summary {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid rgba(23, 27, 36, 0.06);
+    }
+
+    .balance-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .balance-label {
+      font-size: 12px;
+      color: #667085;
+    }
+
+    .balance-value {
+      font-size: 14px;
+      font-weight: 700;
+      color: #171b24;
+    }
+
+    .balance-value.positive { color: #16a34a; }
+    .balance-value.negative { color: #dc2626; }
+
+    .progress-bar {
+      width: 100%;
+      height: 4px;
+      background: rgba(23, 27, 36, 0.06);
+      border-radius: 2px;
+      overflow: hidden;
+      margin-top: 8px;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: #16a34a;
+      border-radius: 2px;
+    }
+
+    .invite-card {
+      border: 2px dashed rgba(23, 27, 36, 0.12);
+      background: transparent;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 160px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .invite-card:hover {
+      border-color: #2d6a4f;
+      background: rgba(45, 106, 79, 0.02);
+    }
+
+    .invite-content {
+      text-align: center;
+    }
+
+    .invite-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: rgba(45, 106, 79, 0.1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 8px;
+      font-size: 20px;
+      color: #2d6a4f;
+    }
+
+    .invite-text {
+      font-size: 14px;
+      font-weight: 600;
+      color: #2d6a4f;
+    }
+  </style>
+</head>
+<body>
+  <div class="sidebar">
+    <div class="logo">COMMUNE</div>
+    
+    <div class="nav-label">MENU</div>
+    <a href="dashboard.html" class="nav-link">Dashboard</a>
+    <a href="groups.html" class="nav-link">My Groups</a>
+
+    <div class="nav-label">MONEY</div>
+    <a href="expenses.html" class="nav-link">Expenses</a>
+    <a href="recurring.html" class="nav-link">Recurring</a>
+    <a href="templates.html" class="nav-link">Templates</a>
+    <a href="funds.html" class="nav-link">Funds</a>
+    <a href="billing.html" class="nav-link">Billing</a>
+
+    <div class="nav-label">INSIGHTS</div>
+    <a href="index.html" class="nav-link">Command Centre</a>
+    <a href="breakdown.html" class="nav-link">Breakdown</a>
+    <a href="analytics.html" class="nav-link">Analytics</a>
+
+    <div class="nav-label">TEAM</div>
+    <a href="members.html" class="nav-link active">Members</a>
+    <a href="operations.html" class="nav-link">Operations</a>
+    <a href="activity.html" class="nav-link">Activity</a>
+
+    <div class="user-profile">
+      <div class="avatar">AE</div>
+      <div>
+        <div style="font-size: 14px; font-weight: 600;">Augustus Edem</div>
+        <div class="plan-badge">Pro</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="header">
+      <input type="text" class="search" placeholder="Search expenses, members...">
+    </div>
+
+    <div class="content">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Members</h1>
+          <p class="page-subtitle">4 active members</p>
+        </div>
+        <button class="btn">+ Invite member</button>
+      </div>
+
+      <!-- Member lifecycle -->
+      <div class="section">
+        <div class="section-title">Member lifecycle</div>
+        <div class="section-subtitle">Joiners and departures this month</div>
+        <div class="stat-grid">
+          <div class="stat-card">
+            <div class="stat-label">Joined</div>
+            <div class="stat-value">2</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Invited</div>
+            <div class="stat-value">0</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Departing</div>
+            <div class="stat-value">0</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Left</div>
+            <div class="stat-value">1</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Workspace roles -->
+      <div class="section">
+        <div class="section-title">Workspace roles and approvals</div>
+        <div class="section-subtitle">Admin presets and spending approval thresholds</div>
+        <div style="font-size: 14px; color: #667085;">
+          <p style="margin-bottom: 8px;"><strong>Admin:</strong> Full control · Can invite, remove, approve all expenses</p>
+          <p style="margin-bottom: 8px;"><strong>Member:</strong> Standard access · Can submit expenses for approval</p>
+          <p><strong>Approval threshold:</strong> Expenses over £100 require admin approval</p>
+        </div>
+      </div>
+
+      <!-- Members grid -->
+      <div class="members-grid">
+        <div class="member-card">
+          <div class="member-header">
+            <div class="member-avatar">SJ</div>
+            <div class="member-info">
+              <div class="member-name">Sarah Johnson</div>
+              <div class="member-email">sarah@example.com</div>
+            </div>
+          </div>
+          <div>
+            <span class="badge badge-green">Active</span>
+            <span class="badge badge-blue">Admin</span>
+          </div>
+          <div class="financial-summary">
+            <div class="balance-row">
+              <span class="balance-label">Balance</span>
+              <span class="balance-value negative">-£124.50</span>
+            </div>
+            <div class="balance-row">
+              <span class="balance-label">Total paid</span>
+              <span class="balance-value">£856.00</span>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill" style="width: 45%"></div>
+            </div>
+            <div style="font-size: 11px; color: #667085; margin-top: 4px;">45% settled this month</div>
+          </div>
+        </div>
+
+        <div class="member-card">
+          <div class="member-header">
+            <div class="member-avatar">TC</div>
+            <div class="member-info">
+              <div class="member-name">Tom Chen</div>
+              <div class="member-email">tom@example.com</div>
+            </div>
+          </div>
+          <div>
+            <span class="badge badge-green">Active</span>
+            <span class="badge badge-gray">Member</span>
+          </div>
+          <div class="financial-summary">
+            <div class="balance-row">
+              <span class="balance-label">Balance</span>
+              <span class="balance-value positive">+£86.25</span>
+            </div>
+            <div class="balance-row">
+              <span class="balance-label">Total paid</span>
+              <span class="balance-value">£1,286.25</span>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill" style="width: 100%"></div>
+            </div>
+            <div style="font-size: 11px; color: #667085; margin-top: 4px;">100% settled this month</div>
+          </div>
+        </div>
+
+        <div class="member-card">
+          <div class="member-header">
+            <div class="member-avatar">AR</div>
+            <div class="member-info">
+              <div class="member-name">Alex Rivera</div>
+              <div class="member-email">alex@example.com</div>
+            </div>
+          </div>
+          <div>
+            <span class="badge badge-green">Active</span>
+            <span class="badge badge-gray">Member</span>
+          </div>
+          <div class="financial-summary">
+            <div class="balance-row">
+              <span class="balance-label">Balance</span>
+              <span class="balance-value negative">-£42.00</span>
+            </div>
+            <div class="balance-row">
+              <span class="balance-label">Total paid</span>
+              <span class="balance-value">£428.75</span>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill" style="width: 0%"></div>
+            </div>
+            <div style="font-size: 11px; color: #667085; margin-top: 4px;">0% settled this month</div>
+          </div>
+        </div>
+
+        <div class="member-card">
+          <div class="member-header">
+            <div class="member-avatar">MP</div>
+            <div class="member-info">
+              <div class="member-name">Maya Patel</div>
+              <div class="member-email">maya@example.com</div>
+            </div>
+          </div>
+          <div>
+            <span class="badge badge-green">Active</span>
+            <span class="badge badge-blue">Admin</span>
+          </div>
+          <div class="financial-summary">
+            <div class="balance-row">
+              <span class="balance-label">Balance</span>
+              <span class="balance-value positive">+£80.25</span>
+            </div>
+            <div class="balance-row">
+              <span class="balance-label">Total paid</span>
+              <span class="balance-value">£1,180.50</span>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill" style="width: 72%"></div>
+            </div>
+            <div style="font-size: 11px; color: #667085; margin-top: 4px;">72% settled this month</div>
+          </div>
+        </div>
+
+        <div class="member-card invite-card">
+          <div class="invite-content">
+            <div class="invite-icon">+</div>
+            <div class="invite-text">Invite new member</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

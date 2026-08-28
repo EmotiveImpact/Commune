@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Operations | COMMUNE</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+      background: #F5F3EE;
+    }
+    
+    /* Sidebar */
+    .sidebar {
+      width: 230px;
+      background: #16131D;
+      color: white;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow-y: auto;
+    }
+    .sidebar-header {
+      padding: 20px;
+      font-weight: 800;
+      font-size: 14px;
+      letter-spacing: 0.1em;
+      color: white;
+    }
+    .nav-link {
+      padding: 12px 20px;
+      color: rgba(255, 255, 255, 0.7);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+    .nav-link:hover, .nav-link.active {
+      background: rgba(255, 255, 255, 0.1);
+      color: white;
+    }
+    .nav-group-label {
+      padding: 20px 20px 8px;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: rgba(255, 255, 255, 0.4);
+      font-weight: 700;
+    }
+    
+    /* Main content area */
+    .main-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    
+    /* Header */
+    .header {
+      height: 64px;
+      background: #F5F3EE;
+      border-bottom: 1px solid #e0ddd5;
+      display: flex;
+      align-items: center;
+      padding: 0 32px;
+      gap: 16px;
+    }
+    .search-input {
+      flex: 1;
+      max-width: 400px;
+      padding: 8px 12px;
+      border: 1px solid #d0cdc5;
+      border-radius: 6px;
+      font-size: 14px;
+      background: white;
+    }
+    
+    /* Content */
+    .content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 32px;
+    }
+    
+    /* Page header */
+    .page-header {
+      margin-bottom: 32px;
+    }
+    .page-header-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 8px;
+    }
+    .page-title {
+      font-size: 28px;
+      font-weight: 800;
+      color: #16131D;
+      line-height: 1.2;
+    }
+    .page-subtitle {
+      font-size: 14px;
+      color: #868e96;
+      margin-top: 4px;
+    }
+    .page-actions {
+      display: flex;
+      gap: 8px;
+    }
+    
+    /* Button styles */
+    .btn {
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+      text-decoration: none;
+    }
+    .btn-primary {
+      background: #2d6a4f;
+      color: white;
+    }
+    .btn-primary:hover {
+      background: #25543f;
+    }
+    .btn-light {
+      background: rgba(45, 106, 79, 0.1);
+      color: #2d6a4f;
+    }
+    .btn-light:hover {
+      background: rgba(45, 106, 79, 0.15);
+    }
+    .btn-xs {
+      padding: 4px 8px;
+      font-size: 12px;
+    }
+    .btn-green {
+      background: rgba(64, 192, 87, 0.1);
+      color: #40c057;
+    }
+    .btn-green:hover {
+      background: rgba(64, 192, 87, 0.15);
+    }
+    .btn-subtle-red {
+      background: transparent;
+      color: #fa5252;
+      padding: 4px 8px;
+    }
+    .btn-subtle-red:hover {
+      background: rgba(250, 82, 82, 0.1);
+    }
+    
+    /* Stats grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+    .stat-card {
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      border: 1px solid #e9ecef;
+    }
+    .stat-label {
+      font-size: 13px;
+      color: #868e96;
+      margin-bottom: 4px;
+    }
+    .stat-value {
+      font-size: 28px;
+      font-weight: 800;
+      color: #16131D;
+      line-height: 1.05;
+    }
+    
+    /* Section header */
+    .section-header {
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .section-header.overdue {
+      color: #fa5252;
+    }
+    .section-header.upcoming {
+      color: #868e96;
+    }
+    
+    /* Chore cards grid */
+    .chores-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 16px;
+      margin-bottom: 40px;
+    }
+    .chore-card {
+      background: white;
+      padding: 16px;
+      border-radius: 12px;
+      border: 1px solid #e9ecef;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .chore-card.overdue {
+      border-color: #ffc9c9;
+    }
+    .chore-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+    }
+    .chore-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .chore-title-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .chore-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #16131D;
+    }
+    .chore-description {
+      font-size: 12px;
+      color: #868e96;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .chore-badges {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .chore-meta {
+      font-size: 11px;
+      color: #868e96;
+      margin-top: 4px;
+    }
+    .chore-checklist {
+      font-size: 11px;
+      color: #868e96;
+      margin-top: 4px;
+    }
+    .chore-actions {
+      display: flex;
+      gap: 6px;
+      align-items: flex-start;
+    }
+    
+    /* Badge */
+    .badge {
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .badge-red {
+      background: #ffe3e3;
+      color: #c92a2a;
+    }
+    .badge-gray {
+      background: #f1f3f5;
+      color: #495057;
+    }
+    .badge-blue {
+      background: #e7f5ff;
+      color: #1971c2;
+    }
+    .badge-teal {
+      background: #e6fcf5;
+      color: #087f5b;
+    }
+    .badge-grape {
+      background: #f3f0ff;
+      color: #7048e8;
+    }
+    .badge-orange {
+      background: #fff4e6;
+      color: #d9480f;
+    }
+    .badge-dot {
+      padding-left: 16px;
+      position: relative;
+    }
+    .badge-dot::before {
+      content: '';
+      position: absolute;
+      left: 6px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+    .badge-filled-red {
+      background: #fa5252;
+      color: white;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    
+    /* Empty state */
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      background: white;
+      border-radius: 12px;
+      border: 1px solid #e9ecef;
+    }
+    .empty-icon {
+      width: 64px;
+      height: 64px;
+      margin: 0 auto 16px;
+      opacity: 0.3;
+    }
+    .empty-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: #16131D;
+      margin-bottom: 8px;
+    }
+    .empty-description {
+      font-size: 14px;
+      color: #868e96;
+    }
+    
+    /* Modal */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.active {
+      display: flex;
+    }
+    .modal {
+      background: white;
+      border-radius: 12px;
+      padding: 24px;
+      max-width: 500px;
+      width: 90%;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+    .modal-title {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 20px;
+    }
+    .form-group {
+      margin-bottom: 16px;
+    }
+    .form-label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: #212529;
+      margin-bottom: 4px;
+    }
+    .form-label.required::after {
+      content: ' *';
+      color: #fa5252;
+    }
+    .form-input, .form-select, .form-textarea {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid #ced4da;
+      border-radius: 6px;
+      font-size: 14px;
+      font-family: inherit;
+    }
+    .form-textarea {
+      resize: vertical;
+      min-height: 80px;
+    }
+    .form-description {
+      font-size: 12px;
+      color: #868e96;
+      margin-top: 4px;
+    }
+    .btn-block {
+      width: 100%;
+      justify-content: center;
+    }
+  </style>
+</head>
+<body>
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="sidebar-header">COMMUNE</div>
+    
+    <a href="overview.html" class="nav-link">
+      <span>🏠</span>
+      <span>Overview</span>
+    </a>
+    <a href="groups.html" class="nav-link">
+      <span>👥</span>
+      <span>Groups</span>
+    </a>
+    <a href="dashboard.html" class="nav-link">
+      <span>📊</span>
+      <span>Dashboard</span>
+    </a>
+    
+    <div class="nav-group-label">Team</div>
+    <a href="breakdown.html" class="nav-link">
+      <span>💰</span>
+      <span>Breakdown</span>
+    </a>
+    <a href="analytics.html" class="nav-link">
+      <span>📈</span>
+      <span>Analytics</span>
+    </a>
+    <a href="members.html" class="nav-link">
+      <span>👤</span>
+      <span>Members</span>
+    </a>
+    <a href="chores.html" class="nav-link active">
+      <span>✓</span>
+      <span>Operations</span>
+    </a>
+    <a href="activity.html" class="nav-link">
+      <span>📋</span>
+      <span>Activity</span>
+    </a>
+    
+    <div class="nav-group-label">Money</div>
+    <a href="money.html" class="nav-link">
+      <span>💵</span>
+      <span>Expenses</span>
+    </a>
+    
+    <div class="nav-group-label">Account</div>
+    <a href="profile.html" class="nav-link">
+      <span>👤</span>
+      <span>Profile</span>
+    </a>
+    <a href="settings.html" class="nav-link">
+      <span>⚙️</span>
+      <span>Settings</span>
+    </a>
+  </div>
+
+  <!-- Main Content -->
+  <div class="main-content">
+    <!-- Header -->
+    <div class="header">
+      <input type="text" class="search-input" placeholder="Search...">
+    </div>
+
+    <!-- Content -->
+    <div class="content">
+      <!-- Page Header -->
+      <div class="page-header">
+        <div class="page-header-top">
+          <div>
+            <h1 class="page-title">Operations</h1>
+            <p class="page-subtitle">8 active operations</p>
+          </div>
+          <div class="page-actions">
+            <button class="btn btn-light" onclick="alert('Load starter board')">
+              <span>✨</span>
+              <span>Load starter board</span>
+            </button>
+            <button class="btn btn-primary" onclick="openModal()">
+              <span>+</span>
+              <span>Add operation</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label">Overdue</div>
+          <div class="stat-value">2</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Recurring · Checklists</div>
+          <div class="stat-value">6 · 2</div>
+        </div>
+      </div>
+
+      <!-- Overdue Chores -->
+      <div class="section-header overdue">Overdue (2)</div>
+      <div class="chores-grid">
+        <!-- Overdue Chore 1 -->
+        <div class="chore-card overdue">
+          <div class="chore-header">
+            <div class="chore-content">
+              <div class="chore-title-row">
+                <span class="chore-title">Take bins out</span>
+                <span class="badge badge-red">Overdue</span>
+                <span class="badge badge-blue">Maintenance</span>
+                <span class="badge badge-filled-red">⚠️ Escalated</span>
+              </div>
+              <div class="chore-description">Weekly bin collection day</div>
+              <div class="chore-badges">
+                <span class="badge badge-dot badge-blue">Weekly · Mon</span>
+                <span class="badge badge-dot badge-teal">Recurring</span>
+              </div>
+              <div class="chore-meta">Last done by Sarah 18 Feb</div>
+            </div>
+            <div class="chore-actions">
+              <button class="btn btn-xs btn-green">✓ Done</button>
+              <button class="btn btn-xs btn-subtle-red">🗑</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Overdue Chore 2 -->
+        <div class="chore-card overdue">
+          <div class="chore-header">
+            <div class="chore-content">
+              <div class="chore-title-row">
+                <span class="chore-title">Restock supplies</span>
+                <span class="badge badge-red">Overdue</span>
+                <span class="badge badge-blue">Supplies</span>
+              </div>
+              <div class="chore-description">Check kitchen and bathroom supplies</div>
+              <div class="chore-badges">
+                <span class="badge badge-dot badge-blue">Monthly · 1st</span>
+                <span class="badge badge-dot badge-grape">Checklist</span>
+                <span class="badge badge-grape">5 items</span>
+              </div>
+              <div class="chore-checklist">Paper towels • Dish soap • Trash bags • Toilet paper • Cleaning spray</div>
+            </div>
+            <div class="chore-actions">
+              <button class="btn btn-xs btn-green">✓ Done</button>
+              <button class="btn btn-xs btn-subtle-red">🗑</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Upcoming Chores -->
+      <div class="section-header upcoming">Upcoming (6)</div>
+      <div class="chores-grid">
+        <!-- Upcoming Chore 1 -->
+        <div class="chore-card">
+          <div class="chore-header">
+            <div class="chore-content">
+              <div class="chore-title-row">
+                <span class="chore-title">Clean kitchen</span>
+                <span class="badge badge-gray">Due 4 Mar</span>
+                <span class="badge badge-blue">Cleaning</span>
+              </div>
+              <div class="chore-description">Deep clean kitchen surfaces, appliances, floor</div>
+              <div class="chore-badges">
+                <span class="badge badge-dot badge-blue">Weekly · Mon</span>
+                <span class="badge badge-dot badge-teal">Recurring</span>
+              </div>
+              <div class="chore-meta">Last done by Tom 25 Feb</div>
+            </div>
+            <div class="chore-actions">
+              <button class="btn btn-xs btn-green">✓ Done</button>
+              <button class="btn btn-xs btn-subtle-red">🗑</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Upcoming Chore 2 -->
+        <div class="chore-card">
+          <div class="chore-header">
+            <div class="chore-content">
+              <div class="chore-title-row">
+                <span class="chore-title">Clean bathrooms</span>
+                <span class="badge badge-gray">Due 5 Mar</span>
+                <span class="badge badge-blue">Cleaning</span>
+              </div>
+              <div class="chore-badges">
+                <span class="badge badge-dot badge-blue">Weekly · Tue</span>
+                <span class="badge badge-dot badge-teal">Recurring</span>
+              </div>
+            </div>
+            <div class="chore-actions">
+              <button class="btn btn-xs btn-green">✓ Done</button>
+              <button class="btn btn-xs btn-subtle-red">🗑</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Upcoming Chore 3 -->
+        <div class="chore-card">
+          <div class="chore-header">
+            <div class="chore-content">
+              <div class="chore-title-row">
+                <span class="chore-title">Vacuum common areas</span>
+                <span class="badge badge-gray">Due 6 Mar</span>
+                <span class="badge badge-blue">Cleaning</span>
+              </div>
+              <div class="chore-badges">
+                <span class="badge badge-dot badge-blue">Every 2 weeks · Wed</span>
+                <span class="badge badge-dot badge-teal">Recurring</span>
+              </div>
+            </div>
+            <div class="chore-actions">
+              <button class="btn btn-xs btn-green">✓ Done</button>
+              <button class="btn btn-xs btn-subtle-red">🗑</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Upcoming Chore 4 -->
+        <div class="chore-card">
+          <div class="chore-header">
+            <div class="chore-content">
+              <div class="chore-title-row">
+                <span class="chore-title">Submit utility readings</span>
+                <span class="badge badge-gray">Due 10 Mar</span>
+                <span class="badge badge-blue">Admin</span>
+              </div>
+              <div class="chore-description">Take meter readings and submit to provider</div>
+              <div class="chore-badges">
+                <span class="badge badge-dot badge-blue">Monthly · 10th</span>
+                <span class="badge badge-dot badge-teal">Recurring</span>
+              </div>
+            </div>
+            <div class="chore-actions">
+              <button class="btn btn-xs btn-green">✓ Done</button>
+              <button class="btn btn-xs btn-subtle-red">🗑</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Upcoming Chore 5 -->
+        <div class="chore-card">
+          <div class="chore-header">
+            <div class="chore-content">
+              <div class="chore-title-row">
+                <span class="chore-title">Check smoke alarms</span>
+                <span class="badge badge-gray">Due 15 Mar</span>
+                <span class="badge badge-blue">Maintenance</span>
+              </div>
+              <div class="chore-description">Test all smoke and CO2 alarms</div>
+              <div class="chore-badges">
+                <span class="badge badge-dot badge-blue">Monthly · 15th</span>
+                <span class="badge badge-dot badge-grape">Checklist</span>
+                <span class="badge badge-grape">3 items</span>
+              </div>
+              <div class="chore-checklist">Test kitchen alarm • Test hallway alarm • Test bedroom alarms</div>
+            </div>
+            <div class="chore-actions">
+              <button class="btn btn-xs btn-green">✓ Done</button>
+              <button class="btn btn-xs btn-subtle-red">🗑</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Upcoming Chore 6 -->
+        <div class="chore-card">
+          <div class="chore-header">
+            <div class="chore-content">
+              <div class="chore-title-row">
+                <span class="chore-title">Organize group meal</span>
+                <span class="badge badge-gray">Due 20 Mar</span>
+                <span class="badge badge-blue">Other</span>
+              </div>
+              <div class="chore-description">Plan and organize monthly group dinner</div>
+              <div class="chore-badges">
+                <span class="badge badge-dot badge-blue">Monthly · 20th</span>
+                <span class="badge badge-dot badge-orange">One-off</span>
+              </div>
+            </div>
+            <div class="chore-actions">
+              <button class="btn btn-xs btn-green">✓ Done</button>
+              <button class="btn btn-xs btn-subtle-red">🗑</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Create Operation Modal -->
+  <div id="createModal" class="modal-overlay">
+    <div class="modal">
+      <h2 class="modal-title">Add an operation</h2>
+      <form onsubmit="handleSubmit(event)">
+        <div class="form-group">
+          <label class="form-label required">Title</label>
+          <input type="text" class="form-input" placeholder="e.g. Clean kitchen, Take bins out" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Description</label>
+          <textarea class="form-textarea" placeholder="Optional details"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Category</label>
+          <select class="form-select">
+            <option value="cleaning">Cleaning</option>
+            <option value="supplies">Supplies</option>
+            <option value="admin">Admin</option>
+            <option value="setup">Setup</option>
+            <option value="shutdown">Shutdown</option>
+            <option value="maintenance">Maintenance</option>
+            <option value="other" selected>Other</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Task type</label>
+          <select class="form-select" id="taskType" onchange="toggleChecklist()">
+            <option value="recurring" selected>Recurring operation</option>
+            <option value="one_off">One-off task</option>
+            <option value="checklist">Checklist</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Frequency</label>
+          <select class="form-select">
+            <option value="daily">Daily</option>
+            <option value="weekly" selected>Weekly</option>
+            <option value="biweekly">Every 2 weeks</option>
+            <option value="monthly">Monthly</option>
+            <option value="once">One-time</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label required">First due date</label>
+          <input type="date" class="form-input" required>
+          <div class="form-description">Choose the first day this chore should be due.</div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Assign to</label>
+          <select class="form-select">
+            <option value="">Anyone / unassigned</option>
+            <option value="1">Sarah Johnson</option>
+            <option value="2">Tom Chen</option>
+            <option value="3">Alex Rivera</option>
+            <option value="4">Maya Patel</option>
+          </select>
+        </div>
+
+        <div class="form-group" id="checklistGroup" style="display: none;">
+          <label class="form-label">Checklist items</label>
+          <textarea class="form-textarea" placeholder="Open space
+Restock supplies
+Lock up" rows="4"></textarea>
+          <div class="form-description">Add one item per line.</div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Escalation after</label>
+          <input type="number" class="form-input" placeholder="e.g. 2">
+          <div class="form-description">Optional number of overdue days before this becomes escalated.</div>
+        </div>
+
+        <div class="form-group">
+          <button type="submit" class="btn btn-primary btn-block">Create operation</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    function openModal() {
+      document.getElementById('createModal').classList.add('active');
+    }
+
+    function closeModal() {
+      document.getElementById('createModal').classList.remove('active');
+    }
+
+    function toggleChecklist() {
+      const taskType = document.getElementById('taskType').value;
+      const checklistGroup = document.getElementById('checklistGroup');
+      checklistGroup.style.display = taskType === 'checklist' ? 'block' : 'none';
+    }
+
+    function handleSubmit(event) {
+      event.preventDefault();
+      alert('Operation created!');
+      closeModal();
+    }
+
+    // Close modal when clicking outside
+    document.getElementById('createModal').addEventListener('click', function(e) {
+      if (e.target === this) {
+        closeModal();
+      }
+    });
+  </script>
+</body>
+</html>
