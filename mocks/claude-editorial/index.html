@@ -6,7 +6,7 @@
   <title>Command — 12 Grove</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Serif+Display&display=swap" rel="stylesheet">
   <style>
     * {
       margin: 0;
@@ -22,88 +22,160 @@
       -webkit-font-smoothing: antialiased;
     }
 
-    header {
-      background: #FAF9F7;
-      border-bottom: 1px solid #E8E6E1;
-      padding: 16px 20px;
-    }
-
-    .header-inner {
+    .container {
       max-width: 900px;
       margin: 0 auto;
-      display: flex;
-      align-items: center;
-      gap: 24px;
+      padding: 20px;
     }
 
-    .house-name {
-      font-family: 'DM Serif Display', serif;
-      font-size: 17px;
-      font-weight: 400;
+    .page-title {
+      font-size: 24px;
+      font-weight: 800;
       color: #1A1E2B;
+      margin-bottom: 4px;
     }
 
-    nav {
-      display: flex;
-      gap: 24px;
-      flex: 1;
-    }
-
-    nav a {
+    .page-subtitle {
+      font-size: 14px;
       color: #6B6D73;
-      text-decoration: none;
-      font-size: 15px;
+      margin-bottom: 24px;
+    }
+
+    /* Hero ink card */
+    .hero {
+      background: #1A1E2B;
+      border-radius: 28px;
+      padding: 24px;
+      margin-bottom: 24px;
+      box-shadow: 0 8px 16px rgba(26, 30, 43, 0.08);
+    }
+
+    .hero-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: #E8F7D4;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      margin-bottom: 12px;
+    }
+
+    .hero-amount {
+      font-size: 44px;
+      font-weight: 700;
+      color: #FFFFFF;
+      letter-spacing: -0.8px;
+      line-height: 1.1;
+    }
+
+    .hero-stats {
+      font-size: 14px;
+      margin-top: 12px;
+      color: rgba(255, 255, 255, 0.55);
       font-weight: 500;
-      transition: color 0.15s;
     }
 
-    nav a:hover {
-      color: #1A1E2B;
+    .hero-stats strong {
+      color: #FFFFFF;
+      font-weight: 700;
     }
 
-    nav a.active {
-      color: #2D6A4F;
-      font-weight: 600;
+    .hero-track {
+      height: 6px;
+      background: #374151;
+      border-radius: 3px;
+      overflow: hidden;
+      margin-top: 16px;
+      margin-bottom: 20px;
     }
 
-    .user-name {
-      color: #1A1E2B;
+    .hero-fill {
+      height: 100%;
+      background: #96E85F;
+      border-radius: 3px;
+    }
+
+    .hero-btn {
+      width: 100%;
+      height: 52px;
+      background: #eadfd4;
+      border: none;
+      border-radius: 16px;
       font-size: 15px;
-      font-weight: 500;
+      font-weight: 700;
+      color: #1f2330;
+      font-family: 'DM Sans', sans-serif;
+      cursor: pointer;
+      box-shadow: 0 3px 8px rgba(0, 0, 0, 0.18);
+      margin-bottom: 8px;
+      transition: opacity 0.15s;
     }
 
-    main {
-      max-width: 900px;
-      margin: 0 auto;
-      padding: 32px 20px 80px;
+    .hero-btn:hover {
+      opacity: 0.9;
     }
 
-    .lead {
+    /* Summary cards */
+    .summary-row {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .summary-card {
+      flex: 1;
+      background: #FFFFFF;
+      border-radius: 16px;
+      padding: 16px;
+      border: 1px solid #E8E6E1;
+    }
+
+    .summary-label {
+      font-size: 12px;
+      color: #6B6D73;
+      margin-bottom: 4px;
+    }
+
+    .summary-amount {
       font-size: 20px;
-      line-height: 1.6;
+      font-weight: 800;
       color: #1A1E2B;
-      font-weight: 600;
-      margin-bottom: 32px;
     }
 
-    .card {
+    .summary-amount.owe {
+      color: #C74A3A;
+    }
+
+    .summary-amount.owed {
+      color: #2D6A4F;
+    }
+
+    /* Section header */
+    .section-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #1A1E2B;
+      margin-bottom: 12px;
+    }
+
+    /* List items */
+    .list-item {
       background: #FFFFFF;
       border-radius: 16px;
       padding: 20px;
-      margin-bottom: 12px;
+      margin-bottom: 8px;
       box-shadow: 0 1px 2px rgba(26, 30, 43, 0.04);
     }
 
-    .card-text {
+    .list-item-text {
       font-size: 15px;
       line-height: 1.6;
       color: #1A1E2B;
     }
 
-    .card-caption {
+    .list-item-caption {
       font-size: 13px;
       color: #6B6D73;
-      margin-top: 8px;
+      margin-top: 6px;
       font-weight: 500;
     }
 
@@ -124,43 +196,59 @@
   </style>
 </head>
 <body>
-  <header>
-    <div class="header-inner">
-      <h1 class="house-name">12 Grove</h1>
-      <nav>
-        <a href="#" class="active">Command</a>
-        <a href="#">Money</a>
-        <a href="#">Space</a>
-        <a href="#">Jobs</a>
-      </nav>
-      <div class="user-name">Maya</div>
-    </div>
-  </header>
+  <div class="container">
+    <h1 class="page-title">Command Centre</h1>
+    <p class="page-subtitle">Bins go out tonight. Rent is due Friday.</p>
 
-  <main>
-    <p class="lead">Bins go out tonight. Rent is due Friday.</p>
-
-    <div class="card">
-      <p class="card-text">It's <span class="name">Maya's</span> turn to take the bins down tonight.</p>
+    <!-- Hero balance card -->
+    <div class="hero">
+      <div class="hero-label">Your Share · Tuesday</div>
+      <div class="hero-amount">£460</div>
+      <div class="hero-stats">
+        <strong>£0</strong> paid  ·  <strong style="font-weight: 800;">£460</strong> left  ·  <strong>1</strong> open
+      </div>
+      <div class="hero-track">
+        <div class="hero-fill" style="width: 0%;"></div>
+      </div>
+      <button class="hero-btn">Settle Up</button>
     </div>
 
-    <div class="card">
-      <p class="card-text">Rent is <span class="amount-owe">£1,840</span> due Friday. Split four ways, everyone pays <span class="amount-owe">£460</span>.</p>
-      <p class="card-caption"><span class="name">Maya</span> hasn't paid yet. <span class="name">Jordan</span>, <span class="name">Sam</span>, and <span class="name">Priya</span> have paid.</p>
+    <!-- Summary -->
+    <div class="summary-row">
+      <div class="summary-card">
+        <div class="summary-label">You owe</div>
+        <div class="summary-amount owe">£460</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-label">Owed to you</div>
+        <div class="summary-amount owed">£24</div>
+      </div>
     </div>
 
-    <div class="card">
-      <p class="card-text"><span class="name">Maya</span> covered wifi this month at <span class="amount">£32</span>.</p>
-      <p class="card-caption"><span class="name">Jordan</span>, <span class="name">Sam</span>, and <span class="name">Priya</span> each owe her <span class="amount">£8</span>.</p>
+    <!-- Priority list -->
+    <h2 class="section-title">What matters now</h2>
+
+    <div class="list-item">
+      <p class="list-item-text">It's <span class="name">Maya's</span> turn to take the bins down tonight.</p>
     </div>
 
-    <div class="card">
-      <p class="card-text">Boiler service Thursday at 10am. Someone needs to be in.</p>
+    <div class="list-item">
+      <p class="list-item-text">Rent is <span class="amount-owe">£1,840</span> due Friday. Split four ways, everyone pays <span class="amount-owe">£460</span>.</p>
+      <p class="list-item-caption"><span class="name">Maya</span> hasn't paid yet. <span class="name">Jordan</span>, <span class="name">Sam</span>, and <span class="name">Priya</span> have paid.</p>
     </div>
 
-    <div class="card">
-      <p class="card-text">Kitchen <span class="name">Jordan</span> · Bathroom <span class="name">Sam</span></p>
+    <div class="list-item">
+      <p class="list-item-text"><span class="name">Maya</span> covered wifi this month at <span class="amount">£32</span>.</p>
+      <p class="list-item-caption"><span class="name">Jordan</span>, <span class="name">Sam</span>, and <span class="name">Priya</span> each owe her <span class="amount">£8</span>.</p>
     </div>
-  </main>
+
+    <div class="list-item">
+      <p class="list-item-text">Boiler service Thursday at 10am. Someone needs to be in.</p>
+    </div>
+
+    <div class="list-item">
+      <p class="list-item-text">Kitchen <span class="name">Jordan</span> · Bathroom <span class="name">Sam</span></p>
+    </div>
+  </div>
 </body>
 </html>
