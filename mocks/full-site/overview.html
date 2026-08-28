@@ -3,352 +3,59 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Command Centre · COMMUNE</title>
+  <title>Command Centre — Commune</title>
   <link rel="stylesheet" href="./styles.css">
-  <style>
-    .overview-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: var(--spacing-xl);
-    }
-    
-    .netting-toggle {
-      display: flex;
-      align-items: center;
-      gap: var(--spacing-sm);
-      padding: var(--spacing-sm) var(--spacing-md);
-      background: var(--commune-cream);
-      border: 1px solid var(--commune-border);
-      border-radius: var(--radius-md);
-      cursor: pointer;
-      transition: all 0.15s ease;
-    }
-    
-    .netting-toggle:hover {
-      background: white;
-    }
-    
-    .netting-toggle input[type="checkbox"] {
-      width: 40px;
-      height: 20px;
-      appearance: none;
-      background: var(--commune-border);
-      border-radius: 10px;
-      position: relative;
-      cursor: pointer;
-      transition: background 0.2s ease;
-    }
-    
-    .netting-toggle input[type="checkbox"]:checked {
-      background: var(--commune-sage);
-    }
-    
-    .netting-toggle input[type="checkbox"]::before {
-      content: '';
-      position: absolute;
-      width: 16px;
-      height: 16px;
-      border-radius: 50%;
-      background: white;
-      top: 2px;
-      left: 2px;
-      transition: left 0.2s ease;
-    }
-    
-    .netting-toggle input[type="checkbox"]:checked::before {
-      left: 22px;
-    }
-    
-    .summary-cards {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: var(--spacing-lg);
-      margin-bottom: var(--spacing-xl);
-    }
-    
-    .summary-card {
-      background: white;
-      border-radius: var(--radius-lg);
-      border: 1px solid var(--commune-border);
-      padding: var(--spacing-lg);
-    }
-    
-    .summary-card.owe {
-      background: linear-gradient(135deg, #fef5f3 0%, #ffffff 100%);
-      border-color: rgba(231, 111, 81, 0.2);
-    }
-    
-    .summary-card.owed {
-      background: linear-gradient(135deg, #f0f9f4 0%, #ffffff 100%);
-      border-color: rgba(45, 106, 79, 0.2);
-    }
-    
-    .summary-card-label {
-      font-size: 13px;
-      color: var(--commune-ink-soft);
-      margin-bottom: var(--spacing-sm);
-      font-weight: 500;
-    }
-    
-    .summary-card-value {
-      font-size: 36px;
-      font-weight: 800;
-      color: var(--commune-ink);
-      margin-bottom: var(--spacing-xs);
-    }
-    
-    .summary-card.owe .summary-card-value {
-      color: var(--commune-peach);
-    }
-    
-    .summary-card.owed .summary-card-value {
-      color: var(--commune-sage);
-    }
-    
-    .summary-card-meta {
-      font-size: 13px;
-      color: var(--commune-ink-soft);
-    }
-    
-    .nudge-card {
-      background: linear-gradient(135deg, #fffbeb 0%, #ffffff 100%);
-      border: 1px solid rgba(245, 158, 11, 0.2);
-      border-radius: var(--radius-lg);
-      padding: var(--spacing-lg);
-      margin-bottom: var(--spacing-xl);
-      display: flex;
-      align-items: flex-start;
-      gap: var(--spacing-md);
-    }
-    
-    .nudge-icon {
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      background: rgba(245, 158, 11, 0.15);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-    }
-    
-    .nudge-content {
-      flex: 1;
-    }
-    
-    .nudge-title {
-      font-size: 16px;
-      font-weight: 700;
-      color: var(--commune-ink);
-      margin-bottom: var(--spacing-xs);
-    }
-    
-    .nudge-text {
-      font-size: 14px;
-      color: var(--commune-ink-soft);
-      margin-bottom: var(--spacing-md);
-    }
-    
-    .nudge-action {
-      padding: var(--spacing-sm) var(--spacing-lg);
-      background: rgba(245, 158, 11, 0.15);
-      color: rgb(161, 98, 7);
-      border: none;
-      border-radius: var(--radius-md);
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.15s ease;
-    }
-    
-    .nudge-action:hover {
-      background: rgba(245, 158, 11, 0.25);
-    }
-    
-    .group-status-list {
-      display: flex;
-      flex-direction: column;
-      gap: var(--spacing-md);
-    }
-    
-    .group-status-card {
-      background: white;
-      border: 1px solid var(--commune-border);
-      border-radius: var(--radius-lg);
-      padding: var(--spacing-lg);
-      display: flex;
-      align-items: center;
-      gap: var(--spacing-md);
-      text-decoration: none;
-      color: inherit;
-      transition: all 0.2s ease;
-    }
-    
-    .group-status-card:hover {
-      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-      transform: translateY(-1px);
-    }
-    
-    .group-status-avatar {
-      width: 48px;
-      height: 48px;
-      border-radius: 50%;
-      background: var(--commune-cream);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-    }
-    
-    .group-status-info {
-      flex: 1;
-      min-width: 0;
-    }
-    
-    .group-status-name {
-      font-size: 16px;
-      font-weight: 700;
-      color: var(--commune-ink);
-      margin-bottom: 2px;
-    }
-    
-    .group-status-details {
-      display: flex;
-      align-items: center;
-      gap: var(--spacing-md);
-      font-size: 13px;
-      color: var(--commune-ink-soft);
-    }
-    
-    .group-status-position {
-      text-align: right;
-    }
-    
-    .group-status-amount {
-      font-size: 18px;
-      font-weight: 700;
-      margin-bottom: 2px;
-    }
-    
-    .group-status-amount.owe {
-      color: var(--commune-peach);
-    }
-    
-    .group-status-amount.owed {
-      color: var(--commune-sage);
-    }
-    
-    .group-status-amount.settled {
-      color: var(--commune-ink-soft);
-    }
-    
-    .workspace-billing-panel {
-      background: linear-gradient(135deg, #f0f7ff 0%, #ffffff 100%);
-      border: 1px solid rgba(59, 130, 246, 0.2);
-    }
-    
-    .billing-alert-item {
-      display: flex;
-      align-items: flex-start;
-      gap: var(--spacing-sm);
-      padding: var(--spacing-sm);
-      background: white;
-      border-radius: var(--radius-md);
-      margin-bottom: var(--spacing-sm);
-    }
-    
-    .billing-alert-icon {
-      width: 20px;
-      height: 20px;
-      color: var(--commune-peach);
-      flex-shrink: 0;
-    }
-    
-    .billing-alert-text {
-      flex: 1;
-      font-size: 13px;
-      color: var(--commune-ink);
-    }
-    
-    .billing-alert-text strong {
-      font-weight: 600;
-    }
-  </style>
 </head>
 <body>
-  <!-- App Shell -->
-  <div class="app-shell">
-    <!-- Sidebar -->
-    <nav class="sidebar">
-      <div class="sidebar-header">
-        <div class="commune-wordmark">COMMUNE</div>
-      </div>
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="logo">COMMUNE</div>
+    
+    <div class="nav-label">MENU</div>
+    <a href="index.html" class="nav-link">Dashboard</a>
+    <a href="groups.html" class="nav-link">My Groups</a>
 
-      <div class="sidebar-search">
-        <input type="text" placeholder="Search..." class="search-input">
-      </div>
+    <div class="nav-label">MONEY</div>
+    <a href="#" class="nav-link">Expenses</a>
+    <a href="#" class="nav-link">Recurring</a>
+    <a href="#" class="nav-link">Templates</a>
+    <a href="#" class="nav-link">Funds</a>
+    <a href="#" class="nav-link">Billing</a>
 
-      <div class="nav-section">
-        <div class="nav-section-label">Menu</div>
-        <a href="./index.html" class="nav-link">
-          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-            <polyline points="9 22 9 12 15 12 15 22"></polyline>
-          </svg>
-          <span>Dashboard</span>
-        </a>
-        <a href="./groups.html" class="nav-link">
-          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-            <circle cx="9" cy="7" r="4"></circle>
-            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-          </svg>
-          <span>My Groups</span>
-        </a>
-      </div>
+    <div class="nav-label">INSIGHTS</div>
+    <a href="overview.html" class="nav-link active">Command Centre</a>
+    <a href="#" class="nav-link">Breakdown</a>
+    <a href="#" class="nav-link">Analytics</a>
 
-      <div class="nav-section">
-        <div class="nav-section-label">Insights</div>
-        <a href="./overview.html" class="nav-link active">
-          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-            <line x1="9" y1="3" x2="9" y2="21"></line>
-          </svg>
-          <span>Command Centre</span>
-        </a>
-      </div>
+    <div class="nav-label">TEAM</div>
+    <a href="#" class="nav-link">Members</a>
+    <a href="#" class="nav-link">Operations</a>
+    <a href="#" class="nav-link">Activity</a>
 
-      <div class="sidebar-footer">
-        <div class="sidebar-user">
-          <div class="user-avatar">AE</div>
-          <div class="user-info">
-            <div class="user-name">Augustus Edem</div>
-            <div class="user-plan">Pro</div>
-          </div>
-        </div>
+    <div class="user-profile">
+      <div class="avatar">AE</div>
+      <div>
+        <div style="font-size: 14px; font-weight: 600;">Augustus Edem</div>
+        <div class="plan-badge">Pro</div>
       </div>
-    </nav>
+    </div>
+  </div>
 
-    <!-- Main Content -->
-    <main class="main-content">
-      <!-- Header -->
-      <header class="page-header-bar">
-        <div class="page-header-content">
-          <div>
-            <h1 class="page-title">Command Centre</h1>
-            <p style="font-size: 14px; color: var(--commune-ink-soft); margin-top: 4px;">Your cross-group financial overview</p>
-          </div>
-          <label class="netting-toggle">
-            <input type="checkbox" checked>
-            <span style="font-size: 14px; font-weight: 500; color: var(--commune-ink);">Cross-group netting</span>
-          </label>
-        </div>
-      </header>
+  <!-- Main content -->
+  <div class="main">
+    <div class="header">
+      <input type="text" class="search" placeholder="Search expenses, members...">
+    </div>
+
+    <div class="content">
+      <!-- Page header -->
+      <div class="page-header">
+        <h1 class="page-title">Command Centre</h1>
+        <p class="page-subtitle">Your cross-group financial overview</p>
+      </div>
 
       <!-- Command Centre Content -->
-      <div class="page-content">
+      <div>
         <!-- Summary Cards -->
         <div class="summary-cards">
           <div class="summary-card owe">
@@ -529,7 +236,7 @@
           </div>
         </div>
       </div>
-    </main>
+    </div>
   </div>
 </body>
 </html>

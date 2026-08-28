@@ -3,582 +3,71 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Household · COMMUNE</title>
+  <title>Household — Commune</title>
   <link rel="stylesheet" href="./styles.css">
-  <style>
-    .group-hub-cover {
-      height: 200px;
-      background: linear-gradient(135deg, #d7e6dd 0%, #e8f0eb 50%, #f0f7f2 100%);
-      border-radius: var(--radius-lg);
-      position: relative;
-      display: flex;
-      align-items: flex-end;
-      padding: var(--spacing-lg);
-      overflow: hidden;
-      margin-bottom: var(--spacing-xl);
-    }
-    
-    .group-hub-cover-icon {
-      position: absolute;
-      right: 24px;
-      top: 24px;
-      width: 120px;
-      height: 120px;
-      color: rgba(45,106,79,0.18);
-    }
-    
-    .group-hub-cover-overlay {
-      position: absolute;
-      inset: 0;
-      background: linear-gradient(to top, rgba(0,0,0,0.2) 0%, transparent 50%);
-      pointer-events: none;
-    }
-    
-    .group-hub-info {
-      position: relative;
-      z-index: 1;
-      display: flex;
-      align-items: center;
-      gap: var(--spacing-md);
-    }
-    
-    .group-hub-avatar {
-      width: 72px;
-      height: 72px;
-      border-radius: 50%;
-      background: white;
-      border: 3px solid rgba(255,255,255,0.9);
-      box-shadow: 0 2px 12px rgba(0,0,0,0.15);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    
-    .group-hub-avatar svg {
-      width: 32px;
-      height: 32px;
-      color: var(--commune-ink-soft);
-    }
-    
-    .group-hub-details h1 {
-      font-size: 24px;
-      font-weight: 800;
-      color: white;
-      text-shadow: 0 1px 4px rgba(0,0,0,0.3);
-      margin-bottom: 4px;
-    }
-    
-    .group-hub-tagline {
-      font-size: 14px;
-      color: white;
-      opacity: 0.85;
-      text-shadow: 0 1px 3px rgba(0,0,0,0.25);
-      margin-bottom: var(--spacing-sm);
-    }
-    
-    .group-hub-meta {
-      display: flex;
-      align-items: center;
-      gap: var(--spacing-sm);
-      flex-wrap: wrap;
-    }
-    
-    .group-hub-meta .group-badge {
-      background: rgba(255,255,255,0.2);
-      color: white;
-      font-size: 12px;
-    }
-    
-    .group-hub-meta-text {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      font-size: 13px;
-      color: white;
-      opacity: 0.8;
-    }
-    
-    .hub-kpi-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: var(--spacing-lg);
-      margin-bottom: var(--spacing-xl);
-    }
-    
-    .hub-kpi-card {
-      background: white;
-      border-radius: var(--radius-lg);
-      border: 1px solid var(--commune-border);
-      padding: var(--spacing-lg);
-    }
-    
-    .hub-kpi-card[data-tone="sage"] {
-      background: linear-gradient(135deg, #f0f9f4 0%, #ffffff 100%);
-    }
-    
-    .hub-kpi-card[data-tone="peach"] {
-      background: linear-gradient(135deg, #fef5f3 0%, #ffffff 100%);
-    }
-    
-    .hub-kpi-card[data-tone="sky"] {
-      background: linear-gradient(135deg, #f0f7ff 0%, #ffffff 100%);
-    }
-    
-    .member-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-      gap: var(--spacing-md);
-    }
-    
-    .member-card {
-      background: white;
-      border-radius: var(--radius-lg);
-      border: 1px solid var(--commune-border);
-      padding: var(--spacing-md);
-      text-align: center;
-      transition: all 0.2s ease;
-      text-decoration: none;
-      color: inherit;
-    }
-    
-    .member-card:hover {
-      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-    }
-    
-    .member-avatar {
-      width: 52px;
-      height: 52px;
-      border-radius: 50%;
-      background: var(--commune-sage);
-      color: white;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 600;
-      font-size: 18px;
-      margin: 0 auto var(--spacing-sm);
-    }
-    
-    .member-name {
-      font-size: 14px;
-      font-weight: 600;
-      color: var(--commune-ink);
-      margin-bottom: var(--spacing-xs);
-    }
-    
-    .member-role {
-      font-size: 11px;
-      color: var(--commune-ink-soft);
-      margin-bottom: var(--spacing-xs);
-    }
-    
-    .member-monthly {
-      font-size: 12px;
-      font-weight: 500;
-      color: var(--commune-ink-soft);
-      margin-bottom: var(--spacing-xs);
-    }
-    
-    .activity-feed {
-      display: flex;
-      flex-direction: column;
-      gap: var(--spacing-sm);
-    }
-    
-    .activity-item {
-      display: flex;
-      align-items: center;
-      gap: var(--spacing-sm);
-      padding: var(--spacing-sm);
-    }
-    
-    .activity-avatar {
-      width: 28px;
-      height: 28px;
-      border-radius: 50%;
-      background: var(--commune-sage);
-      color: white;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 12px;
-      font-weight: 600;
-      flex-shrink: 0;
-    }
-    
-    .activity-text {
-      flex: 1;
-      font-size: 14px;
-      color: var(--commune-ink);
-    }
-    
-    .activity-text strong {
-      font-weight: 600;
-    }
-    
-    .activity-time {
-      font-size: 12px;
-      color: var(--commune-ink-soft);
-      flex-shrink: 0;
-    }
-    
-    .quick-actions {
-      display: flex;
-      gap: var(--spacing-md);
-      flex-wrap: wrap;
-    }
-    
-    .quick-action-btn {
-      padding: var(--spacing-sm) var(--spacing-lg);
-      background: var(--commune-cream);
-      border: 1px solid var(--commune-border);
-      border-radius: var(--radius-md);
-      font-size: 14px;
-      font-weight: 600;
-      color: var(--commune-ink);
-      text-decoration: none;
-      transition: all 0.15s ease;
-      display: inline-flex;
-      align-items: center;
-      gap: var(--spacing-sm);
-    }
-    
-    .quick-action-btn:hover {
-      background: white;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    }
-  </style>
 </head>
 <body>
-  <!-- App Shell -->
-  <div class="app-shell">
-    <!-- Sidebar -->
-    <nav class="sidebar">
-      <div class="sidebar-header">
-        <div class="commune-wordmark">COMMUNE</div>
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="logo">COMMUNE</div>
+    
+    <div class="nav-label">MENU</div>
+    <a href="index.html" class="nav-link">Dashboard</a>
+    <a href="groups.html" class="nav-link active">My Groups</a>
+
+    <div class="nav-label">MONEY</div>
+    <a href="#" class="nav-link">Expenses</a>
+    <a href="#" class="nav-link">Recurring</a>
+    <a href="#" class="nav-link">Templates</a>
+    <a href="#" class="nav-link">Funds</a>
+    <a href="#" class="nav-link">Billing</a>
+
+    <div class="nav-label">INSIGHTS</div>
+    <a href="overview.html" class="nav-link">Command Centre</a>
+    <a href="#" class="nav-link">Breakdown</a>
+    <a href="#" class="nav-link">Analytics</a>
+
+    <div class="nav-label">TEAM</div>
+    <a href="#" class="nav-link">Members</a>
+    <a href="#" class="nav-link">Operations</a>
+    <a href="#" class="nav-link">Activity</a>
+
+    <div class="user-profile">
+      <div class="avatar">AE</div>
+      <div>
+        <div style="font-size: 14px; font-weight: 600;">Augustus Edem</div>
+        <div class="plan-badge">Pro</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main content -->
+  <div class="main">
+    <div class="header">
+      <input type="text" class="search" placeholder="Search expenses, members...">
+    </div>
+
+    <div class="content">
+      <!-- Page header -->
+      <div class="page-header">
+        <h1 class="page-title">Household</h1>
+        <p class="page-subtitle">Shared living expenses · 4 members</p>
       </div>
 
-      <div class="sidebar-search">
-        <input type="text" placeholder="Search..." class="search-input">
-      </div>
-
-      <div class="nav-section">
-        <div class="nav-section-label">Menu</div>
-        <a href="./index.html" class="nav-link">
-          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-            <polyline points="9 22 9 12 15 12 15 22"></polyline>
-          </svg>
-          <span>Dashboard</span>
-        </a>
-        <a href="./groups.html" class="nav-link active">
-          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-            <circle cx="9" cy="7" r="4"></circle>
-            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-          </svg>
-          <span>My Groups</span>
-        </a>
-      </div>
-
-      <div class="nav-section">
-        <div class="nav-section-label">Insights</div>
-        <a href="./overview.html" class="nav-link">
-          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-            <line x1="9" y1="3" x2="9" y2="21"></line>
-          </svg>
-          <span>Command Centre</span>
-        </a>
-      </div>
-
-      <div class="sidebar-footer">
-        <div class="sidebar-user">
-          <div class="user-avatar">AE</div>
-          <div class="user-info">
-            <div class="user-name">Augustus Edem</div>
-            <div class="user-plan">Pro</div>
-          </div>
-        </div>
-      </div>
-    </nav>
-
-    <!-- Main Content -->
-    <main class="main-content">
-      <!-- Header -->
-      <header class="page-header-bar">
-        <div class="page-header-content">
-          <h1 class="page-title">Household</h1>
-        </div>
-      </header>
-
-      <!-- Group Hub Content -->
-      <div class="page-content">
-        <!-- Cover Photo Hero -->
-        <div class="group-hub-cover">
-          <svg class="group-hub-cover-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-            <polyline points="9 22 9 12 15 12 15 22"></polyline>
-          </svg>
-          <div class="group-hub-cover-overlay"></div>
-          <div class="group-hub-info">
-            <div class="group-hub-avatar">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-                <polyline points="9 22 9 12 15 12 15 22"></polyline>
-              </svg>
-            </div>
-            <div class="group-hub-details">
-              <h1>Household</h1>
-              <div class="group-hub-tagline">Shared living expenses</div>
-              <div class="group-hub-meta">
-                <span class="group-badge">Household</span>
-                <span class="group-badge" style="background: rgba(45, 106, 79, 0.3);">All settled</span>
-                <div class="group-hub-meta-text">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 13px; height: 13px;">
-                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                    <circle cx="9" cy="7" r="4"></circle>
-                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                  </svg>
-                  <span>4 members</span>
-                </div>
-                <div class="group-hub-meta-text">
-                  <span>Created 12 Jan 2024</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Key Stats Row -->
-        <div class="hub-kpi-grid">
-          <div class="hub-kpi-card" data-tone="sage">
-            <div class="stat-label">Total monthly spend</div>
-            <div class="stat-value">£1,247.80</div>
-            <div class="stat-meta">Split 4 ways · £311.95/person</div>
-          </div>
-
-          <div class="hub-kpi-card" data-tone="peach">
-            <div class="stat-label">Active members</div>
-            <div class="stat-value">4</div>
-          </div>
-
-          <div class="hub-kpi-card">
-            <div class="stat-label">Active expenses</div>
-            <div class="stat-meta">This month</div>
-            <div class="stat-value">12</div>
-          </div>
-
-          <div class="hub-kpi-card" data-tone="sky">
-            <div class="stat-label">Setup progress</div>
-            <div class="stat-value">3/3</div>
-            <div class="stat-meta">Operational setup looks complete</div>
-          </div>
-        </div>
-
-        <!-- Your Position Card -->
-        <div class="panel">
-          <div class="panel-header">
-            <h2 class="section-heading">Your Position</h2>
-          </div>
-          <div class="budget-summary">
-            <div class="budget-stat">
-              <div class="budget-label">Your monthly share</div>
-              <div class="budget-value">£311.95</div>
-            </div>
-            <div class="budget-stat">
-              <div class="budget-label">Status</div>
-              <span class="status-badge status-settled" style="font-size: 16px; padding: 8px 16px;">Settled</span>
-            </div>
-            <div class="budget-stat">
-              <div class="budget-label">Payments needed</div>
-              <div class="budget-value">0</div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Recent Activity Feed -->
-        <div class="panel">
-          <div class="panel-header">
-            <h2 class="section-heading">Recent Activity</h2>
-            <a href="#" class="text-link">View all →</a>
-          </div>
-          <div class="activity-feed">
-            <div class="activity-item">
-              <div class="activity-avatar">AE</div>
-              <div class="activity-text">
-                <strong>Augustus Edem</strong> paid Council Tax
-              </div>
-              <div class="activity-time">2h ago</div>
-            </div>
-            <div class="activity-item">
-              <div class="activity-avatar">SJ</div>
-              <div class="activity-text">
-                <strong>Sarah Jones</strong> added Weekly Groceries
-              </div>
-              <div class="activity-time">1d ago</div>
-            </div>
-            <div class="activity-item">
-              <div class="activity-avatar">MK</div>
-              <div class="activity-text">
-                <strong>Michael Kim</strong> settled Internet bill
-              </div>
-              <div class="activity-time">2d ago</div>
-            </div>
-            <div class="activity-item">
-              <div class="activity-avatar">LM</div>
-              <div class="activity-text">
-                <strong>Lisa Martinez</strong> paid Electricity
-              </div>
-              <div class="activity-time">3d ago</div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Members Section -->
-        <div class="panel">
-          <div class="panel-header">
-            <h2 class="section-heading">Members</h2>
-          </div>
-          <div class="member-grid">
-            <a href="#" class="member-card">
-              <div class="member-avatar">AE</div>
-              <div class="member-name">Augustus Edem <span class="status-badge" style="font-size: 10px; padding: 2px 6px; background: rgba(59, 130, 246, 0.1); color: var(--commune-sky);">You</span></div>
-              <div class="member-role">Owner</div>
-              <div class="member-monthly">£311.95/mo</div>
-              <span class="status-badge status-settled">Settled</span>
-            </a>
-            
-            <a href="#" class="member-card">
-              <div class="member-avatar" style="background: #6366f1;">SJ</div>
-              <div class="member-name">Sarah Jones</div>
-              <div class="member-role">Admin</div>
-              <div class="member-monthly">£311.95/mo</div>
-              <span class="status-badge status-settled">Settled</span>
-            </a>
-            
-            <a href="#" class="member-card">
-              <div class="member-avatar" style="background: #8b5cf6;">MK</div>
-              <div class="member-name">Michael Kim</div>
-              <div class="member-role">Member</div>
-              <div class="member-monthly">£311.95/mo</div>
-              <span class="status-badge status-settled">Settled</span>
-            </a>
-            
-            <a href="#" class="member-card">
-              <div class="member-avatar" style="background: #ec4899;">LM</div>
-              <div class="member-name">Lisa Martinez</div>
-              <div class="member-role">Member</div>
-              <div class="member-monthly">£311.95/mo</div>
-              <span class="status-badge status-settled">Settled</span>
-            </a>
-          </div>
-        </div>
-
-        <!-- Monthly Breakdown Section -->
-        <div class="panel">
-          <div class="panel-header">
-            <h2 class="section-heading">This Month's Breakdown</h2>
-          </div>
-          <div class="category-list">
-            <div class="category-item">
-              <div class="category-header">
-                <span class="category-name">Bills</span>
-                <span class="category-amount">£350.95 <span class="category-meta">(28%)</span></span>
-              </div>
-              <div class="progress-bar">
-                <div class="progress-fill" style="width: 28%"></div>
-              </div>
-            </div>
-            <div class="category-item">
-              <div class="category-header">
-                <span class="category-name">Groceries</span>
-                <span class="category-amount">£284.32 <span class="category-meta">(23%)</span></span>
-              </div>
-              <div class="progress-bar">
-                <div class="progress-fill" style="width: 23%"></div>
-              </div>
-            </div>
-            <div class="category-item">
-              <div class="category-header">
-                <span class="category-name">Transport</span>
-                <span class="category-amount">£156.80 <span class="category-meta">(13%)</span></span>
-              </div>
-              <div class="progress-bar">
-                <div class="progress-fill" style="width: 13%"></div>
-              </div>
-            </div>
-            <div class="category-item">
-              <div class="category-header">
-                <span class="category-name">Entertainment</span>
-                <span class="category-amount">£98.40 <span class="category-meta">(8%)</span></span>
-              </div>
-              <div class="progress-bar">
-                <div class="progress-fill" style="width: 8%"></div>
-              </div>
-            </div>
-            <div class="category-item">
-              <div class="category-header">
-                <span class="category-name">Other</span>
-                <span class="category-amount">£357.33 <span class="category-meta">(28%)</span></span>
-              </div>
-              <div class="progress-bar">
-                <div class="progress-fill" style="width: 28%"></div>
-              </div>
-            </div>
-            <div style="padding-top: var(--spacing-md); margin-top: var(--spacing-sm); border-top: 1px solid var(--commune-border);">
-              <div class="category-header">
-                <span class="category-name" style="font-weight: 700;">Total</span>
-                <span class="category-amount">£1,247.80 <span class="category-meta">(£311.95/person)</span></span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Memories -->
-        <div class="panel">
-          <div class="panel-header">
-            <h2 class="section-heading">Memories</h2>
-            <button class="onboarding-action" style="padding: 6px 12px; font-size: 12px;">Add moment</button>
-          </div>
-          <div class="empty-state" style="padding: var(--spacing-lg);">
-            <svg class="empty-state-icon" style="width: 32px; height: 32px; margin-bottom: var(--spacing-sm);" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-              <circle cx="8.5" cy="8.5" r="1.5"></circle>
-              <polyline points="21 15 16 10 5 21"></polyline>
-            </svg>
-            <div class="empty-state-desc">No memories yet — capture moments that make this space special.</div>
-          </div>
-        </div>
-
-        <!-- Quick Actions -->
-        <div class="quick-actions">
-          <a href="./index.html" class="quick-action-btn">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;">
+      <!-- Simplified group hub content (chrome matches PR #2) -->
+      <div class="empty-state-wrapper">
+        <div class="empty-state">
+          <div class="empty-icon">
+            <svg viewBox="0 0 24 24">
               <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
               <polyline points="9 22 9 12 15 12 15 22"></polyline>
             </svg>
-            View Dashboard
-          </a>
-          <a href="#" class="quick-action-btn" style="background: rgba(45, 106, 79, 0.1); color: var(--commune-sage); border-color: transparent;">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;">
-              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-            </svg>
-            Add Expense
-          </a>
-          <a href="./overview.html" class="quick-action-btn" style="background: rgba(231, 111, 81, 0.1); color: var(--commune-peach); border-color: transparent;">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;">
-              <line x1="12" y1="1" x2="12" y2="23"></line>
-              <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
-            </svg>
-            Settle Up
-          </a>
+          </div>
+          <div class="empty-title">Group hub</div>
+          <div class="empty-description">Detailed group view with stats, members, and activity feed.</div>
         </div>
       </div>
-    </main>
+    </div>
   </div>
 </body>
 </html>
