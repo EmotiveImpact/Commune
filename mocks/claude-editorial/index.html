@@ -31,7 +31,7 @@
     header {
       background: var(--cream);
       border-bottom: 1px solid rgba(26, 30, 46, 0.1);
-      padding: 1.25rem 2rem;
+      padding: 1rem 2rem;
     }
 
     .header-inner {
@@ -39,19 +39,20 @@
       margin: 0 auto;
       display: flex;
       align-items: center;
-      justify-content: space-between;
+      gap: 3rem;
     }
 
     .house-name {
       font-family: 'DM Serif Display', serif;
-      font-size: 1.5rem;
+      font-size: 1rem;
       font-weight: 400;
       color: var(--navy);
     }
 
     nav {
       display: flex;
-      gap: 2rem;
+      gap: 1.5rem;
+      flex: 1;
     }
 
     nav a {
@@ -63,6 +64,12 @@
 
     nav a.active {
       color: var(--sage);
+    }
+
+    .user-name {
+      color: var(--navy);
+      font-size: 0.9375rem;
+      font-weight: 500;
     }
 
     main {
@@ -121,6 +128,7 @@
         <a href="#">Space</a>
         <a href="#">Jobs</a>
       </nav>
+      <div class="user-name">Maya</div>
     </div>
   </header>
 
@@ -146,7 +154,7 @@
     </div>
 
     <div class="item">
-      <p class="item-text"><span class="name">Jordan</span> has the kitchen. <span class="name">Sam</span> has the bathroom.</p>
+      <p class="item-text">Kitchen <span class="name">Jordan</span> · Bathroom <span class="name">Sam</span></p>
     </div>
   </main>
 </body>
