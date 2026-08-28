@@ -22,22 +22,68 @@
       -webkit-font-smoothing: antialiased;
     }
 
+    /* Shared header */
+    header {
+      background: #FAF9F7;
+      border-bottom: 1px solid #E8E6E1;
+      padding: 16px 20px;
+    }
+
+    .header-inner {
+      max-width: 900px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      gap: 24px;
+    }
+
+    .house-name {
+      font-family: 'DM Serif Display', serif;
+      font-size: 17px;
+      font-weight: 400;
+      color: #1A1E2B;
+    }
+
+    nav {
+      display: flex;
+      gap: 24px;
+      flex: 1;
+    }
+
+    nav a {
+      color: #6B6D73;
+      text-decoration: none;
+      font-size: 15px;
+      font-weight: 500;
+      transition: color 0.15s;
+    }
+
+    nav a:hover {
+      color: #1A1E2B;
+    }
+
+    nav a.active {
+      color: #2D6A4F;
+      font-weight: 600;
+    }
+
+    .user-name {
+      color: #1A1E2B;
+      font-size: 15px;
+      font-weight: 500;
+    }
+
+    /* Main content */
     .container {
       max-width: 900px;
       margin: 0 auto;
-      padding: 20px;
-    }
-
-    .page-title {
-      font-size: 24px;
-      font-weight: 800;
-      color: #1A1E2B;
-      margin-bottom: 4px;
+      padding: 32px 20px 80px;
     }
 
     .page-subtitle {
-      font-size: 14px;
-      color: #6B6D73;
+      font-size: 16px;
+      color: #1A1E2B;
+      font-weight: 600;
       margin-bottom: 24px;
     }
 
@@ -196,8 +242,20 @@
   </style>
 </head>
 <body>
+  <header>
+    <div class="header-inner">
+      <h1 class="house-name">12 Grove</h1>
+      <nav>
+        <a href="#" class="active">Command</a>
+        <a href="#">Money</a>
+        <a href="#">Space</a>
+        <a href="#">Jobs</a>
+      </nav>
+      <div class="user-name">Maya</div>
+    </div>
+  </header>
+
   <div class="container">
-    <h1 class="page-title">Command Centre</h1>
     <p class="page-subtitle">Bins go out tonight. Rent is due Friday.</p>
 
     <!-- Hero balance card -->
