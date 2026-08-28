@@ -394,7 +394,15 @@
     }
     .panel-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 13px; }
     .panel-head strong { font-size: 10px; }
-    .panel-head a { color: var(--sage); font-size: 8px; font-weight: 700; }
+    .panel-head button {
+      padding: 0;
+      border: 0;
+      color: var(--sage);
+      background: transparent;
+      font-size: 8px;
+      font-weight: 700;
+      cursor: pointer;
+    }
     .money-row, .task-row {
       display: flex;
       align-items: center;
@@ -849,7 +857,7 @@
                 </div>
                 <div class="app-columns">
                   <div class="panel">
-                    <div class="panel-head"><strong>Priority actions</strong><a href="#">View breakdown</a></div>
+                    <div class="panel-head"><strong>Priority actions</strong><button type="button">View breakdown</button></div>
                     <div class="money-row">
                       <span class="row-icon">
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M5 8h14v10H5V8Z" stroke="currentColor" stroke-width="1.5"/><path d="M8 8V6h8v2M8 12h8" stroke="currentColor" stroke-width="1.5"/></svg>
@@ -866,7 +874,7 @@
                     </div>
                   </div>
                   <div class="panel">
-                    <div class="panel-head"><strong>Operations</strong><a href="#" data-preview="chores">Open</a></div>
+                    <div class="panel-head"><strong>Operations</strong><button type="button" data-preview="chores">Open</button></div>
                     <div class="task-row">
                       <button class="complete" type="button" aria-label="Mark Kitchen reset done">✓</button>
                       <span class="row-text"><strong>Kitchen reset</strong><small>Weekly · Checklist</small></span>
@@ -878,7 +886,7 @@
                   </div>
                 </div>
                 <div class="panel wide-panel">
-                  <div class="panel-head"><strong>My groups</strong><a href="#">View all</a></div>
+                  <div class="panel-head"><strong>My groups</strong><button type="button">View all</button></div>
                   <div class="group-row">
                     <span class="space-icon">
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M3 11 12 4l9 7v9H3v-9Z" stroke="currentColor" stroke-width="1.5"/><path d="M9 20v-6h6v6" stroke="currentColor" stroke-width="1.5"/></svg>
@@ -901,7 +909,7 @@
                   </button>
                 </div>
                 <div class="panel wide-panel" style="display:block">
-                  <div class="panel-head"><strong>Expenses</strong><a href="#">View all</a></div>
+                  <div class="panel-head"><strong>Expenses</strong><button type="button">View all</button></div>
                   <div class="money-row">
                     <span class="row-icon">
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M5 8h14v10H5V8Z" stroke="currentColor" stroke-width="1.5"/><path d="M8 8V6h8v2M8 12h8" stroke="currentColor" stroke-width="1.5"/></svg>
@@ -925,7 +933,7 @@
                   <div class="summary-card sage"><small>Recurring · Checklists</small><strong>3 · 1</strong><span>Foundry House</span></div>
                 </div>
                 <div class="panel wide-panel" style="display:block">
-                  <div class="panel-head"><strong>Upcoming operations</strong><a href="#">Add operation</a></div>
+                  <div class="panel-head"><strong>Upcoming operations</strong><button type="button">Add operation</button></div>
                   <div class="task-row">
                     <button class="complete" type="button" aria-label="Mark Kitchen reset done">✓</button>
                     <span class="row-text"><strong>Kitchen reset</strong><small>Cleaning · Weekly · 3-item checklist</small></span>
