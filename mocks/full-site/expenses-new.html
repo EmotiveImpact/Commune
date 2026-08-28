@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add expense · Commune</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f8f7f3;
+            color: #16131d;
+            display: flex;
+            min-height: 100vh;
+        }
+        
+        /* Sidebar */
+        .sidebar {
+            width: 230px;
+            background: rgb(10, 15, 42);
+            color: #fff;
+            padding: 20px 8px;
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+        }
+        
+        .logo-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 24px;
+            padding-left: 0;
+        }
+        
+        .logo {
+            width: 44px;
+            height: 44px;
+            background: #2d6a4f;
+            border-radius: 10px;
+            flex-shrink: 0;
+        }
+        
+        .logo-text {
+            font-weight: 600;
+            font-size: 18px;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+        
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 12px;
+            border-radius: 8px;
+            color: rgba(255,255,255,0.7);
+            text-decoration: none;
+            margin-bottom: 2px;
+            transition: all 0.15s;
+        }
+        
+        .nav-link:hover {
+            background: rgba(255,255,255,0.08);
+            color: #fff;
+        }
+        
+        .nav-link.active {
+            background: #2d6a4f;
+            color: #fff;
+        }
+        
+        .nav-group {
+            margin-top: 10px;
+        }
+        
+        .nav-group-header {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 12px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: rgba(255,255,255,0.5);
+        }
+        
+        /* Main content */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .header {
+            height: 64px;
+            background: #fff;
+            border-bottom: 1px solid #e5e3dd;
+            display: flex;
+            align-items: center;
+            padding: 0 32px;
+            gap: 16px;
+        }
+        
+        .search-input {
+            flex: 1;
+            max-width: 500px;
+            padding: 8px 12px 8px 36px;
+            border: 1px solid #e5e3dd;
+            border-radius: 8px;
+            font-size: 14px;
+            background: #f8f7f3;
+        }
+        
+        .page-container {
+            flex: 1;
+            padding: 40px;
+            overflow-y: auto;
+        }
+        
+        .page-header {
+            margin-bottom: 32px;
+        }
+        
+        .page-title {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        
+        .page-subtitle {
+            font-size: 15px;
+            color: #667085;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 12px;
+            margin-top: 16px;
+        }
+        
+        .button {
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            border: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+        }
+        
+        .button-primary {
+            background: #2d6a4f;
+            color: #fff;
+        }
+        
+        .button-default {
+            background: #fff;
+            color: #16131d;
+            border: 1px solid #e5e3dd;
+        }
+        
+        /* Form grid */
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 320px;
+            gap: 24px;
+        }
+        
+        .form-section {
+            background: #fff;
+            border-radius: 12px;
+            border: 1px solid #e5e3dd;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+        
+        .section-title {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 16px;
+        }
+        
+        .form-group {
+            margin-bottom: 16px;
+        }
+        
+        .form-label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 6px;
+            color: #16131d;
+        }
+        
+        .form-label .required {
+            color: #d92d20;
+        }
+        
+        .form-input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #e5e3dd;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+        }
+        
+        .form-input:focus {
+            outline: none;
+            border-color: #2d6a4f;
+        }
+        
+        textarea.form-input {
+            min-height: 80px;
+            resize: vertical;
+        }
+        
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+        
+        /* Split method selector */
+        .split-method-selector {
+            display: flex;
+            gap: 4px;
+            border-radius: 8px;
+            padding: 4px;
+            background: #f2f1ed;
+        }
+        
+        .split-method-btn {
+            flex: 1;
+            padding: 8px;
+            border: none;
+            background: transparent;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        
+        .split-method-btn.active {
+            background: #fff;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+        
+        /* Split preview table */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 12px;
+        }
+        
+        th {
+            text-align: left;
+            padding: 8px 12px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #667085;
+            border-bottom: 1px solid #e5e3dd;
+        }
+        
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #f2f1ed;
+        }
+        
+        tfoot td {
+            font-weight: 700;
+            background: #fafaf9;
+        }
+        
+        /* Receipt sidebar */
+        .receipt-area {
+            background: #fff;
+            border-radius: 12px;
+            border: 1px solid #e5e3dd;
+            padding: 24px;
+        }
+        
+        .dropzone {
+            border: 2px dashed #e5e3dd;
+            border-radius: 8px;
+            padding: 32px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        
+        .dropzone:hover {
+            border-color: #2d6a4f;
+            background: #f8f7f3;
+        }
+        
+        .dropzone-icon {
+            font-size: 40px;
+            margin-bottom: 12px;
+        }
+        
+        .dropzone-text {
+            font-size: 14px;
+            color: #667085;
+        }
+        
+        @media (max-width: 1024px) {
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="logo-row">
+            <div class="logo"></div>
+            <span class="logo-text">Commune</span>
+        </div>
+        
+        <a href="#" class="nav-link">
+            <span>📊</span>
+            <span>Dashboard</span>
+        </a>
+        <a href="#" class="nav-link">
+            <span>🏠</span>
+            <span>My Groups</span>
+        </a>
+        
+        <div class="nav-group">
+            <div class="nav-group-header">
+                <span>💰</span>
+                <span>Money</span>
+            </div>
+            <a href="expenses.html" class="nav-link active">
+                <span>🧾</span>
+                <span>Expenses</span>
+            </a>
+            <a href="recurring.html" class="nav-link">
+                <span>🔁</span>
+                <span>Recurring</span>
+            </a>
+            <a href="templates.html" class="nav-link">
+                <span>📋</span>
+                <span>Templates</span>
+            </a>
+            <a href="funds.html" class="nav-link">
+                <span>🐷</span>
+                <span>Funds</span>
+            </a>
+            <a href="billing.html" class="nav-link">
+                <span>📄</span>
+                <span>Billing</span>
+            </a>
+        </div>
+    </div>
+    
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Header -->
+        <div class="header">
+            <input type="text" class="search-input" placeholder="Search expenses, members...">
+        </div>
+        
+        <!-- Page Content -->
+        <div class="page-container">
+            <div class="page-header">
+                <h1 class="page-title">Add expense</h1>
+                <p class="page-subtitle">Create a new shared cost, pick participants, and preview the split</p>
+                <div class="button-group">
+                    <a href="expenses.html" class="button button-default">Cancel</a>
+                    <button class="button button-primary">Create expense</button>
+                </div>
+            </div>
+            
+            <!-- Form Grid -->
+            <div class="form-grid">
+                <!-- Left Column - Form Fields -->
+                <div>
+                    <!-- Basics -->
+                    <div class="form-section">
+                        <h3 class="section-title">Basics</h3>
+                        <div class="form-group">
+                            <label class="form-label">Title <span class="required">*</span></label>
+                            <input type="text" class="form-input" placeholder="e.g. Electricity" value="Electricity bill">
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Amount <span class="required">*</span></label>
+                                <input type="number" class="form-input" placeholder="0.00" value="120.00">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Category <span class="required">*</span></label>
+                                <select class="form-input">
+                                    <option value="utilities" selected>Utilities</option>
+                                    <option value="groceries">Groceries</option>
+                                    <option value="rent">Rent</option>
+                                    <option value="transport">Transport</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Due date <span class="required">*</span></label>
+                            <input type="date" class="form-input" value="2024-12-15">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Description</label>
+                            <textarea class="form-input" placeholder="Optional notes"></textarea>
+                        </div>
+                    </div>
+                    
+                    <!-- Participants -->
+                    <div class="form-section">
+                        <h3 class="section-title">Participants</h3>
+                        <div class="form-group">
+                            <label class="form-label">Who shares this expense? <span class="required">*</span></label>
+                            <select class="form-input" multiple style="min-height: 100px;">
+                                <option selected>Alice Johnson</option>
+                                <option selected>Bob Smith</option>
+                                <option selected>Charlie Davis</option>
+                                <option selected>Dana Lee</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Who paid?</label>
+                            <select class="form-input">
+                                <option value="">Nobody (group expense)</option>
+                                <option selected>Alice Johnson</option>
+                                <option>Bob Smith</option>
+                                <option>Charlie Davis</option>
+                                <option>Dana Lee</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <!-- Split Method -->
+                    <div class="form-section">
+                        <h3 class="section-title">Split method</h3>
+                        <div class="split-method-selector">
+                            <button class="split-method-btn active">Equal</button>
+                            <button class="split-method-btn">Percentage</button>
+                            <button class="split-method-btn">Custom</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Split Preview -->
+                    <div class="form-section">
+                        <h3 class="section-title">Split preview</h3>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Person</th>
+                                    <th style="text-align: right;">Share</th>
+                                    <th style="text-align: right;">%</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Alice Johnson</td>
+                                    <td style="text-align: right;">£30.00</td>
+                                    <td style="text-align: right; color: #667085;">25%</td>
+                                </tr>
+                                <tr>
+                                    <td>Bob Smith</td>
+                                    <td style="text-align: right;">£30.00</td>
+                                    <td style="text-align: right; color: #667085;">25%</td>
+                                </tr>
+                                <tr>
+                                    <td>Charlie Davis</td>
+                                    <td style="text-align: right;">£30.00</td>
+                                    <td style="text-align: right; color: #667085;">25%</td>
+                                </tr>
+                                <tr>
+                                    <td>Dana Lee</td>
+                                    <td style="text-align: right;">£30.00</td>
+                                    <td style="text-align: right; color: #667085;">25%</td>
+                                </tr>
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <td>Total</td>
+                                    <td style="text-align: right;">£120.00</td>
+                                    <td style="text-align: right; color: #2d6a4f;">100%</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- Right Column - Receipt Upload -->
+                <div>
+                    <div class="receipt-area">
+                        <h3 class="section-title">Receipt</h3>
+                        <p style="font-size: 14px; color: #667085; margin-bottom: 16px;">
+                            Attach a photo or PDF of the receipt (optional).
+                        </p>
+                        <div class="dropzone">
+                            <div class="dropzone-icon">📎</div>
+                            <p class="dropzone-text">Click or drag to upload</p>
+                            <p class="dropzone-text" style="font-size: 12px; margin-top: 4px;">PNG, JPG, or PDF up to 10MB</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Billing · Commune</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f8f7f3; color: #16131d; display: flex; min-height: 100vh; }
+        .sidebar { width: 230px; background: rgb(10, 15, 42); color: #fff; padding: 20px 8px; flex-shrink: 0; }
+        .logo-row { display: flex; align-items: center; gap: 8px; margin-bottom: 24px; }
+        .logo { width: 44px; height: 44px; background: #2d6a4f; border-radius: 10px; }
+        .logo-text { font-weight: 600; font-size: 18px; letter-spacing: 0.08em; text-transform: uppercase; }
+        .nav-link { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 8px; color: rgba(255,255,255,0.7); text-decoration: none; margin-bottom: 2px; }
+        .nav-link.active { background: #2d6a4f; color: #fff; }
+        .nav-group { margin-top: 10px; }
+        .nav-group-header { display: flex; align-items: center; gap: 6px; padding: 8px 12px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: rgba(255,255,255,0.5); }
+        .main-content { flex: 1; display: flex; flex-direction: column; }
+        .header { height: 64px; background: #fff; border-bottom: 1px solid #e5e3dd; padding: 0 32px; }
+        .search-input { width: 500px; padding: 8px 12px; border: 1px solid #e5e3dd; border-radius: 8px; font-size: 14px; background: #f8f7f3; margin-top: 16px; }
+        .page-container { flex: 1; padding: 40px; overflow-y: auto; }
+        .page-title { font-size: 32px; font-weight: 700; margin-bottom: 8px; }
+        .page-subtitle { font-size: 15px; color: #667085; margin-bottom: 24px; }
+        .button { padding: 10px 16px; border-radius: 8px; font-weight: 600; font-size: 14px; cursor: pointer; border: 1px solid #e5e3dd; background: #fff; color: #16131d; display: inline-flex; align-items: center; gap: 8px; }
+        .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; margin-bottom: 32px; }
+        .stat-card { background: #fff; border: 1px solid #e5e3dd; border-radius: 12px; padding: 16px; }
+        .stat-icon { width: 28px; height: 28px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; font-size: 14px; margin-right: 8px; }
+        .stat-label { font-size: 12px; color: #667085; margin-bottom: 8px; }
+        .stat-value { font-size: 24px; font-weight: 800; line-height: 1; margin-bottom: 6px; }
+        .stat-detail { font-size: 12px; color: #667085; }
+        .panel { background: #fff; border: 1px solid #e5e3dd; border-radius: 12px; padding: 24px; margin-bottom: 24px; }
+        .panel-title { font-size: 16px; font-weight: 700; margin-bottom: 16px; }
+        .panel-subtitle { font-size: 14px; color: #667085; margin-bottom: 20px; }
+        table { width: 100%; border-collapse: collapse; border: 1px solid #e5e3dd; }
+        th { text-align: left; padding: 12px 16px; font-size: 13px; font-weight: 600; color: #667085; border-bottom: 1px solid #e5e3dd; background: #fafaf9; }
+        td { padding: 16px; border-bottom: 1px solid #f2f1ed; }
+        tr:hover { background: #fafaf9; }
+        .badge { display: inline-block; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 500; }
+        .badge-green { background: #d1f4e0; color: #2d6a4f; }
+        .badge-red { background: #fee4e2; color: #d92d20; }
+        .chart-placeholder { height: 280px; background: #f8f7f3; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #667085; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="logo-row"><div class="logo"></div><span class="logo-text">Commune</span></div>
+        <a href="#" class="nav-link"><span>📊</span><span>Dashboard</span></a>
+        <a href="#" class="nav-link"><span>🏠</span><span>My Groups</span></a>
+        <div class="nav-group">
+            <div class="nav-group-header"><span>💰</span><span>Money</span></div>
+            <a href="expenses.html" class="nav-link"><span>🧾</span><span>Expenses</span></a>
+            <a href="recurring.html" class="nav-link"><span>🔁</span><span>Recurring</span></a>
+            <a href="templates.html" class="nav-link"><span>📋</span><span>Templates</span></a>
+            <a href="funds.html" class="nav-link"><span>🐷</span><span>Funds</span></a>
+            <a href="billing.html" class="nav-link active"><span>📄</span><span>Billing</span></a>
+        </div>
+    </div>
+    <div class="main-content">
+        <div class="header"><input type="text" class="search-input" placeholder="Search expenses, members..."></div>
+        <div class="page-container">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 32px;">
+                <div>
+                    <h1 class="page-title">Billing</h1>
+                    <p class="page-subtitle">Workspace billing dashboard for vendor invoices, subscriptions, and tools.</p>
+                </div>
+                <button class="button">⬇ Export billing pack</button>
+            </div>
+            
+            <div class="stat-grid">
+                <div class="stat-card">
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                        <div class="stat-icon" style="background: #d1f4e0; color: #2d6a4f;">💰</div>
+                        <div class="stat-label">Total spend</div>
+                    </div>
+                    <div class="stat-value">£4,567.80</div>
+                    <div class="stat-detail">18 invoices tracked</div>
+                </div>
+                
+                <div class="stat-card">
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                        <div class="stat-icon" style="background: #e0e7ff; color: #4338ca;">👥</div>
+                        <div class="stat-label">Vendors</div>
+                    </div>
+                    <div class="stat-value">7</div>
+                    <div class="stat-detail">3 subscriptions, 4 tools</div>
+                </div>
+                
+                <div class="stat-card">
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                        <div class="stat-icon" style="background: #ffe8d1; color: #b54708;">🧾</div>
+                        <div class="stat-label">Due soon</div>
+                    </div>
+                    <div class="stat-value">2</div>
+                    <div class="stat-detail">Within the next 7 days</div>
+                </div>
+                
+                <div class="stat-card">
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                        <div class="stat-icon" style="background: #fee4e2; color: #d92d20;">⚠</div>
+                        <div class="stat-label">Overdue</div>
+                    </div>
+                    <div class="stat-value" style="color: #d92d20;">1</div>
+                    <div class="stat-detail">Past payment due date</div>
+                </div>
+            </div>
+            
+            <div class="panel">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
+                    <div>
+                        <h2 class="panel-title">Vendor breakdown</h2>
+                        <p class="panel-subtitle">Spend by vendor with invoice and overdue details.</p>
+                    </div>
+                    <span style="font-size: 12px; color: #667085; background: #f2f1ed; padding: 4px 10px; border-radius: 12px;">7 vendors</span>
+                </div>
+                
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Vendor</th>
+                            <th style="text-align: right;">Total spend</th>
+                            <th style="text-align: right;">Invoices</th>
+                            <th style="text-align: center;">Overdue</th>
+                            <th>Next due</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>
+                                <div style="font-weight: 600; font-size: 14px;">Vercel</div>
+                                <div style="font-size: 12px; color: #667085;">Latest ref: INV-2024-12-001</div>
+                            </td>
+                            <td style="text-align: right; font-weight: 600;">£320.00</td>
+                            <td style="text-align: right;">3</td>
+                            <td style="text-align: center;"><span class="badge badge-green">0</span></td>
+                            <td>01 Jan 2025</td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <div style="font-weight: 600; font-size: 14px;">Supabase</div>
+                                <div style="font-size: 12px; color: #667085;">Latest ref: INV-2024-11-278</div>
+                            </td>
+                            <td style="text-align: right; font-weight: 600;">£180.50</td>
+                            <td style="text-align: right;">2</td>
+                            <td style="text-align: center;"><span class="badge badge-green">0</span></td>
+                            <td>28 Dec 2024</td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <div style="font-weight: 600; font-size: 14px;">AWS</div>
+                                <div style="font-size: 12px; color: #667085;">Latest ref: INV-2024-11-456</div>
+                            </td>
+                            <td style="text-align: right; font-weight: 600;">£1,240.00</td>
+                            <td style="text-align: right;">5</td>
+                            <td style="text-align: center;"><span class="badge badge-red">1</span></td>
+                            <td>15 Dec 2024</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="panel">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
+                    <div>
+                        <h2 class="panel-title">Billing trend</h2>
+                        <p class="panel-subtitle">Monthly billing totals across the last six months.</p>
+                    </div>
+                    <span style="font-size: 12px; color: #667085; background: #f2f1ed; padding: 4px 10px; border-radius: 12px;">Last 6 months</span>
+                </div>
+                
+                <div class="chart-placeholder">
+                    📊 Bar chart: Monthly billing trend (Jul - Dec 2024)
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

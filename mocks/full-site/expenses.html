@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Expenses · Commune</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f8f7f3;
+            color: #16131d;
+            display: flex;
+            min-height: 100vh;
+        }
+        
+        /* Sidebar */
+        .sidebar {
+            width: 230px;
+            background: rgb(10, 15, 42);
+            color: #fff;
+            padding: 20px 8px;
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+        }
+        
+        .logo-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 24px;
+            padding-left: 0;
+        }
+        
+        .logo {
+            width: 44px;
+            height: 44px;
+            background: #2d6a4f;
+            border-radius: 10px;
+            flex-shrink: 0;
+        }
+        
+        .logo-text {
+            font-weight: 600;
+            font-size: 18px;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+        
+        .menu-label {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: rgba(255,255,255,0.5);
+            padding: 0 12px;
+            margin-bottom: 6px;
+        }
+        
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 12px;
+            border-radius: 8px;
+            color: rgba(255,255,255,0.7);
+            text-decoration: none;
+            margin-bottom: 2px;
+            transition: all 0.15s;
+        }
+        
+        .nav-link:hover {
+            background: rgba(255,255,255,0.08);
+            color: #fff;
+        }
+        
+        .nav-link.active {
+            background: #2d6a4f;
+            color: #fff;
+        }
+        
+        .nav-group {
+            margin-top: 10px;
+        }
+        
+        .nav-group-header {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 12px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: rgba(255,255,255,0.5);
+        }
+        
+        /* Main content */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .header {
+            height: 64px;
+            background: #fff;
+            border-bottom: 1px solid #e5e3dd;
+            display: flex;
+            align-items: center;
+            padding: 0 32px;
+            gap: 16px;
+        }
+        
+        .search-input {
+            flex: 1;
+            max-width: 500px;
+            padding: 8px 12px 8px 36px;
+            border: 1px solid #e5e3dd;
+            border-radius: 8px;
+            font-size: 14px;
+            background: #f8f7f3;
+        }
+        
+        .page-container {
+            flex: 1;
+            padding: 40px;
+            overflow-y: auto;
+        }
+        
+        .page-header {
+            margin-bottom: 32px;
+        }
+        
+        .page-title {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        
+        .page-subtitle {
+            font-size: 15px;
+            color: #667085;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 12px;
+            margin-top: 16px;
+        }
+        
+        .button {
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            border: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+        }
+        
+        .button-primary {
+            background: #2d6a4f;
+            color: #fff;
+        }
+        
+        .button-default {
+            background: #fff;
+            color: #16131d;
+            border: 1px solid #e5e3dd;
+        }
+        
+        /* Filter chips */
+        .filter-chips {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 24px;
+        }
+        
+        .chip {
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            border: 1px solid #e5e3dd;
+            background: #fff;
+            transition: all 0.15s;
+        }
+        
+        .chip.active {
+            background: #2d6a4f;
+            color: #fff;
+            border-color: #2d6a4f;
+        }
+        
+        /* Table */
+        .table-container {
+            background: #fff;
+            border-radius: 12px;
+            border: 1px solid #e5e3dd;
+            overflow: hidden;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th {
+            text-align: left;
+            padding: 12px 16px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #667085;
+            border-bottom: 1px solid #e5e3dd;
+            background: #fafaf9;
+        }
+        
+        td {
+            padding: 16px;
+            border-bottom: 1px solid #f2f1ed;
+        }
+        
+        tr:last-child td {
+            border-bottom: none;
+        }
+        
+        tr:hover {
+            background: #fafaf9;
+        }
+        
+        .expense-title {
+            font-weight: 600;
+            font-size: 14px;
+            color: #16131d;
+            text-decoration: none;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        
+        .badge-gray {
+            background: #f2f1ed;
+            color: #667085;
+        }
+        
+        .badge-emerald {
+            background: #d1f4e0;
+            color: #2d6a4f;
+        }
+        
+        .badge-orange {
+            background: #ffe8d1;
+            color: #b54708;
+        }
+        
+        .badge-red {
+            background: #fee4e2;
+            color: #d92d20;
+        }
+        
+        .select-group {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        
+        select {
+            padding: 8px 12px;
+            border: 1px solid #e5e3dd;
+            border-radius: 8px;
+            font-size: 14px;
+            background: #fff;
+            cursor: pointer;
+        }
+        
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 16px;
+            margin-top: 24px;
+        }
+        
+        .pagination button {
+            padding: 8px 12px;
+            border: 1px solid #e5e3dd;
+            background: #fff;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        
+        .pagination span {
+            font-size: 14px;
+            color: #667085;
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="logo-row">
+            <div class="logo"></div>
+            <span class="logo-text">Commune</span>
+        </div>
+        
+        <div class="menu-label">Menu</div>
+        
+        <a href="#" class="nav-link">
+            <span>📊</span>
+            <span>Dashboard</span>
+        </a>
+        <a href="#" class="nav-link">
+            <span>🏠</span>
+            <span>My Groups</span>
+        </a>
+        
+        <div class="nav-group">
+            <div class="nav-group-header">
+                <span>💰</span>
+                <span>Money</span>
+            </div>
+            <a href="expenses.html" class="nav-link active">
+                <span>🧾</span>
+                <span>Expenses</span>
+            </a>
+            <a href="recurring.html" class="nav-link">
+                <span>🔁</span>
+                <span>Recurring</span>
+            </a>
+            <a href="templates.html" class="nav-link">
+                <span>📋</span>
+                <span>Templates</span>
+            </a>
+            <a href="funds.html" class="nav-link">
+                <span>🐷</span>
+                <span>Funds</span>
+            </a>
+            <a href="billing.html" class="nav-link">
+                <span>📄</span>
+                <span>Billing</span>
+            </a>
+        </div>
+    </div>
+    
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Header -->
+        <div class="header">
+            <input type="text" class="search-input" placeholder="Search expenses, members...">
+        </div>
+        
+        <!-- Page Content -->
+        <div class="page-container">
+            <div class="page-header">
+                <h1 class="page-title">Expenses</h1>
+                <p class="page-subtitle">42 expenses · £2,340.50 tracked</p>
+                <div class="button-group">
+                    <a href="expenses-new.html" class="button button-primary">
+                        <span>+</span> Add expense
+                    </a>
+                    <button class="button button-default">
+                        <span>⬇</span> Export filtered CSV
+                    </button>
+                    <button class="button button-default">
+                        <span>📄</span> Export PDF
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Filters -->
+            <div class="select-group">
+                <select>
+                    <option>All categories</option>
+                    <option>Utilities</option>
+                    <option>Groceries</option>
+                    <option>Rent</option>
+                </select>
+                <select>
+                    <option>All time</option>
+                    <option>December 2024</option>
+                    <option>November 2024</option>
+                </select>
+            </div>
+            
+            <!-- Status chips -->
+            <div class="filter-chips">
+                <button class="chip active">All (42)</button>
+                <button class="chip">Open (12)</button>
+                <button class="chip">Overdue (3)</button>
+                <button class="chip">Settled (27)</button>
+            </div>
+            
+            <!-- Expenses Table -->
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Expense</th>
+                            <th>Category</th>
+                            <th>Due date</th>
+                            <th>Participants</th>
+                            <th>Status</th>
+                            <th style="text-align: right;">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>
+                                <a href="expenses-detail.html" class="expense-title">Electricity bill</a>
+                            </td>
+                            <td>
+                                <span class="badge badge-gray">Utilities</span>
+                            </td>
+                            <td style="color: #667085; font-size: 14px;">15 Dec 2024</td>
+                            <td style="color: #667085; font-size: 14px;">3/4 paid</td>
+                            <td>
+                                <span class="badge badge-orange">Open</span>
+                            </td>
+                            <td style="text-align: right; font-weight: 700;">£120.00</td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <a href="expenses-detail.html" class="expense-title">Weekly groceries</a>
+                            </td>
+                            <td>
+                                <span class="badge badge-gray">Groceries</span>
+                            </td>
+                            <td style="color: #667085; font-size: 14px;">10 Dec 2024</td>
+                            <td style="color: #667085; font-size: 14px;">4/4 paid</td>
+                            <td>
+                                <span class="badge badge-emerald">Settled</span>
+                            </td>
+                            <td style="text-align: right; font-weight: 700;">£85.60</td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <a href="expenses-detail.html" class="expense-title">Internet service</a>
+                            </td>
+                            <td>
+                                <span class="badge badge-gray">Utilities</span>
+                            </td>
+                            <td style="color: #667085; font-size: 14px;">05 Dec 2024</td>
+                            <td style="color: #667085; font-size: 14px;">2/4 paid</td>
+                            <td>
+                                <span class="badge badge-red">Overdue</span>
+                            </td>
+                            <td style="text-align: right; font-weight: 700;">£45.00</td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <a href="expenses-detail.html" class="expense-title">Monthly rent</a>
+                            </td>
+                            <td>
+                                <span class="badge badge-gray">Rent</span>
+                            </td>
+                            <td style="color: #667085; font-size: 14px;">01 Dec 2024</td>
+                            <td style="color: #667085; font-size: 14px;">4/4 paid</td>
+                            <td>
+                                <span class="badge badge-emerald">Settled</span>
+                            </td>
+                            <td style="text-align: right; font-weight: 700;">£1,600.00</td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <a href="expenses-detail.html" class="expense-title">Water bill</a>
+                            </td>
+                            <td>
+                                <span class="badge badge-gray">Utilities</span>
+                            </td>
+                            <td style="color: #667085; font-size: 14px;">20 Dec 2024</td>
+                            <td style="color: #667085; font-size: 14px;">1/4 paid</td>
+                            <td>
+                                <span class="badge badge-orange">Open</span>
+                            </td>
+                            <td style="text-align: right; font-weight: 700;">£32.40</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Pagination -->
+            <div class="pagination">
+                <button disabled>← Previous</button>
+                <span>Page 1 of 3</span>
+                <button>Next →</button>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
