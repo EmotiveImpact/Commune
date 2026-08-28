@@ -1,10 +1,7 @@
 {
-  "buildCommand": "pnpm install && pnpm run build",
-  "outputDirectory": "dist",
-  "installCommand": "pnpm install",
+  "buildCommand": "pnpm install && cd .migration-backup/apps/web && pnpm run build",
+  "outputDirectory": ".migration-backup/apps/web/dist",
   "framework": null,
-  "devCommand": "pnpm run dev",
-  "rootDirectory": ".migration-backup/apps/web",
   "headers": [
     {
       "source": "/(.*)",
