@@ -20,7 +20,7 @@ Study of the existing Commune landing (`artifacts/landing`) and pitch deck (`art
 - Tightened the type scale. Hero comes down from ~6.5rem Inter Black to ~4.75rem serif. Why is no longer a 7rem shout. Body sits at 17px / 1.65. Eyebrows are sage, 11px, 0.16em — matching the deck, not 0.6rem grey dust.
 - Cream is the page ground again. The live landing is mostly white-on-black with Inter. Cream / navy / sage now read as one system with the deck and the app paper.
 - Spacing on an 8px rhythm. Section padding ~88–112px instead of 140. Measure capped. Max width 1120 instead of 1280.
-- Hero track is labelled (House shares, Couples, …) instead of anonymous progress bars. Ken Burns is a light settle, not five competing pan keyframes.
+- Hero track is labelled (House shares, Couples, …) instead of anonymous progress bars. Ken Burns is a light settle, not five competing pan keyframes. Proof line and primary CTA sit with the copy, not stretched across the viewport.
 - “Why Commune?” in sentence case, serif. Accordion kept; open-state colour is quieter.
 - Added a Command Centre peek after Why — the missing product beat. Framed as `app.ourcommune.io/overview`, light paper UI, peach/sage KPI tones from the app. Sample spaces (42 Maple, Northlight Studio, Lisbon, Maya & Alex) are illustrative of existing group types, not new features.
 - Use-case cards keep the five photos. They no longer vanish on tablet; type and padding are tighter.
