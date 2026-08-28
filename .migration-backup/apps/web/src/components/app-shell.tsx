@@ -212,7 +212,7 @@ export function AppShell({ children }: AppShellProps) {
         >
           {/* ── Top ── */}
           <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
-            {/* Logo row — padding-left centers the 44px logo when collapsed */}
+            {/* Logo row — wordmark only, no tile */}
             <div
               style={{
                 display: 'flex',
@@ -220,43 +220,27 @@ export function AppShell({ children }: AppShellProps) {
                 marginBottom: '1.5rem',
                 position: 'relative',
                 minHeight: 44,
-                paddingLeft: collapsed ? 6 : 0,
                 transition: sidebarTransitionCss,
               }}
             >
-              <img
-                src="/logo.png"
-                alt="Commune"
-                width={44}
-                height={44}
-                style={{ display: 'block', borderRadius: 10, flexShrink: 0 }}
-              />
-              <span
+              <Text
+                fw={600}
+                size="lg"
                 style={{
-                  overflow: 'hidden',
-                  display: 'inline-flex',
+                  color: '#fff',
                   whiteSpace: 'nowrap',
-                  marginLeft: 8,
+                  letterSpacing: '0.08em',
+                  textTransform: 'uppercase',
+                  fontFamily: "'Inter', sans-serif",
+                  overflow: 'hidden',
                   opacity: collapsed ? 0 : 1,
                   maxWidth: collapsed ? 0 : 160,
                   transition: sidebarTransitionCss,
                 }}
                 aria-hidden={collapsed}
               >
-                <Text
-                  fw={600}
-                  size="lg"
-                  style={{
-                    color: '#fff',
-                    whiteSpace: 'nowrap',
-                    letterSpacing: '0.08em',
-                    textTransform: 'uppercase',
-                    fontFamily: "'Inter', sans-serif",
-                  }}
-                >
-                  Commune
-                </Text>
-              </span>
+                Commune
+              </Text>
 
               {/* Collapse button — desktop only, top right, hover-only, expanded only */}
               {!isMobile && !collapsed && (

@@ -641,8 +641,8 @@ export function DashboardPage() {
       value: formatCurrency(stats?.total_spend ?? 0, group?.currency),
       note: monthLabel,
       icon: IconReceipt,
-      tone: '#10B981',
-      tint: 'rgba(16, 185, 129, 0.1)',
+      tone: '#2d6a4f',
+      tint: 'rgba(45, 106, 79, 0.1)',
       panelTone: 'sage',
     },
     {
@@ -650,8 +650,8 @@ export function DashboardPage() {
       value: formatCurrency(stats?.your_share ?? 0, group?.currency),
       note: 'Across active expenses',
       icon: IconWallet,
-      tone: '#104536',
-      tint: 'rgba(16, 69, 54, 0.1)',
+      tone: '#171b24',
+      tint: 'rgba(23, 27, 36, 0.1)',
       panelTone: 'ink',
     },
     {
@@ -659,18 +659,18 @@ export function DashboardPage() {
       value: formatCurrency(stats?.amount_remaining ?? 0, group?.currency),
       note: 'Still unpaid or unconfirmed',
       icon: IconCash,
-      tone: '#62C38A',
-      tint: 'rgba(98, 195, 138, 0.14)',
-      panelTone: 'lilac',
+      tone: '#2d6a4f',
+      tint: 'rgba(45, 106, 79, 0.1)',
+      panelTone: 'sage',
     },
     {
       label: 'Overdue',
       value: String(stats?.overdue_count ?? 0),
       note: 'Past the due date',
       icon: IconAlertTriangle,
-      tone: '#F59A76',
-      tint: 'rgba(245, 154, 118, 0.16)',
-      panelTone: 'peach',
+      tone: '#dc2626',
+      tint: 'rgba(220, 38, 38, 0.1)',
+      panelTone: 'ink',
     },
   ];
 
@@ -1334,7 +1334,7 @@ export function DashboardPage() {
                       {formatCurrency(stats?.amount_paid ?? 0, group?.currency)}
                     </Text>
                   </Paper>
-                  <Paper className="commune-stat-card commune-kpi-card" p="md" radius="lg" data-tone="peach">
+                  <Paper className="commune-stat-card commune-kpi-card" p="md" radius="lg" data-tone="sage">
                     <Text size="sm" c="dimmed">
                       Still remaining
                     </Text>
