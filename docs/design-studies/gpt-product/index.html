@@ -1,0 +1,1161 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Commune product landing page design study">
+  <title>Commune — Shared spaces, run clearly</title>
+  <style>
+    @import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display:ital@0;1&display=swap");
+
+    :root {
+      --sage: #2d6a4f;
+      --sage-dark: #245a43;
+      --sage-soft: #dfeae3;
+      --navy: #1a1e2e;
+      --navy-soft: #2a3044;
+      --cream: #f5f3ef;
+      --cream-deep: #ebe7df;
+      --paper: #fffefa;
+      --muted: #888880;
+      --ink-soft: #5f615e;
+      --white: #fff;
+      --peach: #f2e3d9;
+      --red: #9a463d;
+      --line: rgba(26, 30, 46, .12);
+      --shadow: 0 30px 80px rgba(17, 23, 31, .13);
+      --display: "DM Serif Display", Georgia, serif;
+      --body: "DM Sans", Arial, sans-serif;
+      --max: 1180px;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      color: var(--navy);
+      background: var(--cream);
+      font-family: var(--body);
+      -webkit-font-smoothing: antialiased;
+    }
+    button, a { font: inherit; }
+    button { color: inherit; }
+    a { color: inherit; text-decoration: none; }
+    svg { display: block; }
+    .container { width: min(calc(100% - 48px), var(--max)); margin: 0 auto; }
+    .serif { font-family: var(--display); }
+    .eyebrow {
+      margin: 0 0 18px;
+      color: var(--sage);
+      font-size: 11px;
+      line-height: 1;
+      font-weight: 700;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+    }
+    .eyebrow.light { color: #a7cbb4; }
+    .section-title {
+      margin: 0;
+      max-width: 760px;
+      font-family: var(--display);
+      font-size: clamp(44px, 6vw, 76px);
+      font-weight: 400;
+      line-height: .98;
+      letter-spacing: -.035em;
+    }
+    .section-lede {
+      margin: 24px 0 0;
+      max-width: 600px;
+      color: var(--ink-soft);
+      font-size: 17px;
+      line-height: 1.65;
+    }
+
+    /* Header */
+    .site-header {
+      position: absolute;
+      inset: 0 0 auto;
+      z-index: 10;
+      padding: 24px 0;
+      color: var(--cream);
+    }
+    .nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 44px;
+    }
+    .brand { display: inline-flex; align-items: center; gap: 11px; }
+    .brand-mark {
+      display: grid;
+      place-items: center;
+      width: 31px;
+      height: 31px;
+      border: 1px solid rgba(255,255,255,.38);
+      border-radius: 50%;
+      font-family: var(--display);
+      font-size: 22px;
+      line-height: 1;
+    }
+    .brand-name {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+    }
+    .nav-links { display: flex; align-items: center; gap: 30px; }
+    .nav-links a {
+      color: rgba(255,255,255,.72);
+      font-size: 13px;
+      font-weight: 500;
+      transition: color .2s ease;
+    }
+    .nav-links a:hover { color: white; }
+    .nav-cta {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 11px 18px;
+      color: var(--navy) !important;
+      background: var(--cream);
+      border-radius: 999px;
+      font-weight: 700 !important;
+    }
+    .menu-button {
+      display: none;
+      border: 0;
+      background: transparent;
+      padding: 8px;
+      cursor: pointer;
+    }
+
+    /* Hero */
+    .hero {
+      position: relative;
+      min-height: 850px;
+      overflow: hidden;
+      color: var(--cream);
+      background:
+        radial-gradient(circle at 82% 12%, rgba(73, 138, 103, .34), transparent 33%),
+        linear-gradient(145deg, #151927 0%, var(--navy) 62%, #242b3b 100%);
+    }
+    .hero::before {
+      content: "";
+      position: absolute;
+      width: 560px;
+      height: 560px;
+      top: 118px;
+      right: -140px;
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 50%;
+      box-shadow: 0 0 0 100px rgba(255,255,255,.018), 0 0 0 200px rgba(255,255,255,.012);
+    }
+    .hero-grid {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: .82fr 1.18fr;
+      gap: clamp(44px, 7vw, 96px);
+      align-items: center;
+      min-height: 850px;
+      padding-top: 106px;
+      padding-bottom: 72px;
+    }
+    .hero-copy { padding-bottom: 38px; }
+    .hero-kicker {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 24px;
+      color: rgba(255,255,255,.62);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+    }
+    .hero-kicker::before {
+      content: "";
+      width: 28px;
+      height: 1px;
+      background: #80b094;
+    }
+    .hero h1 {
+      margin: 0;
+      max-width: 590px;
+      font-family: var(--display);
+      font-size: clamp(60px, 7.1vw, 96px);
+      font-weight: 400;
+      line-height: .91;
+      letter-spacing: -.045em;
+    }
+    .hero h1 em { color: #a7cbb4; font-weight: 400; }
+    .hero-copy > p {
+      margin: 28px 0 32px;
+      max-width: 480px;
+      color: rgba(255,255,255,.62);
+      font-size: 17px;
+      line-height: 1.65;
+    }
+    .hero-actions { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      min-height: 50px;
+      padding: 0 23px;
+      border: 1px solid transparent;
+      border-radius: 999px;
+      font-size: 14px;
+      font-weight: 700;
+      transition: transform .2s ease, background .2s ease;
+    }
+    .button:hover { transform: translateY(-2px); }
+    .button-primary { color: var(--navy); background: var(--cream); }
+    .button-ghost { color: var(--cream); border-color: rgba(255,255,255,.28); }
+    .button-sage { color: white; background: var(--sage); }
+    .hero-note {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 25px;
+      color: rgba(255,255,255,.4);
+      font-size: 12px;
+    }
+    .hero-note span:first-child {
+      display: grid;
+      place-items: center;
+      width: 20px; height: 20px;
+      border-radius: 50%;
+      background: rgba(45,106,79,.5);
+      color: white;
+      font-size: 11px;
+    }
+
+    /* Product preview */
+    .product-shell {
+      position: relative;
+      transform: rotate(1.2deg);
+      border: 1px solid rgba(255,255,255,.16);
+      border-radius: 20px;
+      background: #f8f8f5;
+      box-shadow: 0 42px 100px rgba(0,0,0,.32);
+      color: var(--navy);
+      overflow: hidden;
+    }
+    .product-shell::after {
+      content: "Product preview";
+      position: absolute;
+      right: 18px;
+      bottom: 12px;
+      color: rgba(26,30,46,.32);
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+    }
+    .browser-bar {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      height: 38px;
+      padding: 0 14px;
+      border-bottom: 1px solid #dedfd9;
+      background: #f0f0eb;
+    }
+    .dot { width: 7px; height: 7px; border-radius: 50%; background: #c9cbc4; }
+    .browser-address {
+      width: 41%;
+      height: 17px;
+      margin: 0 auto;
+      border-radius: 8px;
+      background: white;
+    }
+    .app-layout {
+      display: grid;
+      grid-template-columns: 150px minmax(0, 1fr);
+      min-height: 560px;
+    }
+    .sidebar {
+      padding: 20px 13px;
+      color: rgba(255,255,255,.72);
+      background: var(--navy);
+    }
+    .sidebar-logo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 1px 5px 24px;
+      color: white;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .14em;
+    }
+    .sidebar-logo .brand-mark { width: 24px; height: 24px; font-size: 16px; }
+    .space-switcher {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 23px;
+      padding: 10px;
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: 9px;
+      background: rgba(255,255,255,.05);
+    }
+    .space-icon {
+      display: grid;
+      place-items: center;
+      flex: 0 0 auto;
+      width: 25px; height: 25px;
+      border-radius: 7px;
+      background: var(--sage);
+      color: white;
+    }
+    .space-switcher strong { display: block; overflow: hidden; font-size: 10px; white-space: nowrap; text-overflow: ellipsis; }
+    .space-switcher small { display: block; margin-top: 2px; color: rgba(255,255,255,.35); font-size: 8px; }
+    .side-label {
+      margin: 18px 8px 7px;
+      color: rgba(255,255,255,.28);
+      font-size: 7px;
+      font-weight: 700;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+    }
+    .side-link {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      width: 100%;
+      padding: 8px 9px;
+      border: 0;
+      border-radius: 7px;
+      color: rgba(255,255,255,.52);
+      background: none;
+      font-size: 9px;
+      text-align: left;
+      cursor: pointer;
+    }
+    .side-link svg { width: 13px; height: 13px; }
+    .side-link.active { color: white; background: rgba(255,255,255,.1); }
+    .side-link:hover { color: white; }
+    .app-main { padding: 28px 28px 40px; background: #f8f8f5; }
+    .app-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+    }
+    .app-top small { display: block; color: var(--muted); font-size: 9px; }
+    .app-top strong { display: block; margin-top: 3px; font-family: var(--display); font-size: 24px; font-weight: 400; }
+    .avatar {
+      display: grid;
+      place-items: center;
+      width: 30px; height: 30px;
+      border: 2px solid white;
+      border-radius: 50%;
+      background: var(--sage-soft);
+      color: var(--sage);
+      font-size: 9px;
+      font-weight: 700;
+      box-shadow: 0 2px 6px rgba(0,0,0,.08);
+    }
+    .app-view[hidden] { display: none; }
+    .summary-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .summary-card {
+      position: relative;
+      min-height: 112px;
+      padding: 15px;
+      border: 1px solid #e3e3dc;
+      border-radius: 12px;
+      background: white;
+      overflow: hidden;
+    }
+    .summary-card.sage { background: #edf4ef; border-color: #d5e4d9; }
+    .summary-card.peach { background: #f6ece5; border-color: #edddd2; }
+    .summary-card > small { color: var(--muted); font-size: 9px; }
+    .summary-card > strong { display: block; margin: 10px 0 5px; font-size: 23px; letter-spacing: -.04em; }
+    .summary-card > span { color: var(--muted); font-size: 8px; }
+    .summary-card .mini-icon {
+      position: absolute;
+      top: 14px; right: 14px;
+      display: grid;
+      place-items: center;
+      width: 24px; height: 24px;
+      border-radius: 50%;
+      color: var(--sage);
+      background: rgba(45,106,79,.1);
+    }
+    .app-columns { display: grid; grid-template-columns: 1.22fr .78fr; gap: 10px; margin-top: 10px; }
+    .panel {
+      padding: 15px;
+      border: 1px solid #e3e3dc;
+      border-radius: 12px;
+      background: white;
+    }
+    .panel-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 13px; }
+    .panel-head strong { font-size: 10px; }
+    .panel-head a { color: var(--sage); font-size: 8px; font-weight: 700; }
+    .money-row, .task-row {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 9px 0;
+      border-top: 1px solid #eee;
+    }
+    .money-row:first-of-type, .task-row:first-of-type { border-top: 0; }
+    .row-icon {
+      display: grid;
+      place-items: center;
+      flex: 0 0 auto;
+      width: 29px; height: 29px;
+      border-radius: 8px;
+      background: var(--cream);
+      color: var(--sage);
+    }
+    .row-text { min-width: 0; flex: 1; }
+    .row-text strong { display: block; overflow: hidden; font-size: 9px; white-space: nowrap; text-overflow: ellipsis; }
+    .row-text small { display: block; margin-top: 3px; color: var(--muted); font-size: 7px; }
+    .row-amount { font-size: 9px; font-weight: 700; }
+    .row-amount.negative { color: var(--red); }
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 7px;
+      border-radius: 999px;
+      color: var(--sage);
+      background: var(--sage-soft);
+      font-size: 7px;
+      font-weight: 700;
+    }
+    .tag.alert { color: var(--red); background: #f5e7e3; }
+    .complete {
+      display: grid;
+      place-items: center;
+      width: 19px; height: 19px;
+      padding: 0;
+      border: 1px solid #cbd2cb;
+      border-radius: 50%;
+      background: white;
+      color: transparent;
+      cursor: pointer;
+    }
+    .complete.done { color: white; background: var(--sage); border-color: var(--sage); }
+    .wide-panel { margin-top: 10px; }
+    .group-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 0 0;
+      border-top: 1px solid #eee;
+    }
+    .group-row .row-text small { font-size: 8px; }
+    .status {
+      margin-left: auto;
+      padding: 4px 8px;
+      border-radius: 999px;
+      color: var(--sage);
+      background: #edf4ef;
+      font-size: 7px;
+      font-weight: 700;
+    }
+    .balance-hero {
+      padding: 22px;
+      border-radius: 14px;
+      color: white;
+      background: var(--navy);
+    }
+    .balance-hero small { color: #a7cbb4; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .12em; }
+    .balance-hero h3 { margin: 10px 0 4px; font-size: 34px; letter-spacing: -.05em; }
+    .balance-hero p { margin: 0 0 16px; color: rgba(255,255,255,.5); font-size: 8px; }
+    .progress { height: 5px; margin: 13px 0 18px; border-radius: 5px; background: rgba(255,255,255,.12); overflow: hidden; }
+    .progress span { display: block; width: 68%; height: 100%; border-radius: inherit; background: #88bc9d; }
+    .small-button {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 10px;
+      border: 0;
+      border-radius: 7px;
+      color: var(--navy);
+      background: var(--cream);
+      font-size: 8px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    /* Product thesis */
+    .thesis { padding: 116px 0 126px; }
+    .thesis-grid {
+      display: grid;
+      grid-template-columns: .8fr 1.2fr;
+      gap: 90px;
+      align-items: start;
+    }
+    .thesis-index {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: var(--muted);
+      font-size: 11px;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+    .thesis-index::before { content: ""; width: 40px; height: 1px; background: var(--muted); }
+    .thesis-quote {
+      margin: 0;
+      font-family: var(--display);
+      font-size: clamp(39px, 5.2vw, 67px);
+      line-height: 1.04;
+      letter-spacing: -.03em;
+    }
+    .thesis-quote em { color: var(--sage); font-weight: 400; }
+    .thesis-detail {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 30px;
+      margin-top: 48px;
+      padding-top: 28px;
+      border-top: 1px solid var(--line);
+    }
+    .thesis-detail p { margin: 0; color: var(--ink-soft); font-size: 14px; line-height: 1.7; }
+
+    /* Features */
+    .features { padding: 118px 0; color: white; background: var(--navy); }
+    .features-head {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 48px;
+      margin-bottom: 72px;
+    }
+    .features-head .section-lede { max-width: 425px; color: rgba(255,255,255,.48); }
+    .feature-list { border-top: 1px solid rgba(255,255,255,.12); }
+    .feature-row {
+      display: grid;
+      grid-template-columns: 80px .8fr 1fr 36px;
+      gap: 30px;
+      align-items: center;
+      min-height: 134px;
+      border-bottom: 1px solid rgba(255,255,255,.12);
+    }
+    .feature-number { color: rgba(255,255,255,.26); font-size: 11px; letter-spacing: .14em; }
+    .feature-row h3 { margin: 0; font-family: var(--display); font-size: 32px; font-weight: 400; }
+    .feature-row p { margin: 0; color: rgba(255,255,255,.46); font-size: 14px; line-height: 1.65; }
+    .feature-plus {
+      display: grid;
+      place-items: center;
+      width: 34px; height: 34px;
+      border: 1px solid rgba(255,255,255,.16);
+      border-radius: 50%;
+      color: #a7cbb4;
+      font-size: 18px;
+    }
+
+    /* Use cases */
+    .use-cases { padding: 120px 0 128px; background: var(--paper); }
+    .use-case-head { display: flex; justify-content: space-between; align-items: end; gap: 44px; margin-bottom: 62px; }
+    .use-case-head .section-lede { max-width: 390px; }
+    .case-grid {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 14px;
+    }
+    .case-card {
+      position: relative;
+      min-height: 340px;
+      padding: 28px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      overflow: hidden;
+    }
+    .case-card:nth-child(1) { grid-column: span 5; color: white; background: var(--sage); }
+    .case-card:nth-child(2) { grid-column: span 3; background: var(--cream); }
+    .case-card:nth-child(3) { grid-column: span 4; background: var(--peach); }
+    .case-card:nth-child(4) { grid-column: span 7; color: white; background: var(--navy); }
+    .case-card:nth-child(5) { grid-column: span 5; background: var(--sage-soft); }
+    .case-card small { position: relative; z-index: 1; color: currentColor; opacity: .62; font-size: 10px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
+    .case-card h3 {
+      position: absolute;
+      z-index: 1;
+      right: 28px; bottom: 25px; left: 28px;
+      margin: 0;
+      font-family: var(--display);
+      font-size: clamp(36px, 4.3vw, 57px);
+      font-weight: 400;
+      line-height: .94;
+    }
+    .case-card p { position: absolute; z-index: 1; right: 28px; bottom: 104px; left: 28px; margin: 0; max-width: 270px; font-size: 12px; line-height: 1.5; opacity: .65; }
+    .case-orbit {
+      position: absolute;
+      width: 240px; height: 240px;
+      top: -80px; right: -60px;
+      border: 1px solid currentColor;
+      border-radius: 50%;
+      opacity: .12;
+    }
+    .case-orbit::before, .case-orbit::after {
+      content: "";
+      position: absolute;
+      inset: 30px;
+      border: 1px solid currentColor;
+      border-radius: 50%;
+    }
+    .case-orbit::after { inset: 62px; }
+
+    /* Pricing */
+    .pricing { padding: 120px 0 130px; background: var(--cream); }
+    .pricing-head {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 40px;
+      margin-bottom: 58px;
+    }
+    .trial-note {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      color: var(--ink-soft);
+      font-size: 13px;
+    }
+    .trial-note::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--sage); }
+    .pricing-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; align-items: stretch; }
+    .price-card {
+      display: flex;
+      flex-direction: column;
+      min-height: 495px;
+      padding: 32px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: var(--paper);
+    }
+    .price-card.featured { color: white; background: var(--navy); transform: translateY(-10px); box-shadow: var(--shadow); }
+    .price-top { display: flex; align-items: center; justify-content: space-between; }
+    .price-name { margin: 0; font-size: 11px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; }
+    .popular { padding: 6px 9px; border-radius: 999px; color: var(--navy); background: #a7cbb4; font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: .09em; }
+    .price { display: flex; align-items: baseline; gap: 5px; margin: 30px 0 6px; }
+    .price strong { font-family: var(--display); font-size: 54px; font-weight: 400; letter-spacing: -.04em; }
+    .price span { color: var(--muted); font-size: 12px; }
+    .featured .price span { color: rgba(255,255,255,.38); }
+    .price-desc { min-height: 44px; margin: 0 0 26px; color: var(--muted); font-size: 12px; line-height: 1.55; }
+    .featured .price-desc { color: rgba(255,255,255,.45); }
+    .price-card ul { flex: 1; margin: 0 0 30px; padding: 25px 0 0; list-style: none; border-top: 1px solid var(--line); }
+    .featured ul { border-color: rgba(255,255,255,.12); }
+    .price-card li { display: flex; gap: 9px; margin: 12px 0; color: var(--ink-soft); font-size: 12px; }
+    .featured li { color: rgba(255,255,255,.6); }
+    .check { color: var(--sage); font-weight: 700; }
+    .featured .check { color: #a7cbb4; }
+    .price-button { min-height: 44px; border: 1px solid var(--line); border-radius: 999px; background: transparent; font-size: 12px; font-weight: 700; cursor: pointer; }
+    .featured .price-button { border: 0; background: var(--cream); color: var(--navy); }
+
+    /* CTA / Footer */
+    .closing { position: relative; padding: 118px 0; color: white; background: var(--sage); overflow: hidden; }
+    .closing::after {
+      content: "C";
+      position: absolute;
+      right: -40px;
+      bottom: -180px;
+      color: rgba(255,255,255,.07);
+      font-family: var(--display);
+      font-size: 580px;
+      line-height: 1;
+    }
+    .closing-inner { position: relative; z-index: 1; display: flex; align-items: end; justify-content: space-between; gap: 50px; }
+    .closing h2 { margin: 0; max-width: 760px; font-family: var(--display); font-size: clamp(60px, 8vw, 108px); font-weight: 400; line-height: .9; letter-spacing: -.04em; }
+    .closing p { margin: 24px 0 0; color: rgba(255,255,255,.62); font-size: 15px; }
+    .closing .button { flex: 0 0 auto; }
+    footer { padding: 48px 0; color: rgba(255,255,255,.5); background: var(--navy); }
+    .footer-row { display: flex; align-items: center; justify-content: space-between; gap: 30px; }
+    .footer-row .brand { color: white; }
+    .footer-links { display: flex; gap: 24px; font-size: 12px; }
+    .copyright { font-size: 11px; }
+
+    /* Motion */
+    @media (prefers-reduced-motion: no-preference) {
+      .reveal {
+        opacity: 0;
+        transform: translateY(24px);
+        transition: opacity .7s ease, transform .7s cubic-bezier(.2,.7,.2,1);
+      }
+      .reveal.in-view { opacity: 1; transform: none; }
+    }
+
+    /* Responsive */
+    @media (max-width: 1000px) {
+      .hero { min-height: auto; }
+      .hero-grid { grid-template-columns: 1fr; padding-top: 165px; padding-bottom: 95px; }
+      .hero-copy { padding: 0; }
+      .product-shell { width: min(100%, 720px); transform: none; }
+      .thesis-grid { grid-template-columns: 1fr; gap: 40px; }
+      .features-head, .use-case-head { align-items: start; flex-direction: column; }
+      .feature-row { grid-template-columns: 50px .8fr 1fr 34px; }
+      .case-card:nth-child(n) { grid-column: span 6; }
+      .case-card:nth-child(5) { grid-column: span 12; }
+      .pricing-grid { gap: 10px; }
+      .price-card { padding: 26px 22px; }
+    }
+    @media (max-width: 760px) {
+      .container { width: min(calc(100% - 32px), var(--max)); }
+      .nav-links { display: none; position: absolute; top: 64px; right: 16px; left: 16px; flex-direction: column; align-items: stretch; gap: 0; padding: 12px; border: 1px solid rgba(255,255,255,.15); border-radius: 12px; background: rgba(26,30,46,.98); }
+      .nav-links.open { display: flex; }
+      .nav-links a { padding: 12px; }
+      .menu-button { display: block; color: white; }
+      .hero-grid { padding-top: 128px; }
+      .hero h1 { font-size: clamp(54px, 17vw, 78px); }
+      .app-layout { grid-template-columns: 1fr; }
+      .sidebar { display: flex; align-items: center; gap: 5px; overflow-x: auto; padding: 10px; }
+      .sidebar-logo, .space-switcher, .side-label { display: none; }
+      .side-link { flex: 0 0 auto; width: auto; }
+      .app-main { padding: 22px 18px 35px; }
+      .thesis, .features, .use-cases, .pricing { padding: 88px 0; }
+      .thesis-detail { grid-template-columns: 1fr; }
+      .features-head { margin-bottom: 45px; }
+      .feature-row { grid-template-columns: 34px 1fr 30px; gap: 14px; padding: 22px 0; }
+      .feature-row p { grid-column: 2 / 4; }
+      .case-card:nth-child(n) { grid-column: span 12; min-height: 300px; }
+      .pricing-head { align-items: start; flex-direction: column; }
+      .pricing-grid { grid-template-columns: 1fr; max-width: 500px; }
+      .price-card.featured { transform: none; }
+      .closing-inner { align-items: start; flex-direction: column; }
+      .footer-row { align-items: start; flex-direction: column; }
+    }
+    @media (max-width: 520px) {
+      .product-shell { margin-inline: -8px; width: calc(100% + 16px); }
+      .app-main { min-width: 0; }
+      .app-top strong { font-size: 21px; }
+      .summary-grid, .app-columns { grid-template-columns: 1fr; }
+      .summary-card { min-height: 96px; }
+      .wide-panel { display: none; }
+      .product-shell::after { display: none; }
+      .case-card h3 { font-size: 42px; }
+      .footer-links { flex-wrap: wrap; }
+    }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container nav">
+      <a class="brand" href="#top" aria-label="Commune home">
+        <span class="brand-mark" aria-hidden="true">C</span>
+        <span class="brand-name">Commune</span>
+      </a>
+      <button class="menu-button" type="button" aria-label="Open navigation" aria-expanded="false">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+      </button>
+      <nav class="nav-links" aria-label="Primary navigation">
+        <a href="#product">Product</a>
+        <a href="#uses">Use cases</a>
+        <a href="#pricing">Pricing</a>
+        <a href="https://app.ourcommune.io">Sign in</a>
+        <a class="nav-cta" href="https://app.ourcommune.io/signup">
+          Start free trial
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <path d="M3 8h10M9.5 4.5 13 8l-3.5 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="top">
+    <section class="hero">
+      <div class="container hero-grid">
+        <div class="hero-copy reveal">
+          <div class="hero-kicker">For shared spaces and recurring groups</div>
+          <h1>Run your shared space without the <em>awkwardness.</em></h1>
+          <p>Commune keeps the money, responsibilities and everyday details of shared life in one calm, reliable place.</p>
+          <div class="hero-actions">
+            <a class="button button-primary" href="https://app.ourcommune.io/signup">
+              Start 7-day trial
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <path d="M3 8h10M9.5 4.5 13 8l-3.5 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </a>
+            <a class="button button-ghost" href="#product">See the product</a>
+          </div>
+          <div class="hero-note"><span>✓</span> No card required · From £4.99/month</div>
+        </div>
+
+        <div class="product-shell reveal" id="product" aria-label="Interactive preview of the Commune app">
+          <div class="browser-bar" aria-hidden="true">
+            <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+            <span class="browser-address"></span>
+          </div>
+          <div class="app-layout">
+            <aside class="sidebar">
+              <div class="sidebar-logo"><span class="brand-mark">C</span> COMMUNE</div>
+              <div class="space-switcher">
+                <span class="space-icon">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M3 11 12 4l9 7v9H3v-9Z" stroke="currentColor" stroke-width="1.5"/><path d="M9 20v-6h6v6" stroke="currentColor" stroke-width="1.5"/></svg>
+                </span>
+                <span><strong>Foundry House</strong><small>Home · GBP</small></span>
+              </div>
+              <div class="side-label">Overview</div>
+              <button class="side-link" type="button" data-view="centre">
+                <svg viewBox="0 0 24 24" fill="none"><path d="M4 13h6V4H4v9Zm0 7h6v-4H4v4Zm10 0h6v-9h-6v9Zm0-16v4h6V4h-6Z" stroke="currentColor" stroke-width="1.5"/></svg>
+                Dashboard
+              </button>
+              <button class="side-link active" type="button" data-view="centre">
+                <svg viewBox="0 0 24 24" fill="none"><path d="M7 7h11l-3-3m2 13H6l3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Command Centre
+              </button>
+              <div class="side-label">Money</div>
+              <button class="side-link" type="button" data-view="money">
+                <svg viewBox="0 0 24 24" fill="none"><path d="M4 6h16v12H4V6Z" stroke="currentColor" stroke-width="1.5"/><path d="M4 10h16M8 14h3" stroke="currentColor" stroke-width="1.5"/></svg>
+                Expenses
+              </button>
+              <button class="side-link" type="button" data-view="money">
+                <svg viewBox="0 0 24 24" fill="none"><path d="M12 3v18M17 7.5c0-2-2-3.5-5-3.5S7 5.2 7 7s1.4 2.8 5 3.5 5 1.5 5 3.5-2 4-5 4-5-1.7-5-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                Funds
+              </button>
+              <div class="side-label">Team</div>
+              <button class="side-link" type="button" data-view="chores">
+                <svg viewBox="0 0 24 24" fill="none"><path d="m5 7 2 2 4-4M5 14l2 2 4-4M13 7h6M13 14h6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Operations
+              </button>
+              <button class="side-link" type="button" data-view="chores">
+                <svg viewBox="0 0 24 24" fill="none"><circle cx="9" cy="8" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M3.5 19c.7-3.3 2.5-5 5.5-5s4.8 1.7 5.5 5M16 7h5M18.5 4.5v5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                Members
+              </button>
+            </aside>
+
+            <section class="app-main">
+              <div class="app-top">
+                <div><small class="app-subtitle">Your priorities across all groups</small><strong class="app-title">Command Centre</strong></div>
+                <div class="avatar" aria-label="August">AU</div>
+              </div>
+
+              <div class="app-view" data-panel="centre">
+                <div class="summary-grid">
+                  <div class="summary-card peach">
+                    <small>Outstanding</small>
+                    <strong>£80.00</strong>
+                    <span>1 payment to make</span>
+                    <span class="mini-icon">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M7 17 17 7M8 7h9v9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+                    </span>
+                  </div>
+                  <div class="summary-card sage">
+                    <small>Coming your way</small>
+                    <strong>£0.00</strong>
+                    <span>No incoming payments</span>
+                    <span class="mini-icon">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="m7 7 10 10M16 7h-9v9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+                    </span>
+                  </div>
+                </div>
+                <div class="app-columns">
+                  <div class="panel">
+                    <div class="panel-head"><strong>Priority actions</strong><a href="#">View breakdown</a></div>
+                    <div class="money-row">
+                      <span class="row-icon">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M5 8h14v10H5V8Z" stroke="currentColor" stroke-width="1.5"/><path d="M8 8V6h8v2M8 12h8" stroke="currentColor" stroke-width="1.5"/></svg>
+                      </span>
+                      <span class="row-text"><strong>Internet</strong><small>Foundry House · Due 27 Mar</small></span>
+                      <span class="row-amount negative">£80.00</span>
+                    </div>
+                    <div class="money-row">
+                      <span class="row-icon">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="m5 13 4 4L19 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                      </span>
+                      <span class="row-text"><strong>Cross-group netting</strong><small>One transfer per person</small></span>
+                      <span class="tag">On</span>
+                    </div>
+                  </div>
+                  <div class="panel">
+                    <div class="panel-head"><strong>Operations</strong><a href="#" data-preview="chores">Open</a></div>
+                    <div class="task-row">
+                      <button class="complete" type="button" aria-label="Mark Kitchen reset done">✓</button>
+                      <span class="row-text"><strong>Kitchen reset</strong><small>Weekly · Checklist</small></span>
+                    </div>
+                    <div class="task-row">
+                      <button class="complete" type="button" aria-label="Mark Bins out done">✓</button>
+                      <span class="row-text"><strong>Bins out</strong><small>Weekly · One-off</small></span>
+                    </div>
+                  </div>
+                </div>
+                <div class="panel wide-panel">
+                  <div class="panel-head"><strong>My groups</strong><a href="#">View all</a></div>
+                  <div class="group-row">
+                    <span class="space-icon">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M3 11 12 4l9 7v9H3v-9Z" stroke="currentColor" stroke-width="1.5"/><path d="M9 20v-6h6v6" stroke="currentColor" stroke-width="1.5"/></svg>
+                    </span>
+                    <span class="row-text"><strong>Foundry House</strong><small>Home · 1 member</small></span>
+                    <span class="status">Active</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="app-view" data-panel="money" hidden>
+                <div class="balance-hero">
+                  <small>Your share · March</small>
+                  <h3>£80.00</h3>
+                  <p>£0.00 paid · £80.00 left · 1 open</p>
+                  <div class="progress"><span style="width:0"></span></div>
+                  <button class="small-button" type="button">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+                    Add expense
+                  </button>
+                </div>
+                <div class="panel wide-panel" style="display:block">
+                  <div class="panel-head"><strong>Expenses</strong><a href="#">View all</a></div>
+                  <div class="money-row">
+                    <span class="row-icon">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M5 8h14v10H5V8Z" stroke="currentColor" stroke-width="1.5"/><path d="M8 8V6h8v2M8 12h8" stroke="currentColor" stroke-width="1.5"/></svg>
+                    </span>
+                    <span class="row-text"><strong>Internet</strong><small>Utilities · NetFast · INV-2001</small></span>
+                    <span class="row-amount negative">£80.00</span>
+                  </div>
+                  <div class="money-row">
+                    <span class="row-icon">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="m5 13 4 4L19 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </span>
+                    <span class="row-text"><strong>Split status</strong><small>One financial truth for the group</small></span>
+                    <span class="tag alert">Open</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="app-view" data-panel="chores" hidden>
+                <div class="summary-grid">
+                  <div class="summary-card peach"><small>Overdue</small><strong>0</strong><span>Nothing needs chasing</span></div>
+                  <div class="summary-card sage"><small>Recurring · Checklists</small><strong>3 · 1</strong><span>Foundry House</span></div>
+                </div>
+                <div class="panel wide-panel" style="display:block">
+                  <div class="panel-head"><strong>Upcoming operations</strong><a href="#">Add operation</a></div>
+                  <div class="task-row">
+                    <button class="complete" type="button" aria-label="Mark Kitchen reset done">✓</button>
+                    <span class="row-text"><strong>Kitchen reset</strong><small>Cleaning · Weekly · 3-item checklist</small></span>
+                    <span class="tag">Due next</span>
+                  </div>
+                  <div class="task-row">
+                    <button class="complete" type="button" aria-label="Mark Bins out done">✓</button>
+                    <span class="row-text"><strong>Bins out</strong><small>Supplies · Weekly · One-off</small></span>
+                    <span class="tag">Weekly</span>
+                  </div>
+                  <div class="task-row">
+                    <button class="complete" type="button" aria-label="Mark House admin check done">✓</button>
+                    <span class="row-text"><strong>House admin check</strong><small>Admin · Weekly · Recurring</small></span>
+                    <span class="tag">Weekly</span>
+                  </div>
+                </div>
+              </div>
+            </section>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="thesis">
+      <div class="container thesis-grid">
+        <div class="thesis-index reveal">The shared-space problem</div>
+        <div>
+          <blockquote class="thesis-quote reveal">Shared life gets difficult when nobody knows <em>what they owe</em> or <em>what needs doing.</em></blockquote>
+          <div class="thesis-detail reveal">
+            <p>Money ends up in bank screenshots and spreadsheets. Responsibilities disappear into chats and memory.</p>
+            <p>Commune gives every person a clear view, and every group one dependable place to run from.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="features">
+      <div class="container">
+        <div class="features-head">
+          <div class="reveal">
+            <p class="eyebrow light">One place, four clear jobs</p>
+            <h2 class="section-title">The practical system behind a well-run space.</h2>
+          </div>
+          <p class="section-lede reveal">Less dashboard noise, more orientation. Open Commune and know where the group stands in seconds.</p>
+        </div>
+        <div class="feature-list">
+          <article class="feature-row reveal">
+            <span class="feature-number">01</span>
+            <h3>Communal finance</h3>
+            <p>Track recurring and one-off expenses, split fairly, manage shared funds and settle cleanly.</p>
+            <span class="feature-plus">↗</span>
+          </article>
+          <article class="feature-row reveal">
+            <span class="feature-number">02</span>
+            <h3>Space hubs</h3>
+            <p>Keep members, roles, pinned notices and practical space essentials together in context.</p>
+            <span class="feature-plus">↗</span>
+          </article>
+          <article class="feature-row reveal">
+            <span class="feature-number">03</span>
+            <h3>Responsibilities</h3>
+            <p>Assign recurring and one-off operations, add reminders and make ownership visible.</p>
+            <span class="feature-plus">↗</span>
+          </article>
+          <article class="feature-row reveal">
+            <span class="feature-number">04</span>
+            <h3>Command centre</h3>
+            <p>See what is owed, what is overdue and what needs attention across all your groups.</p>
+            <span class="feature-plus">↗</span>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="use-cases" id="uses">
+      <div class="container">
+        <div class="use-case-head">
+          <div class="reveal">
+            <p class="eyebrow">Made for ongoing shared life</p>
+            <h2 class="section-title">One system, shaped around your space.</h2>
+          </div>
+          <p class="section-lede reveal">The same dependable finance and operations backbone, with the right context for each kind of group.</p>
+        </div>
+        <div class="case-grid">
+          <article class="case-card reveal"><span class="case-orbit"></span><small>Rent · Bills · Chores</small><p>Keep the household clear without becoming the person who always chases.</p><h3>House<br>shares</h3></article>
+          <article class="case-card reveal"><span class="case-orbit"></span><small>Budgets · Joint costs</small><h3>Couples</h3></article>
+          <article class="case-card reveal"><span class="case-orbit"></span><small>Tools · Roles · Costs</small><h3>Studios</h3></article>
+          <article class="case-card reveal"><span class="case-orbit"></span><small>On the go · Settle up</small><p>Log shared costs as they happen and finish the trip fully settled.</p><h3>Group trips</h3></article>
+          <article class="case-card reveal"><span class="case-orbit"></span><small>Budget · Ownership · Handover</small><h3>Creative<br>projects</h3></article>
+        </div>
+      </div>
+    </section>
+
+    <section class="pricing" id="pricing">
+      <div class="container">
+        <div class="pricing-head">
+          <div class="reveal">
+            <p class="eyebrow">Membership</p>
+            <h2 class="section-title">Simple, transparent pricing.</h2>
+          </div>
+          <div class="trial-note reveal">7-day free trial · No card required</div>
+        </div>
+        <div class="pricing-grid">
+          <article class="price-card reveal">
+            <div class="price-top"><p class="price-name">Standard</p></div>
+            <div class="price"><strong>£4.99</strong><span>/mo</span></div>
+            <p class="price-desc">For one household or shared space.</p>
+            <ul>
+              <li><span class="check">✓</span> 1 space</li>
+              <li><span class="check">✓</span> Up to 8 members</li>
+              <li><span class="check">✓</span> Communal finance &amp; splits</li>
+              <li><span class="check">✓</span> Responsibilities &amp; reminders</li>
+              <li><span class="check">✓</span> Monthly breakdown</li>
+              <li><span class="check">✓</span> Group hub</li>
+            </ul>
+            <button class="price-button" type="button">Start 7-day trial</button>
+          </article>
+          <article class="price-card featured reveal">
+            <div class="price-top"><p class="price-name">Pro</p><span class="popular">Most popular</span></div>
+            <div class="price"><strong>£9.99</strong><span>/mo</span></div>
+            <p class="price-desc">For people running several shared spaces.</p>
+            <ul>
+              <li><span class="check">✓</span> Up to 3 spaces</li>
+              <li><span class="check">✓</span> Up to 15 members</li>
+              <li><span class="check">✓</span> Everything in Standard</li>
+              <li><span class="check">✓</span> Advanced analytics</li>
+              <li><span class="check">✓</span> Exports &amp; templates</li>
+              <li><span class="check">✓</span> Priority support</li>
+            </ul>
+            <button class="price-button" type="button">Start 7-day trial</button>
+          </article>
+          <article class="price-card reveal">
+            <div class="price-top"><p class="price-name">Agency</p></div>
+            <div class="price"><strong>£29.99</strong><span>/mo</span></div>
+            <p class="price-desc">For operators managing a portfolio of spaces.</p>
+            <ul>
+              <li><span class="check">✓</span> Unlimited spaces</li>
+              <li><span class="check">✓</span> Unlimited members</li>
+              <li><span class="check">✓</span> Everything in Pro</li>
+              <li><span class="check">✓</span> Priority workflows</li>
+              <li><span class="check">✓</span> Dedicated onboarding</li>
+              <li><span class="check">✓</span> Operator-ready path</li>
+            </ul>
+            <button class="price-button" type="button">Start 7-day trial</button>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="closing">
+      <div class="container closing-inner">
+        <div class="reveal">
+          <h2>Live clearly,<br>together.</h2>
+          <p>Start with the space you already share.</p>
+        </div>
+        <a class="button button-primary reveal" href="https://app.ourcommune.io/signup">
+          Start your space
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <path d="M3 8h10M9.5 4.5 13 8l-3.5 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </a>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="container footer-row">
+      <a class="brand" href="#top"><span class="brand-mark">C</span><span class="brand-name">Commune</span></a>
+      <div class="footer-links"><a href="#product">Product</a><a href="#uses">Use cases</a><a href="#pricing">Pricing</a><a href="https://app.ourcommune.io">Sign in</a></div>
+      <span class="copyright">© <span id="year">2026</span> Commune</span>
+    </div>
+  </footer>
+
+  <script>
+    const menuButton = document.querySelector(".menu-button");
+    const navLinks = document.querySelector(".nav-links");
+    menuButton?.addEventListener("click", () => {
+      const open = navLinks.classList.toggle("open");
+      menuButton.setAttribute("aria-expanded", String(open));
+    });
+    navLinks?.querySelectorAll("a").forEach(link => link.addEventListener("click", () => {
+      navLinks.classList.remove("open");
+      menuButton?.setAttribute("aria-expanded", "false");
+    }));
+
+    const titles = {
+      centre: ["Your priorities across all groups", "Command Centre"],
+      money: ["Foundry House · March", "Money"],
+      chores: ["Foundry House · 3 active operations", "Operations"]
+    };
+    function showView(view) {
+      document.querySelectorAll(".app-view").forEach(panel => {
+        panel.hidden = panel.dataset.panel !== view;
+      });
+      document.querySelectorAll(".side-link").forEach(link => {
+        link.classList.toggle("active", link.dataset.view === view);
+      });
+      document.querySelector(".app-subtitle").textContent = titles[view][0];
+      document.querySelector(".app-title").textContent = titles[view][1];
+    }
+    document.querySelectorAll(".side-link").forEach(link => {
+      link.addEventListener("click", () => showView(link.dataset.view));
+    });
+    document.querySelectorAll("[data-preview]").forEach(link => {
+      link.addEventListener("click", event => {
+        event.preventDefault();
+        showView(link.dataset.preview);
+      });
+    });
+    document.querySelectorAll(".complete").forEach(button => {
+      button.addEventListener("click", () => {
+        button.classList.toggle("done");
+        button.setAttribute("aria-label", button.classList.contains("done") ? "Mark operation not done" : "Mark operation done");
+      });
+    });
+
+    if ("IntersectionObserver" in window) {
+      const observer = new IntersectionObserver(entries => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("in-view");
+            observer.unobserve(entry.target);
+          }
+        });
+      }, { threshold: .08 });
+      document.querySelectorAll(".reveal").forEach(el => observer.observe(el));
+    } else {
+      document.querySelectorAll(".reveal").forEach(el => el.classList.add("in-view"));
+    }
+    document.getElementById("year").textContent = new Date().getFullYear();
+  </script>
+</body>
+</html>
