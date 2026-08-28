@@ -16,7 +16,7 @@
 
     body {
       font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-      background: linear-gradient(180deg, #f8f5f0 0%, #f3eee7 100%);
+      background: #f5f1ea;
       color: #171b24;
       line-height: 1.5;
       -webkit-font-smoothing: antialiased;
@@ -30,7 +30,7 @@
     /* Sidebar */
     .sidebar {
       width: 230px;
-      background: linear-gradient(180deg, #1a1e2b 0%, #21262f 100%);
+      background: #1f2330;
       color: rgba(255, 255, 255, 0.92);
       padding: 20px 14px;
       display: flex;
@@ -51,7 +51,7 @@
     .sidebar-logo-box {
       width: 44px;
       height: 44px;
-      background: #2d6a4f;
+      background: #667085;
       border-radius: 10px;
     }
 
@@ -67,7 +67,11 @@
       flex: 1;
     }
 
-    .nav-label {
+    .nav-group {
+      margin-bottom: 16px;
+    }
+
+    .nav-group-label {
       font-size: 10px;
       font-weight: 700;
       text-transform: uppercase;
@@ -120,7 +124,7 @@
       width: 32px;
       height: 32px;
       border-radius: 50%;
-      background: #2d6a4f;
+      background: #667085;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -260,11 +264,28 @@
       </div>
 
       <nav class="sidebar-nav">
-        <div class="nav-label">Menu</div>
-        <a href="#" class="nav-link active">Command Centre</a>
-        <a href="#" class="nav-link">Money</a>
-        <a href="#" class="nav-link">Insights</a>
-        <a href="#" class="nav-link">Team</a>
+        <div class="nav-group">
+          <div class="nav-group-label">Menu</div>
+          <a href="#" class="nav-link">Overview</a>
+        </div>
+
+        <div class="nav-group">
+          <div class="nav-group-label">Money</div>
+          <a href="#" class="nav-link">Expenses</a>
+          <a href="#" class="nav-link">Breakdown</a>
+        </div>
+
+        <div class="nav-group">
+          <div class="nav-group-label">Insights</div>
+          <a href="#" class="nav-link active">Command Centre</a>
+          <a href="#" class="nav-link">Analytics</a>
+        </div>
+
+        <div class="nav-group">
+          <div class="nav-group-label">Team</div>
+          <a href="#" class="nav-link">Members</a>
+          <a href="#" class="nav-link">Groups</a>
+        </div>
       </nav>
 
       <div class="sidebar-footer">
