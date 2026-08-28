@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tuesday at 12 Grove — Command Centre</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --sage: #2d6a4f;
+      --navy: #1a1e2e;
+      --cream: #f5f3ef;
+      --muted: #888880;
+    }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--cream);
+      color: var(--navy);
+      line-height: 1.6;
+    }
+
+    .masthead {
+      background: var(--navy);
+      color: var(--cream);
+      padding: 1.5rem 3rem;
+      border-bottom: 3px solid var(--sage);
+    }
+
+    .masthead-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .site-title {
+      font-family: 'DM Serif Display', serif;
+      font-size: 1.75rem;
+      font-weight: 400;
+    }
+
+    nav {
+      display: flex;
+      gap: 2rem;
+    }
+
+    nav a {
+      color: var(--cream);
+      text-decoration: none;
+      font-size: 0.95rem;
+      letter-spacing: 0.02em;
+      position: relative;
+      padding-bottom: 0.25rem;
+    }
+
+    nav a.active {
+      color: var(--sage);
+      border-bottom: 2px solid var(--sage);
+    }
+
+    .page-content {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 3rem;
+    }
+
+    .page-headline {
+      font-family: 'DM Serif Display', serif;
+      font-size: 3.5rem;
+      font-weight: 400;
+      line-height: 1.1;
+      margin-bottom: 3rem;
+      color: var(--navy);
+    }
+
+    .section {
+      margin-bottom: 3.5rem;
+    }
+
+    .section-title {
+      font-family: 'DM Serif Display', serif;
+      font-size: 2rem;
+      font-weight: 400;
+      margin-bottom: 1.5rem;
+      color: var(--sage);
+      border-bottom: 1px solid var(--sage);
+      padding-bottom: 0.5rem;
+    }
+
+    .entry {
+      margin-bottom: 2rem;
+      padding: 1.5rem 0;
+      border-bottom: 1px solid rgba(136, 136, 128, 0.2);
+    }
+
+    .entry:last-child {
+      border-bottom: none;
+    }
+
+    .entry-lead {
+      font-size: 1.125rem;
+      line-height: 1.7;
+      margin-bottom: 0.75rem;
+      color: var(--navy);
+    }
+
+    .entry-meta {
+      font-size: 0.875rem;
+      color: var(--muted);
+      font-weight: 500;
+    }
+
+    .ledger {
+      background: white;
+      padding: 2rem;
+      border: 1px solid rgba(136, 136, 128, 0.2);
+      margin-bottom: 2rem;
+    }
+
+    .ledger-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 1rem 0;
+      border-bottom: 1px solid rgba(136, 136, 128, 0.15);
+      font-size: 1rem;
+    }
+
+    .ledger-row:last-child {
+      border-bottom: none;
+      font-weight: 600;
+      padding-top: 1.5rem;
+      margin-top: 1rem;
+      border-top: 2px solid var(--navy);
+    }
+
+    .ledger-label {
+      color: var(--navy);
+    }
+
+    .ledger-amount {
+      color: var(--sage);
+      font-weight: 600;
+    }
+
+    .ledger-status {
+      font-size: 0.875rem;
+      color: var(--muted);
+      margin-left: 1rem;
+    }
+
+    .notice-box {
+      background: var(--sage);
+      color: white;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+      border-left: 4px solid var(--navy);
+    }
+
+    .notice-box p {
+      font-size: 1rem;
+      line-height: 1.6;
+    }
+
+    .running-order {
+      list-style: none;
+    }
+
+    .running-order li {
+      padding: 1rem 0;
+      border-bottom: 1px solid rgba(136, 136, 128, 0.2);
+      font-size: 1rem;
+    }
+
+    .running-order li:last-child {
+      border-bottom: none;
+    }
+
+    .task-owner {
+      color: var(--sage);
+      font-weight: 600;
+    }
+
+    .task-urgent {
+      background: var(--sage);
+      color: white;
+      padding: 0.25rem 0.75rem;
+      border-radius: 3px;
+      font-size: 0.875rem;
+      font-weight: 600;
+      margin-left: 0.5rem;
+    }
+  </style>
+</head>
+<body>
+  <header class="masthead">
+    <div class="masthead-inner">
+      <h1 class="site-title">12 Grove</h1>
+      <nav>
+        <a href="#" class="active">Command</a>
+        <a href="#">Money</a>
+        <a href="#">Space</a>
+        <a href="#">Jobs</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="page-content">
+    <h1 class="page-headline">Tuesday at 12 Grove</h1>
+
+    <section class="section">
+      <h2 class="section-title">Money</h2>
+      
+      <div class="entry">
+        <p class="entry-lead">Rent is due Friday. The house owes £1,840 this month, split four ways at £460 each. Maya has not yet paid her share.</p>
+        <p class="entry-meta">Due in 3 days</p>
+      </div>
+
+      <div class="ledger">
+        <div class="ledger-row">
+          <span class="ledger-label">Maya</span>
+          <span>
+            <span class="ledger-amount">£460</span>
+            <span class="ledger-status">not paid</span>
+          </span>
+        </div>
+        <div class="ledger-row">
+          <span class="ledger-label">Jordan</span>
+          <span>
+            <span class="ledger-amount">£460</span>
+            <span class="ledger-status">paid</span>
+          </span>
+        </div>
+        <div class="ledger-row">
+          <span class="ledger-label">Sam</span>
+          <span>
+            <span class="ledger-amount">£460</span>
+            <span class="ledger-status">paid</span>
+          </span>
+        </div>
+        <div class="ledger-row">
+          <span class="ledger-label">Priya</span>
+          <span>
+            <span class="ledger-amount">£460</span>
+            <span class="ledger-status">paid</span>
+          </span>
+        </div>
+        <div class="ledger-row">
+          <span class="ledger-label">Total</span>
+          <span class="ledger-amount">£1,840</span>
+        </div>
+      </div>
+
+      <div class="entry">
+        <p class="entry-lead">The wifi bill came in at £32 this month. Maya paid the lot. Jordan, Sam, and Priya each owe her £8.</p>
+        <p class="entry-meta">Split complete — waiting on three</p>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2 class="section-title">Space</h2>
+      
+      <div class="notice-box">
+        <p><strong>Boiler service Thursday 10am.</strong> Someone needs to be in.</p>
+      </div>
+
+      <div class="entry">
+        <p class="entry-lead">The bins go out tonight. Maya's turn to take them down.</p>
+        <p class="entry-meta">Tuesday collection — tonight</p>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2 class="section-title">Jobs</h2>
+      
+      <ul class="running-order">
+        <li><span class="task-owner">Jordan</span> — Kitchen</li>
+        <li><span class="task-owner">Sam</span> — Bathroom</li>
+        <li>
+          <span class="task-owner">Maya</span> — Bins
+          <span class="task-urgent">Tonight</span>
+        </li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>
