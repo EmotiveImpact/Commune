@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>12 Grove — Command Centre</title>
+  <title>Command Centre — Commune</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -52,6 +52,11 @@
       letter-spacing: 0.14em;
       color: rgba(255, 255, 255, 0.5);
       margin-bottom: 8px;
+      margin-top: 16px;
+    }
+
+    .nav-label:first-of-type {
+      margin-top: 0;
     }
 
     .nav-link {
@@ -116,6 +121,11 @@
       font-weight: 600;
     }
 
+    .plan-badge {
+      font-size: 11px;
+      color: rgba(255, 255, 255, 0.45);
+    }
+
     /* Main content */
     .main {
       margin-left: 230px;
@@ -177,147 +187,57 @@
       margin-top: 2px;
     }
 
-    /* Section heading */
-    .section-heading {
-      font-size: 18px;
-      font-weight: 700;
-      margin-bottom: 12px;
+    /* Empty state */
+    .empty-state-wrapper {
       display: flex;
+      justify-content: center;
       align-items: center;
-      gap: 8px;
+      min-height: 300px;
     }
 
-    /* Priority panel */
-    .priority-panel {
-      background: rgba(255, 255, 255, 0.82);
-      border: 1px solid rgba(23, 27, 36, 0.06);
-      border-left: 4px solid #2d6a4f;
-      border-radius: 14px;
-      padding: 20px 24px;
-      margin-bottom: 24px;
-      box-shadow: 0 1px 3px rgba(23, 27, 36, 0.06), 0 1px 2px rgba(23, 27, 36, 0.04);
-    }
-
-    .priority-heading {
-      font-size: 14px;
-      font-weight: 700;
-      margin-bottom: 12px;
-      color: #2d6a4f;
-    }
-
-    /* Soft panel */
-    .soft-panel {
+    .empty-state {
       background: rgba(255, 255, 255, 0.82);
       border: 1px solid rgba(23, 27, 36, 0.06);
       border-radius: 14px;
-      padding: 24px;
-      margin-bottom: 24px;
+      padding: 32px;
+      max-width: 440px;
+      width: 100%;
+      text-align: center;
       box-shadow: 0 1px 3px rgba(23, 27, 36, 0.06), 0 1px 2px rgba(23, 27, 36, 0.04);
     }
 
-    /* Card row */
-    .card {
-      background: #ffffff;
-      border: 1px solid rgba(23, 27, 36, 0.06);
-      border-radius: 14px;
-      padding: 16px;
-      margin-bottom: 8px;
-      display: flex;
-      align-items: center;
-      gap: 14px;
-    }
-
-    .card-icon {
-      width: 36px;
-      height: 36px;
+    .empty-icon {
+      width: 56px;
+      height: 56px;
       border-radius: 50%;
+      background: rgba(45, 106, 79, 0.12);
       display: flex;
       align-items: center;
       justify-content: center;
-      flex-shrink: 0;
+      margin: 0 auto 20px;
+      opacity: 0.85;
+    }
+
+    .empty-icon svg {
+      width: 28px;
+      height: 28px;
+      stroke: #2d6a4f;
+      stroke-width: 2;
+      fill: none;
+    }
+
+    .empty-title {
       font-size: 18px;
-    }
-
-    .card-icon.sage {
-      background: rgba(216, 235, 228, 0.6);
-      color: #2d6a4f;
-    }
-
-    .card-icon.rent {
-      background: rgba(239, 220, 207, 0.6);
-      color: #8B5A3C;
-    }
-
-    .card-icon.wifi {
-      background: rgba(222, 236, 247, 0.6);
-      color: #2B5F8C;
-    }
-
-    .card-icon.notice {
-      background: rgba(241, 229, 191, 0.6);
-      color: #C9821A;
-    }
-
-    .card-content {
-      flex: 1;
-    }
-
-    .card-title {
-      font-size: 15px;
-      font-weight: 600;
-      color: #171b24;
-      margin-bottom: 2px;
-    }
-
-    .card-caption {
-      font-size: 13px;
-      color: #667085;
-    }
-
-    .card-amount {
-      font-size: 15px;
       font-weight: 700;
-      flex-shrink: 0;
-    }
-
-    .card-amount.owe {
-      color: #C74A3A;
-    }
-
-    .card-amount.owed {
-      color: #2d6a4f;
-    }
-
-    /* Split detail */
-    .split-detail {
-      margin-top: 12px;
-      padding-top: 12px;
-      border-top: 1px solid rgba(23, 27, 36, 0.06);
-    }
-
-    .split-row {
-      display: flex;
-      justify-content: space-between;
-      padding: 4px 0;
-      font-size: 14px;
-    }
-
-    .split-name {
-      color: #667085;
-    }
-
-    .split-value {
-      font-weight: 600;
+      margin-bottom: 8px;
       color: #171b24;
     }
 
-    .split-value.paid {
+    .empty-description {
+      font-size: 14px;
       color: #667085;
-    }
-
-    .chores-text {
-      font-size: 13px;
-      color: #667085;
+      max-width: 340px;
+      margin: 0 auto;
     }
   </style>
 </head>
@@ -327,19 +247,31 @@
     <div class="logo">COMMUNE</div>
     
     <div class="nav-label">MENU</div>
-    <a href="#" class="nav-link active">Command</a>
-    <a href="#" class="nav-link">Money</a>
-    <a href="#" class="nav-link">Space</a>
-    <a href="#" class="nav-link">Jobs</a>
+    <a href="#" class="nav-link">Dashboard</a>
+    <a href="#" class="nav-link">My Groups</a>
 
-    <div class="group-selector">
-      12 Grove
-    </div>
+    <div class="nav-label">MONEY</div>
+    <a href="#" class="nav-link">Expenses</a>
+    <a href="#" class="nav-link">Recurring</a>
+    <a href="#" class="nav-link">Templates</a>
+    <a href="#" class="nav-link">Funds</a>
+    <a href="#" class="nav-link">Billing</a>
+
+    <div class="nav-label">INSIGHTS</div>
+    <a href="#" class="nav-link active">Command Centre</a>
+    <a href="#" class="nav-link">Breakdown</a>
+    <a href="#" class="nav-link">Analytics</a>
+
+    <div class="nav-label">TEAM</div>
+    <a href="#" class="nav-link">Members</a>
+    <a href="#" class="nav-link">Operations</a>
+    <a href="#" class="nav-link">Activity</a>
 
     <div class="user-profile">
-      <div class="avatar">M</div>
+      <div class="avatar">AE</div>
       <div>
-        <div style="font-size: 14px; font-weight: 600;">Maya</div>
+        <div style="font-size: 14px; font-weight: 600;">Augustus Edem</div>
+        <div class="plan-badge">Pro</div>
       </div>
     </div>
   </div>
@@ -357,97 +289,16 @@
         <p class="page-subtitle">Your priorities across all groups</p>
       </div>
 
-      <!-- Priority action: Bin night tonight -->
-      <div class="priority-panel">
-        <div class="priority-heading">Priority Action</div>
-        <div class="card" style="margin-bottom: 0;">
-          <div class="card-icon sage"></div>
-          <div class="card-content">
-            <div class="card-title">Bin night</div>
-            <div class="card-caption">Tonight · Your turn</div>
+      <!-- Empty state -->
+      <div class="empty-state-wrapper">
+        <div class="empty-state">
+          <div class="empty-icon">
+            <svg viewBox="0 0 24 24">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
           </div>
-        </div>
-      </div>
-
-      <!-- Outstanding -->
-      <div class="soft-panel">
-        <div class="section-heading">Outstanding</div>
-        <div class="card">
-          <div class="card-icon rent"></div>
-          <div class="card-content">
-            <div class="card-title">Rent — £1,840</div>
-            <div class="card-caption">Due Friday</div>
-            <div class="split-detail">
-              <div class="split-row">
-                <span class="split-name">Maya</span>
-                <span class="split-value">£460</span>
-              </div>
-              <div class="split-row">
-                <span class="split-name">Jordan</span>
-                <span class="split-value paid">Paid</span>
-              </div>
-              <div class="split-row">
-                <span class="split-name">Sam</span>
-                <span class="split-value paid">Paid</span>
-              </div>
-              <div class="split-row">
-                <span class="split-name">Priya</span>
-                <span class="split-value paid">Paid</span>
-              </div>
-            </div>
-          </div>
-          <div class="card-amount owe">-£460</div>
-        </div>
-      </div>
-
-      <!-- Coming your way -->
-      <div class="soft-panel">
-        <div class="section-heading">Coming your way</div>
-        <div class="card">
-          <div class="card-icon wifi"></div>
-          <div class="card-content">
-            <div class="card-title">Wifi — £32</div>
-            <div class="card-caption">This month · Maya paid</div>
-            <div class="split-detail">
-              <div class="split-row">
-                <span class="split-name">Jordan</span>
-                <span class="split-value">Owes £8</span>
-              </div>
-              <div class="split-row">
-                <span class="split-name">Sam</span>
-                <span class="split-value">Owes £8</span>
-              </div>
-              <div class="split-row">
-                <span class="split-name">Priya</span>
-                <span class="split-value">Owes £8</span>
-              </div>
-            </div>
-          </div>
-          <div class="card-amount owed">+£24</div>
-        </div>
-      </div>
-
-      <!-- Chores -->
-      <div class="soft-panel">
-        <div class="section-heading">Chores</div>
-        <div class="card" style="margin-bottom: 0;">
-          <div class="card-icon sage"></div>
-          <div class="card-content">
-            <div class="card-title">Chores</div>
-            <div class="chores-text">Kitchen Jordan · Bathroom Sam</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- House notices -->
-      <div class="soft-panel">
-        <div class="section-heading">House notices</div>
-        <div class="card" style="margin-bottom: 0;">
-          <div class="card-icon notice"></div>
-          <div class="card-content">
-            <div class="card-title">Boiler service Thursday 10am</div>
-            <div class="card-caption">Someone needs to be in</div>
-          </div>
+          <div class="empty-title">All squared away!</div>
+          <div class="empty-description">No outstanding balances across any of your groups.</div>
         </div>
       </div>
     </div>
