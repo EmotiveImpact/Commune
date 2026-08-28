@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Operations — Commune</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div class="sidebar">
+    <div class="logo">COMMUNE</div>
+    
+    <div class="nav-label">MENU</div>
+    <a href="index.html" class="nav-link">Dashboard</a>
+    <a href="groups.html" class="nav-link">My Groups</a>
+
+    <div class="nav-label">MONEY</div>
+    <a href="expenses.html" class="nav-link">Expenses</a>
+    <a href="recurring.html" class="nav-link">Recurring</a>
+    <a href="templates.html" class="nav-link">Templates</a>
+    <a href="funds.html" class="nav-link">Funds</a>
+    <a href="billing.html" class="nav-link">Billing</a>
+
+    <div class="nav-label">INSIGHTS</div>
+    <a href="overview.html" class="nav-link">Command Centre</a>
+    <a href="breakdown.html" class="nav-link">Breakdown</a>
+    <a href="analytics.html" class="nav-link">Analytics</a>
+
+    <div class="nav-label">TEAM</div>
+    <a href="members.html" class="nav-link">Members</a>
+    <a href="operations.html" class="nav-link active">Operations</a>
+    <a href="activity.html" class="nav-link">Activity</a>
+
+    <div class="user-profile">
+      <div class="avatar">AE</div>
+      <div>
+        <div style="font-size: 14px; font-weight: 600;">Augustus Edem</div>
+        <div class="plan-badge">Pro</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="header">
+      <input type="text" class="search" placeholder="Search expenses, members...">
+    </div>
+
+    <div class="content">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Operations</h1>
+          <p class="page-subtitle">8 active operations</p>
+        </div>
+        <div>
+          <button class="btn btn-light">Load starter board</button>
+          <button class="btn btn-primary">+ Add operation</button>
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div class="stat-grid">
+        <div class="stat-card">
+          <div class="stat-label">Overdue</div>
+          <div class="stat-value">2</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Recurring · Checklists</div>
+          <div class="stat-value">6 · 2</div>
+        </div>
+      </div>
+
+      <!-- Overdue -->
+      <div class="section-heading overdue">Overdue (2)</div>
+      <div class="chores-grid">
+        <div class="chore-card overdue">
+          <div class="chore-header">
+            <div style="flex: 1;">
+              <div class="chore-title">Take bins out</div>
+              <div class="chore-description">Weekly bin collection day</div>
+              <div class="chore-badges">
+                <span class="badge badge-red">Overdue</span>
+                <span class="badge badge-blue">Maintenance</span>
+                <span class="badge badge-red" style="background: #dc2626; color: white;">⚠ Escalated</span>
+              </div>
+              <div class="chore-badges">
+                <span class="badge badge-teal">Weekly · Mon</span>
+                <span class="badge badge-teal">Recurring</span>
+              </div>
+              <div class="chore-meta">Last done by Sarah 18 Feb</div>
+            </div>
+            <div class="chore-actions">
+              <button class="btn btn-primary btn-sm">✓ Done</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="chore-card overdue">
+          <div class="chore-header">
+            <div style="flex: 1;">
+              <div class="chore-title">Restock supplies</div>
+              <div class="chore-description">Check kitchen and bathroom supplies</div>
+              <div class="chore-badges">
+                <span class="badge badge-red">Overdue</span>
+                <span class="badge badge-blue">Supplies</span>
+              </div>
+              <div class="chore-badges">
+                <span class="badge badge-purple">Monthly · 1st</span>
+                <span class="badge badge-purple">Checklist · 5 items</span>
+              </div>
+              <div class="chore-meta">Paper towels • Dish soap • Trash bags • Toilet paper • Cleaning spray</div>
+            </div>
+            <div class="chore-actions">
+              <button class="btn btn-primary btn-sm">✓ Done</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Upcoming -->
+      <div class="section-heading">Upcoming (6)</div>
+      <div class="chores-grid">
+        <div class="chore-card">
+          <div class="chore-header">
+            <div style="flex: 1;">
+              <div class="chore-title">Clean kitchen</div>
+              <div class="chore-description">Deep clean kitchen surfaces, appliances, floor</div>
+              <div class="chore-badges">
+                <span class="badge badge-gray">Due 4 Mar</span>
+                <span class="badge badge-blue">Cleaning</span>
+              </div>
+              <div class="chore-badges">
+                <span class="badge badge-teal">Weekly · Mon</span>
+                <span class="badge badge-teal">Recurring</span>
+              </div>
+              <div class="chore-meta">Last done by Tom 25 Feb</div>
+            </div>
+            <div class="chore-actions">
+              <button class="btn btn-primary btn-sm">✓ Done</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="chore-card">
+          <div class="chore-header">
+            <div style="flex: 1;">
+              <div class="chore-title">Clean bathrooms</div>
+              <div class="chore-badges">
+                <span class="badge badge-gray">Due 5 Mar</span>
+                <span class="badge badge-blue">Cleaning</span>
+              </div>
+              <div class="chore-badges">
+                <span class="badge badge-teal">Weekly · Tue</span>
+                <span class="badge badge-teal">Recurring</span>
+              </div>
+            </div>
+            <div class="chore-actions">
+              <button class="btn btn-primary btn-sm">✓ Done</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="chore-card">
+          <div class="chore-header">
+            <div style="flex: 1;">
+              <div class="chore-title">Vacuum common areas</div>
+              <div class="chore-badges">
+                <span class="badge badge-gray">Due 6 Mar</span>
+                <span class="badge badge-blue">Cleaning</span>
+              </div>
+              <div class="chore-badges">
+                <span class="badge badge-teal">Every 2 weeks · Wed</span>
+                <span class="badge badge-teal">Recurring</span>
+              </div>
+            </div>
+            <div class="chore-actions">
+              <button class="btn btn-primary btn-sm">✓ Done</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="chore-card">
+          <div class="chore-header">
+            <div style="flex: 1;">
+              <div class="chore-title">Submit utility readings</div>
+              <div class="chore-description">Take meter readings and submit to provider</div>
+              <div class="chore-badges">
+                <span class="badge badge-gray">Due 10 Mar</span>
+                <span class="badge badge-blue">Admin</span>
+              </div>
+              <div class="chore-badges">
+                <span class="badge badge-purple">Monthly · 10th</span>
+                <span class="badge badge-teal">Recurring</span>
+              </div>
+            </div>
+            <div class="chore-actions">
+              <button class="btn btn-primary btn-sm">✓ Done</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="chore-card">
+          <div class="chore-header">
+            <div style="flex: 1;">
+              <div class="chore-title">Check smoke alarms</div>
+              <div class="chore-description">Test all smoke and CO2 alarms</div>
+              <div class="chore-badges">
+                <span class="badge badge-gray">Due 15 Mar</span>
+                <span class="badge badge-blue">Maintenance</span>
+              </div>
+              <div class="chore-badges">
+                <span class="badge badge-purple">Monthly · 15th</span>
+                <span class="badge badge-purple">Checklist · 3 items</span>
+              </div>
+              <div class="chore-meta">Test kitchen alarm • Test hallway alarm • Test bedroom alarms</div>
+            </div>
+            <div class="chore-actions">
+              <button class="btn btn-primary btn-sm">✓ Done</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="chore-card">
+          <div class="chore-header">
+            <div style="flex: 1;">
+              <div class="chore-title">Organize group meal</div>
+              <div class="chore-description">Plan and organize monthly group dinner</div>
+              <div class="chore-badges">
+                <span class="badge badge-gray">Due 20 Mar</span>
+                <span class="badge badge-blue">Other</span>
+              </div>
+              <div class="chore-badges">
+                <span class="badge badge-purple">Monthly · 20th</span>
+                <span class="badge badge-gray">One-off</span>
+              </div>
+            </div>
+            <div class="chore-actions">
+              <button class="btn btn-primary btn-sm">✓ Done</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
