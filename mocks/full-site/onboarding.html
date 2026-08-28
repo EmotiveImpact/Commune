@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Get Started — Commune</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div class="container">
+    <div class="logo">COMMUNE</div>
+    
+    <div class="paper">
+      <h1 class="title">Create your first group</h1>
+      <p class="subtitle">Set up a group to start tracking shared expenses</p>
+
+      <!-- Stepper -->
+      <div class="stepper">
+        <div class="step active">
+          <div class="step-circle">1</div>
+          <div class="step-label">Details</div>
+        </div>
+        <div class="step">
+          <div class="step-circle">2</div>
+          <div class="step-label">Essentials</div>
+        </div>
+        <div class="step">
+          <div class="step-circle">3</div>
+          <div class="step-label">Invite</div>
+        </div>
+      </div>
+
+      <form onsubmit="event.preventDefault(); alert('Group created');">
+        <div class="form-group">
+          <label class="form-label required" for="name">Group name</label>
+          <input 
+            type="text" 
+            id="name" 
+            class="form-input" 
+            placeholder="e.g. Flat 12B, Summer Project"
+            required
+          >
+        </div>
+
+        <div class="form-group">
+          <label class="form-label required" for="type">Type</label>
+          <select id="type" class="form-select" required>
+            <option value="home">Home</option>
+            <option value="couple">Couple</option>
+            <option value="workspace">Workspace</option>
+            <option value="project">Project</option>
+            <option value="trip">Trip</option>
+            <option value="other">Other</option>
+          </select>
+          <div class="form-description">Choose the category that best describes this group</div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="description">Description</label>
+          <textarea 
+            id="description" 
+            class="form-textarea" 
+            placeholder="Optional details about this group"
+          ></textarea>
+        </div>
+
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label required" for="currency">Currency</label>
+            <select id="currency" class="form-select" required>
+              <option value="GBP" selected>GBP — £</option>
+              <option value="USD">USD — $</option>
+              <option value="EUR">EUR — €</option>
+              <option value="NGN">NGN — ₦</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label required" for="cycle">Cycle date</label>
+            <select id="cycle" class="form-select" required>
+              <option value="1" selected>1st of month</option>
+              <option value="15">15th of month</option>
+              <option value="last">Last day of month</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="button-group">
+          <button type="button" class="btn btn-secondary" onclick="window.location='dashboard.html'">Cancel</button>
+          <button type="submit" class="btn btn-primary">Continue</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sarah Johnson — Commune</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div class="sidebar">
+    <div class="logo">COMMUNE</div>
+    
+    <div class="nav-label">MENU</div>
+    <a href="index.html" class="nav-link">Dashboard</a>
+    <a href="groups.html" class="nav-link">My Groups</a>
+
+    <div class="nav-label">MONEY</div>
+    <a href="expenses.html" class="nav-link">Expenses</a>
+    <a href="recurring.html" class="nav-link">Recurring</a>
+    <a href="templates.html" class="nav-link">Templates</a>
+    <a href="funds.html" class="nav-link">Funds</a>
+    <a href="billing.html" class="nav-link">Billing</a>
+
+    <div class="nav-label">INSIGHTS</div>
+    <a href="overview.html" class="nav-link">Command Centre</a>
+    <a href="breakdown.html" class="nav-link">Breakdown</a>
+    <a href="analytics.html" class="nav-link">Analytics</a>
+
+    <div class="nav-label">TEAM</div>
+    <a href="members.html" class="nav-link active">Members</a>
+    <a href="operations.html" class="nav-link">Operations</a>
+    <a href="activity.html" class="nav-link">Activity</a>
+
+    <div class="user-profile">
+      <div class="avatar">AE</div>
+      <div>
+        <div style="font-size: 14px; font-weight: 600;">Augustus Edem</div>
+        <div class="plan-badge">Pro</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="header">
+      <input type="text" class="search" placeholder="Search expenses, members...">
+    </div>
+
+    <div class="content">
+      <a href="members.html" class="back-link">
+        <span>←</span>
+        <span>Back to members</span>
+      </a>
+
+      <!-- Profile Header -->
+      <div class="section">
+        <div class="profile-header">
+          <div class="profile-avatar">SJ</div>
+          <div class="profile-info">
+            <div class="profile-name">
+              <span>Sarah Johnson</span>
+              <span class="badge badge-sage">Admin</span>
+              <span class="badge badge-orange">Owes £124.50</span>
+            </div>
+            <div class="profile-email">
+              <span>✉</span>
+              <span>sarah.johnson@example.com</span>
+            </div>
+            <div class="profile-meta">
+              <span>📅</span>
+              <span>Member since 15 January 2024</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- In this group -->
+      <div class="section">
+        <div class="section-title">In this group</div>
+        
+        <div class="stat-grid">
+          <div class="stat-card">
+            <div>
+              <div class="stat-label">Group</div>
+              <div class="stat-value">Flat 12B</div>
+            </div>
+            <div class="stat-icon">🏠</div>
+          </div>
+
+          <div class="stat-card">
+            <div>
+              <div class="stat-label">Role</div>
+              <div class="stat-value">Admin</div>
+            </div>
+            <div class="stat-icon">👤</div>
+          </div>
+
+          <div class="stat-card">
+            <div>
+              <div class="stat-label">Status</div>
+              <div class="stat-value">Active</div>
+            </div>
+            <div class="stat-icon">✓</div>
+          </div>
+
+          <div class="stat-card">
+            <div>
+              <div class="stat-label">Member type</div>
+              <div class="badge badge-gray" style="margin-top: 4px;">Home</div>
+            </div>
+            <div class="stat-icon">📍</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Payment methods -->
+      <div class="section">
+        <div class="section-title">
+          <span>💳</span>
+          <span>Payment methods</span>
+        </div>
+
+        <div class="payment-method">
+          <div class="payment-info">
+            <div class="payment-icon">💳</div>
+            <div>
+              <div class="payment-label">Monzo</div>
+              <div class="payment-provider">Monzo (default)</div>
+            </div>
+          </div>
+          <a href="index.html" class="btn btn-light">Pay →</a>
+        </div>
+
+        <div class="payment-method">
+          <div class="payment-info">
+            <div class="payment-icon">🏦</div>
+            <div>
+              <div class="payment-label">Bank transfer</div>
+              <div class="payment-provider">Bank account</div>
+            </div>
+          </div>
+          <span class="badge badge-gray">Info</span>
+        </div>
+      </div>
+
+      <!-- Recent activity -->
+      <div class="section">
+        <div class="section-title">
+          <span>📋</span>
+          <span>Recent activity</span>
+        </div>
+        
+        <div style="font-size: 14px; color: #667085; line-height: 1.8;">
+          <div style="padding: 12px 0; border-bottom: 1px solid rgba(23, 27, 36, 0.04);">
+            <div style="margin-bottom: 4px;"><strong>Paid £45.00</strong> for Electricity bill</div>
+            <div style="font-size: 12px; color: #667085;">2 days ago</div>
+          </div>
+          <div style="padding: 12px 0; border-bottom: 1px solid rgba(23, 27, 36, 0.04);">
+            <div style="margin-bottom: 4px;"><strong>Added expense</strong> — Internet monthly</div>
+            <div style="font-size: 12px; color: #667085;">5 days ago</div>
+          </div>
+          <div style="padding: 12px 0;">
+            <div style="margin-bottom: 4px;"><strong>Settled up</strong> with Tom Chen</div>
+            <div style="font-size: 12px; color: #667085;">1 week ago</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
