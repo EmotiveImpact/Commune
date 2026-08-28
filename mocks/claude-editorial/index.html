@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Tuesday at 12 Grove — Command Centre</title>
+  <title>Command — 12 Grove</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
@@ -25,28 +25,28 @@
       font-family: 'DM Sans', sans-serif;
       background: var(--cream);
       color: var(--navy);
-      line-height: 1.6;
+      line-height: 1.5;
     }
 
-    .masthead {
-      background: var(--navy);
-      color: var(--cream);
-      padding: 1.5rem 3rem;
-      border-bottom: 3px solid var(--sage);
+    header {
+      background: var(--cream);
+      border-bottom: 1px solid rgba(26, 30, 46, 0.1);
+      padding: 1.25rem 2rem;
     }
 
-    .masthead-inner {
-      max-width: 1200px;
+    .header-inner {
+      max-width: 900px;
       margin: 0 auto;
       display: flex;
       align-items: center;
       justify-content: space-between;
     }
 
-    .site-title {
+    .house-name {
       font-family: 'DM Serif Display', serif;
-      font-size: 1.75rem;
+      font-size: 1.5rem;
       font-weight: 400;
+      color: var(--navy);
     }
 
     nav {
@@ -55,156 +55,66 @@
     }
 
     nav a {
-      color: var(--cream);
+      color: var(--muted);
       text-decoration: none;
-      font-size: 0.95rem;
-      letter-spacing: 0.02em;
-      position: relative;
-      padding-bottom: 0.25rem;
+      font-size: 0.9375rem;
+      font-weight: 500;
     }
 
     nav a.active {
       color: var(--sage);
-      border-bottom: 2px solid var(--sage);
     }
 
-    .page-content {
-      max-width: 1200px;
+    main {
+      max-width: 900px;
       margin: 0 auto;
-      padding: 3rem;
+      padding: 2.5rem 2rem;
     }
 
-    .page-headline {
-      font-family: 'DM Serif Display', serif;
-      font-size: 3.5rem;
-      font-weight: 400;
-      line-height: 1.1;
-      margin-bottom: 3rem;
+    .lead {
+      font-size: 1.25rem;
+      line-height: 1.6;
       color: var(--navy);
+      margin-bottom: 2.5rem;
     }
 
-    .section {
-      margin-bottom: 3.5rem;
-    }
-
-    .section-title {
-      font-family: 'DM Serif Display', serif;
-      font-size: 2rem;
-      font-weight: 400;
-      margin-bottom: 1.5rem;
-      color: var(--sage);
-      border-bottom: 1px solid var(--sage);
-      padding-bottom: 0.5rem;
-    }
-
-    .entry {
-      margin-bottom: 2rem;
+    .item {
       padding: 1.5rem 0;
-      border-bottom: 1px solid rgba(136, 136, 128, 0.2);
+      border-bottom: 1px solid rgba(26, 30, 46, 0.08);
     }
 
-    .entry:last-child {
-      border-bottom: none;
+    .item:first-child {
+      padding-top: 0;
     }
 
-    .entry-lead {
-      font-size: 1.125rem;
-      line-height: 1.7;
-      margin-bottom: 0.75rem;
-      color: var(--navy);
-    }
-
-    .entry-meta {
-      font-size: 0.875rem;
-      color: var(--muted);
-      font-weight: 500;
-    }
-
-    .ledger {
-      background: white;
-      padding: 2rem;
-      border: 1px solid rgba(136, 136, 128, 0.2);
-      margin-bottom: 2rem;
-    }
-
-    .ledger-row {
-      display: flex;
-      justify-content: space-between;
-      padding: 1rem 0;
-      border-bottom: 1px solid rgba(136, 136, 128, 0.15);
-      font-size: 1rem;
-    }
-
-    .ledger-row:last-child {
-      border-bottom: none;
-      font-weight: 600;
-      padding-top: 1.5rem;
-      margin-top: 1rem;
-      border-top: 2px solid var(--navy);
-    }
-
-    .ledger-label {
-      color: var(--navy);
-    }
-
-    .ledger-amount {
-      color: var(--sage);
-      font-weight: 600;
-    }
-
-    .ledger-status {
-      font-size: 0.875rem;
-      color: var(--muted);
-      margin-left: 1rem;
-    }
-
-    .notice-box {
-      background: var(--sage);
-      color: white;
-      padding: 1.5rem;
-      margin-bottom: 2rem;
-      border-left: 4px solid var(--navy);
-    }
-
-    .notice-box p {
+    .item-text {
       font-size: 1rem;
       line-height: 1.6;
+      color: var(--navy);
+      margin-bottom: 0.5rem;
     }
 
-    .running-order {
-      list-style: none;
+    .item-detail {
+      font-size: 0.875rem;
+      color: var(--muted);
+      margin-top: 0.75rem;
     }
 
-    .running-order li {
-      padding: 1rem 0;
-      border-bottom: 1px solid rgba(136, 136, 128, 0.2);
-      font-size: 1rem;
-    }
-
-    .running-order li:last-child {
-      border-bottom: none;
-    }
-
-    .task-owner {
+    .amount {
       color: var(--sage);
       font-weight: 600;
     }
 
-    .task-urgent {
-      background: var(--sage);
-      color: white;
-      padding: 0.25rem 0.75rem;
-      border-radius: 3px;
-      font-size: 0.875rem;
+    .name {
       font-weight: 600;
-      margin-left: 0.5rem;
+      color: var(--navy);
     }
   </style>
 </head>
 <body>
-  <header class="masthead">
-    <div class="masthead-inner">
-      <h1 class="site-title">12 Grove</h1>
+  <header>
+    <div class="header-inner">
+      <h1 class="house-name">12 Grove</h1>
       <nav>
         <a href="#" class="active">Command</a>
         <a href="#">Money</a>
@@ -214,83 +124,30 @@
     </div>
   </header>
 
-  <main class="page-content">
-    <h1 class="page-headline">Tuesday at 12 Grove</h1>
+  <main>
+    <p class="lead">Bins go out tonight. Rent is due Friday.</p>
 
-    <section class="section">
-      <h2 class="section-title">Money</h2>
-      
-      <div class="entry">
-        <p class="entry-lead">Rent is due Friday. The house owes £1,840 this month, split four ways at £460 each. Maya has not yet paid her share.</p>
-        <p class="entry-meta">Due in 3 days</p>
-      </div>
+    <div class="item">
+      <p class="item-text">It's <span class="name">Maya's</span> turn to take the bins down tonight.</p>
+    </div>
 
-      <div class="ledger">
-        <div class="ledger-row">
-          <span class="ledger-label">Maya</span>
-          <span>
-            <span class="ledger-amount">£460</span>
-            <span class="ledger-status">not paid</span>
-          </span>
-        </div>
-        <div class="ledger-row">
-          <span class="ledger-label">Jordan</span>
-          <span>
-            <span class="ledger-amount">£460</span>
-            <span class="ledger-status">paid</span>
-          </span>
-        </div>
-        <div class="ledger-row">
-          <span class="ledger-label">Sam</span>
-          <span>
-            <span class="ledger-amount">£460</span>
-            <span class="ledger-status">paid</span>
-          </span>
-        </div>
-        <div class="ledger-row">
-          <span class="ledger-label">Priya</span>
-          <span>
-            <span class="ledger-amount">£460</span>
-            <span class="ledger-status">paid</span>
-          </span>
-        </div>
-        <div class="ledger-row">
-          <span class="ledger-label">Total</span>
-          <span class="ledger-amount">£1,840</span>
-        </div>
-      </div>
+    <div class="item">
+      <p class="item-text">Rent is <span class="amount">£1,840</span> due Friday. Split four ways, everyone pays <span class="amount">£460</span>.</p>
+      <p class="item-detail"><span class="name">Maya</span> hasn't paid yet. <span class="name">Jordan</span>, <span class="name">Sam</span>, and <span class="name">Priya</span> have paid.</p>
+    </div>
 
-      <div class="entry">
-        <p class="entry-lead">The wifi bill came in at £32 this month. Maya paid the lot. Jordan, Sam, and Priya each owe her £8.</p>
-        <p class="entry-meta">Split complete — waiting on three</p>
-      </div>
-    </section>
+    <div class="item">
+      <p class="item-text"><span class="name">Maya</span> covered wifi this month at <span class="amount">£32</span>.</p>
+      <p class="item-detail"><span class="name">Jordan</span>, <span class="name">Sam</span>, and <span class="name">Priya</span> each owe her <span class="amount">£8</span>.</p>
+    </div>
 
-    <section class="section">
-      <h2 class="section-title">Space</h2>
-      
-      <div class="notice-box">
-        <p><strong>Boiler service Thursday 10am.</strong> Someone needs to be in.</p>
-      </div>
+    <div class="item">
+      <p class="item-text">Boiler service Thursday at 10am. Someone needs to be in.</p>
+    </div>
 
-      <div class="entry">
-        <p class="entry-lead">The bins go out tonight. Maya's turn to take them down.</p>
-        <p class="entry-meta">Tuesday collection — tonight</p>
-      </div>
-    </section>
-
-    <section class="section">
-      <h2 class="section-title">Jobs</h2>
-      
-      <ul class="running-order">
-        <li><span class="task-owner">Jordan</span> — Kitchen</li>
-        <li><span class="task-owner">Sam</span> — Bathroom</li>
-        <li>
-          <span class="task-owner">Maya</span> — Bins
-          <span class="task-urgent">Tonight</span>
-        </li>
-      </ul>
-    </section>
+    <div class="item">
+      <p class="item-text"><span class="name">Jordan</span> has the kitchen. <span class="name">Sam</span> has the bathroom.</p>
+    </div>
   </main>
 </body>
 </html>
