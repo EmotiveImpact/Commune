@@ -89,3 +89,20 @@ export function calculateReimbursements(
       amount: s.amount,
     }));
 }
+
+/**
+ * Convert share amounts to percentages.
+ * Used for displaying split breakdowns in the UI.
+ */
+export function toSharePercentages(
+  entries: { userId: string; amount: number }[],
+  total: number,
+): { userId: string; percentage: number }[] {
+  if (total === 0) {
+    return entries.map((e) => ({ userId: e.userId, percentage: 0 }));
+  }
+  return entries.map((e) => ({
+    userId: e.userId,
+    percentage: Math.round((e.amount / total) * 10000) / 100,
+  }));
+}

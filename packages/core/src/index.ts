@@ -3,6 +3,7 @@ export {
   calculatePercentageSplit,
   calculateCustomSplit,
   calculateReimbursements,
+  toSharePercentages,
 } from './splits';
 
 export {
