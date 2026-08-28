@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Electricity bill — Commune</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div class="sidebar">
+    <div class="logo">COMMUNE</div>
+    <div class="nav-label">MENU</div><a href="index.html" class="nav-link">Dashboard</a><a href="groups.html" class="nav-link">My Groups</a>
+    <div class="nav-label">MONEY</div><a href="./expenses.html" class="nav-link active">Expenses</a><a href="./recurring.html" class="nav-link">Recurring</a><a href="./templates.html" class="nav-link">Templates</a><a href="./funds.html" class="nav-link">Funds</a><a href="./billing.html" class="nav-link">Billing</a>
+    <div class="nav-label">INSIGHTS</div><a href="overview.html" class="nav-link">Command Centre</a><a href="#" class="nav-link">Breakdown</a><a href="#" class="nav-link">Analytics</a>
+    <div class="nav-label">TEAM</div><a href="#" class="nav-link">Members</a><a href="#" class="nav-link">Operations</a><a href="#" class="nav-link">Activity</a>
+    <div class="user-profile"><div class="avatar">AE</div><div><div style="font-size: 14px; font-weight: 600;">Augustus Edem</div><div class="plan-badge">Pro</div></div></div>
+  </div>
+  <div class="main">
+    <div class="header"><input type="text" class="search" placeholder="Search expenses, members..."></div>
+    <div class="content">
+      <div class="page-header">
+        <h1 class="page-title">Electricity bill</h1>
+        <p class="page-subtitle">Review the split, payment status, and who this expense affects.</p>
+        <div style="margin-top: 12px;"><span class="category-badge">Utilities</span> <span class="status-badge status-pending">Open</span></div>
+      </div>
+      <div class="page-actions">
+        <a href="./expenses-edit.html" class="btn-default">Edit</a>
+        <button class="btn-danger">Archive</button>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card" data-tone="sage"><div class="stat-label">Total amount</div><div class="stat-value">£120.00</div><div class="stat-meta">Due 15 Dec 2024</div></div>
+        <div class="stat-card"><div class="stat-label">Participants</div><div class="stat-value">4</div><div class="stat-meta">Included in the split</div></div>
+        <div class="stat-card"><div class="stat-label">Marked paid</div><div class="stat-value">3</div><div class="stat-meta">Payments submitted</div></div>
+        <div class="stat-card"><div class="stat-label">Confirmed</div><div class="stat-value">2</div><div class="stat-meta">Admin-approved payments</div></div>
+      </div>
+      <div class="detail-grid">
+        <div class="detail-main">
+          <div class="panel">
+            <div class="panel-header">
+              <div><h2 class="section-heading">Split breakdown</h2><p class="text-sm text-muted">Who owes what, who paid already, and who still needs to settle.</p></div>
+              <span class="category-badge">Paid upfront by Alice Johnson</span>
+            </div>
+            <div class="table-container">
+              <table class="expense-table">
+                <thead><tr><th>Person</th><th style="text-align: right;">Share</th><th style="text-align: right;">Owes to</th><th>Status</th><th>Details</th><th style="text-align: center;">Actions</th></tr></thead>
+                <tbody>
+                  <tr><td><div style="display: flex; align-items: center; gap: 8px;"><div class="avatar" style="width: 32px; height: 32px; font-size: 12px;">AJ</div><span style="font-weight: 600;">Alice Johnson</span></div></td><td class="amount">£30.00</td><td style="text-align: right;">—</td><td><span class="status-badge status-settled">paid</span></td><td><span class="text-sm text-muted">Paid 12 Dec 2024</span></td><td style="text-align: center;">—</td></tr>
+                  <tr><td><div style="display: flex; align-items: center; gap: 8px;"><div class="avatar" style="width: 32px; height: 32px; font-size: 12px;">BS</div><span style="font-weight: 600;">Bob Smith</span></div></td><td class="amount">£30.00</td><td style="text-align: right;">Alice Johnson</td><td><span class="status-badge status-settled">paid</span></td><td><span class="text-sm text-muted">Paid 13 Dec 2024</span></td><td style="text-align: center;"><button class="action-btn">✗</button> <button class="action-btn-sage">✓</button></td></tr>
+                  <tr><td><div style="display: flex; align-items: center; gap: 8px;"><div class="avatar" style="width: 32px; height: 32px; font-size: 12px;">CD</div><span style="font-weight: 600;">Charlie Davis</span></div></td><td class="amount">£30.00</td><td style="text-align: right;">Alice Johnson</td><td><span class="status-badge status-settled">paid</span></td><td><span class="text-sm text-muted">Paid 13 Dec 2024</span></td><td style="text-align: center;"><button class="action-btn">✗</button></td></tr>
+                  <tr><td><div style="display: flex; align-items: center; gap: 8px;"><div class="avatar" style="width: 32px; height: 32px; font-size: 12px;">DL</div><span style="font-weight: 600;">Dana Lee</span></div></td><td class="amount">£30.00</td><td style="text-align: right;">Alice Johnson</td><td><span class="status-badge status-pending">unpaid</span></td><td>—</td><td style="text-align: center;"><button class="action-btn-sage">✓</button></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+        <div class="detail-sidebar">
+          <div class="panel"><h3 class="section-heading">Receipt</h3><p class="text-sm text-muted">Attach a photo or PDF of the receipt for this expense.</p><div class="dropzone"><div class="dropzone-icon">📄</div><p class="dropzone-text">Click or drag to upload</p></div></div>
+          <div class="panel"><h3 class="section-heading">Pay Alice Johnson</h3><p class="text-sm text-muted">Alice Johnson hasn't set up a payment link yet.</p></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

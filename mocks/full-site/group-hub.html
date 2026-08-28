@@ -16,11 +16,11 @@
     <a href="groups.html" class="nav-link active">My Groups</a>
 
     <div class="nav-label">MONEY</div>
-    <a href="#" class="nav-link">Expenses</a>
-    <a href="#" class="nav-link">Recurring</a>
-    <a href="#" class="nav-link">Templates</a>
-    <a href="#" class="nav-link">Funds</a>
-    <a href="#" class="nav-link">Billing</a>
+    <a href="expenses.html" class="nav-link">Expenses</a>
+    <a href="recurring.html" class="nav-link">Recurring</a>
+    <a href="templates.html" class="nav-link">Templates</a>
+    <a href="funds.html" class="nav-link">Funds</a>
+    <a href="billing.html" class="nav-link">Billing</a>
 
     <div class="nav-label">INSIGHTS</div>
     <a href="overview.html" class="nav-link">Command Centre</a>
@@ -54,18 +54,218 @@
         <p class="page-subtitle">Shared living expenses · 4 members</p>
       </div>
 
-      <!-- Simplified group hub content (chrome matches PR #2) -->
-      <div class="empty-state-wrapper">
-        <div class="empty-state">
-          <div class="empty-icon">
-            <svg viewBox="0 0 24 24">
-              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-              <polyline points="9 22 9 12 15 12 15 22"></polyline>
-            </svg>
+      <!-- Cover Photo Hero -->
+      <div class="panel" style="overflow: hidden; padding: 0; margin-bottom: 24px;">
+        <div style="height: 200px; background: linear-gradient(135deg, #d7e6dd 0%, #e8f0eb 50%, #f0f7f2 100%); position: relative; display: flex; align-items: flex-end; padding: 20px;">
+          <!-- Decorative icon -->
+          <svg viewBox="0 0 24 24" fill="none" stroke="rgba(45,106,79,0.18)" stroke-width="2" style="position: absolute; right: 24px; top: 24px; width: 120px; height: 120px;">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+            <polyline points="9 22 9 12 15 12 15 22"></polyline>
+          </svg>
+          <!-- Overlay -->
+          <div style="position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.2) 0%, transparent 50%); pointer-events: none;"></div>
+          <!-- Group info -->
+          <div style="position: relative; z-index: 1; display: flex; align-items: center; gap: 16px;">
+            <div style="width: 72px; height: 72px; border-radius: 50%; background: white; border: 3px solid rgba(255,255,255,0.9); box-shadow: 0 2px 12px rgba(0,0,0,0.15); display: flex; align-items: center; justify-content: center;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#667085" stroke-width="2" style="width: 32px; height: 32px;">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                <polyline points="9 22 9 12 15 12 15 22"></polyline>
+              </svg>
+            </div>
+            <div>
+              <h2 style="font-size: 24px; font-weight: 800; color: white; text-shadow: 0 1px 4px rgba(0,0,0,0.3); margin-bottom: 4px;">Household</h2>
+              <p style="font-size: 14px; color: white; opacity: 0.85; text-shadow: 0 1px 3px rgba(0,0,0,0.25); margin-bottom: 8px;">Shared living expenses</p>
+              <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                <span style="display: inline-block; padding: 4px 8px; background: rgba(255,255,255,0.2); color: white; font-size: 12px; font-weight: 600; border-radius: 6px;">Household</span>
+                <span style="display: inline-block; padding: 4px 8px; background: rgba(45, 106, 79, 0.3); color: white; font-size: 12px; font-weight: 600; border-radius: 6px;">All settled</span>
+                <span style="font-size: 13px; color: white; opacity: 0.8;">4 members</span>
+                <span style="font-size: 12px; color: white; opacity: 0.6;">Created 12 Jan 2024</span>
+              </div>
+            </div>
           </div>
-          <div class="empty-title">Group hub</div>
-          <div class="empty-description">Detailed group view with stats, members, and activity feed.</div>
         </div>
+      </div>
+
+      <!-- Key Stats Row -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label">Total monthly spend</div>
+          <div class="stat-value">£1,247.80</div>
+          <div class="stat-meta">Split 4 ways · £311.95/person</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Active members</div>
+          <div class="stat-value">4</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Active expenses</div>
+          <div class="stat-meta">This month</div>
+          <div class="stat-value">12</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Setup progress</div>
+          <div class="stat-value">3/3</div>
+          <div class="stat-meta">Operational setup looks complete</div>
+        </div>
+      </div>
+
+      <!-- Your Position Card -->
+      <div class="panel">
+        <div class="panel-header">
+          <h2 class="section-heading">Your Position</h2>
+        </div>
+        <div class="budget-summary">
+          <div class="budget-stat">
+            <div class="budget-label">Your monthly share</div>
+            <div class="budget-value">£311.95</div>
+          </div>
+          <div class="budget-stat">
+            <div class="budget-label">Status</div>
+            <span class="status-badge status-settled" style="font-size: 16px; padding: 8px 16px;">Settled</span>
+          </div>
+          <div class="budget-stat">
+            <div class="budget-label">Payments needed</div>
+            <div class="budget-value">0</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent Activity -->
+      <div class="panel">
+        <div class="panel-header">
+          <h2 class="section-heading">Recent Activity</h2>
+          <a href="#" class="text-link">View all →</a>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <div style="width: 28px; height: 28px; border-radius: 50%; background: #2d6a4f; color: white; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; flex-shrink: 0;">AE</div>
+            <div style="flex: 1; font-size: 14px; color: #171b24;"><strong>Augustus Edem</strong> paid Council Tax</div>
+            <div style="font-size: 12px; color: #667085; flex-shrink: 0;">2h ago</div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <div style="width: 28px; height: 28px; border-radius: 50%; background: #6366f1; color: white; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; flex-shrink: 0;">SJ</div>
+            <div style="flex: 1; font-size: 14px; color: #171b24;"><strong>Sarah Jones</strong> added Weekly Groceries</div>
+            <div style="font-size: 12px; color: #667085; flex-shrink: 0;">1d ago</div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <div style="width: 28px; height: 28px; border-radius: 50%; background: #8b5cf6; color: white; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; flex-shrink: 0;">MK</div>
+            <div style="flex: 1; font-size: 14px; color: #171b24;"><strong>Michael Kim</strong> settled Internet bill</div>
+            <div style="font-size: 12px; color: #667085; flex-shrink: 0;">2d ago</div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <div style="width: 28px; height: 28px; border-radius: 50%; background: #ec4899; color: white; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; flex-shrink: 0;">LM</div>
+            <div style="flex: 1; font-size: 14px; color: #171b24;"><strong>Lisa Martinez</strong> paid Electricity</div>
+            <div style="font-size: 12px; color: #667085; flex-shrink: 0;">3d ago</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Members Section -->
+      <div class="panel">
+        <div class="panel-header">
+          <h2 class="section-heading">Members</h2>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px;">
+          <!-- Member 1 -->
+          <div style="text-align: center; padding: 16px; background: rgba(255,255,255,0.5); border-radius: 10px; border: 1px solid rgba(23, 27, 36, 0.06);">
+            <div style="width: 52px; height: 52px; border-radius: 50%; background: #2d6a4f; color: white; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 18px; margin: 0 auto 12px;">AE</div>
+            <div style="font-size: 14px; font-weight: 600; color: #171b24; margin-bottom: 4px;">Augustus Edem <span style="font-size: 10px; padding: 2px 6px; background: rgba(45, 106, 79, 0.1); color: #2d6a4f; border-radius: 4px;">You</span></div>
+            <div style="font-size: 11px; color: #667085; margin-bottom: 4px;">Owner</div>
+            <div style="font-size: 12px; font-weight: 500; color: #667085; margin-bottom: 4px;">£311.95/mo</div>
+            <span class="status-badge status-settled">Settled</span>
+          </div>
+          <!-- Member 2 -->
+          <div style="text-align: center; padding: 16px; background: rgba(255,255,255,0.5); border-radius: 10px; border: 1px solid rgba(23, 27, 36, 0.06);">
+            <div style="width: 52px; height: 52px; border-radius: 50%; background: #6366f1; color: white; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 18px; margin: 0 auto 12px;">SJ</div>
+            <div style="font-size: 14px; font-weight: 600; color: #171b24; margin-bottom: 4px;">Sarah Jones</div>
+            <div style="font-size: 11px; color: #667085; margin-bottom: 4px;">Admin</div>
+            <div style="font-size: 12px; font-weight: 500; color: #667085; margin-bottom: 4px;">£311.95/mo</div>
+            <span class="status-badge status-settled">Settled</span>
+          </div>
+          <!-- Member 3 -->
+          <div style="text-align: center; padding: 16px; background: rgba(255,255,255,0.5); border-radius: 10px; border: 1px solid rgba(23, 27, 36, 0.06);">
+            <div style="width: 52px; height: 52px; border-radius: 50%; background: #8b5cf6; color: white; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 18px; margin: 0 auto 12px;">MK</div>
+            <div style="font-size: 14px; font-weight: 600; color: #171b24; margin-bottom: 4px;">Michael Kim</div>
+            <div style="font-size: 11px; color: #667085; margin-bottom: 4px;">Member</div>
+            <div style="font-size: 12px; font-weight: 500; color: #667085; margin-bottom: 4px;">£311.95/mo</div>
+            <span class="status-badge status-settled">Settled</span>
+          </div>
+          <!-- Member 4 -->
+          <div style="text-align: center; padding: 16px; background: rgba(255,255,255,0.5); border-radius: 10px; border: 1px solid rgba(23, 27, 36, 0.06);">
+            <div style="width: 52px; height: 52px; border-radius: 50%; background: #ec4899; color: white; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 18px; margin: 0 auto 12px;">LM</div>
+            <div style="font-size: 14px; font-weight: 600; color: #171b24; margin-bottom: 4px;">Lisa Martinez</div>
+            <div style="font-size: 11px; color: #667085; margin-bottom: 4px;">Member</div>
+            <div style="font-size: 12px; font-weight: 500; color: #667085; margin-bottom: 4px;">£311.95/mo</div>
+            <span class="status-badge status-settled">Settled</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Monthly Breakdown -->
+      <div class="panel">
+        <div class="panel-header">
+          <h2 class="section-heading">This Month's Breakdown</h2>
+        </div>
+        <div class="category-list">
+          <div class="category-item">
+            <div class="category-header">
+              <span class="category-name">Bills</span>
+              <span class="category-amount">£350.95 <span class="category-meta">(28%)</span></span>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill" style="width: 28%"></div>
+            </div>
+          </div>
+          <div class="category-item">
+            <div class="category-header">
+              <span class="category-name">Groceries</span>
+              <span class="category-amount">£284.32 <span class="category-meta">(23%)</span></span>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill" style="width: 23%"></div>
+            </div>
+          </div>
+          <div class="category-item">
+            <div class="category-header">
+              <span class="category-name">Transport</span>
+              <span class="category-amount">£156.80 <span class="category-meta">(13%)</span></span>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill" style="width: 13%"></div>
+            </div>
+          </div>
+          <div class="category-item">
+            <div class="category-header">
+              <span class="category-name">Entertainment</span>
+              <span class="category-amount">£98.40 <span class="category-meta">(8%)</span></span>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill" style="width: 8%"></div>
+            </div>
+          </div>
+          <div class="category-item">
+            <div class="category-header">
+              <span class="category-name">Other</span>
+              <span class="category-amount">£357.33 <span class="category-meta">(28%)</span></span>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill" style="width: 28%"></div>
+            </div>
+          </div>
+          <div style="padding-top: 16px; margin-top: 12px; border-top: 1px solid rgba(23, 27, 36, 0.06);">
+            <div class="category-header">
+              <span class="category-name" style="font-weight: 700;">Total</span>
+              <span class="category-amount">£1,247.80 <span class="category-meta">(£311.95/person)</span></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Actions -->
+      <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+        <a href="index.html" style="padding: 10px 16px; background: rgba(23, 27, 36, 0.04); border: 1px solid rgba(23, 27, 36, 0.06); border-radius: 8px; font-size: 14px; font-weight: 600; color: #171b24; text-decoration: none; display: inline-flex; align-items: center; gap: 8px;">View Dashboard</a>
+        <a href="expenses-new.html" style="padding: 10px 16px; background: rgba(45, 106, 79, 0.1); color: #2d6a4f; border: 1px solid transparent; border-radius: 8px; font-size: 14px; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 8px;">Add Expense</a>
+        <a href="overview.html" style="padding: 10px 16px; background: rgba(23, 27, 36, 0.04); border: 1px solid rgba(23, 27, 36, 0.06); border-radius: 8px; font-size: 14px; font-weight: 600; color: #171b24; text-decoration: none; display: inline-flex; align-items: center; gap: 8px;">Settle Up</a>
       </div>
     </div>
   </div>
