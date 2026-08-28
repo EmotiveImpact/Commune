@@ -169,7 +169,7 @@
       border: 2px solid var(--commune-primary-strong, rgba(45, 106, 79, 0.3));
       border-radius: 14px;
       padding: 28px;
-      max-width: 480px;
+      max-width: 340px;
       box-shadow: 0 1px 3px rgba(23, 27, 36, 0.06), 0 1px 2px rgba(23, 27, 36, 0.04);
     }
 
@@ -199,86 +199,6 @@
       font-weight: 600;
       padding: 4px 10px;
       border-radius: 6px;
-    }
-
-    .plan-price {
-      display: flex;
-      align-items: baseline;
-      gap: 6px;
-      margin-bottom: 20px;
-    }
-
-    .price-amount {
-      font-size: 42px;
-      font-weight: 900;
-      color: #171b24;
-      line-height: 1;
-    }
-
-    .price-period {
-      font-size: 14px;
-      color: #667085;
-    }
-
-    .features-box {
-      background: rgba(45, 106, 79, 0.04);
-      border-radius: 12px;
-      padding: 18px 20px;
-      margin-bottom: 20px;
-    }
-
-    .features-title {
-      font-size: 13px;
-      font-weight: 600;
-      color: #171b24;
-      margin-bottom: 10px;
-    }
-
-    .feature-list {
-      list-style: none;
-      margin: 0;
-      padding: 0;
-    }
-
-    .feature-item {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 4px 0;
-      font-size: 13px;
-      color: #171b24;
-    }
-
-    .check-icon {
-      width: 18px;
-      height: 18px;
-      border-radius: 50%;
-      background: rgba(45, 106, 79, 0.12);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-    }
-
-    .check-icon svg {
-      width: 11px;
-      height: 11px;
-      stroke: #2d6a4f;
-      stroke-width: 2.5;
-      fill: none;
-    }
-
-    .current-plan-btn {
-      width: 100%;
-      padding: 12px 20px;
-      background: rgba(45, 106, 79, 0.08);
-      color: #2d6a4f;
-      border: none;
-      border-radius: 10px;
-      font-family: inherit;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: default;
     }
   </style>
 </head>
@@ -331,63 +251,9 @@
         <div class="plan-header">
           <div>
             <div class="plan-name">Pro</div>
-            <div class="plan-limits">3 groups and 15 members</div>
           </div>
           <div class="active-badge">Active</div>
         </div>
-
-        <div class="plan-price">
-          <div class="price-amount">£9.99</div>
-          <div class="price-period">/month</div>
-        </div>
-
-        <div class="features-box">
-          <div class="features-title">Includes</div>
-          <ul class="feature-list">
-            <li class="feature-item">
-              <div class="check-icon">
-                <svg viewBox="0 0 24 24">
-                  <polyline points="20 6 9 17 4 12"></polyline>
-                </svg>
-              </div>
-              <span>Up to 3 groups</span>
-            </li>
-            <li class="feature-item">
-              <div class="check-icon">
-                <svg viewBox="0 0 24 24">
-                  <polyline points="20 6 9 17 4 12"></polyline>
-                </svg>
-              </div>
-              <span>Up to 15 members per group</span>
-            </li>
-            <li class="feature-item">
-              <div class="check-icon">
-                <svg viewBox="0 0 24 24">
-                  <polyline points="20 6 9 17 4 12"></polyline>
-                </svg>
-              </div>
-              <span>Everything in Standard</span>
-            </li>
-            <li class="feature-item">
-              <div class="check-icon">
-                <svg viewBox="0 0 24 24">
-                  <polyline points="20 6 9 17 4 12"></polyline>
-                </svg>
-              </div>
-              <span>Advanced analytics</span>
-            </li>
-            <li class="feature-item">
-              <div class="check-icon">
-                <svg viewBox="0 0 24 24">
-                  <polyline points="20 6 9 17 4 12"></polyline>
-                </svg>
-              </div>
-              <span>Exports and stronger admin workflows</span>
-            </li>
-          </ul>
-        </div>
-
-        <button class="current-plan-btn" disabled>Current plan</button>
       </div>
     </div>
   </div>
