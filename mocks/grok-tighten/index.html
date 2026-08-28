@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>12 Grove — Command</title>
+  <title>12 Grove — Command Centre</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Serif+Display&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     * {
       margin: 0;
@@ -15,149 +15,211 @@
     }
 
     body {
-      font-family: 'DM Sans', sans-serif;
-      background: #FAF9F7;
-      color: #1A1E2B;
-      line-height: 1.5;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: linear-gradient(180deg, #f8f5f0 0%, #f3eee7 100%);
+      color: #171b24;
       min-height: 100vh;
-      padding: 20px;
-    }
-
-    .container {
-      max-width: 900px;
-      margin: 0 auto;
-    }
-
-    /* Header */
-    .header {
       display: flex;
-      justify-content: space-between;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      width: 230px;
+      background: linear-gradient(180deg, #1a1e2b 0%, #21262f 100%);
+      color: rgba(255, 255, 255, 0.92);
+      padding: 20px 14px;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      position: fixed;
+      left: 0;
+      top: 0;
+    }
+
+    .logo {
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #fff;
+      margin-bottom: 24px;
+    }
+
+    .nav-label {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 8px;
+    }
+
+    .nav-link {
+      display: flex;
       align-items: center;
-      margin-bottom: 32px;
-      padding: 16px 0;
-    }
-
-    .header-left {
-      display: flex;
-      align-items: center;
-      gap: 40px;
-    }
-
-    .house-name {
-      font-family: 'DM Serif Display', serif;
-      font-size: 18px;
-      color: #1A1E2B;
-    }
-
-    .nav {
-      display: flex;
-      gap: 28px;
-      list-style: none;
-    }
-
-    .nav a {
+      gap: 12px;
+      padding: 8px 14px;
+      border-radius: 10px;
+      color: rgba(255, 255, 255, 0.76);
       text-decoration: none;
-      color: #8A8D9A;
-      font-size: 15px;
-      font-weight: 500;
-      transition: color 0.2s;
-    }
-
-    .nav a.active {
-      color: #1A1E2B;
-    }
-
-    .user-name {
       font-size: 14px;
-      color: #1A1E2B;
+      font-weight: 600;
+      margin-bottom: 2px;
+      transition: background 0.15s, color 0.15s;
     }
 
-    /* Hero card */
-    .hero {
-      background: #1A1E2B;
-      border-radius: 28px;
+    .nav-link:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: #ffffff;
+    }
+
+    .nav-link.active {
+      background: rgba(255, 255, 255, 0.12);
+      color: #ffffff;
+    }
+
+    .group-selector {
+      margin-top: 24px;
+      padding: 12px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      font-size: 13px;
+      color: rgba(255, 255, 255, 0.88);
+    }
+
+    .user-profile {
+      margin-top: auto;
+      padding: 10px 14px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: #fff;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .user-profile:hover {
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    .avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    /* Main content */
+    .main {
+      margin-left: 230px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .header {
+      height: 64px;
+      background: #f5f1ea;
+      border-bottom: 1px solid rgba(23, 27, 36, 0.06);
+      padding: 0 32px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .search {
+      flex: 1;
+      max-width: 460px;
+      padding: 10px 16px;
+      background: #ffffff;
+      border: 1px solid rgba(23, 27, 36, 0.06);
+      border-radius: 10px;
+      font-family: inherit;
+      font-size: 14px;
+      color: #171b24;
+    }
+
+    .search::placeholder {
+      color: #667085;
+    }
+
+    .content {
+      padding: 24px 48px;
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    /* Page header */
+    .page-header {
+      padding-bottom: 16px;
+      margin-bottom: 24px;
+      border-bottom: 1px solid rgba(23, 27, 36, 0.06);
+    }
+
+    .page-title {
+      font-size: 24px;
+      font-weight: 800;
+      line-height: 1.2;
+      letter-spacing: -0.01em;
+      color: #171b24;
+    }
+
+    .page-subtitle {
+      font-size: 14px;
+      color: #667085;
+      margin-top: 2px;
+    }
+
+    /* Section heading */
+    .section-heading {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Priority panel */
+    .priority-panel {
+      background: rgba(255, 255, 255, 0.82);
+      border: 1px solid rgba(23, 27, 36, 0.06);
+      border-left: 4px solid #EF4444;
+      border-radius: 14px;
+      padding: 20px 24px;
+      margin-bottom: 24px;
+      box-shadow: 0 1px 3px rgba(23, 27, 36, 0.06), 0 1px 2px rgba(23, 27, 36, 0.04);
+    }
+
+    .priority-heading {
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 12px;
+      color: #EF4444;
+    }
+
+    /* Soft panel */
+    .soft-panel {
+      background: rgba(255, 255, 255, 0.82);
+      border: 1px solid rgba(23, 27, 36, 0.06);
+      border-radius: 14px;
       padding: 24px;
       margin-bottom: 24px;
-      box-shadow: 0 4px 12px rgba(26, 30, 43, 0.06);
+      box-shadow: 0 1px 3px rgba(23, 27, 36, 0.06), 0 1px 2px rgba(23, 27, 36, 0.04);
     }
 
-    .hero-label {
-      font-size: 11px;
-      font-weight: 700;
-      letter-spacing: 0.6px;
-      text-transform: uppercase;
-      color: #E8F7D4;
-      margin-bottom: 16px;
-    }
-
-    .hero-title {
-      font-size: 44px;
-      font-weight: 700;
-      color: #FFFFFF;
-      letter-spacing: -0.8px;
-      line-height: 50px;
-      margin-bottom: 4px;
-    }
-
-    .hero-meta {
-      font-size: 14px;
-      font-weight: 500;
-      color: rgba(255, 255, 255, 0.55);
-      margin-bottom: 12px;
-    }
-
-    .hero-meta strong {
-      color: #FFFFFF;
-      font-weight: 700;
-    }
-
-    .hero-track {
-      height: 6px;
-      border-radius: 3px;
-      background: #374151;
-      overflow: hidden;
-      margin-bottom: 20px;
-    }
-
-    .hero-fill {
-      height: 100%;
-      background: #96E85F;
-      border-radius: 3px;
-      width: 0%;
-    }
-
-    .hero-button {
-      height: 52px;
-      border-radius: 16px;
-      background: #eadfd4;
-      border: none;
-      font-family: 'DM Sans', sans-serif;
-      font-size: 15px;
-      font-weight: 700;
-      color: #1f2330;
-      cursor: pointer;
-      box-shadow: 0 3px 8px rgba(0, 0, 0, 0.18);
-      transition: opacity 0.2s;
-    }
-
-    .hero-button:hover {
-      opacity: 0.9;
-    }
-
-    /* Section header */
-    .section-header {
-      font-size: 16px;
-      font-weight: 700;
-      color: #1A1E2B;
-      margin-bottom: 12px;
-      margin-top: 32px;
-    }
-
-    /* Card rows */
+    /* Card row */
     .card {
-      background: #FFFFFF;
-      border: 1px solid #E8E6E1;
-      border-radius: 16px;
+      background: #ffffff;
+      border: 1px solid rgba(23, 27, 36, 0.06);
+      border-radius: 14px;
       padding: 16px;
       margin-bottom: 8px;
       display: flex;
@@ -166,38 +228,33 @@
     }
 
     .card-icon {
-      width: 44px;
-      height: 44px;
-      border-radius: 12px;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
       flex-shrink: 0;
-      font-size: 20px;
+      font-size: 18px;
     }
 
     .card-icon.sage {
-      background: #E8F0EB;
-      color: #2D6A4F;
+      background: rgba(216, 235, 228, 0.6);
+      color: #2d6a4f;
     }
 
     .card-icon.rent {
-      background: #F5E8DD;
+      background: rgba(239, 220, 207, 0.6);
       color: #8B5A3C;
     }
 
     .card-icon.wifi {
-      background: #DEECF7;
+      background: rgba(222, 236, 247, 0.6);
       color: #2B5F8C;
     }
 
-    .card-icon.chores {
-      background: #E8F0EB;
-      color: #2D6A4F;
-    }
-
     .card-icon.notice {
-      background: #FBF0D9;
+      background: rgba(241, 229, 191, 0.6);
       color: #C9821A;
     }
 
@@ -206,38 +263,36 @@
     }
 
     .card-title {
-      font-size: 16px;
+      font-size: 15px;
       font-weight: 600;
-      color: #1A1E2B;
+      color: #171b24;
       margin-bottom: 2px;
     }
 
     .card-caption {
       font-size: 13px;
-      color: #6B6D73;
-    }
-
-    .card-caption.overdue {
-      color: #8C2F1F;
-      font-weight: 600;
+      color: #667085;
     }
 
     .card-amount {
       font-size: 15px;
       font-weight: 700;
-      color: #C74A3A;
       flex-shrink: 0;
     }
 
+    .card-amount.owe {
+      color: #EF4444;
+    }
+
     .card-amount.owed {
-      color: #2D6A4F;
+      color: #2d6a4f;
     }
 
     /* Split detail */
     .split-detail {
       margin-top: 12px;
       padding-top: 12px;
-      border-top: 1px solid #F0EEEA;
+      border-top: 1px solid rgba(23, 27, 36, 0.06);
     }
 
     .split-row {
@@ -248,135 +303,154 @@
     }
 
     .split-name {
-      color: #8A8D9A;
+      color: #667085;
     }
 
     .split-value {
       font-weight: 600;
-      color: #1A1E2B;
+      color: #171b24;
     }
 
     .split-value.paid {
-      color: #6B6D73;
+      color: #667085;
     }
 
-    .chores-inline {
+    .chores-text {
       font-size: 13px;
-      color: #6B6D73;
+      color: #667085;
     }
   </style>
 </head>
 <body>
-  <div class="container">
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="logo">COMMUNE</div>
+    
+    <div class="nav-label">MENU</div>
+    <a href="#" class="nav-link">Dashboard</a>
+    <a href="#" class="nav-link">My Groups</a>
+    <a href="#" class="nav-link active">Command</a>
+    <a href="#" class="nav-link">Money</a>
+    <a href="#" class="nav-link">Space</a>
+    <a href="#" class="nav-link">Jobs</a>
+
+    <div class="group-selector">
+      12 Grove
+    </div>
+
+    <div class="user-profile">
+      <div class="avatar">M</div>
+      <div>
+        <div style="font-size: 14px; font-weight: 600;">Maya</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main content -->
+  <div class="main">
     <div class="header">
-      <div class="header-left">
-        <div class="house-name">12 Grove</div>
-        <ul class="nav">
-          <li><a href="#" class="active">Command</a></li>
-          <li><a href="#">Money</a></li>
-          <li><a href="#">Space</a></li>
-          <li><a href="#">Jobs</a></li>
-        </ul>
-      </div>
-      <div class="user-name">Maya</div>
+      <input type="text" class="search" placeholder="Search expenses, members...">
     </div>
 
-    <!-- Hero: Maya's share (money) -->
-    <div class="hero">
-      <div class="hero-label">YOUR SHARE · AUGUST</div>
-      <div class="hero-title">£460</div>
-      <div class="hero-meta">£0 paid  ·  £460 left  ·  1 open</div>
-      <div class="hero-track">
-        <div class="hero-fill" style="width: 0%"></div>
+    <div class="content">
+      <!-- Page header -->
+      <div class="page-header">
+        <h1 class="page-title">Command Centre</h1>
+        <p class="page-subtitle">Your priorities across all groups</p>
       </div>
-      <button class="hero-button">Settle Up</button>
-    </div>
 
-    <!-- Attention -->
-    <div class="section-header">Attention</div>
-
-    <div class="card">
-      <div class="card-icon sage">🗑️</div>
-      <div class="card-content">
-        <div class="card-title">Bin night</div>
-        <div class="card-caption">Tonight · Your turn</div>
-      </div>
-    </div>
-
-    <!-- Priority bills -->
-
-    <div class="card">
-      <div class="card-icon rent">🏠</div>
-      <div class="card-content">
-        <div class="card-title">Rent — £1,840</div>
-        <div class="card-caption">Due Friday</div>
-        <div class="split-detail">
-          <div class="split-row">
-            <span class="split-name">Maya</span>
-            <span class="split-value">£460</span>
-          </div>
-          <div class="split-row">
-            <span class="split-name">Jordan</span>
-            <span class="split-value paid">Paid</span>
-          </div>
-          <div class="split-row">
-            <span class="split-name">Sam</span>
-            <span class="split-value paid">Paid</span>
-          </div>
-          <div class="split-row">
-            <span class="split-name">Priya</span>
-            <span class="split-value paid">Paid</span>
+      <!-- Priority action: Bin night tonight -->
+      <div class="priority-panel">
+        <div class="priority-heading">Priority Action</div>
+        <div class="card" style="margin-bottom: 0;">
+          <div class="card-icon sage">🗑️</div>
+          <div class="card-content">
+            <div class="card-title">Bin night</div>
+            <div class="card-caption">Tonight · Your turn</div>
           </div>
         </div>
       </div>
-      <div class="card-amount">-£460</div>
-    </div>
 
-    <!-- Waiting on others -->
-    <div class="section-header">Waiting on others</div>
+      <!-- Outstanding -->
+      <div class="soft-panel">
+        <div class="section-heading">Outstanding</div>
+        <div class="card">
+          <div class="card-icon rent">🏠</div>
+          <div class="card-content">
+            <div class="card-title">Rent — £1,840</div>
+            <div class="card-caption">Due Friday</div>
+            <div class="split-detail">
+              <div class="split-row">
+                <span class="split-name">Maya</span>
+                <span class="split-value">£460</span>
+              </div>
+              <div class="split-row">
+                <span class="split-name">Jordan</span>
+                <span class="split-value paid">Paid</span>
+              </div>
+              <div class="split-row">
+                <span class="split-name">Sam</span>
+                <span class="split-value paid">Paid</span>
+              </div>
+              <div class="split-row">
+                <span class="split-name">Priya</span>
+                <span class="split-value paid">Paid</span>
+              </div>
+            </div>
+          </div>
+          <div class="card-amount owe">-£460</div>
+        </div>
+      </div>
 
-    <div class="card">
-      <div class="card-icon wifi">📡</div>
-      <div class="card-content">
-        <div class="card-title">Wifi — £32</div>
-        <div class="card-caption">This month · Maya paid</div>
-        <div class="split-detail">
-          <div class="split-row">
-            <span class="split-name">Jordan</span>
-            <span class="split-value">Owes £8</span>
+      <!-- Coming your way -->
+      <div class="soft-panel">
+        <div class="section-heading">Coming your way</div>
+        <div class="card">
+          <div class="card-icon wifi">📡</div>
+          <div class="card-content">
+            <div class="card-title">Wifi — £32</div>
+            <div class="card-caption">This month · Maya paid</div>
+            <div class="split-detail">
+              <div class="split-row">
+                <span class="split-name">Jordan</span>
+                <span class="split-value">Owes £8</span>
+              </div>
+              <div class="split-row">
+                <span class="split-name">Sam</span>
+                <span class="split-value">Owes £8</span>
+              </div>
+              <div class="split-row">
+                <span class="split-name">Priya</span>
+                <span class="split-value">Owes £8</span>
+              </div>
+            </div>
           </div>
-          <div class="split-row">
-            <span class="split-name">Sam</span>
-            <span class="split-value">Owes £8</span>
-          </div>
-          <div class="split-row">
-            <span class="split-name">Priya</span>
-            <span class="split-value">Owes £8</span>
+          <div class="card-amount owed">+£24</div>
+        </div>
+      </div>
+
+      <!-- Chores -->
+      <div class="soft-panel">
+        <div class="section-heading">Chores</div>
+        <div class="card" style="margin-bottom: 0;">
+          <div class="card-icon sage">✓</div>
+          <div class="card-content">
+            <div class="card-title">Chores</div>
+            <div class="chores-text">Kitchen Jordan · Bathroom Sam</div>
           </div>
         </div>
       </div>
-      <div class="card-amount owed">+£24</div>
-    </div>
 
-    <!-- Chores -->
-    <div class="section-header">Chores</div>
-
-    <div class="card">
-      <div class="card-icon chores">✓</div>
-      <div class="card-content">
-        <div class="card-title">Chores</div>
-        <div class="chores-inline">Kitchen Jordan · Bathroom Sam</div>
-      </div>
-    </div>
-
-    <!-- House notices -->
-    <div class="section-header">House notices</div>
-
-    <div class="card">
-      <div class="card-icon notice">🔔</div>
-      <div class="card-content">
-        <div class="card-title">Boiler service Thursday 10am</div>
-        <div class="card-caption">Someone needs to be in</div>
+      <!-- House notices -->
+      <div class="soft-panel">
+        <div class="section-heading">House notices</div>
+        <div class="card" style="margin-bottom: 0;">
+          <div class="card-icon notice">🔔</div>
+          <div class="card-content">
+            <div class="card-title">Boiler service Thursday 10am</div>
+            <div class="card-caption">Someone needs to be in</div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
