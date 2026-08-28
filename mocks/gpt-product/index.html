@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>12 Grove – Command Centre</title>
+  <title>12 Grove — Command</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Serif+Display&display=swap" rel="stylesheet">
   <style>
     * {
       margin: 0;
@@ -25,20 +25,21 @@
       font-family: 'DM Sans', sans-serif;
       background: var(--cream);
       color: var(--navy);
+      line-height: 1.5;
       min-height: 100vh;
     }
 
     .container {
       max-width: 1200px;
       margin: 0 auto;
-      padding: 0 40px;
+      padding: 0 48px;
     }
 
     /* Header */
     header {
-      background: var(--navy);
-      padding: 24px 0;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      background: var(--cream);
+      border-bottom: 1px solid rgba(26, 30, 46, 0.1);
+      padding: 32px 0;
     }
 
     .header-content {
@@ -47,194 +48,161 @@
       align-items: center;
     }
 
-    .house-title {
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 48px;
+    }
+
+    .house-name {
       font-family: 'DM Serif Display', serif;
-      color: var(--cream);
       font-size: 24px;
+      color: var(--navy);
       font-weight: 400;
     }
 
-    nav {
+    .nav-links {
       display: flex;
-      gap: 32px;
+      gap: 40px;
+      list-style: none;
     }
 
-    nav a {
-      color: var(--cream);
+    .nav-links a {
       text-decoration: none;
+      color: var(--muted);
       font-size: 15px;
       font-weight: 500;
-      opacity: 0.6;
-      transition: opacity 0.2s;
+      letter-spacing: 0.02em;
+      transition: color 0.2s;
     }
 
-    nav a:hover {
-      opacity: 0.8;
+    .nav-links a.active {
+      color: var(--navy);
     }
 
-    nav a.active {
-      opacity: 1;
+    .nav-links a:hover {
+      color: var(--navy);
+    }
+
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 15px;
+      color: var(--muted);
+    }
+
+    .avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: var(--navy);
+      color: var(--cream);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 500;
     }
 
     /* Main Content */
     main {
-      padding: 48px 0;
+      padding: 48px 0 80px;
+    }
+
+    .day-label {
+      font-size: 15px;
+      color: var(--muted);
+      margin-bottom: 32px;
+      font-weight: 500;
     }
 
     .section {
-      margin-bottom: 56px;
+      margin-bottom: 48px;
     }
 
-    .section-title {
-      font-family: 'DM Serif Display', serif;
-      font-size: 28px;
-      color: var(--navy);
-      margin-bottom: 24px;
-      font-weight: 400;
-    }
-
-    /* Today Section */
-    .notice-card {
-      background: white;
-      padding: 24px;
-      border-radius: 8px;
-      border: 1px solid rgba(26, 30, 46, 0.1);
-      margin-bottom: 16px;
-    }
-
-    .notice-card p {
-      font-size: 16px;
-      line-height: 1.5;
-      color: var(--navy);
-    }
-
-    .bin-card {
-      background: var(--sage);
-      color: var(--cream);
-      padding: 24px;
-      border-radius: 8px;
-    }
-
-    .bin-card p {
-      font-size: 16px;
-      line-height: 1.5;
-    }
-
-    .bin-card .turn {
-      font-weight: 600;
-    }
-
-    /* This Week Section */
-    .money-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 16px;
-      margin-bottom: 24px;
-    }
-
-    .money-card {
-      background: white;
-      padding: 24px;
-      border-radius: 8px;
-      border: 1px solid rgba(26, 30, 46, 0.1);
-    }
-
-    .money-card.urgent {
-      border-color: var(--sage);
-      border-width: 2px;
-    }
-
-    .money-label {
+    .section-label {
       font-size: 13px;
       text-transform: uppercase;
-      letter-spacing: 0.5px;
+      letter-spacing: 0.05em;
       color: var(--muted);
-      margin-bottom: 8px;
+      margin-bottom: 16px;
       font-weight: 600;
     }
 
-    .money-amount {
-      font-family: 'DM Serif Display', serif;
-      font-size: 32px;
-      color: var(--navy);
-      margin-bottom: 12px;
-    }
-
-    .money-details {
-      font-size: 14px;
-      color: var(--muted);
-      line-height: 1.6;
-    }
-
-    .money-status {
-      margin-top: 12px;
-      padding-top: 12px;
-      border-top: 1px solid rgba(26, 30, 46, 0.1);
-    }
-
-    .money-status-item {
+    .item-list {
       display: flex;
-      justify-content: space-between;
-      font-size: 14px;
-      margin-bottom: 6px;
-      color: var(--navy);
+      flex-direction: column;
     }
 
-    .money-status-item:last-child {
-      margin-bottom: 0;
-    }
-
-    .status-pending {
-      color: var(--sage);
-      font-weight: 600;
-    }
-
-    .status-paid {
-      color: var(--muted);
-    }
-
-    /* House Section */
-    .chores-list {
-      background: white;
-      padding: 24px;
-      border-radius: 8px;
-      border: 1px solid rgba(26, 30, 46, 0.1);
-    }
-
-    .chore-item {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 16px 0;
+    .item {
+      padding: 20px 0;
       border-bottom: 1px solid rgba(26, 30, 46, 0.08);
     }
 
-    .chore-item:first-child {
+    .item:first-child {
       padding-top: 0;
     }
 
-    .chore-item:last-child {
+    .item.highlight {
+      background: var(--sage);
+      color: var(--cream);
+      padding: 20px;
+      margin: 0 -20px 0 -20px;
       border-bottom: none;
-      padding-bottom: 0;
     }
 
-    .chore-name {
+    .item-title {
       font-size: 16px;
+      font-weight: 500;
+      margin-bottom: 4px;
+    }
+
+    .item-meta {
+      font-size: 14px;
+      color: var(--muted);
+    }
+
+    .item.highlight .item-meta {
+      color: rgba(245, 243, 239, 0.8);
+    }
+
+    .split-list {
+      margin-top: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .split-item {
+      font-size: 14px;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .split-name {
+      color: var(--muted);
+    }
+
+    .split-status {
+      font-weight: 500;
+    }
+
+    .split-status.paid {
+      color: var(--muted);
+    }
+
+    .split-status.owes {
       color: var(--navy);
-      font-weight: 500;
     }
 
-    .chore-person {
+    .chores {
       font-size: 15px;
-      color: var(--muted);
+      color: var(--navy);
     }
 
-    /* Day Header */
-    .day-header {
-      font-size: 15px;
+    .chores .name {
       color: var(--muted);
-      margin-bottom: 8px;
-      font-weight: 500;
     }
   </style>
 </head>
@@ -242,78 +210,85 @@
   <header>
     <div class="container">
       <div class="header-content">
-        <h1 class="house-title">12 Grove</h1>
-        <nav>
-          <a href="#" class="active">Command</a>
-          <a href="#">Money</a>
-          <a href="#">Space</a>
-          <a href="#">Jobs</a>
-        </nav>
+        <div class="header-left">
+          <h1 class="house-name">12 Grove</h1>
+          <nav>
+            <ul class="nav-links">
+              <li><a href="#" class="active">Command</a></li>
+              <li><a href="#">Money</a></li>
+              <li><a href="#">Space</a></li>
+              <li><a href="#">Jobs</a></li>
+            </ul>
+          </nav>
+        </div>
+        <div class="user-info">
+          <div class="avatar">M</div>
+          <span>Maya</span>
+        </div>
       </div>
     </div>
   </header>
 
   <main>
     <div class="container">
+      <div class="day-label">Tuesday</div>
+
       <!-- Today Section -->
       <section class="section">
-        <p class="day-header">Tuesday</p>
-        <h2 class="section-title">Today</h2>
-        
-        <div class="notice-card">
-          <p>Boiler service Thursday 10am. Someone needs to be in.</p>
-        </div>
-
-        <div class="bin-card">
-          <p>Bin night tonight. <span class="turn">Maya's turn.</span></p>
+        <div class="section-label">Today</div>
+        <div class="item-list">
+          <div class="item highlight">
+            <div class="item-title">Bin night tonight</div>
+            <div class="item-meta">Maya's turn</div>
+          </div>
+          <div class="item">
+            <div class="item-title">Boiler service Thursday 10am</div>
+            <div class="item-meta">Someone needs to be in</div>
+          </div>
         </div>
       </section>
 
       <!-- This Week Section -->
       <section class="section">
-        <h2 class="section-title">This week</h2>
-        
-        <div class="money-grid">
-          <div class="money-card urgent">
-            <div class="money-label">Rent Due Friday</div>
-            <div class="money-amount">£1,840</div>
-            <div class="money-details">Split four ways: £460 each</div>
-            <div class="money-status">
-              <div class="money-status-item">
-                <span>Maya</span>
-                <span class="status-pending">Not paid</span>
+        <div class="section-label">This week</div>
+        <div class="item-list">
+          <div class="item">
+            <div class="item-title">Rent — £1,840 due Friday</div>
+            <div class="item-meta">Split four ways, £460 each</div>
+            <div class="split-list">
+              <div class="split-item">
+                <span class="split-name">Maya</span>
+                <span class="split-status owes">Not paid</span>
               </div>
-              <div class="money-status-item">
-                <span>Jordan</span>
-                <span class="status-paid">Paid</span>
+              <div class="split-item">
+                <span class="split-name">Jordan</span>
+                <span class="split-status paid">Paid</span>
               </div>
-              <div class="money-status-item">
-                <span>Sam</span>
-                <span class="status-paid">Paid</span>
+              <div class="split-item">
+                <span class="split-name">Sam</span>
+                <span class="split-status paid">Paid</span>
               </div>
-              <div class="money-status-item">
-                <span>Priya</span>
-                <span class="status-paid">Paid</span>
+              <div class="split-item">
+                <span class="split-name">Priya</span>
+                <span class="split-status paid">Paid</span>
               </div>
             </div>
           </div>
-
-          <div class="money-card">
-            <div class="money-label">Wifi This Month</div>
-            <div class="money-amount">£32</div>
-            <div class="money-details">Maya paid</div>
-            <div class="money-status">
-              <div class="money-status-item">
-                <span>Jordan owes</span>
-                <span class="status-pending">£8</span>
+          <div class="item">
+            <div class="item-title">Wifi — £32 this month</div>
+            <div class="item-meta">Maya paid</div>
+            <div class="split-list">
+              <div class="split-item">
+                <span class="split-name">Jordan</span>
+                <span class="split-status owes">Owes £8</span>
               </div>
-              <div class="money-status-item">
-                <span>Sam owes</span>
-                <span class="status-pending">£8</span>
+              <div class="split-item">
+                <span class="split-name">Sam</span>
+                <span class="split-status owes">Owes £8</span>
               </div>
-              <div class="money-status-item">
-                <span>Priya owes</span>
-                <span class="status-pending">£8</span>
+              <div class="split-item">
+                <span class="split-name">Priya</span>
+                <span class="split-status owes">Owes £8</span>
               </div>
             </div>
           </div>
@@ -322,16 +297,12 @@
 
       <!-- House Section -->
       <section class="section">
-        <h2 class="section-title">House</h2>
-        
-        <div class="chores-list">
-          <div class="chore-item">
-            <span class="chore-name">Kitchen</span>
-            <span class="chore-person">Jordan</span>
-          </div>
-          <div class="chore-item">
-            <span class="chore-name">Bathroom</span>
-            <span class="chore-person">Sam</span>
+        <div class="section-label">House</div>
+        <div class="item-list">
+          <div class="item">
+            <div class="chores">
+              <span class="name">Kitchen</span> Jordan · <span class="name">Bathroom</span> Sam
+            </div>
           </div>
         </div>
       </section>
