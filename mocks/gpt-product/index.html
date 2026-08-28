@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Command Centre — Commune</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --paper: #f5f1ea;
+      --sage: #2d6a4f;
+      --forest: #1f2330;
+      --ink: #171b24;
+      --ink-soft: #667085;
+      --border: rgba(23, 27, 36, 0.06);
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--paper);
+      color: var(--ink);
+      line-height: 1.5;
+      min-height: 100vh;
+      margin: 0;
+    }
+
+    .app-shell {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      width: 230px;
+      background: var(--forest);
+      color: white;
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+    }
+
+    .sidebar-top {
+      padding: 20px 16px;
+      flex: 1;
+    }
+
+    .sidebar-logo {
+      display: flex;
+      align-items: center;
+      margin-bottom: 24px;
+    }
+
+    .sidebar-logo-text {
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: white;
+    }
+
+    .sidebar-group-header {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: rgba(255, 255, 255, 0.4);
+      padding: 10px 12px 8px;
+      margin-top: 16px;
+    }
+
+    .sidebar-label {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: rgba(255, 255, 255, 0.4);
+      padding: 0 12px;
+      margin-bottom: 8px;
+    }
+
+    .sidebar-nav {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .sidebar-link {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      color: rgba(255, 255, 255, 0.7);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.15s;
+    }
+
+    .sidebar-link:hover {
+      background: rgba(255, 255, 255, 0.06);
+      color: white;
+    }
+
+    .sidebar-link.active {
+      background: rgba(255, 255, 255, 0.1);
+      color: white;
+    }
+
+    .sidebar-bottom {
+      padding: 16px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .sidebar-user {
+      font-size: 14px;
+      font-weight: 500;
+      color: white;
+      margin-bottom: 4px;
+    }
+
+    .sidebar-plan {
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.5);
+    }
+
+    /* Main area */
+    .main-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Header */
+    .header {
+      height: 64px;
+      background: var(--paper);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 32px;
+    }
+
+    .header-search {
+      flex: 1;
+      max-width: 400px;
+    }
+
+    .header-search input {
+      width: 100%;
+      height: 36px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0 12px;
+      font-family: 'Inter', sans-serif;
+      font-size: 14px;
+    }
+
+    /* Content */
+    .content {
+      flex: 1;
+      padding: 32px;
+      overflow-y: auto;
+    }
+
+    .content-inner {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .page-title {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--ink);
+      margin-bottom: 8px;
+    }
+
+    .page-subtitle {
+      font-size: 14px;
+      color: var(--ink-soft);
+      margin-bottom: 32px;
+    }
+
+    /* Section */
+    .section-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: var(--ink-soft);
+      margin-bottom: 16px;
+      font-weight: 700;
+    }
+
+    /* Empty state */
+    .empty-card {
+      background: rgba(245, 241, 234, 0.6);
+      border-radius: 16px;
+      padding: 48px 32px;
+      text-align: center;
+      max-width: 440px;
+      margin: 0 auto;
+    }
+
+    .empty-icon {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: rgba(45, 106, 79, 0.1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 16px;
+      opacity: 0.85;
+    }
+
+    .empty-icon svg {
+      width: 28px;
+      height: 28px;
+      color: var(--sage);
+      stroke-width: 2;
+    }
+
+    .empty-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--ink);
+      margin-bottom: 8px;
+    }
+
+    .empty-description {
+      font-size: 14px;
+      color: var(--ink-soft);
+      line-height: 1.6;
+      max-width: 340px;
+      margin: 0 auto;
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-top">
+        <div class="sidebar-logo">
+          <span class="sidebar-logo-text">Commune</span>
+        </div>
+        
+        <div class="sidebar-label">Menu</div>
+        <nav class="sidebar-nav">
+          <a href="#" class="sidebar-link">Dashboard</a>
+          <a href="#" class="sidebar-link">My Groups</a>
+        </nav>
+
+        <div class="sidebar-group-header">Money</div>
+        <nav class="sidebar-nav">
+          <a href="#" class="sidebar-link">Expenses</a>
+          <a href="#" class="sidebar-link">Recurring</a>
+          <a href="#" class="sidebar-link">Templates</a>
+          <a href="#" class="sidebar-link">Funds</a>
+          <a href="#" class="sidebar-link">Billing</a>
+        </nav>
+
+        <div class="sidebar-group-header">Insights</div>
+        <nav class="sidebar-nav">
+          <a href="#" class="sidebar-link active">Command Centre</a>
+          <a href="#" class="sidebar-link">Breakdown</a>
+          <a href="#" class="sidebar-link">Analytics</a>
+        </nav>
+
+        <div class="sidebar-group-header">Team</div>
+        <nav class="sidebar-nav">
+          <a href="#" class="sidebar-link">Members</a>
+          <a href="#" class="sidebar-link">Operations</a>
+          <a href="#" class="sidebar-link">Activity</a>
+        </nav>
+      </div>
+      
+      <div class="sidebar-bottom">
+        <div class="sidebar-user">Augustus Edem</div>
+        <div class="sidebar-plan">Pro plan</div>
+      </div>
+    </aside>
+
+    <!-- Main area -->
+    <div class="main-area">
+      <!-- Header -->
+      <header class="header">
+        <div class="header-search">
+          <input type="text" placeholder="Search expenses, members...">
+        </div>
+      </header>
+
+      <!-- Content -->
+      <main class="content">
+        <div class="content-inner">
+          <h1 class="page-title">Command Centre</h1>
+          <p class="page-subtitle">Your priorities across all groups</p>
+
+          <div class="section-label">Today</div>
+
+          <div class="empty-card">
+            <div class="empty-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <div class="empty-title">All squared away!</div>
+            <div class="empty-description">When your house has expenses or chores, they'll show here — like tonight's bins or Friday's rent.</div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+</body>
+</html>
