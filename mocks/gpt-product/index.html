@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>12 Grove — Command</title>
+  <title>12 Grove — Command Centre</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     * {
       margin: 0;
@@ -15,181 +15,177 @@
     }
 
     :root {
-      --bgBase: #FAF9F7;
-      --bgSurface: #FFFFFF;
-      --bgInk: #1A1E2B;
-      --textPrimary: #1A1E2B;
-      --textTertiary: #6B6D73;
-      --textMuted: #8A8D9A;
-      --textInverse: #FFFFFF;
-      --border: #E8E6E1;
-      --sage: #2D6A4F;
-      --sageSoft: #E8F0EB;
-      --lime: #96E85F;
-      --limeSoft: #E8F7D4;
+      --paper: #f5f1ea;
+      --sage: #2d6a4f;
+      --forest: #1f2330;
+      --ink: #171b24;
+      --ink-soft: #667085;
+      --border: rgba(23, 27, 36, 0.06);
     }
 
     body {
-      font-family: 'DM Sans', sans-serif;
-      background: var(--bgBase);
-      color: var(--textPrimary);
+      font-family: 'Inter', sans-serif;
+      background: var(--paper);
+      color: var(--ink);
       line-height: 1.5;
+      min-height: 100vh;
+      margin: 0;
+    }
+
+    /* Layout */
+    .app-shell {
+      display: flex;
       min-height: 100vh;
     }
 
-    .container {
-      max-width: 900px;
-      margin: 0 auto;
-      padding: 0 40px;
-    }
-
-    /* Header */
-    header {
-      background: var(--bgBase);
-      border-bottom: 1px solid var(--border);
-      padding: 24px 0;
-    }
-
-    .header-content {
+    /* Sidebar */
+    .sidebar {
+      width: 230px;
+      background: var(--forest);
+      color: white;
       display: flex;
-      justify-content: space-between;
-      align-items: center;
+      flex-direction: column;
+      flex-shrink: 0;
     }
 
-    .header-left {
+    .sidebar-top {
+      padding: 20px 16px;
+      flex: 1;
+    }
+
+    .sidebar-logo {
       display: flex;
       align-items: center;
-      gap: 48px;
-    }
-
-    .house-name {
-      font-family: 'DM Serif Display', serif;
-      font-size: 18px;
-      color: var(--textPrimary);
-      font-weight: 400;
-    }
-
-    .nav-links {
-      display: flex;
-      gap: 32px;
-      list-style: none;
-    }
-
-    .nav-links a {
-      text-decoration: none;
-      color: var(--textMuted);
-      font-size: 15px;
-      font-weight: 500;
-      transition: color 0.15s;
-    }
-
-    .nav-links a.active {
-      color: var(--textPrimary);
-    }
-
-    .user-info {
-      font-size: 15px;
-      color: var(--textPrimary);
-      font-weight: 500;
-    }
-
-    /* Main Content */
-    main {
-      padding: 40px 0 80px;
-    }
-
-    .day-label {
-      font-size: 13px;
-      color: var(--textMuted);
+      gap: 8px;
       margin-bottom: 24px;
-      font-weight: 500;
     }
 
-    /* Ink Hero Card */
-    .hero {
-      background: var(--bgInk);
-      border-radius: 28px;
-      padding: 24px;
-      margin-bottom: 32px;
-    }
-
-    .hero-label {
-      font-size: 11px;
-      font-weight: 700;
-      letter-spacing: 0.6px;
+    .sidebar-logo-text {
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
       text-transform: uppercase;
-      color: var(--limeSoft);
-      margin-bottom: 12px;
+      color: white;
     }
 
-    .hero-amount {
-      font-size: 44px;
+    .sidebar-label {
+      font-size: 10px;
       font-weight: 700;
-      color: var(--textInverse);
-      letter-spacing: -0.8px;
-      line-height: 50px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: rgba(255, 255, 255, 0.4);
+      padding: 0 12px;
       margin-bottom: 8px;
     }
 
-    .hero-inline-stats {
-      font-size: 14px;
-      margin-bottom: 16px;
-    }
-
-    .hero-inline-strong {
-      color: var(--textInverse);
-      font-weight: 700;
-    }
-
-    .hero-inline-muted {
-      color: rgba(255, 255, 255, 0.55);
-      font-weight: 500;
-    }
-
-    .hero-track {
-      height: 6px;
-      border-radius: 3px;
-      background: #374151;
-      overflow: hidden;
-      margin-bottom: 20px;
-    }
-
-    .hero-fill {
-      height: 100%;
-      background: var(--lime);
-      border-radius: 3px;
-    }
-
-    .hero-buttons {
+    .sidebar-nav {
       display: flex;
-      gap: 12px;
+      flex-direction: column;
+      gap: 2px;
     }
 
-    .btn-primary {
+    .sidebar-link {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      color: rgba(255, 255, 255, 0.7);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.15s;
+    }
+
+    .sidebar-link:hover {
+      background: rgba(255, 255, 255, 0.06);
+      color: white;
+    }
+
+    .sidebar-link.active {
+      background: rgba(255, 255, 255, 0.1);
+      color: white;
+    }
+
+    .sidebar-bottom {
+      padding: 16px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .sidebar-group {
+      padding: 10px 12px;
+      font-size: 13px;
+      color: rgba(255, 255, 255, 0.6);
+    }
+
+    .sidebar-user {
+      font-size: 14px;
+      font-weight: 500;
+      color: white;
+    }
+
+    /* Main area */
+    .main-area {
       flex: 1;
-      height: 52px;
-      border-radius: 16px;
-      background: #eadfd4;
-      border: none;
-      font-size: 15px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Header */
+    .header {
+      height: 64px;
+      background: white;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 32px;
+      justify-content: space-between;
+    }
+
+    .header-search {
+      flex: 1;
+      max-width: 400px;
+    }
+
+    .header-search input {
+      width: 100%;
+      height: 36px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0 12px;
+      font-family: 'Inter', sans-serif;
+      font-size: 14px;
+    }
+
+    .header-right {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--ink);
+    }
+
+    /* Content */
+    .content {
+      flex: 1;
+      padding: 32px;
+      overflow-y: auto;
+    }
+
+    .content-inner {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .page-title {
+      font-size: 24px;
       font-weight: 700;
-      color: #1f2330;
-      font-family: 'DM Sans', sans-serif;
-      cursor: pointer;
-      box-shadow: 0 3px 8px rgba(0, 0, 0, 0.18);
+      color: var(--ink);
+      margin-bottom: 8px;
     }
 
-    .btn-secondary {
-      flex: 1;
-      height: 52px;
-      border-radius: 16px;
-      background: rgba(255, 255, 255, 0.08);
-      border: none;
-      font-size: 15px;
-      font-weight: 600;
-      color: #fffaf6;
-      font-family: 'DM Sans', sans-serif;
-      cursor: pointer;
+    .page-subtitle {
+      font-size: 14px;
+      color: var(--ink-soft);
+      margin-bottom: 32px;
     }
 
     /* Section */
@@ -201,70 +197,46 @@
       font-size: 11px;
       text-transform: uppercase;
       letter-spacing: 0.6px;
-      color: var(--textMuted);
+      color: var(--ink-soft);
       margin-bottom: 12px;
       font-weight: 700;
     }
 
-    /* Attention Row */
-    .att-row {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      padding: 14px;
-      background: var(--bgSurface);
-      border-radius: 14px;
-      margin-bottom: 6px;
-    }
-
-    .att-row-icon {
-      width: 44px;
-      height: 44px;
+    /* Paper card */
+    .paper-card {
+      background: white;
       border-radius: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
+      padding: 20px;
+      margin-bottom: 12px;
+      border: 1px solid var(--border);
     }
 
-    .att-row-icon.sage {
-      background: var(--sageSoft);
-      color: var(--sage);
-      font-size: 22px;
-      font-weight: 700;
+    .paper-card.sage {
+      background: #E8F0EB;
+      border-color: var(--sage);
     }
 
-    .att-row-icon.neutral {
-      background: #F0EEEA;
-      color: var(--textTertiary);
-      font-size: 22px;
-      font-weight: 700;
-    }
-
-    .att-row-meta {
-      flex: 1;
-    }
-
-    .att-row-title {
+    .card-title {
       font-size: 16px;
       font-weight: 600;
-      color: var(--textPrimary);
-      margin-bottom: 2px;
+      color: var(--ink);
+      margin-bottom: 4px;
     }
 
-    .att-row-caption {
+    .card-caption {
       font-size: 13px;
-      color: var(--textTertiary);
+      color: var(--ink-soft);
     }
 
-    .att-row-amount {
+    .card-amount {
       font-size: 15px;
       font-weight: 700;
-      color: var(--textPrimary);
+      color: var(--ink);
+      margin-top: 12px;
     }
 
     .split-list {
-      margin-top: 8px;
+      margin-top: 12px;
       display: flex;
       flex-direction: column;
       gap: 6px;
@@ -277,7 +249,7 @@
     }
 
     .split-name {
-      color: var(--textTertiary);
+      color: var(--ink-soft);
     }
 
     .split-status {
@@ -285,148 +257,129 @@
     }
 
     .split-status.paid {
-      color: var(--textTertiary);
+      color: var(--ink-soft);
     }
 
     .split-status.owes {
-      color: var(--textPrimary);
+      color: var(--ink);
     }
   </style>
 </head>
 <body>
-  <header>
-    <div class="container">
-      <div class="header-content">
-        <div class="header-left">
-          <h1 class="house-name">12 Grove</h1>
-          <nav>
-            <ul class="nav-links">
-              <li><a href="#" class="active">Command</a></li>
-              <li><a href="#">Money</a></li>
-              <li><a href="#">Space</a></li>
-              <li><a href="#">Jobs</a></li>
-            </ul>
-          </nav>
+  <div class="app-shell">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-top">
+        <div class="sidebar-logo">
+          <div style="width: 32px; height: 32px; background: #2d6a4f; border-radius: 8px;"></div>
+          <span class="sidebar-logo-text">Commune</span>
         </div>
-        <div class="user-info">Maya</div>
-      </div>
-    </div>
-  </header>
-
-  <main>
-    <div class="container">
-      <div class="day-label">Tuesday</div>
-
-      <!-- Ink Hero Card -->
-      <div class="hero">
-        <div class="hero-label">Your Share · August</div>
-        <div class="hero-amount">£460</div>
-        <div class="hero-inline-stats">
-          <span class="hero-inline-strong">£0</span>
-          <span class="hero-inline-muted"> paid  ·  </span>
-          <span class="hero-inline-strong">£460</span>
-          <span class="hero-inline-muted"> left  ·  </span>
-          <span class="hero-inline-strong">3</span>
-          <span class="hero-inline-muted"> open</span>
-        </div>
-        <div class="hero-track">
-          <div class="hero-fill" style="width: 0%;"></div>
-        </div>
-        <div class="hero-buttons">
-          <button class="btn-primary">Add Expense</button>
-          <button class="btn-secondary">Settle Up</button>
-        </div>
-      </div>
-
-      <!-- Today Section -->
-      <section class="section">
-        <div class="section-label">Today</div>
         
-        <div class="att-row">
-          <div class="att-row-icon sage">🗑️</div>
-          <div class="att-row-meta">
-            <div class="att-row-title">Bin night</div>
-            <div class="att-row-caption">Your turn</div>
-          </div>
-        </div>
-      </section>
+        <div class="sidebar-label">Menu</div>
+        <nav class="sidebar-nav">
+          <a href="#" class="sidebar-link active">Command</a>
+          <a href="#" class="sidebar-link">Money</a>
+          <a href="#" class="sidebar-link">Space</a>
+          <a href="#" class="sidebar-link">Jobs</a>
+        </nav>
+      </div>
+      
+      <div class="sidebar-bottom">
+        <div class="sidebar-group">12 Grove</div>
+        <div class="sidebar-user">Maya</div>
+      </div>
+    </aside>
 
-      <!-- This Week Section -->
-      <section class="section">
-        <div class="section-label">This week</div>
-        
-        <div class="att-row">
-          <div class="att-row-icon neutral">🏠</div>
-          <div class="att-row-meta">
-            <div class="att-row-title">Rent</div>
-            <div class="att-row-caption">Due Friday · Split four ways</div>
-            <div class="split-list">
-              <div class="split-item">
-                <span class="split-name">Maya</span>
-                <span class="split-status owes">£460</span>
-              </div>
-              <div class="split-item">
-                <span class="split-name">Jordan</span>
-                <span class="split-status paid">Paid</span>
-              </div>
-              <div class="split-item">
-                <span class="split-name">Sam</span>
-                <span class="split-status paid">Paid</span>
-              </div>
-              <div class="split-item">
-                <span class="split-name">Priya</span>
-                <span class="split-status paid">Paid</span>
+    <!-- Main area -->
+    <div class="main-area">
+      <!-- Header -->
+      <header class="header">
+        <div class="header-search">
+          <input type="text" placeholder="Search expenses, members...">
+        </div>
+        <div class="header-right">Tuesday</div>
+      </header>
+
+      <!-- Content -->
+      <main class="content">
+        <div class="content-inner">
+          <h1 class="page-title">Command Centre</h1>
+          <p class="page-subtitle">Your priorities across all groups</p>
+
+          <!-- Today Section -->
+          <section class="section">
+            <div class="section-label">Today</div>
+            
+            <div class="paper-card sage">
+              <div class="card-title">Bin night</div>
+              <div class="card-caption">Maya's turn</div>
+            </div>
+          </section>
+
+          <!-- This Week Section -->
+          <section class="section">
+            <div class="section-label">This week</div>
+            
+            <div class="paper-card">
+              <div class="card-title">Rent — £1,840</div>
+              <div class="card-caption">Due Friday · Split four ways</div>
+              <div class="split-list">
+                <div class="split-item">
+                  <span class="split-name">Maya</span>
+                  <span class="split-status owes">£460</span>
+                </div>
+                <div class="split-item">
+                  <span class="split-name">Jordan</span>
+                  <span class="split-status paid">Paid</span>
+                </div>
+                <div class="split-item">
+                  <span class="split-name">Sam</span>
+                  <span class="split-status paid">Paid</span>
+                </div>
+                <div class="split-item">
+                  <span class="split-name">Priya</span>
+                  <span class="split-status paid">Paid</span>
+                </div>
               </div>
             </div>
-          </div>
-          <div class="att-row-amount">£1,840</div>
-        </div>
 
-        <div class="att-row">
-          <div class="att-row-icon neutral">📶</div>
-          <div class="att-row-meta">
-            <div class="att-row-title">Wifi</div>
-            <div class="att-row-caption">This month · Maya paid</div>
-            <div class="split-list">
-              <div class="split-item">
-                <span class="split-name">Jordan owes</span>
-                <span class="split-status owes">£8</span>
-              </div>
-              <div class="split-item">
-                <span class="split-name">Sam owes</span>
-                <span class="split-status owes">£8</span>
-              </div>
-              <div class="split-item">
-                <span class="split-name">Priya owes</span>
-                <span class="split-status owes">£8</span>
+            <div class="paper-card">
+              <div class="card-title">Boiler service Thursday 10am</div>
+              <div class="card-caption">Someone needs to be in</div>
+            </div>
+          </section>
+
+          <!-- House Section -->
+          <section class="section">
+            <div class="section-label">House</div>
+            
+            <div class="paper-card">
+              <div class="card-title">Wifi — £32</div>
+              <div class="card-caption">This month · Maya paid</div>
+              <div class="split-list">
+                <div class="split-item">
+                  <span class="split-name">Jordan owes</span>
+                  <span class="split-status owes">£8</span>
+                </div>
+                <div class="split-item">
+                  <span class="split-name">Sam owes</span>
+                  <span class="split-status owes">£8</span>
+                </div>
+                <div class="split-item">
+                  <span class="split-name">Priya owes</span>
+                  <span class="split-status owes">£8</span>
+                </div>
               </div>
             </div>
-          </div>
-          <div class="att-row-amount">£32</div>
-        </div>
 
-        <div class="att-row">
-          <div class="att-row-icon neutral">🔧</div>
-          <div class="att-row-meta">
-            <div class="att-row-title">Boiler service Thursday 10am</div>
-            <div class="att-row-caption">Someone needs to be in</div>
-          </div>
+            <div class="paper-card">
+              <div class="card-title">Chores</div>
+              <div class="card-caption">Kitchen Jordan · Bathroom Sam</div>
+            </div>
+          </section>
         </div>
-      </section>
-
-      <!-- House Section -->
-      <section class="section">
-        <div class="section-label">House</div>
-        
-        <div class="att-row">
-          <div class="att-row-icon neutral">✓</div>
-          <div class="att-row-meta">
-            <div class="att-row-title">Chores</div>
-            <div class="att-row-caption">Kitchen Jordan · Bathroom Sam</div>
-          </div>
-        </div>
-      </section>
+      </main>
     </div>
-  </main>
+  </div>
 </body>
 </html>
