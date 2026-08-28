@@ -1,0 +1,11 @@
+import { createFileRoute, redirect } from '@tanstack/react-router';
+import { RouteError } from '../components/route-error';
+
+export const Route = createFileRoute('/_app')({
+  beforeLoad: ({ context }) => {
+    if (!context.auth.isAuthenticated && !context.auth.isLoading) {
+      throw redirect({ to: '/login' });
+    }
+  },
+  errorComponent: RouteError,
+});

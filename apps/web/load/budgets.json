@@ -1,0 +1,73 @@
+{
+  "scenarios": [
+    {
+      "name": "sign-in",
+      "path": "/login",
+      "concurrency": 6,
+      "requests": 24,
+      "budgetMsP95": 800,
+      "budgetBytesP95": 50000,
+      "maxErrorRate": 0
+    },
+    {
+      "name": "overview",
+      "path": "/overview",
+      "concurrency": 6,
+      "requests": 24,
+      "budgetMsP95": 1200,
+      "budgetBytesP95": 50000,
+      "maxErrorRate": 0.02,
+      "requiresAuth": true
+    },
+    {
+      "name": "dashboard",
+      "path": "/",
+      "concurrency": 6,
+      "requests": 24,
+      "budgetMsP95": 1200,
+      "budgetBytesP95": 50000,
+      "maxErrorRate": 0.02,
+      "requiresAuth": true
+    },
+    {
+      "name": "expenses-ledger",
+      "path": "/expenses",
+      "concurrency": 6,
+      "requests": 24,
+      "budgetMsP95": 1300,
+      "budgetBytesP95": 50000,
+      "maxErrorRate": 0.02,
+      "requiresAuth": true
+    },
+    {
+      "name": "activity",
+      "path": "/activity",
+      "concurrency": 6,
+      "requests": 24,
+      "budgetMsP95": 1300,
+      "budgetBytesP95": 50000,
+      "maxErrorRate": 0.02,
+      "requiresAuth": true
+    },
+    {
+      "name": "notifications-anchor",
+      "path": "/settings",
+      "concurrency": 4,
+      "requests": 16,
+      "budgetMsP95": 1200,
+      "budgetBytesP95": 50000,
+      "maxErrorRate": 0.02,
+      "requiresAuth": true
+    },
+    {
+      "name": "group-switch-anchor",
+      "path": "/groups",
+      "concurrency": 6,
+      "requests": 24,
+      "budgetMsP95": 1200,
+      "budgetBytesP95": 50000,
+      "maxErrorRate": 0.02,
+      "requiresAuth": true
+    }
+  ]
+}
