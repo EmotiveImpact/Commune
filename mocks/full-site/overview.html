@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Command Centre · COMMUNE</title>
+  <link rel="stylesheet" href="./styles.css">
+  <style>
+    .overview-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: var(--spacing-xl);
+    }
+    
+    .netting-toggle {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-sm);
+      padding: var(--spacing-sm) var(--spacing-md);
+      background: var(--commune-cream);
+      border: 1px solid var(--commune-border);
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    
+    .netting-toggle:hover {
+      background: white;
+    }
+    
+    .netting-toggle input[type="checkbox"] {
+      width: 40px;
+      height: 20px;
+      appearance: none;
+      background: var(--commune-border);
+      border-radius: 10px;
+      position: relative;
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+    
+    .netting-toggle input[type="checkbox"]:checked {
+      background: var(--commune-sage);
+    }
+    
+    .netting-toggle input[type="checkbox"]::before {
+      content: '';
+      position: absolute;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: white;
+      top: 2px;
+      left: 2px;
+      transition: left 0.2s ease;
+    }
+    
+    .netting-toggle input[type="checkbox"]:checked::before {
+      left: 22px;
+    }
+    
+    .summary-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: var(--spacing-lg);
+      margin-bottom: var(--spacing-xl);
+    }
+    
+    .summary-card {
+      background: white;
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--commune-border);
+      padding: var(--spacing-lg);
+    }
+    
+    .summary-card.owe {
+      background: linear-gradient(135deg, #fef5f3 0%, #ffffff 100%);
+      border-color: rgba(231, 111, 81, 0.2);
+    }
+    
+    .summary-card.owed {
+      background: linear-gradient(135deg, #f0f9f4 0%, #ffffff 100%);
+      border-color: rgba(45, 106, 79, 0.2);
+    }
+    
+    .summary-card-label {
+      font-size: 13px;
+      color: var(--commune-ink-soft);
+      margin-bottom: var(--spacing-sm);
+      font-weight: 500;
+    }
+    
+    .summary-card-value {
+      font-size: 36px;
+      font-weight: 800;
+      color: var(--commune-ink);
+      margin-bottom: var(--spacing-xs);
+    }
+    
+    .summary-card.owe .summary-card-value {
+      color: var(--commune-peach);
+    }
+    
+    .summary-card.owed .summary-card-value {
+      color: var(--commune-sage);
+    }
+    
+    .summary-card-meta {
+      font-size: 13px;
+      color: var(--commune-ink-soft);
+    }
+    
+    .nudge-card {
+      background: linear-gradient(135deg, #fffbeb 0%, #ffffff 100%);
+      border: 1px solid rgba(245, 158, 11, 0.2);
+      border-radius: var(--radius-lg);
+      padding: var(--spacing-lg);
+      margin-bottom: var(--spacing-xl);
+      display: flex;
+      align-items: flex-start;
+      gap: var(--spacing-md);
+    }
+    
+    .nudge-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: rgba(245, 158, 11, 0.15);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    
+    .nudge-content {
+      flex: 1;
+    }
+    
+    .nudge-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--commune-ink);
+      margin-bottom: var(--spacing-xs);
+    }
+    
+    .nudge-text {
+      font-size: 14px;
+      color: var(--commune-ink-soft);
+      margin-bottom: var(--spacing-md);
+    }
+    
+    .nudge-action {
+      padding: var(--spacing-sm) var(--spacing-lg);
+      background: rgba(245, 158, 11, 0.15);
+      color: rgb(161, 98, 7);
+      border: none;
+      border-radius: var(--radius-md);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    
+    .nudge-action:hover {
+      background: rgba(245, 158, 11, 0.25);
+    }
+    
+    .group-status-list {
+      display: flex;
+      flex-direction: column;
+      gap: var(--spacing-md);
+    }
+    
+    .group-status-card {
+      background: white;
+      border: 1px solid var(--commune-border);
+      border-radius: var(--radius-lg);
+      padding: var(--spacing-lg);
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-md);
+      text-decoration: none;
+      color: inherit;
+      transition: all 0.2s ease;
+    }
+    
+    .group-status-card:hover {
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      transform: translateY(-1px);
+    }
+    
+    .group-status-avatar {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: var(--commune-cream);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    
+    .group-status-info {
+      flex: 1;
+      min-width: 0;
+    }
+    
+    .group-status-name {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--commune-ink);
+      margin-bottom: 2px;
+    }
+    
+    .group-status-details {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-md);
+      font-size: 13px;
+      color: var(--commune-ink-soft);
+    }
+    
+    .group-status-position {
+      text-align: right;
+    }
+    
+    .group-status-amount {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 2px;
+    }
+    
+    .group-status-amount.owe {
+      color: var(--commune-peach);
+    }
+    
+    .group-status-amount.owed {
+      color: var(--commune-sage);
+    }
+    
+    .group-status-amount.settled {
+      color: var(--commune-ink-soft);
+    }
+    
+    .workspace-billing-panel {
+      background: linear-gradient(135deg, #f0f7ff 0%, #ffffff 100%);
+      border: 1px solid rgba(59, 130, 246, 0.2);
+    }
+    
+    .billing-alert-item {
+      display: flex;
+      align-items: flex-start;
+      gap: var(--spacing-sm);
+      padding: var(--spacing-sm);
+      background: white;
+      border-radius: var(--radius-md);
+      margin-bottom: var(--spacing-sm);
+    }
+    
+    .billing-alert-icon {
+      width: 20px;
+      height: 20px;
+      color: var(--commune-peach);
+      flex-shrink: 0;
+    }
+    
+    .billing-alert-text {
+      flex: 1;
+      font-size: 13px;
+      color: var(--commune-ink);
+    }
+    
+    .billing-alert-text strong {
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <!-- App Shell -->
+  <div class="app-shell">
+    <!-- Sidebar -->
+    <nav class="sidebar">
+      <div class="sidebar-header">
+        <div class="commune-wordmark">COMMUNE</div>
+      </div>
+
+      <div class="sidebar-search">
+        <input type="text" placeholder="Search..." class="search-input">
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-section-label">Menu</div>
+        <a href="./index.html" class="nav-link">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+            <polyline points="9 22 9 12 15 12 15 22"></polyline>
+          </svg>
+          <span>Dashboard</span>
+        </a>
+        <a href="./groups.html" class="nav-link">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+            <circle cx="9" cy="7" r="4"></circle>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+          </svg>
+          <span>My Groups</span>
+        </a>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-section-label">Insights</div>
+        <a href="./overview.html" class="nav-link active">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+            <line x1="9" y1="3" x2="9" y2="21"></line>
+          </svg>
+          <span>Command Centre</span>
+        </a>
+      </div>
+
+      <div class="sidebar-footer">
+        <div class="sidebar-user">
+          <div class="user-avatar">AE</div>
+          <div class="user-info">
+            <div class="user-name">Augustus Edem</div>
+            <div class="user-plan">Pro</div>
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <!-- Header -->
+      <header class="page-header-bar">
+        <div class="page-header-content">
+          <div>
+            <h1 class="page-title">Command Centre</h1>
+            <p style="font-size: 14px; color: var(--commune-ink-soft); margin-top: 4px;">Your cross-group financial overview</p>
+          </div>
+          <label class="netting-toggle">
+            <input type="checkbox" checked>
+            <span style="font-size: 14px; font-weight: 500; color: var(--commune-ink);">Cross-group netting</span>
+          </label>
+        </div>
+      </header>
+
+      <!-- Command Centre Content -->
+      <div class="page-content">
+        <!-- Summary Cards -->
+        <div class="summary-cards">
+          <div class="summary-card owe">
+            <div class="summary-card-label">You owe</div>
+            <div class="summary-card-value">£89.20</div>
+            <div class="summary-card-meta">Across 2 people · 2 groups</div>
+          </div>
+
+          <div class="summary-card owed">
+            <div class="summary-card-label">Owed to you</div>
+            <div class="summary-card-value">£42.50</div>
+            <div class="summary-card-meta">From 1 person · 1 group</div>
+          </div>
+
+          <div class="summary-card">
+            <div class="summary-card-label">Net position</div>
+            <div class="summary-card-value" style="color: var(--commune-peach);">-£46.70</div>
+            <div class="summary-card-meta">After cross-group netting</div>
+          </div>
+        </div>
+
+        <!-- Smart Nudges -->
+        <div class="nudge-card">
+          <div class="nudge-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="rgb(161, 98, 7)" stroke-width="2" style="width: 24px; height: 24px;">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="8" x2="12" y2="12"></line>
+              <line x1="12" y1="16" x2="12.01" y2="16"></line>
+            </svg>
+          </div>
+          <div class="nudge-content">
+            <div class="nudge-title">Payment reminder</div>
+            <div class="nudge-text">You have £89.20 in outstanding payments. Consider settling up to keep your groups healthy.</div>
+            <button class="nudge-action">View payments</button>
+          </div>
+        </div>
+
+        <!-- Group Status List -->
+        <div class="panel">
+          <div class="panel-header">
+            <h2 class="section-heading">Your Groups</h2>
+          </div>
+          <div class="group-status-list">
+            <!-- Household -->
+            <a href="./group-hub.html" class="group-status-card">
+              <div class="group-status-avatar">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 24px; height: 24px; color: var(--commune-sage);">
+                  <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                  <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                </svg>
+              </div>
+              <div class="group-status-info">
+                <div class="group-status-name">Household</div>
+                <div class="group-status-details">
+                  <span>4 members</span>
+                  <span>·</span>
+                  <span>£1,247.80/mo</span>
+                  <span>·</span>
+                  <span class="status-badge status-settled" style="font-size: 11px; padding: 2px 6px;">All settled</span>
+                </div>
+              </div>
+              <div class="group-status-position">
+                <div class="group-status-amount settled">£0.00</div>
+                <div class="status-badge status-settled">Settled</div>
+              </div>
+            </a>
+
+            <!-- Workspace -->
+            <a href="./group-hub.html" class="group-status-card">
+              <div class="group-status-avatar">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 24px; height: 24px; color: var(--commune-sky);">
+                  <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                  <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+                </svg>
+              </div>
+              <div class="group-status-info">
+                <div class="group-status-name">Workspace</div>
+                <div class="group-status-details">
+                  <span>8 members</span>
+                  <span>·</span>
+                  <span>£3,420.00/mo</span>
+                  <span>·</span>
+                  <span class="status-badge status-pending" style="font-size: 11px; padding: 2px 6px;">Bills overdue</span>
+                </div>
+              </div>
+              <div class="group-status-position">
+                <div class="group-status-amount owe">-£89.20</div>
+                <div class="status-badge status-pending">You owe</div>
+              </div>
+            </a>
+          </div>
+        </div>
+
+        <!-- Workspace Billing Watch -->
+        <div class="panel workspace-billing-panel">
+          <div class="panel-header">
+            <h2 class="section-heading">Workspace billing watch</h2>
+            <span class="status-badge status-pending">2 alerts</span>
+          </div>
+          <div>
+            <div class="billing-alert-item">
+              <svg class="billing-alert-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+              </svg>
+              <div class="billing-alert-text">
+                <strong>Overdue:</strong> Office Rent (£1,200.00) was due 3 days ago
+              </div>
+            </div>
+            <div class="billing-alert-item">
+              <svg class="billing-alert-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="16" x2="12" y2="12"></line>
+                <line x1="12" y1="8" x2="12.01" y2="8"></line>
+              </svg>
+              <div class="billing-alert-text">
+                <strong>Upcoming:</strong> SaaS Subscriptions (£840.00) due in 5 days
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recent Cross-Group Activity -->
+        <div class="panel">
+          <div class="panel-header">
+            <h2 class="section-heading">Recent Activity</h2>
+          </div>
+          <div class="table-container">
+            <table class="expense-table">
+              <thead>
+                <tr>
+                  <th>Event</th>
+                  <th>Group</th>
+                  <th>Amount</th>
+                  <th>Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>
+                    <div class="expense-title">Council Tax payment</div>
+                    <div style="font-size: 12px; color: var(--commune-ink-soft);">Augustus Edem</div>
+                  </td>
+                  <td>Household</td>
+                  <td class="amount">£187.50</td>
+                  <td>27 Aug</td>
+                </tr>
+                <tr>
+                  <td>
+                    <div class="expense-title">Office Supplies added</div>
+                    <div style="font-size: 12px; color: var(--commune-ink-soft);">Sarah Jones</div>
+                  </td>
+                  <td>Workspace</td>
+                  <td class="amount">£42.10</td>
+                  <td>24 Aug</td>
+                </tr>
+                <tr>
+                  <td>
+                    <div class="expense-title">Weekly Groceries</div>
+                    <div style="font-size: 12px; color: var(--commune-ink-soft);">Michael Kim</div>
+                  </td>
+                  <td>Household</td>
+                  <td class="amount">£84.32</td>
+                  <td>23 Aug</td>
+                </tr>
+                <tr>
+                  <td>
+                    <div class="expense-title">Internet settled</div>
+                    <div style="font-size: 12px; color: var(--commune-ink-soft);">Lisa Martinez</div>
+                  </td>
+                  <td>Household</td>
+                  <td class="amount">£38.00</td>
+                  <td>22 Aug</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</body>
+</html>
