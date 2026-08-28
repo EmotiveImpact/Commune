@@ -65,12 +65,12 @@ const AnalyticsTopSpendersChart = lazy(() =>
 );
 
 const categoryPalette = [
-  '#96E85F',
-  '#104536',
-  '#62C38A',
-  '#B8DA7D',
-  '#74D43B',
-  '#D9F3C3',
+  '#2d6a4f',
+  '#1b4332',
+  '#d7e6dd',
+  '#667085',
+  '#171b24',
+  '#2d6a4f',
 ];
 
 function formatCategoryLabel(category: string) {
