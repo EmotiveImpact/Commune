@@ -688,3 +688,10 @@ body {
   padding: 4px 10px;
   border-radius: 6px;
 }
+
+/* Command Centre billing alert icons */
+.billing-alert-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
