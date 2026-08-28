@@ -55,7 +55,6 @@
     .sidebar-logo {
       display: flex;
       align-items: center;
-      gap: 8px;
       margin-bottom: 24px;
     }
 
@@ -65,6 +64,16 @@
       letter-spacing: 0.08em;
       text-transform: uppercase;
       color: white;
+    }
+
+    .sidebar-group-header {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: rgba(255, 255, 255, 0.4);
+      padding: 10px 12px 8px;
+      margin-top: 16px;
     }
 
     .sidebar-label {
@@ -133,7 +142,7 @@
     /* Header */
     .header {
       height: 64px;
-      background: white;
+      background: var(--paper);
       border-bottom: 1px solid var(--border);
       display: flex;
       align-items: center;
@@ -209,12 +218,14 @@
       align-items: center;
       justify-content: center;
       margin: 0 auto 16px;
+      opacity: 0.85;
     }
 
     .empty-icon svg {
       width: 28px;
       height: 28px;
       color: var(--sage);
+      stroke-width: 2;
     }
 
     .empty-title {
@@ -239,16 +250,30 @@
     <aside class="sidebar">
       <div class="sidebar-top">
         <div class="sidebar-logo">
-          <div style="width: 32px; height: 32px; background: #2d6a4f; border-radius: 8px;"></div>
           <span class="sidebar-logo-text">Commune</span>
         </div>
         
         <div class="sidebar-label">Menu</div>
         <nav class="sidebar-nav">
+          <a href="#" class="sidebar-link">Overview</a>
+        </nav>
+
+        <div class="sidebar-group-header">Money</div>
+        <nav class="sidebar-nav">
+          <a href="#" class="sidebar-link">Expenses</a>
+          <a href="#" class="sidebar-link">Balances</a>
+        </nav>
+
+        <div class="sidebar-group-header">Insights</div>
+        <nav class="sidebar-nav">
           <a href="#" class="sidebar-link active">Command Centre</a>
-          <a href="#" class="sidebar-link">Money</a>
-          <a href="#" class="sidebar-link">Insights</a>
-          <a href="#" class="sidebar-link">Team</a>
+          <a href="#" class="sidebar-link">Analytics</a>
+        </nav>
+
+        <div class="sidebar-group-header">Team</div>
+        <nav class="sidebar-nav">
+          <a href="#" class="sidebar-link">Members</a>
+          <a href="#" class="sidebar-link">Groups</a>
         </nav>
       </div>
       
