@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>12 Grove — Command</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Serif+Display&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --sage: #2d6a4f;
+      --navy: #1a1e2e;
+      --cream: #f5f3ef;
+      --muted: #888880;
+    }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--cream);
+      color: var(--navy);
+      line-height: 1.5;
+      min-height: 100vh;
+    }
+
+    h1, h2, h3 {
+      font-family: 'DM Serif Display', serif;
+      font-weight: 400;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 48px;
+    }
+
+    /* Header */
+    header {
+      border-bottom: 1px solid rgba(26, 30, 46, 0.1);
+      padding: 32px 0;
+    }
+
+    .header-content {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .house-name {
+      font-family: 'DM Serif Display', serif;
+      font-size: 24px;
+      color: var(--navy);
+    }
+
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 15px;
+      color: var(--muted);
+    }
+
+    .avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: var(--navy);
+      color: var(--cream);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    /* Navigation */
+    nav {
+      padding: 24px 0;
+      border-bottom: 1px solid rgba(26, 30, 46, 0.1);
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 40px;
+      list-style: none;
+    }
+
+    .nav-links a {
+      text-decoration: none;
+      color: var(--muted);
+      font-size: 15px;
+      font-weight: 500;
+      letter-spacing: 0.02em;
+      transition: color 0.2s;
+    }
+
+    .nav-links a.active {
+      color: var(--navy);
+    }
+
+    .nav-links a:hover {
+      color: var(--navy);
+    }
+
+    /* Main Content */
+    main {
+      padding: 48px 0 80px;
+    }
+
+    .day-header {
+      margin-bottom: 48px;
+    }
+
+    .day-header h1 {
+      font-size: 36px;
+      margin-bottom: 8px;
+    }
+
+    .day-subtitle {
+      font-size: 15px;
+      color: var(--muted);
+    }
+
+    /* Item List */
+    .item-list {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .item {
+      padding: 24px;
+      border: 1px solid rgba(26, 30, 46, 0.1);
+      background: var(--cream);
+    }
+
+    .item.urgent {
+      background: var(--sage);
+      color: var(--cream);
+      border-color: var(--sage);
+    }
+
+    .item.urgent .item-meta {
+      color: rgba(245, 243, 239, 0.7);
+    }
+
+    .item-type {
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+      margin-bottom: 8px;
+      font-weight: 500;
+    }
+
+    .item.urgent .item-type {
+      color: rgba(245, 243, 239, 0.7);
+    }
+
+    .item-title {
+      font-size: 18px;
+      font-weight: 500;
+      margin-bottom: 4px;
+    }
+
+    .item-meta {
+      font-size: 14px;
+      color: var(--muted);
+    }
+
+    .item-people {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+      flex-wrap: wrap;
+    }
+
+    .person-chip {
+      font-size: 14px;
+      padding: 4px 12px;
+      background: rgba(26, 30, 46, 0.06);
+      border-radius: 12px;
+    }
+
+    .item.urgent .person-chip {
+      background: rgba(245, 243, 239, 0.2);
+      color: var(--cream);
+    }
+
+    .split-list {
+      margin-top: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .split-item {
+      font-size: 14px;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .split-name {
+      color: var(--muted);
+    }
+
+    .split-status {
+      font-weight: 500;
+    }
+
+    .split-status.paid {
+      color: var(--muted);
+    }
+
+    .split-status.owes {
+      color: var(--navy);
+    }
+
+    .item.urgent .split-name,
+    .item.urgent .split-status {
+      color: var(--cream);
+    }
+
+    .item.urgent .split-status.paid {
+      opacity: 0.7;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container">
+      <div class="header-content">
+        <h1 class="house-name">12 Grove</h1>
+        <div class="user-info">
+          <div class="avatar">M</div>
+          <span>Maya</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <nav>
+    <div class="container">
+      <ul class="nav-links">
+        <li><a href="#" class="active">Command</a></li>
+        <li><a href="#">Money</a></li>
+        <li><a href="#">Space</a></li>
+        <li><a href="#">Jobs</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <main>
+    <div class="container">
+      <div class="day-header">
+        <h1>Tuesday</h1>
+        <p class="day-subtitle">Command Centre</p>
+      </div>
+
+      <div class="item-list">
+        <!-- Urgent: Bin night tonight -->
+        <div class="item urgent">
+          <div class="item-type">Tonight</div>
+          <div class="item-title">Bin night</div>
+          <div class="item-meta">Your turn</div>
+        </div>
+
+        <!-- Rent due -->
+        <div class="item">
+          <div class="item-type">Due Friday</div>
+          <div class="item-title">Rent — £1,840</div>
+          <div class="item-meta">Split four ways, £460 each</div>
+          <div class="split-list">
+            <div class="split-item">
+              <span class="split-name">Maya</span>
+              <span class="split-status owes">£460</span>
+            </div>
+            <div class="split-item">
+              <span class="split-name">Jordan</span>
+              <span class="split-status paid">Paid</span>
+            </div>
+            <div class="split-item">
+              <span class="split-name">Sam</span>
+              <span class="split-status paid">Paid</span>
+            </div>
+            <div class="split-item">
+              <span class="split-name">Priya</span>
+              <span class="split-status paid">Paid</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Wifi split -->
+        <div class="item">
+          <div class="item-type">This Month</div>
+          <div class="item-title">Wifi — £32</div>
+          <div class="item-meta">Maya paid, others owe £8 each</div>
+          <div class="split-list">
+            <div class="split-item">
+              <span class="split-name">Jordan</span>
+              <span class="split-status owes">Owes £8</span>
+            </div>
+            <div class="split-item">
+              <span class="split-name">Sam</span>
+              <span class="split-status owes">Owes £8</span>
+            </div>
+            <div class="split-item">
+              <span class="split-name">Priya</span>
+              <span class="split-status owes">Owes £8</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Chores -->
+        <div class="item">
+          <div class="item-type">Chores</div>
+          <div class="item-title">Kitchen</div>
+          <div class="item-meta">Jordan</div>
+        </div>
+
+        <div class="item">
+          <div class="item-type">Chores</div>
+          <div class="item-title">Bathroom</div>
+          <div class="item-meta">Sam</div>
+        </div>
+
+        <!-- Notice -->
+        <div class="item">
+          <div class="item-type">Notice</div>
+          <div class="item-title">Boiler service Thursday 10am</div>
+          <div class="item-meta">Someone needs to be in</div>
+        </div>
+      </div>
+    </div>
+  </main>
+</body>
+</html>
