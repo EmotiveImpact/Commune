@@ -3,50 +3,97 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Workspace Billing — Commune</title>
+  <title>Billing — Commune</title>
   <link rel="stylesheet" href="./styles.css">
+  <style>
+    .plan-card {
+      background: rgba(255, 255, 255, 0.82);
+      border: 2px solid rgba(45, 106, 79, 0.3);
+      border-radius: 14px;
+      padding: 28px;
+      max-width: 340px;
+      box-shadow: 0 1px 3px rgba(23, 27, 36, 0.06), 0 1px 2px rgba(23, 27, 36, 0.04);
+    }
+
+    .plan-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 18px;
+    }
+
+    .plan-name {
+      font-size: 22px;
+      font-weight: 800;
+      color: #171b24;
+    }
+
+    .active-badge {
+      background: rgba(45, 106, 79, 0.12);
+      color: #2d6a4f;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 6px;
+    }
+  </style>
 </head>
 <body>
+  <!-- Sidebar -->
   <div class="sidebar">
     <div class="logo">COMMUNE</div>
-    <div class="nav-label">MENU</div><a href="index.html" class="nav-link">Dashboard</a><a href="groups.html" class="nav-link">My Groups</a>
-    <div class="nav-label">MONEY</div><a href="./expenses.html" class="nav-link">Expenses</a><a href="./recurring.html" class="nav-link">Recurring</a><a href="./templates.html" class="nav-link">Templates</a><a href="./funds.html" class="nav-link">Funds</a><a href="./billing.html" class="nav-link active">Billing</a>
-    <div class="nav-label">INSIGHTS</div><a href="overview.html" class="nav-link">Command Centre</a><a href="#" class="nav-link">Breakdown</a><a href="#" class="nav-link">Analytics</a>
-    <div class="nav-label">TEAM</div><a href="#" class="nav-link">Members</a><a href="#" class="nav-link">Operations</a><a href="#" class="nav-link">Activity</a>
-    <div class="user-profile"><div class="avatar">AE</div><div><div style="font-size: 14px; font-weight: 600;">Augustus Edem</div><div class="plan-badge">Pro</div></div></div>
+    
+    <div class="nav-label">MENU</div>
+    <a href="index.html" class="nav-link">Dashboard</a>
+    <a href="groups.html" class="nav-link">My Groups</a>
+
+    <div class="nav-label">MONEY</div>
+    <a href="expenses.html" class="nav-link">Expenses</a>
+    <a href="recurring.html" class="nav-link">Recurring</a>
+    <a href="templates.html" class="nav-link">Templates</a>
+    <a href="funds.html" class="nav-link">Funds</a>
+    <a href="billing.html" class="nav-link active">Billing</a>
+
+    <div class="nav-label">INSIGHTS</div>
+    <a href="overview.html" class="nav-link">Command Centre</a>
+    <a href="#" class="nav-link">Breakdown</a>
+    <a href="#" class="nav-link">Analytics</a>
+
+    <div class="nav-label">TEAM</div>
+    <a href="#" class="nav-link">Members</a>
+    <a href="#" class="nav-link">Operations</a>
+    <a href="#" class="nav-link">Activity</a>
+
+    <div class="user-profile">
+      <div class="avatar">AE</div>
+      <div>
+        <div style="font-size: 14px; font-weight: 600;">Augustus Edem</div>
+        <div class="plan-badge">Pro</div>
+      </div>
+    </div>
   </div>
+
+  <!-- Main content -->
   <div class="main">
-    <div class="header"><input type="text" class="search" placeholder="Search expenses, members..."></div>
+    <div class="header">
+      <input type="text" class="search" placeholder="Search expenses, members...">
+    </div>
+
     <div class="content">
+      <!-- Page header -->
       <div class="page-header">
-        <h1 class="page-title">Workspace Billing</h1>
-        <p class="page-subtitle">Track vendor costs, due dates, and payment schedules for workspace expenses.</p>
+        <h1 class="page-title">Billing</h1>
+        <p class="page-subtitle">Your current plan and subscription</p>
       </div>
-      <div class="page-actions"><button class="btn-default">Export CSV</button></div>
-      <div class="stats-grid">
-        <div class="stat-card"><div class="stat-label">Total monthly spend</div><div class="stat-value">£1,458.20</div></div>
-        <div class="stat-card"><div class="stat-label">Vendors</div><div class="stat-value">8</div></div>
-        <div class="stat-card"><div class="stat-label">Due soon</div><div class="stat-value">2</div></div>
-        <div class="stat-card"><div class="stat-label">Overdue</div><div class="stat-value">1</div></div>
-      </div>
-      <div class="panel">
-        <h3 class="section-heading">Vendor breakdown</h3>
-        <div class="table-container">
-          <table class="expense-table">
-            <thead><tr><th>Vendor</th><th>Monthly avg</th><th>Last paid</th><th>Next due</th><th>Status</th></tr></thead>
-            <tbody>
-              <tr><td>AWS</td><td class="amount">£420.00</td><td>15 Dec 2024</td><td>15 Jan 2025</td><td><span class="status-badge status-settled">Paid</span></td></tr>
-              <tr><td>Slack</td><td class="amount">£320.00</td><td>12 Dec 2024</td><td>12 Jan 2025</td><td><span class="status-badge status-settled">Paid</span></td></tr>
-              <tr><td>GitHub</td><td class="amount">£210.00</td><td>05 Dec 2024</td><td>05 Jan 2025</td><td><span class="status-badge status-pending">Due soon</span></td></tr>
-              <tr><td>Vercel</td><td class="amount">£180.00</td><td>08 Dec 2024</td><td>08 Jan 2025</td><td><span class="status-badge status-pending">Due soon</span></td></tr>
-              <tr><td>Linear</td><td class="amount">£140.00</td><td>01 Dec 2024</td><td>01 Jan 2025</td><td><span class="status-badge status-overdue">Overdue</span></td></tr>
-            </tbody>
-          </table>
+
+      <!-- Plan card -->
+      <div class="plan-card">
+        <div class="plan-header">
+          <div>
+            <div class="plan-name">Pro</div>
+          </div>
+          <div class="active-badge">Active</div>
         </div>
-      </div>
-      <div class="panel">
-        <h3 class="section-heading">Billing trend</h3>
-        <div class="chart-placeholder"><svg viewBox="0 0 800 200" class="line-chart"><polyline fill="none" stroke="#2d6a4f" stroke-width="2" points="0,150 100,145 200,140 300,135 400,130 500,125 600,120 700,118 800,115"/></svg></div>
       </div>
     </div>
   </div>
