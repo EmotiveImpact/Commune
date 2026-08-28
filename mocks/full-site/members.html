@@ -241,6 +241,15 @@
       border-radius: 12px;
       padding: 20px;
       box-shadow: 0 1px 3px rgba(23, 27, 36, 0.06);
+      text-decoration: none;
+      color: inherit;
+      display: block;
+      transition: all 0.15s;
+    }
+
+    .member-card:hover {
+      box-shadow: 0 4px 12px rgba(23, 27, 36, 0.1);
+      transform: translateY(-2px);
     }
 
     .member-header {
@@ -360,6 +369,8 @@
       min-height: 160px;
       cursor: pointer;
       transition: all 0.15s;
+      transform: none !important;
+      pointer-events: none;
     }
 
     .invite-card:hover {
@@ -476,7 +487,7 @@
 
       <!-- Members grid -->
       <div class="members-grid">
-        <div class="member-card">
+        <a href="member.html" class="member-card">
           <div class="member-header">
             <div class="member-avatar">SJ</div>
             <div class="member-info">
@@ -502,9 +513,9 @@
             </div>
             <div style="font-size: 11px; color: #667085; margin-top: 4px;">45% settled this month</div>
           </div>
-        </div>
+        </a>
 
-        <div class="member-card">
+        <a href="member.html" class="member-card">
           <div class="member-header">
             <div class="member-avatar">TC</div>
             <div class="member-info">
@@ -530,9 +541,9 @@
             </div>
             <div style="font-size: 11px; color: #667085; margin-top: 4px;">100% settled this month</div>
           </div>
-        </div>
+        </a>
 
-        <div class="member-card">
+        <a href="member.html" class="member-card">
           <div class="member-header">
             <div class="member-avatar">AR</div>
             <div class="member-info">
@@ -558,9 +569,9 @@
             </div>
             <div style="font-size: 11px; color: #667085; margin-top: 4px;">0% settled this month</div>
           </div>
-        </div>
+        </a>
 
-        <div class="member-card">
+        <a href="member.html" class="member-card">
           <div class="member-header">
             <div class="member-avatar">MP</div>
             <div class="member-info">
@@ -586,7 +597,7 @@
             </div>
             <div style="font-size: 11px; color: #667085; margin-top: 4px;">72% settled this month</div>
           </div>
-        </div>
+        </a>
 
         <div class="member-card invite-card">
           <div class="invite-content">
