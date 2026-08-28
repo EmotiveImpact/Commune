@@ -17,14 +17,16 @@
     :root {
       --bgBase: #FAF9F7;
       --bgSurface: #FFFFFF;
-      --bgSubtle: #F5F3EF;
+      --bgInk: #1A1E2B;
       --textPrimary: #1A1E2B;
-      --textSecondary: #3D4152;
       --textTertiary: #6B6D73;
       --textMuted: #8A8D9A;
+      --textInverse: #FFFFFF;
       --border: #E8E6E1;
       --sage: #2D6A4F;
       --sageSoft: #E8F0EB;
+      --lime: #96E85F;
+      --limeSoft: #E8F7D4;
     }
 
     body {
@@ -36,9 +38,9 @@
     }
 
     .container {
-      max-width: 1200px;
+      max-width: 900px;
       margin: 0 auto;
-      padding: 0 48px;
+      padding: 0 40px;
     }
 
     /* Header */
@@ -85,10 +87,6 @@
       color: var(--textPrimary);
     }
 
-    .nav-links a:hover {
-      color: var(--textSecondary);
-    }
-
     .user-info {
       font-size: 15px;
       color: var(--textPrimary);
@@ -103,12 +101,101 @@
     .day-label {
       font-size: 13px;
       color: var(--textMuted);
-      margin-bottom: 32px;
+      margin-bottom: 24px;
       font-weight: 500;
     }
 
+    /* Ink Hero Card */
+    .hero {
+      background: var(--bgInk);
+      border-radius: 28px;
+      padding: 24px;
+      margin-bottom: 32px;
+    }
+
+    .hero-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.6px;
+      text-transform: uppercase;
+      color: var(--limeSoft);
+      margin-bottom: 12px;
+    }
+
+    .hero-amount {
+      font-size: 44px;
+      font-weight: 700;
+      color: var(--textInverse);
+      letter-spacing: -0.8px;
+      line-height: 50px;
+      margin-bottom: 8px;
+    }
+
+    .hero-inline-stats {
+      font-size: 14px;
+      margin-bottom: 16px;
+    }
+
+    .hero-inline-strong {
+      color: var(--textInverse);
+      font-weight: 700;
+    }
+
+    .hero-inline-muted {
+      color: rgba(255, 255, 255, 0.55);
+      font-weight: 500;
+    }
+
+    .hero-track {
+      height: 6px;
+      border-radius: 3px;
+      background: #374151;
+      overflow: hidden;
+      margin-bottom: 20px;
+    }
+
+    .hero-fill {
+      height: 100%;
+      background: var(--lime);
+      border-radius: 3px;
+      width: 60%;
+    }
+
+    .hero-buttons {
+      display: flex;
+      gap: 12px;
+    }
+
+    .btn-primary {
+      flex: 1;
+      height: 52px;
+      border-radius: 16px;
+      background: #eadfd4;
+      border: none;
+      font-size: 15px;
+      font-weight: 700;
+      color: #1f2330;
+      font-family: 'DM Sans', sans-serif;
+      cursor: pointer;
+      box-shadow: 0 3px 8px rgba(0, 0, 0, 0.18);
+    }
+
+    .btn-secondary {
+      flex: 1;
+      height: 52px;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.08);
+      border: none;
+      font-size: 15px;
+      font-weight: 600;
+      color: #fffaf6;
+      font-family: 'DM Sans', sans-serif;
+      cursor: pointer;
+    }
+
+    /* Section */
     .section {
-      margin-bottom: 40px;
+      margin-bottom: 32px;
     }
 
     .section-label {
@@ -116,57 +203,78 @@
       text-transform: uppercase;
       letter-spacing: 0.6px;
       color: var(--textMuted);
-      margin-bottom: 16px;
+      margin-bottom: 12px;
       font-weight: 700;
     }
 
-    .item-list {
+    /* Attention Row */
+    .att-row {
       display: flex;
-      flex-direction: column;
-      gap: 0;
-    }
-
-    .item {
+      align-items: center;
+      gap: 14px;
+      padding: 14px;
       background: var(--bgSurface);
-      padding: 20px;
-      border-radius: 16px;
-      margin-bottom: 12px;
+      border-radius: 14px;
+      margin-bottom: 6px;
     }
 
-    .item.highlight {
-      background: var(--sage);
-      color: white;
+    .att-row-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
     }
 
-    .item-title {
+    .att-row-icon.sage {
+      background: var(--sageSoft);
+      color: var(--sage);
+      font-size: 22px;
+      font-weight: 700;
+    }
+
+    .att-row-icon.neutral {
+      background: #F0EEEA;
+      color: var(--textTertiary);
+      font-size: 22px;
+      font-weight: 700;
+    }
+
+    .att-row-meta {
+      flex: 1;
+    }
+
+    .att-row-title {
       font-size: 16px;
       font-weight: 600;
-      margin-bottom: 4px;
-      line-height: 22px;
+      color: var(--textPrimary);
+      margin-bottom: 2px;
     }
 
-    .item-meta {
+    .att-row-caption {
       font-size: 13px;
       color: var(--textTertiary);
-      line-height: 18px;
     }
 
-    .item.highlight .item-meta {
-      color: rgba(255, 255, 255, 0.75);
+    .att-row-amount {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--textPrimary);
     }
 
     .split-list {
-      margin-top: 12px;
+      margin-top: 8px;
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 6px;
     }
 
     .split-item {
       font-size: 14px;
       display: flex;
       justify-content: space-between;
-      line-height: 20px;
     }
 
     .split-name {
@@ -183,18 +291,6 @@
 
     .split-status.owes {
       color: var(--textPrimary);
-    }
-
-    .chores {
-      font-size: 15px;
-      color: var(--textPrimary);
-      font-weight: 500;
-      line-height: 22px;
-    }
-
-    .chores .name {
-      color: var(--textTertiary);
-      font-weight: 400;
     }
   </style>
 </head>
@@ -222,17 +318,44 @@
     <div class="container">
       <div class="day-label">Tuesday</div>
 
+      <!-- Ink Hero Card -->
+      <div class="hero">
+        <div class="hero-label">Your Share · August</div>
+        <div class="hero-amount">£460</div>
+        <div class="hero-inline-stats">
+          <span class="hero-inline-strong">£0</span>
+          <span class="hero-inline-muted"> paid  ·  </span>
+          <span class="hero-inline-strong">£460</span>
+          <span class="hero-inline-muted"> left  ·  </span>
+          <span class="hero-inline-strong">3</span>
+          <span class="hero-inline-muted"> open</span>
+        </div>
+        <div class="hero-track">
+          <div class="hero-fill"></div>
+        </div>
+        <div class="hero-buttons">
+          <button class="btn-primary">Add Expense</button>
+          <button class="btn-secondary">Settle Up</button>
+        </div>
+      </div>
+
       <!-- Today Section -->
       <section class="section">
         <div class="section-label">Today</div>
-        <div class="item-list">
-          <div class="item highlight">
-            <div class="item-title">Bin night tonight</div>
-            <div class="item-meta">Maya's turn</div>
+        
+        <div class="att-row">
+          <div class="att-row-icon sage">🗑️</div>
+          <div class="att-row-meta">
+            <div class="att-row-title">Bin night</div>
+            <div class="att-row-caption">Your turn</div>
           </div>
-          <div class="item">
-            <div class="item-title">Boiler service Thursday 10am</div>
-            <div class="item-meta">Someone needs to be in</div>
+        </div>
+
+        <div class="att-row">
+          <div class="att-row-icon neutral">🔧</div>
+          <div class="att-row-meta">
+            <div class="att-row-title">Boiler service Thursday 10am</div>
+            <div class="att-row-caption">Someone needs to be in</div>
           </div>
         </div>
       </section>
@@ -240,14 +363,16 @@
       <!-- This Week Section -->
       <section class="section">
         <div class="section-label">This week</div>
-        <div class="item-list">
-          <div class="item">
-            <div class="item-title">Rent — £1,840 due Friday</div>
-            <div class="item-meta">Split four ways, £460 each</div>
+        
+        <div class="att-row">
+          <div class="att-row-icon neutral">🏠</div>
+          <div class="att-row-meta">
+            <div class="att-row-title">Rent</div>
+            <div class="att-row-caption">Due Friday · Split four ways</div>
             <div class="split-list">
               <div class="split-item">
                 <span class="split-name">Maya</span>
-                <span class="split-status owes">Not paid</span>
+                <span class="split-status owes">£460</span>
               </div>
               <div class="split-item">
                 <span class="split-name">Jordan</span>
@@ -263,35 +388,42 @@
               </div>
             </div>
           </div>
-          <div class="item">
-            <div class="item-title">Wifi — £32 this month</div>
-            <div class="item-meta">Maya paid</div>
+          <div class="att-row-amount">£1,840</div>
+        </div>
+
+        <div class="att-row">
+          <div class="att-row-icon neutral">📶</div>
+          <div class="att-row-meta">
+            <div class="att-row-title">Wifi</div>
+            <div class="att-row-caption">This month · Maya paid</div>
             <div class="split-list">
               <div class="split-item">
-                <span class="split-name">Jordan</span>
-                <span class="split-status owes">Owes £8</span>
+                <span class="split-name">Jordan owes</span>
+                <span class="split-status owes">£8</span>
               </div>
               <div class="split-item">
-                <span class="split-name">Sam</span>
-                <span class="split-status owes">Owes £8</span>
+                <span class="split-name">Sam owes</span>
+                <span class="split-status owes">£8</span>
               </div>
               <div class="split-item">
-                <span class="split-name">Priya</span>
-                <span class="split-status owes">Owes £8</span>
+                <span class="split-name">Priya owes</span>
+                <span class="split-status owes">£8</span>
               </div>
             </div>
           </div>
+          <div class="att-row-amount">£32</div>
         </div>
       </section>
 
       <!-- House Section -->
       <section class="section">
         <div class="section-label">House</div>
-        <div class="item-list">
-          <div class="item">
-            <div class="chores">
-              <span class="name">Kitchen</span> Jordan · <span class="name">Bathroom</span> Sam
-            </div>
+        
+        <div class="att-row">
+          <div class="att-row-icon neutral">✓</div>
+          <div class="att-row-meta">
+            <div class="att-row-title">Chores</div>
+            <div class="att-row-caption">Kitchen Jordan · Bathroom Sam</div>
           </div>
         </div>
       </section>
