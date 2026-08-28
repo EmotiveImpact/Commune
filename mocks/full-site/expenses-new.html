@@ -3,262 +3,116 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Add expense · COMMUNE</title>
+  <title>Add expense — Commune</title>
   <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
-  <div class="app-shell">
-    <!-- Sidebar -->
-    <nav class="sidebar">
-      <div class="sidebar-header">
-        <div class="commune-wordmark">COMMUNE</div>
+  <div class="sidebar">
+    <div class="logo">COMMUNE</div>
+    <div class="nav-label">MENU</div>
+    <a href="#" class="nav-link">Dashboard</a>
+    <a href="#" class="nav-link">My Groups</a>
+    <div class="nav-label">MONEY</div>
+    <a href="./expenses.html" class="nav-link active">Expenses</a>
+    <a href="./recurring.html" class="nav-link">Recurring</a>
+    <a href="./templates.html" class="nav-link">Templates</a>
+    <a href="./funds.html" class="nav-link">Funds</a>
+    <a href="./billing.html" class="nav-link">Billing</a>
+    <div class="nav-label">INSIGHTS</div>
+    <a href="#" class="nav-link">Command Centre</a>
+    <a href="#" class="nav-link">Breakdown</a>
+    <a href="#" class="nav-link">Analytics</a>
+    <div class="nav-label">TEAM</div>
+    <a href="#" class="nav-link">Members</a>
+    <a href="#" class="nav-link">Operations</a>
+    <a href="#" class="nav-link">Activity</a>
+    <div class="user-profile">
+      <div class="avatar">AE</div>
+      <div><div style="font-size: 14px; font-weight: 600;">Augustus Edem</div><div class="plan-badge">Pro</div></div>
+    </div>
+  </div>
+  <div class="main">
+    <div class="header"><input type="text" class="search" placeholder="Search expenses, members..."></div>
+    <div class="content">
+      <div class="page-header">
+        <h1 class="page-title">Add expense</h1>
+        <p class="page-subtitle">Create a new shared cost, pick participants, and preview the split</p>
       </div>
-
-      <div class="sidebar-search">
-        <input type="text" placeholder="Search..." class="search-input">
+      <div class="page-actions">
+        <a href="./expenses.html" class="btn-default">Cancel</a>
+        <button class="btn-primary">Create expense</button>
       </div>
-
-      <div class="nav-section">
-        <div class="nav-section-label">Menu</div>
-        <a href="#" class="nav-link">
-          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-            <polyline points="9 22 9 12 15 12 15 22"></polyline>
-          </svg>
-          <span>Dashboard</span>
-        </a>
-        <a href="#" class="nav-link">
-          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-            <circle cx="9" cy="7" r="4"></circle>
-            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-          </svg>
-          <span>My Groups</span>
-        </a>
-      </div>
-
-      <div class="nav-section">
-        <div class="nav-section-label">Money</div>
-        <a href="./expenses.html" class="nav-link active">
-          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-            <polyline points="14 2 14 8 20 8"></polyline>
-            <line x1="16" y1="13" x2="8" y2="13"></line>
-            <line x1="16" y1="17" x2="8" y2="17"></line>
-            <polyline points="10 9 9 9 8 9"></polyline>
-          </svg>
-          <span>Expenses</span>
-        </a>
-        <a href="./recurring.html" class="nav-link">
-          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"></path>
-            <path d="M21 3v5h-5"></path>
-          </svg>
-          <span>Recurring</span>
-        </a>
-        <a href="./templates.html" class="nav-link">
-          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-            <polyline points="14 2 14 8 20 8"></polyline>
-          </svg>
-          <span>Templates</span>
-        </a>
-        <a href="./funds.html" class="nav-link">
-          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <line x1="12" y1="1" x2="12" y2="23"></line>
-            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
-          </svg>
-          <span>Funds</span>
-        </a>
-        <a href="./billing.html" class="nav-link">
-          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="2" y="5" width="20" height="14" rx="2"></rect>
-            <line x1="2" y1="10" x2="22" y2="10"></line>
-          </svg>
-          <span>Billing</span>
-        </a>
-      </div>
-
-      <div class="nav-section">
-        <div class="nav-section-label">Insights</div>
-        <a href="#" class="nav-link">
-          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-            <line x1="9" y1="3" x2="9" y2="21"></line>
-          </svg>
-          <span>Command Centre</span>
-        </a>
-      </div>
-
-      <div class="nav-section">
-        <div class="nav-section-label">Team</div>
-        <a href="#" class="nav-link">
-          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-            <circle cx="9" cy="7" r="4"></circle>
-            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-          </svg>
-          <span>Members</span>
-        </a>
-      </div>
-
-      <div class="sidebar-footer">
-        <div class="sidebar-user">
-          <div class="user-avatar">AE</div>
-          <div class="user-info">
-            <div class="user-name">Augustus Edem</div>
-            <div class="user-plan">Pro</div>
-          </div>
-        </div>
-      </div>
-    </nav>
-
-    <!-- Main Content -->
-    <main class="main-content">
-      <header class="page-header-bar">
-        <div class="page-header-content">
-          <h1 class="page-title">Add expense</h1>
-          <p class="page-subtitle">Create a new shared cost, pick participants, and preview the split</p>
-        </div>
-        <div class="page-header-actions">
-          <a href="./expenses.html" class="btn-default">Cancel</a>
-          <button class="btn-primary">Create expense</button>
-        </div>
-      </header>
-
-      <div class="page-content">
-        <div class="form-grid">
-          <!-- Left Column -->
-          <div class="form-main">
-            <!-- Basics -->
-            <div class="panel">
-              <h3 class="section-heading">Basics</h3>
+      <div class="form-grid">
+        <div class="form-main">
+          <div class="panel">
+            <h3 class="section-heading">Basics</h3>
+            <div class="form-group">
+              <label class="form-label">Title <span class="required">*</span></label>
+              <input type="text" class="form-input" placeholder="e.g. Electricity" value="Electricity bill">
+            </div>
+            <div class="form-row">
               <div class="form-group">
-                <label class="form-label">Title <span class="required">*</span></label>
-                <input type="text" class="form-input" placeholder="e.g. Electricity" value="Electricity bill">
-              </div>
-              <div class="form-row">
-                <div class="form-group">
-                  <label class="form-label">Amount <span class="required">*</span></label>
-                  <input type="number" class="form-input" placeholder="0.00" value="120.00">
-                </div>
-                <div class="form-group">
-                  <label class="form-label">Category <span class="required">*</span></label>
-                  <select class="form-input">
-                    <option value="utilities" selected>Utilities</option>
-                    <option value="groceries">Groceries</option>
-                    <option value="rent">Rent</option>
-                    <option value="transport">Transport</option>
-                  </select>
-                </div>
+                <label class="form-label">Amount <span class="required">*</span></label>
+                <input type="number" class="form-input" placeholder="0.00" value="120.00">
               </div>
               <div class="form-group">
-                <label class="form-label">Due date <span class="required">*</span></label>
-                <input type="date" class="form-input" value="2024-12-15">
-              </div>
-              <div class="form-group">
-                <label class="form-label">Description</label>
-                <textarea class="form-input" placeholder="Optional notes" rows="3"></textarea>
+                <label class="form-label">Category <span class="required">*</span></label>
+                <select class="form-input"><option value="utilities" selected>Utilities</option><option>Groceries</option><option>Rent</option></select>
               </div>
             </div>
-
-            <!-- Participants -->
-            <div class="panel">
-              <h3 class="section-heading">Participants</h3>
-              <div class="form-group">
-                <label class="form-label">Who shares this expense? <span class="required">*</span></label>
-                <select class="form-input" multiple style="min-height: 100px;">
-                  <option selected>Alice Johnson</option>
-                  <option selected>Bob Smith</option>
-                  <option selected>Charlie Davis</option>
-                  <option selected>Dana Lee</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label class="form-label">Who paid?</label>
-                <select class="form-input">
-                  <option value="">Nobody (group expense)</option>
-                  <option selected>Alice Johnson</option>
-                  <option>Bob Smith</option>
-                  <option>Charlie Davis</option>
-                  <option>Dana Lee</option>
-                </select>
-              </div>
+            <div class="form-group">
+              <label class="form-label">Due date <span class="required">*</span></label>
+              <input type="date" class="form-input" value="2024-12-15">
             </div>
-
-            <!-- Split Method -->
-            <div class="panel">
-              <h3 class="section-heading">Split method</h3>
-              <div class="segmented-control">
-                <button class="segment-btn active">Equal</button>
-                <button class="segment-btn">Percentage</button>
-                <button class="segment-btn">Custom</button>
-              </div>
-            </div>
-
-            <!-- Split Preview -->
-            <div class="panel">
-              <h3 class="section-heading">Split preview</h3>
-              <div class="table-container">
-                <table class="expense-table">
-                  <thead>
-                    <tr>
-                      <th>Person</th>
-                      <th style="text-align: right;">Share</th>
-                      <th style="text-align: right;">%</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td>Alice Johnson</td>
-                      <td class="amount">£30.00</td>
-                      <td style="text-align: right; color: var(--commune-ink-soft);">25%</td>
-                    </tr>
-                    <tr>
-                      <td>Bob Smith</td>
-                      <td class="amount">£30.00</td>
-                      <td style="text-align: right; color: var(--commune-ink-soft);">25%</td>
-                    </tr>
-                    <tr>
-                      <td>Charlie Davis</td>
-                      <td class="amount">£30.00</td>
-                      <td style="text-align: right; color: var(--commune-ink-soft);">25%</td>
-                    </tr>
-                    <tr>
-                      <td>Dana Lee</td>
-                      <td class="amount">£30.00</td>
-                      <td style="text-align: right; color: var(--commune-ink-soft);">25%</td>
-                    </tr>
-                  </tbody>
-                  <tfoot>
-                    <tr>
-                      <td><strong>Total</strong></td>
-                      <td class="amount"><strong>£120.00</strong></td>
-                      <td style="text-align: right; color: var(--commune-sage);"><strong>100%</strong></td>
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
+            <div class="form-group">
+              <label class="form-label">Description</label>
+              <textarea class="form-input" placeholder="Optional notes" rows="3"></textarea>
             </div>
           </div>
-
-          <!-- Right Column - Receipt -->
-          <div class="form-sidebar">
-            <div class="panel">
-              <h3 class="section-heading">Receipt</h3>
-              <p class="text-sm text-muted">Attach a photo or PDF of the receipt (optional).</p>
-              <div class="dropzone">
-                <div class="dropzone-icon">📎</div>
-                <p class="dropzone-text">Click or drag to upload</p>
-                <p class="dropzone-hint">PNG, JPG, or PDF up to 10MB</p>
-              </div>
+          <div class="panel">
+            <h3 class="section-heading">Participants</h3>
+            <div class="form-group">
+              <label class="form-label">Who shares this expense? <span class="required">*</span></label>
+              <select class="form-input" multiple style="min-height: 100px;"><option selected>Alice Johnson</option><option selected>Bob Smith</option><option selected>Charlie Davis</option><option selected>Dana Lee</option></select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Who paid?</label>
+              <select class="form-input"><option value="">Nobody (group expense)</option><option selected>Alice Johnson</option><option>Bob Smith</option></select>
+            </div>
+          </div>
+          <div class="panel">
+            <h3 class="section-heading">Split method</h3>
+            <div class="segmented-control">
+              <button class="segment-btn active">Equal</button>
+              <button class="segment-btn">Percentage</button>
+              <button class="segment-btn">Custom</button>
+            </div>
+          </div>
+          <div class="panel">
+            <h3 class="section-heading">Split preview</h3>
+            <div class="table-container">
+              <table class="expense-table">
+                <thead><tr><th>Person</th><th style="text-align: right;">Share</th><th style="text-align: right;">%</th></tr></thead>
+                <tbody>
+                  <tr><td>Alice Johnson</td><td class="amount">£30.00</td><td style="text-align: right; color: #667085;">25%</td></tr>
+                  <tr><td>Bob Smith</td><td class="amount">£30.00</td><td style="text-align: right; color: #667085;">25%</td></tr>
+                  <tr><td>Charlie Davis</td><td class="amount">£30.00</td><td style="text-align: right; color: #667085;">25%</td></tr>
+                  <tr><td>Dana Lee</td><td class="amount">£30.00</td><td style="text-align: right; color: #667085;">25%</td></tr>
+                </tbody>
+                <tfoot><tr><td><strong>Total</strong></td><td class="amount"><strong>£120.00</strong></td><td style="text-align: right; color: #2d6a4f;"><strong>100%</strong></td></tr></tfoot>
+              </table>
             </div>
           </div>
         </div>
+        <div class="form-sidebar">
+          <div class="panel">
+            <h3 class="section-heading">Receipt</h3>
+            <p class="text-sm text-muted">Attach a photo or PDF of the receipt (optional).</p>
+            <div class="dropzone"><div class="dropzone-icon">📎</div><p class="dropzone-text">Click or drag to upload</p><p class="dropzone-hint">PNG, JPG, or PDF up to 10MB</p></div>
+          </div>
+        </div>
       </div>
-    </main>
+    </div>
   </div>
 </body>
 </html>
