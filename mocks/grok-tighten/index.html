@@ -6,7 +6,7 @@
   <title>12 Grove — Command</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Serif+Display&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
   <style>
     * {
       margin: 0;
@@ -15,16 +15,27 @@
     }
 
     :root {
-      --sage: #2d6a4f;
-      --navy: #1a1e2e;
-      --cream: #f5f3ef;
-      --muted: #888880;
+      --bg-base: #FAF9F7;
+      --bg-surface: #FFFFFF;
+      --bg-subtle: #F5F3EF;
+      --bg-ink: #1A1E2B;
+      --text-primary: #1A1E2B;
+      --text-secondary: #3D4152;
+      --text-tertiary: #6B6D73;
+      --text-muted: #8A8D9A;
+      --border: #E8E6E1;
+      --sage: #2D6A4F;
+      --sage-soft: #E8F0EB;
+      --lime: #96E85F;
+      --lime-soft: #E8F7D4;
+      --owe-text: #C74A3A;
+      --owe-bg: #FBE4DF;
     }
 
     body {
       font-family: 'DM Sans', sans-serif;
-      background: var(--cream);
-      color: var(--navy);
+      background: var(--bg-base);
+      color: var(--text-primary);
       line-height: 1.5;
       min-height: 100vh;
     }
@@ -36,8 +47,8 @@
     }
 
     header {
-      background: var(--cream);
-      border-bottom: 1px solid rgba(26, 30, 46, 0.1);
+      background: var(--bg-subtle);
+      border-bottom: 1px solid var(--border);
       padding: 20px 0;
     }
 
@@ -56,109 +67,112 @@
     .house-name {
       font-family: 'DM Serif Display', serif;
       font-size: 18px;
-      color: var(--navy);
+      color: var(--text-primary);
     }
 
-    .nav-links {
+    nav ul {
       display: flex;
       gap: 32px;
       list-style: none;
     }
 
-    .nav-links a {
+    nav a {
       text-decoration: none;
-      color: var(--muted);
+      color: var(--text-muted);
       font-size: 15px;
       font-weight: 400;
       transition: color 0.2s;
     }
 
-    .nav-links a.active {
-      color: var(--navy);
+    nav a.active {
+      color: var(--text-primary);
+      font-weight: 500;
     }
 
-    .nav-links a:hover {
-      color: var(--navy);
+    nav a:hover {
+      color: var(--text-primary);
     }
 
-    .user-info {
-      display: flex;
-      align-items: center;
-      gap: 8px;
+    .user-name {
       font-size: 14px;
-      color: var(--navy);
+      color: var(--text-primary);
     }
 
     main {
-      padding: 48px 0 80px;
+      padding: 40px 0 80px;
     }
 
     .day-title {
-      font-family: 'DM Sans', sans-serif;
       font-size: 28px;
-      font-weight: 600;
+      font-weight: 700;
       margin-bottom: 32px;
-      color: var(--navy);
+      color: var(--text-primary);
     }
 
-    .list {
-      background: var(--cream);
-    }
-
-    .list-row {
+    .item {
       padding: 20px 0;
-      border-bottom: 1px solid rgba(26, 30, 46, 0.1);
+      border-bottom: 1px solid var(--border);
     }
 
-    .list-row.sage-row {
+    .item.urgent {
       background: var(--sage);
-      color: var(--cream);
+      color: #FFFFFF;
       padding: 20px 24px;
-      margin: 0 -24px;
+      margin: 0 -24px 0 -24px;
       border-bottom: none;
+      border-radius: 16px;
     }
 
-    .list-row.sage-row + .list-row {
-      border-top: 1px solid rgba(26, 30, 46, 0.1);
+    .item.urgent + .item {
+      margin-top: 20px;
     }
 
-    .row-title {
+    .item-title {
       font-size: 16px;
-      font-weight: 500;
+      font-weight: 600;
       margin-bottom: 4px;
     }
 
-    .row-meta {
+    .item-meta {
       font-size: 14px;
-      color: var(--muted);
+      color: var(--text-tertiary);
     }
 
-    .list-row.sage-row .row-meta {
-      color: rgba(245, 243, 239, 0.8);
+    .item.urgent .item-meta {
+      color: rgba(255, 255, 255, 0.8);
     }
 
-    .row-detail {
-      margin-top: 8px;
-      font-size: 14px;
+    .item-detail {
+      margin-top: 12px;
     }
 
-    .detail-line {
+    .detail-row {
       display: flex;
       justify-content: space-between;
       padding: 4px 0;
+      font-size: 14px;
     }
 
     .detail-name {
-      color: var(--muted);
+      color: var(--text-muted);
     }
 
     .detail-value {
-      font-weight: 500;
+      font-weight: 600;
     }
 
-    .chores-inline {
+    .detail-value.owe {
+      color: var(--owe-text);
+      font-weight: 700;
+    }
+
+    .detail-value.paid {
+      color: var(--text-tertiary);
+    }
+
+    .chores-text {
       font-size: 14px;
-      color: var(--muted);
+      color: var(--text-tertiary);
     }
   </style>
 </head>
@@ -169,7 +183,7 @@
         <div class="header-left">
           <div class="house-name">12 Grove</div>
           <nav>
-            <ul class="nav-links">
+            <ul>
               <li><a href="#" class="active">Command</a></li>
               <li><a href="#">Money</a></li>
               <li><a href="#">Space</a></li>
@@ -177,9 +191,7 @@
             </ul>
           </nav>
         </div>
-        <div class="user-info">
-          Maya
-        </div>
+        <div class="user-name">Maya</div>
       </div>
     </div>
   </header>
@@ -189,61 +201,61 @@
       <h1 class="day-title">Tuesday</h1>
 
       <div class="list">
-        <div class="list-row sage-row">
-          <div class="row-title">Bin night</div>
-          <div class="row-meta">Tonight · Your turn</div>
+        <div class="item urgent">
+          <div class="item-title">Bin night</div>
+          <div class="item-meta">Tonight · Your turn</div>
         </div>
 
-        <div class="list-row">
-          <div class="row-title">Rent — £1,840</div>
-          <div class="row-meta">Due Friday · Split four ways, £460 each</div>
-          <div class="row-detail">
-            <div class="detail-line">
+        <div class="item">
+          <div class="item-title">Rent — £1,840</div>
+          <div class="item-meta">Due Friday · Split four ways, £460 each</div>
+          <div class="item-detail">
+            <div class="detail-row">
               <span class="detail-name">Maya</span>
-              <span class="detail-value">£460</span>
+              <span class="detail-value owe">£460</span>
             </div>
-            <div class="detail-line">
+            <div class="detail-row">
               <span class="detail-name">Jordan</span>
-              <span class="detail-value" style="color: var(--muted);">Paid</span>
+              <span class="detail-value paid">Paid</span>
             </div>
-            <div class="detail-line">
+            <div class="detail-row">
               <span class="detail-name">Sam</span>
-              <span class="detail-value" style="color: var(--muted);">Paid</span>
+              <span class="detail-value paid">Paid</span>
             </div>
-            <div class="detail-line">
+            <div class="detail-row">
               <span class="detail-name">Priya</span>
-              <span class="detail-value" style="color: var(--muted);">Paid</span>
+              <span class="detail-value paid">Paid</span>
             </div>
           </div>
         </div>
 
-        <div class="list-row">
-          <div class="row-title">Wifi — £32</div>
-          <div class="row-meta">This month · Maya paid, others owe £8 each</div>
-          <div class="row-detail">
-            <div class="detail-line">
+        <div class="item">
+          <div class="item-title">Wifi — £32</div>
+          <div class="item-meta">This month · Maya paid, others owe £8 each</div>
+          <div class="item-detail">
+            <div class="detail-row">
               <span class="detail-name">Jordan</span>
-              <span class="detail-value">Owes £8</span>
+              <span class="detail-value owe">Owes £8</span>
             </div>
-            <div class="detail-line">
+            <div class="detail-row">
               <span class="detail-name">Sam</span>
-              <span class="detail-value">Owes £8</span>
+              <span class="detail-value owe">Owes £8</span>
             </div>
-            <div class="detail-line">
+            <div class="detail-row">
               <span class="detail-name">Priya</span>
-              <span class="detail-value">Owes £8</span>
+              <span class="detail-value owe">Owes £8</span>
             </div>
           </div>
         </div>
 
-        <div class="list-row">
-          <div class="row-title">Chores</div>
-          <div class="chores-inline">Kitchen Jordan · Bathroom Sam</div>
+        <div class="item">
+          <div class="item-title">Chores</div>
+          <div class="chores-text">Kitchen Jordan · Bathroom Sam</div>
         </div>
 
-        <div class="list-row">
-          <div class="row-title">Boiler service Thursday 10am</div>
-          <div class="row-meta">Someone needs to be in</div>
+        <div class="item">
+          <div class="item-title">Boiler service Thursday 10am</div>
+          <div class="item-meta">Someone needs to be in</div>
         </div>
       </div>
     </div>
