@@ -40,7 +40,7 @@
       padding: 0 48px;
     }
 
-    /* Header */
+    /* Header with integrated nav */
     header {
       border-bottom: 1px solid rgba(26, 30, 46, 0.1);
       padding: 32px 0;
@@ -52,37 +52,16 @@
       align-items: center;
     }
 
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 48px;
+    }
+
     .house-name {
       font-family: 'DM Serif Display', serif;
       font-size: 24px;
       color: var(--navy);
-    }
-
-    .user-info {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      font-size: 15px;
-      color: var(--muted);
-    }
-
-    .avatar {
-      width: 32px;
-      height: 32px;
-      border-radius: 50%;
-      background: var(--navy);
-      color: var(--cream);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 13px;
-      font-weight: 500;
-    }
-
-    /* Navigation */
-    nav {
-      padding: 24px 0;
-      border-bottom: 1px solid rgba(26, 30, 46, 0.1);
     }
 
     .nav-links {
@@ -106,6 +85,27 @@
 
     .nav-links a:hover {
       color: var(--navy);
+    }
+
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 15px;
+      color: var(--muted);
+    }
+
+    .avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: var(--navy);
+      color: var(--cream);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 500;
     }
 
     /* Main Content */
@@ -230,13 +230,41 @@
     .item.urgent .split-status.paid {
       opacity: 0.7;
     }
+
+    .chore-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 14px;
+    }
+
+    .chore-row + .chore-row {
+      margin-top: 8px;
+    }
+
+    .chore-name {
+      color: var(--muted);
+    }
+
+    .chore-person {
+      font-weight: 500;
+    }
   </style>
 </head>
 <body>
   <header>
     <div class="container">
       <div class="header-content">
-        <h1 class="house-name">12 Grove</h1>
+        <div class="header-left">
+          <h1 class="house-name">12 Grove</h1>
+          <nav>
+            <ul class="nav-links">
+              <li><a href="#" class="active">Command</a></li>
+              <li><a href="#">Money</a></li>
+              <li><a href="#">Space</a></li>
+              <li><a href="#">Jobs</a></li>
+            </ul>
+          </nav>
+        </div>
         <div class="user-info">
           <div class="avatar">M</div>
           <span>Maya</span>
@@ -244,17 +272,6 @@
       </div>
     </div>
   </header>
-
-  <nav>
-    <div class="container">
-      <ul class="nav-links">
-        <li><a href="#" class="active">Command</a></li>
-        <li><a href="#">Money</a></li>
-        <li><a href="#">Space</a></li>
-        <li><a href="#">Jobs</a></li>
-      </ul>
-    </div>
-  </nav>
 
   <main>
     <div class="container">
@@ -320,14 +337,14 @@
         <!-- Chores -->
         <div class="item">
           <div class="item-type">Chores</div>
-          <div class="item-title">Kitchen</div>
-          <div class="item-meta">Jordan</div>
-        </div>
-
-        <div class="item">
-          <div class="item-type">Chores</div>
-          <div class="item-title">Bathroom</div>
-          <div class="item-meta">Sam</div>
+          <div class="chore-row">
+            <span class="chore-name">Kitchen</span>
+            <span class="chore-person">Jordan</span>
+          </div>
+          <div class="chore-row">
+            <span class="chore-name">Bathroom</span>
+            <span class="chore-person">Sam</span>
+          </div>
         </div>
 
         <!-- Notice -->
