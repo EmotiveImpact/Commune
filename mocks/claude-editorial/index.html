@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Command Centre — 12 Grove</title>
+  <title>Command Centre — Commune</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Serif+Display&display=swap" rel="stylesheet">
@@ -46,6 +46,13 @@
       align-items: center;
       gap: 8px;
       margin-bottom: 24px;
+    }
+
+    .sidebar-logo-box {
+      width: 44px;
+      height: 44px;
+      background: #2d6a4f;
+      border-radius: 10px;
     }
 
     .sidebar-logo-text {
@@ -92,17 +99,8 @@
       color: #ffffff;
     }
 
-    .sidebar-group {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 8px 14px;
-      background: rgba(255, 255, 255, 0.06);
-      border-radius: 10px;
-      margin-top: 24px;
-      color: rgba(255, 255, 255, 0.88);
-      font-size: 14px;
-      font-weight: 600;
+    .sidebar-footer {
+      margin-top: auto;
     }
 
     .sidebar-profile {
@@ -111,9 +109,6 @@
       gap: 12px;
       padding: 8px 14px;
       border-radius: 10px;
-      color: rgba(255, 255, 255, 0.88);
-      font-size: 14px;
-      font-weight: 600;
       transition: background 0.15s;
     }
 
@@ -132,6 +127,22 @@
       color: white;
       font-weight: 600;
       font-size: 14px;
+    }
+
+    .profile-info {
+      flex: 1;
+    }
+
+    .profile-name {
+      color: rgba(255, 255, 255, 0.88);
+      font-size: 14px;
+      font-weight: 600;
+      line-height: 1.3;
+    }
+
+    .profile-plan {
+      color: rgba(255, 255, 255, 0.45);
+      font-size: 12px;
     }
 
     /* Main content */
@@ -180,12 +191,15 @@
     }
 
     .page-header {
-      margin-bottom: 32px;
+      padding-bottom: 16px;
+      margin-bottom: 24px;
+      border-bottom: 1px solid rgba(23, 27, 36, 0.06);
     }
 
     .page-title {
+      font-family: 'DM Serif Display', serif;
       font-size: 24px;
-      font-weight: 800;
+      font-weight: 400;
       color: #171b24;
       margin-bottom: 4px;
       letter-spacing: -0.01em;
@@ -196,86 +210,43 @@
       color: #667085;
     }
 
-    /* Summary cards */
-    .summary-row {
-      display: flex;
-      gap: 16px;
-      margin-bottom: 24px;
-    }
-
-    .summary-card {
-      flex: 1;
+    /* Empty state */
+    .empty-card {
       background: #ffffff;
       border: 1px solid rgba(23, 27, 36, 0.06);
       border-radius: 14px;
-      padding: 16px;
+      padding: 64px 24px;
+      text-align: center;
       box-shadow: 0 1px 3px rgba(23, 27, 36, 0.06), 0 1px 2px rgba(23, 27, 36, 0.04);
     }
 
-    .summary-label {
-      font-size: 12px;
-      color: #667085;
+    .empty-icon {
+      width: 48px;
+      height: 48px;
+      margin: 0 auto 16px;
+      background: rgba(45, 106, 79, 0.1);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .check-icon {
+      width: 24px;
+      height: 24px;
+      color: #2d6a4f;
+    }
+
+    .empty-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #171b24;
       margin-bottom: 4px;
     }
 
-    .summary-amount {
-      font-size: 20px;
-      font-weight: 800;
-      color: #171b24;
-    }
-
-    .summary-amount.owe {
-      color: #C74A3A;
-    }
-
-    .summary-amount.owed {
-      color: #2D6A4F;
-    }
-
-    /* Section */
-    .section-title {
-      font-size: 17px;
-      font-weight: 700;
-      color: #171b24;
-      margin-bottom: 12px;
-    }
-
-    /* List items */
-    .list-item {
-      background: #ffffff;
-      border: 1px solid rgba(23, 27, 36, 0.06);
-      border-radius: 14px;
-      padding: 20px;
-      margin-bottom: 8px;
-      box-shadow: 0 1px 3px rgba(23, 27, 36, 0.06), 0 1px 2px rgba(23, 27, 36, 0.04);
-    }
-
-    .list-item-text {
-      font-size: 15px;
-      line-height: 1.6;
-      color: #171b24;
-    }
-
-    .list-item-caption {
+    .empty-description {
       font-size: 13px;
       color: #667085;
-      margin-top: 6px;
-      font-weight: 500;
-    }
-
-    .amount {
-      color: #2D6A4F;
-      font-weight: 600;
-    }
-
-    .amount-owe {
-      color: #C74A3A;
-      font-weight: 600;
-    }
-
-    .name {
-      font-weight: 600;
-      color: #171b24;
     }
   </style>
 </head>
@@ -284,23 +255,26 @@
     <!-- Sidebar -->
     <aside class="sidebar">
       <div class="sidebar-logo">
-        <div style="width: 44px; height: 44px; background: #2d6a4f; border-radius: 10px;"></div>
+        <div class="sidebar-logo-box"></div>
         <span class="sidebar-logo-text">Commune</span>
       </div>
 
       <nav class="sidebar-nav">
         <div class="nav-label">Menu</div>
-        <a href="#" class="nav-link active">Command</a>
+        <a href="#" class="nav-link active">Command Centre</a>
         <a href="#" class="nav-link">Money</a>
-        <a href="#" class="nav-link">Space</a>
-        <a href="#" class="nav-link">Jobs</a>
+        <a href="#" class="nav-link">Insights</a>
+        <a href="#" class="nav-link">Team</a>
       </nav>
 
-      <div class="sidebar-group">12 Grove</div>
-
-      <div class="sidebar-profile">
-        <div class="profile-avatar">M</div>
-        <span>Maya</span>
+      <div class="sidebar-footer">
+        <div class="sidebar-profile">
+          <div class="profile-avatar">A</div>
+          <div class="profile-info">
+            <div class="profile-name">Augustus Edem</div>
+            <div class="profile-plan">Pro plan</div>
+          </div>
+        </div>
       </div>
     </aside>
 
@@ -313,44 +287,18 @@
       <main class="page-content">
         <div class="page-header">
           <h1 class="page-title">Command Centre</h1>
-          <p class="page-subtitle">Bins go out tonight. Rent is due Friday.</p>
+          <p class="page-subtitle">Your priorities across all groups</p>
         </div>
 
-        <!-- Summary -->
-        <div class="summary-row">
-          <div class="summary-card">
-            <div class="summary-label">You owe</div>
-            <div class="summary-amount owe">£460</div>
+        <!-- Empty state -->
+        <div class="empty-card">
+          <div class="empty-icon">
+            <svg class="check-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+            </svg>
           </div>
-          <div class="summary-card">
-            <div class="summary-label">Owed to you</div>
-            <div class="summary-amount owed">£24</div>
-          </div>
-        </div>
-
-        <!-- Priority list -->
-        <h2 class="section-title">What matters now</h2>
-
-        <div class="list-item">
-          <p class="list-item-text">It's <span class="name">Maya's</span> turn to take the bins down tonight.</p>
-        </div>
-
-        <div class="list-item">
-          <p class="list-item-text">Rent is <span class="amount-owe">£1,840</span> due Friday. Split four ways, everyone pays <span class="amount-owe">£460</span>.</p>
-          <p class="list-item-caption"><span class="name">Maya</span> hasn't paid yet. <span class="name">Jordan</span>, <span class="name">Sam</span>, and <span class="name">Priya</span> have paid.</p>
-        </div>
-
-        <div class="list-item">
-          <p class="list-item-text"><span class="name">Maya</span> covered wifi this month at <span class="amount">£32</span>.</p>
-          <p class="list-item-caption"><span class="name">Jordan</span>, <span class="name">Sam</span>, and <span class="name">Priya</span> each owe her <span class="amount">£8</span>.</p>
-        </div>
-
-        <div class="list-item">
-          <p class="list-item-text">Boiler service Thursday at 10am. Someone needs to be in.</p>
-        </div>
-
-        <div class="list-item">
-          <p class="list-item-text">Kitchen <span class="name">Jordan</span> · Bathroom <span class="name">Sam</span></p>
+          <h2 class="empty-title">All squared away!</h2>
+          <p class="empty-description">You're all caught up. Nothing needs your attention right now.</p>
         </div>
       </main>
     </div>
