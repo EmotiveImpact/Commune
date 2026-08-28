@@ -336,8 +336,9 @@
       cursor: pointer;
     }
     .side-link svg { width: 13px; height: 13px; }
+    .side-link:not(button) { cursor: default; }
     .side-link.active { color: white; background: rgba(255,255,255,.1); }
-    .side-link:hover { color: white; }
+    button.side-link:hover { color: white; }
     .app-main { padding: 28px 28px 40px; background: #f8f8f5; }
     .app-top {
       display: flex;
@@ -802,10 +803,10 @@
                 <span><strong>Foundry House</strong><small>Home · GBP</small></span>
               </div>
               <div class="side-label">Overview</div>
-              <button class="side-link" type="button" data-view="centre">
+              <div class="side-link">
                 <svg viewBox="0 0 24 24" fill="none"><path d="M4 13h6V4H4v9Zm0 7h6v-4H4v4Zm10 0h6v-9h-6v9Zm0-16v4h6V4h-6Z" stroke="currentColor" stroke-width="1.5"/></svg>
                 Dashboard
-              </button>
+              </div>
               <button class="side-link active" type="button" data-view="centre">
                 <svg viewBox="0 0 24 24" fill="none"><path d="M7 7h11l-3-3m2 13H6l3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
                 Command Centre
@@ -815,19 +816,19 @@
                 <svg viewBox="0 0 24 24" fill="none"><path d="M4 6h16v12H4V6Z" stroke="currentColor" stroke-width="1.5"/><path d="M4 10h16M8 14h3" stroke="currentColor" stroke-width="1.5"/></svg>
                 Expenses
               </button>
-              <button class="side-link" type="button" data-view="money">
+              <div class="side-link">
                 <svg viewBox="0 0 24 24" fill="none"><path d="M12 3v18M17 7.5c0-2-2-3.5-5-3.5S7 5.2 7 7s1.4 2.8 5 3.5 5 1.5 5 3.5-2 4-5 4-5-1.7-5-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
                 Funds
-              </button>
+              </div>
               <div class="side-label">Team</div>
               <button class="side-link" type="button" data-view="chores">
                 <svg viewBox="0 0 24 24" fill="none"><path d="m5 7 2 2 4-4M5 14l2 2 4-4M13 7h6M13 14h6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
                 Operations
               </button>
-              <button class="side-link" type="button" data-view="chores">
+              <div class="side-link">
                 <svg viewBox="0 0 24 24" fill="none"><circle cx="9" cy="8" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M3.5 19c.7-3.3 2.5-5 5.5-5s4.8 1.7 5.5 5M16 7h5M18.5 4.5v5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
                 Members
-              </button>
+              </div>
             </aside>
 
             <section class="app-main">
