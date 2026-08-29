@@ -426,7 +426,8 @@
   border-bottom: 0;
 }
 
-.d-item .when {
+.d-item .when,
+.when {
   font-size: 12px;
   color: var(--ink-soft);
 }
