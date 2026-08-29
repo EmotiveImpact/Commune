@@ -1,0 +1,25 @@
+/* Short Home demo — same D chrome, header sits under the preview bar only */
+.d-header {
+  top: 40px !important;
+}
+
+.compare-note {
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #fff;
+  border: 1px solid var(--border);
+  font-size: 13px;
+  color: var(--ink-soft);
+  line-height: 1.45;
+}
+
+.compare-note strong {
+  color: var(--ink);
+}
+
+.compare-note a {
+  color: var(--sage);
+  font-weight: 650;
+  text-decoration: none;
+}
