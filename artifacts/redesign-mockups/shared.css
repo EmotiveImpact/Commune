@@ -151,7 +151,8 @@ img {
   font-size: 12px;
   letter-spacing: 0.04em;
   z-index: 40;
-  position: relative;
+  position: sticky;
+  top: 0;
 }
 
 .mock-bar a {
