@@ -42,8 +42,28 @@
   letter-spacing: -0.02em;
   line-height: 1.12;
   margin: 0 0 16px;
-  max-width: 16ch;
+  max-width: 18ch;
 }
+
+.g-featured {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  margin-top: 40px;
+}
+
+.g-featured .g-thumb {
+  height: auto;
+  min-height: 220px;
+  display: flex;
+  align-items: flex-end;
+}
+
+.g-featured .mini-app {
+  height: 180px;
+  width: 100%;
+}
+
+.g-thumb-d { background: #e8efe9; }
 
 .g-eyebrow {
   margin: 0 0 12px;
@@ -267,7 +287,8 @@
 
 @media (max-width: 960px) {
   .g-grid,
-  .g-same-grid {
+  .g-same-grid,
+  .g-featured {
     grid-template-columns: 1fr;
   }
   .g-nav,
