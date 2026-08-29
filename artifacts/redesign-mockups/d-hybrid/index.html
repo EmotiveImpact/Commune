@@ -7,14 +7,22 @@
     <link rel="icon" href="../favicon.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=Inter:wght@400;500;600;700;800&family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="../shared.css" />
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body class="d-body">
     <div class="mock-bar">
-      <span>Direction <strong>D</strong> · switcher above Home · full sidebar</span>
+      <span>Direction <strong>D</strong> · A’s numbers back on Home · no caps kickers</span>
       <a href="../">All directions</a>
+    </div>
+    <div class="font-bar">
+      <span>Type</span>
+      <button type="button" data-face="inter" class="is-on">Inter</button>
+      <button type="button" data-face="dm-sans">DM Sans</button>
+      <button type="button" data-face="jakarta">Jakarta</button>
+      <button type="button" data-face="manrope">Manrope</button>
+      <button type="button" data-face="source">Source Serif <em style="opacity:.7;font-style:normal">titles</em></button>
     </div>
 
     <div class="d-app">
@@ -166,6 +174,131 @@
                   <span class="pill open">Owed to you</span>
                   <div><strong>Jordan · Tesco</strong><div class="when">£18 extras from Monday</div></div>
                 </div>
+              </div>
+            </div>
+
+            <div class="d-kpis">
+              <div class="d-kpi sage">
+                <span>You’re owed</span>
+                <strong>£18.00</strong>
+                <small>Jordan · Tesco extras</small>
+              </div>
+              <div class="d-kpi peach">
+                <span>House fund</span>
+                <strong>£420</strong>
+                <small>£180 still to collect</small>
+              </div>
+              <div class="d-kpi lilac">
+                <span>This month</span>
+                <strong>£2,140</strong>
+                <small>of £2,400 budget</small>
+              </div>
+              <div class="d-kpi ink">
+                <span>Members</span>
+                <strong>3</strong>
+                <small>Maya, Jordan, Alex</small>
+              </div>
+            </div>
+
+            <div class="d-budget">
+              <div class="top">
+                <span>August at 14 Park Street</span>
+                <span>£2,140 / £2,400 · on track</span>
+              </div>
+              <div class="bar"><i></i></div>
+            </div>
+
+            <div class="d-week">
+              <div class="d-card">
+                <h2>Spending this cycle</h2>
+                <p class="sub">Volume across the last six months — rent still the heavy line.</p>
+                <div class="d-bars" aria-hidden="true">
+                  <b style="height:42%"></b>
+                  <b style="height:55%"></b>
+                  <b style="height:48%"></b>
+                  <b style="height:70%"></b>
+                  <b style="height:62%"></b>
+                  <b style="height:88%"></b>
+                </div>
+                <div class="d-bar-lbl"><span>Mar</span><span>Apr</span><span>May</span><span>Jun</span><span>Jul</span><span>Aug</span></div>
+              </div>
+              <div class="d-card">
+                <h2>Where it went</h2>
+                <p class="sub">This month, by category.</p>
+                <div class="d-mini-bars">
+                  <div class="row"><span>Rent</span><div class="track"><i style="width:84%"></i></div><strong>£1,800</strong></div>
+                  <div class="row"><span>Utilities</span><div class="track"><i style="width:18%"></i></div><strong>£126</strong></div>
+                  <div class="row"><span>Groceries</span><div class="track"><i style="width:10%"></i></div><strong>£67</strong></div>
+                  <div class="row"><span>Internet</span><div class="track"><i style="width:6%"></i></div><strong>£32</strong></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="d-week">
+              <div class="d-card">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start">
+                  <div>
+                    <h2>Recent expenses</h2>
+                    <p class="sub">Latest shared costs on 14 Park Street.</p>
+                  </div>
+                  <button class="d-btn ghost" type="button" data-go="expenses" style="height:32px">View all</button>
+                </div>
+                <table class="d-table">
+                  <thead>
+                    <tr>
+                      <th>Expense</th>
+                      <th>Who paid</th>
+                      <th>Status</th>
+                      <th style="text-align:right">Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td><strong>British Gas</strong></td>
+                      <td>Jordan</td>
+                      <td><span class="pill warn">Open</span></td>
+                      <td class="amt">£94.20</td>
+                    </tr>
+                    <tr>
+                      <td><strong>Virgin Media</strong></td>
+                      <td>Maya</td>
+                      <td><span class="pill open">Open</span></td>
+                      <td class="amt">£32.00</td>
+                    </tr>
+                    <tr>
+                      <td><strong>Tesco shop</strong></td>
+                      <td>Alex</td>
+                      <td><span class="pill settled">Settled</span></td>
+                      <td class="amt">£67.40</td>
+                    </tr>
+                    <tr>
+                      <td><strong>Rent · August</strong></td>
+                      <td>House fund</td>
+                      <td><span class="pill settled">Settled</span></td>
+                      <td class="amt">£1,800</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="d-card">
+                <h2>Who owes whom</h2>
+                <p class="sub">Minimum transfers to get to zero.</p>
+                <div class="d-item">
+                  <span class="avatar maya">MC</span>
+                  <span>You → Jordan</span>
+                  <span class="amt" style="margin-left:auto;font-weight:750">£42.00</span>
+                </div>
+                <div class="d-item">
+                  <span class="avatar jordan">JH</span>
+                  <span>Jordan → you</span>
+                  <span class="amt" style="margin-left:auto;font-weight:750">£18.00</span>
+                </div>
+                <div class="d-item">
+                  <span class="avatar alex">AR</span>
+                  <span>Alex is even</span>
+                  <span class="amt" style="margin-left:auto;color:var(--ink-soft)">£0</span>
+                </div>
+                <button class="d-btn" type="button" data-go="settle" style="width:100%;margin-top:12px;justify-content:center">Open settlement</button>
               </div>
             </div>
 
@@ -555,5 +688,25 @@
       };
     </script>
     <script src="../shared.js"></script>
+    <script>
+      (function () {
+        var root = document.body;
+        function apply(face) {
+          root.setAttribute("data-face", face);
+          document.querySelectorAll(".font-bar [data-face]").forEach(function (b) {
+            b.classList.toggle("is-on", b.getAttribute("data-face") === face);
+          });
+          try { localStorage.setItem("commune-d-face", face); } catch (e) {}
+        }
+        document.querySelector(".font-bar").addEventListener("click", function (e) {
+          var b = e.target.closest("[data-face]");
+          if (!b) return;
+          apply(b.getAttribute("data-face"));
+        });
+        var saved = null;
+        try { saved = localStorage.getItem("commune-d-face"); } catch (e) {}
+        apply(saved || "inter");
+      })();
+    </script>
   </body>
 </html>

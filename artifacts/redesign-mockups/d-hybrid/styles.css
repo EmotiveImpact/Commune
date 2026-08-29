@@ -183,8 +183,66 @@
   background: rgba(245, 241, 234, 0.86);
   backdrop-filter: blur(10px);
   position: sticky;
-  top: 40px;
+  top: 80px;
   z-index: 5;
+}
+
+.font-bar {
+  position: sticky;
+  top: 40px;
+  z-index: 39;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 8px;
+  padding: 6px 16px;
+  background: #12151c;
+  color: rgba(245, 241, 234, 0.6);
+  font-size: 12px;
+}
+
+.font-bar button {
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: transparent;
+  color: #f5f1ea;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.font-bar button.is-on {
+  background: #f5f1ea;
+  color: #171b24;
+}
+
+.d-body[data-face="dm-sans"],
+.d-body[data-face="dm-sans"] button {
+  font-family: "DM Sans", Inter, sans-serif;
+}
+
+.d-body[data-face="jakarta"],
+.d-body[data-face="jakarta"] button {
+  font-family: "Plus Jakarta Sans", Inter, sans-serif;
+}
+
+.d-body[data-face="manrope"],
+.d-body[data-face="manrope"] button {
+  font-family: Manrope, Inter, sans-serif;
+}
+
+.d-body[data-face="source"] .d-display,
+.d-body[data-face="source"] .d-ink .num,
+.d-body[data-face="source"] .d-kpi strong,
+.d-body[data-face="source"] .d-move .names,
+.d-body[data-face="source"] .d-move .amt,
+.d-body[data-face="source"] .d-cover h1,
+.d-body[data-face="source"] .d-page-head h1 {
+  font-family: "Source Serif 4", Georgia, serif;
+  font-weight: 600;
+  letter-spacing: -0.02em;
 }
 
 .d-header h1 {
@@ -529,12 +587,7 @@
 }
 
 .d-kicker {
-  margin: 0 0 8px;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: var(--sage);
+  display: none;
 }
 
 .d-move {
@@ -604,6 +657,126 @@
   border-color: transparent;
 }
 
+.d-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.d-kpi {
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(22, 19, 29, 0.08);
+}
+
+.d-kpi.sage { background: linear-gradient(180deg, rgba(216, 235, 228, 0.44), rgba(216, 235, 228, 0.18)); }
+.d-kpi.peach { background: linear-gradient(180deg, rgba(239, 217, 200, 0.42), rgba(239, 217, 200, 0.16)); }
+.d-kpi.lilac { background: linear-gradient(180deg, rgba(231, 222, 241, 0.46), rgba(231, 222, 241, 0.18)); }
+.d-kpi.ink { background: linear-gradient(180deg, rgba(31, 26, 42, 0.08), rgba(31, 26, 42, 0.03)); }
+
+.d-kpi span {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+.d-kpi strong {
+  display: block;
+  margin-top: 6px;
+  font-size: 1.4rem;
+  letter-spacing: -0.03em;
+  font-weight: 800;
+}
+
+.d-kpi small {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+
+.d-budget {
+  margin-top: 16px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: #fff;
+  border: 1px solid var(--border);
+}
+
+.d-budget .top {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+
+.d-budget .bar {
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(23, 27, 36, 0.08);
+  overflow: hidden;
+}
+
+.d-budget .bar i {
+  display: block;
+  height: 100%;
+  width: 89%;
+  background: #2d6a4f;
+  border-radius: 999px;
+}
+
+.d-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  height: 132px;
+  padding-top: 8px;
+}
+
+.d-bars b {
+  flex: 1;
+  border-radius: 6px 6px 2px 2px;
+  background: linear-gradient(180deg, #62c38a, #1b4332);
+  font-weight: 400;
+}
+
+.d-bar-lbl {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--ink-soft);
+}
+
+.d-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.d-table th {
+  text-align: left;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  font-weight: 650;
+  padding: 0 8px 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.d-table td {
+  padding: 12px 8px;
+  border-bottom: 1px solid rgba(23, 27, 36, 0.05);
+  font-size: 13.5px;
+}
+
+.d-table .amt {
+  text-align: right;
+  font-weight: 700;
+}
+
 .d-member {
   display: flex;
   align-items: center;
@@ -662,7 +835,7 @@
 @media (max-width: 1100px) {
   .d-app { grid-template-columns: 1fr; }
   .d-side { display: none; }
-  .d-answers, .d-week, .d-cc-grid, .d-exp-item, .d-move {
+  .d-answers, .d-week, .d-cc-grid, .d-exp-item, .d-move, .d-kpis {
     grid-template-columns: 1fr;
   }
 }
