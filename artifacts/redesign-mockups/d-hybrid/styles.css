@@ -11,7 +11,7 @@
 
 .d-app {
   display: grid;
-  grid-template-columns: 230px minmax(0, 1fr);
+  grid-template-columns: 240px minmax(0, 1fr);
   min-height: calc(100vh - 40px);
 }
 
@@ -49,10 +49,22 @@
   color: inherit;
   text-align: left;
   cursor: pointer;
+  margin-bottom: 10px;
 }
 
-.d-hub-switch:hover {
-  background: rgba(255, 255, 255, 0.1);
+.d-hub-switch:hover,
+.d-hub-switch.is-active {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.d-hub-switch .grow {
+  flex: 1;
+  min-width: 0;
+}
+
+.d-hub-switch .chev {
+  opacity: 0.4;
+  flex-shrink: 0;
 }
 
 .d-hub-switch .hub-ico {
@@ -82,6 +94,8 @@
   flex-direction: column;
   gap: 2px;
   flex: 1;
+  overflow-y: auto;
+  padding-right: 2px;
 }
 
 .d-link {
@@ -296,9 +310,27 @@
 
 .d-answers {
   display: grid;
-  grid-template-columns: minmax(0, 1.45fr) minmax(220px, 0.7fr) minmax(220px, 0.7fr);
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
   gap: 12px;
   margin-top: 16px;
+}
+
+.d-now-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(23, 27, 36, 0.05);
+}
+
+.d-now-row:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.d-now-row:first-child {
+  padding-top: 0;
 }
 
 .d-ink {
@@ -570,6 +602,61 @@
   background: var(--sage-soft);
   color: var(--sage-strong);
   border-color: transparent;
+}
+
+.d-member {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 0;
+  border-bottom: 1px solid rgba(23, 27, 36, 0.05);
+}
+
+.d-member:last-child {
+  border-bottom: 0;
+}
+
+.d-member .who strong {
+  display: block;
+}
+
+.d-member .who span {
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+.d-member .bal {
+  margin-left: auto;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+}
+
+.d-mini-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.d-mini-bars .row {
+  display: grid;
+  grid-template-columns: 110px 1fr 64px;
+  gap: 10px;
+  align-items: center;
+  font-size: 13px;
+}
+
+.d-mini-bars .track {
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(23, 27, 36, 0.06);
+  overflow: hidden;
+}
+
+.d-mini-bars .track i {
+  display: block;
+  height: 100%;
+  background: #2d6a4f;
+  border-radius: 999px;
 }
 
 @media (max-width: 1100px) {
