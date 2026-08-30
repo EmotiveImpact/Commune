@@ -634,7 +634,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 14px 0;
+  padding: 10px 0;
   border-bottom: 1px solid rgba(23, 27, 36, 0.05);
   font-size: 13.5px;
 }
@@ -644,16 +644,9 @@
   border-bottom: 0;
 }
 
-.a-settle-row .avatar {
-  width: 32px;
-  height: 32px;
-}
-
 .a-settle-row .amt {
   margin-left: auto;
   font-weight: 750;
-  font-size: 1.15rem;
-  letter-spacing: -0.02em;
 }
 
 .a-settle-row button.a-btn {

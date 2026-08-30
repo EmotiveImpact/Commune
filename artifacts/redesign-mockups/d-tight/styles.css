@@ -59,11 +59,11 @@
 .d-owes .d-move {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
-  gap: 12px;
+  gap: 16px;
   align-items: center;
   width: 100%;
   margin: 0;
-  padding: 14px 0;
+  padding: 16px 0;
   border: 0;
   border-bottom: 1px solid rgba(23, 27, 36, 0.06);
   background: transparent;

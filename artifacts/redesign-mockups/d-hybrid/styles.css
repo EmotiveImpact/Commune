@@ -650,9 +650,9 @@
 .d-move {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto auto;
-  gap: 12px;
+  gap: 16px;
   align-items: center;
-  padding: 14px 0;
+  padding: 18px 0;
   border-bottom: 1px solid rgba(23, 27, 36, 0.06);
 }
 
@@ -661,15 +661,14 @@
 }
 
 .d-arrow {
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   border-radius: 999px;
   background: #d9ebe5;
   color: #1b4332;
   display: grid;
   place-items: center;
   font-weight: 700;
-  font-size: 14px;
 }
 
 .d-move .names {
@@ -684,7 +683,12 @@
   margin-top: 2px;
 }
 
-.d-move .amt,
+.d-move .amt {
+  font-size: 1.45rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+}
+
 .d-exp-item .amt,
 .d-member .bal,
 .d-item .amt {
