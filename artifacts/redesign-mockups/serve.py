@@ -17,6 +17,10 @@ class Handler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=ROOT, **kwargs)
 
+    def log_message(self, fmt, *args):
+        host = self.headers.get("Host", "-")
+        print(f"{self.address_string()} Host={host} {fmt % args}", flush=True)
+
 
 class IPv6Server(ThreadingHTTPServer):
     address_family = socket.AF_INET6
@@ -39,5 +43,8 @@ if __name__ == "__main__":
     v4 = IPv4Server(("0.0.0.0", PORT), Handler)
     v6 = IPv6Server(("::", PORT), Handler)
     threading.Thread(target=v6.serve_forever, daemon=True).start()
-    print(f"Serving {ROOT} on http://localhost:{PORT}/ (0.0.0.0 and ::)", flush=True)
+    print(f"Serving {ROOT}", flush=True)
+    print(f"listening on 0.0.0.0:{PORT}", flush=True)
+    print(f"http://127.0.0.1:{PORT}/", flush=True)
+    print(f"http://localhost:{PORT}/", flush=True)
     v4.serve_forever()

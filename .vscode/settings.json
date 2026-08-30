@@ -1,11 +1,14 @@
 {
   "remote.autoForwardPorts": true,
   "remote.autoForwardPortsSource": "hybrid",
+  "remote.restoreForwardedPorts": true,
+  "remote.forwardOnOpen": true,
   "remote.portsAttributes": {
     "3000": {
       "label": "Commune redesign mockups",
-      "onAutoForward": "notify",
-      "protocol": "http"
+      "onAutoForward": "openBrowser",
+      "protocol": "http",
+      "requireLocalPort": true
     }
   }
 }
