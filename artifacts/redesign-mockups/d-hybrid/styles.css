@@ -321,6 +321,7 @@
 
 .d-cover {
   position: relative;
+  isolation: isolate;
   min-height: 280px;
   border-radius: 18px;
   overflow: hidden;
@@ -329,10 +330,33 @@
   flex-direction: column;
   justify-content: flex-end;
   color: #f8f5f0;
-  background:
-    linear-gradient(180deg, rgba(26, 30, 46, 0.08) 0%, rgba(26, 30, 46, 0.68) 100%),
-    url("https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?auto=format&fit=crop&w=1600&q=80") center/cover;
-  border: 1px solid rgba(23, 27, 36, 0.08);
+  /* Navy fill so rounded-corner AA does not leak the cream page behind */
+  background: #1a1e2e;
+  border: 0;
+}
+
+.d-cover::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: url("https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?auto=format&fit=crop&w=1600&q=80") center/cover no-repeat;
+  transform: scale(1.03);
+  transform-origin: center;
+}
+
+.d-cover::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(26, 30, 46, 0.08) 0%, rgba(26, 30, 46, 0.68) 100%);
+}
+
+.d-cover > * {
+  position: relative;
+  z-index: 2;
 }
 
 .d-cover .type {
