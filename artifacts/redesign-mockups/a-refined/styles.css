@@ -1364,7 +1364,7 @@ button.a-now-row {
   color: var(--sage);
 }
 
-#hub .a-ink {
+.a-owe-card {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -1372,10 +1372,32 @@ button.a-now-row {
   background: #fff;
 }
 
-#hub .a-ink .num {
+.a-owe-card > span {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  font-weight: 700;
+}
+
+.a-owe-card .num {
   font-size: 2.6rem;
+  font-weight: 800;
   letter-spacing: -0.05em;
   line-height: 1.05;
+  margin: 8px 0 10px;
+}
+
+.a-owe-card p {
+  margin: 0 0 16px;
+  font-size: 14px;
+  color: var(--ink-soft);
+  max-width: 28rem;
+  line-height: 1.45;
+}
+
+.a-owe-card.is-credit .num {
+  color: var(--sage);
 }
 
 .a-card {
