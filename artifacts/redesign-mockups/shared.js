@@ -1,11 +1,4 @@
 (function () {
-  function setChrome(mode) {
-    document.body.setAttribute("data-chrome", mode);
-    document.querySelectorAll("[data-chrome]").forEach(function (el) {
-      el.classList.toggle("is-active", el.getAttribute("data-chrome") === mode);
-    });
-  }
-
   function show(id) {
     document.querySelectorAll(".screen").forEach(function (s) {
       s.hidden = s.id !== id;
@@ -25,12 +18,6 @@
   }
 
   document.addEventListener("click", function (e) {
-    var chrome = e.target.closest("[data-chrome]");
-    if (chrome) {
-      e.preventDefault();
-      setChrome(chrome.getAttribute("data-chrome"));
-      return;
-    }
     var t = e.target.closest("[data-go]");
     if (!t) return;
     e.preventDefault();
@@ -38,6 +25,5 @@
   });
 
   var params = new URLSearchParams(window.location.search);
-  setChrome(params.get("chrome") || "space");
   if (params.get("screen")) show(params.get("screen"));
 })();
