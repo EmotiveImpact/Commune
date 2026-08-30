@@ -9,11 +9,11 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="../shared.css?v=settle2" />
-    <link rel="stylesheet" href="./styles.css?v=rows" />
+    <link rel="stylesheet" href="./styles.css?v=switch-under" />
   </head>
   <body class="a-body">
     <div class="mock-bar">
-      <span>Direction <strong>A</strong> · switcher under ident</span>
+      <span>Direction <strong>A</strong> · switcher under Activity</span>
       <span>
         <a href="../d-tight/">D Home · switcher under nav</a>
         &nbsp;·&nbsp;
@@ -27,17 +27,6 @@
           <img class="a-logo" src="../logo.png" width="36" height="36" alt="Commune" />
           <span class="a-wordmark">COMMUNE</span>
         </div>
-
-        <button class="a-hub-switch" type="button" data-go="communes">
-          <div class="hub-ico" aria-hidden="true">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f5f1ea" stroke-width="2"><path d="M3 10.5 12 3l9 7.5V21a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1v-10.5z"/></svg>
-          </div>
-          <div class="grow">
-            <strong>14 Park Street</strong>
-            <span>Household · 3 people</span>
-          </div>
-          <svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
-        </button>
 
         <nav class="a-nav" aria-label="Primary">
           <button class="a-link is-active" data-go="home" type="button">
@@ -109,6 +98,19 @@
             </button>
           </div>
         </nav>
+
+        <div class="a-switch-section">
+          <button class="a-hub-switch" type="button" data-go="communes">
+            <div class="hub-ico" aria-hidden="true">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f5f1ea" stroke-width="2"><path d="M3 10.5 12 3l9 7.5V21a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1v-10.5z"/></svg>
+            </div>
+            <div class="grow">
+              <strong>14 Park Street</strong>
+              <span>Household · 3 people</span>
+            </div>
+            <svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+          </button>
+        </div>
 
         <button class="a-side-foot" type="button" data-go="profile">
           <span class="avatar maya">MC</span>
