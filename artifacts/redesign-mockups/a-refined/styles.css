@@ -1024,9 +1024,9 @@
 .a-member-row {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 14px 0;
-  border-bottom: 1px solid rgba(23, 27, 36, 0.05);
+  gap: 16px;
+  padding: 18px 0;
+  border-bottom: 1px solid rgba(23, 27, 36, 0.06);
 }
 
 .a-member-row:last-child {
@@ -1034,24 +1034,47 @@
 }
 
 .a-member-row .avatar {
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
 }
 
 .a-member-row .who strong {
   display: block;
-  font-size: 13.5px;
+  font-size: 1.05rem;
+  font-weight: 750;
+  letter-spacing: -0.02em;
 }
 
 .a-member-row .who span {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--ink-soft);
 }
 
 .a-member-row .bal {
   margin-left: auto;
+  font-weight: 800;
+  font-size: 1.45rem;
+  letter-spacing: -0.04em;
+}
+
+#operations .a-settle-row,
+#notes .a-settle-row,
+#activity .a-settle-row {
+  padding: 18px 0;
+  gap: 16px;
+}
+
+#operations .a-settle-row .avatar,
+#activity .a-settle-row .avatar {
+  width: 36px;
+  height: 36px;
+}
+
+#operations .a-settle-row strong,
+#notes .a-settle-row strong,
+#activity .a-settle-row strong {
+  font-size: 1.05rem;
   font-weight: 750;
-  font-size: 1.15rem;
   letter-spacing: -0.02em;
 }
 

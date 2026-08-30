@@ -543,21 +543,27 @@
 
 .d-item {
   display: grid;
-  grid-template-columns: 32px minmax(0, 1fr) auto;
-  gap: 12px;
+  grid-template-columns: 36px minmax(0, 1fr) auto;
+  gap: 16px;
   align-items: center;
-  padding: 14px 0;
-  border-bottom: 1px solid rgba(23, 27, 36, 0.05);
-  font-size: 14px;
+  padding: 18px 0;
+  border-bottom: 1px solid rgba(23, 27, 36, 0.06);
+  font-size: 1.05rem;
 }
 
 .d-item:last-child {
   border-bottom: 0;
 }
 
+.d-item strong {
+  font-size: 1.05rem;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+}
+
 .d-item .when,
 .when {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--ink-soft);
 }
 
@@ -689,9 +695,7 @@
   letter-spacing: -0.04em;
 }
 
-.d-exp-item .amt,
-.d-member .bal,
-.d-item .amt {
+.d-exp-item .amt {
   font-size: 1.15rem;
   font-weight: 750;
   letter-spacing: -0.03em;
@@ -845,16 +849,41 @@
 .d-member {
   display: flex;
   align-items: center;
-  gap: 12px;
-  min-height: 56px;
-  padding: 14px 0;
-  border-bottom: 1px solid rgba(23, 27, 36, 0.05);
+  gap: 16px;
+  padding: 18px 0;
+  border-bottom: 1px solid rgba(23, 27, 36, 0.06);
+}
+
+.d-member:last-child {
+  border-bottom: 0;
 }
 
 .d-member .avatar,
 .d-item .avatar {
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
+  font-size: 12px;
+}
+
+.d-member .who strong {
+  display: block;
+  font-size: 1.05rem;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+}
+
+.d-member .who span {
+  display: block;
+  font-size: 13px;
+  color: var(--ink-soft);
+  margin-top: 2px;
+}
+
+.d-member .bal {
+  margin-left: auto;
+  font-size: 1.45rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
 }
 
 .d-field {
