@@ -42,9 +42,9 @@ export default function ProductPage() {
         <section className="section" style={{ paddingTop: 0 }}>
           <div className="wrap">
             <div className="strip">
-              <img src={asset("photo/kitchen.png")} alt="" />
-              <img src={asset("photo/studio.png")} alt="" />
-              <img src={asset("photo/trip.png")} alt="" />
+              <img src={asset("photo/kitchen.jpg")} alt="" />
+              <img src={asset("photo/studio.jpg")} alt="" />
+              <img src={asset("photo/trip.jpg")} alt="" />
             </div>
           </div>
         </section>

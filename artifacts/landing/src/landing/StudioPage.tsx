@@ -8,7 +8,7 @@ const STUDIES = [
     kicker: "01  ·  Paper",
     title: "The house journal",
     body: "Cream field, tighten type, photography as evidence. Closest to how the product already feels.",
-    img: "photo/kitchen.png",
+    img: "photo/kitchen.jpg",
     wide: true,
   },
   {
@@ -16,7 +16,7 @@ const STUDIES = [
     kicker: "02  ·  Ink",
     title: "The night desk",
     body: "Navy canvas from the app sidebar. Same 14px body, same 10px labels — darker, quieter.",
-    img: "photo/night.png",
+    img: "photo/night.jpg",
     wide: false,
   },
   {
@@ -24,7 +24,7 @@ const STUDIES = [
     kicker: "03  ·  Product",
     title: "The operating surface",
     body: "The hub is the hero. Lifestyle sits underneath. Built for people who need to see the tool.",
-    img: "photo/house.png",
+    img: "photo/house.jpg",
     wide: false,
   },
 ] as const;

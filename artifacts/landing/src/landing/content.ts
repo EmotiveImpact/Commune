@@ -32,10 +32,10 @@ export const WHY = [
 ] as const;
 
 export const SPACES = [
-  { id: "home", label: "House shares", sub: "Rent, bills, chores", img: "photo/kitchen.png" },
-  { id: "couple", label: "Couples", sub: "Joint expenses, budgets", img: "photo/couple.png" },
-  { id: "studio", label: "Studios & offices", sub: "Shared costs, tools, roles", img: "photo/studio.png" },
-  { id: "trip", label: "Group trips", sub: "Log on the go, settle before you land", img: "photo/trip.png" },
+  { id: "home", label: "House shares", sub: "Rent, bills, chores", img: "photo/kitchen.jpg" },
+  { id: "couple", label: "Couples", sub: "Joint expenses, budgets", img: "photo/couple.jpg" },
+  { id: "studio", label: "Studios & offices", sub: "Shared costs, tools, roles", img: "photo/studio.jpg" },
+  { id: "trip", label: "Group trips", sub: "Log on the go, settle before you land", img: "photo/trip.jpg" },
 ] as const;
 
 export const PLANS = [

@@ -22,7 +22,7 @@ export default function PaperPage() {
               </div>
             </div>
             <div className="hero-p__frame">
-              <img src={asset("photo/kitchen.png")} alt="Housemates at the kitchen table" />
+              <img src={asset("photo/kitchen.jpg")} alt="Housemates at the kitchen table" />
             </div>
           </div>
         </section>
@@ -49,7 +49,7 @@ export default function PaperPage() {
         <section className="section">
           <div className="wrap split">
             <div className="split__img">
-              <img src={asset("photo/house.png")} alt="A quiet shared living room" />
+              <img src={asset("photo/house.jpg")} alt="A quiet shared living room" />
             </div>
             <div>
               <p className="t-label split__k">About Commune</p>
@@ -128,7 +128,7 @@ export default function PaperPage() {
         <Pricing />
 
         <section className="cta-photo">
-          <img src={asset("photo/couple.png")} alt="" />
+          <img src={asset("photo/couple.jpg")} alt="" />
           <div className="cta-photo__veil" />
           <div className="cta-photo__in">
             <h2 className="t-title">Live clearly, together.</h2>

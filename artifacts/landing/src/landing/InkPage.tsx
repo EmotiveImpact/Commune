@@ -7,7 +7,7 @@ export default function InkPage() {
       <Header theme="ink" />
       <main>
         <section className="hero-i">
-          <img className="hero-i__bg" src={asset("photo/night.png")} alt="" />
+          <img className="hero-i__bg" src={asset("photo/night.jpg")} alt="" />
           <div className="hero-i__veil" />
           <div className="hero-i__in">
             <div className="wrap">
