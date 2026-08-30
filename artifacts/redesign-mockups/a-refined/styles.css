@@ -1364,12 +1364,22 @@ button.a-now-row {
   color: var(--sage);
 }
 
-.a-owe-card {
+.a-card {
+  background: rgba(255, 255, 255, 0.86);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 22px;
+  box-shadow: var(--shadow-sm);
+}
+
+.a-owe-card.a-card {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   min-height: 100%;
   background: #fff;
+  border: 1px solid var(--border-strong);
+  box-shadow: var(--shadow);
 }
 
 .a-owe-card > span {
@@ -1398,14 +1408,6 @@ button.a-now-row {
 
 .a-owe-card.is-credit .num {
   color: var(--sage);
-}
-
-.a-card {
-  background: rgba(255, 255, 255, 0.86);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 22px;
-  box-shadow: var(--shadow-sm);
 }
 
 .a-card h2 {
