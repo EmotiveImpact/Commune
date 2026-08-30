@@ -885,6 +885,16 @@
   letter-spacing: -0.03em;
 }
 
+#settle .a-settle-row {
+  padding: 18px 0;
+}
+
+#settle .a-settle-row .amt {
+  font-size: 1.45rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+}
+
 .a-cc-grid {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
