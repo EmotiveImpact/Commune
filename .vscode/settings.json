@@ -1,0 +1,11 @@
+{
+  "remote.autoForwardPorts": true,
+  "remote.autoForwardPortsSource": "hybrid",
+  "remote.portsAttributes": {
+    "3000": {
+      "label": "Commune redesign mockups",
+      "onAutoForward": "notify",
+      "protocol": "http"
+    }
+  }
+}
