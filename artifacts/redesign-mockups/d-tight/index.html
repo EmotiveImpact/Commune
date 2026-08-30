@@ -8,19 +8,23 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../shared.css?v=show" />
-    <link rel="stylesheet" href="../d-hybrid/styles.css?v=show" />
-    <link rel="stylesheet" href="./styles.css?v=show" />
+    <link rel="stylesheet" href="../shared.css?v=ia" />
+    <link rel="stylesheet" href="../d-hybrid/styles.css?v=ia" />
+    <link rel="stylesheet" href="./styles.css?v=ia" />
   </head>
-  <body class="d-body">
+  <body class="d-body" data-chrome="space">
     <div class="mock-bar">
-      <span><strong>D Home</strong> · after the hero</span>
+      <span><strong>D Home</strong></span>
       <span class="layout-tabs">
         <button type="button" data-go="hub">As now</button>
         <button type="button" class="is-active" data-go="hub-snapshot">Snapshot</button>
         <button type="button" data-go="hub-needs">Needs you</button>
         <button type="button" data-go="hub-money">Money</button>
-        <a href="../d-hybrid/">Stacked</a>
+      </span>
+      <span class="layout-tabs">
+        <button type="button" data-chrome="under">Under logo</button>
+        <button type="button" class="is-active" data-chrome="space">House first</button>
+        <button type="button" data-chrome="header">In header</button>
         <a href="../">All directions</a>
       </span>
     </div>
@@ -49,6 +53,7 @@
           <button class="d-link is-active" data-go="hub-snapshot" type="button">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 10.5 12 3l9 7.5V21a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1v-10.5z"/></svg>
             Home
+            <span class="nav-count">3</span>
           </button>
 
           <div class="d-group-label">Money</div>
@@ -79,11 +84,15 @@
             </button>
           </div>
 
-          <div class="d-group-label">People</div>
+          <div class="d-group-label">House</div>
           <div class="d-sub">
             <button class="d-link" data-go="members" type="button">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
               Members
+            </button>
+            <button class="d-link" data-go="notes" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 4h9l5 5v11H6z"/><path d="M15 4v5h5"/></svg>
+              Notes
             </button>
             <button class="d-link" data-go="operations" type="button">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
@@ -98,15 +107,19 @@
             <strong>Maya Chen</strong>
             <span>Standard</span>
           </div>
+          <span class="foot-product">COMMUNE</span>
         </div>
       </aside>
 
       <div class="d-main">
         <header class="d-header">
-          <div>
-            <h1 class="d-display" data-page-title>14 Park Street</h1>
-            <p>August · you owe £42 · gas Friday · fund £420</p>
-          </div>
+          <button class="d-header-switch" type="button" data-go="home">
+            <div>
+              <h1 class="d-display" data-page-title>14 Park Street</h1>
+              <p>August · you owe £42 · gas Friday · fund £420</p>
+            </div>
+            <svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+          </button>
           <div class="d-header-actions">
             <button class="d-btn nudge" type="button">Nudge Jordan</button>
             <button class="d-btn" type="button" data-go="expenses">Add expense</button>
@@ -293,7 +306,7 @@
           </section>
 
           <section class="screen" id="hub-snapshot">
-            <p class="compare-note"><strong>Snapshot is Home.</strong> Click a card or a row — that’s where the rest of the information lives.</p>
+            <p class="compare-note"><strong>Snapshot is Home.</strong> Click a card or a row for the rest. No extra “Needs you” in the sidebar — the 3 on Home is that inbox. Notes is its own item. Use the Ident pills: house first (recommended), under the Commune mark, or in the header.</p>
             <div class="d-cover">
               <span class="type">Household</span>
               <h1 class="d-display">14 Park Street</h1>
@@ -756,7 +769,7 @@
           <section class="screen" id="operations" hidden>
             <div class="d-page-head">
               <h1 class="d-display">Who’s doing what.</h1>
-              <p>From Snapshot · Bins, and the pin that used to sit at the bottom of Home.</p>
+              <p>From Snapshot · Bins and chores. Wi-Fi and the landlord live in Notes.</p>
             </div>
             <div class="d-card">
               <div class="d-item">
@@ -775,9 +788,15 @@
                 <span class="pill open">Yours</span>
               </div>
             </div>
-            <div class="d-card" style="margin-top:16px">
-              <h2>The house, in writing</h2>
-              <p class="sub">The chat-pin. Not a chore list.</p>
+            <p class="compare-note" style="margin-top:16px">The chat-pin moved to <button type="button" data-go="notes" class="inline-go">Notes</button>.</p>
+          </section>
+
+          <section class="screen" id="notes" hidden>
+            <div class="d-page-head">
+              <h1 class="d-display">The house, in writing.</h1>
+              <p>Wi-Fi, bin day, landlord — the pin. Not a chore list, not the ledger.</p>
+            </div>
+            <div class="d-card">
               <div class="d-item" style="grid-template-columns:1fr">
                 <div><strong>Wi-Fi</strong><div class="when">ParkStreet_5G · password in notes</div></div>
               </div>
@@ -805,9 +824,10 @@
         funds: "Funds",
         analytics: "Analytics",
         members: "Members",
+        notes: "Notes",
         operations: "Operations"
       };
     </script>
-    <script src="../shared.js?v=show"></script>
+    <script src="../shared.js?v=ia"></script>
   </body>
 </html>

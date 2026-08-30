@@ -125,11 +125,78 @@ button.d-now-row {
   color: var(--ink);
 }
 
-.compare-note a {
-  color: var(--sage);
-  font-weight: 650;
-  text-decoration: none;
+.nav-count {
+  margin-left: auto;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #eaa681;
+  color: #7a3e1d;
+  font-size: 10px;
+  font-weight: 800;
+  display: inline-grid;
+  place-items: center;
 }
+
+.d-header-switch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.d-header-switch .chev {
+  display: none;
+  flex-shrink: 0;
+  opacity: 0.45;
+}
+
+.foot-product {
+  display: none;
+  margin-left: auto;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  color: rgba(255, 255, 255, 0.32);
+}
+
+.inline-go {
+  border: 0;
+  padding: 0;
+  background: none;
+  font: inherit;
+  font-weight: 650;
+  color: var(--sage);
+  cursor: pointer;
+}
+
+/* House is the sidebar identity. Commune mark moves to the footer. */
+[data-chrome="space"] .d-brand {
+  display: none;
+}
+
+[data-chrome="space"] .foot-product {
+  display: inline;
+}
+
+/* Switch lives in the header title. Sidebar is product + nav. */
+[data-chrome="header"] .d-hub-switch {
+  display: none;
+}
+
+[data-chrome="header"] .d-header-switch .chev {
+  display: block;
+}
+
+/* Under logo = current: Commune mark, then the house switch. */
 
 @media (max-width: 1100px) {
   .d-app {
