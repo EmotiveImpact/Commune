@@ -11,91 +11,77 @@
   <link rel="stylesheet" href="/landing.css" />
 </head>
 <body>
-  <div class="studio">
-    <header class="top">
+  <div class="cover">
+    <img class="cover__img" src="/photo/kitchen.jpg" alt="" />
+    <div class="cover__veil"></div>
+    <header class="top top--clear">
       <div class="top__in">
         <a href="/" class="top__brand">
           <img src="/logo.png" alt="" />
           <span class="t-logo">Commune</span>
         </a>
         <nav class="top__nav">
-          <a href="/paper#why">Why</a>
-          <a href="/paper#spaces">Spaces</a>
-          <a href="/paper#pricing">Pricing</a>
+          <a href="/paper">Paper</a>
+          <a href="/ink">Ink</a>
+          <a href="/product">Product</a>
         </nav>
         <div class="top__acts">
           <a class="top__signin" href="https://app.ourcommune.io">Sign in</a>
-          <a class="btn btn--sage" href="https://app.ourcommune.io/signup">Start for free</a>
+          <a class="btn btn--light" href="https://app.ourcommune.io/signup">Start for free</a>
         </div>
       </div>
     </header>
-    <main>
-      <section class="studio__hero">
-        <div class="wrap">
-          <p class="t-label studio__kicker">Landing explorations</p>
-          <h1 class="t-display">Three directions. One type system.</h1>
-          <p class="t-body studio__lead">
-            Fonts and sizing come from the tighten HTML mocks: Inter, 10px labels,
-            14px body, 24px titles, 64px chrome. Display type tops out at 48px.
-            Open a study, live with it, keep it or throw it out.
-          </p>
-        </div>
-      </section>
-      <section class="wrap">
-        <div class="studio__grid">
-          <a href="/paper" class="scard scard--wide">
-            <div class="scard__img"><img src="/photo/kitchen.jpg" alt="" /></div>
-            <div class="scard__body">
-              <p class="t-label scard__meta">01  ·  Paper</p>
-              <h2 class="scard__h">The house journal</h2>
-              <p class="t-body">Cream field, tighten type, photography as evidence. Closest to how the product already feels.</p>
-            </div>
-          </a>
-          <a href="/ink" class="scard">
-            <div class="scard__img"><img src="/photo/night.jpg" alt="" /></div>
-            <div class="scard__body">
-              <p class="t-label scard__meta">02  ·  Ink</p>
-              <h2 class="scard__h">The night desk</h2>
-              <p class="t-body">Navy canvas from the app sidebar. Same 14px body, same 10px labels — darker, quieter.</p>
-            </div>
-          </a>
-          <a href="/product" class="scard">
-            <div class="scard__img"><img src="/photo/house.jpg" alt="" /></div>
-            <div class="scard__body">
-              <p class="t-label scard__meta">03  ·  Product</p>
-              <h2 class="scard__h">The operating surface</h2>
-              <p class="t-body">The hub is the hero. Lifestyle sits underneath. Built for people who need to see the tool.</p>
-            </div>
-          </a>
-        </div>
-      </section>
-      <section class="studio__note">
-        <div class="wrap">
-          <h2>What we took from the research</h2>
-          <p class="t-body">
-            Clean sites for this audience — shared houses, couples, studios, trips —
-            are winning with editorial restraint, not SaaS chrome. Type is the
-            differentiator. Photography is used sparingly and at full intent.
-          </p>
-        </div>
-      </section>
-    </main>
-    <footer class="foot">
-      <div class="foot__in">
-        <div class="foot__brand">
-          <img src="/logo.png" alt="" />
-          <span class="t-logo">Commune</span>
-        </div>
-        <p class="t-body">© 2026 Commune</p>
-        <a class="t-ui" href="mailto:support@ourcommune.io">support@ourcommune.io</a>
-      </div>
-    </footer>
-    <nav class="dswitch" aria-label="Design explorations">
-      <a href="/" class="is-on">All</a>
-      <a href="/paper">Paper</a>
-      <a href="/ink">Ink</a>
-      <a href="/product">Product</a>
-    </nav>
+    <div class="cover__in wrap">
+      <p class="t-label cover__k">Landing explorations · August</p>
+      <h1 class="t-display cover__h">Three ways the house could meet the street.</h1>
+      <p class="t-body cover__lead">Same Inter scale. Same paper, ink, and sage. Different art direction. Open one and live with it.</p>
+    </div>
   </div>
+
+  <section class="contents">
+    <div class="wrap">
+      <a class="contents__row" href="/paper">
+        <span class="contents__n">01</span>
+        <div>
+          <h2 class="contents__t">Paper · the house journal</h2>
+          <p class="contents__d">A cream field, a photograph that meets the edge, and the month at 14 Park Street set like a ledger.</p>
+        </div>
+        <div class="contents__img"><img src="/photo/house.jpg" alt="" /></div>
+      </a>
+      <a class="contents__row" href="/ink">
+        <span class="contents__n">02</span>
+        <div>
+          <h2 class="contents__t">Ink · the night desk</h2>
+          <p class="contents__d">You open it after dinner. August, you owe £42, gas Friday — then the transfers.</p>
+        </div>
+        <div class="contents__img"><img src="/photo/night.jpg" alt="" /></div>
+      </a>
+      <a class="contents__row" href="/product">
+        <span class="contents__n">03</span>
+        <div>
+          <h2 class="contents__t">Product · the operating surface</h2>
+          <p class="contents__d">The hub is the first screen. Navy chrome, one balance, You → Jordan. Lifestyle sits underneath.</p>
+        </div>
+        <div class="contents__img"><img src="/photo/studio.jpg" alt="" /></div>
+      </a>
+    </div>
+  </section>
+
+  <footer class="foot">
+    <div class="foot__in">
+      <div class="foot__brand">
+        <img src="/logo.png" alt="" />
+        <span class="t-logo">Commune</span>
+      </div>
+      <p class="t-body">Keep one. Throw the others out.</p>
+      <a class="t-ui" href="mailto:support@ourcommune.io">support@ourcommune.io</a>
+    </div>
+  </footer>
+  <nav class="dswitch" aria-label="Design explorations">
+    <a href="/" class="is-on">All</a>
+    <a href="/paper">Paper</a>
+    <a href="/ink">Ink</a>
+    <a href="/product">Product</a>
+  </nav>
 </body>
 </html>

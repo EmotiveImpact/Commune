@@ -3,25 +3,27 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Commune — Know what you owe</title>
+  <title>Commune — The night desk</title>
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/landing.css" />
 </head>
-<body>
-  <div class="lp lp--ink">
-    <header class="top top--ink">
+<body style="background: #0f1118">
+  <section class="night">
+    <img class="night__img" src="/photo/night.jpg" alt="" />
+    <div class="night__veil"></div>
+    <header class="top top--clear">
       <div class="top__in">
         <a href="/" class="top__brand">
           <img src="/logo.png" alt="" />
           <span class="t-logo">Commune</span>
         </a>
         <nav class="top__nav">
-          <a href="#why">Why</a>
+          <a href="#desk">The desk</a>
           <a href="#spaces">Spaces</a>
-          <a href="#pricing">Pricing</a>
+          <a href="#membership">Membership</a>
         </nav>
         <div class="top__acts">
           <a class="top__signin" href="https://app.ourcommune.io">Sign in</a>
@@ -29,133 +31,161 @@
         </div>
       </div>
     </header>
-    <main>
-      <section class="hero-i">
-        <img class="hero-i__bg" src="/photo/night.jpg" alt="" />
-        <div class="hero-i__veil"></div>
-        <div class="hero-i__in">
-          <div class="wrap">
-            <p class="t-label hero-i__kicker">The operating system for shared spaces</p>
-            <h1 class="t-display hero-i__h">Know what you owe. Know what needs doing.</h1>
-            <p class="t-body hero-i__sub">
-              Communal finance and house operations in one calm surface —
-              for homes, studios, crews, and trips.
-            </p>
-            <div class="hero-i__cta">
-              <a class="btn btn--sage" href="https://app.ourcommune.io/signup">Start 7-day trial</a>
-              <a class="btn btn--ghost-light" href="#why">Why Commune</a>
+    <div class="night__in wrap">
+      <p class="night__status"><i></i> August · you owe £42 · gas Friday · fund £420</p>
+      <h1 class="t-display night__h">Know what you owe. Know what needs doing.</h1>
+      <p class="t-body night__sub">
+        Communal finance and house operations on one calm surface —
+        opened at the end of the day.
+      </p>
+      <div class="night__cta">
+        <a class="btn btn--sage" href="https://app.ourcommune.io/signup">Start 7-day trial</a>
+        <a class="btn btn--ghost-light" href="#desk">Open the desk</a>
+      </div>
+    </div>
+  </section>
+
+  <section id="desk" class="desk">
+    <div class="wrap">
+      <p class="t-label" style="color: #8fbfa4; margin-bottom: 10px">14 Park Street · this cycle</p>
+      <h2 class="t-title" style="margin-bottom: 28px">The desk, after dinner.</h2>
+      <div class="desk__grid">
+        <div class="owebox">
+          <p class="t-label">You owe</p>
+          <p class="owebox__n">£42.00</p>
+          <p>Pay Jordan this week. Or net the Tesco £18 and send £24.</p>
+          <a class="btn btn--sage" href="https://app.ourcommune.io/signup">Settle with Jordan</a>
+          <a class="btn btn--ghost-light" href="https://app.ourcommune.io/signup">Nudge him</a>
+          <div style="margin-top: 22px">
+            <div class="move">
+              <span class="move__arr">→</span>
+              <div>
+                <p class="move__n">You → Jordan</p>
+                <p class="move__w">Gas share · or £24 if you net Tesco</p>
+              </div>
+              <span class="move__a">£42</span>
+            </div>
+            <div class="move">
+              <span class="move__arr">→</span>
+              <div>
+                <p class="move__n">Jordan → You</p>
+                <p class="move__w">Tesco extras from Monday</p>
+              </div>
+              <span class="move__a">£18</span>
             </div>
           </div>
         </div>
-      </section>
-      <section id="why" class="section">
-        <div class="wrap">
-          <p class="t-label" style="color: #8fbfa4; margin-bottom: 10px">Why Commune</p>
-          <h2 class="t-title" style="margin-bottom: 22px">Four pillars. No extra noise.</h2>
-          <div class="ink-cards">
-            <article class="ink-card">
-              <p class="t-label ink-card__n">01</p>
-              <p class="ink-card__t">Communal finance that stays true</p>
-              <p class="ink-card__d">Recurring bills, fair splits, reimbursements, and one monthly picture every member can trust.</p>
-            </article>
-            <article class="ink-card">
-              <p class="t-label ink-card__n">02</p>
-              <p class="ink-card__t">A hub for the house, not a spreadsheet</p>
-              <p class="ink-card__d">Members, roles, pinned notices, and the practical details that usually live in chat.</p>
-            </article>
-            <article class="ink-card">
-              <p class="t-label ink-card__n">03</p>
-              <p class="ink-card__t">Responsibilities with an owner</p>
-              <p class="ink-card__d">Who does what, what needs approval, and what is overdue — before it becomes awkward.</p>
-            </article>
-            <article class="ink-card">
-              <p class="t-label ink-card__n">04</p>
-              <p class="ink-card__t">One command centre, many spaces</p>
-              <p class="ink-card__d">Home, studio, trip. Switch in a second. See what you owe across all of them.</p>
-            </article>
+        <div class="nowbox">
+          <h2>Right now</h2>
+          <p class="sub">What still needs a person this week.</p>
+          <div class="now">
+            <span class="pill warn">Friday</span>
+            <div>
+              <strong>British Gas</strong>
+              <div class="when">£94.20 · Jordan paid · your share open</div>
+            </div>
+          </div>
+          <div class="now">
+            <span class="pill warn">Overdue</span>
+            <div>
+              <strong>Bins</strong>
+              <div class="when">Still Jordan’s Tuesday</div>
+            </div>
+          </div>
+          <div class="now">
+            <span class="pill open">Collect</span>
+            <div>
+              <strong>Alex · house fund</strong>
+              <div class="when">£180 still to pay in</div>
+            </div>
           </div>
         </div>
-      </section>
-      <section id="spaces" class="ink-band section">
-        <div class="wrap">
-          <p class="t-label" style="color: var(--sage); margin-bottom: 10px">Spaces</p>
-          <h2 class="t-title" style="margin-bottom: 22px">Every way people share.</h2>
-          <div class="spaces">
-            <article class="space">
-              <div class="space__img"><img src="/photo/kitchen.jpg" alt="House shares" /></div>
-              <div class="space__copy"><p class="space__label">House shares</p><p class="space__sub">Rent, bills, chores</p></div>
-            </article>
-            <article class="space">
-              <div class="space__img"><img src="/photo/couple.jpg" alt="Couples" /></div>
-              <div class="space__copy"><p class="space__label">Couples</p><p class="space__sub">Joint expenses, budgets</p></div>
-            </article>
-            <article class="space">
-              <div class="space__img"><img src="/photo/studio.jpg" alt="Studios & offices" /></div>
-              <div class="space__copy"><p class="space__label">Studios &amp; offices</p><p class="space__sub">Shared costs, tools, roles</p></div>
-            </article>
-            <article class="space">
-              <div class="space__img"><img src="/photo/trip.jpg" alt="Group trips" /></div>
-              <div class="space__copy"><p class="space__label">Group trips</p><p class="space__sub">Log on the go, settle before you land</p></div>
-            </article>
-          </div>
-        </div>
-      </section>
-      <section id="pricing" class="section">
-        <div class="wrap">
-          <p class="t-label" style="color: #8fbfa4; margin-bottom: 10px">Membership</p>
-          <h2 class="t-title" style="margin-bottom: 8px">Simple, transparent pricing.</h2>
-          <p class="t-body" style="margin-bottom: 28px; color: rgba(255,255,255,0.55)">7-day free trial on your first space. No card required.</p>
-          <div class="plans">
-            <article class="plan">
-              <p class="t-label plan__name">Standard</p>
-              <div><span class="plan__price">£4.99</span><span class="plan__mo">/mo</span></div>
-              <hr class="plan__rule" />
-              <ul class="plan__list">
-                <li>1 space</li><li>Up to 8 members</li><li>Communal finance &amp; splits</li>
-                <li>Responsibilities &amp; reminders</li><li>Monthly breakdown</li><li>Group hub</li>
-              </ul>
-              <a class="btn btn--ghost-light" href="https://app.ourcommune.io/signup">Start 7-day trial</a>
-            </article>
-            <article class="plan plan--feat">
-              <p class="t-label plan__name">Pro · most popular</p>
-              <div><span class="plan__price">£9.99</span><span class="plan__mo">/mo</span></div>
-              <hr class="plan__rule" />
-              <ul class="plan__list">
-                <li>Up to 3 spaces</li><li>Up to 15 members</li><li>Everything in Standard</li>
-                <li>Advanced analytics</li><li>Exports &amp; templates</li><li>Priority support</li>
-              </ul>
-              <a class="btn btn--sage" href="https://app.ourcommune.io/signup">Start 7-day trial</a>
-            </article>
-            <article class="plan">
-              <p class="t-label plan__name">Agency</p>
-              <div><span class="plan__price">£29.99</span><span class="plan__mo">/mo</span></div>
-              <hr class="plan__rule" />
-              <ul class="plan__list">
-                <li>Unlimited spaces</li><li>Unlimited members</li><li>Everything in Pro</li>
-                <li>Priority workflows</li><li>Dedicated onboarding</li><li>Operator-ready path</li>
-              </ul>
-              <a class="btn btn--ghost-light" href="https://app.ourcommune.io/signup">Start 7-day trial</a>
-            </article>
-          </div>
-        </div>
-      </section>
-    </main>
-    <footer class="foot foot--ink">
-      <div class="foot__in">
-        <div class="foot__brand">
-          <img src="/logo.png" alt="" />
-          <span class="t-logo">Commune</span>
-        </div>
-        <p class="t-body">© 2026 Commune</p>
-        <a class="t-ui" href="mailto:support@ourcommune.io">support@ourcommune.io</a>
       </div>
-    </footer>
-    <nav class="dswitch" aria-label="Design explorations">
-      <a href="/">All</a>
-      <a href="/paper">Paper</a>
-      <a href="/ink" class="is-on">Ink</a>
-      <a href="/product">Product</a>
-    </nav>
-  </div>
+    </div>
+  </section>
+
+  <section id="spaces" class="doc">
+    <div class="wrap">
+      <p class="t-label" style="color: var(--sage)">Spaces</p>
+      <h2 class="t-title" style="margin: 10px 0 0">Every way people share.</h2>
+      <div class="doc__list">
+        <div class="doc__row">
+          <img src="/photo/kitchen.jpg" alt="" />
+          <div>
+            <h3>House shares</h3>
+            <p>Rent, bills, the Tuesday bins</p>
+          </div>
+          <p class="t-body">One kitchen. One cycle.</p>
+        </div>
+        <div class="doc__row">
+          <img src="/photo/couple.jpg" alt="" />
+          <div>
+            <h3>Couples</h3>
+            <p>Joint expenses, one monthly picture</p>
+          </div>
+          <p class="t-body">No spreadsheet between you.</p>
+        </div>
+        <div class="doc__row">
+          <img src="/photo/studio.jpg" alt="" />
+          <div>
+            <h3>Studios &amp; offices</h3>
+            <p>Shared costs, tools, roles</p>
+          </div>
+          <p class="t-body">Who owns the broadband.</p>
+        </div>
+        <div class="doc__row">
+          <img src="/photo/trip.jpg" alt="" />
+          <div>
+            <h3>Group trips</h3>
+            <p>Log on the go, settle before you land</p>
+          </div>
+          <p class="t-body">Clear before the airport.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="membership" class="ink-rates">
+    <div class="wrap">
+      <p class="t-label" style="color: #8fbfa4">Membership</p>
+      <h2 class="t-title" style="margin: 10px 0 8px">Quiet pricing.</h2>
+      <p class="t-body" style="color: rgba(255,255,255,0.5); margin-bottom: 28px">7-day trial on your first space. No card.</p>
+      <div class="rates__row">
+        <span class="rates__name">Standard</span>
+        <span class="rates__price">£4.99</span>
+        <span class="rates__for">1 space · 8 members</span>
+        <a class="btn btn--ghost-light" href="https://app.ourcommune.io/signup">Start trial</a>
+      </div>
+      <div class="rates__row is-feat">
+        <span class="rates__name">Pro</span>
+        <span class="rates__price">£9.99</span>
+        <span class="rates__for">3 spaces · 15 members</span>
+        <a class="btn btn--sage" href="https://app.ourcommune.io/signup">Start trial</a>
+      </div>
+      <div class="rates__row">
+        <span class="rates__name">Agency</span>
+        <span class="rates__price">£29.99</span>
+        <span class="rates__for">Unlimited · operator path</span>
+        <a class="btn btn--ghost-light" href="https://app.ourcommune.io/signup">Start trial</a>
+      </div>
+    </div>
+  </section>
+
+  <footer class="foot foot--ink">
+    <div class="foot__in">
+      <div class="foot__brand">
+        <img src="/logo.png" alt="" />
+        <span class="t-logo">Commune</span>
+      </div>
+      <p class="t-body">© 2026 Commune</p>
+      <a class="t-ui" href="mailto:support@ourcommune.io">support@ourcommune.io</a>
+    </div>
+  </footer>
+  <nav class="dswitch" aria-label="Design explorations">
+    <a href="/">All</a>
+    <a href="/paper">Paper</a>
+    <a href="/ink" class="is-on">Ink</a>
+    <a href="/product">Product</a>
+  </nav>
 </body>
 </html>

@@ -2,85 +2,58 @@ import { Link } from "wouter";
 import { asset } from "./content";
 import { Header, Footer, DesignSwitch } from "./Chrome";
 
-const STUDIES = [
-  {
-    href: "/paper",
-    kicker: "01  ·  Paper",
-    title: "The house journal",
-    body: "Cream field, tighten type, photography as evidence. Closest to how the product already feels.",
-    img: "photo/kitchen.jpg",
-    wide: true,
-  },
-  {
-    href: "/ink",
-    kicker: "02  ·  Ink",
-    title: "The night desk",
-    body: "Navy canvas from the app sidebar. Same 14px body, same 10px labels — darker, quieter.",
-    img: "photo/night.jpg",
-    wide: false,
-  },
-  {
-    href: "/product",
-    kicker: "03  ·  Product",
-    title: "The operating surface",
-    body: "The hub is the hero. Lifestyle sits underneath. Built for people who need to see the tool.",
-    img: "photo/house.jpg",
-    wide: false,
-  },
-] as const;
-
 export default function StudioPage() {
   return (
-    <div className="studio">
-      <Header />
-      <main>
-        <section className="studio__hero">
-          <div className="wrap">
-            <p className="t-label studio__kicker">Landing explorations</p>
-            <h1 className="t-display">Three directions. One type system.</h1>
-            <p className="t-body studio__lead">
-              Fonts and sizing come from the tighten HTML mocks: Inter, 10px labels,
-              14px body, 24px titles, 64px chrome. Display type tops out at 48px —
-              not the billboard the current landing uses. Open a study, live with it,
-              keep it or throw it out.
-            </p>
-          </div>
-        </section>
-
-        <section className="wrap">
-          <div className="studio__grid">
-            {STUDIES.map((s) => (
-              <Link key={s.href} href={s.href} className={`scard${s.wide ? " scard--wide" : ""}`}>
-                <div className="scard__img">
-                  <img src={asset(s.img)} alt="" />
-                </div>
-                <div className="scard__body">
-                  <p className="t-label scard__meta">{s.kicker}</p>
-                  <h2 className="scard__h">{s.title}</h2>
-                  <p className="t-body">{s.body}</p>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </section>
-
-        <section className="studio__note">
-          <div className="wrap">
-            <h2>What we took from the research</h2>
-            <p className="t-body">
-              Clean sites for this audience — shared houses, couples, studios, trips —
-              are winning with editorial restraint, not SaaS chrome. Type is the
-              differentiator. Photography is used sparingly and at full intent.
-              Proof is specific. The current landing fights that: Inter at 800,
-              6.5rem heroes, stock slideshow. These three studies keep the product’s
-              paper, ink, and sage, and the tighten scale, then let layout and image
-              do the talking.
-            </p>
-          </div>
-        </section>
-      </main>
-      <Footer />
+    <>
+      <div className="cover">
+        <img className="cover__img" src={asset("photo/kitchen.jpg")} alt="" />
+        <div className="cover__veil" />
+        <Header
+          theme="clear"
+          links={[
+            { href: "/paper", label: "Paper" },
+            { href: "/ink", label: "Ink" },
+            { href: "/product", label: "Product" },
+          ]}
+        />
+        <div className="cover__in wrap">
+          <p className="t-label cover__k">Landing explorations · August</p>
+          <h1 className="t-display cover__h">Three ways the house could meet the street.</h1>
+          <p className="t-body cover__lead">
+            Same Inter scale. Same paper, ink, and sage. Different art direction. Open one and live with it.
+          </p>
+        </div>
+      </div>
+      <section className="contents">
+        <div className="wrap">
+          <Link href="/paper" className="contents__row">
+            <span className="contents__n">01</span>
+            <div>
+              <h2 className="contents__t">Paper · the house journal</h2>
+              <p className="contents__d">A cream field, a photograph that meets the edge, and the month at 14 Park Street set like a ledger.</p>
+            </div>
+            <div className="contents__img"><img src={asset("photo/house.jpg")} alt="" /></div>
+          </Link>
+          <Link href="/ink" className="contents__row">
+            <span className="contents__n">02</span>
+            <div>
+              <h2 className="contents__t">Ink · the night desk</h2>
+              <p className="contents__d">You open it after dinner. August, you owe £42, gas Friday — then the transfers.</p>
+            </div>
+            <div className="contents__img"><img src={asset("photo/night.jpg")} alt="" /></div>
+          </Link>
+          <Link href="/product" className="contents__row">
+            <span className="contents__n">03</span>
+            <div>
+              <h2 className="contents__t">Product · the operating surface</h2>
+              <p className="contents__d">The hub is the first screen. Navy chrome, one balance, You → Jordan. Lifestyle sits underneath.</p>
+            </div>
+            <div className="contents__img"><img src={asset("photo/studio.jpg")} alt="" /></div>
+          </Link>
+        </div>
+      </section>
+      <Footer note="Keep one. Throw the others out." />
       <DesignSwitch />
-    </div>
+    </>
   );
 }

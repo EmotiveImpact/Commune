@@ -12,31 +12,37 @@ export function DesignSwitch({ current }: { current?: "paper" | "ink" | "product
   );
 }
 
-export function Header({ theme = "paper" }: { theme?: "paper" | "ink" }) {
+export function Header({
+  theme = "paper",
+  links = NAV,
+}: {
+  theme?: "paper" | "ink" | "clear";
+  links?: readonly { href: string; label: string }[];
+}) {
+  const topClass = theme === "ink" ? " top--ink" : theme === "clear" ? " top--clear" : "";
+  const cta = theme === "paper" ? "btn--sage" : "btn--light";
   return (
-    <header className={`top${theme === "ink" ? " top--ink" : ""}`}>
+    <header className={`top${topClass}`}>
       <div className="top__in">
         <a href="/" className="top__brand">
           <img src={asset("logo.png")} alt="" />
           <span className="t-logo">Commune</span>
         </a>
         <nav className="top__nav">
-          {NAV.map((n) => (
+          {links.map((n) => (
             <a key={n.href} href={n.href}>{n.label}</a>
           ))}
         </nav>
         <div className="top__acts">
           <a className="top__signin" href={APP}>Sign in</a>
-          <a className={`btn ${theme === "ink" ? "btn--light" : "btn--sage"}`} href={SIGNUP}>
-            Start for free
-          </a>
+          <a className={`btn ${cta}`} href={SIGNUP}>Start for free</a>
         </div>
       </div>
     </header>
   );
 }
 
-export function Footer({ theme = "paper" }: { theme?: "paper" | "ink" }) {
+export function Footer({ theme = "paper", note }: { theme?: "paper" | "ink"; note?: string }) {
   return (
     <footer className={`foot${theme === "ink" ? " foot--ink" : ""}`}>
       <div className="foot__in">
@@ -44,7 +50,7 @@ export function Footer({ theme = "paper" }: { theme?: "paper" | "ink" }) {
           <img src={asset("logo.png")} alt="" />
           <span className="t-logo">Commune</span>
         </div>
-        <p className="t-body">© {new Date().getFullYear()} Commune</p>
+        <p className="t-body">{note ?? `© ${new Date().getFullYear()} Commune`}</p>
         <a className="t-ui" href="mailto:support@ourcommune.io">support@ourcommune.io</a>
       </div>
     </footer>
