@@ -1285,15 +1285,11 @@ button.a-kpi {
   border-bottom: 1px solid rgba(23, 27, 36, 0.08);
 }
 
-#hub .a-mast {
-  padding-top: 24px;
-}
-
 .a-answers {
   display: grid;
-  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.15fr);
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
   gap: 12px;
-  margin-top: 0;
+  margin-top: 16px;
 }
 
 .a-now-row {
@@ -1362,6 +1358,24 @@ button.a-now-row {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.a-ink.is-credit .num {
+  color: var(--sage);
+}
+
+#hub .a-ink {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 100%;
+  background: #fff;
+}
+
+#hub .a-ink .num {
+  font-size: 2.6rem;
+  letter-spacing: -0.05em;
+  line-height: 1.05;
 }
 
 .a-card {

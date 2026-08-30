@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="../shared.css?v=overview" />
-    <link rel="stylesheet" href="./styles.css?v=hubkpis" />
+    <link rel="stylesheet" href="./styles.css?v=owecard2" />
   </head>
   <body class="a-body">
     <div class="mock-bar">
@@ -295,16 +295,15 @@
               </button>
             </div>
 
-            <div class="a-mast" data-hub-mast>
-              <div>
+            <div class="a-answers">
+              <div class="a-card a-ink" data-hub-mast>
                 <span data-hub-owe-label>You owe</span>
                 <div class="num" data-hub-owe-amount>£42.00</div>
                 <p data-hub-owe-copy>Pay Jordan this week. Or net Tesco £18 and send £24.</p>
+                <div class="a-ink-actions">
+                  <button class="a-btn" type="button" data-go="settle" data-hub-owe-cta>Settle with Jordan</button>
+                </div>
               </div>
-              <button class="a-btn" type="button" data-go="settle" data-hub-owe-cta>Settle with Jordan</button>
-            </div>
-
-            <div class="a-answers">
               <div class="a-card">
                 <h2>Right now</h2>
                 <p class="sub">What still needs a person in this house.</p>
@@ -323,35 +322,36 @@
                   </button>
                 </div>
               </div>
-              <div class="a-card a-owes">
-                <h2>Who owes whom</h2>
-                <p class="sub">This cycle. Settle when you’re ready.</p>
-                <div data-hub-moves>
-                  <button class="a-move" type="button" data-go="settle">
-                    <div class="a-arrow">→</div>
-                    <div>
-                      <div class="names">You → Jordan</div>
-                      <div class="why">Gas share · or £24 if you net Tesco</div>
-                    </div>
-                    <div class="amt">£42</div>
-                  </button>
-                  <button class="a-move" type="button" data-go="settle">
-                    <div class="a-arrow">→</div>
-                    <div>
-                      <div class="names">Jordan → You</div>
-                      <div class="why">Tesco extras from Monday</div>
-                    </div>
-                    <div class="amt">£18</div>
-                  </button>
-                  <button class="a-move is-even" type="button" data-go="members">
-                    <div class="a-arrow" style="background:#f0ece4">↔</div>
-                    <div>
-                      <div class="names">Alex ↔ You</div>
-                      <div class="why">Even on expenses · still £180 for the fund</div>
-                    </div>
-                    <div class="amt" style="color:var(--ink-soft)">£0</div>
-                  </button>
-                </div>
+            </div>
+
+            <div class="a-card a-owes" style="margin-top:16px">
+              <h2>Who owes whom</h2>
+              <p class="sub">This cycle. Settle when you’re ready.</p>
+              <div data-hub-moves>
+                <button class="a-move" type="button" data-go="settle">
+                  <div class="a-arrow">→</div>
+                  <div>
+                    <div class="names">You → Jordan</div>
+                    <div class="why">Gas share · or £24 if you net Tesco</div>
+                  </div>
+                  <div class="amt">£42</div>
+                </button>
+                <button class="a-move" type="button" data-go="settle">
+                  <div class="a-arrow">→</div>
+                  <div>
+                    <div class="names">Jordan → You</div>
+                    <div class="why">Tesco extras from Monday</div>
+                  </div>
+                  <div class="amt">£18</div>
+                </button>
+                <button class="a-move is-even" type="button" data-go="members">
+                  <div class="a-arrow" style="background:#f0ece4">↔</div>
+                  <div>
+                    <div class="names">Alex ↔ You</div>
+                    <div class="why">Even on expenses · still £180 for the fund</div>
+                  </div>
+                  <div class="amt" style="color:var(--ink-soft)">£0</div>
+                </button>
               </div>
             </div>
 
