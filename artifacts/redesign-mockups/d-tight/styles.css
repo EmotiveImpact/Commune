@@ -1,10 +1,10 @@
-/* Home — header sits under the preview bar only, and must not cover cards */
+/* In flow under the preview bar. `top` on position:relative was shoving this 40px down. */
 .d-header {
-  top: 40px !important;
+  position: relative !important;
+  top: 0 !important;
   height: auto;
   min-height: 64px;
   padding: 12px 28px;
-  position: relative !important;
 }
 
 .d-side {
