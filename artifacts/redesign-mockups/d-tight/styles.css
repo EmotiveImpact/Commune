@@ -15,22 +15,35 @@
   overflow: hidden;
 }
 
-.d-nav-end {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+/* Original switcher card, sitting under Operations — not in the avatar footer. */
+.d-body .d-brand {
+  padding: 0 10px;
+}
+
+.d-body .d-nav .d-hub-switch {
+  margin: 10px 0 0;
+}
+
+.d-body .d-side-foot {
   flex-shrink: 0;
-  padding-top: 12px;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 12px 10px 0;
 }
 
-.d-nav-end .d-hub-switch {
-  margin-bottom: 0;
+.d-body .d-icon-btn {
+  position: relative;
+  flex-shrink: 0;
 }
 
-.d-nav-end .d-side-foot {
-  border-top: 0;
-  padding-top: 0;
+.d-body .d-icon-btn.has-unread::after {
+  content: "";
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--sage);
+  box-shadow: 0 0 0 2px #fff;
 }
 
 .d-owes .d-move {
@@ -117,20 +130,6 @@ button.d-now-row {
 
 .layout-tabs a {
   margin-left: 4px;
-}
-
-.nav-count {
-  margin-left: auto;
-  min-width: 18px;
-  height: 18px;
-  padding: 0 5px;
-  border-radius: 999px;
-  background: var(--sage);
-  color: #f5f1ea;
-  font-size: 10px;
-  font-weight: 800;
-  display: inline-grid;
-  place-items: center;
 }
 
 @media (max-width: 1100px) {

@@ -8,9 +8,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../shared.css?v=clean" />
-    <link rel="stylesheet" href="../d-hybrid/styles.css?v=clean" />
-    <link rel="stylesheet" href="./styles.css?v=clean" />
+    <link rel="stylesheet" href="../shared.css?v=line" />
+    <link rel="stylesheet" href="../d-hybrid/styles.css?v=line" />
+    <link rel="stylesheet" href="./styles.css?v=line" />
   </head>
   <body class="d-body">
     <div class="mock-bar">
@@ -37,7 +37,6 @@
           <button class="d-link is-active" data-go="hub-snapshot" type="button">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 10.5 12 3l9 7.5V21a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1v-10.5z"/></svg>
             Home
-            <span class="nav-count">3</span>
           </button>
 
           <div class="d-group-label">Money</div>
@@ -83,9 +82,7 @@
               Operations
             </button>
           </div>
-        </nav>
 
-        <div class="d-nav-end">
           <button class="d-hub-switch" type="button" data-go="home">
             <div class="hub-ico" aria-hidden="true">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f5f1ea" stroke-width="2"><path d="M3 10.5 12 3l9 7.5V21a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1v-10.5z"/></svg>
@@ -96,12 +93,13 @@
             </div>
             <svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
           </button>
-          <div class="d-side-foot">
-            <span class="avatar maya">MC</span>
-            <div class="meta">
-              <strong>Maya Chen</strong>
-              <span>Standard</span>
-            </div>
+        </nav>
+
+        <div class="d-side-foot">
+          <span class="avatar maya">MC</span>
+          <div class="meta">
+            <strong>Maya Chen</strong>
+            <span>Standard</span>
           </div>
         </div>
       </aside>
@@ -115,6 +113,9 @@
           <div class="d-header-actions">
             <button class="d-btn nudge" type="button">Nudge Jordan</button>
             <button class="d-btn" type="button" data-go="expenses">Add expense</button>
+            <button class="d-icon-btn has-unread" type="button" data-go="notices" aria-label="Notifications">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 7 3 9H3c0-2 3-2 3-9"/><path d="M10 21a2 2 0 0 0 4 0"/></svg>
+            </button>
             <span class="avatar maya">MC</span>
           </div>
         </header>
@@ -570,6 +571,27 @@
             </div>
           </section>
 
+          <section class="screen" id="notices" hidden>
+            <div class="d-page-head">
+              <h1 class="d-display">What’s waiting.</h1>
+              <p>Gas, bins, and Alex’s share of the fund.</p>
+            </div>
+            <div class="d-card">
+              <button class="d-now-row" type="button" data-go="expenses">
+                <span class="pill warn">Friday</span>
+                <div><strong>British Gas</strong><div class="when">£94.20 · Jordan paid · your share open</div></div>
+              </button>
+              <button class="d-now-row" type="button" data-go="operations">
+                <span class="pill warn">Overdue</span>
+                <div><strong>Bins</strong><div class="when">Still Jordan’s Tuesday</div></div>
+              </button>
+              <button class="d-now-row" type="button" data-go="funds">
+                <span class="pill open">Collect</span>
+                <div><strong>Alex · house fund</strong><div class="when">£180 still to pay in</div></div>
+              </button>
+            </div>
+          </section>
+
           <section class="screen" id="expenses" hidden>
             <div class="d-page-head">
               <h1 class="d-display">What the house spent.</h1>
@@ -805,6 +827,7 @@
         "hub-needs": "14 Park Street",
         "hub-money": "14 Park Street",
         home: "Your communes",
+        notices: "Notices",
         expenses: "Expenses",
         recurring: "Recurring",
         settle: "Settle",
@@ -815,6 +838,6 @@
         operations: "Operations"
       };
     </script>
-    <script src="../shared.js?v=clean"></script>
+    <script src="../shared.js?v=line"></script>
   </body>
 </html>
