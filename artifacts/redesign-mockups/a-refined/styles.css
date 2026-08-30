@@ -831,19 +831,6 @@ button.a-kpi {
   color: rgba(248, 245, 240, 0.92);
 }
 
-.a-cover-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 18px;
-}
-
-.a-btn-on-cover {
-  background: transparent;
-  color: #f8f5f0;
-  border: 1px solid rgba(248, 245, 240, 0.35);
-}
-
 .a-members {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
