@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="../shared.css?v=settle2" />
-    <link rel="stylesheet" href="./styles.css?v=calm" />
+    <link rel="stylesheet" href="./styles.css?v=calm2" />
   </head>
   <body class="a-body">
     <div class="mock-bar">
@@ -152,7 +152,7 @@
                 <p>Pay Jordan this week. Or net Tesco £18 and send £24.</p>
                 <div class="a-ink-actions">
                   <button class="a-btn" type="button" data-go="settle">Settle with Jordan</button>
-                  <button class="a-btn ghost" type="button" data-go="settle">Open settlement</button>
+                  <button class="a-btn ghost" type="button" data-go="add-expense">Add expense</button>
                 </div>
               </div>
               <div class="a-card">
@@ -200,6 +200,95 @@
                 </div>
                 <div class="amt" style="color:var(--ink-soft)">£0</div>
               </button>
+            </div>
+
+            <div class="a-budget">
+              <div class="top">
+                <span>August at 14 Park Street</span>
+                <span>£2,140 / £2,400 · 89%</span>
+              </div>
+              <div class="bar"><i></i></div>
+            </div>
+
+            <div class="a-panel" style="margin-top:16px">
+              <div class="a-panel-head">
+                <div>
+                  <h2>Spending this cycle</h2>
+                  <p class="sub">Volume across the last six months — rent still the heavy line.</p>
+                </div>
+                <span class="pill">Last 6 months</span>
+              </div>
+              <div class="a-bars" aria-hidden="true">
+                <i style="height:42%"></i>
+                <i style="height:55%"></i>
+                <i style="height:48%"></i>
+                <i style="height:70%"></i>
+                <i style="height:62%"></i>
+                <i style="height:88%"></i>
+              </div>
+              <div class="a-bars lbl"><span>Mar</span><span>Apr</span><span>May</span><span>Jun</span><span>Jul</span><span>Aug</span></div>
+            </div>
+
+            <div class="a-grid">
+              <div class="a-panel">
+                <div class="a-panel-head">
+                  <div>
+                    <h2>Recent expenses</h2>
+                    <p class="sub">Latest shared costs on 14 Park Street.</p>
+                  </div>
+                  <button class="a-btn ghost" type="button" data-go="expenses">View all</button>
+                </div>
+                <table class="a-table">
+                  <thead>
+                    <tr>
+                      <th>Expense</th>
+                      <th>Who paid</th>
+                      <th>Status</th>
+                      <th style="text-align:right">Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td><strong>British Gas</strong></td>
+                      <td>Jordan</td>
+                      <td><span class="pill open">Open</span></td>
+                      <td class="amt">£94.20</td>
+                    </tr>
+                    <tr>
+                      <td><strong>Virgin Media</strong></td>
+                      <td>Maya</td>
+                      <td><span class="pill open">Open</span></td>
+                      <td class="amt">£32.00</td>
+                    </tr>
+                    <tr>
+                      <td><strong>Tesco shop</strong></td>
+                      <td>Alex</td>
+                      <td><span class="pill settled">Settled</span></td>
+                      <td class="amt">£67.40</td>
+                    </tr>
+                    <tr>
+                      <td><strong>Rent · August</strong></td>
+                      <td>House fund</td>
+                      <td><span class="pill settled">Settled</span></td>
+                      <td class="amt">£1,800</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="a-panel">
+                <div class="a-panel-head">
+                  <div>
+                    <h2>Where it went</h2>
+                    <p class="sub">This month, by category.</p>
+                  </div>
+                </div>
+                <div class="a-cats">
+                  <div class="a-cat"><span>Rent</span><strong>£1,800</strong><div class="track"><i style="width:84%"></i></div></div>
+                  <div class="a-cat"><span>Utilities</span><strong>£126.20</strong><div class="track"><i style="width:18%"></i></div></div>
+                  <div class="a-cat"><span>Groceries</span><strong>£67.40</strong><div class="track"><i style="width:10%"></i></div></div>
+                  <div class="a-cat"><span>Internet</span><strong>£32.00</strong><div class="track"><i style="width:6%"></i></div></div>
+                </div>
+              </div>
             </div>
           </section>
 
@@ -269,6 +358,36 @@
                 <span>Landlord</span>
                 <strong>Priya Sharma</strong>
                 <div style="color:var(--ink-soft);font-size:13px;margin-top:4px">Rent via house fund</div>
+              </div>
+            </div>
+            <div class="a-grid" style="margin-top:16px">
+              <div class="a-panel">
+                <h2>This week at the house</h2>
+                <p class="sub">Activity, without the noise of a group chat.</p>
+                <div class="a-settle-row"><span class="avatar maya">MC</span><span>Maya logged Virgin Media</span><span class="amt" style="color:var(--ink-soft);font-weight:500;font-size:13px">Yesterday</span></div>
+                <div class="a-settle-row"><span class="avatar jordan">JH</span><span>Jordan paid British Gas</span><span class="amt" style="color:var(--ink-soft);font-weight:500;font-size:13px">Tue</span></div>
+                <div class="a-settle-row"><span class="avatar alex">AR</span><span>Alex settled Tesco</span><span class="amt" style="color:var(--ink-soft);font-weight:500;font-size:13px">Mon</span></div>
+                <div class="a-settle-row"><span class="avatar maya">MC</span><span>House fund covered August rent</span><span class="amt" style="color:var(--ink-soft);font-weight:500;font-size:13px">1 Aug</span></div>
+              </div>
+              <div class="a-panel">
+                <h2>Your snapshot</h2>
+                <p class="sub">What you personally need to know.</p>
+                <div class="a-settle-row">
+                  <span class="avatar maya">MC</span>
+                  <span>You owe</span>
+                  <span class="amt">£42.00</span>
+                </div>
+                <div class="a-settle-row">
+                  <span class="avatar jordan">JH</span>
+                  <span>You’re owed</span>
+                  <span class="amt">£18.00</span>
+                </div>
+                <div class="a-settle-row">
+                  <span class="avatar alex">AR</span>
+                  <span>House fund · Alex still</span>
+                  <span class="amt">£180</span>
+                </div>
+                <button class="a-btn" type="button" data-go="settle" style="width:100%;margin-top:14px;justify-content:center">Settle up</button>
               </div>
             </div>
           </section>

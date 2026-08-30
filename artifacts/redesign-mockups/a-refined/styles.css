@@ -551,6 +551,36 @@ button.a-kpi {
   color: var(--ink-soft);
 }
 
+.a-budget {
+  margin-top: 16px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: #fff;
+  border: 1px solid var(--border);
+}
+
+.a-budget .top {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+
+.a-budget .bar {
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(23, 27, 36, 0.08);
+  overflow: hidden;
+}
+
+.a-budget .bar i {
+  display: block;
+  height: 100%;
+  width: 89%;
+  background: #2d6a4f;
+  border-radius: 999px;
+}
+
 .a-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.55fr) minmax(300px, 0.95fr);
