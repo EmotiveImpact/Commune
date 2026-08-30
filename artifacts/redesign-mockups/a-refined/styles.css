@@ -755,7 +755,7 @@ button.a-kpi {
 .a-cover {
   position: relative;
   isolation: isolate;
-  min-height: 280px;
+  min-height: 320px;
   border-radius: var(--radius);
   overflow: hidden;
   padding: 28px 28px 26px;
@@ -772,7 +772,7 @@ button.a-kpi {
   position: absolute;
   inset: 0;
   z-index: 0;
-  background: url("https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?auto=format&fit=crop&w=1600&q=80") center/cover no-repeat;
+  background: var(--hub-photo, url("https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?auto=format&fit=crop&w=1600&q=80")) center/cover no-repeat;
   transform: scale(1.03);
   transform-origin: center;
 }
@@ -829,6 +829,19 @@ button.a-kpi {
   font-size: 13px;
   font-weight: 600;
   color: rgba(248, 245, 240, 0.92);
+}
+
+.a-cover-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.a-btn-on-cover {
+  background: transparent;
+  color: #f8f5f0;
+  border: 1px solid rgba(248, 245, 240, 0.35);
 }
 
 .a-members {
@@ -1023,11 +1036,15 @@ button.a-kpi {
 }
 
 .a-commune-card .band.studio {
-  background: linear-gradient(135deg, #d0e8f2, #eef7fb);
+  background:
+    linear-gradient(180deg, rgba(26, 30, 46, 0.2), rgba(26, 30, 46, 0.5)),
+    url("https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=800&q=70") center/cover;
 }
 
 .a-commune-card .band.trip {
-  background: linear-gradient(135deg, #fde2d4, #fef6f2);
+  background:
+    linear-gradient(180deg, rgba(26, 30, 46, 0.2), rgba(26, 30, 46, 0.5)),
+    url("https://images.unsplash.com/photo-1555881400-74d7acaacd8b?auto=format&fit=crop&w=800&q=70") center/cover;
 }
 
 .a-commune-card .pad {
@@ -1198,9 +1215,96 @@ button.a-kpi {
 }
 
 /* D-calm Home / who-owes language — numbers copied from D */
+/* Home masthead — the number sits on the paper, not in a card */
+.a-mast {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 4px 4px 28px;
+}
+
+.a-mast span {
+  display: block;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  font-weight: 700;
+}
+
+.a-mast .num {
+  font-size: 3.15rem;
+  font-weight: 800;
+  letter-spacing: -0.055em;
+  line-height: 1.05;
+  margin: 6px 0 8px;
+}
+
+.a-mast p {
+  margin: 0;
+  font-size: 15px;
+  color: var(--ink-soft);
+  max-width: 28rem;
+  line-height: 1.45;
+}
+
+.a-mast .a-btn {
+  flex-shrink: 0;
+  margin-bottom: 4px;
+}
+
+.a-mast.is-credit .num {
+  color: var(--sage);
+}
+
+.a-net {
+  display: flex;
+  gap: 40px;
+  margin: 10px 0 12px;
+}
+
+.a-net span {
+  display: block;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  font-weight: 700;
+}
+
+.a-net strong {
+  display: block;
+  margin: 4px 0 2px;
+  font-size: 3.15rem;
+  font-weight: 800;
+  letter-spacing: -0.055em;
+  line-height: 1.05;
+}
+
+.a-net strong.is-credit {
+  color: var(--sage);
+}
+
+.a-net small {
+  display: block;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+.a-mast-home {
+  padding-bottom: 22px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid rgba(23, 27, 36, 0.08);
+}
+
+#hub .a-mast {
+  padding-top: 24px;
+}
+
 .a-answers {
   display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.15fr);
   gap: 12px;
   margin-top: 0;
 }
@@ -1432,6 +1536,20 @@ button.a-now-row {
   border-bottom: 1px solid rgba(23, 27, 36, 0.06);
 }
 
+button.a-item {
+  width: 100%;
+  margin: 0;
+  border: 0;
+  border-bottom: 1px solid rgba(23, 27, 36, 0.06);
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
 .a-item:last-child {
   border-bottom: 0;
   padding-bottom: 0;
@@ -1475,6 +1593,16 @@ button.a-now-row {
   .a-answers,
   .a-week {
     grid-template-columns: 1fr;
+  }
+  .a-mast {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .a-net {
+    gap: 28px;
+  }
+  .jump-grid {
+    grid-template-columns: 1fr 1fr;
   }
 }
 

@@ -350,7 +350,7 @@
               <p>Pick a space. Home is always that space.</p>
             </div>
             <div class="d-cc-grid">
-              <button class="d-commune-card" type="button" data-go="hub">
+              <button class="d-commune-card" type="button" data-hub="park" data-go="hub">
                 <div class="band home"></div>
                 <div class="pad">
                   <span class="pill sage">Household</span>
@@ -358,7 +358,7 @@
                   <p class="sub" style="margin:0">You owe £42 · gas Friday</p>
                 </div>
               </button>
-              <button class="d-commune-card" type="button">
+              <button class="d-commune-card" type="button" data-hub="studio" data-go="hub">
                 <div class="band studio"></div>
                 <div class="pad">
                   <span class="pill">Workspace</span>
@@ -366,7 +366,7 @@
                   <p class="sub" style="margin:0">Even · printer ink due</p>
                 </div>
               </button>
-              <button class="d-commune-card" type="button">
+              <button class="d-commune-card" type="button" data-hub="lisbon" data-go="hub">
                 <div class="band trip"></div>
                 <div class="pad">
                   <span class="pill open">Trip</span>
@@ -689,7 +689,7 @@
         activity: "Activity"
       };
     </script>
-    <script src="../shared.js"></script>
+    <script src="../shared.js?v=overview"></script>
     <script>
       (function () {
         var root = document.body;

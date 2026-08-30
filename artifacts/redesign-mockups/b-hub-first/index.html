@@ -58,9 +58,9 @@
         <div>
           <div style="font-size:10px;letter-spacing:.14em;text-transform:uppercase;opacity:.4;padding:0 10px 8px;font-weight:700">Your communes</div>
           <div class="b-communes">
-            <button class="is-on" type="button" data-go="hub"><span class="dot"></span>14 Park Street</button>
-            <button type="button" data-go="home"><span class="dot lilac"></span>Studio East</button>
-            <button type="button" data-go="home"><span class="dot peach"></span>Lisbon trip</button>
+            <button class="is-on" type="button" data-hub="park" data-go="hub"><span class="dot"></span>14 Park Street</button>
+            <button type="button" data-hub="studio" data-go="hub"><span class="dot lilac"></span>Studio East</button>
+            <button type="button" data-hub="lisbon" data-go="hub"><span class="dot peach"></span>Lisbon trip</button>
             <button type="button" data-go="home" style="opacity:.85">View all hubs</button>
           </div>
         </div>
@@ -178,7 +178,7 @@
               <p style="margin:6px 0 0;color:var(--ink-soft)">Three spaces. One glance at what needs you.</p>
             </div>
             <div class="b-cc-grid">
-              <button class="b-commune-card" type="button" data-go="hub">
+              <button class="b-commune-card" type="button" data-hub="park" data-go="hub">
                 <div class="band home"></div>
                 <div class="pad">
                   <span class="pill sage">Household</span>
@@ -186,7 +186,7 @@
                   <p class="sub" style="margin:0">You owe £42 · 2 open</p>
                 </div>
               </button>
-              <button class="b-commune-card" type="button">
+              <button class="b-commune-card" type="button" data-hub="studio" data-go="hub">
                 <div class="band studio"></div>
                 <div class="pad">
                   <span class="pill">Workspace</span>
@@ -194,7 +194,7 @@
                   <p class="sub" style="margin:0">Even · printer ink due</p>
                 </div>
               </button>
-              <button class="b-commune-card" type="button">
+              <button class="b-commune-card" type="button" data-hub="lisbon" data-go="hub">
                 <div class="band trip"></div>
                 <div class="pad">
                   <span class="pill open">Trip</span>
