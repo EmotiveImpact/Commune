@@ -212,11 +212,12 @@
 }
 
 .a-header {
-  height: 64px;
+  height: auto;
+  min-height: 64px;
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 0 28px;
+  padding: 12px 28px;
   border-bottom: 1px solid var(--border);
   background: rgba(245, 241, 234, 0.86);
   backdrop-filter: blur(10px);
@@ -225,11 +226,30 @@
   z-index: 5;
 }
 
-.a-search {
+.a-header-title {
+  min-width: 0;
   flex: 1;
-  max-width: 420px;
+}
+
+.a-header-title h1 {
+  margin: 0;
+  font-size: 1.05rem;
+  letter-spacing: -0.02em;
+  font-weight: 800;
+}
+
+.a-header-title p {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+
+.a-search {
+  flex: 0 0 auto;
+  width: 240px;
+  max-width: 240px;
   height: 38px;
-  border-radius: 10px;
+  border-radius: 999px;
   border: 1px solid var(--border);
   background: #fff;
   display: flex;
@@ -267,7 +287,7 @@
 .a-btn {
   height: 38px;
   padding: 0 14px;
-  border-radius: 10px;
+  border-radius: 999px;
   border: 0;
   background: var(--sage);
   color: #fff;
@@ -294,7 +314,7 @@
   position: relative;
   width: 38px;
   height: 38px;
-  border-radius: 10px;
+  border-radius: 999px;
   border: 1px solid var(--border);
   background: #fff;
   display: grid;
@@ -311,8 +331,8 @@
 .a-icon-btn.has-unread::after {
   content: "";
   position: absolute;
-  top: 8px;
-  right: 8px;
+  top: 4px;
+  right: 4px;
   width: 7px;
   height: 7px;
   border-radius: 50%;
@@ -479,6 +499,23 @@
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
   margin-top: 16px;
+}
+
+.a-kpis > * {
+  min-width: 0;
+}
+
+button.a-kpi {
+  display: block;
+  width: 100%;
+  margin: 0;
+  border: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
 }
 
 .a-kpi {
@@ -782,9 +819,32 @@
   align-items: center;
 }
 
+.a-panel:has(.a-table) {
+  overflow-x: auto;
+}
+
+.a-table .a-row-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 6px;
+}
+
+.a-table .a-row-actions .a-btn {
+  height: 38px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.a-table .a-muted-action {
+  text-align: right;
+  color: var(--ink-soft);
+  font-weight: 500;
+}
+
 .a-member .avatar {
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
 }
 
 .a-member strong {
@@ -892,11 +952,7 @@
   letter-spacing: -0.03em;
 }
 
-#settle .a-settle-row {
-  padding: 18px 0;
-}
-
-#settle .a-settle-row .amt {
+#settle .a-move .amt {
   font-size: 1.45rem;
   font-weight: 800;
   letter-spacing: -0.04em;
@@ -1066,13 +1122,19 @@
 
 #operations .a-settle-row,
 #notes .a-settle-row,
-#activity .a-settle-row {
+#activity .a-settle-row,
+#hub .a-settle-row {
   padding: 18px 0;
   gap: 16px;
 }
 
+#operations .a-settle-row .pill {
+  margin-left: auto;
+}
+
 #operations .a-settle-row .avatar,
-#activity .a-settle-row .avatar {
+#activity .a-settle-row .avatar,
+#hub .a-settle-row .avatar {
   width: 36px;
   height: 36px;
 }
@@ -1105,6 +1167,178 @@
   color: var(--ink-soft);
 }
 
+/* D-calm Home / who-owes language — numbers copied from D */
+.a-answers {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: 12px;
+  margin-top: 0;
+}
+
+.a-now-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(23, 27, 36, 0.05);
+}
+
+.a-now-row:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.a-now-row:first-child {
+  padding-top: 0;
+}
+
+button.a-now-row {
+  width: 100%;
+  margin: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.a-ink {
+  background: #fff;
+  color: var(--ink);
+  border-radius: 16px;
+  padding: 20px 22px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+}
+
+.a-ink span {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  font-weight: 700;
+}
+
+.a-ink .num {
+  font-size: 2.35rem;
+  font-weight: 800;
+  letter-spacing: -0.045em;
+  margin: 4px 0 6px;
+}
+
+.a-ink p {
+  margin: 0 0 14px;
+  font-size: 13.5px;
+  color: var(--ink-soft);
+  max-width: 28rem;
+}
+
+.a-ink-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.a-card {
+  background: rgba(255, 255, 255, 0.86);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 22px;
+  box-shadow: var(--shadow-sm);
+}
+
+.a-card h2 {
+  margin: 0 0 4px;
+  font-size: 1.05rem;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+}
+
+.a-card .sub {
+  margin: 0 0 16px;
+  color: var(--ink-soft);
+  font-size: 14px;
+}
+
+.when {
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+.a-move {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  gap: 16px;
+  align-items: center;
+  padding: 18px 0;
+  border-bottom: 1px solid rgba(23, 27, 36, 0.06);
+}
+
+.a-move:last-child {
+  border-bottom: 0;
+}
+
+.a-arrow {
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  background: #d9ebe5;
+  color: #1b4332;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+}
+
+.a-move .names {
+  font-size: 1.05rem;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+}
+
+.a-move .why {
+  color: var(--ink-soft);
+  font-size: 13px;
+  margin-top: 2px;
+}
+
+.a-move .amt {
+  font-size: 1.45rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+}
+
+.a-owes .a-move {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: center;
+  width: 100%;
+  margin: 0;
+  padding: 16px 0;
+  border: 0;
+  border-bottom: 1px solid rgba(23, 27, 36, 0.06);
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.a-owes .a-move:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.a-owes .a-move:first-of-type {
+  padding-top: 4px;
+}
+
 @media (max-width: 1100px) {
   .a-kpis,
   .a-grid,
@@ -1112,7 +1346,8 @@
   .a-members,
   .a-essentials,
   .a-settle-hero,
-  .a-cc-grid {
+  .a-cc-grid,
+  .a-answers {
     grid-template-columns: 1fr;
   }
   .a-app {
@@ -1120,5 +1355,14 @@
   }
   .a-side {
     display: none;
+  }
+}
+
+@media (max-width: 720px) {
+  .a-owes .a-move {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .a-owes .a-move .amt {
+    grid-column: 2;
   }
 }

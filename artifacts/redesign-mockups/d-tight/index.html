@@ -9,8 +9,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="../shared.css?v=settle" />
-    <link rel="stylesheet" href="../d-hybrid/styles.css?v=rows" />
-    <link rel="stylesheet" href="./styles.css?v=rows" />
+    <link rel="stylesheet" href="../d-hybrid/styles.css?v=calm" />
+    <link rel="stylesheet" href="./styles.css?v=calm" />
   </head>
   <body class="d-body">
     <div class="mock-bar">
@@ -121,18 +121,18 @@
 
       <div class="d-main">
         <header class="d-header">
-          <div>
+          <div class="d-header-ident">
             <h1 class="d-display" data-page-title>14 Park Street</h1>
             <p>August · you owe £42 · gas Friday · fund £420</p>
           </div>
+          <label class="d-search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3-3"/></svg>
+            <input type="search" placeholder="Search expenses, people, bills" aria-label="Search expenses, people, bills" />
+          </label>
           <div class="d-header-actions">
-            <button class="d-btn nudge" type="button">Nudge Jordan</button>
             <button class="d-btn" type="button" data-go="add-expense">Add expense</button>
             <button class="d-icon-btn has-unread" type="button" data-go="notices" aria-label="Notifications">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 7 3 9H3c0-2 3-2 3-9"/><path d="M10 21a2 2 0 0 0 4 0"/></svg>
-            </button>
-            <button class="d-avatar-btn" type="button" data-go="profile" aria-label="Maya Chen">
-              <span class="avatar maya">MC</span>
             </button>
           </div>
         </header>
@@ -878,22 +878,31 @@
               <h1 class="d-display">Who owes whom.</h1>
               <p>Same truth as Settle — the ledger view.</p>
             </div>
-            <div class="d-card">
-              <div class="d-member">
-                <span class="avatar maya">MC</span>
-                <div class="who"><strong>You</strong><span>Net: you owe £42</span></div>
-                <div class="bal">−£42</div>
-              </div>
-              <div class="d-member">
-                <span class="avatar jordan">JH</span>
-                <div class="who"><strong>Jordan Hale</strong><span>Owes you £18 · you owe him £42</span></div>
-                <div class="bal">+£24</div>
-              </div>
-              <div class="d-member">
-                <span class="avatar alex">AR</span>
-                <div class="who"><strong>Alex Rivera</strong><span>Even with everyone</span></div>
-                <div class="bal" style="color:var(--ink-soft)">£0</div>
-              </div>
+            <div class="d-card d-owes">
+              <button class="d-move" type="button" data-go="settle">
+                <div class="d-arrow">→</div>
+                <div>
+                  <div class="names">You → Jordan</div>
+                  <div class="why">Gas share · or £24 if you net Tesco</div>
+                </div>
+                <div class="amt">£42</div>
+              </button>
+              <button class="d-move" type="button" data-go="settle">
+                <div class="d-arrow">→</div>
+                <div>
+                  <div class="names">Jordan → You</div>
+                  <div class="why">Tesco extras from Monday</div>
+                </div>
+                <div class="amt">£18</div>
+              </button>
+              <button class="d-move is-even" type="button" data-go="settle">
+                <div class="d-arrow" style="background:#f0ece4">↔</div>
+                <div>
+                  <div class="names">Alex ↔ You</div>
+                  <div class="why">Even on expenses · still £180 for the fund</div>
+                </div>
+                <div class="amt" style="color:var(--ink-soft)">£0</div>
+              </button>
             </div>
           </section>
 

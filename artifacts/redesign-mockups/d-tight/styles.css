@@ -5,6 +5,58 @@
   height: auto;
   min-height: 64px;
   padding: 12px 28px;
+  gap: 12px 16px;
+  flex-wrap: wrap;
+}
+
+.d-header-ident {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.d-search {
+  flex: 0 1 220px;
+  width: 100%;
+  max-width: 220px;
+  height: 38px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.45);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 14px;
+  color: var(--ink-soft);
+  font-size: 12px;
+}
+
+.d-search svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  opacity: 0.65;
+}
+
+.d-search input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+  color: var(--ink);
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.d-search input::placeholder {
+  color: var(--ink-soft);
+  opacity: 0.8;
+}
+
+.d-body .d-header-actions {
+  flex-shrink: 0;
 }
 
 .d-side {
@@ -32,28 +84,23 @@
 .d-body .d-icon-btn {
   position: relative;
   flex-shrink: 0;
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: #fff;
 }
 
 .d-body .d-icon-btn.has-unread::after {
   content: "";
   position: absolute;
-  top: 8px;
-  right: 8px;
+  top: 4px;
+  right: 4px;
   width: 7px;
   height: 7px;
   border-radius: 50%;
   background: var(--sage);
   box-shadow: 0 0 0 2px #fff;
-}
-
-.d-body .d-avatar-btn {
-  margin: 0;
-  padding: 0;
-  border: 0;
-  background: none;
-  cursor: pointer;
-  border-radius: 999px;
-  line-height: 0;
 }
 
 .d-owes .d-move {
@@ -82,6 +129,36 @@
 
 .d-owes .d-move:first-of-type {
   padding-top: 4px;
+}
+
+/* Breakdown = transfer rows, same language as Home who-owes / Settle. */
+#breakdown .d-arrow {
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  background: #d9ebe5;
+  color: #1b4332;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+}
+
+#breakdown .d-move .names {
+  font-size: 1.05rem;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+}
+
+#breakdown .d-move .why {
+  color: var(--ink-soft);
+  font-size: 13px;
+  margin-top: 2px;
+}
+
+#breakdown .d-move .amt {
+  font-size: 1.45rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
 }
 
 .d-kpis > * {
@@ -167,6 +244,10 @@ button.d-now-row {
   }
   .d-kpis {
     grid-template-columns: 1fr;
+  }
+  .d-search {
+    flex: 1 1 140px;
+    max-width: 180px;
   }
   .d-owes .d-move {
     grid-template-columns: auto minmax(0, 1fr);
