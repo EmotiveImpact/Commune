@@ -155,21 +155,32 @@
               </div>
             </div>
 
-            <div class="d-balances">
-              <button class="d-bal" type="button" data-go="settle">
-                <span class="who">You → Jordan</span>
-                <strong>£42</strong>
-                <small>Gas share · or £24 if you net Tesco</small>
+            <div class="d-card d-owes" style="margin-top:16px">
+              <h2>Who owes whom</h2>
+              <p class="sub">This cycle. Settle when you’re ready.</p>
+              <button class="d-move" type="button" data-go="settle">
+                <div class="d-arrow">→</div>
+                <div>
+                  <div class="names">You → Jordan</div>
+                  <div class="why">Gas share · or £24 if you net Tesco</div>
+                </div>
+                <div class="amt">£42</div>
               </button>
-              <button class="d-bal" type="button" data-go="settle">
-                <span class="who">Jordan → You</span>
-                <strong>£18</strong>
-                <small>Tesco extras from Monday</small>
+              <button class="d-move" type="button" data-go="settle">
+                <div class="d-arrow">→</div>
+                <div>
+                  <div class="names">Jordan → You</div>
+                  <div class="why">Tesco extras from Monday</div>
+                </div>
+                <div class="amt">£18</div>
               </button>
-              <button class="d-bal is-even" type="button" data-go="members">
-                <span class="who">Alex ↔ You</span>
-                <strong>£0</strong>
-                <small>Even on expenses · £180 for the fund</small>
+              <button class="d-move is-even" type="button" data-go="members">
+                <div class="d-arrow" style="background:#f0ece4">↔</div>
+                <div>
+                  <div class="names">Alex ↔ You</div>
+                  <div class="why">Even on expenses · still £180 for the fund</div>
+                </div>
+                <div class="amt" style="color:var(--ink-soft)">£0</div>
               </button>
             </div>
 
