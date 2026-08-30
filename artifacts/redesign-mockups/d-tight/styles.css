@@ -43,6 +43,34 @@
   padding-top: 4px;
 }
 
+.d-kpis > * {
+  min-width: 0;
+}
+
+button.d-kpi {
+  display: block;
+  width: 100%;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+button.d-now-row {
+  width: 100%;
+  margin: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
 .layout-tabs {
   display: flex;
   align-items: center;

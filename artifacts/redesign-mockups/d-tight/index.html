@@ -8,16 +8,16 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../shared.css?v=homes" />
-    <link rel="stylesheet" href="../d-hybrid/styles.css?v=homes" />
-    <link rel="stylesheet" href="./styles.css?v=homes" />
+    <link rel="stylesheet" href="../shared.css?v=show" />
+    <link rel="stylesheet" href="../d-hybrid/styles.css?v=show" />
+    <link rel="stylesheet" href="./styles.css?v=show" />
   </head>
   <body class="d-body">
     <div class="mock-bar">
       <span><strong>D Home</strong> · after the hero</span>
       <span class="layout-tabs">
-        <button type="button" class="is-active" data-go="hub">As now</button>
-        <button type="button" data-go="hub-snapshot">Snapshot</button>
+        <button type="button" data-go="hub">As now</button>
+        <button type="button" class="is-active" data-go="hub-snapshot">Snapshot</button>
         <button type="button" data-go="hub-needs">Needs you</button>
         <button type="button" data-go="hub-money">Money</button>
         <a href="../d-hybrid/">Stacked</a>
@@ -46,7 +46,7 @@
             <svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
           </button>
 
-          <button class="d-link is-active" data-go="hub" type="button">
+          <button class="d-link is-active" data-go="hub-snapshot" type="button">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 10.5 12 3l9 7.5V21a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1v-10.5z"/></svg>
             Home
           </button>
@@ -115,7 +115,7 @@
         </header>
 
         <div class="d-content">
-          <section class="screen" id="hub">
+          <section class="screen" id="hub" hidden>
             <p class="compare-note"><strong>As now.</strong> You owe and Right now sit on top of the four cards. Use the black bar to try the other three.</p>
             <div class="d-cover">
               <span class="type">Household</span>
@@ -292,8 +292,8 @@
             </div>
           </section>
 
-          <section class="screen" id="hub-snapshot" hidden>
-            <p class="compare-note"><strong>Snapshot.</strong> Hero, then the four house numbers. After that: what still needs a person, and who owes whom. Ledger stays on Expenses.</p>
+          <section class="screen" id="hub-snapshot">
+            <p class="compare-note"><strong>Snapshot is Home.</strong> Click a card or a row — that’s where the rest of the information lives.</p>
             <div class="d-cover">
               <span class="type">Household</span>
               <h1 class="d-display">14 Park Street</h1>
@@ -309,48 +309,48 @@
             </div>
 
             <div class="d-kpis">
-              <div class="d-kpi peach" data-go="funds" style="cursor:pointer">
+              <button class="d-kpi peach" type="button" data-go="funds">
                 <span>House fund</span>
                 <strong>£420</strong>
-                <small>£180 to collect from Alex</small>
-              </div>
-              <div class="d-kpi lilac">
+                <small>Opens Funds · £180 still from Alex</small>
+              </button>
+              <button class="d-kpi lilac" type="button" data-go="analytics">
                 <span>This month</span>
                 <strong>£2,140</strong>
-                <small>of £2,400 · on track</small>
-              </div>
-              <div class="d-kpi sage">
+                <small>Opens Analytics · of £2,400</small>
+              </button>
+              <button class="d-kpi sage" type="button" data-go="recurring">
                 <span>Open bills</span>
                 <strong>2</strong>
-                <small>Gas + Virgin Media</small>
-              </div>
-              <div class="d-kpi ink">
+                <small>Opens Recurring · Gas + Virgin</small>
+              </button>
+              <button class="d-kpi ink" type="button" data-go="expenses">
                 <span>Next due</span>
                 <strong>Fri</strong>
-                <small>British Gas · 29 Aug</small>
-              </div>
+                <small>Opens Expenses · British Gas</small>
+              </button>
             </div>
 
             <div class="d-answers" style="margin-top:16px">
               <div class="d-card">
                 <h2>Right now</h2>
-                <p class="sub">Still needs a person this week.</p>
-                <div class="d-now-row">
+                <p class="sub">Click through to the page that owns it.</p>
+                <button class="d-now-row" type="button" data-go="expenses">
                   <span class="pill warn">Friday</span>
-                  <div><strong>British Gas</strong><div class="when">£94.20 · Jordan paid · your share open</div></div>
-                </div>
-                <div class="d-now-row">
+                  <div><strong>British Gas</strong><div class="when">Expenses · £94.20 · Jordan paid · your share open</div></div>
+                </button>
+                <button class="d-now-row" type="button" data-go="operations">
                   <span class="pill warn">Overdue</span>
-                  <div><strong>Bins</strong><div class="when">Still Jordan’s Tuesday</div></div>
-                </div>
-                <div class="d-now-row">
+                  <div><strong>Bins</strong><div class="when">Operations · still Jordan’s Tuesday</div></div>
+                </button>
+                <button class="d-now-row" type="button" data-go="funds">
                   <span class="pill open">Collect</span>
-                  <div><strong>Alex · house fund</strong><div class="when">£180 still to pay in</div></div>
-                </div>
+                  <div><strong>Alex · house fund</strong><div class="when">Funds · £180 still to pay in</div></div>
+                </button>
               </div>
               <div class="d-card d-owes">
                 <h2>Who owes whom</h2>
-                <p class="sub">This cycle.</p>
+                <p class="sub">This cycle. A row opens Settle.</p>
                 <button class="d-move" type="button" data-go="settle">
                   <div class="d-arrow">→</div>
                   <div>
@@ -542,7 +542,7 @@
               <p>Pick a space. Home is always that space.</p>
             </div>
             <div class="d-cc-grid">
-              <button class="d-commune-card" type="button" data-go="hub">
+              <button class="d-commune-card" type="button" data-go="hub-snapshot">
                 <div class="band home"></div>
                 <div class="pad">
                   <span class="pill sage">Household</span>
@@ -572,7 +572,7 @@
           <section class="screen" id="expenses" hidden>
             <div class="d-page-head">
               <h1 class="d-display">What the house spent.</h1>
-              <p>Full list, including the gas that’s already flagged on Home.</p>
+              <p>From Snapshot · Next due and British Gas land here. Full ledger, including settled rent.</p>
             </div>
             <div class="d-card">
               <div class="d-exp-item">
@@ -601,7 +601,7 @@
           <section class="screen" id="recurring" hidden>
             <div class="d-page-head">
               <h1 class="d-display">What comes back every month.</h1>
-              <p>Rent from the fund. The rest split three ways unless you say otherwise.</p>
+              <p>From Snapshot · Open bills. Rent from the fund. The rest split three ways unless you say otherwise.</p>
             </div>
             <div class="d-card">
               <div class="d-exp-item">
@@ -626,7 +626,7 @@
           <section class="screen" id="settle" hidden>
             <div class="d-page-head">
               <h1 class="d-display">Jordan, then done.</h1>
-              <p>Two transfers. Or one, if you net the Tesco against the gas.</p>
+              <p>From Snapshot · Who owes whom. Two transfers, or one if you net Tesco against the gas.</p>
             </div>
             <div class="d-card">
               <div class="d-move">
@@ -662,7 +662,7 @@
           <section class="screen" id="funds" hidden>
             <div class="d-page-head">
               <h1 class="d-display">The house pot.</h1>
-              <p>August rent already left. £420 still in for the rest of the month.</p>
+              <p>From Snapshot · House fund. August rent already left. £180 still to collect from Alex.</p>
             </div>
             <div class="d-card">
               <div class="d-ink" style="border:0;box-shadow:none;padding:0 0 16px">
@@ -691,7 +691,14 @@
           <section class="screen" id="analytics" hidden>
             <div class="d-page-head">
               <h1 class="d-display">This cycle, over time.</h1>
-              <p>The six-month view — Home only shows this month.</p>
+              <p>From Snapshot · This month. Home only showed £2,140 of £2,400 — the bar and six-month view live here.</p>
+            </div>
+            <div class="d-budget" style="margin-top:0">
+              <div class="top">
+                <span>August at 14 Park Street</span>
+                <span>£2,140 / £2,400 · 89%</span>
+              </div>
+              <div class="bar"><i></i></div>
             </div>
             <div class="d-kpis">
               <div class="d-kpi sage"><span>You’re owed</span><strong>£18</strong><small>Jordan · Tesco</small></div>
@@ -725,7 +732,7 @@
           <section class="screen" id="members" hidden>
             <div class="d-page-head">
               <h1 class="d-display">Who’s in the house.</h1>
-              <p>Balances for this cycle, not personalities.</p>
+              <p>From Snapshot · Alex ↔ You. Balances for this cycle, not personalities.</p>
             </div>
             <div class="d-card">
               <div class="d-member">
@@ -749,7 +756,7 @@
           <section class="screen" id="operations" hidden>
             <div class="d-page-head">
               <h1 class="d-display">Who’s doing what.</h1>
-              <p>Light chores. Not a project manager.</p>
+              <p>From Snapshot · Bins, and the pin that used to sit at the bottom of Home.</p>
             </div>
             <div class="d-card">
               <div class="d-item">
@@ -766,6 +773,19 @@
                 <span class="avatar maya">MC</span>
                 <div><strong>House fund chase</strong><div class="when">Alex’s £180</div></div>
                 <span class="pill open">Yours</span>
+              </div>
+            </div>
+            <div class="d-card" style="margin-top:16px">
+              <h2>The house, in writing</h2>
+              <p class="sub">The chat-pin. Not a chore list.</p>
+              <div class="d-item" style="grid-template-columns:1fr">
+                <div><strong>Wi-Fi</strong><div class="when">ParkStreet_5G · password in notes</div></div>
+              </div>
+              <div class="d-item" style="grid-template-columns:1fr">
+                <div><strong>Bins</strong><div class="when">Black bags Tuesday · recycling Friday</div></div>
+              </div>
+              <div class="d-item" style="grid-template-columns:1fr">
+                <div><strong>Landlord</strong><div class="when">Priya Sharma · rent via the fund</div></div>
               </div>
             </div>
           </section>
@@ -788,6 +808,6 @@
         operations: "Operations"
       };
     </script>
-    <script src="../shared.js?v=homes"></script>
+    <script src="../shared.js?v=show"></script>
   </body>
 </html>

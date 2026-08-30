@@ -8,7 +8,7 @@
     });
     var homeIds = { hub: true, "hub-snapshot": true, "hub-needs": true, "hub-money": true };
     if (homeIds[id]) {
-      document.querySelectorAll("nav .d-link[data-go='hub']").forEach(function (el) {
+      document.querySelectorAll("nav .d-link[data-go='hub-snapshot'], nav .d-link[data-go='hub']").forEach(function (el) {
         el.classList.add("is-active");
       });
     }
