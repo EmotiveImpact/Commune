@@ -33,7 +33,15 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 0 8px;
+  padding: 0 10px;
+}
+
+.d-logo {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  display: block;
+  flex-shrink: 0;
 }
 
 .d-wordmark {
@@ -73,13 +81,19 @@
 }
 
 .d-hub-switch .hub-ico {
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
+  width: 18px;
+  height: 18px;
+  border-radius: 6px;
   background: linear-gradient(135deg, #d7e6dd, #1b4332);
   display: grid;
   place-items: center;
   flex-shrink: 0;
+}
+
+.d-hub-switch .hub-ico svg {
+  width: 12px;
+  height: 12px;
+  display: block;
 }
 
 .d-hub-switch strong {
@@ -150,16 +164,30 @@
 .d-sub .d-link {
   font-weight: 550;
   font-size: 13px;
-  padding: 6px 10px 6px 22px;
+  padding: 8px 10px;
   color: rgba(255, 255, 255, 0.62);
 }
 
 .d-side-foot {
-  padding-top: 8px;
+  padding: 12px 10px 0;
   border-top: 1px solid rgba(255, 255, 255, 0.06);
   display: flex;
   align-items: center;
   gap: 10px;
+  width: 100%;
+  margin: 0;
+  background: transparent;
+  border-left: 0;
+  border-right: 0;
+  border-bottom: 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.d-side-foot:hover {
+  color: #fff;
 }
 
 .d-side-foot .meta strong {
@@ -515,10 +543,10 @@
 
 .d-item {
   display: grid;
-  grid-template-columns: 36px minmax(0, 1fr) auto;
-  gap: 10px;
+  grid-template-columns: 32px minmax(0, 1fr) auto;
+  gap: 12px;
   align-items: center;
-  padding: 11px 0;
+  padding: 14px 0;
   border-bottom: 1px solid rgba(23, 27, 36, 0.05);
   font-size: 14px;
 }
@@ -584,6 +612,7 @@
   grid-template-columns: minmax(0, 1.4fr) 120px 110px 90px;
   gap: 12px;
   align-items: center;
+  min-height: 56px;
   padding: 14px 0;
   border-bottom: 1px solid rgba(23, 27, 36, 0.06);
 }
@@ -594,9 +623,6 @@
 
 .d-exp-item .amt {
   text-align: right;
-  font-size: 1.05rem;
-  font-weight: 750;
-  letter-spacing: -0.03em;
 }
 
 .d-page-head {
@@ -604,14 +630,16 @@
 }
 
 .d-page-head h1 {
-  margin: 0 0 8px;
-  font-size: 1.85rem;
+  margin: 0 0 6px;
+  font-size: 1.65rem;
+  letter-spacing: -0.04em;
 }
 
 .d-page-head p {
   margin: 0;
   color: var(--ink-soft);
-  font-size: 16px;
+  font-size: 14px;
+  line-height: 1.45;
   max-width: 36rem;
 }
 
@@ -622,9 +650,9 @@
 .d-move {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto auto;
-  gap: 16px;
+  gap: 12px;
   align-items: center;
-  padding: 18px 0;
+  padding: 14px 0;
   border-bottom: 1px solid rgba(23, 27, 36, 0.06);
 }
 
@@ -633,14 +661,15 @@
 }
 
 .d-arrow {
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   border-radius: 999px;
   background: #d9ebe5;
   color: #1b4332;
   display: grid;
   place-items: center;
   font-weight: 700;
+  font-size: 14px;
 }
 
 .d-move .names {
@@ -655,10 +684,13 @@
   margin-top: 2px;
 }
 
-.d-move .amt {
-  font-size: 1.45rem;
-  font-weight: 800;
-  letter-spacing: -0.04em;
+.d-move .amt,
+.d-exp-item .amt,
+.d-member .bal,
+.d-item .amt {
+  font-size: 1.15rem;
+  font-weight: 750;
+  letter-spacing: -0.03em;
 }
 
 .d-filters {
@@ -809,9 +841,53 @@
 .d-member {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
+  min-height: 56px;
   padding: 14px 0;
   border-bottom: 1px solid rgba(23, 27, 36, 0.05);
+}
+
+.d-member .avatar,
+.d-item .avatar {
+  width: 32px;
+  height: 32px;
+}
+
+.d-field {
+  display: grid;
+  gap: 6px;
+  padding: 14px 0;
+  border-bottom: 1px solid rgba(23, 27, 36, 0.05);
+}
+
+.d-field:last-child {
+  border-bottom: 0;
+}
+
+.d-field label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.d-field input,
+.d-field select {
+  height: 40px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: #fff;
+  font: inherit;
+  font-size: 14px;
+  color: var(--ink);
+}
+
+.d-field-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
 }
 
 .d-member:last-child {

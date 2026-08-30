@@ -8,9 +8,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../shared.css?v=line" />
-    <link rel="stylesheet" href="../d-hybrid/styles.css?v=line" />
-    <link rel="stylesheet" href="./styles.css?v=line" />
+    <link rel="stylesheet" href="../shared.css?v=full" />
+    <link rel="stylesheet" href="../d-hybrid/styles.css?v=full" />
+    <link rel="stylesheet" href="./styles.css?v=full" />
   </head>
   <body class="d-body">
     <div class="mock-bar">
@@ -27,9 +27,7 @@
     <div class="d-app">
       <aside class="d-side">
         <div class="d-brand">
-          <span class="logo-mark" aria-hidden="true">
-            <svg viewBox="0 0 512 512"><path d="M256 56C145.5 56 56 145.5 56 256s89.5 200 200 200c40.3 0 77.8-11.9 109.2-32.4 7.2-4.7 8.4-15.2 1.8-21.2l-3.4-3.1c-5.3-4.8-13.1-4.2-19 0.6C320.5 418.4 289.4 428 256 428c-95 0-172-77-172-172s77-172 172-172c33.4 0 64.5 9.6 90.6 26.1 5.9 3.7 13.7 4.3 19-0.6l3.4-3.1c6.6-6 5.4-16.5-1.8-21.2C335.8 67.9 296.3 56 256 56z" fill="#f5f1ea"/></svg>
-          </span>
+          <img class="d-logo" src="../logo.png" width="36" height="36" alt="Commune" />
           <span class="d-wordmark">COMMUNE</span>
         </div>
 
@@ -49,6 +47,10 @@
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 10a8 8 0 0 1 16 0c0 6-8 11-8 11S4 16 4 10z"/><circle cx="12" cy="10" r="2.5"/></svg>
               Recurring
             </button>
+            <button class="d-link" data-go="templates" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
+              Templates
+            </button>
             <button class="d-link" data-go="funds" type="button">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 7h14l-1 12H6L5 7z"/><path d="M9 7V5a3 3 0 0 1 6 0v2"/></svg>
               Funds
@@ -57,6 +59,10 @@
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 7h10M7 12h10M7 17h6"/><path d="M17 17h4l-2 3M21 17l-2-3"/></svg>
               Settle
             </button>
+            <button class="d-link" data-go="billing" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+              Billing
+            </button>
           </div>
 
           <div class="d-group-label">Insights</div>
@@ -64,6 +70,10 @@
             <button class="d-link" data-go="analytics" type="button">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V5l7 4 9-6v16"/></svg>
               Analytics
+            </button>
+            <button class="d-link" data-go="breakdown" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V5M4 19h16M8 15v4M12 11v8M16 8v11"/></svg>
+              Breakdown
             </button>
           </div>
 
@@ -81,6 +91,10 @@
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
               Operations
             </button>
+            <button class="d-link" data-go="activity" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 2"/><circle cx="12" cy="12" r="9"/></svg>
+              Activity
+            </button>
           </div>
 
           <button class="d-hub-switch" type="button" data-go="home">
@@ -95,13 +109,13 @@
           </button>
         </nav>
 
-        <div class="d-side-foot">
+        <button class="d-side-foot" type="button" data-go="profile">
           <span class="avatar maya">MC</span>
           <div class="meta">
             <strong>Maya Chen</strong>
             <span>Standard</span>
           </div>
-        </div>
+        </button>
       </aside>
 
       <div class="d-main">
@@ -112,11 +126,13 @@
           </div>
           <div class="d-header-actions">
             <button class="d-btn nudge" type="button">Nudge Jordan</button>
-            <button class="d-btn" type="button" data-go="expenses">Add expense</button>
+            <button class="d-btn" type="button" data-go="add-expense">Add expense</button>
             <button class="d-icon-btn has-unread" type="button" data-go="notices" aria-label="Notifications">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 7 3 9H3c0-2 3-2 3-9"/><path d="M10 21a2 2 0 0 0 4 0"/></svg>
             </button>
-            <span class="avatar maya">MC</span>
+            <button class="d-avatar-btn" type="button" data-go="profile" aria-label="Maya Chen">
+              <span class="avatar maya">MC</span>
+            </button>
           </div>
         </header>
 
@@ -759,17 +775,17 @@
             </div>
             <div class="d-card">
               <div class="d-member">
-                <span class="avatar maya" style="width:44px;height:44px">MC</span>
+                <span class="avatar maya">MC</span>
                 <div class="who"><strong>Maya Chen</strong><span>You · Admin</span></div>
                 <div class="bal">Owe £42</div>
               </div>
               <div class="d-member">
-                <span class="avatar jordan" style="width:44px;height:44px">JH</span>
+                <span class="avatar jordan">JH</span>
                 <div class="who"><strong>Jordan Hale</strong><span>Member · bins this week</span></div>
                 <div class="bal">Owes you £18</div>
               </div>
               <div class="d-member">
-                <span class="avatar alex" style="width:44px;height:44px">AR</span>
+                <span class="avatar alex">AR</span>
                 <div class="who"><strong>Alex Rivera</strong><span>Member · fund still due</span></div>
                 <div class="bal" style="color:var(--ink-soft)">Even</div>
               </div>
@@ -817,6 +833,185 @@
               </div>
             </div>
           </section>
+
+          <section class="screen" id="templates" hidden>
+            <div class="d-page-head">
+              <h1 class="d-display">How you split.</h1>
+              <p>Defaults for this house. Override on any expense.</p>
+            </div>
+            <div class="d-card">
+              <div class="d-item" style="grid-template-columns:1fr auto">
+                <div><strong>Equal · three ways</strong><div class="when">Maya, Jordan, Alex · 33.3% each</div></div>
+                <span class="pill sage">Default</span>
+              </div>
+              <div class="d-item" style="grid-template-columns:1fr auto">
+                <div><strong>Rent from fund</strong><div class="when">House fund pays · nobody is owed</div></div>
+                <span class="pill">Rent</span>
+              </div>
+              <div class="d-item" style="grid-template-columns:1fr auto">
+                <div><strong>Maya + Jordan only</strong><div class="when">For the upstairs cleaner</div></div>
+                <span class="pill">Custom</span>
+              </div>
+            </div>
+          </section>
+
+          <section class="screen" id="billing" hidden>
+            <div class="d-page-head">
+              <h1 class="d-display">Your Commune plan.</h1>
+              <p>Standard · this workspace, not the house fund.</p>
+            </div>
+            <div class="d-card">
+              <div class="d-item" style="grid-template-columns:1fr auto">
+                <div><strong>Standard</strong><div class="when">8 members · 1 hub · renews 12 Sep</div></div>
+                <span class="amt">£4.99/mo</span>
+              </div>
+              <div class="d-item" style="grid-template-columns:1fr auto">
+                <div><strong>14 Park Street</strong><div class="when">This hub is on the plan</div></div>
+                <span class="pill sage">Active</span>
+              </div>
+            </div>
+          </section>
+
+          <section class="screen" id="breakdown" hidden>
+            <div class="d-page-head">
+              <h1 class="d-display">Who owes whom.</h1>
+              <p>Same truth as Settle — the ledger view.</p>
+            </div>
+            <div class="d-card">
+              <div class="d-member">
+                <span class="avatar maya">MC</span>
+                <div class="who"><strong>You</strong><span>Net: you owe £42</span></div>
+                <div class="bal">−£42</div>
+              </div>
+              <div class="d-member">
+                <span class="avatar jordan">JH</span>
+                <div class="who"><strong>Jordan Hale</strong><span>Owes you £18 · you owe him £42</span></div>
+                <div class="bal">+£24</div>
+              </div>
+              <div class="d-member">
+                <span class="avatar alex">AR</span>
+                <div class="who"><strong>Alex Rivera</strong><span>Even with everyone</span></div>
+                <div class="bal" style="color:var(--ink-soft)">£0</div>
+              </div>
+            </div>
+          </section>
+
+          <section class="screen" id="activity" hidden>
+            <div class="d-page-head">
+              <h1 class="d-display">What just happened.</h1>
+              <p>The log, without the group chat.</p>
+            </div>
+            <div class="d-card">
+              <div class="d-item">
+                <span class="avatar maya">MC</span>
+                <div><strong>Virgin Media</strong><div class="when">Maya logged it</div></div>
+                <span class="when">Yesterday</span>
+              </div>
+              <div class="d-item">
+                <span class="avatar jordan">JH</span>
+                <div><strong>British Gas</strong><div class="when">Jordan paid the bill</div></div>
+                <span class="when">Tue</span>
+              </div>
+              <div class="d-item">
+                <span class="avatar alex">AR</span>
+                <div><strong>Tesco</strong><div class="when">Alex settled</div></div>
+                <span class="when">Mon</span>
+              </div>
+              <div class="d-item">
+                <span class="avatar maya">MC</span>
+                <div><strong>August rent</strong><div class="when">House fund covered it</div></div>
+                <span class="when">1 Aug</span>
+              </div>
+            </div>
+          </section>
+
+          <section class="screen" id="add-expense" hidden>
+            <div class="d-page-head">
+              <h1 class="d-display">Add an expense.</h1>
+              <p>Park Street · split three ways unless you pick a template.</p>
+            </div>
+            <div class="d-card">
+              <div class="d-field">
+                <label for="exp-what">What</label>
+                <input id="exp-what" type="text" value="British Gas" />
+              </div>
+              <div class="d-field">
+                <label for="exp-amt">Amount</label>
+                <input id="exp-amt" type="text" value="£94.20" />
+              </div>
+              <div class="d-field">
+                <label for="exp-who">Paid by</label>
+                <select id="exp-who">
+                  <option>Jordan Hale</option>
+                  <option>Maya Chen</option>
+                  <option>Alex Rivera</option>
+                </select>
+              </div>
+              <div class="d-field">
+                <label for="exp-split">Split</label>
+                <select id="exp-split">
+                  <option>Equal · three ways</option>
+                  <option>Rent from fund</option>
+                  <option>Maya + Jordan only</option>
+                </select>
+              </div>
+              <div class="d-field-row">
+                <button class="d-btn" type="button" data-go="expenses">Save</button>
+                <button class="d-btn ghost" type="button" data-go="hub-snapshot">Cancel</button>
+              </div>
+            </div>
+          </section>
+
+          <section class="screen" id="profile" hidden>
+            <div class="d-page-head">
+              <h1 class="d-display">Maya Chen.</h1>
+              <p>You · Admin at 14 Park Street.</p>
+            </div>
+            <div class="d-card">
+              <div class="d-member">
+                <span class="avatar maya">MC</span>
+                <div class="who"><strong>Maya Chen</strong><span>maya@14park.st</span></div>
+                <span class="pill sage">You</span>
+              </div>
+              <div class="d-item" style="grid-template-columns:1fr auto">
+                <div><strong>Plan</strong><div class="when">Standard · 8 members · 1 hub</div></div>
+                <button class="d-btn ghost" type="button" data-go="billing" style="height:32px">Billing</button>
+              </div>
+              <div class="d-item" style="grid-template-columns:1fr auto">
+                <div><strong>Settings</strong><div class="when">Currency, notices, the house</div></div>
+                <button class="d-btn ghost" type="button" data-go="settings" style="height:32px">Open</button>
+              </div>
+            </div>
+          </section>
+
+          <section class="screen" id="settings" hidden>
+            <div class="d-page-head">
+              <h1 class="d-display">How this house runs.</h1>
+              <p>Currency, notices, and who gets nudged.</p>
+            </div>
+            <div class="d-card">
+              <div class="d-field">
+                <label for="set-cur">Currency</label>
+                <select id="set-cur">
+                  <option selected>£ GBP</option>
+                  <option>$ USD</option>
+                  <option>€ EUR</option>
+                </select>
+              </div>
+              <div class="d-field">
+                <label for="set-note">Notices</label>
+                <select id="set-note">
+                  <option selected>Bills, chores, and fund gaps</option>
+                  <option>Bills only</option>
+                  <option>Off</option>
+                </select>
+              </div>
+              <div class="d-item" style="grid-template-columns:1fr auto">
+                <div><strong>Nudge Jordan</strong><div class="when">Quiet reminder on open shares</div></div>
+                <span class="pill sage">On</span>
+              </div>
+            </div>
+          </section>
         </div>
       </div>
     </div>
@@ -835,9 +1030,16 @@
         analytics: "Analytics",
         members: "Members",
         notes: "Notes",
-        operations: "Operations"
+        operations: "Operations",
+        templates: "Templates",
+        billing: "Billing",
+        breakdown: "Breakdown",
+        activity: "Activity",
+        "add-expense": "Add expense",
+        profile: "Profile",
+        settings: "Settings"
       };
     </script>
-    <script src="../shared.js?v=line"></script>
+    <script src="../shared.js?v=full"></script>
   </body>
 </html>
