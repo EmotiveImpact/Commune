@@ -21,6 +21,11 @@ class Handler(SimpleHTTPRequestHandler):
         host = self.headers.get("Host", "-")
         print(f"{self.address_string()} Host={host} {fmt % args}", flush=True)
 
+    def end_headers(self):
+        self.send_header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
+        self.send_header("Pragma", "no-cache")
+        super().end_headers()
+
 
 class IPv6Server(ThreadingHTTPServer):
     address_family = socket.AF_INET6
