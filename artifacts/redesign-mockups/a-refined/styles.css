@@ -1459,6 +1459,12 @@ button.a-now-row {
 }
 
 @media (max-width: 1100px) {
+  .a-app {
+    grid-template-columns: 220px minmax(0, 1fr);
+  }
+  .a-side {
+    display: flex;
+  }
   .a-kpis,
   .a-grid,
   .a-hero,
@@ -1469,14 +1475,6 @@ button.a-now-row {
   .a-answers,
   .a-week {
     grid-template-columns: 1fr;
-  }
-    grid-template-columns: 1fr;
-  }
-  .a-app {
-    grid-template-columns: 1fr;
-  }
-  .a-side {
-    display: none;
   }
 }
 
