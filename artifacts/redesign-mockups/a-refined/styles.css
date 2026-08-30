@@ -1369,6 +1369,95 @@ button.a-now-row {
   padding-top: 4px;
 }
 
+.a-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.a-card-head .a-btn.ghost {
+  height: 32px;
+  padding: 0 12px;
+  flex-shrink: 0;
+}
+
+.a-week {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(280px, 0.9fr);
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.a-mini-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.a-mini-bars .row {
+  display: grid;
+  grid-template-columns: 110px 1fr 64px;
+  gap: 10px;
+  align-items: center;
+  font-size: 13px;
+}
+
+.a-mini-bars .track {
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(23, 27, 36, 0.06);
+  overflow: hidden;
+}
+
+.a-mini-bars .track i {
+  display: block;
+  height: 100%;
+  background: #2d6a4f;
+  border-radius: 999px;
+}
+
+.a-mini-bars strong {
+  text-align: right;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+}
+
+.a-item {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: center;
+  padding: 18px 0;
+  border-bottom: 1px solid rgba(23, 27, 36, 0.06);
+}
+
+.a-item:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.a-item .avatar {
+  width: 36px;
+  height: 36px;
+  font-size: 12px;
+}
+
+.a-item strong {
+  font-size: 1.05rem;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+}
+
+.a-item-plain {
+  grid-template-columns: 1fr;
+}
+
+#hub .a-member-row:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
 @media (max-width: 1100px) {
   .a-kpis,
   .a-grid,
@@ -1377,7 +1466,10 @@ button.a-now-row {
   .a-essentials,
   .a-settle-hero,
   .a-cc-grid,
-  .a-answers {
+  .a-answers,
+  .a-week {
+    grid-template-columns: 1fr;
+  }
     grid-template-columns: 1fr;
   }
   .a-app {
