@@ -22,9 +22,9 @@ import {
   BillingScreen,
   MembersScreen,
   NotesScreen,
-  OperationsScreen,
   TemplatesScreen,
 } from "./screens/House";
+import { OperationsScreen } from "./screens/Operations";
 import { SettingsScreen } from "./screens/Settings";
 import { Windows } from "./windows/Windows";
 import { cx } from "./ui/cx";
@@ -127,7 +127,11 @@ function ScreenBody({ screen }: { screen: ScreenId }) {
     case "expenses":
       return emptyHub ? <ExpensesEmptyScreen /> : <ExpensesScreen />;
     case "expenses-empty":
-      return emptyHub || !hasHubs ? <ExpensesEmptyScreen /> : <ExpensesScreen />;
+      return emptyHub || !hasHubs ? (
+        <ExpensesEmptyScreen />
+      ) : (
+        <ExpensesScreen />
+      );
     case "settle":
       return <SettleScreen />;
     case "settle-even":

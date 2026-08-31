@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useApp } from "../state";
-import { Avatar, Choose, Pill } from "../ui/widgets";
+import { Avatar, Pill } from "../ui/widgets";
 import { cx } from "../ui/cx";
 
 export function NotesScreen() {
@@ -68,52 +68,6 @@ export function NotesScreen() {
         ) : null}
       </div>
     </>
-  );
-}
-
-export function OperationsScreen() {
-  const { go, emptyHub, hub } = useApp();
-  if (emptyHub || hub.id === "created") {
-    return (
-      <div className="a-empty">
-        <h2>No chores yet.</h2>
-        <p>Bins, kitchen, the Tuesday jobs. Add them when the house has a rhythm.</p>
-      </div>
-    );
-  }
-  return (
-    <div className="a-panel">
-      <div className="a-settle-row">
-        <Avatar tone="jordan" initials="JH" />
-        <div>
-          <strong>Bins</strong>
-          <div style={{ fontSize: 12, color: "var(--ink-soft)" }}>Tuesday nights · this week</div>
-        </div>
-        <Pill tone="warn">Overdue</Pill>
-        <Choose
-          items={[
-            { label: "Mark done", onSelect: () => go("operations") },
-            { label: "Nudge", onSelect: () => go("notices") },
-          ]}
-        />
-      </div>
-      <div className="a-settle-row">
-        <Avatar tone="alex" initials="AR" />
-        <div>
-          <strong>Kitchen</strong>
-          <div style={{ fontSize: 12, color: "var(--ink-soft)" }}>This week</div>
-        </div>
-        <Pill>Open</Pill>
-      </div>
-      <div className="a-settle-row">
-        <Avatar tone="maya" initials="MC" />
-        <div>
-          <strong>House fund chase</strong>
-          <div style={{ fontSize: 12, color: "var(--ink-soft)" }}>Alex’s £180</div>
-        </div>
-        <Pill tone="open">Yours</Pill>
-      </div>
-    </div>
   );
 }
 

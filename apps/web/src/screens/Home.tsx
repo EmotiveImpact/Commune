@@ -88,7 +88,11 @@ function HomeWeekScreen() {
           <h2>Needs you</h2>
           <p className="sub">The three that should happen. Jump in, or open the hub.</p>
           <div className="hub-feed">
-            <button className="hub-feed-row" type="button" onClick={() => go("operations", { hub: "park" })}>
+            <button
+              className="hub-feed-row"
+              type="button"
+              onClick={() => go("operation", { hub: "park", operation: "park-bins" })}
+            >
               <Pill tone="warn">Park Street</Pill>
               <div>
                 <strong>Bins overdue</strong>
@@ -320,7 +324,11 @@ export function PlacesScreen() {
             </div>
             <span className="hub-feed-go">Expenses</span>
           </button>
-          <button className="hub-feed-row" type="button" onClick={() => go("operations", { hub: "park" })}>
+          <button
+            className="hub-feed-row"
+            type="button"
+            onClick={() => go("operation", { hub: "park", operation: "park-bins" })}
+          >
             <Pill tone="warn">Park Street</Pill>
             <div>
               <strong>Bins overdue</strong>

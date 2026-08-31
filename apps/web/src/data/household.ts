@@ -37,7 +37,9 @@ export type WindowId =
   | "pay"
   | "pay-method"
   | "note"
-  | "note-new";
+  | "note-new"
+  | "operation"
+  | "operation-new";
 
 export type RouteId = ScreenId | WindowId;
 
@@ -412,6 +414,8 @@ export const PAGE_TITLES: Record<string, string> = {
   breakdown: "Breakdown",
   members: "Members",
   operations: "Operations",
+  operation: "Schedule item",
+  "operation-new": "Add to calendar",
   notes: "Notes",
   note: "Wi-Fi",
   "note-new": "Add note",
@@ -445,7 +449,9 @@ export const PAGE_LEDES: Record<string, string> = {
   analytics: "This month against the house budget.",
   breakdown: "The ledger view of who owes whom.",
   members: "Balances for this cycle, not personalities.",
-  operations: "Bins and chores. Wi-Fi lives in Notes.",
+  operations: "Tasks, deliveries, visits, and appointments for this hub.",
+  operation: "The date, owner, and details in one place.",
+  "operation-new": "A task to finish, or something everyone should know is happening.",
   notes: "Wi-Fi, bin day, landlord. Add what the house keeps forgetting.",
   note: "Pinned · everyone",
   "note-new": "Type first. Extras change. The note itself stays so you can keep writing.",
@@ -472,6 +478,8 @@ export const WINDOW_IDS: WindowId[] = [
   "pay-method",
   "note",
   "note-new",
+  "operation",
+  "operation-new",
 ];
 
 export const WINDOW_PAGE: Partial<Record<WindowId, ScreenId>> = {
@@ -484,6 +492,8 @@ export const WINDOW_PAGE: Partial<Record<WindowId, ScreenId>> = {
   pay: "settle",
   note: "notes",
   "note-new": "notes",
+  operation: "operations",
+  "operation-new": "operations",
 };
 
 export const SCREEN_PATH: Record<ScreenId, string> = {

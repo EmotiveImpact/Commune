@@ -4,6 +4,7 @@ import { useApp } from "../state";
 import { Icon } from "../ui/Icon";
 import { Avatar, Choose, Pill } from "../ui/widgets";
 import { cx } from "../ui/cx";
+import { OperationNew, OperationView } from "./OperationsWindows";
 
 const NOTE_TYPES = [
   ["wifi", "Wi-Fi"],
@@ -16,10 +17,14 @@ const NOTE_TYPES = [
 ] as const;
 
 export function Windows() {
-  const { window, closeWindow, go, notes, noteKey, addNote } = useApp();
+  const { window, closeWindow, go, notes, noteKey, selectedOperation, addNote } = useApp();
   if (!window) return null;
   const title =
-    window === "note" ? notes[noteKey]?.title ?? "Note" : titleFor(window);
+    window === "note"
+      ? notes[noteKey]?.title ?? "Note"
+      : window === "operation"
+        ? selectedOperation?.title ?? "Schedule item"
+        : titleFor(window);
 
   return (
     <div className="a-windows">
@@ -44,6 +49,8 @@ export function Windows() {
           {window === "pay-method" && <PayMethod />}
           {window === "note" && <NoteCardView />}
           {window === "note-new" && <NoteNew onSave={addNote} />}
+          {window === "operation" && <OperationView />}
+          {window === "operation-new" && <OperationNew />}
         </div>
       </div>
     </div>
@@ -63,6 +70,7 @@ function titleFor(id: string): string {
     pay: "Pay Jordan",
     "pay-method": "Pay me",
     "note-new": "Add note",
+    "operation-new": "Add to calendar",
   };
   return map[id] ?? id;
 }
@@ -87,7 +95,11 @@ function Notices() {
           <div className="when">£94.20 · Jordan paid · your share open</div>
         </div>
       </button>
-      <button className="a-notice" type="button" onClick={() => go("operations")}>
+      <button
+        className="a-notice"
+        type="button"
+        onClick={() => go("operation", { hub: "park", operation: "park-bins" })}
+      >
         <Pill tone="warn">Overdue</Pill>
         <div className="grow">
           <strong>Bins</strong>

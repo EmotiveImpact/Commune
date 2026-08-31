@@ -200,7 +200,7 @@ const MORE: Array<{ id: ScreenId | WindowId; title: string; hint: string; icon: 
   { id: "notes", title: "Notes", hint: "Wi-Fi, bins, landlord", icon: "notes" },
   { id: "funds", title: "Funds", hint: "House pot · chase Alex", icon: "funds" },
   { id: "recurring", title: "Recurring", hint: "Open bills. Rent from the fund", icon: "refresh" },
-  { id: "operations", title: "Operations", hint: "Bins and chores", icon: "operations" },
+  { id: "operations", title: "Operations", hint: "Calendar, tasks, visits, deliveries", icon: "operations" },
   { id: "members", title: "Members", hint: "Who’s here this cycle", icon: "members" },
   { id: "settings", title: "You & settings", hint: "Plan, pay-me, preferences", icon: "settings" },
 ];

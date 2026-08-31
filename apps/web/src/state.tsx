@@ -29,10 +29,19 @@ import {
   type ScreenId,
   type WindowId,
 } from "./data/household";
+import {
+  addRepeat,
+  cloneOperationSeed,
+  normalizeOperationStore,
+  type NewOperation,
+  type OperationItem,
+  type OperationStore,
+} from "./data/operations";
 import { isNativeNow, keepSearch, pathOnly } from "./nav";
 
 const SESSION_KEY = "commune.session";
 const NAV_KEY = "commune.nav-mode";
+const OPERATIONS_FALLBACK = cloneOperationSeed();
 
 export type Seed = "maya" | "new";
 
@@ -43,6 +52,7 @@ export type Session = {
   hasHubs: boolean;
   emptyLedger: boolean;
   createdHub?: CreatedHub;
+  operations?: OperationStore;
 };
 
 export type LastExpense = {
@@ -53,9 +63,22 @@ export type LastExpense = {
 
 export type NavMode = "basic" | "advanced";
 
-export type GoTarget = ScreenId | WindowId | "login" | "signup" | "forgot" | "invite" | "onboard";
+export type GoTarget =
+  | ScreenId
+  | WindowId
+  | "login"
+  | "signup"
+  | "forgot"
+  | "invite"
+  | "onboard";
 
-type GoOpts = { hub?: HubId; note?: string; window?: WindowId };
+type GoOpts = {
+  hub?: HubId;
+  note?: string;
+  operation?: string;
+  date?: string;
+  window?: WindowId;
+};
 
 type AppState = {
   session: Session | null;
@@ -69,6 +92,10 @@ type AppState = {
   navMode: NavMode;
   noteKey: string;
   notes: Record<string, NoteCard>;
+  operationKey: string;
+  operationDate: string;
+  operations: OperationItem[];
+  selectedOperation: OperationItem | null;
   dark: boolean;
   noticesOn: boolean;
   native: boolean;
@@ -84,6 +111,8 @@ type AppState = {
   setDark: (on: boolean) => void;
   setNoticesOn: (on: boolean) => void;
   addNote: (card: NoteCard & { id: string }) => void;
+  addOperation: (item: NewOperation) => string;
+  toggleOperation: (id: string) => void;
   createHub: (input: CreatedHub, opts?: { openExpense?: boolean }) => void;
   recordExpense: (row: LastExpense) => void;
   pageTitle: string;
@@ -114,6 +143,7 @@ function normalizeSession(raw: unknown): Session | null {
     hasHubs: seed === "new" ? Boolean(p.hasHubs) : p.hasHubs !== false,
     emptyLedger: Boolean(p.emptyLedger),
     createdHub: isCreatedHub(p.createdHub) ? p.createdHub : undefined,
+    operations: normalizeOperationStore(p.operations),
   };
 }
 
@@ -185,10 +215,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [moreOpen, setMoreOpen] = useState(false);
   const [navMode, setNavModeState] = useState<NavMode>(() => {
     if (typeof window === "undefined") return "basic";
-    return sessionStorage.getItem(NAV_KEY) === "advanced" ? "advanced" : "basic";
+    return sessionStorage.getItem(NAV_KEY) === "advanced"
+      ? "advanced"
+      : "basic";
   });
   const [noteKey, setNoteKey] = useState("wifi");
   const [notes, setNotes] = useState<Record<string, NoteCard>>(NOTE_CARDS);
+  const [operationKey, setOperationKey] = useState("park-bins");
+  const [operationDate, setOperationDate] = useState("2026-09-01");
   const [dark, setDark] = useState(false);
   const [noticesOn, setNoticesOn] = useState(true);
   const [native, setNative] = useState(() => isNativeNow());
@@ -214,6 +248,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const hub = resolveHub(hubId, session);
   const places = placesFor(session);
   const emptyHub = isEmptyHub(hubId, session);
+  const operationStore = session?.operations ?? OPERATIONS_FALLBACK;
+  const operations = operationStore[hubId];
+  const selectedOperation =
+    operations.find((item) => item.id === operationKey) ?? null;
   const you = {
     name: session?.name ?? "Maya Chen",
     email: session?.email ?? "maya@14park.st",
@@ -264,6 +302,75 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setNoteKey(card.id);
   }, []);
 
+  const addOperation = useCallback(
+    (item: NewOperation) => {
+      const id = `operation-${Date.now()}`;
+      const nextItem: OperationItem = {
+        ...item,
+        id,
+        hubId,
+        status: "open",
+      };
+      const current = session?.operations ?? cloneOperationSeed();
+      if (session) {
+        persist({
+          ...session,
+          operations: {
+            ...current,
+            [hubId]: [nextItem, ...current[hubId]],
+          },
+        });
+      }
+      setOperationKey(id);
+      setOperationDate(item.date);
+      return id;
+    },
+    [hubId, persist, session],
+  );
+
+  const toggleOperation = useCallback(
+    (id: string) => {
+      if (!session) return;
+      const current = session.operations ?? cloneOperationSeed();
+      const item = current[hubId].find((row) => row.id === id);
+      if (!item) return;
+      const completing = item.status === "open";
+      const rows = current[hubId].map((row) =>
+        row.id === id
+          ? {
+              ...row,
+              status: completing ? ("done" as const) : ("open" as const),
+            }
+          : row,
+      );
+      if (completing && item.repeat !== "none") {
+        const nextDate = addRepeat(item.date, item.repeat);
+        const exists = rows.some(
+          (row) =>
+            row.title === item.title &&
+            row.date === nextDate &&
+            row.status === "open",
+        );
+        if (!exists) {
+          rows.push({
+            ...item,
+            id: `${item.id}-${nextDate}`,
+            date: nextDate,
+            status: "open",
+          });
+        }
+      }
+      persist({
+        ...session,
+        operations: {
+          ...current,
+          [hubId]: rows,
+        },
+      });
+    },
+    [hubId, persist, session],
+  );
+
   const createHub = useCallback(
     (input: CreatedHub, opts?: { openExpense?: boolean }) => {
       const base: Session = session ?? {
@@ -273,7 +380,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
         hasHubs: false,
         emptyLedger: true,
       };
-      const next: Session = { ...base, hasHubs: true, emptyLedger: true, createdHub: input };
+      const next: Session = {
+        ...base,
+        hasHubs: true,
+        emptyLedger: true,
+        createdHub: input,
+      };
       persist(next);
       setHubId("created");
       setMoreOpen(false);
@@ -310,9 +422,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const nextHub = opts?.hub ?? hubId;
       if (opts?.hub) setHubId(opts.hub);
       if (opts?.note) setNoteKey(opts.note);
+      if (opts?.operation) setOperationKey(opts.operation);
+      if (opts?.date) setOperationDate(opts.date);
       setMoreOpen(false);
 
-      if (target === "login" || target === "signup" || target === "forgot" || target === "invite" || target === "onboard") {
+      if (
+        target === "login" ||
+        target === "signup" ||
+        target === "forgot" ||
+        target === "invite" ||
+        target === "onboard"
+      ) {
         setWindowId(null);
         setLocation(keepSearch(authPath(target)));
         return;
@@ -323,13 +443,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (isWindowId(target)) {
         const stay =
           target === "add-expense" &&
-          (screen === "hub-empty" || screen === "home-empty" || screen === "expenses-empty");
+          (screen === "hub-empty" ||
+            screen === "home-empty" ||
+            screen === "expenses-empty");
         if (!stay) {
           const page = WINDOW_PAGE[target];
           if (page) {
             let dest: ScreenId = page;
-            if (page === "expenses" && empty && target === "add-expense") dest = "expenses-empty";
-            if (page === "settle" && (nextHub === "studio" || nextHub === "created")) dest = "settle-even";
+            if (page === "expenses" && empty && target === "add-expense")
+              dest = "expenses-empty";
+            if (
+              page === "settle" &&
+              (nextHub === "studio" || nextHub === "created")
+            )
+              dest = "settle-even";
             if (dest !== screen) setLocation(keepSearch(SCREEN_PATH[dest]));
           }
         }
@@ -340,8 +467,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       let next: ScreenId = target;
       if (target === "home" && !session?.hasHubs) next = "home-empty";
       if (target === "hub" && (empty || !session?.hasHubs)) next = "hub-empty";
-      if (target === "expenses" && (empty || !session?.hasHubs)) next = "expenses-empty";
-      if (target === "settle" && (nextHub === "studio" || nextHub === "created" || !session?.hasHubs)) {
+      if (target === "expenses" && (empty || !session?.hasHubs))
+        next = "expenses-empty";
+      if (
+        target === "settle" &&
+        (nextHub === "studio" || nextHub === "created" || !session?.hasHubs)
+      ) {
         next = "settle-even";
       }
       setWindowId(opts?.window ?? null);
@@ -353,19 +484,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const pageTitle = windowId
     ? windowId === "note"
-      ? notes[noteKey]?.title ?? "Note"
-      : PAGE_TITLES[windowId] ?? PAGE_TITLES[screen]
-    : PAGE_TITLES[screen] ?? "Home";
+      ? (notes[noteKey]?.title ?? "Note")
+      : windowId === "operation"
+        ? (selectedOperation?.title ?? "Schedule item")
+        : (PAGE_TITLES[windowId] ?? PAGE_TITLES[screen])
+    : (PAGE_TITLES[screen] ?? "Home");
 
   const pageLede = windowId
-    ? PAGE_LEDES[windowId] ?? ""
+    ? (PAGE_LEDES[windowId] ?? "")
     : screen === "home" || screen === "communes"
       ? session?.seed === "new"
         ? session.hasHubs
           ? "1 space · nothing shared yet"
           : PAGE_LEDES["home-empty"]
         : HOME_STATUS
-      : PAGE_LEDES[screen] ?? hub.status;
+      : (PAGE_LEDES[screen] ?? hub.status);
 
   const value = useMemo<AppState>(
     () => ({
@@ -380,6 +513,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       navMode,
       noteKey,
       notes,
+      operationKey,
+      operationDate,
+      operations,
+      selectedOperation,
       dark,
       noticesOn,
       native,
@@ -395,6 +532,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setDark,
       setNoticesOn,
       addNote,
+      addOperation,
+      toggleOperation,
       createHub,
       recordExpense,
       pageTitle,
@@ -412,6 +551,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       navMode,
       noteKey,
       notes,
+      operationKey,
+      operationDate,
+      operations,
+      selectedOperation,
       dark,
       noticesOn,
       native,
@@ -424,6 +567,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       closeWindow,
       setNavMode,
       addNote,
+      addOperation,
+      toggleOperation,
       createHub,
       recordExpense,
       pageTitle,
