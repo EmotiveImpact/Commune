@@ -54,9 +54,13 @@ function NavButton({
 }
 
 export function Sidebar({ screen }: { screen: ScreenId }) {
-  const { go, hub, navMode } = useApp();
+  const { go, hub, you } = useApp();
   const active = (id: ScreenId) =>
-    screen === id || (id === "settle" && screen === "settle-even") || (id === "home" && screen === "home-empty");
+    screen === id ||
+    (id === "settle" && screen === "settle-even") ||
+    (id === "home" && (screen === "home-empty" || screen === "home-inbox")) ||
+    (id === "hub" && screen === "hub-empty") ||
+    (id === "expenses" && screen === "expenses-empty");
 
   return (
     <aside className="a-side">
@@ -117,19 +121,18 @@ export function Sidebar({ screen }: { screen: ScreenId }) {
       </div>
 
       <button className="a-side-foot" type="button" onClick={() => go("settings")}>
-        <Avatar tone="maya" initials="MC" />
+        <Avatar tone="maya" initials={you.initials} />
         <div className="meta">
-          <strong>Maya Chen</strong>
+          <strong>{you.name}</strong>
           <span>{hub.youMeta}</span>
         </div>
       </button>
-      {navMode === "advanced" ? null : null}
     </aside>
   );
 }
 
 export function Header({ screen }: { screen: ScreenId }) {
-  const { go, pageTitle, pageLede, setMoreOpen, native } = useApp();
+  const { go, pageTitle, pageLede, setMoreOpen, native, you } = useApp();
   void screen;
   return (
     <header className="a-header">
@@ -149,7 +152,7 @@ export function Header({ screen }: { screen: ScreenId }) {
       )}
       <div className="a-header-actions">
         <button className="a-icon-btn a-you-btn" type="button" aria-label="You" onClick={() => go("settings")}>
-          <Avatar tone="maya" initials="MC" />
+          <Avatar tone="maya" initials={you.initials} />
         </button>
         <button className="a-icon-btn has-unread" type="button" aria-label="Notifications" onClick={() => go("notices")}>
           <Icon name="bell" size={16} />

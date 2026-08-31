@@ -5,9 +5,10 @@ import { Avatar, Choose, Pill } from "../ui/widgets";
 import { cx } from "../ui/cx";
 
 export function ExpensesScreen() {
-  const { go } = useApp();
+  const { go, hubId, createdExpenses } = useApp();
   const [filter, setFilter] = useState<"All" | "Open" | "Recurring" | "Settled">("All");
-  const rows = PARK_EXPENSES.filter((row) => {
+  const source = hubId === "created" ? createdExpenses : PARK_EXPENSES;
+  const rows = source.filter((row) => {
     if (filter === "All") return true;
     if (filter === "Open") return row.open === true;
     if (filter === "Settled") return row.status === "settled";
@@ -188,20 +189,34 @@ export function SettleScreen() {
 }
 
 export function SettleEvenScreen() {
-  const { go } = useApp();
+  const { go, hub } = useApp();
   return (
     <div className="a-empty">
       <h2>You’re even.</h2>
-      <p>Studio East has nothing to send this cycle. Ink on Monday still gets logged as an expense.</p>
-      <button className="a-btn" type="button" onClick={() => go("add-expense", { hub: "studio" })}>
-        Log the ink
+      <p>
+        {hub.name} has nothing to send this cycle.
+        {hub.id === "studio" ? " Ink on Monday still gets logged as an expense." : " Add an expense when something is shared."}
+      </p>
+      <button className="a-btn" type="button" onClick={() => go("add-expense", { hub: hub.id })}>
+        {hub.id === "studio" ? "Log the ink" : "Add expense"}
       </button>
     </div>
   );
 }
 
 export function RecurringScreen() {
-  const { go } = useApp();
+  const { go, emptyHub, hub } = useApp();
+  if (emptyHub || hub.id === "created") {
+    return (
+      <div className="a-empty">
+        <h2>No recurring bills yet.</h2>
+        <p>Rent, wifi, the ones that come back. Add them once the first expense exists.</p>
+        <button className="a-btn" type="button" onClick={() => go("add-expense")}>
+          Add expense
+        </button>
+      </div>
+    );
+  }
   return (
     <>
       <div className="a-toolbar">
@@ -273,7 +288,15 @@ export function RecurringScreen() {
 }
 
 export function FundsScreen() {
-  const { go } = useApp();
+  const { go, emptyHub, hub } = useApp();
+  if (emptyHub || hub.id === "created") {
+    return (
+      <div className="a-empty">
+        <h2>Fund is empty.</h2>
+        <p>Nothing in yet. The house pot starts when someone pays in.</p>
+      </div>
+    );
+  }
   return (
     <div className="a-panel">
       <div className="a-fund-hero">

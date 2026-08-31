@@ -60,13 +60,27 @@ export function NotesScreen() {
             </div>
           </button>
         ))}
+        {!extras.length && !rows.length ? (
+          <div className="a-empty" style={{ padding: 24 }}>
+            <h2>No notes yet.</h2>
+            <p>Wi-Fi, bins, the door code. Add what the house keeps forgetting.</p>
+          </div>
+        ) : null}
       </div>
     </>
   );
 }
 
 export function OperationsScreen() {
-  const { go } = useApp();
+  const { go, emptyHub, hub } = useApp();
+  if (emptyHub || hub.id === "created") {
+    return (
+      <div className="a-empty">
+        <h2>No chores yet.</h2>
+        <p>Bins, kitchen, the Tuesday jobs. Add them when the house has a rhythm.</p>
+      </div>
+    );
+  }
   return (
     <div className="a-panel">
       <div className="a-settle-row">
@@ -132,6 +146,14 @@ export function MembersScreen() {
 
 export function ActivityScreen() {
   const { hub, go } = useApp();
+  if (!hub.activity.length) {
+    return (
+      <div className="a-empty">
+        <h2>No activity yet.</h2>
+        <p>The log starts when something is shared.</p>
+      </div>
+    );
+  }
   return (
     <div className="a-panel">
       {hub.activity.map((row) => (
@@ -157,6 +179,20 @@ export function ActivityScreen() {
 }
 
 export function TemplatesScreen() {
+  const { hub, emptyHub } = useApp();
+  if (emptyHub || hub.id === "created") {
+    return (
+      <div className="a-panel">
+        <div className="a-settle-row">
+          <div>
+            <strong>Equal · you</strong>
+            <div style={{ fontSize: 12, color: "var(--ink-soft)" }}>Just you until someone joins</div>
+          </div>
+          <Pill tone="sage">Default</Pill>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="a-panel">
       <div className="a-settle-row">
@@ -185,6 +221,7 @@ export function TemplatesScreen() {
 }
 
 export function BillingScreen() {
+  const { hub } = useApp();
   return (
     <div className="a-panel">
       <div className="a-settle-row">
@@ -196,7 +233,7 @@ export function BillingScreen() {
       </div>
       <div className="a-settle-row">
         <div>
-          <strong>14 Park Street</strong>
+          <strong>{hub.name}</strong>
           <div style={{ fontSize: 12, color: "var(--ink-soft)" }}>This hub is on the plan</div>
         </div>
         <Pill tone="sage">Active</Pill>
@@ -206,6 +243,15 @@ export function BillingScreen() {
 }
 
 export function AnalyticsScreen() {
+  const { emptyHub, hub } = useApp();
+  if (emptyHub || hub.id === "created") {
+    return (
+      <div className="a-empty">
+        <h2>Nothing to chart yet.</h2>
+        <p>Spend shows up here once the ledger has a bill.</p>
+      </div>
+    );
+  }
   return (
     <>
       <div className="a-kpis">

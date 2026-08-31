@@ -4,19 +4,19 @@ import { useApp } from "../state";
 import { cx } from "../ui/cx";
 
 export function SettingsScreen() {
-  const { go, navMode, setNavMode, dark, setDark, noticesOn, setNoticesOn, signOut } = useApp();
+  const { go, navMode, setNavMode, dark, setDark, noticesOn, setNoticesOn, signOut, you } = useApp();
   return (
     <div className="a-set">
       <aside className="a-set-left">
         <div className="a-set-card">
           <div className="a-set-you">
-            <Avatar tone="maya" initials="MC" />
+            <Avatar tone="maya" initials={you.initials} />
             <div className="a-set-you-copy">
               <button className="a-set-name" type="button" onClick={() => go("profile")}>
-                Maya Chen
+                {you.name}
                 <Icon name="edit" size={14} />
               </button>
-              <span>maya@14park.st</span>
+              <span>{you.email}</span>
             </div>
           </div>
         </div>

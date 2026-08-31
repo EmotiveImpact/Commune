@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { Link } from "wouter";
 import { AuthLayout } from "./AuthLayout";
+import { keepSearch } from "../nav";
 
 export function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -30,7 +31,7 @@ export function ForgotPasswordPage() {
             <p className="commune-auth-lede">
               If an account exists for that email, you&apos;ll receive a password reset link shortly.
             </p>
-            <Link href="/login" className="commune-auth-btn">
+            <Link href={keepSearch("/login")} className="commune-auth-btn">
               Back to sign in
             </Link>
           </>
@@ -54,7 +55,7 @@ export function ForgotPasswordPage() {
             </form>
             <p className="commune-auth-foot">
               Remember your password?{" "}
-              <Link href="/login" className="commune-auth-link">
+              <Link href={keepSearch("/login")} className="commune-auth-link">
                 Sign in
               </Link>
             </p>

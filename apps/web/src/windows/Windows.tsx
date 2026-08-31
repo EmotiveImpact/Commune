@@ -68,7 +68,15 @@ function titleFor(id: string): string {
 }
 
 function Notices() {
-  const { go } = useApp();
+  const { go, emptyHub, hub } = useApp();
+  if (emptyHub || hub.id === "created") {
+    return (
+      <section className="a-window">
+        <p className="a-window-kicker">Bell</p>
+        <p className="a-window-note">You’re caught up. Nothing needs you in this hub.</p>
+      </section>
+    );
+  }
   return (
     <section className="a-window">
       <p className="a-window-kicker">Bell</p>
@@ -98,36 +106,55 @@ function Notices() {
 }
 
 function AddExpense() {
-  const { go, closeWindow } = useApp();
+  const { go, closeWindow, hub, you, recordExpense } = useApp();
+  const fresh = hub.id === "created";
+  const [what, setWhat] = useState(fresh ? "" : "British Gas");
+  const [amount, setAmount] = useState(fresh ? "" : "£94.20");
+  const [payer, setPayer] = useState(fresh ? you.name : "Jordan Hale");
+
+  function save() {
+    const name = what.trim() || (fresh ? "Expense" : "British Gas");
+    const amt = amount.trim() || (fresh ? "£0" : "£94.20");
+    if (fresh) recordExpense({ name, amount: amt, paidBy: payer });
+    go("expense");
+  }
+
   return (
     <section className="a-window">
       <p className="a-window-kicker">Expense</p>
       <div className="a-field">
         <label htmlFor="exp-what">What</label>
-        <input id="exp-what" type="text" defaultValue="British Gas" />
+        <input
+          id="exp-what"
+          type="text"
+          value={what}
+          onChange={(e) => setWhat(e.target.value)}
+          placeholder={fresh ? "e.g. Rent" : undefined}
+        />
       </div>
       <div className="a-field half">
         <label htmlFor="exp-amt">Amount</label>
-        <input id="exp-amt" type="text" defaultValue="£94.20" />
+        <input id="exp-amt" type="text" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="£0.00" />
       </div>
       <div className="a-field half">
         <label htmlFor="exp-who">Paid by</label>
-        <select id="exp-who" defaultValue="Jordan Hale">
-          <option>Jordan Hale</option>
-          <option>Maya Chen</option>
-          <option>Alex Rivera</option>
+        <select id="exp-who" value={payer} onChange={(e) => setPayer(e.target.value)}>
+          {hub.members.map((member) => (
+            <option key={member.name}>{member.name}</option>
+          ))}
         </select>
       </div>
       <div className="a-field">
         <label htmlFor="exp-split">Split</label>
         <select id="exp-split">
-          <option>Equal · three ways</option>
-          <option>Rent from fund</option>
-          <option>Maya + Jordan only</option>
+          {fresh ? <option>You · 100%</option> : null}
+          {!fresh ? <option>Equal · three ways</option> : null}
+          {!fresh ? <option>Rent from fund</option> : null}
+          {!fresh ? <option>Maya + Jordan only</option> : null}
         </select>
       </div>
       <div className="a-field-row">
-        <button className="a-btn" type="button" onClick={() => go("expense")}>
+        <button className="a-btn" type="button" onClick={save}>
           Save
         </button>
         <button className="a-btn ghost" type="button" onClick={closeWindow}>
@@ -139,7 +166,39 @@ function AddExpense() {
 }
 
 function Expense() {
-  const { go, closeWindow } = useApp();
+  const { go, closeWindow, hub, lastExpense, you } = useApp();
+  if (hub.id === "created" && lastExpense) {
+    return (
+      <section className="a-window">
+        <p className="a-window-kicker">Expense</p>
+        <div className="a-fund-hero">
+          <div>
+            <span className="a-hero-kicker">Just you · open</span>
+            <strong>{lastExpense.name}</strong>
+            <p>
+              {lastExpense.paidBy} paid {lastExpense.amount}. Nobody else is on this hub yet.
+            </p>
+          </div>
+          <Pill tone="open">Open</Pill>
+        </div>
+        <div className="a-split">
+          <div className="a-split-row">
+            <Avatar tone="maya" initials={you.initials} />
+            <div className="grow">
+              <strong>{you.name}</strong>
+              <div className="when">Paid · {lastExpense.amount}</div>
+            </div>
+            <Pill tone="settled">You</Pill>
+          </div>
+        </div>
+        <div className="a-field-row">
+          <button className="a-btn" type="button" onClick={closeWindow}>
+            Close
+          </button>
+        </div>
+      </section>
+    );
+  }
   return (
     <section className="a-window">
       <p className="a-window-kicker">Expense</p>
@@ -225,17 +284,24 @@ function ExpensePaid() {
 }
 
 function CommuneNew() {
-  const { go, closeWindow } = useApp();
+  const { closeWindow, createHub } = useApp();
+  const [name, setName] = useState("Studio East");
+  const [type, setType] = useState<"Household" | "Workspace" | "Trip">("Workspace");
+  const [currency, setCurrency] = useState("£ GBP");
   return (
     <section className="a-window">
       <p className="a-window-kicker">Places</p>
       <div className="a-field">
         <label htmlFor="new-name">Name</label>
-        <input id="new-name" type="text" defaultValue="Studio East" />
+        <input id="new-name" type="text" value={name} onChange={(e) => setName(e.target.value)} />
       </div>
       <div className="a-field half">
         <label htmlFor="new-type">Type</label>
-        <select id="new-type" defaultValue="Workspace">
+        <select
+          id="new-type"
+          value={type}
+          onChange={(e) => setType(e.target.value as "Household" | "Workspace" | "Trip")}
+        >
           <option>Household</option>
           <option>Workspace</option>
           <option>Trip</option>
@@ -243,14 +309,18 @@ function CommuneNew() {
       </div>
       <div className="a-field half">
         <label htmlFor="new-cur">Currency</label>
-        <select id="new-cur">
+        <select id="new-cur" value={currency} onChange={(e) => setCurrency(e.target.value)}>
           <option>£ GBP</option>
           <option>$ USD</option>
           <option>€ EUR</option>
         </select>
       </div>
       <div className="a-field-row">
-        <button className="a-btn" type="button" onClick={() => go("hub-empty", { hub: "studio" })}>
+        <button
+          className="a-btn"
+          type="button"
+          onClick={() => createHub({ name: name.trim() || "New commune", type, currency })}
+        >
           Create
         </button>
         <button className="a-btn ghost" type="button" onClick={closeWindow}>
@@ -290,15 +360,15 @@ function MemberInvite() {
 }
 
 function Profile() {
-  const { go } = useApp();
+  const { go, you } = useApp();
   return (
     <section className="a-window">
       <p className="a-window-kicker">You</p>
       <div className="a-member-row">
-        <Avatar tone="maya" initials="MC" />
+        <Avatar tone="maya" initials={you.initials} />
         <div className="who">
-          <strong>Maya Chen</strong>
-          <span>maya@14park.st</span>
+          <strong>{you.name}</strong>
+          <span>{you.email}</span>
         </div>
         <Pill tone="sage">You</Pill>
       </div>

@@ -29,6 +29,7 @@ import { SettingsScreen } from "./screens/Settings";
 import { Windows } from "./windows/Windows";
 import { cx } from "./ui/cx";
 import type { ScreenId } from "./data/household";
+import { keepSearch } from "./nav";
 
 export function App() {
   return (
@@ -59,13 +60,14 @@ export function App() {
 
 function GuestOnly({ children }: { children: ReactNode }) {
   const { session } = useApp();
-  if (session) return <Redirect to="/" />;
+  if (session?.hasHubs) return <Redirect to={keepSearch("/")} />;
+  if (session) return <Redirect to={keepSearch("/onboard")} />;
   return children;
 }
 
 function ProtectedApp() {
   const { session } = useApp();
-  if (!session) return <Redirect to="/login" />;
+  if (!session) return <Redirect to={keepSearch("/login")} />;
   return <ProductShell />;
 }
 
@@ -106,23 +108,26 @@ function Screen({ screen }: { screen: ScreenId }) {
 }
 
 function ScreenBody({ screen }: { screen: ScreenId }) {
+  const { session, emptyHub } = useApp();
+  const hasHubs = Boolean(session?.hasHubs);
+
   switch (screen) {
     case "home":
-      return <HomeScreen />;
+      return hasHubs ? <HomeScreen /> : <HomeEmptyScreen />;
     case "home-empty":
-      return <HomeEmptyScreen />;
+      return hasHubs ? <HomeScreen /> : <HomeEmptyScreen />;
     case "home-inbox":
-      return <HomeScreen />;
+      return hasHubs ? <HomeScreen /> : <HomeEmptyScreen />;
     case "communes":
       return <PlacesScreen />;
     case "hub":
-      return <HubScreen />;
+      return emptyHub ? <HubEmptyScreen /> : <HubScreen />;
     case "hub-empty":
-      return <HubEmptyScreen />;
+      return emptyHub || !hasHubs ? <HubEmptyScreen /> : <HubScreen />;
     case "expenses":
-      return <ExpensesScreen />;
+      return emptyHub ? <ExpensesEmptyScreen /> : <ExpensesScreen />;
     case "expenses-empty":
-      return <ExpensesEmptyScreen />;
+      return emptyHub || !hasHubs ? <ExpensesEmptyScreen /> : <ExpensesScreen />;
     case "settle":
       return <SettleScreen />;
     case "settle-even":
@@ -148,6 +153,6 @@ function ScreenBody({ screen }: { screen: ScreenId }) {
     case "settings":
       return <SettingsScreen />;
     default:
-      return <HomeScreen />;
+      return hasHubs ? <HomeScreen /> : <HomeEmptyScreen />;
   }
 }

@@ -1,4 +1,5 @@
-export type HubId = "park" | "studio" | "lisbon";
+export type SampleHubId = "park" | "studio" | "lisbon";
+export type HubId = SampleHubId | "created";
 
 export type AvatarTone = "maya" | "jordan" | "alex" | "priya" | "sam" | "ness";
 
@@ -80,7 +81,7 @@ export type Hub = {
   jumps: Array<{ go: ScreenId | WindowId; kicker: string; title: string; hint: string }>;
 };
 
-export const HUBS: Record<HubId, Hub> = {
+export const HUBS: Record<SampleHubId, Hub> = {
   park: {
     id: "park",
     name: "14 Park Street",
@@ -587,4 +588,68 @@ export function isWindowId(id: string): id is WindowId {
 
 export function isScreenId(id: string): id is ScreenId {
   return id in SCREEN_PATH;
+}
+
+export type CreatedHub = {
+  name: string;
+  type: Hub["type"];
+  currency: string;
+};
+
+export function initialsOf(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return "MC";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+}
+
+export function heroClass(hub: Hub): "park" | "studio" | "lisbon" {
+  if (hub.id === "studio" || hub.type === "Workspace") return "studio";
+  if (hub.id === "lisbon" || hub.type === "Trip") return "lisbon";
+  return "park";
+}
+
+export function buildCreatedHub(opts: {
+  name: string;
+  type: Hub["type"];
+  ownerName: string;
+}): Hub {
+  const ini = initialsOf(opts.ownerName);
+  const name = opts.name.trim() || "New commune";
+  const photo =
+    opts.type === "Workspace" ? HUBS.studio.photo : opts.type === "Trip" ? HUBS.lisbon.photo : HUBS.park.photo;
+  return {
+    id: "created",
+    name,
+    type: opts.type,
+    lede: "No bills yet. Add the first one so the house has a truth.",
+    people: `${opts.ownerName} · just you so far`,
+    photo,
+    switchMeta: `${opts.type} · 1 person`,
+    status: "No bills yet",
+    youMeta: `Standard · ${name}`,
+    avatars: [["maya", ini]],
+    oweLabel: "You’re even",
+    oweAmount: "£0.00",
+    oweCopy: "Nothing shared this cycle.",
+    oweCta: "Add expense",
+    credit: false,
+    kpis: [
+      { go: "funds", tone: "peach", kicker: "Fund", num: "£0", hint: "Nothing in yet" },
+      { go: "analytics", tone: "lilac", kicker: "This month", num: "£0", hint: "No spend yet" },
+      { go: "recurring", tone: "sage", kicker: "Open bills", num: "0", hint: "Add the first" },
+      { go: "expenses", tone: "ink", kicker: "Next due", num: "—", hint: "Ledger is empty" },
+    ],
+    now: [],
+    moves: [],
+    members: [{ cls: "maya", ini, name: opts.ownerName, meta: "You · Admin", bal: "Even", muted: true }],
+    activity: [],
+    notes: [],
+    jumps: [
+      { go: "add-expense", kicker: "Expenses", title: "Add the first bill", hint: "Start the ledger" },
+      { go: "notes", kicker: "Notes", title: "Wi-Fi, bins, keys", hint: "Write it down" },
+      { go: "members", kicker: "Members", title: "Invite someone", hint: "A house needs people" },
+      { go: "settle", kicker: "Settle", title: "Nothing to settle", hint: "You’re even" },
+    ],
+  };
 }

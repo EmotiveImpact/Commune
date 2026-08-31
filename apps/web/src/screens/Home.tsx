@@ -1,8 +1,17 @@
 import { useApp } from "../state";
 import { Avatar, Pill } from "../ui/widgets";
+import { heroClass } from "../data/household";
 
 export function HomeScreen() {
-  const { go } = useApp();
+  const { session } = useApp();
+  if (!session?.hasHubs) return <HomeEmptyScreen />;
+  if (session.seed === "new") return <HomeFreshScreen />;
+  return <HomeWeekScreen />;
+}
+
+function HomeWeekScreen() {
+  const { go, places } = useApp();
+  const extra = places.find((hub) => hub.id === "created");
   return (
     <>
       <button className="a-place a-focus-lead" type="button" onClick={() => go("hub", { hub: "park" })}>
@@ -49,6 +58,25 @@ export function HomeScreen() {
           </div>
         </button>
       </div>
+
+      {extra ? (
+        <button
+          className="a-place"
+          type="button"
+          onClick={() => go("hub", { hub: "created" })}
+          style={{ marginTop: 12 }}
+        >
+          <div className={`a-place-hero ${heroClass(extra)}`}>
+            <span className="type">{extra.type}</span>
+            <h3>{extra.name}</h3>
+            <p>No bills yet</p>
+          </div>
+          <div className="a-place-foot">
+            <span>Just you so far</span>
+            <span className="amt even">£0</span>
+          </div>
+        </button>
+      ) : null}
 
       <div className="a-home-greet is-after">
         <h1>Park Street needs you this week.</h1>
@@ -127,8 +155,95 @@ export function HomeScreen() {
   );
 }
 
+function HomeFreshScreen() {
+  const { go, places, you } = useApp();
+  const hub = places[0];
+  if (!hub) return <HomeEmptyScreen />;
+  return (
+    <>
+      <button className="a-place a-focus-lead" type="button" onClick={() => go("hub", { hub: "created" })}>
+        <div className="a-focus-hero">
+          <span className="type">New · {hub.type}</span>
+          <h2>{hub.name}</h2>
+          <p>No bills yet. Add the first one so the house has a truth.</p>
+          <div className="a-cover-people">
+            <div className="avatar-stack">
+              <Avatar tone="maya" initials={you.initials} />
+            </div>
+            Open this hub
+          </div>
+        </div>
+        <div className="a-place-foot">
+          <span>Just you so far</span>
+          <span className="amt even">£0</span>
+        </div>
+      </button>
+      <div className="a-home-greet is-after">
+        <h1>{hub.name} is ready.</h1>
+        <p>Home stays quiet until something is shared.</p>
+      </div>
+      <div className="a-card">
+        <h2>Needs you</h2>
+        <p className="sub">Nothing yet. The first bill is how the house starts telling the truth.</p>
+        <div className="a-field-row">
+          <button className="a-btn" type="button" onClick={() => go("add-expense", { hub: "created" })}>
+            Add expense
+          </button>
+        </div>
+      </div>
+    </>
+  );
+}
+
 export function PlacesScreen() {
-  const { go } = useApp();
+  const { go, places, session } = useApp();
+  if (!session?.hasHubs) {
+    return (
+      <div className="a-empty">
+        <h2>No communes yet.</h2>
+        <p>Create one, or join from an invite.</p>
+        <div className="a-field-row">
+          <button className="a-btn" type="button" onClick={() => go("onboard")}>
+            Create a hub
+          </button>
+          <button className="a-btn ghost" type="button" onClick={() => go("invite")}>
+            I have an invite
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (session.seed === "new") {
+    const hub = places[0];
+    return (
+      <>
+        <div className="a-toolbar">
+          <button className="a-btn" type="button" onClick={() => go("commune-new")}>
+            New commune
+          </button>
+        </div>
+        {hub ? (
+          <div className="a-place-grid">
+            <button className="a-place" type="button" onClick={() => go("hub", { hub: "created" })}>
+              <div className={`a-place-hero ${heroClass(hub)}`}>
+                <span className="type">{hub.type}</span>
+                <h3>{hub.name}</h3>
+                <p>No bills yet</p>
+              </div>
+              <div className="a-place-foot">
+                <span>Just you so far</span>
+                <span className="amt even">£0</span>
+              </div>
+            </button>
+          </div>
+        ) : null}
+      </>
+    );
+  }
+
+  const extra = places.find((hub) => hub.id === "created");
+
   return (
     <>
       <div className="a-toolbar">
@@ -170,6 +285,19 @@ export function PlacesScreen() {
             <span className="amt credit">+£64</span>
           </div>
         </button>
+        {extra ? (
+          <button className="a-place" type="button" onClick={() => go("hub", { hub: "created" })}>
+            <div className={`a-place-hero ${heroClass(extra)}`}>
+              <span className="type">{extra.type}</span>
+              <h3>{extra.name}</h3>
+              <p>No bills yet</p>
+            </div>
+            <div className="a-place-foot">
+              <span>Just you so far</span>
+              <span className="amt even">£0</span>
+            </div>
+          </button>
+        ) : null}
       </div>
 
       <div className="a-card" style={{ marginTop: 18 }}>

@@ -742,7 +742,7 @@
 .a-set-meter i {
   display: block;
   height: 100%;
-  background: #96e85f;
+  background: var(--sage, #2d6a4f);
   border-radius: 99px;
 }
 
@@ -1313,7 +1313,7 @@ div.a-set-row {
   display: block;
   height: 100%;
   width: 89%;
-  background: #96e85f;
+  background: var(--sage, #2d6a4f);
   border-radius: 999px;
 }
 
@@ -1402,7 +1402,7 @@ button.a-kpi {
   display: block;
   height: 100%;
   width: 89%;
-  background: #2d6a4f;
+  background: var(--sage, #2d6a4f);
   border-radius: 999px;
 }
 
@@ -1525,7 +1525,7 @@ button.a-kpi {
 .a-cat .track i {
   display: block;
   height: 100%;
-  background: #2d6a4f;
+  background: var(--sage, #2d6a4f);
   border-radius: 999px;
 }
 
@@ -2482,7 +2482,7 @@ button.a-now-row {
 .a-mini-bars .track i {
   display: block;
   height: 100%;
-  background: #2d6a4f;
+  background: var(--sage, #2d6a4f);
   border-radius: 999px;
 }
 
@@ -3202,7 +3202,7 @@ button.a-item {
     color: #f5f1ea;
   }
   .a-header .a-icon-btn.has-unread::after {
-    background: #96e85f;
+    background: var(--sage, #2d6a4f);
     box-shadow: 0 0 0 2px #1a1e2b;
   }
   .a-you-btn {

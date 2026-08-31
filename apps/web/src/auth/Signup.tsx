@@ -1,12 +1,12 @@
 import { useState, type FormEvent } from "react";
-import { Link, useLocation } from "wouter";
+import { Link } from "wouter";
 import { AuthLayout } from "./AuthLayout";
 import { GoogleMark } from "../ui/Icon";
 import { useApp } from "../state";
+import { keepSearch } from "../nav";
 
 export function SignupPage() {
-  const { signIn } = useApp();
-  const [, setLocation] = useLocation();
+  const { signIn, go } = useApp();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -14,8 +14,14 @@ export function SignupPage() {
   const [error, setError] = useState("");
 
   function enter(nextName: string, nextEmail: string) {
-    signIn({ name: nextName || "Maya Chen", email: nextEmail || "maya@14park.st" });
-    setLocation("/onboard");
+    signIn({
+      name: nextName || "Maya Chen",
+      email: nextEmail || "maya@14park.st",
+      seed: "new",
+      hasHubs: false,
+      emptyLedger: true,
+    });
+    go("onboard");
   }
 
   function onSubmit(event: FormEvent) {
@@ -98,7 +104,7 @@ export function SignupPage() {
         </form>
         <p className="commune-auth-foot">
           Already have an account?{" "}
-          <Link href="/login" className="commune-auth-link">
+          <Link href={keepSearch("/login")} className="commune-auth-link">
             Sign in
           </Link>
         </p>
