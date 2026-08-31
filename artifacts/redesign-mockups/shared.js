@@ -404,7 +404,6 @@
     });
     var map = window.COMMUNE_TITLES;
     if (map) {
-      map.hub = hub.name;
       map["hub-snapshot"] = hub.name;
       map["hub-needs"] = hub.name;
       map["hub-money"] = hub.name;
@@ -453,6 +452,12 @@
   }
 
   document.addEventListener("click", function (e) {
+    var navModeBtn = e.target.closest("[data-nav-mode]");
+    if (navModeBtn) {
+      e.preventDefault();
+      applyNavMode(navModeBtn.getAttribute("data-nav-mode"));
+      return;
+    }
     var chip = e.target.closest(".a-chip");
     if (chip && chip.closest(".a-filters")) {
       chip.parentElement.querySelectorAll(".a-chip").forEach(function (c) {
@@ -473,6 +478,31 @@
   document.documentElement.style.setProperty("--hub-photo", "url('" + HUBS.park.photo + "')");
 
   var params = new URLSearchParams(window.location.search);
+  var NAV_KEY = "commune-nav";
+
+  function applyNavMode(mode) {
+    mode = mode === "advanced" ? "advanced" : "basic";
+    document.body.classList.toggle("nav-basic", mode === "basic");
+    document.body.classList.toggle("nav-advanced", mode === "advanced");
+    try {
+      localStorage.setItem(NAV_KEY, mode);
+    } catch (err) {}
+    document.querySelectorAll("[data-nav-mode]").forEach(function (btn) {
+      btn.classList.toggle("is-on", btn.getAttribute("data-nav-mode") === mode);
+    });
+  }
+
+  function initialNavMode() {
+    var q = params.get("nav");
+    if (q === "basic" || q === "advanced") return q;
+    try {
+      var stored = localStorage.getItem(NAV_KEY);
+      if (stored === "basic" || stored === "advanced") return stored;
+    } catch (err) {}
+    return "basic";
+  }
+
+  if (document.body.classList.contains("a-body")) applyNavMode(initialNavMode());
   if (params.get("hub")) applyHub(params.get("hub"));
   if (params.get("screen")) show(params.get("screen"));
 })();

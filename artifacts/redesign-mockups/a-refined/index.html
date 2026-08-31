@@ -8,15 +8,15 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../shared.css?v=nockbar" />
-    <link rel="stylesheet" href="./styles.css?v=nockbar" />
+    <link rel="stylesheet" href="../shared.css?v=align" />
+    <link rel="stylesheet" href="./styles.css?v=align" />
   </head>
-  <body class="a-body">
+  <body class="a-body nav-basic">
     <div class="a-app">
       <aside class="a-side">
         <div class="a-brand">
-          <img class="a-logo" src="../logo.png" width="36" height="36" alt="Commune" />
-          <span class="a-wordmark">COMMUNE</span>
+          <img class="a-logo" src="../logo.png" width="20" height="20" alt="" aria-hidden="true" />
+          <span class="a-wordmark">Commune</span>
         </div>
 
         <nav class="a-nav" aria-label="Primary">
@@ -29,6 +29,34 @@
             This Hub
           </button>
 
+          <div class="a-nav-basic">
+            <button class="a-link" data-go="expenses" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 8h10M7 12h6M6 4h12a1 1 0 0 1 1 1v16l-4-2-4 2-4-2-4 2V5a1 1 0 0 1 1-1z"/></svg>
+              Expenses
+            </button>
+            <button class="a-link" data-go="settle" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 7h10M7 12h10M7 17h6"/><path d="M17 17h4l-2 3M21 17l-2-3"/></svg>
+              Settle
+            </button>
+            <button class="a-link" data-go="recurring" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 10a8 8 0 0 1 16 0c0 6-8 11-8 11S4 16 4 10z"/><circle cx="12" cy="10" r="2.5"/></svg>
+              Recurring
+            </button>
+            <button class="a-link" data-go="funds" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 7h14l-1 12H6L5 7z"/><path d="M9 7V5a3 3 0 0 1 6 0v2"/></svg>
+              Funds
+            </button>
+            <button class="a-link" data-go="notes" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 4h9l5 5v11H6z"/><path d="M15 4v5h5"/></svg>
+              Notes
+            </button>
+            <button class="a-link" data-go="operations" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3 9-9"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+              Operations
+            </button>
+          </div>
+
+          <div class="a-nav-advanced">
           <div class="a-group-label">Money</div>
           <div class="a-sub">
             <button class="a-link" data-go="expenses" type="button">
@@ -87,6 +115,7 @@
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 2"/><circle cx="12" cy="12" r="9"/></svg>
               Activity
             </button>
+          </div>
           </div>
         </nav>
 
@@ -243,9 +272,7 @@
 
           <!-- PLACES — commune switcher. Pick a space; cards open that hub. -->
           <section class="screen" id="communes" hidden>
-            <div class="a-home-greet">
-              <span class="kicker">Your communes</span>
-              <h1>Pick a space.</h1>
+            <div class="a-page-head">
               <p>Park Street still needs you. Lisbon hasn’t paid you back. Studio is even. Open one to go into that hub.</p>
             </div>
 
@@ -644,10 +671,7 @@
           <!-- EXPENSES -->
           <section class="screen" id="expenses" hidden>
             <div class="a-page-head">
-              <div>
-                <h1>Expenses</h1>
-                <p>Everything the house has shared this cycle.</p>
-              </div>
+              <p>Everything the house has shared this cycle.</p>
               <button class="a-btn" type="button" data-go="add-expense">Add expense</button>
             </div>
             <div class="a-filters">
@@ -732,10 +756,8 @@
           <!-- SETTLE -->
           <section class="screen" id="settle" hidden>
             <div class="a-page-head">
-              <div>
-                <h1>Settle up</h1>
-                <p>Two transfers get 14 Park Street to zero this month.</p>
-              </div>
+              <p>Two transfers get 14 Park Street to zero this month.</p>
+              <button class="a-btn ghost" type="button" data-go="breakdown">Breakdown</button>
             </div>
             <div class="a-settle-hero">
               <div class="a-panel a-settle-card">
@@ -785,10 +807,7 @@
           <!-- RECURRING -->
           <section class="screen" id="recurring" hidden>
             <div class="a-page-head">
-              <div>
-                <h1>Recurring</h1>
-                <p>Open bills. Rent from the fund. The rest split three ways unless you say otherwise.</p>
-              </div>
+              <p>Open bills. Rent from the fund. The rest split three ways unless you say otherwise.</p>
               <button class="a-btn ghost" type="button" data-go="templates">Split templates</button>
             </div>
             <div class="a-panel">
@@ -839,10 +858,7 @@
           <!-- FUNDS -->
           <section class="screen" id="funds" hidden>
             <div class="a-page-head">
-              <div>
-                <h1>House fund</h1>
-                <p>August rent already left. £180 still to collect from Alex.</p>
-              </div>
+              <p>August rent already left. £180 still to collect from Alex.</p>
               <button class="a-btn" type="button" data-go="notices">Chase Alex</button>
             </div>
             <div class="a-panel">
@@ -872,10 +888,7 @@
           <!-- TEMPLATES -->
           <section class="screen" id="templates" hidden>
             <div class="a-page-head">
-              <div>
-                <h1>Templates</h1>
-                <p>Defaults for this house. Override on any expense.</p>
-              </div>
+              <p>Defaults for this house. Override on any expense.</p>
             </div>
             <div class="a-panel">
               <div class="a-settle-row">
@@ -896,10 +909,7 @@
           <!-- BILLING -->
           <section class="screen" id="billing" hidden>
             <div class="a-page-head">
-              <div>
-                <h1>Billing</h1>
-                <p>Standard · this workspace, not the house fund.</p>
-              </div>
+              <p>Standard · this workspace, not the house fund.</p>
             </div>
             <div class="a-panel">
               <div class="a-settle-row">
@@ -916,10 +926,7 @@
           <!-- ANALYTICS -->
           <section class="screen" id="analytics" hidden>
             <div class="a-page-head">
-              <div>
-                <h1>Analytics</h1>
-                <p>This month. Home showed £2,140 of £2,400 — the six-month view lives here.</p>
-              </div>
+              <p>This month. Home showed £2,140 of £2,400 — the six-month view lives here.</p>
             </div>
             <div class="a-kpis">
               <div class="a-kpi sage"><span>You’re owed</span><strong>£18</strong><small>Jordan · Tesco</small></div>
@@ -957,10 +964,7 @@
           <!-- BREAKDOWN -->
           <section class="screen" id="breakdown" hidden>
             <div class="a-page-head">
-              <div>
-                <h1>Breakdown</h1>
-                <p>Same truth as Settle — the ledger view of who owes whom.</p>
-              </div>
+              <p>Same truth as Settle — the ledger view of who owes whom.</p>
               <button class="a-btn" type="button" data-go="settle">Open settlement</button>
             </div>
             <div class="a-card a-owes">
@@ -994,10 +998,7 @@
           <!-- MEMBERS -->
           <section class="screen" id="members" hidden>
             <div class="a-page-head">
-              <div>
-                <h1>Members</h1>
-                <p>Balances for this cycle, not personalities.</p>
-              </div>
+              <p>Balances for this cycle, not personalities.</p>
             </div>
             <div class="a-panel">
               <div class="a-member-row">
@@ -1021,10 +1022,7 @@
           <!-- OPERATIONS -->
           <section class="screen" id="operations" hidden>
             <div class="a-page-head">
-              <div>
-                <h1>Operations</h1>
-                <p>Bins and chores. Wi-Fi and the landlord live in Notes.</p>
-              </div>
+              <p>Bins and chores. Wi-Fi and the landlord live in Notes.</p>
             </div>
             <div class="a-panel">
               <div class="a-settle-row">
@@ -1049,10 +1047,7 @@
           <!-- NOTES -->
           <section class="screen" id="notes" hidden>
             <div class="a-page-head">
-              <div>
-                <h1>Notes</h1>
-                <p>Wi-Fi, bin day, landlord — the pin. Not a chore list, not the ledger.</p>
-              </div>
+              <p>Wi-Fi, bin day, landlord — the pin. Not a chore list, not the ledger.</p>
             </div>
             <div class="a-panel">
               <div class="a-settle-row">
@@ -1070,10 +1065,7 @@
           <!-- ACTIVITY -->
           <section class="screen" id="activity" hidden>
             <div class="a-page-head">
-              <div>
-                <h1>Activity</h1>
-                <p>The log, without the group chat.</p>
-              </div>
+              <p>The log, without the group chat.</p>
             </div>
             <div class="a-panel">
               <div class="a-settle-row">
@@ -1102,10 +1094,7 @@
           <!-- NOTICES -->
           <section class="screen" id="notices" hidden>
             <div class="a-page-head">
-              <div>
-                <h1>Notices</h1>
-                <p>Gas, bins, and Alex’s share of the fund.</p>
-              </div>
+              <p>Gas, bins, and Alex’s share of the fund.</p>
             </div>
             <div class="a-panel">
               <button class="a-notice" type="button" data-go="expenses">
@@ -1126,10 +1115,7 @@
           <!-- ADD EXPENSE -->
           <section class="screen" id="add-expense" hidden>
             <div class="a-page-head">
-              <div>
-                <h1>Add expense</h1>
-                <p>Park Street · split three ways unless you pick a template.</p>
-              </div>
+              <p>Park Street · split three ways unless you pick a template.</p>
             </div>
             <div class="a-panel" style="max-width:520px">
               <div class="a-field">
@@ -1166,10 +1152,7 @@
           <!-- PROFILE -->
           <section class="screen" id="profile" hidden>
             <div class="a-page-head">
-              <div>
-                <h1>Maya Chen</h1>
-                <p>You · Admin at 14 Park Street.</p>
-              </div>
+              <p>You · Admin at 14 Park Street.</p>
             </div>
             <div class="a-panel">
               <div class="a-member-row">
@@ -1191,12 +1174,17 @@
           <!-- SETTINGS -->
           <section class="screen" id="settings" hidden>
             <div class="a-page-head">
-              <div>
-                <h1>Settings</h1>
-                <p>Currency, notices, and who gets nudged.</p>
-              </div>
+              <p>Currency, notices, and how much sidebar you want.</p>
             </div>
             <div class="a-panel" style="max-width:520px">
+              <div class="a-field">
+                <label>Sidebar</label>
+                <div class="a-seg" role="group" aria-label="Sidebar density">
+                  <button type="button" data-nav-mode="basic" class="is-on">Basic</button>
+                  <button type="button" data-nav-mode="advanced">Advanced</button>
+                </div>
+                <p class="hint">Basic is Home, This Hub, and the jumps from the house. Advanced adds Members, Activity, Analytics, Templates, Billing, and Breakdown.</p>
+              </div>
               <div class="a-field">
                 <label for="a-set-cur">Currency</label>
                 <select id="a-set-cur">
@@ -1229,7 +1217,7 @@
         "home-focus": "Home",
         "home-places": "Places",
         communes: "Places",
-        hub: "14 Park Street",
+        hub: "This Hub",
         expenses: "Expenses",
         settle: "Settle",
         recurring: "Recurring",
@@ -1248,6 +1236,6 @@
         settings: "Settings"
       };
     </script>
-    <script src="../shared.js?v=nockbar"></script>
+    <script src="../shared.js?v=align"></script>
   </body>
 </html>
