@@ -1,0 +1,60 @@
+.hero { min-height: calc(100svh - 72px); display: grid; grid-template-columns: .9fr 1.1fr; border-bottom: 4px solid var(--ink); }
+.hero__copy { padding: clamp(52px, 7vw, 100px); display: flex; flex-direction: column; justify-content: center; }
+.hero h1 { max-width: 10ch; margin: 18px 0 30px; font-size: clamp(52px, 7vw, 96px); font-weight: 600; line-height: .93; letter-spacing: -.06em; }
+.hero .editorial-line { max-width: 28ch; }
+.hero .button { align-self: flex-start; margin-top: 32px; }
+.hero__note { margin-top: 12px; font-size: 12px; color: var(--muted); }
+
+.plan { display: grid; grid-template: 1fr .8fr / 1.1fr .9fr; border-left: 4px solid var(--ink); }
+.plan > div { min-width: 0; padding: clamp(24px, 4vw, 58px); display: flex; flex-direction: column; justify-content: space-between; border: 1px solid var(--ink); }
+.plan strong { font-size: clamp(30px, 5vw, 72px); line-height: .95; }
+.plan__month { background: var(--sage); color: var(--white); }
+.plan__month .amount { font-size: clamp(74px, 11vw, 160px); }
+.plan__due { background: var(--sand); }
+.plan__fund { background: var(--navy); color: var(--white); }
+.plan__fund .amount { font-size: clamp(60px, 8vw, 116px); }
+.plan__people { background: var(--paper); }
+.plan__people strong { font-size: clamp(24px, 3vw, 42px); }
+
+.rooms { border-bottom: 4px solid var(--ink); }
+.room { min-height: 54svh; padding: clamp(40px, 7vw, 90px); display: flex; align-items: flex-end; justify-content: space-between; gap: 40px; border-top: 2px solid var(--ink); }
+.room h2 { margin-top: 14px; font-size: clamp(44px, 7vw, 100px); font-weight: 600; line-height: .92; letter-spacing: -.055em; }
+.room > .amount, .room__fact { font-size: clamp(90px, 18vw, 260px); line-height: .7; font-weight: 800; letter-spacing: -.06em; }
+.room--paper { background: var(--paper); }
+.room--sage { background: var(--sage); color: var(--white); }
+.room--navy { background: var(--navy); color: var(--white); }
+.room--sand { background: var(--sand); }
+.room-pair { display: grid; grid-template-columns: 1fr 1fr; }
+.room-pair .room { min-height: 70svh; align-items: flex-start; flex-direction: column; }
+.room-pair .room + .room { border-left: 4px solid var(--ink); }
+.room-pair .amount { font-size: clamp(72px, 12vw, 170px); line-height: .72; }
+
+.pricing { border-bottom: 4px solid var(--ink); }
+.pricing__intro { padding: 90px 7vw 56px; display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: end; }
+.pricing h2 { margin-top: 14px; font-size: clamp(38px, 5.5vw, 76px); line-height: .96; letter-spacing: -.05em; }
+.pricing__intro > p:last-child { color: var(--muted); justify-self: end; }
+.pricing__rates { display: grid; grid-template-columns: repeat(3, 1fr); border-block: 2px solid var(--ink); }
+.pricing__rates div { min-height: 170px; padding: 30px 4vw; display: flex; flex-direction: column; justify-content: space-between; }
+.pricing__rates div + div { border-left: 2px solid var(--ink); }
+.pricing__rates strong { font-size: clamp(36px, 5vw, 68px); }
+.pricing__cta { min-height: 48svh; padding: 70px 7vw; display: flex; justify-content: space-between; align-items: flex-end; gap: 40px; background: var(--green); color: var(--white); }
+.pricing__cta h2 { max-width: 10ch; }
+
+@media (max-width: 720px) {
+  .hero { min-height: auto; grid-template-columns: 1fr; }
+  .hero__copy { padding: 64px 16px 70px; }
+  .hero h1 { font-size: clamp(46px, 13.5vw, 62px); }
+  .plan { min-height: 560px; border-left: 0; border-top: 4px solid var(--ink); }
+  .plan > div { padding: 22px; }
+  .room { min-height: 50svh; padding: 54px 16px; align-items: flex-start; flex-direction: column; }
+  .room > .amount, .room__fact { font-size: 30vw; }
+  .room-pair { grid-template-columns: 1fr; }
+  .room-pair .room { min-height: 52svh; }
+  .room-pair .room + .room { border-left: 0; }
+  .pricing__intro { grid-template-columns: 1fr; padding: 70px 16px 44px; }
+  .pricing__intro > p:last-child { justify-self: start; }
+  .pricing__rates { grid-template-columns: 1fr; }
+  .pricing__rates div { min-height: 120px; padding: 24px 16px; }
+  .pricing__rates div + div { border-left: 0; border-top: 2px solid var(--ink); }
+  .pricing__cta { min-height: 46svh; padding: 56px 16px; align-items: flex-start; flex-direction: column; }
+}

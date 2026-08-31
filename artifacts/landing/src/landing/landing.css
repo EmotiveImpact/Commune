@@ -199,6 +199,13 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 .cover__k { color: #8fbfa4; margin-bottom: 14px; }
 .cover__h { max-width: 640px; margin-bottom: 14px; }
 .cover__lead { max-width: 420px; color: rgba(255,255,255,0.68); margin-bottom: 8px; }
+.cover .btn {
+  height: 42px;
+  border-radius: 16px;
+  transition: transform 160ms ease, background 160ms ease;
+}
+.cover .btn:hover { transform: translateY(-1px); }
+.cover .btn:active { transform: scale(.98); }
 
 .contents { padding: 0 0 80px; }
 .contents__k {
@@ -242,6 +249,14 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 }
 .contents__swatch--forest { background: #173d32; }
 .contents__swatch--orange { background: #d95e3f; color: #171714; }
+.contents__swatch--column {
+  background: #f5f1ea;
+  color: #2d6a4f;
+  border: 1px solid rgba(23, 27, 36, 0.18);
+}
+.contents__swatch--rooms {
+  background: linear-gradient(90deg, #b8d8c5 0 50%, #202738 50%);
+}
 
 /* ════════════════════════════════════════
    PAPER — house journal
