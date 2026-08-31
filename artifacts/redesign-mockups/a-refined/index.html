@@ -8,10 +8,124 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../shared.css?v=lede" />
-    <link rel="stylesheet" href="./styles.css?v=lede" />
+    <link rel="stylesheet" href="../shared.css?v=map" />
+    <link rel="stylesheet" href="./styles.css?v=map" />
   </head>
   <body class="a-body nav-basic">
+    <div class="a-gate">
+      <section class="screen" id="login" hidden>
+        <div class="a-gate-card">
+          <div class="a-gate-brand">
+            <img src="../logo.png" width="28" height="28" alt="" />
+            <span>Commune</span>
+          </div>
+          <h1>Welcome back.</h1>
+          <p class="lede">Park Street, Studio, Lisbon — one login.</p>
+          <div class="a-panel">
+            <div class="a-field">
+              <label for="a-login-email">Email</label>
+              <input id="a-login-email" type="email" value="maya@14park.st" />
+            </div>
+            <div class="a-field">
+              <label for="a-login-pass">Password</label>
+              <input id="a-login-pass" type="password" value="••••••••" />
+            </div>
+            <div class="a-field-row">
+              <button class="a-btn" type="button" data-go="home">Enter</button>
+              <button class="a-btn ghost" type="button" data-go="home-empty">I’m new</button>
+            </div>
+          </div>
+          <p class="a-gate-alt">No account? <button type="button" data-go="signup">Sign up</button></p>
+        </div>
+      </section>
+
+      <section class="screen" id="signup" hidden>
+        <div class="a-gate-card">
+          <div class="a-gate-brand">
+            <img src="../logo.png" width="28" height="28" alt="" />
+            <span>Commune</span>
+          </div>
+          <h1>Start a commune.</h1>
+          <p class="lede">Then create a hub, or join one you’ve been invited to.</p>
+          <div class="a-panel">
+            <div class="a-field">
+              <label for="a-su-name">Name</label>
+              <input id="a-su-name" type="text" value="Maya Chen" />
+            </div>
+            <div class="a-field">
+              <label for="a-su-email">Email</label>
+              <input id="a-su-email" type="email" value="maya@14park.st" />
+            </div>
+            <div class="a-field">
+              <label for="a-su-pass">Password</label>
+              <input id="a-su-pass" type="password" value="••••••••" />
+            </div>
+            <div class="a-field-row">
+              <button class="a-btn" type="button" data-go="onboard">Create account</button>
+            </div>
+          </div>
+          <p class="a-gate-alt">Already here? <button type="button" data-go="login">Log in</button></p>
+        </div>
+      </section>
+
+      <section class="screen" id="invite" hidden>
+        <div class="a-gate-card">
+          <div class="a-gate-brand">
+            <img src="../logo.png" width="28" height="28" alt="" />
+            <span>Commune</span>
+          </div>
+          <h1>Jordan invited you.</h1>
+          <p class="lede">14 Park Street · household · Maya, Jordan, and you.</p>
+          <div class="a-panel">
+            <div class="a-member-row">
+              <span class="avatar jordan">JH</span>
+              <div class="who"><strong>14 Park Street</strong><span>Household · 3 people after you join</span></div>
+            </div>
+            <div class="a-field-row">
+              <button class="a-btn" type="button" data-hub="park" data-go="hub">Join this hub</button>
+              <button class="a-btn ghost" type="button" data-go="login">Sign in first</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="screen" id="onboard" hidden>
+        <div class="a-gate-card">
+          <div class="a-gate-brand">
+            <img src="../logo.png" width="28" height="28" alt="" />
+            <span>Commune</span>
+          </div>
+          <h1>Name the space.</h1>
+          <p class="lede">A home, a studio, a trip. One hub. You can add more later.</p>
+          <div class="a-panel">
+            <div class="a-field">
+              <label for="a-ob-name">Name</label>
+              <input id="a-ob-name" type="text" value="14 Park Street" />
+            </div>
+            <div class="a-field">
+              <label for="a-ob-type">Type</label>
+              <select id="a-ob-type">
+                <option selected>Household</option>
+                <option>Workspace</option>
+                <option>Trip</option>
+              </select>
+            </div>
+            <div class="a-field">
+              <label for="a-ob-cur">Currency</label>
+              <select id="a-ob-cur">
+                <option selected>£ GBP</option>
+                <option>$ USD</option>
+                <option>€ EUR</option>
+              </select>
+            </div>
+            <div class="a-field-row">
+              <button class="a-btn" type="button" data-go="hub-empty">Create hub</button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
     <div class="a-app">
       <aside class="a-side">
         <div class="a-brand">
@@ -272,6 +386,9 @@
 
           <!-- PLACES — commune switcher. Pick a space; cards open that hub. -->
           <section class="screen" id="communes" hidden>
+            <div class="a-toolbar">
+              <button class="a-btn" type="button" data-go="commune-new">New commune</button>
+            </div>
             <div class="a-place-grid">
               <button class="a-place" type="button" data-hub="park" data-go="hub">
                 <div class="a-place-hero park">
@@ -690,7 +807,7 @@
                 </thead>
                 <tbody>
                   <tr>
-                    <td><strong>British Gas</strong></td>
+                    <td><button class="a-name-btn" type="button" data-go="expense">British Gas</button></td>
                     <td>Utilities</td>
                     <td>Jordan Hale</td>
                     <td>29 Aug</td>
@@ -698,13 +815,13 @@
                     <td class="amt">£94.20</td>
                     <td>
                       <div class="a-row-actions">
-                        <button class="a-btn" type="button">Mark paid</button>
-                        <button class="a-btn nudge" type="button">Nudge</button>
+                        <button class="a-btn" type="button" data-go="expense-paid">Mark paid</button>
+                        <button class="a-btn nudge" type="button" data-go="notices">Nudge</button>
                       </div>
                     </td>
                   </tr>
                   <tr>
-                    <td><strong>Virgin Media</strong></td>
+                    <td><button class="a-name-btn" type="button" data-go="expense">Virgin Media</button></td>
                     <td>Internet</td>
                     <td>Maya Chen</td>
                     <td>12 Aug</td>
@@ -712,7 +829,7 @@
                     <td class="amt">£32.00</td>
                     <td>
                       <div class="a-row-actions">
-                        <button class="a-btn" type="button">Mark paid</button>
+                        <button class="a-btn" type="button" data-go="expense-paid">Mark paid</button>
                       </div>
                     </td>
                   </tr>
@@ -777,7 +894,7 @@
                   <div class="why">British Gas share · or £24 if you net Tesco</div>
                 </div>
                 <div class="amt">£42</div>
-                <button class="a-btn" type="button">Mark paid</button>
+                <button class="a-btn" type="button" data-go="expense-paid">Mark paid</button>
               </div>
               <div class="a-move">
                 <div class="a-arrow">→</div>
@@ -786,7 +903,7 @@
                   <div class="why">Tesco extras from Monday</div>
                 </div>
                 <div class="amt">£18</div>
-                <button class="a-btn nudge" type="button">Nudge</button>
+                <button class="a-btn nudge" type="button" data-go="notices">Nudge</button>
               </div>
               <div class="a-move" style="opacity:.72">
                 <div class="a-arrow" style="background:#f0ece4">↔</div>
@@ -981,6 +1098,9 @@
 
           <!-- MEMBERS -->
           <section class="screen" id="members" hidden>
+            <div class="a-toolbar">
+              <button class="a-btn" type="button" data-go="member-invite">Invite</button>
+            </div>
             <div class="a-panel">
               <div class="a-member-row">
                 <span class="avatar maya">MC</span>
@@ -1109,9 +1229,159 @@
                 </select>
               </div>
               <div class="a-field-row">
-                <button class="a-btn" type="button" data-go="expenses">Save</button>
-                <button class="a-btn ghost" type="button" data-go="home">Cancel</button>
+                <button class="a-btn" type="button" data-go="expense">Save</button>
+                <button class="a-btn ghost" type="button" data-go="expenses">Cancel</button>
               </div>
+            </div>
+          </section>
+
+          <!-- HOME · EMPTY -->
+          <section class="screen" id="home-empty" hidden>
+            <div class="a-empty">
+              <h2>No communes yet.</h2>
+              <p>A hub is a house, a studio, or a trip. Create one, or join from an invite.</p>
+              <div class="a-field-row">
+                <button class="a-btn" type="button" data-go="onboard">Create a hub</button>
+                <button class="a-btn ghost" type="button" data-go="invite">I have an invite</button>
+              </div>
+            </div>
+          </section>
+
+          <!-- THIS HUB · EMPTY -->
+          <section class="screen" id="hub-empty" hidden>
+            <div class="a-cover">
+              <span class="type">Household</span>
+              <h1>14 Park Street</h1>
+              <p class="lede">No bills yet. Add the first one so the house has a truth.</p>
+            </div>
+            <div class="a-empty a-cover-empty">
+              <p>Rent, gas, Tesco — once something is shared, Home and Settle will have something to say.</p>
+              <button class="a-btn" type="button" data-go="add-expense">Add expense</button>
+            </div>
+          </section>
+
+          <!-- EXPENSES · EMPTY -->
+          <section class="screen" id="expenses-empty" hidden>
+            <div class="a-toolbar">
+              <button class="a-btn" type="button" data-go="add-expense">Add expense</button>
+            </div>
+            <div class="a-empty">
+              <h2>Nothing shared this cycle.</h2>
+              <p>The first bill is how the house starts telling the truth.</p>
+            </div>
+          </section>
+
+          <!-- EXPENSE -->
+          <section class="screen" id="expense" hidden>
+            <div class="a-panel" style="max-width:560px">
+              <div class="a-fund-hero">
+                <div>
+                  <span>Utilities · due Friday</span>
+                  <strong>British Gas</strong>
+                  <p>Jordan paid £94.20. Split three ways. Your share is still open.</p>
+                </div>
+                <span class="pill warn">Due Friday</span>
+              </div>
+              <div class="a-split">
+                <div class="a-split-row">
+                  <span class="avatar jordan">JH</span>
+                  <div class="grow"><strong>Jordan Hale</strong><div class="when">Paid the bill</div></div>
+                  <span class="pill settled">Paid in</span>
+                </div>
+                <div class="a-split-row">
+                  <span class="avatar maya">MC</span>
+                  <div class="grow"><strong>Maya Chen</strong><div class="when">Your share · £31.40</div></div>
+                  <span class="pill warn">Open</span>
+                </div>
+                <div class="a-split-row">
+                  <span class="avatar alex">AR</span>
+                  <div class="grow"><strong>Alex Rivera</strong><div class="when">Share · £31.40</div></div>
+                  <span class="pill open">Open</span>
+                </div>
+              </div>
+              <div class="a-field-row">
+                <button class="a-btn" type="button" data-go="expense-paid">Mark my share paid</button>
+                <button class="a-btn nudge" type="button" data-go="notices">Nudge Alex</button>
+                <button class="a-btn ghost" type="button" data-go="expenses">Back</button>
+              </div>
+            </div>
+          </section>
+
+          <!-- EXPENSE · PAID -->
+          <section class="screen" id="expense-paid" hidden>
+            <div class="a-panel" style="max-width:560px">
+              <div class="a-fund-hero">
+                <div>
+                  <span>Utilities</span>
+                  <strong>British Gas</strong>
+                  <p>Your share is marked paid. Settle still has You → Jordan if you net Tesco.</p>
+                </div>
+                <span class="pill settled">You paid</span>
+              </div>
+              <div class="a-field-row">
+                <button class="a-btn" type="button" data-go="settle">Open settlement</button>
+                <button class="a-btn ghost" type="button" data-go="expenses">Back to expenses</button>
+              </div>
+            </div>
+          </section>
+
+          <!-- NEW COMMUNE -->
+          <section class="screen" id="commune-new" hidden>
+            <div class="a-panel" style="max-width:520px">
+              <div class="a-field">
+                <label for="a-new-name">Name</label>
+                <input id="a-new-name" type="text" value="Studio East" />
+              </div>
+              <div class="a-field">
+                <label for="a-new-type">Type</label>
+                <select id="a-new-type">
+                  <option>Household</option>
+                  <option selected>Workspace</option>
+                  <option>Trip</option>
+                </select>
+              </div>
+              <div class="a-field">
+                <label for="a-new-cur">Currency</label>
+                <select id="a-new-cur">
+                  <option selected>£ GBP</option>
+                  <option>$ USD</option>
+                  <option>€ EUR</option>
+                </select>
+              </div>
+              <div class="a-field-row">
+                <button class="a-btn" type="button" data-hub="studio" data-go="hub-empty">Create</button>
+                <button class="a-btn ghost" type="button" data-go="communes">Cancel</button>
+              </div>
+            </div>
+          </section>
+
+          <!-- INVITE MEMBER -->
+          <section class="screen" id="member-invite" hidden>
+            <div class="a-panel" style="max-width:520px">
+              <div class="a-field">
+                <label for="a-inv-email">Email</label>
+                <input id="a-inv-email" type="email" placeholder="name@email.com" value="ness@lisbon.trip" />
+              </div>
+              <div class="a-field">
+                <label for="a-inv-role">Role</label>
+                <select id="a-inv-role">
+                  <option selected>Member</option>
+                  <option>Admin</option>
+                </select>
+              </div>
+              <div class="a-field-row">
+                <button class="a-btn" type="button" data-go="members">Send invite</button>
+                <button class="a-btn ghost" type="button" data-go="members">Cancel</button>
+              </div>
+            </div>
+          </section>
+
+          <!-- SETTLE · EVEN -->
+          <section class="screen" id="settle-even" hidden>
+            <div class="a-empty">
+              <h2>You’re even.</h2>
+              <p>Studio East has nothing to send this cycle. Ink on Monday still gets logged as an expense.</p>
+              <button class="a-btn" type="button" data-hub="studio" data-go="add-expense">Log the ink</button>
             </div>
           </section>
 
@@ -1122,6 +1392,10 @@
                 <span class="avatar maya">MC</span>
                 <div class="who"><strong>Maya Chen</strong><span>maya@14park.st</span></div>
                 <span class="pill sage">You</span>
+              </div>
+              <div class="a-settle-row">
+                <div><strong>Pay Maya</strong><div style="font-size:12px;color:var(--ink-soft)">Revolut · @mayachen</div></div>
+                <span class="pill sage">Default</span>
               </div>
               <div class="a-settle-row">
                 <div><strong>Plan</strong><div style="font-size:12px;color:var(--ink-soft)">Standard · 8 members · 1 hub</div></div>
@@ -1173,13 +1447,20 @@
     <script>
       window.COMMUNE_TITLES = {
         home: "Home",
+        "home-empty": "Home",
         "home-inbox": "Home",
         "home-focus": "Home",
         "home-places": "Places",
         communes: "Places",
+        "commune-new": "New commune",
         hub: "This Hub",
+        "hub-empty": "This Hub",
         expenses: "Expenses",
+        "expenses-empty": "Expenses",
+        expense: "British Gas",
+        "expense-paid": "British Gas",
         settle: "Settle",
+        "settle-even": "Settle",
         recurring: "Recurring",
         funds: "Funds",
         templates: "Templates",
@@ -1192,17 +1473,29 @@
         activity: "Activity",
         notices: "Notices",
         "add-expense": "Add expense",
+        "member-invite": "Invite",
+        login: "Log in",
+        signup: "Sign up",
+        invite: "Invite",
+        onboard: "Create a hub",
         profile: "Profile",
         settings: "Settings"
       };
       window.COMMUNE_LEDES = {
         home: "3 spaces · you owe £42 · you’re owed £64",
+        "home-empty": "Create a hub, or join one.",
         "home-inbox": "Six things across three spaces.",
         "home-focus": "3 spaces · you owe £42 · you’re owed £64",
         "home-places": "Park Street still needs you. Lisbon hasn’t paid you back.",
         communes: "Park Street still needs you. Lisbon hasn’t paid you back.",
+        "commune-new": "A home, a studio, or a trip.",
+        "hub-empty": "No bills yet.",
         expenses: "Everything the house has shared this cycle.",
+        "expenses-empty": "Add the first bill.",
+        expense: "Jordan paid. Your share is open.",
+        "expense-paid": "Your share is marked paid.",
         settle: "Two transfers get the house to zero this month.",
+        "settle-even": "Nothing to send this cycle.",
         recurring: "Open bills. Rent from the fund.",
         funds: "August rent already left. £180 still from Alex.",
         templates: "Defaults for this house. Override on any expense.",
@@ -1215,10 +1508,11 @@
         activity: "The log, without the group chat.",
         notices: "Gas, bins, and Alex’s share of the fund.",
         "add-expense": "Split three ways unless you pick a template.",
+        "member-invite": "They’ll get a link to this hub.",
         profile: "You · Admin at 14 Park Street.",
         settings: "Currency, notices, and how much sidebar you want."
       };
     </script>
-    <script src="../shared.js?v=lede"></script>
+    <script src="../shared.js?v=map"></script>
   </body>
 </html>

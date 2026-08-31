@@ -170,8 +170,10 @@
   window.COMMUNE_CURRENT_HUB = HUBS.park;
 
   var HOME_STATUS = "3 spaces · you owe £42 · you’re owed £64";
-  var HUB_SCREENS = { hub: true, "hub-snapshot": true, "hub-needs": true, "hub-money": true };
-  var HOME_NAV = { home: true, "home-inbox": true, "home-focus": true };
+  var HOME_NAV = { home: true, "home-inbox": true, "home-focus": true, "home-empty": true };
+  var HUB_SCREENS = { hub: true, "hub-snapshot": true, "hub-needs": true, "hub-money": true, "hub-empty": true };
+  var GATE_SCREENS = { login: true, signup: true, invite: true, onboard: true };
+  var EXPENSE_SCREENS = { expenses: true, "expenses-empty": true, expense: true, "expense-paid": true, "add-expense": true };
   var HOME_STATUS_SCREENS = { home: true, communes: true, "home-inbox": true, "home-focus": true, "home-places": true };
 
   function pfx() {
@@ -419,6 +421,16 @@
       aliases["home-places"] = "home";
     }
     var activeId = aliases[id] || id;
+    if (
+      activeId === "settle" &&
+      document.getElementById("settle-even") &&
+      window.COMMUNE_CURRENT_HUB &&
+      window.COMMUNE_CURRENT_HUB.oweAmount === "£0.00" &&
+      !window.COMMUNE_CURRENT_HUB.credit
+    ) {
+      activeId = "settle-even";
+    }
+    document.body.classList.toggle("is-gate", !!GATE_SCREENS[activeId]);
     document.querySelectorAll(".screen").forEach(function (s) {
       s.hidden = s.id !== activeId;
     });
@@ -438,6 +450,26 @@
     }
     if (HOME_NAV[activeId]) {
       document.querySelectorAll("nav .a-link[data-go='home'], nav .d-link[data-go='home']").forEach(function (el) {
+        el.classList.add("is-active");
+      });
+    }
+    if (EXPENSE_SCREENS[activeId]) {
+      document.querySelectorAll("nav .a-link[data-go='expenses']").forEach(function (el) {
+        el.classList.add("is-active");
+      });
+    }
+    if (activeId === "settle-even") {
+      document.querySelectorAll("nav .a-link[data-go='settle']").forEach(function (el) {
+        el.classList.add("is-active");
+      });
+    }
+    if (activeId === "commune-new") {
+      document.querySelectorAll(".a-hub-switch[data-go='communes']").forEach(function (el) {
+        el.classList.add("is-active");
+      });
+    }
+    if (activeId === "member-invite") {
+      document.querySelectorAll("nav .a-link[data-go='members']").forEach(function (el) {
         el.classList.add("is-active");
       });
     }
@@ -482,6 +514,16 @@
   });
 
   document.documentElement.style.setProperty("--hub-photo", "url('" + HUBS.park.photo + "')");
+
+  var searchInput = document.querySelector(".a-search input");
+  if (searchInput) {
+    searchInput.addEventListener("keydown", function (ev) {
+      if (ev.key === "Enter") {
+        ev.preventDefault();
+        show("expenses");
+      }
+    });
+  }
 
   var params = new URLSearchParams(window.location.search);
   var NAV_KEY = "commune-nav";
