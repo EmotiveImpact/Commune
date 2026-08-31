@@ -18,3 +18,7 @@ body,
 .a-brand:hover .a-wordmark {
   color: #fff;
 }
+
+.a-main {
+  min-height: 0;
+}

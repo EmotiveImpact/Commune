@@ -98,6 +98,14 @@ function ProductShell() {
 }
 
 function Screen({ screen }: { screen: ScreenId }) {
+  return (
+    <section className="screen" id={screen}>
+      <ScreenBody screen={screen} />
+    </section>
+  );
+}
+
+function ScreenBody({ screen }: { screen: ScreenId }) {
   switch (screen) {
     case "home":
       return <HomeScreen />;

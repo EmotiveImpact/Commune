@@ -212,6 +212,7 @@
   letter-spacing: 0;
   text-transform: none;
   line-height: 1.2;
+  color: rgba(255, 255, 255, 0.76);
 }
 
 .a-switch-section {
