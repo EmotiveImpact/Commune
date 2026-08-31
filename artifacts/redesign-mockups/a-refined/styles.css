@@ -509,7 +509,7 @@ button.a-kpi {
   display: block;
   width: 100%;
   margin: 0;
-  border: 1px solid rgba(22, 19, 29, 0.08);
+  border: 1px solid var(--border);
   font: inherit;
   color: inherit;
   text-align: left;
@@ -520,14 +520,16 @@ button.a-kpi {
 
 .a-kpi {
   padding: 16px 16px 14px;
-  border-radius: 12px;
-  border: 1px solid rgba(22, 19, 29, 0.08);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.86);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
 }
 
-.a-kpi.sage { background: linear-gradient(180deg, rgba(216, 235, 228, 0.44), rgba(216, 235, 228, 0.18)); }
-.a-kpi.peach { background: linear-gradient(180deg, rgba(239, 217, 200, 0.42), rgba(239, 217, 200, 0.16)); }
-.a-kpi.lilac { background: linear-gradient(180deg, rgba(231, 222, 241, 0.46), rgba(231, 222, 241, 0.18)); }
-.a-kpi.ink { background: linear-gradient(180deg, rgba(31, 26, 42, 0.08), rgba(31, 26, 42, 0.03)); }
+.a-kpi.sage { background: linear-gradient(180deg, rgba(216, 235, 228, 0.5), rgba(255, 255, 255, 0.92)); }
+.a-kpi.peach { background: linear-gradient(180deg, rgba(239, 217, 200, 0.48), rgba(255, 255, 255, 0.92)); }
+.a-kpi.lilac { background: linear-gradient(180deg, rgba(231, 222, 241, 0.52), rgba(255, 255, 255, 0.92)); }
+.a-kpi.ink { background: linear-gradient(180deg, rgba(31, 26, 42, 0.06), rgba(255, 255, 255, 0.92)); }
 
 .a-kpi span {
   display: block;
