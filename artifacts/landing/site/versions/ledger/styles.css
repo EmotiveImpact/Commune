@@ -1,0 +1,184 @@
+/* Ledger — Obodo blocks, house sheet in the ink card. */
+
+.nav .brand {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  text-transform: lowercase;
+}
+
+.nav .btn {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.page {
+  padding-top: 6px;
+  padding-bottom: 56px;
+}
+
+.photo {
+  height: 36vh;
+  min-height: 200px;
+  margin-bottom: var(--gap);
+}
+
+.photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 42%;
+}
+
+.bento {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.06fr);
+  gap: var(--gap);
+  margin-bottom: var(--gap);
+}
+
+.lead {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 18px;
+  padding: 40px 40px 36px;
+  min-height: 360px;
+}
+
+.lead .t-kicker { color: var(--muted); }
+
+.ledger {
+  display: flex;
+  flex-direction: column;
+  min-height: 360px;
+  padding: 32px 36px 32px;
+  background:
+    radial-gradient(ellipse at 18% 118%, rgba(45, 106, 79, 0.38), transparent 52%),
+    var(--ink);
+}
+
+.ledger__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 16px;
+  margin-bottom: 36px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(220, 232, 223, 0.16);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.52);
+}
+
+.ledger__you {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--sage-tint);
+}
+
+.ledger__amt {
+  font-size: clamp(72px, 8vw, 80px);
+  font-weight: 700;
+  line-height: 1.02;
+  letter-spacing: -0.045em;
+  color: #fff;
+  margin: 6px 0 10px;
+}
+
+.ledger__meta {
+  font-size: 16px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.62);
+  margin-bottom: 28px;
+}
+
+.btn--paper {
+  background: var(--paper);
+  color: var(--ink);
+  align-self: flex-start;
+  margin-top: auto;
+  border-radius: 12px;
+}
+
+.btn--paper:hover { background: var(--sage-tint); }
+
+.sheet {
+  padding: 40px 44px;
+  margin-bottom: var(--gap);
+}
+
+.sheet__list {
+  list-style: none;
+}
+
+.sheet__list li {
+  font-size: clamp(17px, 1.7vw, 20px);
+  font-weight: 500;
+  letter-spacing: -0.018em;
+  line-height: 1.55;
+  color: var(--ink);
+  padding: 18px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.sheet__list li:first-child { padding-top: 0; }
+.sheet__list li:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--gap);
+}
+
+.note {
+  display: flex;
+  align-items: flex-end;
+  min-height: 148px;
+  padding: 32px 34px;
+}
+
+.note .t-card { max-width: 16ch; }
+
+.note:hover { background: var(--sand-soft); }
+.note.block--sage:hover { background: #d2e0d6; }
+
+a:focus-visible,
+.btn:focus-visible {
+  outline: 2px solid var(--sage);
+  outline-offset: 3px;
+}
+
+@media (max-width: 800px) {
+  .bento,
+  .pair { grid-template-columns: 1fr; }
+
+  .lead,
+  .ledger { min-height: 0; }
+
+  .lead { padding: 32px 26px 28px; }
+
+  .ledger {
+    padding: 28px 26px 26px;
+    min-height: 300px;
+  }
+
+  .ledger__amt { font-size: 72px; }
+
+  .sheet { padding: 28px 24px; }
+
+  .sheet__list li { font-size: 17px; }
+
+  .note { min-height: 120px; padding: 26px 24px; }
+
+  .nav .btn { padding: 12px 14px; font-size: 12px; }
+}

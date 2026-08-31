@@ -1,0 +1,246 @@
+/* Inkbento — Obodo blocks inverted onto navy / ink */
+
+body {
+  background: #171b24;
+  color: var(--paper);
+}
+
+.skip {
+  position: absolute;
+  left: 16px;
+  top: -48px;
+  z-index: 90;
+  padding: 8px 14px;
+  background: var(--paper);
+  color: var(--ink);
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+}
+.skip:focus { top: 16px; }
+
+a:focus-visible,
+.btn:focus-visible {
+  outline: 2px solid var(--paper);
+  outline-offset: 3px;
+}
+
+.block:focus-within :focus-visible,
+.lead :focus-visible,
+.stat :focus-visible,
+.xfer :focus-visible,
+.fund :focus-visible,
+.month :focus-visible {
+  outline-color: var(--ink);
+}
+
+/* ── Nav on ink ── */
+
+.nav a { color: var(--paper); }
+.nav .brand { color: var(--paper); }
+
+.btn--sage {
+  background: var(--sage);
+  color: #fff;
+}
+.btn--paper {
+  background: var(--paper);
+  color: var(--ink);
+}
+.nav .btn--ghost {
+  color: var(--paper);
+  border-color: rgba(245, 241, 234, 0.28);
+}
+.nav .btn--sage { color: #fff; }
+.nav .btn--paper { color: var(--ink); }
+
+.nav a:hover { opacity: 0.72; }
+.nav .btn:hover { opacity: 1; filter: brightness(1.06); }
+
+/* ── Stage ── */
+
+.stage {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+  padding: 8px 0 88px;
+}
+
+/* Full-width (of the shell) 32px photo block */
+.shot {
+  margin: 0;
+  background: #0f1218;
+}
+.shot img {
+  width: 100%;
+  height: clamp(260px, 42vw, 520px);
+  object-fit: cover;
+  object-position: center 45%;
+}
+
+/* ── Bento ── */
+
+.bento {
+  display: grid;
+  grid-template-columns: 1.28fr 0.72fr;
+  gap: var(--gap);
+  align-items: stretch;
+}
+
+.lead,
+.stat,
+.xfer,
+.fund,
+.month {
+  color: var(--ink);
+}
+
+.lead {
+  background: #f5f1ea;
+  padding: 40px 44px 44px;
+  min-height: 300px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 36px;
+}
+.lead .t-lead {
+  max-width: 16ch;
+}
+
+.stat {
+  background: var(--sage-tint);
+  padding: 36px 40px 32px;
+  min-height: 300px;
+  display: flex;
+  flex-direction: column;
+}
+.stat .t-meta { color: var(--sage); }
+.stat .t-stat {
+  margin-top: auto;
+  padding: 18px 0 8px;
+  color: var(--ink);
+}
+.stat .t-small { color: var(--sage); }
+
+.pair {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--gap);
+}
+
+.xfer,
+.fund {
+  background: #f7f3ec;
+  padding: 32px 36px 36px;
+  min-height: 220px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.xfer .t-card,
+.fund .t-card { margin-top: auto; padding-top: 28px; }
+.xfer .t-small,
+.fund .t-small { max-width: 24ch; }
+
+.fund { background: #f5f1ea; }
+
+/* Wide typeset month — not an icon table */
+.month {
+  grid-column: 1 / -1;
+  background: #f7f3ec;
+  padding: 48px 52px 44px;
+}
+.month__head { margin-bottom: 36px; }
+.month__head .t-display {
+  margin-top: 10px;
+  max-width: 12ch;
+}
+
+.month__cols {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 36px 40px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+.month__col { padding-top: 28px; }
+.month__col .t-card {
+  margin-bottom: 10px;
+  max-width: 14ch;
+}
+.month__col p:last-child {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--muted);
+  line-height: 1.5;
+  max-width: 28ch;
+}
+
+/* ── Footer on ink ── */
+
+.ft { color: var(--paper); }
+.ft .t-foot-cta { color: var(--paper); }
+.ft .t-foot-cta a {
+  color: var(--paper);
+  text-decoration: underline;
+  text-underline-offset: 5px;
+  text-decoration-thickness: 1.5px;
+}
+.ft .t-foot-cta a:hover { opacity: 0.7; }
+
+.pile span { border-color: #171b24; }
+
+.ft__places { border-bottom-color: rgba(255, 255, 255, 0.12); }
+.ft__place strong { color: var(--paper); }
+.ft__place p { color: rgba(245, 241, 234, 0.5); }
+
+.ft__cols h4 { color: rgba(245, 241, 234, 0.45); }
+.ft__cols a { color: var(--paper); }
+.ft__cols a:hover { opacity: 0.7; }
+
+.ft__legal,
+.ft__legal a { color: rgba(245, 241, 234, 0.42); }
+.ft__legal a:hover { color: var(--paper); }
+
+/* Switcher sits on ink; keep token sizes, give it a little air */
+body { padding-bottom: 88px; }
+
+@media (max-width: 800px) {
+  .bento,
+  .pair,
+  .month__cols { grid-template-columns: 1fr; }
+
+  .lead,
+  .stat {
+    min-height: 0;
+    padding: 28px 24px 32px;
+  }
+  .lead .t-lead { max-width: none; }
+
+  .xfer,
+  .fund {
+    min-height: 0;
+    padding: 26px 24px 28px;
+  }
+  .xfer .t-card,
+  .fund .t-card { padding-top: 16px; }
+
+  .month { padding: 32px 24px 28px; }
+  .month__head { margin-bottom: 20px; }
+  .month__col { padding-top: 20px; }
+  .month__cols { gap: 0; }
+
+  .shot img { height: 220px; }
+
+  .nav .btn--ghost { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .nav a,
+  .nav .btn,
+  .ft__cols a,
+  .ft .t-foot-cta a { transition: none; }
+}
