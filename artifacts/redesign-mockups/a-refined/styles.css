@@ -509,7 +509,7 @@ button.a-kpi {
   display: block;
   width: 100%;
   margin: 0;
-  border: 0;
+  border: 1px solid rgba(22, 19, 29, 0.08);
   font: inherit;
   color: inherit;
   text-align: left;
@@ -1516,6 +1516,11 @@ button.a-now-row {
   grid-template-columns: minmax(0, 1.4fr) minmax(280px, 0.9fr);
   gap: 16px;
   margin-top: 16px;
+  align-items: stretch;
+}
+
+#home .a-week {
+  margin-top: 0;
 }
 
 .a-mini-bars {
