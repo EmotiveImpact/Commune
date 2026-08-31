@@ -63,6 +63,8 @@ class Handler(SimpleHTTPRequestHandler):
             if rest and not rest.endswith("/") and "/" not in rest:
                 self.send_response(301)
                 self.send_header("Location", path + "/")
+                self.send_header("Content-Length", "0")
+                self.send_header("Connection", "close")
                 self.send_header("Cache-Control", "no-cache")
                 self.end_headers()
                 return
