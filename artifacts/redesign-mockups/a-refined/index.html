@@ -8,15 +8,17 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../shared.css?v=overview" />
-    <link rel="stylesheet" href="./styles.css?v=owecard4" />
+    <link rel="stylesheet" href="../shared.css?v=homes" />
+    <link rel="stylesheet" href="./styles.css?v=homes" />
   </head>
   <body class="a-body">
     <div class="mock-bar">
-      <span>Direction <strong>A</strong> · Home is all hubs · This Hub is the house</span>
-      <span>
-        <a href="../d-tight/">D · Home + This Hub</a>
-        &nbsp;·&nbsp;
+      <span>Direction <strong>A</strong> · pick a Home</span>
+      <span class="layout-tabs">
+        <button type="button" class="is-active" data-go="home">Places</button>
+        <button type="button" data-go="home-inbox">Inbox</button>
+        <button type="button" data-go="home-focus">Focus</button>
+        <a href="../d-tight/">D</a>
         <a href="../">All directions</a>
       </span>
     </div>
@@ -143,56 +145,51 @@
         </header>
 
         <div class="a-content">
-          <!-- HOME — every space you’re in, and a feed of what needs you. -->
+          <!-- HOME 1 · PLACES — the three houses are the page. -->
           <section class="screen" id="home">
-            <div class="a-mast a-mast-home">
-              <div>
-                <span>Across 3 communes</span>
-                <div class="a-net">
-                  <div>
-                    <span>You owe</span>
-                    <strong>£42</strong>
-                    <small>Park Street</small>
-                  </div>
-                  <div>
-                    <span>You’re owed</span>
-                    <strong class="is-credit">£64</strong>
-                    <small>Lisbon · Sept</small>
-                  </div>
-                </div>
-                <p>Park Street still needs you this week. Lisbon hasn’t paid you back for the Airbnb.</p>
-              </div>
-              <button class="a-btn" type="button" data-hub="park" data-go="hub">Open 14 Park Street</button>
+            <div class="a-home-greet">
+              <span class="kicker">Places</span>
+              <h1>Three spaces. One Monday.</h1>
+              <p>Park Street still needs you this week. Lisbon hasn’t paid you back. Studio is even.</p>
             </div>
 
-            <div class="a-cc-grid">
-              <button class="a-commune-card" type="button" data-hub="park" data-go="hub">
-                <div class="band home"></div>
-                <div class="pad">
-                  <span class="pill sage">Household</span>
+            <div class="a-place-grid">
+              <button class="a-place" type="button" data-hub="park" data-go="hub">
+                <div class="a-place-hero park">
+                  <span class="type">Household</span>
                   <h3>14 Park Street</h3>
-                  <p class="sub">You owe £42 · gas Friday · bins overdue</p>
+                  <p>You owe £42</p>
+                </div>
+                <div class="a-place-foot">
+                  <span>Gas Friday · bins overdue</span>
+                  <span class="amt">£42</span>
                 </div>
               </button>
-              <button class="a-commune-card" type="button" data-hub="studio" data-go="hub">
-                <div class="band studio"></div>
-                <div class="pad">
-                  <span class="pill">Workspace</span>
+              <button class="a-place" type="button" data-hub="studio" data-go="hub">
+                <div class="a-place-hero studio">
+                  <span class="type">Workspace</span>
                   <h3>Studio East</h3>
-                  <p class="sub">Even · printer ink Monday</p>
+                  <p>You’re even</p>
+                </div>
+                <div class="a-place-foot">
+                  <span>Printer ink Monday</span>
+                  <span class="amt even">£0</span>
                 </div>
               </button>
-              <button class="a-commune-card" type="button" data-hub="lisbon" data-go="hub">
-                <div class="band trip"></div>
-                <div class="pad">
-                  <span class="pill open">Trip</span>
+              <button class="a-place" type="button" data-hub="lisbon" data-go="hub">
+                <div class="a-place-hero lisbon">
+                  <span class="type">Trip</span>
                   <h3>Lisbon · Sept</h3>
-                  <p class="sub">You’re owed £64 · hold Thursday</p>
+                  <p>You’re owed £64</p>
+                </div>
+                <div class="a-place-foot">
+                  <span>Airbnb hold Thursday</span>
+                  <span class="amt credit">+£64</span>
                 </div>
               </button>
             </div>
 
-            <div class="a-card" style="margin-top:16px">
+            <div class="a-card" style="margin-top:18px">
               <h2>Needs you</h2>
               <p class="sub">Across every space. Open the hub, or jump straight in.</p>
               <div class="hub-feed">
@@ -220,13 +217,13 @@
                   </div>
                   <span class="hub-feed-go">Operations</span>
                 </button>
-                <button class="hub-feed-row" type="button" data-hub="park" data-go="funds">
-                  <span class="pill open">Park Street</span>
+                <button class="hub-feed-row" type="button" data-hub="lisbon" data-go="hub">
+                  <span class="pill open">Lisbon</span>
                   <div>
-                    <strong>Chase Alex for the fund</strong>
-                    <div class="when">£180 still to pay in · house fund £420</div>
+                    <strong>Airbnb hold · 4 days</strong>
+                    <div class="when">Collect £40 from Jordan, £24 from Ness</div>
                   </div>
-                  <span class="hub-feed-go">Funds</span>
+                  <span class="hub-feed-go">Open hub</span>
                 </button>
                 <button class="hub-feed-row" type="button" data-hub="studio" data-go="hub">
                   <span class="pill">Studio East</span>
@@ -236,21 +233,169 @@
                   </div>
                   <span class="hub-feed-go">Open hub</span>
                 </button>
-                <button class="hub-feed-row" type="button" data-hub="lisbon" data-go="hub">
-                  <span class="pill open">Lisbon</span>
+              </div>
+            </div>
+          </section>
+
+          <!-- HOME 2 · INBOX — the feed is the page. -->
+          <section class="screen" id="home-inbox" hidden>
+            <div class="a-home-greet">
+              <span class="kicker">Inbox</span>
+              <h1>What still needs a person.</h1>
+              <p>Six things across three spaces. The houses sit to the side so you can act.</p>
+            </div>
+            <div class="a-home-inbox">
+              <div class="a-card a-inbox-list">
+                <h2>Your communes</h2>
+                <p class="sub">Open the house from here.</p>
+                <button class="a-inbox-hub" type="button" data-hub="park" data-go="hub">
+                  <span class="thumb park"></span>
                   <div>
-                    <strong>Airbnb hold · 4 days</strong>
-                    <div class="when">You paid · collect £40 from Jordan, £24 from Ness</div>
+                    <strong>14 Park Street</strong>
+                    <span>You owe £42 · gas Friday</span>
                   </div>
-                  <span class="hub-feed-go">Open hub</span>
+                  <span class="amt">£42</span>
                 </button>
-                <button class="hub-feed-row" type="button" data-hub="lisbon" data-go="hub">
-                  <span class="pill sage">Lisbon</span>
+                <button class="a-inbox-hub" type="button" data-hub="studio" data-go="hub">
+                  <span class="thumb studio"></span>
                   <div>
-                    <strong>You’re owed £64</strong>
-                    <div class="when">Jordan and Ness still haven’t paid the hold</div>
+                    <strong>Studio East</strong>
+                    <span>Even · ink Monday</span>
                   </div>
-                  <span class="hub-feed-go">Open hub</span>
+                  <span class="amt even">£0</span>
+                </button>
+                <button class="a-inbox-hub" type="button" data-hub="lisbon" data-go="hub">
+                  <span class="thumb lisbon"></span>
+                  <div>
+                    <strong>Lisbon · Sept</strong>
+                    <span>You’re owed £64</span>
+                  </div>
+                  <span class="amt credit">+£64</span>
+                </button>
+              </div>
+              <div class="a-card">
+                <h2>Needs you</h2>
+                <p class="sub">Oldest first. Jump in, or open the hub.</p>
+                <div class="hub-feed">
+                  <button class="hub-feed-row" type="button" data-hub="park" data-go="operations">
+                    <span class="pill warn">Overdue</span>
+                    <div>
+                      <strong>Bins at Park Street</strong>
+                      <div class="when">Still Jordan’s Tuesday</div>
+                    </div>
+                    <span class="hub-feed-go">Ops</span>
+                  </button>
+                  <button class="hub-feed-row" type="button" data-hub="park" data-go="settle">
+                    <span class="pill sage">Settle</span>
+                    <div>
+                      <strong>Pay Jordan £42</strong>
+                      <div class="when">Park Street · gas share</div>
+                    </div>
+                    <span class="hub-feed-go">Settle</span>
+                  </button>
+                  <button class="hub-feed-row" type="button" data-hub="park" data-go="expenses">
+                    <span class="pill warn">Friday</span>
+                    <div>
+                      <strong>British Gas</strong>
+                      <div class="when">£94.20 · your share open</div>
+                    </div>
+                    <span class="hub-feed-go">Expenses</span>
+                  </button>
+                  <button class="hub-feed-row" type="button" data-hub="park" data-go="funds">
+                    <span class="pill open">Collect</span>
+                    <div>
+                      <strong>Chase Alex £180</strong>
+                      <div class="when">House fund is £420</div>
+                    </div>
+                    <span class="hub-feed-go">Funds</span>
+                  </button>
+                  <button class="hub-feed-row" type="button" data-hub="lisbon" data-go="hub">
+                    <span class="pill open">Thursday</span>
+                    <div>
+                      <strong>Airbnb hold</strong>
+                      <div class="when">Lisbon · collect £64</div>
+                    </div>
+                    <span class="hub-feed-go">Open hub</span>
+                  </button>
+                  <button class="hub-feed-row" type="button" data-hub="studio" data-go="hub">
+                    <span class="pill">Monday</span>
+                    <div>
+                      <strong>Printer ink</strong>
+                      <div class="when">Studio East · Sam’s run</div>
+                    </div>
+                    <span class="hub-feed-go">Open hub</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- HOME 3 · FOCUS — lead with the house that needs you. -->
+          <section class="screen" id="home-focus" hidden>
+            <div class="a-home-greet">
+              <span class="kicker">Focus</span>
+              <h1>Park Street needs you this week.</h1>
+              <p>The other two spaces are quiet. Lisbon still owes you £64 when you’re ready.</p>
+            </div>
+
+            <button class="a-focus-hero" type="button" data-hub="park" data-go="hub">
+              <span class="type">Needs you · Household</span>
+              <h2>14 Park Street</h2>
+              <p>You owe £42. Gas Friday. Bins still Jordan’s. Alex hasn’t paid into the fund.</p>
+              <div class="a-cover-people">
+                <div class="avatar-stack">
+                  <span class="avatar maya">MC</span>
+                  <span class="avatar jordan">JH</span>
+                  <span class="avatar alex">AR</span>
+                </div>
+                Open this hub
+              </div>
+            </button>
+
+            <div class="a-focus-pair">
+              <button class="a-place" type="button" data-hub="studio" data-go="hub">
+                <div class="a-place-hero studio">
+                  <span class="type">Quiet</span>
+                  <h3>Studio East</h3>
+                  <p>Even · ink Monday</p>
+                </div>
+              </button>
+              <button class="a-place" type="button" data-hub="lisbon" data-go="hub">
+                <div class="a-place-hero lisbon">
+                  <span class="type">You’re owed</span>
+                  <h3>Lisbon · Sept</h3>
+                  <p>+£64 · hold Thursday</p>
+                </div>
+              </button>
+            </div>
+
+            <div class="a-card" style="margin-top:16px">
+              <h2>On Park Street</h2>
+              <p class="sub">The three things that should happen this week.</p>
+              <div class="hub-feed">
+                <button class="hub-feed-row" type="button" data-hub="park" data-go="settle">
+                  <span class="pill sage">Settle</span>
+                  <div>
+                    <strong>Pay Jordan £42</strong>
+                    <div class="when">Or net Tesco and send £24</div>
+                  </div>
+                  <span class="hub-feed-go">Settle</span>
+                </button>
+                <button class="hub-feed-row" type="button" data-hub="park" data-go="expenses">
+                  <span class="pill warn">Friday</span>
+                  <div>
+                    <strong>British Gas</strong>
+                    <div class="when">Jordan paid · your share open</div>
+                  </div>
+                  <span class="hub-feed-go">Expenses</span>
+                </button>
+                <button class="hub-feed-row" type="button" data-hub="park" data-go="funds">
+                  <span class="pill open">Collect</span>
+                  <div>
+                    <strong>Chase Alex £180</strong>
+                    <div class="when">House fund is £420</div>
+                  </div>
+                  <span class="hub-feed-go">Funds</span>
                 </button>
               </div>
             </div>
@@ -1055,6 +1200,8 @@
     <script>
       window.COMMUNE_TITLES = {
         home: "Home",
+        "home-inbox": "Home",
+        "home-focus": "Home",
         hub: "14 Park Street",
         communes: "Home",
         expenses: "Expenses",
@@ -1075,6 +1222,6 @@
         settings: "Settings"
       };
     </script>
-    <script src="../shared.js?v=overview"></script>
+    <script src="../shared.js?v=homes"></script>
   </body>
 </html>

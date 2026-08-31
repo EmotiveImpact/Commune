@@ -171,7 +171,7 @@
 
   var HOME_STATUS = "3 spaces · you owe £42 · you’re owed £64";
   var HUB_SCREENS = { hub: true, "hub-snapshot": true, "hub-needs": true, "hub-money": true };
-  var HOME_SCREENS = { home: true, communes: true };
+  var HOME_SCREENS = { home: true, communes: true, "home-inbox": true, "home-focus": true };
 
   function pfx() {
     return document.body.classList.contains("d-body") ? "d" : "a";
@@ -429,6 +429,11 @@
       });
     if (HUB_SCREENS[activeId]) {
       document.querySelectorAll("nav .a-link[data-go='hub'], nav .d-link[data-go='hub-snapshot'], nav .d-link[data-go='hub']").forEach(function (el) {
+        el.classList.add("is-active");
+      });
+    }
+    if (HOME_SCREENS[activeId]) {
+      document.querySelectorAll("nav .a-link[data-go='home'], nav .d-link[data-go='home']").forEach(function (el) {
         el.classList.add("is-active");
       });
     }
