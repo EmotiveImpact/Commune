@@ -5,10 +5,15 @@
   "remote.forwardOnOpen": true,
   "remote.portsAttributes": {
     "3000": {
-      "label": "Commune redesign mockups",
+      "label": "Commune web app",
       "onAutoForward": "openBrowser",
       "protocol": "http",
       "requireLocalPort": true
+    },
+    "3001": {
+      "label": "Redesign mockups",
+      "onAutoForward": "silent",
+      "protocol": "http"
     }
   }
 }
