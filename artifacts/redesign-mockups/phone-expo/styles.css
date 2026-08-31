@@ -340,6 +340,7 @@
   text-align: left;
   cursor: pointer;
   color: inherit;
+  text-decoration: none;
 }
 
 .x-row .amt {

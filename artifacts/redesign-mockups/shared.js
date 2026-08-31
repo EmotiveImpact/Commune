@@ -805,6 +805,7 @@
       !e.target.closest(".a-more, [data-more]")
     ) {
       closeMore();
+      return;
     }
     var saver = e.target.closest("[data-note-save]");
     if (saver) appendNoteFromForm();
