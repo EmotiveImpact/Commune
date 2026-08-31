@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="../shared.css?v=map" />
-    <link rel="stylesheet" href="./styles.css?v=map" />
+    <link rel="stylesheet" href="./styles.css?v=map2" />
   </head>
   <body class="a-body nav-basic">
     <div class="a-gate">
@@ -32,10 +32,11 @@
             </div>
             <div class="a-field-row">
               <button class="a-btn" type="button" data-go="home">Enter</button>
-              <button class="a-btn ghost" type="button" data-go="home-empty">I’m new</button>
+              <button class="a-btn ghost" type="button" data-go="home">Continue with Google</button>
             </div>
           </div>
-          <p class="a-gate-alt">No account? <button type="button" data-go="signup">Sign up</button></p>
+          <p class="a-gate-alt">No account? <button type="button" data-go="signup">Sign up</button>
+            · <button type="button" data-go="home-empty">I’m new</button></p>
         </div>
       </section>
 
@@ -1250,8 +1251,8 @@
           <!-- THIS HUB · EMPTY -->
           <section class="screen" id="hub-empty" hidden>
             <div class="a-cover">
-              <span class="type">Household</span>
-              <h1>14 Park Street</h1>
+              <span class="type" data-hub-type>Household</span>
+              <h1 data-hub-name>14 Park Street</h1>
               <p class="lede">No bills yet. Add the first one so the house has a truth.</p>
             </div>
             <div class="a-empty a-cover-empty">
@@ -1513,6 +1514,6 @@
         settings: "Currency, notices, and how much sidebar you want."
       };
     </script>
-    <script src="../shared.js?v=map"></script>
+    <script src="../shared.js?v=map2"></script>
   </body>
 </html>

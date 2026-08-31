@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="../shared.css?v=map" />
-    <link rel="stylesheet" href="./styles.css" />
+    <link rel="stylesheet" href="./styles.css?v=map2" />
   </head>
   <body class="r-body">
     <header class="r-nav">
@@ -17,7 +17,7 @@
         <img src="../logo.png" width="28" height="28" alt="" style="border-radius:6px" />
         <span class="g-wordmark">COMMUNE</span>
       </a>
-      <p class="r-nav-note">Clean app · screen by screen</p>
+      <a class="r-nav-open" href="../a-refined/">Open A</a>
     </header>
 
     <main class="r-main">
@@ -25,10 +25,35 @@
         <p class="g-eyebrow">The rebuild</p>
         <h1>Every screen the clean app needs.</h1>
         <p>
-          Direction A is the look. This list is the product. Click a row to open
-          that screen in the mockup. Sage is in scope. Grey waits. Red stays in
-          the old app.
+          Direction A is the look. This list is the product — click a row, walk
+          the screen. Sage ships. Grey waits. Red stays in the old Mantine app.
+          Do not reskin the old sitemap.
         </p>
+      </section>
+
+      <section class="r-walk">
+        <div>
+          <h2>Birth</h2>
+          <p>A person with no house yet.</p>
+          <ol>
+            <li><a href="../a-refined/?screen=signup">Sign up</a></li>
+            <li><a href="../a-refined/?screen=onboard">Create a hub</a></li>
+            <li><a href="../a-refined/?screen=hub-empty">Empty hub</a></li>
+            <li><a href="../a-refined/?screen=add-expense">First expense</a></li>
+            <li><a href="../a-refined/?screen=expense">The bill</a></li>
+          </ol>
+        </div>
+        <div>
+          <h2>The week</h2>
+          <p>Maya already lives here.</p>
+          <ol>
+            <li><a href="../a-refined/?screen=login">Login</a></li>
+            <li><a href="../a-refined/?screen=home">Home</a></li>
+            <li><a href="../a-refined/?screen=hub">This Hub</a></li>
+            <li><a href="../a-refined/?screen=expense">British Gas</a></li>
+            <li><a href="../a-refined/?screen=settle">Settle</a></li>
+          </ol>
+        </div>
       </section>
 
       <div class="r-legend">
@@ -120,7 +145,7 @@
           </a>
           <a class="r-row" href="../a-refined/?screen=add-expense">
             <i class="r-dot"></i>
-            <div><strong>Add expense</strong><small>What, amount, who paid, split. Save lands on the list.</small></div>
+            <div><strong>Add expense</strong><small>What, amount, who paid, split. Save opens the expense.</small></div>
             <span class="r-tag">Open</span>
           </a>
           <a class="r-row" href="../a-refined/?screen=settle">
@@ -210,6 +235,16 @@
             <div><strong>Breakdown</strong><small>Same truth as Settle. Don’t ship a second destination.</small></div>
             <span class="r-tag">Later</span>
           </a>
+          <a class="r-row is-later" href="../a-refined/?screen=settings">
+            <i class="r-dot later"></i>
+            <div><strong>Hub settings</strong><small>Rename, type, leave. Settings today is Maya, not the house.</small></div>
+            <span class="r-tag">Later</span>
+          </a>
+          <div class="r-row is-later">
+            <i class="r-dot later"></i>
+            <div><strong>Forgot password</strong><small>Email a reset. Needed for auth, not for the 3-second question.</small></div>
+            <span class="r-tag">Later</span>
+          </div>
         </div>
       </section>
 
@@ -230,6 +265,11 @@
           <div class="r-row is-kill">
             <i class="r-dot kill"></i>
             <div><strong>Memories, couple linking, Splitwise import, OCR</strong><small>Not the 3-second question.</small></div>
+            <span class="r-tag">Drop</span>
+          </div>
+          <div class="r-row is-kill">
+            <i class="r-dot kill"></i>
+            <div><strong>Cycle close as accounting</strong><small>Settle is the verb. Don’t rebuild a period-end product.</small></div>
             <span class="r-tag">Drop</span>
           </div>
         </div>
