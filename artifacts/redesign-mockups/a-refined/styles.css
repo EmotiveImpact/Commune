@@ -1606,6 +1606,10 @@ button.a-item {
   margin: 0 0 22px;
 }
 
+.a-home-greet.is-after {
+  margin: 22px 0 14px;
+}
+
 .a-home-greet .kicker {
   display: block;
   font-size: 11px;

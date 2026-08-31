@@ -8,8 +8,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../shared.css?v=chrome" />
-    <link rel="stylesheet" href="./styles.css?v=chrome" />
+    <link rel="stylesheet" href="../shared.css?v=homestuff" />
+    <link rel="stylesheet" href="./styles.css?v=homestuff" />
   </head>
   <body class="a-body">
     <div class="mock-bar">
@@ -139,14 +139,8 @@
         </header>
 
         <div class="a-content">
-          <!-- HOME · FOCUS MIX — loud house leads; Places cards + full Needs you. -->
+          <!-- HOME · communes first, then the week. -->
           <section class="screen" id="home">
-            <div class="a-home-greet">
-              <span class="kicker">Home</span>
-              <h1>Park Street needs you this week.</h1>
-              <p>Studio is even. Lisbon still owes you £64. Everything that still needs a person is below.</p>
-            </div>
-
             <button class="a-place a-focus-lead" type="button" data-hub="park" data-go="hub">
               <div class="a-focus-hero">
                 <span class="type">Needs you · Household</span>
@@ -192,7 +186,12 @@
               </button>
             </div>
 
-            <div class="a-card" style="margin-top:18px">
+            <div class="a-home-greet is-after">
+              <h1>Park Street needs you this week.</h1>
+              <p>Studio is even. Lisbon still owes you £64. Everything that still needs a person is below.</p>
+            </div>
+
+            <div class="a-card">
               <h2>Needs you</h2>
               <p class="sub">Across every space. Open the hub, or jump straight in.</p>
               <div class="hub-feed">
@@ -245,6 +244,36 @@
                   <span class="hub-feed-go">Open hub</span>
                 </button>
               </div>
+            </div>
+
+            <div class="a-card" style="margin-top:16px">
+              <div class="a-card-head">
+                <div>
+                  <h2>This week</h2>
+                  <p class="sub">What already happened across the three spaces.</p>
+                </div>
+                <button class="a-btn ghost" type="button" data-go="activity">Activity</button>
+              </div>
+              <button class="a-item" type="button" data-hub="park" data-go="expenses">
+                <span class="avatar jordan">JH</span>
+                <div><strong>British Gas</strong><div class="when">Park Street · Jordan paid the bill</div></div>
+                <span class="when">Tue</span>
+              </button>
+              <button class="a-item" type="button" data-hub="park" data-go="expenses">
+                <span class="avatar maya">MC</span>
+                <div><strong>Virgin Media</strong><div class="when">Park Street · Maya logged it</div></div>
+                <span class="when">Yesterday</span>
+              </button>
+              <button class="a-item" type="button" data-hub="lisbon" data-go="hub">
+                <span class="avatar maya">MC</span>
+                <div><strong>Airbnb hold</strong><div class="when">Lisbon · your card, still collecting</div></div>
+                <span class="when">Thu</span>
+              </button>
+              <button class="a-item" type="button" data-hub="studio" data-go="hub">
+                <span class="avatar sam">SO</span>
+                <div><strong>Printer ink</strong><div class="when">Studio East · Sam flagged the run</div></div>
+                <span class="when">Mon</span>
+              </button>
             </div>
           </section>
 
@@ -1255,6 +1284,6 @@
         settings: "Settings"
       };
     </script>
-    <script src="../shared.js?v=chrome"></script>
+    <script src="../shared.js?v=homestuff"></script>
   </body>
 </html>
