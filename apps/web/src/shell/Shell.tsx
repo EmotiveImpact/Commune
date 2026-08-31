@@ -54,7 +54,7 @@ function NavButton({
 }
 
 export function Sidebar({ screen }: { screen: ScreenId }) {
-  const { go, hub, you } = useApp();
+  const { go, hub, you, session } = useApp();
   const active = (id: ScreenId) =>
     screen === id ||
     (id === "settle" && screen === "settle-even") ||
@@ -113,8 +113,8 @@ export function Sidebar({ screen }: { screen: ScreenId }) {
             <Icon name="hub" size={14} />
           </div>
           <div className="grow">
-            <strong>{hub.name}</strong>
-            <span>{hub.switchMeta}</span>
+            <strong>{session?.hasHubs ? hub.name : "No commune yet"}</strong>
+            <span>{session?.hasHubs ? hub.switchMeta : "Create or join"}</span>
           </div>
           <Icon name="chevronDown" size={14} />
         </button>

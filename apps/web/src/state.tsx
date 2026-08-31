@@ -102,7 +102,7 @@ function isCreatedHub(value: unknown): value is CreatedHub {
   );
 }
 
-export function normalizeSession(raw: unknown): Session | null {
+function normalizeSession(raw: unknown): Session | null {
   if (!raw || typeof raw !== "object") return null;
   const p = raw as Record<string, unknown>;
   if (typeof p.email !== "string" || typeof p.name !== "string") return null;
@@ -242,11 +242,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const signOut = useCallback(() => {
     sessionStorage.removeItem(SESSION_KEY);
+    sessionStorage.removeItem(NAV_KEY);
     setSession(null);
     setWindowId(null);
     setHubId("park");
     setCreatedExpenses([]);
     setLastExpense(null);
+    setNavModeState("basic");
     setLocation(keepSearch("/login"));
   }, [setLocation]);
 

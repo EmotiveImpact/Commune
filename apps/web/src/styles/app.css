@@ -611,7 +611,7 @@
   color: var(--sage-strong);
 }
 
-.a-you-btn {
+.a-header .a-icon-btn.a-you-btn {
   display: none;
   padding: 0;
   overflow: hidden;
@@ -3205,7 +3205,7 @@ button.a-item {
     background: var(--sage, #2d6a4f);
     box-shadow: 0 0 0 2px #1a1e2b;
   }
-  .a-you-btn {
+  .a-header .a-icon-btn.a-you-btn {
     display: grid;
   }
   .a-icon-btn.a-more-btn,
@@ -3491,7 +3491,7 @@ button.a-item {
   color: #f5f1ea;
 }
 
-.a-body.is-native .a-you-btn {
+.a-body.is-native .a-header .a-icon-btn.a-you-btn {
   display: grid;
 }
 
