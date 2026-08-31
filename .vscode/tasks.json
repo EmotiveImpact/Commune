@@ -15,7 +15,7 @@
         "background": {
           "activeOnStart": true,
           "beginsPattern": "Serving",
-          "endsPattern": "listening on 0\\.0\\.0\\.0:3000"
+          "endsPattern": "listening on 0\\.0\\.0\\.0:3001"
         }
       },
       "presentation": {

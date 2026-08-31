@@ -10,6 +10,8 @@ function listenIpv6Too(): Plugin {
     name: "listen-ipv6-too",
     configureServer(server) {
       server.httpServer?.once("listening", () => {
+        // Exact phrase Cursor’s hybrid port-forward scanner matches (see serve.py on :3001).
+        console.log(`listening on 0.0.0.0:${PORT}`);
         const proxy = net.createServer((client) => {
           const dest = net.connect({ port: PORT, host: "127.0.0.1" });
           dest.on("error", () => client.destroy());
