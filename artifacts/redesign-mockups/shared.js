@@ -583,10 +583,25 @@
     });
   }
 
+  function noteType() {
+    var hidden = document.getElementById("a-note-type");
+    if (hidden && hidden.value) return hidden.value;
+    var on = document.querySelector("[data-note-type-group] [data-note-type].is-on");
+    return on ? on.getAttribute("data-note-type") : "other";
+  }
+
+  function noteTypeLabel() {
+    var on = document.querySelector("[data-note-type-group] [data-note-type].is-on");
+    if (on) return on.textContent.trim();
+    var typeEl = document.getElementById("a-note-type");
+    if (typeEl && typeEl.options && typeEl.selectedIndex >= 0) {
+      return typeEl.options[typeEl.selectedIndex].text;
+    }
+    return "Note";
+  }
+
   function syncNoteExtras() {
-    var sel = document.getElementById("a-note-type");
-    if (!sel) return;
-    var type = sel.value;
+    var type = noteType();
     document.querySelectorAll("[data-note-extra]").forEach(function (el) {
       var kinds = (el.getAttribute("data-note-extra") || "").split(/\s+/);
       el.hidden = kinds.indexOf(type) === -1;
@@ -596,9 +611,8 @@
   }
 
   function appendNoteFromForm() {
-    var typeEl = document.getElementById("a-note-type");
-    var typeVal = typeEl ? typeEl.value : "other";
-    var typeLabel = typeEl && typeEl.options[typeEl.selectedIndex] ? typeEl.options[typeEl.selectedIndex].text : "Note";
+    var typeVal = noteType();
+    var typeLabel = noteTypeLabel();
     var title = val("a-note-title") || typeLabel;
     var body = val("a-note-body") || "Just added";
     var pin = segValue("[data-note-pin]") === "on";
@@ -621,7 +635,9 @@
       emergency: [
         ["Who to call", val("a-note-contact")],
         ["Phone", val("a-note-phone")]
-      ]
+      ],
+      other: [["Detail", val("a-note-extra")]],
+      rules: [["Detail", val("a-note-extra")]]
     };
     (extras[typeVal] || []).forEach(function (fact) {
       if (fact[1]) facts.push(fact);
@@ -862,6 +878,20 @@
       segBtn.parentElement.querySelectorAll("button").forEach(function (b) {
         b.classList.toggle("is-on", b === segBtn);
       });
+      return;
+    }
+    var typeBtn = e.target.closest("[data-note-type]");
+    if (typeBtn) {
+      e.preventDefault();
+      var group = typeBtn.closest("[data-note-type-group]");
+      if (group) {
+        group.querySelectorAll("[data-note-type]").forEach(function (b) {
+          b.classList.toggle("is-on", b === typeBtn);
+        });
+      }
+      var hidden = document.getElementById("a-note-type");
+      if (hidden) hidden.value = typeBtn.getAttribute("data-note-type") || "other";
+      syncNoteExtras();
       return;
     }
     var chip = e.target.closest(".a-chip");

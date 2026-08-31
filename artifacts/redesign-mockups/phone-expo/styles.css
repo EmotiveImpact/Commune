@@ -199,8 +199,8 @@
 }
 
 .x-tile.warn {
-  background: #fbf0d9;
-  color: #c9821a;
+  background: #fde8e4;
+  color: #9b2c2c;
 }
 
 .x-tile.trip {
@@ -430,8 +430,8 @@
   margin-top: 14px;
   border: 0;
   border-radius: 999px;
-  background: #96e85f;
-  color: #1a1e2b;
+  background: #2d6a4f;
+  color: #fff;
   font: inherit;
   font-size: 14px;
   font-weight: 750;
@@ -735,14 +735,25 @@
   margin-bottom: 6px;
 }
 
-.x-field input {
+.x-field input,
+.x-field textarea {
   width: 100%;
-  height: 44px;
   padding: 0 12px;
   border: 1px solid #e8e6e1;
   border-radius: 12px;
   background: #fff;
   font: inherit;
+}
+
+.x-field input {
+  height: 44px;
+}
+
+.x-field textarea {
+  min-height: 96px;
+  padding: 10px 12px;
+  resize: vertical;
+  line-height: 1.45;
 }
 
 .x-enter {
@@ -787,24 +798,31 @@
   border-radius: 999px;
   font-size: 11px;
   font-weight: 700;
-  background: #f0eeea;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: rgba(255, 255, 255, 0.7);
   color: #6b6d73;
   flex-shrink: 0;
 }
 
 .x-pill.warn {
-  background: #fbf0d9;
-  color: #c9821a;
+  background: #fde8e4;
+  color: #9b2c2c;
 }
 
 .x-pill.sage {
-  background: #e8f0eb;
-  color: #2d6a4f;
+  background: #d9ebe5;
+  color: #1b4332;
 }
 
 .x-pill.open {
-  background: #deecf7;
-  color: #2b5f8c;
+  background: #f8e8d8;
+  color: #8a4b1f;
+}
+
+.x-pill.settled {
+  background: #d9ebe5;
+  color: #1b4332;
 }
 
 .x-ava-sm {
@@ -880,11 +898,19 @@
 
 .x-lead-hero .type,
 .x-mini-hero .type {
-  font-size: 11px;
+  width: fit-content;
+  height: 24px;
+  padding: 0 9px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  background: rgba(245, 241, 234, 0.16);
+  border: 1px solid rgba(245, 241, 234, 0.2);
+  font-size: 10px;
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: #e8f7d4;
+  color: #f8f5f0;
 }
 
 .x-lead-hero h2,
@@ -993,6 +1019,11 @@
   font: inherit;
   background: #fff;
 }
+
+.x-kpi.peach { background: linear-gradient(180deg, rgba(239, 217, 200, 0.48), rgba(255, 255, 255, 0.92)); }
+.x-kpi.lilac { background: linear-gradient(180deg, rgba(231, 222, 241, 0.52), rgba(255, 255, 255, 0.92)); }
+.x-kpi.sage { background: linear-gradient(180deg, rgba(216, 235, 228, 0.5), rgba(255, 255, 255, 0.92)); }
+.x-kpi.ink { background: linear-gradient(180deg, rgba(31, 26, 42, 0.06), rgba(255, 255, 255, 0.92)); }
 
 .x-kpi span {
   display: block;
@@ -1128,4 +1159,64 @@
 .x-sheet .x-enter {
   width: calc(100% - 40px);
   margin: 8px 20px 0;
+}
+
+.x-note-types {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0 20px 12px;
+}
+
+.x-note-types button {
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid #e8e6e1;
+  background: #fff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  color: #1a1e2b;
+  cursor: pointer;
+}
+
+.x-note-types button.is-on {
+  background: #2d6a4f;
+  color: #fff;
+  border-color: #2d6a4f;
+}
+
+.x-sheet [data-note-extra][hidden] {
+  display: none !important;
+}
+
+.x-sheet .x-seg {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 0 20px 12px;
+}
+
+.x-sheet .x-seg button {
+  height: 36px;
+  border-radius: 999px;
+  border: 1px solid #e8e6e1;
+  background: #fff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.x-sheet .x-seg button.is-on {
+  background: #2d6a4f;
+  color: #fff;
+  border-color: #2d6a4f;
+}
+
+.x-sheet .x-hint {
+  margin: -4px 20px 12px;
+  font-size: 12px;
+  color: #6b6d73;
 }

@@ -8,8 +8,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../shared.css?v=set1" />
-    <link rel="stylesheet" href="./styles.css?v=set1" />
+    <link rel="stylesheet" href="../shared.css?v=set2" />
+    <link rel="stylesheet" href="./styles.css?v=set2" />
   </head>
   <body class="a-body nav-basic">
     <div class="a-native-status" aria-hidden="true">
@@ -834,64 +834,66 @@
                 </thead>
                 <tbody>
                   <tr>
-                    <td><button class="a-name-btn" type="button" data-go="expense">British Gas</button></td>
-                    <td>Utilities</td>
-                    <td>Jordan Hale</td>
-                    <td>29 Aug</td>
-                    <td><span class="pill warn">Due Friday</span></td>
-                    <td class="amt">£94.20</td>
-                    <td>
-                      <div class="a-choose">
-                        <button class="a-btn" type="button" data-choose aria-expanded="false" aria-haspopup="menu">
-                          Choose
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
-                        </button>
-                        <div class="a-choose-menu" role="menu" hidden>
-                          <button type="button" role="menuitem" data-go="expense-paid">Mark paid</button>
-                          <button type="button" role="menuitem" data-go="notices">Nudge</button>
+                    <td data-label="Expense"><button class="a-name-btn" type="button" data-go="expense">British Gas</button></td>
+                    <td data-label="Category">Utilities</td>
+                    <td data-label="Paid by">Jordan Hale</td>
+                    <td data-label="Due">29 Aug</td>
+                    <td data-label="Status"><span class="pill warn">Due Friday</span></td>
+                    <td class="amt" data-label="Amount">£94.20</td>
+                    <td data-label="Actions">
+                      <div class="a-row-actions">
+                        <div class="a-choose">
+                          <button class="a-btn" type="button" data-choose aria-expanded="false" aria-haspopup="menu">
+                            Choose
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+                          </button>
+                          <div class="a-choose-menu" role="menu" hidden>
+                            <button type="button" role="menuitem" data-go="expense-paid">Mark paid</button>
+                            <button type="button" role="menuitem" data-go="notices">Nudge</button>
+                          </div>
                         </div>
                       </div>
                     </td>
                   </tr>
                   <tr>
-                    <td><button class="a-name-btn" type="button" data-go="expense">Virgin Media</button></td>
-                    <td>Internet</td>
-                    <td>Maya Chen</td>
-                    <td>12 Aug</td>
-                    <td><span class="pill open">Open</span></td>
-                    <td class="amt">£32.00</td>
-                    <td>
+                    <td data-label="Expense"><button class="a-name-btn" type="button" data-go="expense">Virgin Media</button></td>
+                    <td data-label="Category">Internet</td>
+                    <td data-label="Paid by">Maya Chen</td>
+                    <td data-label="Due">12 Aug</td>
+                    <td data-label="Status"><span class="pill open">Open</span></td>
+                    <td class="amt" data-label="Amount">£32.00</td>
+                    <td data-label="Actions">
                       <div class="a-row-actions">
                         <button class="a-btn" type="button" data-go="expense-paid">Mark paid</button>
                       </div>
                     </td>
                   </tr>
                   <tr>
-                    <td><strong>Tesco shop</strong></td>
-                    <td>Groceries</td>
-                    <td>Alex Rivera</td>
-                    <td>18 Aug</td>
-                    <td><span class="pill settled">Settled</span></td>
-                    <td class="amt">£67.40</td>
-                    <td class="a-muted-action">—</td>
+                    <td data-label="Expense"><strong>Tesco shop</strong></td>
+                    <td data-label="Category">Groceries</td>
+                    <td data-label="Paid by">Alex Rivera</td>
+                    <td data-label="Due">18 Aug</td>
+                    <td data-label="Status"><span class="pill settled">Settled</span></td>
+                    <td class="amt" data-label="Amount">£67.40</td>
+                    <td class="a-muted-action" data-label="Actions">—</td>
                   </tr>
                   <tr>
-                    <td><strong>Rent · August</strong></td>
-                    <td>Rent</td>
-                    <td>House fund</td>
-                    <td>1 Aug</td>
-                    <td><span class="pill settled">Settled</span></td>
-                    <td class="amt">£1,800.00</td>
-                    <td class="a-muted-action">—</td>
+                    <td data-label="Expense"><strong>Rent · August</strong></td>
+                    <td data-label="Category">Rent</td>
+                    <td data-label="Paid by">House fund</td>
+                    <td data-label="Due">1 Aug</td>
+                    <td data-label="Status"><span class="pill settled">Settled</span></td>
+                    <td class="amt" data-label="Amount">£1,800.00</td>
+                    <td class="a-muted-action" data-label="Actions">—</td>
                   </tr>
                   <tr>
-                    <td><strong>Council tax</strong></td>
-                    <td>Bills</td>
-                    <td>Maya Chen</td>
-                    <td>1 Aug</td>
-                    <td><span class="pill settled">Settled</span></td>
-                    <td class="amt">£146.00</td>
-                    <td class="a-muted-action">—</td>
+                    <td data-label="Expense"><strong>Council tax</strong></td>
+                    <td data-label="Category">Bills</td>
+                    <td data-label="Paid by">Maya Chen</td>
+                    <td data-label="Due">1 Aug</td>
+                    <td data-label="Status"><span class="pill settled">Settled</span></td>
+                    <td class="amt" data-label="Amount">£146.00</td>
+                    <td class="a-muted-action" data-label="Actions">—</td>
                   </tr>
                 </tbody>
               </table>
@@ -1737,27 +1739,25 @@
           </div>
         </section>
         <section class="a-window" id="note-new" hidden>
-          <div class="a-field half">
+          <p class="a-window-kicker">Note</p>
+          <div class="a-field">
             <label for="a-note-title">Title <span class="need">Required</span></label>
             <input id="a-note-title" type="text" value="Guest wifi" />
           </div>
-          <div class="a-field half">
-            <label for="a-note-type">Type <span class="need">Required</span></label>
-            <select id="a-note-type">
-              <option value="wifi" selected>Wi-Fi</option>
-              <option value="bins">Bins</option>
-              <option value="keys">Keys / door</option>
-              <option value="landlord">Landlord</option>
-              <option value="emergency">Emergency</option>
-              <option value="rules">House rules</option>
-              <option value="other">Other</option>
-            </select>
-          </div>
           <div class="a-field">
-            <label for="a-note-body">Note <span class="need">Required</span></label>
-            <textarea id="a-note-body" rows="3">Same SSID as the house. Password lives on the router card in the kitchen drawer.</textarea>
+            <label>Type <span class="need">Required</span></label>
+            <input type="hidden" id="a-note-type" value="wifi" />
+            <div class="a-note-types" data-note-type-group role="group" aria-label="Type">
+              <button type="button" data-note-type="wifi" class="is-on">Wi-Fi</button>
+              <button type="button" data-note-type="bins">Bins</button>
+              <button type="button" data-note-type="keys">Keys / door</button>
+              <button type="button" data-note-type="landlord">Landlord</button>
+              <button type="button" data-note-type="emergency">Emergency</button>
+              <button type="button" data-note-type="rules">House rules</button>
+              <button type="button" data-note-type="other">Other</button>
+            </div>
+            <p class="hint">Type only changes the extras. The note below stays, so you can keep writing.</p>
           </div>
-          <p class="a-window-note">Extras follow the type. Skip any that don’t apply.</p>
           <div class="a-field half" data-note-extra="wifi">
             <label for="a-note-net">Network</label>
             <input id="a-note-net" type="text" value="ParkStreet_Guest" placeholder="ParkStreet_5G" />
@@ -1766,29 +1766,38 @@
             <label for="a-note-pass">Password</label>
             <input id="a-note-pass" type="text" value="sage14guest" placeholder="Password" />
           </div>
-          <div class="a-field" data-note-extra="keys">
+          <div class="a-field" data-note-extra="keys" hidden>
             <label for="a-note-code">Door code</label>
             <input id="a-note-code" type="text" placeholder="4821" />
           </div>
-          <div class="a-field half" data-note-extra="bins">
+          <div class="a-field half" data-note-extra="bins" hidden>
             <label for="a-note-day">Collection</label>
             <input id="a-note-day" type="text" placeholder="Black bags Tuesday" />
           </div>
-          <div class="a-field half" data-note-extra="bins">
+          <div class="a-field half" data-note-extra="bins" hidden>
             <label for="a-note-where">Where they go</label>
             <input id="a-note-where" type="text" placeholder="Alley behind the kitchen" />
           </div>
-          <div class="a-field half" data-note-extra="landlord emergency">
+          <div class="a-field half" data-note-extra="landlord emergency" hidden>
             <label for="a-note-phone">Phone</label>
             <input id="a-note-phone" type="tel" placeholder="07700 900 123" />
           </div>
-          <div class="a-field half" data-note-extra="landlord">
+          <div class="a-field half" data-note-extra="landlord" hidden>
             <label for="a-note-email">Email</label>
             <input id="a-note-email" type="email" placeholder="priya@sharma.rent" />
           </div>
-          <div class="a-field" data-note-extra="emergency">
+          <div class="a-field" data-note-extra="emergency" hidden>
             <label for="a-note-contact">Who to call</label>
             <input id="a-note-contact" type="text" placeholder="Gas emergency · 0800 111 999" />
+          </div>
+          <div class="a-field" data-note-extra="other rules" hidden>
+            <label for="a-note-extra">Detail</label>
+            <input id="a-note-extra" type="text" placeholder="Quiet hours, shoes, guests — whatever belongs with this type" />
+          </div>
+          <div class="a-field">
+            <label for="a-note-body">Note <span class="need">Required</span></label>
+            <textarea id="a-note-body" rows="4">Same SSID as the house. Password lives on the router card in the kitchen drawer.</textarea>
+            <p class="hint">Always here. Add the story after the type extras.</p>
           </div>
           <div class="a-field half">
             <label>Pin on This Hub</label>
@@ -1881,7 +1890,7 @@
         operations: "Bins and chores. Wi-Fi lives in Notes.",
         notes: "Wi-Fi, bin day, landlord. Add what the house keeps forgetting.",
         note: "Pinned · everyone",
-        "note-new": "Title, type, and the note itself. Extras follow the type.",
+        "note-new": "Type first. Extras change. The note itself stays so you can keep writing.",
         activity: "The log, without the group chat.",
         notices: "Gas, bins, and Alex’s share of the fund.",
         "add-expense": "Split three ways unless you pick a template.",
@@ -1892,6 +1901,6 @@
         settings: "You, the house, and how this app behaves."
       };
     </script>
-    <script src="../shared.js?v=set1"></script>
+    <script src="../shared.js?v=set2"></script>
   </body>
 </html>

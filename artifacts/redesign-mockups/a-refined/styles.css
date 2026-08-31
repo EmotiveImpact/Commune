@@ -756,8 +756,8 @@
   width: 100%;
   justify-content: center;
   height: 44px;
-  background: #96e85f;
-  color: #1a1e2b;
+  background: var(--sage);
+  color: #fff;
   font-weight: 750;
 }
 
@@ -1082,6 +1082,92 @@ div.a-set-row {
 
 .a-content {
   padding: 24px 28px 40px;
+  container-type: inline-size;
+  container-name: a-page;
+}
+
+@container a-page (max-width: 640px) {
+  #expenses .a-panel:has(.a-table) {
+    overflow: visible;
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+    padding: 0;
+  }
+  #expenses .a-table {
+    display: block;
+  }
+  #expenses .a-table thead {
+    display: none;
+  }
+  #expenses .a-table tbody,
+  #expenses .a-table tr,
+  #expenses .a-table td {
+    display: block;
+    width: 100%;
+  }
+  #expenses .a-table tbody {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  #expenses .a-table tr {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 14px 16px 12px;
+    box-shadow: var(--shadow-sm);
+  }
+  #expenses .a-table td {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+    padding: 6px 0;
+    border: 0;
+    text-align: right;
+    width: auto;
+    white-space: normal;
+  }
+  #expenses .a-table td::before {
+    content: attr(data-label);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    text-align: left;
+    flex-shrink: 0;
+  }
+  #expenses .a-table td:first-child {
+    display: block;
+    text-align: left;
+    padding-bottom: 8px;
+    font-size: 15px;
+  }
+  #expenses .a-table td:first-child::before {
+    display: none;
+  }
+  #expenses .a-table td:last-child {
+    justify-content: flex-end;
+    padding-top: 10px;
+    width: auto;
+  }
+  #expenses .a-table td:last-child::before {
+    display: none;
+  }
+  #expenses .a-table .a-row-actions,
+  #expenses .a-table .a-choose {
+    min-width: 0;
+    width: 100%;
+  }
+  #expenses .a-table .a-row-actions .a-btn,
+  #expenses .a-table .a-choose .a-btn {
+    width: 100%;
+  }
+  #expenses .a-table .amt {
+    text-align: right;
+  }
 }
 
 .screen[hidden] {
@@ -1585,23 +1671,38 @@ button.a-kpi {
   overflow-x: auto;
 }
 
-.a-table .a-row-actions {
+.a-table th:last-child,
+.a-table td:last-child {
+  text-align: right;
+  width: 1%;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.a-table .a-row-actions,
+.a-table .a-choose {
   display: flex;
   justify-content: flex-end;
   align-items: center;
   gap: 6px;
+  min-width: 128px;
+  margin-left: auto;
 }
 
-.a-table .a-row-actions .a-btn {
+.a-table .a-row-actions .a-btn,
+.a-table .a-choose .a-btn {
   height: 38px;
+  min-width: 118px;
   border-radius: 999px;
   flex-shrink: 0;
+  justify-content: center;
 }
 
 .a-table .a-muted-action {
   text-align: right;
   color: var(--ink-soft);
   font-weight: 500;
+  min-width: 128px;
 }
 
 .a-member .avatar {
@@ -2916,10 +3017,21 @@ button.a-item {
 .a-window .a-field-row {
   position: sticky;
   bottom: -24px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
   margin: 12px -24px 0;
   padding: 16px 24px 0;
   background: #f8f5f0;
   border-top: 1px solid rgba(23, 27, 36, 0.06);
+}
+
+.a-window .a-field-row .a-btn,
+.a-window .a-field-row .a-choose .a-btn {
+  height: 38px;
+  min-width: 118px;
+  justify-content: center;
 }
 
 .a-window .a-seg {
@@ -2931,6 +3043,36 @@ button.a-item {
 
 .a-window .a-seg button {
   width: 100%;
+}
+
+.a-note-types {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.a-note-types button {
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: #fff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.a-note-types button.is-on {
+  background: var(--sage);
+  color: #fff;
+  border-color: var(--sage);
+}
+
+.a-window [hidden],
+[data-note-extra][hidden] {
+  display: none !important;
 }
 
 .a-window-kicker {
@@ -3034,6 +3176,8 @@ button.a-item {
   }
   .a-header-title p {
     color: rgba(245, 241, 234, 0.55);
+    white-space: normal;
+    overflow: visible;
   }
   .a-header-mark {
     display: block;
@@ -3317,6 +3461,8 @@ button.a-item {
 
 .a-body.is-native .a-header-title p {
   color: rgba(245, 241, 234, 0.55);
+  white-space: normal;
+  overflow: visible;
 }
 
 .a-body.is-native .a-header-mark {

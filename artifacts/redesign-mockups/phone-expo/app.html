@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=expo5" />
+    <link rel="stylesheet" href="./styles.css?v=expo6" />
   </head>
   <body class="x-body">
     <div class="x-status" aria-hidden="true"><span>9:41</span><span>LTE ████</span></div>
@@ -119,10 +119,10 @@
             </div>
           </div>
           <div class="x-kpis">
-            <button class="x-kpi" type="button" data-go="funds"><span>House fund</span><strong>£420</strong><small>£180 still from Alex</small></button>
-            <button class="x-kpi" type="button" data-go="recurring"><span>Open bills</span><strong>2</strong><small>Gas + Virgin</small></button>
-            <button class="x-kpi" type="button" data-go="expenses"><span>Next due</span><strong>Fri</strong><small>British Gas</small></button>
-            <button class="x-kpi" type="button" data-go="operations"><span>Ops</span><strong>1</strong><small>Bins overdue</small></button>
+            <button class="x-kpi peach" type="button" data-go="funds"><span>House fund</span><strong>£420</strong><small>£180 still from Alex</small></button>
+            <button class="x-kpi sage" type="button" data-go="recurring"><span>Open bills</span><strong>2</strong><small>Gas + Virgin</small></button>
+            <button class="x-kpi ink" type="button" data-go="expenses"><span>Next due</span><strong>Fri</strong><small>British Gas</small></button>
+            <button class="x-kpi lilac" type="button" data-go="operations"><span>Ops</span><strong>1</strong><small>Bins overdue</small></button>
           </div>
           <div class="x-owe">
             <span>You owe</span>
@@ -186,7 +186,7 @@
             </button>
             <div class="x-row" style="cursor:default">
               <span class="grow"><strong>Alex ↔ You</strong><span>Even on expenses · still £180 for the fund</span></span>
-              <span class="x-pill">Even</span>
+              <span class="x-pill settled">Even</span>
             </div>
           </div>
         </section>
@@ -208,11 +208,12 @@
 
         <section class="screen" id="notes" hidden>
           <p class="x-h">The house keeps forgetting</p>
-          <div class="x-card">
+          <div class="x-card" data-notes-list>
             <button class="x-row" type="button"><span class="grow"><strong>Wi-Fi</strong><span>ParkStreet_5G · password in notes</span></span></button>
             <button class="x-row" type="button"><span class="grow"><strong>Bins</strong><span>Black bags Tuesday · recycling Friday</span></span></button>
             <button class="x-row" type="button"><span class="grow"><strong>Landlord</strong><span>Priya Sharma · rent via the fund</span></span></button>
           </div>
+          <button class="x-dash" type="button" data-sheet="note">+ Add note</button>
         </section>
 
         <section class="screen" id="funds" hidden>
@@ -416,7 +417,7 @@
         <span class="x-more-copy"><strong>Add recurring bill</strong><span>A cost that repeats monthly</span></span>
         <svg class="x-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg>
       </button>
-      <button type="button" data-go="notes">
+      <button type="button" data-sheet="note">
         <span class="x-tile sage" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 4h9l5 5v11H6z"/><path d="M15 4v5h5"/></svg></span>
         <span class="x-more-copy"><strong>Add a note</strong><span>Wi-Fi, door code, landlord</span></span>
         <svg class="x-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg>
@@ -451,6 +452,84 @@
       <div class="x-field"><label for="x-ex-what">What</label><input id="x-ex-what" value="Printer paper" /></div>
       <div class="x-field"><label for="x-ex-amt">Amount</label><input id="x-ex-amt" value="£24.00" /></div>
       <button class="x-enter" type="button" data-go="expenses">Save</button>
+    </div>
+
+    <div class="x-sheet" id="sheet-note" role="dialog" aria-label="Add note">
+      <div class="x-sheet-head">
+        <div>
+          <h2>Add note</h2>
+          <p>Type first. Extras change. The note itself stays so you can keep writing.</p>
+        </div>
+        <button class="x-sheet-x" type="button" data-close-sheet aria-label="Close">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
+      </div>
+      <div class="x-field">
+        <label for="x-note-title">Title</label>
+        <input id="x-note-title" type="text" value="Guest wifi" />
+      </div>
+      <p class="x-hint" style="margin-bottom:8px">Type</p>
+      <div class="x-note-types" data-note-type-group role="group" aria-label="Type">
+        <button type="button" data-note-type="wifi" class="is-on">Wi-Fi</button>
+        <button type="button" data-note-type="bins">Bins</button>
+        <button type="button" data-note-type="keys">Keys / door</button>
+        <button type="button" data-note-type="landlord">Landlord</button>
+        <button type="button" data-note-type="emergency">Emergency</button>
+        <button type="button" data-note-type="rules">House rules</button>
+        <button type="button" data-note-type="other">Other</button>
+      </div>
+      <p class="x-hint">Type only changes the extras. Keep writing in the note below.</p>
+      <div class="x-field" data-note-extra="wifi">
+        <label for="x-note-net">Network</label>
+        <input id="x-note-net" type="text" value="ParkStreet_Guest" />
+      </div>
+      <div class="x-field" data-note-extra="wifi">
+        <label for="x-note-pass">Password</label>
+        <input id="x-note-pass" type="text" value="sage14guest" />
+      </div>
+      <div class="x-field" data-note-extra="keys" hidden>
+        <label for="x-note-code">Door code</label>
+        <input id="x-note-code" type="text" placeholder="4821" />
+      </div>
+      <div class="x-field" data-note-extra="bins" hidden>
+        <label for="x-note-day">Collection</label>
+        <input id="x-note-day" type="text" placeholder="Black bags Tuesday" />
+      </div>
+      <div class="x-field" data-note-extra="bins" hidden>
+        <label for="x-note-where">Where they go</label>
+        <input id="x-note-where" type="text" placeholder="Alley behind the kitchen" />
+      </div>
+      <div class="x-field" data-note-extra="landlord emergency" hidden>
+        <label for="x-note-phone">Phone</label>
+        <input id="x-note-phone" type="tel" placeholder="07700 900 123" />
+      </div>
+      <div class="x-field" data-note-extra="landlord" hidden>
+        <label for="x-note-email">Email</label>
+        <input id="x-note-email" type="email" placeholder="priya@sharma.rent" />
+      </div>
+      <div class="x-field" data-note-extra="emergency" hidden>
+        <label for="x-note-contact">Who to call</label>
+        <input id="x-note-contact" type="text" placeholder="Gas emergency · 0800 111 999" />
+      </div>
+      <div class="x-field" data-note-extra="other rules" hidden>
+        <label for="x-note-extra">Detail</label>
+        <input id="x-note-extra" type="text" placeholder="Quiet hours, shoes, guests" />
+      </div>
+      <div class="x-field">
+        <label for="x-note-body">Note</label>
+        <textarea id="x-note-body" rows="4">Same SSID as the house. Password lives on the router card in the kitchen drawer.</textarea>
+      </div>
+      <p class="x-hint">Pin on This Hub</p>
+      <div class="x-seg" data-note-pin>
+        <button type="button" data-seg="off">Off</button>
+        <button type="button" data-seg="on" class="is-on">Pin</button>
+      </div>
+      <p class="x-hint">Who should know</p>
+      <div class="x-seg" data-note-who>
+        <button type="button" data-seg="everyone" class="is-on">Everyone</button>
+        <button type="button" data-seg="admins">Admins</button>
+      </div>
+      <button class="x-enter" type="button" data-note-save>Save</button>
     </div>
 
     <div class="x-sheet" id="sheet-create" role="dialog" aria-label="New commune">
@@ -581,6 +660,38 @@
           });
         }
 
+        function syncNoteExtras() {
+          var on = document.querySelector("#sheet-note [data-note-type].is-on");
+          var type = on ? on.getAttribute("data-note-type") : "wifi";
+          document.querySelectorAll("#sheet-note [data-note-extra]").forEach(function (el) {
+            var kinds = (el.getAttribute("data-note-extra") || "").split(/\s+/);
+            el.hidden = kinds.indexOf(type) === -1;
+          });
+        }
+
+        function saveNote() {
+          var on = document.querySelector("#sheet-note [data-note-type].is-on");
+          var titleEl = document.getElementById("x-note-title");
+          var bodyEl = document.getElementById("x-note-body");
+          var title = (titleEl && titleEl.value.trim()) || (on ? on.textContent.trim() : "Note");
+          var body = (bodyEl && bodyEl.value.trim()) || (on ? on.textContent.trim() : "Just added");
+          var list = document.querySelector("[data-notes-list]");
+          if (!list) return;
+          var btn = document.createElement("button");
+          btn.className = "x-row";
+          btn.type = "button";
+          var wrap = document.createElement("span");
+          wrap.className = "grow";
+          var strong = document.createElement("strong");
+          strong.textContent = title;
+          var lede = document.createElement("span");
+          lede.textContent = body;
+          wrap.appendChild(strong);
+          wrap.appendChild(lede);
+          btn.appendChild(wrap);
+          list.insertBefore(btn, list.firstChild);
+        }
+
         function openSheet(id) {
           var el = document.getElementById("sheet-" + id);
           if (!el) return;
@@ -588,6 +699,7 @@
           document.querySelectorAll(".x-sheet").forEach(function (s) {
             s.classList.toggle("is-open", s === el);
           });
+          if (id === "note") syncNoteExtras();
         }
 
         function show(id) {
@@ -614,6 +726,34 @@
             var on = sw.getAttribute("aria-checked") !== "true";
             sw.setAttribute("aria-checked", on ? "true" : "false");
             sw.classList.toggle("is-on", on);
+            return;
+          }
+          var typeBtn = e.target.closest("[data-note-type]");
+          if (typeBtn) {
+            e.preventDefault();
+            var group = typeBtn.closest("[data-note-type-group]");
+            if (group) {
+              group.querySelectorAll("[data-note-type]").forEach(function (b) {
+                b.classList.toggle("is-on", b === typeBtn);
+              });
+            }
+            syncNoteExtras();
+            return;
+          }
+          var segBtn = e.target.closest(".x-seg button");
+          if (segBtn) {
+            e.preventDefault();
+            segBtn.parentElement.querySelectorAll("button").forEach(function (b) {
+              b.classList.toggle("is-on", b === segBtn);
+            });
+            return;
+          }
+          var saveNoteBtn = e.target.closest("[data-note-save]");
+          if (saveNoteBtn) {
+            e.preventDefault();
+            saveNote();
+            closeSheets();
+            show("notes");
             return;
           }
           var closer = e.target.closest("[data-close-sheet]");
