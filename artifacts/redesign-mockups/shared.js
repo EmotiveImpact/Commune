@@ -509,9 +509,32 @@
     var hubId = t.getAttribute("data-hub");
     if (hubId) applyHub(hubId);
     var go = t.getAttribute("data-go");
+    if (go === "hub-empty") stampEmptyHub(t.closest(".screen"));
     if (go) show(go);
     else if (hubId) show(document.body.classList.contains("d-body") ? "hub-snapshot" : "hub");
   });
+
+  function stampEmptyHub(screen) {
+    if (!screen) return;
+    var nameInput = screen.querySelector("input[type='text']");
+    var typeSelect = screen.querySelector("#a-new-type, #a-ob-type");
+    var name = nameInput && nameInput.value.trim();
+    var type = typeSelect && typeSelect.value;
+    var empty = document.getElementById("hub-empty");
+    if (!empty) return;
+    if (name) {
+      empty.querySelectorAll("[data-hub-name]").forEach(function (el) {
+        el.textContent = name;
+      });
+      setAll("[data-hub-switch-name]", name);
+    }
+    if (type) {
+      empty.querySelectorAll("[data-hub-type]").forEach(function (el) {
+        el.textContent = type;
+      });
+      setAll("[data-hub-switch-meta]", type + " · just created");
+    }
+  }
 
   document.documentElement.style.setProperty("--hub-photo", "url('" + HUBS.park.photo + "')");
 
