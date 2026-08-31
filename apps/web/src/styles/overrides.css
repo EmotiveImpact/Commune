@@ -1,0 +1,20 @@
+html,
+body,
+#root {
+  height: 100%;
+}
+
+.a-body {
+  min-height: 100%;
+}
+
+.a-brand {
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  color: inherit;
+}
+
+.a-brand:hover .a-wordmark {
+  color: #fff;
+}
