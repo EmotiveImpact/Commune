@@ -1,0 +1,5 @@
+/* Wells — short Soho, then the tall cards are the page */
+.hero-soho--short,
+.hero-soho--short .hero-soho__in { min-height: 72svh; }
+.hero-soho--short h1 { font-size: clamp(2.4rem, 6vw, 4.4rem); }
+.wells { padding-top: 14px; }

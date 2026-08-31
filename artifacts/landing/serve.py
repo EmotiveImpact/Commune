@@ -30,6 +30,7 @@ PAGES = {
     "/product.html": SITE / "product.html",
     "/landing.css": CSS,
     "/versions/tokens.css": VERSIONS / "tokens.css",
+    "/versions/mix-tokens.css": VERSIONS / "mix-tokens.css",
 }
 
 

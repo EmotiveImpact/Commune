@@ -1,0 +1,21 @@
+/* One place — statement first, then the room */
+.lead {
+  padding: 6.5rem 7vw 3.2rem;
+  max-width: 54rem;
+}
+.lead h1 {
+  font-family: var(--serif);
+  font-weight: 500;
+  font-size: clamp(2.8rem, 6vw, 5.2rem);
+  line-height: 1.05;
+  letter-spacing: -0.035em;
+  color: var(--ink);
+}
+.lead p {
+  margin-top: 1.2rem;
+  font-size: 1.15rem;
+  color: var(--muted);
+  max-width: 36rem;
+  line-height: 1.5;
+}
+.lead .btn { margin-top: 1.8rem; }
