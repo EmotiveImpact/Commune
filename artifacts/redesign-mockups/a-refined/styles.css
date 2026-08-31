@@ -509,7 +509,7 @@ button.a-kpi {
   display: block;
   width: 100%;
   margin: 0;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-strong);
   font: inherit;
   color: inherit;
   text-align: left;
