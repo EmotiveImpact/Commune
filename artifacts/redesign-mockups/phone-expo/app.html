@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Expo phone · Commune</title>
+    <link rel="icon" href="../favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="./styles.css?v=expo1" />
+  </head>
+  <body class="x-body">
+    <div class="x-status" aria-hidden="true"><span>9:41</span><span>LTE ████</span></div>
+    <div class="x-home-ind" aria-hidden="true"></div>
+
+    <div class="x-app">
+      <header class="x-header">
+        <button class="x-icon" type="button" data-sheet="more" aria-label="More">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+        </button>
+        <h1 data-page-title class="is-brand">Commune</h1>
+        <div class="x-header-right">
+          <button class="x-icon x-bell is-unread" type="button" data-go="home" aria-label="Notices">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 7 3 9H3c0-2 3-2 3-9"/><path d="M10 21a2 2 0 0 0 4 0"/></svg>
+          </button>
+          <button class="x-ava" type="button" data-go="settings" aria-label="You">MC</button>
+        </div>
+      </header>
+
+      <div class="x-content">
+        <section class="screen" id="login" hidden>
+          <div class="x-gate">
+            <div class="x-gate-card">
+              <h1>Welcome back.</h1>
+              <p>Park Street, Studio, Lisbon — one login. This is the Expo gate, rewritten in Direction A.</p>
+              <div class="x-field">
+                <label for="x-email">Email</label>
+                <input id="x-email" type="email" value="maya@14park.st" />
+              </div>
+              <div class="x-field">
+                <label for="x-pass">Password</label>
+                <input id="x-pass" type="password" value="••••••••" />
+              </div>
+              <button class="x-enter" type="button" data-go="home">Enter</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="screen" id="home">
+          <button class="x-switch" type="button" data-go="groups">
+            <span class="x-tile sage" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 10.5 12 3l9 7.5V21a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1v-10.5z"/></svg>
+            </span>
+            <span class="grow"><strong>14 Park Street</strong><span>3 members · Household</span></span>
+            <svg class="x-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+          </button>
+
+          <div class="x-hero">
+            <div class="x-hero-top">
+              <p class="x-hero-k">Your share · August</p>
+              <span class="x-pct">62% settled</span>
+            </div>
+            <p class="x-hero-amt">£42.00</p>
+            <p class="x-hero-meta"><b>£68</b> paid · <b>£42</b> left · <b>2</b> open</p>
+            <div class="x-track" aria-hidden="true"><i style="width:62%"></i></div>
+            <div class="x-hero-btns">
+              <button class="pri" type="button" data-go="expenses">Add Expense</button>
+              <button class="sec" type="button" data-go="settle">Settle Up</button>
+            </div>
+          </div>
+
+          <div class="x-foryou">
+            <div class="x-tabs-seg" role="tablist" aria-label="For you">
+              <button type="button" data-tab="bills" class="is-on">Bills</button>
+              <button type="button" data-tab="chores">Chores</button>
+              <button type="button" data-tab="soon">Soon</button>
+              <button type="button" data-tab="log">Activity</button>
+            </div>
+            <div data-panel="bills">
+              <button class="x-row" type="button" data-go="expenses">
+                <span class="x-tile warn" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2 4 14h7l-1 8 10-14h-7l1-8z"/></svg>
+                </span>
+                <span class="grow"><strong>British Gas</strong><span>Friday · Jordan paid · your share open</span></span>
+                <span class="amt">£31.40</span>
+              </button>
+              <button class="x-row" type="button" data-go="expenses">
+                <span class="x-tile trip" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5v14"/></svg>
+                </span>
+                <span class="grow"><strong>Virgin Media</strong><span>12 Sept · still open</span></span>
+                <span class="amt">£14.00</span>
+              </button>
+            </div>
+            <div data-panel="chores" hidden>
+              <button class="x-row" type="button" data-go="operations">
+                <span class="x-tile sage" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3 9-9"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                </span>
+                <span class="grow"><strong>Bins</strong><span>Still Jordan’s Tuesday · overdue</span></span>
+              </button>
+            </div>
+            <div data-panel="soon" hidden>
+              <button class="x-row" type="button" data-go="expenses">
+                <span class="x-tile warn" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+                </span>
+                <span class="grow"><strong>British Gas</strong><span>Due Friday 29 Aug</span></span>
+                <span class="amt">£94.20</span>
+              </button>
+            </div>
+            <div data-panel="log" hidden>
+              <button class="x-row" type="button" data-go="expenses">
+                <span class="x-tile sage" aria-hidden="true"><span style="font-size:12px;font-weight:700">MC</span></span>
+                <span class="grow"><strong>Virgin Media</strong><span>Maya logged it · yesterday</span></span>
+              </button>
+              <button class="x-row" type="button" data-go="expenses">
+                <span class="x-tile warn" aria-hidden="true"><span style="font-size:12px;font-weight:700">JH</span></span>
+                <span class="grow"><strong>British Gas</strong><span>Jordan paid the bill · Tue</span></span>
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <section class="screen" id="expenses" hidden>
+          <p class="x-h">This cycle</p>
+          <div class="x-card">
+            <button class="x-row" type="button">
+              <span class="grow"><strong>British Gas</strong><span>Jordan · Friday · your share open</span></span>
+              <span class="amt">£94.20</span>
+            </button>
+            <button class="x-row" type="button">
+              <span class="grow"><strong>Virgin Media</strong><span>Maya · still open</span></span>
+              <span class="amt">£42.00</span>
+            </button>
+            <button class="x-row" type="button">
+              <span class="grow"><strong>Tesco</strong><span>Alex settled · Mon</span></span>
+              <span class="amt sage">£18.00</span>
+            </button>
+          </div>
+        </section>
+
+        <section class="screen" id="groups" hidden>
+          <p class="x-h">Your communes</p>
+          <div class="x-card">
+            <button class="x-row" type="button" data-go="home">
+              <span class="x-tile sage" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 10.5 12 3l9 7.5V21a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1v-10.5z"/></svg>
+              </span>
+              <span class="grow"><strong>14 Park Street</strong><span>Household · 3 people · you owe £42</span></span>
+            </button>
+            <button class="x-row" type="button" data-go="home">
+              <span class="x-tile trip" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="14" rx="2"/></svg>
+              </span>
+              <span class="grow"><strong>Studio East</strong><span>Workspace · even · ink Monday</span></span>
+            </button>
+            <button class="x-row" type="button" data-go="home">
+              <span class="x-tile warn" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12h20M12 2v8"/></svg>
+              </span>
+              <span class="grow"><strong>Lisbon · Sept</strong><span>Trip · you’re owed £64</span></span>
+            </button>
+          </div>
+          <button class="x-create" type="button" data-sheet="fab">+ Create a commune</button>
+        </section>
+
+        <section class="screen" id="settle" hidden>
+          <p class="x-h">Two transfers this month</p>
+          <div class="x-card">
+            <button class="x-row" type="button">
+              <span class="grow"><strong>You → Jordan</strong><span>Gas share · or £24 if you net Tesco</span></span>
+              <span class="amt">£42</span>
+            </button>
+            <button class="x-row" type="button">
+              <span class="grow"><strong>Jordan → You</strong><span>Tesco extras from Monday</span></span>
+              <span class="amt sage">£18</span>
+            </button>
+          </div>
+        </section>
+
+        <section class="screen" id="operations" hidden>
+          <p class="x-h">Chores</p>
+          <div class="x-card">
+            <button class="x-row" type="button">
+              <span class="x-tile warn" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3 9-9"/></svg>
+              </span>
+              <span class="grow"><strong>Bins</strong><span>Still Jordan’s Tuesday</span></span>
+            </button>
+          </div>
+        </section>
+
+        <section class="screen" id="settings" hidden>
+          <div class="x-profile">
+            <div class="ava">MC</div>
+            <strong>Maya Chen</strong>
+            <span>maya@14park.st</span>
+            <span>Member since 2024</span>
+          </div>
+          <div class="x-plan">
+            <p class="k">Plan</p>
+            <h2>Standard</h2>
+            <p class="x-cap" style="margin:0">Renews 1 Sept 2026 · 3 of 8 members</p>
+            <div class="x-track" style="background:#f5f3ef;margin:14px 0 0"><i style="width:38%"></i></div>
+            <button class="x-upgrade" type="button">Upgrade</button>
+          </div>
+          <p class="x-h">Preferences</p>
+          <div class="x-card">
+            <div class="x-row" style="cursor:default">
+              <span class="grow"><strong>Dark mode</strong><span>Off keeps the cream paper</span></span>
+              <button class="x-switch-ui" type="button" data-switch aria-checked="false" aria-label="Dark mode"></button>
+            </div>
+            <div class="x-row" style="cursor:default">
+              <span class="grow"><strong>Notices</strong><span>Bills, chores, and fund gaps</span></span>
+              <button class="x-switch-ui is-on" type="button" data-switch aria-checked="true" aria-label="Notices"></button>
+            </div>
+            <div class="x-row" style="cursor:default">
+              <span class="grow"><strong>Nudge Jordan</strong><span>Quiet reminder on open shares</span></span>
+              <button class="x-switch-ui is-on" type="button" data-switch aria-checked="true" aria-label="Nudge Jordan"></button>
+            </div>
+          </div>
+          <p class="x-h">Support &amp; legal</p>
+          <div class="x-card">
+            <a class="x-row" href="https://ourcommune.io" target="_blank" rel="noreferrer">
+              <span class="grow"><strong>Contact us</strong><span>ourcommune.io</span></span>
+              <svg class="x-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17 17 7M8 7h9v9"/></svg>
+            </a>
+            <a class="x-row" href="https://ourcommune.io/privacy" target="_blank" rel="noreferrer">
+              <span class="grow"><strong>Privacy policy</strong></span>
+              <svg class="x-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17 17 7M8 7h9v9"/></svg>
+            </a>
+            <a class="x-row" href="https://ourcommune.io/terms" target="_blank" rel="noreferrer">
+              <span class="grow"><strong>Terms of service</strong></span>
+              <svg class="x-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17 17 7M8 7h9v9"/></svg>
+            </a>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <nav class="x-tabs" aria-label="Expo tabs">
+      <button type="button" data-go="home" class="is-on">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 10.5 12 3l9 7.5V21a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1v-10.5z"/></svg>
+        Home
+      </button>
+      <button type="button" data-go="expenses">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 8h10M7 12h6M6 4h12a1 1 0 0 1 1 1v16l-4-2-4 2-4-2-4 2V5a1 1 0 0 1 1-1z"/></svg>
+        Expenses
+      </button>
+      <button class="x-fab" type="button" data-sheet="fab" aria-label="Quick actions">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+      </button>
+      <button type="button" data-go="groups">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="9.5" cy="7" r="3.5"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a3.5 3.5 0 0 1 0 6.74"/></svg>
+        Groups
+      </button>
+      <button type="button" data-sheet="more">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        More
+      </button>
+    </nav>
+
+    <div class="x-scrim" data-close-sheet></div>
+
+    <div class="x-sheet" id="sheet-more" role="dialog" aria-label="More">
+      <div class="x-sheet-head">
+        <div>
+          <h2>More</h2>
+          <p>Chores, analytics, and everything else.</p>
+        </div>
+        <button class="x-sheet-x" type="button" data-close-sheet aria-label="Close">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
+      </div>
+      <button type="button" data-go="operations">
+        <span class="x-tile sage" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3 9-9"/></svg></span>
+        <span class="x-more-copy"><strong>Chores</strong><span>Track non-money tasks</span></span>
+        <svg class="x-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg>
+      </button>
+      <button type="button" data-go="settle">
+        <span class="x-tile trip" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 7h10M7 12h10M7 17h6"/></svg></span>
+        <span class="x-more-copy"><strong>Settle up</strong><span>Clear balances with members</span></span>
+        <svg class="x-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg>
+      </button>
+      <button type="button" data-go="home">
+        <span class="x-tile sage" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V5h4v14H4zm6 0V9h4v10h-4zm6 0v-7h4v7h-4z"/></svg></span>
+        <span class="x-more-copy"><strong>Analytics</strong><span>Spending trends and breakdown</span></span>
+        <svg class="x-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg>
+      </button>
+      <button type="button" data-go="home">
+        <span class="x-tile warn" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/></svg></span>
+        <span class="x-more-copy"><strong>Activity</strong><span>Full log of recent changes</span></span>
+        <svg class="x-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg>
+      </button>
+      <button type="button" data-go="groups">
+        <span class="x-tile trip" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="9.5" cy="7" r="3.5"/></svg></span>
+        <span class="x-more-copy"><strong>Members</strong><span>Manage people in this group</span></span>
+        <svg class="x-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg>
+      </button>
+      <button type="button" data-go="settings">
+        <span class="x-tile ink" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9c.3.6.9 1 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></span>
+        <span class="x-more-copy"><strong>Profile &amp; settings</strong><span>Your account and preferences</span></span>
+        <svg class="x-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg>
+      </button>
+    </div>
+
+    <div class="x-sheet" id="sheet-fab" role="dialog" aria-label="Quick actions">
+      <div class="x-sheet-head">
+        <div>
+          <h2>What would you like to do?</h2>
+          <p>Pick an action to jump straight in.</p>
+        </div>
+        <button class="x-sheet-x" type="button" data-close-sheet aria-label="Close">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
+      </div>
+      <button type="button" data-go="expenses">
+        <span class="x-tile sage" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg></span>
+        <span class="x-more-copy"><strong>Add expense</strong><span>Log a new shared cost</span></span>
+        <svg class="x-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg>
+      </button>
+      <button type="button" data-go="expenses">
+        <span class="x-tile warn" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12a8 8 0 0 1 14-5l2-2v6h-6"/><path d="M20 12a8 8 0 0 1-14 5l-2 2v-6h6"/></svg></span>
+        <span class="x-more-copy"><strong>Add recurring bill</strong><span>A cost that repeats monthly</span></span>
+        <svg class="x-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg>
+      </button>
+      <button type="button" data-go="operations">
+        <span class="x-tile sage" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3 9-9"/></svg></span>
+        <span class="x-more-copy"><strong>Add a chore</strong><span>Track a non-money task</span></span>
+        <svg class="x-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg>
+      </button>
+      <button type="button" data-go="groups">
+        <span class="x-tile trip" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="9.5" cy="7" r="3.5"/><path d="M20 8v6M17 11h6"/></svg></span>
+        <span class="x-more-copy"><strong>Add a member</strong><span>Invite someone into this space</span></span>
+        <svg class="x-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg>
+      </button>
+    </div>
+
+    <script>
+      (function () {
+        var TITLES = {
+          login: "Commune",
+          home: "Commune",
+          expenses: "Expenses",
+          groups: "Groups",
+          settle: "Settle",
+          operations: "Chores",
+          settings: "Settings"
+        };
+        var GATE = { login: true };
+        var TABS = { home: true, expenses: true, groups: true };
+
+        function closeSheets() {
+          document.body.classList.remove("sheet-open");
+          document.querySelectorAll(".x-sheet").forEach(function (el) {
+            el.classList.remove("is-open");
+          });
+        }
+
+        function openSheet(id) {
+          closeSheets();
+          var el = document.getElementById("sheet-" + id);
+          if (!el) return;
+          document.body.classList.add("sheet-open");
+          el.classList.add("is-open");
+        }
+
+        function show(id) {
+          if (!document.getElementById(id)) id = "home";
+          closeSheets();
+          document.body.classList.toggle("is-gate", !!GATE[id]);
+          document.querySelectorAll(".screen").forEach(function (s) {
+            s.hidden = s.id !== id;
+          });
+          document.querySelectorAll(".x-tabs [data-go]").forEach(function (b) {
+            b.classList.toggle("is-on", b.getAttribute("data-go") === id);
+          });
+          var title = document.querySelector("[data-page-title]");
+          if (title) {
+            title.textContent = TITLES[id] || id;
+            title.classList.toggle("is-brand", id === "home" || id === "login");
+          }
+        }
+
+        document.addEventListener("click", function (e) {
+          var tab = e.target.closest("[data-tab]");
+          if (tab) {
+            e.preventDefault();
+            var key = tab.getAttribute("data-tab");
+            tab.parentElement.querySelectorAll("[data-tab]").forEach(function (b) {
+              b.classList.toggle("is-on", b === tab);
+            });
+            document.querySelectorAll("[data-panel]").forEach(function (p) {
+              p.hidden = p.getAttribute("data-panel") !== key;
+            });
+            return;
+          }
+          var sw = e.target.closest("[data-switch]");
+          if (sw) {
+            e.preventDefault();
+            var on = sw.getAttribute("aria-checked") !== "true";
+            sw.setAttribute("aria-checked", on ? "true" : "false");
+            sw.classList.toggle("is-on", on);
+            return;
+          }
+          var closer = e.target.closest("[data-close-sheet]");
+          if (closer) {
+            e.preventDefault();
+            closeSheets();
+            return;
+          }
+          var sheet = e.target.closest("[data-sheet]");
+          if (sheet) {
+            e.preventDefault();
+            openSheet(sheet.getAttribute("data-sheet"));
+            return;
+          }
+          var go = e.target.closest("[data-go]");
+          if (!go || go.tagName === "A") return;
+          e.preventDefault();
+          show(go.getAttribute("data-go"));
+        });
+
+        document.addEventListener("keydown", function (e) {
+          if (e.key === "Escape") closeSheets();
+        });
+
+        var boot = new URLSearchParams(location.search).get("screen") || "home";
+        show(boot);
+      })();
+    </script>
+  </body>
+</html>

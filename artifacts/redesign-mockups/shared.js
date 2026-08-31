@@ -679,7 +679,24 @@
   function closeMore() {
     document.body.classList.remove("more-open");
     var more = document.querySelector(".a-more");
+    var scrim = document.querySelector(".a-sheet-scrim");
     if (more) more.hidden = true;
+    if (scrim) scrim.hidden = true;
+    document.querySelectorAll(".a-more-btn").forEach(function (btn) {
+      btn.classList.remove("is-open");
+    });
+  }
+
+  function openMore() {
+    closeChoose();
+    document.body.classList.add("more-open");
+    var more = document.querySelector(".a-more");
+    var scrim = document.querySelector(".a-sheet-scrim");
+    if (more) more.hidden = false;
+    if (scrim) scrim.hidden = false;
+    document.querySelectorAll(".a-more-btn").forEach(function (btn) {
+      btn.classList.add("is-open");
+    });
   }
 
   function closeWindow() {
@@ -783,6 +800,12 @@
 
   document.addEventListener("click", function (e) {
     if (!e.target.closest(".a-choose")) closeChoose();
+    if (
+      document.body.classList.contains("more-open") &&
+      !e.target.closest(".a-more, [data-more]")
+    ) {
+      closeMore();
+    }
     var saver = e.target.closest("[data-note-save]");
     if (saver) appendNoteFromForm();
     var closer = e.target.closest("[data-window-close]");
@@ -808,9 +831,22 @@
     var moreBtn = e.target.closest("[data-more]");
     if (moreBtn) {
       e.preventDefault();
-      var more = document.querySelector(".a-more");
-      var open = document.body.classList.toggle("more-open");
-      if (more) more.hidden = !open;
+      if (document.body.classList.contains("more-open")) closeMore();
+      else openMore();
+      return;
+    }
+    var sheetClose = e.target.closest("[data-sheet-close]");
+    if (sheetClose) {
+      e.preventDefault();
+      closeMore();
+      return;
+    }
+    var switchBtn = e.target.closest("[data-switch]");
+    if (switchBtn) {
+      e.preventDefault();
+      var on = switchBtn.getAttribute("aria-checked") !== "true";
+      switchBtn.setAttribute("aria-checked", on ? "true" : "false");
+      switchBtn.classList.toggle("is-on", on);
       return;
     }
     var navModeBtn = e.target.closest("[data-nav-mode]");
@@ -852,6 +888,7 @@
   document.addEventListener("keydown", function (e) {
     if (e.key === "Escape") {
       closeChoose();
+      closeMore();
       closeWindow();
     }
   });

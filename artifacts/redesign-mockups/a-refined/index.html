@@ -8,8 +8,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../shared.css?v=phone" />
-    <link rel="stylesheet" href="./styles.css?v=phone" />
+    <link rel="stylesheet" href="../shared.css?v=set1" />
+    <link rel="stylesheet" href="./styles.css?v=set1" />
   </head>
   <body class="a-body nav-basic">
     <div class="a-native-status" aria-hidden="true">
@@ -248,6 +248,12 @@
         </nav>
 
         <div class="a-switch-section">
+          <button class="a-create-space" type="button" data-go="commune-new">
+            <span class="a-create-mark" aria-hidden="true">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+            </span>
+            Create a commune
+          </button>
           <button class="a-hub-switch" type="button" data-go="communes" aria-label="Switch commune">
             <div class="hub-ico" aria-hidden="true">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f5f1ea" stroke-width="2"><path d="M3 10.5 12 3l9 7.5V21a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1v-10.5z"/></svg>
@@ -258,15 +264,9 @@
             </div>
             <svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
           </button>
-          <button class="a-create-space" type="button" data-go="commune-new">
-            <span class="a-create-mark" aria-hidden="true">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
-            </span>
-            Create a commune
-          </button>
         </div>
 
-        <button class="a-side-foot" type="button" data-go="profile">
+        <button class="a-side-foot" type="button" data-go="settings">
           <span class="avatar maya">MC</span>
           <div class="meta">
             <strong>Maya Chen</strong>
@@ -277,6 +277,9 @@
 
       <div class="a-main">
         <header class="a-header">
+          <button class="a-icon-btn a-more-btn" type="button" data-more aria-label="More">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+          </button>
           <img class="a-header-mark" src="../logo-mark.svg" width="32" height="32" alt="" />
           <div class="a-header-title">
             <h1 data-page-title>Home</h1>
@@ -287,7 +290,7 @@
             <input type="search" placeholder="Search expenses, people, bills" aria-label="Search expenses, people, bills" />
           </label>
           <div class="a-header-actions">
-            <button class="a-icon-btn a-you-btn" type="button" data-go="profile" aria-label="You">
+            <button class="a-icon-btn a-you-btn" type="button" data-go="settings" aria-label="You">
               <span class="avatar maya">MC</span>
             </button>
             <button class="a-icon-btn has-unread" type="button" data-go="notices" aria-label="Notifications">
@@ -1253,6 +1256,109 @@
             </div>
           </section>
 
+          <!-- SETTINGS · hard page, not a window -->
+          <section class="screen" id="settings" hidden>
+            <div class="a-set">
+              <aside class="a-set-left">
+                <div class="a-set-card">
+                  <div class="a-set-you">
+                    <span class="avatar maya">MC</span>
+                    <div class="a-set-you-copy">
+                      <button class="a-set-name" type="button" data-go="profile">
+                        Maya Chen
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                      </button>
+                      <span>maya@14park.st</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="a-set-card">
+                  <p class="a-set-plan-k">Plan</p>
+                  <h3 class="a-set-plan-name">Standard</h3>
+                  <p class="a-set-plan-lede">Renews 1 Sept 2026</p>
+                  <div class="a-set-meter" aria-hidden="true"><i style="width:38%"></i></div>
+                  <div class="a-set-meter-meta"><span>3 of 8 members</span><span>1 hub</span></div>
+                  <p class="a-set-plan-note">Park Street is the house on the plan.</p>
+                  <button class="a-btn a-btn-upgrade" type="button" data-go="billing">Upgrade</button>
+                </div>
+              </aside>
+              <div class="a-set-main">
+                <div class="a-set-group">
+                  <h3>Get more out of Commune</h3>
+                  <div class="a-set-list">
+                    <button class="a-set-row" type="button" data-go="profile">
+                      <span class="a-set-row-ic" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+                      </span>
+                      <span class="a-set-row-copy"><strong>How people pay you</strong><span>Revolut, PayPal, bank. Opens as a window.</span></span>
+                      <svg class="a-set-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg>
+                    </button>
+                    <button class="a-set-row" type="button" data-go="communes">
+                      <span class="a-set-row-ic" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 10.5 12 3l9 7.5V21a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1v-10.5z"/></svg>
+                      </span>
+                      <span class="a-set-row-copy"><strong>Places</strong><span>Switch house, studio, or trip — or create one.</span></span>
+                      <svg class="a-set-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg>
+                    </button>
+                  </div>
+                </div>
+                <div class="a-set-group">
+                  <h3>Preferences</h3>
+                  <div class="a-set-list">
+                    <div class="a-set-row">
+                      <span class="a-set-row-copy"><strong>Sidebar</strong><span>Basic is Home, This Hub, and the jumps. Advanced adds the rest.</span></span>
+                      <div class="a-seg" role="group" aria-label="Sidebar density">
+                        <button type="button" data-nav-mode="basic" class="is-on">Basic</button>
+                        <button type="button" data-nav-mode="advanced">Advanced</button>
+                      </div>
+                    </div>
+                    <div class="a-set-row">
+                      <span class="a-set-row-copy"><strong>Dark mode</strong><span>Ink canvas. Off keeps the cream paper.</span></span>
+                      <button class="a-switch" type="button" data-switch role="switch" aria-checked="false" aria-label="Dark mode"></button>
+                    </div>
+                    <div class="a-set-row">
+                      <span class="a-set-row-copy"><strong>Notices</strong><span>Bills, chores, and fund gaps.</span></span>
+                      <button class="a-switch is-on" type="button" data-switch role="switch" aria-checked="true" aria-label="Notices"></button>
+                    </div>
+                    <div class="a-set-row">
+                      <span class="a-set-row-copy"><strong>Nudge Jordan</strong><span>Quiet reminder on open shares.</span></span>
+                      <button class="a-switch is-on" type="button" data-switch role="switch" aria-checked="true" aria-label="Nudge Jordan"></button>
+                    </div>
+                    <div class="a-set-row">
+                      <span class="a-set-row-copy"><strong>Currency</strong><span>Used when a hub doesn’t pick one.</span></span>
+                      <select id="a-set-cur" aria-label="Currency">
+                        <option selected>£ GBP</option>
+                        <option>$ USD</option>
+                        <option>€ EUR</option>
+                      </select>
+                    </div>
+                    <div class="a-set-row">
+                      <span class="a-set-row-copy"><strong>Language</strong><span>The app, not the house chat.</span></span>
+                      <span class="a-set-val">English</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="a-set-group">
+                  <h3>Support &amp; legal</h3>
+                  <div class="a-set-list">
+                    <a class="a-set-row" href="https://ourcommune.io" target="_blank" rel="noreferrer">
+                      <span class="a-set-row-copy"><strong>Contact us</strong><span>ourcommune.io</span></span>
+                      <svg class="a-set-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17 17 7M8 7h9v9"/></svg>
+                    </a>
+                    <a class="a-set-row" href="https://ourcommune.io/privacy" target="_blank" rel="noreferrer">
+                      <span class="a-set-row-copy"><strong>Privacy policy</strong></span>
+                      <svg class="a-set-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17 17 7M8 7h9v9"/></svg>
+                    </a>
+                    <a class="a-set-row" href="https://ourcommune.io/terms" target="_blank" rel="noreferrer">
+                      <span class="a-set-row-copy"><strong>Terms of service</strong></span>
+                      <svg class="a-set-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17 17 7M8 7h9v9"/></svg>
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
         </div>
       </div>
     </div>
@@ -1275,6 +1381,75 @@
         Settle
       </button>
     </nav>
+
+    <div class="a-sheet-scrim" data-sheet-close hidden></div>
+    <div class="a-more" hidden role="dialog" aria-label="More">
+      <div class="a-more-head">
+        <div>
+          <p class="a-more-kicker">More</p>
+          <p class="a-more-lede">Notes, funds, and the rest of the house. The four tabs stay the spine.</p>
+        </div>
+        <button class="a-more-x" type="button" data-sheet-close aria-label="Close More">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
+      </div>
+      <button type="button" data-go="commune-new">
+        <span class="a-more-ic a-more-ic-dash" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+        </span>
+        <span class="a-more-copy"><strong>Create a commune</strong><span>A home, a studio, or a trip</span></span>
+        <svg class="a-more-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg>
+      </button>
+      <button type="button" data-go="communes">
+        <span class="a-more-ic" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 10.5 12 3l9 7.5V21a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1v-10.5z"/></svg>
+        </span>
+        <span class="a-more-copy"><strong>Places</strong><span>Switch house, studio, or trip</span></span>
+        <svg class="a-more-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg>
+      </button>
+      <button type="button" data-go="notes">
+        <span class="a-more-ic" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 4h9l5 5v11H6z"/><path d="M15 4v5h5"/></svg>
+        </span>
+        <span class="a-more-copy"><strong>Notes</strong><span>Wi-Fi, bins, landlord</span></span>
+        <svg class="a-more-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg>
+      </button>
+      <button type="button" data-go="funds">
+        <span class="a-more-ic" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 10h16v8H4z"/><path d="M8 10V8a4 4 0 0 1 8 0v2"/></svg>
+        </span>
+        <span class="a-more-copy"><strong>Funds</strong><span>House pot · chase Alex</span></span>
+        <svg class="a-more-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg>
+      </button>
+      <button type="button" data-go="recurring">
+        <span class="a-more-ic" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12a8 8 0 0 1 14-5l2-2v6h-6"/><path d="M20 12a8 8 0 0 1-14 5l-2 2v-6h6"/></svg>
+        </span>
+        <span class="a-more-copy"><strong>Recurring</strong><span>Open bills. Rent from the fund</span></span>
+        <svg class="a-more-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg>
+      </button>
+      <button type="button" data-go="operations">
+        <span class="a-more-ic" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3 9-9"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        </span>
+        <span class="a-more-copy"><strong>Operations</strong><span>Bins and chores</span></span>
+        <svg class="a-more-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg>
+      </button>
+      <button type="button" data-go="members">
+        <span class="a-more-ic" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="9.5" cy="7" r="3.5"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a3.5 3.5 0 0 1 0 6.74"/></svg>
+        </span>
+        <span class="a-more-copy"><strong>Members</strong><span>Who’s here this cycle</span></span>
+        <svg class="a-more-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg>
+      </button>
+      <button type="button" data-go="settings">
+        <span class="a-more-ic" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9c.3.6.9 1 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+        </span>
+        <span class="a-more-copy"><strong>You &amp; settings</strong><span>Plan, pay-me, preferences</span></span>
+        <svg class="a-more-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg>
+      </button>
+    </div>
 
     <div class="a-windows" hidden>
       <button class="a-window-back" type="button" data-window-close aria-label="Close"></button>
@@ -1464,37 +1639,6 @@
               <div><strong>Settings</strong><div class="when">Currency, notices, sidebar</div></div>
               <button class="a-btn ghost" type="button" data-go="settings">Open</button>
             </div>
-        </section>
-        <section class="a-window" id="settings" hidden>
-          <p class="a-window-kicker">You</p>
-          <div class="a-field">
-                <label>Sidebar</label>
-                <div class="a-seg" role="group" aria-label="Sidebar density">
-                  <button type="button" data-nav-mode="basic" class="is-on">Basic</button>
-                  <button type="button" data-nav-mode="advanced">Advanced</button>
-                </div>
-                <p class="hint">Basic is Home, This Hub, and the jumps from the house. Advanced adds Members, Activity, Analytics, Templates, Billing, and Breakdown.</p>
-              </div>
-              <div class="a-field">
-                <label for="a-set-cur">Currency</label>
-                <select id="a-set-cur">
-                  <option selected>£ GBP</option>
-                  <option>$ USD</option>
-                  <option>€ EUR</option>
-                </select>
-              </div>
-              <div class="a-field">
-                <label for="a-set-note">Notices</label>
-                <select id="a-set-note">
-                  <option selected>Bills, chores, and fund gaps</option>
-                  <option>Bills only</option>
-                  <option>Off</option>
-                </select>
-              </div>
-              <div class="a-settle-row">
-                <div><strong>Nudge Jordan</strong><div style="font-size:12px;color:var(--ink-soft)">Quiet reminder on open shares</div></div>
-                <span class="pill sage">On</span>
-              </div>
         </section>
         <section class="a-window" id="breakdown" hidden>
           <p class="a-window-kicker">Settle</p>
@@ -1745,9 +1889,9 @@
         pay: "Revolut, PayPal, or his bank. Commune does not take a cut.",
         "pay-method": "A username they can tap from Settle.",
         profile: "You · Admin at 14 Park Street.",
-        settings: "Currency, notices, and how much sidebar you want."
+        settings: "You, the house, and how this app behaves."
       };
     </script>
-    <script src="../shared.js?v=phone"></script>
+    <script src="../shared.js?v=set1"></script>
   </body>
 </html>
