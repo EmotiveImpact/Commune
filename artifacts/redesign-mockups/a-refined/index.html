@@ -8,8 +8,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../shared.css?v=align" />
-    <link rel="stylesheet" href="./styles.css?v=align" />
+    <link rel="stylesheet" href="../shared.css?v=lede" />
+    <link rel="stylesheet" href="./styles.css?v=lede" />
   </head>
   <body class="a-body nav-basic">
     <div class="a-app">
@@ -145,7 +145,7 @@
         <header class="a-header">
           <div class="a-header-title">
             <h1 data-page-title>Home</h1>
-            <p data-page-status>3 spaces · you owe £42 · you’re owed £64</p>
+            <p data-page-lede data-page-status>3 spaces · you owe £42 · you’re owed £64</p>
           </div>
           <label class="a-search">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3-3"/></svg>
@@ -272,10 +272,6 @@
 
           <!-- PLACES — commune switcher. Pick a space; cards open that hub. -->
           <section class="screen" id="communes" hidden>
-            <div class="a-page-head">
-              <p>Park Street still needs you. Lisbon hasn’t paid you back. Studio is even. Open one to go into that hub.</p>
-            </div>
-
             <div class="a-place-grid">
               <button class="a-place" type="button" data-hub="park" data-go="hub">
                 <div class="a-place-hero park">
@@ -670,15 +666,14 @@
 
           <!-- EXPENSES -->
           <section class="screen" id="expenses" hidden>
-            <div class="a-page-head">
-              <p>Everything the house has shared this cycle.</p>
+            <div class="a-toolbar">
+              <div class="a-filters">
+                <button class="a-chip is-on" type="button">All</button>
+                <button class="a-chip" type="button">Open</button>
+                <button class="a-chip" type="button">Recurring</button>
+                <button class="a-chip" type="button">Settled</button>
+              </div>
               <button class="a-btn" type="button" data-go="add-expense">Add expense</button>
-            </div>
-            <div class="a-filters">
-              <button class="a-chip is-on" type="button">All</button>
-              <button class="a-chip" type="button">Open</button>
-              <button class="a-chip" type="button">Recurring</button>
-              <button class="a-chip" type="button">Settled</button>
             </div>
             <div class="a-panel">
               <table class="a-table">
@@ -755,10 +750,6 @@
 
           <!-- SETTLE -->
           <section class="screen" id="settle" hidden>
-            <div class="a-page-head">
-              <p>Two transfers get 14 Park Street to zero this month.</p>
-              <button class="a-btn ghost" type="button" data-go="breakdown">Breakdown</button>
-            </div>
             <div class="a-settle-hero">
               <div class="a-panel a-settle-card">
                 <span>You owe</span>
@@ -772,8 +763,13 @@
               </div>
             </div>
             <div class="a-card">
-              <h2>Suggested transfers</h2>
-              <p class="sub">Net the Tesco £18 against the gas bill, or keep them separate — your call.</p>
+              <div class="a-card-head">
+                <div>
+                  <h2>Suggested transfers</h2>
+                  <p class="sub">Net the Tesco £18 against the gas bill, or keep them separate — your call.</p>
+                </div>
+                <button class="a-btn ghost" type="button" data-go="breakdown">Breakdown</button>
+              </div>
               <div class="a-move">
                 <div class="a-arrow">→</div>
                 <div>
@@ -806,8 +802,7 @@
 
           <!-- RECURRING -->
           <section class="screen" id="recurring" hidden>
-            <div class="a-page-head">
-              <p>Open bills. Rent from the fund. The rest split three ways unless you say otherwise.</p>
+            <div class="a-toolbar">
               <button class="a-btn ghost" type="button" data-go="templates">Split templates</button>
             </div>
             <div class="a-panel">
@@ -857,15 +852,14 @@
 
           <!-- FUNDS -->
           <section class="screen" id="funds" hidden>
-            <div class="a-page-head">
-              <p>August rent already left. £180 still to collect from Alex.</p>
-              <button class="a-btn" type="button" data-go="notices">Chase Alex</button>
-            </div>
             <div class="a-panel">
               <div class="a-fund-hero">
-                <span>Balance</span>
-                <strong>£420</strong>
-                <p>Target £600 this cycle · £180 still to collect</p>
+                <div>
+                  <span>Balance</span>
+                  <strong>£420</strong>
+                  <p>Target £600 this cycle · £180 still to collect</p>
+                </div>
+                <button class="a-btn" type="button" data-go="notices">Chase Alex</button>
               </div>
               <div class="a-settle-row">
                 <span class="avatar maya">MC</span>
@@ -887,9 +881,6 @@
 
           <!-- TEMPLATES -->
           <section class="screen" id="templates" hidden>
-            <div class="a-page-head">
-              <p>Defaults for this house. Override on any expense.</p>
-            </div>
             <div class="a-panel">
               <div class="a-settle-row">
                 <div><strong>Equal · three ways</strong><div style="font-size:12px;color:var(--ink-soft)">Maya, Jordan, Alex · 33.3% each</div></div>
@@ -908,9 +899,6 @@
 
           <!-- BILLING -->
           <section class="screen" id="billing" hidden>
-            <div class="a-page-head">
-              <p>Standard · this workspace, not the house fund.</p>
-            </div>
             <div class="a-panel">
               <div class="a-settle-row">
                 <div><strong>Standard</strong><div style="font-size:12px;color:var(--ink-soft)">8 members · 1 hub · renews 12 Sep</div></div>
@@ -925,9 +913,6 @@
 
           <!-- ANALYTICS -->
           <section class="screen" id="analytics" hidden>
-            <div class="a-page-head">
-              <p>This month. Home showed £2,140 of £2,400 — the six-month view lives here.</p>
-            </div>
             <div class="a-kpis">
               <div class="a-kpi sage"><span>You’re owed</span><strong>£18</strong><small>Jordan · Tesco</small></div>
               <div class="a-kpi peach"><span>House fund</span><strong>£420</strong><small>£180 to collect</small></div>
@@ -963,8 +948,7 @@
 
           <!-- BREAKDOWN -->
           <section class="screen" id="breakdown" hidden>
-            <div class="a-page-head">
-              <p>Same truth as Settle — the ledger view of who owes whom.</p>
+            <div class="a-toolbar">
               <button class="a-btn" type="button" data-go="settle">Open settlement</button>
             </div>
             <div class="a-card a-owes">
@@ -997,9 +981,6 @@
 
           <!-- MEMBERS -->
           <section class="screen" id="members" hidden>
-            <div class="a-page-head">
-              <p>Balances for this cycle, not personalities.</p>
-            </div>
             <div class="a-panel">
               <div class="a-member-row">
                 <span class="avatar maya">MC</span>
@@ -1021,9 +1002,6 @@
 
           <!-- OPERATIONS -->
           <section class="screen" id="operations" hidden>
-            <div class="a-page-head">
-              <p>Bins and chores. Wi-Fi and the landlord live in Notes.</p>
-            </div>
             <div class="a-panel">
               <div class="a-settle-row">
                 <span class="avatar jordan">JH</span>
@@ -1046,9 +1024,6 @@
 
           <!-- NOTES -->
           <section class="screen" id="notes" hidden>
-            <div class="a-page-head">
-              <p>Wi-Fi, bin day, landlord — the pin. Not a chore list, not the ledger.</p>
-            </div>
             <div class="a-panel">
               <div class="a-settle-row">
                 <div><strong>Wi-Fi</strong><div style="font-size:12px;color:var(--ink-soft)">ParkStreet_5G · password in notes</div></div>
@@ -1064,9 +1039,6 @@
 
           <!-- ACTIVITY -->
           <section class="screen" id="activity" hidden>
-            <div class="a-page-head">
-              <p>The log, without the group chat.</p>
-            </div>
             <div class="a-panel">
               <div class="a-settle-row">
                 <span class="avatar maya">MC</span>
@@ -1093,9 +1065,6 @@
 
           <!-- NOTICES -->
           <section class="screen" id="notices" hidden>
-            <div class="a-page-head">
-              <p>Gas, bins, and Alex’s share of the fund.</p>
-            </div>
             <div class="a-panel">
               <button class="a-notice" type="button" data-go="expenses">
                 <span class="pill warn">Friday</span>
@@ -1114,9 +1083,6 @@
 
           <!-- ADD EXPENSE -->
           <section class="screen" id="add-expense" hidden>
-            <div class="a-page-head">
-              <p>Park Street · split three ways unless you pick a template.</p>
-            </div>
             <div class="a-panel" style="max-width:520px">
               <div class="a-field">
                 <label for="a-exp-what">What</label>
@@ -1151,9 +1117,6 @@
 
           <!-- PROFILE -->
           <section class="screen" id="profile" hidden>
-            <div class="a-page-head">
-              <p>You · Admin at 14 Park Street.</p>
-            </div>
             <div class="a-panel">
               <div class="a-member-row">
                 <span class="avatar maya">MC</span>
@@ -1173,9 +1136,6 @@
 
           <!-- SETTINGS -->
           <section class="screen" id="settings" hidden>
-            <div class="a-page-head">
-              <p>Currency, notices, and how much sidebar you want.</p>
-            </div>
             <div class="a-panel" style="max-width:520px">
               <div class="a-field">
                 <label>Sidebar</label>
@@ -1235,7 +1195,30 @@
         profile: "Profile",
         settings: "Settings"
       };
+      window.COMMUNE_LEDES = {
+        home: "3 spaces · you owe £42 · you’re owed £64",
+        "home-inbox": "Six things across three spaces.",
+        "home-focus": "3 spaces · you owe £42 · you’re owed £64",
+        "home-places": "Park Street still needs you. Lisbon hasn’t paid you back.",
+        communes: "Park Street still needs you. Lisbon hasn’t paid you back.",
+        expenses: "Everything the house has shared this cycle.",
+        settle: "Two transfers get the house to zero this month.",
+        recurring: "Open bills. Rent from the fund.",
+        funds: "August rent already left. £180 still from Alex.",
+        templates: "Defaults for this house. Override on any expense.",
+        billing: "This workspace, not the house fund.",
+        analytics: "This month against the house budget.",
+        breakdown: "The ledger view of who owes whom.",
+        members: "Balances for this cycle, not personalities.",
+        operations: "Bins and chores. Wi-Fi lives in Notes.",
+        notes: "Wi-Fi, bin day, landlord.",
+        activity: "The log, without the group chat.",
+        notices: "Gas, bins, and Alex’s share of the fund.",
+        "add-expense": "Split three ways unless you pick a template.",
+        profile: "You · Admin at 14 Park Street.",
+        settings: "Currency, notices, and how much sidebar you want."
+      };
     </script>
-    <script src="../shared.js?v=align2"></script>
+    <script src="../shared.js?v=lede"></script>
   </body>
 </html>

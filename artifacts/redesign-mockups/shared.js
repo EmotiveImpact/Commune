@@ -444,10 +444,16 @@
     var title = document.querySelector("[data-page-title]");
     var map = window.COMMUNE_TITLES || {};
     if (title && map[activeId]) title.textContent = map[activeId];
-    var statusEl = document.querySelector("[data-page-status]");
-    if (statusEl) {
-      if (HOME_STATUS_SCREENS[activeId]) statusEl.textContent = HOME_STATUS;
-      else if (window.COMMUNE_CURRENT_HUB) statusEl.textContent = window.COMMUNE_CURRENT_HUB.status;
+    var ledeEl = document.querySelector("[data-page-lede], [data-page-status]");
+    if (ledeEl) {
+      var ledes = window.COMMUNE_LEDES || {};
+      var lede;
+      if (Object.prototype.hasOwnProperty.call(ledes, activeId)) lede = ledes[activeId];
+      else if (HOME_STATUS_SCREENS[activeId]) lede = HOME_STATUS;
+      else if (window.COMMUNE_CURRENT_HUB) lede = window.COMMUNE_CURRENT_HUB.status;
+      else lede = "";
+      ledeEl.textContent = lede || "";
+      ledeEl.hidden = !lede;
     }
   }
 

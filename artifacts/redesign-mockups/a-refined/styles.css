@@ -267,15 +267,18 @@
 
 .a-header-title h1 {
   margin: 0;
-  font-size: 1.05rem;
-  letter-spacing: -0.02em;
+  font-size: 1.2rem;
+  letter-spacing: -0.03em;
   font-weight: 800;
+  line-height: 1.2;
 }
 
 .a-header-title p {
-  margin: 2px 0 0;
-  font-size: 12px;
+  margin: 3px 0 0;
+  font-size: 13px;
+  line-height: 1.35;
   color: var(--ink-soft);
+  max-width: 42rem;
 }
 
 .a-search {
@@ -948,6 +951,24 @@ button.a-kpi {
   letter-spacing: -0.02em;
 }
 
+.a-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.a-toolbar .a-filters {
+  margin-bottom: 0;
+  flex: 1;
+  min-width: 0;
+}
+
+.a-toolbar .a-btn {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
 .a-filters {
   display: flex;
   gap: 8px;
@@ -1246,6 +1267,14 @@ button.a-kpi {
   font-size: 1.05rem;
   font-weight: 750;
   letter-spacing: -0.02em;
+}
+
+.a-fund-hero {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 8px;
 }
 
 .a-fund-hero span {
@@ -1570,6 +1599,11 @@ button.a-now-row {
   justify-content: space-between;
   align-items: flex-start;
   gap: 12px;
+  margin-bottom: 8px;
+}
+
+.a-card-head .sub {
+  margin-bottom: 0;
 }
 
 .a-card-head .a-btn.ghost {
