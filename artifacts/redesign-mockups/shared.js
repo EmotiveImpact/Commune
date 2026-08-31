@@ -413,7 +413,7 @@
   window.COMMUNE_APPLY_HUB = applyHub;
 
   function show(id) {
-    var aliases = { "add-expense": "expenses", "home-focus": "home", "home-places": "communes" };
+    var aliases = { "home-focus": "home", "home-places": "communes" };
     if (!document.getElementById("communes")) {
       aliases.communes = "home";
       aliases["home-places"] = "home";
