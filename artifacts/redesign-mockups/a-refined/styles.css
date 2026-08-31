@@ -2358,9 +2358,31 @@ button.a-item {
   }
   .a-header {
     padding: 12px 16px;
+    background: #1a1e2b;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    color: #f5f1ea;
+  }
+  .a-header-title h1 {
+    color: #f5f1ea;
+  }
+  .a-header-title p {
+    color: rgba(245, 241, 234, 0.55);
   }
   .a-header-mark {
     display: block;
+    width: 28px;
+    height: 28px;
+    border-radius: 0;
+    background: transparent;
+  }
+  .a-header .a-icon-btn {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.12);
+    color: #f5f1ea;
+  }
+  .a-header .a-icon-btn.has-unread::after {
+    background: #96e85f;
+    box-shadow: 0 0 0 2px #1a1e2b;
   }
   .a-search {
     display: none;
