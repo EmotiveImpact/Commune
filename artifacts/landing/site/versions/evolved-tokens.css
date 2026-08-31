@@ -105,6 +105,14 @@ h1, h2, h3, .amount, .price {
   border-bottom-color: rgba(255,255,255,.25);
 }
 
+.nav--ghost {
+  position: absolute;
+  z-index: 5;
+  width: 100%;
+  background: transparent;
+  border-bottom-color: rgba(23, 27, 36, .12);
+}
+
 .brand { font-size: 15px; font-weight: 800; letter-spacing: -.02em; }
 .nav__right, .footer__nav { display: flex; align-items: center; gap: 22px; }
 .nav__right > a:not(.button), .footer__nav a { font-size: 13px; font-weight: 600; }
