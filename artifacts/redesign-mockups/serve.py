@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Serve mockups on http://localhost:3000/ for Cursor remote port-forward.
+"""Serve mockups on http://localhost:3001/ for Cursor remote port-forward.
 
-Bind IPv4 0.0.0.0 explicitly so Cursor's port detector can see :3000.
+Bind IPv4 0.0.0.0 explicitly so Cursor's port detector can see :3001.
 Also bind IPv6 so Chrome's localhost (::1) does not connection-refuse.
 """
 import os
@@ -10,7 +10,7 @@ import threading
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
-PORT = 3000
+PORT = 3001
 
 
 class Handler(SimpleHTTPRequestHandler):
