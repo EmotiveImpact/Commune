@@ -8,10 +8,15 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../shared.css?v=win" />
-    <link rel="stylesheet" href="./styles.css?v=navybar" />
+    <link rel="stylesheet" href="../shared.css?v=phone" />
+    <link rel="stylesheet" href="./styles.css?v=phone" />
   </head>
   <body class="a-body nav-basic">
+    <div class="a-native-status" aria-hidden="true">
+      <span>9:41</span>
+      <span>LTE ████</span>
+    </div>
+    <div class="a-native-home" aria-hidden="true"></div>
     <div class="a-gate">
       <section class="screen" id="login" hidden>
         <div class="a-gate-card">
@@ -253,6 +258,12 @@
             </div>
             <svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
           </button>
+          <button class="a-create-space" type="button" data-go="commune-new">
+            <span class="a-create-mark" aria-hidden="true">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+            </span>
+            Create a commune
+          </button>
         </div>
 
         <button class="a-side-foot" type="button" data-go="profile">
@@ -276,6 +287,9 @@
             <input type="search" placeholder="Search expenses, people, bills" aria-label="Search expenses, people, bills" />
           </label>
           <div class="a-header-actions">
+            <button class="a-icon-btn a-you-btn" type="button" data-go="profile" aria-label="You">
+              <span class="avatar maya">MC</span>
+            </button>
             <button class="a-icon-btn has-unread" type="button" data-go="notices" aria-label="Notifications">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 7 3 9H3c0-2 3-2 3-9"/><path d="M10 21a2 2 0 0 0 4 0"/></svg>
             </button>
@@ -749,13 +763,13 @@
                   <button class="a-btn ghost" type="button" data-go="notes">Notes</button>
                 </div>
                 <div data-hub-notes>
-                  <button class="a-item a-item-plain" type="button" data-go="notes">
+                  <button class="a-item a-item-plain" type="button" data-go="note" data-note="wifi">
                     <div><strong>Wi-Fi</strong><div class="when">ParkStreet_5G · password in notes</div></div>
                   </button>
-                  <button class="a-item a-item-plain" type="button" data-go="operations">
+                  <button class="a-item a-item-plain" type="button" data-go="note" data-note="bins">
                     <div><strong>Bins</strong><div class="when">Black bags Tuesday · recycling Friday</div></div>
                   </button>
-                  <button class="a-item a-item-plain" type="button" data-go="notes">
+                  <button class="a-item a-item-plain" type="button" data-go="note" data-note="landlord">
                     <div><strong>Landlord</strong><div class="when">Priya Sharma · rent via the fund</div></div>
                   </button>
                 </div>
@@ -824,9 +838,15 @@
                     <td><span class="pill warn">Due Friday</span></td>
                     <td class="amt">£94.20</td>
                     <td>
-                      <div class="a-row-actions">
-                        <button class="a-btn" type="button" data-go="expense-paid">Mark paid</button>
-                        <button class="a-btn nudge" type="button" data-go="notices">Nudge</button>
+                      <div class="a-choose">
+                        <button class="a-btn" type="button" data-choose aria-expanded="false" aria-haspopup="menu">
+                          Choose
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+                        </button>
+                        <div class="a-choose-menu" role="menu" hidden>
+                          <button type="button" role="menuitem" data-go="expense-paid">Mark paid</button>
+                          <button type="button" role="menuitem" data-go="notices">Nudge</button>
+                        </div>
                       </div>
                     </td>
                   </tr>
@@ -904,9 +924,15 @@
                   <div class="why">British Gas share · or £24 if you net Tesco</div>
                 </div>
                 <div class="amt">£42</div>
-                <div class="a-move-acts">
-                  <button class="a-btn" type="button" data-go="pay">Pay Jordan</button>
-                  <button class="a-btn ghost" type="button" data-go="expense-paid">Mark paid</button>
+                <div class="a-choose">
+                  <button class="a-btn" type="button" data-choose aria-expanded="false" aria-haspopup="menu">
+                    Choose
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+                  </button>
+                  <div class="a-choose-menu" role="menu" hidden>
+                    <button type="button" role="menuitem" data-go="pay">Pay Jordan</button>
+                    <button type="button" role="menuitem" data-go="expense-paid">Mark paid</button>
+                  </div>
                 </div>
               </div>
               <div class="a-move">
@@ -1108,7 +1134,16 @@
                 <span class="avatar jordan">JH</span>
                 <div><strong>Bins</strong><div style="font-size:12px;color:var(--ink-soft)">Tuesday nights · this week</div></div>
                 <span class="pill warn">Overdue</span>
-                <button class="a-btn nudge" type="button" data-go="notices">Nudge</button>
+                <div class="a-choose">
+                  <button class="a-btn" type="button" data-choose aria-expanded="false" aria-haspopup="menu">
+                    Choose
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+                  </button>
+                  <div class="a-choose-menu" role="menu" hidden>
+                    <button type="button" role="menuitem" data-go="operations">Mark done</button>
+                    <button type="button" role="menuitem" data-go="notices">Nudge</button>
+                  </div>
+                </div>
               </div>
               <div class="a-settle-row">
                 <span class="avatar alex">AR</span>
@@ -1125,16 +1160,23 @@
 
           <!-- NOTES -->
           <section class="screen" id="notes" hidden>
-            <div class="a-panel">
-              <div class="a-settle-row">
-                <div><strong>Wi-Fi</strong><div style="font-size:12px;color:var(--ink-soft)">ParkStreet_5G · password in notes</div></div>
+            <div class="a-toolbar">
+              <div class="a-filters">
+                <button class="a-chip is-on" type="button">All</button>
+                <button class="a-chip" type="button">Pinned</button>
               </div>
-              <div class="a-settle-row">
-                <div><strong>Bins</strong><div style="font-size:12px;color:var(--ink-soft)">Black bags Tuesday · recycling Friday</div></div>
-              </div>
-              <div class="a-settle-row">
-                <div><strong>Landlord</strong><div style="font-size:12px;color:var(--ink-soft)">Priya Sharma · rent via the fund</div></div>
-              </div>
+              <button class="a-btn" type="button" data-go="note-new">Add note</button>
+            </div>
+            <div class="a-panel" data-notes-list>
+              <button class="a-item a-item-plain" type="button" data-go="note" data-note="wifi">
+                <div><strong>Wi-Fi</strong><div class="when">ParkStreet_5G · password in notes</div></div>
+              </button>
+              <button class="a-item a-item-plain" type="button" data-go="note" data-note="bins">
+                <div><strong>Bins</strong><div class="when">Black bags Tuesday · recycling Friday</div></div>
+              </button>
+              <button class="a-item a-item-plain" type="button" data-go="note" data-note="landlord">
+                <div><strong>Landlord</strong><div class="when">Priya Sharma · rent via the fund</div></div>
+              </button>
             </div>
           </section>
 
@@ -1232,23 +1274,7 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 7h10M7 12h10M7 17h6"/><path d="M17 17h4l-2 3M21 17l-2-3"/></svg>
         Settle
       </button>
-      <button type="button" data-more>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="6" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="12" cy="18" r="1.2"/></svg>
-        More
-      </button>
     </nav>
-
-    <div class="a-more" hidden>
-      <p class="a-more-kicker">More</p>
-      <button type="button" data-go="communes">Places</button>
-      <button type="button" data-go="recurring">Recurring</button>
-      <button type="button" data-go="funds">Funds</button>
-      <button type="button" data-go="notes">Notes</button>
-      <button type="button" data-go="operations">Operations</button>
-      <button type="button" data-go="members">Members</button>
-      <button type="button" data-go="profile">Profile</button>
-      <button type="button" data-go="settings">Settings</button>
-    </div>
 
     <div class="a-windows" hidden>
       <button class="a-window-back" type="button" data-window-close aria-label="Close"></button>
@@ -1281,11 +1307,11 @@
                 <label for="a-exp-what">What</label>
                 <input id="a-exp-what" type="text" value="British Gas" />
               </div>
-              <div class="a-field">
+              <div class="a-field half">
                 <label for="a-exp-amt">Amount</label>
                 <input id="a-exp-amt" type="text" value="£94.20" />
               </div>
-              <div class="a-field">
+              <div class="a-field half">
                 <label for="a-exp-who">Paid by</label>
                 <select id="a-exp-who">
                   <option>Jordan Hale</option>
@@ -1310,7 +1336,7 @@
           <p class="a-window-kicker">Expense</p>
           <div class="a-fund-hero">
                 <div>
-                  <span>Utilities · due Friday</span>
+                  <span class="a-hero-kicker">Utilities · due Friday</span>
                   <strong>British Gas</strong>
                   <p>Jordan paid £94.20. Split three ways. Your share is still open.</p>
                 </div>
@@ -1334,8 +1360,16 @@
                 </div>
               </div>
               <div class="a-field-row">
-                <button class="a-btn" type="button" data-go="expense-paid">Mark my share paid</button>
-                <button class="a-btn nudge" type="button" data-go="notices">Nudge Alex</button>
+                <div class="a-choose">
+                  <button class="a-btn" type="button" data-choose aria-expanded="false" aria-haspopup="menu">
+                    Choose
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+                  </button>
+                  <div class="a-choose-menu" role="menu" hidden>
+                    <button type="button" role="menuitem" data-go="expense-paid">Mark my share paid</button>
+                    <button type="button" role="menuitem" data-go="notices">Nudge Alex</button>
+                  </div>
+                </div>
                 <button class="a-btn ghost" type="button" data-window-close>Close</button>
               </div>
         </section>
@@ -1343,7 +1377,7 @@
           <p class="a-window-kicker">Expense</p>
           <div class="a-fund-hero">
                 <div>
-                  <span>Utilities</span>
+                  <span class="a-hero-kicker">Utilities</span>
                   <strong>British Gas</strong>
                   <p>Your share is marked paid. Settle still has You → Jordan if you net Tesco.</p>
                 </div>
@@ -1360,7 +1394,7 @@
                 <label for="a-new-name">Name</label>
                 <input id="a-new-name" type="text" value="Studio East" />
               </div>
-              <div class="a-field">
+              <div class="a-field half">
                 <label for="a-new-type">Type</label>
                 <select id="a-new-type">
                   <option>Household</option>
@@ -1368,7 +1402,7 @@
                   <option>Trip</option>
                 </select>
               </div>
-              <div class="a-field">
+              <div class="a-field half">
                 <label for="a-new-cur">Currency</label>
                 <select id="a-new-cur">
                   <option selected>£ GBP</option>
@@ -1497,7 +1531,7 @@
         <section class="a-window" id="pay" hidden>
           <p class="a-window-kicker">Settle</p>
           <div class="a-pay-hero">
-              <span>You → Jordan</span>
+              <span class="a-hero-kicker">You → Jordan</span>
               <strong>£42.00</strong>
               <p>Opens his pay link with the amount filled. Commune does not take the money — Revolut, PayPal, or the bank does.</p>
             </div>
@@ -1538,6 +1572,101 @@
               <button class="a-btn ghost" type="button" data-window-close>Cancel</button>
             </div>
         </section>
+        <section class="a-window" id="note" hidden>
+          <div class="a-fund-hero">
+            <div>
+              <span class="a-hero-kicker" data-note-kicker>Pinned · everyone</span>
+              <strong data-note-title>Wi-Fi</strong>
+              <p data-note-lede>ParkStreet_5G</p>
+            </div>
+            <span class="pill sage" data-note-pill>Wi-Fi</span>
+          </div>
+          <div class="a-note-facts" data-note-facts>
+            <div class="a-note-fact"><span>Network</span><strong>ParkStreet_5G</strong></div>
+            <div class="a-note-fact"><span>Password</span><strong>park14sage</strong></div>
+            <div class="a-note-fact"><span>Who can see</span><strong>Everyone</strong></div>
+          </div>
+          <p class="a-window-note" data-note-body>The house network. Guest wifi is a separate note if people ask.</p>
+          <div class="a-field-row">
+            <button class="a-btn" type="button" data-go="note-new">Add another</button>
+            <button class="a-btn ghost" type="button" data-window-close>Close</button>
+          </div>
+        </section>
+        <section class="a-window" id="note-new" hidden>
+          <div class="a-field half">
+            <label for="a-note-title">Title <span class="need">Required</span></label>
+            <input id="a-note-title" type="text" value="Guest wifi" />
+          </div>
+          <div class="a-field half">
+            <label for="a-note-type">Type <span class="need">Required</span></label>
+            <select id="a-note-type">
+              <option value="wifi" selected>Wi-Fi</option>
+              <option value="bins">Bins</option>
+              <option value="keys">Keys / door</option>
+              <option value="landlord">Landlord</option>
+              <option value="emergency">Emergency</option>
+              <option value="rules">House rules</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <div class="a-field">
+            <label for="a-note-body">Note <span class="need">Required</span></label>
+            <textarea id="a-note-body" rows="3">Same SSID as the house. Password lives on the router card in the kitchen drawer.</textarea>
+          </div>
+          <p class="a-window-note">Extras follow the type. Skip any that don’t apply.</p>
+          <div class="a-field half" data-note-extra="wifi">
+            <label for="a-note-net">Network</label>
+            <input id="a-note-net" type="text" value="ParkStreet_Guest" placeholder="ParkStreet_5G" />
+          </div>
+          <div class="a-field half" data-note-extra="wifi">
+            <label for="a-note-pass">Password</label>
+            <input id="a-note-pass" type="text" value="sage14guest" placeholder="Password" />
+          </div>
+          <div class="a-field" data-note-extra="keys">
+            <label for="a-note-code">Door code</label>
+            <input id="a-note-code" type="text" placeholder="4821" />
+          </div>
+          <div class="a-field half" data-note-extra="bins">
+            <label for="a-note-day">Collection</label>
+            <input id="a-note-day" type="text" placeholder="Black bags Tuesday" />
+          </div>
+          <div class="a-field half" data-note-extra="bins">
+            <label for="a-note-where">Where they go</label>
+            <input id="a-note-where" type="text" placeholder="Alley behind the kitchen" />
+          </div>
+          <div class="a-field half" data-note-extra="landlord emergency">
+            <label for="a-note-phone">Phone</label>
+            <input id="a-note-phone" type="tel" placeholder="07700 900 123" />
+          </div>
+          <div class="a-field half" data-note-extra="landlord">
+            <label for="a-note-email">Email</label>
+            <input id="a-note-email" type="email" placeholder="priya@sharma.rent" />
+          </div>
+          <div class="a-field" data-note-extra="emergency">
+            <label for="a-note-contact">Who to call</label>
+            <input id="a-note-contact" type="text" placeholder="Gas emergency · 0800 111 999" />
+          </div>
+          <div class="a-field half">
+            <label>Pin on This Hub</label>
+            <div class="a-seg" data-note-pin role="group" aria-label="Pin on This Hub">
+              <button type="button" data-seg="off">Off</button>
+              <button type="button" data-seg="on" class="is-on">Pin</button>
+            </div>
+            <p class="hint">Pinned notes sit on This Hub under the house, in writing.</p>
+          </div>
+          <div class="a-field half">
+            <label>Who should know</label>
+            <div class="a-seg" data-note-who role="group" aria-label="Who should know">
+              <button type="button" data-seg="everyone" class="is-on">Everyone</button>
+              <button type="button" data-seg="admins">Admins</button>
+            </div>
+            <p class="hint">Admins-only for door codes and landlord numbers, if you want.</p>
+          </div>
+          <div class="a-field-row">
+            <button class="a-btn" type="button" data-note-save data-window-close data-go="notes">Save</button>
+            <button class="a-btn ghost" type="button" data-window-close>Cancel</button>
+          </div>
+        </section>
         </div>
       </div>
     </div>
@@ -1568,6 +1697,8 @@
         members: "Members",
         operations: "Operations",
         notes: "Notes",
+        note: "Wi-Fi",
+        "note-new": "Add note",
         activity: "Activity",
         notices: "Notices",
         "add-expense": "Add expense",
@@ -1604,7 +1735,9 @@
         breakdown: "The ledger view of who owes whom.",
         members: "Balances for this cycle, not personalities.",
         operations: "Bins and chores. Wi-Fi lives in Notes.",
-        notes: "Wi-Fi, bin day, landlord.",
+        notes: "Wi-Fi, bin day, landlord. Add what the house keeps forgetting.",
+        note: "Pinned · everyone",
+        "note-new": "Title, type, and the note itself. Extras follow the type.",
         activity: "The log, without the group chat.",
         notices: "Gas, bins, and Alex’s share of the fund.",
         "add-expense": "Split three ways unless you pick a template.",
@@ -1615,6 +1748,6 @@
         settings: "Currency, notices, and how much sidebar you want."
       };
     </script>
-    <script src="../shared.js?v=win"></script>
+    <script src="../shared.js?v=phone"></script>
   </body>
 </html>

@@ -47,7 +47,9 @@ body {
 }
 
 button,
-input {
+input,
+select,
+textarea {
   font-family: inherit;
 }
 
@@ -132,6 +134,8 @@ img {
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+  white-space: nowrap;
+  flex-shrink: 0;
   background: rgba(255, 255, 255, 0.7);
   color: var(--ink-soft);
   border: 1px solid var(--border);
@@ -301,7 +305,7 @@ img {
   white-space: nowrap;
 }
 
-@media (max-width: 720px) {
+@media (max-width: 560px) {
   .jump-grid {
     grid-template-columns: 1fr 1fr;
   }

@@ -43,9 +43,9 @@
         { go: "funds", cls: "maya", ini: "MC", title: "August rent", when: "House fund covered it", time: "1 Aug" }
       ],
       notes: [
-        { go: "notes", title: "Wi-Fi", when: "ParkStreet_5G · password in notes" },
-        { go: "operations", title: "Bins", when: "Black bags Tuesday · recycling Friday" },
-        { go: "notes", title: "Landlord", when: "Priya Sharma · rent via the fund" }
+        { go: "notes", note: "wifi", title: "Wi-Fi", when: "ParkStreet_5G · password in notes" },
+        { go: "notes", note: "bins", title: "Bins", when: "Black bags Tuesday · recycling Friday" },
+        { go: "notes", note: "landlord", title: "Landlord", when: "Priya Sharma · rent via the fund" }
       ],
       jumps: [
         { go: "expenses", kicker: "Expenses", title: "Virgin still open", hint: "This cycle’s ledger" },
@@ -97,9 +97,9 @@
         { go: "expenses", cls: "maya", ini: "MC", title: "Wifi", when: "You marked paid", time: "1 Aug" }
       ],
       notes: [
-        { go: "notes", title: "Door", when: "Code 4821 · last lockup is Sam" },
-        { go: "notes", title: "Printer", when: "Downstairs · ink due Monday" },
-        { go: "notes", title: "Guest wifi", when: "StudioEast_Guest · password in notes" }
+        { go: "notes", note: "door", title: "Door", when: "Code 4821 · last lockup is Sam" },
+        { go: "notes", note: "printer", title: "Printer", when: "Downstairs · ink due Monday" },
+        { go: "notes", note: "guest", title: "Guest wifi", when: "StudioEast_Guest · password in notes" }
       ],
       jumps: [
         { go: "expenses", kicker: "Expenses", title: "Paper and wifi", hint: "Studio ledger this month" },
@@ -151,9 +151,9 @@
         { go: "expenses", cls: "ness", ini: "NC", title: "Cervejaria", when: "Ness paid dinner", time: "Sun" }
       ],
       notes: [
-        { go: "notes", title: "Airbnb", when: "Chiado · check-in 15:00 · code in notes" },
-        { go: "notes", title: "Dinner", when: "Cervejaria Trindade · Ness has the table" },
-        { go: "notes", title: "Airport", when: "Thursday 09:40 · Uber from the flat" }
+        { go: "notes", note: "airbnb", title: "Airbnb", when: "Chiado · check-in 15:00 · code in notes" },
+        { go: "notes", note: "dinner", title: "Dinner", when: "Cervejaria Trindade · Ness has the table" },
+        { go: "notes", note: "airport", title: "Airport", when: "Thursday 09:40 · Uber from the flat" }
       ],
       jumps: [
         { go: "expenses", kicker: "Expenses", title: "Airbnb + dinners", hint: "Trip ledger so far" },
@@ -182,9 +182,125 @@
     "commune-new": "communes",
     "member-invite": "members",
     breakdown: "settle",
-    pay: "settle"
+    pay: "settle",
+    note: "notes",
+    "note-new": "notes"
   };
   var lastPage = "home";
+  var NOTE_CARDS = {
+    wifi: {
+      title: "Wi-Fi",
+      pill: "Wi-Fi",
+      kicker: "Pinned · everyone",
+      lede: "ParkStreet_5G",
+      body: "The house network. Guest wifi is a separate note if people ask.",
+      facts: [
+        ["Network", "ParkStreet_5G"],
+        ["Password", "park14sage"],
+        ["Who can see", "Everyone"]
+      ]
+    },
+    bins: {
+      title: "Bins",
+      pill: "Bins",
+      kicker: "Pinned · everyone",
+      lede: "Tuesday and Friday",
+      body: "Don’t leave them blocking the kitchen door. Jordan’s week lives on Operations.",
+      facts: [
+        ["Black bags", "Tuesday night"],
+        ["Recycling", "Friday morning"],
+        ["Where", "Alley behind the kitchen"]
+      ]
+    },
+    landlord: {
+      title: "Landlord",
+      pill: "Landlord",
+      kicker: "Admins",
+      lede: "Priya Sharma",
+      body: "Rent leaves the house fund on the 1st. Text Priya if the boiler dies.",
+      facts: [
+        ["Phone", "07700 900 441"],
+        ["Email", "priya@sharma.rent"],
+        ["Who can see", "Admins"]
+      ]
+    },
+    door: {
+      title: "Door",
+      pill: "Keys / door",
+      kicker: "Pinned · everyone",
+      lede: "Code 4821",
+      body: "Last lockup is whoever leaves last. Spare sits with Sam this week.",
+      facts: [
+        ["Door code", "4821"],
+        ["Last lockup", "Sam"],
+        ["Who can see", "Everyone"]
+      ]
+    },
+    printer: {
+      title: "Printer",
+      pill: "Other",
+      kicker: "Pinned · everyone",
+      lede: "Downstairs",
+      body: "Ink is due Monday. It comes out of the studio pot.",
+      facts: [
+        ["Where", "Downstairs, next to the paper"],
+        ["Ink", "Monday · Sam’s run"]
+      ]
+    },
+    guest: {
+      title: "Guest wifi",
+      pill: "Wi-Fi",
+      kicker: "Pinned · everyone",
+      lede: "StudioEast_Guest",
+      body: "Give this to clients. House wifi stays on the staff note.",
+      facts: [
+        ["Network", "StudioEast_Guest"],
+        ["Password", "eastguest24"],
+        ["Who can see", "Everyone"]
+      ]
+    },
+    airbnb: {
+      title: "Airbnb",
+      pill: "Keys / door",
+      kicker: "Pinned · everyone",
+      lede: "Chiado · check-in 15:00",
+      body: "Key box on the left of the tiled door. Host is Ana.",
+      facts: [
+        ["Address", "Rua Garrett 22, Chiado"],
+        ["Door code", "1590"],
+        ["Check-in", "15:00"]
+      ]
+    },
+    dinner: {
+      title: "Dinner",
+      pill: "Other",
+      kicker: "Everyone",
+      lede: "Cervejaria Trindade",
+      body: "Ness has the table. Split it on the trip ledger after.",
+      facts: [["Where", "Cervejaria Trindade"], ["Who booked", "Ness"]]
+    },
+    airport: {
+      title: "Airport",
+      pill: "Other",
+      kicker: "Everyone",
+      lede: "Thursday 09:40",
+      body: "Uber from the flat at 07:15. Bags in the hall the night before.",
+      facts: [
+        ["Flight", "Thursday 09:40"],
+        ["Pickup", "Uber from the flat · 07:15"]
+      ]
+    }
+  };
+  var NOTE_BODY_HINT = {
+    wifi: "Network name and anything guests need to know.",
+    bins: "Which bags, which day, where they go.",
+    keys: "Who has the spare, last lockup, anything that bites.",
+    landlord: "How rent leaves, what to say when something breaks.",
+    emergency: "Who to call when the boiler dies at 11pm.",
+    rules: "Quiet hours, shoes, guests — the old chat pin.",
+    other: "Whatever the house needs to remember."
+  };
+  var noteSeq = 0;
 
   function pfx() {
     return document.body.classList.contains("d-body") ? "d" : "a";
@@ -350,16 +466,21 @@
 
   function htmlNotes(items) {
     var x = pfx();
+    var isA = document.body.classList.contains("a-body");
     return items
       .map(function (item) {
+        var go = isA && item.note ? "note" : item.go;
+        var noteAttr = isA && item.note ? ' data-note="' + item.note + '"' : "";
         return (
           '<button class="' +
           x +
           "-item " +
           x +
           '-item-plain" type="button" data-go="' +
-          item.go +
-          '"><div><strong>' +
+          go +
+          '"' +
+          noteAttr +
+          '><div><strong>' +
           item.title +
           '</strong><div class="when">' +
           item.when +
@@ -424,9 +545,135 @@
 
   window.COMMUNE_APPLY_HUB = applyHub;
 
+  function val(id) {
+    var el = document.getElementById(id);
+    return el ? String(el.value || "").trim() : "";
+  }
+
+  function segValue(sel) {
+    var on = document.querySelector(sel + " .is-on");
+    return on ? on.getAttribute("data-seg") || on.textContent.trim() : "";
+  }
+
+  function stampNote(id) {
+    var card = NOTE_CARDS[id] || NOTE_CARDS.wifi;
+    var map = window.COMMUNE_TITLES || {};
+    map.note = card.title;
+    var ledes = window.COMMUNE_LEDES || {};
+    ledes.note = card.kicker || "";
+    setAll("[data-note-title]", card.title);
+    setAll("[data-note-kicker]", card.kicker || "");
+    setAll("[data-note-lede]", card.lede || "");
+    setAll("[data-note-body]", card.body || "");
+    setAll("[data-note-pill]", card.pill || card.title);
+    document.querySelectorAll("[data-note-facts]").forEach(function (box) {
+      box.innerHTML = "";
+      (card.facts || []).forEach(function (fact) {
+        var el = document.createElement("div");
+        el.className = "a-note-fact";
+        var k = document.createElement("span");
+        k.textContent = fact[0];
+        var v = document.createElement("strong");
+        v.textContent = fact[1];
+        el.appendChild(k);
+        el.appendChild(v);
+        box.appendChild(el);
+      });
+      box.hidden = !(card.facts && card.facts.length);
+    });
+  }
+
+  function syncNoteExtras() {
+    var sel = document.getElementById("a-note-type");
+    if (!sel) return;
+    var type = sel.value;
+    document.querySelectorAll("[data-note-extra]").forEach(function (el) {
+      var kinds = (el.getAttribute("data-note-extra") || "").split(/\s+/);
+      el.hidden = kinds.indexOf(type) === -1;
+    });
+    var body = document.getElementById("a-note-body");
+    if (body && NOTE_BODY_HINT[type]) body.placeholder = NOTE_BODY_HINT[type];
+  }
+
+  function appendNoteFromForm() {
+    var typeEl = document.getElementById("a-note-type");
+    var typeVal = typeEl ? typeEl.value : "other";
+    var typeLabel = typeEl && typeEl.options[typeEl.selectedIndex] ? typeEl.options[typeEl.selectedIndex].text : "Note";
+    var title = val("a-note-title") || typeLabel;
+    var body = val("a-note-body") || "Just added";
+    var pin = segValue("[data-note-pin]") === "on";
+    var who = segValue("[data-note-who]") === "admins" ? "Admins" : "Everyone";
+    var facts = [];
+    var extras = {
+      wifi: [
+        ["Network", val("a-note-net")],
+        ["Password", val("a-note-pass")]
+      ],
+      keys: [["Door code", val("a-note-code")]],
+      bins: [
+        ["Collection", val("a-note-day")],
+        ["Where", val("a-note-where")]
+      ],
+      landlord: [
+        ["Phone", val("a-note-phone")],
+        ["Email", val("a-note-email")]
+      ],
+      emergency: [
+        ["Who to call", val("a-note-contact")],
+        ["Phone", val("a-note-phone")]
+      ]
+    };
+    (extras[typeVal] || []).forEach(function (fact) {
+      if (fact[1]) facts.push(fact);
+    });
+    facts.push(["Who can see", who]);
+    if (pin) facts.push(["This Hub", "Pinned"]);
+    noteSeq += 1;
+    var id = "added-" + noteSeq;
+    var lede = facts[0] ? facts[0][1] : body;
+    NOTE_CARDS[id] = {
+      title: title,
+      pill: typeLabel,
+      kicker: (pin ? "Pinned · " : "") + who.toLowerCase(),
+      lede: lede,
+      body: body,
+      facts: facts
+    };
+    var list = document.querySelector("[data-notes-list]");
+    if (!list) return;
+    var when = lede;
+    if (when.length > 64) when = when.slice(0, 61) + "…";
+    var btn = document.createElement("button");
+    btn.className = "a-item a-item-plain";
+    btn.type = "button";
+    btn.setAttribute("data-go", "note");
+    btn.setAttribute("data-note", id);
+    var wrap = document.createElement("div");
+    var strong = document.createElement("strong");
+    strong.textContent = title;
+    var meta = document.createElement("div");
+    meta.className = "when";
+    meta.textContent = when;
+    wrap.appendChild(strong);
+    wrap.appendChild(meta);
+    btn.appendChild(wrap);
+    list.insertBefore(btn, list.firstChild);
+  }
+
   function isWindow(id) {
     var el = document.getElementById(id);
     return !!(el && el.classList.contains("a-window"));
+  }
+
+  function closeChoose(except) {
+    document.querySelectorAll(".a-choose").forEach(function (el) {
+      if (el === except) return;
+      el.classList.remove("is-open");
+      var btn = el.querySelector("[data-choose]");
+      var menu = el.querySelector(".a-choose-menu");
+      if (btn) btn.setAttribute("aria-expanded", "false");
+      if (menu) menu.hidden = true;
+    });
   }
 
   function closeMore() {
@@ -457,6 +704,7 @@
     var title = document.querySelector("[data-window-title]");
     var map = window.COMMUNE_TITLES || {};
     if (title) title.textContent = map[id] || "";
+    if (id === "note-new") syncNoteExtras();
     return true;
   }
 
@@ -534,12 +782,27 @@
   }
 
   document.addEventListener("click", function (e) {
+    if (!e.target.closest(".a-choose")) closeChoose();
+    var saver = e.target.closest("[data-note-save]");
+    if (saver) appendNoteFromForm();
     var closer = e.target.closest("[data-window-close]");
     if (closer) {
       e.preventDefault();
       var after = closer.getAttribute("data-go");
       closeWindow();
       if (after) show(after);
+      return;
+    }
+    var chooseBtn = e.target.closest("[data-choose]");
+    if (chooseBtn) {
+      e.preventDefault();
+      var wrap = chooseBtn.closest(".a-choose");
+      var open = !wrap.classList.contains("is-open");
+      closeChoose(open ? wrap : null);
+      wrap.classList.toggle("is-open", open);
+      chooseBtn.setAttribute("aria-expanded", open ? "true" : "false");
+      var menu = wrap.querySelector(".a-choose-menu");
+      if (menu) menu.hidden = !open;
       return;
     }
     var moreBtn = e.target.closest("[data-more]");
@@ -556,6 +819,14 @@
       applyNavMode(navModeBtn.getAttribute("data-nav-mode"));
       return;
     }
+    var segBtn = e.target.closest(".a-seg button");
+    if (segBtn) {
+      e.preventDefault();
+      segBtn.parentElement.querySelectorAll("button").forEach(function (b) {
+        b.classList.toggle("is-on", b === segBtn);
+      });
+      return;
+    }
     var chip = e.target.closest(".a-chip");
     if (chip && chip.closest(".a-filters")) {
       chip.parentElement.querySelectorAll(".a-chip").forEach(function (c) {
@@ -567,16 +838,22 @@
     if (t.closest(".a-filters")) return;
     e.preventDefault();
     closeMore();
+    closeChoose();
     var hubId = t.getAttribute("data-hub");
     if (hubId) applyHub(hubId);
     var go = t.getAttribute("data-go");
     if (go === "hub-empty") stampEmptyHub(t.closest(".a-window, .screen"));
+    if (go === "note") stampNote(t.getAttribute("data-note") || "wifi");
+    if (go === "note-new") syncNoteExtras();
     if (go) show(go);
     else if (hubId) show(document.body.classList.contains("d-body") ? "hub-snapshot" : "hub");
   });
 
   document.addEventListener("keydown", function (e) {
-    if (e.key === "Escape") closeWindow();
+    if (e.key === "Escape") {
+      closeChoose();
+      closeWindow();
+    }
   });
 
   function stampEmptyHub(screen) {
@@ -638,6 +915,11 @@
     return "basic";
   }
 
+  document.addEventListener("change", function (e) {
+    if (e.target && e.target.id === "a-note-type") syncNoteExtras();
+  });
+
+  if (params.get("native") === "1") document.body.classList.add("is-native");
   if (document.body.classList.contains("a-body")) applyNavMode(initialNavMode());
   if (params.get("hub")) applyHub(params.get("hub"));
   var boot = params.get("screen");
