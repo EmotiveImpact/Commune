@@ -171,7 +171,8 @@
 
   var HOME_STATUS = "3 spaces · you owe £42 · you’re owed £64";
   var HUB_SCREENS = { hub: true, "hub-snapshot": true, "hub-needs": true, "hub-money": true };
-  var HOME_SCREENS = { home: true, communes: true, "home-inbox": true, "home-focus": true, "home-places": true };
+  var HOME_NAV = { home: true, "home-inbox": true, "home-focus": true };
+  var HOME_STATUS_SCREENS = { home: true, communes: true, "home-inbox": true, "home-focus": true, "home-places": true };
 
   function pfx() {
     return document.body.classList.contains("d-body") ? "d" : "a";
@@ -413,7 +414,11 @@
   window.COMMUNE_APPLY_HUB = applyHub;
 
   function show(id) {
-    var aliases = { "add-expense": "expenses", communes: "home", "home-focus": "home" };
+    var aliases = { "add-expense": "expenses", "home-focus": "home", "home-places": "communes" };
+    if (!document.getElementById("communes")) {
+      aliases.communes = "home";
+      aliases["home-places"] = "home";
+    }
     var activeId = aliases[id] || id;
     document.querySelectorAll(".screen").forEach(function (s) {
       s.hidden = s.id !== activeId;
@@ -424,7 +429,7 @@
       )
       .forEach(function (el) {
         var go = el.getAttribute("data-go");
-        var on = go === activeId || (go === "communes" && activeId === "home");
+        var on = go === activeId || (go === "communes" && activeId === "home" && !document.getElementById("communes"));
         el.classList.toggle("is-active", on);
       });
     if (HUB_SCREENS[activeId]) {
@@ -432,7 +437,7 @@
         el.classList.add("is-active");
       });
     }
-    if (HOME_SCREENS[activeId]) {
+    if (HOME_NAV[activeId]) {
       document.querySelectorAll("nav .a-link[data-go='home'], nav .d-link[data-go='home']").forEach(function (el) {
         el.classList.add("is-active");
       });
@@ -442,7 +447,7 @@
     if (title && map[activeId]) title.textContent = map[activeId];
     var statusEl = document.querySelector("[data-page-status]");
     if (statusEl) {
-      if (HOME_SCREENS[activeId]) statusEl.textContent = HOME_STATUS;
+      if (HOME_STATUS_SCREENS[activeId]) statusEl.textContent = HOME_STATUS;
       else if (window.COMMUNE_CURRENT_HUB) statusEl.textContent = window.COMMUNE_CURRENT_HUB.status;
     }
   }

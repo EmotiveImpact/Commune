@@ -8,16 +8,20 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../shared.css?v=focusmix" />
-    <link rel="stylesheet" href="./styles.css?v=focusmix" />
+    <link rel="stylesheet" href="../shared.css?v=switcher" />
+    <link rel="stylesheet" href="./styles.css?v=switcher" />
   </head>
   <body class="a-body">
     <div class="mock-bar">
-      <span>Direction <strong>A</strong> · Home is Focus</span>
+      <span>Direction <strong>A</strong> · Home is Focus · switcher is Places</span>
       <span class="layout-tabs">
-        <button type="button" class="is-active" data-go="home">Focus</button>
-        <button type="button" data-go="home-places">Places</button>
+        <button type="button" class="is-active" data-go="home">Home</button>
+        <button type="button" data-go="communes">Places</button>
         <button type="button" data-go="home-inbox">Inbox</button>
+        <a href="../d-tight/">D</a>
+        <a href="../">All directions</a>
+      </span>
+    </div>
         <a href="../d-tight/">D</a>
         <a href="../">All directions</a>
       </span>
@@ -102,7 +106,7 @@
         </nav>
 
         <div class="a-switch-section">
-          <button class="a-hub-switch" type="button" data-go="home">
+          <button class="a-hub-switch" type="button" data-go="communes" aria-label="Switch commune">
             <div class="hub-ico" aria-hidden="true">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f5f1ea" stroke-width="2"><path d="M3 10.5 12 3l9 7.5V21a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1v-10.5z"/></svg>
             </div>
@@ -254,12 +258,12 @@
             </div>
           </section>
 
-          <!-- ALT · PLACES — equal photo cards, still here to compare. -->
-          <section class="screen" id="home-places" hidden>
+          <!-- PLACES — commune switcher. Pick a space; cards open that hub. -->
+          <section class="screen" id="communes" hidden>
             <div class="a-home-greet">
-              <span class="kicker">Places</span>
-              <h1>Three spaces. One Monday.</h1>
-              <p>Park Street still needs you this week. Lisbon hasn’t paid you back. Studio is even.</p>
+              <span class="kicker">Your communes</span>
+              <h1>Pick a space.</h1>
+              <p>Park Street still needs you. Lisbon hasn’t paid you back. Studio is even. Open one to go into that hub.</p>
             </div>
 
             <div class="a-place-grid">
@@ -1240,7 +1244,8 @@
         home: "Home",
         "home-inbox": "Home",
         "home-focus": "Home",
-        "home-places": "Home",
+        "home-places": "Places",
+        communes: "Places",
         hub: "14 Park Street",
         communes: "Home",
         expenses: "Expenses",
@@ -1261,6 +1266,6 @@
         settings: "Settings"
       };
     </script>
-    <script src="../shared.js?v=focusmix"></script>
+    <script src="../shared.js?v=switcher"></script>
   </body>
 </html>
