@@ -1,6 +1,39 @@
 import { useApp } from "../state";
 import { Avatar, Pill } from "../ui/widgets";
 import { heroClass } from "../data/household";
+import { dateFromIso, todayIso, type OperationItem } from "../data/operations";
+
+const operationDay = new Intl.DateTimeFormat("en-GB", {
+  weekday: "long",
+  day: "numeric",
+  month: "short",
+});
+
+function nextBins(items: OperationItem[]): OperationItem | undefined {
+  return items
+    .filter((item) => item.title === "Put the bins out" && item.status === "open")
+    .sort((a, b) => a.date.localeCompare(b.date))[0];
+}
+
+function binsStatus(item: OperationItem | undefined) {
+  if (!item) {
+    return {
+      hero: "Bins are done.",
+      short: "bins done",
+      title: "Bins done",
+      when: "Nothing waiting",
+    };
+  }
+  const overdue = item.date < todayIso();
+  const date = operationDay.format(dateFromIso(item.date));
+  const firstName = item.assignee?.split(" ")[0] ?? "Unassigned";
+  return {
+    hero: overdue ? `Bins are still ${firstName}’s.` : `Bins are with ${firstName} on ${date}.`,
+    short: overdue ? "bins overdue" : `bins ${date}`,
+    title: overdue ? "Bins overdue" : `Bins · ${date}`,
+    when: overdue ? `Still ${firstName}’s · ${date}` : `${firstName} · ${date}`,
+  };
+}
 
 export function HomeScreen() {
   const { session } = useApp();
@@ -10,15 +43,17 @@ export function HomeScreen() {
 }
 
 function HomeWeekScreen() {
-  const { go, places } = useApp();
+  const { go, places, operationsByHub } = useApp();
   const extra = places.find((hub) => hub.id === "created");
+  const bins = nextBins(operationsByHub.park);
+  const binsCopy = binsStatus(bins);
   return (
     <>
       <button className="a-place a-focus-lead" type="button" onClick={() => go("hub", { hub: "park" })}>
         <div className="a-focus-hero">
           <span className="type">Needs you · Household</span>
           <h2>14 Park Street</h2>
-          <p>You owe £42. Gas Friday. Bins still Jordan’s. Alex hasn’t paid into the fund.</p>
+          <p>You owe £42. Gas Friday. {binsCopy.hero} Alex hasn’t paid into the fund.</p>
           <div className="a-cover-people">
             <div className="avatar-stack">
               <Avatar tone="maya" initials="MC" />
@@ -29,7 +64,7 @@ function HomeWeekScreen() {
           </div>
         </div>
         <div className="a-place-foot">
-          <span>Gas Friday · bins overdue</span>
+          <span>Gas Friday · {binsCopy.short}</span>
           <span className="amt">£42</span>
         </div>
       </button>
@@ -91,12 +126,12 @@ function HomeWeekScreen() {
             <button
               className="hub-feed-row"
               type="button"
-              onClick={() => go("operation", { hub: "park", operation: "park-bins" })}
+              onClick={() => bins && go("operation", { hub: "park", operation: bins.id })}
             >
               <Pill tone="warn">Park Street</Pill>
               <div>
-                <strong>Bins overdue</strong>
-                <div className="when">Still Jordan’s Tuesday</div>
+                <strong>{binsCopy.title}</strong>
+                <div className="when">{binsCopy.when}</div>
               </div>
               <span className="hub-feed-go">Operations</span>
             </button>
@@ -200,7 +235,7 @@ function HomeFreshScreen() {
 }
 
 export function PlacesScreen() {
-  const { go, places, session } = useApp();
+  const { go, places, session, operationsByHub } = useApp();
   if (!session?.hasHubs) {
     return (
       <div className="a-empty">
@@ -247,6 +282,8 @@ export function PlacesScreen() {
   }
 
   const extra = places.find((hub) => hub.id === "created");
+  const bins = nextBins(operationsByHub.park);
+  const binsCopy = binsStatus(bins);
 
   return (
     <>
@@ -263,7 +300,7 @@ export function PlacesScreen() {
             <p>You owe £42</p>
           </div>
           <div className="a-place-foot">
-            <span>Gas Friday · bins overdue</span>
+            <span>Gas Friday · {binsCopy.short}</span>
             <span className="amt">£42</span>
           </div>
         </button>
@@ -327,12 +364,12 @@ export function PlacesScreen() {
           <button
             className="hub-feed-row"
             type="button"
-            onClick={() => go("operation", { hub: "park", operation: "park-bins" })}
+            onClick={() => bins && go("operation", { hub: "park", operation: bins.id })}
           >
             <Pill tone="warn">Park Street</Pill>
             <div>
-              <strong>Bins overdue</strong>
-              <div className="when">Still Jordan’s Tuesday</div>
+              <strong>{binsCopy.title}</strong>
+              <div className="when">{binsCopy.when}</div>
             </div>
             <span className="hub-feed-go">Operations</span>
           </button>

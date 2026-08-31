@@ -1,5 +1,6 @@
 import { useState, type CSSProperties } from "react";
 import { NOTE_BODY_HINT } from "../data/household";
+import { todayIso } from "../data/operations";
 import { useApp } from "../state";
 import { Icon } from "../ui/Icon";
 import { Avatar, Choose, Pill } from "../ui/widgets";
@@ -76,7 +77,11 @@ function titleFor(id: string): string {
 }
 
 function Notices() {
-  const { go, emptyHub, hub } = useApp();
+  const { go, emptyHub, hub, operationsByHub } = useApp();
+  const bins = operationsByHub.park
+    .filter((item) => item.title === "Put the bins out" && item.status === "open")
+    .sort((a, b) => a.date.localeCompare(b.date))[0];
+  const binsOverdue = Boolean(bins && bins.date < todayIso());
   if (emptyHub || hub.id === "created") {
     return (
       <section className="a-window">
@@ -95,17 +100,21 @@ function Notices() {
           <div className="when">£94.20 · Jordan paid · your share open</div>
         </div>
       </button>
-      <button
-        className="a-notice"
-        type="button"
-        onClick={() => go("operation", { hub: "park", operation: "park-bins" })}
-      >
-        <Pill tone="warn">Overdue</Pill>
-        <div className="grow">
-          <strong>Bins</strong>
-          <div className="when">Still Jordan’s Tuesday</div>
-        </div>
-      </button>
+      {bins ? (
+        <button
+          className="a-notice"
+          type="button"
+          onClick={() => go("operation", { hub: "park", operation: bins.id })}
+        >
+          <Pill tone={binsOverdue ? "warn" : "open"}>{binsOverdue ? "Overdue" : "Tuesday"}</Pill>
+          <div className="grow">
+            <strong>Bins</strong>
+            <div className="when">
+              {bins.assignee?.split(" ")[0] ?? "Unassigned"} · {bins.date}
+            </div>
+          </div>
+        </button>
+      ) : null}
       <button className="a-notice" type="button" onClick={() => go("funds")}>
         <Pill tone="open">Collect</Pill>
         <div className="grow">

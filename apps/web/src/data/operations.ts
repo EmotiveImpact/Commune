@@ -226,7 +226,13 @@ export function cloneOperationSeed(): OperationStore {
 export function addRepeat(date: string, repeat: OperationRepeat): string {
   const next = dateFromIso(date);
   if (repeat === "weekly") next.setDate(next.getDate() + 7);
-  if (repeat === "monthly") next.setMonth(next.getMonth() + 1);
+  if (repeat === "monthly") {
+    const day = next.getDate();
+    next.setDate(1);
+    next.setMonth(next.getMonth() + 1);
+    const lastDay = new Date(next.getFullYear(), next.getMonth() + 1, 0).getDate();
+    next.setDate(Math.min(day, lastDay));
+  }
   return isoFromDate(next);
 }
 

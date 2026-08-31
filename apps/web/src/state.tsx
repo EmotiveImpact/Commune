@@ -94,6 +94,7 @@ type AppState = {
   notes: Record<string, NoteCard>;
   operationKey: string;
   operationDate: string;
+  operationsByHub: OperationStore;
   operations: OperationItem[];
   selectedOperation: OperationItem | null;
   dark: boolean;
@@ -346,10 +347,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (completing && item.repeat !== "none") {
         const nextDate = addRepeat(item.date, item.repeat);
         const exists = rows.some(
-          (row) =>
-            row.title === item.title &&
-            row.date === nextDate &&
-            row.status === "open",
+          (row) => row.title === item.title && row.date === nextDate,
         );
         if (!exists) {
           rows.push({
@@ -515,6 +513,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       notes,
       operationKey,
       operationDate,
+      operationsByHub: operationStore,
       operations,
       selectedOperation,
       dark,
@@ -553,6 +552,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       notes,
       operationKey,
       operationDate,
+      operationStore,
       operations,
       selectedOperation,
       dark,
