@@ -1,7 +1,7 @@
 {
   "remote.autoForwardPorts": true,
   "remote.autoForwardPortsSource": "hybrid",
-  "remote.restoreForwardedPorts": true,
+  "remote.restoreForwardedPorts": false,
   "remote.forwardOnOpen": true,
   "remote.portsAttributes": {
     "3000": {
