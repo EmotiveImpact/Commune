@@ -171,7 +171,7 @@
 
   var HOME_STATUS = "3 spaces · you owe £42 · you’re owed £64";
   var HUB_SCREENS = { hub: true, "hub-snapshot": true, "hub-needs": true, "hub-money": true };
-  var HOME_SCREENS = { home: true, communes: true, "home-inbox": true, "home-focus": true };
+  var HOME_SCREENS = { home: true, communes: true, "home-inbox": true, "home-focus": true, "home-places": true };
 
   function pfx() {
     return document.body.classList.contains("d-body") ? "d" : "a";
@@ -413,7 +413,7 @@
   window.COMMUNE_APPLY_HUB = applyHub;
 
   function show(id) {
-    var aliases = { "add-expense": "expenses", communes: "home" };
+    var aliases = { "add-expense": "expenses", communes: "home", "home-focus": "home" };
     var activeId = aliases[id] || id;
     document.querySelectorAll(".screen").forEach(function (s) {
       s.hidden = s.id !== activeId;

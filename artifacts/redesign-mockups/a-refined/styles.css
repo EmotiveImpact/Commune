@@ -1836,14 +1836,19 @@ button.a-item {
   color: var(--sage);
 }
 
+.a-focus-lead .a-focus-hero {
+  border-radius: 0;
+  box-shadow: none;
+  cursor: inherit;
+}
+
 .a-focus-hero {
   position: relative;
   isolation: isolate;
   width: 100%;
-  min-height: 280px;
+  min-height: 292px;
   padding: 28px 28px 26px;
   border: 0;
-  border-radius: 20px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -1852,13 +1857,6 @@ button.a-item {
   font: inherit;
   color: #f8f5f0;
   background: #1a1e2e;
-  cursor: pointer;
-  box-shadow: var(--shadow);
-  transition: transform 0.15s ease;
-}
-
-.a-focus-hero:hover {
-  transform: translateY(-1px);
 }
 
 .a-focus-hero::before {
