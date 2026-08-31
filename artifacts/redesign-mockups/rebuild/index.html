@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="../shared.css?v=map" />
-    <link rel="stylesheet" href="./styles.css?v=map2" />
+    <link rel="stylesheet" href="./styles.css?v=win" />
   </head>
   <body class="r-body">
     <header class="r-nav">
@@ -25,9 +25,9 @@
         <p class="g-eyebrow">The rebuild</p>
         <h1>Every screen the clean app needs.</h1>
         <p>
-          Direction A is the look. This list is the product — click a row, walk
-          the screen. Sage ships. Grey waits. Red stays in the old Mantine app.
-          Do not reskin the old sitemap.
+          Direction A is the look. Places are pages. Acts are windows over
+          the place you were already in. Sage ships. Grey waits. Red stays
+          in the old Mantine app — we are not rebuilding in Mantine.
         </p>
       </section>
 
@@ -61,6 +61,28 @@
         <span><i class="r-dot later"></i> Later</span>
         <span><i class="r-dot kill"></i> Don’t rebuild</span>
       </div>
+
+      <section class="r-group">
+        <h2>Pages vs windows</h2>
+        <p>A page is a place. A window is an object or an act. Don’t mint a new URL for “pay Jordan”.</p>
+        <div class="r-list">
+          <div class="r-row">
+            <i class="r-dot"></i>
+            <div><strong>Pages</strong><small>Login / signup / invite. Home, This Hub, Expenses, Settle, Recurring, Funds, Notes, Operations, Places.</small></div>
+            <span class="r-tag">Place</span>
+          </div>
+          <a class="r-row" href="../a-refined/?screen=expense">
+            <i class="r-dot"></i>
+            <div><strong>Windows</strong><small>This bill, add expense, pay Jordan, notices, invite, new commune, profile, settings, breakdown.</small></div>
+            <span class="r-tag">Open</span>
+          </a>
+          <div class="r-row">
+            <i class="r-dot"></i>
+            <div><strong>Phone</strong><small>No collapsing sidebar. Bottom tabs: Home, Hub, Expenses, Settle, More. Same windows, sheet from the bottom.</small></div>
+            <span class="r-tag">Phone</span>
+          </div>
+        </div>
+      </section>
 
       <section class="r-group">
         <h2>Birth</h2>
@@ -135,8 +157,8 @@
           </a>
           <a class="r-row" href="../a-refined/?screen=expense">
             <i class="r-dot"></i>
-            <div><strong>Expense</strong><small>British Gas. Split, your share, mark paid, nudge.</small></div>
-            <span class="r-tag">Open</span>
+            <div><strong>Expense</strong><small>Window over the list. Split, your share, mark paid, nudge.</small></div>
+            <span class="r-tag">Window</span>
           </a>
           <a class="r-row" href="../a-refined/?screen=expense-paid">
             <i class="r-dot"></i>
@@ -145,8 +167,13 @@
           </a>
           <a class="r-row" href="../a-refined/?screen=add-expense">
             <i class="r-dot"></i>
-            <div><strong>Add expense</strong><small>What, amount, who paid, split. Save opens the expense.</small></div>
-            <span class="r-tag">Open</span>
+            <div><strong>Add expense</strong><small>Window. What, amount, who paid, split. Save opens the bill.</small></div>
+            <span class="r-tag">Window</span>
+          </a>
+          <a class="r-row" href="../a-refined/?screen=pay">
+            <i class="r-dot"></i>
+            <div><strong>Pay</strong><small>Window on Settle. Revolut, PayPal.me, bank. Commune does not take a cut.</small></div>
+            <span class="r-tag">Window</span>
           </a>
           <a class="r-row" href="../a-refined/?screen=settle">
             <i class="r-dot"></i>
@@ -230,7 +257,7 @@
             <div><strong>Analytics</strong><small>This Hub’s month card is enough for v1.</small></div>
             <span class="r-tag">Later</span>
           </a>
-          <a class="r-row is-later" href="../a-refined/?screen=settle">
+          <a class="r-row is-later" href="../a-refined/?screen=breakdown">
             <i class="r-dot later"></i>
             <div><strong>Breakdown</strong><small>Same truth as Settle. Don’t ship a second destination.</small></div>
             <span class="r-tag">Later</span>
@@ -272,6 +299,36 @@
             <div><strong>Cycle close as accounting</strong><small>Settle is the verb. Don’t rebuild a period-end product.</small></div>
             <span class="r-tag">Drop</span>
           </div>
+          <div class="r-row is-kill">
+            <i class="r-dot kill"></i>
+            <div><strong>Mantine, and a collapsing desktop sidebar</strong><small>This CSS is the app. Desktop rail stays open. Phone replaces it with tabs.</small></div>
+            <span class="r-tag">Drop</span>
+          </div>
+        </div>
+      </section>
+      <section class="r-group">
+        <h2>The mark</h2>
+        <p>
+          Keep the Didone C. The problem was size and putting cream on cream.
+          Navy behind it, bigger in the rail. The others are sketches — not a rebrand.
+        </p>
+        <div class="r-marks">
+          <figure>
+            <img src="../logo.png" alt="Current C on black" />
+            <figcaption>Now · keep</figcaption>
+          </figure>
+          <figure>
+            <img src="../marks/mark-navy-c.png" alt="C on navy, larger in the frame" />
+            <figcaption>Same C, navy, less padding</figcaption>
+          </figure>
+          <figure>
+            <img src="../marks/mark-sage-c.png" alt="C on sage" />
+            <figcaption>Sage tile · maybe</figcaption>
+          </figure>
+          <figure>
+            <img src="../marks/mark-arcs.png" alt="Nested cream arcs" />
+            <figcaption>Arcs · not yet</figcaption>
+          </figure>
         </div>
       </section>
     </main>

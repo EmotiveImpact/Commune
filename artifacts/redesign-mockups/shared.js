@@ -173,8 +173,18 @@
   var HOME_NAV = { home: true, "home-inbox": true, "home-focus": true, "home-empty": true };
   var HUB_SCREENS = { hub: true, "hub-snapshot": true, "hub-needs": true, "hub-money": true, "hub-empty": true };
   var GATE_SCREENS = { login: true, signup: true, invite: true, onboard: true };
-  var EXPENSE_SCREENS = { expenses: true, "expenses-empty": true, expense: true, "expense-paid": true, "add-expense": true };
+  var EXPENSE_SCREENS = { expenses: true, "expenses-empty": true };
   var HOME_STATUS_SCREENS = { home: true, communes: true, "home-inbox": true, "home-focus": true, "home-places": true };
+  var WINDOW_PAGE = {
+    expense: "expenses",
+    "expense-paid": "expenses",
+    "add-expense": "expenses",
+    "commune-new": "communes",
+    "member-invite": "members",
+    breakdown: "settle",
+    pay: "settle"
+  };
+  var lastPage = "home";
 
   function pfx() {
     return document.body.classList.contains("d-body") ? "d" : "a";
@@ -414,6 +424,42 @@
 
   window.COMMUNE_APPLY_HUB = applyHub;
 
+  function isWindow(id) {
+    var el = document.getElementById(id);
+    return !!(el && el.classList.contains("a-window"));
+  }
+
+  function closeMore() {
+    document.body.classList.remove("more-open");
+    var more = document.querySelector(".a-more");
+    if (more) more.hidden = true;
+  }
+
+  function closeWindow() {
+    document.body.classList.remove("has-window");
+    var layer = document.querySelector(".a-windows");
+    if (layer) layer.hidden = true;
+    document.querySelectorAll(".a-window").forEach(function (w) {
+      w.hidden = true;
+    });
+  }
+
+  function openWindow(id) {
+    var el = document.getElementById(id);
+    if (!el || !el.classList.contains("a-window")) return false;
+    closeMore();
+    document.body.classList.add("has-window");
+    var layer = document.querySelector(".a-windows");
+    if (layer) layer.hidden = false;
+    document.querySelectorAll(".a-window").forEach(function (w) {
+      w.hidden = w.id !== id;
+    });
+    var title = document.querySelector("[data-window-title]");
+    var map = window.COMMUNE_TITLES || {};
+    if (title) title.textContent = map[id] || "";
+    return true;
+  }
+
   function show(id) {
     var aliases = { "home-focus": "home", "home-places": "communes" };
     if (!document.getElementById("communes")) {
@@ -421,6 +467,12 @@
       aliases["home-places"] = "home";
     }
     var activeId = aliases[id] || id;
+    if (isWindow(activeId)) {
+      openWindow(activeId);
+      return;
+    }
+    closeWindow();
+    closeMore();
     if (
       activeId === "settle" &&
       document.getElementById("settle-even") &&
@@ -430,13 +482,15 @@
     ) {
       activeId = "settle-even";
     }
+    lastPage = activeId;
     document.body.classList.toggle("is-gate", !!GATE_SCREENS[activeId]);
     document.querySelectorAll(".screen").forEach(function (s) {
+      if (s.classList.contains("a-window")) return;
       s.hidden = s.id !== activeId;
     });
     document
       .querySelectorAll(
-        "nav [data-go], .a-link[data-go], .a-hub-switch[data-go], .a-side-foot[data-go], .b-link[data-go], .d-link[data-go], .b-tabs button[data-go], .b-communes button[data-go], .layout-tabs [data-go]"
+        "nav [data-go], .a-link[data-go], .a-hub-switch[data-go], .a-side-foot[data-go], .a-bottom [data-go], .b-link[data-go], .d-link[data-go], .b-tabs button[data-go], .b-communes button[data-go], .layout-tabs [data-go]"
       )
       .forEach(function (el) {
         var go = el.getAttribute("data-go");
@@ -444,32 +498,22 @@
         el.classList.toggle("is-active", on);
       });
     if (HUB_SCREENS[activeId]) {
-      document.querySelectorAll("nav .a-link[data-go='hub'], nav .d-link[data-go='hub-snapshot'], nav .d-link[data-go='hub']").forEach(function (el) {
+      document.querySelectorAll("nav .a-link[data-go='hub'], nav .d-link[data-go='hub-snapshot'], nav .d-link[data-go='hub'], .a-bottom [data-go='hub']").forEach(function (el) {
         el.classList.add("is-active");
       });
     }
     if (HOME_NAV[activeId]) {
-      document.querySelectorAll("nav .a-link[data-go='home'], nav .d-link[data-go='home']").forEach(function (el) {
+      document.querySelectorAll("nav .a-link[data-go='home'], nav .d-link[data-go='home'], .a-bottom [data-go='home']").forEach(function (el) {
         el.classList.add("is-active");
       });
     }
     if (EXPENSE_SCREENS[activeId]) {
-      document.querySelectorAll("nav .a-link[data-go='expenses']").forEach(function (el) {
+      document.querySelectorAll("nav .a-link[data-go='expenses'], .a-bottom [data-go='expenses']").forEach(function (el) {
         el.classList.add("is-active");
       });
     }
     if (activeId === "settle-even") {
-      document.querySelectorAll("nav .a-link[data-go='settle']").forEach(function (el) {
-        el.classList.add("is-active");
-      });
-    }
-    if (activeId === "commune-new") {
-      document.querySelectorAll(".a-hub-switch[data-go='communes']").forEach(function (el) {
-        el.classList.add("is-active");
-      });
-    }
-    if (activeId === "member-invite") {
-      document.querySelectorAll("nav .a-link[data-go='members']").forEach(function (el) {
+      document.querySelectorAll("nav .a-link[data-go='settle'], .a-bottom [data-go='settle']").forEach(function (el) {
         el.classList.add("is-active");
       });
     }
@@ -490,6 +534,22 @@
   }
 
   document.addEventListener("click", function (e) {
+    var closer = e.target.closest("[data-window-close]");
+    if (closer) {
+      e.preventDefault();
+      var after = closer.getAttribute("data-go");
+      closeWindow();
+      if (after) show(after);
+      return;
+    }
+    var moreBtn = e.target.closest("[data-more]");
+    if (moreBtn) {
+      e.preventDefault();
+      var more = document.querySelector(".a-more");
+      var open = document.body.classList.toggle("more-open");
+      if (more) more.hidden = !open;
+      return;
+    }
     var navModeBtn = e.target.closest("[data-nav-mode]");
     if (navModeBtn) {
       e.preventDefault();
@@ -506,12 +566,17 @@
     if (!t) return;
     if (t.closest(".a-filters")) return;
     e.preventDefault();
+    closeMore();
     var hubId = t.getAttribute("data-hub");
     if (hubId) applyHub(hubId);
     var go = t.getAttribute("data-go");
-    if (go === "hub-empty") stampEmptyHub(t.closest(".screen"));
+    if (go === "hub-empty") stampEmptyHub(t.closest(".a-window, .screen"));
     if (go) show(go);
     else if (hubId) show(document.body.classList.contains("d-body") ? "hub-snapshot" : "hub");
+  });
+
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") closeWindow();
   });
 
   function stampEmptyHub(screen) {
@@ -575,5 +640,13 @@
 
   if (document.body.classList.contains("a-body")) applyNavMode(initialNavMode());
   if (params.get("hub")) applyHub(params.get("hub"));
-  if (params.get("screen")) show(params.get("screen"));
+  var boot = params.get("screen");
+  if (boot) {
+    if (isWindow(boot)) {
+      show(WINDOW_PAGE[boot] || "home");
+      openWindow(boot);
+    } else {
+      show(boot);
+    }
+  }
 })();
