@@ -277,14 +277,34 @@ body { background: #dddcd8; }
 
 @media (max-width: 820px) {
   :root { --window: 22px; --gutter: 10px; }
+  .hero {
+    min-height: auto;
+    display: flex;
+    flex-direction: column;
+  }
+  .hero > img {
+    position: relative;
+    height: 48svh;
+    min-height: 260px;
+    object-position: 88% 50%;
+  }
   .hero::after {
-    background: linear-gradient(180deg, rgba(245,241,234,.15) 8%, rgba(245,241,234,.92) 62%);
+    display: block;
+    inset: auto;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 96px;
+    background: linear-gradient(180deg, rgba(245,241,234,.82), transparent);
   }
   .hero__copy {
-    width: calc(100% - 32px);
-    padding: 110px 16px 40px;
+    width: 100%;
+    min-height: auto;
+    padding: 32px 16px 40px;
+    background: var(--paper);
   }
   .hero h1 { font-size: clamp(40px, 12vw, 56px); }
+  .hero__balance { margin-top: 32px; }
   .hero__balance .amount { font-size: 28vw; }
   .slice {
     grid-template-columns: 1fr;
@@ -299,7 +319,22 @@ body { background: #dddcd8; }
   .due, .direction, .tariff { padding: 40px 22px; }
   .entry { grid-template-columns: 36px 1fr; }
   .entry span:last-child { grid-column: 2; }
-  .people__in { padding: 36px 22px; min-height: 48svh; }
+  .people {
+    min-height: auto;
+    display: flex;
+    flex-direction: column;
+  }
+  .people > img {
+    position: relative;
+    height: 46svh;
+    min-height: 240px;
+  }
+  .people::after { display: none; }
+  .people__in {
+    min-height: auto;
+    padding: 28px 22px 36px;
+    background: var(--ink);
+  }
   .pay, .fund { grid-template-columns: 1fr; }
   .pay .direction, .fund .well, .fund figure, .fund figure img { min-height: 52svh; }
   .pay__photo { margin-top: 0; }

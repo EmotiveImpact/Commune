@@ -258,12 +258,31 @@ body { background: #ebe6dc; }
 
 @media (max-width: 820px) {
   :root { --window: 22px; --gutter: 10px; }
+  .hero {
+    min-height: auto;
+    display: flex;
+    flex-direction: column;
+  }
+  .hero > img {
+    position: relative;
+    height: 52svh;
+    min-height: 280px;
+    object-position: 82% 40%;
+  }
   .hero::after {
-    background: linear-gradient(180deg, rgba(245,241,234,.2) 10%, rgba(245,241,234,.92) 68%);
+    display: block;
+    inset: auto;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 96px;
+    background: linear-gradient(180deg, rgba(245,241,234,.82), transparent);
   }
   .hero__copy {
-    width: calc(100% - 32px);
-    padding: 110px 16px 48px;
+    width: 100%;
+    min-height: auto;
+    padding: 36px 16px 44px;
+    background: var(--paper);
   }
   .hero h1 { font-size: clamp(42px, 12vw, 58px); }
   .record { grid-template-columns: 1fr 1fr; min-height: auto; }
@@ -282,7 +301,23 @@ body { background: #ebe6dc; }
     transform: translateX(-50%) rotate(135deg);
   }
   .direction__line span { font-size: 20vw; }
-  .fund__in { padding: 48px 22px; }
+  .fund {
+    min-height: auto;
+    display: flex;
+    flex-direction: column;
+  }
+  .fund > img {
+    position: relative;
+    height: 48svh;
+    min-height: 260px;
+    object-position: 78% 50%;
+  }
+  .fund::after { display: none; }
+  .fund__in {
+    min-height: auto;
+    padding: 36px 22px 48px;
+    background: var(--ink);
+  }
   .fund .amount { font-size: 28vw; }
   .pricing { grid-template-columns: 1fr; padding: 72px 16px; gap: 40px; }
   .close { min-height: auto; flex-direction: column; align-items: flex-start; }
