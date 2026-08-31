@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=expo2" />
+    <link rel="stylesheet" href="./styles.css?v=expo3" />
   </head>
   <body class="x-body">
     <div class="x-status" aria-hidden="true"><span>9:41</span><span>LTE ████</span></div>
@@ -21,7 +21,7 @@
         </button>
         <h1 data-page-title class="is-brand">Commune</h1>
         <div class="x-header-right">
-          <button class="x-icon x-bell is-unread" type="button" data-go="home" aria-label="Notices">
+          <button class="x-icon x-bell is-unread" type="button" data-sheet="notices" aria-label="Notices">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 7 3 9H3c0-2 3-2 3-9"/><path d="M10 21a2 2 0 0 0 4 0"/></svg>
           </button>
           <button class="x-ava" type="button" data-go="settings" aria-label="You">MC</button>
@@ -33,7 +33,7 @@
           <div class="x-gate">
             <div class="x-gate-card">
               <h1>Welcome back.</h1>
-              <p>Park Street, Studio, Lisbon — one login. This is the Expo gate, rewritten in Direction A.</p>
+              <p>Park Street, Studio, Lisbon — one login.</p>
               <div class="x-field">
                 <label for="x-email">Email</label>
                 <input id="x-email" type="email" value="maya@14park.st" />
@@ -48,147 +48,217 @@
         </section>
 
         <section class="screen" id="home">
-          <button class="x-switch" type="button" data-go="groups">
-            <span class="x-tile sage" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 10.5 12 3l9 7.5V21a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1v-10.5z"/></svg>
-            </span>
-            <span class="grow"><strong>14 Park Street</strong><span>3 members · Household</span></span>
-            <svg class="x-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
-          </button>
-
-          <div class="x-hero">
-            <div class="x-hero-top">
-              <p class="x-hero-k">Your share · August</p>
-              <span class="x-pct">62% settled</span>
+          <button class="x-lead" type="button" data-go="hub">
+            <div class="x-lead-hero">
+              <span class="type">Needs you · Household</span>
+              <h2>14 Park Street</h2>
+              <p>You owe £42. Gas Friday. Bins still Jordan’s. Alex hasn’t paid into the fund.</p>
             </div>
-            <p class="x-hero-amt">£42.00</p>
-            <p class="x-hero-meta"><b>£68</b> paid · <b>£42</b> left · <b>2</b> open</p>
-            <div class="x-track" aria-hidden="true"><i style="width:62%"></i></div>
-            <div class="x-hero-btns">
-              <button class="pri" type="button" data-go="expenses">Add Expense</button>
-              <button class="sec" type="button" data-go="settle">Settle Up</button>
+            <div class="x-lead-foot">
+              <span>Gas Friday · bins overdue</span>
+              <span class="amt">£42</span>
+            </div>
+          </button>
+          <div class="x-pair">
+            <button class="x-mini studio" type="button" data-go="hub">
+              <div class="x-mini-hero">
+                <span class="type">Quiet</span>
+                <h3>Studio East</h3>
+                <p>You’re even</p>
+              </div>
+              <div class="x-mini-foot">
+                <span>Ink Monday</span>
+                <span class="amt even">£0</span>
+              </div>
+            </button>
+            <button class="x-mini lisbon" type="button" data-go="hub">
+              <div class="x-mini-hero">
+                <span class="type">You’re owed</span>
+                <h3>Lisbon · Sept</h3>
+                <p>You’re owed £64</p>
+              </div>
+              <div class="x-mini-foot">
+                <span>Hold Thursday</span>
+                <span class="amt credit">+£64</span>
+              </div>
+            </button>
+          </div>
+          <div class="x-greet">
+            <h2>Park Street needs you this week.</h2>
+            <p>Studio is even. Lisbon still owes you £64.</p>
+          </div>
+          <div class="x-card">
+            <p class="x-h">Needs you</p>
+            <button class="x-feed-row" type="button" data-go="operations">
+              <span class="x-pill warn">Park Street</span>
+              <span class="grow"><strong>Bins overdue</strong><span>Still Jordan’s Tuesday</span></span>
+              <span class="x-feed-go">Ops</span>
+            </button>
+            <button class="x-feed-row" type="button" data-go="settle">
+              <span class="x-pill sage">Park Street</span>
+              <span class="grow"><strong>Pay Jordan £42</strong><span>Gas share · or £24 if you net Tesco</span></span>
+              <span class="x-feed-go">Settle</span>
+            </button>
+            <button class="x-feed-row" type="button" data-go="expenses">
+              <span class="x-pill warn">Park Street</span>
+              <span class="grow"><strong>British Gas Friday</strong><span>£94.20 · your share open</span></span>
+              <span class="x-feed-go">Expenses</span>
+            </button>
+          </div>
+        </section>
+
+        <section class="screen" id="hub" hidden>
+          <div class="x-cover">
+            <span class="type">Household</span>
+            <h2>14 Park Street</h2>
+            <p>Rent, bills, and the Tuesday bins. One kitchen.</p>
+            <div class="x-stack">
+              <span class="x-ava-sm maya">MC</span>
+              <span class="x-ava-sm jordan">JH</span>
+              <span class="x-ava-sm alex">AR</span>
             </div>
           </div>
-
-          <div class="x-foryou">
-            <div class="x-tabs-seg" role="tablist" aria-label="For you">
-              <button type="button" data-tab="bills" class="is-on">Bills</button>
-              <button type="button" data-tab="chores">Chores</button>
-              <button type="button" data-tab="soon">Soon</button>
-              <button type="button" data-tab="log">Activity</button>
-            </div>
-            <div data-panel="bills">
-              <button class="x-row" type="button" data-go="expenses">
-                <span class="x-tile warn" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2 4 14h7l-1 8 10-14h-7l1-8z"/></svg>
-                </span>
-                <span class="grow"><strong>British Gas</strong><span>Friday · Jordan paid · your share open</span></span>
-                <span class="amt">£31.40</span>
-              </button>
-              <button class="x-row" type="button" data-go="expenses">
-                <span class="x-tile trip" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5v14"/></svg>
-                </span>
-                <span class="grow"><strong>Virgin Media</strong><span>12 Sept · still open</span></span>
-                <span class="amt">£14.00</span>
-              </button>
-            </div>
-            <div data-panel="chores" hidden>
-              <button class="x-row" type="button" data-go="operations">
-                <span class="x-tile sage" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3 9-9"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-                </span>
-                <span class="grow"><strong>Bins</strong><span>Still Jordan’s Tuesday · overdue</span></span>
-              </button>
-            </div>
-            <div data-panel="soon" hidden>
-              <button class="x-row" type="button" data-go="expenses">
-                <span class="x-tile warn" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
-                </span>
-                <span class="grow"><strong>British Gas</strong><span>Due Friday 29 Aug</span></span>
-                <span class="amt">£94.20</span>
-              </button>
-            </div>
-            <div data-panel="log" hidden>
-              <button class="x-row" type="button" data-go="expenses">
-                <span class="x-tile sage" aria-hidden="true"><span style="font-size:12px;font-weight:700">MC</span></span>
-                <span class="grow"><strong>Virgin Media</strong><span>Maya logged it · yesterday</span></span>
-              </button>
-              <button class="x-row" type="button" data-go="expenses">
-                <span class="x-tile warn" aria-hidden="true"><span style="font-size:12px;font-weight:700">JH</span></span>
-                <span class="grow"><strong>British Gas</strong><span>Jordan paid the bill · Tue</span></span>
-              </button>
-            </div>
+          <div class="x-kpis">
+            <button class="x-kpi" type="button" data-go="funds"><span>House fund</span><strong>£420</strong><small>£180 still from Alex</small></button>
+            <button class="x-kpi" type="button" data-go="recurring"><span>Open bills</span><strong>2</strong><small>Gas + Virgin</small></button>
+            <button class="x-kpi" type="button" data-go="expenses"><span>Next due</span><strong>Fri</strong><small>British Gas</small></button>
+            <button class="x-kpi" type="button" data-go="operations"><span>Ops</span><strong>1</strong><small>Bins overdue</small></button>
+          </div>
+          <div class="x-owe">
+            <span>You owe</span>
+            <div class="num">£42.00</div>
+            <p>Pay Jordan this week. Or net Tesco £18 and send £24.</p>
+            <button class="x-btn" type="button" data-go="settle">Settle with Jordan</button>
+          </div>
+          <div class="x-card">
+            <p class="x-h">Right now</p>
+            <button class="x-feed-row" type="button" data-go="expenses">
+              <span class="x-pill warn">Friday</span>
+              <span class="grow"><strong>British Gas</strong><span>£94.20 · Jordan paid · your share open</span></span>
+            </button>
+            <button class="x-feed-row" type="button" data-go="operations">
+              <span class="x-pill warn">Overdue</span>
+              <span class="grow"><strong>Bins</strong><span>Still Jordan’s Tuesday</span></span>
+            </button>
+            <button class="x-feed-row" type="button" data-go="funds">
+              <span class="x-pill open">Collect</span>
+              <span class="grow"><strong>Alex · house fund</strong><span>£180 still to pay in</span></span>
+            </button>
           </div>
         </section>
 
         <section class="screen" id="expenses" hidden>
-          <p class="x-h">This cycle</p>
+          <p class="x-h">This cycle · 14 Park Street</p>
           <div class="x-card">
-            <button class="x-row" type="button">
+            <button class="x-row" type="button" data-sheet="choose">
               <span class="grow"><strong>British Gas</strong><span>Jordan · Friday · your share open</span></span>
               <span class="amt">£94.20</span>
             </button>
             <button class="x-row" type="button">
               <span class="grow"><strong>Virgin Media</strong><span>Maya · still open</span></span>
-              <span class="amt">£42.00</span>
+              <span class="amt">£32.00</span>
             </button>
             <button class="x-row" type="button">
               <span class="grow"><strong>Tesco</strong><span>Alex settled · Mon</span></span>
-              <span class="amt sage">£18.00</span>
+              <span class="amt sage">£67.40</span>
+            </button>
+            <button class="x-row" type="button">
+              <span class="grow"><strong>Rent · August</strong><span>House fund · settled</span></span>
+              <span class="amt sage">£1,800</span>
             </button>
           </div>
-        </section>
-
-        <section class="screen" id="groups" hidden>
-          <p class="x-h">Your communes</p>
-          <div class="x-card">
-            <button class="x-row" type="button" data-go="home">
-              <span class="x-tile sage" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 10.5 12 3l9 7.5V21a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1v-10.5z"/></svg>
-              </span>
-              <span class="grow"><strong>14 Park Street</strong><span>Household · 3 people · you owe £42</span></span>
-            </button>
-            <button class="x-row" type="button" data-go="home">
-              <span class="x-tile trip" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="14" rx="2"/></svg>
-              </span>
-              <span class="grow"><strong>Studio East</strong><span>Workspace · even · ink Monday</span></span>
-            </button>
-            <button class="x-row" type="button" data-go="home">
-              <span class="x-tile warn" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12h20M12 2v8"/></svg>
-              </span>
-              <span class="grow"><strong>Lisbon · Sept</strong><span>Trip · you’re owed £64</span></span>
-            </button>
-          </div>
-          <button class="x-create" type="button" data-sheet="fab">+ Create a commune</button>
         </section>
 
         <section class="screen" id="settle" hidden>
-          <p class="x-h">Two transfers this month</p>
+          <div class="x-kpis">
+            <div class="x-kpi"><span>You owe</span><strong>£42.00</strong><small>Pay Jordan · gas</small></div>
+            <div class="x-kpi"><span>You’re owed</span><strong>£18.00</strong><small>Jordan · Tesco</small></div>
+          </div>
           <div class="x-card">
-            <button class="x-row" type="button">
+            <p class="x-h">Suggested transfers</p>
+            <button class="x-row" type="button" data-sheet="choose">
               <span class="grow"><strong>You → Jordan</strong><span>Gas share · or £24 if you net Tesco</span></span>
               <span class="amt">£42</span>
             </button>
-            <button class="x-row" type="button">
+            <button class="x-row" type="button" data-sheet="notices">
               <span class="grow"><strong>Jordan → You</strong><span>Tesco extras from Monday</span></span>
               <span class="amt sage">£18</span>
             </button>
+            <div class="x-row" style="cursor:default">
+              <span class="grow"><strong>Alex ↔ You</strong><span>Even on expenses · still £180 for the fund</span></span>
+              <span class="x-pill">Even</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="screen" id="communes" hidden>
+          <button class="x-dash" type="button" data-sheet="create">+ Create a commune</button>
+          <div class="x-card">
+            <button class="x-row" type="button" data-go="hub">
+              <span class="grow"><strong>14 Park Street</strong><span>Household · 3 people · you owe £42</span></span>
+            </button>
+            <button class="x-row" type="button" data-go="hub">
+              <span class="grow"><strong>Studio East</strong><span>Workspace · even · ink Monday</span></span>
+            </button>
+            <button class="x-row" type="button" data-go="hub">
+              <span class="grow"><strong>Lisbon · Sept</strong><span>Trip · you’re owed £64</span></span>
+            </button>
+          </div>
+        </section>
+
+        <section class="screen" id="notes" hidden>
+          <p class="x-h">The house keeps forgetting</p>
+          <div class="x-card">
+            <button class="x-row" type="button"><span class="grow"><strong>Wi-Fi</strong><span>ParkStreet_5G · password in notes</span></span></button>
+            <button class="x-row" type="button"><span class="grow"><strong>Bins</strong><span>Black bags Tuesday · recycling Friday</span></span></button>
+            <button class="x-row" type="button"><span class="grow"><strong>Landlord</strong><span>Priya Sharma · rent via the fund</span></span></button>
+          </div>
+        </section>
+
+        <section class="screen" id="funds" hidden>
+          <div class="x-owe">
+            <span>House fund</span>
+            <div class="num">£420</div>
+            <p>August rent already left. £180 still from Alex.</p>
+            <button class="x-btn" type="button" data-sheet="notices">Chase Alex</button>
+          </div>
+        </section>
+
+        <section class="screen" id="recurring" hidden>
+          <p class="x-h">Open bills</p>
+          <div class="x-card">
+            <button class="x-row" type="button" data-go="expenses"><span class="grow"><strong>British Gas</strong><span>Friday · from the ledger</span></span><span class="amt">£94.20</span></button>
+            <button class="x-row" type="button" data-go="expenses"><span class="grow"><strong>Virgin Media</strong><span>12th · still open</span></span><span class="amt">£32.00</span></button>
           </div>
         </section>
 
         <section class="screen" id="operations" hidden>
           <p class="x-h">Chores</p>
           <div class="x-card">
-            <button class="x-row" type="button">
-              <span class="x-tile warn" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3 9-9"/></svg>
-              </span>
+            <button class="x-row" type="button" data-sheet="choose">
+              <span class="x-tile warn" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3 9-9"/></svg></span>
               <span class="grow"><strong>Bins</strong><span>Still Jordan’s Tuesday</span></span>
+              <span class="x-pill warn">Overdue</span>
             </button>
+          </div>
+        </section>
+
+        <section class="screen" id="members" hidden>
+          <p class="x-h">This cycle</p>
+          <div class="x-card">
+            <div class="x-row" style="cursor:default"><span class="x-ava-sm maya">MC</span><span class="grow"><strong>Maya Chen</strong><span>You · Admin</span></span><span>Owe £42</span></div>
+            <div class="x-row" style="cursor:default"><span class="x-ava-sm jordan">JH</span><span class="grow"><strong>Jordan Hale</strong><span>Bins this week</span></span><span>Owes you £18</span></div>
+            <div class="x-row" style="cursor:default"><span class="x-ava-sm alex">AR</span><span class="grow"><strong>Alex Rivera</strong><span>Fund still due</span></span><span>Even</span></div>
+          </div>
+          <button class="x-dash" type="button" data-sheet="invite">+ Invite someone</button>
+        </section>
+
+        <section class="screen" id="activity" hidden>
+          <p class="x-h">This week</p>
+          <div class="x-card">
+            <div class="x-row" style="cursor:default"><span class="x-ava-sm maya">MC</span><span class="grow"><strong>Virgin Media</strong><span>Maya logged it</span></span><span class="x-cap">Yesterday</span></div>
+            <div class="x-row" style="cursor:default"><span class="x-ava-sm jordan">JH</span><span class="grow"><strong>British Gas</strong><span>Jordan paid the bill</span></span><span class="x-cap">Tue</span></div>
+            <div class="x-row" style="cursor:default"><span class="x-ava-sm alex">AR</span><span class="grow"><strong>Tesco</strong><span>Alex settled</span></span><span class="x-cap">Mon</span></div>
           </div>
         </section>
 
@@ -242,19 +312,19 @@
 
     <nav class="x-tabs" aria-label="Expo tabs">
       <button type="button" data-go="home" class="is-on">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 10.5 12 3l9 7.5V21a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1v-10.5z"/></svg>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
         Home
+      </button>
+      <button type="button" data-go="hub">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 10.5 12 3l9 7.5V21a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1v-10.5z"/></svg>
+        Hub
+      </button>
+      <button class="x-fab" type="button" data-sheet="fab" aria-label="Add">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
       </button>
       <button type="button" data-go="expenses">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 8h10M7 12h6M6 4h12a1 1 0 0 1 1 1v16l-4-2-4 2-4-2-4 2V5a1 1 0 0 1 1-1z"/></svg>
         Expenses
-      </button>
-      <button class="x-fab" type="button" data-sheet="fab" aria-label="Quick actions">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
-      </button>
-      <button type="button" data-go="groups">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="9.5" cy="7" r="3.5"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a3.5 3.5 0 0 1 0 6.74"/></svg>
-        Groups
       </button>
       <button type="button" data-sheet="more">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
@@ -268,62 +338,87 @@
       <div class="x-sheet-head">
         <div>
           <h2>More</h2>
-          <p>Chores, analytics, and everything else.</p>
+          <p>Notes, funds, and the rest of the house. Tabs stay the spine.</p>
         </div>
         <button class="x-sheet-x" type="button" data-close-sheet aria-label="Close">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg>
         </button>
       </div>
-      <button type="button" data-go="operations">
-        <span class="x-tile sage" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3 9-9"/></svg></span>
-        <span class="x-more-copy"><strong>Chores</strong><span>Track non-money tasks</span></span>
+      <button type="button" data-sheet="create">
+        <span class="x-tile sage" style="background:transparent;border:1px dashed #cfc8bc;color:#6b6d73" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg></span>
+        <span class="x-more-copy"><strong>Create a commune</strong><span>A home, a studio, or a trip</span></span>
+        <svg class="x-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg>
+      </button>
+      <button type="button" data-go="communes">
+        <span class="x-tile sage" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 10.5 12 3l9 7.5V21a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1v-10.5z"/></svg></span>
+        <span class="x-more-copy"><strong>Places</strong><span>Switch house, studio, or trip</span></span>
         <svg class="x-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg>
       </button>
       <button type="button" data-go="settle">
         <span class="x-tile trip" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 7h10M7 12h10M7 17h6"/></svg></span>
-        <span class="x-more-copy"><strong>Settle up</strong><span>Clear balances with members</span></span>
+        <span class="x-more-copy"><strong>Settle</strong><span>You → Jordan. The verb.</span></span>
         <svg class="x-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg>
       </button>
-      <button type="button" data-go="home">
-        <span class="x-tile sage" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V5h4v14H4zm6 0V9h4v10h-4zm6 0v-7h4v7h-4z"/></svg></span>
-        <span class="x-more-copy"><strong>Analytics</strong><span>Spending trends and breakdown</span></span>
+      <button type="button" data-go="notes">
+        <span class="x-tile sage" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 4h9l5 5v11H6z"/><path d="M15 4v5h5"/></svg></span>
+        <span class="x-more-copy"><strong>Notes</strong><span>Wi-Fi, bins, landlord</span></span>
         <svg class="x-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg>
       </button>
-      <button type="button" data-go="home">
-        <span class="x-tile warn" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/></svg></span>
-        <span class="x-more-copy"><strong>Activity</strong><span>Full log of recent changes</span></span>
+      <button type="button" data-go="funds">
+        <span class="x-tile warn" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 10h16v8H4z"/><path d="M8 10V8a4 4 0 0 1 8 0v2"/></svg></span>
+        <span class="x-more-copy"><strong>Funds</strong><span>House pot · chase Alex</span></span>
         <svg class="x-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg>
       </button>
-      <button type="button" data-go="groups">
+      <button type="button" data-go="recurring">
+        <span class="x-tile trip" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12a8 8 0 0 1 14-5l2-2v6h-6"/><path d="M20 12a8 8 0 0 1-14 5l-2 2v-6h6"/></svg></span>
+        <span class="x-more-copy"><strong>Recurring</strong><span>Open bills. Rent from the fund</span></span>
+        <svg class="x-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg>
+      </button>
+      <button type="button" data-go="operations">
+        <span class="x-tile sage" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3 9-9"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span>
+        <span class="x-more-copy"><strong>Operations</strong><span>Bins and chores</span></span>
+        <svg class="x-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg>
+      </button>
+      <button type="button" data-go="members">
         <span class="x-tile trip" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="9.5" cy="7" r="3.5"/></svg></span>
-        <span class="x-more-copy"><strong>Members</strong><span>Manage people in this group</span></span>
+        <span class="x-more-copy"><strong>Members</strong><span>Who’s here this cycle</span></span>
+        <svg class="x-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg>
+      </button>
+      <button type="button" data-go="activity">
+        <span class="x-tile warn" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 2"/><circle cx="12" cy="12" r="9"/></svg></span>
+        <span class="x-more-copy"><strong>Activity</strong><span>The log, without the group chat</span></span>
         <svg class="x-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg>
       </button>
       <button type="button" data-go="settings">
-        <span class="x-tile ink" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9c.3.6.9 1 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></span>
-        <span class="x-more-copy"><strong>Profile &amp; settings</strong><span>Your account and preferences</span></span>
+        <span class="x-tile ink" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/></svg></span>
+        <span class="x-more-copy"><strong>You &amp; settings</strong><span>Plan, pay-me, preferences</span></span>
         <svg class="x-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg>
       </button>
     </div>
 
-    <div class="x-sheet" id="sheet-fab" role="dialog" aria-label="Quick actions">
+    <div class="x-sheet" id="sheet-fab" role="dialog" aria-label="Add">
       <div class="x-sheet-head">
         <div>
-          <h2>What would you like to do?</h2>
-          <p>Pick an action to jump straight in.</p>
+          <h2>What would you like to add?</h2>
+          <p>The centre button is for new things. The tabs are for places.</p>
         </div>
         <button class="x-sheet-x" type="button" data-close-sheet aria-label="Close">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg>
         </button>
       </div>
-      <button type="button" data-go="expenses">
+      <button type="button" data-sheet="add">
         <span class="x-tile sage" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg></span>
         <span class="x-more-copy"><strong>Add expense</strong><span>Log a new shared cost</span></span>
         <svg class="x-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg>
       </button>
-      <button type="button" data-go="expenses">
+      <button type="button" data-go="recurring">
         <span class="x-tile warn" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12a8 8 0 0 1 14-5l2-2v6h-6"/><path d="M20 12a8 8 0 0 1-14 5l-2 2v-6h6"/></svg></span>
         <span class="x-more-copy"><strong>Add recurring bill</strong><span>A cost that repeats monthly</span></span>
+        <svg class="x-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg>
+      </button>
+      <button type="button" data-go="notes">
+        <span class="x-tile sage" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 4h9l5 5v11H6z"/><path d="M15 4v5h5"/></svg></span>
+        <span class="x-more-copy"><strong>Add a note</strong><span>Wi-Fi, door code, landlord</span></span>
         <svg class="x-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg>
       </button>
       <button type="button" data-go="operations">
@@ -331,11 +426,121 @@
         <span class="x-more-copy"><strong>Add a chore</strong><span>Track a non-money task</span></span>
         <svg class="x-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg>
       </button>
-      <button type="button" data-go="groups">
+      <button type="button" data-sheet="invite">
         <span class="x-tile trip" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="9.5" cy="7" r="3.5"/><path d="M20 8v6M17 11h6"/></svg></span>
-        <span class="x-more-copy"><strong>Add a member</strong><span>Invite someone into this space</span></span>
+        <span class="x-more-copy"><strong>Invite a member</strong><span>Into this hub</span></span>
         <svg class="x-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg>
       </button>
+      <button type="button" data-sheet="create">
+        <span class="x-tile ink" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 10.5 12 3l9 7.5V21a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1v-10.5z"/></svg></span>
+        <span class="x-more-copy"><strong>Create a commune</strong><span>A home, a studio, or a trip</span></span>
+        <svg class="x-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg>
+      </button>
+    </div>
+
+    <div class="x-sheet" id="sheet-add" role="dialog" aria-label="Add expense">
+      <div class="x-sheet-head">
+        <div>
+          <h2>Add expense</h2>
+          <p>Split three ways unless you pick a template.</p>
+        </div>
+        <button class="x-sheet-x" type="button" data-close-sheet aria-label="Close">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
+      </div>
+      <div class="x-field"><label for="x-ex-what">What</label><input id="x-ex-what" value="Printer paper" /></div>
+      <div class="x-field"><label for="x-ex-amt">Amount</label><input id="x-ex-amt" value="£24.00" /></div>
+      <button class="x-enter" type="button" data-go="expenses">Save</button>
+    </div>
+
+    <div class="x-sheet" id="sheet-create" role="dialog" aria-label="New commune">
+      <div class="x-sheet-head">
+        <div>
+          <h2>New commune</h2>
+          <p>A home, a studio, or a trip.</p>
+        </div>
+        <button class="x-sheet-x" type="button" data-close-sheet aria-label="Close">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
+      </div>
+      <div class="x-field"><label for="x-new-name">Name</label><input id="x-new-name" value="Studio East 2" /></div>
+      <div class="x-field"><label for="x-new-type">Type</label><input id="x-new-type" value="Workspace" /></div>
+      <button class="x-enter" type="button" data-go="hub">Create</button>
+    </div>
+
+    <div class="x-sheet" id="sheet-invite" role="dialog" aria-label="Invite">
+      <div class="x-sheet-head">
+        <div>
+          <h2>Invite someone</h2>
+          <p>They’ll get a link to 14 Park Street.</p>
+        </div>
+        <button class="x-sheet-x" type="button" data-close-sheet aria-label="Close">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
+      </div>
+      <div class="x-field"><label for="x-inv">Email</label><input id="x-inv" value="ness@14park.st" /></div>
+      <button class="x-enter" type="button" data-go="members">Send invite</button>
+    </div>
+
+    <div class="x-sheet" id="sheet-notices" role="dialog" aria-label="Notices">
+      <div class="x-sheet-head">
+        <div>
+          <h2>Notices</h2>
+          <p>Gas, bins, and Alex’s share of the fund.</p>
+        </div>
+        <button class="x-sheet-x" type="button" data-close-sheet aria-label="Close">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
+      </div>
+      <button type="button" data-go="expenses">
+        <span class="x-more-copy"><strong>British Gas Friday</strong><span>Your share is still open</span></span>
+      </button>
+      <button type="button" data-go="operations">
+        <span class="x-more-copy"><strong>Bins overdue</strong><span>Still Jordan’s Tuesday</span></span>
+      </button>
+      <button type="button" data-go="funds">
+        <span class="x-more-copy"><strong>Alex · £180</strong><span>House fund gap</span></span>
+      </button>
+    </div>
+
+    <div class="x-sheet" id="sheet-choose" role="dialog" aria-label="Choose">
+      <div class="x-sheet-head">
+        <div>
+          <h2>Choose</h2>
+          <p>One menu when a row has two acts.</p>
+        </div>
+        <button class="x-sheet-x" type="button" data-close-sheet aria-label="Close">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
+      </div>
+      <button type="button" data-sheet="pay">
+        <span class="x-more-copy"><strong>Pay Jordan</strong><span>Revolut, PayPal, bank. Commune does not take a cut.</span></span>
+      </button>
+      <button type="button" data-go="expenses">
+        <span class="x-more-copy"><strong>Mark paid</strong><span>Your share is done</span></span>
+      </button>
+      <button type="button" data-sheet="notices">
+        <span class="x-more-copy"><strong>Nudge</strong><span>A quiet reminder</span></span>
+      </button>
+    </div>
+
+    <div class="x-sheet" id="sheet-pay" role="dialog" aria-label="Pay Jordan">
+      <div class="x-sheet-head">
+        <div>
+          <h2>Pay Jordan</h2>
+          <p>£42.00 · Commune does not take the money.</p>
+        </div>
+        <button class="x-sheet-x" type="button" data-close-sheet aria-label="Close">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
+      </div>
+      <a class="x-row" href="https://revolut.me/jordanhale/42.00" target="_blank" rel="noreferrer" style="margin:0 8px;width:auto">
+        <span class="grow"><strong>Revolut</strong><span>@jordanhale</span></span>
+      </a>
+      <a class="x-row" href="https://paypal.me/jordanhale/42" target="_blank" rel="noreferrer" style="margin:0 8px;width:auto">
+        <span class="grow"><strong>PayPal</strong><span>paypal.me/jordanhale</span></span>
+      </a>
+      <button class="x-enter" type="button" data-go="settle">Done</button>
     </div>
 
     <script>
@@ -343,14 +548,31 @@
         var TITLES = {
           login: "Commune",
           home: "Commune",
+          hub: "This Hub",
           expenses: "Expenses",
-          groups: "Groups",
           settle: "Settle",
-          operations: "Chores",
+          communes: "Places",
+          notes: "Notes",
+          funds: "Funds",
+          recurring: "Recurring",
+          operations: "Operations",
+          members: "Members",
+          activity: "Activity",
           settings: "Settings"
         };
         var GATE = { login: true };
-        var TABS = { home: true, expenses: true, groups: true };
+        var TAB_FOR = {
+          home: "home",
+          hub: "hub",
+          expenses: "expenses",
+          settle: "hub",
+          funds: "hub",
+          recurring: "hub",
+          operations: "hub",
+          members: "hub",
+          notes: "hub",
+          activity: "hub"
+        };
 
         function closeSheets() {
           document.body.classList.remove("sheet-open");
@@ -360,11 +582,12 @@
         }
 
         function openSheet(id) {
-          closeSheets();
           var el = document.getElementById("sheet-" + id);
           if (!el) return;
           document.body.classList.add("sheet-open");
-          el.classList.add("is-open");
+          document.querySelectorAll(".x-sheet").forEach(function (s) {
+            s.classList.toggle("is-open", s === el);
+          });
         }
 
         function show(id) {
@@ -374,8 +597,9 @@
           document.querySelectorAll(".screen").forEach(function (s) {
             s.hidden = s.id !== id;
           });
+          var tab = TAB_FOR[id] || "";
           document.querySelectorAll(".x-tabs [data-go]").forEach(function (b) {
-            b.classList.toggle("is-on", b.getAttribute("data-go") === id);
+            b.classList.toggle("is-on", b.getAttribute("data-go") === tab);
           });
           var title = document.querySelector("[data-page-title]");
           if (title) {
@@ -385,18 +609,6 @@
         }
 
         document.addEventListener("click", function (e) {
-          var tab = e.target.closest("[data-tab]");
-          if (tab) {
-            e.preventDefault();
-            var key = tab.getAttribute("data-tab");
-            tab.parentElement.querySelectorAll("[data-tab]").forEach(function (b) {
-              b.classList.toggle("is-on", b === tab);
-            });
-            document.querySelectorAll("[data-panel]").forEach(function (p) {
-              p.hidden = p.getAttribute("data-panel") !== key;
-            });
-            return;
-          }
           var sw = e.target.closest("[data-switch]");
           if (sw) {
             e.preventDefault();
