@@ -522,7 +522,7 @@ button.a-kpi {
   padding: 16px 16px 14px;
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.86);
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-strong);
   box-shadow: var(--shadow-sm);
 }
 
