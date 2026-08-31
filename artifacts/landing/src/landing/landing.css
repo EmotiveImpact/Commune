@@ -53,7 +53,7 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 .t-body { font-size: 14px; line-height: 1.65; color: var(--muted); font-weight: 400; }
 .t-ui { font-size: 14px; font-weight: 600; line-height: 1.3; }
 .t-title { font-size: 24px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.18; }
-.t-display { font-size: clamp(32px, 4.6vw, 48px); font-weight: 800; letter-spacing: -0.028em; line-height: 1.08; }
+.t-display { font-size: clamp(32px, 4.6vw, 48px); font-weight: 600; letter-spacing: -0.028em; line-height: 1.08; }
 
 .btn {
   display: inline-flex;
@@ -137,7 +137,9 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
   bottom: 16px;
   z-index: 80;
   display: flex;
+  flex-wrap: wrap;
   gap: 3px;
+  max-width: 280px;
   padding: 5px;
   background: #fff;
   border: 1px solid var(--ink);
@@ -199,6 +201,14 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 .cover__lead { max-width: 420px; color: rgba(255,255,255,0.68); margin-bottom: 8px; }
 
 .contents { padding: 0 0 80px; }
+.contents__k {
+  padding: 48px 0 8px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--sage);
+}
 .contents__row {
   display: grid;
   grid-template-columns: 72px 1fr 220px;
@@ -211,7 +221,7 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 .contents__row:last-child { border-bottom: 1px solid var(--line); }
 .contents__row:hover { background: rgba(255,255,255,0.45); }
 .contents__n { font-size: 10px; font-weight: 700; letter-spacing: 0.14em; color: var(--sage); }
-.contents__t { font-size: 22px; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 4px; }
+.contents__t { font-size: 22px; font-weight: 600; letter-spacing: -0.02em; margin-bottom: 4px; }
 .contents__d { font-size: 14px; color: var(--muted); max-width: 440px; }
 .contents__img {
   height: 88px;
