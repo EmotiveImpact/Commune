@@ -12,7 +12,7 @@ body { background: #ece7dd; }
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  gap: clamp(56px, 8vw, 110px);
+  gap: clamp(48px, 6vw, 84px);
 }
 .stage__top { display: grid; grid-template-columns: 1.35fr .65fr; gap: clamp(32px, 6vw, 80px); align-items: end; }
 .stage .eyebrow { grid-column: 1 / -1; color: rgba(255,253,248,.6); }

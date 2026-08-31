@@ -34,7 +34,7 @@ body { background: var(--paper); }
 .hero__body { max-width: 40ch; font-size: clamp(17px, 1.8vw, 21px); line-height: 1.5; color: rgba(255,253,248,.84); }
 .hero__actions { margin-top: 30px; display: flex; flex-wrap: wrap; align-items: center; gap: 18px; font-size: 12px; }
 
-.statement { padding: clamp(88px, 11vw, 150px) var(--edge) clamp(80px, 10vw, 132px); }
+.statement { padding: clamp(88px, 11vw, 150px) var(--edge) clamp(48px, 5vw, 76px); }
 .statement__rule,
 .fund__rule,
 .tariff__rule {
@@ -86,7 +86,7 @@ body { background: var(--paper); }
   gap: clamp(36px, 6vw, 92px);
   align-items: start;
 }
-.offset__copy { padding-top: clamp(48px, 8vw, 120px); }
+.offset__copy { padding-top: clamp(32px, 5vw, 72px); }
 .offset h2 {
   max-width: 18ch;
   margin: 16px 0 clamp(36px, 5vw, 64px);
