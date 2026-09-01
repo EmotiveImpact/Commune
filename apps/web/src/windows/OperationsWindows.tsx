@@ -4,6 +4,7 @@ import {
   todayIso,
   type NewOperation,
   type OperationCategory,
+  type OperationItem,
   type OperationKind,
 } from "../data/operations";
 import { useApp } from "../state";
@@ -24,7 +25,14 @@ const operationDateFormatter = new Intl.DateTimeFormat("en-GB", {
 });
 
 export function OperationView() {
-  const { selectedOperation: item, toggleOperation, go, closeWindow } = useApp();
+  const {
+    selectedOperation: item,
+    toggleOperation,
+    removeOperation,
+    go,
+    closeWindow,
+  } = useApp();
+  const [confirmDelete, setConfirmDelete] = useState(false);
   if (!item) {
     return (
       <section className="a-window">
@@ -41,7 +49,8 @@ export function OperationView() {
   const category =
     item.kind === "task"
       ? "Task"
-      : OPERATION_CATEGORIES.find(([id]) => id === item.category)?.[1] ?? "Event";
+      : (OPERATION_CATEGORIES.find(([id]) => id === item.category)?.[1] ??
+        "Event");
   const when = formatOperationDate(item.date, item.allDay ? undefined : item.time);
   const repeat =
     item.repeat === "weekly"
@@ -60,7 +69,15 @@ export function OperationView() {
           <strong>{item.title}</strong>
           <p>{when}</p>
         </div>
-        <Pill tone={item.status === "done" ? "settled" : item.kind === "task" ? "sage" : "open"}>
+        <Pill
+          tone={
+            item.status === "done"
+              ? "settled"
+              : item.kind === "task"
+                ? "sage"
+                : "open"
+          }
+        >
           {item.status === "done" ? "Done" : category}
         </Pill>
       </div>
@@ -71,7 +88,9 @@ export function OperationView() {
         </div>
         <div className="a-note-fact">
           <span>{item.kind === "task" ? "Assigned to" : "Type"}</span>
-          <strong>{item.kind === "task" ? item.assignee ?? "Unassigned" : category}</strong>
+          <strong>
+            {item.kind === "task" ? (item.assignee ?? "Unassigned") : category}
+          </strong>
         </div>
         {item.kind === "task" ? (
           <div className="a-note-fact">
@@ -84,50 +103,143 @@ export function OperationView() {
           <strong>Everyone in this hub</strong>
         </div>
       </div>
-      {item.notes ? <p className="a-window-note operation-notes">{item.notes}</p> : null}
-      <div className="a-field-row">
-        {item.kind === "task" ? (
-          <button className="a-btn" type="button" onClick={() => toggleOperation(item.id)}>
-            {item.status === "done" ? "Mark open" : "Mark done"}
+      {item.notes ? (
+        <p className="a-window-note operation-notes">{item.notes}</p>
+      ) : null}
+      {confirmDelete ? (
+        <div className="operation-delete">
+          <p>Remove this from the calendar? It won’t come back.</p>
+          <div className="a-field-row">
+            <button
+              className="a-btn danger"
+              type="button"
+              onClick={() => removeOperation(item.id)}
+            >
+              Remove
+            </button>
+            <button
+              className="a-btn ghost"
+              type="button"
+              onClick={() => setConfirmDelete(false)}
+            >
+              Keep it
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="a-field-row">
+          {item.kind === "task" ? (
+            <button
+              className="a-btn"
+              type="button"
+              onClick={() => toggleOperation(item.id)}
+            >
+              {item.status === "done" ? "Mark open" : "Mark done"}
+            </button>
+          ) : null}
+          <button
+            className={cx("a-btn", item.kind === "task" && "ghost")}
+            type="button"
+            onClick={() => go("operation-edit", { operation: item.id })}
+          >
+            Edit
           </button>
-        ) : null}
-        <button
-          className={cx("a-btn", item.kind === "task" && "ghost")}
-          type="button"
-          onClick={() => go("operation-new", { date: item.date })}
-        >
-          Add another
-        </button>
-        <button className="a-btn ghost" type="button" onClick={closeWindow}>
-          Close
-        </button>
-      </div>
+          <button
+            className="a-btn ghost"
+            type="button"
+            onClick={() => setConfirmDelete(true)}
+          >
+            Remove
+          </button>
+        </div>
+      )}
     </section>
   );
 }
 
 export function OperationNew() {
-  const { addOperation, closeWindow, go, hub, operationDate, you } = useApp();
-  const [kind, setKind] = useState<OperationKind>("task");
-  const [category, setCategory] = useState<OperationCategory>("delivery");
-  const [title, setTitle] = useState("");
-  const [date, setDate] = useState(operationDate || todayIso());
-  const [allDay, setAllDay] = useState(true);
-  const [time, setTime] = useState("09:00");
-  const [assignee, setAssignee] = useState(you.name);
-  const [repeat, setRepeat] = useState<NewOperation["repeat"]>("none");
-  const [notes, setNotes] = useState("");
+  const { addOperation, closeWindow, go } = useApp();
+  return (
+    <OperationForm
+      submitLabel="Add to calendar"
+      onCancel={closeWindow}
+      onSave={(item) => {
+        const id = addOperation(item);
+        go("operation", { operation: id });
+      }}
+    />
+  );
+}
+
+export function OperationEdit() {
+  const { closeWindow, go, selectedOperation, updateOperation } = useApp();
+  if (!selectedOperation) {
+    return (
+      <section className="a-window">
+        <p className="a-window-note">That schedule item isn’t here.</p>
+        <div className="a-field-row">
+          <button className="a-btn" type="button" onClick={closeWindow}>
+            Close
+          </button>
+        </div>
+      </section>
+    );
+  }
+  return (
+    <OperationForm
+      item={selectedOperation}
+      submitLabel="Save changes"
+      onCancel={() => go("operation", { operation: selectedOperation.id })}
+      onSave={(next) => {
+        updateOperation(selectedOperation.id, next);
+        go("operation", { operation: selectedOperation.id });
+      }}
+    />
+  );
+}
+
+function OperationForm({
+  item,
+  submitLabel,
+  onCancel,
+  onSave,
+}: {
+  item?: OperationItem;
+  submitLabel: string;
+  onCancel: () => void;
+  onSave: (item: NewOperation) => void;
+}) {
+  const { hub, operationDate, operationTime, you } = useApp();
+  const [kind, setKind] = useState<OperationKind>(item?.kind ?? "task");
+  const [category, setCategory] = useState<OperationCategory>(
+    item && item.kind === "event" ? item.category : "delivery",
+  );
+  const [title, setTitle] = useState(item?.title ?? "");
+  const [date, setDate] = useState(item?.date ?? (operationDate || todayIso()));
+  const [allDay, setAllDay] = useState(
+    item ? item.allDay : !operationTime,
+  );
+  const [time, setTime] = useState(
+    item?.time ?? (operationTime || "09:00"),
+  );
+  const [assignee, setAssignee] = useState(item?.assignee ?? you.name);
+  const [repeat, setRepeat] = useState<NewOperation["repeat"]>(
+    item?.repeat ?? "none",
+  );
+  const [notes, setNotes] = useState(item?.notes ?? "");
   const [attempted, setAttempted] = useState(false);
 
   function chooseKind(next: OperationKind) {
     setKind(next);
-    if (next === "task") setAllDay(false);
+    if (next === "task" && allDay && !operationTime && !item?.time) {
+      setAllDay(false);
+    }
   }
 
   function save() {
     setAttempted(true);
     if (!title.trim() || !date) return;
-    const id = addOperation({
+    onSave({
       kind,
       category: kind === "task" ? "chore" : category,
       title: title.trim(),
@@ -138,7 +250,6 @@ export function OperationNew() {
       repeat: kind === "task" ? repeat : "none",
       notes: notes.trim(),
     });
-    go("operation", { operation: id });
   }
 
   return (
@@ -179,9 +290,13 @@ export function OperationNew() {
           value={title}
           aria-invalid={attempted && !title.trim()}
           onChange={(event) => setTitle(event.target.value)}
-          placeholder={kind === "task" ? "e.g. Put the bins out" : "e.g. Plumber appointment"}
+          placeholder={
+            kind === "task" ? "e.g. Put the bins out" : "e.g. Plumber appointment"
+          }
         />
-        {attempted && !title.trim() ? <p className="field-error">Add a title.</p> : null}
+        {attempted && !title.trim() ? (
+          <p className="field-error">Add a title.</p>
+        ) : null}
       </div>
 
       {kind === "event" ? (
@@ -256,7 +371,9 @@ export function OperationNew() {
             >
               {hub.members.map((member) => (
                 <option key={member.name} value={member.name}>
-                  {member.name === you.name ? `${member.name} · You` : member.name}
+                  {member.name === you.name
+                    ? `${member.name} · You`
+                    : member.name}
                 </option>
               ))}
             </select>
@@ -266,7 +383,9 @@ export function OperationNew() {
             <select
               id="operation-repeat"
               value={repeat}
-              onChange={(event) => setRepeat(event.target.value as NewOperation["repeat"])}
+              onChange={(event) =>
+                setRepeat(event.target.value as NewOperation["repeat"])
+              }
             >
               <option value="none">Doesn’t repeat</option>
               <option value="weekly">Every week</option>
@@ -290,9 +409,9 @@ export function OperationNew() {
 
       <div className="a-field-row">
         <button className="a-btn" type="button" onClick={save}>
-          Add to calendar
+          {submitLabel}
         </button>
-        <button className="a-btn ghost" type="button" onClick={closeWindow}>
+        <button className="a-btn ghost" type="button" onClick={onCancel}>
           Cancel
         </button>
       </div>

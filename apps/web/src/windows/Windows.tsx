@@ -5,7 +5,7 @@ import { useApp } from "../state";
 import { Icon } from "../ui/Icon";
 import { Avatar, Choose, Pill } from "../ui/widgets";
 import { cx } from "../ui/cx";
-import { OperationNew, OperationView } from "./OperationsWindows";
+import { OperationEdit, OperationNew, OperationView } from "./OperationsWindows";
 
 const NOTE_TYPES = [
   ["wifi", "Wi-Fi"],
@@ -23,7 +23,7 @@ export function Windows() {
   const title =
     window === "note"
       ? notes[noteKey]?.title ?? "Note"
-      : window === "operation"
+      : window === "operation" || window === "operation-edit"
         ? selectedOperation?.title ?? "Schedule item"
         : titleFor(window);
 
@@ -52,6 +52,7 @@ export function Windows() {
           {window === "note-new" && <NoteNew onSave={addNote} />}
           {window === "operation" && <OperationView />}
           {window === "operation-new" && <OperationNew />}
+          {window === "operation-edit" && <OperationEdit />}
         </div>
       </div>
     </div>
@@ -72,6 +73,7 @@ function titleFor(id: string): string {
     "pay-method": "Pay me",
     "note-new": "Add note",
     "operation-new": "Add to calendar",
+    "operation-edit": "Edit",
   };
   return map[id] ?? id;
 }

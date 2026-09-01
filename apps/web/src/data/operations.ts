@@ -251,3 +251,54 @@ export function isoFromDate(date: Date): string {
 export function todayIso(): string {
   return isoFromDate(new Date());
 }
+
+export function addDays(date: string, days: number): string {
+  const next = dateFromIso(date);
+  next.setDate(next.getDate() + days);
+  return isoFromDate(next);
+}
+
+export function startOfWeek(date: string): string {
+  const value = dateFromIso(date);
+  const mondayOffset = (value.getDay() + 6) % 7;
+  value.setDate(value.getDate() - mondayOffset);
+  return isoFromDate(value);
+}
+
+export function weekDates(date: string): string[] {
+  const start = startOfWeek(date);
+  return Array.from({ length: 7 }, (_, index) => addDays(start, index));
+}
+
+export function timeToMinutes(time: string): number {
+  const [hours, minutes] = time.split(":").map(Number);
+  return hours * 60 + minutes;
+}
+
+export function minutesToTime(minutes: number): string {
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  return `${String(hours).padStart(2, "0")}:${String(mins).padStart(2, "0")}`;
+}
+
+export const WEEK_START_MINUTES = 7 * 60;
+export const WEEK_END_MINUTES = 21 * 60;
+export const WEEK_HOUR_PX = 52;
+
+export function weekHourRange(items: OperationItem[]): {
+  start: number;
+  end: number;
+} {
+  let start = WEEK_START_MINUTES;
+  let end = WEEK_END_MINUTES;
+  for (const item of items) {
+    if (item.allDay || !item.time) continue;
+    const minutes = timeToMinutes(item.time);
+    start = Math.min(start, Math.floor(minutes / 60) * 60);
+    end = Math.max(end, Math.ceil((minutes + 60) / 60) * 60);
+  }
+  return {
+    start: Math.max(0, start),
+    end: Math.min(24 * 60, end),
+  };
+}

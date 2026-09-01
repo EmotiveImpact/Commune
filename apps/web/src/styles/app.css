@@ -553,6 +553,11 @@
   border: 1px solid var(--border);
 }
 
+.a-btn.danger {
+  color: #fff;
+  background: #9b4e35;
+}
+
 .a-btn.nudge {
   background: #1f2330;
   color: #f5f1ea;
@@ -3780,6 +3785,7 @@ button.a-item {
 
 .ops-overview-copy h2,
 .ops-calendar h3,
+.ops-week h3,
 .ops-day-panel h3,
 .ops-agenda h3 {
   margin: 0;
@@ -3922,7 +3928,8 @@ button.a-item {
 
 .ops-calendar,
 .ops-day-panel,
-.ops-agenda {
+.ops-agenda,
+.ops-week {
   border: 1px solid var(--border);
   border-radius: 18px;
   background: rgba(255, 255, 255, 0.86);
@@ -3931,6 +3938,230 @@ button.a-item {
 
 .ops-calendar {
   overflow: hidden;
+}
+
+.ops-week {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.ops-week-scroll {
+  overflow-x: auto;
+}
+
+.ops-week-inner {
+  display: grid;
+  grid-template-columns: 56px repeat(7, minmax(0, 1fr));
+  min-width: 0;
+}
+
+.ops-week-corner {
+  border-bottom: 1px solid var(--border);
+  background: #f8f5f0;
+}
+
+.ops-week-dayhead {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 6px 12px;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  border-left: 1px solid var(--border);
+  color: inherit;
+  background: #f8f5f0;
+  cursor: pointer;
+}
+
+.ops-week-dayhead span {
+  color: var(--ink-soft);
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.ops-week-dayhead strong {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 750;
+}
+
+.ops-week-dayhead.is-today strong {
+  color: #fff;
+  background: var(--sage);
+}
+
+.ops-week-dayhead.is-selected:not(.is-today) strong {
+  background: rgba(45, 106, 79, 0.12);
+}
+
+.ops-week-allday-label {
+  display: flex;
+  align-items: center;
+  padding: 8px 8px 8px 10px;
+  border-bottom: 1px solid var(--border);
+  color: var(--ink-soft);
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.ops-week-allday {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 52px;
+  padding: 6px 5px;
+  border-bottom: 1px solid var(--border);
+  border-left: 1px solid var(--border);
+}
+
+.ops-week-allday.is-today,
+.ops-week-col.is-today {
+  background: rgba(45, 106, 79, 0.04);
+}
+
+.ops-week-allday.is-selected,
+.ops-week-col.is-selected {
+  background: rgba(26, 30, 43, 0.03);
+}
+
+.ops-week-hours {
+  position: relative;
+  border-right: 1px solid var(--border);
+}
+
+.ops-week-hours span {
+  position: absolute;
+  left: 0;
+  right: 4px;
+  transform: translateY(-6px);
+  color: var(--ink-soft);
+  font-size: 10px;
+  font-weight: 650;
+  text-align: right;
+}
+
+.ops-week-col {
+  position: relative;
+  border-left: 1px solid var(--border);
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent,
+    transparent calc(52px - 1px),
+    rgba(23, 27, 36, 0.07) calc(52px - 1px),
+    rgba(23, 27, 36, 0.07) 52px
+  );
+}
+
+.ops-week-slot {
+  position: absolute;
+  right: 0;
+  left: 0;
+  z-index: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.ops-week-slot:hover {
+  background: rgba(45, 106, 79, 0.06);
+}
+
+.ops-week-card {
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  overflow: hidden;
+  padding: 6px 8px;
+  border: 0;
+  border-left: 3px solid var(--sage);
+  border-radius: 8px;
+  color: inherit;
+  background: #edf4ef;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ops-week-card.is-allday {
+  position: static;
+  width: 100%;
+}
+
+.ops-week-card:not(.is-allday) {
+  position: absolute;
+}
+
+.ops-week-card strong,
+.ops-week-card span {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.ops-week-card strong {
+  font-size: 12px;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+}
+
+.ops-week-card span {
+  color: var(--ink-soft);
+  font-size: 10px;
+  font-weight: 650;
+  line-height: 1.3;
+}
+
+.ops-week-card.is-delivery {
+  border-left-color: #c79339;
+  background: #f7efdf;
+}
+
+.ops-week-card.is-visit {
+  border-left-color: #8c6a9d;
+  background: #f3ecf6;
+}
+
+.ops-week-card.is-appointment {
+  border-left-color: #4f8ba8;
+  background: #e7f1f6;
+}
+
+.ops-week-card.is-other {
+  border-left-color: #88939a;
+  background: #eef1f3;
+}
+
+.ops-week-card.is-done {
+  opacity: 0.55;
+  text-decoration: line-through;
+}
+
+.operation-delete {
+  padding: 14px 16px;
+  border: 1px solid rgba(155, 78, 53, 0.22);
+  border-radius: 12px;
+  background: #fbede6;
+}
+
+.operation-delete p {
+  margin: 0 0 12px;
+  color: #9b4e35;
+  font-size: 13px;
+  font-weight: 650;
 }
 
 .ops-calendar-head,
@@ -3943,6 +4174,7 @@ button.a-item {
 }
 
 .ops-calendar h3,
+.ops-week h3,
 .ops-day-panel h3,
 .ops-agenda h3 {
   margin-top: 5px;
@@ -4412,7 +4644,7 @@ button.a-item {
   .ops-view {
     display: grid;
     width: 100%;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr 1fr 1fr;
   }
 
   .ops-filters {
@@ -4499,6 +4731,33 @@ button.a-item {
     display: block;
     margin-top: 3px;
   }
+
+  .ops-week-hours,
+  .ops-week-slot,
+  .ops-week-corner,
+  .ops-week-allday-label {
+    display: none;
+  }
+
+  .ops-week-inner {
+    grid-template-columns: repeat(7, minmax(148px, 1fr));
+    min-width: 1040px;
+  }
+
+  .ops-week-col {
+    height: auto !important;
+    min-height: 132px;
+    padding: 6px 5px 10px;
+    background-image: none;
+  }
+
+  .ops-week-card:not(.is-allday) {
+    position: static;
+    width: auto !important;
+    height: auto !important;
+    left: auto !important;
+    margin-bottom: 6px;
+  }
 }
 
 .a-body.is-native .ops-overview {
@@ -4538,7 +4797,7 @@ button.a-item {
 .a-body.is-native .ops-view {
   display: grid;
   width: 100%;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr;
 }
 
 .a-body.is-native .ops-filters {
@@ -4633,4 +4892,31 @@ button.a-item {
 .a-body.is-native .ops-row-time {
   display: block;
   margin-top: 3px;
+}
+
+.a-body.is-native .ops-week-hours,
+.a-body.is-native .ops-week-slot,
+.a-body.is-native .ops-week-corner,
+.a-body.is-native .ops-week-allday-label {
+  display: none;
+}
+
+.a-body.is-native .ops-week-inner {
+  grid-template-columns: repeat(7, minmax(148px, 1fr));
+  min-width: 1040px;
+}
+
+.a-body.is-native .ops-week-col {
+  height: auto !important;
+  min-height: 132px;
+  padding: 6px 5px 10px;
+  background-image: none;
+}
+
+.a-body.is-native .ops-week-card:not(.is-allday) {
+  position: static;
+  width: auto !important;
+  height: auto !important;
+  left: auto !important;
+  margin-bottom: 6px;
 }

@@ -77,6 +77,7 @@ type GoOpts = {
   note?: string;
   operation?: string;
   date?: string;
+  time?: string;
   window?: WindowId;
 };
 
@@ -94,6 +95,7 @@ type AppState = {
   notes: Record<string, NoteCard>;
   operationKey: string;
   operationDate: string;
+  operationTime: string;
   operationsByHub: OperationStore;
   operations: OperationItem[];
   selectedOperation: OperationItem | null;
@@ -113,7 +115,9 @@ type AppState = {
   setNoticesOn: (on: boolean) => void;
   addNote: (card: NoteCard & { id: string }) => void;
   addOperation: (item: NewOperation) => string;
+  updateOperation: (id: string, item: NewOperation) => void;
   toggleOperation: (id: string) => void;
+  removeOperation: (id: string) => void;
   createHub: (input: CreatedHub, opts?: { openExpense?: boolean }) => void;
   recordExpense: (row: LastExpense) => void;
   pageTitle: string;
@@ -224,6 +228,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [notes, setNotes] = useState<Record<string, NoteCard>>(NOTE_CARDS);
   const [operationKey, setOperationKey] = useState("park-bins");
   const [operationDate, setOperationDate] = useState("2026-09-01");
+  const [operationTime, setOperationTime] = useState("");
   const [dark, setDark] = useState(false);
   const [noticesOn, setNoticesOn] = useState(true);
   const [native, setNative] = useState(() => isNativeNow());
@@ -329,6 +334,33 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [hubId, persist, session],
   );
 
+  const updateOperation = useCallback(
+    (id: string, item: NewOperation) => {
+      if (!session) return;
+      const current = session.operations ?? cloneOperationSeed();
+      persist({
+        ...session,
+        operations: {
+          ...current,
+          [hubId]: current[hubId].map((row) =>
+            row.id === id
+              ? {
+                  ...row,
+                  ...item,
+                  id: row.id,
+                  hubId: row.hubId,
+                  status: row.status,
+                }
+              : row,
+          ),
+        },
+      });
+      setOperationDate(item.date);
+      if (item.time) setOperationTime(item.time);
+    },
+    [hubId, persist, session],
+  );
+
   const toggleOperation = useCallback(
     (id: string) => {
       if (!session) return;
@@ -365,6 +397,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
           [hubId]: rows,
         },
       });
+    },
+    [hubId, persist, session],
+  );
+
+  const removeOperation = useCallback(
+    (id: string) => {
+      if (!session) return;
+      const current = session.operations ?? cloneOperationSeed();
+      persist({
+        ...session,
+        operations: {
+          ...current,
+          [hubId]: current[hubId].filter((row) => row.id !== id),
+        },
+      });
+      setWindowId(null);
     },
     [hubId, persist, session],
   );
@@ -422,6 +470,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (opts?.note) setNoteKey(opts.note);
       if (opts?.operation) setOperationKey(opts.operation);
       if (opts?.date) setOperationDate(opts.date);
+      if (opts?.time) setOperationTime(opts.time);
+      else if (target === "operation-new") setOperationTime("");
       setMoreOpen(false);
 
       if (
@@ -483,7 +533,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const pageTitle = windowId
     ? windowId === "note"
       ? (notes[noteKey]?.title ?? "Note")
-      : windowId === "operation"
+      : windowId === "operation" || windowId === "operation-edit"
         ? (selectedOperation?.title ?? "Schedule item")
         : (PAGE_TITLES[windowId] ?? PAGE_TITLES[screen])
     : (PAGE_TITLES[screen] ?? "Home");
@@ -513,6 +563,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       notes,
       operationKey,
       operationDate,
+      operationTime,
       operationsByHub: operationStore,
       operations,
       selectedOperation,
@@ -532,7 +583,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setNoticesOn,
       addNote,
       addOperation,
+      updateOperation,
       toggleOperation,
+      removeOperation,
       createHub,
       recordExpense,
       pageTitle,
@@ -552,6 +605,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       notes,
       operationKey,
       operationDate,
+      operationTime,
       operationStore,
       operations,
       selectedOperation,
@@ -568,7 +622,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setNavMode,
       addNote,
       addOperation,
+      updateOperation,
       toggleOperation,
+      removeOperation,
       createHub,
       recordExpense,
       pageTitle,

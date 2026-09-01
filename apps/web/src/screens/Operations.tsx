@@ -1,8 +1,15 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type CSSProperties } from "react";
 import {
+  addDays,
   dateFromIso,
   isoFromDate,
+  minutesToTime,
+  startOfWeek,
+  timeToMinutes,
   todayIso,
+  weekDates,
+  weekHourRange,
+  WEEK_HOUR_PX,
   type OperationItem,
 } from "../data/operations";
 import { initialsOf } from "../data/household";
@@ -10,7 +17,7 @@ import { useApp } from "../state";
 import { Icon } from "../ui/Icon";
 import { cx } from "../ui/cx";
 
-type View = "calendar" | "agenda";
+type View = "week" | "month" | "agenda";
 type Filter = "all" | "task" | "event";
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -36,6 +43,10 @@ const shortDayFormatter = new Intl.DateTimeFormat("en-GB", {
   day: "numeric",
   month: "short",
 });
+const weekRangeFormatter = new Intl.DateTimeFormat("en-GB", {
+  day: "numeric",
+  month: "short",
+});
 
 export function OperationsScreen() {
   const { go, hub, native, operations, toggleOperation } = useApp();
@@ -53,9 +64,7 @@ export function OperationsScreen() {
     (item) => item.status === "open" && item.date >= today,
   );
   const initialDate = firstUpcoming?.date ?? ordered.at(-1)?.date ?? today;
-  const [view, setView] = useState<View>(() =>
-    native ? "agenda" : "calendar",
-  );
+  const [view, setView] = useState<View>(() => (native ? "agenda" : "week"));
   const [filter, setFilter] = useState<Filter>("all");
   const [month, setMonth] = useState(initialDate.slice(0, 7));
   const [selectedDate, setSelectedDate] = useState(initialDate);
@@ -65,28 +74,34 @@ export function OperationsScreen() {
     [filter, ordered],
   );
   const calendarDays = useMemo(() => buildMonth(month), [month]);
+  const days = useMemo(() => weekDates(selectedDate), [selectedDate]);
   const selectedItems = visible.filter((item) => item.date === selectedDate);
   const overdue = operations.filter(
     (item) =>
       item.kind === "task" && item.status === "open" && item.date < today,
   );
-  const weekEnd = addDays(today, 7);
+  const weekEnd = addDays(today, 6);
   const thisWeek = operations.filter(
     (item) =>
       item.status === "open" && item.date >= today && item.date <= weekEnd,
   );
-
-  function moveMonth(delta: number) {
-    const date = dateFromIso(`${month}-01`);
-    date.setMonth(date.getMonth() + delta);
-    const next = isoFromDate(date);
-    setMonth(next.slice(0, 7));
-    setSelectedDate(next);
-  }
+  const weekItems = visible.filter(
+    (item) => item.date >= days[0] && item.date <= days[6],
+  );
 
   function showDate(date: string) {
     setSelectedDate(date);
     setMonth(date.slice(0, 7));
+  }
+
+  function moveMonth(delta: number) {
+    const date = dateFromIso(`${month}-01`);
+    date.setMonth(date.getMonth() + delta);
+    showDate(isoFromDate(date));
+  }
+
+  function moveWeek(delta: number) {
+    showDate(addDays(startOfWeek(selectedDate), delta * 7));
   }
 
   return (
@@ -94,10 +109,9 @@ export function OperationsScreen() {
       <section className="ops-overview" aria-label="Schedule summary">
         <div className="ops-overview-copy">
           <span className="ops-eyebrow">{hub.name}</span>
-          <h2>The shared rhythm, in one place.</h2>
+          <h2>This week at the house.</h2>
           <p>
-            Chores have owners. Deliveries, visits, and appointments stay
-            visible to everyone.
+            Hours, owners, and the things everyone should know is happening.
           </p>
         </div>
         <button
@@ -127,8 +141,9 @@ export function OperationsScreen() {
             type="button"
             className="ops-metric"
             onClick={() => {
-              setView("agenda");
+              setView("week");
               setFilter("all");
+              showDate(today);
             }}
           >
             <span>Next 7 days</span>
@@ -155,20 +170,20 @@ export function OperationsScreen() {
           role="group"
           aria-label="Operations view"
         >
-          <button
-            type="button"
-            className={cx(view === "calendar" && "is-on")}
-            onClick={() => setView("calendar")}
-          >
-            Calendar
-          </button>
-          <button
-            type="button"
-            className={cx(view === "agenda" && "is-on")}
-            onClick={() => setView("agenda")}
-          >
-            Agenda
-          </button>
+          {([
+            ["week", "Week"],
+            ["month", "Month"],
+            ["agenda", "Agenda"],
+          ] as const).map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              className={cx(view === id && "is-on")}
+              onClick={() => setView(id)}
+            >
+              {label}
+            </button>
+          ))}
         </div>
         <div className="ops-filters" role="group" aria-label="Filter schedule">
           {(["all", "task", "event"] as const).map((value) => (
@@ -184,7 +199,29 @@ export function OperationsScreen() {
         </div>
       </div>
 
-      {view === "calendar" ? (
+      {view === "week" ? (
+        <div className="ops-calendar-layout is-week">
+          <WeekBoard
+            days={days}
+            items={weekItems}
+            today={today}
+            selectedDate={selectedDate}
+            onSelect={showDate}
+            onMove={moveWeek}
+            onOpen={(id) => go("operation", { operation: id })}
+            onAdd={(date, time) =>
+              go("operation-new", time ? { date, time } : { date })
+            }
+          />
+          <DayPanel
+            date={selectedDate}
+            items={selectedItems}
+            onAdd={() => go("operation-new", { date: selectedDate })}
+            onOpen={(id) => go("operation", { operation: id })}
+            onToggle={toggleOperation}
+          />
+        </div>
+      ) : view === "month" ? (
         <div className="ops-calendar-layout">
           <section
             className="ops-calendar"
@@ -205,10 +242,7 @@ export function OperationsScreen() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => {
-                    setMonth(today.slice(0, 7));
-                    setSelectedDate(today);
-                  }}
+                  onClick={() => showDate(today)}
                 >
                   Today
                 </button>
@@ -297,6 +331,200 @@ export function OperationsScreen() {
         />
       )}
     </div>
+  );
+}
+
+function WeekBoard({
+  days,
+  items,
+  today,
+  selectedDate,
+  onSelect,
+  onMove,
+  onOpen,
+  onAdd,
+}: {
+  days: string[];
+  items: OperationItem[];
+  today: string;
+  selectedDate: string;
+  onSelect: (date: string) => void;
+  onMove: (delta: number) => void;
+  onOpen: (id: string) => void;
+  onAdd: (date: string, time?: string) => void;
+}) {
+  const hours = weekHourRange(items);
+  const hourCount = (hours.end - hours.start) / 60;
+  const timedHeight = hourCount * WEEK_HOUR_PX;
+  const hourMarks = Array.from({ length: hourCount }, (_, index) =>
+    hours.start + index * 60,
+  );
+
+  return (
+    <section className="ops-week" aria-label={`Week of ${weekLabel(days[0])}`}>
+      <header className="ops-calendar-head">
+        <div>
+          <span className="ops-eyebrow">This week</span>
+          <h3>{weekLabel(days[0])}</h3>
+        </div>
+        <div className="ops-month-actions">
+          <button
+            type="button"
+            aria-label="Previous week"
+            onClick={() => onMove(-1)}
+          >
+            ‹
+          </button>
+          <button type="button" onClick={() => onSelect(today)}>
+            Today
+          </button>
+          <button
+            type="button"
+            aria-label="Next week"
+            onClick={() => onMove(1)}
+          >
+            ›
+          </button>
+        </div>
+      </header>
+      <div className="ops-week-scroll">
+        <div className="ops-week-inner">
+          <div className="ops-week-corner" aria-hidden="true" />
+          {days.map((date, index) => (
+            <button
+              key={date}
+              type="button"
+              className={cx(
+                "ops-week-dayhead",
+                date === today && "is-today",
+                date === selectedDate && "is-selected",
+              )}
+              onClick={() => onSelect(date)}
+            >
+              <span>{WEEKDAYS[index]}</span>
+              <strong>{Number(date.slice(-2))}</strong>
+            </button>
+          ))}
+          <div className="ops-week-allday-label">All day</div>
+          {days.map((date) => {
+            const allDay = items.filter(
+              (item) => item.date === date && (item.allDay || !item.time),
+            );
+            return (
+              <div
+                key={`all-${date}`}
+                className={cx(
+                  "ops-week-allday",
+                  date === today && "is-today",
+                  date === selectedDate && "is-selected",
+                )}
+              >
+                {allDay.map((item) => (
+                  <WeekCard
+                    key={item.id}
+                    item={item}
+                    onOpen={onOpen}
+                  />
+                ))}
+              </div>
+            );
+          })}
+          <div className="ops-week-hours" style={{ height: timedHeight }}>
+            {hourMarks.map((minutes) => (
+              <span
+                key={minutes}
+                style={{ top: ((minutes - hours.start) / 60) * WEEK_HOUR_PX }}
+              >
+                {formatHourLabel(minutes)}
+              </span>
+            ))}
+          </div>
+          {days.map((date) => {
+            const placed = layoutTimed(
+              items.filter((item) => item.date === date),
+            );
+            return (
+              <div
+                key={`grid-${date}`}
+                className={cx(
+                  "ops-week-col",
+                  date === today && "is-today",
+                  date === selectedDate && "is-selected",
+                )}
+                style={{ height: timedHeight }}
+              >
+                {hourMarks.map((minutes) => (
+                  <button
+                    key={minutes}
+                    type="button"
+                    className="ops-week-slot"
+                    style={{
+                      top: ((minutes - hours.start) / 60) * WEEK_HOUR_PX,
+                      height: WEEK_HOUR_PX,
+                    }}
+                    aria-label={`Add at ${minutesToTime(minutes)} on ${dayFormatter.format(dateFromIso(date))}`}
+                    onClick={() => {
+                      onSelect(date);
+                      onAdd(date, minutesToTime(minutes));
+                    }}
+                  />
+                ))}
+                {placed.map((entry) => {
+                  const top =
+                    ((entry.start - hours.start) / 60) * WEEK_HOUR_PX + 2;
+                  const height = Math.max(WEEK_HOUR_PX - 6, 46);
+                  const width = `calc((100% - 8px) / ${entry.colCount})`;
+                  const left = `calc(4px + ${entry.col} * ${width})`;
+                  return (
+                    <WeekCard
+                      key={entry.item.id}
+                      item={entry.item}
+                      onOpen={onOpen}
+                      style={{ top, height, left, width }}
+                    />
+                  );
+                })}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function WeekCard({
+  item,
+  onOpen,
+  style,
+}: {
+  item: OperationItem;
+  onOpen: (id: string) => void;
+  style?: CSSProperties;
+}) {
+  const who =
+    item.kind === "task"
+      ? firstName(item.assignee) ?? "Unassigned"
+      : CATEGORY_LABEL[item.category];
+  return (
+    <button
+      type="button"
+      className={cx(
+        "ops-week-card",
+        `is-${item.category}`,
+        item.status === "done" && "is-done",
+        !style && "is-allday",
+      )}
+      style={style}
+      onClick={() => onOpen(item.id)}
+    >
+      <strong>{item.title}</strong>
+      <span>
+        {item.allDay || !item.time ? "All day" : item.time}
+        {" · "}
+        {who}
+      </span>
+    </button>
   );
 }
 
@@ -477,6 +705,34 @@ function OperationRow({
   );
 }
 
+function layoutTimed(items: OperationItem[]) {
+  const timed = items
+    .filter((item) => !item.allDay && item.time)
+    .sort((a, b) => (a.time ?? "").localeCompare(b.time ?? ""));
+  const placed = timed.map((item) => {
+    const start = timeToMinutes(item.time!);
+    return { item, start, end: start + 60, col: 0, colCount: 1 };
+  });
+  for (let i = 0; i < placed.length; i += 1) {
+    const used = new Set<number>();
+    for (let j = 0; j < i; j += 1) {
+      if (placed[j].start < placed[i].end && placed[i].start < placed[j].end) {
+        used.add(placed[j].col);
+      }
+    }
+    let col = 0;
+    while (used.has(col)) col += 1;
+    placed[i].col = col;
+  }
+  for (const row of placed) {
+    const group = placed.filter(
+      (other) => other.start < row.end && row.start < other.end,
+    );
+    row.colCount = Math.max(1, ...group.map((other) => other.col + 1));
+  }
+  return placed;
+}
+
 function buildMonth(month: string): Array<{ date: string; inMonth: boolean }> {
   const first = dateFromIso(`${month}-01`);
   const mondayOffset = (first.getDay() + 6) % 7;
@@ -490,17 +746,28 @@ function buildMonth(month: string): Array<{ date: string; inMonth: boolean }> {
   });
 }
 
-function addDays(date: string, days: number): string {
-  const next = dateFromIso(date);
-  next.setDate(next.getDate() + days);
-  return isoFromDate(next);
-}
-
 function shortDay(date: string): string {
   return new Intl.DateTimeFormat("en-GB", {
     day: "numeric",
     month: "short",
   }).format(dateFromIso(date));
+}
+
+function weekLabel(start: string): string {
+  const end = addDays(start, 6);
+  return `${weekRangeFormatter.format(dateFromIso(start))} – ${weekRangeFormatter.format(dateFromIso(end))}`;
+}
+
+function formatHourLabel(minutes: number): string {
+  const hour = Math.floor(minutes / 60);
+  if (hour === 0) return "12am";
+  if (hour < 12) return `${hour}am`;
+  if (hour === 12) return "12pm";
+  return `${hour - 12}pm`;
+}
+
+function firstName(name?: string) {
+  return name?.split(" ")[0];
 }
 
 function repeatLabel(repeat: Exclude<OperationItem["repeat"], "none">): string {
