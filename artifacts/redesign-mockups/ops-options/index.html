@@ -1,0 +1,1014 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Operations options — Commune</title>
+    <link rel="icon" href="../favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="../shared.css?v=ops2" />
+    <link rel="stylesheet" href="./styles.css?v=ops2" />
+  </head>
+  <body class="oo-body">
+    <nav class="oo-chooser" aria-label="Compare Operations directions">
+      <a class="oo-back" href="?view=gallery">All options</a>
+      <div class="oo-chooser-group">
+        <span>Calendars</span>
+        <a class="oo-chip" data-view="now" href="?view=now">Squashed</a>
+        <a class="oo-chip" data-view="wideweek" href="?view=wideweek">Wide week</a>
+        <a class="oo-chip" data-view="threeday" href="?view=threeday">3-day</a>
+        <a class="oo-chip" data-view="month" href="?view=month">Month</a>
+        <a class="oo-chip" data-view="lanes" href="?view=lanes">Lanes</a>
+        <a class="oo-chip" data-view="today" href="?view=today">Today first</a>
+      </div>
+      <div class="oo-chooser-group">
+        <span>Board</span>
+        <a class="oo-chip" data-view="agenda" href="?view=agenda">Agenda</a>
+        <a class="oo-chip" data-view="people" href="?view=people">People</a>
+        <a class="oo-chip" data-view="board" href="?view=board">Old board</a>
+        <a class="oo-chip" data-view="starter" href="?view=starter">Starter</a>
+        <a class="oo-chip" data-view="rotate" href="?view=rotate">Rotation</a>
+        <a class="oo-chip" data-view="escalate" href="?view=escalate">Escalation</a>
+      </div>
+    </nav>
+
+    <section class="oo-page" id="gallery">
+      <div class="oo-gallery">
+        <div class="oo-gallery-hero">
+          <p class="kicker">Operations · calendars and boards</p>
+          <h1>Mock both. The date still matters.</h1>
+          <p>
+            Calendars are how a house sees the plumber, the landlord, and the
+            parcel. The shipped week is just too tight — not the idea of a
+            calendar. Below: calendars that breathe, then the old board for
+            work that is owned, rotating, or a checklist.
+          </p>
+        </div>
+
+        <div class="oo-section-label">
+          <h2>Calendars</h2>
+          <p>When it happens. Same week: bins, kitchen, parcel, landlord, plumber.</p>
+        </div>
+        <div class="oo-cards is-3">
+          <a class="oo-card" href="?view=now">
+            <div class="oo-card-preview">
+              <div class="mini-week">
+                <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+                <i></i><b></b><i></i><b></b><i></i><i></i><b></b><i></i>
+              </div>
+            </div>
+            <div class="oo-card-body">
+              <p class="why">What shipped</p>
+              <h3>Squashed week</h3>
+              <p>Hours × seven days plus a side panel. The calendar idea, crushed.</p>
+            </div>
+          </a>
+          <a class="oo-card" href="?view=wideweek">
+            <div class="oo-card-preview">
+              <div class="mini-week">
+                <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+                <i></i><i style="height:28px;background:#d9ebe5"></i><i></i>
+                <i style="height:28px;background:#f1e5bf"></i><i style="height:28px;background:#e8e1ef"></i><i></i><i></i>
+              </div>
+            </div>
+            <div class="oo-card-body">
+              <p class="why">Calendar</p>
+              <h3>Wide week</h3>
+              <p>Still a week with hours. No side panel. Titles wrap. Scroll if a day needs width.</p>
+            </div>
+          </a>
+          <a class="oo-card" href="?view=threeday">
+            <div class="oo-card-preview">
+              <div class="mini-lanes" style="grid-template-columns:repeat(3,1fr)">
+                <i style="height:70%"></i>
+                <i style="height:40%;background:#f1e5bf"></i>
+                <i style="height:55%;background:#e8e1ef"></i>
+              </div>
+            </div>
+            <div class="oo-card-body">
+              <p class="why">Calendar</p>
+              <h3>3-day</h3>
+              <p>Hours only work when a column is wide. Three days is the honest hour calendar.</p>
+            </div>
+          </a>
+          <a class="oo-card" href="?view=month">
+            <div class="oo-card-preview">
+              <div class="mini-month">
+                <i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+                <i></i><i class="on"></i><i></i><i></i><i></i><i></i><i></i>
+              </div>
+            </div>
+            <div class="oo-card-body">
+              <p class="why">Calendar</p>
+              <h3>Month</h3>
+              <p>The month you can actually read. Titles in the cell, not dots. Tap a day for the rest.</p>
+            </div>
+          </a>
+          <a class="oo-card" href="?view=lanes">
+            <div class="oo-card-preview">
+              <div class="mini-lanes" style="grid-template-columns:repeat(7,1fr)">
+                <i style="height:28px"></i><i style="height:46px;background:#e8e1ef"></i>
+                <i style="height:36px;background:#f1e5bf"></i><i></i>
+                <i style="height:52px"></i><i></i><i></i>
+              </div>
+            </div>
+            <div class="oo-card-body">
+              <p class="why">Calendar</p>
+              <h3>Day lanes</h3>
+              <p>A week calendar without empty hours. Each day is a stack: time, title, who.</p>
+            </div>
+          </a>
+          <a class="oo-card" href="?view=today">
+            <div class="oo-card-preview">
+              <div class="mini-today" style="grid-template-columns:70px 1fr">
+                <i></i><i style="height:70%"></i>
+                <i></i><i style="height:40%;background:#e8e1ef"></i>
+              </div>
+            </div>
+            <div class="oo-card-body">
+              <p class="why">Calendar</p>
+              <h3>Today first</h3>
+              <p>Week strip plus one full day with hours. The day you opened is the calendar.</p>
+            </div>
+          </a>
+        </div>
+
+        <div class="oo-section-label">
+          <h2>Boards · and what worked in the old app</h2>
+          <p>Ownership, rotation, checklists. The Mantine page at app.ourcommune.io/chores.</p>
+        </div>
+        <div class="oo-cards">
+          <a class="oo-card" href="?view=agenda">
+            <div class="oo-card-preview">
+              <div class="mini-agenda" style="grid-template-columns:80px 1fr">
+                <i style="height:80px"></i><i style="height:28px"></i>
+                <i></i><i style="height:28px;background:#e8e1ef"></i>
+                <i></i><i style="height:28px;background:#f1e5bf"></i>
+              </div>
+            </div>
+            <div class="oo-card-body">
+              <p class="why">Board</p>
+              <h3>Agenda + month</h3>
+              <p>A list with a month jumper. Calendar for jumping, board for doing.</p>
+            </div>
+          </a>
+          <a class="oo-card" href="?view=people">
+            <div class="oo-card-preview">
+              <div class="mini-people" style="grid-template-columns:repeat(4,1fr)">
+                <i style="height:40px"></i><i style="height:64px;background:#d9ebe5"></i>
+                <i style="height:48px;background:#e8e1ef"></i><i style="height:36px;background:#f1e5bf"></i>
+              </div>
+            </div>
+            <div class="oo-card-body">
+              <p class="why">Board</p>
+              <h3>Who’s on what</h3>
+              <p>Columns are people. Sit beside a calendar, not instead of one.</p>
+            </div>
+          </a>
+          <a class="oo-card" href="?view=board">
+            <div class="oo-card-preview">
+              <div class="mini-board" style="grid-template-columns:1fr 1fr 1fr">
+                <i style="height:72px;background:#fbede6"></i>
+                <i style="height:72px"></i>
+                <i style="height:72px;background:#e8e1ef"></i>
+              </div>
+            </div>
+            <div class="oo-card-body">
+              <p class="why">Bring back</p>
+              <h3>The operations board</h3>
+              <p>Overdue, then upcoming. Cards with type, cadence, owner, last done, and a Done button on the card.</p>
+            </div>
+          </a>
+          <a class="oo-card" href="?view=starter">
+            <div class="oo-card-preview dark">
+              <i style="height:14px;width:40%;background:#89bea2;border-radius:4px"></i>
+              <i style="height:10px;width:70%;margin-top:8px;background:rgba(255,255,255,.2);border-radius:4px"></i>
+              <i style="height:10px;width:55%;margin-top:6px;background:rgba(255,255,255,.2);border-radius:4px"></i>
+            </div>
+            <div class="oo-card-body">
+              <p class="why">Bring back</p>
+              <h3>Starter board + checklists</h3>
+              <p>Load the house pack. Kitchen reset is three ticks, not a single checkbox. Old app had this.</p>
+            </div>
+          </a>
+          <a class="oo-card" href="?view=rotate">
+            <div class="oo-card-preview">
+              <div class="mini-people" style="grid-template-columns:repeat(3,1fr);align-items:center">
+                <i style="height:36px;border-radius:999px"></i>
+                <i style="height:36px;border-radius:999px;background:#2d6a4f"></i>
+                <i style="height:36px;border-radius:999px;background:#e8e1ef"></i>
+              </div>
+            </div>
+            <div class="oo-card-body">
+              <p class="why">Bring back</p>
+              <h3>Rotation</h3>
+              <p>Done does not just tick a box. It hands bins to Alex and sets next Tuesday. That was the product.</p>
+            </div>
+          </a>
+          <a class="oo-card" href="?view=escalate">
+            <div class="oo-card-preview">
+              <i style="height:22px;width:30%;background:#fbede6;border-radius:999px"></i>
+              <i style="height:48px;margin-top:10px;background:#fff;border:1px solid rgba(155,78,53,.25);border-radius:8px"></i>
+            </div>
+            <div class="oo-card-body">
+              <p class="why">Bring back</p>
+              <h3>Escalation + last done</h3>
+              <p>Overdue is a day. Escalated is “this has been sitting.” Last done by Alex, 25 Aug. Memory, not just a due date.</p>
+            </div>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <div class="oo-app" id="app" hidden>
+      <aside class="oo-side">
+        <div class="oo-brand">
+          <img src="../logo.png" alt="" />
+          Commune
+        </div>
+        <nav class="oo-nav">
+          <span>Home</span>
+          <span>This Hub</span>
+          <span>Expenses</span>
+          <span>Settle</span>
+          <span>Recurring</span>
+          <span>Funds</span>
+          <span>Notes</span>
+          <span class="is-on">Operations</span>
+        </nav>
+        <div class="oo-side-foot">
+          <span class="avatar maya">MC</span>
+          <div>
+            <strong>Maya Chen</strong>
+            <small>14 Park Street</small>
+          </div>
+        </div>
+      </aside>
+
+      <div class="oo-main">
+        <header class="oo-header">
+          <div>
+            <h1 id="page-title">Operations</h1>
+            <p id="page-lede">14 Park Street · choose a shape</p>
+          </div>
+          <button class="a-btn" type="button">Add item</button>
+        </header>
+
+        <section class="oo-page" id="now">
+          <p class="why-note">
+            <strong>What shipped.</strong> Hours down the side, seven days across.
+            Titles clip. Empty hours take the room. Keep this only as the “don’t.”
+          </p>
+          <div class="metrics">
+            <div class="metric is-warn"><span>Overdue</span><strong>1</strong><small>Put the bins out</small></div>
+            <div class="metric"><span>Next 7 days</span><strong>4</strong><small>Kitchen reset</small></div>
+            <div class="metric"><span>Up next</span><strong>2 Sep</strong><small>Kitchen reset</small></div>
+          </div>
+          <div class="week-sq">
+            <div class="panel">
+              <div class="panel-head"><h3>31 Aug – 6 Sep</h3><small>Week · hours</small></div>
+              <div class="week-grid">
+                <div class="hd"></div>
+                <div class="hd">Mon 31</div>
+                <div class="hd">Tue 1</div>
+                <div class="hd">Wed 2</div>
+                <div class="hd">Thu 3</div>
+                <div class="hd">Fri 4</div>
+                <div class="hd">Sat 5</div>
+                <div class="hd">Sun 6</div>
+                <div class="hour">All day</div>
+                <div></div><div></div><div></div>
+                <div><div class="week-chip">Package del…</div></div>
+                <div></div><div></div><div></div>
+                <div class="hour">9am</div>
+                <div></div><div></div><div></div><div></div>
+                <div><div class="week-chip">Landlord vi…</div></div>
+                <div></div><div></div>
+                <div class="hour">11am</div>
+                <div></div><div></div><div></div><div></div><div></div><div></div><div></div>
+                <div class="hour">7pm</div>
+                <div></div><div></div>
+                <div><div class="week-chip">Kitchen re…</div></div>
+                <div></div><div></div><div></div><div></div>
+              </div>
+            </div>
+            <aside class="panel">
+              <div class="panel-head"><h3>Tuesday 1 Sep</h3></div>
+              <div class="agenda-item"><div><strong>Nothing scheduled.</strong><small>The day panel is the only place titles fit.</small></div></div>
+            </aside>
+          </div>
+        </section>
+
+        <section class="oo-page" id="wideweek">
+          <p class="why-note">
+            <strong>A real week calendar, given room.</strong>
+            Same hours as shipped, but the day panel is gone and titles wrap.
+            Days can scroll sideways instead of shrinking to ninety pixels.
+          </p>
+          <div class="panel">
+            <div class="panel-head">
+              <div>
+                <h3>31 Aug – 6 Sep</h3>
+                <small>Week · hours · full width</small>
+              </div>
+              <small>‹ Today ›</small>
+            </div>
+            <div class="wide-scroll">
+              <div class="wide-week">
+                <div class="wide-corner"></div>
+                <div class="wide-hd">Mon 31</div>
+                <div class="wide-hd is-today">Tue 1</div>
+                <div class="wide-hd">Wed 2</div>
+                <div class="wide-hd">Thu 3</div>
+                <div class="wide-hd">Fri 4</div>
+                <div class="wide-hd">Sat 5</div>
+                <div class="wide-hd">Sun 6</div>
+                <div class="wide-label">All day</div>
+                <div class="wide-all"></div>
+                <div class="wide-all is-today"></div>
+                <div class="wide-all"></div>
+                <div class="wide-all">
+                  <button class="wide-card delivery" type="button">
+                    <strong>Package delivery</strong>
+                    <span>All day · leave with 12</span>
+                  </button>
+                </div>
+                <div class="wide-all"></div>
+                <div class="wide-all"></div>
+                <div class="wide-all"></div>
+                <div class="wide-hours">
+                  <span>8am</span><span>9am</span><span>10am</span><span>11am</span>
+                  <span>12pm</span><span>1pm</span><span>2pm</span><span>3pm</span>
+                  <span>4pm</span><span>5pm</span><span>6pm</span><span>7pm</span><span>8pm</span>
+                </div>
+                <div class="wide-col"></div>
+                <div class="wide-col is-today">
+                  <button class="wide-card is-timed" type="button" style="top: calc(12 * 44px + 4px)">
+                    <strong>Put the bins out</strong>
+                    <span>8pm · Jordan · overdue from 25 Aug</span>
+                  </button>
+                </div>
+                <div class="wide-col">
+                  <button class="wide-card is-timed" type="button" style="top: calc(11 * 44px + 4px)">
+                    <strong>Kitchen reset</strong>
+                    <span>7pm · Alex Rivera</span>
+                  </button>
+                </div>
+                <div class="wide-col"></div>
+                <div class="wide-col">
+                  <button class="wide-card visit is-timed" type="button" style="top: calc(2 * 44px + 22px)">
+                    <strong>Landlord visit</strong>
+                    <span>10:30 · Priya · damp patch</span>
+                  </button>
+                </div>
+                <div class="wide-col"></div>
+                <div class="wide-col"></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="oo-page" id="threeday">
+          <p class="why-note">
+            <strong>Hours that a person can read.</strong>
+            Three days, each wide enough for a full title and an owner.
+            The rest of the week is a strip — still a calendar, just honest about width.
+          </p>
+          <div class="three-strip">
+            <button type="button">Mon 31</button>
+            <button type="button">Tue 1</button>
+            <button class="is-on" type="button">Wed 2</button>
+            <button class="is-on" type="button">Thu 3</button>
+            <button class="is-on" type="button">Fri 4</button>
+            <button type="button">Sat 5</button>
+            <button type="button">Sun 6</button>
+          </div>
+          <div class="panel">
+            <div class="three-grid">
+              <div class="three-hours">
+                <span class="all">All day</span>
+                <span>8am</span><span>9am</span><span>10am</span><span>11am</span>
+                <span>12</span><span>1pm</span><span>2pm</span><span>3pm</span>
+                <span>4pm</span><span>5pm</span><span>6pm</span><span>7pm</span><span>8pm</span>
+              </div>
+              <div class="three-day">
+                <header><span>Wednesday</span><strong>2</strong></header>
+                <div class="three-all"></div>
+                <div class="three-body">
+                  <button class="wide-card is-timed" type="button" style="top: calc(11 * 48px + 6px)">
+                    <strong>Kitchen reset</strong>
+                    <span>19:00 · Alex Rivera · every week</span>
+                  </button>
+                </div>
+              </div>
+              <div class="three-day">
+                <header><span>Thursday</span><strong>3</strong></header>
+                <div class="three-all">
+                  <button class="wide-card delivery" type="button">
+                    <strong>Package delivery</strong>
+                    <span>All day · leave with number 12</span>
+                  </button>
+                </div>
+                <div class="three-body"></div>
+              </div>
+              <div class="three-day is-today">
+                <header><span>Friday</span><strong>4</strong></header>
+                <div class="three-all"></div>
+                <div class="three-body">
+                  <button class="wide-card visit is-timed" type="button" style="top: calc(2 * 48px + 24px)">
+                    <strong>Landlord visit</strong>
+                    <span>10:30 · Priya · damp by the kitchen window</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="oo-page" id="month">
+          <p class="why-note">
+            <strong>The calendar people already understand.</strong>
+            A month, with names in the cells. Dots were the phone compromise.
+            This is the desktop month: two lines, a time, a person.
+          </p>
+          <div class="month-layout">
+            <div class="panel">
+              <div class="panel-head">
+                <div>
+                  <h3>September 2026</h3>
+                  <small>‹ Today ›</small>
+                </div>
+              </div>
+              <div class="month-cal">
+                <b>Mon</b><b>Tue</b><b>Wed</b><b>Thu</b><b>Fri</b><b>Sat</b><b>Sun</b>
+                <div class="m-cell out"><span>31</span></div>
+                <div class="m-cell is-today">
+                  <span>1</span>
+                  <button class="m-item warn" type="button">Bins · Jordan</button>
+                </div>
+                <div class="m-cell">
+                  <span>2</span>
+                  <button class="m-item" type="button">19:00 Kitchen · Alex</button>
+                </div>
+                <div class="m-cell">
+                  <span>3</span>
+                  <button class="m-item delivery" type="button">Package delivery</button>
+                </div>
+                <div class="m-cell is-on">
+                  <span>4</span>
+                  <button class="m-item visit" type="button">10:30 Landlord</button>
+                </div>
+                <div class="m-cell"><span>5</span></div>
+                <div class="m-cell"><span>6</span></div>
+                <div class="m-cell">
+                  <span>7</span>
+                  <button class="m-item appt" type="button">09:00 Plumber</button>
+                </div>
+                <div class="m-cell"><span>8</span></div>
+                <div class="m-cell"><span>9</span></div>
+                <div class="m-cell"><span>10</span></div>
+                <div class="m-cell"><span>11</span></div>
+                <div class="m-cell"><span>12</span></div>
+                <div class="m-cell"><span>13</span></div>
+                <div class="m-cell"><span>14</span></div>
+                <div class="m-cell"><span>15</span></div>
+                <div class="m-cell"><span>16</span></div>
+                <div class="m-cell"><span>17</span></div>
+                <div class="m-cell"><span>18</span></div>
+                <div class="m-cell"><span>19</span></div>
+                <div class="m-cell"><span>20</span></div>
+                <div class="m-cell"><span>21</span></div>
+                <div class="m-cell"><span>22</span></div>
+                <div class="m-cell"><span>23</span></div>
+                <div class="m-cell"><span>24</span></div>
+                <div class="m-cell"><span>25</span></div>
+                <div class="m-cell"><span>26</span></div>
+                <div class="m-cell"><span>27</span></div>
+                <div class="m-cell"><span>28</span></div>
+                <div class="m-cell"><span>29</span></div>
+                <div class="m-cell"><span>30</span></div>
+                <div class="m-cell out"><span>1</span></div>
+                <div class="m-cell out"><span>2</span></div>
+                <div class="m-cell out"><span>3</span></div>
+                <div class="m-cell out"><span>4</span></div>
+              </div>
+            </div>
+            <aside class="panel">
+              <div class="panel-head">
+                <div>
+                  <h3>Friday 4 September</h3>
+                  <small>Selected day</small>
+                </div>
+              </div>
+              <div class="agenda-item">
+                <span class="pill visit">Visit</span>
+                <div>
+                  <strong>Landlord visit</strong>
+                  <small>10:30 · Priya · damp patch by the kitchen window</small>
+                </div>
+              </div>
+              <div style="padding:14px 16px 18px">
+                <button class="a-btn ghost" type="button">Add to this day</button>
+              </div>
+            </aside>
+          </div>
+        </section>
+
+        <section class="oo-page" id="lanes">
+          <p class="why-note">
+            <strong>Keep the week, lose the hours.</strong> A house does not need
+            7am–9pm of empty cells. Each day is a lane. The card is the object.
+          </p>
+          <div class="panel">
+            <div class="panel-head">
+              <div>
+                <h3>This week</h3>
+                <small>31 Aug – 6 Sep</small>
+              </div>
+              <small>‹ Today ›</small>
+            </div>
+            <div class="lanes">
+              <div class="lane">
+                <div class="lane-hd"><span>Mon</span><strong>31</strong></div>
+              </div>
+              <div class="lane is-today">
+                <div class="lane-hd"><span>Tue</span><strong>1</strong></div>
+                <button class="lane-card" type="button">
+                  <strong>Put the bins out</strong>
+                  <em>Still due · Tue 25 Aug</em>
+                  <small>Jordan · every week</small>
+                </button>
+              </div>
+              <div class="lane">
+                <div class="lane-hd"><span>Wed</span><strong>2</strong></div>
+                <button class="lane-card" type="button">
+                  <strong>Kitchen reset</strong>
+                  <em>19:00</em>
+                  <small>Alex · every week</small>
+                </button>
+              </div>
+              <div class="lane">
+                <div class="lane-hd"><span>Thu</span><strong>3</strong></div>
+                <button class="lane-card delivery" type="button">
+                  <strong>Package delivery</strong>
+                  <em>All day</em>
+                  <small>Leave with number 12</small>
+                </button>
+              </div>
+              <div class="lane">
+                <div class="lane-hd"><span>Fri</span><strong>4</strong></div>
+                <button class="lane-card visit" type="button">
+                  <strong>Landlord visit</strong>
+                  <em>10:30</em>
+                  <small>Priya · damp patch</small>
+                </button>
+              </div>
+              <div class="lane">
+                <div class="lane-hd"><span>Sat</span><strong>5</strong></div>
+              </div>
+              <div class="lane">
+                <div class="lane-hd"><span>Sun</span><strong>6</strong></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="oo-page" id="today">
+          <p class="why-note">
+            <strong>Give hours to one day.</strong> The week is a picker.
+            Wednesday is the page, so 7pm kitchen reset can actually sit on a line.
+          </p>
+          <div class="today-layout">
+            <div class="panel">
+              <div class="panel-head"><h3>This week</h3></div>
+              <button class="strip-day" type="button" data-day="mon"><strong>Mon 31</strong><span>Clear</span></button>
+              <button class="strip-day" type="button" data-day="tue"><strong>Tue 1</strong><span>Bins overdue</span></button>
+              <button class="strip-day is-on" type="button" data-day="wed"><strong>Wed 2</strong><span>Kitchen · 19:00</span></button>
+              <button class="strip-day" type="button" data-day="thu"><strong>Thu 3</strong><span>Package</span></button>
+              <button class="strip-day" type="button" data-day="fri"><strong>Fri 4</strong><span>Landlord · 10:30</span></button>
+              <button class="strip-day" type="button" data-day="sat"><strong>Sat 5</strong><span>Clear</span></button>
+              <button class="strip-day" type="button" data-day="sun"><strong>Sun 6</strong><span>Clear</span></button>
+            </div>
+            <div class="panel" id="today-panel">
+              <div class="panel-head">
+                <div>
+                  <h3>Wednesday 2 September</h3>
+                  <small>One day. Hours have room.</small>
+                </div>
+              </div>
+              <div class="today-hours">
+                <div class="h">9am</div><div class="slot"></div>
+                <div class="h">12pm</div><div class="slot"></div>
+                <div class="h">3pm</div><div class="slot"></div>
+                <div class="h">6pm</div><div class="slot"></div>
+                <div class="h">7pm</div>
+                <div class="slot">
+                  <button class="lane-card" type="button">
+                    <strong>Kitchen reset</strong>
+                    <em>19:00 · Alex Rivera</em>
+                    <small>Clear the counters, run the dishwasher, take the food caddy out.</small>
+                  </button>
+                </div>
+                <div class="h">8pm</div><div class="slot"></div>
+                <div class="h">9pm</div><div class="slot"></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="oo-page" id="agenda">
+          <p class="why-note">
+            <strong>Stop pretending this is Google Calendar.</strong>
+            The month is a jump control. The work is the list: overdue first, then what’s next.
+          </p>
+          <div class="agenda-layout">
+            <div class="panel">
+              <div class="panel-head"><h3>September 2026</h3></div>
+              <div class="month-mini">
+                <b>M</b><b>T</b><b>W</b><b>T</b><b>F</b><b>S</b><b>S</b>
+                <button type="button">31</button>
+                <button class="is-on" type="button">1</button>
+                <button class="has" type="button">2</button>
+                <button class="has" type="button">3</button>
+                <button class="has" type="button">4</button>
+                <button type="button">5</button>
+                <button type="button">6</button>
+                <button class="has" type="button">7</button>
+                <button type="button">8</button>
+                <button type="button">9</button>
+                <button type="button">10</button>
+                <button type="button">11</button>
+                <button type="button">12</button>
+                <button type="button">13</button>
+              </div>
+            </div>
+            <div class="panel">
+              <div class="agenda-row">
+                <div class="when is-over"><strong>Overdue</strong><span>1 waiting</span></div>
+                <div>
+                  <div class="agenda-item">
+                    <span class="avatar jordan">JH</span>
+                    <div class="grow">
+                      <strong>Put the bins out</strong>
+                      <small>Jordan Hale · every Tuesday · still 25 Aug</small>
+                    </div>
+                    <button class="a-btn" type="button">Done</button>
+                  </div>
+                </div>
+              </div>
+              <div class="agenda-row">
+                <div class="when"><strong>Wed 2</strong><span>Tomorrow</span></div>
+                <div>
+                  <div class="agenda-item">
+                    <span class="avatar alex">AR</span>
+                    <div>
+                      <strong>Kitchen reset</strong>
+                      <small>19:00 · Alex Rivera · every week</small>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="agenda-row">
+                <div class="when"><strong>Thu 3</strong><span>All day</span></div>
+                <div>
+                  <div class="agenda-item">
+                    <span class="pill delivery">Delivery</span>
+                    <div>
+                      <strong>Package delivery</strong>
+                      <small>Leave with number 12 if nobody is home.</small>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="agenda-row">
+                <div class="when"><strong>Fri 4</strong><span>10:30</span></div>
+                <div>
+                  <div class="agenda-item">
+                    <span class="pill visit">Visit</span>
+                    <div>
+                      <strong>Landlord visit</strong>
+                      <small>Priya is checking the damp patch by the kitchen window.</small>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="agenda-row">
+                <div class="when"><strong>Mon 7</strong><span>09:00</span></div>
+                <div>
+                  <div class="agenda-item">
+                    <span class="pill">Appointment</span>
+                    <div>
+                      <strong>Plumber appointment</strong>
+                      <small>Boiler pressure and the upstairs tap.</small>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="oo-page" id="people">
+          <p class="why-note">
+            <strong>Cut by owner, not by date.</strong>
+            In a house the first question is “whose is this?”, not “what hour is Thursday?”
+            Events with no owner sit in House.
+          </p>
+          <div class="panel">
+            <div class="people">
+              <div class="person">
+                <div class="person-hd">
+                  <span class="avatar maya">MC</span>
+                  <div><strong>Maya</strong><span>You · nothing this week</span></div>
+                </div>
+                <p style="color:var(--ink-soft);font-size:13px">You’re clear. The fund chase lives in money, not here.</p>
+              </div>
+              <div class="person">
+                <div class="person-hd">
+                  <span class="avatar jordan">JH</span>
+                  <div><strong>Jordan</strong><span>1 overdue</span></div>
+                </div>
+                <button class="lane-card" type="button">
+                  <strong>Put the bins out</strong>
+                  <em>Overdue · every Tuesday</em>
+                  <small>Black bags. Alley behind the kitchen.</small>
+                </button>
+              </div>
+              <div class="person">
+                <div class="person-hd">
+                  <span class="avatar alex">AR</span>
+                  <div><strong>Alex</strong><span>1 this week</span></div>
+                </div>
+                <button class="lane-card" type="button">
+                  <strong>Kitchen reset</strong>
+                  <em>Wed 2 Sep · 19:00</em>
+                  <small>Every week</small>
+                </button>
+              </div>
+              <div class="person">
+                <div class="person-hd">
+                  <span class="avatar" style="background:#eef1f3;color:#667085">H</span>
+                  <div><strong>The house</strong><span>3 events</span></div>
+                </div>
+                <button class="lane-card delivery" type="button">
+                  <strong>Package delivery</strong>
+                  <em>Thu 3 · all day</em>
+                </button>
+                <button class="lane-card visit" type="button">
+                  <strong>Landlord visit</strong>
+                  <em>Fri 4 · 10:30</em>
+                </button>
+                <button class="lane-card appt" type="button">
+                  <strong>Plumber appointment</strong>
+                  <em>Mon 7 · 09:00</em>
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="oo-page" id="board">
+          <p class="why-note">
+            <strong>This is the old Operations page, in this look.</strong>
+            app.ourcommune.io/chores was a card board: overdue, then upcoming.
+            Categories, cadence, assignee, last completion, Done on the card.
+            No calendar. This is what people actually used.
+          </p>
+          <div class="metrics">
+            <div class="metric is-warn"><span>Overdue</span><strong>1</strong><small>Put the bins out</small></div>
+            <div class="metric"><span>Recurring · Checklists</span><strong>3 · 1</strong><small>Same counters the old app showed</small></div>
+            <div class="metric"><span>Upcoming</span><strong>4</strong><small>Kitchen, parcel, visit, plumber</small></div>
+          </div>
+          <div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:12px">
+            <button class="a-btn ghost" type="button">Load starter board</button>
+          </div>
+          <h3 style="margin:0 0 10px;font-size:13px;color:#9b4e35">Overdue (1)</h3>
+          <div class="board-grid" style="margin-bottom:22px">
+            <article class="chore is-over">
+              <div class="chore-top">
+                <h4>Put the bins out</h4>
+                <span class="pill warn">Overdue</span>
+              </div>
+              <p>Black bags Tuesday night. Leave them in the alley behind the kitchen.</p>
+              <div class="chore-meta">
+                <span class="pill">Supplies</span>
+                <span class="pill">Weekly · Tue</span>
+                <span class="pill sage">Recurring</span>
+              </div>
+              <div class="chore-foot">
+                <span>Last done by Alex · 18 Aug</span>
+                <button class="a-btn" type="button">Done</button>
+              </div>
+            </article>
+          </div>
+          <h3 style="margin:0 0 10px;font-size:13px;color:var(--ink-soft)">Upcoming (4)</h3>
+          <div class="board-grid">
+            <article class="chore">
+              <div class="chore-top">
+                <h4>Kitchen reset</h4>
+                <span class="pill sage">Due 2 Sep</span>
+              </div>
+              <p>Clear the counters, run the dishwasher, take the food caddy out.</p>
+              <div class="chore-meta">
+                <span class="pill">Cleaning</span>
+                <span class="pill">Weekly · Wed</span>
+                <span class="pill">Checklist · 3</span>
+              </div>
+              <div class="chore-foot">
+                <span>Alex Rivera</span>
+                <button class="a-btn" type="button">Done</button>
+              </div>
+            </article>
+            <article class="chore">
+              <div class="chore-top">
+                <h4>Package delivery</h4>
+                <span class="pill">Due 3 Sep</span>
+              </div>
+              <p>Leave with number 12 if nobody is home.</p>
+              <div class="chore-meta">
+                <span class="pill delivery">Delivery</span>
+                <span class="pill">One-off</span>
+              </div>
+              <div class="chore-foot">
+                <span>The house</span>
+                <button class="a-btn ghost" type="button">Open</button>
+              </div>
+            </article>
+            <article class="chore">
+              <div class="chore-top">
+                <h4>Landlord visit</h4>
+                <span class="pill">Due 4 Sep</span>
+              </div>
+              <p>Priya is checking the damp patch by the kitchen window.</p>
+              <div class="chore-meta">
+                <span class="pill visit">Visit</span>
+                <span class="pill">One-off</span>
+              </div>
+              <div class="chore-foot">
+                <span>Everyone should know</span>
+                <button class="a-btn ghost" type="button">Open</button>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section class="oo-page" id="starter">
+          <p class="why-note">
+            <strong>Old app: Load starter board + checklist tasks.</strong>
+            A household pack dropped Kitchen reset, Bins out, and House admin.
+            Kitchen reset was three lines, not one checkbox. Studio got Open / Restock / Admin.
+          </p>
+          <div class="starter-layout">
+            <div class="panel">
+              <div class="panel-head">
+                <div>
+                  <h3>Kitchen reset</h3>
+                  <small>Cleaning · weekly · Alex · due Wed 2 Sep</small>
+                </div>
+                <span class="pill">Checklist</span>
+              </div>
+              <div style="padding:8px 18px 18px">
+                <label class="check"><input type="checkbox" checked /> Clear counters</label>
+                <label class="check"><input type="checkbox" /> Wipe surfaces</label>
+                <label class="check"><input type="checkbox" /> Empty sink</label>
+                <p style="margin:14px 0 0;color:var(--ink-soft);font-size:12px">
+                  Done is when the list is finished — then it comes back next Wednesday.
+                </p>
+              </div>
+            </div>
+            <div class="panel">
+              <div class="panel-head">
+                <div>
+                  <h3>House pack</h3>
+                  <small>What the old “Load starter board” actually added</small>
+                </div>
+              </div>
+              <div class="pack">
+                <strong>Kitchen reset</strong>
+                <span>Checklist · weekly · escalate after 1 day</span>
+              </div>
+              <div class="pack">
+                <strong>Bins out</strong>
+                <span>Recurring · weekly · escalate the same day</span>
+              </div>
+              <div class="pack">
+                <strong>House admin check</strong>
+                <span>Recurring · weekly · bills, notices, replies</span>
+              </div>
+              <div style="padding:14px 16px">
+                <button class="a-btn" type="button">Load starter board</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="oo-page" id="rotate">
+          <p class="why-note">
+            <strong>Old app: Done rotates the person and advances the date.</strong>
+            Jordan marks bins done. Next Tuesday is Alex. Maya is after that.
+            The new calendar only mints the same title on a new day, still Jordan’s.
+          </p>
+          <div class="rotate-hero">
+            <div class="panel">
+              <div class="panel-head">
+                <div>
+                  <h3>Put the bins out</h3>
+                  <small>Weekly · Tuesday · supplies</small>
+                </div>
+                <span class="pill warn">Overdue</span>
+              </div>
+              <div style="padding:18px">
+                <p style="margin:0 0 8px;color:var(--ink-soft);font-size:13px">This week</p>
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px">
+                  <span class="avatar jordan">JH</span>
+                  <strong>Jordan Hale</strong>
+                </div>
+                <p style="margin:0 0 8px;color:var(--ink-soft);font-size:13px">Rotation</p>
+                <div class="chain">
+                  <div class="step"><span class="avatar maya">MC</span>Maya</div>
+                  <span class="arrow">→</span>
+                  <div class="step is-now"><span class="avatar jordan">JH</span>Jordan</div>
+                  <span class="arrow">→</span>
+                  <div class="step"><span class="avatar alex">AR</span>Alex</div>
+                </div>
+                <button class="a-btn" id="rotate-btn" type="button">Mark done · hand to Alex</button>
+                <p id="rotate-next" style="margin:12px 0 0;color:var(--ink-soft);font-size:13px">
+                  After this: Alex Rivera · Tuesday 8 Sep.
+                </p>
+              </div>
+            </div>
+            <div class="panel">
+              <div class="panel-head"><h3>Why this mattered</h3></div>
+              <div style="padding:18px;color:var(--ink-soft);font-size:14px;line-height:1.55">
+                <p style="margin:0 0 12px">
+                  The old complete action did three things: write a completion,
+                  move <em>next due</em> by the frequency, and walk
+                  <em>rotation_order</em> to the next member.
+                </p>
+                <p style="margin:0">
+                  Without rotation, bins stay “Jordan’s Tuesday” forever.
+                  That’s how houses get quietly unfair.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="oo-page" id="escalate">
+          <p class="why-note">
+            <strong>Old app: overdue is a date; escalated is a threshold.</strong>
+            Bins escalate the same day. House admin waits two days. Last done
+            stays on the card so the house remembers who last actually did it.
+          </p>
+          <div class="panel">
+            <div class="esc-row">
+              <div>
+                <div class="chore-meta" style="margin-bottom:8px">
+                  <span class="pill warn">Overdue · 7 days</span>
+                  <span class="pill warn">Escalated</span>
+                  <span class="pill">Supplies</span>
+                </div>
+                <h3 style="margin:0 0 6px">Put the bins out</h3>
+                <p style="margin:0;color:var(--ink-soft);font-size:13px">
+                  Last done by Alex Rivera · 18 Aug. Assigned to Jordan. Escalate after 0 days.
+                </p>
+              </div>
+              <button class="a-btn" type="button">Nudge Jordan</button>
+            </div>
+            <div class="esc-row">
+              <div>
+                <div class="chore-meta" style="margin-bottom:8px">
+                  <span class="pill sage">Due Wed</span>
+                  <span class="pill">Cleaning</span>
+                </div>
+                <h3 style="margin:0 0 6px">Kitchen reset</h3>
+                <p style="margin:0;color:var(--ink-soft);font-size:13px">
+                  Last done by Maya Chen · 26 Aug. Escalate after 1 day if it slips.
+                </p>
+              </div>
+              <span class="avatar alex">AR</span>
+            </div>
+            <div class="esc-row">
+              <div>
+                <div class="chore-meta" style="margin-bottom:8px">
+                  <span class="pill">Due next week</span>
+                  <span class="pill">Admin</span>
+                </div>
+                <h3 style="margin:0 0 6px">House admin check</h3>
+                <p style="margin:0;color:var(--ink-soft);font-size:13px">
+                  Bills, notices, anything that needs a reply. Escalate after 2 days.
+                  Last done by Maya · 28 Aug.
+                </p>
+              </div>
+              <span class="avatar maya">MC</span>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <script src="./app.js?v=ops2"></script>
+  </body>
+</html>
