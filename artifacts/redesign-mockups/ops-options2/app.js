@@ -440,13 +440,7 @@ function mapView() {
               const all = sortItems([...showOverdue.filter((item) => item.date !== cell.date), ...dayItems]);
               return `<button class="m-cell ${cell.inMonth ? "" : "out"} ${cell.date === state.selected ? "is-on" : ""} ${cell.date === TODAY ? "is-today" : ""}" type="button" data-day="${cell.date}">
                 <span class="n">${Number(cell.date.slice(-2))}</span>
-                ${all
-                  .slice(0, 3)
-                  .map((item) => {
-                    const who = item.kind === "task" ? memberOf(item.assignee).short : "";
-                    return `<span class="ws-chip ${isOverdue(item) ? "warn" : item.kind === "event" ? "event" : ""}">${item.time && !item.allDay ? `${item.time} ` : ""}${escapeHtml(item.title)}${who ? ` · ${who}` : ""}</span>`;
-                  })
-                  .join("")}
+                ${all.slice(0, 3).map(monthChip).join("")}
               </button>`;
             })
             .join("")}
@@ -482,6 +476,17 @@ function houseHorizon() {
   return items().filter(
     (item) => item.status !== "done" && (isOverdue(item) || (item.date >= TODAY && item.date <= addDays(TODAY, 7))),
   );
+}
+
+function monthChip(item) {
+  const who = item.kind === "task" ? memberOf(item.assignee).short : "";
+  let cls = "";
+  if (isOverdue(item)) cls = "warn";
+  else if (item.category === "delivery") cls = "delivery";
+  else if (item.category === "visit") cls = "visit";
+  else if (item.category === "appointment") cls = "appt";
+  else if (item.kind === "event") cls = "event";
+  return `<span class="m-chip ${cls}">${escapeHtml(item.title)}${who ? ` · ${who}` : ""}</span>`;
 }
 
 function rotationChain(item) {
@@ -527,6 +532,21 @@ function houseChrome(inner) {
 function houseLate() {
   const overdue = lateItems();
   if (!overdue.length) return "";
+  if (state.cut === "month") {
+    return overdue
+      .map((item) => {
+        const who = memberOf(item.assignee);
+        const next = memberOf(nextInRotation(item.rotation || [item.assignee], item.assignee));
+        return `<div class="h-late-slim">
+          <div>
+            <small>Late · ${overdueDays(item)} days · ${who.short}</small>
+            <p>${escapeHtml(item.title)}</p>
+          </div>
+          <button class="o2-btn sage" type="button" data-done="${item.id}">Done · ${next.short}</button>
+        </div>`;
+      })
+      .join("");
+  }
   return overdue
     .map((item) => {
       const who = memberOf(item.assignee);
@@ -688,13 +708,7 @@ function houseMonth() {
           const dayItems = items().filter((item) => item.status !== "done" && item.date === cell.date);
           return `<button class="m-cell ${cell.inMonth ? "" : "out"} ${cell.date === state.selected ? "is-on" : ""} ${cell.date === TODAY ? "is-today" : ""}" type="button" data-day="${cell.date}">
             <span class="n">${Number(cell.date.slice(-2))}</span>
-            ${dayItems
-              .slice(0, 2)
-              .map((item) => {
-                const who = item.kind === "task" ? memberOf(item.assignee).short : "";
-                return `<span class="ws-chip ${isOverdue(item) ? "warn" : item.kind === "event" ? "event" : ""}">${escapeHtml(item.title)}${who ? ` · ${who}` : ""}</span>`;
-              })
-              .join("")}
+            ${dayItems.slice(0, 2).map(monthChip).join("")}
           </button>`;
         })
         .join("")}
@@ -737,7 +751,7 @@ function house() {
     state.cut === "people" ? housePeople() : state.cut === "month" ? houseMonth() : houseWeek();
   return houseChrome(`
     ${houseLate()}
-    ${houseYours()}
+    ${state.cut === "month" ? "" : houseYours()}
     <section class="h-board">
       <div class="h-board-hd">
         <p class="o2-label">${state.cut === "people" ? "Whose week" : state.cut === "month" ? "The month" : "The house this week"}</p>

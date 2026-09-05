@@ -819,40 +819,53 @@
 .month {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
 }
 
 .month b {
-  padding: 8px;
+  padding: 4px 6px 8px;
+  border: 0;
   color: var(--ink-soft);
   font-size: 10px;
   font-weight: 750;
+  letter-spacing: 0.06em;
   text-align: center;
+  text-transform: uppercase;
 }
 
 .m-cell {
-  min-height: 96px;
-  padding: 7px;
-  border-top: 1px solid var(--border);
-  border-left: 1px solid var(--border);
-  background: transparent;
+  appearance: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-height: 108px;
+  padding: 8px;
+  border: 0;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: inset 0 0 0 1px rgba(23, 27, 36, 0.06);
+  color: inherit;
+  font: inherit;
   text-align: left;
   cursor: pointer;
 }
 
 .m-cell.out {
   color: #b0b6be;
-  background: #fbf8f3;
+  background: transparent;
+  box-shadow: none;
 }
 
 .m-cell.is-on {
-  background: rgba(45, 106, 79, 0.07);
+  background: #edf4ef;
+  box-shadow: inset 0 0 0 1.5px rgba(45, 106, 79, 0.28);
 }
 
 .m-cell .n {
   display: inline-grid;
   width: 22px;
   height: 22px;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
   place-items: center;
   border-radius: 999px;
   font-size: 12px;
@@ -862,6 +875,43 @@
 .m-cell.is-today .n {
   color: #fff;
   background: var(--sage);
+}
+
+.m-chip {
+  display: block;
+  width: 100%;
+  margin-top: 3px;
+  padding: 3px 5px;
+  border-left: 3px solid var(--sage);
+  border-radius: 5px;
+  background: #edf4ef;
+  color: var(--ink);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.m-chip.event,
+.m-chip.visit {
+  border-left-color: #8c6a9d;
+  background: #f3ecf6;
+}
+
+.m-chip.delivery {
+  border-left-color: #c79339;
+  background: #f7efdf;
+}
+
+.m-chip.appt {
+  border-left-color: #4f8ba8;
+  background: #e7f1f6;
+}
+
+.m-chip.warn {
+  border-left-color: #9b4e35;
+  background: #fbede6;
 }
 
 .people-list .who {
@@ -1227,10 +1277,33 @@
 
 .h-month {
   margin-bottom: 18px;
-  overflow: hidden;
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  background: #fff;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.h-late-slim {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 12px;
+  background: #fbede6;
+}
+
+.h-late-slim p {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.h-late-slim small {
+  display: block;
+  color: #9b4e35;
+  font-size: 11px;
 }
 
 .h-day-open {
