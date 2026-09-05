@@ -729,6 +729,7 @@ function bind() {
     el.addEventListener("change", () => {
       const [id, checkId] = el.dataset.check.split(":");
       store.toggleCheck(id, checkId);
+      render();
     });
   });
   root.querySelectorAll("[data-reassign]").forEach((el) => {
