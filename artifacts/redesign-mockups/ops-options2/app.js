@@ -29,13 +29,15 @@ const state = {
   openId: null,
   adding: null,
   filter: "all",
+  cut: "week",
   toast: null,
 };
 
 let toastTimer = 0;
 
 const PRODUCTS = {
-  gallery: ["Operations", "Three ways to run the house"],
+  gallery: ["Operations", "Four ways to run the house"],
+  house: ["Operations", "What’s late, what’s yours, then the week"],
   pulse: ["Operations", "Today, the next 7 days, and who is on what"],
   stretch: ["Operations", "The next 72 hours, with owners"],
   map: ["Operations", "The month, then the day"],
@@ -118,6 +120,7 @@ function bar() {
       <button class="o2-chip ${state.product === "gallery" ? "is-on" : ""}" type="button" data-p="gallery">All products</button>
       <div class="o2-chooser-group">
         <span>Products</span>
+        <button class="o2-chip ${state.product === "house" ? "is-on" : ""}" type="button" data-p="house">House</button>
         <button class="o2-chip ${state.product === "pulse" ? "is-on" : ""}" type="button" data-p="pulse">Pulse</button>
         <button class="o2-chip ${state.product === "stretch" ? "is-on" : ""}" type="button" data-p="stretch">Stretch</button>
         <button class="o2-chip ${state.product === "map" ? "is-on" : ""}" type="button" data-p="map">Map</button>
@@ -467,19 +470,310 @@ function mapView() {
   `);
 }
 
+function lateItems() {
+  return sortItems(items().filter(isOverdue));
+}
+
+function needsClock(item) {
+  return item.kind === "event" && !item.allDay && Boolean(item.time);
+}
+
+function houseHorizon() {
+  return items().filter(
+    (item) => item.status !== "done" && (isOverdue(item) || (item.date >= TODAY && item.date <= addDays(TODAY, 7))),
+  );
+}
+
+function rotationChain(item) {
+  if (!item.rotation?.length) return "";
+  return `<div class="h-chain" aria-label="Rotation">
+    ${item.rotation
+      .map((id) => `<span class="${id === item.assignee ? "on" : ""}">${memberOf(id).short}</span>`)
+      .join("<i></i>")}
+  </div>`;
+}
+
+function houseChrome(inner) {
+  return `
+    ${bar()}
+    <div class="o2-app">
+      <aside class="o2-side">
+        <div class="o2-brand"><img src="../logo-mark.svg" alt="">Commune</div>
+        <nav class="o2-nav">
+          <span>Home</span><span>This Hub</span><span>Expenses</span><span>Settle</span>
+          <span>Recurring</span><span>Funds</span><span>Notes</span>
+          <span class="is-on">Operations</span>
+        </nav>
+        <div class="o2-foot">${avatar(MEMBERS[0])}<div><strong>Maya Chen</strong><small>14 Park Street</small></div></div>
+      </aside>
+      <div class="o2-main house-main">
+        <div class="house-head">
+          <div>
+            <p class="o2-label">14 Park Street</p>
+            <h1>Operations</h1>
+          </div>
+          <button class="o2-btn sage" type="button" data-add>Add</button>
+        </div>
+        <div class="house-page ${state.cut === "month" ? "is-wide" : ""}">
+          ${inner}
+        </div>
+      </div>
+    </div>
+    ${drawer()}
+    ${toast()}
+  `;
+}
+
+function houseLate() {
+  const overdue = lateItems();
+  if (!overdue.length) return "";
+  return overdue
+    .map((item) => {
+      const who = memberOf(item.assignee);
+      const next = memberOf(nextInRotation(item.rotation || [item.assignee], item.assignee));
+      return `<section class="h-late">
+        <p class="o2-label">Late · ${overdueDays(item)} days · ${who.short}</p>
+        <h2>${escapeHtml(item.title)}</h2>
+        ${item.notes ? `<p class="h-note">${escapeHtml(item.notes)}</p>` : ""}
+        ${rotationChain(item)}
+        <p class="h-meta">${who.name} still has this. Next is ${next.short}.</p>
+        <div class="h-actions">
+          <button class="o2-btn" type="button" data-open="${item.id}">Open</button>
+          <button class="o2-btn" type="button" data-skip="${item.id}">Skip a week</button>
+          <button class="o2-btn sage" type="button" data-done="${item.id}">Done · ${next.short}</button>
+        </div>
+      </section>`;
+    })
+    .join("");
+}
+
+function houseYours() {
+  const mine = sortItems(
+    items().filter((item) => item.kind === "task" && item.assignee === "maya" && item.status !== "done" && !isOverdue(item)),
+  );
+  const dueNow = mine.filter((item) => item.date === TODAY);
+  if (dueNow.length) {
+    const item = dueNow[0];
+    const next = item.rotation ? memberOf(nextInRotation(item.rotation, item.assignee)) : null;
+    return `<section class="h-yours">
+      <p class="o2-label">Yours</p>
+      <button class="h-yours-item" type="button" data-open="${item.id}">
+        <h2>${escapeHtml(item.title)}</h2>
+        <p>${item.allDay ? "All day" : formatHour(item.time)} · today</p>
+      </button>
+      ${rotationChain(item)}
+      <div class="h-actions">
+        <button class="o2-btn sage" type="button" data-done="${item.id}">${next ? `Done · ${next.short}` : "Mark done"}</button>
+      </div>
+    </section>`;
+  }
+  if (mine.length) {
+    const item = mine[0];
+    return `<section class="h-yours is-clear">
+      <p class="o2-label">Yours</p>
+      <h2>You’re clear today.</h2>
+      <button class="h-next" type="button" data-open="${item.id}">
+        Next is <strong>${escapeHtml(item.title)}</strong> · ${formatDay(item.date, "short")} · ${item.allDay ? "all day" : formatHour(item.time)}
+      </button>
+    </section>`;
+  }
+  return `<section class="h-yours is-clear">
+    <p class="o2-label">Yours</p>
+    <h2>You’re clear.</h2>
+    <p class="h-meta">Nothing of yours on the board.</p>
+  </section>`;
+}
+
+function houseWeek() {
+  const overdueIds = new Set(lateItems().map((item) => item.id));
+  const rows = sortItems(
+    houseHorizon().filter((item) => !overdueIds.has(item.id)),
+  );
+  if (!rows.length) return `<p class="h-empty">Nothing else this week.</p>`;
+  const groups = [];
+  for (const item of rows) {
+    const last = groups.at(-1);
+    if (last && last.key === item.date) last.items.push(item);
+    else groups.push({ key: item.date, label: formatDay(item.date, "short"), items: [item] });
+  }
+  return groups
+    .map(
+      (group) => `<div class="h-day">
+        <p class="h-day-label">${group.label}${group.key === TODAY ? " · today" : ""}</p>
+        ${group.items
+          .map((item) => {
+            const who = item.kind === "task" ? memberOf(item.assignee) : HOUSE;
+            const next = item.rotation ? memberOf(nextInRotation(item.rotation, item.assignee)) : null;
+            const when = item.allDay || !item.time ? "All day" : formatHour(item.time);
+            return `<button class="h-row" type="button" data-open="${item.id}">
+              <span class="h-row-title">${escapeHtml(item.title)}</span>
+              <span class="h-row-meta">${when} · ${item.kind === "task" ? who.short : CATEGORY_LABEL[item.category]}${next ? ` · then ${next.short}` : ""}</span>
+            </button>`;
+          })
+          .join("")}
+      </div>`,
+    )
+    .join("");
+}
+
+function housePeople() {
+  const rows = houseHorizon();
+  const buckets = [
+    ...MEMBERS.map((member) => ({
+      member,
+      items: sortItems(rows.filter((item) => item.kind === "task" && item.assignee === member.id)),
+    })),
+    { member: HOUSE, items: sortItems(rows.filter((item) => item.kind === "event")) },
+  ];
+  return `<div class="h-people">
+    ${buckets
+      .map((bucket) => {
+        const load = bucket.items.length;
+        return `<section class="h-person">
+          <div class="h-person-hd">
+            ${avatar(bucket.member)}
+            <div>
+              <strong>${bucket.member.short}${bucket.member.you ? " · you" : ""}</strong>
+              <small>${load ? `${load} this week` : "Clear"}</small>
+            </div>
+          </div>
+          ${
+            load
+              ? bucket.items
+                  .map((item) => {
+                    const next = item.rotation ? memberOf(nextInRotation(item.rotation, item.assignee)) : null;
+                    return `<button class="h-row" type="button" data-open="${item.id}">
+                      <span class="h-row-title">${escapeHtml(item.title)}</span>
+                      <span class="h-row-meta">${isOverdue(item) ? "Late" : formatDay(item.date, "short")} · ${item.allDay || !item.time ? "all day" : formatHour(item.time)}${next ? ` · then ${next.short}` : ""}</span>
+                    </button>`;
+                  })
+                  .join("")
+              : `<p class="h-empty tight">Nothing on ${bucket.member.short === "House" ? "the house" : bucket.member.short}.</p>`
+          }
+        </section>`;
+      })
+      .join("")}
+  </div>`;
+}
+
+function houseMonth() {
+  const month = state.selected.slice(0, 7);
+  const cells = monthCells(month);
+  const monthName = fromIso(`${month}-01`).toLocaleDateString("en-GB", {
+    month: "long",
+    year: "numeric",
+  });
+  const dayRows = sortItems(
+    items().filter(
+      (item) =>
+        item.status !== "done" &&
+        (item.date === state.selected || (state.selected === TODAY && isOverdue(item))) &&
+        !(state.selected === TODAY && isOverdue(item)),
+    ),
+  );
+  const timed = dayRows.filter(needsClock);
+  return `
+    <div class="h-month-bar">
+      <strong>${monthName}</strong>
+      <div class="month-nav">
+        <button class="o2-btn" type="button" data-month="-1">‹</button>
+        <button class="o2-btn" type="button" data-today>Today</button>
+        <button class="o2-btn" type="button" data-month="1">›</button>
+      </div>
+    </div>
+    <div class="month h-month">
+      ${WEEKDAYS.map((day) => `<b>${day}</b>`).join("")}
+      ${cells
+        .map((cell) => {
+          const dayItems = items().filter((item) => item.status !== "done" && item.date === cell.date);
+          return `<button class="m-cell ${cell.inMonth ? "" : "out"} ${cell.date === state.selected ? "is-on" : ""} ${cell.date === TODAY ? "is-today" : ""}" type="button" data-day="${cell.date}">
+            <span class="n">${Number(cell.date.slice(-2))}</span>
+            ${dayItems
+              .slice(0, 2)
+              .map((item) => {
+                const who = item.kind === "task" ? memberOf(item.assignee).short : "";
+                return `<span class="ws-chip ${isOverdue(item) ? "warn" : item.kind === "event" ? "event" : ""}">${escapeHtml(item.title)}${who ? ` · ${who}` : ""}</span>`;
+              })
+              .join("")}
+          </button>`;
+        })
+        .join("")}
+    </div>
+    <section class="h-day-open">
+      <p class="o2-label">${formatDay(state.selected)}${state.selected === TODAY ? " · today" : ""}</p>
+      ${
+        dayRows.length
+          ? dayRows
+              .map((item) => {
+                const who = item.kind === "task" ? memberOf(item.assignee) : HOUSE;
+                return `<button class="h-row" type="button" data-open="${item.id}">
+                  <span class="h-row-title">${escapeHtml(item.title)}</span>
+                  <span class="h-row-meta">${item.allDay || !item.time ? "All day" : formatHour(item.time)} · ${item.kind === "task" ? who.short : CATEGORY_LABEL[item.category]}</span>
+                </button>`;
+              })
+              .join("")
+          : `<p class="h-empty">Nothing on this day.</p>`
+      }
+      ${
+        timed.length
+          ? `<p class="h-clock">${timed.map((item) => `${formatHour(item.time)} · ${escapeHtml(item.title)}`).join(" · ")}</p>`
+          : ""
+      }
+      <button class="o2-btn ghost" type="button" data-add>Add to this day</button>
+    </section>
+  `;
+}
+
+function houseCuts() {
+  return `<div class="h-cuts" role="tablist">
+    <button type="button" data-cut="week" class="${state.cut === "week" ? "is-on" : ""}">Week</button>
+    <button type="button" data-cut="people" class="${state.cut === "people" ? "is-on" : ""}">People</button>
+    <button type="button" data-cut="month" class="${state.cut === "month" ? "is-on" : ""}">Month</button>
+  </div>`;
+}
+
+function house() {
+  const body =
+    state.cut === "people" ? housePeople() : state.cut === "month" ? houseMonth() : houseWeek();
+  return houseChrome(`
+    ${houseLate()}
+    ${houseYours()}
+    <section class="h-board">
+      <div class="h-board-hd">
+        <p class="o2-label">${state.cut === "people" ? "Whose week" : state.cut === "month" ? "The month" : "The house this week"}</p>
+        ${houseCuts()}
+      </div>
+      ${body}
+    </section>
+  `);
+}
+
 function gallery() {
   return `
     ${bar()}
     <div class="o2-gallery">
       <p class="o2-label">Operations · combined products</p>
-      <h1>Three ways to run the house. Same work underneath.</h1>
+      <h1>Four ways to run the house. Same work underneath.</h1>
       <p class="lede">
-        People is how you see the day. Agenda is how you see the stretch.
-        Rotation is what makes chores fair. Today-first, 3-day, and month
-        are the calendars that actually fit. Each product below is a full
-        Operations — not a fragment. Same Park Street week. Mark bins done
-        and Alex gets next Tuesday in every view.
+        Pulse, Stretch, and Map keep every good fragment on screen.
+        House is the quieter page: what’s late, what’s yours, then the
+        week. People and month are cuts, not extra panels. Mark bins
+        done and Alex gets next Tuesday in every view.
       </p>
+      <div class="o2-picks is-feature">
+        <button class="o2-pick is-lead" type="button" data-p="house">
+          <div class="o2-pick-preview is-house" aria-hidden="true">
+            <i class="mini-late"></i>
+            <i class="mini-yours"></i>
+            <i class="mini-week"></i>
+          </div>
+          <div class="o2-pick-body">
+            <p class="why">The one I’d ship now</p>
+            <h3>House</h3>
+            <p>Late once. You’re clear, or you’re not. The week as a list. People and month when you ask.</p>
+          </div>
+        </button>
+      </div>
       <div class="o2-picks">
         <button class="o2-pick" type="button" data-p="pulse">
           <div class="o2-pick-preview is-pulse" aria-hidden="true">
@@ -488,7 +782,7 @@ function gallery() {
             <i class="mini-list"></i>
           </div>
           <div class="o2-pick-body">
-            <p class="why">Default · the one I’d ship</p>
+            <p class="why">The collage</p>
             <h3>Pulse</h3>
             <p>Today-first hours, a compact week strip, next-7 agenda, and who’s on it.</p>
           </div>
@@ -613,10 +907,11 @@ function addDrawer() {
 }
 
 function render() {
-  if (!["gallery", "pulse", "stretch", "map"].includes(state.product)) {
+  if (!["gallery", "house", "pulse", "stretch", "map"].includes(state.product)) {
     state.product = "gallery";
   }
   if (state.product === "gallery") root.innerHTML = gallery();
+  else if (state.product === "house") root.innerHTML = house();
   else if (state.product === "pulse") root.innerHTML = pulse();
   else if (state.product === "stretch") root.innerHTML = stretch();
   else if (state.product === "map") root.innerHTML = mapView();
@@ -722,6 +1017,12 @@ function bind() {
   root.querySelectorAll("[data-filter]").forEach((el) => {
     el.addEventListener("click", () => {
       state.filter = el.dataset.filter;
+      render();
+    });
+  });
+  root.querySelectorAll("[data-cut]").forEach((el) => {
+    el.addEventListener("click", () => {
+      state.cut = el.dataset.cut;
       render();
     });
   });
