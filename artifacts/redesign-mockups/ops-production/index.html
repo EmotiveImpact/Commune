@@ -3,7 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Commune Operations Mock-up</title>
+<title>Operations · Production · Commune</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 :root{
   --ink:#1a1e2b;--cream:#f5f1ea;--paper:#fffdf9;--line:#ddd8cf;--sage:#2d6a4f;
@@ -11,15 +14,16 @@
 }
 *{box-sizing:border-box}
 body{margin:0;background:var(--cream);color:var(--ink);font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
-button{font:inherit}
+button{appearance:none;font:inherit;border:0;background:transparent;color:inherit}
 .app{min-height:100vh;display:grid;grid-template-columns:230px 1fr}
 aside{background:var(--ink);color:white;padding:24px 18px;display:flex;flex-direction:column;position:sticky;top:0;height:100vh}
 .brand{font-weight:700;margin:0 8px 26px;display:flex;gap:10px;align-items:center}
 .mark{width:21px;height:21px;border:2px solid #f5f1ea;border-right-color:transparent;border-radius:50%}
 .hub{border:1px solid rgba(255,255,255,.14);padding:13px;border-radius:13px;margin-bottom:22px}
 .hub strong{display:block;font-size:13px}.hub span{font-size:11px;color:rgba(255,255,255,.55)}
-nav{display:grid;gap:4px}nav div{padding:10px 12px;border-radius:10px;color:rgba(255,255,255,.68);font-size:13px}
-nav .active{background:rgba(255,255,255,.11);color:#fff}
+aside nav{display:grid;gap:4px}aside nav div{padding:10px 12px;border-radius:10px;color:rgba(255,255,255,.68);font-size:13px}
+aside nav .active{background:rgba(255,255,255,.11);color:#fff}
+.add,.btn,.cuts button,.month-actions button{cursor:pointer}
 .user{margin-top:auto;border-top:1px solid rgba(255,255,255,.12);padding:16px 10px 0;font-size:12px}
 main{padding:42px 48px 70px;min-width:0}
 .top{display:flex;justify-content:space-between;align-items:flex-start;gap:20px}
@@ -61,16 +65,14 @@ h2{font-size:25px;letter-spacing:-.03em;margin:8px 0}
 .calendar-toolbar h2{margin:0;font-size:20px}
 .month-actions{display:flex;gap:8px}
 .month-actions button{border:1px solid var(--line);background:white;padding:8px 12px;border-radius:999px;cursor:pointer}
-.weekdays{display:grid;grid-template-columns:repeat(7,1fr);border-bottom:1px solid var(--line);background:#faf8f4}
-.weekdays div{padding:10px 12px;font-size:10px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;border-right:1px solid var(--line)}
-.weekdays div:last-child{border-right:0}
-.month-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));background:white}
-.cell{min-height:148px;padding:10px;border-right:1px solid #ece7df;border-bottom:1px solid #ece7df;position:relative}
-.cell:nth-child(7n){border-right:0}
-.cell.out{background:#faf9f6;color:#aaa}
-.cell.today{box-shadow:inset 0 0 0 2px rgba(45,106,79,.35)}
-.cell.selected{background:#f7fbf8}
-.cell button.daynum{border:0;background:transparent;padding:0;cursor:pointer;font-weight:700;color:inherit}
+.weekdays{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;padding:8px 10px 0;background:transparent}
+.weekdays div{padding:8px 6px;font-size:10px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.month-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;padding:8px 10px 12px;background:transparent}
+.cell{min-height:132px;padding:10px;border:0;border-radius:14px;background:var(--paper);box-shadow:inset 0 0 0 1px rgba(26,30,43,.06);position:relative}
+.cell.out{background:transparent;box-shadow:none;color:#aaa}
+.cell.today{box-shadow:inset 0 0 0 2px rgba(45,106,79,.28)}
+.cell.selected{background:#f7fbf8;box-shadow:inset 0 0 0 1.5px rgba(45,106,79,.28)}
+.cell button.daynum{appearance:none;border:0;background:transparent;padding:0;cursor:pointer;font-weight:700;color:inherit}
 .item{display:block;width:100%;text-align:left;border:0;border-radius:8px;margin-top:7px;padding:7px 8px;background:#f4f0e9;color:var(--ink);font-size:11px;cursor:pointer;white-space:normal;line-height:1.25}
 .item.task{background:#edf4ef}.item.event{background:#f1edf5}.item.warn{background:var(--warn-soft);color:#7f3b2c}
 .selected-day{display:grid;grid-template-columns:180px 1fr;gap:20px;padding:20px;border-top:1px solid var(--line);background:#fcfbf8}
@@ -84,15 +86,28 @@ h2{font-size:25px;letter-spacing:-.03em;margin:8px 0}
 .drawer-card h2{margin-top:20px}
 .close{float:right}
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:white;padding:10px 14px;border-radius:999px;font-size:12px;display:none}.toast.show{display:block}
+.prod-bar{position:sticky;top:0;z-index:40;display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:10px 16px;background:rgba(245,241,234,.92);border-bottom:1px solid var(--line);backdrop-filter:blur(12px)}
+.prod-bar a{display:inline-flex;align-items:center;height:32px;padding:0 12px;border:1px solid var(--line);border-radius:999px;background:#fff;color:var(--ink);font-size:12px;font-weight:700;text-decoration:none}
+.prod-bar a.is-on{background:var(--sage);border-color:var(--sage);color:#fff}
+.prod-bar span{margin-left:auto;color:var(--muted);font-size:12px}
+.side-back{display:inline-block;margin:0 8px 18px;color:rgba(255,255,255,.72);font-size:12px;text-decoration:none}
 @media(max-width:1000px){
-.app{grid-template-columns:1fr}aside{display:none}main{padding:28px 18px 60px}.people-grid{grid-template-columns:1fr 1fr}.cell{min-height:120px}.selected-day{grid-template-columns:1fr}
+.app{grid-template-columns:1fr}aside{display:none}main{padding:28px 18px 60px}.people-grid{grid-template-columns:1fr 1fr}.cell{min-height:108px}.selected-day{grid-template-columns:1fr}
 }
 </style>
 </head>
 <body>
+<nav class="prod-bar" aria-label="Mockup navigation">
+  <a href="../">Gallery</a>
+  <a href="../ops-options2/?p=house">House</a>
+  <a href="../ops-options2/">Products</a>
+  <a class="is-on" href="./">Production</a>
+  <span>14 Park Street · Codex cut</span>
+</nav>
 <div class="app">
 <aside>
   <div class="brand"><span class="mark"></span>Commune</div>
+  <a class="side-back" href="../">← Gallery</a>
   <div class="hub"><strong>14 Park Street</strong><span>Household · Maya, Jordan, Alex</span></div>
   <nav>
     <div>Home</div><div>This Hub</div><div>Expenses</div><div>Settle</div><div>Recurring</div><div>Funds</div><div>Notes</div><div class="active">Operations</div><div>Members</div>

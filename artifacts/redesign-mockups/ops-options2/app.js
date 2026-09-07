@@ -124,6 +124,7 @@ function bar() {
         <button class="o2-chip ${state.product === "pulse" ? "is-on" : ""}" type="button" data-p="pulse">Pulse</button>
         <button class="o2-chip ${state.product === "stretch" ? "is-on" : ""}" type="button" data-p="stretch">Stretch</button>
         <button class="o2-chip ${state.product === "map" ? "is-on" : ""}" type="button" data-p="map">Map</button>
+        <a class="o2-chip" href="../ops-production/">Production</a>
       </div>
       <small class="o2-clock">14 Park Street · Tue 1 Sep 2026 · live store</small>
       ${state.product !== "gallery" ? `<button class="o2-chip" type="button" data-today>Today</button>` : ""}
@@ -773,7 +774,22 @@ function gallery() {
         House is the quieter page: what’s late, what’s yours, then the
         week. People and month are cuts, not extra panels. Mark bins
         done and Alex gets next Tuesday in every view.
+        Production is the standalone Codex cut of that same idea.
       </p>
+      <div class="o2-picks is-feature">
+        <a class="o2-pick is-lead" href="../ops-production/">
+          <div class="o2-pick-preview is-house" aria-hidden="true">
+            <i class="mini-late"></i>
+            <i class="mini-yours"></i>
+            <i class="mini-week"></i>
+          </div>
+          <div class="o2-pick-body">
+            <p class="why">New · Codex</p>
+            <h3>Production</h3>
+            <p>The standalone page Codex added. Late, yours, week. People and month as cuts. Done · Alex walks the bins.</p>
+          </div>
+        </a>
+      </div>
       <div class="o2-picks is-feature">
         <button class="o2-pick is-lead" type="button" data-p="house">
           <div class="o2-pick-preview is-house" aria-hidden="true">
