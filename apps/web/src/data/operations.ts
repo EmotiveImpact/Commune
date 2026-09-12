@@ -20,10 +20,15 @@ export type OperationItem = {
   time?: string;
   allDay: boolean;
   assignee?: string;
+  rotation?: string[];
+  lastDone?: { by: string; date: string };
   repeat: OperationRepeat;
   status: OperationStatus;
   notes: string;
 };
+
+/** Maya’s household clock. The Park Street week is built around this Tuesday. */
+export const HOUSE_TODAY = "2026-09-01";
 
 export type NewOperation = Omit<OperationItem, "id" | "hubId" | "status">;
 export type OperationStore = Record<HubId, OperationItem[]>;
@@ -40,6 +45,8 @@ export const OPERATIONS_SEED: OperationStore = {
       time: "20:00",
       allDay: false,
       assignee: "Jordan Hale",
+      rotation: ["Maya Chen", "Jordan Hale", "Alex Rivera"],
+      lastDone: { by: "Alex Rivera", date: "2026-08-18" },
       repeat: "weekly",
       status: "open",
       notes:
@@ -55,10 +62,28 @@ export const OPERATIONS_SEED: OperationStore = {
       time: "19:00",
       allDay: false,
       assignee: "Alex Rivera",
+      rotation: ["Maya Chen", "Alex Rivera", "Jordan Hale"],
+      lastDone: { by: "Maya Chen", date: "2026-08-26" },
       repeat: "weekly",
       status: "open",
       notes:
         "Clear the counters, run the dishwasher, and take the food caddy out.",
+    },
+    {
+      id: "park-admin",
+      hubId: "park",
+      kind: "task",
+      category: "chore",
+      title: "House admin check",
+      date: "2026-09-05",
+      time: "11:00",
+      allDay: false,
+      assignee: "Maya Chen",
+      rotation: ["Maya Chen", "Jordan Hale", "Alex Rivera"],
+      lastDone: { by: "Maya Chen", date: "2026-08-29" },
+      repeat: "weekly",
+      status: "open",
+      notes: "Bills, notices, anything that needs a reply.",
     },
     {
       id: "park-package",
@@ -192,6 +217,10 @@ export function isOperationItem(value: unknown): value is OperationItem {
       (typeof item.time === "string" && TIME.test(item.time))) &&
     typeof item.allDay === "boolean" &&
     (item.assignee === undefined || typeof item.assignee === "string") &&
+    (item.rotation === undefined ||
+      (Array.isArray(item.rotation) &&
+        item.rotation.every((name) => typeof name === "string"))) &&
+    (item.lastDone === undefined || isLastDone(item.lastDone)) &&
     typeof item.repeat === "string" &&
     REPEATS.has(item.repeat as OperationRepeat) &&
     typeof item.status === "string" &&
@@ -214,13 +243,72 @@ export function normalizeOperationStore(
   return store;
 }
 
+function isLastDone(value: unknown): value is { by: string; date: string } {
+  if (!value || typeof value !== "object") return false;
+  const row = value as Record<string, unknown>;
+  return typeof row.by === "string" && typeof row.date === "string";
+}
+
+export function hasProductionSeed(store: OperationStore): boolean {
+  const bins = store.park.find((item) => item.id === "park-bins");
+  return Boolean(
+    bins?.rotation?.length &&
+      store.park.some((item) => item.id === "park-admin"),
+  );
+}
+
+function cloneItem(item: OperationItem): OperationItem {
+  return {
+    ...item,
+    rotation: item.rotation ? [...item.rotation] : undefined,
+    lastDone: item.lastDone ? { ...item.lastDone } : undefined,
+  };
+}
+
 export function cloneOperationSeed(): OperationStore {
   return {
-    park: OPERATIONS_SEED.park.map((item) => ({ ...item })),
-    studio: OPERATIONS_SEED.studio.map((item) => ({ ...item })),
-    lisbon: OPERATIONS_SEED.lisbon.map((item) => ({ ...item })),
+    park: OPERATIONS_SEED.park.map(cloneItem),
+    studio: OPERATIONS_SEED.studio.map(cloneItem),
+    lisbon: OPERATIONS_SEED.lisbon.map(cloneItem),
     created: [],
   };
+}
+
+export function nextInRotation(rotation: string[], current?: string): string {
+  if (!rotation.length) return current ?? "";
+  const index = current ? rotation.indexOf(current) : -1;
+  return rotation[(index + 1) % rotation.length];
+}
+
+export function nextOccurrence(
+  date: string,
+  repeat: OperationRepeat,
+  today = HOUSE_TODAY,
+): string {
+  if (repeat === "none") return date;
+  let next = addRepeat(date, repeat);
+  while (next <= today) next = addRepeat(next, repeat);
+  return next;
+}
+
+export function firstNameOf(name?: string): string {
+  return name?.split(" ")[0] ?? "";
+}
+
+export function formatTimeLabel(time?: string): string {
+  if (!time) return "All day";
+  const [hours, minutes] = time.split(":").map(Number);
+  const suffix = hours >= 12 ? "pm" : "am";
+  const hour = hours % 12 || 12;
+  return minutes
+    ? `${hour}:${String(minutes).padStart(2, "0")}${suffix}`
+    : `${hour}${suffix}`;
+}
+
+export function overdueDays(date: string, today = HOUSE_TODAY): number {
+  const start = dateFromIso(date).getTime();
+  const end = dateFromIso(today).getTime();
+  return Math.max(0, Math.round((end - start) / 86400000));
 }
 
 export function addRepeat(date: string, repeat: OperationRepeat): string {
@@ -249,7 +337,7 @@ export function isoFromDate(date: Date): string {
 }
 
 export function todayIso(): string {
-  return isoFromDate(new Date());
+  return HOUSE_TODAY;
 }
 
 export function addDays(date: string, days: number): string {

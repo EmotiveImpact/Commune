@@ -1,6 +1,8 @@
 import { useState } from "react";
 import {
   dateFromIso,
+  firstNameOf,
+  nextInRotation,
   todayIso,
   type NewOperation,
   type OperationCategory,
@@ -106,6 +108,18 @@ export function OperationView() {
       {item.notes ? (
         <p className="a-window-note operation-notes">{item.notes}</p>
       ) : null}
+      {item.rotation?.length ? (
+        <div className="ops-rotation" style={{ margin: "0 0 16px" }}>
+          {item.rotation.map((name, index) => (
+            <span key={name}>
+              {index ? <i /> : null}
+              <em className={name === item.assignee ? "is-on" : undefined}>
+                {firstNameOf(name)}
+              </em>
+            </span>
+          ))}
+        </div>
+      ) : null}
       {confirmDelete ? (
         <div className="operation-delete">
           <p>Remove this from the calendar? It won’t come back.</p>
@@ -134,7 +148,11 @@ export function OperationView() {
               type="button"
               onClick={() => toggleOperation(item.id)}
             >
-              {item.status === "done" ? "Mark open" : "Mark done"}
+              {item.status === "done"
+                ? "Mark open"
+                : item.rotation?.length
+                  ? `Done · ${firstNameOf(nextInRotation(item.rotation, item.assignee))}`
+                  : "Mark done"}
             </button>
           ) : null}
           <button

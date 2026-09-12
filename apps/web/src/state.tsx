@@ -30,9 +30,13 @@ import {
   type WindowId,
 } from "./data/household";
 import {
-  addRepeat,
+  addDays,
   cloneOperationSeed,
+  hasProductionSeed,
+  nextInRotation,
+  nextOccurrence,
   normalizeOperationStore,
+  todayIso,
   type NewOperation,
   type OperationItem,
   type OperationStore,
@@ -41,8 +45,6 @@ import { isNativeNow, keepSearch, pathOnly } from "./nav";
 
 const SESSION_KEY = "commune.session";
 const NAV_KEY = "commune.nav-mode";
-const OPERATIONS_FALLBACK = cloneOperationSeed();
-
 export type Seed = "maya" | "new";
 
 export type Session = {
@@ -117,6 +119,7 @@ type AppState = {
   addOperation: (item: NewOperation) => string;
   updateOperation: (id: string, item: NewOperation) => void;
   toggleOperation: (id: string) => void;
+  skipOperation: (id: string) => void;
   removeOperation: (id: string) => void;
   createHub: (input: CreatedHub, opts?: { openExpense?: boolean }) => void;
   recordExpense: (row: LastExpense) => void;
@@ -205,6 +208,12 @@ function isEmptyHub(id: HubId, session: Session | null): boolean {
   return id === "created" && Boolean(session?.emptyLedger);
 }
 
+function operationsFor(session: Session | null): OperationStore {
+  const stored = session?.operations;
+  if (stored && hasProductionSeed(stored)) return stored;
+  return cloneOperationSeed();
+}
+
 export function AppProvider({ children }: { children: ReactNode }) {
   const [location, setLocation] = useLocation();
   const screen: ScreenId = PATH_SCREEN[pathOnly(location)] ?? "home";
@@ -254,7 +263,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const hub = resolveHub(hubId, session);
   const places = placesFor(session);
   const emptyHub = isEmptyHub(hubId, session);
-  const operationStore = session?.operations ?? OPERATIONS_FALLBACK;
+  const operationStore = operationsFor(session);
+
+  useEffect(() => {
+    if (!session || session.seed !== "maya") return;
+    if (session.operations && hasProductionSeed(session.operations)) return;
+    persist({ ...session, operations: cloneOperationSeed() });
+  }, [persist, session]);
   const operations = operationStore[hubId];
   const selectedOperation =
     operations.find((item) => item.id === operationKey) ?? null;
@@ -316,8 +331,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
         id,
         hubId,
         status: "open",
+        rotation:
+          item.rotation ??
+          (item.kind === "task" && item.repeat !== "none"
+            ? resolveHub(hubId, session).members.map((member) => member.name)
+            : undefined),
       };
-      const current = session?.operations ?? cloneOperationSeed();
+      const current = operationsFor(session);
       if (session) {
         persist({
           ...session,
@@ -337,7 +357,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const updateOperation = useCallback(
     (id: string, item: NewOperation) => {
       if (!session) return;
-      const current = session.operations ?? cloneOperationSeed();
+      const current = operationsFor(session);
       persist({
         ...session,
         operations: {
@@ -350,6 +370,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
                   id: row.id,
                   hubId: row.hubId,
                   status: row.status,
+                  rotation: item.rotation ?? row.rotation,
+                  lastDone: row.lastDone,
                 }
               : row,
           ),
@@ -364,32 +386,31 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const toggleOperation = useCallback(
     (id: string) => {
       if (!session) return;
-      const current = session.operations ?? cloneOperationSeed();
+      const current = operationsFor(session);
       const item = current[hubId].find((row) => row.id === id);
       if (!item) return;
       const completing = item.status === "open";
-      const rows = current[hubId].map((row) =>
-        row.id === id
-          ? {
-              ...row,
-              status: completing ? ("done" as const) : ("open" as const),
-            }
-          : row,
-      );
-      if (completing && item.repeat !== "none") {
-        const nextDate = addRepeat(item.date, item.repeat);
-        const exists = rows.some(
-          (row) => row.title === item.title && row.date === nextDate,
-        );
-        if (!exists) {
-          rows.push({
-            ...item,
-            id: `${item.id}-${nextDate}`,
-            date: nextDate,
-            status: "open",
-          });
+      const today = todayIso();
+      const rows = current[hubId].map((row) => {
+        if (row.id !== id) return row;
+        if (!completing) {
+          return { ...row, status: "open" as const };
         }
-      }
+        if (row.repeat !== "none") {
+          return {
+            ...row,
+            status: "open" as const,
+            date: nextOccurrence(row.date, row.repeat, today),
+            assignee: row.rotation?.length
+              ? nextInRotation(row.rotation, row.assignee)
+              : row.assignee,
+            lastDone: row.assignee
+              ? { by: row.assignee, date: today }
+              : row.lastDone,
+          };
+        }
+        return { ...row, status: "done" as const };
+      });
       persist({
         ...session,
         operations: {
@@ -401,10 +422,31 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [hubId, persist, session],
   );
 
+  const skipOperation = useCallback(
+    (id: string) => {
+      if (!session) return;
+      const current = operationsFor(session);
+      const item = current[hubId].find((row) => row.id === id);
+      if (!item) return;
+      const today = todayIso();
+      const from = item.date < today ? today : item.date;
+      persist({
+        ...session,
+        operations: {
+          ...current,
+          [hubId]: current[hubId].map((row) =>
+            row.id === id ? { ...row, date: addDays(from, 7) } : row,
+          ),
+        },
+      });
+    },
+    [hubId, persist, session],
+  );
+
   const removeOperation = useCallback(
     (id: string) => {
       if (!session) return;
-      const current = session.operations ?? cloneOperationSeed();
+      const current = operationsFor(session);
       persist({
         ...session,
         operations: {
@@ -585,6 +627,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       addOperation,
       updateOperation,
       toggleOperation,
+      skipOperation,
       removeOperation,
       createHub,
       recordExpense,
@@ -624,6 +667,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       addOperation,
       updateOperation,
       toggleOperation,
+      skipOperation,
       removeOperation,
       createHub,
       recordExpense,

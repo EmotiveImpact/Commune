@@ -451,7 +451,7 @@ export const PAGE_LEDES: Record<string, string> = {
   analytics: "This month against the house budget.",
   breakdown: "The ledger view of who owes whom.",
   members: "Balances for this cycle, not personalities.",
-  operations: "Tasks, deliveries, visits, and appointments for this hub.",
+  operations: "What’s late, what’s yours, then the week.",
   operation: "The date, owner, and details in one place.",
   "operation-new": "A task to finish, or something everyone should know is happening.",
   "operation-edit": "Change the time, the owner, or take it off the calendar.",
