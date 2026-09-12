@@ -164,6 +164,20 @@ export function OperationsScreen() {
   return (
     <div className="ops ops-prod">
       <div className="ops-prod-head">
+        <div className="ops-cuts" role="tablist" aria-label="Operations view">
+          {(["week", "people", "month"] as const).map((id) => (
+            <button
+              key={id}
+              type="button"
+              role="tab"
+              aria-selected={cut === id}
+              className={cx(cut === id && "is-on")}
+              onClick={() => setCut(id)}
+            >
+              {id === "week" ? "Week" : id === "people" ? "People" : "Month"}
+            </button>
+          ))}
+        </div>
         <button
           className="a-btn ops-add"
           type="button"
@@ -173,21 +187,15 @@ export function OperationsScreen() {
           Add item
         </button>
       </div>
-
-      <div className="ops-cuts" role="tablist" aria-label="Operations view">
-        {(["week", "people", "month"] as const).map((id) => (
-          <button
-            key={id}
-            type="button"
-            role="tab"
-            aria-selected={cut === id}
-            className={cx(cut === id && "is-on")}
-            onClick={() => setCut(id)}
-          >
-            {id === "week" ? "Week" : id === "people" ? "People" : "Month"}
-          </button>
-        ))}
-      </div>
+      <p className="ops-compare">
+        Other mockups are still live:
+        <a href="http://localhost:3001/ops-options2/?p=house">House</a>
+        <a href="http://localhost:3001/ops-options2/?p=pulse">Pulse</a>
+        <a href="http://localhost:3001/ops-options2/?p=stretch">Stretch</a>
+        <a href="http://localhost:3001/ops-options2/?p=map">Map</a>
+        <a href="http://localhost:3001/ops-options/">Fragments</a>
+        <a href="http://localhost:3001/ops-production/">Codex HTML</a>
+      </p>
 
       {cut === "week" ? (
         <div className="ops-stack">

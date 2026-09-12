@@ -4926,13 +4926,37 @@ button.a-item {
 
 .ops-prod-head {
   display: flex;
-  justify-content: flex-end;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 }
 
 .ops-prod .ops-add {
+  flex: 0 0 auto;
   background: var(--sage);
   color: #fff;
   border-color: var(--sage);
+}
+
+.ops-compare {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin: -6px 0 0;
+  color: var(--ink-soft);
+  font-size: 12px;
+}
+
+.ops-compare a {
+  color: #2d6a4f;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.ops-compare a:hover {
+  text-decoration: underline;
 }
 
 .ops-cuts {
@@ -5374,15 +5398,15 @@ button.a-item {
 }
 
 .a-body.is-native .ops-prod-head {
-  justify-content: stretch;
+  align-items: center;
 }
 
 .a-body.is-native .ops-prod .ops-add {
-  width: 100%;
+  margin-left: auto;
 }
 
 .a-body.is-native .ops-cuts {
-  width: 100%;
+  width: min(280px, calc(100% - 132px));
 }
 
 .a-body.is-native .ops-people {
