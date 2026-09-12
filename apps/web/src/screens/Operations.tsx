@@ -342,7 +342,10 @@ export function OperationsScreen() {
                         item.kind === "task" ? "is-task" : "is-event",
                         item.date < today && "is-warn",
                       )}
-                      onClick={() => go("operation", { operation: item.id })}
+                      onClick={() => {
+                        showDate(date);
+                        go("operation", { operation: item.id });
+                      }}
                     >
                       {item.title}
                     </button>
