@@ -4934,8 +4934,8 @@ button.a-item {
   padding: 7px 8px 7px 7px;
   border: 1px solid rgba(26, 30, 43, 0.06);
   border-radius: 999px;
-  background: rgba(255, 253, 249, 0.86);
-  box-shadow: 0 10px 28px rgba(26, 30, 43, 0.04);
+  background: #fffdf9;
+  box-shadow: none;
 }
 
 .ops-prod .ops-add {
@@ -4944,11 +4944,7 @@ button.a-item {
   background: var(--sage);
   color: #fff;
   border-color: var(--sage);
-  box-shadow: 0 8px 16px rgba(45, 106, 79, 0.18);
-}
-
-.ops-prod .ops-add:hover {
-  filter: brightness(1.05);
+  box-shadow: none;
 }
 
 .ops-cuts {
@@ -4957,8 +4953,10 @@ button.a-item {
   width: min(340px, 100%);
   height: 38px;
   padding: 3px;
+  border: 0;
   border-radius: 999px;
   background: #f3eee7;
+  box-shadow: none;
 }
 
 .ops-cuts button {
@@ -4971,12 +4969,13 @@ button.a-item {
   font-size: 13px;
   font-weight: 650;
   cursor: pointer;
+  box-shadow: none;
 }
 
 .ops-cuts button.is-on {
   background: #1a1e2b;
   color: #fff;
-  box-shadow: 0 6px 14px rgba(26, 30, 43, 0.16);
+  box-shadow: none;
 }
 
 .ops-stack {
@@ -4989,7 +4988,7 @@ button.a-item {
   border: 1px solid rgba(26, 30, 43, 0.06);
   border-radius: 22px;
   background: #fffdf9;
-  box-shadow: 0 16px 36px rgba(26, 30, 43, 0.04);
+  box-shadow: none;
 }
 
 .ops-late,
@@ -5202,7 +5201,7 @@ button.a-item {
   border: 1px solid rgba(26, 30, 43, 0.06);
   border-radius: 20px;
   background: #fffdf9;
-  box-shadow: 0 12px 28px rgba(26, 30, 43, 0.04);
+  box-shadow: none;
 }
 
 .ops-person header {
@@ -5277,7 +5276,7 @@ button.a-item {
   border: 1px solid rgba(26, 30, 43, 0.06);
   border-radius: 22px;
   background: #fffdf9;
-  box-shadow: 0 16px 36px rgba(26, 30, 43, 0.04);
+  box-shadow: none;
 }
 
 .ops-month-toolbar {
@@ -5457,7 +5456,7 @@ button.a-item {
   font-size: 13px;
   font-weight: 650;
   letter-spacing: -0.01em;
-  box-shadow: 0 16px 40px rgba(26, 30, 43, 0.28);
+  box-shadow: none;
 }
 
 @media (max-width: 1000px) {
