@@ -3,6 +3,7 @@ import {
   dateFromIso,
   firstNameOf,
   nextInRotation,
+  nextOccurrence,
   todayIso,
   type NewOperation,
   type OperationCategory,
@@ -30,6 +31,7 @@ export function OperationView() {
   const {
     selectedOperation: item,
     toggleOperation,
+    skipOperation,
     removeOperation,
     go,
     closeWindow,
@@ -60,6 +62,13 @@ export function OperationView() {
       : item.repeat === "monthly"
         ? "Every month"
         : "Doesn’t repeat";
+  const nextPerson = item.rotation?.length
+    ? firstNameOf(nextInRotation(item.rotation, item.assignee))
+    : "";
+  const nextDate =
+    item.repeat !== "none"
+      ? nextOccurrence(item.date, item.repeat, todayIso())
+      : "";
 
   return (
     <section className="a-window operation-detail">
@@ -98,6 +107,15 @@ export function OperationView() {
           <div className="a-note-fact">
             <span>Repeats</span>
             <strong>{repeat}</strong>
+          </div>
+        ) : null}
+        {item.kind === "task" && item.status === "open" && (nextPerson || nextDate) ? (
+          <div className="a-note-fact">
+            <span>Next</span>
+            <strong>
+              {nextPerson || "Same person"}
+              {nextDate ? ` · ${operationDateFormatter.format(dateFromIso(nextDate))}` : ""}
+            </strong>
           </div>
         ) : null}
         <div className="a-note-fact">
@@ -150,9 +168,18 @@ export function OperationView() {
             >
               {item.status === "done"
                 ? "Mark open"
-                : item.rotation?.length
-                  ? `Done · ${firstNameOf(nextInRotation(item.rotation, item.assignee))}`
+                : nextPerson
+                  ? `Done · ${nextPerson}`
                   : "Mark done"}
+            </button>
+          ) : null}
+          {item.kind === "task" && item.status === "open" && item.repeat !== "none" ? (
+            <button
+              className="a-btn ghost"
+              type="button"
+              onClick={() => skipOperation(item.id)}
+            >
+              Skip a week
             </button>
           ) : null}
           <button

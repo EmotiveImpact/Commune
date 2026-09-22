@@ -56,14 +56,6 @@ export function OperationsScreen() {
   const [month, setMonth] = useState(today.slice(0, 7));
   const [selectedDate, setSelectedDate] = useState(today);
   const [toast, setToast] = useState<string | null>(null);
-  const [justCompleted, setJustCompleted] = useState<{
-    id: string;
-    title: string;
-    fromName: string;
-    nextName: string;
-    nextDate: string;
-    rotation: string[];
-  } | null>(null);
 
   const ordered = useMemo(
     () =>
@@ -81,9 +73,9 @@ export function OperationsScreen() {
   const weekEnd = addDays(today, 6);
   const weekItems = open.filter(
     (item) =>
-      item.date > today &&
-      item.date <= weekEnd &&
-      item.id !== late?.id,
+      item.id !== late?.id &&
+      ((item.date >= today && item.date <= weekEnd) ||
+        item.lastDone?.date === today),
   );
   const yoursToday = open.filter(
     (item) => item.kind === "task" && item.assignee === you.name && item.date === today,
@@ -97,7 +89,7 @@ export function OperationsScreen() {
   const calendarDays = useMemo(() => buildMonth(month), [month]);
   const selectedItems = open.filter((item) => item.date === selectedDate);
   const peopleHorizon = open.filter(
-    (item) => item.date <= weekEnd,
+    (item) => item.date <= weekEnd || item.lastDone?.date === today,
   );
 
   function flash(text: string) {
@@ -121,19 +113,6 @@ export function OperationsScreen() {
       ? firstNameOf(nextInRotation(item.rotation, item.assignee))
       : "";
     toggleOperation(item.id);
-    if (late && item.id === late.id) {
-      setJustCompleted({
-        id: item.id,
-        title: item.title,
-        fromName: firstNameOf(item.assignee) || "The house",
-        nextName: nextName || "the house",
-        nextDate:
-          item.repeat !== "none"
-            ? nextOccurrence(item.date, item.repeat, today)
-            : item.date,
-        rotation: item.rotation ?? [],
-      });
-    }
     const handedOn =
       item.repeat !== "none"
         ? shortDateFormatter.format(dateFromIso(nextOccurrence(item.date, item.repeat, today)))
@@ -148,7 +127,6 @@ export function OperationsScreen() {
   function skipTask(item: OperationItem) {
     const from = item.date < today ? today : item.date;
     skipOperation(item.id);
-    if (justCompleted?.id === item.id) setJustCompleted(null);
     flash(`Moved to ${shortDateFormatter.format(dateFromIso(addDays(from, 7)))}`);
   }
 
@@ -160,7 +138,10 @@ export function OperationsScreen() {
       tone: member.cls,
       initials: member.ini,
       items: peopleHorizon.filter(
-        (item) => item.kind === "task" && item.assignee === member.name,
+        (item) =>
+          item.kind === "task" &&
+          item.assignee === member.name &&
+          (item.date <= weekEnd || item.lastDone?.date === today),
       ),
     })),
     {
@@ -169,7 +150,11 @@ export function OperationsScreen() {
       you: false,
       tone: "house",
       initials: "H",
-      items: peopleHorizon.filter((item) => item.kind === "event"),
+      items: peopleHorizon.filter(
+        (item) =>
+          item.kind === "event" &&
+          (item.date <= weekEnd || item.lastDone?.date === today),
+      ),
     },
   ];
   const weekGroups = groupByDate(weekItems);
@@ -211,8 +196,6 @@ export function OperationsScreen() {
               onSkip={() => skipTask(late)}
               onDone={() => completeTask(late)}
             />
-          ) : justCompleted ? (
-            <CompletedCard done={justCompleted} />
           ) : null}
 
           <section className="ops-card ops-yours">
@@ -252,7 +235,11 @@ export function OperationsScreen() {
                   <div className="ops-week-date">
                     <small>{weekdayOf(group.date)}</small>
                     <strong>{Number(group.date.slice(-2))}</strong>
-                    {group.date === addDays(today, 1) ? <em>Tomorrow</em> : null}
+                    {group.date === today ? (
+                      <em>Today</em>
+                    ) : group.date === addDays(today, 1) ? (
+                      <em>Tomorrow</em>
+                    ) : null}
                   </div>
                   <div className="ops-week-items">
                     {group.items.map((item) => (
@@ -470,43 +457,6 @@ function LateCard({
           {next ? `Done · ${next}` : "Mark done"}
         </button>
       </div>
-    </section>
-  );
-}
-
-function CompletedCard({
-  done,
-}: {
-  done: {
-    title: string;
-    fromName: string;
-    nextName: string;
-    nextDate: string;
-    rotation: string[];
-  };
-}) {
-  const short =
-    done.title === "Put the bins out" ? "Bins" : done.title;
-  return (
-    <section className="ops-card ops-done">
-      <p className="ops-kicker is-sage">Completed</p>
-      <h2>{short} moved to {done.nextName}.</h2>
-      <p className="ops-note">
-        {done.fromName} completed this occurrence. The next weekly occurrence is now{" "}
-        {done.nextName}’s on {dayFormatter.format(dateFromIso(done.nextDate))}.
-      </p>
-      {done.rotation.length ? (
-        <div className="ops-rotation">
-          {done.rotation.map((name, index) => (
-            <span key={name}>
-              {index ? <i /> : null}
-              <em className={cx(firstNameOf(name) === done.nextName && "is-on")}>
-                {firstNameOf(name)}
-              </em>
-            </span>
-          ))}
-        </div>
-      ) : null}
     </section>
   );
 }
