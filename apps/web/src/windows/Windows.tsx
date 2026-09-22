@@ -4,6 +4,7 @@ import { todayIso } from "../data/operations";
 import { useApp } from "../state";
 import { Icon } from "../ui/Icon";
 import { Avatar, Choose, Pill } from "../ui/widgets";
+import { ImagePick } from "../ui/photos";
 import { cx } from "../ui/cx";
 import { OperationEdit, OperationNew, OperationView } from "./OperationsWindows";
 
@@ -383,15 +384,24 @@ function MemberInvite() {
 }
 
 function Profile() {
-  const { go, you } = useApp();
+  const { go, you, setAvatar } = useApp();
   return (
     <section className="a-window">
       <p className="a-window-kicker">You</p>
-      <div className="a-member-row">
+      <div className="a-avatar-edit">
         <Avatar tone="maya" initials={you.initials} />
         <div className="who">
           <strong>{you.name}</strong>
           <span>{you.email}</span>
+          <ImagePick
+            label="Change photo"
+            clearLabel="Remove"
+            hasCustom={Boolean(you.photo)}
+            maxEdge={320}
+            inputLabel="Your photo"
+            onPhoto={setAvatar}
+            onClear={() => setAvatar(null)}
+          />
         </div>
         <Pill tone="sage">You</Pill>
       </div>

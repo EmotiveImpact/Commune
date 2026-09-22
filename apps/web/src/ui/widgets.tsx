@@ -1,17 +1,29 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { cx } from "./cx";
 import type { AvatarTone } from "../data/household";
+import { useApp } from "../state";
 import { Icon } from "./Icon";
 
 export function Avatar({
   tone,
   initials,
   className,
+  src,
 }: {
   tone: AvatarTone | string;
   initials: string;
   className?: string;
+  src?: string;
 }) {
+  const { you } = useApp();
+  const photo = src ?? (tone === "maya" ? you.photo : undefined);
+  if (photo) {
+    return (
+      <span className={cx("avatar", "has-photo", tone, className)}>
+        <img src={photo} alt="" />
+      </span>
+    );
+  }
   return <span className={cx("avatar", tone, className)}>{initials}</span>;
 }
 

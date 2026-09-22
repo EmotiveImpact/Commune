@@ -1,15 +1,34 @@
+import type { ReactNode } from "react";
 import { useApp } from "../state";
 import { Avatar, Pill } from "../ui/widgets";
+import { ImagePick } from "../ui/photos";
 import { cx } from "../ui/cx";
+
+function Cover({ children }: { children: ReactNode }) {
+  const { hub, session, setHubPhoto } = useApp();
+  const custom = Boolean(session?.hubPhotos?.[hub.id]);
+  return (
+    <div className="a-cover" style={{ ["--hub-photo" as string]: `url("${hub.photo}")` }}>
+      <ImagePick
+        tone="on-photo"
+        label="Change photo"
+        clearLabel="Original"
+        hasCustom={custom}
+        maxEdge={1280}
+        inputLabel={`Photo for ${hub.name}`}
+        onPhoto={(dataUrl) => setHubPhoto(hub.id, dataUrl)}
+        onClear={() => setHubPhoto(hub.id, null)}
+      />
+      {children}
+    </div>
+  );
+}
 
 export function HubScreen() {
   const { hub, go } = useApp();
   return (
     <>
-      <div
-        className="a-cover"
-        style={{ ["--hub-photo" as string]: `url("${hub.photo}")` }}
-      >
+      <Cover>
         <span className="type">{hub.type}</span>
         <h1>{hub.name}</h1>
         <p className="lede">{hub.lede}</p>
@@ -21,7 +40,7 @@ export function HubScreen() {
           </div>
           <span>{hub.people}</span>
         </div>
-      </div>
+      </Cover>
 
       <div className="a-kpis">
         {hub.kpis.map((kpi) => (
@@ -181,11 +200,11 @@ export function HubEmptyScreen() {
   const { hub, go } = useApp();
   return (
     <>
-      <div className="a-cover" style={{ ["--hub-photo" as string]: `url("${hub.photo}")` }}>
+      <Cover>
         <span className="type">{hub.type}</span>
         <h1>{hub.name}</h1>
         <p className="lede">No bills yet. Add the first one so the house has a truth.</p>
-      </div>
+      </Cover>
       <div className="a-empty a-cover-empty">
         <p>Rent, gas, Tesco — once something is shared, Home and Settle will have something to say.</p>
         <button className="a-btn" type="button" onClick={() => go("add-expense")}>

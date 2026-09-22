@@ -1,7 +1,30 @@
+import type { ReactNode } from "react";
 import { useApp } from "../state";
 import { Avatar, Pill } from "../ui/widgets";
 import { heroClass } from "../data/household";
 import { dateFromIso, todayIso, type OperationItem } from "../data/operations";
+import { cx } from "../ui/cx";
+
+function PhotoFace({
+  photo,
+  variant,
+  className,
+  children,
+}: {
+  photo: string;
+  variant: "place" | "focus";
+  className?: string;
+  children: ReactNode;
+}) {
+  return (
+    <div
+      className={cx(variant === "focus" ? "a-focus-hero" : "a-place-hero", photo && "has-photo", className)}
+      style={photo ? { ["--place-photo" as string]: `url("${photo}")` } : undefined}
+    >
+      {children}
+    </div>
+  );
+}
 
 const operationDay = new Intl.DateTimeFormat("en-GB", {
   weekday: "long",
@@ -44,13 +67,16 @@ export function HomeScreen() {
 
 function HomeWeekScreen() {
   const { go, places, operationsByHub } = useApp();
+  const park = places.find((hub) => hub.id === "park");
+  const studio = places.find((hub) => hub.id === "studio");
+  const lisbon = places.find((hub) => hub.id === "lisbon");
   const extra = places.find((hub) => hub.id === "created");
   const bins = nextBins(operationsByHub.park);
   const binsCopy = binsStatus(bins);
   return (
     <>
       <button className="a-place a-focus-lead" type="button" onClick={() => go("hub", { hub: "park" })}>
-        <div className="a-focus-hero">
+        <PhotoFace photo={park?.photo ?? ""} variant="focus">
           <span className="type">Needs you · Household</span>
           <h2>14 Park Street</h2>
           <p>You owe £42. Gas Friday. {binsCopy.hero} Alex hasn’t paid into the fund.</p>
@@ -62,7 +88,7 @@ function HomeWeekScreen() {
             </div>
             Open this hub
           </div>
-        </div>
+        </PhotoFace>
         <div className="a-place-foot">
           <span>Gas Friday · {binsCopy.short}</span>
           <span className="amt">£42</span>
@@ -71,22 +97,22 @@ function HomeWeekScreen() {
 
       <div className="a-focus-pair">
         <button className="a-place" type="button" onClick={() => go("hub", { hub: "studio" })}>
-          <div className="a-place-hero studio">
+          <PhotoFace photo={studio?.photo ?? ""} variant="place" className="studio">
             <span className="type">Quiet</span>
             <h3>Studio East</h3>
             <p>You’re even</p>
-          </div>
+          </PhotoFace>
           <div className="a-place-foot">
             <span>Printer ink Monday</span>
             <span className="amt even">£0</span>
           </div>
         </button>
         <button className="a-place" type="button" onClick={() => go("hub", { hub: "lisbon" })}>
-          <div className="a-place-hero lisbon">
+          <PhotoFace photo={lisbon?.photo ?? ""} variant="place" className="lisbon">
             <span className="type">You’re owed</span>
             <h3>Lisbon · Sept</h3>
             <p>You’re owed £64</p>
-          </div>
+          </PhotoFace>
           <div className="a-place-foot">
             <span>Airbnb hold Thursday</span>
             <span className="amt credit">+£64</span>
@@ -101,11 +127,11 @@ function HomeWeekScreen() {
           onClick={() => go("hub", { hub: "created" })}
           style={{ marginTop: 12 }}
         >
-          <div className={`a-place-hero ${heroClass(extra)}`}>
+          <PhotoFace photo={extra.photo} variant="place" className={heroClass(extra)}>
             <span className="type">{extra.type}</span>
             <h3>{extra.name}</h3>
             <p>No bills yet</p>
-          </div>
+          </PhotoFace>
           <div className="a-place-foot">
             <span>Just you so far</span>
             <span className="amt even">£0</span>
@@ -201,7 +227,7 @@ function HomeFreshScreen() {
   return (
     <>
       <button className="a-place a-focus-lead" type="button" onClick={() => go("hub", { hub: "created" })}>
-        <div className="a-focus-hero">
+        <PhotoFace photo={hub.photo} variant="focus" className={heroClass(hub)}>
           <span className="type">New · {hub.type}</span>
           <h2>{hub.name}</h2>
           <p>No bills yet. Add the first one so the house has a truth.</p>
@@ -211,7 +237,7 @@ function HomeFreshScreen() {
             </div>
             Open this hub
           </div>
-        </div>
+        </PhotoFace>
         <div className="a-place-foot">
           <span>Just you so far</span>
           <span className="amt even">£0</span>
@@ -265,11 +291,11 @@ export function PlacesScreen() {
         {hub ? (
           <div className="a-place-grid">
             <button className="a-place" type="button" onClick={() => go("hub", { hub: "created" })}>
-              <div className={`a-place-hero ${heroClass(hub)}`}>
+              <PhotoFace photo={hub.photo} variant="place" className={heroClass(hub)}>
                 <span className="type">{hub.type}</span>
                 <h3>{hub.name}</h3>
                 <p>No bills yet</p>
-              </div>
+              </PhotoFace>
               <div className="a-place-foot">
                 <span>Just you so far</span>
                 <span className="amt even">£0</span>
@@ -281,6 +307,9 @@ export function PlacesScreen() {
     );
   }
 
+  const park = places.find((hub) => hub.id === "park");
+  const studio = places.find((hub) => hub.id === "studio");
+  const lisbon = places.find((hub) => hub.id === "lisbon");
   const extra = places.find((hub) => hub.id === "created");
   const bins = nextBins(operationsByHub.park);
   const binsCopy = binsStatus(bins);
@@ -294,33 +323,33 @@ export function PlacesScreen() {
       </div>
       <div className="a-place-grid">
         <button className="a-place" type="button" onClick={() => go("hub", { hub: "park" })}>
-          <div className="a-place-hero park">
+          <PhotoFace photo={park?.photo ?? ""} variant="place" className="park">
             <span className="type">Household</span>
             <h3>14 Park Street</h3>
             <p>You owe £42</p>
-          </div>
+          </PhotoFace>
           <div className="a-place-foot">
             <span>Gas Friday · {binsCopy.short}</span>
             <span className="amt">£42</span>
           </div>
         </button>
         <button className="a-place" type="button" onClick={() => go("hub", { hub: "studio" })}>
-          <div className="a-place-hero studio">
+          <PhotoFace photo={studio?.photo ?? ""} variant="place" className="studio">
             <span className="type">Workspace</span>
             <h3>Studio East</h3>
             <p>You’re even</p>
-          </div>
+          </PhotoFace>
           <div className="a-place-foot">
             <span>Printer ink Monday</span>
             <span className="amt even">£0</span>
           </div>
         </button>
         <button className="a-place" type="button" onClick={() => go("hub", { hub: "lisbon" })}>
-          <div className="a-place-hero lisbon">
+          <PhotoFace photo={lisbon?.photo ?? ""} variant="place" className="lisbon">
             <span className="type">Trip</span>
             <h3>Lisbon · Sept</h3>
             <p>You’re owed £64</p>
-          </div>
+          </PhotoFace>
           <div className="a-place-foot">
             <span>Airbnb hold Thursday</span>
             <span className="amt credit">+£64</span>
@@ -328,11 +357,11 @@ export function PlacesScreen() {
         </button>
         {extra ? (
           <button className="a-place" type="button" onClick={() => go("hub", { hub: "created" })}>
-            <div className={`a-place-hero ${heroClass(extra)}`}>
+            <PhotoFace photo={extra.photo} variant="place" className={heroClass(extra)}>
               <span className="type">{extra.type}</span>
               <h3>{extra.name}</h3>
               <p>No bills yet</p>
-            </div>
+            </PhotoFace>
             <div className="a-place-foot">
               <span>Just you so far</span>
               <span className="amt even">£0</span>

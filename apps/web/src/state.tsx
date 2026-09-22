@@ -41,6 +41,7 @@ import {
   type OperationItem,
   type OperationStore,
 } from "./data/operations";
+import { isStoredImage, readHubPhotos } from "./data/images";
 import { isNativeNow, keepSearch, pathOnly } from "./nav";
 
 const SESSION_KEY = "commune.session";
@@ -55,6 +56,8 @@ export type Session = {
   emptyLedger: boolean;
   createdHub?: CreatedHub;
   operations?: OperationStore;
+  hubPhotos?: Partial<Record<HubId, string>>;
+  avatar?: string;
 };
 
 export type LastExpense = {
@@ -104,7 +107,9 @@ type AppState = {
   dark: boolean;
   noticesOn: boolean;
   native: boolean;
-  you: { name: string; email: string; initials: string };
+  you: { name: string; email: string; initials: string; photo?: string };
+  setHubPhoto: (id: HubId, dataUrl: string | null) => void;
+  setAvatar: (dataUrl: string | null) => void;
   lastExpense: LastExpense | null;
   createdExpenses: ExpenseRow[];
   signIn: (session: Partial<Session> & Pick<Session, "name" | "email">) => void;
@@ -152,6 +157,8 @@ function normalizeSession(raw: unknown): Session | null {
     emptyLedger: Boolean(p.emptyLedger),
     createdHub: isCreatedHub(p.createdHub) ? p.createdHub : undefined,
     operations: normalizeOperationStore(p.operations),
+    hubPhotos: readHubPhotos(p.hubPhotos),
+    avatar: isStoredImage(p.avatar) ? p.avatar : undefined,
   };
 }
 
@@ -178,15 +185,21 @@ function authPath(target: string): string {
   return "/";
 }
 
+function withHubPhoto(hub: Hub, session: Session | null): Hub {
+  const photo = session?.hubPhotos?.[hub.id];
+  return photo ? { ...hub, photo } : hub;
+}
+
 function resolveHub(id: HubId, session: Session | null): Hub {
-  if (id === "created") {
-    return buildCreatedHub({
-      name: session?.createdHub?.name ?? "New commune",
-      type: session?.createdHub?.type ?? "Household",
-      ownerName: session?.name ?? "Maya Chen",
-    });
-  }
-  return HUBS[id];
+  const hub =
+    id === "created"
+      ? buildCreatedHub({
+          name: session?.createdHub?.name ?? "New commune",
+          type: session?.createdHub?.type ?? "Household",
+          ownerName: session?.name ?? "Maya Chen",
+        })
+      : HUBS[id];
+  return withHubPhoto(hub, session);
 }
 
 function placesFor(session: Session | null): Hub[] {
@@ -198,10 +211,10 @@ function placesFor(session: Session | null): Hub[] {
         ownerName: session.name,
       })
     : null;
-  if (session.seed === "new") return created ? [created] : [];
+  if (session.seed === "new") return created ? [withHubPhoto(created, session)] : [];
   const list: Hub[] = [HUBS.park, HUBS.studio, HUBS.lisbon];
   if (created) list.push(created);
-  return list;
+  return list.map((hub) => withHubPhoto(hub, session));
 }
 
 function isEmptyHub(id: HubId, session: Session | null): boolean {
@@ -277,10 +290,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     name: session?.name ?? "Maya Chen",
     email: session?.email ?? "maya@14park.st",
     initials: initialsOf(session?.name ?? "Maya Chen"),
+    photo: session?.avatar,
   };
 
   const signIn = useCallback(
     (next: Partial<Session> & Pick<Session, "name" | "email">) => {
+      const prior = readSession();
+      const keepPictures =
+        prior != null && prior.email.toLowerCase() === next.email.trim().toLowerCase();
       const full: Session = {
         seed: "maya",
         hasHubs: true,
@@ -288,6 +305,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         ...next,
         name: next.name,
         email: next.email,
+        hubPhotos: keepPictures ? prior.hubPhotos : undefined,
+        avatar: keepPictures ? prior.avatar : undefined,
       };
       persist(full);
       setHubId(full.seed === "new" ? "created" : "park");
@@ -317,6 +336,37 @@ export function AppProvider({ children }: { children: ReactNode }) {
     sessionStorage.setItem(NAV_KEY, mode);
     setNavModeState(mode);
   }, []);
+
+  const savePicture = useCallback(
+    (patch: Pick<Session, "hubPhotos" | "avatar">) => {
+      if (!session) return;
+      const next = { ...session, ...patch };
+      try {
+        writeSession(next);
+      } catch {
+        throw new Error("This browser can’t store another photo. Remove one first.");
+      }
+      setSession(next);
+    },
+    [session],
+  );
+
+  const setHubPhoto = useCallback(
+    (id: HubId, dataUrl: string | null) => {
+      const photos = { ...(session?.hubPhotos ?? {}) };
+      if (dataUrl) photos[id] = dataUrl;
+      else delete photos[id];
+      savePicture({ hubPhotos: Object.keys(photos).length ? photos : undefined });
+    },
+    [savePicture, session?.hubPhotos],
+  );
+
+  const setAvatar = useCallback(
+    (dataUrl: string | null) => {
+      savePicture({ avatar: dataUrl ?? undefined });
+    },
+    [savePicture],
+  );
 
   const addNote = useCallback((card: NoteCard & { id: string }) => {
     setNotes((prev) => ({ ...prev, [card.id]: card }));
@@ -631,6 +681,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       removeOperation,
       createHub,
       recordExpense,
+      setHubPhoto,
+      setAvatar,
       pageTitle,
       pageLede,
     }),
@@ -671,6 +723,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       removeOperation,
       createHub,
       recordExpense,
+      setHubPhoto,
+      setAvatar,
       pageTitle,
       pageLede,
     ],

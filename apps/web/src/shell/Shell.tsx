@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import type { IconName } from "../ui/Icon";
 import { Icon } from "../ui/Icon";
 import { Avatar } from "../ui/widgets";
@@ -36,6 +37,104 @@ const PEOPLE: NavItem[] = [
   { id: "notes", label: "Notes", icon: "notes" },
 ];
 
+function CreateCommune({ onClick, menu }: { onClick: () => void; menu?: boolean }) {
+  return (
+    <button className="a-create-space" type="button" role={menu ? "menuitem" : undefined} onClick={onClick}>
+      <span className="a-create-mark" aria-hidden="true">
+        <Icon name="plus" size={14} />
+      </span>
+      Create a commune
+    </button>
+  );
+}
+
+function CommuneSwitch() {
+  const { go, hub, places, session } = useApp();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const hasCommunes = Boolean(session?.hasHubs && places.length);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (event: MouseEvent) => {
+      if (!ref.current?.contains(event.target as Node)) setOpen(false);
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  if (!hasCommunes) {
+    return (
+      <div className="a-switch-section">
+        <CreateCommune onClick={() => go("commune-new")} />
+      </div>
+    );
+  }
+
+  return (
+    <div className="a-switch-section" ref={ref}>
+      <button
+        className={cx("a-hub-switch", open && "is-active")}
+        type="button"
+        aria-expanded={open}
+        aria-haspopup="menu"
+        aria-label="Switch commune"
+        onClick={() => setOpen((value) => !value)}
+      >
+        <div className="hub-ico" aria-hidden="true">
+          <Icon name="hub" size={14} />
+        </div>
+        <div className="grow">
+          <strong>{hub.name}</strong>
+          <span>{hub.switchMeta}</span>
+        </div>
+        <span className={cx("a-hub-chev", open && "is-open")}>
+          <Icon name="chevronDown" size={14} />
+        </span>
+      </button>
+      {open ? (
+        <div className="a-hub-menu" role="menu" aria-label="Communes">
+          {places.map((place) => (
+            <button
+              key={place.id}
+              className={cx("a-hub-option", place.id === hub.id && "is-current")}
+              type="button"
+              role="menuitem"
+              aria-current={place.id === hub.id ? "true" : undefined}
+              onClick={() => {
+                setOpen(false);
+                go("hub", { hub: place.id });
+              }}
+            >
+              <span className="hub-ico" aria-hidden="true">
+                <Icon name="hub" size={14} />
+              </span>
+              <span className="grow">
+                <strong>{place.name}</strong>
+                <span>{place.switchMeta}</span>
+              </span>
+            </button>
+          ))}
+          <CreateCommune
+            menu
+            onClick={() => {
+              setOpen(false);
+              go("commune-new");
+            }}
+          />
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function NavButton({
   item,
   active,
@@ -54,7 +153,7 @@ function NavButton({
 }
 
 export function Sidebar({ screen }: { screen: ScreenId }) {
-  const { go, hub, you, session } = useApp();
+  const { go, hub, you } = useApp();
   const active = (id: ScreenId) =>
     screen === id ||
     (id === "settle" && screen === "settle-even") ||
@@ -101,24 +200,7 @@ export function Sidebar({ screen }: { screen: ScreenId }) {
         </div>
       </nav>
 
-      <div className="a-switch-section">
-        <button className="a-create-space" type="button" onClick={() => go("commune-new")}>
-          <span className="a-create-mark" aria-hidden="true">
-            <Icon name="plus" size={14} />
-          </span>
-          Create a commune
-        </button>
-        <button className="a-hub-switch" type="button" onClick={() => go("communes")} aria-label="Switch commune">
-          <div className="hub-ico" aria-hidden="true">
-            <Icon name="hub" size={14} />
-          </div>
-          <div className="grow">
-            <strong>{session?.hasHubs ? hub.name : "No commune yet"}</strong>
-            <span>{session?.hasHubs ? hub.switchMeta : "Create or join"}</span>
-          </div>
-          <Icon name="chevronDown" size={14} />
-        </button>
-      </div>
+      <CommuneSwitch />
 
       <button className="a-side-foot" type="button" onClick={() => go("settings")}>
         <Avatar tone="maya" initials={you.initials} />

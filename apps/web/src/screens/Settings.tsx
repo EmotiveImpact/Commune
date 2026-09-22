@@ -1,10 +1,11 @@
 import { Icon } from "../ui/Icon";
 import { Avatar, Switch } from "../ui/widgets";
+import { ImagePick } from "../ui/photos";
 import { useApp } from "../state";
 import { cx } from "../ui/cx";
 
 export function SettingsScreen() {
-  const { go, navMode, setNavMode, dark, setDark, noticesOn, setNoticesOn, signOut, you } = useApp();
+  const { go, navMode, setNavMode, dark, setDark, noticesOn, setNoticesOn, signOut, you, setAvatar } = useApp();
   return (
     <div className="a-set">
       <aside className="a-set-left">
@@ -17,6 +18,15 @@ export function SettingsScreen() {
                 <Icon name="edit" size={14} />
               </button>
               <span>{you.email}</span>
+              <ImagePick
+                label="Change photo"
+                clearLabel="Remove"
+                hasCustom={Boolean(you.photo)}
+                maxEdge={320}
+                inputLabel="Your photo"
+                onPhoto={setAvatar}
+                onClear={() => setAvatar(null)}
+              />
             </div>
           </div>
         </div>
