@@ -214,7 +214,17 @@ export function Sidebar({ screen }: { screen: ScreenId }) {
 }
 
 export function Header({ screen }: { screen: ScreenId }) {
-  const { go, pageTitle, pageLede, setMoreOpen, native, you } = useApp();
+  const {
+    go,
+    pageTitle,
+    pageLede,
+    setMoreOpen,
+    native,
+    you,
+    noticesOn,
+    searchQuery,
+    setSearchQuery,
+  } = useApp();
   void screen;
   return (
     <header className="a-header">
@@ -227,16 +237,29 @@ export function Header({ screen }: { screen: ScreenId }) {
         {pageLede ? <p>{pageLede}</p> : null}
       </div>
       {native ? null : (
-        <label className="a-search">
+        <form
+          className="a-search"
+          role="search"
+          onSubmit={(event) => {
+            event.preventDefault();
+            go("expenses");
+          }}
+        >
           <Icon name="search" size={16} />
-          <input type="search" placeholder="Search expenses, people, bills" aria-label="Search expenses, people, bills" />
-        </label>
+          <input
+            type="search"
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+            placeholder="Search expenses, people, bills"
+            aria-label="Search expenses, people, bills"
+          />
+        </form>
       )}
       <div className="a-header-actions">
         <button className="a-icon-btn a-you-btn" type="button" aria-label="You" onClick={() => go("settings")}>
           <Avatar tone="maya" initials={you.initials} />
         </button>
-        <button className="a-icon-btn has-unread" type="button" aria-label="Notifications" onClick={() => go("notices")}>
+        <button className={cx("a-icon-btn", noticesOn && "has-unread")} type="button" aria-label="Notifications" onClick={() => go("notices")}>
           <Icon name="bell" size={16} />
         </button>
       </div>

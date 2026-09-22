@@ -5,7 +5,22 @@ import { useApp } from "../state";
 import { cx } from "../ui/cx";
 
 export function SettingsScreen() {
-  const { go, navMode, setNavMode, dark, setDark, noticesOn, setNoticesOn, signOut, you, setAvatar } = useApp();
+  const {
+    go,
+    navMode,
+    setNavMode,
+    dark,
+    setDark,
+    noticesOn,
+    setNoticesOn,
+    currency,
+    setCurrency,
+    signOut,
+    you,
+    setAvatar,
+    hub,
+    places,
+  } = useApp();
   return (
     <div className="a-set">
       <aside className="a-set-left">
@@ -38,10 +53,10 @@ export function SettingsScreen() {
             <i style={{ width: "38%" }} />
           </div>
           <div className="a-set-meter-meta">
-            <span>3 of 8 members</span>
-            <span>1 hub</span>
+            <span>{hub.members.length} of 8 members</span>
+            <span>{places.length} {places.length === 1 ? "hub" : "hubs"}</span>
           </div>
-          <p className="a-set-plan-note">Park Street is the house on the plan.</p>
+          <p className="a-set-plan-note">{hub.name} is the active space on the plan.</p>
           <button className="a-btn a-btn-upgrade" type="button" onClick={() => go("billing")}>
             Upgrade
           </button>
@@ -117,7 +132,13 @@ export function SettingsScreen() {
                 <strong>Currency</strong>
                 <span>Used when a hub doesn’t pick one.</span>
               </span>
-              <select aria-label="Currency" defaultValue="£ GBP">
+              <select
+                aria-label="Currency"
+                value={currency}
+                onChange={(event) =>
+                  setCurrency(event.target.value as "£ GBP" | "$ USD" | "€ EUR")
+                }
+              >
                 <option>£ GBP</option>
                 <option>$ USD</option>
                 <option>€ EUR</option>

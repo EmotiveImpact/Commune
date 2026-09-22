@@ -7,11 +7,13 @@ export function NotesScreen() {
   const { go, hub, notes } = useApp();
   const [filter, setFilter] = useState<"All" | "Pinned">("All");
   const rows = hub.notes.filter((row) => {
+    if (row.note.startsWith("added-")) return false;
     if (filter === "All") return true;
     return notes[row.note]?.kicker.toLowerCase().includes("pinned");
   });
   const extras = Object.entries(notes)
     .filter(([id]) => id.startsWith("added-"))
+    .filter(([, card]) => filter === "All" || card.kicker.toLowerCase().includes("pinned"))
     .map(([id, card]) => ({ note: id, title: card.title, when: card.lede }));
 
   return (
@@ -72,7 +74,7 @@ export function NotesScreen() {
 }
 
 export function MembersScreen() {
-  const { hub, go } = useApp();
+  const { hub, go, invites } = useApp();
   return (
     <>
       <div className="a-toolbar">
@@ -91,6 +93,16 @@ export function MembersScreen() {
             <div className="bal" style={member.muted ? { color: "var(--ink-soft)" } : undefined}>
               {member.bal}
             </div>
+          </div>
+        ))}
+        {invites.map((invite) => (
+          <div key={invite.email} className="a-member-row">
+            <Avatar tone="house" initials={invite.email.slice(0, 2).toUpperCase()} />
+            <div className="who">
+              <strong>{invite.email}</strong>
+              <span>{invite.role} invite · saved in this session</span>
+            </div>
+            <Pill tone="open">Pending</Pill>
           </div>
         ))}
       </div>
@@ -147,29 +159,34 @@ export function TemplatesScreen() {
       </div>
     );
   }
+  const memberNames = hub.members.map((member) => member.name.split(" ")[0]).join(", ");
   return (
     <div className="a-panel">
       <div className="a-settle-row">
         <div>
           <strong>Equal · three ways</strong>
-          <div style={{ fontSize: 12, color: "var(--ink-soft)" }}>Maya, Jordan, Alex · 33.3% each</div>
+          <div style={{ fontSize: 12, color: "var(--ink-soft)" }}>{memberNames} · 33.3% each</div>
         </div>
         <Pill tone="sage">Default</Pill>
       </div>
-      <div className="a-settle-row">
-        <div>
-          <strong>Rent from fund</strong>
-          <div style={{ fontSize: 12, color: "var(--ink-soft)" }}>House fund pays · nobody is owed</div>
-        </div>
-        <Pill>Rent</Pill>
-      </div>
-      <div className="a-settle-row">
-        <div>
-          <strong>Maya + Jordan only</strong>
-          <div style={{ fontSize: 12, color: "var(--ink-soft)" }}>For the upstairs cleaner</div>
-        </div>
-        <Pill>Custom</Pill>
-      </div>
+      {hub.id === "park" ? (
+        <>
+          <div className="a-settle-row">
+            <div>
+              <strong>Rent from fund</strong>
+              <div style={{ fontSize: 12, color: "var(--ink-soft)" }}>House fund pays · nobody is owed</div>
+            </div>
+            <Pill>Rent</Pill>
+          </div>
+          <div className="a-settle-row">
+            <div>
+              <strong>Maya + Jordan only</strong>
+              <div style={{ fontSize: 12, color: "var(--ink-soft)" }}>For the upstairs cleaner</div>
+            </div>
+            <Pill>Custom</Pill>
+          </div>
+        </>
+      ) : null}
     </div>
   );
 }
@@ -198,12 +215,47 @@ export function BillingScreen() {
 
 export function AnalyticsScreen() {
   const { emptyHub, hub } = useApp();
-  if (emptyHub || hub.id === "created") {
+  if (emptyHub) {
     return (
       <div className="a-empty">
         <h2>Nothing to chart yet.</h2>
         <p>Spend shows up here once the ledger has a bill.</p>
       </div>
+    );
+  }
+  if (hub.id !== "park") {
+    return (
+      <>
+        <div className="a-kpis">
+          {hub.kpis.map((item) => (
+            <div className={`a-kpi ${item.tone}`} key={item.kicker}>
+              <span>{item.kicker}</span>
+              <strong>{item.num}</strong>
+              <small>{item.hint}</small>
+            </div>
+          ))}
+        </div>
+        <div className="a-panel">
+          <h2>Cycle activity</h2>
+          <p className="sub">What has already happened in {hub.name}.</p>
+          {hub.activity.length ? (
+            hub.activity.map((row) => (
+              <div className="a-settle-row" key={`${row.title}-${row.time}`}>
+                <Avatar tone={row.cls} initials={row.ini} />
+                <div>
+                  <strong>{row.title}</strong>
+                  <div style={{ fontSize: 12, color: "var(--ink-soft)" }}>{row.when}</div>
+                </div>
+                <span className="amt" style={{ color: "var(--ink-soft)", fontSize: 13 }}>
+                  {row.time}
+                </span>
+              </div>
+            ))
+          ) : (
+            <p className="sub">The first ledger item is ready. More history will collect here.</p>
+          )}
+        </div>
+      </>
     );
   }
   return (

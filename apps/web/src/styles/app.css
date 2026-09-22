@@ -1782,7 +1782,7 @@ button.a-kpi {
   flex-direction: column;
   justify-content: flex-end;
   color: #f8f5f0;
-  background: #1a1e2e;
+  background: #1a1e2b;
   border: 0;
 }
 
@@ -2799,7 +2799,7 @@ button.a-item {
   border: 0;
   border-radius: 18px;
   overflow: hidden;
-  background: #1a1e2e;
+  background: #1a1e2b;
   color: #f8f5f0;
   font: inherit;
   text-align: left;
@@ -2821,7 +2821,7 @@ button.a-item {
   flex-direction: column;
   justify-content: flex-end;
   color: #f8f5f0;
-  background: #1a1e2e;
+  background: #1a1e2b;
 }
 
 .a-place-hero::before {
@@ -2968,7 +2968,7 @@ button.a-item {
   width: 56px;
   height: 56px;
   border-radius: 12px;
-  background-color: #1a1e2e;
+  background-color: #1a1e2b;
   background-size: cover;
   background-position: center;
 }
@@ -3021,7 +3021,7 @@ button.a-item {
   text-align: left;
   font: inherit;
   color: #f8f5f0;
-  background: #1a1e2e;
+  background: #1a1e2b;
 }
 
 .a-focus-hero::before {

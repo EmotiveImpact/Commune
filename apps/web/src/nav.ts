@@ -17,5 +17,5 @@ export function pathOnly(location: string): string {
 export function isNativeNow(): boolean {
   if (typeof window === "undefined") return false;
   const params = new URLSearchParams(window.location.search);
-  return params.get("native") === "1" || window.matchMedia("(max-width: 560px)").matches;
+  return params.get("native") === "1";
 }

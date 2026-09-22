@@ -4,6 +4,13 @@ import { Avatar, Pill } from "../ui/widgets";
 import { ImagePick } from "../ui/photos";
 import { cx } from "../ui/cx";
 
+function primaryCtaTarget(label: string): "add-expense" | "expenses" | "settle" {
+  const action = label.toLowerCase();
+  if (action.includes("open expenses")) return "expenses";
+  if (action.includes("add") || action.includes("log")) return "add-expense";
+  return "settle";
+}
+
 function Cover({ children }: { children: ReactNode }) {
   const { hub, session, setHubPhoto } = useApp();
   const custom = Boolean(session?.hubPhotos?.[hub.id]);
@@ -61,7 +68,7 @@ export function HubScreen() {
             <button
               className="a-btn"
               type="button"
-              onClick={() => go(hub.oweCta.includes("Log") ? "add-expense" : "settle")}
+              onClick={() => go(primaryCtaTarget(hub.oweCta))}
             >
               {hub.oweCta}
             </button>

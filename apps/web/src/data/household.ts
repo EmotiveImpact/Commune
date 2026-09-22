@@ -44,6 +44,16 @@ export type WindowId =
 
 export type RouteId = ScreenId | WindowId;
 
+export type SettlementMove = {
+  go: ScreenId | WindowId;
+  arrow: string;
+  names: string;
+  why: string;
+  amt: string;
+  even?: boolean;
+  expenseId?: string;
+};
+
 export type Hub = {
   id: HubId;
   name: string;
@@ -62,7 +72,7 @@ export type Hub = {
   credit: boolean;
   kpis: Array<{ go: ScreenId | WindowId; tone: string; kicker: string; num: string; hint: string }>;
   now: Array<{ go: ScreenId | WindowId; pill: string; tag: string; title: string; when: string }>;
-  moves: Array<{ go: ScreenId | WindowId; arrow: string; names: string; why: string; amt: string; even?: boolean }>;
+  moves: SettlementMove[];
   members: Array<{
     cls: AvatarTone;
     ini: string;
@@ -117,8 +127,8 @@ export const HUBS: Record<SampleHubId, Hub> = {
       { go: "funds", pill: "open", tag: "Collect", title: "Alex · house fund", when: "£180 still to pay in" },
     ],
     moves: [
-      { go: "settle", arrow: "→", names: "You → Jordan", why: "Gas share · or £24 if you net Tesco", amt: "£42" },
-      { go: "settle", arrow: "→", names: "Jordan → You", why: "Tesco extras from Monday", amt: "£18" },
+      { go: "settle", arrow: "→", names: "You → Jordan", why: "Gas share · or £24 if you net Tesco", amt: "£42", expenseId: "park-british-gas" },
+      { go: "settle", arrow: "→", names: "Jordan → You", why: "Tesco extras from Monday", amt: "£18", expenseId: "park-tesco-shop" },
       { go: "members", arrow: "↔", names: "Alex ↔ You", why: "Even on expenses · still £180 for the fund", amt: "£0", even: true },
     ],
     members: [
@@ -237,8 +247,8 @@ export const HUBS: Record<SampleHubId, Hub> = {
       { go: "settle", pill: "open", tag: "Collect", title: "Ness · Airbnb", when: "£24 still to pay you" },
     ],
     moves: [
-      { go: "settle", arrow: "→", names: "Jordan → You", why: "Share of the Airbnb hold", amt: "£40" },
-      { go: "settle", arrow: "→", names: "Ness → You", why: "Share of the Airbnb hold", amt: "£24" },
+      { go: "settle", arrow: "→", names: "Jordan → You", why: "Share of the Airbnb hold", amt: "£40", expenseId: "lisbon-airbnb-hold" },
+      { go: "settle", arrow: "→", names: "Ness → You", why: "Share of the Airbnb hold", amt: "£24", expenseId: "lisbon-airbnb-hold" },
     ],
     members: [
       { cls: "maya", ini: "MC", name: "Maya Chen", meta: "You · booked the flat", bal: "Owed £64" },
@@ -531,6 +541,7 @@ export const PATH_SCREEN: Record<string, ScreenId> = Object.fromEntries(
 export const HOME_STATUS = "3 spaces · you owe £42 · you’re owed £64";
 
 export type ExpenseRow = {
+  id: string;
   name: string;
   category: string;
   paidBy: string;
@@ -540,10 +551,13 @@ export type ExpenseRow = {
   amount: string;
   action: "choose" | "mark-paid" | "none";
   open?: boolean;
+  recurring?: boolean;
+  split?: string;
 };
 
 export const PARK_EXPENSES: ExpenseRow[] = [
   {
+    id: "park-british-gas",
     name: "British Gas",
     category: "Utilities",
     paidBy: "Jordan Hale",
@@ -553,8 +567,10 @@ export const PARK_EXPENSES: ExpenseRow[] = [
     amount: "£94.20",
     action: "choose",
     open: true,
+    recurring: true,
   },
   {
+    id: "park-virgin-media",
     name: "Virgin Media",
     category: "Internet",
     paidBy: "Maya Chen",
@@ -564,8 +580,10 @@ export const PARK_EXPENSES: ExpenseRow[] = [
     amount: "£32.00",
     action: "mark-paid",
     open: true,
+    recurring: true,
   },
   {
+    id: "park-tesco-shop",
     name: "Tesco shop",
     category: "Groceries",
     paidBy: "Alex Rivera",
@@ -576,6 +594,7 @@ export const PARK_EXPENSES: ExpenseRow[] = [
     action: "none",
   },
   {
+    id: "park-rent-august",
     name: "Rent · August",
     category: "Rent",
     paidBy: "House fund",
@@ -584,8 +603,10 @@ export const PARK_EXPENSES: ExpenseRow[] = [
     statusLabel: "Settled",
     amount: "£1,800.00",
     action: "none",
+    recurring: true,
   },
   {
+    id: "park-council-tax",
     name: "Council tax",
     category: "Bills",
     paidBy: "Maya Chen",
@@ -594,8 +615,78 @@ export const PARK_EXPENSES: ExpenseRow[] = [
     statusLabel: "Settled",
     amount: "£146.00",
     action: "none",
+    recurring: true,
   },
 ];
+
+export const STUDIO_EXPENSES: ExpenseRow[] = [
+  {
+    id: "studio-a4-paper",
+    name: "A4 paper",
+    category: "Supplies",
+    paidBy: "Priya Shah",
+    due: "Wednesday",
+    status: "settled",
+    statusLabel: "Settled",
+    amount: "—",
+    action: "none",
+  },
+  {
+    id: "studio-wifi",
+    name: "Wifi",
+    category: "Internet",
+    paidBy: "Maya Chen",
+    due: "1 Aug",
+    status: "settled",
+    statusLabel: "Settled",
+    amount: "—",
+    action: "none",
+    recurring: true,
+  },
+];
+
+export const LISBON_EXPENSES: ExpenseRow[] = [
+  {
+    id: "lisbon-airbnb-hold",
+    name: "Airbnb hold",
+    category: "Stay",
+    paidBy: "Maya Chen",
+    due: "Thursday",
+    status: "open",
+    statusLabel: "Collect £64",
+    amount: "£64 owed",
+    action: "choose",
+    open: true,
+  },
+  {
+    id: "lisbon-metro-cards",
+    name: "Metro cards",
+    category: "Travel",
+    paidBy: "Jordan Hale",
+    due: "Sunday",
+    status: "settled",
+    statusLabel: "Settled",
+    amount: "—",
+    action: "none",
+  },
+  {
+    id: "lisbon-cervejaria",
+    name: "Cervejaria",
+    category: "Dinner",
+    paidBy: "Ness Cole",
+    due: "Sunday",
+    status: "settled",
+    statusLabel: "Settled",
+    amount: "—",
+    action: "none",
+  },
+];
+
+export const HUB_EXPENSES: Record<SampleHubId, ExpenseRow[]> = {
+  park: PARK_EXPENSES,
+  studio: STUDIO_EXPENSES,
+  lisbon: LISBON_EXPENSES,
+};
 
 export function isWindowId(id: string): id is WindowId {
   return (WINDOW_IDS as string[]).includes(id);
@@ -628,40 +719,94 @@ export function buildCreatedHub(opts: {
   name: string;
   type: Hub["type"];
   ownerName: string;
+  currency?: string;
+  expenses?: ExpenseRow[];
 }): Hub {
   const ini = initialsOf(opts.ownerName);
   const name = opts.name.trim() || "New commune";
+  const expenses = opts.expenses ?? [];
+  const firstExpense = expenses[0];
+  const openExpenses = expenses.filter((expense) => expense.open === true);
+  const currency =
+    firstExpense?.amount.match(/[£$€]/)?.[0] ??
+    opts.currency?.match(/[£$€]/)?.[0] ??
+    "£";
+  const total = expenses.reduce((sum, expense) => {
+    const value = Number.parseFloat(expense.amount.replace(/[^0-9.-]/g, ""));
+    return Number.isFinite(value) ? sum + value : sum;
+  }, 0);
+  const totalLabel = expenses.length ? `${currency}${total.toFixed(2)}` : `${currency}0`;
+  const countLabel = `${expenses.length} shared ${expenses.length === 1 ? "item" : "items"}`;
   const photo =
     opts.type === "Workspace" ? HUBS.studio.photo : opts.type === "Trip" ? HUBS.lisbon.photo : HUBS.park.photo;
   return {
     id: "created",
     name,
     type: opts.type,
-    lede: "No bills yet. Add the first one so the house has a truth.",
+    lede: firstExpense
+      ? `${countLabel} ${expenses.length === 1 ? "is" : "are"} on the ledger.`
+      : "No bills yet. Add the first one so the house has a truth.",
     people: `${opts.ownerName} · just you so far`,
     photo,
     switchMeta: `${opts.type} · 1 person`,
-    status: "No bills yet",
+    status: firstExpense
+      ? `${countLabel} · ${totalLabel} · ${openExpenses.length} open`
+      : "No bills yet",
     youMeta: `Standard · ${name}`,
     avatars: [["maya", ini]],
     oweLabel: "You’re even",
-    oweAmount: "£0.00",
-    oweCopy: "Nothing shared this cycle.",
-    oweCta: "Add expense",
+    oweAmount: `${currency}0.00`,
+    oweCopy: firstExpense
+      ? `${countLabel}. Nobody else is on this hub yet, so there is nothing to settle.`
+      : "Nothing shared this cycle.",
+    oweCta: firstExpense ? "Open expenses" : "Add expense",
     credit: false,
     kpis: [
-      { go: "funds", tone: "peach", kicker: "Fund", num: "£0", hint: "Nothing in yet" },
-      { go: "analytics", tone: "lilac", kicker: "This month", num: "£0", hint: "No spend yet" },
-      { go: "recurring", tone: "sage", kicker: "Open bills", num: "0", hint: "Add the first" },
-      { go: "expenses", tone: "ink", kicker: "Next due", num: "—", hint: "Ledger is empty" },
+      { go: "funds", tone: "peach", kicker: "Fund", num: `${currency}0`, hint: "Nothing in yet" },
+      {
+        go: "analytics",
+        tone: "lilac",
+        kicker: "This month",
+        num: totalLabel,
+        hint: firstExpense ? countLabel : "No spend yet",
+      },
+      {
+        go: "recurring",
+        tone: "sage",
+        kicker: "Open bills",
+        num: String(openExpenses.length),
+        hint: openExpenses[0]?.name ?? (firstExpense ? "Everything settled" : "Add the first"),
+      },
+      {
+        go: "expenses",
+        tone: "ink",
+        kicker: "Next due",
+        num: openExpenses[0]?.due ?? "—",
+        hint: openExpenses[0]?.name ?? "Ledger is clear",
+      },
     ],
-    now: [],
+    now: openExpenses.slice(0, 4).map((expense) => ({
+      go: "expenses",
+      pill: "open",
+      tag: "Open",
+      title: expense.name,
+      when: `${expense.amount} · ${expense.paidBy}`,
+    })),
     moves: [],
     members: [{ cls: "maya", ini, name: opts.ownerName, meta: "You · Admin", bal: "Even", muted: true }],
-    activity: [],
+    activity: expenses.map((expense) => ({
+      go: "expenses",
+      cls: "maya",
+      ini,
+      title: expense.name,
+      when: `${expense.paidBy} logged it`,
+      time: "This session",
+    })),
     notes: [],
     jumps: [
-      { go: "add-expense", kicker: "Expenses", title: "Add the first bill", hint: "Start the ledger" },
+      firstExpense
+        ? { go: "expenses", kicker: "Expenses", title: countLabel, hint: `${totalLabel} total` }
+        : { go: "add-expense", kicker: "Expenses", title: "Add the first bill", hint: "Start the ledger" },
       { go: "notes", kicker: "Notes", title: "Wi-Fi, bins, keys", hint: "Write it down" },
       { go: "members", kicker: "Members", title: "Invite someone", hint: "A house needs people" },
       { go: "settle", kicker: "Settle", title: "Nothing to settle", hint: "You’re even" },

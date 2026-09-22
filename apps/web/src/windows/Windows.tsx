@@ -1,9 +1,9 @@
-import { useState, type CSSProperties } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import { NOTE_BODY_HINT } from "../data/household";
 import { todayIso } from "../data/operations";
 import { useApp } from "../state";
 import { Icon } from "../ui/Icon";
-import { Avatar, Choose, Pill } from "../ui/widgets";
+import { Avatar, Choose, Pill, Switch } from "../ui/widgets";
 import { ImagePick } from "../ui/photos";
 import { cx } from "../ui/cx";
 import { OperationEdit, OperationNew, OperationView } from "./OperationsWindows";
@@ -19,10 +19,29 @@ const NOTE_TYPES = [
 ] as const;
 
 export function Windows() {
-  const { window, closeWindow, go, notes, noteKey, selectedOperation, addNote } = useApp();
+  const {
+    window,
+    closeWindow,
+    go,
+    notes,
+    noteKey,
+    selectedExpense,
+    selectedOperation,
+    addNote,
+  } = useApp();
+  useEffect(() => {
+    if (!window) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") closeWindow();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [closeWindow, window]);
   if (!window) return null;
   const title =
-    window === "note"
+    window === "expense" || window === "expense-paid"
+      ? selectedExpense?.name ?? "Expense"
+      : window === "note"
       ? notes[noteKey]?.title ?? "Note"
       : window === "operation" || window === "operation-edit"
         ? selectedOperation?.title ?? "Schedule item"
@@ -31,9 +50,9 @@ export function Windows() {
   return (
     <div className="a-windows">
       <button className="a-window-back" type="button" aria-label="Close" onClick={closeWindow} />
-      <div className="a-window-frame">
+      <div className="a-window-frame" role="dialog" aria-modal="true" aria-labelledby="commune-window-title">
         <header className="a-window-bar">
-          <h2>{title}</h2>
+          <h2 id="commune-window-title">{title}</h2>
           <button className="a-window-x" type="button" aria-label="Close" onClick={closeWindow}>
             <Icon name="close" size={16} />
           </button>
@@ -80,12 +99,21 @@ function titleFor(id: string): string {
 }
 
 function Notices() {
-  const { go, emptyHub, hub, operationsByHub } = useApp();
-  const bins = operationsByHub.park
+  const { go, emptyHub, hub, operationsByHub, noticesOn } = useApp();
+  const bins = operationsByHub[hub.id]
     .filter((item) => item.title === "Put the bins out" && item.status === "open")
     .sort((a, b) => a.date.localeCompare(b.date))[0];
   const binsOverdue = Boolean(bins && bins.date < todayIso());
-  if (emptyHub || hub.id === "created") {
+  if (!noticesOn) {
+    return (
+      <section className="a-window">
+        <p className="a-window-kicker">Bell</p>
+        <p className="a-window-note">Notices are paused. Turn them back on in Settings when you want the bell to surface bills and chores.</p>
+        <button className="a-btn" type="button" onClick={() => go("settings")}>Open settings</button>
+      </section>
+    );
+  }
+  if (emptyHub || !hub.now.length) {
     return (
       <section className="a-window">
         <p className="a-window-kicker">Bell</p>
@@ -96,51 +124,98 @@ function Notices() {
   return (
     <section className="a-window">
       <p className="a-window-kicker">Bell</p>
-      <button className="a-notice" type="button" onClick={() => go("expenses")}>
-        <Pill tone="warn">Friday</Pill>
-        <div className="grow">
-          <strong>British Gas</strong>
-          <div className="when">£94.20 · Jordan paid · your share open</div>
-        </div>
-      </button>
-      {bins ? (
-        <button
-          className="a-notice"
-          type="button"
-          onClick={() => go("operation", { hub: "park", operation: bins.id })}
-        >
-          <Pill tone={binsOverdue ? "warn" : "open"}>{binsOverdue ? "Overdue" : "Tuesday"}</Pill>
-          <div className="grow">
-            <strong>Bins</strong>
-            <div className="when">
-              {bins.assignee?.split(" ")[0] ?? "Unassigned"} · {bins.date}
+      {hub.now.map((row) => {
+        const isBins = row.title === "Bins" && bins;
+        return (
+          <button
+            className="a-notice"
+            type="button"
+            key={`${row.tag}-${row.title}`}
+            onClick={() =>
+              isBins
+                ? go("operation", { operation: bins.id })
+                : go(row.go)
+            }
+          >
+            <Pill tone={isBins ? (binsOverdue ? "warn" : "open") : row.pill}>
+              {isBins ? (binsOverdue ? "Overdue" : "Tuesday") : row.tag}
+            </Pill>
+            <div className="grow">
+              <strong>{row.title}</strong>
+              <div className="when">
+                {isBins
+                  ? `${bins.assignee?.split(" ")[0] ?? "Unassigned"} · ${bins.date}`
+                  : row.when}
+              </div>
             </div>
-          </div>
-        </button>
-      ) : null}
-      <button className="a-notice" type="button" onClick={() => go("funds")}>
-        <Pill tone="open">Collect</Pill>
-        <div className="grow">
-          <strong>Alex · house fund</strong>
-          <div className="when">£180 still to pay in</div>
-        </div>
-      </button>
+          </button>
+        );
+      })}
     </section>
   );
 }
 
 function AddExpense() {
-  const { go, closeWindow, hub, you, recordExpense } = useApp();
-  const fresh = hub.id === "created";
-  const [what, setWhat] = useState(fresh ? "" : "British Gas");
-  const [amount, setAmount] = useState(fresh ? "" : "£94.20");
-  const [payer, setPayer] = useState(fresh ? you.name : "Jordan Hale");
+  const {
+    go,
+    closeWindow,
+    hub,
+    you,
+    session,
+    expenses,
+    currency: defaultCurrency,
+    recordExpense,
+  } = useApp();
+  const ledgerSymbol = expenses
+    .map((expense) => expense.amount.match(/[£$€]/)?.[0])
+    .find((symbol): symbol is string => Boolean(symbol));
+  const configuredSymbol = session?.createdHub?.currency.match(/[£$€]/)?.[0];
+  const defaultSymbol = defaultCurrency.match(/[£$€]/)?.[0];
+  const resolvedSymbol =
+    hub.id === "created"
+      ? ledgerSymbol ?? configuredSymbol ?? defaultSymbol ?? "£"
+      : "£";
+  const defaults =
+    hub.id === "park"
+      ? { what: "British Gas", amount: "£94.20", payer: "Jordan Hale", category: "Utilities", due: "29 Aug", recurring: true }
+      : hub.id === "studio"
+        ? { what: "Printer ink", amount: "", payer: "Sam Okonkwo", category: "Supplies", due: "Monday", recurring: true }
+        : hub.id === "lisbon"
+          ? { what: "Airbnb hold", amount: "", payer: you.name, category: "Stay", due: "Thursday", recurring: false }
+          : { what: "", amount: "", payer: you.name, category: "Other", due: "Today", recurring: false };
+  const [what, setWhat] = useState(defaults.what);
+  const [amount, setAmount] = useState(defaults.amount);
+  const [payer, setPayer] = useState(defaults.payer);
+  const [category, setCategory] = useState(defaults.category);
+  const [due, setDue] = useState(defaults.due);
+  const [recurring, setRecurring] = useState(defaults.recurring);
+  const [split, setSplit] = useState(
+    hub.members.length === 1 ? "You · 100%" : `Equal · ${hub.members.length} ways`,
+  );
+  const [error, setError] = useState("");
 
   function save() {
-    const name = what.trim() || (fresh ? "Expense" : "British Gas");
-    const amt = amount.trim() || (fresh ? "£0" : "£94.20");
-    if (fresh) recordExpense({ name, amount: amt, paidBy: payer });
-    go("expense");
+    const name = what.trim();
+    const numeric = Number.parseFloat(amount.replace(/[^0-9.-]/g, ""));
+    if (!name) {
+      setError("Name the expense before saving it.");
+      return;
+    }
+    if (!Number.isFinite(numeric) || numeric <= 0) {
+      setError("Enter an amount greater than zero.");
+      return;
+    }
+    const amt = `${resolvedSymbol}${numeric.toFixed(2)}`;
+    const id = recordExpense({
+      name,
+      amount: amt,
+      paidBy: payer,
+      category,
+      due: due.trim() || "Today",
+      recurring,
+      split,
+    });
+    go("expense", { expense: id });
   }
 
   return (
@@ -153,12 +228,12 @@ function AddExpense() {
           type="text"
           value={what}
           onChange={(e) => setWhat(e.target.value)}
-          placeholder={fresh ? "e.g. Rent" : undefined}
+          placeholder="e.g. Rent"
         />
       </div>
       <div className="a-field half">
         <label htmlFor="exp-amt">Amount</label>
-        <input id="exp-amt" type="text" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="£0.00" />
+        <input id="exp-amt" type="text" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder={`${resolvedSymbol}0.00`} />
       </div>
       <div className="a-field half">
         <label htmlFor="exp-who">Paid by</label>
@@ -168,15 +243,40 @@ function AddExpense() {
           ))}
         </select>
       </div>
-      <div className="a-field">
-        <label htmlFor="exp-split">Split</label>
-        <select id="exp-split">
-          {fresh ? <option>You · 100%</option> : null}
-          {!fresh ? <option>Equal · three ways</option> : null}
-          {!fresh ? <option>Rent from fund</option> : null}
-          {!fresh ? <option>Maya + Jordan only</option> : null}
+      <div className="a-field half">
+        <label htmlFor="exp-category">Category</label>
+        <select id="exp-category" value={category} onChange={(e) => setCategory(e.target.value)}>
+          <option>Utilities</option>
+          <option>Internet</option>
+          <option>Groceries</option>
+          <option>Rent</option>
+          <option>Supplies</option>
+          <option>Travel</option>
+          <option>Stay</option>
+          <option>Other</option>
         </select>
       </div>
+      <div className="a-field half">
+        <label htmlFor="exp-due">Due</label>
+        <input id="exp-due" type="text" value={due} onChange={(e) => setDue(e.target.value)} placeholder="Today" />
+      </div>
+      <div className="a-field">
+        <label htmlFor="exp-split">Split</label>
+        <select id="exp-split" value={split} onChange={(e) => setSplit(e.target.value)}>
+          {hub.members.length === 1 ? <option>You · 100%</option> : null}
+          {hub.members.length > 1 ? <option>Equal · {hub.members.length} ways</option> : null}
+          {hub.id === "park" ? <option>Rent from fund</option> : null}
+          {hub.id === "park" ? <option>Maya + Jordan only</option> : null}
+        </select>
+      </div>
+      <div className="a-settle-row">
+        <div>
+          <strong>Recurring</strong>
+          <div className="when">Show this expense in the recurring list.</div>
+        </div>
+        <Switch checked={recurring} onChange={setRecurring} label="Recurring expense" />
+      </div>
+      {error ? <p className="a-form-error" role="alert">{error}</p> : null}
       <div className="a-field-row">
         <button className="a-btn" type="button" onClick={save}>
           Save
@@ -190,83 +290,70 @@ function AddExpense() {
 }
 
 function Expense() {
-  const { go, closeWindow, hub, lastExpense, you } = useApp();
-  if (hub.id === "created" && lastExpense) {
+  const { go, closeWindow, hub, selectedExpense, you, markExpensePaid } = useApp();
+  if (!selectedExpense) {
     return (
       <section className="a-window">
-        <p className="a-window-kicker">Expense</p>
-        <div className="a-fund-hero">
-          <div>
-            <span className="a-hero-kicker">Just you · open</span>
-            <strong>{lastExpense.name}</strong>
-            <p>
-              {lastExpense.paidBy} paid {lastExpense.amount}. Nobody else is on this hub yet.
-            </p>
-          </div>
-          <Pill tone="open">Open</Pill>
-        </div>
-        <div className="a-split">
-          <div className="a-split-row">
-            <Avatar tone="maya" initials={you.initials} />
-            <div className="grow">
-              <strong>{you.name}</strong>
-              <div className="when">Paid · {lastExpense.amount}</div>
-            </div>
-            <Pill tone="settled">You</Pill>
-          </div>
-        </div>
-        <div className="a-field-row">
-          <button className="a-btn" type="button" onClick={closeWindow}>
-            Close
-          </button>
-        </div>
+        <p className="a-window-note">That expense isn’t in this hub.</p>
       </section>
     );
   }
+  const payer = hub.members.find((member) => member.name === selectedExpense.paidBy);
+  const isOpen = selectedExpense.open === true;
+  const others = hub.members
+    .filter((member) => member.name !== selectedExpense.paidBy)
+    .map((member) => member.name.split(" ")[0])
+    .join(" · ");
   return (
     <section className="a-window">
       <p className="a-window-kicker">Expense</p>
       <div className="a-fund-hero">
         <div>
-          <span className="a-hero-kicker">Utilities · due Friday</span>
-          <strong>British Gas</strong>
-          <p>Jordan paid £94.20. Split three ways. Your share is still open.</p>
+          <span className="a-hero-kicker">
+            {selectedExpense.category} · {selectedExpense.due}
+          </span>
+          <strong>{selectedExpense.name}</strong>
+          <p>
+            {selectedExpense.paidBy} paid {selectedExpense.amount}. {isOpen ? "This expense is still open." : "This expense is settled."}
+          </p>
         </div>
-        <Pill tone="warn">Due Friday</Pill>
+        <Pill tone={selectedExpense.status}>{selectedExpense.statusLabel}</Pill>
       </div>
       <div className="a-split">
         <div className="a-split-row">
-          <Avatar tone="jordan" initials="JH" />
+          <Avatar tone={payer?.cls ?? "maya"} initials={payer?.ini ?? you.initials} />
           <div className="grow">
-            <strong>Jordan Hale</strong>
-            <div className="when">Paid the bill</div>
+            <strong>{selectedExpense.paidBy}</strong>
+            <div className="when">Paid · {selectedExpense.amount}</div>
           </div>
           <Pill tone="settled">Paid in</Pill>
         </div>
-        <div className="a-split-row">
-          <Avatar tone="maya" initials="MC" />
-          <div className="grow">
-            <strong>Maya Chen</strong>
-            <div className="when">Your share · £31.40</div>
+        {others ? (
+          <div className="a-split-row">
+            <Avatar tone="house" initials={String(hub.members.length)} />
+            <div className="grow">
+              <strong>Shared in {hub.name}</strong>
+              <div className="when">{selectedExpense.split ?? others}</div>
+            </div>
+            <Pill tone={isOpen ? "open" : "settled"}>{isOpen ? "Open" : "Settled"}</Pill>
           </div>
-          <Pill tone="warn">Open</Pill>
-        </div>
-        <div className="a-split-row">
-          <Avatar tone="alex" initials="AR" />
-          <div className="grow">
-            <strong>Alex Rivera</strong>
-            <div className="when">Share · £31.40</div>
-          </div>
-          <Pill tone="open">Open</Pill>
-        </div>
+        ) : null}
       </div>
       <div className="a-field-row">
-        <Choose
-          items={[
-            { label: "Mark my share paid", onSelect: () => go("expense-paid") },
-            { label: "Nudge Alex", onSelect: () => go("notices") },
-          ]}
-        />
+        {isOpen ? (
+          <Choose
+            items={[
+              {
+                label: hub.id === "lisbon" ? "Mark settled" : "Mark paid",
+                onSelect: () => {
+                  markExpensePaid(selectedExpense.id);
+                  go("expense-paid", { expense: selectedExpense.id });
+                },
+              },
+              { label: "Open notices", onSelect: () => go("notices") },
+            ]}
+          />
+        ) : null}
         <button className="a-btn ghost" type="button" onClick={closeWindow}>
           Close
         </button>
@@ -276,17 +363,24 @@ function Expense() {
 }
 
 function ExpensePaid() {
-  const { go, closeWindow } = useApp();
+  const { go, closeWindow, selectedExpense, hub } = useApp();
+  if (!selectedExpense) {
+    return (
+      <section className="a-window">
+        <p className="a-window-note">That expense isn’t in this hub.</p>
+      </section>
+    );
+  }
   return (
     <section className="a-window">
       <p className="a-window-kicker">Expense</p>
       <div className="a-fund-hero">
         <div>
-          <span className="a-hero-kicker">Utilities</span>
-          <strong>British Gas</strong>
-          <p>Your share is marked paid. Settle still has You → Jordan if you net Tesco.</p>
+          <span className="a-hero-kicker">{selectedExpense.category}</span>
+          <strong>{selectedExpense.name}</strong>
+          <p>{selectedExpense.name} is marked settled in {hub.name}.</p>
         </div>
-        <Pill tone="settled">You paid</Pill>
+        <Pill tone="settled">{hub.id === "lisbon" ? "Settled" : "You paid"}</Pill>
       </div>
       <div className="a-field-row">
         <button
@@ -312,6 +406,7 @@ function CommuneNew() {
   const [name, setName] = useState("Studio East");
   const [type, setType] = useState<"Household" | "Workspace" | "Trip">("Workspace");
   const [currency, setCurrency] = useState("£ GBP");
+  const [error, setError] = useState("");
   return (
     <section className="a-window">
       <p className="a-window-kicker">Places</p>
@@ -343,7 +438,12 @@ function CommuneNew() {
         <button
           className="a-btn"
           type="button"
-          onClick={() => createHub({ name: name.trim() || "New commune", type, currency })}
+          onClick={() => {
+            const created = createHub({ name: name.trim() || "New commune", type, currency });
+            if (!created) {
+              setError("Your Standard plan already has its newly created commune. Open it from the switcher, or review Billing before adding another.");
+            }
+          }}
         >
           Create
         </button>
@@ -351,40 +451,56 @@ function CommuneNew() {
           Cancel
         </button>
       </div>
+      {error ? <p className="a-form-error" role="alert">{error}</p> : null}
     </section>
   );
 }
 
 function MemberInvite() {
-  const { go, closeWindow } = useApp();
+  const { go, closeWindow, addInvite } = useApp();
+  const [email, setEmail] = useState("ness@lisbon.trip");
+  const [role, setRole] = useState<"Member" | "Admin">("Member");
+  const [error, setError] = useState("");
   return (
     <section className="a-window">
       <p className="a-window-kicker">Members</p>
       <div className="a-field">
         <label htmlFor="inv-email">Email</label>
-        <input id="inv-email" type="email" defaultValue="ness@lisbon.trip" />
+        <input id="inv-email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} />
       </div>
       <div className="a-field">
         <label htmlFor="inv-role">Role</label>
-        <select id="inv-role">
+        <select id="inv-role" value={role} onChange={(event) => setRole(event.target.value as "Member" | "Admin")}>
           <option>Member</option>
           <option>Admin</option>
         </select>
       </div>
       <div className="a-field-row">
-        <button className="a-btn" type="button" onClick={() => go("members")}>
+        <button
+          className="a-btn"
+          type="button"
+          onClick={() => {
+            if (!addInvite({ email, role })) {
+              setError("Enter a valid email that is not already pending.");
+              return;
+            }
+            go("members");
+          }}
+        >
           Send invite
         </button>
         <button className="a-btn ghost" type="button" onClick={closeWindow}>
           Cancel
         </button>
       </div>
+      <p className="a-window-note">V1 saves pending invites in this browser session. It does not pretend an email was sent without a mail service.</p>
+      {error ? <p className="a-form-error" role="alert">{error}</p> : null}
     </section>
   );
 }
 
 function Profile() {
-  const { go, you, setAvatar } = useApp();
+  const { go, you, setAvatar, payMethods, places } = useApp();
   return (
     <section className="a-window">
       <p className="a-window-kicker">You</p>
@@ -408,31 +524,21 @@ function Profile() {
       <p className="a-window-note">
         People settle you through these. Tap Pay on Settle and they open with the amount filled.
       </p>
-      <div className="a-settle-row">
-        <div>
-          <strong>Revolut</strong>
-          <div className="when">@mayachen</div>
+      {payMethods.map((method, index) => (
+        <div className="a-settle-row" key={method.provider}>
+          <div>
+            <strong>{method.provider}</strong>
+            <div className="when">{method.value}</div>
+          </div>
+          {index === 0 ? (
+            <Pill tone="sage">Default</Pill>
+          ) : (
+            <button className="a-btn ghost" type="button" onClick={() => go("pay-method")}>
+              Edit
+            </button>
+          )}
         </div>
-        <Pill tone="sage">Default</Pill>
-      </div>
-      <div className="a-settle-row">
-        <div>
-          <strong>PayPal</strong>
-          <div className="when">paypal.me/mayachen</div>
-        </div>
-        <button className="a-btn ghost" type="button" onClick={() => go("pay-method")}>
-          Edit
-        </button>
-      </div>
-      <div className="a-settle-row">
-        <div>
-          <strong>Monzo</strong>
-          <div className="when">Not added</div>
-        </div>
-        <button className="a-btn ghost" type="button" onClick={() => go("pay-method")}>
-          Add
-        </button>
-      </div>
+      ))}
       <div className="a-field-row">
         <button className="a-btn" type="button" onClick={() => go("pay-method")}>
           Add a pay link
@@ -441,7 +547,7 @@ function Profile() {
       <div className="a-settle-row">
         <div>
           <strong>Plan</strong>
-          <div className="when">Standard · 8 members · 1 hub</div>
+          <div className="when">Standard · 8 members · {places.length} {places.length === 1 ? "hub" : "hubs"}</div>
         </div>
         <button className="a-btn ghost" type="button" onClick={() => go("billing")}>
           Billing
@@ -461,7 +567,7 @@ function Profile() {
 }
 
 function Breakdown() {
-  const { go, closeWindow } = useApp();
+  const { go, closeWindow, hub } = useApp();
   return (
     <section className="a-window">
       <p className="a-window-kicker">Settle</p>
@@ -478,41 +584,33 @@ function Breakdown() {
         </button>
       </div>
       <div className="a-card a-owes">
-        <button className="a-move" type="button" onClick={() => go("settle")}>
-          <div className="a-arrow">→</div>
-          <div>
-            <div className="names">You → Jordan</div>
-            <div className="why">Gas share · or £24 if you net Tesco</div>
-          </div>
-          <div className="amt">£42</div>
-        </button>
-        <button className="a-move" type="button" onClick={() => go("settle")}>
-          <div className="a-arrow">→</div>
-          <div>
-            <div className="names">Jordan → You</div>
-            <div className="why">Tesco extras from Monday</div>
-          </div>
-          <div className="amt">£18</div>
-        </button>
-        <button className="a-move is-even" type="button" onClick={() => go("settle")}>
-          <div className="a-arrow" style={{ background: "#f0ece4" }}>
-            ↔
-          </div>
-          <div>
-            <div className="names">Alex ↔ You</div>
-            <div className="why">Even on expenses · still £180 for the fund</div>
-          </div>
-          <div className="amt" style={{ color: "var(--ink-soft)" }}>
-            £0
-          </div>
-        </button>
+        {hub.moves.map((move) => (
+          <button
+            className={cx("a-move", move.even && "is-even")}
+            type="button"
+            key={`${move.names}-${move.amt}`}
+            onClick={() => go("settle")}
+          >
+            <div className="a-arrow" style={move.even ? { background: "#f0ece4" } : undefined}>
+              {move.arrow}
+            </div>
+            <div>
+              <div className="names">{move.names}</div>
+              <div className="why">{move.why}</div>
+            </div>
+            <div className="amt" style={move.even ? { color: "var(--ink-soft)" } : undefined}>
+              {move.amt}
+            </div>
+          </button>
+        ))}
       </div>
     </section>
   );
 }
 
 function Pay() {
-  const { go, closeWindow } = useApp();
+  const { go, closeWindow, selectedExpense, markExpensePaid } = useApp();
+  const expenseId = selectedExpense?.id ?? "park-british-gas";
   return (
     <section className="a-window">
       <p className="a-window-kicker">Settle</p>
@@ -546,7 +644,14 @@ function Pay() {
         </button>
       </div>
       <div className="a-field-row">
-        <button className="a-btn" type="button" onClick={() => go("expense-paid")}>
+        <button
+          className="a-btn"
+          type="button"
+          onClick={() => {
+            markExpensePaid(expenseId);
+            go("expense-paid", { expense: expenseId });
+          }}
+        >
           I’ve paid
         </button>
         <button className="a-btn ghost" type="button" onClick={closeWindow}>
@@ -558,13 +663,20 @@ function Pay() {
 }
 
 function PayMethod() {
-  const { go, closeWindow } = useApp();
+  const { go, closeWindow, savePayMethod } = useApp();
+  const [provider, setProvider] = useState<"Revolut" | "PayPal" | "Monzo" | "Bank transfer">("Revolut");
+  const [value, setValue] = useState("@mayachen");
+  const [error, setError] = useState("");
   return (
     <section className="a-window">
       <p className="a-window-kicker">You</p>
       <div className="a-field">
         <label htmlFor="pm-prov">How people pay you</label>
-        <select id="pm-prov">
+        <select
+          id="pm-prov"
+          value={provider}
+          onChange={(event) => setProvider(event.target.value as typeof provider)}
+        >
           <option>Revolut</option>
           <option>PayPal</option>
           <option>Monzo</option>
@@ -573,16 +685,27 @@ function PayMethod() {
       </div>
       <div className="a-field">
         <label htmlFor="pm-link">Username or link</label>
-        <input id="pm-link" type="text" defaultValue="@mayachen" />
+        <input id="pm-link" type="text" value={value} onChange={(event) => setValue(event.target.value)} />
       </div>
       <div className="a-field-row">
-        <button className="a-btn" type="button" onClick={() => go("profile")}>
+        <button
+          className="a-btn"
+          type="button"
+          onClick={() => {
+            if (!savePayMethod({ provider, value })) {
+              setError("Add a username, payment link, or bank reference.");
+              return;
+            }
+            go("profile");
+          }}
+        >
           Save
         </button>
         <button className="a-btn ghost" type="button" onClick={closeWindow}>
           Cancel
         </button>
       </div>
+      {error ? <p className="a-form-error" role="alert">{error}</p> : null}
     </section>
   );
 }

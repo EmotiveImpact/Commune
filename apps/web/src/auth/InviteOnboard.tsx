@@ -6,16 +6,29 @@ import type { Hub } from "../data/household";
 export function InvitePage() {
   const { go, session, signIn } = useApp();
 
+  function signInFirst() {
+    window.sessionStorage.setItem("commune.return-to", "/invite");
+    go("login");
+  }
+
   function join() {
-    if (!session || session.seed !== "maya" || !session.hasHubs) {
+    if (!session) {
+      signInFirst();
+      return;
+    }
+
+    if (session.seed !== "maya" || !session.hasHubs) {
       signIn({
-        name: "Maya Chen",
-        email: "maya@14park.st",
+        ...session,
         seed: "maya",
         hasHubs: true,
         emptyLedger: false,
+        activeHubId: "park",
       });
+      window.location.assign(`/hub${window.location.search}`);
+      return;
     }
+
     go("hub", { hub: "park" });
   }
 
@@ -36,9 +49,11 @@ export function InvitePage() {
             <button className="a-btn" type="button" onClick={join}>
               Join this hub
             </button>
-            <button className="a-btn ghost" type="button" onClick={() => go("login")}>
-              Sign in first
-            </button>
+            {!session ? (
+              <button className="a-btn ghost" type="button" onClick={signInFirst}>
+                Sign in first
+              </button>
+            ) : null}
           </div>
         </div>
       </div>
@@ -69,7 +84,7 @@ export function OnboardPage() {
       <form className="commune-auth-panel" onSubmit={create}>
         <h2>Name the space.</h2>
         <p className="commune-auth-lede">
-          {session?.name ? `${session.name} · ` : ""}A home, a studio, a trip. One hub. You can add more later.
+          {session?.name ? `${session.name} · ` : ""}A home, a studio, or a trip. One hub on the Standard plan.
         </p>
         <div className="a-field">
           <label htmlFor="ob-name">Name</label>

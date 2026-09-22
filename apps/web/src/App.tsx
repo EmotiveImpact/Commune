@@ -72,7 +72,7 @@ function ProtectedApp() {
 }
 
 function ProductShell() {
-  const { screen, navMode, moreOpen, native, window: win } = useApp();
+  const { screen, navMode, moreOpen, native, dark, window: win } = useApp();
   return (
     <div
       className={cx(
@@ -80,6 +80,7 @@ function ProductShell() {
         navMode === "advanced" ? "nav-advanced" : "nav-basic",
         moreOpen && "more-open",
         native && "is-native",
+        dark && "is-dark",
         win && "has-window",
       )}
     >
@@ -108,8 +109,9 @@ function Screen({ screen }: { screen: ScreenId }) {
 }
 
 function ScreenBody({ screen }: { screen: ScreenId }) {
-  const { session, emptyHub } = useApp();
+  const { session, emptyHub, hub } = useApp();
   const hasHubs = Boolean(session?.hasHubs);
+  const hasSettlement = hub.moves.some((move) => !move.even);
 
   switch (screen) {
     case "home":
@@ -133,9 +135,17 @@ function ScreenBody({ screen }: { screen: ScreenId }) {
         <ExpensesScreen />
       );
     case "settle":
-      return <SettleScreen />;
+      return !hasSettlement || !hasHubs ? (
+        <SettleEvenScreen />
+      ) : (
+        <SettleScreen />
+      );
     case "settle-even":
-      return <SettleEvenScreen />;
+      return !hasSettlement || !hasHubs ? (
+        <SettleEvenScreen />
+      ) : (
+        <SettleScreen />
+      );
     case "recurring":
       return <RecurringScreen />;
     case "funds":
