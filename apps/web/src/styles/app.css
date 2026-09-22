@@ -176,19 +176,19 @@
   flex-direction: row;
   justify-content: flex-start;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   padding: 8px 10px;
   width: 100%;
   margin: 0;
   text-align: left;
   box-sizing: border-box;
-  min-height: 38px;
+  min-height: 44px;
 }
 
 .a-logo {
-  width: 18px;
-  height: 18px;
-  border-radius: 5px;
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
   display: block;
   flex-shrink: 0;
 }
@@ -207,12 +207,12 @@
 }
 
 .a-wordmark {
-  font-size: 13.5px;
+  font-size: 18px;
   font-weight: 600;
-  letter-spacing: 0;
-  text-transform: none;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   line-height: 1.2;
-  color: rgba(255, 255, 255, 0.76);
+  color: #fff;
 }
 
 .a-switch-section {
