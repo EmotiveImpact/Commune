@@ -5277,7 +5277,7 @@ button.a-item {
 
 .ops-week-day {
   display: grid;
-  grid-template-columns: 150px 1fr;
+  grid-template-columns: 72px 1fr;
   gap: 8px;
   align-items: start;
   padding: 6px 8px;
@@ -5314,7 +5314,6 @@ button.a-item {
   font-size: 10px;
   font-style: normal;
   font-weight: 700;
-  white-space: nowrap;
 }
 
 .ops-week-items {
@@ -5635,7 +5634,7 @@ button.a-item {
   }
 
   .ops-week-day {
-    grid-template-columns: 150px 1fr;
+    grid-template-columns: 56px 1fr;
   }
 
   .ops-week-row {
