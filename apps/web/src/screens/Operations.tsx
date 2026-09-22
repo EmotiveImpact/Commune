@@ -13,6 +13,7 @@ import {
 } from "../data/operations";
 import { useApp } from "../state";
 import { Icon } from "../ui/Icon";
+import { Avatar } from "../ui/widgets";
 import { cx } from "../ui/cx";
 
 type Cut = "week" | "people" | "month";
@@ -133,23 +134,31 @@ export function OperationsScreen() {
         rotation: item.rotation ?? [],
       });
     }
+    const handedOn =
+      item.repeat !== "none"
+        ? shortDateFormatter.format(dateFromIso(nextOccurrence(item.date, item.repeat, today)))
+        : "";
     flash(
       nextName
-        ? `Done · handed to ${nextName} · next Tuesday`
+        ? `Handed to ${nextName}${handedOn ? ` · ${handedOn}` : ""}`
         : `Done · ${item.title}`,
     );
   }
 
   function skipTask(item: OperationItem) {
+    const from = item.date < today ? today : item.date;
     skipOperation(item.id);
     if (justCompleted?.id === item.id) setJustCompleted(null);
-    flash("Moved forward one week");
+    flash(`Moved to ${shortDateFormatter.format(dateFromIso(addDays(from, 7)))}`);
   }
 
   const peopleBuckets = [
     ...hub.members.map((member) => ({
       key: member.name,
-      label: member.name === you.name ? `${firstNameOf(member.name)} · you` : firstNameOf(member.name),
+      label: firstNameOf(member.name),
+      you: member.name === you.name,
+      tone: member.cls,
+      initials: member.ini,
       items: peopleHorizon.filter(
         (item) => item.kind === "task" && item.assignee === member.name,
       ),
@@ -157,9 +166,13 @@ export function OperationsScreen() {
     {
       key: "house",
       label: "House",
+      you: false,
+      tone: "house",
+      initials: "H",
       items: peopleHorizon.filter((item) => item.kind === "event"),
     },
   ];
+  const weekGroups = groupByDate(weekItems);
 
   return (
     <div className="ops ops-prod">
@@ -187,15 +200,6 @@ export function OperationsScreen() {
           Add item
         </button>
       </div>
-      <p className="ops-compare">
-        Other mockups are still live:
-        <a href="http://localhost:3001/ops-options2/?p=house">House</a>
-        <a href="http://localhost:3001/ops-options2/?p=pulse">Pulse</a>
-        <a href="http://localhost:3001/ops-options2/?p=stretch">Stretch</a>
-        <a href="http://localhost:3001/ops-options2/?p=map">Map</a>
-        <a href="http://localhost:3001/ops-options/">Fragments</a>
-        <a href="http://localhost:3001/ops-production/">Codex HTML</a>
-      </p>
 
       {cut === "week" ? (
         <div className="ops-stack">
@@ -238,21 +242,31 @@ export function OperationsScreen() {
           </section>
 
           <section className="ops-card">
-            <div className="ops-board-head">The house this week</div>
+            <div className="ops-board-head">
+              <span>The house this week</span>
+              <small>{weekItems.length ? `${weekItems.length} on the board` : "Clear"}</small>
+            </div>
             <div className="ops-week-list">
-              {weekItems.map((item) => (
-                <div className="ops-week-row" key={item.id}>
+              {weekGroups.map((group) => (
+                <div className="ops-week-day" key={group.date}>
                   <div className="ops-week-date">
-                    {shortDateFormatter.format(dateFromIso(item.date))}
-                    {item.date === addDays(today, 1) ? <small>Tomorrow</small> : null}
+                    <small>{weekdayOf(group.date)}</small>
+                    <strong>{Number(group.date.slice(-2))}</strong>
+                    {group.date === addDays(today, 1) ? <em>Tomorrow</em> : null}
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => go("operation", { operation: item.id })}
-                  >
-                    <strong>{item.title}</strong>
-                    <span>{metaLine(item)}</span>
-                  </button>
+                  <div className="ops-week-items">
+                    {group.items.map((item) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        className={cx("ops-week-row", item.kind === "event" && "is-event")}
+                        onClick={() => go("operation", { operation: item.id })}
+                      >
+                        <strong>{item.title}</strong>
+                        <span>{metaLine(item)}</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               ))}
               {!weekItems.length ? (
@@ -267,12 +281,18 @@ export function OperationsScreen() {
         <div className="ops-people">
           {peopleBuckets.map((bucket) => (
             <section className="ops-person" key={bucket.key}>
-              <h3>{bucket.label}</h3>
+              <header>
+                <Avatar tone={bucket.tone} initials={bucket.initials} />
+                <h3>
+                  {bucket.label}
+                  {bucket.you ? <small>You</small> : null}
+                </h3>
+              </header>
               {bucket.items.length ? (
                 bucket.items.map((item) => (
                   <button
                     key={item.id}
-                    className="ops-person-task"
+                    className={cx("ops-person-task", item.date < today && "is-late")}
                     type="button"
                     onClick={() => go("operation", { operation: item.id })}
                   >
@@ -280,7 +300,7 @@ export function OperationsScreen() {
                     <small>
                       {item.date < today
                         ? `Late · ${item.rotation?.length ? `then ${firstNameOf(nextInRotation(item.rotation, item.assignee))}` : "open"}`
-                        : `${shortDateFormatter.format(dateFromIso(item.date))} · ${item.allDay ? "all day" : formatTimeLabel(item.time)}${
+                        : `${shortDateFormatter.format(dateFromIso(item.date))} · ${item.allDay ? "All day" : formatTimeLabel(item.time)}${
                             item.rotation?.length
                               ? ` · then ${firstNameOf(nextInRotation(item.rotation, item.assignee))}`
                               : ""
@@ -289,7 +309,7 @@ export function OperationsScreen() {
                   </button>
                 ))
               ) : (
-                <p className="ops-note">Nothing on {bucket.label === "House" ? "the house" : bucket.label}.</p>
+                <p className="ops-note">Clear this week.</p>
               )}
             </section>
           ))}
@@ -502,6 +522,20 @@ function metaLine(item: OperationItem): string {
       ? ` · then ${firstNameOf(nextInRotation(item.rotation, item.assignee))}`
       : "";
   return `${when} · ${who}${next}`;
+}
+
+function weekdayOf(date: string): string {
+  return new Intl.DateTimeFormat("en-GB", { weekday: "short" }).format(dateFromIso(date));
+}
+
+function groupByDate(items: OperationItem[]) {
+  const groups: Array<{ date: string; items: OperationItem[] }> = [];
+  for (const item of items) {
+    const last = groups.at(-1);
+    if (last?.date === item.date) last.items.push(item);
+    else groups.push({ date: item.date, items: [item] });
+  }
+  return groups;
 }
 
 function buildMonth(month: string): Array<{ date: string; inMonth: boolean }> {
