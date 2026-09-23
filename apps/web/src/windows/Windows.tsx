@@ -360,7 +360,7 @@ function Expense() {
               {isPayer && !isOwnPayerShare && outstanding ? (
                 <div className="a-row-actions">
                   {target && !cooldown ? (
-                    <button className="a-btn nudge" type="button" disabled={pendingId !== null} onClick={() => void act(share.id, () => sendReminder("nudge", share.id), "In-app nudge sent. Email delivery is not configured locally.")}>Nudge</button>
+                    <button className="a-btn nudge" type="button" disabled={pendingId !== null} onClick={() => void act(share.id, () => sendReminder("nudge", share.id), "Nudge sent in Commune.")}>Nudge</button>
                   ) : null}
                   <button className="a-btn ghost" type="button" disabled={pendingId !== null} onClick={() => void act(share.id, () => confirmExpenseShare(share.id), "Share confirmed as received. No payment was taken by Commune.")}>Confirm received</button>
                 </div>

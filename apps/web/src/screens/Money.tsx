@@ -186,7 +186,7 @@ export function SettleScreen() {
     setPendingId(sourceId);
     try {
       await sendReminder("nudge", sourceId);
-      setMessage("In-app nudge sent. Email delivery is not configured locally.");
+      setMessage("Nudge sent in Commune.");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not send the nudge.");
     } finally {
@@ -443,7 +443,7 @@ export function FundsScreen() {
                     <div className="a-row-actions">
                       <button className="a-btn ghost" type="button" disabled={pending} onClick={() => setContributionFor(contributionFor === commitment.id ? null : commitment.id)}>Record contribution</button>
                       {reminder && !cooldown ? (
-                        <button className="a-btn nudge" type="button" disabled={pending} onClick={() => void run(() => sendReminder("chase", commitment.id), "In-app chase sent. Email delivery is not configured locally.")}>Chase</button>
+                        <button className="a-btn nudge" type="button" disabled={pending} onClick={() => void run(() => sendReminder("chase", commitment.id), "Chase sent in Commune.")}>Chase</button>
                       ) : null}
                     </div>
                   ) : null}
