@@ -93,10 +93,11 @@ local API or present a static build as a working product before hosted tests.
   `accounts@notify.ourcommune.io`. Neon's test message to the Commune infra
   inbox was reported delivered by Resend. Trusted app/preview domains and
   real sign-up/reset tests are still outstanding.
-- The stale Git connection from the old `commune-quiet-pass` Vercel project
-  was disconnected without deleting that project. Future PR commits should
-  receive checks from only the new `commune-web` project; verify this on the
-  next push before treating the PR checks as clean.
+- Stale Git connections from the old account's `commune-quiet-pass` and
+  `commune-web` Vercel projects were disconnected without deleting either
+  project or stopping their existing deployments. Future PR commits should
+  receive checks from only the new Commune team's `commune-web` project;
+  verify this on the next push before treating PR checks as clean.
 
 ## Local database verification
 
