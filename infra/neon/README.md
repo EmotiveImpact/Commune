@@ -113,6 +113,12 @@ local API or present a static build as a working product before hosted tests.
   Nudge control disappeared after reload, consistent with the cooldown. This
   does **not** prove outbound email: the scheduled reminder worker is on the
   production Neon branch, while this outbox row is on the isolated PR branch.
+- The same Google user created a £2 overdue pledge to a shared £10 test fund,
+  and the admin saw the precise £2 due amount and Chase control. Attempting
+  Chase immediately after Nudge was rejected with “This member was already
+  reminded in the last day”, exercising the cross-kind sender/recipient daily
+  cap. A successful Chase delivery remains untested; use a different test
+  recipient or wait for the cap to expire rather than weaken the rule.
 - Production Auth requires email verification, rejects localhost origins, and
   sends through a separate restricted Resend SMTP key as
   `accounts@notify.ourcommune.io`. Neon's test message to the Commune infra
