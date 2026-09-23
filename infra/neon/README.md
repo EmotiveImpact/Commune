@@ -50,7 +50,7 @@ local API or present a static build as a working product before hosted tests.
    Broad grants would let direct writes bypass ledger invariants. Keep preview
    branches separate from production.
 3. Apply `migrations/0001_commune_core.sql` through
-   `migrations/0007_atomic_commune_details.sql` in numeric order to the
+   `migrations/0008_managed_auth_uuid.sql` in numeric order to the
    development branch via an **unpooled** connection. Run `tests/grants.sql`,
    review RLS, and run two-account signed-JWT tests before applying the same
    reviewed migrations to production.
@@ -79,9 +79,20 @@ local API or present a static build as a working product before hosted tests.
   `app.ourcommune.io` when released; reserve `ourcommune.io` for the separate
   public website. Do not point the apex domain at the product app.
 - The Neon `commune-production` main branch has Managed Better Auth, Data API,
-  and migrations 0001–0007. All 14 public tables have RLS enabled; automatic
-  broad public-schema grants stayed off. The preview uses a separate Neon
-  branch. Real signed-in, two-account acceptance tests remain outstanding.
+  and migrations 0001–0008. All 14 public tables have RLS enabled; automatic
+  broad public-schema grants stayed off. Vercel's PR preview branch
+  `preview/cursor/commune-redesign-mockups-6a48` was reset from `main` after
+  migrations 0001–0007, then both branches received migration 0008. They
+  have the same 14 tables, Data API, `auth.user_id()`,
+  and `authenticated` role. `anonymous` cannot select `public.expenses`;
+  unauthenticated HTTP requests to its Data API are rejected. Its separate
+  Auth service trusts the exact preview deployment and branch URLs. A fresh
+  Vercel Preview redeploy is ready. A verified test user created a household
+  there; its saved name and address now reload on Home and This Hub. The first
+  hosted sign-in exposed that Managed Auth uses UUID `user.id` while Commune
+  stores JWT subjects as text. Migration 0008 fixes the profile and invite
+  functions; `tests/managed_auth_uuid.sql` reproduces the real type boundary
+  locally. Two-account acceptance tests remain outstanding.
 - The production Neon `reminders` Function is deployed with a send-only Resend
   credential restricted to `notify.ourcommune.io`. Its `reminder-delivery`
   schedule runs every five minutes. This proves deployment, **not** successful
@@ -91,8 +102,9 @@ local API or present a static build as a working product before hosted tests.
 - Production Auth requires email verification, rejects localhost origins, and
   sends through a separate restricted Resend SMTP key as
   `accounts@notify.ourcommune.io`. Neon's test message to the Commune infra
-  inbox was reported delivered by Resend. Trusted app/preview domains and
-  real sign-up/reset tests are still outstanding.
+  inbox was reported delivered by Resend. The PR preview URLs are trusted
+  automatically by the Vercel integration. The production `app.ourcommune.io`
+  origin and real sign-up/reset tests are still outstanding.
 - Stale Git connections from the old account's `commune-quiet-pass` and
   `commune-web` Vercel projects were disconnected without deleting either
   project or stopping their existing deployments. Future PR commits should
@@ -102,9 +114,10 @@ local API or present a static build as a working product before hosted tests.
 ## Local database verification
 
 On a disposable local PostgreSQL database, run
-`tests/local_auth_stub.sql`, migrations 0001 through 0007, then
+`tests/local_auth_stub.sql`, migrations 0001 through 0008, then
 `tests/reminders.sql`, `tests/invitations.sql`,
-`tests/shared_content.sql`, `tests/atomic_commune_details.sql`, and
+`tests/shared_content.sql`, `tests/atomic_commune_details.sql`,
+`tests/managed_auth_uuid.sql`, and
 `tests/grants.sql` with
 `psql -v ON_ERROR_STOP=1 -f ...` in that order.
 The stub must **never** be applied to Neon. The test verifies amount derivation,

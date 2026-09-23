@@ -126,8 +126,8 @@ async function loadReminderDetails(reminderId: string) {
       CASE WHEN r.kind = 'nudge' THEN e.title ELSE f.name END AS label
     FROM public.reminders r
     JOIN public.communes c ON c.id = r.commune_id
-    JOIN neon_auth."user" sender ON sender.id = r.sender_user_id
-    JOIN neon_auth."user" recipient ON recipient.id = r.recipient_user_id
+    JOIN neon_auth."user" sender ON sender.id::text = r.sender_user_id
+    JOIN neon_auth."user" recipient ON recipient.id::text = r.recipient_user_id
     LEFT JOIN public.notification_preferences pref
       ON pref.user_id = r.recipient_user_id
     LEFT JOIN public.expense_shares s
