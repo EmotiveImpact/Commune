@@ -2,10 +2,11 @@
 
 This is the fresh-data path for the Direction A web app on PR 11. It does not
 migrate the old Supabase project or its sample users. The current web UI uses a
-real PostgreSQL-backed **localhost-only** API for development. Hosted builds
-have a Neon Auth and Data API client, but the complete multi-user path has not
-been verified against hosted Neon. Nudge and Chase create in-app notifications
-locally; outbound email is intentionally suppressed there. Session storage
+real PostgreSQL-backed **localhost-only** API for development. Hosted Preview
+builds use Neon Auth and the Data API; a two-account expense, invite, and
+reminder path has been verified there, but production release is not signed
+off. Nudge and Chase create in-app notifications locally; outbound email is
+intentionally suppressed there. Session storage
 holds personal display preferences, photos, avatar and payment-method hints,
 not the shared ledger. Vite's `/api` proxy exists only in development; the
 local API refuses non-loopback origins and database URLs. Do not deploy the
@@ -42,6 +43,14 @@ local API or present a static build as a working product before hosted tests.
   If the browser closes or delivery fails, the outbox and scheduled sweep
   still carry the job; a successful in-app notice must not be misrepresented
   as an email delivered to an inbox.
+- The five-minute scheduled trigger is one branch-wide retry sweep, **not one
+  worker per user**. The current sweep processes at most 100 queued jobs with
+  four concurrent senders and a 30-second budget. This is a small-scale
+  safety net, not a claim of 100,000-user capacity. Before substantial growth,
+  measure peak reminder volume, queue age, Neon invocation time, Resend rate
+  limits, bounce handling, and provider spend; increase or replace the drain
+  mechanism based on those measurements rather than assuming a paid plan
+  automatically scales application throughput.
 
 ## Production cutover order
 
@@ -105,7 +114,8 @@ local API or present a static build as a working product before hosted tests.
   hosted sign-in exposed that Managed Auth uses UUID `user.id` while Commune
   stores JWT subjects as text. Migration 0008 fixes the profile and invite
   functions; `tests/managed_auth_uuid.sql` reproduces the real type boundary
-  locally. Two-account acceptance tests remain outstanding.
+  locally. The two-account invite, expense, Nudge, and Chase tests below now
+  cover the preview branch; production is still unverified.
 - The production Neon `reminders` Function is deployed with a send-only Resend
   credential restricted to `notify.ourcommune.io`. Its `reminder-delivery`
   schedule runs every five minutes. This proves deployment, **not** successful
@@ -123,15 +133,24 @@ local API or present a static build as a working product before hosted tests.
   accepted, and both users saw the same two-member household and address. The
   payer then created a £2 due expense with two £1 shares. The other member saw
   their £1 balance, and a Nudge created a £1 recipient Notice. The payer's
-  Nudge control disappeared after reload, consistent with the cooldown. This
-  does **not** prove outbound email: the scheduled reminder worker is on the
-  production Neon branch, while this outbox row is on the isolated PR branch.
+  Nudge control disappeared after reload, consistent with the cooldown. A
+  preview-only Neon Function has since been deployed with its own send-only
+  Resend key and exact branch URL. A later Nudge from the updated branch build
+  reached Resend immediately and was reported **Delivered** by the provider.
+  The original queued test Nudge was also sent by a one-off scheduled sweep.
+  The temporary one-minute schedule was disabled and its project-scoped
+  deployment key revoked. A five-minute preview backup sweep is now enabled;
+  it cleared a second pending Nudge and a real Chase in one run. Resend reports
+  the Chase and both of those Nudges as **Delivered**.
 - The same Google user created a £2 overdue pledge to a shared £10 test fund,
   and the admin saw the precise £2 due amount and Chase control. Attempting
   Chase immediately after Nudge was rejected with “This member was already
   reminded in the last day”, exercising the cross-kind sender/recipient daily
-  cap. A successful Chase delivery remains untested; use a different test
-  recipient or wait for the cap to expire rather than weaken the rule.
+  cap. For isolated preview-only verification, the earlier test reminder's
+  cooldown timestamp was moved back two days, and a subsequent Chase created
+  its recipient notice and outbox job. The preview backup sent that job at its
+  next five-minute boundary and Resend reported delivery. No cooldown rule
+  or production row was changed.
 - Production Auth requires email verification, rejects localhost origins, and
   sends through a separate restricted Resend SMTP key as
   `accounts@notify.ourcommune.io`. Neon's test message to the Commune infra
@@ -172,8 +191,9 @@ the RPCs but cannot write the underlying money tables directly.
   sample rows or sessionStorage; an accurate split ledger and payer settlement.
 - In-app notification list, read state, and Nudge/Chase confirmation/status UI
   verified against hosted Neon.
-- Email worker observed on a Neon staging branch with a real signed-in
-  Nudge/Chase; failure/retry monitoring and provider delivery/bounce webhooks.
+- Email worker observed on the isolated Neon PR branch with real signed-in
+  Nudge and Chase and Resend delivery. Verify failure/retry monitoring,
+  provider delivery/bounce webhooks, and the updated worker on production.
 - Production Auth trusted domains, optional Google OAuth credentials, and
   real sign-up/reset verification. Custom SMTP and verified-email enforcement
   are configured, but a provider test message does not prove those user flows.
