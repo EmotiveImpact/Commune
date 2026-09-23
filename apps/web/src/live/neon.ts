@@ -47,22 +47,36 @@ async function dispatchReminderEmail(reminderId: string): Promise<void> {
   // The database transaction already created the in-app notice and durable
   // outbox row. This prompt dispatch is best-effort; the scheduled trigger
   // safely retries if the browser closes or this request fails.
-  if (!reminderFunctionUrl) return;
+  if (!reminderFunctionUrl) {
+    console.warn("Reminder email dispatch is not configured for this build");
+    return;
+  }
   const endpoint = new URL(reminderFunctionUrl);
   if (endpoint.protocol !== "https:" || endpoint.username || endpoint.password ||
-      endpoint.search || endpoint.hash) return;
+      endpoint.search || endpoint.hash) {
+    console.warn("Reminder email dispatch URL is invalid");
+    return;
+  }
   endpoint.pathname = "/dispatch";
-  const result = await db().auth.token();
-  if (result.error || !result.data?.token) return;
-  await fetch(endpoint, {
+  // This is the same session JWT Neon JS attaches to the working Data API
+  // calls. Better Auth's separate /token action may not be available on every
+  // branch configuration, so avoid a second auth mechanism here.
+  const session = await db().auth.getSession();
+  const token = session.data?.session?.token;
+  if (session.error || !token) {
+    console.warn("Reminder email dispatch could not obtain the active session JWT");
+    return;
+  }
+  const response = await fetch(endpoint, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${result.data.token}`,
+      Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({ reminderId }),
     signal: AbortSignal.timeout(10_000),
   });
+  if (!response.ok) console.warn(`Reminder email dispatch returned HTTP ${response.status}`);
 }
 
 type Row = Record<string, unknown>;
@@ -338,8 +352,10 @@ export async function neonApi<T>(path: string, init: RequestInit = {}): Promise<
   } else if (path === "/reminders" && method === "POST") {
     const reminder = await rpcId("send_reminder", { p_kind: body.kind, p_source_id: body.sourceId });
     response = reminder;
-    void dispatchReminderEmail(reminder.id).catch(() => {
-      // The outbox remains queued for scheduled delivery or retry.
+    void dispatchReminderEmail(reminder.id).catch((error: unknown) => {
+      // Log only the error type, never the JWT or full request. The outbox
+      // remains queued for scheduled delivery or retry.
+      console.warn("Reminder email dispatch request failed", error instanceof Error ? error.name : "unknown");
     });
   } else if (method === "POST" && pathId(path, /^\/notifications\/([^/]+)\/read$/)) {
     response = await rpcVoid("mark_notification_read", { p_notification_id: pathId(path, /^\/notifications\/([^/]+)\/read$/) });
