@@ -109,14 +109,14 @@ local API or present a static build as a working product before hosted tests.
    complete app and release checklist pass. Do not merge or deploy production
    solely because the static Vite build succeeds.
 
-## Current hosted state (2026-09-23)
+## Current hosted state (2026-09-24)
 
 - The new Vercel `commune-web` project builds PR 11 as a **Preview**. There is
   no signed-off production deployment yet. Keep the product on
   `app.ourcommune.io` when released; reserve `ourcommune.io` for the separate
   public website. Do not point the apex domain at the product app.
 - The Neon `commune-production` main branch has Managed Better Auth, Data API,
-  and migrations 0001–0008. All 14 public tables have RLS enabled; automatic
+  and migrations 0001–0010. All 14 public tables have RLS enabled; automatic
   broad public-schema grants stayed off. Vercel's PR preview branch
   `preview/cursor/commune-redesign-mockups-6a48` was reset from `main` after
   migrations 0001–0007, then both branches received migration 0008. They
@@ -172,8 +172,12 @@ local API or present a static build as a working product before hosted tests.
   final-slot tests passed. The preview index and function were verified after
   applying the migration. Migration 0010 adds the read-only usage counter and
   was also applied to that preview branch after local authorization and
-  rolling-window tests passed. Production remains on migrations 0001–0008 until
-  release review; do not assume this ceiling is live there yet.
+  rolling-window tests passed. The reviewed migrations 0009 and 0010 were
+  subsequently applied to production `main`, which had zero reminder rows.
+  Production SQL verification found the sender index, 60-reminder rule and
+  usage RPC present; `authenticated` can execute the usage RPC and `anonymous`
+  cannot. Its Data API schema cache was refreshed successfully. These database
+  checks do not yet prove an end-to-end production send or counter display.
 - After refreshing the PR preview branch's Data API schema cache, the hosted
   Settle and Funds screens displayed the real signed-in sender's `2 of 60`
   rolling count and `2 / 8` per-person count on Settle. This is a preview
@@ -184,6 +188,19 @@ local API or present a static build as a working product before hosted tests.
   inbox was reported delivered by Resend. The PR preview URLs are trusted
   automatically by the Vercel integration. The production `app.ourcommune.io`
   origin and real sign-up/reset tests are still outstanding.
+- `app.ourcommune.io` points to the new Vercel project but currently returns
+  `DEPLOYMENT_NOT_FOUND`: the project has ready PR preview deployments, no
+  Production deployment. Its Production environment tracks Git `main`, which
+  still contains the old app, and its ignored-build setting is currently
+  **Only build pre-production**. Do not promote the PR Preview artifact as
+  production: that build embeds the preview branch's Neon Auth endpoint.
+  Build from the reviewed code with Production environment variables during
+  cutover, after changing the ignored-build setting and branch strategy.
+  The public production Function URL is now configured as a Production-only
+  `VITE_REMINDER_FUNCTION_URL`; no production deployment has consumed it yet.
+  The current production Function rejects an unauthenticated CORS preflight
+  from `https://app.ourcommune.io` with HTTP 403, so its code/configuration
+  still needs the reviewed update and a browser-origin retest before release.
 - Stale Git connections from the old account's `commune-quiet-pass` and
   `commune-web` Vercel projects were disconnected without deleting either
   project or stopping their existing deployments. Future PR commits should
