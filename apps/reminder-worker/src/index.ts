@@ -1,4 +1,5 @@
 import { attachDatabasePool } from "@neon/functions";
+import { createRemoteJWKSet, jwtVerify } from "jose";
 import { Pool } from "pg";
 import { renderReminderEmail } from "./email.ts";
 
@@ -45,6 +46,10 @@ if (connectionUrl.hostname.endsWith(".neon.tech")) {
 }
 const pool = new Pool({ connectionString: connectionUrl.toString(), max: 5 });
 attachDatabasePool(pool);
+const MAX_SCHEDULED_BATCH = 100;
+const SCHEDULED_CONCURRENCY = 4;
+const SCHEDULED_BUDGET_MS = 30_000;
+let jwks: ReturnType<typeof createRemoteJWKSet> | undefined;
 
 function mailConfig(): { apiKey: string; from: string; appUrl: string } | null {
   const { RESEND_API_KEY, RESEND_FROM, APP_URL } = process.env;
@@ -54,7 +59,7 @@ function mailConfig(): { apiKey: string; from: string; appUrl: string } | null {
   return { apiKey: RESEND_API_KEY, from: RESEND_FROM, appUrl: url.origin };
 }
 
-async function claimNext(): Promise<Outbox | null> {
+async function claimNext(reminderId: string | null = null): Promise<Outbox | null> {
   // The row update is atomic across concurrent scheduled invocations. A stale
   // sending row is retried only inside Resend's 24-hour idempotency window.
   const { rows } = await pool.query<Outbox>(`
@@ -64,6 +69,7 @@ async function claimNext(): Promise<Outbox | null> {
         (status IN ('pending', 'failed') AND next_attempt_at <= now())
         OR (status = 'sending' AND updated_at < now() - interval '5 minutes')
       )
+        AND ($1::uuid IS NULL OR reminder_id = $1::uuid)
         AND attempts < 5
         AND created_at > now() - interval '23 hours'
       ORDER BY created_at
@@ -74,7 +80,7 @@ async function claimNext(): Promise<Outbox | null> {
           updated_at = now(), last_error = NULL
     FROM candidate WHERE q.reminder_id = candidate.reminder_id
     RETURNING q.reminder_id, q.attempts, q.payload, q.payload_amount_minor::text
-  `);
+  `, [reminderId]);
   return rows[0] ?? null;
 }
 
@@ -126,8 +132,8 @@ async function loadReminderDetails(reminderId: string) {
       CASE WHEN r.kind = 'nudge' THEN e.title ELSE f.name END AS label
     FROM public.reminders r
     JOIN public.communes c ON c.id = r.commune_id
-    JOIN neon_auth."user" sender ON sender.id::text = r.sender_user_id
-    JOIN neon_auth."user" recipient ON recipient.id::text = r.recipient_user_id
+    JOIN neon_auth."user" sender ON sender.id = r.sender_user_id::uuid
+    JOIN neon_auth."user" recipient ON recipient.id = r.recipient_user_id::uuid
     LEFT JOIN public.notification_preferences pref
       ON pref.user_id = r.recipient_user_id
     LEFT JOIN public.expense_shares s
@@ -214,8 +220,8 @@ async function markFailure(reminderId: string, attempt: number, message: string)
   `, [reminderId, message, attempt]);
 }
 
-async function sendOne(config: { apiKey: string; from: string; appUrl: string }) {
-  const item = await claimNext();
+async function sendOne(config: { apiKey: string; from: string; appUrl: string }, reminderId: string | null = null) {
+  const item = await claimNext(reminderId);
   if (!item) return false;
   try {
     // A retry must re-check live obligation and preference state, even when
@@ -268,22 +274,96 @@ async function sendOne(config: { apiKey: string; from: string; appUrl: string })
   }
 }
 
+function dispatchCors(request: Request, appUrl: string): HeadersInit | null {
+  const origin = request.headers.get("origin");
+  if (!origin) return {};
+  const allowed = [appUrl, ...(process.env.APP_ORIGINS ?? "").split(",")
+    .map((value) => value.trim()).filter(Boolean)];
+  if (!allowed.includes(origin)) return null;
+  return {
+    "Access-Control-Allow-Origin": origin,
+    "Access-Control-Allow-Headers": "authorization, content-type",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Vary": "Origin",
+  };
+}
+
+async function verifiedSender(request: Request): Promise<string | null> {
+  const authorization = request.headers.get("authorization");
+  if (!authorization?.startsWith("Bearer ")) return null;
+  const authUrl = process.env.NEON_AUTH_BASE_URL;
+  const jwksUrl = process.env.NEON_AUTH_JWKS_URL;
+  if (!authUrl || !jwksUrl) return null;
+  try {
+    jwks ??= createRemoteJWKSet(new URL(jwksUrl));
+    const issuer = new URL(authUrl).origin;
+    const { payload } = await jwtVerify(authorization.slice(7), jwks, {
+      issuer, audience: issuer,
+    });
+    return payload.emailVerified === true && typeof payload.sub === "string"
+      ? payload.sub : null;
+  } catch {
+    return null;
+  }
+}
+
+async function dispatch(request: Request, config: { apiKey: string; from: string; appUrl: string }): Promise<Response> {
+  const headers = dispatchCors(request, config.appUrl);
+  if (!headers) return new Response("Forbidden origin", { status: 403 });
+  if (request.method === "OPTIONS") return new Response(null, { status: 204, headers });
+  if (request.method !== "POST") return new Response("Method not allowed", { status: 405, headers });
+  const senderId = await verifiedSender(request);
+  if (!senderId) return new Response("Unauthorized", { status: 401, headers });
+  let reminderId: unknown;
+  try {
+    reminderId = (await request.json() as { reminderId?: unknown }).reminderId;
+  } catch {
+    return new Response("Invalid request", { status: 400, headers });
+  }
+  if (typeof reminderId !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(reminderId)) {
+    return new Response("Invalid reminder", { status: 400, headers });
+  }
+  const sender = await pool.query<{ sender_user_id: string }>(
+    "SELECT sender_user_id FROM public.reminders WHERE id = $1", [reminderId],
+  );
+  if (sender.rows[0]?.sender_user_id !== senderId) {
+    return new Response("Reminder not found", { status: 404, headers });
+  }
+  const processed = await sendOne(config, reminderId);
+  return Response.json({ processed }, { headers });
+}
+
+async function drainScheduled(config: { apiKey: string; from: string; appUrl: string }): Promise<number> {
+  const deadline = Date.now() + SCHEDULED_BUDGET_MS;
+  let claimed = 0;
+  let processed = 0;
+  await Promise.all(Array.from({ length: SCHEDULED_CONCURRENCY }, async () => {
+    while (claimed < MAX_SCHEDULED_BATCH && Date.now() < deadline) {
+      claimed += 1;
+      if (!await sendOne(config)) break;
+      processed += 1;
+    }
+  }));
+  return processed;
+}
+
 export default {
   async fetch(request: Request): Promise<Response> {
-    if (request.method !== "POST" ||
-        !request.headers.get("x-neon-trigger-invocation-id")) {
-      return new Response("Forbidden", { status: 403 });
-    }
     const config = mailConfig();
     if (!config) {
       console.error("Reminder worker is missing RESEND_API_KEY, RESEND_FROM, or APP_URL");
       return new Response("Mail provider not configured", { status: 503 });
     }
-    await expireUnsendable();
-    let processed = 0;
-    for (; processed < 10; processed += 1) {
-      if (!await sendOne(config)) break;
+    const pathname = new URL(request.url).pathname;
+    if (pathname === "/dispatch") return dispatch(request, config);
+    // Neon strips client-set X-Neon-* headers before invoking a Function.
+    // Only the platform's scheduled trigger can supply this header.
+    if (pathname !== "/" || request.method !== "POST" ||
+        !request.headers.get("x-neon-trigger-invocation-id")) {
+      return new Response("Forbidden", { status: 403 });
     }
+    await expireUnsendable();
+    const processed = await drainScheduled(config);
     return Response.json({ processed });
   },
 };

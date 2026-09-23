@@ -183,6 +183,9 @@ importers:
       '@neon/functions':
         specifier: 0.11.0
         version: 0.11.0
+      jose:
+        specifier: ^6.1.0
+        version: 6.2.5
       pg:
         specifier: ^8.20.0
         version: 8.20.0

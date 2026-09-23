@@ -36,6 +36,12 @@ local API or present a static build as a working product before hosted tests.
 - The worker rechecks whether the recipient is verified, still a member,
   opted in, and still owes that amount before each send attempt. A changed
   balance suppresses a frozen retry rather than sending stale figures.
+- Hosted Nudge/Chase may prompt immediate delivery through the branch's Neon
+  Function after the database transaction commits. That route verifies a
+  short-lived Neon Auth JWT and confirms the caller created that reminder.
+  If the browser closes or delivery fails, the outbox and scheduled sweep
+  still carry the job; a successful in-app notice must not be misrepresented
+  as an email delivered to an inbox.
 
 ## Production cutover order
 
@@ -66,6 +72,13 @@ local API or present a static build as a working product before hosted tests.
    this worker architecture. Deploy
    `apps/reminder-worker/src/index.ts` as a Neon Function with server-only
    `RESEND_API_KEY`, `RESEND_FROM`, and `APP_URL`, then schedule its trigger.
+   Set `VITE_REMINDER_FUNCTION_URL` on the corresponding hosted web branch to
+   the Function's public base URL, never to another branch's Function. The
+   Function uses Neon's injected `NEON_AUTH_BASE_URL` and
+   `NEON_AUTH_JWKS_URL` to authenticate `/dispatch`. Set `APP_ORIGINS` only if
+   an additional exact preview origin must call it. The scheduler invokes `/`
+   using Neon's attested `X-Neon-Trigger-Invocation-Id` header; it is the retry
+   safety net, not the primary path for newly clicked reminders.
    Never put those secrets in a `VITE_` variable or the repository.
 6. Use Vercel's Neon integration for preview branch isolation, then test the
    deployed preview with two real accounts. Keep PR 11 draft until the

@@ -11,6 +11,7 @@ import type { NoteCard } from "../data/household";
 // URLs, never DATABASE_URL, a service role, or any other database secret.
 const authUrl = import.meta.env.VITE_NEON_AUTH_URL?.trim();
 const configuredDataUrl = import.meta.env.VITE_NEON_DATA_API_URL?.trim();
+const reminderFunctionUrl = import.meta.env.VITE_REMINDER_FUNCTION_URL?.trim();
 
 function databaseBaseFromAuth(url: string): string {
   const parsed = new URL(url);
@@ -41,6 +42,28 @@ function client() {
 
 let neon: ReturnType<typeof client> | undefined;
 function db() { return neon ??= client(); }
+
+async function dispatchReminderEmail(reminderId: string): Promise<void> {
+  // The database transaction already created the in-app notice and durable
+  // outbox row. This prompt dispatch is best-effort; the scheduled trigger
+  // safely retries if the browser closes or this request fails.
+  if (!reminderFunctionUrl) return;
+  const endpoint = new URL(reminderFunctionUrl);
+  if (endpoint.protocol !== "https:" || endpoint.username || endpoint.password ||
+      endpoint.search || endpoint.hash) return;
+  endpoint.pathname = "/dispatch";
+  const result = await db().auth.token();
+  if (result.error || !result.data?.token) return;
+  await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${result.data.token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ reminderId }),
+    signal: AbortSignal.timeout(10_000),
+  });
+}
 
 type Row = Record<string, unknown>;
 function rows(value: unknown): Row[] { return Array.isArray(value) ? value as Row[] : []; }
@@ -313,7 +336,11 @@ export async function neonApi<T>(path: string, init: RequestInit = {}): Promise<
       p_commitment_id: pathId(path, /^\/commitments\/([^/]+)\/contributions$/), p_amount_minor: body.amountMinor,
     });
   } else if (path === "/reminders" && method === "POST") {
-    response = await rpcId("send_reminder", { p_kind: body.kind, p_source_id: body.sourceId });
+    const reminder = await rpcId("send_reminder", { p_kind: body.kind, p_source_id: body.sourceId });
+    response = reminder;
+    void dispatchReminderEmail(reminder.id).catch(() => {
+      // The outbox remains queued for scheduled delivery or retry.
+    });
   } else if (method === "POST" && pathId(path, /^\/notifications\/([^/]+)\/read$/)) {
     response = await rpcVoid("mark_notification_read", { p_notification_id: pathId(path, /^\/notifications\/([^/]+)\/read$/) });
   } else if (method === "POST" && pathId(path, /^\/communes\/([^/]+)\/invites$/)) {

@@ -2,6 +2,7 @@
 // migrations applied. Never point this test at a shared or production branch.
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
+import { exportJWK, generateKeyPair, SignJWT } from "jose";
 import { Pool } from "pg";
 
 if (!process.env.DATABASE_URL?.includes("127.0.0.1")) {
@@ -10,17 +11,27 @@ if (!process.env.DATABASE_URL?.includes("127.0.0.1")) {
 process.env.RESEND_API_KEY = "test-only";
 process.env.RESEND_FROM = "Commune <test@example.test>";
 process.env.APP_URL = "https://example.test";
+process.env.NEON_AUTH_BASE_URL = "https://auth.example.test/neondb/auth";
+process.env.NEON_AUTH_JWKS_URL = "https://auth.example.test/jwks";
+
+const { publicKey, privateKey } = await generateKeyPair("EdDSA");
+const publicJwk = await exportJWK(publicKey);
+publicJwk.kid = "local-test";
 
 const { default: worker } = await import("../src/index.ts");
 const db = new Pool({ connectionString: process.env.DATABASE_URL });
 const suffix = randomUUID();
-const alice = `alice-${suffix}`;
-const bob = `bob-${suffix}`;
+const alice = randomUUID();
+const bob = randomUUID();
 let providerCalls = [];
 let providerStatus = 503;
 let testCommune;
 
-globalThis.fetch = async (_url, init) => {
+globalThis.fetch = async (url, init) => {
+  if (String(url) === process.env.NEON_AUTH_JWKS_URL) {
+    return Response.json({ keys: [publicJwk] });
+  }
+  assert.equal(String(url), "https://api.resend.com/emails");
   providerCalls.push({
     payload: JSON.parse(init.body),
     key: init.headers["Idempotency-Key"],
@@ -32,6 +43,29 @@ globalThis.fetch = async (_url, init) => {
     headers: { "Content-Type": "application/json" },
   });
 };
+
+async function signedToken(userId, verified = true) {
+  return new SignJWT({ emailVerified: verified })
+    .setProtectedHeader({ alg: "EdDSA", kid: "local-test" })
+    .setSubject(userId)
+    .setIssuer("https://auth.example.test")
+    .setAudience("https://auth.example.test")
+    .setIssuedAt()
+    .setExpirationTime("5m")
+    .sign(privateKey);
+}
+
+async function dispatchReminder(reminderId, token, origin = "https://example.test") {
+  return worker.fetch(new Request("https://example.test/dispatch", {
+    method: "POST",
+    headers: {
+      Origin: origin,
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ reminderId }),
+  }));
+}
 
 async function asUser(userId, action) {
   const connection = await db.connect();
@@ -67,6 +101,11 @@ async function outbox(reminderId) {
 
 let testExitCode = 0;
 try {
+  // Hosted Managed Better Auth uses UUID ids. Keep this disposable local stub
+  // representative without changing the text-id stub used by other SQL tests.
+  await db.query(`
+    ALTER TABLE neon_auth."user" ALTER COLUMN id TYPE uuid USING id::uuid
+  `);
   const existing = await db.query(`
     SELECT count(*)::integer AS count FROM public.reminder_email_outbox
     WHERE status IN ('pending', 'failed', 'sending') AND attempts < 5
@@ -204,8 +243,22 @@ try {
   await ageReminder(second.reminderId);
   const third = await makeChase("New fund", 4000);
   providerStatus = 200;
-  await runWorker();
+  assert.equal((await dispatchReminder(third.reminderId)).status, 401,
+    "A public caller cannot start delivery");
+  assert.equal((await dispatchReminder(third.reminderId, await signedToken(bob))).status, 404,
+    "The recipient cannot dispatch someone else's reminder");
+  assert.equal((await dispatchReminder(third.reminderId, await signedToken(alice, false))).status, 401,
+    "An unverified account cannot dispatch email");
+  assert.equal((await dispatchReminder(third.reminderId, await signedToken(alice),
+    "https://another-site.test")).status, 403,
+  "A different website cannot call the browser route");
+  const immediate = await dispatchReminder(third.reminderId, await signedToken(alice));
+  assert.equal(immediate.status, 200);
+  assert.equal((await immediate.json()).processed, true);
   assert.equal((await outbox(third.reminderId)).status, "sent");
+  const sentCount = providerCalls.length;
+  assert.equal((await dispatchReminder(third.reminderId, await signedToken(alice))).status, 200);
+  assert.equal(providerCalls.length, sentCount, "A repeated dispatch must not duplicate email");
   assert.match(providerCalls.at(-1).payload.text, /£60\.00/);
   assert.match(providerCalls.at(-1).payload.html, /£60\.00/);
   assert.match(providerCalls.at(-1).payload.html, /Outstanding fund pledge/);
@@ -308,6 +361,29 @@ try {
   assert.equal(sends.filter((result) => result.status === "fulfilled").length, 1);
   assert.equal(sends.filter((result) =>
     result.status === "rejected" && result.reason.code === "P0001").length, 1);
+
+  // The retry sweep must clear more than the old ten-email ceiling in a run.
+  const batchIds = [];
+  for (let index = 0; index < 12; index += 1) {
+    const shareId = await createShare(`Batch ${index}`);
+    const inserted = await db.query(`
+      INSERT INTO public.reminders
+        (commune_id, kind, source_id, sender_user_id, recipient_user_id, amount_minor)
+      VALUES ($1, 'nudge', $2, $3, $4, 5000)
+      RETURNING id
+    `, [commune, shareId, alice, bob]);
+    const reminderId = inserted.rows[0].id;
+    batchIds.push(reminderId);
+    await db.query(`
+      INSERT INTO public.reminder_email_outbox (reminder_id) VALUES ($1)
+    `, [reminderId]);
+  }
+  await runWorker();
+  const batch = await db.query(`
+    SELECT count(*)::integer AS count FROM public.reminder_email_outbox
+    WHERE reminder_id = ANY($1::uuid[]) AND status = 'sent'
+  `, [batchIds]);
+  assert.equal(batch.rows[0].count, 12);
 
   console.log("Reminder worker integration checks passed");
 } catch (error) {
