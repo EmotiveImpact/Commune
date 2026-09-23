@@ -99,6 +99,20 @@ local API or present a static build as a working product before hosted tests.
   end-to-end Nudge/Chase delivery. A scheduled invocation appeared in Neon logs;
   test an actual due obligation before release. The temporary project-scoped
   deployment key was revoked after setup and its local CLI profile removed.
+- The PR preview now has a separate Commune-owned Google OAuth client configured
+  in Neon Auth. `VITE_GOOGLE_OAUTH_ENABLED=true` is scoped only to the PR 11
+  Preview branch in Vercel. A fresh Preview build on commit `6dd43c8` completed
+  the Google redirect, created a verified Neon Auth user, and returned to the
+  app. The temporary project-scoped setup key was revoked. Production Google
+  OAuth is not configured or enabled.
+- A two-account Preview test succeeded: the existing verified email/password
+  user invited the new Google user to a household; the email-bound link was
+  accepted, and both users saw the same two-member household and address. The
+  payer then created a £2 due expense with two £1 shares. The other member saw
+  their £1 balance, and a Nudge created a £1 recipient Notice. The payer's
+  Nudge control disappeared after reload, consistent with the cooldown. This
+  does **not** prove outbound email: the scheduled reminder worker is on the
+  production Neon branch, while this outbox row is on the isolated PR branch.
 - Production Auth requires email verification, rejects localhost origins, and
   sends through a separate restricted Resend SMTP key as
   `accounts@notify.ourcommune.io`. Neon's test message to the Commune infra
@@ -132,8 +146,9 @@ the RPCs but cannot write the underlying money tables directly.
 
 ## Release checks still missing
 
-- Hosted sign-up, verification, reset, invite acceptance and multi-commune
-  sessions proven with real accounts; Google OAuth remains optional.
+- Hosted sign-up, verification, reset, and multi-commune sessions proven with
+  real accounts. One two-account invite acceptance and Google OAuth sign-in
+  have passed on the PR Preview branch; repeat against production before release.
 - All product screens reading/writing the same hosted Neon state, not local
   sample rows or sessionStorage; an accurate split ledger and payer settlement.
 - In-app notification list, read state, and Nudge/Chase confirmation/status UI
@@ -145,11 +160,9 @@ the RPCs but cannot write the underlying money tables directly.
   are configured, but a provider test message does not prove those user flows.
   The Resend sender domain and its DKIM/SPF records are verified; production
   worker delivery still needs a recipient-verified test.
-- The web login has a Google OAuth path, but its button is deliberately hidden
-  unless `VITE_GOOGLE_OAUTH_ENABLED=true` is set for that Vercel environment.
-  Before enabling it for real users, register a Commune-owned Google OAuth app
-  with that branch's Neon Auth callback URL, add its client ID/secret in Neon
-  Auth, and test the full redirect on the exact app origin. Neon's shared Google
+- Google OAuth has passed on PR Preview only. Production still needs its own
+  Commune-owned OAuth client, production Neon Auth callback, exact trusted app
+  origin, and end-to-end test before enabling its button. Neon's shared Google
   credentials are for development only; Microsoft and LinkedIn are not offered
   by this project's managed Neon Auth provider configuration.
 - Two-user end-to-end tests, accessibility/mobile regression checks, RLS abuse
