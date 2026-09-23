@@ -79,7 +79,11 @@ local API or present a static build as a working product before hosted tests.
    `migrations/0010_reminder_usage.sql` in numeric order to the
    development branch via an **unpooled** connection. Run `tests/grants.sql`,
    review RLS, and run two-account signed-JWT tests before applying the same
-   reviewed migrations to production.
+   reviewed migrations to production. After a migration adds or changes a
+   Data API RPC, use that branch's Data API **Refresh schema cache** control
+   before checking the web app; the hosted API can otherwise report a new
+   function as missing even though it exists in Postgres. Refresh each branch
+   separately after its migration, including production during cutover.
 4. Verify the Vite production client against Neon Auth and the Data API. The
    localhost-only API is a development contract, not a deployable server.
    Test create/preview/accept/revoke invites with two verified accounts;
@@ -170,6 +174,10 @@ local API or present a static build as a working product before hosted tests.
   was also applied to that preview branch after local authorization and
   rolling-window tests passed. Production remains on migrations 0001–0008 until
   release review; do not assume this ceiling is live there yet.
+- After refreshing the PR preview branch's Data API schema cache, the hosted
+  Settle and Funds screens displayed the real signed-in sender's `2 of 60`
+  rolling count and `2 / 8` per-person count on Settle. This is a preview
+  verification, not proof that production has the counter or the new cap.
 - Production Auth requires email verification, rejects localhost origins, and
   sends through a separate restricted Resend SMTP key as
   `accounts@notify.ourcommune.io`. Neon's test message to the Commune infra
