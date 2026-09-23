@@ -58,9 +58,11 @@ local API or present a static build as a working product before hosted tests.
    Test create/preview/accept/revoke invites with two verified accounts;
    Nudge/Chase must use `send_reminder` (never local suppression), surface
    cooldown/errors, and show recipient notifications.
-5. Set up a verified outbound email domain/provider. Spaceship forwarding is
-   inbound only; it does not prove Commune can send as `ourcommune.io`.
-   Configure the required DNS records and a send-only provider key. Deploy
+5. `notify.ourcommune.io` is verified in Resend with DKIM, SPF, and feedback
+   MX records in Spaceship. Root-domain forwarding remains separate and must
+   not be changed for outbound app mail. Create a send-only Resend key for the
+   Neon Function; a Resend-to-Vercel project connection is not required for
+   this worker architecture. Deploy
    `apps/reminder-worker/src/index.ts` as a Neon Function with server-only
    `RESEND_API_KEY`, `RESEND_FROM`, and `APP_URL`, then schedule its trigger.
    Never put those secrets in a `VITE_` variable or the repository.
@@ -97,8 +99,9 @@ the RPCs but cannot write the underlying money tables directly.
   verified against hosted Neon.
 - Email worker deployed and observed on a Neon staging branch; failure/retry
   monitoring and provider delivery/bounce webhooks.
-- Verified sender domain, SPF/DKIM, production Auth SMTP, trusted domains,
-  production OAuth credentials, email verification and localhost restriction.
+- Production Auth SMTP, trusted domains, production OAuth credentials, email
+  verification and localhost restriction. The Resend sender domain and its
+  DKIM/SPF records are verified, but outbound sends are not yet live.
 - Two-user end-to-end tests, accessibility/mobile regression checks, RLS abuse
   tests, backup/restore rehearsal, and a Vercel preview sign-off.
 
