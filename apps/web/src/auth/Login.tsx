@@ -1,70 +1,59 @@
 import { useState, type FormEvent } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { AuthLayout } from "./AuthLayout";
-import { GoogleMark } from "../ui/Icon";
 import { useApp } from "../state";
 import { keepSearch } from "../nav";
 
 export function LoginPage() {
-  const { signIn } = useApp();
+  const { signInWithPassword } = useApp();
+  const [, setLocation] = useLocation();
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
-  function enter() {
-    signIn({
-      name: "Maya Chen",
-      email: email.trim() || "maya@14park.st",
-      seed: "maya",
-      hasHubs: true,
-      emptyLedger: false,
-    });
-  }
-
-  function onSubmit(event: FormEvent) {
+  async function onSubmit(event: FormEvent) {
     event.preventDefault();
     setError("");
-    if (!email.includes("@")) {
-      setError("Valid email required");
+    if (!email.includes("@") || !password) {
+      setError("Enter your email and password.");
       return;
     }
-    enter();
+    setBusy(true);
+    try {
+      await signInWithPassword(email.trim(), password);
+      const returnTo = sessionStorage.getItem("commune.return-to");
+      sessionStorage.removeItem("commune.return-to");
+      setLocation(returnTo || keepSearch("/"));
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not sign in.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
     <AuthLayout>
       <div className="commune-auth-panel">
-        <h2>Welcome Back</h2>
-        <p className="commune-auth-lede">
-          Explore the design preview. This does not sign you in or create a
-          shared account; sample data stays in this browser session.
-        </p>
-        {error ? <div className="commune-auth-alert">{error}</div> : null}
+        <h2>Welcome back</h2>
+        <p className="commune-auth-lede">Sign in to your shared Commune account.</p>
+        {error ? <div className="commune-auth-alert" role="alert">{error}</div> : null}
         <form onSubmit={onSubmit}>
           <div className="commune-auth-field">
             <label htmlFor="login-email">Email</label>
-            <input
-              id="login-email"
-              type="email"
-              autoComplete="email"
-              placeholder="user@company.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
+            <input id="login-email" type="email" autoComplete="email" required value={email} onChange={(event) => setEmail(event.target.value)} />
           </div>
-          <button className="commune-auth-btn" type="submit">
-            Explore preview
+          <div className="commune-auth-field">
+            <label htmlFor="login-password">Password</label>
+            <input id="login-password" type="password" autoComplete="current-password" required value={password} onChange={(event) => setPassword(event.target.value)} />
+          </div>
+          <button className="commune-auth-btn" type="submit" disabled={busy}>
+            {busy ? "Signing in…" : "Sign in"}
           </button>
         </form>
-        <div className="commune-auth-or">Account sign-in is being connected</div>
-        <button className="commune-auth-btn commune-auth-btn-google" type="button" disabled title="Google sign-in is not connected in this preview">
-          <GoogleMark />
-          Google sign-in unavailable
-        </button>
         <p className="commune-auth-foot">
-          Don&apos;t Have An Account?{" "}
-          <Link href={keepSearch("/signup")} className="commune-auth-link">
-            Register Now.
-          </Link>
+          New to Commune?{" "}
+          <Link href={keepSearch("/signup")} className="commune-auth-link">Create an account</Link>
         </p>
       </div>
     </AuthLayout>

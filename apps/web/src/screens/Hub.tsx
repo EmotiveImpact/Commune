@@ -76,7 +76,7 @@ export function HubScreen() {
         </div>
         <div className="a-card">
           <h2>Right now</h2>
-          <p className="sub">What still needs a person in this house.</p>
+          <p className="sub">Open items in this commune.</p>
           {hub.now.map((row) => (
             <button key={row.title} className="a-now-row" type="button" onClick={() => go(row.go)}>
               <Pill tone={row.pill}>{row.tag}</Pill>
@@ -111,6 +111,7 @@ export function HubScreen() {
             </div>
           </button>
         ))}
+        {!hub.moves.length ? <p className="sub">No outstanding shares to settle.</p> : null}
       </div>
 
       <div className="jump-grid">
@@ -128,7 +129,7 @@ export function HubScreen() {
           <div className="a-card-head">
             <div>
               <h2>This week</h2>
-              <p className="sub">Activity in this house. Open the ledger from here.</p>
+              <p className="sub">Recorded activity in this commune.</p>
             </div>
             <button className="a-btn ghost" type="button" onClick={() => go("activity")}>
               Activity
@@ -144,11 +145,12 @@ export function HubScreen() {
               <span className="when">{row.time}</span>
             </button>
           ))}
+          {!hub.activity.length ? <p className="sub">No activity yet.</p> : null}
         </div>
         <div className="a-card">
           <div className="a-card-head">
             <div>
-              <h2>The house, in writing</h2>
+              <h2>This commune, in writing</h2>
               <p className="sub">The stuff that used to live in a chat pin.</p>
             </div>
             <button className="a-btn ghost" type="button" onClick={() => go("notes")}>
@@ -168,6 +170,7 @@ export function HubScreen() {
               </div>
             </button>
           ))}
+          {!hub.notes.length ? <p className="sub">No notes yet.</p> : null}
         </div>
       </div>
 
@@ -192,8 +195,8 @@ export function HubScreen() {
               {member.bal}
             </div>
             {member.nudge ? (
-              <button className="a-btn nudge" type="button" onClick={() => go("reminder-preview")} style={{ height: 32, flexShrink: 0 }}>
-                Nudge
+              <button className="a-btn nudge" type="button" onClick={() => go("settle")} style={{ height: 32, flexShrink: 0 }}>
+                Review share
               </button>
             ) : null}
           </div>
@@ -210,10 +213,10 @@ export function HubEmptyScreen() {
       <Cover>
         <span className="type">{hub.type}</span>
         <h1>{hub.name}</h1>
-        <p className="lede">No bills yet. Add the first one so the house has a truth.</p>
+        <p className="lede">No expenses yet. Add the first one to start the shared ledger.</p>
       </Cover>
       <div className="a-empty a-cover-empty">
-        <p>Rent, gas, Tesco — once something is shared, Home and Settle will have something to say.</p>
+        <p>Once an expense is shared, Home and Settle will show the real balances.</p>
         <button className="a-btn" type="button" onClick={() => go("add-expense")}>
           Add expense
         </button>

@@ -46,20 +46,14 @@ export function SettingsScreen() {
           </div>
         </div>
         <div className="a-set-card">
-          <p className="a-set-plan-k">Plan</p>
-          <h3 className="a-set-plan-name">Standard</h3>
-          <p className="a-set-plan-lede">Renews 1 Sept 2026</p>
-          <div className="a-set-meter" aria-hidden="true">
-            <i style={{ width: "38%" }} />
-          </div>
+          <p className="a-set-plan-k">Local build</p>
+          <h3 className="a-set-plan-name">No subscription yet</h3>
+          <p className="a-set-plan-lede">Billing and payments are not connected.</p>
           <div className="a-set-meter-meta">
-            <span>{hub.members.length} of 8 members</span>
+            <span>{hub.members.length} {hub.members.length === 1 ? "member" : "members"}</span>
             <span>{places.length} {places.length === 1 ? "hub" : "hubs"}</span>
           </div>
-          <p className="a-set-plan-note">{hub.name} is the active space on the plan.</p>
-          <button className="a-btn a-btn-upgrade" type="button" onClick={() => go("billing")}>
-            Upgrade
-          </button>
+          <p className="a-set-plan-note">No renewal or charge is scheduled for {hub.name}.</p>
         </div>
       </aside>
       <div className="a-set-main">
@@ -72,7 +66,7 @@ export function SettingsScreen() {
               </span>
               <span className="a-set-row-copy">
                 <strong>How people pay you</strong>
-                <span>Revolut, PayPal, bank. Opens as a window.</span>
+                <span>Revolut, PayPal, bank. Saved only in this browser for now.</span>
               </span>
               <Icon name="chevron" size={16} />
             </button>
@@ -123,14 +117,14 @@ export function SettingsScreen() {
             <div className="a-set-row">
               <span className="a-set-row-copy">
                 <strong>Notices</strong>
-                <span>Bills, chores, and fund gaps.</span>
+                <span>Show in-app reminders on this device.</span>
               </span>
               <Switch checked={noticesOn} onChange={setNoticesOn} label="Notices" />
             </div>
             <div className="a-set-row">
               <span className="a-set-row-copy">
                 <strong>Currency</strong>
-                <span>Used when a hub doesn’t pick one.</span>
+                <span>Your display preference; each commune keeps its own currency.</span>
               </span>
               <select
                 aria-label="Currency"

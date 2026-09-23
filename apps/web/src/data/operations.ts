@@ -27,7 +27,7 @@ export type OperationItem = {
   notes: string;
 };
 
-/** Maya’s household clock. The Park Street week is built around this Tuesday. */
+/** Legacy fixture date, never the live app clock. */
 export const HOUSE_TODAY = "2026-09-01";
 
 export type NewOperation = Omit<OperationItem, "id" | "hubId" | "status">;
@@ -283,7 +283,7 @@ export function nextInRotation(rotation: string[], current?: string): string {
 export function nextOccurrence(
   date: string,
   repeat: OperationRepeat,
-  today = HOUSE_TODAY,
+  today = todayIso(),
 ): string {
   if (repeat === "none") return date;
   let next = addRepeat(date, repeat);
@@ -305,7 +305,7 @@ export function formatTimeLabel(time?: string): string {
     : `${hour}${suffix}`;
 }
 
-export function overdueDays(date: string, today = HOUSE_TODAY): number {
+export function overdueDays(date: string, today = todayIso()): number {
   const start = dateFromIso(date).getTime();
   const end = dateFromIso(today).getTime();
   return Math.max(0, Math.round((end - start) / 86400000));
@@ -337,7 +337,7 @@ export function isoFromDate(date: Date): string {
 }
 
 export function todayIso(): string {
-  return HOUSE_TODAY;
+  return isoFromDate(new Date());
 }
 
 export function addDays(date: string, days: number): string {

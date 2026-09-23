@@ -37,6 +37,7 @@ export function OperationView() {
     closeWindow,
   } = useApp();
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [error, setError] = useState("");
   if (!item) {
     return (
       <section className="a-window">
@@ -145,7 +146,8 @@ export function OperationView() {
             <button
               className="a-btn danger"
               type="button"
-              onClick={() => removeOperation(item.id)}
+              onClick={() => void removeOperation(item.id).catch((failure) =>
+                setError(failure instanceof Error ? failure.message : "Could not remove item"))}
             >
               Remove
             </button>
@@ -164,7 +166,8 @@ export function OperationView() {
             <button
               className="a-btn"
               type="button"
-              onClick={() => toggleOperation(item.id)}
+              onClick={() => void toggleOperation(item.id).catch((failure) =>
+                setError(failure instanceof Error ? failure.message : "Could not update item"))}
             >
               {item.status === "done"
                 ? "Mark open"
@@ -177,7 +180,8 @@ export function OperationView() {
             <button
               className="a-btn ghost"
               type="button"
-              onClick={() => skipOperation(item.id)}
+              onClick={() => void skipOperation(item.id).catch((failure) =>
+                setError(failure instanceof Error ? failure.message : "Could not update item"))}
             >
               Skip a week
             </button>
@@ -198,6 +202,7 @@ export function OperationView() {
           </button>
         </div>
       )}
+      {error ? <p className="a-form-error" role="alert">{error}</p> : null}
     </section>
   );
 }
@@ -208,8 +213,8 @@ export function OperationNew() {
     <OperationForm
       submitLabel="Add to calendar"
       onCancel={closeWindow}
-      onSave={(item) => {
-        const id = addOperation(item);
+      onSave={async (item) => {
+        const id = await addOperation(item);
         go("operation", { operation: id });
       }}
     />
@@ -235,8 +240,8 @@ export function OperationEdit() {
       item={selectedOperation}
       submitLabel="Save changes"
       onCancel={() => go("operation", { operation: selectedOperation.id })}
-      onSave={(next) => {
-        updateOperation(selectedOperation.id, next);
+      onSave={async (next) => {
+        await updateOperation(selectedOperation.id, next);
         go("operation", { operation: selectedOperation.id });
       }}
     />
@@ -252,7 +257,7 @@ function OperationForm({
   item?: OperationItem;
   submitLabel: string;
   onCancel: () => void;
-  onSave: (item: NewOperation) => void;
+  onSave: (item: NewOperation) => Promise<void>;
 }) {
   const { hub, operationDate, operationTime, you } = useApp();
   const [kind, setKind] = useState<OperationKind>(item?.kind ?? "task");
@@ -273,6 +278,8 @@ function OperationForm({
   );
   const [notes, setNotes] = useState(item?.notes ?? "");
   const [attempted, setAttempted] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
 
   function chooseKind(next: OperationKind) {
     setKind(next);
@@ -281,20 +288,28 @@ function OperationForm({
     }
   }
 
-  function save() {
+  async function save() {
     setAttempted(true);
     if (!title.trim() || !date) return;
-    onSave({
-      kind,
-      category: kind === "task" ? "chore" : category,
-      title: title.trim(),
-      date,
-      time: allDay ? undefined : time,
-      allDay,
-      assignee: kind === "task" ? assignee : undefined,
-      repeat: kind === "task" ? repeat : "none",
-      notes: notes.trim(),
-    });
+    setBusy(true);
+    setError("");
+    try {
+      await onSave({
+        kind,
+        category: kind === "task" ? "chore" : category,
+        title: title.trim(),
+        date,
+        time: allDay ? undefined : time,
+        allDay,
+        assignee: kind === "task" ? assignee : undefined,
+        repeat: kind === "task" ? repeat : "none",
+        notes: notes.trim(),
+      });
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : "Could not save item");
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -452,9 +467,10 @@ function OperationForm({
         <p className="hint">Everyone in {hub.name} can see this.</p>
       </div>
 
+      {error ? <p className="a-form-error" role="alert">{error}</p> : null}
       <div className="a-field-row">
-        <button className="a-btn" type="button" onClick={save}>
-          {submitLabel}
+        <button className="a-btn" type="button" onClick={() => void save()} disabled={busy}>
+          {busy ? "Saving…" : submitLabel}
         </button>
         <button className="a-btn ghost" type="button" onClick={onCancel}>
           Cancel

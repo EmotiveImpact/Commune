@@ -1,3 +1,11 @@
+> **Current implementation note (2026-09-23):** This is the original Direction A
+> visual brief. Its Maya/Park/Studio/Lisbon fixture and sessionStorage-only
+> instructions are historical; the newer product requirement is a shared,
+> PostgreSQL-backed local application. Keep the visual and interaction
+> constraints, but do not restore fixture data or browser-only shared state.
+> The local API and database setup are documented in `apps/local-api/README.md`
+> and `infra/local/README.md`. Do not deploy the local auth adapter publicly.
+
 Build the Commune **Vite** web app and ship it. Not mockups. Not Mantine. Not a new design.
 
 **Product.** Commune is hub OS for shared spaces. Finance is the spine. Household / workspace / trip change defaults, not the product. First viewport: what this is, who’s here, what I owe, what’s due, where next.

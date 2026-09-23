@@ -222,6 +222,7 @@ export function Header({ screen }: { screen: ScreenId }) {
     native,
     you,
     noticesOn,
+    notifications,
     searchQuery,
     setSearchQuery,
   } = useApp();
@@ -259,7 +260,7 @@ export function Header({ screen }: { screen: ScreenId }) {
         <button className="a-icon-btn a-you-btn" type="button" aria-label="You" onClick={() => go("settings")}>
           <Avatar tone="maya" initials={you.initials} />
         </button>
-        <button className={cx("a-icon-btn", noticesOn && "has-unread")} type="button" aria-label="Notifications" onClick={() => go("notices")}>
+        <button className={cx("a-icon-btn", noticesOn && notifications.some((notice) => !notice.readAt) && "has-unread")} type="button" aria-label="Notifications" onClick={() => go("notices")}>
           <Icon name="bell" size={16} />
         </button>
       </div>
@@ -302,12 +303,12 @@ export function PhoneTabs({ screen }: { screen: ScreenId }) {
 const MORE: Array<{ id: ScreenId | WindowId; title: string; hint: string; icon: IconName; dash?: boolean }> = [
   { id: "commune-new", title: "Create a commune", hint: "A home, a studio, or a trip", icon: "plus", dash: true },
   { id: "communes", title: "Places", hint: "Switch house, studio, or trip", icon: "hub" },
-  { id: "notes", title: "Notes", hint: "Wi-Fi, bins, landlord", icon: "notes" },
-  { id: "funds", title: "Funds", hint: "House pot · chase Alex", icon: "funds" },
-  { id: "recurring", title: "Recurring", hint: "Open bills. Rent from the fund", icon: "refresh" },
+  { id: "notes", title: "Notes", hint: "Shared details to remember", icon: "notes" },
+  { id: "funds", title: "Funds", hint: "Contributions and commitments", icon: "funds" },
+  { id: "recurring", title: "Recurring", hint: "Schedule setup coming later", icon: "refresh" },
   { id: "operations", title: "Operations", hint: "What’s late, what’s yours, then the week", icon: "operations" },
   { id: "members", title: "Members", hint: "Who’s here this cycle", icon: "members" },
-  { id: "settings", title: "You & settings", hint: "Plan, pay-me, preferences", icon: "settings" },
+  { id: "settings", title: "You & settings", hint: "Profile and preferences", icon: "settings" },
 ];
 
 export function MoreSheet() {
@@ -319,7 +320,7 @@ export function MoreSheet() {
         <div className="a-more-head">
           <div>
             <p className="a-more-kicker">More</p>
-            <p className="a-more-lede">Notes, funds, and the rest of the house. The four tabs stay the spine.</p>
+            <p className="a-more-lede">Notes, funds, and the rest of your commune. The four tabs stay the spine.</p>
           </div>
           <button className="a-more-x" type="button" aria-label="Close More" onClick={() => setMoreOpen(false)}>
             <Icon name="close" size={16} />

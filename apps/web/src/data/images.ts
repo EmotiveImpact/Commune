@@ -1,6 +1,5 @@
 import type { HubId } from "./household";
 
-const HUB_IDS: HubId[] = ["park", "studio", "lisbon", "created"];
 const MAX_CHARS = 450_000;
 
 export function isStoredImage(value: unknown): value is string {
@@ -11,7 +10,7 @@ export function readHubPhotos(raw: unknown): Partial<Record<HubId, string>> | un
   if (!raw || typeof raw !== "object") return undefined;
   const src = raw as Record<string, unknown>;
   const out: Partial<Record<HubId, string>> = {};
-  for (const id of HUB_IDS) {
+  for (const id of Object.keys(src) as HubId[]) {
     if (isStoredImage(src[id])) out[id] = src[id];
   }
   return Object.keys(out).length ? out : undefined;

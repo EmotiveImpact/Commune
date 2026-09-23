@@ -108,11 +108,16 @@ export function OperationsScreen() {
     showDate(isoFromDate(date));
   }
 
-  function completeTask(item: OperationItem) {
+  async function completeTask(item: OperationItem) {
     const nextName = item.rotation?.length
       ? firstNameOf(nextInRotation(item.rotation, item.assignee))
       : "";
-    toggleOperation(item.id);
+    try {
+      await toggleOperation(item.id);
+    } catch (error) {
+      flash(error instanceof Error ? error.message : "Could not update task");
+      return;
+    }
     const handedOn =
       item.repeat !== "none"
         ? shortDateFormatter.format(dateFromIso(nextOccurrence(item.date, item.repeat, today)))
@@ -124,9 +129,14 @@ export function OperationsScreen() {
     );
   }
 
-  function skipTask(item: OperationItem) {
+  async function skipTask(item: OperationItem) {
     const from = item.date < today ? today : item.date;
-    skipOperation(item.id);
+    try {
+      await skipOperation(item.id);
+    } catch (error) {
+      flash(error instanceof Error ? error.message : "Could not move task");
+      return;
+    }
     flash(`Moved to ${shortDateFormatter.format(dateFromIso(addDays(from, 7)))}`);
   }
 
@@ -226,7 +236,7 @@ export function OperationsScreen() {
 
           <section className="ops-card">
             <div className="ops-board-head">
-              <span>The house this week</span>
+              <span>This commune this week</span>
               <small>{weekItems.length ? `${weekItems.length} on the board` : "Clear"}</small>
             </div>
             <div className="ops-week-list">
@@ -257,7 +267,7 @@ export function OperationsScreen() {
                 </div>
               ))}
               {!weekItems.length ? (
-                <p className="ops-note ops-week-empty">Nothing else on the house this week.</p>
+                <p className="ops-note ops-week-empty">Nothing else in this commune this week.</p>
               ) : null}
             </div>
           </section>

@@ -1,18 +1,32 @@
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import { useApp } from "../state";
-import { Avatar, Choose, Pill } from "../ui/widgets";
+import { Avatar, Pill } from "../ui/widgets";
 import { cx } from "../ui/cx";
 
+function formatMoney(minor: number, currency: string): string {
+  return new Intl.NumberFormat("en-GB", {
+    style: "currency",
+    currency,
+  }).format(minor / 100);
+}
+
+function parseMoney(value: string): number | null {
+  const clean = value.trim();
+  if (!/^\d+(?:\.\d{1,2})?$/.test(clean)) return null;
+  const [pounds, pennies = ""] = clean.split(".");
+  const minor = Number(pounds) * 100 + Number(pennies.padEnd(2, "0"));
+  return Number.isSafeInteger(minor) && minor > 0 ? minor : null;
+}
+
 export function ExpensesScreen() {
-  const { go, expenses, markExpensePaid, searchQuery, setSearchQuery } = useApp();
-  const [filter, setFilter] = useState<"All" | "Open" | "Recurring" | "Settled">("All");
+  const { go, expenses, searchQuery, setSearchQuery } = useApp();
+  const [filter, setFilter] = useState<"All" | "Open" | "Settled">("All");
   const needle = searchQuery.trim().toLocaleLowerCase();
   const rows = expenses
     .filter((row) => {
       if (filter === "All") return true;
       if (filter === "Open") return row.open === true;
       if (filter === "Settled") return row.status === "settled";
-      if (filter === "Recurring") return row.recurring === true;
       return true;
     })
     .filter(
@@ -27,7 +41,7 @@ export function ExpensesScreen() {
     <>
       <div className="a-toolbar">
         <div className="a-filters">
-          {(["All", "Open", "Recurring", "Settled"] as const).map((chip) => (
+          {(["All", "Open", "Settled"] as const).map((chip) => (
             <button
               key={chip}
               className={cx("a-chip", filter === chip && "is-on")}
@@ -85,43 +99,13 @@ export function ExpensesScreen() {
                 <td className="amt" data-label="Amount">
                   {row.amount}
                 </td>
-                {row.action === "choose" ? (
-                  <td data-label="Actions">
-                    <div className="a-row-actions">
-                      <Choose
-                        items={[
-                          {
-                            label: "Mark paid",
-                            onSelect: () => {
-                              markExpensePaid(row.id);
-                              go("expense-paid", { expense: row.id });
-                            },
-                          },
-                          { label: "Nudge", onSelect: () => go("reminder-preview") },
-                        ]}
-                      />
-                    </div>
-                  </td>
-                ) : row.action === "mark-paid" ? (
-                  <td data-label="Actions">
-                    <div className="a-row-actions">
-                      <button
-                        className="a-btn"
-                        type="button"
-                        onClick={() => {
-                          markExpensePaid(row.id);
-                          go("expense-paid", { expense: row.id });
-                        }}
-                      >
-                        Mark paid
-                      </button>
-                    </div>
-                  </td>
-                ) : (
-                  <td className="a-muted-action" data-label="Actions">
-                    —
-                  </td>
-                )}
+                <td data-label="Actions">
+                  <div className="a-row-actions">
+                    <button className="a-btn ghost" type="button" onClick={() => go("expense", { expense: row.id })}>
+                      View shares
+                    </button>
+                  </div>
+                </td>
               </tr>
             ))}
             {!rows.length ? (
@@ -137,7 +121,16 @@ export function ExpensesScreen() {
 }
 
 export function ExpensesEmptyScreen() {
-  const { go } = useApp();
+  const { go, session } = useApp();
+  if (!session?.hasHubs) {
+    return (
+      <div className="a-empty">
+        <h2>Create your first commune.</h2>
+        <p>Then you can add an expense and share it with members.</p>
+        <button className="a-btn" type="button" onClick={() => go("commune-new")}>Create a commune</button>
+      </div>
+    );
+  }
   return (
     <>
       <div className="a-toolbar">
@@ -154,115 +147,121 @@ export function ExpensesEmptyScreen() {
 }
 
 export function SettleScreen() {
-  const { go, hub, expenses, markExpensePaid } = useApp();
-  const park = hub.id === "park";
-  const gasExpense = expenses.find(
-    (row) => row.name.toLocaleLowerCase() === "british gas" && row.open === true,
+  const { go, hub, expenses, session, reminderTargets, sendReminder, confirmExpenseShare } = useApp();
+  const [pendingId, setPendingId] = useState<string | null>(null);
+  const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
+  const me = session?.userId;
+  const moves = expenses.flatMap((expense) =>
+    expense.shares
+      .filter((share) => share.userId !== expense.paidByUserId && share.amountMinor > share.settledMinor)
+      .filter((share) => share.userId === me || expense.paidByUserId === me)
+      .map((share) => ({ expense, share, outstanding: share.amountMinor - share.settledMinor })),
   );
-  const gasOpen = Boolean(gasExpense);
-  const settleMoves = park && !gasOpen
-    ? hub.moves.filter((move) => !move.names.startsWith("You →"))
-    : hub.moves;
-  const youOwe = park ? (gasOpen ? "£42.00" : "£0.00") : hub.credit ? "£0.00" : hub.oweAmount;
-  const owed = park ? "£18.00" : hub.credit ? hub.oweAmount : "£0.00";
-  const owedCopy = park
-    ? "Jordan · Tesco (your extra)"
-    : hub.credit
-      ? hub.oweCopy
-      : "Nothing waiting to collect this cycle";
+  const youOwe = moves
+    .filter(({ share }) => share.userId === me)
+    .reduce((total, { outstanding }) => total + outstanding, 0);
+  const youAreOwed = moves
+    .filter(({ expense }) => expense.paidByUserId === me)
+    .reduce((total, { outstanding }) => total + outstanding, 0);
+
+  async function confirm(shareId: string) {
+    setError("");
+    setMessage("");
+    setPendingId(shareId);
+    try {
+      await confirmExpenseShare(shareId);
+      setMessage("Share confirmed as received. No payment was taken by Commune.");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not confirm the share.");
+    } finally {
+      setPendingId(null);
+    }
+  }
+
+  async function nudge(sourceId: string) {
+    setError("");
+    setMessage("");
+    setPendingId(sourceId);
+    try {
+      await sendReminder("nudge", sourceId);
+      setMessage("In-app nudge sent. Email delivery is not configured locally.");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not send the nudge.");
+    } finally {
+      setPendingId(null);
+    }
+  }
+
   return (
     <>
       <div className="a-settle-hero">
         <div className="a-panel a-settle-card">
           <span>You owe</span>
-          <strong>{youOwe}</strong>
+          <strong>{formatMoney(youOwe, hub.currency)}</strong>
           <div style={{ color: "var(--ink-soft)", fontSize: 13 }}>
-            {park
-              ? gasOpen
-                ? "Pay Jordan · British Gas share"
-                : "British Gas is marked paid"
-              : hub.credit
-                ? "Nothing to send this cycle"
-                : hub.oweCopy}
+            {youOwe ? "Pay your share outside Commune; the bill payer confirms receipt." : "Nothing to send this cycle"}
           </div>
         </div>
         <div className="a-panel a-settle-card">
           <span>You’re owed</span>
-          <strong>{owed}</strong>
-          <div style={{ color: "var(--ink-soft)", fontSize: 13 }}>{owedCopy}</div>
+          <strong>{formatMoney(youAreOwed, hub.currency)}</strong>
+          <div style={{ color: "var(--ink-soft)", fontSize: 13 }}>
+            {youAreOwed ? "Confirm each share after you receive payment." : "Nothing waiting to collect"}
+          </div>
         </div>
       </div>
       <div className="a-card">
         <div className="a-card-head">
           <div>
-            <h2>Suggested transfers</h2>
-            <p className="sub">
-              {park
-                ? gasOpen
-                  ? "Net the Tesco £18 against the gas bill, or keep them separate — your call."
-                  : "British Gas is settled. Jordan still owes you for Tesco."
-                : hub.credit
-                  ? "People can settle their shares separately."
-                  : "Mark your share paid when the transfer is complete."}
-            </p>
+            <h2>Outstanding shares</h2>
+            <p className="sub">Each share is tracked separately. Commune does not move money.</p>
           </div>
           <button className="a-btn ghost" type="button" onClick={() => go("breakdown")}>
             Breakdown
           </button>
         </div>
-        {settleMoves.length ? settleMoves.map((move) => {
-          const moveExpense = move.expenseId
-            ? expenses.find((row) => row.id === move.expenseId)
+        {error ? <p className="a-form-error" role="alert">{error}</p> : null}
+        {message ? <p className="a-window-note" role="status">{message}</p> : null}
+        {moves.length ? moves.map(({ expense, share, outstanding }) => {
+          const payer = hub.members.find((member) => member.userId === expense.paidByUserId);
+          const debtor = hub.members.find((member) => member.userId === share.userId);
+          const receiving = expense.paidByUserId === me;
+          const target = receiving
+            ? reminderTargets.find((item) => item.kind === "nudge" && item.sourceId === share.id)
             : undefined;
-          const moveExpenseId = moveExpense?.id;
+          const cooldown = target?.lastSentAt && Date.now() - Date.parse(target.lastSentAt) < 72 * 60 * 60 * 1000;
           return (
             <div
               className="a-move"
-              key={`${move.expenseId ?? "balance"}-${move.names}-${move.amt}`}
-              style={move.even ? { opacity: 0.72 } : undefined}
+              key={share.id}
             >
-              <div className="a-arrow" style={move.even ? { background: "#f0ece4" } : undefined}>
-                {move.arrow}
-              </div>
+              <div className="a-arrow">→</div>
               <div>
-                <div className="names">{move.names}</div>
-                <div className="why">{move.why}</div>
+                <div className="names">{receiving ? `${debtor?.name ?? "Member"} → You` : `You → ${payer?.name ?? "Bill payer"}`}</div>
+                <div className="why">{expense.name}{expense.dueOn ? ` · due ${expense.dueOn}` : ""}</div>
               </div>
-              <div className="amt" style={move.even ? { color: "var(--ink-soft)" } : undefined}>
-                {move.amt}
-              </div>
-              {move.even ? (
-                <Pill tone="settled">Even</Pill>
-              ) : move.names.startsWith("You →") ? (
-                <Choose
-                  items={[
-                    ...(park && moveExpenseId === gasExpense?.id
-                      ? [{
-                          label: "Pay Jordan",
-                          onSelect: () => go("pay", { expense: moveExpenseId }),
-                        }]
-                      : []),
-                    {
-                      label: "Mark paid",
-                      onSelect: () => {
-                        if (!moveExpenseId) return;
-                        markExpensePaid(moveExpenseId);
-                        go("expense-paid", { expense: moveExpenseId });
-                      },
-                    },
-                  ]}
-                />
+              <div className="amt">{formatMoney(outstanding, hub.currency)}</div>
+              {receiving ? (
+                <div className="a-row-actions">
+                  {target && !cooldown ? (
+                    <button className="a-btn nudge" type="button" disabled={pendingId !== null} onClick={() => void nudge(share.id)}>
+                      Nudge
+                    </button>
+                  ) : null}
+                  <button className="a-btn ghost" type="button" disabled={pendingId !== null} onClick={() => void confirm(share.id)}>
+                    Confirm received
+                  </button>
+                </div>
               ) : (
-                <button className="a-btn nudge" type="button" onClick={() => go("reminder-preview")}>
-                  Nudge
-                </button>
+                <span className="sub">Awaiting payer confirmation</span>
               )}
             </div>
           );
         }) : (
           <div className="a-empty" style={{ minHeight: 180 }}>
             <h2>Everyone is even.</h2>
-            <p>No transfer is waiting in {hub.name}.</p>
+            <p>No share is waiting in {hub.name}.</p>
           </div>
         )}
       </div>
@@ -271,178 +270,201 @@ export function SettleScreen() {
 }
 
 export function SettleEvenScreen() {
-  const { go, hub } = useApp();
-  const inkPending = hub.id === "studio" && hub.oweCta.includes("Log");
+  const { go, hub, session } = useApp();
+  if (!session?.hasHubs) {
+    return (
+      <div className="a-empty">
+        <h2>No commune yet.</h2>
+        <p>Create one to track individual shares.</p>
+        <button className="a-btn" type="button" onClick={() => go("commune-new")}>Create a commune</button>
+      </div>
+    );
+  }
   return (
     <div className="a-empty">
       <h2>You’re even.</h2>
-      <p>
-        {hub.name} has nothing to send this cycle.
-        {inkPending ? " Ink on Monday still gets logged as an expense." : " Add an expense when something is shared."}
-      </p>
+      <p>{hub.name} has no outstanding shares for you. Add an expense when something is shared.</p>
       <button className="a-btn" type="button" onClick={() => go("add-expense", { hub: hub.id })}>
-        {inkPending ? "Log the ink" : "Add expense"}
+        Add expense
       </button>
     </div>
   );
 }
 
 export function RecurringScreen() {
-  const { go, emptyHub, hub, expenses } = useApp();
-  const recurringExpenses = expenses
-    .filter((expense) => expense.recurring)
-    .filter(
-      (expense, index, rows) =>
-        rows.findIndex(
-          (row) => row.name.toLocaleLowerCase() === expense.name.toLocaleLowerCase(),
-        ) === index,
-    );
-  if (emptyHub || (hub.id === "created" && !recurringExpenses.length)) {
-    return (
-      <div className="a-empty">
-        <h2>No recurring bills yet.</h2>
-        <p>Rent, wifi, the ones that come back. Add them once the first expense exists.</p>
-        <button className="a-btn" type="button" onClick={() => go("add-expense")}>
-          Add expense
-        </button>
-      </div>
-    );
-  }
-  const expenseRows = recurringExpenses.map((expense) => ({
-    id: expense.id,
-    name: expense.name,
-    when: expense.due,
-    paidBy: expense.paidBy,
-    status: expense.statusLabel,
-    tone: expense.status,
-    amount: expense.amount,
-  }));
-  const lisbonHold =
-    expenses.find(
-      (expense) =>
-        expense.name.toLocaleLowerCase() === "airbnb hold" && expense.open === true,
-    ) ??
-    expenses.find(
-      (expense) => expense.name.toLocaleLowerCase() === "airbnb hold",
-    );
-  const rows =
-    hub.id === "studio"
-      ? [
-          ...(expenseRows.some((row) => row.name === "Printer ink")
-            ? []
-            : [{ id: "studio-printer-plan", name: "Printer ink", when: "Monday", paidBy: "Sam Okonkwo", status: "Due Monday", tone: "warn" as const, amount: "—" }]),
-          ...expenseRows,
-          { id: "studio-guest-wifi", name: "Guest wifi", when: "4 Sept", paidBy: "Studio East", status: "Soon", tone: "warn" as const, amount: "—" },
-        ]
-      : hub.id === "lisbon"
-        ? lisbonHold
-          ? [{
-              id: lisbonHold.id,
-              name: lisbonHold.name,
-              when: lisbonHold.due,
-              paidBy: lisbonHold.paidBy,
-              status: lisbonHold.statusLabel,
-              tone: lisbonHold.status,
-              amount: lisbonHold.amount,
-            }]
-          : []
-        : expenseRows;
+  const { go } = useApp();
   return (
-    <>
-      <div className="a-toolbar">
-        <button className="a-btn ghost" type="button" onClick={() => go("templates")}>
-          Split templates
-        </button>
-      </div>
-      <div className="a-panel">
-        <table className="a-table">
-          <thead>
-            <tr>
-              <th>Bill</th>
-              <th>When</th>
-              <th>Paid by</th>
-              <th>Status</th>
-              <th style={{ textAlign: "right" }}>Amount</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr key={row.id}>
-                <td>
-                  <strong>{row.name}</strong>
-                </td>
-                <td>{row.when}</td>
-                <td>{row.paidBy}</td>
-                <td>
-                  <Pill tone={row.tone}>{row.status}</Pill>
-                </td>
-                <td className="amt">{row.amount}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </>
+    <div className="a-empty">
+      <h2>Recurring bills are not enabled yet.</h2>
+      <p>New expenses are one-off entries. Nothing will be created or charged automatically.</p>
+      <button className="a-btn" type="button" onClick={() => go("add-expense")}>Add a one-off expense</button>
+    </div>
   );
 }
 
 export function FundsScreen() {
-  const { go, emptyHub, hub } = useApp();
-  if (emptyHub || hub.id === "created") {
+  const {
+    hub, session, funds, reminderTargets,
+    createFund, pledgeFund, recordFundContribution, sendReminder,
+  } = useApp();
+  const [newFundOpen, setNewFundOpen] = useState(false);
+  const [fundName, setFundName] = useState("");
+  const [target, setTarget] = useState("");
+  const [pledgeFor, setPledgeFor] = useState<string | null>(null);
+  const [pledgeAmount, setPledgeAmount] = useState("");
+  const [pledgeDue, setPledgeDue] = useState("");
+  const [contributionFor, setContributionFor] = useState<string | null>(null);
+  const [contributionAmount, setContributionAmount] = useState("");
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
+  const isAdmin = hub.role === "admin";
+
+  async function run(action: () => Promise<unknown>, success: string) {
+    setError("");
+    setMessage("");
+    setPending(true);
+    try {
+      await action();
+      setMessage(success);
+      setNewFundOpen(false);
+      setPledgeFor(null);
+      setContributionFor(null);
+      setFundName("");
+      setTarget("");
+      setPledgeAmount("");
+      setPledgeDue("");
+      setContributionAmount("");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "The change could not be saved.");
+    } finally {
+      setPending(false);
+    }
+  }
+
+  function submitFund(event: FormEvent) {
+    event.preventDefault();
+    const targetMinor = target.trim() ? parseMoney(target) : null;
+    if (!fundName.trim() || (target.trim() && targetMinor === null)) {
+      setError("Enter a fund name and a valid target amount.");
+      return;
+    }
+    void run(() => createFund(fundName.trim(), targetMinor ?? undefined), "Fund created.");
+  }
+
+  function submitPledge(event: FormEvent, fundId: string) {
+    event.preventDefault();
+    const amountMinor = parseMoney(pledgeAmount);
+    if (amountMinor === null || !pledgeDue) {
+      setError("Enter a pledge amount and a due date.");
+      return;
+    }
+    void run(() => pledgeFund(fundId, amountMinor, pledgeDue), "Your pledge was saved for this commune.");
+  }
+
+  function submitContribution(event: FormEvent, commitmentId: string, outstanding: number) {
+    event.preventDefault();
+    const amountMinor = parseMoney(contributionAmount);
+    if (amountMinor === null || amountMinor > outstanding) {
+      setError(`Enter an amount up to ${formatMoney(outstanding, hub.currency)}.`);
+      return;
+    }
+    void run(
+      () => recordFundContribution(commitmentId, amountMinor),
+      "Contribution recorded. Commune did not take a payment.",
+    );
+  }
+
+  if (!hub.id) {
     return (
       <div className="a-empty">
-        <h2>Fund is empty.</h2>
-        <p>Nothing in yet. The house pot starts when someone pays in.</p>
+        <h2>No commune yet.</h2>
+        <p>Create one before setting up a fund.</p>
       </div>
     );
   }
-  if (hub.id !== "park") {
-    const fund = hub.kpis[0];
-    return (
-      <div className="a-panel">
-        <div className="a-fund-hero">
-          <div>
-            <span>{fund.kicker}</span>
-            <strong>{fund.num}</strong>
-            <p>{fund.hint}</p>
-          </div>
-          <Pill tone="sage">{hub.id === "studio" ? "Ready for ink" : "Trip pot"}</Pill>
-        </div>
-        <div className="a-settle-row">
-          <Avatar tone="maya" initials="MC" />
-          <span>{hub.id === "studio" ? "Nobody is waiting to be repaid" : "Airbnb hold already paid by you"}</span>
-          <span className="amt">{hub.id === "studio" ? "Even" : "Paid"}</span>
-        </div>
-      </div>
-    );
-  }
+
   return (
-    <div className="a-panel">
-      <div className="a-fund-hero">
-        <div>
-          <span>Balance</span>
-          <strong>£420</strong>
-          <p>Target £600 this cycle · £180 still to collect</p>
+    <>
+      <div className="a-toolbar">
+        {isAdmin ? (
+          <button className="a-btn" type="button" onClick={() => setNewFundOpen((open) => !open)}>
+            {newFundOpen ? "Cancel" : "Create fund"}
+          </button>
+        ) : null}
+      </div>
+      {error ? <p className="a-form-error" role="alert">{error}</p> : null}
+      {message ? <p className="a-window-note" role="status">{message}</p> : null}
+      {newFundOpen ? (
+        <form className="a-panel" onSubmit={submitFund}>
+          <div className="a-field"><label htmlFor="fund-name">Fund name</label><input id="fund-name" value={fundName} onChange={(event) => setFundName(event.target.value)} maxLength={120} required /></div>
+          <div className="a-field"><label htmlFor="fund-target">Target (optional)</label><input id="fund-target" value={target} onChange={(event) => setTarget(event.target.value)} inputMode="decimal" placeholder="0.00" /></div>
+          <button className="a-btn" type="submit" disabled={pending}>Save fund</button>
+        </form>
+      ) : null}
+      {!funds.length ? (
+        <div className="a-empty">
+          <h2>No fund yet.</h2>
+          <p>{isAdmin ? "Create a fund, then members can pledge to it." : "An admin can create a fund for this commune."}</p>
         </div>
-        <button className="a-btn" type="button" onClick={() => go("reminder-preview")}>
-          Chase Alex
-        </button>
-      </div>
-      <div className="a-settle-row">
-        <Avatar tone="maya" initials="MC" />
-        <span>Maya paid in</span>
-        <span className="amt">£200</span>
-      </div>
-      <div className="a-settle-row">
-        <Avatar tone="jordan" initials="JH" />
-        <span>Jordan paid in</span>
-        <span className="amt">£220</span>
-      </div>
-      <div className="a-settle-row">
-        <Avatar tone="alex" initials="AR" />
-        <span>Alex still to pay</span>
-        <Pill tone="open">£180 due</Pill>
-      </div>
-    </div>
+      ) : funds.map((fund) => {
+        const myPledge = fund.commitments.find((commitment) => commitment.userId === session?.userId);
+        return (
+          <div className="a-panel" key={fund.id} style={{ marginBottom: 20 }}>
+            <div className="a-fund-hero">
+              <div>
+                <span>{fund.name}</span>
+                <strong>{formatMoney(fund.contributedMinor ?? 0, hub.currency)}</strong>
+                <p>{fund.targetMinor !== null ? `Target ${formatMoney(fund.targetMinor, hub.currency)}` : "No target set"} · recorded contributions, not money held by Commune</p>
+              </div>
+              <Pill tone="sage">{fund.commitments.length} pledge{fund.commitments.length === 1 ? "" : "s"}</Pill>
+            </div>
+            {fund.commitments.map((commitment) => {
+              const member = hub.members.find((item) => item.userId === commitment.userId);
+              const outstanding = commitment.amountMinor - commitment.contributedMinor;
+              const reminder = reminderTargets.find((item) => item.kind === "chase" && item.sourceId === commitment.id);
+              const cooldown = reminder?.lastSentAt && Date.now() - Date.parse(reminder.lastSentAt) < 72 * 60 * 60 * 1000;
+              return (
+                <div className="a-settle-row" key={commitment.id}>
+                  <Avatar tone="house" initials={member?.ini ?? "?"} />
+                  <div style={{ flex: 1 }}>
+                    <strong>{member?.name ?? "Member"}</strong>
+                    <div className="when">Pledged {formatMoney(commitment.amountMinor, hub.currency)} · due {commitment.dueOn} · recorded {formatMoney(commitment.contributedMinor, hub.currency)}</div>
+                    {contributionFor === commitment.id && isAdmin && outstanding > 0 ? (
+                      <form className="a-field-row" onSubmit={(event) => submitContribution(event, commitment.id, outstanding)}>
+                        <input aria-label={`Contribution from ${member?.name ?? "member"}`} value={contributionAmount} onChange={(event) => setContributionAmount(event.target.value)} inputMode="decimal" placeholder="0.00" />
+                        <button className="a-btn" type="submit" disabled={pending}>Record</button>
+                      </form>
+                    ) : null}
+                  </div>
+                  <Pill tone={outstanding ? "open" : "settled"}>{outstanding ? formatMoney(outstanding, hub.currency) + " due" : "Paid"}</Pill>
+                  {isAdmin && outstanding > 0 ? (
+                    <div className="a-row-actions">
+                      <button className="a-btn ghost" type="button" disabled={pending} onClick={() => setContributionFor(contributionFor === commitment.id ? null : commitment.id)}>Record contribution</button>
+                      {reminder && !cooldown ? (
+                        <button className="a-btn nudge" type="button" disabled={pending} onClick={() => void run(() => sendReminder("chase", commitment.id), "In-app chase sent. Email delivery is not configured locally.")}>Chase</button>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })}
+            {!myPledge ? (
+              <div className="a-settle-row">
+                {pledgeFor === fund.id ? (
+                  <form className="a-field-row" onSubmit={(event) => submitPledge(event, fund.id)}>
+                    <input aria-label="Your pledge amount" value={pledgeAmount} onChange={(event) => setPledgeAmount(event.target.value)} inputMode="decimal" placeholder="Amount, e.g. 25.00" />
+                    <input aria-label="Pledge due date" type="date" value={pledgeDue} onChange={(event) => setPledgeDue(event.target.value)} />
+                    <button className="a-btn" type="submit" disabled={pending}>Save pledge</button>
+                  </form>
+                ) : (
+                  <button className="a-btn ghost" type="button" onClick={() => setPledgeFor(fund.id)}>Make a pledge</button>
+                )}
+              </div>
+            ) : null}
+          </div>
+        );
+      })}
+    </>
   );
 }

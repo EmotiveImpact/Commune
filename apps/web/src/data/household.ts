@@ -1,5 +1,7 @@
 export type SampleHubId = "park" | "studio" | "lisbon";
-export type HubId = SampleHubId | "created";
+// Live communes are UUIDs. The named IDs below are retained only for the
+// historical design fixtures, never as authenticated application state.
+export type HubId = string;
 
 export type AvatarTone = "maya" | "jordan" | "alex" | "priya" | "sam" | "ness";
 
@@ -57,6 +59,8 @@ export type SettlementMove = {
 
 export type Hub = {
   id: HubId;
+  currency?: "GBP" | "USD" | "EUR";
+  role?: "admin" | "member";
   name: string;
   type: "Household" | "Workspace" | "Trip";
   lede: string;
@@ -75,6 +79,7 @@ export type Hub = {
   now: Array<{ go: ScreenId | WindowId; pill: string; tag: string; title: string; when: string }>;
   moves: SettlementMove[];
   members: Array<{
+    userId?: string;
     cls: AvatarTone;
     ini: string;
     name: string;
@@ -414,8 +419,8 @@ export const PAGE_TITLES: Record<string, string> = {
   "hub-empty": "This Hub",
   expenses: "Expenses",
   "expenses-empty": "Expenses",
-  expense: "British Gas",
-  "expense-paid": "British Gas",
+  expense: "Expense",
+  "expense-paid": "Expense",
   settle: "Settle",
   "settle-even": "Settle",
   recurring: "Recurring",
@@ -430,36 +435,36 @@ export const PAGE_TITLES: Record<string, string> = {
   "operation-new": "Add to calendar",
   "operation-edit": "Edit schedule item",
   notes: "Notes",
-  note: "Wi-Fi",
+  note: "Note",
   "note-new": "Add note",
   activity: "Activity",
   notices: "Notices",
   "add-expense": "Add expense",
   "member-invite": "Invite",
-  pay: "Pay Jordan",
+  pay: "Pay a member",
   "pay-method": "Pay me",
   profile: "Profile",
   settings: "Settings",
 };
 
 export const PAGE_LEDES: Record<string, string> = {
-  home: "3 spaces · you owe £42 · you’re owed £64",
+  home: "Your shared spaces and what needs attention.",
   "home-empty": "Create a hub, or join one.",
-  "home-inbox": "Six things across three spaces.",
-  communes: "Park Street still needs you. Lisbon hasn’t paid you back.",
+  "home-inbox": "Your latest shared activity.",
+  communes: "Switch between your shared spaces.",
   "commune-new": "A home, a studio, or a trip.",
   "hub-empty": "No bills yet.",
   expenses: "Everything the house has shared this cycle.",
   "expenses-empty": "Add the first bill.",
-  expense: "Jordan paid. Your share is open.",
-  "expense-paid": "Your share is marked paid.",
-  settle: "Two transfers get the house to zero this month.",
+  expense: "A shared expense and its member shares.",
+  "expense-paid": "A member share has been confirmed.",
+  settle: "Outstanding shares involving you.",
   "settle-even": "Nothing to send this cycle.",
-  recurring: "Open bills. Rent from the fund.",
-  funds: "August rent already left. £180 still from Alex.",
-  templates: "Defaults for this house. Override on any expense.",
-  billing: "This workspace, not the house fund.",
-  analytics: "This month against the house budget.",
+  recurring: "Expenses that repeat.",
+  funds: "Pledges and recorded contributions.",
+  templates: "Shared split preferences.",
+  billing: "Plan and billing details.",
+  analytics: "Activity from your shared ledger.",
   breakdown: "The ledger view of who owes whom.",
   members: "Balances for this cycle, not personalities.",
   operations: "What’s late, what’s yours, then the week.",
@@ -470,12 +475,12 @@ export const PAGE_LEDES: Record<string, string> = {
   note: "Pinned · everyone",
   "note-new": "Type first. Extras change. The note itself stays so you can keep writing.",
   activity: "The log, without the group chat.",
-  notices: "Gas, bins, and Alex’s share of the fund.",
-  "add-expense": "Split three ways unless you pick a template.",
-  "member-invite": "They’ll get a link to this hub.",
-  pay: "Revolut, PayPal, or his bank. Commune does not take a cut.",
+  notices: "Updates sent to you in Commune.",
+  "add-expense": "Choose the members and check the split.",
+  "member-invite": "Create a secure link for this commune.",
+  pay: "Choose how to settle outside Commune.",
   "pay-method": "A username they can tap from Settle.",
-  profile: "You · Admin at 14 Park Street.",
+  profile: "Your account and payment methods.",
   settings: "You, the house, and how this app behaves.",
 };
 
@@ -544,6 +549,15 @@ export const HOME_STATUS = "3 spaces · you owe £42 · you’re owed £64";
 
 export type ExpenseRow = {
   id: string;
+  amountMinor?: number;
+  paidByUserId?: string;
+  dueOn?: string | null;
+  shares?: Array<{
+    id: string;
+    userId: string;
+    amountMinor: number;
+    settledMinor: number;
+  }>;
   name: string;
   category: string;
   paidBy: string;

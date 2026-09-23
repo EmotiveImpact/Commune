@@ -8,11 +8,12 @@ export function ForgotPasswordPage() {
       <div className="commune-auth-panel">
         <h2>Reset your password</h2>
         <p className="commune-auth-lede">
-          Password reset is not connected in this design preview. No email will
-          be sent here; account recovery will be available with real sign-in.
+          Password reset email is not configured in this local build. No message
+          will be sent. Keep your test password safe while we connect verified
+          email delivery before public deployment.
         </p>
         <Link href={keepSearch("/login")} className="commune-auth-btn">
-          Back to preview
+          Back to sign in
         </Link>
       </div>
     </AuthLayout>

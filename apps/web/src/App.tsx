@@ -50,7 +50,11 @@ export function App() {
         </GuestOnly>
       </Route>
       <Route path="/invite" component={InvitePage} />
-      <Route path="/onboard" component={OnboardPage} />
+      <Route path="/onboard">
+        <AuthenticatedOnly>
+          <OnboardPage />
+        </AuthenticatedOnly>
+      </Route>
       <Route>
         <ProtectedApp />
       </Route>
@@ -59,20 +63,37 @@ export function App() {
 }
 
 function GuestOnly({ children }: { children: ReactNode }) {
-  const { session } = useApp();
+  const { session, authStatus } = useApp();
+  if (authStatus === "loading") return <AppLoading />;
+  if (authStatus === "error") return <AppUnavailable />;
   if (session?.hasHubs) return <Redirect to={keepSearch("/")} />;
   if (session) return <Redirect to={keepSearch("/onboard")} />;
   return children;
 }
 
 function ProtectedApp() {
-  const { session } = useApp();
+  return <AuthenticatedOnly><ProductShell /></AuthenticatedOnly>;
+}
+
+function AuthenticatedOnly({ children }: { children: ReactNode }) {
+  const { session, authStatus } = useApp();
+  if (authStatus === "loading") return <AppLoading />;
+  if (authStatus === "error") return <AppUnavailable />;
   if (!session) return <Redirect to={keepSearch("/login")} />;
-  return <ProductShell />;
+  return children;
+}
+
+function AppLoading() {
+  return <div className="a-empty" role="status"><h2>Opening Commune…</h2><p>Loading your account and shared spaces.</p></div>;
+}
+
+function AppUnavailable() {
+  const { apiError, refresh } = useApp();
+  return <div className="a-empty" role="alert"><h2>Commune could not connect</h2><p>{apiError ?? "The local application service is unavailable."}</p><button className="a-btn" type="button" onClick={() => void refresh()}>Try again</button></div>;
 }
 
 function ProductShell() {
-  const { screen, navMode, moreOpen, native, dark, window: win } = useApp();
+  const { screen, navMode, moreOpen, native, dark, window: win, apiError, clearApiError } = useApp();
   return (
     <div
       className={cx(
@@ -88,6 +109,7 @@ function ProductShell() {
         <Sidebar screen={screen} />
         <div className="a-main">
           <Header screen={screen} />
+          {apiError ? <div className="a-api-error" role="alert">{apiError}<button type="button" onClick={clearApiError} aria-label="Dismiss error">×</button></div> : null}
           <div className="a-content">
             <Screen screen={screen} />
           </div>
