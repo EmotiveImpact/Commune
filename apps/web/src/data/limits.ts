@@ -2,6 +2,9 @@
 // enforces the same or tighter bounds before storing shared content.
 export const LIMITS = {
   communeName: 48,
+  address: 160,
+  destination: 80,
+  stayName: 80,
   expenseTitle: 80,
   fundName: 80,
   noteTitle: 80,

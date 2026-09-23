@@ -92,6 +92,23 @@ function optionalText(value: unknown, field: string, max: number): string {
   return value;
 }
 
+function locationField(value: unknown, field: string, max: number): string | null {
+  if (value === undefined || value === null) return null;
+  if (typeof value !== "string" || value.trim().length > max) {
+    throw new ApiError(400, `Invalid ${field}`);
+  }
+  return value.trim();
+}
+
+function locationInput(input: Record<string, unknown>) {
+  return {
+    address: locationField(input.address, "address", 160),
+    destination: locationField(input.destination, "destination", 80),
+    stayName: locationField(input.stayName, "stayName", 80),
+    stayAddress: locationField(input.stayAddress, "stayAddress", 160),
+  };
+}
+
 function noteInput(input: Record<string, unknown>) {
   if (!Array.isArray(input.facts) || input.facts.length > 30 ||
       !input.facts.every((fact) => Array.isArray(fact) && fact.length === 2 &&
@@ -198,7 +215,8 @@ function failed(key: string): void {
 async function listCommunes(user: User) {
   return withActor(user.id, async (client) => {
     const { rows } = await client.query(`
-      SELECT c.id, c.name, c.kind, c.currency, m.role,
+      SELECT c.id, c.name, c.kind, c.currency, c.address,
+        c.destination, c.stay_name, c.stay_address, m.role,
         (SELECT count(*)::integer FROM public.commune_members mm
          WHERE mm.commune_id = c.id) AS member_count
       FROM public.communes c
@@ -208,6 +226,8 @@ async function listCommunes(user: User) {
     `);
     return { communes: rows.map((row) => ({
       id: row.id, name: row.name, kind: row.kind, currency: row.currency,
+      address: row.address, destination: row.destination,
+      stayName: row.stay_name, stayAddress: row.stay_address,
       role: row.role, memberCount: row.member_count,
     })) };
   });
@@ -216,7 +236,8 @@ async function listCommunes(user: User) {
 async function snapshot(user: User, communeId: string) {
   return withActor(user.id, async (client) => {
     const communeResult = await client.query(`
-      SELECT c.id, c.name, c.kind, c.currency, m.role
+      SELECT c.id, c.name, c.kind, c.currency, c.address,
+        c.destination, c.stay_name, c.stay_address, m.role
       FROM public.communes c
       JOIN public.commune_members m ON m.commune_id = c.id
       WHERE c.id = $1 AND m.user_id = auth.user_id()
@@ -299,7 +320,15 @@ async function snapshot(user: User, communeId: string) {
       commitmentsByFund.set(row.fund_id, commitments);
     }
     return {
-      commune: communeResult.rows[0],
+      commune: {
+        id: communeResult.rows[0].id, name: communeResult.rows[0].name,
+        kind: communeResult.rows[0].kind, currency: communeResult.rows[0].currency,
+        address: communeResult.rows[0].address,
+        destination: communeResult.rows[0].destination,
+        stayName: communeResult.rows[0].stay_name,
+        stayAddress: communeResult.rows[0].stay_address,
+        role: communeResult.rows[0].role,
+      },
       members,
       expenses: expenseResult.rows.map((row) => ({
         id: row.id, title: row.title, amountMinor: minor(row.amount_minor),
@@ -411,6 +440,7 @@ route("GET", /^\/api\/communes$/, async (req, res) => {
 route("POST", /^\/api\/communes$/, async (req, res) => {
   const input = await body(req);
   const name = text(input.name, "name", 48);
+  const location = locationInput(input);
   if (!["household", "workspace", "trip"].includes(String(input.kind))) {
     throw new ApiError(400, "Invalid kind");
   }
@@ -418,24 +448,40 @@ route("POST", /^\/api\/communes$/, async (req, res) => {
   if (!["GBP", "USD", "EUR"].includes(String(currency))) {
     throw new ApiError(400, "Invalid currency");
   }
-  const result = await userAction(req, async (client) => client.query(
-    "SELECT public.create_commune($1, $2, $3) AS id",
-    [name, input.kind, currency]));
-  send(res, { id: result.rows[0].id }, 201);
+  const id = await userAction(req, async (client) => {
+    const result = await client.query(
+      "SELECT public.create_commune($1, $2, $3) AS id",
+      [name, input.kind, currency]);
+    const communeId: string = result.rows[0].id;
+    await client.query(
+      "SELECT public.update_commune_location($1, $2, $3, $4, $5)",
+      [communeId, location.address, location.destination,
+        location.stayName, location.stayAddress]);
+    return communeId;
+  });
+  send(res, { id }, 201);
 });
 
 route("PATCH", /^\/api\/communes\/([0-9a-f-]{36})$/, async (req, res, match) => {
   const input = await body(req);
   const name = text(input.name, "name", 48);
+  const location = locationInput(input);
   if (!["household", "workspace", "trip"].includes(String(input.kind))) {
     throw new ApiError(400, "Invalid kind");
   }
   if (!["GBP", "USD", "EUR"].includes(String(input.currency))) {
     throw new ApiError(400, "Invalid currency");
   }
-  await userAction(req, async (client) => client.query(
-    "SELECT public.update_commune_details($1, $2, $3, $4)",
-    [uuid(match[1]), name, input.kind, input.currency]));
+  await userAction(req, async (client) => {
+    const communeId = uuid(match[1]);
+    await client.query(
+      "SELECT public.update_commune_details($1, $2, $3, $4)",
+      [communeId, name, input.kind, input.currency]);
+    await client.query(
+      "SELECT public.update_commune_location($1, $2, $3, $4, $5)",
+      [communeId, location.address, location.destination,
+        location.stayName, location.stayAddress]);
+  });
   send(res, { ok: true });
 });
 

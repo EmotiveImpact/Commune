@@ -155,10 +155,18 @@ try {
   }
 
   // A failed attempt freezes the body. Opting out before retry suppresses it.
-  const first = await makeNudge("Gas");
+  const first = await makeNudge('Gas <img src=x onerror="alert(1)"> & Tea');
   await runWorker();
   assert.equal((await outbox(first.reminderId)).status, "failed");
   assert.equal(providerCalls.length, 1);
+  assert.deepEqual((await outbox(first.reminderId)).payload,
+    providerCalls[0].payload, "The exact request must be frozen before sending");
+  assert.match(providerCalls[0].payload.html, /#2d6a4f/);
+  assert.match(providerCalls[0].payload.html,
+    /Gas &lt;img src=x onerror=&quot;alert\(1\)&quot;&gt; &amp; Tea/);
+  assert.doesNotMatch(providerCalls[0].payload.html, /<img\b/i);
+  assert.match(providerCalls[0].payload.text,
+    /Gas <img src=x onerror="alert\(1\)"> & Tea/);
   await db.query(`
     INSERT INTO public.notification_preferences (user_id, email_reminders)
     VALUES ($1, false)
@@ -199,6 +207,8 @@ try {
   await runWorker();
   assert.equal((await outbox(third.reminderId)).status, "sent");
   assert.match(providerCalls.at(-1).payload.text, /£60\.00/);
+  assert.match(providerCalls.at(-1).payload.html, /£60\.00/);
+  assert.match(providerCalls.at(-1).payload.html, /Outstanding fund pledge/);
   assert.equal(providerCalls.at(-1).key,
     `commune-reminder/${third.reminderId}`);
 

@@ -242,7 +242,11 @@ export function OperationsScreen() {
             <div className="ops-week-list">
               {weekGroups.map((group) => (
                 <div className="ops-week-day" key={group.date}>
-                  <div className="ops-week-date">
+                  <time
+                    className={cx("ops-week-date", group.date === today && "is-today")}
+                    dateTime={group.date}
+                    title={dayFormatter.format(dateFromIso(group.date))}
+                  >
                     <small>{weekdayOf(group.date)}</small>
                     <strong>{Number(group.date.slice(-2))}</strong>
                     {group.date === today ? (
@@ -250,7 +254,7 @@ export function OperationsScreen() {
                     ) : group.date === addDays(today, 1) ? (
                       <em>Tomorrow</em>
                     ) : null}
-                  </div>
+                  </time>
                   <div className="ops-week-items">
                     {group.items.map((item) => (
                       <button

@@ -79,6 +79,28 @@ export type CreateExpenseInput = {
   dueOn?: string | null;
   shareUserIds: string[];
 };
+
+function locationForKind(input: {
+  type: LiveHub["type"];
+  address?: string;
+  destination?: string;
+  stayName?: string;
+  stayAddress?: string;
+}) {
+  return input.type === "Trip"
+    ? {
+      address: "",
+      destination: input.destination?.trim() ?? "",
+      stayName: input.stayName?.trim() ?? "",
+      stayAddress: input.stayAddress?.trim() ?? "",
+    }
+    : {
+      address: input.address?.trim() ?? "",
+      destination: "",
+      stayName: "",
+      stayAddress: "",
+    };
+}
 export type InvitePreview = {
   communeName: string;
   role: "admin" | "member";
@@ -176,7 +198,10 @@ export type AppState = {
   skipOperation: (id: string) => Promise<void>;
   removeOperation: (id: string) => Promise<void>;
   createHub: (input: CreatedHub, opts?: { openExpense?: boolean }) => Promise<string>;
-  updateCommune: (input: { name: string; type: LiveHub["type"]; currency: CurrencyCode }) => Promise<void>;
+  updateCommune: (input: {
+    name: string; type: LiveHub["type"]; currency: CurrencyCode;
+    address: string; destination: string; stayName: string; stayAddress: string;
+  }) => Promise<void>;
   recordExpense: (input: CreateExpenseInput) => Promise<string>;
   confirmExpenseShare: (shareId: string) => Promise<void>;
   markExpensePaid: (expenseId: string) => Promise<void>;
@@ -479,7 +504,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const createHub = useCallback((input: CreatedHub, opts?: { openExpense?: boolean }) => mutate(async () => {
     const currency = (input.currency.match(/GBP|USD|EUR/)?.[0] ?? "GBP") as CurrencyCode;
     const kind = input.type.toLowerCase();
-    const result = await post<{ id: string }>("/communes", { name: input.name.trim(), kind, currency });
+    const result = await post<{ id: string }>("/communes", {
+      name: input.name.trim(), kind, currency,
+      ...locationForKind(input),
+    });
     await refresh();
     setHubId(result.id);
     savePrefs({ activeHubId: result.id });
@@ -491,6 +519,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const updateCommune = useCallback((input: {
     name: string; type: LiveHub["type"]; currency: CurrencyCode;
+    address: string; destination: string; stayName: string; stayAddress: string;
   }) => mutate(async () => {
     if (!activeId) throw new Error("Choose a commune first");
     await api(`/communes/${encodeURIComponent(activeId)}`, {
@@ -499,6 +528,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         name: input.name.trim(),
         kind: input.type.toLowerCase(),
         currency: input.currency,
+        ...locationForKind(input),
       }),
     });
     await refresh();

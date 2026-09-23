@@ -64,6 +64,10 @@ export type Hub = {
   role?: "admin" | "member";
   name: string;
   type: "Household" | "Workspace" | "Trip";
+  address?: string;
+  destination?: string;
+  stayName?: string;
+  stayAddress?: string;
   lede: string;
   people: string;
   photo: string;
@@ -720,6 +724,10 @@ export type CreatedHub = {
   name: string;
   type: Hub["type"];
   currency: string;
+  address?: string;
+  destination?: string;
+  stayName?: string;
+  stayAddress?: string;
 };
 
 export function initialsOf(name: string): string {

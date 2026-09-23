@@ -1,5 +1,6 @@
 import { attachDatabasePool } from "@neon/functions";
 import { Pool } from "pg";
+import { renderReminderEmail } from "./email.ts";
 
 type Outbox = {
   reminder_id: string;
@@ -13,6 +14,8 @@ type EmailPayload = {
   to: [string];
   subject: string;
   text: string;
+  // Previously frozen text-only payloads must remain replayable unchanged.
+  html?: string;
 };
 
 type ReminderDetails = {
@@ -166,12 +169,18 @@ async function buildPayload(
   const amount = new Intl.NumberFormat("en-GB", {
     style: "currency", currency: detail.currency,
   }).format(Number(detail.outstanding_minor) / 100);
-  const action = detail.kind === "nudge" ? "expense share" : "fund pledge";
+  const content = renderReminderEmail({
+    kind: detail.kind,
+    senderName: detail.sender_name,
+    communeName: detail.commune_name,
+    label: detail.label ?? detail.commune_name,
+    amount,
+    appUrl,
+  });
   const payload: EmailPayload = {
     from,
     to: [detail.recipient_email],
-    subject: `A Commune ${detail.kind} from ${detail.sender_name}`,
-    text: `${detail.sender_name} reminded you about your ${amount} ${action} for ${detail.label ?? detail.commune_name} in ${detail.commune_name}.\n\nOpen Commune: ${appUrl}\n\nYou can change reminder email preferences in Commune settings.`,
+    ...content,
   };
   // Freeze the exact request before calling Resend. Replays must send the same
   // body with the same idempotency key, even if a name or amount changes.

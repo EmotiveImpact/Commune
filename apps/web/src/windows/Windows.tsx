@@ -7,6 +7,7 @@ import { Avatar, Pill } from "../ui/widgets";
 import { ImagePick } from "../ui/photos";
 import { cx } from "../ui/cx";
 import { OperationEdit, OperationNew, OperationView } from "./OperationsWindows";
+import { CommuneLocationFields, EMPTY_COMMUNE_LOCATION } from "../ui/CommuneLocationFields";
 
 const NOTE_TYPES = [
   ["wifi", "Wi-Fi"],
@@ -429,6 +430,7 @@ function CommuneNew() {
   const [name, setName] = useState("");
   const [type, setType] = useState<"Household" | "Workspace" | "Trip">("Household");
   const [currency, setCurrency] = useState("GBP");
+  const [location, setLocation] = useState(EMPTY_COMMUNE_LOCATION);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -440,7 +442,7 @@ function CommuneNew() {
     setError("");
     setSaving(true);
     try {
-      await createHub({ name: name.trim(), type, currency });
+      await createHub({ name: name.trim(), type, currency, ...location });
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not create the commune.");
     } finally {
@@ -476,6 +478,7 @@ function CommuneNew() {
           <option value="EUR">€ EUR</option>
         </select>
       </div>
+      <CommuneLocationFields type={type} value={location} onChange={setLocation} disabled={saving} idPrefix="new-commune" />
       <div className="a-field-row">
         <button
           className="a-btn"

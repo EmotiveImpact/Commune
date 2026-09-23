@@ -18,8 +18,8 @@ browser code sends same-origin `/api` requests. Non-2xx errors are
 | POST | `/api/auth/logout` | `{}` | `{ok:true}` + cleared cookie |
 | GET | `/api/auth/me` | public | `{user}` or `{user:null}` |
 | GET | `/api/communes` | | `{communes:[...]}` |
-| POST | `/api/communes` | `{name,kind,currency}` | `{id}` |
-| PATCH | `/api/communes/:id` | `{name,kind,currency}` admin; currency locks once money exists | `{ok:true}` |
+| POST | `/api/communes` | `{name,kind,currency,address?,destination?,stayName?,stayAddress?}` | `{id}` |
+| PATCH | `/api/communes/:id` | `{name,kind,currency,address?,destination?,stayName?,stayAddress?}` admin; currency locks once money exists | `{ok:true}` |
 | GET | `/api/communes/:id/snapshot` | | `{commune,members,expenses,funds,notes,operations,notifications,reminderTargets}` |
 | POST | `/api/communes/:id/expenses` | `{title,amountMinor,shares:[{userId,amountMinor}],dueOn?}` | `{id}` |
 | POST | `/api/shares/:id/confirm` | `{}` | `{ok:true}` |
@@ -41,8 +41,17 @@ Amounts are integer minor units (pence/cents). Due dates are ISO calendar
 dates. `snapshot.members` has `{userId,name,email,role}`. Expense shares have
 `{id,userId,amountMinor,settledMinor,settledAt}`; funds contain commitments
 with `contributedMinor`. Notifications and reminder targets include the IDs
-needed to confirm and send a reminder. The smoke test runs four actual users
-through invitation, RLS, money, reminders, notes, and operations:
+needed to confirm and send a reminder.
+
+Location fields also appear in `communes` and `snapshot.commune`. `address`
+(max 160 characters) is for a household/workspace; a trip uses `destination`
+(area or city, max 80), optional `stayName` (max 80) and `stayAddress`
+(max 160). Unset fields are empty strings. On PATCH, omitted location fields
+are retained and an empty string clears one. Changing commune kind clears
+fields that do not apply to the new kind.
+
+The smoke test runs four actual users through invitation, RLS, money,
+reminders, notes, operations and location editing:
 
 ```
 pnpm --filter @commune/local-api test:smoke

@@ -24,6 +24,7 @@ function PlaceCard({ hub, focus = false }: { hub: Hub; focus?: boolean }) {
       <PhotoFace photo={hub.photo} focus={focus} className={heroClass(hub)}>
         <span className="type">{hub.type} · {hub.members.length} {hub.members.length === 1 ? "person" : "people"}</span>
         {focus ? <h2>{hub.name}</h2> : <h3>{hub.name}</h3>}
+        {(hub.type === "Trip" ? hub.destination : hub.address) ? <p className="a-place-location">{hub.type === "Trip" ? hub.destination : hub.address}</p> : null}
         <p>{hub.status}</p>
         {focus ? (
           <div className="a-cover-people">

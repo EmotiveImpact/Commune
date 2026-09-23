@@ -5,6 +5,7 @@ import { ImagePick } from "../ui/photos";
 import { useApp } from "../state";
 import { cx } from "../ui/cx";
 import { LIMITS } from "../data/limits";
+import { CommuneLocationFields, type CommuneLocation } from "../ui/CommuneLocationFields";
 
 export function SettingsScreen() {
   const {
@@ -200,12 +201,21 @@ export function CommuneSettingsScreen() {
   const [name, setName] = useState(hub.name);
   const [type, setType] = useState(hub.type);
   const [currency, setCurrency] = useState(hub.currency);
+  const [location, setLocation] = useState<CommuneLocation>({
+    address: hub.address ?? "",
+    destination: hub.destination ?? "",
+    stayName: hub.stayName ?? "",
+    stayAddress: hub.stayAddress ?? "",
+  });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
   const hasMoneyRecords = expenses.length > 0 || funds.length > 0;
   const canEdit = hub.role === "admin";
-  const hasChanges = name.trim() !== hub.name || type !== hub.type || currency !== hub.currency;
+  const locationChanged = type === "Trip"
+    ? location.destination.trim() !== (hub.destination ?? "") || location.stayName.trim() !== (hub.stayName ?? "") || location.stayAddress.trim() !== (hub.stayAddress ?? "")
+    : location.address.trim() !== (hub.address ?? "");
+  const hasChanges = name.trim() !== hub.name || type !== hub.type || currency !== hub.currency || locationChanged;
   const hasCustomPhoto = Boolean(session?.hubPhotos?.[hub.id]);
 
   async function save(event: FormEvent) {
@@ -219,7 +229,8 @@ export function CommuneSettingsScreen() {
     }
     setBusy(true);
     try {
-      await updateCommune({ name, type, currency });
+      await updateCommune({ name, type, currency: currency ?? "GBP", ...location });
+      setLocation(type === "Trip" ? { ...location, address: "" } : { address: location.address, destination: "", stayName: "", stayAddress: "" });
       setSaved(true);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not save commune settings.");
@@ -275,6 +286,7 @@ export function CommuneSettingsScreen() {
               </select>
               <p className="hint">{hasMoneyRecords ? "Locked because this commune already has an expense or fund; changing it would relabel past amounts." : "You can change this until the first expense or fund is created."}</p>
             </div>
+            <CommuneLocationFields type={type} value={location} onChange={(next) => { setLocation(next); setSaved(false); }} disabled={!canEdit || busy} idPrefix="commune-setting" />
             {error ? <p className="a-form-error" role="alert">{error}</p> : null}
             {saved ? <p className="a-form-success" role="status">Commune settings saved for everyone.</p> : null}
             {canEdit ? <div className="a-field-row"><button className="a-btn" type="submit" disabled={busy || !hasChanges}>{busy ? "Saving…" : "Save changes"}</button></div> : <p className="hint">Only a commune admin can edit shared details.</p>}

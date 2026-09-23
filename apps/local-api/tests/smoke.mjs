@@ -2,8 +2,13 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 
 const base = process.env.API_BASE ?? "http://127.0.0.1:3002";
-if (!/^http:\/\/(127\.0\.0\.1|localhost):3002$/.test(base)) {
-  throw new Error("Smoke tests only target a loopback API on port 3002");
+const baseUrl = new URL(base);
+if (baseUrl.protocol !== "http:" ||
+    !["127.0.0.1", "localhost"].includes(baseUrl.hostname) ||
+    !Number.isInteger(Number(baseUrl.port)) || Number(baseUrl.port) < 1024 ||
+    Number(baseUrl.port) > 65535 || baseUrl.pathname !== "/" ||
+    baseUrl.search || baseUrl.hash || baseUrl.username || baseUrl.password) {
+  throw new Error("Smoke tests only target an explicit loopback API port");
 }
 const suffix = randomUUID().slice(0, 8);
 const password = "LocalSmokePassword-2026!";
@@ -62,6 +67,7 @@ assert.equal((await a("GET", "/preferences")).emailReminders, false);
 
 const created = await a("POST", "/communes", {
   name: `Local test ${suffix}`, kind: "household", currency: "GBP",
+  address: "14 Park Street, London",
 });
 assert.equal(created.status, 201, JSON.stringify(created));
 const id = created.id;
@@ -88,6 +94,10 @@ assert.equal((await d("POST", `/invites/${inviteD.token}/accept`, {})).communeId
 
 let snap = await a("GET", `/communes/${id}/snapshot`);
 assert.equal(snap.status, 200, JSON.stringify(snap));
+assert.equal(snap.commune.address, "14 Park Street, London");
+assert.equal(snap.commune.destination, "");
+assert.equal((await a("GET", "/communes")).communes[0].address,
+  "14 Park Street, London");
 assert.deepEqual(snap.members.map((member) => member.email).sort(),
   [addressA, addressB, addressD].sort());
 assert.equal((await outsider("GET", `/communes/${id}/snapshot`)).status, 404);
@@ -95,12 +105,24 @@ assert.equal((await a("PATCH", `/communes/${id}`, {
   name: "X".repeat(49), kind: "household", currency: "GBP",
 })).status, 400);
 const revised = { name: `Updated ${suffix}`, kind: "workspace", currency: "USD" };
-assert.equal((await b("PATCH", `/communes/${id}`, revised)).status, 403);
+assert.equal((await b("PATCH", `/communes/${id}`, {
+  ...revised, address: "An unauthorized address",
+})).status, 403);
 assert.equal((await a("PATCH", `/communes/${id}`, revised)).status, 200);
 snap = await b("GET", `/communes/${id}/snapshot`);
 assert.equal(snap.commune.name, revised.name);
 assert.equal(snap.commune.kind, "workspace");
 assert.equal(snap.commune.currency, "USD");
+assert.equal(snap.commune.address, "14 Park Street, London",
+  "omitted location fields must retain their values");
+assert.equal((await a("PATCH", `/communes/${id}`, {
+  ...revised, address: "X".repeat(161),
+})).status, 400);
+assert.equal((await a("PATCH", `/communes/${id}`, {
+  ...revised, destination: "Lisbon",
+})).status, 400, "workspace cannot have trip-only location fields");
+assert.equal((await a("GET", `/communes/${id}/snapshot`)).commune.address,
+  "14 Park Street, London", "invalid updates must roll back");
 assert.equal((await a("PATCH", `/communes/${id}`, {
   name: `Local test ${suffix}`, kind: "household", currency: "GBP",
 })).status, 200);
@@ -130,10 +152,25 @@ assert.equal((await a("PATCH", `/communes/${id}`, {
 })).status, 400, "currency must lock after an expense");
 assert.equal((await a("PATCH", `/communes/${id}`, {
   name: `Retitled ${suffix}`, kind: "trip", currency: "GBP",
+  destination: "Lisbon, Portugal", stayName: "Hotel Avenida",
+  stayAddress: "2 Avenida da Liberdade, Lisbon",
 })).status, 200);
 snap = await a("GET", `/communes/${id}/snapshot`);
 assert.equal(snap.commune.name, `Retitled ${suffix}`);
 assert.equal(snap.commune.kind, "trip");
+assert.equal(snap.commune.address, "", "kind switch clears the old address");
+assert.equal(snap.commune.destination, "Lisbon, Portugal");
+assert.equal(snap.commune.stayName, "Hotel Avenida");
+assert.equal(snap.commune.stayAddress, "2 Avenida da Liberdade, Lisbon");
+assert.equal((await a("PATCH", `/communes/${id}`, {
+  name: `Retitled ${suffix}`, kind: "trip", currency: "GBP",
+  stayName: "", stayAddress: "",
+})).status, 200);
+snap = await a("GET", `/communes/${id}/snapshot`);
+assert.equal(snap.commune.destination, "Lisbon, Portugal",
+  "trip area should remain when only the stay is cleared");
+assert.equal(snap.commune.stayName, "");
+assert.equal(snap.commune.stayAddress, "");
 const share = snap.expenses[0].shares.find((part) => part.userId === userB.user.id);
 assert.equal(share.amountMinor, 500);
 assert.equal(snap.reminderTargets[0].kind, "nudge");

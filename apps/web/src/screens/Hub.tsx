@@ -3,6 +3,7 @@ import { useApp } from "../state";
 import { Avatar, Pill } from "../ui/widgets";
 import { Icon } from "../ui/Icon";
 import { cx } from "../ui/cx";
+import type { Hub } from "../data/household";
 
 function primaryCtaTarget(label: string): "add-expense" | "expenses" | "settle" {
   const action = label.toLowerCase();
@@ -23,6 +24,17 @@ function Cover({ children }: { children: ReactNode }) {
   );
 }
 
+function HubLocation({ hub }: { hub: Hub }) {
+  if (hub.type === "Trip") {
+    if (!hub.destination && !hub.stayName && !hub.stayAddress) return null;
+    return <div className="a-cover-location">
+      {hub.destination ? <span><strong>Area</strong> {hub.destination}</span> : null}
+      {hub.stayName || hub.stayAddress ? <span><strong>Stay</strong> {[hub.stayName, hub.stayAddress].filter(Boolean).join(" · ")}</span> : null}
+    </div>;
+  }
+  return hub.address ? <p className="a-cover-location"><strong>Address</strong> {hub.address}</p> : null;
+}
+
 export function HubScreen() {
   const { hub, go } = useApp();
   return (
@@ -31,6 +43,7 @@ export function HubScreen() {
         <span className="type">{hub.type}</span>
         <h1>{hub.name}</h1>
         <p className="lede">{hub.lede}</p>
+        <HubLocation hub={hub} />
         <div className="a-cover-people">
           <div className="avatar-stack">
             {hub.avatars.map(([tone, ini]) => (
@@ -206,6 +219,7 @@ export function HubEmptyScreen() {
         <span className="type">{hub.type}</span>
         <h1>{hub.name}</h1>
         <p className="lede">No expenses yet. Add the first one to start the shared ledger.</p>
+        <HubLocation hub={hub} />
       </Cover>
       <div className="a-empty a-cover-empty">
         <p>Once an expense is shared, Home and Settle will show the real balances.</p>

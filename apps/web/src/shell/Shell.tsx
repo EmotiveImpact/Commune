@@ -165,7 +165,7 @@ export function Sidebar({ screen }: { screen: ScreenId }) {
   return (
     <aside className="a-side">
       <button className="a-brand" type="button" onClick={() => go("home")}>
-        <img className="a-logo" src="/logo.png" width={44} height={44} alt="" />
+        <img className="a-logo" src="/logo.png" width={36} height={36} alt="" />
         <span className="a-wordmark">Commune</span>
       </button>
 

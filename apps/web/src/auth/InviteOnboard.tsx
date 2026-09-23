@@ -3,6 +3,7 @@ import { AuthLayout } from "./AuthLayout";
 import { useApp } from "../state";
 import type { Hub } from "../data/household";
 import { LIMITS } from "../data/limits";
+import { CommuneLocationFields, EMPTY_COMMUNE_LOCATION } from "../ui/CommuneLocationFields";
 
 export function InvitePage() {
   const { go, session, authStatus, previewInvite, acceptInvite } = useApp();
@@ -84,6 +85,7 @@ export function OnboardPage() {
   const [name, setName] = useState("");
   const [type, setType] = useState<Hub["type"]>("Household");
   const [currency, setCurrency] = useState("£ GBP");
+  const [location, setLocation] = useState(EMPTY_COMMUNE_LOCATION);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -96,7 +98,7 @@ export function OnboardPage() {
     }
     setBusy(true);
     try {
-      const created = await createHub({ name: name.trim(), type, currency });
+      const created = await createHub({ name: name.trim(), type, currency, ...location });
       if (!created) throw new Error("Could not create the commune.");
       go("hub");
     } catch (cause) {
@@ -131,6 +133,7 @@ export function OnboardPage() {
             <option>£ GBP</option><option>$ USD</option><option>€ EUR</option>
           </select>
         </div>
+        <CommuneLocationFields type={type} value={location} onChange={setLocation} disabled={busy} idPrefix="onboard" />
         <div className="a-field-row">
           <button className="a-btn" type="submit" disabled={busy}>{busy ? "Creating…" : "Create commune"}</button>
         </div>

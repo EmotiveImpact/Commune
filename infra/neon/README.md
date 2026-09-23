@@ -1,10 +1,14 @@
 # Commune production backend (in progress)
 
 This is the fresh-data path for the Direction A web app on PR 11. It does not
-migrate the old Supabase project or its sample users. **The current web UI is
-still a sessionStorage prototype:** its Nudge and Chase buttons do not invoke
-these functions yet. Do not deploy or merge it as a working product on the
-strength of these migrations alone.
+migrate the old Supabase project or its sample users. The current web UI uses a
+real PostgreSQL-backed **localhost-only** API for shared data; Nudge and Chase
+create in-app notifications locally, while outbound email is intentionally
+suppressed. Session storage now holds personal display preferences, photos,
+avatar and payment-method hints, not the shared ledger. Vite's `/api` proxy
+exists only in development; the local API refuses non-loopback origins and
+database URLs. Do not deploy the static UI or the local API as a working
+production product on the strength of these migrations alone.
 
 ## Business rules now encoded in Postgres
 
@@ -32,24 +36,24 @@ strength of these migrations alone.
   opted in, and still owes that amount before each send attempt. A changed
   balance suppresses a frozen retry rather than sending stale figures.
 
-## Provisioning order (not done yet)
+## Production cutover order
 
-1. Finish ownership of the new Neon and Vercel accounts using
-   `infra-accounts@ourcommune.io`. Do not connect the existing unrelated
-   Vercel team or Neon project.
-2. Create one Neon project in a Functions-supported region, enable Managed
-   Better Auth and Data API, then create a development branch. The Data API
-   must provide `auth.user_id()` and the `authenticated` role before these
-   migrations run.
-3. Apply `migrations/0001_commune_core.sql`,
-   `migrations/0002_reminders.sql`, then `migrations/0003_invitations.sql`
-   to the development branch via the **unpooled**
-   connection. Review RLS and run two-account tests before production.
-4. Wire the Vite app to Neon Auth and the Data API. Replace sample household
-   state across all screens with real communes, members, expenses, funds,
-   notes and operations. Connect the create/preview/accept/revoke invite RPCs
-   and test two verified accounts. Map Nudge/Chase buttons to target UUIDs from
-   `list_reminder_targets`; show cooldown/error states and notifications.
+1. Use the dedicated Commune Vercel project and Neon database, not the old
+   production accounts. Neon account email activation and final service
+   configuration must be complete before applying schema.
+2. Enable Managed Better Auth and the Data API on a development branch. The
+   Data API must provide `auth.user_id()` and the `authenticated` role before
+   these migrations run. Keep preview branches separate from production.
+3. Apply `migrations/0001_commune_core.sql` through
+   `migrations/0006_shared_content.sql` in numeric order to the development
+   branch via an **unpooled** connection. Review RLS and run two-account tests
+   before applying the same reviewed migrations to production.
+4. Wire the Vite app to Neon Auth and the Data API, preserving its current
+   screen and interaction model. The localhost-only API is a contract to
+   replace, not a deployable server. Connect the create/preview/accept/revoke
+   invite RPCs and test two verified accounts. Nudge/Chase must use the
+   `send_reminder` RPC (never the local suppression wrapper), show cooldown and
+   error states, and surface recipient notifications.
 5. Set up a verified outbound email domain/provider. Spaceship forwarding is
    inbound only; it does not prove Commune can send as `ourcommune.io`.
    Configure the required DNS records and a send-only provider key. Deploy
@@ -64,8 +68,9 @@ strength of these migrations alone.
 ## Local database verification
 
 On a disposable local PostgreSQL database, run
-`tests/local_auth_stub.sql`, all three migrations, then
-`tests/reminders.sql` and `tests/invitations.sql` with
+`tests/local_auth_stub.sql`, migrations 0001 through 0006, then
+`tests/reminders.sql`, `tests/invitations.sql`, and
+`tests/shared_content.sql` with
 `psql -v ON_ERROR_STOP=1 -f ...` in that order.
 The stub must **never** be applied to Neon. The test verifies amount derivation,
 recipient notification, opt-out, cooldown, authorization, partial payment,

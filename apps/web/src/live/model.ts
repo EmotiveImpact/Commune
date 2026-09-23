@@ -23,6 +23,10 @@ export type Commune = {
   currency: CurrencyCode;
   role: MemberRole;
   memberCount?: number;
+  address?: string;
+  destination?: string;
+  stayName?: string;
+  stayAddress?: string;
 };
 export type Member = {
   userId: string;
@@ -273,6 +277,10 @@ export function hubFromSnapshot(
     role: commune.role,
     name: commune.name,
     type,
+    address: commune.address ?? "",
+    destination: commune.destination ?? "",
+    stayName: commune.stayName ?? "",
+    stayAddress: commune.stayAddress ?? "",
     lede: `${type} · ${snapshot.members.length} ${snapshot.members.length === 1 ? "person" : "people"}`,
     people: snapshot.members.map((member) => member.name.split(" ")[0]).join(", "),
     photo: photo ?? defaultPhoto,
