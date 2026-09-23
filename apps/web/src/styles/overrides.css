@@ -86,16 +86,25 @@ body,
   flex-wrap: nowrap;
 }
 
+.a-body.is-native .ops-prod .ops-add {
+  width: auto;
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
+.a-body.is-native .ops-prod .ops-cuts {
+  width: min(340px, calc(100% - 118px));
+  min-width: 0;
+}
+
 @media (max-width: 560px) {
-  .ops-prod .ops-add,
-  .a-body.is-native .ops-prod .ops-add {
+  .ops-prod .ops-add {
     width: auto;
     flex: 0 0 auto;
     margin-left: auto;
   }
 
-  .ops-prod .ops-cuts,
-  .a-body.is-native .ops-prod .ops-cuts {
+  .ops-prod .ops-cuts {
     width: min(340px, calc(100% - 118px));
     min-width: 0;
   }

@@ -5186,11 +5186,10 @@ button.a-item {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  min-height: 52px;
-  padding: 7px 8px 7px 7px;
-  border: 1px solid rgba(26, 30, 43, 0.06);
-  border-radius: 999px;
-  background: #fffdf9;
+  min-height: 38px;
+  padding: 0;
+  border: 0;
+  background: transparent;
   box-shadow: none;
 }
 
