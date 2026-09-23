@@ -8,7 +8,14 @@ export function reminderLimitReached(usage: Usage | null, recipientId: string): 
 }
 
 export function ReminderUsageMeter({ usage }: { usage: Usage | null }) {
-  if (!usage) return null;
+  if (!usage) return (
+    <div className="a-reminder-usage" role="status">
+      <div className="a-reminder-usage-copy">
+        <span>Reminder count unavailable</span>
+        <p>Try refreshing this page. Sends are still checked by the server.</p>
+      </div>
+    </div>
+  );
   const full = usage.totalUsed >= usage.totalLimit;
   const next = usage.nextSlotAt ? new Date(usage.nextSlotAt) : null;
   const nextLabel = next && !Number.isNaN(next.valueOf())

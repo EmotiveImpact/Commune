@@ -363,7 +363,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
         api<{ communes: Commune[] }>("/communes"),
         // A pending database rollout must not make the rest of the app unusable.
         // The send RPC still enforces limits even if this display is unavailable.
-        api<ReminderUsage>("/reminders/usage").catch(() => null),
+        api<ReminderUsage>("/reminders/usage").catch((error: unknown) => {
+          console.warn("Reminder usage could not be loaded", error instanceof Error ? error.message : "unknown error");
+          return null;
+        }),
       ]);
       const [entries, inviteEntries] = await Promise.all([
         Promise.all(communes.map(async (commune) => [
