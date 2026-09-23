@@ -27,6 +27,7 @@ export type ScreenId =
 
 export type WindowId =
   | "notices"
+  | "reminder-preview"
   | "add-expense"
   | "expense"
   | "expense-paid"
@@ -480,6 +481,7 @@ export const PAGE_LEDES: Record<string, string> = {
 
 export const WINDOW_IDS: WindowId[] = [
   "notices",
+  "reminder-preview",
   "add-expense",
   "expense",
   "expense-paid",

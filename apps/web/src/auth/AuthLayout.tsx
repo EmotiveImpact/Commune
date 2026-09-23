@@ -13,7 +13,7 @@ export function AuthLayout({ children }: { children: ReactNode }) {
         </div>
         <div className="commune-auth-hero">
           <h1>Effortlessly manage your shared expenses.</h1>
-          <p>Log in to track group spending, settle balances, and keep shared money clear.</p>
+          <p>Track group spending, settle balances, and keep shared money clear.</p>
         </div>
         <p className="commune-auth-copy">© {year} Commune</p>
       </div>

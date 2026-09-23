@@ -8,9 +8,7 @@ import { keepSearch } from "../nav";
 export function LoginPage() {
   const { signIn } = useApp();
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
 
   function enter() {
     signIn({
@@ -29,11 +27,6 @@ export function LoginPage() {
       setError("Valid email required");
       return;
     }
-    if (password.length < 8) {
-      setError("Password must be at least 8 characters");
-      return;
-    }
-    setLoading(true);
     enter();
   }
 
@@ -41,7 +34,10 @@ export function LoginPage() {
     <AuthLayout>
       <div className="commune-auth-panel">
         <h2>Welcome Back</h2>
-        <p className="commune-auth-lede">Enter your email and password to access your account.</p>
+        <p className="commune-auth-lede">
+          Explore the design preview. This does not sign you in or create a
+          shared account; sample data stays in this browser session.
+        </p>
         {error ? <div className="commune-auth-alert">{error}</div> : null}
         <form onSubmit={onSubmit}>
           <div className="commune-auth-field">
@@ -55,30 +51,14 @@ export function LoginPage() {
               onChange={(e) => setEmail(e.target.value)}
             />
           </div>
-          <div className="commune-auth-field">
-            <label htmlFor="login-pass">Password</label>
-            <input
-              id="login-pass"
-              type="password"
-              autoComplete="current-password"
-              placeholder="Enter password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-          </div>
-          <div className="commune-auth-row">
-            <Link href={keepSearch("/forgot-password")} className="commune-auth-link">
-              Forgot Your Password?
-            </Link>
-          </div>
-          <button className="commune-auth-btn" type="submit" disabled={loading}>
-            Log In
+          <button className="commune-auth-btn" type="submit">
+            Explore preview
           </button>
         </form>
-        <div className="commune-auth-or">Or login with</div>
-        <button className="commune-auth-btn commune-auth-btn-google" type="button" onClick={enter}>
+        <div className="commune-auth-or">Account sign-in is being connected</div>
+        <button className="commune-auth-btn commune-auth-btn-google" type="button" disabled title="Google sign-in is not connected in this preview">
           <GoogleMark />
-          Continue with Google
+          Google sign-in unavailable
         </button>
         <p className="commune-auth-foot">
           Don&apos;t Have An Account?{" "}

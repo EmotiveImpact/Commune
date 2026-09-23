@@ -97,7 +97,7 @@ export function ExpensesScreen() {
                               go("expense-paid", { expense: row.id });
                             },
                           },
-                          { label: "Nudge", onSelect: () => go("notices") },
+                          { label: "Nudge", onSelect: () => go("reminder-preview") },
                         ]}
                       />
                     </div>
@@ -253,7 +253,7 @@ export function SettleScreen() {
                   ]}
                 />
               ) : (
-                <button className="a-btn nudge" type="button" onClick={() => go("notices")}>
+                <button className="a-btn nudge" type="button" onClick={() => go("reminder-preview")}>
                   Nudge
                 </button>
               )}
@@ -424,7 +424,7 @@ export function FundsScreen() {
           <strong>£420</strong>
           <p>Target £600 this cycle · £180 still to collect</p>
         </div>
-        <button className="a-btn" type="button" onClick={() => go("notices")}>
+        <button className="a-btn" type="button" onClick={() => go("reminder-preview")}>
           Chase Alex
         </button>
       </div>

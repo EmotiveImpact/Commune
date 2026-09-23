@@ -59,6 +59,7 @@ export function Windows() {
         </header>
         <div className="a-window-body">
           {window === "notices" && <Notices />}
+          {window === "reminder-preview" && <ReminderPreview />}
           {window === "add-expense" && <AddExpense />}
           {window === "expense" && <Expense />}
           {window === "expense-paid" && <ExpensePaid />}
@@ -82,6 +83,7 @@ export function Windows() {
 function titleFor(id: string): string {
   const map: Record<string, string> = {
     notices: "Notices",
+    "reminder-preview": "Reminders",
     "add-expense": "Add expense",
     expense: "British Gas",
     "expense-paid": "British Gas",
@@ -96,6 +98,23 @@ function titleFor(id: string): string {
     "operation-edit": "Edit",
   };
   return map[id] ?? id;
+}
+
+function ReminderPreview() {
+  const { closeWindow } = useApp();
+  return (
+    <section className="a-window">
+      <p className="a-window-kicker">Design preview</p>
+      <h3>No reminder was sent.</h3>
+      <p className="a-window-note">
+        Nudge and Chase are not connected in this preview. The people and
+        balances shown here are sample data in this browser, not shared accounts.
+        We will enable sending only for a real unpaid share or fund pledge,
+        with the recipient and amount checked by the server.
+      </p>
+      <button className="a-btn" type="button" onClick={closeWindow}>Got it</button>
+    </section>
+  );
 }
 
 function Notices() {
@@ -378,10 +397,14 @@ function ExpensePaid() {
         <div>
           <span className="a-hero-kicker">{selectedExpense.category}</span>
           <strong>{selectedExpense.name}</strong>
-          <p>{selectedExpense.name} is marked settled in {hub.name}.</p>
+          <p>{selectedExpense.name} is marked settled in this browser preview.</p>
         </div>
         <Pill tone="settled">{hub.id === "lisbon" ? "Settled" : "You paid"}</Pill>
       </div>
+      <p className="a-window-note">
+        No money moved and no other member was notified. The production ledger
+        will confirm each person’s share separately.
+      </p>
       <div className="a-field-row">
         <button
           className="a-btn"

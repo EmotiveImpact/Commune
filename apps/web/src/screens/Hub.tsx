@@ -192,7 +192,7 @@ export function HubScreen() {
               {member.bal}
             </div>
             {member.nudge ? (
-              <button className="a-btn nudge" type="button" onClick={() => go("notices")} style={{ height: 32, flexShrink: 0 }}>
+              <button className="a-btn nudge" type="button" onClick={() => go("reminder-preview")} style={{ height: 32, flexShrink: 0 }}>
                 Nudge
               </button>
             ) : null}
