@@ -53,7 +53,8 @@ import {
 const LOCAL_PREFIX = "commune.local.";
 export type Seed = "new";
 export type NavMode = "basic" | "advanced";
-export type PendingInvite = { email: string; role: "Member" | "Admin" };
+export type PendingInvite = { id: string; email: string; role: "Member" | "Admin"; expiresAt: string };
+type InviteRecord = { id: string; email: string; role: "member" | "admin"; expiresAt: string; acceptedAt: string | null; revokedAt: string | null };
 export type PayMethod = {
   provider: "Revolut" | "PayPal" | "Monzo" | "Bank transfer";
   value: string;
@@ -137,6 +138,7 @@ type LiveData = {
   user: User;
   communes: Commune[];
   snapshots: Record<string, Snapshot>;
+  invites: Record<string, PendingInvite[]>;
 };
 type AuthStatus = "loading" | "guest" | "authenticated" | "error";
 
@@ -208,6 +210,7 @@ export type AppState = {
   confirmExpenseShare: (shareId: string) => Promise<void>;
   markExpensePaid: (expenseId: string) => Promise<void>;
   createInvite: (email: string, role: "admin" | "member") => Promise<{ token: string; url: string }>;
+  revokeInvite: (id: string) => Promise<void>;
   previewInvite: (token: string) => Promise<InvitePreview | null>;
   acceptInvite: (token: string) => Promise<string>;
   createFund: (name: string, targetMinor?: number | null) => Promise<string>;
@@ -354,15 +357,29 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return;
       }
       const { communes } = await api<{ communes: Commune[] }>("/communes");
-      const entries = await Promise.all(communes.map(async (commune) => [
-        commune.id,
-        await api<Snapshot>(`/communes/${encodeURIComponent(commune.id)}/snapshot`),
-      ] as const));
+      const [entries, inviteEntries] = await Promise.all([
+        Promise.all(communes.map(async (commune) => [
+          commune.id,
+          await api<Snapshot>(`/communes/${encodeURIComponent(commune.id)}/snapshot`),
+        ] as const)),
+        Promise.all(communes.filter((commune) => commune.role === "admin")
+          .map(async (commune) => {
+            const result = await api<{ invites: InviteRecord[] }>(`/communes/${encodeURIComponent(commune.id)}/invites`);
+            return [commune.id, result.invites.filter((invite) =>
+              !invite.acceptedAt && !invite.revokedAt && Date.parse(invite.expiresAt) > Date.now())
+              .map((invite) => ({
+                id: invite.id, email: invite.email,
+                role: invite.role === "admin" ? "Admin" as const : "Member" as const,
+                expiresAt: invite.expiresAt,
+              }))] as const;
+          })),
+      ]);
       if (sequence !== refreshSequence.current) return;
       const next: LiveData = {
         user: result.user,
         communes,
         snapshots: Object.fromEntries(entries),
+        invites: Object.fromEntries(inviteEntries),
       };
       setData(next);
       setAuthStatus("authenticated");
@@ -586,8 +603,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!activeId) throw new Error("Choose a commune first");
     const result = await post<{ token: string; url?: string }>(`/communes/${encodeURIComponent(activeId)}/invites`, { email, role });
     const url = result.url ?? new URL(`/invite?token=${encodeURIComponent(result.token)}`, window.location.origin).href;
+    await refresh();
     return { token: result.token, url };
-  }), [activeId, mutate]);
+  }), [activeId, mutate, refresh]);
+  const revokeInvite = useCallback((id: string) => mutate(async () => {
+    await post(`/invites/${encodeURIComponent(id)}/revoke`, {});
+    await refresh();
+  }), [mutate, refresh]);
   const previewInvite = useCallback(async (token: string) => {
     const result = await api<{ invite: InvitePreview | null }>(`/invites/${encodeURIComponent(token)}`);
     return result.invite;
@@ -772,7 +794,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     navMode: prefs.navMode, noteKey, notes, operationKey, operationDate,
     operationTime, operationsByHub, operations, selectedOperation,
     dark: prefs.dark, noticesOn: prefs.noticesOn, currency: prefs.currency,
-    searchQuery, invites: [], payMethods: prefs.payMethods, native, you,
+    searchQuery, invites: data?.invites[activeId] ?? [], payMethods: prefs.payMethods, native, you,
     lastExpense, expenses, selectedExpense, createdExpenses: expenses,
     funds, reminderTargets, notifications, signOut, go,
     closeWindow: () => setWindowId(null), setMoreOpen,
@@ -783,7 +805,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setSearchQuery, savePayMethod, setHubPhoto, setAvatar, addNote,
     addOperation, updateOperation, toggleOperation, skipOperation,
     removeOperation, createHub, updateCommune, recordExpense, confirmExpenseShare,
-    markExpensePaid, createInvite, previewInvite, acceptInvite, createFund,
+    markExpensePaid, createInvite, revokeInvite, previewInvite, acceptInvite, createFund,
     pledgeFund, recordFundContribution, sendReminder, markNotificationRead,
     pageTitle, pageLede,
   }}>{children}</Ctx.Provider>;

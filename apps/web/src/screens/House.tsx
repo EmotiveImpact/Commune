@@ -30,7 +30,20 @@ export function NotesScreen() {
 }
 
 export function MembersScreen() {
-  const { hub, go, invites } = useApp();
+  const { hub, go, invites, revokeInvite } = useApp();
+  const [revoking, setRevoking] = useState<string | null>(null);
+  const [error, setError] = useState("");
+  async function onRevoke(id: string) {
+    setError("");
+    setRevoking(id);
+    try {
+      await revokeInvite(id);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not revoke the invite.");
+    } finally {
+      setRevoking(null);
+    }
+  }
   return (
     <>
       <div className="a-toolbar"><button className="a-btn" type="button" onClick={() => go("member-invite")}>Invite</button></div>
@@ -43,13 +56,18 @@ export function MembersScreen() {
           </div>
         ))}
         {invites.map((invite) => (
-          <div key={invite.email} className="a-member-row">
+          <div key={invite.id} className="a-member-row">
             <Avatar tone="house" initials={invite.email.slice(0, 2).toUpperCase()} />
             <div className="who"><strong>{invite.email}</strong><span>{invite.role} invitation · pending acceptance</span></div>
             <Pill tone="open">Pending</Pill>
+            <button className="a-btn ghost" type="button" disabled={revoking === invite.id}
+              aria-label={`Revoke invitation for ${invite.email}`} onClick={() => void onRevoke(invite.id)}>
+              {revoking === invite.id ? "Revoking…" : "Revoke"}
+            </button>
           </div>
         ))}
       </div>
+      {error ? <p className="a-form-error" role="alert">{error}</p> : null}
     </>
   );
 }

@@ -322,6 +322,20 @@ export async function neonApi<T>(path: string, init: RequestInit = {}): Promise<
       p_email: body.email, p_role: body.role ?? "member",
     }));
     response = { token, url: new URL(`/invite?token=${encodeURIComponent(str(token))}`, window.location.origin).href };
+  } else if (method === "GET" && pathId(path, /^\/communes\/([^/]+)\/invites$/)) {
+    const invites = rows(unwrap(await db().rpc("list_commune_invites", {
+      p_commune_id: pathId(path, /^\/communes\/([^/]+)\/invites$/),
+    })));
+    response = { invites: invites.map((invite) => ({
+      id: str(invite.id), email: str(invite.email), role: str(invite.role),
+      createdAt: str(invite.created_at), expiresAt: str(invite.expires_at),
+      acceptedAt: invite.accepted_at == null ? null : str(invite.accepted_at),
+      revokedAt: invite.revoked_at == null ? null : str(invite.revoked_at),
+    })) };
+  } else if (method === "POST" && pathId(path, /^\/invites\/([^/]+)\/revoke$/)) {
+    response = await rpcVoid("revoke_commune_invite", {
+      p_invite_id: pathId(path, /^\/invites\/([^/]+)\/revoke$/),
+    });
   } else if (method === "GET" && pathId(path, /^\/invites\/([0-9a-f]{64})$/)) {
     const result = rows(unwrap(await db().rpc("preview_commune_invite", { p_token: pathId(path, /^\/invites\/([0-9a-f]{64})$/) })))[0];
     response = { invite: result ? { communeName: str(result.commune_name), role: str(result.role), expiresAt: str(result.expires_at) } : null };
