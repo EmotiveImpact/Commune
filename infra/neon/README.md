@@ -145,6 +145,13 @@ the RPCs but cannot write the underlying money tables directly.
   are configured, but a provider test message does not prove those user flows.
   The Resend sender domain and its DKIM/SPF records are verified; production
   worker delivery still needs a recipient-verified test.
+- The web login has a Google OAuth path, but its button is deliberately hidden
+  unless `VITE_GOOGLE_OAUTH_ENABLED=true` is set for that Vercel environment.
+  Before enabling it for real users, register a Commune-owned Google OAuth app
+  with that branch's Neon Auth callback URL, add its client ID/secret in Neon
+  Auth, and test the full redirect on the exact app origin. Neon's shared Google
+  credentials are for development only; Microsoft and LinkedIn are not offered
+  by this project's managed Neon Auth provider configuration.
 - Two-user end-to-end tests, accessibility/mobile regression checks, RLS abuse
   tests, backup/restore rehearsal, and a Vercel preview sign-off.
 

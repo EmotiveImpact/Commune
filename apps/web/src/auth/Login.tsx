@@ -4,9 +4,10 @@ import { AuthLayout } from "./AuthLayout";
 import { useApp } from "../state";
 import { LIMITS } from "../data/limits";
 import { keepSearch } from "../nav";
+import { GoogleMark } from "../ui/Icon";
 
 export function LoginPage() {
-  const { signInWithPassword } = useApp();
+  const { signInWithPassword, signInWithGoogle } = useApp();
   const [, setLocation] = useLocation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -33,12 +34,25 @@ export function LoginPage() {
     }
   }
 
+  async function onGoogleSignIn() {
+    setError("");
+    setBusy(true);
+    try {
+      await signInWithGoogle();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not sign in with Google.");
+      setBusy(false);
+    }
+  }
+
   return (
     <AuthLayout>
       <div className="commune-auth-panel">
         <h2>Welcome back</h2>
         <p className="commune-auth-lede">Sign in to your shared Commune account.</p>
-        {error ? <div className="commune-auth-alert" role="alert">{error}</div> : null}
+        {error || new URLSearchParams(window.location.search).has("oauth")
+          ? <div className="commune-auth-alert" role="alert">{error || "Google sign-in did not complete. Please try again."}</div>
+          : null}
         <form onSubmit={onSubmit}>
           <div className="commune-auth-field">
             <label htmlFor="login-email">Email</label>
@@ -53,6 +67,12 @@ export function LoginPage() {
             {busy ? "Signing in…" : "Sign in"}
           </button>
         </form>
+        {import.meta.env.VITE_GOOGLE_OAUTH_ENABLED === "true" ? <>
+          <div className="commune-auth-or">or</div>
+          <button className="commune-auth-btn commune-auth-btn-google" type="button" disabled={busy} onClick={() => void onGoogleSignIn()}>
+            <GoogleMark /> Continue with Google
+          </button>
+        </> : null}
         <p className="commune-auth-foot">
           New to Commune?{" "}
           <Link href={keepSearch("/signup")} className="commune-auth-link">Create an account</Link>

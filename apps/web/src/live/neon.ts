@@ -230,6 +230,20 @@ export async function neonApi<T>(path: string, init: RequestInit = {}): Promise<
     if (result.error) message(result.error);
     if (!result.data?.user?.emailVerified) throw new ApiError("Verify your email before signing in. Check your inbox for a code or link.", 403);
     response = { user: await currentUser() };
+  } else if (path === "/auth/google" && method === "POST") {
+    if (import.meta.env.VITE_GOOGLE_OAUTH_ENABLED !== "true") throw new ApiError("Google sign-in is not configured", 503);
+    const requested = sessionStorage.getItem("commune.return-to");
+    const requestedUrl = new URL(requested ?? "/", window.location.origin);
+    const callbackURL = requestedUrl.origin === window.location.origin
+      ? requestedUrl.href : new URL("/", window.location.origin).href;
+    const result = await db().auth.signIn.social({
+      provider: "google",
+      callbackURL,
+      errorCallbackURL: new URL("/login?oauth=error", window.location.origin).href,
+    });
+    if (result.error) message(result.error);
+    sessionStorage.removeItem("commune.return-to");
+    response = { ok: true };
   } else if (path === "/auth/signup" && method === "POST") {
     const result = await db().auth.signUp.email({ name: inputString(body.name, "name"), email: inputString(body.email, "email"), password: inputString(body.password, "password") });
     if (result.error) message(result.error);

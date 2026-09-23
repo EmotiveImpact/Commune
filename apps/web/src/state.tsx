@@ -146,6 +146,7 @@ export type AppState = {
   clearApiError: () => void;
   refresh: () => Promise<void>;
   signInWithPassword: (email: string, password: string) => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
   signUpWithPassword: (name: string, email: string, password: string) => Promise<"ready" | "verify">;
   verifyEmailCode: (email: string, code: string) => Promise<void>;
   session: Session | null;
@@ -421,6 +422,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await post("/auth/login", { email, password });
     await refresh();
   }), [mutate, refresh]);
+  const signInWithGoogle = useCallback(() => mutate(async () => {
+    await post("/auth/google", {});
+  }), [mutate]);
   const signUpWithPassword = useCallback((name: string, email: string, password: string) => mutate(async () => {
     const result = await post<{ verificationRequired?: boolean }>("/auth/signup", { name, email, password });
     if (result.verificationRequired) return "verify" as const;
@@ -763,7 +767,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   return <Ctx.Provider value={{
     authStatus, apiError, clearApiError: () => setApiError(null), refresh,
-    signInWithPassword, signUpWithPassword, verifyEmailCode, session, screen, hubId: activeId,
+    signInWithPassword, signInWithGoogle, signUpWithPassword, verifyEmailCode, session, screen, hubId: activeId,
     hub, places, emptyHub: empty, window: windowId, moreOpen,
     navMode: prefs.navMode, noteKey, notes, operationKey, operationDate,
     operationTime, operationsByHub, operations, selectedOperation,
