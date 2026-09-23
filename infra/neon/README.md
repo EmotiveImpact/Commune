@@ -23,8 +23,15 @@ local API or present a static build as a working product before hosted tests.
   only `kind` and the obligation's UUID to `send_reminder`.
 - An obligation must have an explicit due date that has arrived. A row lock,
   a three-day same-obligation cooldown, and a one-day sender/recipient cap
-  block rapid duplicates, including concurrent requests. Each accepted reminder creates a recipient-visible
-  notification and an email outbox row in the same transaction.
+  block rapid duplicates. In addition, each sender is limited to 60 accepted
+  Nudges and Chases combined in a rolling 30-day window across all communes,
+  with at most 8 to the same person. A sender-wide transaction lock prevents
+  concurrent requests to different people from slipping past the ceiling.
+  Rejected actions create no notification or email; email opt-out does not
+  exempt an accepted in-app reminder from the count. These are initial product
+  limits, not a claim that mail delivery scales automatically with user count.
+  Each accepted reminder creates a recipient-visible notification and an email
+  outbox row in the same transaction.
 - An admin can create a time-limited invite for an email address. Only the
   verified owner of that address can preview and accept it. The link token is
   returned once and only its hash is stored; membership is added by the server.
@@ -65,7 +72,7 @@ local API or present a static build as a working product before hosted tests.
    Broad grants would let direct writes bypass ledger invariants. Keep preview
    branches separate from production.
 3. Apply `migrations/0001_commune_core.sql` through
-   `migrations/0008_managed_auth_uuid.sql` in numeric order to the
+   `migrations/0009_reminder_monthly_limits.sql` in numeric order to the
    development branch via an **unpooled** connection. Run `tests/grants.sql`,
    review RLS, and run two-account signed-JWT tests before applying the same
    reviewed migrations to production.
@@ -151,6 +158,12 @@ local API or present a static build as a working product before hosted tests.
   its recipient notice and outbox job. The preview backup sent that job at its
   next five-minute boundary and Resend reported delivery. No cooldown rule
   or production row was changed.
+- The isolated PR preview branch has migration 0009: a rolling 30-day ceiling
+  of 60 accepted reminders per sender and 8 per sender/recipient, shared by
+  Nudge and Chase. Local boundary, opt-out, existing worker, and concurrent
+  final-slot tests passed. The preview index and function were verified after
+  applying the migration. Production remains on migrations 0001–0008 until
+  release review; do not assume this ceiling is live there yet.
 - Production Auth requires email verification, rejects localhost origins, and
   sends through a separate restricted Resend SMTP key as
   `accounts@notify.ourcommune.io`. Neon's test message to the Commune infra
@@ -166,8 +179,8 @@ local API or present a static build as a working product before hosted tests.
 ## Local database verification
 
 On a disposable local PostgreSQL database, run
-`tests/local_auth_stub.sql`, migrations 0001 through 0008, then
-`tests/reminders.sql`, `tests/invitations.sql`,
+`tests/local_auth_stub.sql`, migrations 0001 through 0009, then
+`tests/reminders.sql`, `tests/reminder_monthly_limits.sql`, `tests/invitations.sql`,
 `tests/shared_content.sql`, `tests/atomic_commune_details.sql`,
 `tests/managed_auth_uuid.sql`, and
 `tests/grants.sql` with
@@ -181,6 +194,9 @@ provider and checks retry, opt-out, balance changes, crash recovery, and
 concurrent sends. A staging Neon branch must additionally
 prove that real JWTs map to `auth.user_id()` and that the Data API can invoke
 the RPCs but cannot write the underlying money tables directly.
+Run `apps/reminder-worker/tests/monthly-limits-concurrency.mjs` against that
+same disposable local database to prove that only one of two simultaneous
+sends takes the sixtieth monthly slot.
 
 ## Release checks still missing
 
