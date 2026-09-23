@@ -40,8 +40,9 @@ local API or present a static build as a working product before hosted tests.
 ## Production cutover order
 
 1. Use the dedicated Commune Vercel project and Neon database, not the old
-   production accounts. Neon account email activation and final service
-   configuration must be complete before applying schema.
+   production accounts. The new accounts are active and the schema is applied;
+   this checklist records the remaining release verification, not a request
+   to recreate the services.
 2. Enable Managed Better Auth and the Data API on a development branch. The
    Data API must provide `auth.user_id()` and the `authenticated` role before
    these migrations run. Keep **Grant public schema access off**: the migrations
@@ -92,6 +93,10 @@ local API or present a static build as a working product before hosted tests.
   `accounts@notify.ourcommune.io`. Neon's test message to the Commune infra
   inbox was reported delivered by Resend. Trusted app/preview domains and
   real sign-up/reset tests are still outstanding.
+- The stale Git connection from the old `commune-quiet-pass` Vercel project
+  was disconnected without deleting that project. Future PR commits should
+  receive checks from only the new `commune-web` project; verify this on the
+  next push before treating the PR checks as clean.
 
 ## Local database verification
 
