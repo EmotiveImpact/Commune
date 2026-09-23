@@ -25,6 +25,7 @@ export type ScreenId =
   | "operations"
   | "notes"
   | "activity"
+  | "commune-settings"
   | "settings";
 
 export type WindowId =
@@ -438,6 +439,7 @@ export const PAGE_TITLES: Record<string, string> = {
   note: "Note",
   "note-new": "Add note",
   activity: "Activity",
+  "commune-settings": "Commune settings",
   notices: "Notices",
   "add-expense": "Add expense",
   "member-invite": "Invite",
@@ -475,6 +477,7 @@ export const PAGE_LEDES: Record<string, string> = {
   note: "Pinned · everyone",
   "note-new": "Type first. Extras change. The note itself stays so you can keep writing.",
   activity: "The log, without the group chat.",
+  "commune-settings": "Details and people for this commune.",
   notices: "Updates sent to you in Commune.",
   "add-expense": "Choose the members and check the split.",
   "member-invite": "Create a secure link for this commune.",
@@ -538,6 +541,7 @@ export const SCREEN_PATH: Record<ScreenId, string> = {
   operations: "/operations",
   notes: "/notes",
   activity: "/activity",
+  "commune-settings": "/commune-settings",
   settings: "/settings",
 };
 

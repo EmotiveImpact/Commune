@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react";
 import { Link, useLocation } from "wouter";
 import { AuthLayout } from "./AuthLayout";
 import { useApp } from "../state";
+import { LIMITS } from "../data/limits";
 import { keepSearch } from "../nav";
 
 export function LoginPage() {
@@ -41,11 +42,11 @@ export function LoginPage() {
         <form onSubmit={onSubmit}>
           <div className="commune-auth-field">
             <label htmlFor="login-email">Email</label>
-            <input id="login-email" type="email" autoComplete="email" required value={email} onChange={(event) => setEmail(event.target.value)} />
+            <input id="login-email" type="email" autoComplete="email" required maxLength={LIMITS.email} value={email} onChange={(event) => setEmail(event.target.value)} />
           </div>
           <div className="commune-auth-field">
             <label htmlFor="login-password">Password</label>
-            <input id="login-password" type="password" autoComplete="current-password" required value={password} onChange={(event) => setPassword(event.target.value)} />
+            <input id="login-password" type="password" autoComplete="current-password" required maxLength={128} value={password} onChange={(event) => setPassword(event.target.value)} />
           </div>
           <button className="commune-auth-btn" type="submit" disabled={busy}>
             {busy ? "Signing in…" : "Sign in"}

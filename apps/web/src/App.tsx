@@ -25,7 +25,7 @@ import {
   TemplatesScreen,
 } from "./screens/House";
 import { OperationsScreen } from "./screens/Operations";
-import { SettingsScreen } from "./screens/Settings";
+import { CommuneSettingsScreen, SettingsScreen } from "./screens/Settings";
 import { Windows } from "./windows/Windows";
 import { cx } from "./ui/cx";
 import type { ScreenId } from "./data/household";
@@ -148,6 +148,8 @@ function ScreenBody({ screen }: { screen: ScreenId }) {
       return emptyHub ? <HubEmptyScreen /> : <HubScreen />;
     case "hub-empty":
       return emptyHub || !hasHubs ? <HubEmptyScreen /> : <HubScreen />;
+    case "commune-settings":
+      return <CommuneSettingsScreen key={hub.id} />;
     case "expenses":
       return emptyHub ? <ExpensesEmptyScreen /> : <ExpensesScreen />;
     case "expenses-empty":

@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react";
 import { useApp } from "../state";
 import { Avatar, Pill } from "../ui/widgets";
 import { cx } from "../ui/cx";
+import { LIMITS } from "../data/limits";
 
 function formatMoney(minor: number, currency: string): string {
   return new Intl.NumberFormat("en-GB", {
@@ -397,8 +398,8 @@ export function FundsScreen() {
       {message ? <p className="a-window-note" role="status">{message}</p> : null}
       {newFundOpen ? (
         <form className="a-panel" onSubmit={submitFund}>
-          <div className="a-field"><label htmlFor="fund-name">Fund name</label><input id="fund-name" value={fundName} onChange={(event) => setFundName(event.target.value)} maxLength={120} required /></div>
-          <div className="a-field"><label htmlFor="fund-target">Target (optional)</label><input id="fund-target" value={target} onChange={(event) => setTarget(event.target.value)} inputMode="decimal" placeholder="0.00" /></div>
+          <div className="a-field"><label htmlFor="fund-name">Fund name</label><input id="fund-name" value={fundName} onChange={(event) => setFundName(event.target.value)} maxLength={LIMITS.fundName} required /><span className="a-field-limit">{fundName.length}/{LIMITS.fundName}</span></div>
+          <div className="a-field"><label htmlFor="fund-target">Target (optional)</label><input id="fund-target" value={target} onChange={(event) => setTarget(event.target.value)} inputMode="decimal" maxLength={LIMITS.money} placeholder="0.00" /></div>
           <button className="a-btn" type="submit" disabled={pending}>Save fund</button>
         </form>
       ) : null}
@@ -432,7 +433,7 @@ export function FundsScreen() {
                     <div className="when">Pledged {formatMoney(commitment.amountMinor, hub.currency)} · due {commitment.dueOn} · recorded {formatMoney(commitment.contributedMinor, hub.currency)}</div>
                     {contributionFor === commitment.id && isAdmin && outstanding > 0 ? (
                       <form className="a-field-row" onSubmit={(event) => submitContribution(event, commitment.id, outstanding)}>
-                        <input aria-label={`Contribution from ${member?.name ?? "member"}`} value={contributionAmount} onChange={(event) => setContributionAmount(event.target.value)} inputMode="decimal" placeholder="0.00" />
+                        <input aria-label={`Contribution from ${member?.name ?? "member"}`} value={contributionAmount} onChange={(event) => setContributionAmount(event.target.value)} inputMode="decimal" maxLength={LIMITS.money} placeholder="0.00" />
                         <button className="a-btn" type="submit" disabled={pending}>Record</button>
                       </form>
                     ) : null}
@@ -453,7 +454,7 @@ export function FundsScreen() {
               <div className="a-settle-row">
                 {pledgeFor === fund.id ? (
                   <form className="a-field-row" onSubmit={(event) => submitPledge(event, fund.id)}>
-                    <input aria-label="Your pledge amount" value={pledgeAmount} onChange={(event) => setPledgeAmount(event.target.value)} inputMode="decimal" placeholder="Amount, e.g. 25.00" />
+                    <input aria-label="Your pledge amount" value={pledgeAmount} onChange={(event) => setPledgeAmount(event.target.value)} inputMode="decimal" maxLength={LIMITS.money} placeholder="Amount, e.g. 25.00" />
                     <input aria-label="Pledge due date" type="date" value={pledgeDue} onChange={(event) => setPledgeDue(event.target.value)} />
                     <button className="a-btn" type="submit" disabled={pending}>Save pledge</button>
                   </form>

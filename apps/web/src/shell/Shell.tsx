@@ -4,6 +4,7 @@ import { Icon } from "../ui/Icon";
 import { Avatar } from "../ui/widgets";
 import { useApp } from "../state";
 import type { ScreenId, WindowId } from "../data/household";
+import { LIMITS } from "../data/limits";
 import { cx } from "../ui/cx";
 
 type NavItem = { id: ScreenId; label: string; icon: IconName };
@@ -158,7 +159,7 @@ export function Sidebar({ screen }: { screen: ScreenId }) {
     screen === id ||
     (id === "settle" && screen === "settle-even") ||
     (id === "home" && (screen === "home-empty" || screen === "home-inbox")) ||
-    (id === "hub" && screen === "hub-empty") ||
+    (id === "hub" && (screen === "hub-empty" || screen === "commune-settings")) ||
     (id === "expenses" && screen === "expenses-empty");
 
   return (
@@ -250,6 +251,7 @@ export function Header({ screen }: { screen: ScreenId }) {
           <input
             type="search"
             value={searchQuery}
+            maxLength={LIMITS.search}
             onChange={(event) => setSearchQuery(event.target.value)}
             placeholder="Search expenses, people, bills"
             aria-label="Search expenses, people, bills"
@@ -284,7 +286,7 @@ export function PhoneTabs({ screen }: { screen: ScreenId }) {
           type="button"
           className={cx(
             (tab.id === "home" && (screen === "home" || screen === "home-empty" || screen === "home-inbox")) ||
-              (tab.id === "hub" && (screen === "hub" || screen === "hub-empty")) ||
+              (tab.id === "hub" && (screen === "hub" || screen === "hub-empty" || screen === "commune-settings")) ||
               (tab.id === "expenses" && (screen === "expenses" || screen === "expenses-empty")) ||
               (tab.id === "settle" && (screen === "settle" || screen === "settle-even"))
               ? "is-active"

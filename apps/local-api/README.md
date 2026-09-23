@@ -19,6 +19,7 @@ browser code sends same-origin `/api` requests. Non-2xx errors are
 | GET | `/api/auth/me` | public | `{user}` or `{user:null}` |
 | GET | `/api/communes` | | `{communes:[...]}` |
 | POST | `/api/communes` | `{name,kind,currency}` | `{id}` |
+| PATCH | `/api/communes/:id` | `{name,kind,currency}` admin; currency locks once money exists | `{ok:true}` |
 | GET | `/api/communes/:id/snapshot` | | `{commune,members,expenses,funds,notes,operations,notifications,reminderTargets}` |
 | POST | `/api/communes/:id/expenses` | `{title,amountMinor,shares:[{userId,amountMinor}],dueOn?}` | `{id}` |
 | POST | `/api/shares/:id/confirm` | `{}` | `{ok:true}` |

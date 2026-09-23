@@ -176,6 +176,7 @@ export type AppState = {
   skipOperation: (id: string) => Promise<void>;
   removeOperation: (id: string) => Promise<void>;
   createHub: (input: CreatedHub, opts?: { openExpense?: boolean }) => Promise<string>;
+  updateCommune: (input: { name: string; type: LiveHub["type"]; currency: CurrencyCode }) => Promise<void>;
   recordExpense: (input: CreateExpenseInput) => Promise<string>;
   confirmExpenseShare: (shareId: string) => Promise<void>;
   markExpensePaid: (expenseId: string) => Promise<void>;
@@ -488,6 +489,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return result.id;
   }), [mutate, refresh, savePrefs, setLocation]);
 
+  const updateCommune = useCallback((input: {
+    name: string; type: LiveHub["type"]; currency: CurrencyCode;
+  }) => mutate(async () => {
+    if (!activeId) throw new Error("Choose a commune first");
+    await api(`/communes/${encodeURIComponent(activeId)}`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        name: input.name.trim(),
+        kind: input.type.toLowerCase(),
+        currency: input.currency,
+      }),
+    });
+    await refresh();
+  }), [activeId, mutate, refresh]);
+
   const recordExpense = useCallback((input: CreateExpenseInput) => mutate(async () => {
     if (!activeId) throw new Error("Create or join a commune first");
     if (!data) throw new Error("Sign in first");
@@ -725,7 +741,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setCurrency: (currency) => savePrefs({ currency }),
     setSearchQuery, savePayMethod, setHubPhoto, setAvatar, addNote,
     addOperation, updateOperation, toggleOperation, skipOperation,
-    removeOperation, createHub, recordExpense, confirmExpenseShare,
+    removeOperation, createHub, updateCommune, recordExpense, confirmExpenseShare,
     markExpensePaid, createInvite, previewInvite, acceptInvite, createFund,
     pledgeFund, recordFundContribution, sendReminder, markNotificationRead,
     pageTitle, pageLede,

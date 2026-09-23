@@ -13,6 +13,7 @@ import {
 import { useApp } from "../state";
 import { Pill } from "../ui/widgets";
 import { cx } from "../ui/cx";
+import { LIMITS } from "../data/limits";
 
 const OPERATION_CATEGORIES: Array<[OperationCategory, string]> = [
   ["delivery", "Delivery"],
@@ -348,12 +349,14 @@ function OperationForm({
           id="operation-title"
           type="text"
           value={title}
+          maxLength={LIMITS.operationTitle}
           aria-invalid={attempted && !title.trim()}
           onChange={(event) => setTitle(event.target.value)}
           placeholder={
             kind === "task" ? "e.g. Put the bins out" : "e.g. Plumber appointment"
           }
         />
+        <span className="a-field-limit">{title.length}/{LIMITS.operationTitle}</span>
         {attempted && !title.trim() ? (
           <p className="field-error">Add a title.</p>
         ) : null}
@@ -461,10 +464,12 @@ function OperationForm({
           id="operation-notes"
           rows={4}
           value={notes}
+          maxLength={LIMITS.operationNotes}
           onChange={(event) => setNotes(event.target.value)}
           placeholder="Access notes, what to bring, or anything the hub should know."
         />
         <p className="hint">Everyone in {hub.name} can see this.</p>
+        <span className="a-field-limit">{notes.length}/{LIMITS.operationNotes}</span>
       </div>
 
       {error ? <p className="a-form-error" role="alert">{error}</p> : null}

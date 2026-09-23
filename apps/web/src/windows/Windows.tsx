@@ -1,5 +1,6 @@
 import { useEffect, useState, type CSSProperties } from "react";
 import { NOTE_BODY_HINT } from "../data/household";
+import { LIMITS } from "../data/limits";
 import { useApp } from "../state";
 import { Icon } from "../ui/Icon";
 import { Avatar, Pill } from "../ui/widgets";
@@ -232,13 +233,15 @@ function AddExpense() {
           id="exp-what"
           type="text"
           value={what}
+          maxLength={LIMITS.expenseTitle}
           onChange={(e) => setWhat(e.target.value)}
           placeholder="e.g. Rent"
         />
+        <span className="a-field-limit">{what.length}/{LIMITS.expenseTitle}</span>
       </div>
       <div className="a-field half">
         <label htmlFor="exp-amt">Amount ({hub.currency})</label>
-        <input id="exp-amt" type="text" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" />
+        <input id="exp-amt" type="text" inputMode="decimal" maxLength={LIMITS.money} value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" />
       </div>
       <div className="a-field half">
         <label htmlFor="exp-who">Paid by</label>
@@ -450,7 +453,8 @@ function CommuneNew() {
       <p className="a-window-kicker">Places</p>
       <div className="a-field">
         <label htmlFor="new-name">Name</label>
-        <input id="new-name" type="text" value={name} onChange={(e) => setName(e.target.value)} />
+        <input id="new-name" type="text" maxLength={LIMITS.communeName} value={name} onChange={(e) => setName(e.target.value)} />
+        <span className="a-field-limit">{name.length}/{LIMITS.communeName}</span>
       </div>
       <div className="a-field half">
         <label htmlFor="new-type">Type</label>
@@ -530,7 +534,7 @@ function MemberInvite() {
       <p className="a-window-kicker">Members</p>
       <div className="a-field">
         <label htmlFor="inv-email">Email</label>
-        <input id="inv-email" type="email" value={email} disabled={Boolean(url)} onChange={(event) => setEmail(event.target.value)} />
+        <input id="inv-email" type="email" maxLength={LIMITS.email} value={email} disabled={Boolean(url)} onChange={(event) => setEmail(event.target.value)} />
       </div>
       <div className="a-field">
         <label htmlFor="inv-role">Role</label>
@@ -791,7 +795,7 @@ function NoteNew({ onSave }: { onSave: (card: { id: string; title: string; pill:
         title: title.trim(),
         pill: typeLabel,
         kicker: pin ? "Pinned · everyone" : "Everyone",
-        lede: facts[0]?.[1] ?? body.trim(),
+        lede: facts[0]?.[1] ?? body.trim().slice(0, 200),
         body: body.trim(),
         facts,
       });
@@ -810,7 +814,8 @@ function NoteNew({ onSave }: { onSave: (card: { id: string; title: string; pill:
         <label htmlFor="note-title">
           Title <span className="need">Required</span>
         </label>
-        <input id="note-title" type="text" value={title} onChange={(e) => setTitle(e.target.value)} />
+        <input id="note-title" type="text" maxLength={LIMITS.noteTitle} value={title} onChange={(e) => setTitle(e.target.value)} />
+        <span className="a-field-limit">{title.length}/{LIMITS.noteTitle}</span>
       </div>
       <div className="a-field">
         <label>
@@ -827,39 +832,39 @@ function NoteNew({ onSave }: { onSave: (card: { id: string; title: string; pill:
       </div>
       <div className="a-field half" style={extra("wifi")}>
         <label htmlFor="note-net">Network</label>
-        <input id="note-net" value={net} onChange={(e) => setNet(e.target.value)} />
+        <input id="note-net" maxLength={LIMITS.noteDetail} value={net} onChange={(e) => setNet(e.target.value)} />
       </div>
       <div className="a-field half" style={extra("wifi")}>
         <label htmlFor="note-pass">Password</label>
-        <input id="note-pass" value={pass} onChange={(e) => setPass(e.target.value)} />
+        <input id="note-pass" maxLength={LIMITS.noteDetail} value={pass} onChange={(e) => setPass(e.target.value)} />
       </div>
       <div className="a-field" style={extra("keys")}>
         <label htmlFor="note-code">Door code</label>
-        <input id="note-code" value={code} onChange={(e) => setCode(e.target.value)} placeholder="4821" />
+        <input id="note-code" maxLength={LIMITS.noteDetail} value={code} onChange={(e) => setCode(e.target.value)} placeholder="4821" />
       </div>
       <div className="a-field half" style={extra("bins")}>
         <label htmlFor="note-day">Collection</label>
-        <input id="note-day" value={day} onChange={(e) => setDay(e.target.value)} placeholder="Black bags Tuesday" />
+        <input id="note-day" maxLength={LIMITS.noteDetail} value={day} onChange={(e) => setDay(e.target.value)} placeholder="Black bags Tuesday" />
       </div>
       <div className="a-field half" style={extra("bins")}>
         <label htmlFor="note-where">Where they go</label>
-        <input id="note-where" value={where} onChange={(e) => setWhere(e.target.value)} placeholder="Alley behind the kitchen" />
+        <input id="note-where" maxLength={LIMITS.noteDetail} value={where} onChange={(e) => setWhere(e.target.value)} placeholder="Alley behind the kitchen" />
       </div>
       <div className="a-field half" style={extra("landlord")}>
         <label htmlFor="note-phone">Phone</label>
-        <input id="note-phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
+        <input id="note-phone" maxLength={LIMITS.noteDetail} value={phone} onChange={(e) => setPhone(e.target.value)} />
       </div>
       <div className="a-field half" style={extra("landlord-only")}>
         <label htmlFor="note-email">Email</label>
-        <input id="note-email" value={email} onChange={(e) => setEmail(e.target.value)} />
+        <input id="note-email" maxLength={LIMITS.noteDetail} value={email} onChange={(e) => setEmail(e.target.value)} />
       </div>
       <div className="a-field" style={extra("emergency")}>
         <label htmlFor="note-contact">Who to call</label>
-        <input id="note-contact" value={contact} onChange={(e) => setContact(e.target.value)} />
+        <input id="note-contact" maxLength={LIMITS.noteDetail} value={contact} onChange={(e) => setContact(e.target.value)} />
       </div>
       <div className="a-field" style={extra("other")}>
         <label htmlFor="note-extra">Detail</label>
-        <input id="note-extra" value={detail} onChange={(e) => setDetail(e.target.value)} />
+        <input id="note-extra" maxLength={LIMITS.noteDetail} value={detail} onChange={(e) => setDetail(e.target.value)} />
       </div>
       <div className="a-field">
         <label htmlFor="note-body">
@@ -869,10 +874,12 @@ function NoteNew({ onSave }: { onSave: (card: { id: string; title: string; pill:
           id="note-body"
           rows={4}
           value={body}
+          maxLength={LIMITS.noteBody}
           onChange={(e) => setBody(e.target.value)}
           placeholder={NOTE_BODY_HINT[type]}
         />
         <p className="hint">Always here. Add the story after the type extras.</p>
+        <span className="a-field-limit">{body.length}/{LIMITS.noteBody}</span>
       </div>
       <div className="a-field half">
         <label>Pin on This Hub</label>

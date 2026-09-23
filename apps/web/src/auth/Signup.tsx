@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react";
 import { Link, useLocation } from "wouter";
 import { AuthLayout } from "./AuthLayout";
 import { useApp } from "../state";
+import { LIMITS } from "../data/limits";
 import { keepSearch } from "../nav";
 
 export function SignupPage() {
@@ -42,15 +43,15 @@ export function SignupPage() {
         <form onSubmit={onSubmit}>
           <div className="commune-auth-field">
             <label htmlFor="su-name">Name</label>
-            <input id="su-name" autoComplete="name" required value={name} onChange={(event) => setName(event.target.value)} />
+            <input id="su-name" autoComplete="name" required maxLength={LIMITS.userName} value={name} onChange={(event) => setName(event.target.value)} />
           </div>
           <div className="commune-auth-field">
             <label htmlFor="su-email">Email</label>
-            <input id="su-email" type="email" autoComplete="email" required value={email} onChange={(event) => setEmail(event.target.value)} />
+            <input id="su-email" type="email" autoComplete="email" required maxLength={LIMITS.email} value={email} onChange={(event) => setEmail(event.target.value)} />
           </div>
           <div className="commune-auth-field">
             <label htmlFor="su-password">Password</label>
-            <input id="su-password" type="password" autoComplete="new-password" minLength={12} required value={password} onChange={(event) => setPassword(event.target.value)} />
+            <input id="su-password" type="password" autoComplete="new-password" minLength={12} maxLength={128} required value={password} onChange={(event) => setPassword(event.target.value)} />
           </div>
           <button className="commune-auth-btn" type="submit" disabled={busy}>
             {busy ? "Creating account…" : "Create account"}

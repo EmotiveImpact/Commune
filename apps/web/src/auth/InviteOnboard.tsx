@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { AuthLayout } from "./AuthLayout";
 import { useApp } from "../state";
 import type { Hub } from "../data/household";
+import { LIMITS } from "../data/limits";
 
 export function InvitePage() {
   const { go, session, authStatus, previewInvite, acceptInvite } = useApp();
@@ -115,7 +116,8 @@ export function OnboardPage() {
         {error ? <div className="commune-auth-alert" role="alert">{error}</div> : null}
         <div className="a-field">
           <label htmlFor="ob-name">Name</label>
-          <input id="ob-name" type="text" required value={name} onChange={(event) => setName(event.target.value)} />
+          <input id="ob-name" type="text" required maxLength={LIMITS.communeName} value={name} onChange={(event) => setName(event.target.value)} />
+          <span className="a-field-limit">{name.length}/{LIMITS.communeName}</span>
         </div>
         <div className="a-field">
           <label htmlFor="ob-type">Type</label>

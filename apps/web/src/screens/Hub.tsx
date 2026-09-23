@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { useApp } from "../state";
 import { Avatar, Pill } from "../ui/widgets";
-import { ImagePick } from "../ui/photos";
+import { Icon } from "../ui/Icon";
 import { cx } from "../ui/cx";
 
 function primaryCtaTarget(label: string): "add-expense" | "expenses" | "settle" {
@@ -12,20 +12,12 @@ function primaryCtaTarget(label: string): "add-expense" | "expenses" | "settle" 
 }
 
 function Cover({ children }: { children: ReactNode }) {
-  const { hub, session, setHubPhoto } = useApp();
-  const custom = Boolean(session?.hubPhotos?.[hub.id]);
+  const { hub, go } = useApp();
   return (
     <div className="a-cover" style={{ ["--hub-photo" as string]: `url("${hub.photo}")` }}>
-      <ImagePick
-        tone="on-photo"
-        label="Change photo"
-        clearLabel="Original"
-        hasCustom={custom}
-        maxEdge={1280}
-        inputLabel={`Photo for ${hub.name}`}
-        onPhoto={(dataUrl) => setHubPhoto(hub.id, dataUrl)}
-        onClear={() => setHubPhoto(hub.id, null)}
-      />
+      <button className="a-photo-btn a-cover-settings" type="button" onClick={() => go("commune-settings")}>
+        <Icon name="settings" size={14} /> Commune settings
+      </button>
       {children}
     </div>
   );

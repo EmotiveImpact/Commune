@@ -91,12 +91,32 @@ assert.equal(snap.status, 200, JSON.stringify(snap));
 assert.deepEqual(snap.members.map((member) => member.email).sort(),
   [addressA, addressB, addressD].sort());
 assert.equal((await outsider("GET", `/communes/${id}/snapshot`)).status, 404);
+assert.equal((await a("PATCH", `/communes/${id}`, {
+  name: "X".repeat(49), kind: "household", currency: "GBP",
+})).status, 400);
+const revised = { name: `Updated ${suffix}`, kind: "workspace", currency: "USD" };
+assert.equal((await b("PATCH", `/communes/${id}`, revised)).status, 403);
+assert.equal((await a("PATCH", `/communes/${id}`, revised)).status, 200);
+snap = await b("GET", `/communes/${id}/snapshot`);
+assert.equal(snap.commune.name, revised.name);
+assert.equal(snap.commune.kind, "workspace");
+assert.equal(snap.commune.currency, "USD");
+assert.equal((await a("PATCH", `/communes/${id}`, {
+  name: `Local test ${suffix}`, kind: "household", currency: "GBP",
+})).status, 200);
 const dueOn = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 const badSplit = await a("POST", `/communes/${id}/expenses`, {
   title: "Bad split", amountMinor: 1000, dueOn,
   shares: [{ userId: userA.user.id, amountMinor: 900 }],
 });
 assert.equal(badSplit.status, 400);
+assert.equal((await a("POST", `/communes/${id}/expenses`, {
+  title: "X".repeat(81), amountMinor: 1000, dueOn,
+  shares: [
+    { userId: userA.user.id, amountMinor: 500 },
+    { userId: userB.user.id, amountMinor: 500 },
+  ],
+})).status, 400, "long expense names should be rejected at the API");
 const expense = await a("POST", `/communes/${id}/expenses`, {
   title: "Shared groceries", amountMinor: 1000, dueOn,
   shares: [
@@ -105,7 +125,15 @@ const expense = await a("POST", `/communes/${id}/expenses`, {
   ],
 });
 assert.equal(expense.status, 201, JSON.stringify(expense));
+assert.equal((await a("PATCH", `/communes/${id}`, {
+  name: `Local test ${suffix}`, kind: "household", currency: "EUR",
+})).status, 400, "currency must lock after an expense");
+assert.equal((await a("PATCH", `/communes/${id}`, {
+  name: `Retitled ${suffix}`, kind: "trip", currency: "GBP",
+})).status, 200);
 snap = await a("GET", `/communes/${id}/snapshot`);
+assert.equal(snap.commune.name, `Retitled ${suffix}`);
+assert.equal(snap.commune.kind, "trip");
 const share = snap.expenses[0].shares.find((part) => part.userId === userB.user.id);
 assert.equal(share.amountMinor, 500);
 assert.equal(snap.reminderTargets[0].kind, "nudge");
@@ -159,6 +187,10 @@ const note = await b("POST", `/communes/${id}/notes`, {
   facts: [["Network", "Commune"]],
 });
 assert.equal(note.status, 201, JSON.stringify(note));
+assert.equal((await b("POST", `/communes/${id}/notes`, {
+  title: "Too long", pill: "Info", kicker: "Everyone", lede: "Long",
+  body: "X".repeat(2001), facts: [],
+})).status, 400, "long note bodies should be rejected at the API");
 assert.equal((await a("GET", `/communes/${id}/snapshot`)).notes[0].title, "Wi-Fi");
 assert.equal((await outsider("PUT", `/notes/${note.id}`, {
   title: "Altered", pill: "", kicker: "", lede: "", body: "", facts: [],

@@ -95,15 +95,15 @@ function optionalText(value: unknown, field: string, max: number): string {
 function noteInput(input: Record<string, unknown>) {
   if (!Array.isArray(input.facts) || input.facts.length > 30 ||
       !input.facts.every((fact) => Array.isArray(fact) && fact.length === 2 &&
-        fact.every((part) => typeof part === "string" && part.length <= 200))) {
+        fact.every((part) => typeof part === "string" && part.length <= 120))) {
     throw new ApiError(400, "Invalid facts");
   }
   return {
-    title: text(input.title, "title", 120),
+    title: text(input.title, "title", 80),
     pill: optionalText(input.pill, "pill", 80),
     kicker: optionalText(input.kicker, "kicker", 120),
     lede: optionalText(input.lede, "lede", 200),
-    body: optionalText(input.body, "body", 10000),
+    body: optionalText(input.body, "body", 2000),
     facts: input.facts,
   };
 }
@@ -142,13 +142,13 @@ function operationInput(input: Record<string, unknown>) {
   }
   return {
     kind: input.kind, category: input.category,
-    title: text(input.title, "title", 160),
+    title: text(input.title, "title", 80),
     date: isoDate(input.date)!, time: input.time ?? null,
     allDay: input.allDay,
     assignee: input.assignee == null ? null : optionalText(input.assignee, "assignee", 80),
     rotation: input.rotation ?? null, lastDone,
     repeat: input.repeat, status: input.status === "done" ? "done" : "open",
-    notes: optionalText(input.notes, "notes", 10000),
+    notes: optionalText(input.notes, "notes", 1000),
   };
 }
 
@@ -384,7 +384,9 @@ route("POST", /^\/api\/auth\/signup$/, async (req, res) => {
 route("POST", /^\/api\/auth\/login$/, async (req, res) => {
   const input = await body(req);
   const address = email(input.email);
-  if (typeof input.password !== "string") throw new ApiError(400, "Invalid password");
+  if (typeof input.password !== "string" || input.password.length > 128) {
+    throw new ApiError(400, "Invalid password");
+  }
   const key = checkThrottle(req, address);
   const result = await login(address, input.password);
   if (!result) {
@@ -408,7 +410,7 @@ route("GET", /^\/api\/communes$/, async (req, res) => {
 
 route("POST", /^\/api\/communes$/, async (req, res) => {
   const input = await body(req);
-  const name = text(input.name, "name", 80);
+  const name = text(input.name, "name", 48);
   if (!["household", "workspace", "trip"].includes(String(input.kind))) {
     throw new ApiError(400, "Invalid kind");
   }
@@ -422,6 +424,21 @@ route("POST", /^\/api\/communes$/, async (req, res) => {
   send(res, { id: result.rows[0].id }, 201);
 });
 
+route("PATCH", /^\/api\/communes\/([0-9a-f-]{36})$/, async (req, res, match) => {
+  const input = await body(req);
+  const name = text(input.name, "name", 48);
+  if (!["household", "workspace", "trip"].includes(String(input.kind))) {
+    throw new ApiError(400, "Invalid kind");
+  }
+  if (!["GBP", "USD", "EUR"].includes(String(input.currency))) {
+    throw new ApiError(400, "Invalid currency");
+  }
+  await userAction(req, async (client) => client.query(
+    "SELECT public.update_commune_details($1, $2, $3, $4)",
+    [uuid(match[1]), name, input.kind, input.currency]));
+  send(res, { ok: true });
+});
+
 route("GET", /^\/api\/communes\/([0-9a-f-]{36})\/snapshot$/, async (req, res, match) => {
   send(res, await snapshot(await actor(req), uuid(match[1])));
 });
@@ -429,7 +446,7 @@ route("GET", /^\/api\/communes\/([0-9a-f-]{36})\/snapshot$/, async (req, res, ma
 route("POST", /^\/api\/communes\/([0-9a-f-]{36})\/expenses$/, async (req, res, match) => {
   const input = await body(req);
   const communeId = uuid(match[1]);
-  const title = text(input.title, "title", 160);
+  const title = text(input.title, "title", 80);
   const amountMinor = amount(input.amountMinor);
   if (!Array.isArray(input.shares) || input.shares.length < 1 || input.shares.length > 100) {
     throw new ApiError(400, "Invalid shares");
@@ -456,7 +473,7 @@ route("POST", /^\/api\/shares\/([0-9a-f-]{36})\/confirm$/, async (req, res, matc
 
 route("POST", /^\/api\/communes\/([0-9a-f-]{36})\/funds$/, async (req, res, match) => {
   const input = await body(req);
-  const name = text(input.name, "name", 120);
+  const name = text(input.name, "name", 80);
   const target = input.targetMinor === undefined || input.targetMinor === null
     ? null : amount(input.targetMinor, "targetMinor");
   const result = await userAction(req, async (client) => client.query(
