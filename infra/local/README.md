@@ -12,7 +12,10 @@ files in order using a database owner connection:
 6. `infra/neon/migrations/0005_commune_locations.sql`
 7. `infra/neon/migrations/0006_shared_content.sql`
 8. `infra/neon/migrations/0007_atomic_commune_details.sql`
-9. `infra/local/after-core.sql`
+9. `infra/neon/migrations/0008_managed_auth_uuid.sql`
+10. `infra/neon/migrations/0009_reminder_monthly_limits.sql`
+11. `infra/neon/migrations/0010_reminder_usage.sql`
+12. `infra/local/after-core.sql`
 
 `apps/local-api` serves `127.0.0.1:3002` with `DATABASE_URL` set to that
 database. The Vite app proxies `/api` to it on `localhost:3000`.

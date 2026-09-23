@@ -3,6 +3,7 @@ import { useApp } from "../state";
 import { Avatar, Pill } from "../ui/widgets";
 import { cx } from "../ui/cx";
 import { LIMITS } from "../data/limits";
+import { RecipientReminderCount, ReminderUsageMeter, reminderLimitReached } from "../ui/ReminderUsage";
 
 function formatMoney(minor: number, currency: string): string {
   return new Intl.NumberFormat("en-GB", {
@@ -148,7 +149,7 @@ export function ExpensesEmptyScreen() {
 }
 
 export function SettleScreen() {
-  const { go, hub, expenses, session, reminderTargets, sendReminder, confirmExpenseShare } = useApp();
+  const { go, hub, expenses, session, reminderTargets, reminderUsage, sendReminder, confirmExpenseShare } = useApp();
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
@@ -212,6 +213,7 @@ export function SettleScreen() {
           </div>
         </div>
       </div>
+      <ReminderUsageMeter usage={reminderUsage} />
       <div className="a-card">
         <div className="a-card-head">
           <div>
@@ -232,6 +234,7 @@ export function SettleScreen() {
             ? reminderTargets.find((item) => item.kind === "nudge" && item.sourceId === share.id)
             : undefined;
           const cooldown = target?.lastSentAt && Date.now() - Date.parse(target.lastSentAt) < 72 * 60 * 60 * 1000;
+          const quotaReached = reminderLimitReached(reminderUsage, share.userId);
           return (
             <div
               className="a-move"
@@ -241,11 +244,14 @@ export function SettleScreen() {
               <div>
                 <div className="names">{receiving ? `${debtor?.name ?? "Member"} → You` : `You → ${payer?.name ?? "Bill payer"}`}</div>
                 <div className="why">{expense.name}{expense.dueOn ? ` · due ${expense.dueOn}` : ""}</div>
+                {receiving && (target || (reminderUsage?.recipientUsage[share.userId] ?? 0) > 0) ? (
+                  <RecipientReminderCount usage={reminderUsage} recipientId={share.userId} />
+                ) : null}
               </div>
               <div className="amt">{formatMoney(outstanding, hub.currency)}</div>
               {receiving ? (
                 <div className="a-row-actions">
-                  {target && !cooldown ? (
+                  {target && !cooldown && !quotaReached ? (
                     <button className="a-btn nudge" type="button" disabled={pendingId !== null} onClick={() => void nudge(share.id)}>
                       Nudge
                     </button>
@@ -305,7 +311,7 @@ export function RecurringScreen() {
 
 export function FundsScreen() {
   const {
-    hub, session, funds, reminderTargets,
+    hub, session, funds, reminderTargets, reminderUsage,
     createFund, pledgeFund, recordFundContribution, sendReminder,
   } = useApp();
   const [newFundOpen, setNewFundOpen] = useState(false);
@@ -394,6 +400,7 @@ export function FundsScreen() {
           </button>
         ) : null}
       </div>
+      <ReminderUsageMeter usage={reminderUsage} />
       {error ? <p className="a-form-error" role="alert">{error}</p> : null}
       {message ? <p className="a-window-note" role="status">{message}</p> : null}
       {newFundOpen ? (
@@ -425,12 +432,16 @@ export function FundsScreen() {
               const outstanding = commitment.amountMinor - commitment.contributedMinor;
               const reminder = reminderTargets.find((item) => item.kind === "chase" && item.sourceId === commitment.id);
               const cooldown = reminder?.lastSentAt && Date.now() - Date.parse(reminder.lastSentAt) < 72 * 60 * 60 * 1000;
+              const quotaReached = reminderLimitReached(reminderUsage, commitment.userId);
               return (
                 <div className="a-settle-row" key={commitment.id}>
                   <Avatar tone="house" initials={member?.ini ?? "?"} />
                   <div style={{ flex: 1 }}>
                     <strong>{member?.name ?? "Member"}</strong>
                     <div className="when">Pledged {formatMoney(commitment.amountMinor, hub.currency)} · due {commitment.dueOn} · recorded {formatMoney(commitment.contributedMinor, hub.currency)}</div>
+                    {isAdmin && (reminder || (reminderUsage?.recipientUsage[commitment.userId] ?? 0) > 0) ? (
+                      <RecipientReminderCount usage={reminderUsage} recipientId={commitment.userId} />
+                    ) : null}
                     {contributionFor === commitment.id && isAdmin && outstanding > 0 ? (
                       <form className="a-field-row" onSubmit={(event) => submitContribution(event, commitment.id, outstanding)}>
                         <input aria-label={`Contribution from ${member?.name ?? "member"}`} value={contributionAmount} onChange={(event) => setContributionAmount(event.target.value)} inputMode="decimal" maxLength={LIMITS.money} placeholder="0.00" />
@@ -442,7 +453,7 @@ export function FundsScreen() {
                   {isAdmin && outstanding > 0 ? (
                     <div className="a-row-actions">
                       <button className="a-btn ghost" type="button" disabled={pending} onClick={() => setContributionFor(contributionFor === commitment.id ? null : commitment.id)}>Record contribution</button>
-                      {reminder && !cooldown ? (
+                      {reminder && !cooldown && !quotaReached ? (
                         <button className="a-btn nudge" type="button" disabled={pending} onClick={() => void run(() => sendReminder("chase", commitment.id), "Chase sent in Commune.")}>Chase</button>
                       ) : null}
                     </div>

@@ -46,6 +46,7 @@ import {
   type LiveHub,
   type Notification,
   type ReminderTarget,
+  type ReminderUsage,
   type Snapshot,
   type User,
 } from "./live/model";
@@ -139,6 +140,7 @@ type LiveData = {
   communes: Commune[];
   snapshots: Record<string, Snapshot>;
   invites: Record<string, PendingInvite[]>;
+  reminderUsage: ReminderUsage | null;
 };
 type AuthStatus = "loading" | "guest" | "authenticated" | "error";
 
@@ -182,6 +184,7 @@ export type AppState = {
   createdExpenses: LiveExpenseRow[];
   funds: Fund[];
   reminderTargets: ReminderTarget[];
+  reminderUsage: ReminderUsage | null;
   notifications: Notification[];
   signOut: () => Promise<void>;
   go: (target: GoTarget, opts?: GoOpts) => void;
@@ -356,7 +359,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
         loadedRef.current = true;
         return;
       }
-      const { communes } = await api<{ communes: Commune[] }>("/communes");
+      const [{ communes }, reminderUsage] = await Promise.all([
+        api<{ communes: Commune[] }>("/communes"),
+        // A pending database rollout must not make the rest of the app unusable.
+        // The send RPC still enforces limits even if this display is unavailable.
+        api<ReminderUsage>("/reminders/usage").catch(() => null),
+      ]);
       const [entries, inviteEntries] = await Promise.all([
         Promise.all(communes.map(async (commune) => [
           commune.id,
@@ -380,6 +388,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         communes,
         snapshots: Object.fromEntries(entries),
         invites: Object.fromEntries(inviteEntries),
+        reminderUsage,
       };
       setData(next);
       setAuthStatus("authenticated");
@@ -501,6 +510,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     contributedMinor: fund.commitments.reduce((sum, commitment) => sum + commitment.contributedMinor, 0),
   }));
   const reminderTargets = snapshot?.reminderTargets ?? [];
+  const reminderUsage = data?.reminderUsage ?? null;
   const notifications = snapshot?.notifications ?? [];
   const you = {
     name: data?.user.name ?? "",
@@ -796,7 +806,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     dark: prefs.dark, noticesOn: prefs.noticesOn, currency: prefs.currency,
     searchQuery, invites: data?.invites[activeId] ?? [], payMethods: prefs.payMethods, native, you,
     lastExpense, expenses, selectedExpense, createdExpenses: expenses,
-    funds, reminderTargets, notifications, signOut, go,
+    funds, reminderTargets, reminderUsage, notifications, signOut, go,
     closeWindow: () => setWindowId(null), setMoreOpen,
     setNavMode: (navMode) => savePrefs({ navMode }),
     setDark: (dark) => savePrefs({ dark }),

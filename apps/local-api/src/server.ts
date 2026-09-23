@@ -489,6 +489,17 @@ route("GET", /^\/api\/communes\/([0-9a-f-]{36})\/snapshot$/, async (req, res, ma
   send(res, await snapshot(await actor(req), uuid(match[1])));
 });
 
+route("GET", /^\/api\/reminders\/usage$/, async (req, res) => {
+  const result = await withActor((await actor(req)).id, (client) => client.query(
+    "SELECT * FROM public.reminder_usage()"));
+  const row = result.rows[0];
+  send(res, {
+    totalUsed: row.total_used, totalLimit: row.total_limit,
+    recipientLimit: row.recipient_limit, recipientUsage: row.recipient_usage,
+    nextSlotAt: row.next_slot_at,
+  });
+});
+
 route("POST", /^\/api\/communes\/([0-9a-f-]{36})\/expenses$/, async (req, res, match) => {
   const input = await body(req);
   const communeId = uuid(match[1]);

@@ -76,6 +76,13 @@ export type ReminderTarget = {
   dueOn: string | null;
   lastSentAt: string | null;
 };
+export type ReminderUsage = {
+  totalUsed: number;
+  totalLimit: number;
+  recipientLimit: number;
+  recipientUsage: Record<string, number>;
+  nextSlotAt: string | null;
+};
 export type Notification = {
   id: string;
   kind: "nudge" | "chase";

@@ -8,6 +8,7 @@ import { ImagePick } from "../ui/photos";
 import { cx } from "../ui/cx";
 import { OperationEdit, OperationNew, OperationView } from "./OperationsWindows";
 import { CommuneLocationFields, EMPTY_COMMUNE_LOCATION } from "../ui/CommuneLocationFields";
+import { RecipientReminderCount, ReminderUsageMeter, reminderLimitReached } from "../ui/ReminderUsage";
 
 const NOTE_TYPES = [
   ["wifi", "Wi-Fi"],
@@ -295,7 +296,7 @@ function AddExpense() {
 function Expense() {
   const {
     go, closeWindow, hub, selectedExpense, session,
-    reminderTargets, confirmExpenseShare, sendReminder,
+    reminderTargets, reminderUsage, confirmExpenseShare, sendReminder,
   } = useApp();
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [error, setError] = useState("");
@@ -340,6 +341,7 @@ function Expense() {
         </div>
         <Pill tone={selectedExpense.status}>{selectedExpense.statusLabel}</Pill>
       </div>
+      {isPayer ? <ReminderUsageMeter usage={reminderUsage} /> : null}
       <div className="a-split">
         {selectedExpense.shares.map((share) => {
           const member = hub.members.find((item) => item.userId === share.userId);
@@ -349,17 +351,21 @@ function Expense() {
             ? reminderTargets.find((item) => item.kind === "nudge" && item.sourceId === share.id)
             : undefined;
           const cooldown = target?.lastSentAt && Date.now() - Date.parse(target.lastSentAt) < 72 * 60 * 60 * 1000;
+          const quotaReached = reminderLimitReached(reminderUsage, share.userId);
           return (
             <div className="a-split-row" key={share.id}>
               <Avatar tone={member?.cls ?? "house"} initials={member?.ini ?? "?"} />
               <div className="grow">
                 <strong>{member?.name ?? "Member"}{share.userId === session?.userId ? " (you)" : ""}</strong>
                 <div className="when">{formatMoney(share.amountMinor, hub.currency)} share · {outstanding ? `${formatMoney(outstanding, hub.currency)} outstanding` : "settled"}</div>
+                {isPayer && (target || (reminderUsage?.recipientUsage[share.userId] ?? 0) > 0) ? (
+                  <RecipientReminderCount usage={reminderUsage} recipientId={share.userId} />
+                ) : null}
               </div>
               <Pill tone={outstanding ? "open" : "settled"}>{outstanding ? "Open" : "Settled"}</Pill>
               {isPayer && !isOwnPayerShare && outstanding ? (
                 <div className="a-row-actions">
-                  {target && !cooldown ? (
+                  {target && !cooldown && !quotaReached ? (
                     <button className="a-btn nudge" type="button" disabled={pendingId !== null} onClick={() => void act(share.id, () => sendReminder("nudge", share.id), "Nudge sent in Commune.")}>Nudge</button>
                   ) : null}
                   <button className="a-btn ghost" type="button" disabled={pendingId !== null} onClick={() => void act(share.id, () => confirmExpenseShare(share.id), "Share confirmed as received. No payment was taken by Commune.")}>Confirm received</button>

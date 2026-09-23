@@ -42,6 +42,7 @@ const addressC = `commune-smoke-c-${suffix}@example.test`;
 const addressD = `commune-smoke-d-${suffix}@example.test`;
 
 assert.equal((await noCookie("GET", "/communes")).status, 401);
+assert.equal((await noCookie("GET", "/reminders/usage")).status, 401);
 
 const userA = await a("POST", "/auth/signup", {
   name: "API Alice", email: addressA, password,
@@ -60,6 +61,10 @@ assert.equal(userB.status, 201, JSON.stringify(userB));
 assert.equal(userC.status, 201, JSON.stringify(userC));
 assert.equal(userD.status, 201, JSON.stringify(userD));
 assert.equal((await a("GET", "/auth/me")).user.email, addressA);
+assert.deepEqual(await a("GET", "/reminders/usage"), {
+  status: 200, totalUsed: 0, totalLimit: 60, recipientLimit: 8,
+  recipientUsage: {}, nextSlotAt: null,
+});
 assert.equal((await b("GET", "/auth/me")).user.emailVerified, true);
 assert.equal((await a("GET", "/preferences")).emailReminders, true);
 assert.equal((await a("PUT", "/preferences", { emailReminders: false })).emailReminders, false);
@@ -183,6 +188,9 @@ const nudge = await a("POST", "/reminders", {
 assert.equal(nudge.status, 201, JSON.stringify(nudge));
 assert.equal(nudge.delivery, "in-app");
 assert.equal(nudge.email, "not-configured");
+let usage = await a("GET", "/reminders/usage");
+assert.equal(usage.totalUsed, 1);
+assert.equal(usage.recipientUsage[userB.user.id], 1);
 let bobSnap = await b("GET", `/communes/${id}/snapshot`);
 assert.equal(bobSnap.notifications[0].kind, "nudge");
 assert.equal(bobSnap.notifications[0].sourceId, share.id);
@@ -207,6 +215,9 @@ const chase = await a("POST", "/reminders", {
   kind: "chase", sourceId: pledge.id,
 });
 assert.equal(chase.status, 201, JSON.stringify(chase));
+usage = await a("GET", "/reminders/usage");
+assert.equal(usage.totalUsed, 2);
+assert.equal(usage.recipientUsage[userD.user.id], 1);
 const danaSnap = await d("GET", `/communes/${id}/snapshot`);
 assert.equal(danaSnap.notifications.some((item) => item.kind === "chase"), true);
 assert.equal((await d("POST", `/commitments/${pledge.id}/contributions`, {

@@ -2129,6 +2129,76 @@ button.a-kpi {
   margin-bottom: 16px;
 }
 
+.a-reminder-usage {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 18px;
+  margin-bottom: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--paper-2);
+}
+
+.a-reminder-usage-copy > span {
+  display: block;
+  color: var(--ink-soft);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.a-reminder-usage-copy strong {
+  display: block;
+  margin-top: 2px;
+  color: var(--ink);
+  font-size: 22px;
+  letter-spacing: -0.04em;
+}
+
+.a-reminder-usage-copy strong small {
+  color: var(--ink-soft);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.a-reminder-usage-copy p {
+  margin: 3px 0 0;
+  color: var(--ink-soft);
+  font-size: 12px;
+}
+
+.a-reminder-usage-side {
+  width: min(190px, 35%);
+  flex: 0 0 auto;
+  text-align: right;
+  color: var(--ink-soft);
+  font-size: 12px;
+}
+
+.a-reminder-usage-track {
+  height: 7px;
+  margin-bottom: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--sage-mist);
+}
+
+.a-reminder-usage-track > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--sage);
+}
+
+.a-reminder-recipient-count {
+  display: block;
+  margin-top: 3px;
+  color: var(--ink-soft);
+  font-size: 12px;
+}
+
 .a-settle-card {
   padding: 20px;
 }
@@ -3510,6 +3580,14 @@ button.a-item {
 }
 
 @media (max-width: 560px) {
+  .a-reminder-usage {
+    align-items: flex-start;
+  }
+
+  .a-reminder-usage-side {
+    width: 32%;
+  }
+
   .a-app {
     grid-template-columns: 1fr;
     padding-bottom: 64px;

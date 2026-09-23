@@ -21,6 +21,10 @@ local API or present a static build as a working product before hosted tests.
   particular member owes that amount.
 - The server computes the amount in minor currency units; the browser supplies
   only `kind` and the obligation's UUID to `send_reminder`.
+- `reminder_usage()` reports the signed-in sender's accepted Nudge/Chase count,
+  per-person counts, and next available global slot from the same rolling
+  server-time window used by the send rule. Settle, Funds, and expense details
+  display this allowance; the counter is not the authority for a send.
 - An obligation must have an explicit due date that has arrived. A row lock,
   a three-day same-obligation cooldown, and a one-day sender/recipient cap
   block rapid duplicates. In addition, each sender is limited to 60 accepted
@@ -72,7 +76,7 @@ local API or present a static build as a working product before hosted tests.
    Broad grants would let direct writes bypass ledger invariants. Keep preview
    branches separate from production.
 3. Apply `migrations/0001_commune_core.sql` through
-   `migrations/0009_reminder_monthly_limits.sql` in numeric order to the
+   `migrations/0010_reminder_usage.sql` in numeric order to the
    development branch via an **unpooled** connection. Run `tests/grants.sql`,
    review RLS, and run two-account signed-JWT tests before applying the same
    reviewed migrations to production.
@@ -162,7 +166,9 @@ local API or present a static build as a working product before hosted tests.
   of 60 accepted reminders per sender and 8 per sender/recipient, shared by
   Nudge and Chase. Local boundary, opt-out, existing worker, and concurrent
   final-slot tests passed. The preview index and function were verified after
-  applying the migration. Production remains on migrations 0001–0008 until
+  applying the migration. Migration 0010 adds the read-only usage counter and
+  was also applied to that preview branch after local authorization and
+  rolling-window tests passed. Production remains on migrations 0001–0008 until
   release review; do not assume this ceiling is live there yet.
 - Production Auth requires email verification, rejects localhost origins, and
   sends through a separate restricted Resend SMTP key as
@@ -179,8 +185,9 @@ local API or present a static build as a working product before hosted tests.
 ## Local database verification
 
 On a disposable local PostgreSQL database, run
-`tests/local_auth_stub.sql`, migrations 0001 through 0009, then
-`tests/reminders.sql`, `tests/reminder_monthly_limits.sql`, `tests/invitations.sql`,
+`tests/local_auth_stub.sql`, migrations 0001 through 0010, then
+`tests/reminders.sql`, `tests/reminder_monthly_limits.sql`,
+`tests/reminder_usage.sql`, `tests/invitations.sql`,
 `tests/shared_content.sql`, `tests/atomic_commune_details.sql`,
 `tests/managed_auth_uuid.sql`, and
 `tests/grants.sql` with

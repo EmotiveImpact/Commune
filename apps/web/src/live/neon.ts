@@ -2,7 +2,7 @@ import { createClient } from "@neondatabase/neon-js";
 import { ApiError } from "./api";
 import type {
   Commune, Commitment, CurrencyCode, Expense, Fund, Member, Notification,
-  ReminderTarget, Share, Snapshot, User,
+  ReminderTarget, ReminderUsage, Share, Snapshot, User,
 } from "./model";
 import type { OperationItem } from "../data/operations";
 import type { NoteCard } from "../data/household";
@@ -247,6 +247,24 @@ async function snapshot(communeId: string): Promise<Snapshot> {
   return { commune, members, expenses, funds, notifications, reminderTargets, notes, operations };
 }
 
+async function reminderUsage(): Promise<ReminderUsage> {
+  await requireUser();
+  const records = rows(unwrap(await db().rpc("reminder_usage")));
+  const record = records[0];
+  if (!record || !record.recipient_usage || typeof record.recipient_usage !== "object" ||
+      Array.isArray(record.recipient_usage)) {
+    throw new ApiError("Reminder usage is unavailable", 502);
+  }
+  const recipientUsage = Object.fromEntries(
+    Object.entries(record.recipient_usage as Row).map(([id, count]) => [id, minor(count)]),
+  );
+  return {
+    totalUsed: minor(record.total_used), totalLimit: minor(record.total_limit),
+    recipientLimit: minor(record.recipient_limit), recipientUsage,
+    nextSlotAt: record.next_slot_at == null ? null : str(record.next_slot_at),
+  };
+}
+
 async function rpcId(name: string, arguments_: Row): Promise<{ id: string }> {
   const result = await db().rpc(name, arguments_);
   return idResult(unwrap(result));
@@ -322,6 +340,8 @@ export async function neonApi<T>(path: string, init: RequestInit = {}): Promise<
       p_address: body.address, p_destination: body.destination,
       p_stay_name: body.stayName, p_stay_address: body.stayAddress,
     });
+  } else if (path === "/reminders/usage" && method === "GET") {
+    response = await reminderUsage();
   } else if (method === "GET" && pathId(path, /^\/communes\/([^/]+)\/snapshot$/)) {
     response = await snapshot(pathId(path, /^\/communes\/([^/]+)\/snapshot$/)!);
   } else if (method === "POST" && pathId(path, /^\/communes\/([^/]+)\/expenses$/)) {
