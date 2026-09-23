@@ -48,6 +48,7 @@ export function LoginPage() {
             <label htmlFor="login-password">Password</label>
             <input id="login-password" type="password" autoComplete="current-password" required maxLength={128} value={password} onChange={(event) => setPassword(event.target.value)} />
           </div>
+          <p className="commune-auth-foot"><Link href={keepSearch("/forgot-password")} className="commune-auth-link">Forgot your password?</Link></p>
           <button className="commune-auth-btn" type="submit" disabled={busy}>
             {busy ? "Signing in…" : "Sign in"}
           </button>
@@ -56,6 +57,10 @@ export function LoginPage() {
           New to Commune?{" "}
           <Link href={keepSearch("/signup")} className="commune-auth-link">Create an account</Link>
         </p>
+        {import.meta.env.PROD ? <p className="commune-auth-foot">
+          Have a verification code?{" "}
+          <Link href={keepSearch("/verify-email")} className="commune-auth-link">Verify your email</Link>
+        </p> : null}
       </div>
     </AuthLayout>
   );

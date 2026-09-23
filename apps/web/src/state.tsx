@@ -146,7 +146,8 @@ export type AppState = {
   clearApiError: () => void;
   refresh: () => Promise<void>;
   signInWithPassword: (email: string, password: string) => Promise<void>;
-  signUpWithPassword: (name: string, email: string, password: string) => Promise<void>;
+  signUpWithPassword: (name: string, email: string, password: string) => Promise<"ready" | "verify">;
+  verifyEmailCode: (email: string, code: string) => Promise<void>;
   session: Session | null;
   screen: ScreenId;
   hubId: HubId;
@@ -421,7 +422,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await refresh();
   }), [mutate, refresh]);
   const signUpWithPassword = useCallback((name: string, email: string, password: string) => mutate(async () => {
-    await post("/auth/signup", { name, email, password });
+    const result = await post<{ verificationRequired?: boolean }>("/auth/signup", { name, email, password });
+    if (result.verificationRequired) return "verify" as const;
+    await refresh();
+    return "ready" as const;
+  }), [mutate, refresh]);
+  const verifyEmailCode = useCallback((email: string, code: string) => mutate(async () => {
+    await post("/auth/verify-email", { email, code });
     await refresh();
   }), [mutate, refresh]);
   const signOut = useCallback(() => mutate(async () => {
@@ -756,7 +763,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   return <Ctx.Provider value={{
     authStatus, apiError, clearApiError: () => setApiError(null), refresh,
-    signInWithPassword, signUpWithPassword, session, screen, hubId: activeId,
+    signInWithPassword, signUpWithPassword, verifyEmailCode, session, screen, hubId: activeId,
     hub, places, emptyHub: empty, window: windowId, moreOpen,
     navMode: prefs.navMode, noteKey, notes, operationKey, operationDate,
     operationTime, operationsByHub, operations, selectedOperation,

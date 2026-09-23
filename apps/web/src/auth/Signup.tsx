@@ -6,13 +6,15 @@ import { LIMITS } from "../data/limits";
 import { keepSearch } from "../nav";
 
 export function SignupPage() {
-  const { signUpWithPassword } = useApp();
+  const { signUpWithPassword, verifyEmailCode, signInWithPassword } = useApp();
   const [, setLocation] = useLocation();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [verificationPending, setVerificationPending] = useState(false);
+  const [code, setCode] = useState("");
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
@@ -23,7 +25,11 @@ export function SignupPage() {
     }
     setBusy(true);
     try {
-      await signUpWithPassword(name.trim(), email.trim(), password);
+      const status = await signUpWithPassword(name.trim(), email.trim(), password);
+      if (status === "verify") {
+        setVerificationPending(true);
+        return;
+      }
       const returnTo = sessionStorage.getItem("commune.return-to");
       sessionStorage.removeItem("commune.return-to");
       setLocation(returnTo || keepSearch("/onboard"));
@@ -34,13 +40,41 @@ export function SignupPage() {
     }
   }
 
+  async function onVerify(event: FormEvent) {
+    event.preventDefault();
+    setError("");
+    setBusy(true);
+    try {
+      await verifyEmailCode(email.trim(), code.trim());
+      await signInWithPassword(email.trim(), password);
+      const returnTo = sessionStorage.getItem("commune.return-to");
+      sessionStorage.removeItem("commune.return-to");
+      setLocation(returnTo || keepSearch("/onboard"));
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not verify your email.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <AuthLayout>
       <div className="commune-auth-panel">
-        <h2>Create your account</h2>
-        <p className="commune-auth-lede">Your expenses and membership will be shared securely with the people you invite.</p>
+        <h2>{verificationPending ? "Verify your email" : "Create your account"}</h2>
+        <p className="commune-auth-lede">{verificationPending
+          ? `Enter the code sent to ${email}. If your message has a verification link, open it and then sign in.`
+          : "Your expenses and membership will be shared securely with the people you invite."}</p>
         {error ? <div className="commune-auth-alert" role="alert">{error}</div> : null}
-        <form onSubmit={onSubmit}>
+        {verificationPending ? <form onSubmit={onVerify}>
+          <div className="commune-auth-field">
+            <label htmlFor="su-code">Verification code</label>
+            <input id="su-code" type="text" inputMode="numeric" autoComplete="one-time-code" required maxLength={12}
+              value={code} onChange={(event) => setCode(event.target.value)} />
+          </div>
+          <button className="commune-auth-btn" type="submit" disabled={busy}>
+            {busy ? "Verifying…" : "Verify and continue"}
+          </button>
+        </form> : <form onSubmit={onSubmit}>
           <div className="commune-auth-field">
             <label htmlFor="su-name">Name</label>
             <input id="su-name" autoComplete="name" required maxLength={LIMITS.userName} value={name} onChange={(event) => setName(event.target.value)} />
@@ -56,7 +90,7 @@ export function SignupPage() {
           <button className="commune-auth-btn" type="submit" disabled={busy}>
             {busy ? "Creating account…" : "Create account"}
           </button>
-        </form>
+        </form>}
         <p className="commune-auth-foot">
           Already have an account?{" "}
           <Link href={keepSearch("/login")} className="commune-auth-link">Sign in</Link>
@@ -64,4 +98,50 @@ export function SignupPage() {
       </div>
     </AuthLayout>
   );
+}
+
+export function VerifyEmailPage() {
+  const { verifyEmailCode } = useApp();
+  const [email, setEmail] = useState(new URLSearchParams(window.location.search).get("email") ?? "");
+  const [code, setCode] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(false);
+  const [error, setError] = useState("");
+
+  async function onSubmit(event: FormEvent) {
+    event.preventDefault();
+    setBusy(true);
+    setError("");
+    try {
+      await verifyEmailCode(email.trim(), code.trim());
+      setDone(true);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not verify your email.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return <AuthLayout><div className="commune-auth-panel">
+    <h2>Verify your email</h2>
+    <p className="commune-auth-lede">{done ? "Your email is verified. Sign in to continue." :
+      "Enter the code from your verification email. If you received a link instead, open that link."}</p>
+    {error ? <div className="commune-auth-alert" role="alert">{error}</div> : null}
+    {!done ? <form onSubmit={onSubmit}>
+      <div className="commune-auth-field">
+        <label htmlFor="verify-email">Email</label>
+        <input id="verify-email" type="email" autoComplete="email" required maxLength={LIMITS.email}
+          value={email} onChange={(event) => setEmail(event.target.value)} />
+      </div>
+      <div className="commune-auth-field">
+        <label htmlFor="verify-code">Verification code</label>
+        <input id="verify-code" type="text" inputMode="numeric" autoComplete="one-time-code" required maxLength={12}
+          value={code} onChange={(event) => setCode(event.target.value)} />
+      </div>
+      <button className="commune-auth-btn" type="submit" disabled={busy}>
+        {busy ? "Verifying…" : "Verify email"}
+      </button>
+    </form> : null}
+    <p className="commune-auth-foot"><Link href={keepSearch("/login")} className="commune-auth-link">Back to sign in</Link></p>
+  </div></AuthLayout>;
 }

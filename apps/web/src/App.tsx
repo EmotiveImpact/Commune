@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
 import { Redirect, Route, Switch } from "wouter";
 import { LoginPage } from "./auth/Login";
-import { SignupPage } from "./auth/Signup";
-import { ForgotPasswordPage } from "./auth/ForgotPassword";
+import { SignupPage, VerifyEmailPage } from "./auth/Signup";
+import { ForgotPasswordPage, ResetPasswordPage } from "./auth/ForgotPassword";
 import { InvitePage, OnboardPage } from "./auth/InviteOnboard";
 import { useApp } from "./state";
 import { Header, MoreSheet, PhoneTabs, Sidebar } from "./shell/Shell";
@@ -44,10 +44,16 @@ export function App() {
           <SignupPage />
         </GuestOnly>
       </Route>
+      <Route path="/verify-email">
+        <VerifyEmailPage />
+      </Route>
       <Route path="/forgot-password">
         <GuestOnly>
           <ForgotPasswordPage />
         </GuestOnly>
+      </Route>
+      <Route path="/reset-password">
+        <ResetPasswordPage />
       </Route>
       <Route path="/invite" component={InvitePage} />
       <Route path="/onboard">

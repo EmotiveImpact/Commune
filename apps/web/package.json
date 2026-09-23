@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@neondatabase/neon-js": "0.7.0-beta",
     "react": "catalog:",
     "react-dom": "catalog:",
     "wouter": "catalog:"

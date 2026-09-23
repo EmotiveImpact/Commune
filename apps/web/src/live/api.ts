@@ -9,6 +9,10 @@ export class ApiError extends Error {
 }
 
 export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
+  if (import.meta.env.PROD) {
+    const { neonApi } = await import("./neon");
+    return neonApi<T>(path, init);
+  }
   const headers = new Headers(init.headers);
   if (init.body && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");
   const response = await fetch(`/api${path}`, {

@@ -11,7 +11,8 @@ files in order using a database owner connection:
 5. `infra/neon/migrations/0004_commune_settings.sql`
 6. `infra/neon/migrations/0005_commune_locations.sql`
 7. `infra/neon/migrations/0006_shared_content.sql`
-8. `infra/local/after-core.sql`
+8. `infra/neon/migrations/0007_atomic_commune_details.sql`
+9. `infra/local/after-core.sql`
 
 `apps/local-api` serves `127.0.0.1:3002` with `DATABASE_URL` set to that
 database. The Vite app proxies `/api` to it on `localhost:3000`.
@@ -21,9 +22,8 @@ cookies. It marks signup email as verified **only for this localhost-only
 development server** so two people can test an invite without an email
 provider. It is not a production signup flow, and the server refuses to bind
 outside loopback. This bootstrap is not to be applied to a Neon project with
-Managed Auth enabled. To use the API on Neon later, keep the domain RPCs/RLS,
-replace the local auth adapter with a verified-email production auth provider,
-and use the equivalent application DB role and user context in each transaction.
+Managed Auth enabled. Production builds use the separate Neon Auth and Data API
+client in `apps/web/src/live/neon.ts`; it still requires hosted verification.
 
 Nudge and Chase create real in-app notifications. Email outbox rows are
 suppressed locally, so no email is claimed or sent. Contributions and settled

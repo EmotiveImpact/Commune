@@ -2,13 +2,14 @@
 
 This is the fresh-data path for the Direction A web app on PR 11. It does not
 migrate the old Supabase project or its sample users. The current web UI uses a
-real PostgreSQL-backed **localhost-only** API for shared data; Nudge and Chase
-create in-app notifications locally, while outbound email is intentionally
-suppressed. Session storage now holds personal display preferences, photos,
-avatar and payment-method hints, not the shared ledger. Vite's `/api` proxy
-exists only in development; the local API refuses non-loopback origins and
-database URLs. Do not deploy the static UI or the local API as a working
-production product on the strength of these migrations alone.
+real PostgreSQL-backed **localhost-only** API for development. Production
+builds now have a Neon Auth and Data API client, but that path has not been
+verified against hosted Neon. Nudge and Chase create in-app notifications
+locally; outbound email is intentionally suppressed there. Session storage
+holds personal display preferences, photos, avatar and payment-method hints,
+not the shared ledger. Vite's `/api` proxy exists only in development; the
+local API refuses non-loopback origins and database URLs. Do not deploy the
+local API or present a static build as a working product before hosted tests.
 
 ## Business rules now encoded in Postgres
 
@@ -43,17 +44,20 @@ production product on the strength of these migrations alone.
    configuration must be complete before applying schema.
 2. Enable Managed Better Auth and the Data API on a development branch. The
    Data API must provide `auth.user_id()` and the `authenticated` role before
-   these migrations run. Keep preview branches separate from production.
+   these migrations run. Keep **Grant public schema access off**: the migrations
+   grant only specific reads, column-limited note/operation writes, and RPCs.
+   Broad grants would let direct writes bypass ledger invariants. Keep preview
+   branches separate from production.
 3. Apply `migrations/0001_commune_core.sql` through
-   `migrations/0006_shared_content.sql` in numeric order to the development
-   branch via an **unpooled** connection. Review RLS and run two-account tests
-   before applying the same reviewed migrations to production.
-4. Wire the Vite app to Neon Auth and the Data API, preserving its current
-   screen and interaction model. The localhost-only API is a contract to
-   replace, not a deployable server. Connect the create/preview/accept/revoke
-   invite RPCs and test two verified accounts. Nudge/Chase must use the
-   `send_reminder` RPC (never the local suppression wrapper), show cooldown and
-   error states, and surface recipient notifications.
+   `migrations/0007_atomic_commune_details.sql` in numeric order to the
+   development branch via an **unpooled** connection. Run `tests/grants.sql`,
+   review RLS, and run two-account signed-JWT tests before applying the same
+   reviewed migrations to production.
+4. Verify the Vite production client against Neon Auth and the Data API. The
+   localhost-only API is a development contract, not a deployable server.
+   Test create/preview/accept/revoke invites with two verified accounts;
+   Nudge/Chase must use `send_reminder` (never local suppression), surface
+   cooldown/errors, and show recipient notifications.
 5. Set up a verified outbound email domain/provider. Spaceship forwarding is
    inbound only; it does not prove Commune can send as `ourcommune.io`.
    Configure the required DNS records and a send-only provider key. Deploy
@@ -68,9 +72,10 @@ production product on the strength of these migrations alone.
 ## Local database verification
 
 On a disposable local PostgreSQL database, run
-`tests/local_auth_stub.sql`, migrations 0001 through 0006, then
-`tests/reminders.sql`, `tests/invitations.sql`, and
-`tests/shared_content.sql` with
+`tests/local_auth_stub.sql`, migrations 0001 through 0007, then
+`tests/reminders.sql`, `tests/invitations.sql`,
+`tests/shared_content.sql`, `tests/atomic_commune_details.sql`, and
+`tests/grants.sql` with
 `psql -v ON_ERROR_STOP=1 -f ...` in that order.
 The stub must **never** be applied to Neon. The test verifies amount derivation,
 recipient notification, opt-out, cooldown, authorization, partial payment,
@@ -84,11 +89,12 @@ the RPCs but cannot write the underlying money tables directly.
 
 ## Release checks still missing
 
-- Real sign-up, verification, reset, Google OAuth, invite acceptance and
-  multi-commune sessions in the redesigned Vite app.
-- All product screens reading/writing the same Neon state, not sample rows or
-  sessionStorage; an accurate split ledger and payer-confirmed settlement.
-- In-app notification list, read state, and Nudge/Chase confirmation/status UI.
+- Hosted sign-up, verification, reset, invite acceptance and multi-commune
+  sessions proven with real accounts; Google OAuth remains optional.
+- All product screens reading/writing the same hosted Neon state, not local
+  sample rows or sessionStorage; an accurate split ledger and payer settlement.
+- In-app notification list, read state, and Nudge/Chase confirmation/status UI
+  verified against hosted Neon.
 - Email worker deployed and observed on a Neon staging branch; failure/retry
   monitoring and provider delivery/bounce webhooks.
 - Verified sender domain, SPF/DKIM, production Auth SMTP, trusted domains,
