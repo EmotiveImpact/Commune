@@ -35,7 +35,15 @@ type ReminderDetails = {
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) throw new Error("DATABASE_URL is required");
 
-const pool = new Pool({ connectionString: databaseUrl, max: 5 });
+const connectionUrl = new URL(databaseUrl);
+// The Neon-injected URL currently uses sslmode=require. pg treats that as
+// verify-full today but warns that a future major version will weaken it.
+// Pin certificate and hostname verification explicitly for hosted Neon only;
+// disposable local PostgreSQL test URLs must remain unchanged.
+if (connectionUrl.hostname.endsWith(".neon.tech")) {
+  connectionUrl.searchParams.set("sslmode", "verify-full");
+}
+const pool = new Pool({ connectionString: connectionUrl.toString(), max: 5 });
 attachDatabasePool(pool);
 
 function mailConfig(): { apiKey: string; from: string; appUrl: string } | null {

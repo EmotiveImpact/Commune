@@ -2,9 +2,9 @@
 
 This is the fresh-data path for the Direction A web app on PR 11. It does not
 migrate the old Supabase project or its sample users. The current web UI uses a
-real PostgreSQL-backed **localhost-only** API for development. Production
-builds now have a Neon Auth and Data API client, but that path has not been
-verified against hosted Neon. Nudge and Chase create in-app notifications
+real PostgreSQL-backed **localhost-only** API for development. Hosted builds
+have a Neon Auth and Data API client, but the complete multi-user path has not
+been verified against hosted Neon. Nudge and Chase create in-app notifications
 locally; outbound email is intentionally suppressed there. Session storage
 holds personal display preferences, photos, avatar and payment-method hints,
 not the shared ledger. Vite's `/api` proxy exists only in development; the
@@ -71,6 +71,28 @@ local API or present a static build as a working product before hosted tests.
    complete app and release checklist pass. Do not merge or deploy production
    solely because the static Vite build succeeds.
 
+## Current hosted state (2026-09-23)
+
+- The new Vercel `commune-web` project builds PR 11 as a **Preview**. There is
+  no signed-off production deployment yet. Keep the product on
+  `app.ourcommune.io` when released; reserve `ourcommune.io` for the separate
+  public website. Do not point the apex domain at the product app.
+- The Neon `commune-production` main branch has Managed Better Auth, Data API,
+  and migrations 0001–0007. All 14 public tables have RLS enabled; automatic
+  broad public-schema grants stayed off. The preview uses a separate Neon
+  branch. Real signed-in, two-account acceptance tests remain outstanding.
+- The production Neon `reminders` Function is deployed with a send-only Resend
+  credential restricted to `notify.ourcommune.io`. Its `reminder-delivery`
+  schedule runs every five minutes. This proves deployment, **not** successful
+  end-to-end Nudge/Chase delivery. A scheduled invocation appeared in Neon logs;
+  test an actual due obligation before release. The temporary project-scoped
+  deployment key was revoked after setup and its local CLI profile removed.
+- Production Auth requires email verification, rejects localhost origins, and
+  sends through a separate restricted Resend SMTP key as
+  `accounts@notify.ourcommune.io`. Neon's test message to the Commune infra
+  inbox was reported delivered by Resend. Trusted app/preview domains and
+  real sign-up/reset tests are still outstanding.
+
 ## Local database verification
 
 On a disposable local PostgreSQL database, run
@@ -97,11 +119,13 @@ the RPCs but cannot write the underlying money tables directly.
   sample rows or sessionStorage; an accurate split ledger and payer settlement.
 - In-app notification list, read state, and Nudge/Chase confirmation/status UI
   verified against hosted Neon.
-- Email worker deployed and observed on a Neon staging branch; failure/retry
-  monitoring and provider delivery/bounce webhooks.
-- Production Auth SMTP, trusted domains, production OAuth credentials, email
-  verification and localhost restriction. The Resend sender domain and its
-  DKIM/SPF records are verified, but outbound sends are not yet live.
+- Email worker observed on a Neon staging branch with a real signed-in
+  Nudge/Chase; failure/retry monitoring and provider delivery/bounce webhooks.
+- Production Auth trusted domains, optional Google OAuth credentials, and
+  real sign-up/reset verification. Custom SMTP and verified-email enforcement
+  are configured, but a provider test message does not prove those user flows.
+  The Resend sender domain and its DKIM/SPF records are verified; production
+  worker delivery still needs a recipient-verified test.
 - Two-user end-to-end tests, accessibility/mobile regression checks, RLS abuse
   tests, backup/restore rehearsal, and a Vercel preview sign-off.
 
