@@ -111,8 +111,11 @@ local API or present a static build as a working product before hosted tests.
 
 ## Current hosted state (2026-09-24)
 
-- The new Vercel `commune-web` project builds PR 11 as a **Preview**. There is
-  no signed-off production deployment yet. Keep the product on
+- The new Vercel `commune-web` project builds PR 11 as a **Preview** and now
+  also serves a Production rebuild of PR commit `901e8ca` at
+  `https://app.ourcommune.io`. This is a live deployment, **not** a signed-off
+  product release: production account and reminder flows remain unverified.
+  PR 11 remains draft and `main` still contains the old app. Keep the product on
   `app.ourcommune.io` when released; reserve `ourcommune.io` for the separate
   public website. Do not point the apex domain at the product app.
 - The Neon `commune-production` main branch has Managed Better Auth, Data API,
@@ -183,21 +186,18 @@ local API or present a static build as a working product before hosted tests.
   rolling count and `2 / 8` per-person count on Settle. This is a preview
   verification, not proof that production has the counter or the new cap.
 - Production Auth requires email verification, rejects localhost origins, and
+  trusts only the exact `https://app.ourcommune.io` redirect origin. It
   sends through a separate restricted Resend SMTP key as
   `accounts@notify.ourcommune.io`. Neon's test message to the Commune infra
   inbox was reported delivered by Resend. The PR preview URLs are trusted
-  automatically by the Vercel integration. The production `app.ourcommune.io`
-  origin and real sign-up/reset tests are still outstanding.
-- `app.ourcommune.io` points to the new Vercel project but currently returns
-  `DEPLOYMENT_NOT_FOUND`: the project has ready PR preview deployments, no
-  Production deployment. Its Production environment tracks Git `main`, which
-  still contains the old app, and its ignored-build setting is currently
-  **Only build pre-production**. Do not promote the PR Preview artifact as
-  production: that build embeds the preview branch's Neon Auth endpoint.
-  Build from the reviewed code with Production environment variables during
-  cutover, after changing the ignored-build setting and branch strategy.
-  The public production Function URL is now configured as a Production-only
-  `VITE_REMINDER_FUNCTION_URL`; no production deployment has consumed it yet.
+  automatically by the Vercel integration. Real production sign-up and reset
+  tests are still outstanding.
+- Vercel rebuilt PR commit `901e8ca` with its **Production** environment,
+  without promoting the preview artifact, and assigned `app.ourcommune.io`.
+  The build is Ready and the public login page loads. Project-level ignored
+  builds are now **Automatic**, so a future merge to `main` can build normally;
+  no merge has happened. The public production Function URL is configured as a
+  Production-only `VITE_REMINDER_FUNCTION_URL` and consumed by this build.
   The current production Function rejects an unauthenticated CORS preflight
   from `https://app.ourcommune.io` with HTTP 403, so its code/configuration
   still needs the reviewed update and a browser-origin retest before release.
@@ -254,6 +254,10 @@ sends takes the sixtieth monthly slot.
   by this project's managed Neon Auth provider configuration.
 - Two-user end-to-end tests, accessibility/mobile regression checks, RLS abuse
   tests, backup/restore rehearsal, and a Vercel preview sign-off.
+- The auth and settings screens link to `https://ourcommune.io/privacy`, but
+  that hostname currently does not resolve. Publish a reviewed privacy policy
+  and repair the link before inviting the public; a working app domain alone
+  is not a launch sign-off.
 
 Relevant current vendor docs: [Neon Auth React quickstart](https://neon.com/docs/auth/quick-start/react),
 [Data API access control](https://neon.com/docs/data-api/access-control),
