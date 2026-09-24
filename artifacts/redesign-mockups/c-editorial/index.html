@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Direction C · Editorial Calm — Commune</title>
+    <link rel="icon" href="../favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Inter:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../shared.css" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body class="c-body">
+    <div class="mock-bar">
+      <span>Direction <strong>C · Editorial Calm</strong></span>
+      <a href="../">All directions</a>
+    </div>
+
+    <header class="c-top">
+      <a class="c-brand" href="./" data-go="home">
+        <span class="logo-mark">
+          <svg viewBox="0 0 512 512"><path d="M256 56C145.5 56 56 145.5 56 256s89.5 200 200 200c40.3 0 77.8-11.9 109.2-32.4 7.2-4.7 8.4-15.2 1.8-21.2l-3.4-3.1c-5.3-4.8-13.1-4.2-19 0.6C320.5 418.4 289.4 428 256 428c-95 0-172-77-172-172s77-172 172-172c33.4 0 64.5 9.6 90.6 26.1 5.9 3.7 13.7 4.3 19-0.6l3.4-3.1c6.6-6 5.4-16.5-1.8-21.2C335.8 67.9 296.3 56 256 56z" fill="#f5f1ea"/></svg>
+        </span>
+        <span class="c-wordmark">COMMUNE</span>
+      </a>
+      <nav class="c-nav" aria-label="Primary">
+        <button class="is-active" data-go="home" type="button">Home</button>
+        <button data-go="hub" type="button">14 Park Street</button>
+        <button data-go="expenses" type="button">Expenses</button>
+        <button data-go="settle" type="button">Settle</button>
+      </nav>
+      <div class="c-top-right">
+        <button class="c-btn sage" type="button" data-go="expenses">Add expense</button>
+        <span class="avatar maya">MC</span>
+      </div>
+    </header>
+
+    <main class="c-shell">
+      <!-- HOME -->
+      <section class="screen" id="home">
+        <p class="c-kicker">August · 14 Park Street</p>
+        <h1 class="c-serif">You owe forty-two pounds. That’s the whole story, really.</h1>
+        <p class="c-lede">Jordan still owes you £18 for the shop. British Gas is due Friday. Everything else at the house is settled.</p>
+
+        <div class="c-balance">
+          <div class="c-ink">
+            <span>Your position</span>
+            <div class="num">£42.00</div>
+            <p>Pay Jordan when you can. Or net it against the Tesco £18 and send £24.</p>
+            <div class="c-ink-actions">
+              <button class="c-btn sage" type="button" data-go="settle">Settle with Jordan</button>
+              <button class="c-btn ghost" type="button" style="color:#f5f3ef;border-color:rgba(245,243,239,.2)">Nudge him</button>
+            </div>
+          </div>
+          <div class="c-side-note">
+            <div>
+              <h2>Also true</h2>
+              <p>House fund still holds £420. August rent is already gone. Alex is even with you.</p>
+            </div>
+            <div class="c-line" style="border:0;padding:0">
+              <span class="avatar jordan">JH</span>
+              <div><strong>Jordan · Tesco</strong><div style="font-size:12px;color:#667085">Owes you £18</div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="c-row">
+          <div class="c-paper">
+            <h2>This month, plainly</h2>
+            <p class="sub">No dashboard theatre. The costs that matter.</p>
+            <div class="c-line"><span>Rent</span><span class="amt">£1,800</span></div>
+            <div class="c-line"><span>Utilities</span><span class="amt">£126.20</span></div>
+            <div class="c-line"><span>Groceries</span><span class="amt">£67.40</span></div>
+            <div class="c-line"><span>Internet</span><span class="amt">£32.00</span></div>
+            <div class="c-line"><span style="color:#667085">Budget remaining</span><span class="amt">£260</span></div>
+          </div>
+          <div class="c-paper">
+            <h2>Needs a human</h2>
+            <p class="sub">Two things. That’s the list.</p>
+            <div class="c-line">
+              <span class="avatar jordan">JH</span>
+              <div>British Gas due Friday</div>
+              <span class="pill warn">Open</span>
+            </div>
+            <div class="c-line">
+              <span class="avatar jordan">JH</span>
+              <div>Bins — still Jordan’s week</div>
+              <span class="pill warn">Overdue</span>
+            </div>
+            <button class="c-btn sage" type="button" style="margin-top:16px">Nudge Jordan</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- HUB -->
+      <section class="screen" id="hub" hidden>
+        <div class="c-hub-hero">
+          <div class="c-photo">
+            <div>
+              <span class="pill navy">Household</span>
+              <h1 class="c-serif">14 Park Street</h1>
+              <p>A shared kitchen, a house fund, and a landlord named Priya.</p>
+            </div>
+          </div>
+          <div class="c-people">
+            <div class="c-person">
+              <span class="avatar maya" style="width:44px;height:44px;font-size:13px">MC</span>
+              <div><strong>Maya Chen</strong><span>You · looks after the books</span></div>
+            </div>
+            <div class="c-person">
+              <span class="avatar jordan" style="width:44px;height:44px;font-size:13px">JH</span>
+              <div><strong>Jordan Hale</strong><span>Owes you £18 · bins this week</span></div>
+            </div>
+            <div class="c-person">
+              <span class="avatar alex" style="width:44px;height:44px;font-size:13px">AR</span>
+              <div><strong>Alex Rivera</strong><span>Even · did Tesco on Monday</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="c-row">
+          <div class="c-paper">
+            <h2>The house, in writing</h2>
+            <p class="sub">Wi-Fi, bins, landlord — the stuff that used to live in a chat pin.</p>
+            <div class="c-line"><strong>Wi-Fi</strong><span>ParkStreet_5G</span></div>
+            <div class="c-line"><strong>Bins</strong><span>Tuesday black · Friday recycling</span></div>
+            <div class="c-line"><strong>Landlord</strong><span>Priya Sharma</span></div>
+            <div class="c-line"><strong>House fund</strong><span>£420 remaining</span></div>
+          </div>
+          <div class="c-paper">
+            <h2>Lately</h2>
+            <p class="sub">Quiet on purpose.</p>
+            <div class="c-line"><span>Maya logged Virgin Media</span><span class="amt" style="font-weight:500;color:#667085">Yesterday</span></div>
+            <div class="c-line"><span>Jordan paid the gas</span><span class="amt" style="font-weight:500;color:#667085">Tue</span></div>
+            <div class="c-line"><span>Alex settled Tesco</span><span class="amt" style="font-weight:500;color:#667085">Mon</span></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- EXPENSES -->
+      <section class="screen" id="expenses" hidden>
+        <div class="c-exp-head">
+          <div>
+            <p class="c-kicker">Shared costs</p>
+            <h1 class="c-serif">What the house spent.</h1>
+            <p class="c-lede" style="margin-bottom:0">Five lines. Two still open. Rent already handled by the fund.</p>
+          </div>
+          <button class="c-btn sage" type="button">Add expense</button>
+        </div>
+        <div class="c-paper">
+          <div class="c-exp-item">
+            <div>
+              <div class="title"><strong>British Gas</strong></div>
+              <div style="font-size:13px;color:#667085">Paid by Jordan · due Friday</div>
+            </div>
+            <span>Utilities</span>
+            <span class="pill warn">Open</span>
+            <span class="amt">£94.20</span>
+          </div>
+          <div class="c-exp-item">
+            <div>
+              <div class="title"><strong>Virgin Media</strong></div>
+              <div style="font-size:13px;color:#667085">Paid by you · waiting on the others</div>
+            </div>
+            <span>Internet</span>
+            <span class="pill open">Open</span>
+            <span class="amt">£32.00</span>
+          </div>
+          <div class="c-exp-item">
+            <div>
+              <div class="title"><strong>Tesco shop</strong></div>
+              <div style="font-size:13px;color:#667085">Paid by Alex · extras still with Jordan</div>
+            </div>
+            <span>Groceries</span>
+            <span class="pill settled">Settled</span>
+            <span class="amt">£67.40</span>
+          </div>
+          <div class="c-exp-item">
+            <div>
+              <div class="title"><strong>Rent · August</strong></div>
+              <div style="font-size:13px;color:#667085">House fund · first of the month</div>
+            </div>
+            <span>Rent</span>
+            <span class="pill settled">Settled</span>
+            <span class="amt">£1,800</span>
+          </div>
+          <div class="c-exp-item">
+            <div>
+              <div class="title"><strong>Council tax</strong></div>
+              <div style="font-size:13px;color:#667085">Paid by you · split three ways</div>
+            </div>
+            <span>Bills</span>
+            <span class="pill settled">Settled</span>
+            <span class="amt">£146</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- SETTLE -->
+      <section class="screen" id="settle" hidden>
+        <p class="c-kicker">Settlement</p>
+        <h1 class="c-serif">Jordan, then done.</h1>
+        <p class="c-lede">Two transfers. Or one, if you net the Tesco against the gas. Alex has nothing to do.</p>
+
+        <div class="c-settle-list">
+          <div class="c-move">
+            <div class="c-arrow">→</div>
+            <div>
+              <div class="names">You → Jordan</div>
+              <div class="why">British Gas share · or £24 if you net Tesco</div>
+            </div>
+            <div class="amt">£42</div>
+            <button class="c-btn sage" type="button">Mark paid</button>
+          </div>
+          <div class="c-move">
+            <div class="c-arrow">→</div>
+            <div>
+              <div class="names">Jordan → You</div>
+              <div class="why">Tesco extras from Monday</div>
+            </div>
+            <div class="amt">£18</div>
+            <button class="c-btn ghost" type="button">Nudge</button>
+          </div>
+          <div class="c-move" style="opacity:.72">
+            <div class="c-arrow" style="background:#f0ece4">↔</div>
+            <div>
+              <div class="names">Alex ↔ You</div>
+              <div class="why">Nothing outstanding this cycle</div>
+            </div>
+            <div class="amt" style="color:#667085">£0</div>
+            <span class="pill settled">Even</span>
+          </div>
+        </div>
+      </section>
+    </main>
+    <script src="../shared.js"></script>
+  </body>
+</html>

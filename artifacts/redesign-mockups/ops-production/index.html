@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Operations · Production · Commune</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#1a1e2b;--cream:#f5f1ea;--paper:#fffdf9;--line:#ddd8cf;--sage:#2d6a4f;
+  --sage-soft:#e8f0eb;--warn:#a54e35;--warn-soft:#fbede6;--muted:#6f756f
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--cream);color:var(--ink);font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+button{appearance:none;font:inherit;border:0;background:transparent;color:inherit}
+.app{min-height:100vh;display:grid;grid-template-columns:230px 1fr}
+aside{background:var(--ink);color:white;padding:24px 18px;display:flex;flex-direction:column;position:sticky;top:0;height:100vh}
+.brand{font-weight:700;margin:0 8px 26px;display:flex;gap:10px;align-items:center}
+.mark{width:21px;height:21px;border:2px solid #f5f1ea;border-right-color:transparent;border-radius:50%}
+.hub{border:1px solid rgba(255,255,255,.14);padding:13px;border-radius:13px;margin-bottom:22px}
+.hub strong{display:block;font-size:13px}.hub span{font-size:11px;color:rgba(255,255,255,.55)}
+aside nav{display:grid;gap:4px}aside nav div{padding:10px 12px;border-radius:10px;color:rgba(255,255,255,.68);font-size:13px}
+aside nav .active{background:rgba(255,255,255,.11);color:#fff}
+.add,.btn,.cuts button,.month-actions button{cursor:pointer}
+.user{margin-top:auto;border-top:1px solid rgba(255,255,255,.12);padding:16px 10px 0;font-size:12px}
+main{padding:42px 48px 70px;min-width:0}
+.top{display:flex;justify-content:space-between;align-items:flex-start;gap:20px}
+h1{font-size:40px;line-height:1;margin:0 0 8px;letter-spacing:-.04em}
+.lede{margin:0;color:var(--muted)}
+.add{border:0;background:var(--sage);color:white;border-radius:999px;padding:11px 18px;font-weight:700}
+.cuts{display:inline-grid;grid-template-columns:repeat(3,1fr);border:1px solid var(--line);padding:3px;border-radius:999px;margin:26px 0 20px;background:rgba(255,255,255,.5)}
+.cuts button{border:0;background:transparent;padding:9px 22px;border-radius:999px;color:var(--muted);cursor:pointer}
+.cuts .active{background:var(--ink);color:white}
+.view{display:none}.view.active{display:block}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:18px;overflow:hidden}
+.stack{display:grid;gap:16px}
+.late{padding:24px;background:linear-gradient(180deg,#fffaf7,var(--warn-soft));border-color:#e7b7a8}
+.yours{padding:22px 24px;background:linear-gradient(180deg,#fbfdfb,var(--sage-soft))}
+.eyebrow{text-transform:uppercase;letter-spacing:.08em;font-size:11px;font-weight:800;color:var(--muted)}
+.late .eyebrow{color:var(--warn)}
+h2{font-size:25px;letter-spacing:-.03em;margin:8px 0}
+.note{font-size:13px;color:var(--muted);line-height:1.55}
+.rotation{display:flex;align-items:center;gap:8px;margin:16px 0 8px;flex-wrap:wrap}
+.rotation span{font-size:12px;border:1px solid var(--line);background:white;border-radius:999px;padding:7px 10px}
+.rotation .on{background:var(--ink);color:white;border-color:var(--ink)}
+.rotation i{width:22px;height:1px;background:#c8c1b7}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+.btn{border:1px solid var(--line);background:white;border-radius:999px;padding:9px 14px;cursor:pointer}
+.btn.sage{background:var(--sage);color:white;border-color:var(--sage)}
+.board-head{padding:20px 22px;border-bottom:1px solid var(--line)}
+.week-list{padding:0 22px}
+.day{display:grid;grid-template-columns:130px 1fr;gap:18px;padding:16px 0;border-bottom:1px solid #ece7df}
+.day:last-child{border-bottom:0}
+.date{font-weight:700;font-size:13px}.date small{display:block;color:var(--muted);font-weight:500;margin-top:3px}
+.row{display:grid;grid-template-columns:1fr auto;gap:20px;align-items:center;border:0;background:transparent;padding:0;text-align:left;width:100%;cursor:pointer}
+.row strong{font-size:14px}.row span{font-size:12px;color:var(--muted)}
+.people-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.person{background:white;border:1px solid var(--line);border-radius:15px;padding:15px}
+.person h3{font-size:14px;margin:0 0 12px}.task{padding:10px 0;border-top:1px solid #ece7df}.task:first-of-type{border-top:0}
+.task strong{display:block;font-size:12px}.task small{font-size:10px;color:var(--muted)}
+.calendar-shell{background:var(--paper);border:1px solid var(--line);border-radius:18px;overflow:hidden}
+.calendar-toolbar{display:flex;justify-content:space-between;align-items:center;padding:18px 20px;border-bottom:1px solid var(--line);gap:16px}
+.calendar-toolbar h2{margin:0;font-size:20px}
+.month-actions{display:flex;gap:8px}
+.month-actions button{border:1px solid var(--line);background:white;padding:8px 12px;border-radius:999px;cursor:pointer}
+.weekdays{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;padding:8px 10px 0;background:transparent}
+.weekdays div{padding:8px 6px;font-size:10px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.month-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;padding:8px 10px 12px;background:transparent}
+.cell{min-height:132px;padding:10px;border:0;border-radius:14px;background:var(--paper);box-shadow:inset 0 0 0 1px rgba(26,30,43,.06);position:relative}
+.cell.out{background:transparent;box-shadow:none;color:#aaa}
+.cell.today{box-shadow:inset 0 0 0 2px rgba(45,106,79,.28)}
+.cell.selected{background:#f7fbf8;box-shadow:inset 0 0 0 1.5px rgba(45,106,79,.28)}
+.cell button.daynum{appearance:none;border:0;background:transparent;padding:0;cursor:pointer;font-weight:700;color:inherit}
+.item{display:block;width:100%;text-align:left;border:0;border-radius:8px;margin-top:7px;padding:7px 8px;background:#f4f0e9;color:var(--ink);font-size:11px;cursor:pointer;white-space:normal;line-height:1.25}
+.item.task{background:#edf4ef}.item.event{background:#f1edf5}.item.warn{background:var(--warn-soft);color:#7f3b2c}
+.selected-day{display:grid;grid-template-columns:180px 1fr;gap:20px;padding:20px;border-top:1px solid var(--line);background:#fcfbf8}
+.selected-day h3{margin:0;font-size:17px}.selected-day p{margin:4px 0 0;color:var(--muted);font-size:12px}
+.selected-list{display:grid;gap:9px}
+.selected-row{display:grid;grid-template-columns:1fr auto;gap:16px;align-items:center;padding:11px 12px;border:1px solid var(--line);border-radius:12px;background:white}
+.selected-row strong{font-size:13px}.selected-row span{font-size:11px;color:var(--muted)}
+.drawer{position:fixed;inset:0;background:rgba(26,30,43,.18);display:none;justify-content:flex-end}
+.drawer.open{display:flex}
+.drawer-card{width:min(440px,94vw);height:100%;background:var(--paper);padding:28px}
+.drawer-card h2{margin-top:20px}
+.close{float:right}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:white;padding:10px 14px;border-radius:999px;font-size:12px;display:none}.toast.show{display:block}
+.prod-bar{position:sticky;top:0;z-index:40;display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:10px 16px;background:rgba(245,241,234,.92);border-bottom:1px solid var(--line);backdrop-filter:blur(12px)}
+.prod-bar a{display:inline-flex;align-items:center;height:32px;padding:0 12px;border:1px solid var(--line);border-radius:999px;background:#fff;color:var(--ink);font-size:12px;font-weight:700;text-decoration:none}
+.prod-bar a.is-on{background:var(--sage);border-color:var(--sage);color:#fff}
+.prod-bar span{margin-left:auto;color:var(--muted);font-size:12px}
+.side-back{display:inline-block;margin:0 8px 18px;color:rgba(255,255,255,.72);font-size:12px;text-decoration:none}
+@media(max-width:1000px){
+.app{grid-template-columns:1fr}aside{display:none}main{padding:28px 18px 60px}.people-grid{grid-template-columns:1fr 1fr}.cell{min-height:108px}.selected-day{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<nav class="prod-bar" aria-label="Mockup navigation">
+  <a href="../">Gallery</a>
+  <a href="../ops-options2/?p=house">House</a>
+  <a href="../ops-options2/">Products</a>
+  <a class="is-on" href="./">Production</a>
+  <span>14 Park Street · Codex cut</span>
+</nav>
+<div class="app">
+<aside>
+  <div class="brand"><span class="mark"></span>Commune</div>
+  <a class="side-back" href="../">← Gallery</a>
+  <div class="hub"><strong>14 Park Street</strong><span>Household · Maya, Jordan, Alex</span></div>
+  <nav>
+    <div>Home</div><div>This Hub</div><div>Expenses</div><div>Settle</div><div>Recurring</div><div>Funds</div><div>Notes</div><div class="active">Operations</div><div>Members</div>
+  </nav>
+  <div class="user">Maya Chen<br><span style="color:rgba(255,255,255,.55)">14 Park Street</span></div>
+</aside>
+<main>
+  <div class="top">
+    <div><h1>Operations</h1><p class="lede">What’s late, what’s yours, then the week.</p></div>
+    <button class="add" onclick="flash('Add item window')">＋ Add item</button>
+  </div>
+
+  <div class="cuts">
+    <button class="active" data-view="week">Week</button>
+    <button data-view="people">People</button>
+    <button data-view="month">Month</button>
+  </div>
+
+  <section class="view active" id="week">
+    <div class="stack">
+      <div class="card late" id="late">
+        <div class="eyebrow">Late · 7 days · Jordan</div>
+        <h2>Put the bins out</h2>
+        <div class="note">Black bags Tuesday night. Leave them in the alley behind the kitchen.</div>
+        <div class="rotation"><span>Maya</span><i></i><span class="on">Jordan</span><i></i><span>Alex</span></div>
+        <div class="note">Jordan still has this. Next is Alex.</div>
+        <div class="actions">
+          <button class="btn" onclick="openDrawer('Put the bins out','Black bags Tuesday night. Leave them in the alley behind the kitchen.','Jordan · weekly · 8pm')">Open</button>
+          <button class="btn" onclick="flash('Bins moved forward one week')">Skip a week</button>
+          <button class="btn sage" onclick="completeBins()">Done · Alex</button>
+        </div>
+      </div>
+
+      <div class="card yours">
+        <div class="eyebrow">Yours</div>
+        <h2>You’re clear today.</h2>
+        <div class="note">Next is House admin check · Sat 5 Sep · 11am.</div>
+      </div>
+
+      <div class="card">
+        <div class="board-head"><strong>The house this week</strong></div>
+        <div class="week-list">
+          <div class="day"><div class="date">Wed 2 Sep<small>Tomorrow</small></div><button class="row" onclick="openDrawer('Kitchen reset','Clear counters, run dishwasher, take food caddy out.','7pm · Alex · then Jordan')"><strong>Kitchen reset</strong><span>7pm · Alex · then Jordan</span></button></div>
+          <div class="day"><div class="date">Thu 3 Sep</div><button class="row" onclick="openDrawer('Package delivery','Leave with number 12 if nobody is home.','All day · Delivery')"><strong>Package delivery</strong><span>All day · Delivery</span></button></div>
+          <div class="day"><div class="date">Fri 4 Sep</div><button class="row" onclick="openDrawer('Landlord visit','Priya is checking the damp patch by the kitchen window.','10:30am · Visit')"><strong>Landlord visit</strong><span>10:30am · Visit</span></button></div>
+          <div class="day"><div class="date">Sat 5 Sep</div><button class="row" onclick="openDrawer('House admin check','Bills, notices, anything that needs a reply.','11am · Maya · then Jordan')"><strong>House admin check</strong><span>11am · Maya · then Jordan</span></button></div>
+          <div class="day"><div class="date">Mon 7 Sep</div><button class="row" onclick="openDrawer('Plumber appointment','Boiler pressure and slow upstairs tap.','9am · Appointment')"><strong>Plumber appointment</strong><span>9am · Appointment</span></button></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="view" id="people">
+    <div class="people-grid">
+      <div class="person"><h3>Maya · you</h3><div class="task"><strong>House admin check</strong><small>Sat 5 Sep · 11am · then Jordan</small></div></div>
+      <div class="person"><h3>Jordan</h3><div class="task"><strong>Put the bins out</strong><small>Late · then Alex</small></div></div>
+      <div class="person"><h3>Alex</h3><div class="task"><strong>Kitchen reset</strong><small>Wed 2 Sep · 7pm · then Jordan</small></div></div>
+      <div class="person"><h3>House</h3><div class="task"><strong>Package delivery</strong><small>Thu 3 Sep · all day</small></div><div class="task"><strong>Landlord visit</strong><small>Fri 4 Sep · 10:30am</small></div><div class="task"><strong>Plumber appointment</strong><small>Mon 7 Sep · 9am</small></div></div>
+    </div>
+  </section>
+
+  <section class="view" id="month">
+    <div class="calendar-shell">
+      <div class="calendar-toolbar">
+        <div><div class="eyebrow">Full calendar</div><h2 id="monthTitle">September 2026</h2></div>
+        <div class="month-actions"><button onclick="moveMonth(-1)">‹</button><button onclick="goToday()">Today</button><button onclick="moveMonth(1)">›</button></div>
+      </div>
+      <div class="weekdays"><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div><div>Sun</div></div>
+      <div class="month-grid" id="monthGrid"></div>
+      <div class="selected-day">
+        <div><div class="eyebrow">Selected day</div><h3 id="selectedTitle"></h3><p id="selectedSub"></p></div>
+        <div class="selected-list" id="selectedList"></div>
+      </div>
+    </div>
+  </section>
+</main>
+</div>
+
+<div class="drawer" id="drawer" onclick="if(event.target===this)closeDrawer()">
+  <div class="drawer-card">
+    <button class="btn close" onclick="closeDrawer()">Close</button>
+    <div class="eyebrow">Schedule item</div>
+    <h2 id="drawerTitle"></h2>
+    <p class="note" id="drawerBody"></p>
+    <p class="note" id="drawerMeta"></p>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const events = {
+  "2026-08-25":[{t:"Put the bins out",type:"warn",meta:"8pm · Jordan · then Alex",body:"Black bags Tuesday night. Leave them in the alley behind the kitchen."}],
+  "2026-09-02":[{t:"Kitchen reset",type:"task",meta:"7pm · Alex · then Jordan",body:"Clear counters, run dishwasher, take food caddy out."}],
+  "2026-09-03":[{t:"Package delivery",type:"event",meta:"All day · Delivery",body:"Leave with number 12 if nobody is home."}],
+  "2026-09-04":[{t:"Landlord visit",type:"event",meta:"10:30am · Visit",body:"Priya is checking the damp patch by the kitchen window."}],
+  "2026-09-05":[{t:"House admin check",type:"task",meta:"11am · Maya · then Jordan",body:"Bills, notices, anything that needs a reply."}],
+  "2026-09-07":[{t:"Plumber appointment",type:"event",meta:"9am · Appointment",body:"Boiler pressure and slow upstairs tap."}],
+  "2026-09-08":[{t:"Put the bins out",type:"task",meta:"8pm · Alex · then Maya",body:"Next weekly occurrence after Jordan completes it."}]
+};
+
+document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('[data-view]').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));
+  b.classList.add('active');
+  document.getElementById(b.dataset.view).classList.add('active');
+});
+
+let cursor = new Date(2026,8,1);
+let selected = "2026-09-01";
+
+function iso(d){
+  return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+}
+function monthName(d){return d.toLocaleDateString("en-GB",{month:"long",year:"numeric"})}
+function renderMonth(){
+  document.getElementById('monthTitle').textContent=monthName(cursor);
+  const grid=document.getElementById('monthGrid');grid.innerHTML="";
+  const first=new Date(cursor.getFullYear(),cursor.getMonth(),1);
+  const start=new Date(first);
+  const offset=(first.getDay()+6)%7;
+  start.setDate(first.getDate()-offset);
+  for(let i=0;i<42;i++){
+    const d=new Date(start);d.setDate(start.getDate()+i);
+    const key=iso(d);
+    const cell=document.createElement('div');
+    cell.className='cell'+(d.getMonth()!==cursor.getMonth()?' out':'')+(key==="2026-09-01"?' today':'')+(key===selected?' selected':'');
+    const n=document.createElement('button');n.className='daynum';n.textContent=d.getDate();n.onclick=()=>{selected=key;renderMonth();renderSelected()};
+    cell.appendChild(n);
+    (events[key]||[]).forEach(e=>{
+      const btn=document.createElement('button');btn.className='item '+e.type;btn.textContent=e.t;
+      btn.onclick=()=>{selected=key;renderMonth();renderSelected();openDrawer(e.t,e.body,e.meta)};
+      cell.appendChild(btn);
+    });
+    grid.appendChild(cell);
+  }
+}
+function renderSelected(){
+  const d=new Date(selected+"T12:00:00");
+  document.getElementById('selectedTitle').textContent=d.toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long"});
+  const rows=events[selected]||[];
+  document.getElementById('selectedSub').textContent=rows.length?rows.length+" item"+(rows.length>1?"s":"")+" on this day.":"Nothing scheduled.";
+  const list=document.getElementById('selectedList');list.innerHTML="";
+  if(!rows.length){list.innerHTML='<div class="note">Nothing on this day.</div>';return}
+  rows.forEach(e=>{
+    const r=document.createElement('button');r.className='selected-row';r.style.cursor='pointer';
+    r.innerHTML='<strong>'+e.t+'</strong><span>'+e.meta+'</span>';
+    r.onclick=()=>openDrawer(e.t,e.body,e.meta);
+    list.appendChild(r);
+  });
+}
+function moveMonth(delta){cursor=new Date(cursor.getFullYear(),cursor.getMonth()+delta,1);selected=iso(cursor);renderMonth();renderSelected()}
+function goToday(){cursor=new Date(2026,8,1);selected="2026-09-01";renderMonth();renderSelected()}
+function openDrawer(t,b,m){drawerTitle.textContent=t;drawerBody.textContent=b;drawerMeta.textContent=m;drawer.classList.add('open')}
+function closeDrawer(){drawer.classList.remove('open')}
+function flash(t){toast.textContent=t;toast.classList.add('show');setTimeout(()=>toast.classList.remove('show'),2000)}
+function completeBins(){
+  late.innerHTML='<div class="eyebrow" style="color:#2d6a4f">Completed</div><h2>Bins moved to Alex.</h2><div class="note">Jordan completed this occurrence. The next weekly occurrence is now Alex’s on Tuesday 8 September.</div><div class="rotation"><span>Maya</span><i></i><span>Jordan</span><i></i><span class="on">Alex</span></div>';
+  late.style.background='linear-gradient(180deg,#fbfdfb,#e8f0eb)';
+  late.style.borderColor='#bdd1c3';
+  flash('Done · handed to Alex · next Tuesday');
+}
+renderMonth();renderSelected();
+</script>
+</body>
+</html>

@@ -1,0 +1,370 @@
+/* In flow under the preview bar. `top` on position:relative was shoving this 40px down. */
+.d-header {
+  position: relative !important;
+  top: 0 !important;
+  height: auto;
+  min-height: 64px;
+  padding: 12px 28px;
+  gap: 12px 16px;
+  flex-wrap: wrap;
+}
+
+.d-header-ident {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.d-search {
+  flex: 0 1 220px;
+  width: 100%;
+  max-width: 220px;
+  height: 38px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.45);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 14px;
+  color: var(--ink-soft);
+  font-size: 12px;
+}
+
+.d-search svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  opacity: 0.65;
+}
+
+.d-search input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+  color: var(--ink);
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.d-search input::placeholder {
+  color: var(--ink-soft);
+  opacity: 0.8;
+}
+
+.d-body .d-header-actions {
+  flex-shrink: 0;
+}
+
+.d-side {
+  position: sticky;
+  top: 40px;
+  align-self: start;
+  height: calc(100vh - 40px);
+  overflow: hidden;
+}
+
+/* Original switcher card, sitting under Operations — not in the avatar footer. */
+.d-body .d-brand {
+  padding: 0 10px;
+}
+
+.d-body .d-nav .d-hub-switch {
+  margin: 10px 0 0;
+}
+
+.d-body .d-side-foot {
+  flex-shrink: 0;
+  padding: 12px 10px 0;
+}
+
+.d-body .d-icon-btn {
+  position: relative;
+  flex-shrink: 0;
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: #fff;
+}
+
+.d-body .d-icon-btn.has-unread::after {
+  content: "";
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--sage);
+  box-shadow: 0 0 0 2px #fff;
+}
+
+.d-owes .d-move {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: center;
+  width: 100%;
+  margin: 0;
+  padding: 16px 0;
+  border: 0;
+  border-bottom: 1px solid rgba(23, 27, 36, 0.06);
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.d-owes .d-move:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.d-owes .d-move:first-of-type {
+  padding-top: 4px;
+}
+
+/* Breakdown = transfer rows, same language as Home who-owes / Settle. */
+#breakdown .d-arrow {
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  background: #d9ebe5;
+  color: #1b4332;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+}
+
+#breakdown .d-move .names {
+  font-size: 1.05rem;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+}
+
+#breakdown .d-move .why {
+  color: var(--ink-soft);
+  font-size: 13px;
+  margin-top: 2px;
+}
+
+#breakdown .d-move .amt {
+  font-size: 1.45rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+}
+
+.d-kpis > * {
+  min-width: 0;
+}
+
+button.d-kpi {
+  display: block;
+  width: 100%;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+button.d-now-row {
+  width: 100%;
+  margin: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.layout-tabs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.layout-tabs button {
+  height: 24px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: transparent;
+  color: #f5f1ea;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+}
+
+.layout-tabs button.is-active {
+  background: #f5f1ea;
+  color: #0d0f17;
+  border-color: transparent;
+}
+
+.layout-tabs a {
+  margin-left: 4px;
+}
+
+.d-member-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 0;
+  border-bottom: 1px solid rgba(23, 27, 36, 0.06);
+}
+
+.d-member-row:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.d-member-row .avatar {
+  width: 36px;
+  height: 36px;
+}
+
+.d-member-row .who strong {
+  display: block;
+  font-size: 1.05rem;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+}
+
+.d-member-row .who span {
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+.d-member-row .bal {
+  margin-left: auto;
+  font-weight: 800;
+  font-size: 1.45rem;
+  letter-spacing: -0.04em;
+}
+
+.d-mast-home {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 4px 4px 22px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid rgba(23, 27, 36, 0.08);
+}
+
+.d-mast-home p {
+  margin: 0;
+  font-size: 15px;
+  color: var(--ink-soft);
+  max-width: 32rem;
+  line-height: 1.45;
+}
+
+.d-net {
+  display: flex;
+  gap: 40px;
+  margin: 10px 0 12px;
+}
+
+.d-net span {
+  display: block;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  font-weight: 700;
+}
+
+.d-net strong {
+  display: block;
+  margin: 4px 0 2px;
+  font-size: 3.15rem;
+  font-weight: 800;
+  letter-spacing: -0.055em;
+  line-height: 1.05;
+}
+
+.d-net strong.is-credit,
+.d-ink.is-credit .num,
+.a-mast.is-credit .num {
+  color: var(--sage);
+}
+
+.d-net small {
+  display: block;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+button.d-item {
+  width: 100%;
+  margin: 0;
+  border: 0;
+  border-bottom: 1px solid rgba(23, 27, 36, 0.06);
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.d-item-plain {
+  grid-template-columns: 1fr;
+}
+
+@media (max-width: 1100px) {
+  .d-app {
+    grid-template-columns: 220px minmax(0, 1fr) !important;
+  }
+  .d-side {
+    display: flex !important;
+  }
+  .d-mast-home {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .d-net {
+    gap: 28px;
+  }
+  .d-kpis {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .d-app {
+    grid-template-columns: 1fr !important;
+  }
+  .d-side {
+    display: none !important;
+  }
+  .d-kpis {
+    grid-template-columns: 1fr;
+  }
+  .d-search {
+    flex: 1 1 140px;
+    max-width: 180px;
+  }
+  .d-owes .d-move {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .d-owes .d-move .amt {
+    grid-column: 2;
+  }
+}

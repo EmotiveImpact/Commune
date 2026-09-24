@@ -1,0 +1,28 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Serve redesign mockups",
+      "type": "shell",
+      "command": "python3 serve.py",
+      "options": {
+        "cwd": "${workspaceFolder}/artifacts/redesign-mockups"
+      },
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "commune-mockups",
+        "pattern": { "regexp": "^$" },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "Serving",
+          "endsPattern": "listening on 0\\.0\\.0\\.0:3001"
+        }
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "focus": false
+      }
+    }
+  ]
+}

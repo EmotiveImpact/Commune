@@ -1,0 +1,1906 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Direction A · Refined Current — Commune</title>
+    <link rel="icon" href="../favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="../shared.css?v=set2" />
+    <link rel="stylesheet" href="./styles.css?v=set2" />
+  </head>
+  <body class="a-body nav-basic">
+    <div class="a-native-status" aria-hidden="true">
+      <span>9:41</span>
+      <span>LTE ████</span>
+    </div>
+    <div class="a-native-home" aria-hidden="true"></div>
+    <div class="a-gate">
+      <section class="screen" id="login" hidden>
+        <div class="a-gate-card">
+          <div class="a-gate-brand">
+            <span class="a-gate-mark" aria-hidden="true">
+              <img src="../logo-mark.svg" width="44" height="44" alt="" />
+            </span>
+            <span>Commune</span>
+          </div>
+          <h1>Welcome back.</h1>
+          <p class="lede">Park Street, Studio, Lisbon — one login.</p>
+          <div class="a-panel">
+            <div class="a-field">
+              <label for="a-login-email">Email</label>
+              <input id="a-login-email" type="email" value="maya@14park.st" />
+            </div>
+            <div class="a-field">
+              <label for="a-login-pass">Password</label>
+              <input id="a-login-pass" type="password" value="••••••••" />
+            </div>
+            <div class="a-field-row">
+              <button class="a-btn" type="button" data-go="home">Enter</button>
+              <button class="a-btn ghost" type="button" data-go="home">Continue with Google</button>
+            </div>
+          </div>
+          <p class="a-gate-alt">No account? <button type="button" data-go="signup">Sign up</button>
+            · <button type="button" data-go="home-empty">I’m new</button></p>
+        </div>
+      </section>
+
+      <section class="screen" id="signup" hidden>
+        <div class="a-gate-card">
+          <div class="a-gate-brand">
+            <span class="a-gate-mark" aria-hidden="true">
+              <img src="../logo-mark.svg" width="44" height="44" alt="" />
+            </span>
+            <span>Commune</span>
+          </div>
+          <h1>Start a commune.</h1>
+          <p class="lede">Then create a hub, or join one you’ve been invited to.</p>
+          <div class="a-panel">
+            <div class="a-field">
+              <label for="a-su-name">Name</label>
+              <input id="a-su-name" type="text" value="Maya Chen" />
+            </div>
+            <div class="a-field">
+              <label for="a-su-email">Email</label>
+              <input id="a-su-email" type="email" value="maya@14park.st" />
+            </div>
+            <div class="a-field">
+              <label for="a-su-pass">Password</label>
+              <input id="a-su-pass" type="password" value="••••••••" />
+            </div>
+            <div class="a-field-row">
+              <button class="a-btn" type="button" data-go="onboard">Create account</button>
+            </div>
+          </div>
+          <p class="a-gate-alt">Already here? <button type="button" data-go="login">Log in</button></p>
+        </div>
+      </section>
+
+      <section class="screen" id="invite" hidden>
+        <div class="a-gate-card">
+          <div class="a-gate-brand">
+            <span class="a-gate-mark" aria-hidden="true">
+              <img src="../logo-mark.svg" width="44" height="44" alt="" />
+            </span>
+            <span>Commune</span>
+          </div>
+          <h1>Jordan invited you.</h1>
+          <p class="lede">14 Park Street · household · Maya, Jordan, and you.</p>
+          <div class="a-panel">
+            <div class="a-member-row">
+              <span class="avatar jordan">JH</span>
+              <div class="who"><strong>14 Park Street</strong><span>Household · 3 people after you join</span></div>
+            </div>
+            <div class="a-field-row">
+              <button class="a-btn" type="button" data-hub="park" data-go="hub">Join this hub</button>
+              <button class="a-btn ghost" type="button" data-go="login">Sign in first</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="screen" id="onboard" hidden>
+        <div class="a-gate-card">
+          <div class="a-gate-brand">
+            <span class="a-gate-mark" aria-hidden="true">
+              <img src="../logo-mark.svg" width="44" height="44" alt="" />
+            </span>
+            <span>Commune</span>
+          </div>
+          <h1>Name the space.</h1>
+          <p class="lede">A home, a studio, a trip. One hub. You can add more later.</p>
+          <div class="a-panel">
+            <div class="a-field">
+              <label for="a-ob-name">Name</label>
+              <input id="a-ob-name" type="text" value="14 Park Street" />
+            </div>
+            <div class="a-field">
+              <label for="a-ob-type">Type</label>
+              <select id="a-ob-type">
+                <option selected>Household</option>
+                <option>Workspace</option>
+                <option>Trip</option>
+              </select>
+            </div>
+            <div class="a-field">
+              <label for="a-ob-cur">Currency</label>
+              <select id="a-ob-cur">
+                <option selected>£ GBP</option>
+                <option>$ USD</option>
+                <option>€ EUR</option>
+              </select>
+            </div>
+            <div class="a-field-row">
+              <button class="a-btn" type="button" data-go="hub-empty">Create hub</button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div class="a-app">
+      <aside class="a-side">
+        <div class="a-brand">
+          <img class="a-logo" src="../logo.png" width="32" height="32" alt="" aria-hidden="true" />
+          <span class="a-wordmark">Commune</span>
+        </div>
+
+        <nav class="a-nav" aria-label="Primary">
+          <button class="a-link is-active" data-go="home" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+            Home
+          </button>
+          <button class="a-link" data-go="hub" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 10.5 12 3l9 7.5V21a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1v-10.5z"/></svg>
+            This Hub
+          </button>
+
+          <div class="a-nav-basic">
+            <button class="a-link" data-go="expenses" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 8h10M7 12h6M6 4h12a1 1 0 0 1 1 1v16l-4-2-4 2-4-2-4 2V5a1 1 0 0 1 1-1z"/></svg>
+              Expenses
+            </button>
+            <button class="a-link" data-go="settle" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 7h10M7 12h10M7 17h6"/><path d="M17 17h4l-2 3M21 17l-2-3"/></svg>
+              Settle
+            </button>
+            <button class="a-link" data-go="recurring" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 10a8 8 0 0 1 16 0c0 6-8 11-8 11S4 16 4 10z"/><circle cx="12" cy="10" r="2.5"/></svg>
+              Recurring
+            </button>
+            <button class="a-link" data-go="funds" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 7h14l-1 12H6L5 7z"/><path d="M9 7V5a3 3 0 0 1 6 0v2"/></svg>
+              Funds
+            </button>
+            <button class="a-link" data-go="notes" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 4h9l5 5v11H6z"/><path d="M15 4v5h5"/></svg>
+              Notes
+            </button>
+            <button class="a-link" data-go="operations" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3 9-9"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+              Operations
+            </button>
+          </div>
+
+          <div class="a-nav-advanced">
+          <div class="a-group-label">Money</div>
+          <div class="a-sub">
+            <button class="a-link" data-go="expenses" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 8h10M7 12h6M6 4h12a1 1 0 0 1 1 1v16l-4-2-4 2-4-2-4 2V5a1 1 0 0 1 1-1z"/></svg>
+              Expenses
+            </button>
+            <button class="a-link" data-go="settle" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 7h10M7 12h10M7 17h6"/><path d="M17 17h4l-2 3M21 17l-2-3"/></svg>
+              Settle
+            </button>
+            <button class="a-link" data-go="recurring" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 10a8 8 0 0 1 16 0c0 6-8 11-8 11S4 16 4 10z"/><circle cx="12" cy="10" r="2.5"/></svg>
+              Recurring
+            </button>
+            <button class="a-link" data-go="funds" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 7h14l-1 12H6L5 7z"/><path d="M9 7V5a3 3 0 0 1 6 0v2"/></svg>
+              Funds
+            </button>
+            <button class="a-link" data-go="templates" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
+              Templates
+            </button>
+            <button class="a-link" data-go="billing" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+              Billing
+            </button>
+          </div>
+
+          <div class="a-group-label">Insights</div>
+          <div class="a-sub">
+            <button class="a-link" data-go="analytics" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V5l7 4 9-6v16"/></svg>
+              Analytics
+            </button>
+            <button class="a-link" data-go="breakdown" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V5M4 19h16M8 15v4M12 11v8M16 8v11"/></svg>
+              Breakdown
+            </button>
+          </div>
+
+          <div class="a-group-label">People</div>
+          <div class="a-sub">
+            <button class="a-link" data-go="members" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="9.5" cy="7" r="3.5"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a3.5 3.5 0 0 1 0 6.74"/></svg>
+              Members
+            </button>
+            <button class="a-link" data-go="operations" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3 9-9"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+              Operations
+            </button>
+            <button class="a-link" data-go="notes" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 4h9l5 5v11H6z"/><path d="M15 4v5h5"/></svg>
+              Notes
+            </button>
+            <button class="a-link" data-go="activity" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 2"/><circle cx="12" cy="12" r="9"/></svg>
+              Activity
+            </button>
+          </div>
+          </div>
+        </nav>
+
+        <div class="a-switch-section">
+          <button class="a-create-space" type="button" data-go="commune-new">
+            <span class="a-create-mark" aria-hidden="true">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+            </span>
+            Create a commune
+          </button>
+          <button class="a-hub-switch" type="button" data-go="communes" aria-label="Switch commune">
+            <div class="hub-ico" aria-hidden="true">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f5f1ea" stroke-width="2"><path d="M3 10.5 12 3l9 7.5V21a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1v-10.5z"/></svg>
+            </div>
+            <div class="grow">
+              <strong data-hub-switch-name>14 Park Street</strong>
+              <span data-hub-switch-meta>Household · 3 people</span>
+            </div>
+            <svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+          </button>
+        </div>
+
+        <button class="a-side-foot" type="button" data-go="settings">
+          <span class="avatar maya">MC</span>
+          <div class="meta">
+            <strong>Maya Chen</strong>
+            <span data-hub-you-meta>Standard · 14 Park Street</span>
+          </div>
+        </button>
+      </aside>
+
+      <div class="a-main">
+        <header class="a-header">
+          <button class="a-icon-btn a-more-btn" type="button" data-more aria-label="More">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+          </button>
+          <img class="a-header-mark" src="../logo-mark.svg" width="32" height="32" alt="" />
+          <div class="a-header-title">
+            <h1 data-page-title>Home</h1>
+            <p data-page-lede data-page-status>3 spaces · you owe £42 · you’re owed £64</p>
+          </div>
+          <label class="a-search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3-3"/></svg>
+            <input type="search" placeholder="Search expenses, people, bills" aria-label="Search expenses, people, bills" />
+          </label>
+          <div class="a-header-actions">
+            <button class="a-icon-btn a-you-btn" type="button" data-go="settings" aria-label="You">
+              <span class="avatar maya">MC</span>
+            </button>
+            <button class="a-icon-btn has-unread" type="button" data-go="notices" aria-label="Notifications">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 7 3 9H3c0-2 3-2 3-9"/><path d="M10 21a2 2 0 0 0 4 0"/></svg>
+            </button>
+          </div>
+        </header>
+
+        <div class="a-content">
+          <!-- HOME · communes first, then the week. -->
+          <section class="screen" id="home">
+            <button class="a-place a-focus-lead" type="button" data-hub="park" data-go="hub">
+              <div class="a-focus-hero">
+                <span class="type">Needs you · Household</span>
+                <h2>14 Park Street</h2>
+                <p>You owe £42. Gas Friday. Bins still Jordan’s. Alex hasn’t paid into the fund.</p>
+                <div class="a-cover-people">
+                  <div class="avatar-stack">
+                    <span class="avatar maya">MC</span>
+                    <span class="avatar jordan">JH</span>
+                    <span class="avatar alex">AR</span>
+                  </div>
+                  Open this hub
+                </div>
+              </div>
+              <div class="a-place-foot">
+                <span>Gas Friday · bins overdue</span>
+                <span class="amt">£42</span>
+              </div>
+            </button>
+
+            <div class="a-focus-pair">
+              <button class="a-place" type="button" data-hub="studio" data-go="hub">
+                <div class="a-place-hero studio">
+                  <span class="type">Quiet</span>
+                  <h3>Studio East</h3>
+                  <p>You’re even</p>
+                </div>
+                <div class="a-place-foot">
+                  <span>Printer ink Monday</span>
+                  <span class="amt even">£0</span>
+                </div>
+              </button>
+              <button class="a-place" type="button" data-hub="lisbon" data-go="hub">
+                <div class="a-place-hero lisbon">
+                  <span class="type">You’re owed</span>
+                  <h3>Lisbon · Sept</h3>
+                  <p>You’re owed £64</p>
+                </div>
+                <div class="a-place-foot">
+                  <span>Airbnb hold Thursday</span>
+                  <span class="amt credit">+£64</span>
+                </div>
+              </button>
+            </div>
+
+            <div class="a-home-greet is-after">
+              <h1>Park Street needs you this week.</h1>
+              <p>Studio is even. Lisbon still owes you £64.</p>
+            </div>
+
+            <div class="a-week">
+            <div class="a-card">
+              <h2>Needs you</h2>
+              <p class="sub">The three that should happen. Jump in, or open the hub.</p>
+              <div class="hub-feed">
+                <button class="hub-feed-row" type="button" data-hub="park" data-go="operations">
+                  <span class="pill warn">Park Street</span>
+                  <div>
+                    <strong>Bins overdue</strong>
+                    <div class="when">Still Jordan’s Tuesday</div>
+                  </div>
+                  <span class="hub-feed-go">Operations</span>
+                </button>
+                <button class="hub-feed-row" type="button" data-hub="park" data-go="settle">
+                  <span class="pill sage">Park Street</span>
+                  <div>
+                    <strong>Pay Jordan £42</strong>
+                    <div class="when">Gas share · or £24 if you net Tesco</div>
+                  </div>
+                  <span class="hub-feed-go">Settle</span>
+                </button>
+                <button class="hub-feed-row" type="button" data-hub="park" data-go="expenses">
+                  <span class="pill warn">Park Street</span>
+                  <div>
+                    <strong>British Gas Friday</strong>
+                    <div class="when">£94.20 · Jordan paid · your share open</div>
+                  </div>
+                  <span class="hub-feed-go">Expenses</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="a-card">
+              <div class="a-card-head">
+                <div>
+                  <h2>This week</h2>
+                  <p class="sub">Already happened, across the three.</p>
+                </div>
+                <button class="a-btn ghost" type="button" data-go="activity">Activity</button>
+              </div>
+              <button class="a-item" type="button" data-hub="park" data-go="expenses">
+                <span class="avatar jordan">JH</span>
+                <div><strong>British Gas</strong><div class="when">Park Street · Jordan paid the bill</div></div>
+                <span class="when">Tue</span>
+              </button>
+              <button class="a-item" type="button" data-hub="park" data-go="expenses">
+                <span class="avatar maya">MC</span>
+                <div><strong>Virgin Media</strong><div class="when">Park Street · Maya logged it</div></div>
+                <span class="when">Yesterday</span>
+              </button>
+              <button class="a-item" type="button" data-hub="lisbon" data-go="hub">
+                <span class="avatar maya">MC</span>
+                <div><strong>Airbnb hold</strong><div class="when">Lisbon · your card, still collecting</div></div>
+                <span class="when">Thu</span>
+              </button>
+            </div>
+            </div>
+          </section>
+
+          <!-- PLACES — commune switcher. Pick a space; cards open that hub. -->
+          <section class="screen" id="communes" hidden>
+            <div class="a-toolbar">
+              <button class="a-btn" type="button" data-go="commune-new">New commune</button>
+            </div>
+            <div class="a-place-grid">
+              <button class="a-place" type="button" data-hub="park" data-go="hub">
+                <div class="a-place-hero park">
+                  <span class="type">Household</span>
+                  <h3>14 Park Street</h3>
+                  <p>You owe £42</p>
+                </div>
+                <div class="a-place-foot">
+                  <span>Gas Friday · bins overdue</span>
+                  <span class="amt">£42</span>
+                </div>
+              </button>
+              <button class="a-place" type="button" data-hub="studio" data-go="hub">
+                <div class="a-place-hero studio">
+                  <span class="type">Workspace</span>
+                  <h3>Studio East</h3>
+                  <p>You’re even</p>
+                </div>
+                <div class="a-place-foot">
+                  <span>Printer ink Monday</span>
+                  <span class="amt even">£0</span>
+                </div>
+              </button>
+              <button class="a-place" type="button" data-hub="lisbon" data-go="hub">
+                <div class="a-place-hero lisbon">
+                  <span class="type">Trip</span>
+                  <h3>Lisbon · Sept</h3>
+                  <p>You’re owed £64</p>
+                </div>
+                <div class="a-place-foot">
+                  <span>Airbnb hold Thursday</span>
+                  <span class="amt credit">+£64</span>
+                </div>
+              </button>
+            </div>
+
+            <div class="a-card" style="margin-top:18px">
+              <h2>Needs you</h2>
+              <p class="sub">Across every space. Open the hub, or jump straight in.</p>
+              <div class="hub-feed">
+                <button class="hub-feed-row" type="button" data-hub="park" data-go="settle">
+                  <span class="pill sage">Park Street</span>
+                  <div>
+                    <strong>Pay Jordan £42</strong>
+                    <div class="when">Gas share · or £24 if you net Tesco</div>
+                  </div>
+                  <span class="hub-feed-go">Settle</span>
+                </button>
+                <button class="hub-feed-row" type="button" data-hub="park" data-go="expenses">
+                  <span class="pill warn">Park Street</span>
+                  <div>
+                    <strong>British Gas Friday</strong>
+                    <div class="when">£94.20 · Jordan paid · your share open</div>
+                  </div>
+                  <span class="hub-feed-go">Expenses</span>
+                </button>
+                <button class="hub-feed-row" type="button" data-hub="park" data-go="operations">
+                  <span class="pill warn">Park Street</span>
+                  <div>
+                    <strong>Bins overdue</strong>
+                    <div class="when">Still Jordan’s Tuesday</div>
+                  </div>
+                  <span class="hub-feed-go">Operations</span>
+                </button>
+                <button class="hub-feed-row" type="button" data-hub="lisbon" data-go="hub">
+                  <span class="pill open">Lisbon</span>
+                  <div>
+                    <strong>Airbnb hold · 4 days</strong>
+                    <div class="when">Collect £40 from Jordan, £24 from Ness</div>
+                  </div>
+                  <span class="hub-feed-go">Open hub</span>
+                </button>
+                <button class="hub-feed-row" type="button" data-hub="studio" data-go="hub">
+                  <span class="pill">Studio East</span>
+                  <div>
+                    <strong>Printer ink Monday</strong>
+                    <div class="when">Sam’s run · split three ways</div>
+                  </div>
+                  <span class="hub-feed-go">Open hub</span>
+                </button>
+              </div>
+            </div>
+          </section>
+
+          <!-- HOME 2 · INBOX — the feed is the page. -->
+          <section class="screen" id="home-inbox" hidden>
+            <div class="a-home-greet">
+              <span class="kicker">Inbox</span>
+              <h1>What still needs a person.</h1>
+              <p>Six things across three spaces. The houses sit to the side so you can act.</p>
+            </div>
+            <div class="a-home-inbox">
+              <div class="a-card a-inbox-list">
+                <h2>Your communes</h2>
+                <p class="sub">Open the house from here.</p>
+                <button class="a-inbox-hub" type="button" data-hub="park" data-go="hub">
+                  <span class="thumb park"></span>
+                  <div>
+                    <strong>14 Park Street</strong>
+                    <span>You owe £42 · gas Friday</span>
+                  </div>
+                  <span class="amt">£42</span>
+                </button>
+                <button class="a-inbox-hub" type="button" data-hub="studio" data-go="hub">
+                  <span class="thumb studio"></span>
+                  <div>
+                    <strong>Studio East</strong>
+                    <span>Even · ink Monday</span>
+                  </div>
+                  <span class="amt even">£0</span>
+                </button>
+                <button class="a-inbox-hub" type="button" data-hub="lisbon" data-go="hub">
+                  <span class="thumb lisbon"></span>
+                  <div>
+                    <strong>Lisbon · Sept</strong>
+                    <span>You’re owed £64</span>
+                  </div>
+                  <span class="amt credit">+£64</span>
+                </button>
+              </div>
+              <div class="a-card">
+                <h2>Needs you</h2>
+                <p class="sub">Oldest first. Jump in, or open the hub.</p>
+                <div class="hub-feed">
+                  <button class="hub-feed-row" type="button" data-hub="park" data-go="operations">
+                    <span class="pill warn">Overdue</span>
+                    <div>
+                      <strong>Bins at Park Street</strong>
+                      <div class="when">Still Jordan’s Tuesday</div>
+                    </div>
+                    <span class="hub-feed-go">Ops</span>
+                  </button>
+                  <button class="hub-feed-row" type="button" data-hub="park" data-go="settle">
+                    <span class="pill sage">Settle</span>
+                    <div>
+                      <strong>Pay Jordan £42</strong>
+                      <div class="when">Park Street · gas share</div>
+                    </div>
+                    <span class="hub-feed-go">Settle</span>
+                  </button>
+                  <button class="hub-feed-row" type="button" data-hub="park" data-go="expenses">
+                    <span class="pill warn">Friday</span>
+                    <div>
+                      <strong>British Gas</strong>
+                      <div class="when">£94.20 · your share open</div>
+                    </div>
+                    <span class="hub-feed-go">Expenses</span>
+                  </button>
+                  <button class="hub-feed-row" type="button" data-hub="park" data-go="funds">
+                    <span class="pill open">Collect</span>
+                    <div>
+                      <strong>Chase Alex £180</strong>
+                      <div class="when">House fund is £420</div>
+                    </div>
+                    <span class="hub-feed-go">Funds</span>
+                  </button>
+                  <button class="hub-feed-row" type="button" data-hub="lisbon" data-go="hub">
+                    <span class="pill open">Thursday</span>
+                    <div>
+                      <strong>Airbnb hold</strong>
+                      <div class="when">Lisbon · collect £64</div>
+                    </div>
+                    <span class="hub-feed-go">Open hub</span>
+                  </button>
+                  <button class="hub-feed-row" type="button" data-hub="studio" data-go="hub">
+                    <span class="pill">Monday</span>
+                    <div>
+                      <strong>Printer ink</strong>
+                      <div class="when">Studio East · Sam’s run</div>
+                    </div>
+                    <span class="hub-feed-go">Open hub</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- THIS HUB — the selected house, fully useful. -->
+          <section class="screen" id="hub" hidden>
+            <div class="a-cover">
+              <span class="type" data-hub-type>Household</span>
+              <h1 data-hub-name>14 Park Street</h1>
+              <p class="lede" data-hub-lede>Rent, bills, and the Tuesday bins. One kitchen.</p>
+              <div class="a-cover-people">
+                <div class="avatar-stack" data-hub-avatars>
+                  <span class="avatar maya">MC</span>
+                  <span class="avatar jordan">JH</span>
+                  <span class="avatar alex">AR</span>
+                </div>
+                <span data-hub-people>Maya, Jordan, and Alex · since 2024</span>
+              </div>
+            </div>
+
+            <div class="a-kpis" data-hub-kpis>
+              <button class="a-kpi peach" type="button" data-go="funds">
+                <span>House fund</span>
+                <strong>£420</strong>
+                <small>£180 still from Alex</small>
+              </button>
+              <button class="a-kpi lilac" type="button" data-go="analytics">
+                <span>This month</span>
+                <strong>£2,140</strong>
+                <small>of £2,400 · on track</small>
+              </button>
+              <button class="a-kpi sage" type="button" data-go="recurring">
+                <span>Open bills</span>
+                <strong>2</strong>
+                <small>Gas + Virgin Media</small>
+              </button>
+              <button class="a-kpi ink" type="button" data-go="expenses">
+                <span>Next due</span>
+                <strong>Fri</strong>
+                <small>British Gas · 29 Aug</small>
+              </button>
+            </div>
+
+            <div class="a-answers">
+              <div class="a-card a-owe-card" data-hub-mast>
+                <span data-hub-owe-label>You owe</span>
+                <div class="num" data-hub-owe-amount>£42.00</div>
+                <p data-hub-owe-copy>Pay Jordan this week. Or net Tesco £18 and send £24.</p>
+                <div class="a-ink-actions">
+                  <button class="a-btn" type="button" data-go="settle" data-hub-owe-cta>Settle with Jordan</button>
+                </div>
+              </div>
+              <div class="a-card">
+                <h2>Right now</h2>
+                <p class="sub">What still needs a person in this house.</p>
+                <div data-hub-now>
+                  <button class="a-now-row" type="button" data-go="expenses">
+                    <span class="pill warn">Friday</span>
+                    <div><strong>British Gas</strong><div class="when">£94.20 · Jordan paid · your share open</div></div>
+                  </button>
+                  <button class="a-now-row" type="button" data-go="operations">
+                    <span class="pill warn">Overdue</span>
+                    <div><strong>Bins</strong><div class="when">Still Jordan’s Tuesday</div></div>
+                  </button>
+                  <button class="a-now-row" type="button" data-go="funds">
+                    <span class="pill open">Collect</span>
+                    <div><strong>Alex · house fund</strong><div class="when">£180 still to pay in</div></div>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="a-card a-owes" style="margin-top:16px">
+              <h2>Who owes whom</h2>
+              <p class="sub">This cycle. Settle when you’re ready.</p>
+              <div data-hub-moves>
+                <button class="a-move" type="button" data-go="settle">
+                  <div class="a-arrow">→</div>
+                  <div>
+                    <div class="names">You → Jordan</div>
+                    <div class="why">Gas share · or £24 if you net Tesco</div>
+                  </div>
+                  <div class="amt">£42</div>
+                </button>
+                <button class="a-move" type="button" data-go="settle">
+                  <div class="a-arrow">→</div>
+                  <div>
+                    <div class="names">Jordan → You</div>
+                    <div class="why">Tesco extras from Monday</div>
+                  </div>
+                  <div class="amt">£18</div>
+                </button>
+                <button class="a-move is-even" type="button" data-go="members">
+                  <div class="a-arrow" style="background:#f0ece4">↔</div>
+                  <div>
+                    <div class="names">Alex ↔ You</div>
+                    <div class="why">Even on expenses · still £180 for the fund</div>
+                  </div>
+                  <div class="amt" style="color:var(--ink-soft)">£0</div>
+                </button>
+              </div>
+            </div>
+
+            <div class="jump-grid" data-hub-jumps>
+              <button class="jump-tile" type="button" data-go="expenses">
+                <span>Expenses</span>
+                <strong>Virgin still open</strong>
+                <small>This cycle’s ledger</small>
+              </button>
+              <button class="jump-tile" type="button" data-go="recurring">
+                <span>Recurring</span>
+                <strong>Gas Friday</strong>
+                <small>Virgin on the 12th too</small>
+              </button>
+              <button class="jump-tile" type="button" data-go="funds">
+                <span>Funds</span>
+                <strong>Chase Alex £180</strong>
+                <small>House fund is £420</small>
+              </button>
+              <button class="jump-tile" type="button" data-go="settle">
+                <span>Settle</span>
+                <strong>Pay Jordan £42</strong>
+                <small>Or net Tesco and send £24</small>
+              </button>
+              <button class="jump-tile" type="button" data-go="notes">
+                <span>Notes</span>
+                <strong>Wi-Fi and landlord</strong>
+                <small>The old chat pin</small>
+              </button>
+              <button class="jump-tile" type="button" data-go="operations">
+                <span>Operations</span>
+                <strong>Bins overdue</strong>
+                <small>Still Jordan’s Tuesday</small>
+              </button>
+            </div>
+
+            <div class="a-week">
+              <div class="a-card">
+                <div class="a-card-head">
+                  <div>
+                    <h2>This week</h2>
+                    <p class="sub">Activity in this house. Open the ledger from here.</p>
+                  </div>
+                  <button class="a-btn ghost" type="button" data-go="activity">Activity</button>
+                </div>
+                <div data-hub-activity>
+                  <button class="a-item" type="button" data-go="expenses">
+                    <span class="avatar maya">MC</span>
+                    <div><strong>Virgin Media</strong><div class="when">Maya logged it</div></div>
+                    <span class="when">Yesterday</span>
+                  </button>
+                  <button class="a-item" type="button" data-go="expenses">
+                    <span class="avatar jordan">JH</span>
+                    <div><strong>British Gas</strong><div class="when">Jordan paid the bill</div></div>
+                    <span class="when">Tue</span>
+                  </button>
+                  <button class="a-item" type="button" data-go="expenses">
+                    <span class="avatar alex">AR</span>
+                    <div><strong>Tesco</strong><div class="when">Alex settled</div></div>
+                    <span class="when">Mon</span>
+                  </button>
+                  <button class="a-item" type="button" data-go="funds">
+                    <span class="avatar maya">MC</span>
+                    <div><strong>August rent</strong><div class="when">House fund covered it</div></div>
+                    <span class="when">1 Aug</span>
+                  </button>
+                </div>
+              </div>
+              <div class="a-card">
+                <div class="a-card-head">
+                  <div>
+                    <h2>The house, in writing</h2>
+                    <p class="sub">The stuff that used to live in a chat pin.</p>
+                  </div>
+                  <button class="a-btn ghost" type="button" data-go="notes">Notes</button>
+                </div>
+                <div data-hub-notes>
+                  <button class="a-item a-item-plain" type="button" data-go="note" data-note="wifi">
+                    <div><strong>Wi-Fi</strong><div class="when">ParkStreet_5G · password in notes</div></div>
+                  </button>
+                  <button class="a-item a-item-plain" type="button" data-go="note" data-note="bins">
+                    <div><strong>Bins</strong><div class="when">Black bags Tuesday · recycling Friday</div></div>
+                  </button>
+                  <button class="a-item a-item-plain" type="button" data-go="note" data-note="landlord">
+                    <div><strong>Landlord</strong><div class="when">Priya Sharma · rent via the fund</div></div>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="a-card" style="margin-top:16px">
+              <div class="a-card-head">
+                <div>
+                  <h2>Who’s here</h2>
+                  <p class="sub">This cycle, not personalities.</p>
+                </div>
+                <button class="a-btn ghost" type="button" data-go="members">Members</button>
+              </div>
+              <div data-hub-members>
+                <div class="a-member-row">
+                  <span class="avatar maya">MC</span>
+                  <div class="who"><strong>Maya Chen</strong><span>You · Admin</span></div>
+                  <div class="bal">Owe £42</div>
+                </div>
+                <div class="a-member-row">
+                  <span class="avatar jordan">JH</span>
+                  <div class="who"><strong>Jordan Hale</strong><span>Bins this week</span></div>
+                  <div class="bal">Owes you £18</div>
+                  <button class="a-btn nudge" type="button" data-go="notices" style="height:32px;flex-shrink:0">Nudge</button>
+                </div>
+                <div class="a-member-row">
+                  <span class="avatar alex">AR</span>
+                  <div class="who"><strong>Alex Rivera</strong><span>Fund still due</span></div>
+                  <div class="bal" style="color:var(--ink-soft)">Even</div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- EXPENSES -->
+          <section class="screen" id="expenses" hidden>
+            <div class="a-toolbar">
+              <div class="a-filters">
+                <button class="a-chip is-on" type="button">All</button>
+                <button class="a-chip" type="button">Open</button>
+                <button class="a-chip" type="button">Recurring</button>
+                <button class="a-chip" type="button">Settled</button>
+              </div>
+              <button class="a-btn" type="button" data-go="add-expense">Add expense</button>
+            </div>
+            <div class="a-panel">
+              <table class="a-table">
+                <thead>
+                  <tr>
+                    <th>Expense</th>
+                    <th>Category</th>
+                    <th>Paid by</th>
+                    <th>Due</th>
+                    <th>Status</th>
+                    <th style="text-align:right">Amount</th>
+                    <th style="text-align:right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td data-label="Expense"><button class="a-name-btn" type="button" data-go="expense">British Gas</button></td>
+                    <td data-label="Category">Utilities</td>
+                    <td data-label="Paid by">Jordan Hale</td>
+                    <td data-label="Due">29 Aug</td>
+                    <td data-label="Status"><span class="pill warn">Due Friday</span></td>
+                    <td class="amt" data-label="Amount">£94.20</td>
+                    <td data-label="Actions">
+                      <div class="a-row-actions">
+                        <div class="a-choose">
+                          <button class="a-btn" type="button" data-choose aria-expanded="false" aria-haspopup="menu">
+                            Choose
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+                          </button>
+                          <div class="a-choose-menu" role="menu" hidden>
+                            <button type="button" role="menuitem" data-go="expense-paid">Mark paid</button>
+                            <button type="button" role="menuitem" data-go="notices">Nudge</button>
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td data-label="Expense"><button class="a-name-btn" type="button" data-go="expense">Virgin Media</button></td>
+                    <td data-label="Category">Internet</td>
+                    <td data-label="Paid by">Maya Chen</td>
+                    <td data-label="Due">12 Aug</td>
+                    <td data-label="Status"><span class="pill open">Open</span></td>
+                    <td class="amt" data-label="Amount">£32.00</td>
+                    <td data-label="Actions">
+                      <div class="a-row-actions">
+                        <button class="a-btn" type="button" data-go="expense-paid">Mark paid</button>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td data-label="Expense"><strong>Tesco shop</strong></td>
+                    <td data-label="Category">Groceries</td>
+                    <td data-label="Paid by">Alex Rivera</td>
+                    <td data-label="Due">18 Aug</td>
+                    <td data-label="Status"><span class="pill settled">Settled</span></td>
+                    <td class="amt" data-label="Amount">£67.40</td>
+                    <td class="a-muted-action" data-label="Actions">—</td>
+                  </tr>
+                  <tr>
+                    <td data-label="Expense"><strong>Rent · August</strong></td>
+                    <td data-label="Category">Rent</td>
+                    <td data-label="Paid by">House fund</td>
+                    <td data-label="Due">1 Aug</td>
+                    <td data-label="Status"><span class="pill settled">Settled</span></td>
+                    <td class="amt" data-label="Amount">£1,800.00</td>
+                    <td class="a-muted-action" data-label="Actions">—</td>
+                  </tr>
+                  <tr>
+                    <td data-label="Expense"><strong>Council tax</strong></td>
+                    <td data-label="Category">Bills</td>
+                    <td data-label="Paid by">Maya Chen</td>
+                    <td data-label="Due">1 Aug</td>
+                    <td data-label="Status"><span class="pill settled">Settled</span></td>
+                    <td class="amt" data-label="Amount">£146.00</td>
+                    <td class="a-muted-action" data-label="Actions">—</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <!-- SETTLE -->
+          <section class="screen" id="settle" hidden>
+            <div class="a-settle-hero">
+              <div class="a-panel a-settle-card">
+                <span>You owe</span>
+                <strong>£42.00</strong>
+                <div style="color:var(--ink-soft);font-size:13px">Pay Jordan · British Gas share</div>
+              </div>
+              <div class="a-panel a-settle-card">
+                <span>You’re owed</span>
+                <strong>£18.00</strong>
+                <div style="color:var(--ink-soft);font-size:13px">Jordan · Tesco (your extra)</div>
+              </div>
+            </div>
+            <div class="a-card">
+              <div class="a-card-head">
+                <div>
+                  <h2>Suggested transfers</h2>
+                  <p class="sub">Net the Tesco £18 against the gas bill, or keep them separate — your call.</p>
+                </div>
+                <button class="a-btn ghost" type="button" data-go="breakdown">Breakdown</button>
+              </div>
+              <div class="a-move">
+                <div class="a-arrow">→</div>
+                <div>
+                  <div class="names">You → Jordan</div>
+                  <div class="why">British Gas share · or £24 if you net Tesco</div>
+                </div>
+                <div class="amt">£42</div>
+                <div class="a-choose">
+                  <button class="a-btn" type="button" data-choose aria-expanded="false" aria-haspopup="menu">
+                    Choose
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+                  </button>
+                  <div class="a-choose-menu" role="menu" hidden>
+                    <button type="button" role="menuitem" data-go="pay">Pay Jordan</button>
+                    <button type="button" role="menuitem" data-go="expense-paid">Mark paid</button>
+                  </div>
+                </div>
+              </div>
+              <div class="a-move">
+                <div class="a-arrow">→</div>
+                <div>
+                  <div class="names">Jordan → You</div>
+                  <div class="why">Tesco extras from Monday</div>
+                </div>
+                <div class="amt">£18</div>
+                <button class="a-btn nudge" type="button" data-go="notices">Nudge</button>
+              </div>
+              <div class="a-move" style="opacity:.72">
+                <div class="a-arrow" style="background:#f0ece4">↔</div>
+                <div>
+                  <div class="names">Alex ↔ You</div>
+                  <div class="why">Nothing outstanding</div>
+                </div>
+                <div class="amt" style="color:var(--ink-soft)">£0</div>
+                <span class="pill settled">Even</span>
+              </div>
+            </div>
+          </section>
+
+          <!-- RECURRING -->
+          <section class="screen" id="recurring" hidden>
+            <div class="a-toolbar">
+              <button class="a-btn ghost" type="button" data-go="templates">Split templates</button>
+            </div>
+            <div class="a-panel">
+              <table class="a-table">
+                <thead>
+                  <tr>
+                    <th>Bill</th>
+                    <th>When</th>
+                    <th>Paid by</th>
+                    <th>Status</th>
+                    <th style="text-align:right">Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><strong>Rent</strong></td>
+                    <td>1st</td>
+                    <td>House fund</td>
+                    <td><span class="pill settled">Auto</span></td>
+                    <td class="amt">£1,800</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Virgin Media</strong></td>
+                    <td>12th</td>
+                    <td>Maya Chen</td>
+                    <td><span class="pill open">Open</span></td>
+                    <td class="amt">£32.00</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Council tax</strong></td>
+                    <td>1st</td>
+                    <td>Maya Chen</td>
+                    <td><span class="pill settled">Settled</span></td>
+                    <td class="amt">£146.00</td>
+                  </tr>
+                  <tr>
+                    <td><strong>British Gas</strong></td>
+                    <td>~28th</td>
+                    <td>Jordan Hale</td>
+                    <td><span class="pill warn">Due Friday</span></td>
+                    <td class="amt">£94.20</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <!-- FUNDS -->
+          <section class="screen" id="funds" hidden>
+            <div class="a-panel">
+              <div class="a-fund-hero">
+                <div>
+                  <span>Balance</span>
+                  <strong>£420</strong>
+                  <p>Target £600 this cycle · £180 still to collect</p>
+                </div>
+                <button class="a-btn" type="button" data-go="notices">Chase Alex</button>
+              </div>
+              <div class="a-settle-row">
+                <span class="avatar maya">MC</span>
+                <span>Maya paid in</span>
+                <span class="amt">£200</span>
+              </div>
+              <div class="a-settle-row">
+                <span class="avatar jordan">JH</span>
+                <span>Jordan paid in</span>
+                <span class="amt">£220</span>
+              </div>
+              <div class="a-settle-row">
+                <span class="avatar alex">AR</span>
+                <span>Alex still to pay</span>
+                <span class="pill open">£180 due</span>
+              </div>
+            </div>
+          </section>
+
+          <!-- TEMPLATES -->
+          <section class="screen" id="templates" hidden>
+            <div class="a-panel">
+              <div class="a-settle-row">
+                <div><strong>Equal · three ways</strong><div style="font-size:12px;color:var(--ink-soft)">Maya, Jordan, Alex · 33.3% each</div></div>
+                <span class="pill sage">Default</span>
+              </div>
+              <div class="a-settle-row">
+                <div><strong>Rent from fund</strong><div style="font-size:12px;color:var(--ink-soft)">House fund pays · nobody is owed</div></div>
+                <span class="pill">Rent</span>
+              </div>
+              <div class="a-settle-row">
+                <div><strong>Maya + Jordan only</strong><div style="font-size:12px;color:var(--ink-soft)">For the upstairs cleaner</div></div>
+                <span class="pill">Custom</span>
+              </div>
+            </div>
+          </section>
+
+          <!-- BILLING -->
+          <section class="screen" id="billing" hidden>
+            <div class="a-panel">
+              <div class="a-settle-row">
+                <div><strong>Standard</strong><div style="font-size:12px;color:var(--ink-soft)">8 members · 1 hub · renews 12 Sep</div></div>
+                <span class="amt">£4.99/mo</span>
+              </div>
+              <div class="a-settle-row">
+                <div><strong>14 Park Street</strong><div style="font-size:12px;color:var(--ink-soft)">This hub is on the plan</div></div>
+                <span class="pill sage">Active</span>
+              </div>
+            </div>
+          </section>
+
+          <!-- ANALYTICS -->
+          <section class="screen" id="analytics" hidden>
+            <div class="a-kpis">
+              <div class="a-kpi sage"><span>You’re owed</span><strong>£18</strong><small>Jordan · Tesco</small></div>
+              <div class="a-kpi peach"><span>House fund</span><strong>£420</strong><small>£180 to collect</small></div>
+              <div class="a-kpi lilac"><span>This month</span><strong>£2,140</strong><small>of £2,400</small></div>
+              <div class="a-kpi ink"><span>Members</span><strong>3</strong><small>Park Street</small></div>
+            </div>
+            <div class="a-grid">
+              <div class="a-panel">
+                <h2>Spending this cycle</h2>
+                <p class="sub">Last six months.</p>
+                <div class="a-bars" aria-hidden="true">
+                  <i style="height:42%"></i>
+                  <i style="height:55%"></i>
+                  <i style="height:48%"></i>
+                  <i style="height:70%"></i>
+                  <i style="height:62%"></i>
+                  <i style="height:88%"></i>
+                </div>
+                <div class="a-bars lbl"><span>Mar</span><span>Apr</span><span>May</span><span>Jun</span><span>Jul</span><span>Aug</span></div>
+              </div>
+              <div class="a-panel">
+                <h2>Where it went</h2>
+                <p class="sub">This month, by category.</p>
+                <div class="a-cats">
+                  <div class="a-cat"><span>Rent</span><strong>£1,800</strong><div class="track"><i style="width:84%"></i></div></div>
+                  <div class="a-cat"><span>Utilities</span><strong>£126.20</strong><div class="track"><i style="width:18%"></i></div></div>
+                  <div class="a-cat"><span>Groceries</span><strong>£67.40</strong><div class="track"><i style="width:10%"></i></div></div>
+                  <div class="a-cat"><span>Internet</span><strong>£32.00</strong><div class="track"><i style="width:6%"></i></div></div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+
+          <!-- MEMBERS -->
+          <section class="screen" id="members" hidden>
+            <div class="a-toolbar">
+              <button class="a-btn" type="button" data-go="member-invite">Invite</button>
+            </div>
+            <div class="a-panel">
+              <div class="a-member-row">
+                <span class="avatar maya">MC</span>
+                <div class="who"><strong>Maya Chen</strong><span>You · Admin</span></div>
+                <div class="bal">Owe £42</div>
+              </div>
+              <div class="a-member-row">
+                <span class="avatar jordan">JH</span>
+                <div class="who"><strong>Jordan Hale</strong><span>Member · bins this week</span></div>
+                <div class="bal">Owes you £18</div>
+              </div>
+              <div class="a-member-row">
+                <span class="avatar alex">AR</span>
+                <div class="who"><strong>Alex Rivera</strong><span>Member · fund still due</span></div>
+                <div class="bal" style="color:var(--ink-soft)">Even</div>
+              </div>
+            </div>
+          </section>
+
+          <!-- OPERATIONS -->
+          <section class="screen" id="operations" hidden>
+            <div class="a-panel">
+              <div class="a-settle-row">
+                <span class="avatar jordan">JH</span>
+                <div><strong>Bins</strong><div style="font-size:12px;color:var(--ink-soft)">Tuesday nights · this week</div></div>
+                <span class="pill warn">Overdue</span>
+                <div class="a-choose">
+                  <button class="a-btn" type="button" data-choose aria-expanded="false" aria-haspopup="menu">
+                    Choose
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+                  </button>
+                  <div class="a-choose-menu" role="menu" hidden>
+                    <button type="button" role="menuitem" data-go="operations">Mark done</button>
+                    <button type="button" role="menuitem" data-go="notices">Nudge</button>
+                  </div>
+                </div>
+              </div>
+              <div class="a-settle-row">
+                <span class="avatar alex">AR</span>
+                <div><strong>Kitchen</strong><div style="font-size:12px;color:var(--ink-soft)">This week</div></div>
+                <span class="pill">Open</span>
+              </div>
+              <div class="a-settle-row">
+                <span class="avatar maya">MC</span>
+                <div><strong>House fund chase</strong><div style="font-size:12px;color:var(--ink-soft)">Alex’s £180</div></div>
+                <span class="pill open">Yours</span>
+              </div>
+            </div>
+          </section>
+
+          <!-- NOTES -->
+          <section class="screen" id="notes" hidden>
+            <div class="a-toolbar">
+              <div class="a-filters">
+                <button class="a-chip is-on" type="button">All</button>
+                <button class="a-chip" type="button">Pinned</button>
+              </div>
+              <button class="a-btn" type="button" data-go="note-new">Add note</button>
+            </div>
+            <div class="a-panel" data-notes-list>
+              <button class="a-item a-item-plain" type="button" data-go="note" data-note="wifi">
+                <div><strong>Wi-Fi</strong><div class="when">ParkStreet_5G · password in notes</div></div>
+              </button>
+              <button class="a-item a-item-plain" type="button" data-go="note" data-note="bins">
+                <div><strong>Bins</strong><div class="when">Black bags Tuesday · recycling Friday</div></div>
+              </button>
+              <button class="a-item a-item-plain" type="button" data-go="note" data-note="landlord">
+                <div><strong>Landlord</strong><div class="when">Priya Sharma · rent via the fund</div></div>
+              </button>
+            </div>
+          </section>
+
+          <!-- ACTIVITY -->
+          <section class="screen" id="activity" hidden>
+            <div class="a-panel">
+              <div class="a-settle-row">
+                <span class="avatar maya">MC</span>
+                <div><strong>Virgin Media</strong><div style="font-size:12px;color:var(--ink-soft)">Maya logged it</div></div>
+                <span class="amt" style="color:var(--ink-soft);font-weight:500;font-size:13px">Yesterday</span>
+              </div>
+              <div class="a-settle-row">
+                <span class="avatar jordan">JH</span>
+                <div><strong>British Gas</strong><div style="font-size:12px;color:var(--ink-soft)">Jordan paid the bill</div></div>
+                <span class="amt" style="color:var(--ink-soft);font-weight:500;font-size:13px">Tue</span>
+              </div>
+              <div class="a-settle-row">
+                <span class="avatar alex">AR</span>
+                <div><strong>Tesco</strong><div style="font-size:12px;color:var(--ink-soft)">Alex settled</div></div>
+                <span class="amt" style="color:var(--ink-soft);font-weight:500;font-size:13px">Mon</span>
+              </div>
+              <div class="a-settle-row">
+                <span class="avatar maya">MC</span>
+                <div><strong>August rent</strong><div style="font-size:12px;color:var(--ink-soft)">House fund covered it</div></div>
+                <span class="amt" style="color:var(--ink-soft);font-weight:500;font-size:13px">1 Aug</span>
+              </div>
+            </div>
+          </section>
+
+
+          <!-- HOME · EMPTY -->
+          <section class="screen" id="home-empty" hidden>
+            <div class="a-empty">
+              <h2>No communes yet.</h2>
+              <p>A hub is a house, a studio, or a trip. Create one, or join from an invite.</p>
+              <div class="a-field-row">
+                <button class="a-btn" type="button" data-go="onboard">Create a hub</button>
+                <button class="a-btn ghost" type="button" data-go="invite">I have an invite</button>
+              </div>
+            </div>
+          </section>
+
+          <!-- THIS HUB · EMPTY -->
+          <section class="screen" id="hub-empty" hidden>
+            <div class="a-cover">
+              <span class="type" data-hub-type>Household</span>
+              <h1 data-hub-name>14 Park Street</h1>
+              <p class="lede">No bills yet. Add the first one so the house has a truth.</p>
+            </div>
+            <div class="a-empty a-cover-empty">
+              <p>Rent, gas, Tesco — once something is shared, Home and Settle will have something to say.</p>
+              <button class="a-btn" type="button" data-go="add-expense">Add expense</button>
+            </div>
+          </section>
+
+          <!-- EXPENSES · EMPTY -->
+          <section class="screen" id="expenses-empty" hidden>
+            <div class="a-toolbar">
+              <button class="a-btn" type="button" data-go="add-expense">Add expense</button>
+            </div>
+            <div class="a-empty">
+              <h2>Nothing shared this cycle.</h2>
+              <p>The first bill is how the house starts telling the truth.</p>
+            </div>
+          </section>
+
+
+          <!-- SETTLE · EVEN -->
+          <section class="screen" id="settle-even" hidden>
+            <div class="a-empty">
+              <h2>You’re even.</h2>
+              <p>Studio East has nothing to send this cycle. Ink on Monday still gets logged as an expense.</p>
+              <button class="a-btn" type="button" data-hub="studio" data-go="add-expense">Log the ink</button>
+            </div>
+          </section>
+
+          <!-- SETTINGS · hard page, not a window -->
+          <section class="screen" id="settings" hidden>
+            <div class="a-set">
+              <aside class="a-set-left">
+                <div class="a-set-card">
+                  <div class="a-set-you">
+                    <span class="avatar maya">MC</span>
+                    <div class="a-set-you-copy">
+                      <button class="a-set-name" type="button" data-go="profile">
+                        Maya Chen
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                      </button>
+                      <span>maya@14park.st</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="a-set-card">
+                  <p class="a-set-plan-k">Plan</p>
+                  <h3 class="a-set-plan-name">Standard</h3>
+                  <p class="a-set-plan-lede">Renews 1 Sept 2026</p>
+                  <div class="a-set-meter" aria-hidden="true"><i style="width:38%"></i></div>
+                  <div class="a-set-meter-meta"><span>3 of 8 members</span><span>1 hub</span></div>
+                  <p class="a-set-plan-note">Park Street is the house on the plan.</p>
+                  <button class="a-btn a-btn-upgrade" type="button" data-go="billing">Upgrade</button>
+                </div>
+              </aside>
+              <div class="a-set-main">
+                <div class="a-set-group">
+                  <h3>Get more out of Commune</h3>
+                  <div class="a-set-list">
+                    <button class="a-set-row" type="button" data-go="profile">
+                      <span class="a-set-row-ic" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+                      </span>
+                      <span class="a-set-row-copy"><strong>How people pay you</strong><span>Revolut, PayPal, bank. Opens as a window.</span></span>
+                      <svg class="a-set-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg>
+                    </button>
+                    <button class="a-set-row" type="button" data-go="communes">
+                      <span class="a-set-row-ic" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 10.5 12 3l9 7.5V21a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1v-10.5z"/></svg>
+                      </span>
+                      <span class="a-set-row-copy"><strong>Places</strong><span>Switch house, studio, or trip — or create one.</span></span>
+                      <svg class="a-set-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg>
+                    </button>
+                  </div>
+                </div>
+                <div class="a-set-group">
+                  <h3>Preferences</h3>
+                  <div class="a-set-list">
+                    <div class="a-set-row">
+                      <span class="a-set-row-copy"><strong>Sidebar</strong><span>Basic is Home, This Hub, and the jumps. Advanced adds the rest.</span></span>
+                      <div class="a-seg" role="group" aria-label="Sidebar density">
+                        <button type="button" data-nav-mode="basic" class="is-on">Basic</button>
+                        <button type="button" data-nav-mode="advanced">Advanced</button>
+                      </div>
+                    </div>
+                    <div class="a-set-row">
+                      <span class="a-set-row-copy"><strong>Dark mode</strong><span>Ink canvas. Off keeps the cream paper.</span></span>
+                      <button class="a-switch" type="button" data-switch role="switch" aria-checked="false" aria-label="Dark mode"></button>
+                    </div>
+                    <div class="a-set-row">
+                      <span class="a-set-row-copy"><strong>Notices</strong><span>Bills, chores, and fund gaps.</span></span>
+                      <button class="a-switch is-on" type="button" data-switch role="switch" aria-checked="true" aria-label="Notices"></button>
+                    </div>
+                    <div class="a-set-row">
+                      <span class="a-set-row-copy"><strong>Nudge Jordan</strong><span>Quiet reminder on open shares.</span></span>
+                      <button class="a-switch is-on" type="button" data-switch role="switch" aria-checked="true" aria-label="Nudge Jordan"></button>
+                    </div>
+                    <div class="a-set-row">
+                      <span class="a-set-row-copy"><strong>Currency</strong><span>Used when a hub doesn’t pick one.</span></span>
+                      <select id="a-set-cur" aria-label="Currency">
+                        <option selected>£ GBP</option>
+                        <option>$ USD</option>
+                        <option>€ EUR</option>
+                      </select>
+                    </div>
+                    <div class="a-set-row">
+                      <span class="a-set-row-copy"><strong>Language</strong><span>The app, not the house chat.</span></span>
+                      <span class="a-set-val">English</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="a-set-group">
+                  <h3>Support &amp; legal</h3>
+                  <div class="a-set-list">
+                    <a class="a-set-row" href="https://ourcommune.io" target="_blank" rel="noreferrer">
+                      <span class="a-set-row-copy"><strong>Contact us</strong><span>ourcommune.io</span></span>
+                      <svg class="a-set-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17 17 7M8 7h9v9"/></svg>
+                    </a>
+                    <a class="a-set-row" href="https://ourcommune.io/privacy" target="_blank" rel="noreferrer">
+                      <span class="a-set-row-copy"><strong>Privacy policy</strong></span>
+                      <svg class="a-set-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17 17 7M8 7h9v9"/></svg>
+                    </a>
+                    <a class="a-set-row" href="https://ourcommune.io/terms" target="_blank" rel="noreferrer">
+                      <span class="a-set-row-copy"><strong>Terms of service</strong></span>
+                      <svg class="a-set-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17 17 7M8 7h9v9"/></svg>
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+        </div>
+      </div>
+    </div>
+
+    <nav class="a-bottom" aria-label="Phone">
+      <button type="button" data-go="home">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+        Home
+      </button>
+      <button type="button" data-go="hub">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 10.5 12 3l9 7.5V21a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1v-10.5z"/></svg>
+        Hub
+      </button>
+      <button type="button" data-go="expenses">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 8h10M7 12h6M6 4h12a1 1 0 0 1 1 1v16l-4-2-4 2-4-2-4 2V5a1 1 0 0 1 1-1z"/></svg>
+        Expenses
+      </button>
+      <button type="button" data-go="settle">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 7h10M7 12h10M7 17h6"/><path d="M17 17h4l-2 3M21 17l-2-3"/></svg>
+        Settle
+      </button>
+    </nav>
+
+    <div class="a-sheet-scrim" data-sheet-close hidden></div>
+    <div class="a-more" hidden role="dialog" aria-label="More">
+      <div class="a-more-head">
+        <div>
+          <p class="a-more-kicker">More</p>
+          <p class="a-more-lede">Notes, funds, and the rest of the house. The four tabs stay the spine.</p>
+        </div>
+        <button class="a-more-x" type="button" data-sheet-close aria-label="Close More">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
+      </div>
+      <button type="button" data-go="commune-new">
+        <span class="a-more-ic a-more-ic-dash" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+        </span>
+        <span class="a-more-copy"><strong>Create a commune</strong><span>A home, a studio, or a trip</span></span>
+        <svg class="a-more-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg>
+      </button>
+      <button type="button" data-go="communes">
+        <span class="a-more-ic" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 10.5 12 3l9 7.5V21a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1v-10.5z"/></svg>
+        </span>
+        <span class="a-more-copy"><strong>Places</strong><span>Switch house, studio, or trip</span></span>
+        <svg class="a-more-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg>
+      </button>
+      <button type="button" data-go="notes">
+        <span class="a-more-ic" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 4h9l5 5v11H6z"/><path d="M15 4v5h5"/></svg>
+        </span>
+        <span class="a-more-copy"><strong>Notes</strong><span>Wi-Fi, bins, landlord</span></span>
+        <svg class="a-more-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg>
+      </button>
+      <button type="button" data-go="funds">
+        <span class="a-more-ic" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 10h16v8H4z"/><path d="M8 10V8a4 4 0 0 1 8 0v2"/></svg>
+        </span>
+        <span class="a-more-copy"><strong>Funds</strong><span>House pot · chase Alex</span></span>
+        <svg class="a-more-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg>
+      </button>
+      <button type="button" data-go="recurring">
+        <span class="a-more-ic" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12a8 8 0 0 1 14-5l2-2v6h-6"/><path d="M20 12a8 8 0 0 1-14 5l-2 2v-6h6"/></svg>
+        </span>
+        <span class="a-more-copy"><strong>Recurring</strong><span>Open bills. Rent from the fund</span></span>
+        <svg class="a-more-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg>
+      </button>
+      <button type="button" data-go="operations">
+        <span class="a-more-ic" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3 9-9"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        </span>
+        <span class="a-more-copy"><strong>Operations</strong><span>Bins and chores</span></span>
+        <svg class="a-more-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg>
+      </button>
+      <button type="button" data-go="members">
+        <span class="a-more-ic" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="9.5" cy="7" r="3.5"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a3.5 3.5 0 0 1 0 6.74"/></svg>
+        </span>
+        <span class="a-more-copy"><strong>Members</strong><span>Who’s here this cycle</span></span>
+        <svg class="a-more-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg>
+      </button>
+      <button type="button" data-go="settings">
+        <span class="a-more-ic" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9c.3.6.9 1 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+        </span>
+        <span class="a-more-copy"><strong>You &amp; settings</strong><span>Plan, pay-me, preferences</span></span>
+        <svg class="a-more-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg>
+      </button>
+    </div>
+
+    <div class="a-windows" hidden>
+      <button class="a-window-back" type="button" data-window-close aria-label="Close"></button>
+      <div class="a-window-frame">
+        <header class="a-window-bar">
+          <h2 data-window-title>British Gas</h2>
+          <button class="a-window-x" type="button" data-window-close aria-label="Close">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg>
+          </button>
+        </header>
+        <div class="a-window-body">
+        <section class="a-window" id="notices" hidden>
+          <p class="a-window-kicker">Bell</p>
+          <button class="a-notice" type="button" data-go="expenses">
+                <span class="pill warn">Friday</span>
+                <div class="grow"><strong>British Gas</strong><div class="when">£94.20 · Jordan paid · your share open</div></div>
+              </button>
+              <button class="a-notice" type="button" data-go="operations">
+                <span class="pill warn">Overdue</span>
+                <div class="grow"><strong>Bins</strong><div class="when">Still Jordan’s Tuesday</div></div>
+              </button>
+              <button class="a-notice" type="button" data-go="funds">
+                <span class="pill open">Collect</span>
+                <div class="grow"><strong>Alex · house fund</strong><div class="when">£180 still to pay in</div></div>
+              </button>
+        </section>
+        <section class="a-window" id="add-expense" hidden>
+          <p class="a-window-kicker">Expense</p>
+          <div class="a-field">
+                <label for="a-exp-what">What</label>
+                <input id="a-exp-what" type="text" value="British Gas" />
+              </div>
+              <div class="a-field half">
+                <label for="a-exp-amt">Amount</label>
+                <input id="a-exp-amt" type="text" value="£94.20" />
+              </div>
+              <div class="a-field half">
+                <label for="a-exp-who">Paid by</label>
+                <select id="a-exp-who">
+                  <option>Jordan Hale</option>
+                  <option>Maya Chen</option>
+                  <option>Alex Rivera</option>
+                </select>
+              </div>
+              <div class="a-field">
+                <label for="a-exp-split">Split</label>
+                <select id="a-exp-split">
+                  <option>Equal · three ways</option>
+                  <option>Rent from fund</option>
+                  <option>Maya + Jordan only</option>
+                </select>
+              </div>
+              <div class="a-field-row">
+                <button class="a-btn" type="button" data-go="expense">Save</button>
+                <button class="a-btn ghost" type="button" data-window-close>Cancel</button>
+              </div>
+        </section>
+        <section class="a-window" id="expense" hidden>
+          <p class="a-window-kicker">Expense</p>
+          <div class="a-fund-hero">
+                <div>
+                  <span class="a-hero-kicker">Utilities · due Friday</span>
+                  <strong>British Gas</strong>
+                  <p>Jordan paid £94.20. Split three ways. Your share is still open.</p>
+                </div>
+                <span class="pill warn">Due Friday</span>
+              </div>
+              <div class="a-split">
+                <div class="a-split-row">
+                  <span class="avatar jordan">JH</span>
+                  <div class="grow"><strong>Jordan Hale</strong><div class="when">Paid the bill</div></div>
+                  <span class="pill settled">Paid in</span>
+                </div>
+                <div class="a-split-row">
+                  <span class="avatar maya">MC</span>
+                  <div class="grow"><strong>Maya Chen</strong><div class="when">Your share · £31.40</div></div>
+                  <span class="pill warn">Open</span>
+                </div>
+                <div class="a-split-row">
+                  <span class="avatar alex">AR</span>
+                  <div class="grow"><strong>Alex Rivera</strong><div class="when">Share · £31.40</div></div>
+                  <span class="pill open">Open</span>
+                </div>
+              </div>
+              <div class="a-field-row">
+                <div class="a-choose">
+                  <button class="a-btn" type="button" data-choose aria-expanded="false" aria-haspopup="menu">
+                    Choose
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+                  </button>
+                  <div class="a-choose-menu" role="menu" hidden>
+                    <button type="button" role="menuitem" data-go="expense-paid">Mark my share paid</button>
+                    <button type="button" role="menuitem" data-go="notices">Nudge Alex</button>
+                  </div>
+                </div>
+                <button class="a-btn ghost" type="button" data-window-close>Close</button>
+              </div>
+        </section>
+        <section class="a-window" id="expense-paid" hidden>
+          <p class="a-window-kicker">Expense</p>
+          <div class="a-fund-hero">
+                <div>
+                  <span class="a-hero-kicker">Utilities</span>
+                  <strong>British Gas</strong>
+                  <p>Your share is marked paid. Settle still has You → Jordan if you net Tesco.</p>
+                </div>
+                <span class="pill settled">You paid</span>
+              </div>
+              <div class="a-field-row">
+                <button class="a-btn" type="button" data-window-close data-go="settle">Open settlement</button>
+                <button class="a-btn ghost" type="button" data-window-close>Close</button>
+              </div>
+        </section>
+        <section class="a-window" id="commune-new" hidden>
+          <p class="a-window-kicker">Places</p>
+          <div class="a-field">
+                <label for="a-new-name">Name</label>
+                <input id="a-new-name" type="text" value="Studio East" />
+              </div>
+              <div class="a-field half">
+                <label for="a-new-type">Type</label>
+                <select id="a-new-type">
+                  <option>Household</option>
+                  <option selected>Workspace</option>
+                  <option>Trip</option>
+                </select>
+              </div>
+              <div class="a-field half">
+                <label for="a-new-cur">Currency</label>
+                <select id="a-new-cur">
+                  <option selected>£ GBP</option>
+                  <option>$ USD</option>
+                  <option>€ EUR</option>
+                </select>
+              </div>
+              <div class="a-field-row">
+                <button class="a-btn" type="button" data-go="hub-empty">Create</button>
+                <button class="a-btn ghost" type="button" data-window-close>Cancel</button>
+              </div>
+        </section>
+        <section class="a-window" id="member-invite" hidden>
+          <p class="a-window-kicker">Members</p>
+          <div class="a-field">
+                <label for="a-inv-email">Email</label>
+                <input id="a-inv-email" type="email" placeholder="name@email.com" value="ness@lisbon.trip" />
+              </div>
+              <div class="a-field">
+                <label for="a-inv-role">Role</label>
+                <select id="a-inv-role">
+                  <option selected>Member</option>
+                  <option>Admin</option>
+                </select>
+              </div>
+              <div class="a-field-row">
+                <button class="a-btn" type="button" data-go="members">Send invite</button>
+                <button class="a-btn ghost" type="button" data-window-close>Cancel</button>
+              </div>
+        </section>
+        <section class="a-window" id="profile" hidden>
+          <p class="a-window-kicker">You</p>
+          <div class="a-member-row">
+              <span class="avatar maya">MC</span>
+              <div class="who"><strong>Maya Chen</strong><span>maya@14park.st</span></div>
+              <span class="pill sage">You</span>
+            </div>
+            <p class="a-window-note">People settle you through these. Tap Pay on Settle and they open with the amount filled.</p>
+            <div class="a-settle-row">
+              <div><strong>Revolut</strong><div class="when">@mayachen</div></div>
+              <span class="pill sage">Default</span>
+            </div>
+            <div class="a-settle-row">
+              <div><strong>PayPal</strong><div class="when">paypal.me/mayachen</div></div>
+              <button class="a-btn ghost" type="button" data-go="pay-method">Edit</button>
+            </div>
+            <div class="a-settle-row">
+              <div><strong>Monzo</strong><div class="when">Not added</div></div>
+              <button class="a-btn ghost" type="button" data-go="pay-method">Add</button>
+            </div>
+            <div class="a-field-row">
+              <button class="a-btn" type="button" data-go="pay-method">Add a pay link</button>
+            </div>
+            <div class="a-settle-row">
+              <div><strong>Plan</strong><div class="when">Standard · 8 members · 1 hub</div></div>
+              <button class="a-btn ghost" type="button" data-go="billing">Billing</button>
+            </div>
+            <div class="a-settle-row">
+              <div><strong>Settings</strong><div class="when">Currency, notices, sidebar</div></div>
+              <button class="a-btn ghost" type="button" data-go="settings">Open</button>
+            </div>
+        </section>
+        <section class="a-window" id="breakdown" hidden>
+          <p class="a-window-kicker">Settle</p>
+          <div class="a-toolbar">
+              <button class="a-btn" type="button" data-window-close data-go="settle">Open settlement</button>
+            </div>
+            <div class="a-card a-owes">
+              <button class="a-move" type="button" data-go="settle">
+                <div class="a-arrow">→</div>
+                <div>
+                  <div class="names">You → Jordan</div>
+                  <div class="why">Gas share · or £24 if you net Tesco</div>
+                </div>
+                <div class="amt">£42</div>
+              </button>
+              <button class="a-move" type="button" data-go="settle">
+                <div class="a-arrow">→</div>
+                <div>
+                  <div class="names">Jordan → You</div>
+                  <div class="why">Tesco extras from Monday</div>
+                </div>
+                <div class="amt">£18</div>
+              </button>
+              <button class="a-move is-even" type="button" data-go="settle">
+                <div class="a-arrow" style="background:#f0ece4">↔</div>
+                <div>
+                  <div class="names">Alex ↔ You</div>
+                  <div class="why">Even on expenses · still £180 for the fund</div>
+                </div>
+                <div class="amt" style="color:var(--ink-soft)">£0</div>
+              </button>
+            </div>
+        </section>
+        <section class="a-window" id="pay" hidden>
+          <p class="a-window-kicker">Settle</p>
+          <div class="a-pay-hero">
+              <span class="a-hero-kicker">You → Jordan</span>
+              <strong>£42.00</strong>
+              <p>Opens his pay link with the amount filled. Commune does not take the money — Revolut, PayPal, or the bank does.</p>
+            </div>
+            <a class="a-pay-link" href="https://revolut.me/jordanhale/42.00" target="_blank" rel="noreferrer">
+              <strong>Revolut</strong>
+              <span>@jordanhale · £42.00</span>
+            </a>
+            <a class="a-pay-link" href="https://paypal.me/jordanhale/42.00" target="_blank" rel="noreferrer">
+              <strong>PayPal</strong>
+              <span>paypal.me/jordanhale/42.00</span>
+            </a>
+            <div class="a-settle-row">
+              <div><strong>Bank transfer</strong><div class="when">Sort 04-00-04 · 12345678</div></div>
+              <button class="a-btn ghost" type="button">Copy</button>
+            </div>
+            <div class="a-field-row">
+              <button class="a-btn" type="button" data-go="expense-paid">I’ve paid</button>
+              <button class="a-btn ghost" type="button" data-window-close>Not now</button>
+            </div>
+        </section>
+        <section class="a-window" id="pay-method" hidden>
+          <p class="a-window-kicker">You</p>
+          <div class="a-field">
+              <label for="a-pm-prov">How people pay you</label>
+              <select id="a-pm-prov">
+                <option selected>Revolut</option>
+                <option>PayPal</option>
+                <option>Monzo</option>
+                <option>Bank transfer</option>
+              </select>
+            </div>
+            <div class="a-field">
+              <label for="a-pm-link">Username or link</label>
+              <input id="a-pm-link" type="text" value="@mayachen" />
+            </div>
+            <div class="a-field-row">
+              <button class="a-btn" type="button" data-go="profile">Save</button>
+              <button class="a-btn ghost" type="button" data-window-close>Cancel</button>
+            </div>
+        </section>
+        <section class="a-window" id="note" hidden>
+          <div class="a-fund-hero">
+            <div>
+              <span class="a-hero-kicker" data-note-kicker>Pinned · everyone</span>
+              <strong data-note-title>Wi-Fi</strong>
+              <p data-note-lede>ParkStreet_5G</p>
+            </div>
+            <span class="pill sage" data-note-pill>Wi-Fi</span>
+          </div>
+          <div class="a-note-facts" data-note-facts>
+            <div class="a-note-fact"><span>Network</span><strong>ParkStreet_5G</strong></div>
+            <div class="a-note-fact"><span>Password</span><strong>park14sage</strong></div>
+            <div class="a-note-fact"><span>Who can see</span><strong>Everyone</strong></div>
+          </div>
+          <p class="a-window-note" data-note-body>The house network. Guest wifi is a separate note if people ask.</p>
+          <div class="a-field-row">
+            <button class="a-btn" type="button" data-go="note-new">Add another</button>
+            <button class="a-btn ghost" type="button" data-window-close>Close</button>
+          </div>
+        </section>
+        <section class="a-window" id="note-new" hidden>
+          <p class="a-window-kicker">Note</p>
+          <div class="a-field">
+            <label for="a-note-title">Title <span class="need">Required</span></label>
+            <input id="a-note-title" type="text" value="Guest wifi" />
+          </div>
+          <div class="a-field">
+            <label>Type <span class="need">Required</span></label>
+            <input type="hidden" id="a-note-type" value="wifi" />
+            <div class="a-note-types" data-note-type-group role="group" aria-label="Type">
+              <button type="button" data-note-type="wifi" class="is-on">Wi-Fi</button>
+              <button type="button" data-note-type="bins">Bins</button>
+              <button type="button" data-note-type="keys">Keys / door</button>
+              <button type="button" data-note-type="landlord">Landlord</button>
+              <button type="button" data-note-type="emergency">Emergency</button>
+              <button type="button" data-note-type="rules">House rules</button>
+              <button type="button" data-note-type="other">Other</button>
+            </div>
+            <p class="hint">Type only changes the extras. The note below stays, so you can keep writing.</p>
+          </div>
+          <div class="a-field half" data-note-extra="wifi">
+            <label for="a-note-net">Network</label>
+            <input id="a-note-net" type="text" value="ParkStreet_Guest" placeholder="ParkStreet_5G" />
+          </div>
+          <div class="a-field half" data-note-extra="wifi">
+            <label for="a-note-pass">Password</label>
+            <input id="a-note-pass" type="text" value="sage14guest" placeholder="Password" />
+          </div>
+          <div class="a-field" data-note-extra="keys" hidden>
+            <label for="a-note-code">Door code</label>
+            <input id="a-note-code" type="text" placeholder="4821" />
+          </div>
+          <div class="a-field half" data-note-extra="bins" hidden>
+            <label for="a-note-day">Collection</label>
+            <input id="a-note-day" type="text" placeholder="Black bags Tuesday" />
+          </div>
+          <div class="a-field half" data-note-extra="bins" hidden>
+            <label for="a-note-where">Where they go</label>
+            <input id="a-note-where" type="text" placeholder="Alley behind the kitchen" />
+          </div>
+          <div class="a-field half" data-note-extra="landlord emergency" hidden>
+            <label for="a-note-phone">Phone</label>
+            <input id="a-note-phone" type="tel" placeholder="07700 900 123" />
+          </div>
+          <div class="a-field half" data-note-extra="landlord" hidden>
+            <label for="a-note-email">Email</label>
+            <input id="a-note-email" type="email" placeholder="priya@sharma.rent" />
+          </div>
+          <div class="a-field" data-note-extra="emergency" hidden>
+            <label for="a-note-contact">Who to call</label>
+            <input id="a-note-contact" type="text" placeholder="Gas emergency · 0800 111 999" />
+          </div>
+          <div class="a-field" data-note-extra="other rules" hidden>
+            <label for="a-note-extra">Detail</label>
+            <input id="a-note-extra" type="text" placeholder="Quiet hours, shoes, guests — whatever belongs with this type" />
+          </div>
+          <div class="a-field">
+            <label for="a-note-body">Note <span class="need">Required</span></label>
+            <textarea id="a-note-body" rows="4">Same SSID as the house. Password lives on the router card in the kitchen drawer.</textarea>
+            <p class="hint">Always here. Add the story after the type extras.</p>
+          </div>
+          <div class="a-field half">
+            <label>Pin on This Hub</label>
+            <div class="a-seg" data-note-pin role="group" aria-label="Pin on This Hub">
+              <button type="button" data-seg="off">Off</button>
+              <button type="button" data-seg="on" class="is-on">Pin</button>
+            </div>
+            <p class="hint">Pinned notes sit on This Hub under the house, in writing.</p>
+          </div>
+          <div class="a-field half">
+            <label>Who should know</label>
+            <div class="a-seg" data-note-who role="group" aria-label="Who should know">
+              <button type="button" data-seg="everyone" class="is-on">Everyone</button>
+              <button type="button" data-seg="admins">Admins</button>
+            </div>
+            <p class="hint">Admins-only for door codes and landlord numbers, if you want.</p>
+          </div>
+          <div class="a-field-row">
+            <button class="a-btn" type="button" data-note-save data-window-close data-go="notes">Save</button>
+            <button class="a-btn ghost" type="button" data-window-close>Cancel</button>
+          </div>
+        </section>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      window.COMMUNE_TITLES = {
+        home: "Home",
+        "home-empty": "Home",
+        "home-inbox": "Home",
+        "home-focus": "Home",
+        "home-places": "Places",
+        communes: "Places",
+        "commune-new": "New commune",
+        hub: "This Hub",
+        "hub-empty": "This Hub",
+        expenses: "Expenses",
+        "expenses-empty": "Expenses",
+        expense: "British Gas",
+        "expense-paid": "British Gas",
+        settle: "Settle",
+        "settle-even": "Settle",
+        recurring: "Recurring",
+        funds: "Funds",
+        templates: "Templates",
+        billing: "Billing",
+        analytics: "Analytics",
+        breakdown: "Breakdown",
+        members: "Members",
+        operations: "Operations",
+        notes: "Notes",
+        note: "Wi-Fi",
+        "note-new": "Add note",
+        activity: "Activity",
+        notices: "Notices",
+        "add-expense": "Add expense",
+        "member-invite": "Invite",
+        pay: "Pay Jordan",
+        "pay-method": "Pay me",
+        login: "Log in",
+        signup: "Sign up",
+        invite: "Invite",
+        onboard: "Create a hub",
+        profile: "Profile",
+        settings: "Settings"
+      };
+      window.COMMUNE_LEDES = {
+        home: "3 spaces · you owe £42 · you’re owed £64",
+        "home-empty": "Create a hub, or join one.",
+        "home-inbox": "Six things across three spaces.",
+        "home-focus": "3 spaces · you owe £42 · you’re owed £64",
+        "home-places": "Park Street still needs you. Lisbon hasn’t paid you back.",
+        communes: "Park Street still needs you. Lisbon hasn’t paid you back.",
+        "commune-new": "A home, a studio, or a trip.",
+        "hub-empty": "No bills yet.",
+        expenses: "Everything the house has shared this cycle.",
+        "expenses-empty": "Add the first bill.",
+        expense: "Jordan paid. Your share is open.",
+        "expense-paid": "Your share is marked paid.",
+        settle: "Two transfers get the house to zero this month.",
+        "settle-even": "Nothing to send this cycle.",
+        recurring: "Open bills. Rent from the fund.",
+        funds: "August rent already left. £180 still from Alex.",
+        templates: "Defaults for this house. Override on any expense.",
+        billing: "This workspace, not the house fund.",
+        analytics: "This month against the house budget.",
+        breakdown: "The ledger view of who owes whom.",
+        members: "Balances for this cycle, not personalities.",
+        operations: "Bins and chores. Wi-Fi lives in Notes.",
+        notes: "Wi-Fi, bin day, landlord. Add what the house keeps forgetting.",
+        note: "Pinned · everyone",
+        "note-new": "Type first. Extras change. The note itself stays so you can keep writing.",
+        activity: "The log, without the group chat.",
+        notices: "Gas, bins, and Alex’s share of the fund.",
+        "add-expense": "Split three ways unless you pick a template.",
+        "member-invite": "They’ll get a link to this hub.",
+        pay: "Revolut, PayPal, or his bank. Commune does not take a cut.",
+        "pay-method": "A username they can tap from Settle.",
+        profile: "You · Admin at 14 Park Street.",
+        settings: "You, the house, and how this app behaves."
+      };
+    </script>
+    <script src="../shared.js?v=set2"></script>
+  </body>
+</html>

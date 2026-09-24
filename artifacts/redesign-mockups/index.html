@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Commune — redesign directions</title>
+    <link rel="icon" href="./favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Inter:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./shared.css?v=overview" />
+    <link rel="stylesheet" href="./gallery.css" />
+  </head>
+  <body class="gallery">
+    <header class="g-nav">
+      <div class="g-brand">
+        <span class="logo-mark" aria-hidden="true">
+          <svg viewBox="0 0 512 512" fill="none">
+            <path
+              d="M256 56C145.5 56 56 145.5 56 256s89.5 200 200 200c40.3 0 77.8-11.9 109.2-32.4 7.2-4.7 8.4-15.2 1.8-21.2l-3.4-3.1c-5.3-4.8-13.1-4.2-19 0.6C320.5 418.4 289.4 428 256 428c-95 0-172-77-172-172s77-172 172-172c33.4 0 64.5 9.6 90.6 26.1 5.9 3.7 13.7 4.3 19-0.6l3.4-3.1c6.6-6 5.4-16.5-1.8-21.2C335.8 67.9 296.3 56 256 56z"
+              fill="#f5f1ea"
+            />
+          </svg>
+        </span>
+        <span class="g-wordmark">COMMUNE</span>
+      </div>
+      <p class="g-nav-note">Design preview · same household in every direction</p>
+    </header>
+
+    <main class="g-main">
+      <section class="g-hero">
+        <p class="g-eyebrow">The rebuild</p>
+        <h1>Clean app, this look, these screens.</h1>
+        <p class="g-lede">
+          Direction A is the shell. The rebuild map is every screen that shell
+          still needs — login through settle — and what we are not bringing
+          back from the old app.
+        </p>
+        <p style="margin-top:20px">
+          <a class="g-btn" href="./rebuild/">Open the screen map</a>
+          <a class="g-btn" href="./a-refined/" style="margin-left:8px;background:#2d6a4f">Open A</a>
+          <a class="g-btn" href="./ops-options/" style="margin-left:8px;background:#2d6a4f">Operations options</a>
+          <a class="g-btn" href="./ops-options2/?p=house" style="margin-left:8px;background:#2d6a4f">Operations · House</a>
+          <a class="g-btn" href="./ops-production/" style="margin-left:8px;background:#2d6a4f">Operations · Production</a>
+          <a class="g-btn" href="./phone/" style="margin-left:8px;background:#1a1e2b">Open phone</a>
+          <a class="g-btn" href="./phone-expo/" style="margin-left:8px;background:#1a1e2b">Open Expo phone</a>
+        </p>
+      </section>
+
+      <article class="g-card g-featured">
+        <a class="g-thumb g-thumb-a" href="./a-refined/">
+          <div class="mini-app">
+            <div class="mini-side"></div>
+            <div class="mini-body">
+              <div class="mini-hero"></div>
+              <div class="mini-kpis">
+                <span></span><span></span><span></span>
+              </div>
+            </div>
+          </div>
+        </a>
+        <div class="g-card-body">
+          <p class="g-kicker">The look we ship</p>
+          <h2>A · Home is Focus, switcher is Places</h2>
+          <p>
+            Dark sidebar, cream canvas. Home is the three communes and what
+            needs Maya. Places is the switcher. This Hub is the house she
+            picked. Walk login → hub → expense → settle on the rebuild map
+            before anything is built in code.
+          </p>
+          <ul>
+            <li>Top bar = identity · page = work</li>
+            <li>Basic sidebar by default · Advanced in Settings</li>
+            <li>Finance is the spine · types only change defaults</li>
+          </ul>
+          <a class="g-btn" href="./a-refined/" style="background:#2d6a4f">Open A</a>
+          <a class="g-btn" href="./phone/" style="margin-top:8px;background:#1a1e2b">Open phone mockups</a>
+          <a class="g-btn" href="./phone-expo/" style="margin-top:8px;background:#1a1e2b">Open Expo phones</a>
+          <a class="g-btn" href="./rebuild/" style="margin-top:8px">Open the screen map</a>
+        </div>
+      </article>
+
+      <article class="g-card g-featured" style="margin-top:20px">
+        <a class="g-thumb g-thumb-a" href="./ops-options/">
+          <div class="mini-app">
+            <div class="mini-side"></div>
+            <div class="mini-body">
+              <div class="mini-kpis">
+                <span></span><span></span><span></span>
+              </div>
+              <div class="mini-row"></div>
+            </div>
+          </div>
+        </a>
+        <div class="g-card-body">
+          <p class="g-kicker">Choose</p>
+          <h2>Operations · calendars and the old board</h2>
+          <p>
+            The shipped week is too tight. These mockups keep a real calendar
+            — month, 3-day, wide week — and the old Operations board: rotation,
+            checklists, starter pack, escalation.
+          </p>
+          <ul>
+            <li>Calendars for plumber, landlord, parcel</li>
+            <li>Board for who does what, and what comes next</li>
+            <li>Same house: 14 Park Street</li>
+          </ul>
+          <a class="g-btn" href="./ops-options/" style="background:#2d6a4f">Open the options</a>
+          <a class="g-btn" href="./ops-options/?view=month" style="margin-top:8px">Open the month</a>
+          <a class="g-btn" href="./ops-options/?view=board" style="margin-top:8px">Open the old board</a>
+        </div>
+      </article>
+
+      <article class="g-card g-featured" style="margin-top:20px">
+        <a class="g-thumb g-thumb-a" href="./ops-options2/">
+          <div class="mini-app">
+            <div class="mini-side"></div>
+            <div class="mini-body">
+              <div class="mini-hero"></div>
+              <div class="mini-kpis">
+                <span></span><span></span><span></span>
+              </div>
+            </div>
+          </div>
+        </a>
+        <div class="g-card-body">
+          <p class="g-kicker">Combine</p>
+          <h2>Operations · four live products</h2>
+          <p>
+            House is the quieter page: late once, you’re clear, then the
+            week. Pulse, Stretch, and Map still keep the collage. Same store.
+            Complete bins and the rotation walks.
+          </p>
+          <ul>
+            <li>House is the one to ship: week, people, month as cuts</li>
+            <li>Pulse / Stretch / Map are the louder calendars</li>
+            <li>Same house: 14 Park Street</li>
+          </ul>
+          <a class="g-btn" href="./ops-options2/" style="background:#2d6a4f">Open the products</a>
+          <a class="g-btn" href="./ops-options2/?p=house" style="margin-top:8px">Open House</a>
+          <a class="g-btn" href="./ops-options2/?p=pulse" style="margin-top:8px">Open Pulse</a>
+          <a class="g-btn" href="./ops-options2/?p=stretch" style="margin-top:8px">Open Stretch</a>
+          <a class="g-btn" href="./ops-options2/?p=map" style="margin-top:8px">Open Map</a>
+        </div>
+      </article>
+
+      <article class="g-card g-featured" style="margin-top:20px">
+        <a class="g-thumb g-thumb-a" href="./ops-production/">
+          <div class="mini-app">
+            <div class="mini-side"></div>
+            <div class="mini-body">
+              <div class="mini-hero"></div>
+              <div class="mini-kpis">
+                <span></span><span></span><span></span>
+              </div>
+            </div>
+          </div>
+        </a>
+        <div class="g-card-body">
+          <p class="g-kicker">In the app now</p>
+          <h2>Operations · Production</h2>
+          <p>
+            The Codex cut is the Operations section: late once, you’re
+            clear, then the week as a list. People and month as cuts.
+            Done · Alex walks the bins. Open it in the app on :3000.
+          </p>
+          <ul>
+            <li>Week, People, and Month on one page</li>
+            <li>Done · Alex hands bins to next Tuesday</li>
+            <li>Month is tiles, not a black grid</li>
+          </ul>
+          <a class="g-btn" href="./ops-production/" style="background:#2d6a4f">Open Production</a>
+          <a class="g-btn" href="./ops-options2/?p=house" style="margin-top:8px">Compare House</a>
+        </div>
+      </article>
+
+      <section class="g-grid">
+        <article class="g-card">
+          <a class="g-thumb g-thumb-d" href="./d-tight/">
+            <div class="mini-app">
+              <div class="mini-side"></div>
+              <div class="mini-body">
+                <div class="mini-cover" style="background:linear-gradient(135deg,#1a1e2e,#2d6a4f)"></div>
+                <div class="mini-kpis">
+                  <span style="grid-column:1/-1;background:#fff;border:1px solid rgba(23,27,36,.08)"></span>
+                </div>
+              </div>
+            </div>
+          </a>
+          <div class="g-card-body">
+            <p class="g-kicker">Earlier mix</p>
+            <h2>D · Navy chrome, hub as home</h2>
+            <p>
+              The mix that got us here. Left as-is. A is the look we ship;
+              don’t reopen D until A is done.
+            </p>
+            <ul>
+              <li>From A — navy chrome, numbers first</li>
+              <li>From B — the hub is home</li>
+              <li>From C — calm copy, one balance block</li>
+            </ul>
+            <a class="g-btn" href="./d-tight/">Open D Home</a>
+            <a class="g-btn" href="./d-hybrid/" style="margin-top:8px">Open stacked Home</a>
+          </div>
+        </article>
+
+        <article class="g-card">
+          <a class="g-thumb g-thumb-a" href="./a-quiet-nav/">
+            <div class="mini-app">
+              <div class="mini-side"></div>
+              <div class="mini-body">
+                <div class="mini-hero"></div>
+                <div class="mini-kpis">
+                  <span></span><span></span>
+                </div>
+              </div>
+            </div>
+          </a>
+          <div class="g-card-body">
+            <p class="g-kicker">Same A, quieter nav</p>
+            <h2>A · Basic sidebar</h2>
+            <p>
+              Quiet nav is no longer a second demo. On A, Settings has Basic /
+              Advanced. Basic is Home, This Hub, then Expenses, Settle,
+              Recurring, Funds, Notes, Operations. Advanced is the full Money /
+              Insights / People sitemap.
+            </p>
+            <ul>
+              <li>Default is Basic</li>
+              <li>Advanced is an option, not a second product</li>
+              <li>Maya’s avatar and Settings still open the rest</li>
+            </ul>
+            <a class="g-btn" href="./a-refined/?nav=basic">Open A · Basic</a>
+            <a class="g-btn" href="./a-refined/?nav=advanced" style="margin-top:8px">Open A · Advanced</a>
+          </div>
+        </article>
+
+        <article class="g-card">
+          <a class="g-thumb g-thumb-b" href="./b-hub-first/">
+            <div class="mini-app">
+              <div class="mini-side mini-side-warm"></div>
+              <div class="mini-body">
+                <div class="mini-cover"></div>
+                <div class="mini-row"></div>
+              </div>
+            </div>
+          </a>
+          <div class="g-card-body">
+            <p class="g-kicker">Vision-aligned</p>
+            <h2>B · Hub First</h2>
+            <p>
+              The group hub is home. First viewport answers who this space is,
+              who’s in it, what you owe, and what needs attention — a place, not
+              an admin panel.
+            </p>
+            <ul>
+              <li>14 Park Street is the product</li>
+              <li>Cover, members, balance in one glance</li>
+              <li>Type colour as identity, not decoration</li>
+            </ul>
+            <a class="g-btn" href="./b-hub-first/">Open direction B</a>
+          </div>
+        </article>
+
+        <article class="g-card">
+          <a class="g-thumb g-thumb-c" href="./c-editorial/">
+            <div class="mini-app mini-app-c">
+              <div class="mini-top"></div>
+              <div class="mini-body">
+                <div class="mini-serif"></div>
+                <div class="mini-ink"></div>
+              </div>
+            </div>
+          </a>
+          <div class="g-card-body">
+            <p class="g-kicker">Matches the landing</p>
+            <h2>C · Editorial Calm</h2>
+            <p>
+              Bring the pitch-deck serif and landing cream into the app. Light
+              chrome, one strong balance block, settlement as a clear list —
+              the product looking like the brand already promised.
+            </p>
+            <ul>
+              <li>DM Serif titles, airy cream</li>
+              <li>No heavy navy sidebar</li>
+              <li>Jordan → Maya £18, plainly</li>
+            </ul>
+            <a class="g-btn" href="./c-editorial/">Open direction C</a>
+          </div>
+        </article>
+      </section>
+
+      <section class="g-same">
+        <h2>Held constant</h2>
+        <div class="g-same-grid">
+          <div>
+            <h3>Household</h3>
+            <p>14 Park Street · Maya, Jordan, Alex · August cycle</p>
+          </div>
+          <div>
+            <h3>Your position</h3>
+            <p>You owe £42.00 · Jordan still owes you £18 · 2 open bills</p>
+          </div>
+          <div>
+            <h3>Brand</h3>
+            <p>Sage #2d6a4f · cream paper · navy · serif C mark</p>
+          </div>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

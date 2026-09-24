@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Rebuild map — Commune</title>
+    <link rel="icon" href="../favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="../shared.css?v=map" />
+    <link rel="stylesheet" href="./styles.css?v=win" />
+  </head>
+  <body class="r-body">
+    <header class="r-nav">
+      <a class="g-brand" href="../" style="display:flex;align-items:center;gap:10px;text-decoration:none">
+        <img src="../logo.png" width="28" height="28" alt="" style="border-radius:6px" />
+        <span class="g-wordmark">COMMUNE</span>
+      </a>
+      <a class="r-nav-open" href="../phone/">Phone</a>
+      <a class="r-nav-open" href="../phone-expo/">Expo</a>
+      <a class="r-nav-open" href="../a-refined/">Open A</a>
+    </header>
+
+    <main class="r-main">
+      <section class="r-hero">
+        <p class="g-eyebrow">The rebuild</p>
+        <h1>Every screen the clean app needs.</h1>
+        <p>
+          Direction A is the look. Places are pages. Acts are windows over
+          the place you were already in. Sage ships. Grey waits. Red stays
+          in the old Mantine app — we are not rebuilding in Mantine.
+        </p>
+      </section>
+
+      <section class="r-walk">
+        <div>
+          <h2>Birth</h2>
+          <p>A person with no house yet.</p>
+          <ol>
+            <li><a href="../a-refined/?screen=signup">Sign up</a></li>
+            <li><a href="../a-refined/?screen=onboard">Create a hub</a></li>
+            <li><a href="../a-refined/?screen=hub-empty">Empty hub</a></li>
+            <li><a href="../a-refined/?screen=add-expense">First expense</a></li>
+            <li><a href="../a-refined/?screen=expense">The bill</a></li>
+          </ol>
+        </div>
+        <div>
+          <h2>The week</h2>
+          <p>Maya already lives here.</p>
+          <ol>
+            <li><a href="../a-refined/?screen=login">Login</a></li>
+            <li><a href="../a-refined/?screen=home">Home</a></li>
+            <li><a href="../a-refined/?screen=hub">This Hub</a></li>
+            <li><a href="../a-refined/?screen=expense">British Gas</a></li>
+            <li><a href="../a-refined/?screen=settle">Settle</a></li>
+          </ol>
+        </div>
+      </section>
+
+      <div class="r-legend">
+        <span><i class="r-dot"></i> In the clean app</span>
+        <span><i class="r-dot later"></i> Later</span>
+        <span><i class="r-dot kill"></i> Don’t rebuild</span>
+      </div>
+
+      <section class="r-group">
+        <h2>Pages vs windows</h2>
+        <p>A page is a place. A window is an object or an act. Don’t mint a new URL for “pay Jordan”.</p>
+        <div class="r-list">
+          <div class="r-row">
+            <i class="r-dot"></i>
+            <div><strong>Pages</strong><small>Login / signup / invite. Home, This Hub, Expenses, Settle, Recurring, Funds, Notes, Operations, Places, Settings.</small></div>
+            <span class="r-tag">Place</span>
+          </div>
+          <a class="r-row" href="../a-refined/?screen=expense">
+            <i class="r-dot"></i>
+            <div><strong>Windows</strong><small>This bill, add expense, add note, pay Jordan, notices, invite, new commune, profile, breakdown. Settings is a page now.</small></div>
+            <span class="r-tag">Open</span>
+          </a>
+          <a class="r-row" href="../phone/">
+            <i class="r-dot"></i>
+            <div><strong>Phone · A</strong><small>Keep this. Four tabs: Home, Hub, Expenses, Settle. Hamburger opens More as an Expo sheet. You is the avatar.</small></div>
+            <span class="r-tag">Phone</span>
+          </a>
+          <a class="r-row" href="../phone-expo/">
+            <i class="r-dot"></i>
+            <div><strong>Phone · Expo</strong><small>Expo chrome (top bar, hamburger, FAB, More) with A’s product: all-hubs Home, This Hub, Expenses, Settle, Settings as a page. Mapping that bar onto A’s website tabs can wait.</small></div>
+            <span class="r-tag">Phone</span>
+          </a>
+        </div>
+      </section>
+
+      <section class="r-group">
+        <h2>Birth</h2>
+        <p>Get a person in. No house exists until this is done.</p>
+        <div class="r-list">
+          <a class="r-row" href="../a-refined/?screen=login">
+            <i class="r-dot"></i>
+            <div><strong>Login</strong><small>Email, password, Google. Returning Maya lands on Home.</small></div>
+            <span class="r-tag">Open</span>
+          </a>
+          <a class="r-row" href="../a-refined/?screen=signup">
+            <i class="r-dot"></i>
+            <div><strong>Sign up</strong><small>Name, email, password. Then create a hub or accept an invite.</small></div>
+            <span class="r-tag">Open</span>
+          </a>
+          <a class="r-row" href="../a-refined/?screen=invite">
+            <i class="r-dot"></i>
+            <div><strong>Invite link</strong><small>Jordan invited you to 14 Park Street. Join, or sign in first.</small></div>
+            <span class="r-tag">Open</span>
+          </a>
+          <a class="r-row" href="../a-refined/?screen=onboard">
+            <i class="r-dot"></i>
+            <div><strong>Create a hub</strong><small>Name, type, currency. Household, workspace, or trip.</small></div>
+            <span class="r-tag">Open</span>
+          </a>
+          <a class="r-row" href="../a-refined/?screen=home-empty">
+            <i class="r-dot"></i>
+            <div><strong>Home · empty</strong><small>No communes yet. Create one, or wait on an invite.</small></div>
+            <span class="r-tag">Open</span>
+          </a>
+        </div>
+      </section>
+
+      <section class="r-group">
+        <h2>Live in a hub</h2>
+        <p>The week Maya already has. This is the shell we designed.</p>
+        <div class="r-list">
+          <a class="r-row" href="../a-refined/?screen=home">
+            <i class="r-dot"></i>
+            <div><strong>Home</strong><small>All hubs. What needs you. Not Park Street’s money page.</small></div>
+            <span class="r-tag">Open</span>
+          </a>
+          <a class="r-row" href="../a-refined/?screen=communes">
+            <i class="r-dot"></i>
+            <div><strong>Places</strong><small>Switcher. Pick a space, land in that hub.</small></div>
+            <span class="r-tag">Open</span>
+          </a>
+          <a class="r-row" href="../a-refined/?screen=commune-new">
+            <i class="r-dot"></i>
+            <div><strong>New commune</strong><small>Same create fields, from Places, once you already have a house.</small></div>
+            <span class="r-tag">Open</span>
+          </a>
+          <a class="r-row" href="../a-refined/?screen=hub">
+            <i class="r-dot"></i>
+            <div><strong>This Hub</strong><small>Cover, you owe, right now, jumps. The house as a place.</small></div>
+            <span class="r-tag">Open</span>
+          </a>
+          <a class="r-row" href="../a-refined/?screen=hub-empty">
+            <i class="r-dot"></i>
+            <div><strong>This Hub · empty</strong><small>New house. No bills yet. Add the first expense.</small></div>
+            <span class="r-tag">Open</span>
+          </a>
+          <a class="r-row" href="../a-refined/?screen=expenses">
+            <i class="r-dot"></i>
+            <div><strong>Expenses</strong><small>The ledger. Open a row into the expense itself.</small></div>
+            <span class="r-tag">Open</span>
+          </a>
+          <a class="r-row" href="../a-refined/?screen=expenses-empty">
+            <i class="r-dot"></i>
+            <div><strong>Expenses · empty</strong><small>First bill CTA. Not a blank table.</small></div>
+            <span class="r-tag">Open</span>
+          </a>
+          <a class="r-row" href="../a-refined/?screen=expense">
+            <i class="r-dot"></i>
+            <div><strong>Expense</strong><small>Window over the list. Split, your share, mark paid, nudge.</small></div>
+            <span class="r-tag">Window</span>
+          </a>
+          <a class="r-row" href="../a-refined/?screen=expense-paid">
+            <i class="r-dot"></i>
+            <div><strong>Expense · paid</strong><small>Share marked. Next is Settle, or back to the list.</small></div>
+            <span class="r-tag">Open</span>
+          </a>
+          <a class="r-row" href="../a-refined/?screen=add-expense">
+            <i class="r-dot"></i>
+            <div><strong>Add expense</strong><small>Window. What, amount, who paid, split. Save opens the bill.</small></div>
+            <span class="r-tag">Window</span>
+          </a>
+          <a class="r-row" href="../a-refined/?screen=pay">
+            <i class="r-dot"></i>
+            <div><strong>Pay</strong><small>Window on Settle. Revolut, PayPal.me, bank. Commune does not take a cut.</small></div>
+            <span class="r-tag">Window</span>
+          </a>
+          <a class="r-row" href="../a-refined/?screen=settle">
+            <i class="r-dot"></i>
+            <div><strong>Settle</strong><small>You → Jordan. The verb. Mark paid lives here too.</small></div>
+            <span class="r-tag">Open</span>
+          </a>
+          <a class="r-row" href="../a-refined/?screen=settle-even">
+            <i class="r-dot"></i>
+            <div><strong>Settle · even</strong><small>Studio East. Nothing to send. Quiet, not broken.</small></div>
+            <span class="r-tag">Open</span>
+          </a>
+          <a class="r-row" href="../a-refined/?screen=recurring">
+            <i class="r-dot"></i>
+            <div><strong>Recurring</strong><small>Open bills. Rent from the fund.</small></div>
+            <span class="r-tag">Open</span>
+          </a>
+          <a class="r-row" href="../a-refined/?screen=funds">
+            <i class="r-dot"></i>
+            <div><strong>Funds</strong><small>House pot. Chase Alex from the balance.</small></div>
+            <span class="r-tag">Open</span>
+          </a>
+          <a class="r-row" href="../a-refined/?screen=notes">
+            <i class="r-dot"></i>
+            <div><strong>Notes</strong><small>Wi-Fi, bins, landlord. Shared memory. Add from the toolbar.</small></div>
+            <span class="r-tag">Open</span>
+          </a>
+          <a class="r-row" href="../a-refined/?screen=note">
+            <i class="r-dot"></i>
+            <div><strong>Note</strong><small>Window. The pin — network, password, who can see it.</small></div>
+            <span class="r-tag">Window</span>
+          </a>
+          <a class="r-row" href="../a-refined/?screen=note-new">
+            <i class="r-dot"></i>
+            <div><strong>Add note</strong><small>Window. Title, type, body required. Network, code, phone, pin, who should know.</small></div>
+            <span class="r-tag">Window</span>
+          </a>
+          <a class="r-row" href="../a-refined/?screen=operations">
+            <i class="r-dot"></i>
+            <div><strong>Operations</strong><small>Bins and chores. Complete or nudge.</small></div>
+            <span class="r-tag">Open</span>
+          </a>
+          <a class="r-row" href="../a-refined/?screen=members">
+            <i class="r-dot"></i>
+            <div><strong>Members</strong><small>Who’s here this cycle.</small></div>
+            <span class="r-tag">Open</span>
+          </a>
+          <a class="r-row" href="../a-refined/?screen=member-invite">
+            <i class="r-dot"></i>
+            <div><strong>Invite someone</strong><small>Email into this hub. They get the invite screen.</small></div>
+            <span class="r-tag">Open</span>
+          </a>
+          <a class="r-row" href="../a-refined/?screen=notices">
+            <i class="r-dot"></i>
+            <div><strong>Notices</strong><small>Bell. Gas, bins, Alex’s share.</small></div>
+            <span class="r-tag">Open</span>
+          </a>
+          <a class="r-row" href="../a-refined/?screen=profile">
+            <i class="r-dot"></i>
+            <div><strong>Profile</strong><small>You, plan, how people pay you.</small></div>
+            <span class="r-tag">Open</span>
+          </a>
+          <a class="r-row" href="../a-refined/?screen=settings">
+            <i class="r-dot"></i>
+            <div><strong>Settings</strong><small>Hard page. Profile and plan on the left, grouped rows on the right. Pay-me stays a window.</small></div>
+            <span class="r-tag">Place</span>
+          </a>
+        </div>
+      </section>
+
+      <section class="r-group">
+        <h2>Later</h2>
+        <p>Keep off the Basic sidebar. Same core, not a second product.</p>
+        <div class="r-list">
+          <a class="r-row is-later" href="../a-refined/?nav=advanced&amp;screen=templates">
+            <i class="r-dot later"></i>
+            <div><strong>Split templates</strong><small>Apply on Add expense. Don’t make it a primary destination.</small></div>
+            <span class="r-tag">Later</span>
+          </a>
+          <a class="r-row is-later" href="../a-refined/?nav=advanced&amp;screen=billing">
+            <i class="r-dot later"></i>
+            <div><strong>Plan &amp; billing</strong><small>Stripe Standard. Not workspace invoices.</small></div>
+            <span class="r-tag">Later</span>
+          </a>
+          <a class="r-row is-later" href="../a-refined/?nav=advanced&amp;screen=activity">
+            <i class="r-dot later"></i>
+            <div><strong>Activity</strong><small>The log. This Hub already shows This week.</small></div>
+            <span class="r-tag">Later</span>
+          </a>
+          <a class="r-row is-later" href="../a-refined/?nav=advanced&amp;screen=analytics">
+            <i class="r-dot later"></i>
+            <div><strong>Analytics</strong><small>This Hub’s month card is enough for v1.</small></div>
+            <span class="r-tag">Later</span>
+          </a>
+          <a class="r-row is-later" href="../a-refined/?screen=breakdown">
+            <i class="r-dot later"></i>
+            <div><strong>Breakdown</strong><small>Same truth as Settle. Don’t ship a second destination.</small></div>
+            <span class="r-tag">Later</span>
+          </a>
+          <a class="r-row is-later" href="../a-refined/?screen=settings">
+            <i class="r-dot later"></i>
+            <div><strong>Hub settings</strong><small>Rename, type, leave. Settings today is Maya, not the house.</small></div>
+            <span class="r-tag">Later</span>
+          </a>
+          <div class="r-row is-later">
+            <i class="r-dot later"></i>
+            <div><strong>Forgot password</strong><small>Email a reset. Needed for auth, not for the 3-second question.</small></div>
+            <span class="r-tag">Later</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="r-group">
+        <h2>Don’t rebuild</h2>
+        <p>Lives in the old Mantine app. Not the clean spine.</p>
+        <div class="r-list">
+          <div class="r-row is-kill">
+            <i class="r-dot kill"></i>
+            <div><strong>Old dashboard + Command Centre</strong><small>Replaced by Home.</small></div>
+            <span class="r-tag">Drop</span>
+          </div>
+          <div class="r-row is-kill">
+            <i class="r-dot kill"></i>
+            <div><strong>Workspace invoices &amp; approvals</strong><small>A second B2B product inside the house app.</small></div>
+            <span class="r-tag">Drop</span>
+          </div>
+          <div class="r-row is-kill">
+            <i class="r-dot kill"></i>
+            <div><strong>Memories, couple linking, Splitwise import, OCR</strong><small>Not the 3-second question.</small></div>
+            <span class="r-tag">Drop</span>
+          </div>
+          <div class="r-row is-kill">
+            <i class="r-dot kill"></i>
+            <div><strong>Cycle close as accounting</strong><small>Settle is the verb. Don’t rebuild a period-end product.</small></div>
+            <span class="r-tag">Drop</span>
+          </div>
+          <div class="r-row is-kill">
+            <i class="r-dot kill"></i>
+            <div><strong>Mantine, and a collapsing desktop sidebar</strong><small>This CSS is the app. Desktop rail stays open. Phone replaces it with tabs.</small></div>
+            <span class="r-tag">Drop</span>
+          </div>
+        </div>
+      </section>
+      <section class="r-group">
+        <h2>Across widths</h2>
+        <p>
+          Desktop keeps the rail. Narrow desktop folds the page, not the chrome.
+          Phone replaces the rail. Don’t squeeze a 1100px layout into a 390px column.
+        </p>
+        <div class="r-list">
+          <div class="r-row">
+            <i class="r-dot"></i>
+            <div><strong>1280+</strong><small>Rail open. Settings is two columns: you + plan, then the lists. Search in the header.</small></div>
+            <span class="r-tag">Wide</span>
+          </div>
+          <div class="r-row">
+            <i class="r-dot"></i>
+            <div><strong>1000–1279</strong><small>Still a rail. Home/Hub two-column rows stack. Settings stacks. Search hides at 1100 so the title doesn’t wrap.</small></div>
+            <span class="r-tag">Fold</span>
+          </div>
+          <div class="r-row">
+            <i class="r-dot"></i>
+            <div><strong>≤560 · native</strong><small>No rail. Navy header, four tabs, hamburger More sheet. Create a commune lives in that sheet. Choose becomes a sheet. Windows become sheets. Tables scroll sideways.</small></div>
+            <span class="r-tag">Phone</span>
+          </div>
+          <div class="r-row">
+            <i class="r-dot"></i>
+            <div><strong>From Expo, used here</strong><small>Hamburger + More sheet (icon, title, lede, chevron). Settings as a page with plan card and toggles. Lime on the meter. FAB stays in /phone-expo/ — A keeps four tabs.</small></div>
+            <span class="r-tag">Expo</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="r-group">
+        <h2>The mark</h2>
+        <p>
+          Keep the Didone C. The problem was size and putting cream on cream.
+          Navy behind it, bigger in the rail. The others are sketches — not a rebrand.
+        </p>
+        <div class="r-marks">
+          <figure>
+            <img src="../logo.png" alt="Current C on black" />
+            <figcaption>Now · keep</figcaption>
+          </figure>
+          <figure>
+            <img src="../marks/mark-navy-c.png" alt="C on navy, larger in the frame" />
+            <figcaption>Same C, navy, less padding</figcaption>
+          </figure>
+          <figure>
+            <img src="../marks/mark-sage-c.png" alt="C on sage" />
+            <figcaption>Sage tile · maybe</figcaption>
+          </figure>
+          <figure>
+            <img src="../marks/mark-arcs.png" alt="Nested cream arcs" />
+            <figcaption>Arcs · not yet</figcaption>
+          </figure>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

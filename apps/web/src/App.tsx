@@ -1,0 +1,202 @@
+import type { ReactNode } from "react";
+import { Redirect, Route, Switch } from "wouter";
+import { LoginPage } from "./auth/Login";
+import { SignupPage, VerifyEmailPage } from "./auth/Signup";
+import { ForgotPasswordPage, ResetPasswordPage } from "./auth/ForgotPassword";
+import { InvitePage, OnboardPage } from "./auth/InviteOnboard";
+import { useApp } from "./state";
+import { Header, MoreSheet, PhoneTabs, Sidebar } from "./shell/Shell";
+import { HomeEmptyScreen, HomeScreen, PlacesScreen } from "./screens/Home";
+import { HubEmptyScreen, HubScreen } from "./screens/Hub";
+import {
+  ExpensesEmptyScreen,
+  ExpensesScreen,
+  FundsScreen,
+  RecurringScreen,
+  SettleEvenScreen,
+  SettleScreen,
+} from "./screens/Money";
+import {
+  ActivityScreen,
+  AnalyticsScreen,
+  BillingScreen,
+  MembersScreen,
+  NotesScreen,
+  TemplatesScreen,
+} from "./screens/House";
+import { OperationsScreen } from "./screens/Operations";
+import { CommuneSettingsScreen, SettingsScreen } from "./screens/Settings";
+import { Windows } from "./windows/Windows";
+import { cx } from "./ui/cx";
+import type { ScreenId } from "./data/household";
+import { keepSearch } from "./nav";
+
+export function App() {
+  return (
+    <Switch>
+      <Route path="/login">
+        <GuestOnly>
+          <LoginPage />
+        </GuestOnly>
+      </Route>
+      <Route path="/signup">
+        <GuestOnly>
+          <SignupPage />
+        </GuestOnly>
+      </Route>
+      <Route path="/verify-email">
+        <VerifyEmailPage />
+      </Route>
+      <Route path="/forgot-password">
+        <GuestOnly>
+          <ForgotPasswordPage />
+        </GuestOnly>
+      </Route>
+      <Route path="/reset-password">
+        <ResetPasswordPage />
+      </Route>
+      <Route path="/invite" component={InvitePage} />
+      <Route path="/onboard">
+        <AuthenticatedOnly>
+          <OnboardPage />
+        </AuthenticatedOnly>
+      </Route>
+      <Route>
+        <ProtectedApp />
+      </Route>
+    </Switch>
+  );
+}
+
+function GuestOnly({ children }: { children: ReactNode }) {
+  const { session, authStatus } = useApp();
+  if (authStatus === "loading") return <AppLoading />;
+  if (authStatus === "error") return <AppUnavailable />;
+  if (session?.hasHubs) return <Redirect to={keepSearch("/")} />;
+  if (session) return <Redirect to={keepSearch("/onboard")} />;
+  return children;
+}
+
+function ProtectedApp() {
+  return <AuthenticatedOnly><ProductShell /></AuthenticatedOnly>;
+}
+
+function AuthenticatedOnly({ children }: { children: ReactNode }) {
+  const { session, authStatus } = useApp();
+  if (authStatus === "loading") return <AppLoading />;
+  if (authStatus === "error") return <AppUnavailable />;
+  if (!session) return <Redirect to={keepSearch("/login")} />;
+  return children;
+}
+
+function AppLoading() {
+  return <div className="a-empty" role="status"><h2>Opening Commune…</h2><p>Loading your account and shared spaces.</p></div>;
+}
+
+function AppUnavailable() {
+  const { apiError, refresh } = useApp();
+  return <div className="a-empty" role="alert"><h2>Commune could not connect</h2><p>{apiError ?? "The local application service is unavailable."}</p><button className="a-btn" type="button" onClick={() => void refresh()}>Try again</button></div>;
+}
+
+function ProductShell() {
+  const { screen, navMode, moreOpen, native, dark, window: win, apiError, clearApiError } = useApp();
+  return (
+    <div
+      className={cx(
+        "a-body",
+        navMode === "advanced" ? "nav-advanced" : "nav-basic",
+        moreOpen && "more-open",
+        native && "is-native",
+        dark && "is-dark",
+        win && "has-window",
+      )}
+    >
+      <div className="a-app">
+        <Sidebar screen={screen} />
+        <div className="a-main">
+          <Header screen={screen} />
+          {apiError ? <div className="a-api-error" role="alert">{apiError}<button type="button" onClick={clearApiError} aria-label="Dismiss error">×</button></div> : null}
+          <div className="a-content">
+            <Screen screen={screen} />
+          </div>
+        </div>
+      </div>
+      <PhoneTabs screen={screen} />
+      <MoreSheet />
+      <Windows />
+    </div>
+  );
+}
+
+function Screen({ screen }: { screen: ScreenId }) {
+  return (
+    <section className="screen" id={screen}>
+      <ScreenBody screen={screen} />
+    </section>
+  );
+}
+
+function ScreenBody({ screen }: { screen: ScreenId }) {
+  const { session, emptyHub, hub } = useApp();
+  const hasHubs = Boolean(session?.hasHubs);
+  const hasSettlement = hub.moves.some((move) => !move.even);
+
+  switch (screen) {
+    case "home":
+      return hasHubs ? <HomeScreen /> : <HomeEmptyScreen />;
+    case "home-empty":
+      return hasHubs ? <HomeScreen /> : <HomeEmptyScreen />;
+    case "home-inbox":
+      return hasHubs ? <HomeScreen /> : <HomeEmptyScreen />;
+    case "communes":
+      return <PlacesScreen />;
+    case "hub":
+      return emptyHub ? <HubEmptyScreen /> : <HubScreen />;
+    case "hub-empty":
+      return emptyHub || !hasHubs ? <HubEmptyScreen /> : <HubScreen />;
+    case "commune-settings":
+      return <CommuneSettingsScreen key={hub.id} />;
+    case "expenses":
+      return emptyHub ? <ExpensesEmptyScreen /> : <ExpensesScreen />;
+    case "expenses-empty":
+      return emptyHub || !hasHubs ? (
+        <ExpensesEmptyScreen />
+      ) : (
+        <ExpensesScreen />
+      );
+    case "settle":
+      return !hasSettlement || !hasHubs ? (
+        <SettleEvenScreen />
+      ) : (
+        <SettleScreen />
+      );
+    case "settle-even":
+      return !hasSettlement || !hasHubs ? (
+        <SettleEvenScreen />
+      ) : (
+        <SettleScreen />
+      );
+    case "recurring":
+      return <RecurringScreen />;
+    case "funds":
+      return <FundsScreen />;
+    case "templates":
+      return <TemplatesScreen />;
+    case "billing":
+      return <BillingScreen />;
+    case "analytics":
+      return <AnalyticsScreen />;
+    case "members":
+      return <MembersScreen />;
+    case "operations":
+      return <OperationsScreen />;
+    case "notes":
+      return <NotesScreen />;
+    case "activity":
+      return <ActivityScreen />;
+    case "settings":
+      return <SettingsScreen />;
+    default:
+      return hasHubs ? <HomeScreen /> : <HomeEmptyScreen />;
+  }
+}

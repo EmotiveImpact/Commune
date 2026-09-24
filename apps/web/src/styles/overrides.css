@@ -1,0 +1,115 @@
+html,
+body,
+#root {
+  height: 100%;
+}
+
+.a-body {
+  min-height: 100%;
+}
+
+.a-brand {
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  color: inherit;
+}
+
+.a-brand:hover .a-wordmark {
+  color: #fff;
+}
+
+.a-main {
+  min-height: 0;
+}
+
+.a-body.is-dark {
+  --paper: #171b24;
+  --paper-2: #1b202c;
+  --paper-3: #202633;
+  --white: #242b39;
+  --ink: #f5f1ea;
+  --ink-soft: #b5bdca;
+  --border: rgba(245, 241, 234, 0.1);
+  --border-strong: rgba(245, 241, 234, 0.16);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.18);
+  --shadow: 0 8px 24px rgba(0, 0, 0, 0.24);
+  color: var(--ink);
+  background: #151923;
+  color-scheme: dark;
+}
+
+.a-body.is-dark .a-app,
+.a-body.is-dark .a-main,
+.a-body.is-dark .a-content {
+  background: linear-gradient(180deg, #1b202c 0%, #171b24 100%);
+}
+
+.a-body.is-dark .a-header {
+  background: rgba(27, 32, 44, 0.9);
+}
+
+.a-body.is-dark :is(
+  .a-card,
+  .a-panel,
+  .a-set-card,
+  .a-set-list,
+  .a-search,
+  .a-window-frame,
+  .a-window-bar,
+  .a-note-fact,
+  .a-more,
+  .a-owe-card.a-card
+) {
+  background: #242b39;
+  color: var(--ink);
+  border-color: var(--border);
+}
+
+.a-body.is-dark :is(input, select, textarea, .a-btn.ghost, .a-chip) {
+  background: #1d2330;
+  color: var(--ink);
+  border-color: var(--border-strong);
+}
+
+.a-body.is-dark :is(.a-set-row:hover, .a-table tbody tr:hover td, .a-more > button:hover) {
+  background: rgba(217, 235, 229, 0.07);
+}
+
+.a-body.is-dark .a-window-x {
+  background: #1d2330;
+  color: var(--ink);
+}
+
+/* Keep the production Operations switcher and Add item action on one row. */
+.ops-prod-head {
+  flex-wrap: nowrap;
+}
+
+.a-body.is-native .ops-prod .ops-add {
+  width: auto;
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
+.a-body.is-native .ops-prod .ops-cuts {
+  width: min(340px, calc(100% - 118px));
+  min-width: 0;
+}
+
+@media (max-width: 560px) {
+  .ops-prod .ops-add {
+    width: auto;
+    flex: 0 0 auto;
+    margin-left: auto;
+  }
+
+  .ops-prod .ops-cuts {
+    width: min(340px, calc(100% - 118px));
+    min-width: 0;
+  }
+
+  .ops-prod .ops-cuts button {
+    padding-inline: 7px;
+  }
+}

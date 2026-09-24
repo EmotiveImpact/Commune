@@ -1,0 +1,1245 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Home — 14 Park Street — Commune</title>
+    <link rel="icon" href="../favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="../shared.css?v=overview" />
+    <link rel="stylesheet" href="../d-hybrid/styles.css?v=overview" />
+    <link rel="stylesheet" href="./styles.css?v=overview" />
+  </head>
+  <body class="d-body">
+    <div class="mock-bar">
+      <span><strong>D</strong> · Home is all hubs · This Hub is the house</span>
+      <span class="layout-tabs">
+        <button type="button" data-go="hub">As now</button>
+        <button type="button" class="is-active" data-go="hub-snapshot">Snapshot</button>
+        <button type="button" data-go="hub-needs">Needs you</button>
+        <button type="button" data-go="hub-money">Money</button>
+        <a href="../a-refined/">A · switcher under Activity</a>
+        <a href="../">All directions</a>
+      </span>
+    </div>
+
+    <div class="d-app">
+      <aside class="d-side">
+        <div class="d-brand">
+          <img class="d-logo" src="../logo.png" width="36" height="36" alt="Commune" />
+          <span class="d-wordmark">COMMUNE</span>
+        </div>
+
+        <nav class="d-nav" aria-label="Primary">
+          <button class="d-link" data-go="home" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+            Home
+          </button>
+          <button class="d-link is-active" data-go="hub-snapshot" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 10.5 12 3l9 7.5V21a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1v-10.5z"/></svg>
+            This Hub
+          </button>
+
+          <div class="d-group-label">Money</div>
+          <div class="d-sub">
+            <button class="d-link" data-go="expenses" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 8h10M7 12h6M6 4h12a1 1 0 0 1 1 1v16l-4-2-4 2-4-2-4 2V5a1 1 0 0 1 1-1z"/></svg>
+              Expenses
+            </button>
+            <button class="d-link" data-go="recurring" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 10a8 8 0 0 1 16 0c0 6-8 11-8 11S4 16 4 10z"/><circle cx="12" cy="10" r="2.5"/></svg>
+              Recurring
+            </button>
+            <button class="d-link" data-go="templates" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
+              Templates
+            </button>
+            <button class="d-link" data-go="funds" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 7h14l-1 12H6L5 7z"/><path d="M9 7V5a3 3 0 0 1 6 0v2"/></svg>
+              Funds
+            </button>
+            <button class="d-link" data-go="settle" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 7h10M7 12h10M7 17h6"/><path d="M17 17h4l-2 3M21 17l-2-3"/></svg>
+              Settle
+            </button>
+            <button class="d-link" data-go="billing" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+              Billing
+            </button>
+          </div>
+
+          <div class="d-group-label">Insights</div>
+          <div class="d-sub">
+            <button class="d-link" data-go="analytics" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V5l7 4 9-6v16"/></svg>
+              Analytics
+            </button>
+            <button class="d-link" data-go="breakdown" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V5M4 19h16M8 15v4M12 11v8M16 8v11"/></svg>
+              Breakdown
+            </button>
+          </div>
+
+          <div class="d-group-label">House</div>
+          <div class="d-sub">
+            <button class="d-link" data-go="members" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              Members
+            </button>
+            <button class="d-link" data-go="notes" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 4h9l5 5v11H6z"/><path d="M15 4v5h5"/></svg>
+              Notes
+            </button>
+            <button class="d-link" data-go="operations" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+              Operations
+            </button>
+            <button class="d-link" data-go="activity" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 2"/><circle cx="12" cy="12" r="9"/></svg>
+              Activity
+            </button>
+          </div>
+
+          <button class="d-hub-switch" type="button" data-go="home">
+            <div class="hub-ico" aria-hidden="true">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f5f1ea" stroke-width="2"><path d="M3 10.5 12 3l9 7.5V21a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1v-10.5z"/></svg>
+            </div>
+            <div class="grow">
+              <strong data-hub-switch-name>14 Park Street</strong>
+              <span data-hub-switch-meta>Household · switch</span>
+            </div>
+            <svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+          </button>
+        </nav>
+
+        <button class="d-side-foot" type="button" data-go="profile">
+          <span class="avatar maya">MC</span>
+          <div class="meta">
+            <strong>Maya Chen</strong>
+            <span data-hub-you-meta>Standard · 14 Park Street</span>
+          </div>
+        </button>
+      </aside>
+
+      <div class="d-main">
+        <header class="d-header">
+          <div class="d-header-ident">
+            <h1 class="d-display" data-page-title>14 Park Street</h1>
+            <p data-page-status>August · you owe £42 · gas Friday · fund £420</p>
+          </div>
+          <label class="d-search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3-3"/></svg>
+            <input type="search" placeholder="Search expenses, people, bills" aria-label="Search expenses, people, bills" />
+          </label>
+          <div class="d-header-actions">
+            <button class="d-btn" type="button" data-go="add-expense">Add expense</button>
+            <button class="d-icon-btn has-unread" type="button" data-go="notices" aria-label="Notifications">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 7 3 9H3c0-2 3-2 3-9"/><path d="M10 21a2 2 0 0 0 4 0"/></svg>
+            </button>
+          </div>
+        </header>
+
+        <div class="d-content">
+          <section class="screen" id="hub" hidden>
+            <div class="d-cover">
+              <span class="type">Household</span>
+              <h1 class="d-display">14 Park Street</h1>
+              <p class="lede">Rent, bills, and the Tuesday bins. One kitchen.</p>
+              <div class="d-cover-people">
+                <div class="avatar-stack">
+                  <span class="avatar maya">MC</span>
+                  <span class="avatar jordan">JH</span>
+                  <span class="avatar alex">AR</span>
+                </div>
+                Maya, Jordan, and Alex · since 2024
+              </div>
+            </div>
+
+            <div class="d-answers">
+              <div class="d-ink">
+                <span>You owe</span>
+                <div class="num">£42.00</div>
+                <p>Pay Jordan this week. Or net the Tesco £18 and send £24.</p>
+                <div class="d-ink-actions">
+                  <button class="d-btn" type="button" data-go="settle">Settle with Jordan</button>
+                  <button class="d-btn nudge" type="button">Nudge him</button>
+                </div>
+              </div>
+              <div class="d-card">
+                <h2>Right now</h2>
+                <p class="sub">What still needs a person this week.</p>
+                <div class="d-now-row">
+                  <span class="pill warn">Friday</span>
+                  <div><strong>British Gas</strong><div class="when">£94.20 · Jordan paid · your share open</div></div>
+                </div>
+                <div class="d-now-row">
+                  <span class="pill warn">Overdue</span>
+                  <div><strong>Bins</strong><div class="when">Still Jordan’s Tuesday</div></div>
+                </div>
+                <div class="d-now-row">
+                  <span class="pill open">Collect</span>
+                  <div><strong>Alex · house fund</strong><div class="when">£180 still to pay in</div></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="d-card d-owes" style="margin-top:16px">
+              <h2>Who owes whom</h2>
+              <p class="sub">This cycle. Settle when you’re ready.</p>
+              <button class="d-move" type="button" data-go="settle">
+                <div class="d-arrow">→</div>
+                <div>
+                  <div class="names">You → Jordan</div>
+                  <div class="why">Gas share · or £24 if you net Tesco</div>
+                </div>
+                <div class="amt">£42</div>
+              </button>
+              <button class="d-move" type="button" data-go="settle">
+                <div class="d-arrow">→</div>
+                <div>
+                  <div class="names">Jordan → You</div>
+                  <div class="why">Tesco extras from Monday</div>
+                </div>
+                <div class="amt">£18</div>
+              </button>
+              <button class="d-move is-even" type="button" data-go="members">
+                <div class="d-arrow" style="background:#f0ece4">↔</div>
+                <div>
+                  <div class="names">Alex ↔ You</div>
+                  <div class="why">Even on expenses · still £180 for the fund</div>
+                </div>
+                <div class="amt" style="color:var(--ink-soft)">£0</div>
+              </button>
+            </div>
+
+            <div class="d-kpis">
+              <div class="d-kpi peach" data-go="funds" style="cursor:pointer">
+                <span>House fund</span>
+                <strong>£420</strong>
+                <small>£180 to collect from Alex</small>
+              </div>
+              <div class="d-kpi lilac">
+                <span>This month</span>
+                <strong>£2,140</strong>
+                <small>of £2,400 · on track</small>
+              </div>
+              <div class="d-kpi sage">
+                <span>Open bills</span>
+                <strong>2</strong>
+                <small>Gas + Virgin Media</small>
+              </div>
+              <div class="d-kpi ink">
+                <span>Next due</span>
+                <strong>Fri</strong>
+                <small>British Gas · 29 Aug</small>
+              </div>
+            </div>
+
+            <div class="d-budget">
+              <div class="top">
+                <span>August at 14 Park Street</span>
+                <span>£2,140 / £2,400 · 89%</span>
+              </div>
+              <div class="bar"><i></i></div>
+            </div>
+
+            <div class="d-week">
+              <div class="d-card">
+                <h2>Where it went</h2>
+                <p class="sub">This month, by category. Six-month trend is on Analytics.</p>
+                <div class="d-mini-bars">
+                  <div class="row"><span>Rent</span><div class="track"><i style="width:84%"></i></div><strong>£1,800</strong></div>
+                  <div class="row"><span>Utilities</span><div class="track"><i style="width:18%"></i></div><strong>£126</strong></div>
+                  <div class="row"><span>Groceries</span><div class="track"><i style="width:10%"></i></div><strong>£67</strong></div>
+                  <div class="row"><span>Internet</span><div class="track"><i style="width:6%"></i></div><strong>£32</strong></div>
+                </div>
+              </div>
+              <div class="d-card">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start">
+                  <div>
+                    <h2>Recent expenses</h2>
+                    <p class="sub">The ledger — not the same as Right now.</p>
+                  </div>
+                  <button class="d-btn ghost" type="button" data-go="expenses" style="height:32px">View all</button>
+                </div>
+                <table class="d-table">
+                  <thead>
+                    <tr>
+                      <th>Expense</th>
+                      <th>Who paid</th>
+                      <th>Status</th>
+                      <th style="text-align:right">Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td><strong>Virgin Media</strong></td>
+                      <td>Maya</td>
+                      <td><span class="pill open">Open</span></td>
+                      <td class="amt">£32.00</td>
+                    </tr>
+                    <tr>
+                      <td><strong>Tesco shop</strong></td>
+                      <td>Alex</td>
+                      <td><span class="pill settled">Settled</span></td>
+                      <td class="amt">£67.40</td>
+                    </tr>
+                    <tr>
+                      <td><strong>Council tax</strong></td>
+                      <td>Maya</td>
+                      <td><span class="pill settled">Settled</span></td>
+                      <td class="amt">£146</td>
+                    </tr>
+                    <tr>
+                      <td><strong>Rent · August</strong></td>
+                      <td>House fund</td>
+                      <td><span class="pill settled">Settled</span></td>
+                      <td class="amt">£1,800</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="d-card" style="margin-top:16px">
+              <h2>The house, in writing</h2>
+              <p class="sub">The stuff that used to live in a chat pin.</p>
+              <div class="d-item" style="grid-template-columns:1fr">
+                <div><strong>Wi-Fi</strong><div class="when">ParkStreet_5G · password in notes</div></div>
+              </div>
+              <div class="d-item" style="grid-template-columns:1fr">
+                <div><strong>Bins</strong><div class="when">Black bags Tuesday · recycling Friday</div></div>
+              </div>
+              <div class="d-item" style="grid-template-columns:1fr">
+                <div><strong>Landlord</strong><div class="when">Priya Sharma · rent via the fund</div></div>
+              </div>
+            </div>
+          </section>
+
+          <section class="screen" id="hub-snapshot">
+            <div class="d-cover">
+              <span class="type" data-hub-type>Household</span>
+              <h1 class="d-display" data-hub-name>14 Park Street</h1>
+              <p class="lede" data-hub-lede>Rent, bills, and the Tuesday bins. One kitchen.</p>
+              <div class="d-cover-people">
+                <div class="avatar-stack" data-hub-avatars>
+                  <span class="avatar maya">MC</span>
+                  <span class="avatar jordan">JH</span>
+                  <span class="avatar alex">AR</span>
+                </div>
+                <span data-hub-people>Maya, Jordan, and Alex · since 2024</span>
+              </div>
+              <div class="d-cover-actions">
+                <button class="d-btn" type="button" data-go="add-expense">Add expense</button>
+                <button class="d-btn ghost d-btn-on-cover" type="button" data-go="members">Members</button>
+              </div>
+            </div>
+
+            <div class="d-kpis" data-hub-kpis>
+              <button class="d-kpi peach" type="button" data-go="funds">
+                <span>House fund</span>
+                <strong>£420</strong>
+                <small>£180 still from Alex</small>
+              </button>
+              <button class="d-kpi lilac" type="button" data-go="analytics">
+                <span>This month</span>
+                <strong>£2,140</strong>
+                <small>of £2,400 · on track</small>
+              </button>
+              <button class="d-kpi sage" type="button" data-go="recurring">
+                <span>Open bills</span>
+                <strong>2</strong>
+                <small>Gas + Virgin Media</small>
+              </button>
+              <button class="d-kpi ink" type="button" data-go="expenses">
+                <span>Next due</span>
+                <strong>Fri</strong>
+                <small>British Gas · 29 Aug</small>
+              </button>
+            </div>
+
+            <div class="d-answers" style="margin-top:16px">
+              <div class="d-ink" data-hub-mast>
+                <span data-hub-owe-label>You owe</span>
+                <div class="num" data-hub-owe-amount>£42.00</div>
+                <p data-hub-owe-copy>Pay Jordan this week. Or net Tesco £18 and send £24.</p>
+                <div class="d-ink-actions">
+                  <button class="d-btn" type="button" data-go="settle" data-hub-owe-cta>Settle with Jordan</button>
+                </div>
+              </div>
+              <div class="d-card">
+                <h2>Right now</h2>
+                <p class="sub">What still needs a person in this house.</p>
+                <div data-hub-now>
+                  <button class="d-now-row" type="button" data-go="expenses">
+                    <span class="pill warn">Friday</span>
+                    <div><strong>British Gas</strong><div class="when">£94.20 · Jordan paid · your share open</div></div>
+                  </button>
+                  <button class="d-now-row" type="button" data-go="operations">
+                    <span class="pill warn">Overdue</span>
+                    <div><strong>Bins</strong><div class="when">Still Jordan’s Tuesday</div></div>
+                  </button>
+                  <button class="d-now-row" type="button" data-go="funds">
+                    <span class="pill open">Collect</span>
+                    <div><strong>Alex · house fund</strong><div class="when">£180 still to pay in</div></div>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="d-card d-owes" style="margin-top:16px">
+              <h2>Who owes whom</h2>
+              <p class="sub">This cycle. Settle when you’re ready.</p>
+              <div data-hub-moves>
+                <button class="d-move" type="button" data-go="settle">
+                  <div class="d-arrow">→</div>
+                  <div>
+                    <div class="names">You → Jordan</div>
+                    <div class="why">Gas share · or £24 if you net Tesco</div>
+                  </div>
+                  <div class="amt">£42</div>
+                </button>
+                <button class="d-move" type="button" data-go="settle">
+                  <div class="d-arrow">→</div>
+                  <div>
+                    <div class="names">Jordan → You</div>
+                    <div class="why">Tesco extras from Monday</div>
+                  </div>
+                  <div class="amt">£18</div>
+                </button>
+                <button class="d-move is-even" type="button" data-go="members">
+                  <div class="d-arrow" style="background:#f0ece4">↔</div>
+                  <div>
+                    <div class="names">Alex ↔ You</div>
+                    <div class="why">Even on expenses</div>
+                  </div>
+                  <div class="amt" style="color:var(--ink-soft)">£0</div>
+                </button>
+              </div>
+            </div>
+
+            <div class="jump-grid" data-hub-jumps>
+              <button class="jump-tile" type="button" data-go="expenses">
+                <span>Expenses</span>
+                <strong>Virgin still open</strong>
+                <small>This cycle’s ledger</small>
+              </button>
+              <button class="jump-tile" type="button" data-go="recurring">
+                <span>Recurring</span>
+                <strong>Gas Friday</strong>
+                <small>Virgin on the 12th too</small>
+              </button>
+              <button class="jump-tile" type="button" data-go="funds">
+                <span>Funds</span>
+                <strong>Chase Alex £180</strong>
+                <small>House fund is £420</small>
+              </button>
+              <button class="jump-tile" type="button" data-go="settle">
+                <span>Settle</span>
+                <strong>Pay Jordan £42</strong>
+                <small>Or net Tesco and send £24</small>
+              </button>
+              <button class="jump-tile" type="button" data-go="notes">
+                <span>Notes</span>
+                <strong>Wi-Fi and landlord</strong>
+                <small>The old chat pin</small>
+              </button>
+              <button class="jump-tile" type="button" data-go="operations">
+                <span>Operations</span>
+                <strong>Bins overdue</strong>
+                <small>Still Jordan’s Tuesday</small>
+              </button>
+            </div>
+
+            <div class="d-week">
+              <div class="d-card">
+                <h2>This week</h2>
+                <p class="sub">Activity in this house.</p>
+                <div data-hub-activity>
+                  <button class="d-item" type="button" data-go="expenses">
+                    <span class="avatar maya">MC</span>
+                    <div><strong>Virgin Media</strong><div class="when">Maya logged it</div></div>
+                    <span class="when">Yesterday</span>
+                  </button>
+                  <button class="d-item" type="button" data-go="expenses">
+                    <span class="avatar jordan">JH</span>
+                    <div><strong>British Gas</strong><div class="when">Jordan paid the bill</div></div>
+                    <span class="when">Tue</span>
+                  </button>
+                  <button class="d-item" type="button" data-go="funds">
+                    <span class="avatar maya">MC</span>
+                    <div><strong>August rent</strong><div class="when">House fund covered it</div></div>
+                    <span class="when">1 Aug</span>
+                  </button>
+                </div>
+              </div>
+              <div class="d-card">
+                <h2>The house, in writing</h2>
+                <p class="sub">The stuff that used to live in a chat pin.</p>
+                <div data-hub-notes>
+                  <button class="d-item d-item-plain" type="button" data-go="notes">
+                    <div><strong>Wi-Fi</strong><div class="when">ParkStreet_5G · password in notes</div></div>
+                  </button>
+                  <button class="d-item d-item-plain" type="button" data-go="operations">
+                    <div><strong>Bins</strong><div class="when">Black bags Tuesday · recycling Friday</div></div>
+                  </button>
+                  <button class="d-item d-item-plain" type="button" data-go="notes">
+                    <div><strong>Landlord</strong><div class="when">Priya Sharma · rent via the fund</div></div>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="d-card" style="margin-top:16px">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
+                <div>
+                  <h2>Who’s here</h2>
+                  <p class="sub">This cycle, not personalities.</p>
+                </div>
+                <button class="d-btn ghost" type="button" data-go="members" style="height:32px">Members</button>
+              </div>
+              <div data-hub-members>
+                <div class="d-member-row">
+                  <span class="avatar maya">MC</span>
+                  <div class="who"><strong>Maya Chen</strong><span>You · Admin</span></div>
+                  <div class="bal">Owe £42</div>
+                </div>
+                <div class="d-member-row">
+                  <span class="avatar jordan">JH</span>
+                  <div class="who"><strong>Jordan Hale</strong><span>Bins this week</span></div>
+                  <div class="bal">Owes you £18</div>
+                  <button class="d-btn nudge" type="button" data-go="notices" style="height:32px;flex-shrink:0">Nudge</button>
+                </div>
+                <div class="d-member-row">
+                  <span class="avatar alex">AR</span>
+                  <div class="who"><strong>Alex Rivera</strong><span>Fund still due</span></div>
+                  <div class="bal" style="color:var(--ink-soft)">Even</div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="screen" id="hub-needs" hidden>
+            <div class="d-cover">
+              <span class="type">Household</span>
+              <h1 class="d-display">14 Park Street</h1>
+              <p class="lede">Rent, bills, and the Tuesday bins. One kitchen.</p>
+              <div class="d-cover-people">
+                <div class="avatar-stack">
+                  <span class="avatar maya">MC</span>
+                  <span class="avatar jordan">JH</span>
+                  <span class="avatar alex">AR</span>
+                </div>
+                Maya, Jordan, and Alex · since 2024
+              </div>
+            </div>
+
+            <div class="d-kpis">
+              <div class="d-kpi peach" data-go="funds" style="cursor:pointer">
+                <span>House fund</span>
+                <strong>£420</strong>
+                <small>£180 to collect from Alex</small>
+              </div>
+              <div class="d-kpi lilac">
+                <span>This month</span>
+                <strong>£2,140</strong>
+                <small>of £2,400 · on track</small>
+              </div>
+              <div class="d-kpi sage">
+                <span>Open bills</span>
+                <strong>2</strong>
+                <small>Gas + Virgin Media</small>
+              </div>
+              <div class="d-kpi ink">
+                <span>Next due</span>
+                <strong>Fri</strong>
+                <small>British Gas · 29 Aug</small>
+              </div>
+            </div>
+
+            <div class="d-card" style="margin-top:16px">
+              <h2>Needs you</h2>
+              <p class="sub">One list. Money and the house, in the order it should happen.</p>
+              <button class="d-move" type="button" data-go="settle">
+                <div class="d-arrow">→</div>
+                <div>
+                  <div class="names">Pay Jordan</div>
+                  <div class="why">Your gas share · or £24 if you net Tesco</div>
+                </div>
+                <div class="amt">£42</div>
+              </button>
+              <div class="d-now-row">
+                <span class="pill warn">Friday</span>
+                <div><strong>British Gas</strong><div class="when">Jordan paid the bill · confirm your share</div></div>
+              </div>
+              <div class="d-now-row">
+                <span class="pill warn">Overdue</span>
+                <div><strong>Bins</strong><div class="when">Still Jordan’s Tuesday</div></div>
+              </div>
+              <button class="d-move" type="button" data-go="members">
+                <div class="d-arrow" style="background:#f0ece4">→</div>
+                <div>
+                  <div class="names">Chase Alex</div>
+                  <div class="why">House fund still short</div>
+                </div>
+                <div class="amt">£180</div>
+              </button>
+            </div>
+          </section>
+
+          <section class="screen" id="hub-money" hidden>
+            <div class="d-cover">
+              <span class="type">Household</span>
+              <h1 class="d-display">14 Park Street</h1>
+              <p class="lede">Rent, bills, and the Tuesday bins. One kitchen.</p>
+              <div class="d-cover-people">
+                <div class="avatar-stack">
+                  <span class="avatar maya">MC</span>
+                  <span class="avatar jordan">JH</span>
+                  <span class="avatar alex">AR</span>
+                </div>
+                Maya, Jordan, and Alex · since 2024
+              </div>
+            </div>
+
+            <div class="d-kpis">
+              <div class="d-kpi peach" data-go="funds" style="cursor:pointer">
+                <span>House fund</span>
+                <strong>£420</strong>
+                <small>£180 to collect from Alex</small>
+              </div>
+              <div class="d-kpi lilac">
+                <span>This month</span>
+                <strong>£2,140</strong>
+                <small>of £2,400 · on track</small>
+              </div>
+              <div class="d-kpi sage">
+                <span>Open bills</span>
+                <strong>2</strong>
+                <small>Gas + Virgin Media</small>
+              </div>
+              <div class="d-kpi ink">
+                <span>Next due</span>
+                <strong>Fri</strong>
+                <small>British Gas · 29 Aug</small>
+              </div>
+            </div>
+
+            <div class="d-card d-owes" style="margin-top:16px">
+              <h2>Who owes whom</h2>
+              <p class="sub">This cycle. Settle when you’re ready.</p>
+              <button class="d-move" type="button" data-go="settle">
+                <div class="d-arrow">→</div>
+                <div>
+                  <div class="names">You → Jordan</div>
+                  <div class="why">Gas share · or £24 if you net Tesco</div>
+                </div>
+                <div class="amt">£42</div>
+              </button>
+              <button class="d-move" type="button" data-go="settle">
+                <div class="d-arrow">→</div>
+                <div>
+                  <div class="names">Jordan → You</div>
+                  <div class="why">Tesco extras from Monday</div>
+                </div>
+                <div class="amt">£18</div>
+              </button>
+              <button class="d-move is-even" type="button" data-go="members">
+                <div class="d-arrow" style="background:#f0ece4">↔</div>
+                <div>
+                  <div class="names">Alex ↔ You</div>
+                  <div class="why">Even on expenses · still £180 for the fund</div>
+                </div>
+                <div class="amt" style="color:var(--ink-soft)">£0</div>
+              </button>
+            </div>
+
+            <div class="d-budget">
+              <div class="top">
+                <span>August at 14 Park Street</span>
+                <span>£2,140 / £2,400 · 89%</span>
+              </div>
+              <div class="bar"><i></i></div>
+            </div>
+
+            <div class="d-card" style="margin-top:16px">
+              <h2>Where it went</h2>
+              <p class="sub">This month, by category.</p>
+              <div class="d-mini-bars">
+                <div class="row"><span>Rent</span><div class="track"><i style="width:84%"></i></div><strong>£1,800</strong></div>
+                <div class="row"><span>Utilities</span><div class="track"><i style="width:18%"></i></div><strong>£126</strong></div>
+                <div class="row"><span>Groceries</span><div class="track"><i style="width:10%"></i></div><strong>£67</strong></div>
+                <div class="row"><span>Internet</span><div class="track"><i style="width:6%"></i></div><strong>£32</strong></div>
+              </div>
+            </div>
+          </section>
+
+          <section class="screen" id="home" hidden>
+            <div class="d-mast-home">
+              <div>
+                <p class="d-kicker">Across 3 communes</p>
+                <div class="d-net">
+                  <div>
+                    <span>You owe</span>
+                    <strong>£42</strong>
+                    <small>Park Street</small>
+                  </div>
+                  <div>
+                    <span>You’re owed</span>
+                    <strong class="is-credit">£64</strong>
+                    <small>Lisbon · Sept</small>
+                  </div>
+                </div>
+                <p>Park Street still needs you this week. Lisbon hasn’t paid you back for the Airbnb.</p>
+              </div>
+              <button class="d-btn" type="button" data-hub="park" data-go="hub-snapshot">Open 14 Park Street</button>
+            </div>
+            <div class="d-cc-grid">
+              <button class="d-commune-card" type="button" data-hub="park" data-go="hub-snapshot">
+                <div class="band home"></div>
+                <div class="pad">
+                  <span class="pill sage">Household</span>
+                  <h3>14 Park Street</h3>
+                  <p class="sub" style="margin:0">You owe £42 · gas Friday · bins overdue</p>
+                </div>
+              </button>
+              <button class="d-commune-card" type="button" data-hub="studio" data-go="hub-snapshot">
+                <div class="band studio"></div>
+                <div class="pad">
+                  <span class="pill">Workspace</span>
+                  <h3>Studio East</h3>
+                  <p class="sub" style="margin:0">Even · printer ink Monday</p>
+                </div>
+              </button>
+              <button class="d-commune-card" type="button" data-hub="lisbon" data-go="hub-snapshot">
+                <div class="band trip"></div>
+                <div class="pad">
+                  <span class="pill open">Trip</span>
+                  <h3>Lisbon · Sept</h3>
+                  <p class="sub" style="margin:0">You’re owed £64 · hold Thursday</p>
+                </div>
+              </button>
+            </div>
+            <div class="d-card" style="margin-top:16px">
+              <h2>Needs you</h2>
+              <p class="sub">Across every space. Open the hub, or jump straight in.</p>
+              <div class="hub-feed">
+                <button class="hub-feed-row" type="button" data-hub="park" data-go="settle">
+                  <span class="pill sage">Park Street</span>
+                  <div>
+                    <strong>Pay Jordan £42</strong>
+                    <div class="when">Gas share · or £24 if you net Tesco</div>
+                  </div>
+                  <span class="hub-feed-go">Settle</span>
+                </button>
+                <button class="hub-feed-row" type="button" data-hub="park" data-go="expenses">
+                  <span class="pill warn">Park Street</span>
+                  <div>
+                    <strong>British Gas Friday</strong>
+                    <div class="when">£94.20 · Jordan paid · your share open</div>
+                  </div>
+                  <span class="hub-feed-go">Expenses</span>
+                </button>
+                <button class="hub-feed-row" type="button" data-hub="park" data-go="operations">
+                  <span class="pill warn">Park Street</span>
+                  <div>
+                    <strong>Bins overdue</strong>
+                    <div class="when">Still Jordan’s Tuesday</div>
+                  </div>
+                  <span class="hub-feed-go">Operations</span>
+                </button>
+                <button class="hub-feed-row" type="button" data-hub="park" data-go="funds">
+                  <span class="pill open">Park Street</span>
+                  <div>
+                    <strong>Chase Alex for the fund</strong>
+                    <div class="when">£180 still to pay in · house fund £420</div>
+                  </div>
+                  <span class="hub-feed-go">Funds</span>
+                </button>
+                <button class="hub-feed-row" type="button" data-hub="studio" data-go="hub-snapshot">
+                  <span class="pill">Studio East</span>
+                  <div>
+                    <strong>Printer ink Monday</strong>
+                    <div class="when">Sam’s run · split three ways</div>
+                  </div>
+                  <span class="hub-feed-go">Open hub</span>
+                </button>
+                <button class="hub-feed-row" type="button" data-hub="lisbon" data-go="hub-snapshot">
+                  <span class="pill open">Lisbon</span>
+                  <div>
+                    <strong>Airbnb hold · 4 days</strong>
+                    <div class="when">You paid · collect £40 from Jordan, £24 from Ness</div>
+                  </div>
+                  <span class="hub-feed-go">Open hub</span>
+                </button>
+              </div>
+            </div>
+          </section>
+
+          <section class="screen" id="notices" hidden>
+            <div class="d-page-head">
+              <h1 class="d-display">What’s waiting.</h1>
+              <p>Gas, bins, and Alex’s share of the fund.</p>
+            </div>
+            <div class="d-card">
+              <button class="d-now-row" type="button" data-go="expenses">
+                <span class="pill warn">Friday</span>
+                <div><strong>British Gas</strong><div class="when">£94.20 · Jordan paid · your share open</div></div>
+              </button>
+              <button class="d-now-row" type="button" data-go="operations">
+                <span class="pill warn">Overdue</span>
+                <div><strong>Bins</strong><div class="when">Still Jordan’s Tuesday</div></div>
+              </button>
+              <button class="d-now-row" type="button" data-go="funds">
+                <span class="pill open">Collect</span>
+                <div><strong>Alex · house fund</strong><div class="when">£180 still to pay in</div></div>
+              </button>
+            </div>
+          </section>
+
+          <section class="screen" id="expenses" hidden>
+            <div class="d-page-head">
+              <h1 class="d-display">What the house spent.</h1>
+              <p>Next due and British Gas land here. Full ledger, including settled rent.</p>
+            </div>
+            <div class="d-card">
+              <div class="d-exp-item">
+                <div><strong>British Gas</strong><div class="when">Paid by Jordan · due Friday</div></div>
+                <span>Utilities</span><span class="pill warn">Open</span><span class="amt">£94.20</span>
+              </div>
+              <div class="d-exp-item">
+                <div><strong>Virgin Media</strong><div class="when">Paid by you</div></div>
+                <span>Internet</span><span class="pill open">Open</span><span class="amt">£32.00</span>
+              </div>
+              <div class="d-exp-item">
+                <div><strong>Tesco shop</strong><div class="when">Paid by Alex</div></div>
+                <span>Groceries</span><span class="pill settled">Settled</span><span class="amt">£67.40</span>
+              </div>
+              <div class="d-exp-item">
+                <div><strong>Council tax</strong><div class="when">Paid by you</div></div>
+                <span>Tax</span><span class="pill settled">Settled</span><span class="amt">£146</span>
+              </div>
+              <div class="d-exp-item">
+                <div><strong>Rent · August</strong><div class="when">House fund</div></div>
+                <span>Rent</span><span class="pill settled">Settled</span><span class="amt">£1,800</span>
+              </div>
+            </div>
+          </section>
+
+          <section class="screen" id="recurring" hidden>
+            <div class="d-page-head">
+              <h1 class="d-display">What comes back every month.</h1>
+              <p>Open bills. Rent from the fund. The rest split three ways unless you say otherwise.</p>
+            </div>
+            <div class="d-card">
+              <div class="d-exp-item">
+                <div><strong>Rent</strong><div class="when">1st · House fund</div></div>
+                <span>Active</span><span class="pill settled">Auto</span><span class="amt">£1,800</span>
+              </div>
+              <div class="d-exp-item">
+                <div><strong>Virgin Media</strong><div class="when">12th · Maya pays, then split</div></div>
+                <span>Active</span><span class="pill open">Open</span><span class="amt">£32.00</span>
+              </div>
+              <div class="d-exp-item">
+                <div><strong>Council tax</strong><div class="when">1st · Maya pays, then split</div></div>
+                <span>Active</span><span class="pill settled">Settled</span><span class="amt">£146</span>
+              </div>
+              <div class="d-exp-item">
+                <div><strong>British Gas</strong><div class="when">~28th · Jordan this year</div></div>
+                <span>Active</span><span class="pill warn">Due</span><span class="amt">£94.20</span>
+              </div>
+            </div>
+          </section>
+
+          <section class="screen" id="settle" hidden>
+            <div class="d-page-head">
+              <h1 class="d-display">Jordan, then done.</h1>
+              <p>Who owes whom. Two transfers, or one if you net Tesco against the gas.</p>
+            </div>
+            <div class="d-card">
+              <div class="d-move">
+                <div class="d-arrow">→</div>
+                <div>
+                  <div class="names">You → Jordan</div>
+                  <div class="why">British Gas share · or £24 if you net Tesco</div>
+                </div>
+                <div class="amt">£42</div>
+                <button class="d-btn" type="button">Mark paid</button>
+              </div>
+              <div class="d-move">
+                <div class="d-arrow">→</div>
+                <div>
+                  <div class="names">Jordan → You</div>
+                  <div class="why">Tesco extras from Monday</div>
+                </div>
+                <div class="amt">£18</div>
+                <button class="d-btn nudge" type="button">Nudge</button>
+              </div>
+              <div class="d-move" style="opacity:.72">
+                <div class="d-arrow" style="background:#f0ece4">↔</div>
+                <div>
+                  <div class="names">Alex ↔ You</div>
+                  <div class="why">Nothing outstanding</div>
+                </div>
+                <div class="amt" style="color:var(--ink-soft)">£0</div>
+                <span class="pill settled">Even</span>
+              </div>
+            </div>
+          </section>
+
+          <section class="screen" id="funds" hidden>
+            <div class="d-page-head">
+              <h1 class="d-display">The house pot.</h1>
+              <p>House fund. August rent already left. £180 still to collect from Alex.</p>
+            </div>
+            <div class="d-card">
+              <div class="d-ink" style="border:0;box-shadow:none;padding:0 0 16px">
+                <span>House fund</span>
+                <div class="num">£420</div>
+                <p>Target £600 this cycle · £180 still to collect</p>
+              </div>
+              <div class="d-item">
+                <span class="avatar maya">MC</span>
+                <div>Maya paid in</div>
+                <span class="amt" style="font-weight:750">£200</span>
+              </div>
+              <div class="d-item">
+                <span class="avatar jordan">JH</span>
+                <div>Jordan paid in</div>
+                <span class="amt" style="font-weight:750">£220</span>
+              </div>
+              <div class="d-item">
+                <span class="avatar alex">AR</span>
+                <div>Alex still to pay</div>
+                <span class="pill open">£180 due</span>
+              </div>
+            </div>
+          </section>
+
+          <section class="screen" id="analytics" hidden>
+            <div class="d-page-head">
+              <h1 class="d-display">This cycle, over time.</h1>
+              <p>This month. Home only showed £2,140 of £2,400 — the bar and six-month view live here.</p>
+            </div>
+            <div class="d-budget" style="margin-top:0">
+              <div class="top">
+                <span>August at 14 Park Street</span>
+                <span>£2,140 / £2,400 · 89%</span>
+              </div>
+              <div class="bar"><i></i></div>
+            </div>
+            <div class="d-kpis">
+              <div class="d-kpi sage"><span>You’re owed</span><strong>£18</strong><small>Jordan · Tesco</small></div>
+              <div class="d-kpi peach"><span>House fund</span><strong>£420</strong><small>£180 to collect</small></div>
+              <div class="d-kpi lilac"><span>This month</span><strong>£2,140</strong><small>of £2,400</small></div>
+              <div class="d-kpi ink"><span>Members</span><strong>3</strong><small>Park Street</small></div>
+            </div>
+            <div class="d-week" style="margin-top:16px">
+              <div class="d-card">
+                <h2>Spending this cycle</h2>
+                <p class="sub">Last six months.</p>
+                <div class="d-bars" aria-hidden="true">
+                  <b style="height:42%"></b><b style="height:55%"></b><b style="height:48%"></b>
+                  <b style="height:70%"></b><b style="height:62%"></b><b style="height:88%"></b>
+                </div>
+                <div class="d-bar-lbl"><span>Mar</span><span>Apr</span><span>May</span><span>Jun</span><span>Jul</span><span>Aug</span></div>
+              </div>
+              <div class="d-card">
+                <h2>Where it went</h2>
+                <p class="sub">This month.</p>
+                <div class="d-mini-bars">
+                  <div class="row"><span>Rent</span><div class="track"><i style="width:84%"></i></div><strong>£1,800</strong></div>
+                  <div class="row"><span>Utilities</span><div class="track"><i style="width:18%"></i></div><strong>£126</strong></div>
+                  <div class="row"><span>Groceries</span><div class="track"><i style="width:10%"></i></div><strong>£67</strong></div>
+                  <div class="row"><span>Internet</span><div class="track"><i style="width:6%"></i></div><strong>£32</strong></div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="screen" id="members" hidden>
+            <div class="d-page-head">
+              <h1 class="d-display">Who’s in the house.</h1>
+              <p>Alex ↔ You. Balances for this cycle, not personalities.</p>
+            </div>
+            <div class="d-card">
+              <div class="d-member">
+                <span class="avatar maya">MC</span>
+                <div class="who"><strong>Maya Chen</strong><span>You · Admin</span></div>
+                <div class="bal">Owe £42</div>
+              </div>
+              <div class="d-member">
+                <span class="avatar jordan">JH</span>
+                <div class="who"><strong>Jordan Hale</strong><span>Member · bins this week</span></div>
+                <div class="bal">Owes you £18</div>
+              </div>
+              <div class="d-member">
+                <span class="avatar alex">AR</span>
+                <div class="who"><strong>Alex Rivera</strong><span>Member · fund still due</span></div>
+                <div class="bal" style="color:var(--ink-soft)">Even</div>
+              </div>
+            </div>
+          </section>
+
+          <section class="screen" id="operations" hidden>
+            <div class="d-page-head">
+              <h1 class="d-display">Who’s doing what.</h1>
+              <p>Bins and chores. Wi-Fi and the landlord live in Notes.</p>
+            </div>
+            <div class="d-card">
+              <div class="d-item">
+                <span class="avatar jordan">JH</span>
+                <div><strong>Bins</strong><div class="when">Tuesday nights · this week</div></div>
+                <span class="pill warn">Overdue</span>
+              </div>
+              <div class="d-item">
+                <span class="avatar alex">AR</span>
+                <div><strong>Kitchen</strong><div class="when">This week</div></div>
+                <span class="pill">Open</span>
+              </div>
+              <div class="d-item">
+                <span class="avatar maya">MC</span>
+                <div><strong>House fund chase</strong><div class="when">Alex’s £180</div></div>
+                <span class="pill open">Yours</span>
+              </div>
+            </div>
+          </section>
+
+          <section class="screen" id="notes" hidden>
+            <div class="d-page-head">
+              <h1 class="d-display">The house, in writing.</h1>
+              <p>Wi-Fi, bin day, landlord — the pin. Not a chore list, not the ledger.</p>
+            </div>
+            <div class="d-card">
+              <div class="d-item" style="grid-template-columns:1fr">
+                <div><strong>Wi-Fi</strong><div class="when">ParkStreet_5G · password in notes</div></div>
+              </div>
+              <div class="d-item" style="grid-template-columns:1fr">
+                <div><strong>Bins</strong><div class="when">Black bags Tuesday · recycling Friday</div></div>
+              </div>
+              <div class="d-item" style="grid-template-columns:1fr">
+                <div><strong>Landlord</strong><div class="when">Priya Sharma · rent via the fund</div></div>
+              </div>
+            </div>
+          </section>
+
+          <section class="screen" id="templates" hidden>
+            <div class="d-page-head">
+              <h1 class="d-display">How you split.</h1>
+              <p>Defaults for this house. Override on any expense.</p>
+            </div>
+            <div class="d-card">
+              <div class="d-item" style="grid-template-columns:1fr auto">
+                <div><strong>Equal · three ways</strong><div class="when">Maya, Jordan, Alex · 33.3% each</div></div>
+                <span class="pill sage">Default</span>
+              </div>
+              <div class="d-item" style="grid-template-columns:1fr auto">
+                <div><strong>Rent from fund</strong><div class="when">House fund pays · nobody is owed</div></div>
+                <span class="pill">Rent</span>
+              </div>
+              <div class="d-item" style="grid-template-columns:1fr auto">
+                <div><strong>Maya + Jordan only</strong><div class="when">For the upstairs cleaner</div></div>
+                <span class="pill">Custom</span>
+              </div>
+            </div>
+          </section>
+
+          <section class="screen" id="billing" hidden>
+            <div class="d-page-head">
+              <h1 class="d-display">Your Commune plan.</h1>
+              <p>Standard · this workspace, not the house fund.</p>
+            </div>
+            <div class="d-card">
+              <div class="d-item" style="grid-template-columns:1fr auto">
+                <div><strong>Standard</strong><div class="when">8 members · 1 hub · renews 12 Sep</div></div>
+                <span class="amt">£4.99/mo</span>
+              </div>
+              <div class="d-item" style="grid-template-columns:1fr auto">
+                <div><strong>14 Park Street</strong><div class="when">This hub is on the plan</div></div>
+                <span class="pill sage">Active</span>
+              </div>
+            </div>
+          </section>
+
+          <section class="screen" id="breakdown" hidden>
+            <div class="d-page-head">
+              <h1 class="d-display">Who owes whom.</h1>
+              <p>Same truth as Settle — the ledger view.</p>
+            </div>
+            <div class="d-card d-owes">
+              <button class="d-move" type="button" data-go="settle">
+                <div class="d-arrow">→</div>
+                <div>
+                  <div class="names">You → Jordan</div>
+                  <div class="why">Gas share · or £24 if you net Tesco</div>
+                </div>
+                <div class="amt">£42</div>
+              </button>
+              <button class="d-move" type="button" data-go="settle">
+                <div class="d-arrow">→</div>
+                <div>
+                  <div class="names">Jordan → You</div>
+                  <div class="why">Tesco extras from Monday</div>
+                </div>
+                <div class="amt">£18</div>
+              </button>
+              <button class="d-move is-even" type="button" data-go="settle">
+                <div class="d-arrow" style="background:#f0ece4">↔</div>
+                <div>
+                  <div class="names">Alex ↔ You</div>
+                  <div class="why">Even on expenses · still £180 for the fund</div>
+                </div>
+                <div class="amt" style="color:var(--ink-soft)">£0</div>
+              </button>
+            </div>
+          </section>
+
+          <section class="screen" id="activity" hidden>
+            <div class="d-page-head">
+              <h1 class="d-display">What just happened.</h1>
+              <p>The log, without the group chat.</p>
+            </div>
+            <div class="d-card">
+              <div class="d-item">
+                <span class="avatar maya">MC</span>
+                <div><strong>Virgin Media</strong><div class="when">Maya logged it</div></div>
+                <span class="when">Yesterday</span>
+              </div>
+              <div class="d-item">
+                <span class="avatar jordan">JH</span>
+                <div><strong>British Gas</strong><div class="when">Jordan paid the bill</div></div>
+                <span class="when">Tue</span>
+              </div>
+              <div class="d-item">
+                <span class="avatar alex">AR</span>
+                <div><strong>Tesco</strong><div class="when">Alex settled</div></div>
+                <span class="when">Mon</span>
+              </div>
+              <div class="d-item">
+                <span class="avatar maya">MC</span>
+                <div><strong>August rent</strong><div class="when">House fund covered it</div></div>
+                <span class="when">1 Aug</span>
+              </div>
+            </div>
+          </section>
+
+          <section class="screen" id="add-expense" hidden>
+            <div class="d-page-head">
+              <h1 class="d-display">Add an expense.</h1>
+              <p>Park Street · split three ways unless you pick a template.</p>
+            </div>
+            <div class="d-card">
+              <div class="d-field">
+                <label for="exp-what">What</label>
+                <input id="exp-what" type="text" value="British Gas" />
+              </div>
+              <div class="d-field">
+                <label for="exp-amt">Amount</label>
+                <input id="exp-amt" type="text" value="£94.20" />
+              </div>
+              <div class="d-field">
+                <label for="exp-who">Paid by</label>
+                <select id="exp-who">
+                  <option>Jordan Hale</option>
+                  <option>Maya Chen</option>
+                  <option>Alex Rivera</option>
+                </select>
+              </div>
+              <div class="d-field">
+                <label for="exp-split">Split</label>
+                <select id="exp-split">
+                  <option>Equal · three ways</option>
+                  <option>Rent from fund</option>
+                  <option>Maya + Jordan only</option>
+                </select>
+              </div>
+              <div class="d-field-row">
+                <button class="d-btn" type="button" data-go="expenses">Save</button>
+                <button class="d-btn ghost" type="button" data-go="hub-snapshot">Cancel</button>
+              </div>
+            </div>
+          </section>
+
+          <section class="screen" id="profile" hidden>
+            <div class="d-page-head">
+              <h1 class="d-display">Maya Chen.</h1>
+              <p>You · Admin at 14 Park Street.</p>
+            </div>
+            <div class="d-card">
+              <div class="d-member">
+                <span class="avatar maya">MC</span>
+                <div class="who"><strong>Maya Chen</strong><span>maya@14park.st</span></div>
+                <span class="pill sage">You</span>
+              </div>
+              <div class="d-item" style="grid-template-columns:1fr auto">
+                <div><strong>Plan</strong><div class="when">Standard · 8 members · 1 hub</div></div>
+                <button class="d-btn ghost" type="button" data-go="billing" style="height:32px">Billing</button>
+              </div>
+              <div class="d-item" style="grid-template-columns:1fr auto">
+                <div><strong>Settings</strong><div class="when">Currency, notices, the house</div></div>
+                <button class="d-btn ghost" type="button" data-go="settings" style="height:32px">Open</button>
+              </div>
+            </div>
+          </section>
+
+          <section class="screen" id="settings" hidden>
+            <div class="d-page-head">
+              <h1 class="d-display">How this house runs.</h1>
+              <p>Currency, notices, and who gets nudged.</p>
+            </div>
+            <div class="d-card">
+              <div class="d-field">
+                <label for="set-cur">Currency</label>
+                <select id="set-cur">
+                  <option selected>£ GBP</option>
+                  <option>$ USD</option>
+                  <option>€ EUR</option>
+                </select>
+              </div>
+              <div class="d-field">
+                <label for="set-note">Notices</label>
+                <select id="set-note">
+                  <option selected>Bills, chores, and fund gaps</option>
+                  <option>Bills only</option>
+                  <option>Off</option>
+                </select>
+              </div>
+              <div class="d-item" style="grid-template-columns:1fr auto">
+                <div><strong>Nudge Jordan</strong><div class="when">Quiet reminder on open shares</div></div>
+                <span class="pill sage">On</span>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+    <script>
+      window.COMMUNE_TITLES = {
+        hub: "14 Park Street",
+        "hub-snapshot": "14 Park Street",
+        "hub-needs": "14 Park Street",
+        "hub-money": "14 Park Street",
+        home: "Home",
+        notices: "Notices",
+        expenses: "Expenses",
+        recurring: "Recurring",
+        settle: "Settle",
+        funds: "Funds",
+        analytics: "Analytics",
+        members: "Members",
+        notes: "Notes",
+        operations: "Operations",
+        templates: "Templates",
+        billing: "Billing",
+        breakdown: "Breakdown",
+        activity: "Activity",
+        "add-expense": "Add expense",
+        profile: "Profile",
+        settings: "Settings"
+      };
+    </script>
+    <script src="../shared.js?v=overview"></script>
+  </body>
+</html>
