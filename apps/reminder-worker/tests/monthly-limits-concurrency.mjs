@@ -1,5 +1,5 @@
 // Run against a disposable local database with the auth stub and migrations
-// 0001-0009. Never point this test at a shared or production branch.
+// 0001-0011. Never point this test at a shared or production branch.
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { Pool } from "pg";
@@ -18,7 +18,7 @@ async function asUser(userId, action) {
   const client = await db.connect();
   try {
     await client.query("BEGIN");
-    await client.query("SELECT set_config('request.jwt.sub', $1, true)", [userId]);
+    await client.query("SELECT set_config('request.jwt.claims', json_build_object('sub', $1::text, 'role', 'authenticated')::text, true)", [userId]);
     const result = await action(client);
     await client.query("COMMIT");
     return result;

@@ -14,7 +14,7 @@ DECLARE
   v_message text;
   v_count integer;
 BEGIN
-  PERFORM set_config('request.jwt.sub', 'alice', true);
+  PERFORM set_config('request.jwt.claims', json_build_object('sub', 'alice', 'role', 'authenticated')::text, true);
   v_commune := public.create_commune('Reminder limits', 'household', 'GBP');
   INSERT INTO public.commune_members (commune_id, user_id, role)
     VALUES (v_commune, 'bob', 'member'),

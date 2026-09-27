@@ -15,7 +15,7 @@ BEGIN
     (v_admin::uuid, 'Admin', 'uuid-admin@example.test', true),
     (v_member::uuid, 'Member', 'uuid-member@example.test', true);
 
-  PERFORM set_config('request.jwt.sub', v_admin, true);
+  PERFORM set_config('request.jwt.claims', json_build_object('sub', v_admin, 'role', 'authenticated')::text, true);
   v_commune := public.create_commune('UUID boundary', 'household', 'GBP');
   SELECT count(*) INTO v_count FROM public.member_profiles(v_commune);
   IF v_count <> 1 THEN
@@ -24,7 +24,7 @@ BEGIN
 
   v_token := public.create_commune_invite(
     v_commune, 'uuid-member@example.test', 'member');
-  PERFORM set_config('request.jwt.sub', v_member, true);
+  PERFORM set_config('request.jwt.claims', json_build_object('sub', v_member, 'role', 'authenticated')::text, true);
   SELECT count(*) INTO v_count FROM public.preview_commune_invite(v_token);
   IF v_count <> 1 THEN
     RAISE EXCEPTION 'Verified UUID Auth user could not preview invite';

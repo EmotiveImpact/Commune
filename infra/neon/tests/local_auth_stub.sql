@@ -5,8 +5,9 @@ DO $$ BEGIN
   END IF;
 END $$;
 CREATE SCHEMA auth;
-CREATE FUNCTION auth.user_id() RETURNS text LANGUAGE sql STABLE AS $$
-  SELECT nullif(current_setting('request.jwt.sub', true), '')
+CREATE OR REPLACE FUNCTION auth.user_id() RETURNS text LANGUAGE sql STABLE AS $$
+  SELECT coalesce(nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'sub',
+    nullif(current_setting('request.jwt.sub', true), ''))
 $$;
 GRANT USAGE ON SCHEMA auth TO authenticated;
 GRANT EXECUTE ON FUNCTION auth.user_id() TO authenticated;

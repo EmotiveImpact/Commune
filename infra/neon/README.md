@@ -210,7 +210,7 @@ local API or present a static build as a working product before hosted tests.
 ## Local database verification
 
 On a disposable local PostgreSQL database, run
-`tests/local_auth_stub.sql`, migrations 0001 through 0010, then
+`tests/local_auth_stub.sql`, migrations 0001 through 0011, then
 `tests/reminders.sql`, `tests/reminder_monthly_limits.sql`,
 `tests/reminder_usage.sql`, `tests/invitations.sql`,
 `tests/shared_content.sql`, `tests/atomic_commune_details.sql`,
@@ -224,7 +224,7 @@ settlement, invite acceptance, and cross-commune RLS. The worker's
 `--experimental-strip-types` and a local `DATABASE_URL`; it mocks the mail
 provider and checks retry, opt-out, balance changes, crash recovery, and
 concurrent sends. A staging Neon branch must additionally
-prove that real JWTs map to `auth.user_id()` and that the Data API can invoke
+prove that verified Data API JWTs map to `commune_private.data_api_user_id()` and that the Data API can invoke
 the RPCs but cannot write the underlying money tables directly.
 Run `apps/reminder-worker/tests/monthly-limits-concurrency.mjs` against that
 same disposable local database to prove that only one of two simultaneous

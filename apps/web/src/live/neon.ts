@@ -111,7 +111,7 @@ function minor(value: unknown): number {
 function date(value: unknown): string | null { return value == null ? null : str(value).slice(0, 10); }
 function message(error: unknown): never {
   const item = error as { message?: string; code?: string; status?: number };
-  const status = item.code === "42501" ? 403
+  const status = item.code === "28000" ? 401 : item.code === "42501" ? 403
     : item.code === "22023" || item.code === "23514" ? 400
       : item.code === "23505" || item.code === "P0001" ? 409
         : typeof item.status === "number" ? item.status : 502;
@@ -173,11 +173,23 @@ export async function listCommunes(knownViewer?: User): Promise<Commune[]> {
     db().from("communes").select("id,name,kind,currency,address,destination,stay_name,stay_address,created_at").order("created_at", { ascending: false }),
     db().from("commune_members").select("commune_id,user_id,role"),
   ]);
-  const communeRows = rows(unwrap(communeResult));
-  const memberRows = rows(unwrap(memberResult));
+  const communeData = unwrap(communeResult);
+  const memberData = unwrap(memberResult);
+  if (!Array.isArray(communeData) || !Array.isArray(memberData)) {
+    throw new ApiError("Could not verify your commune list. Please try again.", 502);
+  }
+  const communeRows = rows(communeData);
+  const memberRows = rows(memberData);
+  if (memberRows.some((member) => member.user_id === viewer.id && !communeRows.some((row) => row.id === member.commune_id))) {
+    throw new ApiError("Your commune membership changed while loading. Please try again.", 409);
+  }
   return communeRows.map((row) => {
     const group = memberRows.filter((member) => member.commune_id === row.id);
-    return communal(row, str(group.find((member) => member.user_id === viewer.id)?.role), group.length);
+    const membership = group.find((member) => member.user_id === viewer.id);
+    if (!membership || (membership.role !== "admin" && membership.role !== "member")) {
+      throw new ApiError("Could not verify your commune membership. Please try again.", 409);
+    }
+    return communal(row, str(membership.role), group.length);
   });
 }
 

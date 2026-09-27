@@ -14,7 +14,7 @@ BEGIN
     VALUES ('invite-alice', 'Alice', 'alice@example.test', true),
            ('invite-bob', 'Bob', 'bob@example.test', false),
            ('invite-charlie', 'Charlie', 'charlie@example.test', true);
-  PERFORM set_config('request.jwt.sub', 'invite-alice', true);
+  PERFORM set_config('request.jwt.claims', json_build_object('sub', 'invite-alice', 'role', 'authenticated')::text, true);
   v_commune := public.create_commune('Invitation test', 'household', 'GBP');
   v_token := public.create_commune_invite(
     v_commune, ' BOB@example.test ', 'member');
@@ -26,7 +26,7 @@ BEGIN
       AND token_hash = digest(v_token, 'sha256');
   IF v_count <> 1 THEN RAISE EXCEPTION 'Invite was not hashed'; END IF;
 
-  PERFORM set_config('request.jwt.sub', 'invite-charlie', true);
+  PERFORM set_config('request.jwt.claims', json_build_object('sub', 'invite-charlie', 'role', 'authenticated')::text, true);
   SELECT count(*) INTO v_count FROM public.preview_commune_invite(v_token);
   IF v_count <> 0 THEN RAISE EXCEPTION 'Wrong email previewed invite'; END IF;
   BEGIN
@@ -35,7 +35,7 @@ BEGIN
   EXCEPTION WHEN SQLSTATE '42501' THEN NULL;
   END;
 
-  PERFORM set_config('request.jwt.sub', 'invite-bob', true);
+  PERFORM set_config('request.jwt.claims', json_build_object('sub', 'invite-bob', 'role', 'authenticated')::text, true);
   SELECT count(*) INTO v_count FROM public.preview_commune_invite(v_token);
   IF v_count <> 0 THEN RAISE EXCEPTION 'Unverified email previewed invite'; END IF;
   BEGIN
@@ -64,12 +64,12 @@ BEGIN
   EXCEPTION WHEN SQLSTATE '42501' THEN NULL;
   END;
 
-  PERFORM set_config('request.jwt.sub', 'invite-alice', true);
+  PERFORM set_config('request.jwt.claims', json_build_object('sub', 'invite-alice', 'role', 'authenticated')::text, true);
   v_old_token := public.create_commune_invite(
     v_commune, 'charlie@example.test', 'member');
   v_new_token := public.create_commune_invite(
     v_commune, 'charlie@example.test', 'admin');
-  PERFORM set_config('request.jwt.sub', 'invite-charlie', true);
+  PERFORM set_config('request.jwt.claims', json_build_object('sub', 'invite-charlie', 'role', 'authenticated')::text, true);
   SELECT count(*) INTO v_count FROM public.preview_commune_invite(v_old_token);
   IF v_count <> 0 THEN RAISE EXCEPTION 'Superseded invite still works'; END IF;
   v_id := public.accept_commune_invite(v_new_token);
@@ -77,14 +77,14 @@ BEGIN
     WHERE commune_id = v_id AND user_id = 'invite-charlie' AND role = 'admin';
   IF v_count <> 1 THEN RAISE EXCEPTION 'Admin role not retained'; END IF;
 
-  PERFORM set_config('request.jwt.sub', 'invite-alice', true);
+  PERFORM set_config('request.jwt.claims', json_build_object('sub', 'invite-alice', 'role', 'authenticated')::text, true);
   SELECT count(*) INTO v_count FROM public.list_commune_invites(v_commune);
   IF v_count <> 3 THEN RAISE EXCEPTION 'Invite audit list is incomplete'; END IF;
 END;
 $$;
 
 SET ROLE authenticated;
-SELECT set_config('request.jwt.sub', 'invite-bob', true);
+SELECT set_config('request.jwt.claims', json_build_object('sub', 'invite-bob', 'role', 'authenticated')::text, true);
 DO $$
 BEGIN
   BEGIN
