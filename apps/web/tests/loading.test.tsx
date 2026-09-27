@@ -64,6 +64,17 @@ describe("commune loading", () => {
     expect(app.reminderUsage).toBeNull();
   });
 
+  it("keeps the reminder counter when invitations fail", async () => {
+    vi.mocked(api).mockImplementation(async (path) => {
+      if (path === "/auth/me") return { user };
+      if (path === "/reminders/usage") return { totalUsed: 12, totalLimit: 60, recipientLimit: 8, recipientUsage: {}, nextSlotAt: null };
+      throw new Error("Invitations unavailable");
+    });
+    mount();
+    await screen.findByRole("heading", { name: "Our home" });
+    await waitFor(() => expect(app.reminderUsage?.totalUsed).toBe(12));
+  });
+
   it("publishes a created commune after the save, without a full refresh", async () => {
     vi.mocked(loadCommunes).mockResolvedValue({ communes: [] });
     const location = mount("/onboard");

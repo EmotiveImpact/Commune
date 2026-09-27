@@ -385,14 +385,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (!previous) setPrefs(readPrefs(result.user.id));
       loadedRef.current = true;
       // Counts and invitations must not delay the commune itself.
-      void Promise.all([
+      void (
         // A pending database rollout must not make the rest of the app unusable.
         // The send RPC still enforces limits even if this display is unavailable.
         api<ReminderUsage>("/reminders/usage").catch((error: unknown) => {
           console.warn("Reminder usage could not be loaded", error instanceof Error ? error.message : "unknown error");
           return null;
-        }),
-        Promise.all(communes.filter((commune) => commune.role === "admin")
+        })
+      ).then((reminderUsage) => {
+        if (sequence !== refreshSequence.current || !dataRef.current) return;
+        publishData({ ...dataRef.current, reminderUsage });
+      });
+      void Promise.all(communes.filter((commune) => commune.role === "admin")
           .map(async (commune) => {
             const result = await api<{ invites: InviteRecord[] }>(`/communes/${encodeURIComponent(commune.id)}/invites`);
             return [commune.id, result.invites.filter((invite) =>
@@ -402,10 +406,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 role: invite.role === "admin" ? "Admin" as const : "Member" as const,
                 expiresAt: invite.expiresAt,
               }))] as const;
-          })),
-      ]).then(([reminderUsage, inviteEntries]) => {
+          })).then((inviteEntries) => {
         if (sequence !== refreshSequence.current || !dataRef.current) return;
-        publishData({ ...dataRef.current, reminderUsage, invites: Object.fromEntries(inviteEntries) });
+        publishData({ ...dataRef.current, invites: Object.fromEntries(inviteEntries) });
       }).catch((error: unknown) => {
         if (sequence === refreshSequence.current) setApiError(error instanceof Error ? error.message : "Could not refresh invitations");
       });
