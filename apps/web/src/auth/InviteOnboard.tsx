@@ -81,7 +81,7 @@ export function InvitePage() {
 }
 
 export function OnboardPage() {
-  const { createHub, session, go } = useApp();
+  const { createHub, session } = useApp();
   const [name, setName] = useState("");
   const [type, setType] = useState<Hub["type"]>("Household");
   const [currency, setCurrency] = useState("£ GBP");
@@ -100,7 +100,6 @@ export function OnboardPage() {
     try {
       const created = await createHub({ name: name.trim(), type, currency, ...location });
       if (!created) throw new Error("Could not create the commune.");
-      go("hub");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not create the commune.");
     } finally {

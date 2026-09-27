@@ -2130,14 +2130,54 @@ button.a-kpi {
 }
 
 .a-reminder-usage {
+  position: relative;
+  width: fit-content;
+  max-width: 100%;
+  flex: 0 0 auto;
+  color: var(--ink-soft);
+  font-size: 12px;
+}
+
+.a-reminder-usage summary {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 14px 18px;
-  margin-bottom: 16px;
+  gap: 8px;
+  min-height: 34px;
+  padding: 6px 12px;
+  cursor: pointer;
+  list-style: none;
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: 999px;
+}
+
+.a-reminder-usage summary::-webkit-details-marker { display: none; }
+.a-reminder-usage summary::after { content: "⌄"; }
+.a-reminder-usage summary strong { color: var(--ink); }
+.a-reminder-usage summary:focus-visible { outline: 2px solid var(--sage); outline-offset: 3px; }
+.a-reminder-usage-details {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  z-index: 5;
+  width: min(280px, calc(100vw - 48px));
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--paper);
+}
+.a-window > .a-reminder-usage { margin: 12px 0; }
+.a-window > .a-reminder-usage .a-reminder-usage-details,
+.a-toolbar > .a-reminder-usage .a-reminder-usage-details { right: auto; left: 0; }
+.a-settle-head { flex-wrap: wrap; }
+.a-settle-head > div:first-child { flex: 1 1 220px; min-width: 0; }
+.a-reminder-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+.a-content-loading { padding: 28px 0; }
+.a-content-loading p { color: var(--ink-soft); }
+.a-loading-lines { display: grid; gap: 14px; margin-top: 24px; }
+.a-loading-lines span {
+  display: block;
+  height: 72px;
+  border-radius: 18px;
   background: var(--paper-2);
 }
 
@@ -2170,9 +2210,10 @@ button.a-kpi {
 }
 
 .a-reminder-usage-side {
-  width: min(190px, 35%);
+  width: 100%;
+  margin-top: 12px;
   flex: 0 0 auto;
-  text-align: right;
+  text-align: left;
   color: var(--ink-soft);
   font-size: 12px;
 }
@@ -3580,13 +3621,6 @@ button.a-item {
 }
 
 @media (max-width: 560px) {
-  .a-reminder-usage {
-    align-items: flex-start;
-  }
-
-  .a-reminder-usage-side {
-    width: 32%;
-  }
 
   .a-app {
     grid-template-columns: 1fr;

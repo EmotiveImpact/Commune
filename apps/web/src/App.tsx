@@ -34,6 +34,7 @@ import { keepSearch } from "./nav";
 export function App() {
   return (
     <Switch>
+      <Route path="/hub-empty"><Redirect to={keepSearch("/hub")} replace /></Route>
       <Route path="/login">
         <GuestOnly>
           <LoginPage />
@@ -137,9 +138,18 @@ function Screen({ screen }: { screen: ScreenId }) {
 }
 
 function ScreenBody({ screen }: { screen: ScreenId }) {
-  const { session, emptyHub, hub } = useApp();
+  const { session, emptyHub, hub, contentLoading, apiError, refresh } = useApp();
   const hasHubs = Boolean(session?.hasHubs);
   const hasSettlement = hub.moves.some((move) => !move.even);
+
+  if (contentLoading && screen !== "settings") {
+    return <div className="a-content-loading" role={apiError ? "alert" : "status"} aria-busy={!apiError}>
+      <h2>{apiError ? "Could not load your commune" : `Opening ${hub.name}…`}</h2>
+      <p>{apiError ? "Your commune is saved. Try loading its activity again." : "Loading your shared activity."}</p>
+      {apiError ? <button className="a-btn" type="button" onClick={() => void refresh()}>Try again</button>
+        : <div className="a-loading-lines" aria-hidden="true"><span /><span /><span /></div>}
+    </div>;
+  }
 
   switch (screen) {
     case "home":

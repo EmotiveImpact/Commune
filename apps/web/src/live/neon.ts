@@ -143,8 +143,8 @@ async function requireUser(): Promise<User> {
   return user;
 }
 
-async function listCommunes(): Promise<Commune[]> {
-  const viewer = await requireUser();
+export async function listCommunes(knownViewer?: User): Promise<Commune[]> {
+  const viewer = knownViewer ?? await requireUser();
   const [communeResult, memberResult] = await Promise.all([
     db().from("communes").select("id,name,kind,currency,address,destination,stay_name,stay_address,created_at").order("created_at", { ascending: false }),
     db().from("commune_members").select("commune_id,user_id,role"),
@@ -157,9 +157,8 @@ async function listCommunes(): Promise<Commune[]> {
   });
 }
 
-async function snapshot(communeId: string): Promise<Snapshot> {
-  await requireUser();
-  const commune = (await listCommunes()).find((item) => item.id === communeId);
+export async function snapshot(communeId: string, knownCommune?: Commune): Promise<Snapshot> {
+  const commune = knownCommune ?? (await listCommunes()).find((item) => item.id === communeId);
   if (!commune) throw new ApiError("Commune not found", 404);
   const [memberResult, expenseResult, fundResult, noteResult, operationResult, targetResult,
     notificationResult, reminderResult] = await Promise.all([
@@ -248,7 +247,6 @@ async function snapshot(communeId: string): Promise<Snapshot> {
 }
 
 async function reminderUsage(): Promise<ReminderUsage> {
-  await requireUser();
   const records = rows(unwrap(await db().rpc("reminder_usage")));
   const record = records[0];
   if (!record || !record.recipient_usage || typeof record.recipient_usage !== "object" ||
