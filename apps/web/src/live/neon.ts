@@ -44,6 +44,26 @@ function client() {
 let neon: ReturnType<typeof client> | undefined;
 function db() { return neon ??= client(); }
 
+// Read-only investigation of the same authorized resource using the two
+// supported RPC transports. Never returns tokens, user IDs, or member data.
+export async function inspectMembershipRead(communeId: string) {
+  const viewer = await requireUser();
+  const report = async (name: string, request: PromiseLike<{ data: unknown; error: unknown }>) => {
+    const started = performance.now();
+    const result = await request;
+    const error = result.error as { code?: string } | null;
+    return { name, ms: Math.round(performance.now() - started), code: error?.code ?? "ok",
+      value: typeof result.data === "boolean" ? result.data : Array.isArray(result.data) ? result.data.length : null };
+  };
+  return Promise.all([
+    report("profiles-post", db().rpc("member_profiles", { p_commune_id: communeId })),
+    report("profiles-get", db().rpc("member_profiles", { p_commune_id: communeId }, { get: true })),
+    report("membership-post", db().rpc("is_commune_member", { p_commune_id: communeId })),
+    report("membership-get", db().rpc("is_commune_member", { p_commune_id: communeId }, { get: true })),
+    report("membership-table", db().from("commune_members").select("user_id").eq("commune_id", communeId).eq("user_id", viewer.id)),
+  ]);
+}
+
 async function dispatchReminderEmail(reminderId: string): Promise<void> {
   // The database transaction already created the in-app notice and durable
   // outbox row. This prompt dispatch is best-effort; the scheduled trigger

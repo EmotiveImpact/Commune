@@ -1,4 +1,5 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
+import { diagnosticsEnabled } from "./live/diagnostics";
 import { Redirect, Route, Switch } from "wouter";
 import { LoginPage } from "./auth/Login";
 import { SignupPage, VerifyEmailPage } from "./auth/Signup";
@@ -116,6 +117,7 @@ function ProductShell() {
         <Sidebar screen={screen} />
         <div className="a-main">
           <Header screen={screen} />
+          {diagnosticsEnabled() ? <ConnectionCheck /> : null}
           {apiError ? <div className="a-api-error" role="alert">{apiError}<button type="button" onClick={clearApiError} aria-label="Dismiss error">×</button></div> : null}
           {contentError && hub.activityState === "ready" ? <div className="a-api-error" role="alert">Could not refresh this commune. Showing its last loaded activity.<button type="button" onClick={() => void refresh()}>Try again</button></div> : null}
           <div className="a-content">
@@ -128,6 +130,31 @@ function ProductShell() {
       <Windows />
     </div>
   );
+}
+
+function ConnectionCheck() {
+  const { hubId } = useApp();
+  const [running, setRunning] = useState(false);
+  const [result, setResult] = useState("");
+  async function check() {
+    setRunning(true);
+    setResult("");
+    try {
+      const { inspectMembershipRead } = await import("./live/neon");
+      const rows = [];
+      for (let round = 1; round <= 5; round++) {
+        rows.push({ round, reads: await inspectMembershipRead(hubId) });
+      }
+      setResult(JSON.stringify(rows, null, 2));
+    } catch {
+      setResult("Connection test could not complete.");
+    } finally { setRunning(false); }
+  }
+  return <details style={{ margin: "0 28px", fontSize: 12 }}>
+    <summary>Read-only connection diagnostics</summary>
+    <button type="button" disabled={!hubId || running} onClick={() => void check()}>{running ? "Checking…" : "Compare membership reads"}</button>
+    <pre style={{ maxHeight: 240, overflow: "auto" }}>{result}</pre>
+  </details>;
 }
 
 function Screen({ screen }: { screen: ScreenId }) {
