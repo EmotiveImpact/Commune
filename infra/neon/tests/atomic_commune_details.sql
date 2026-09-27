@@ -10,7 +10,7 @@ BEGIN
     VALUES ('atomic-alice', 'Alice', 'alice@atomic.test', true),
            ('atomic-bob', 'Bob', 'bob@atomic.test', true),
            ('atomic-outsider', 'Outsider', 'outsider@atomic.test', true);
-  PERFORM set_config('request.jwt.sub', 'atomic-alice', true);
+  PERFORM set_config('request.jwt.claims', json_build_object('sub', 'atomic-alice', 'role', 'authenticated')::text, true);
   v_home := public.create_commune_with_location(
     '  Alder House  ', 'household', 'GBP',
     '  22 Orchard Lane  ', '', '', ''
@@ -22,7 +22,7 @@ END;
 $$;
 
 SET ROLE authenticated;
-SELECT set_config('request.jwt.sub', 'atomic-alice', true);
+SELECT set_config('request.jwt.claims', json_build_object('sub', 'atomic-alice', 'role', 'authenticated')::text, true);
 DO $$
 DECLARE
   v_home uuid := current_setting('test.atomic_home')::uuid;
@@ -120,7 +120,7 @@ BEGIN
 END;
 $$;
 
-SELECT set_config('request.jwt.sub', 'atomic-bob', true);
+SELECT set_config('request.jwt.claims', json_build_object('sub', 'atomic-bob', 'role', 'authenticated')::text, true);
 DO $$
 DECLARE
   v_home uuid := current_setting('test.atomic_home')::uuid;
@@ -139,7 +139,7 @@ BEGIN
 END;
 $$;
 
-SELECT set_config('request.jwt.sub', 'atomic-outsider', true);
+SELECT set_config('request.jwt.claims', json_build_object('sub', 'atomic-outsider', 'role', 'authenticated')::text, true);
 DO $$
 BEGIN
   BEGIN
@@ -153,7 +153,7 @@ BEGIN
 END;
 $$;
 
-SELECT set_config('request.jwt.sub', '', true);
+SELECT set_config('request.jwt.claims', json_build_object('sub', '', 'role', 'authenticated')::text, true);
 DO $$
 BEGIN
   BEGIN
@@ -161,7 +161,7 @@ BEGIN
       'Anonymous', 'household', 'GBP', '', '', '', ''
     );
     RAISE EXCEPTION 'Anonymous commune creation succeeded';
-  EXCEPTION WHEN SQLSTATE '42501' THEN NULL;
+  EXCEPTION WHEN SQLSTATE '28000' THEN NULL;
   END;
 END;
 $$;

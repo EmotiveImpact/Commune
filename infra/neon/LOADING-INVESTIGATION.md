@@ -1,7 +1,41 @@
 # Production loading investigation — 27 September 2026
 
-Status: loading orchestration defects reproduced and fixed; intermittent
-`Not a commune member` rejection remains unproven and must not be called fixed.
+Status: loading orchestration fixed; cold-connection identity loss reproduced
+on a production branch and corrected by migration 0011. Production rollout
+and browser results are recorded in the release PR.
+
+## Identity root cause and fix (follow-up)
+
+- Actual production logs captured 403 from `member_profiles` and
+  `list_reminder_targets` in 127–261 ms while other reads succeeded. Another
+  Home tab captured 403s in 159–175 ms after showing “No communes yet”.
+- On the one-day branch `debug-membership-identity-20260927`, a new direct
+  connection was given transaction-local identity claims for an existing
+  member. `is_commune_member`, called as `authenticated`, returned **false**
+  on first use and **true** on the initialized connection, without data changes.
+- The Neon identity extension registers its claims setting lazily. First use
+  inside SECURITY DEFINER can discard that setting under PostgreSQL's security
+  restrictions. This reproduces the initialization trap described in
+  [upstream issue 51](https://github.com/neondatabase/pg_session_jwt/issues/51).
+- A pre-request initialization hook was attempted on the isolated branch,
+  but the managed role cannot alter `authenticator`. That entire transaction
+  was rolled back. It was never applied to production.
+- Migration 0011 uses a private invoker-only reader for PostgREST's verified,
+  transaction-local `request.jwt.claims.sub`. The Data API still validates JWTs
+  and selects the role. No client-supplied identity is accepted. Missing or
+  malformed identity raises 28000 instead of masquerading as an empty account.
+  Fifteen functions and seven policies keep their existing rules and grants;
+  only the identity accessor changes. No browser retries or RLS bypasses.
+- This is a Data API identity adapter, not a raw-SQL authentication method.
+  Database credentials remain server-only. The reminder worker retains its
+  independent JWT validation; only its local test fixtures change.
+- Fresh-connection branch assertions passed: members can read communes,
+  profiles and reminders; nonmembers cannot; missing identity and anonymous
+  access fail; direct expense INSERT remains forbidden.
+- Eight existing local SQL suites passed after 0011, including UUID Auth,
+  invitations, shared content, atomic creation, reminder limits and grants.
+  All 27 web tests and the Vite build passed. The client now also rejects
+  malformed/inconsistent membership responses rather than displaying empty.
 
 ## Evidence
 
@@ -19,9 +53,8 @@ Status: loading orchestration defects reproduced and fixed; intermittent
   DEFINER, owned by neondb_owner, with a fixed search_path. It checks the
   commune ID and `m.user_id = auth.user_id()`. `member_profiles(uuid)` uses
   that guard and the managed Auth UUID-to-text join from migration 0008.
-- No failed authenticated request has yet been captured with the new
-  diagnostics. No grant, RLS rule, auth provider, billing plan or database
-  setting was changed during this investigation.
+- These initial warm tests predated the captured failures and cold-connection
+  reproduction above; they did not establish that the problem was fixed.
 
 ## Reproduced application defects
 
@@ -55,13 +88,10 @@ Unknown balances and partial overviews never claim zero, even, or nothing due.
 - Local browser: two real PostgreSQL-backed communes retain names, addresses,
   members, expense balances and navigation. No production data was changed.
 
-## Still required
+## Remaining scope
 
-Capture a failing production request before changing authentication. Record
-the failing resource/status/timing and distinguish `member_profiles` from
-`list_reminder_targets`. Then compare the verified subject with the database
-membership under the same request context. Do not bypass RLS, automatically
-recreate membership, or silently retry 403s to hide the failure.
+Repeat real-browser reads after rollout and watch for recurrence. Browser
+diagnostics are opt-in request traces, not continuous incident monitoring.
 
 The per-commune snapshot still includes several unrelated features and is not
 paged. Further section-level reads/batched summaries and realistic volume

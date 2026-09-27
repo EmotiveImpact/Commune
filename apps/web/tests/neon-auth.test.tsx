@@ -14,6 +14,44 @@ beforeEach(() => {
 });
 
 describe("hosted read authentication", () => {
+  function listResults(communes: unknown, members: unknown, error: unknown = null) {
+    mocks.getSession.mockResolvedValue({ data: { user: { id: "viewer", emailVerified: true } } });
+    mocks.from.mockImplementation((table: string) => {
+      const result = Promise.resolve({ data: table === "communes" ? communes : members, error });
+      return { select: () => Object.assign(result, { order: () => result }) };
+    });
+  }
+
+  it("reports missing database identity as authentication failure, not an empty list", async () => {
+    listResults(null, null, { code: "28000", message: "Request identity could not be verified" });
+    const { listCommunes } = await import("../src/live/neon");
+    await expect(listCommunes()).rejects.toMatchObject({ status: 401 });
+  });
+
+  it("does not turn malformed database responses into No communes yet", async () => {
+    listResults(null, []);
+    const { listCommunes } = await import("../src/live/neon");
+    await expect(listCommunes()).rejects.toMatchObject({ status: 502 });
+  });
+
+  it("rejects inconsistent membership reads instead of displaying an empty account", async () => {
+    listResults([], [{ commune_id: "commune-1", user_id: "viewer", role: "admin" }]);
+    const { listCommunes } = await import("../src/live/neon");
+    await expect(listCommunes()).rejects.toMatchObject({ status: 409 });
+  });
+
+  it("does not publish a commune without the viewer's membership", async () => {
+    listResults([{ id: "commune-1", name: "Home" }], []);
+    const { listCommunes } = await import("../src/live/neon");
+    await expect(listCommunes()).rejects.toMatchObject({ status: 409 });
+  });
+
+  it("still accepts a genuinely empty new account", async () => {
+    listResults([], []);
+    const { listCommunes } = await import("../src/live/neon");
+    expect(await listCommunes()).toEqual([]);
+  });
+
   it("does not treat known commune metadata as an authenticated session", async () => {
     const { snapshot } = await import("../src/live/neon");
     await expect(snapshot(commune.id, commune)).rejects.toThrow("Sign in required");

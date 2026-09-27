@@ -71,7 +71,7 @@ async function asUser(userId, action) {
   const connection = await db.connect();
   try {
     await connection.query("BEGIN");
-    await connection.query("SELECT set_config('request.jwt.sub', $1, true)", [userId]);
+    await connection.query("SELECT set_config('request.jwt.claims', json_build_object('sub', $1::text, 'role', 'authenticated')::text, true)", [userId]);
     const result = await action(connection);
     await connection.query("COMMIT");
     return result;
@@ -305,7 +305,7 @@ try {
   let lockReminder;
   try {
     await locker.query("BEGIN");
-    await locker.query("SELECT set_config('request.jwt.sub', $1, true)", [alice]);
+    await locker.query("SELECT set_config('request.jwt.claims', json_build_object('sub', $1::text, 'role', 'authenticated')::text, true)", [alice]);
     await locker.query(
       "SELECT id FROM public.fund_commitments WHERE id = $1 FOR UPDATE",
       [lockCommitment],
@@ -315,7 +315,7 @@ try {
       [lockCommitment],
     );
     await sender.query("BEGIN");
-    await sender.query("SELECT set_config('request.jwt.sub', $1, true)", [alice]);
+    await sender.query("SELECT set_config('request.jwt.claims', json_build_object('sub', $1::text, 'role', 'authenticated')::text, true)", [alice]);
     const pendingSend = sender.query(
       "SELECT public.send_reminder('chase', $1) AS id", [lockCommitment],
     );

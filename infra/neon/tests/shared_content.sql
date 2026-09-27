@@ -11,20 +11,20 @@ BEGIN
     VALUES ('content-alice', 'Alice', 'alice@content.test', true),
            ('content-bob', 'Bob', 'bob@content.test', true),
            ('content-carol', 'Carol', 'carol@content.test', true);
-  PERFORM set_config('request.jwt.sub', 'content-alice', true);
+  PERFORM set_config('request.jwt.claims', json_build_object('sub', 'content-alice', 'role', 'authenticated')::text, true);
   v_home := public.create_commune('Content home', 'household', 'GBP');
   INSERT INTO public.commune_members (commune_id, user_id, role)
     VALUES (v_home, 'content-bob', 'member');
   PERFORM set_config('test.content_home', v_home::text, true);
 
-  PERFORM set_config('request.jwt.sub', 'content-carol', true);
+  PERFORM set_config('request.jwt.claims', json_build_object('sub', 'content-carol', 'role', 'authenticated')::text, true);
   v_other := public.create_commune('Other home', 'household', 'GBP');
   PERFORM set_config('test.content_other', v_other::text, true);
 END;
 $$;
 
 SET ROLE authenticated;
-SELECT set_config('request.jwt.sub', 'content-alice', true);
+SELECT set_config('request.jwt.claims', json_build_object('sub', 'content-alice', 'role', 'authenticated')::text, true);
 DO $$
 DECLARE
   v_home uuid := current_setting('test.content_home')::uuid;
@@ -218,7 +218,7 @@ BEGIN
 END;
 $$;
 
-SELECT set_config('request.jwt.sub', 'content-bob', true);
+SELECT set_config('request.jwt.claims', json_build_object('sub', 'content-bob', 'role', 'authenticated')::text, true);
 DO $$
 DECLARE
   v_home uuid := current_setting('test.content_home')::uuid;
@@ -270,7 +270,7 @@ BEGIN
 END;
 $$;
 
-SELECT set_config('request.jwt.sub', 'content-carol', true);
+SELECT set_config('request.jwt.claims', json_build_object('sub', 'content-carol', 'role', 'authenticated')::text, true);
 DO $$
 DECLARE
   v_home uuid := current_setting('test.content_home')::uuid;

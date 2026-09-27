@@ -9,7 +9,7 @@ DECLARE
   v_usage jsonb;
   v_next timestamptz;
 BEGIN
-  PERFORM set_config('request.jwt.sub', 'usage-alice', true);
+  PERFORM set_config('request.jwt.claims', json_build_object('sub', 'usage-alice', 'role', 'authenticated')::text, true);
   v_commune := public.create_commune('Usage test', 'household', 'GBP');
   INSERT INTO public.reminders
     (commune_id, kind, source_id, sender_user_id, recipient_user_id,
@@ -68,17 +68,17 @@ BEGIN
     RAISE EXCEPTION 'Wrong over-cap next slot: %, %', v_total, v_next;
   END IF;
 
-  PERFORM set_config('request.jwt.sub', 'usage-bob', true);
+  PERFORM set_config('request.jwt.claims', json_build_object('sub', 'usage-bob', 'role', 'authenticated')::text, true);
   SELECT total_used, recipient_usage INTO v_total, v_usage
     FROM public.reminder_usage();
   IF v_total <> 0 OR v_usage <> '{}'::jsonb THEN
     RAISE EXCEPTION 'One sender could read another sender''s usage';
   END IF;
-  PERFORM set_config('request.jwt.sub', '', true);
+  PERFORM set_config('request.jwt.claims', json_build_object('sub', '', 'role', 'authenticated')::text, true);
   BEGIN
     PERFORM public.reminder_usage();
     RAISE EXCEPTION 'Unsigned caller read reminder usage' USING ERRCODE = 'XX000';
-  EXCEPTION WHEN SQLSTATE '42501' THEN NULL;
+  EXCEPTION WHEN SQLSTATE '28000' THEN NULL;
   END;
 END;
 $$;

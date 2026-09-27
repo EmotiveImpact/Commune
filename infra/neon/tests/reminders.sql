@@ -17,7 +17,7 @@ DECLARE
   v_count integer;
   v_amount bigint;
 BEGIN
-  PERFORM set_config('request.jwt.sub', 'alice', true);
+  PERFORM set_config('request.jwt.claims', json_build_object('sub', 'alice', 'role', 'authenticated')::text, true);
   v_commune := public.create_commune('Park Street', 'household', 'GBP');
   PERFORM set_config('test.park_id', v_commune::text, true);
   v_other_commune := public.create_commune('Other House', 'household', 'GBP');
@@ -79,20 +79,20 @@ BEGIN
   EXCEPTION WHEN SQLSTATE '22023' THEN NULL;
   END;
 
-  PERFORM set_config('request.jwt.sub', 'bob', true);
+  PERFORM set_config('request.jwt.claims', json_build_object('sub', 'bob', 'role', 'authenticated')::text, true);
   BEGIN
     PERFORM public.send_reminder('nudge', v_share);
     RAISE EXCEPTION 'Debtor could Nudge themself';
   EXCEPTION WHEN SQLSTATE '42501' THEN NULL;
   END;
-  PERFORM set_config('request.jwt.sub', 'charlie', true);
+  PERFORM set_config('request.jwt.claims', json_build_object('sub', 'charlie', 'role', 'authenticated')::text, true);
   BEGIN
     PERFORM public.list_reminder_targets(v_commune);
     RAISE EXCEPTION 'Other commune member saw targets';
   EXCEPTION WHEN SQLSTATE '42501' THEN NULL;
   END;
 
-  PERFORM set_config('request.jwt.sub', 'alice', true);
+  PERFORM set_config('request.jwt.claims', json_build_object('sub', 'alice', 'role', 'authenticated')::text, true);
   PERFORM public.confirm_expense_share(v_share);
   SELECT count(*) INTO v_count FROM public.list_reminder_targets(v_commune)
     WHERE source_id = v_share;
@@ -102,9 +102,9 @@ BEGIN
   -- A Chase on another obligation is allowed once the daily limit expires.
   UPDATE public.reminders SET created_at = now() - interval '2 days'
     WHERE id = v_nudge;
-  PERFORM set_config('request.jwt.sub', 'bob', true);
+  PERFORM set_config('request.jwt.claims', json_build_object('sub', 'bob', 'role', 'authenticated')::text, true);
   v_commitment := public.pledge_fund(v_fund, 18000, current_date);
-  PERFORM set_config('request.jwt.sub', 'alice', true);
+  PERFORM set_config('request.jwt.claims', json_build_object('sub', 'alice', 'role', 'authenticated')::text, true);
   SELECT count(*) INTO v_count FROM public.list_reminder_targets(v_commune)
     WHERE kind = 'chase' AND source_id = v_commitment AND amount_minor = 18000;
   IF v_count <> 1 THEN RAISE EXCEPTION 'Expected one £180 Chase target'; END IF;
@@ -149,7 +149,7 @@ $$;
 
 -- Row-level access through the same role used by the Neon Data API.
 SET ROLE authenticated;
-SELECT set_config('request.jwt.sub', 'charlie', true);
+SELECT set_config('request.jwt.claims', json_build_object('sub', 'charlie', 'role', 'authenticated')::text, true);
 DO $$
 DECLARE v_count integer;
 BEGIN
