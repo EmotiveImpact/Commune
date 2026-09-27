@@ -1,5 +1,6 @@
 import { createClient } from "@neondatabase/neon-js";
 import { ApiError } from "./api";
+import { observedDataFetch, reportRead } from "./diagnostics";
 import type {
   Commune, Commitment, CurrencyCode, Expense, Fund, Member, Notification,
   ReminderTarget, ReminderUsage, Share, Snapshot, User,
@@ -33,11 +34,11 @@ function client() {
         !url.pathname.endsWith("/rest/v1")) {
       throw new ApiError("Invalid Neon Data API URL configuration", 503);
     }
-    return createClient({ auth: { url: authUrl }, dataApi: { url: configuredDataUrl } });
+    return createClient({ auth: { url: authUrl }, dataApi: { url: configuredDataUrl, options: { global: { fetch: observedDataFetch } } } });
   }
   // Neon documents this single-URL form for its 0.7.0-beta+ SDK. It derives
   // the branch's Auth and Data API endpoints from the same public base URL.
-  return createClient(databaseBaseFromAuth(authUrl));
+  return createClient(databaseBaseFromAuth(authUrl), { dataApi: { options: { global: { fetch: observedDataFetch } } } });
 }
 
 let neon: ReturnType<typeof client> | undefined;
@@ -127,7 +128,9 @@ function communal(row: Row, role: string, memberCount: number): Commune {
 }
 
 async function currentUser(): Promise<User | null> {
+  const started = performance.now();
   const result = await db().auth.getSession();
+  reportRead("auth/session", started, result.error ? "error" : "ok");
   if (result.error) message(result.error);
   const user = result.data?.user;
   // No shared data is exposed to an account until email ownership is proven.
