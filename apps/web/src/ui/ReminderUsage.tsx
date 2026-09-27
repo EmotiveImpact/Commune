@@ -8,25 +8,22 @@ export function reminderLimitReached(usage: Usage | null, recipientId: string): 
 }
 
 export function ReminderUsageMeter({ usage }: { usage: Usage | null }) {
-  if (!usage) return (
-    <div className="a-reminder-usage" role="status">
-      <div className="a-reminder-usage-copy">
-        <span>Reminder count unavailable</span>
-        <p>Try refreshing this page. Sends are still checked by the server.</p>
-      </div>
-    </div>
-  );
+  if (!usage) return null;
   const full = usage.totalUsed >= usage.totalLimit;
   const next = usage.nextSlotAt ? new Date(usage.nextSlotAt) : null;
   const nextLabel = next && !Number.isNaN(next.valueOf())
     ? new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }).format(next)
     : null;
   return (
-    <div className="a-reminder-usage" aria-label="Reminder usage">
+    <details className="a-reminder-usage">
+      <summary aria-label={`Reminder allowance: ${usage.totalUsed} of ${usage.totalLimit} used in the last 30 days`}>
+        <span>Reminders</span><strong>{usage.totalUsed}/{usage.totalLimit}</strong>
+      </summary>
+      <div className="a-reminder-usage-details">
       <div className="a-reminder-usage-copy">
         <span>Reminders sent</span>
-        <strong>{usage.totalUsed} <small>of {usage.totalLimit}</small></strong>
         <p>Nudges and Chases together · last 30 days · all communes</p>
+        <p>Up to {usage.recipientLimit} per person. Each reminder has a 72-hour cooldown.</p>
       </div>
       <div className="a-reminder-usage-side">
         <div className="a-reminder-usage-track" role="progressbar" aria-label="Reminder allowance used"
@@ -36,7 +33,8 @@ export function ReminderUsageMeter({ usage }: { usage: Usage | null }) {
         </div>
         <span>{full ? nextLabel ? `Next slot opens ${nextLabel}` : "Limit reached" : `${usage.totalLimit - usage.totalUsed} remaining`}</span>
       </div>
-    </div>
+      </div>
+    </details>
   );
 }
 

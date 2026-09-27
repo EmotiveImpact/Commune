@@ -213,16 +213,18 @@ export function SettleScreen() {
           </div>
         </div>
       </div>
-      <ReminderUsageMeter usage={reminderUsage} />
       <div className="a-card">
-        <div className="a-card-head">
+        <div className="a-card-head a-settle-head">
           <div>
             <h2>Outstanding shares</h2>
             <p className="sub">Each share is tracked separately. Commune does not move money.</p>
           </div>
+          <div className="a-reminder-actions">
           <button className="a-btn ghost" type="button" onClick={() => go("breakdown")}>
             Breakdown
           </button>
+          <ReminderUsageMeter usage={reminderUsage} />
+          </div>
         </div>
         {error ? <p className="a-form-error" role="alert">{error}</p> : null}
         {message ? <p className="a-window-note" role="status">{message}</p> : null}
@@ -394,13 +396,13 @@ export function FundsScreen() {
   return (
     <>
       <div className="a-toolbar">
+        {isAdmin && funds.length > 0 ? <ReminderUsageMeter usage={reminderUsage} /> : null}
         {isAdmin ? (
           <button className="a-btn" type="button" onClick={() => setNewFundOpen((open) => !open)}>
             {newFundOpen ? "Cancel" : "Create fund"}
           </button>
         ) : null}
       </div>
-      <ReminderUsageMeter usage={reminderUsage} />
       {error ? <p className="a-form-error" role="alert">{error}</p> : null}
       {message ? <p className="a-window-note" role="status">{message}</p> : null}
       {newFundOpen ? (

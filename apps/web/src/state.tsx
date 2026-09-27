@@ -33,7 +33,7 @@ import {
 } from "./data/operations";
 import { isStoredImage, readHubPhotos } from "./data/images";
 import { isNativeNow, keepSearch, pathOnly } from "./nav";
-import { api, post } from "./live/api";
+import { api, post, loadCommunes, loadSnapshot } from "./live/api";
 import {
   equalShares,
   expenseRows,
@@ -158,6 +158,7 @@ export type AppState = {
   hubId: HubId;
   hub: LiveHub;
   places: LiveHub[];
+  contentLoading: boolean;
   emptyHub: boolean;
   window: WindowId | null;
   moreOpen: boolean;
@@ -332,6 +333,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [authStatus, setAuthStatus] = useState<AuthStatus>("loading");
   const [apiError, setApiError] = useState<string | null>(null);
   const [data, setData] = useState<LiveData | null>(null);
+  const dataRef = useRef<LiveData | null>(null);
+  const publishData = useCallback((next: LiveData | null) => {
+    dataRef.current = next;
+    setData(next);
+  }, []);
   const [prefs, setPrefs] = useState<LocalPrefs>({ ...DEFAULT_PREFS });
   const [hubId, setHubId] = useState<HubId>("");
   const [windowId, setWindowId] = useState<WindowId | null>(null);
@@ -344,36 +350,53 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [searchQuery, setSearchQuery] = useState("");
   const loadedRef = useRef(false);
   const refreshSequence = useRef(0);
+  const refreshing = useRef(false);
+  const lastRefreshAt = useRef(0);
   const native = isNativeNow();
 
   const refresh = useCallback(async () => {
     const sequence = ++refreshSequence.current;
+    refreshing.current = true;
     try {
       const result = await api<{ user: User | null }>("/auth/me");
       if (sequence !== refreshSequence.current) return;
       if (!result.user) {
-        setData(null);
+        publishData(null);
         setHubId("");
         setAuthStatus("guest");
         setApiError(null);
         loadedRef.current = true;
         return;
       }
-      const [{ communes }, reminderUsage] = await Promise.all([
-        api<{ communes: Commune[] }>("/communes"),
+      const { communes } = await loadCommunes(result.user);
+      if (sequence !== refreshSequence.current) return;
+      const previous = dataRef.current?.user.id === result.user.id ? dataRef.current : null;
+      // Identity and membership are ready. Keep existing content on refresh;
+      // missing snapshots render a loading state, never a false empty ledger.
+      publishData({
+        user: result.user, communes,
+        snapshots: Object.fromEntries(communes.filter((commune) => previous?.snapshots[commune.id])
+          .map((commune) => [commune.id, previous!.snapshots[commune.id]])),
+        invites: previous?.invites ?? {}, reminderUsage: previous?.reminderUsage ?? null,
+      });
+      setAuthStatus("authenticated");
+      setHubId((current) => communes.some((commune) => commune.id === current)
+        ? current : communes.find((commune) => commune.id === readPrefs(result.user!.id).activeHubId)?.id ?? communes[0]?.id ?? "");
+      if (!previous) setPrefs(readPrefs(result.user.id));
+      loadedRef.current = true;
+      // Counts and invitations must not delay the commune itself.
+      void (
         // A pending database rollout must not make the rest of the app unusable.
         // The send RPC still enforces limits even if this display is unavailable.
         api<ReminderUsage>("/reminders/usage").catch((error: unknown) => {
           console.warn("Reminder usage could not be loaded", error instanceof Error ? error.message : "unknown error");
           return null;
-        }),
-      ]);
-      const [entries, inviteEntries] = await Promise.all([
-        Promise.all(communes.map(async (commune) => [
-          commune.id,
-          await api<Snapshot>(`/communes/${encodeURIComponent(commune.id)}/snapshot`),
-        ] as const)),
-        Promise.all(communes.filter((commune) => commune.role === "admin")
+        })
+      ).then((reminderUsage) => {
+        if (sequence !== refreshSequence.current || !dataRef.current) return;
+        publishData({ ...dataRef.current, reminderUsage });
+      });
+      void Promise.all(communes.filter((commune) => commune.role === "admin")
           .map(async (commune) => {
             const result = await api<{ invites: InviteRecord[] }>(`/communes/${encodeURIComponent(commune.id)}/invites`);
             return [commune.id, result.invites.filter((invite) =>
@@ -383,33 +406,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 role: invite.role === "admin" ? "Admin" as const : "Member" as const,
                 expiresAt: invite.expiresAt,
               }))] as const;
-          })),
-      ]);
-      if (sequence !== refreshSequence.current) return;
-      const next: LiveData = {
-        user: result.user,
-        communes,
-        snapshots: Object.fromEntries(entries),
-        invites: Object.fromEntries(inviteEntries),
-        reminderUsage,
-      };
-      setData(next);
-      setAuthStatus("authenticated");
-      setApiError(null);
-      setHubId((current) => {
-        if (communes.some((commune) => commune.id === current)) return current;
-        const saved = readPrefs(result.user!.id).activeHubId;
-        return communes.find((commune) => commune.id === saved)?.id ?? communes[0]?.id ?? "";
+          })).then((inviteEntries) => {
+        if (sequence !== refreshSequence.current || !dataRef.current) return;
+        publishData({ ...dataRef.current, invites: Object.fromEntries(inviteEntries) });
+      }).catch((error: unknown) => {
+        if (sequence === refreshSequence.current) setApiError(error instanceof Error ? error.message : "Could not refresh invitations");
       });
-      setPrefs((current) => data?.user.id === result.user!.id
-        ? current : readPrefs(result.user!.id));
-      loadedRef.current = true;
+      await Promise.all(communes.map(async (commune) => {
+        const snapshot = await loadSnapshot(commune);
+        if (sequence !== refreshSequence.current || !dataRef.current) return;
+        publishData({ ...dataRef.current, snapshots: { ...dataRef.current.snapshots, [commune.id]: snapshot } });
+      }));
+      if (sequence !== refreshSequence.current) return;
+      setApiError(null);
+      lastRefreshAt.current = Date.now();
     } catch (error) {
       if (sequence !== refreshSequence.current) return;
       setApiError(error instanceof Error ? error.message : "Could not connect to Commune");
       if (!loadedRef.current) setAuthStatus("error");
+    } finally {
+      if (sequence === refreshSequence.current) refreshing.current = false;
     }
-  }, [data?.user.id]);
+  }, [publishData]);
 
   useEffect(() => {
     void refresh();
@@ -417,11 +435,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (authStatus !== "authenticated") return;
-    const onFocus = () => { void refresh(); };
-    const onVisible = () => { if (document.visibilityState === "visible") void refresh(); };
+    const onFocus = () => {
+      if (document.visibilityState === "visible" && !refreshing.current && Date.now() - lastRefreshAt.current > 15_000) void refresh();
+    };
+    const onVisible = onFocus;
     window.addEventListener("focus", onFocus);
     document.addEventListener("visibilitychange", onVisible);
-    const timer = window.setInterval(() => { void refresh(); }, 20_000);
+    const timer = window.setInterval(onFocus, 60_000);
     return () => {
       window.removeEventListener("focus", onFocus);
       document.removeEventListener("visibilitychange", onVisible);
@@ -467,12 +487,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const signOut = useCallback(() => mutate(async () => {
     await post("/auth/logout", {});
     ++refreshSequence.current;
-    setData(null);
+    publishData(null);
     setHubId("");
     setWindowId(null);
     setAuthStatus("guest");
     setLocation(keepSearch("/login"));
-  }), [mutate, setLocation]);
+  }), [mutate, publishData, setLocation]);
 
   const session: Session | null = data ? {
     userId: data.user.id,
@@ -486,13 +506,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
     hubPhotos: prefs.hubPhotos,
     avatar: prefs.avatar,
   } : null;
-  const places: LiveHub[] = data ? data.communes
-    .map((commune) => data.snapshots[commune.id])
-    .filter((snapshot): snapshot is Snapshot => !!snapshot)
-    .map((snapshot) => hubFromSnapshot(snapshot, data.user, prefs.hubPhotos[snapshot.commune.id])) : [];
+  const places: LiveHub[] = data ? data.communes.map((commune) => {
+    const snapshot = data.snapshots[commune.id];
+    if (snapshot) return hubFromSnapshot(snapshot, data.user, prefs.hubPhotos[commune.id]);
+    // Render the known identity in the switcher while its content is loading.
+    return { ...emptyHub(), ...commune,
+      type: commune.kind === "trip" ? "Trip" : commune.kind === "workspace" ? "Workspace" : "Household",
+      photo: prefs.hubPhotos[commune.id] ?? "", status: "Loading shared activity…",
+      switchMeta: "Loading…", youMeta: commune.name,
+    };
+  }) : [];
   const hub = places.find((place) => place.id === hubId) ?? places[0] ?? emptyHub();
   const activeId = hub.id;
   const snapshot = data?.snapshots[activeId];
+  const contentLoading = !!data?.communes.length && (
+    screen === "home" || screen === "home-empty" || screen === "home-inbox" || screen === "communes"
+      ? data.communes.some((commune) => !data.snapshots[commune.id])
+      : !snapshot
+  );
   const expenses = snapshot && data ? expenseRows(snapshot, data.user.id) : [];
   const selectedExpense = expenses.find((row) => row.id === selectedExpenseId) ?? expenses[0] ?? null;
   const lastExpense = selectedExpense
@@ -543,20 +574,37 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [prefs.payMethods, savePrefs]);
 
   const createHub = useCallback((input: CreatedHub, opts?: { openExpense?: boolean }) => mutate(async () => {
+    const current = dataRef.current;
+    if (!current) throw new Error("Sign in first");
     const currency = (input.currency.match(/GBP|USD|EUR/)?.[0] ?? "GBP") as CurrencyCode;
     const kind = input.type.toLowerCase();
     const result = await post<{ id: string }>("/communes", {
       name: input.name.trim(), kind, currency,
       ...locationForKind(input),
     });
-    await refresh();
+    // The transaction has committed. A new commune has one member and no
+    // content; publish that confirmed result without reloading every commune.
+    ++refreshSequence.current;
+    refreshing.current = false;
+    const commune: Commune = {
+      id: result.id, name: input.name.trim(), kind: kind as Commune["kind"],
+      currency, role: "admin", memberCount: 1, ...locationForKind(input),
+    };
+    const latest = dataRef.current;
+    if (!latest || latest.user.id !== current.user.id) return result.id;
+    publishData({ ...latest, communes: [commune, ...latest.communes],
+      snapshots: { ...latest.snapshots, [result.id]: {
+        commune, members: [{ userId: current.user.id, name: current.user.name, email: current.user.email, role: "admin" }],
+        expenses: [], funds: [], notes: [], operations: [], notifications: [], reminderTargets: [],
+      } }, invites: { ...latest.invites, [result.id]: [] },
+    });
     setHubId(result.id);
     savePrefs({ activeHubId: result.id });
     setMoreOpen(false);
-    setLocation(keepSearch(SCREEN_PATH["hub-empty"]));
+    setLocation(keepSearch(SCREEN_PATH.hub));
     setWindowId(opts?.openExpense ? "add-expense" : null);
     return result.id;
-  }), [mutate, refresh, savePrefs, setLocation]);
+  }), [mutate, publishData, savePrefs, setLocation]);
 
   const updateCommune = useCallback((input: {
     name: string; type: LiveHub["type"]; currency: CurrencyCode;
@@ -763,7 +811,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
     let dest: ScreenId = target;
     if (target === "home" && !session?.hasHubs) dest = "home-empty";
-    if (target === "hub" && (nextEmpty || !session?.hasHubs)) dest = "hub-empty";
+    if (target === "hub-empty") dest = "hub";
     if (target === "expenses" && (nextEmpty || !session?.hasHubs)) dest = "expenses-empty";
     if (target === "settle" && (!hasSettlement || !session?.hasHubs)) dest = "settle-even";
     setWindowId(opts?.window ?? null);
@@ -803,7 +851,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   return <Ctx.Provider value={{
     authStatus, apiError, clearApiError: () => setApiError(null), refresh,
     signInWithPassword, signInWithGoogle, signUpWithPassword, verifyEmailCode, session, screen, hubId: activeId,
-    hub, places, emptyHub: empty, window: windowId, moreOpen,
+    hub, places, contentLoading, emptyHub: empty, window: windowId, moreOpen,
     navMode: prefs.navMode, noteKey, notes, operationKey, operationDate,
     operationTime, operationsByHub, operations, selectedOperation,
     dark: prefs.dark, noticesOn: prefs.noticesOn, currency: prefs.currency,

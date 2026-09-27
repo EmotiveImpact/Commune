@@ -1,3 +1,23 @@
+import type { Commune, Snapshot, User } from "./model";
+
+// Pass already-verified identity and commune metadata through one refresh.
+// Every database request still authenticates and enforces RLS on the server.
+export async function loadCommunes(user: User): Promise<{ communes: Commune[] }> {
+  if (import.meta.env.PROD) {
+    const { listCommunes } = await import("./neon");
+    return { communes: await listCommunes(user) };
+  }
+  return api("/communes");
+}
+
+export async function loadSnapshot(commune: Commune): Promise<Snapshot> {
+  if (import.meta.env.PROD) {
+    const { snapshot } = await import("./neon");
+    return snapshot(commune.id, commune);
+  }
+  return api(`/communes/${encodeURIComponent(commune.id)}/snapshot`);
+}
+
 export class ApiError extends Error {
   constructor(
     message: string,
