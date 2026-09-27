@@ -131,4 +131,11 @@ describe("commune loading", () => {
     await screen.findByRole("heading", { name: "Our home" });
     await waitFor(() => expect(location.history?.at(-1)).toBe("/hub"));
   });
+
+  it("offers commune creation at /hub when membership is genuinely empty", async () => {
+    vi.mocked(loadCommunes).mockResolvedValue({ communes: [] });
+    mount();
+    await screen.findByRole("heading", { name: "No communes yet." });
+    expect(screen.queryByRole("button", { name: "Add expense" })).toBeNull();
+  });
 });

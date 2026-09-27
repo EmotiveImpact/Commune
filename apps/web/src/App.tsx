@@ -161,7 +161,7 @@ function ScreenBody({ screen }: { screen: ScreenId }) {
     case "communes":
       return <PlacesScreen />;
     case "hub":
-      return emptyHub ? <HubEmptyScreen /> : <HubScreen />;
+      return !hasHubs ? <HomeEmptyScreen /> : emptyHub ? <HubEmptyScreen /> : <HubScreen />;
     case "hub-empty":
       return emptyHub || !hasHubs ? <HubEmptyScreen /> : <HubScreen />;
     case "commune-settings":
