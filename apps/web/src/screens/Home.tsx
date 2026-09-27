@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
 import { useApp } from "../state";
 import { Avatar, Pill } from "../ui/widgets";
-import { heroClass, type Hub } from "../data/household";
+import { heroClass } from "../data/household";
+import type { LiveHub } from "../live/model";
 import { cx } from "../ui/cx";
 
 function PhotoFace({ photo, focus, className, children }: { photo: string; focus?: boolean; className?: string; children: ReactNode }) {
@@ -15,14 +16,16 @@ function PhotoFace({ photo, focus, className, children }: { photo: string; focus
   );
 }
 
-function PlaceCard({ hub, focus = false }: { hub: Hub; focus?: boolean }) {
+function PlaceCard({ hub, focus = false }: { hub: LiveHub; focus?: boolean }) {
   const { go } = useApp();
   const balance = hub.oweAmount.replace(/\.00\b/, "");
   const hasBalance = hub.moves.some((move) => !move.even);
+  const ready = hub.activityState === "ready";
+  const memberCount = ready ? hub.members.length : hub.memberCount;
   return (
     <button className={cx("a-place", focus && "a-focus-lead")} type="button" onClick={() => go("hub", { hub: hub.id })}>
       <PhotoFace photo={hub.photo} focus={focus} className={heroClass(hub)}>
-        <span className="type">{hub.type} · {hub.members.length} {hub.members.length === 1 ? "person" : "people"}</span>
+        <span className="type">{hub.type}{memberCount == null ? "" : ` · ${memberCount} ${memberCount === 1 ? "person" : "people"}`}</span>
         {focus ? <h2>{hub.name}</h2> : <h3>{hub.name}</h3>}
         {(hub.type === "Trip" ? hub.destination : hub.address) ? <p className="a-place-location">{hub.type === "Trip" ? hub.destination : hub.address}</p> : null}
         <p>{hub.status}</p>
@@ -36,8 +39,8 @@ function PlaceCard({ hub, focus = false }: { hub: Hub; focus?: boolean }) {
         ) : null}
       </PhotoFace>
       <div className="a-place-foot">
-        <span>{hasBalance ? hub.oweLabel : "Even"}</span>
-        <span className={cx("amt", hub.credit && "credit", !hasBalance && "even")}>{balance}</span>
+        <span>{ready ? hasBalance ? hub.oweLabel : "Even" : hub.activityState === "error" ? "Balance unavailable" : "Loading balance…"}</span>
+        <span className={cx("amt", hub.credit && "credit", !hasBalance && "even")}>{ready ? balance : "—"}</span>
       </div>
     </button>
   );
@@ -49,6 +52,9 @@ export function HomeScreen() {
   const [first, ...others] = places;
   const needs = places.flatMap((hub) => hub.now.map((item) => ({ hub, item }))).slice(0, 6);
   const activity = places.flatMap((hub) => hub.activity.map((item) => ({ hub, item }))).slice(0, 6);
+  const incomplete = places.some((hub) => hub.activityState !== "ready");
+  const unavailable = places.some((hub) => hub.activityState === "error");
+  const partialMessage = unavailable ? "Some commune activity could not be loaded. Open that commune to retry." : "Still loading activity from your communes…";
   return (
     <>
       <PlaceCard hub={first} focus />
@@ -71,7 +77,8 @@ export function HomeScreen() {
                 </button>
               ))}
             </div>
-          ) : <p className="sub">Nothing waiting right now.</p>}
+          ) : !incomplete ? <p className="sub">Nothing waiting right now.</p> : null}
+          {incomplete ? <p className="sub">{partialMessage}</p> : null}
         </div>
         <div className="a-card">
           <div className="a-card-head">
@@ -84,7 +91,8 @@ export function HomeScreen() {
               <div><strong>{item.title}</strong><div className="when">{hub.name} · {item.when}</div></div>
               <span className="when">{item.time}</span>
             </button>
-          )) : <p className="sub">Activity will appear after something is shared.</p>}
+          )) : !incomplete ? <p className="sub">Activity will appear after something is shared.</p> : null}
+          {incomplete ? <p className="sub">{partialMessage}</p> : null}
         </div>
       </div>
     </>

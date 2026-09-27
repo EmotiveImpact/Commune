@@ -4,10 +4,13 @@ import { Router } from "wouter";
 import { memoryLocation } from "wouter/memory-location";
 import { App } from "../src/App";
 import { AppProvider, useApp, type AppState } from "../src/state";
-import { api, post, loadCommunes, loadSnapshot } from "../src/live/api";
+import { api, post, loadCommunes, loadSnapshot, ApiError } from "../src/live/api";
 import type { Commune, Snapshot } from "../src/live/model";
 
-vi.mock("../src/live/api", () => ({ api: vi.fn(), post: vi.fn(), loadCommunes: vi.fn(), loadSnapshot: vi.fn() }));
+vi.mock("../src/live/api", async (importOriginal) => ({
+  ...await importOriginal<typeof import("../src/live/api")>(),
+  api: vi.fn(), post: vi.fn(), loadCommunes: vi.fn(), loadSnapshot: vi.fn(),
+}));
 const user = { id: "user-1", name: "Test Person", email: "test@example.com", emailVerified: true };
 const commune: Commune = { id: "home-1", name: "Our home", kind: "household", currency: "GBP", role: "admin", address: "Test address" };
 const snapshot: Snapshot = { commune, members: [{ userId: user.id, name: user.name, role: "admin" }], expenses: [], funds: [], notifications: [], reminderTargets: [] };
@@ -39,6 +42,53 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("commune loading", () => {
+  it("loads only the selected commune on a product page, then loads another on selection", async () => {
+    const other = { ...commune, id: "home-2", name: "Second home" };
+    vi.mocked(loadCommunes).mockResolvedValue({ communes: [commune, other] });
+    vi.mocked(loadSnapshot).mockImplementation(async (item) => ({ ...snapshot, commune: item }));
+    mount();
+    await screen.findByRole("heading", { name: "Our home" });
+    expect(loadSnapshot).toHaveBeenCalledTimes(1);
+    expect(loadSnapshot).toHaveBeenCalledWith(commune);
+    await act(async () => app.go("hub", { hub: other.id }));
+    await screen.findByRole("heading", { name: "Second home" });
+    expect(loadSnapshot).toHaveBeenCalledTimes(2);
+    await act(async () => app.go("hub", { hub: commune.id }));
+    await screen.findByRole("heading", { name: "Our home" });
+    expect(loadSnapshot).toHaveBeenCalledTimes(2);
+  });
+
+  it("shows commune identities on home without waiting for all their activity", async () => {
+    const other = { ...commune, id: "home-2", name: "Second home" };
+    const pending = deferred<Snapshot>();
+    vi.mocked(loadCommunes).mockResolvedValue({ communes: [commune, other] });
+    vi.mocked(loadSnapshot).mockImplementation((item) => item.id === commune.id
+      ? Promise.resolve(snapshot) : pending.promise);
+    mount("/");
+    await screen.findByRole("heading", { name: "Our home" });
+    expect(screen.getByRole("heading", { name: "Second home" })).toBeTruthy();
+    expect(screen.queryByText("Nothing waiting right now.")).toBeNull();
+    await act(async () => pending.reject(new Error("Not a commune member")));
+    expect(screen.getByRole("heading", { name: "Our home" })).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "Could not load your commune" })).toBeNull();
+    expect(screen.getByText("Activity unavailable · Open to retry")).toBeTruthy();
+  });
+
+  it("does not mistake a failed invitation read for a failed active commune", async () => {
+    const pending = deferred<Snapshot>();
+    vi.mocked(loadSnapshot).mockReturnValue(pending.promise);
+    vi.mocked(api).mockImplementation(async (path) => {
+      if (path === "/auth/me") return { user };
+      if (path === "/reminders/usage") return null;
+      throw new Error("Invitations unavailable");
+    });
+    mount();
+    await screen.findByText("Invitations unavailable");
+    expect(screen.getByText("Opening Our home…")).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "Could not load your commune" })).toBeNull();
+    await act(async () => pending.resolve(snapshot));
+  });
+
   it("shows the known commune while activity loads, without an empty ledger", async () => {
     const pending = deferred<Snapshot>();
     vi.mocked(loadSnapshot).mockReturnValue(pending.promise);
@@ -101,6 +151,45 @@ describe("commune loading", () => {
     expect(app.contentLoading).toBe(false);
     expect(screen.getByRole("heading", { name: "Our home" })).toBeTruthy();
     await act(async () => { pending.resolve(snapshot); await refresh; });
+  });
+
+  it("clears cached private activity if a refresh rejects membership", async () => {
+    mount();
+    await screen.findByRole("heading", { name: "Our home" });
+    vi.mocked(loadSnapshot).mockRejectedValue(new ApiError("Not a commune member", 403));
+    await act(async () => app.refresh());
+    await screen.findByRole("heading", { name: "Could not load your commune" });
+    expect(app.contentLoading).toBe(true);
+    expect(app.hub.members).toHaveLength(0);
+  });
+
+  it("does not overwrite the current commune when an older selection completes", async () => {
+    const other = { ...commune, id: "home-2", name: "Second home" };
+    const pending = deferred<Snapshot>();
+    vi.mocked(loadCommunes).mockResolvedValue({ communes: [commune, other] });
+    vi.mocked(loadSnapshot).mockImplementation((item) => item.id === commune.id
+      ? pending.promise : Promise.resolve({ ...snapshot, commune: other }));
+    mount();
+    await screen.findByText("Opening Our home…");
+    await act(async () => app.go("hub", { hub: other.id }));
+    await screen.findByRole("heading", { name: "Second home" });
+    await act(async () => pending.resolve(snapshot));
+    expect(app.hub.name).toBe("Second home");
+    expect(loadSnapshot).toHaveBeenCalledTimes(2);
+  });
+
+  it("clears prior account data when the signed-in account changes", async () => {
+    mount();
+    await screen.findByRole("heading", { name: "Our home" });
+    vi.mocked(api).mockImplementation(async (path) => path === "/auth/me"
+      ? { user: { ...user, id: "different-user" } } : path.endsWith("/invites") ? { invites: [] } : null);
+    const pending = deferred<Snapshot>();
+    vi.mocked(loadSnapshot).mockReturnValue(pending.promise);
+    let refresh!: Promise<void>;
+    await act(async () => { refresh = app.refresh(); });
+    expect(app.hub.members).toHaveLength(0);
+    expect(app.contentLoading).toBe(true);
+    await act(async () => { pending.resolve({ ...snapshot, members: [] }); await refresh; });
   });
 
   it("ignores an older refresh that finishes after a commune is created", async () => {

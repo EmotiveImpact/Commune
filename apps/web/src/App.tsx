@@ -100,7 +100,7 @@ function AppUnavailable() {
 }
 
 function ProductShell() {
-  const { screen, navMode, moreOpen, native, dark, window: win, apiError, clearApiError } = useApp();
+  const { screen, navMode, moreOpen, native, dark, window: win, apiError, clearApiError, contentError, hub, refresh } = useApp();
   return (
     <div
       className={cx(
@@ -117,6 +117,7 @@ function ProductShell() {
         <div className="a-main">
           <Header screen={screen} />
           {apiError ? <div className="a-api-error" role="alert">{apiError}<button type="button" onClick={clearApiError} aria-label="Dismiss error">×</button></div> : null}
+          {contentError && hub.activityState === "ready" ? <div className="a-api-error" role="alert">Could not refresh this commune. Showing its last loaded activity.<button type="button" onClick={() => void refresh()}>Try again</button></div> : null}
           <div className="a-content">
             <Screen screen={screen} />
           </div>
@@ -138,15 +139,15 @@ function Screen({ screen }: { screen: ScreenId }) {
 }
 
 function ScreenBody({ screen }: { screen: ScreenId }) {
-  const { session, emptyHub, hub, contentLoading, apiError, refresh } = useApp();
+  const { session, emptyHub, hub, contentLoading, contentError, refresh } = useApp();
   const hasHubs = Boolean(session?.hasHubs);
   const hasSettlement = hub.moves.some((move) => !move.even);
 
   if (contentLoading && screen !== "settings") {
-    return <div className="a-content-loading" role={apiError ? "alert" : "status"} aria-busy={!apiError}>
-      <h2>{apiError ? "Could not load your commune" : `Opening ${hub.name}…`}</h2>
-      <p>{apiError ? "Your commune is saved. Try loading its activity again." : "Loading your shared activity."}</p>
-      {apiError ? <button className="a-btn" type="button" onClick={() => void refresh()}>Try again</button>
+    return <div className="a-content-loading" role={contentError ? "alert" : "status"} aria-busy={!contentError}>
+      <h2>{contentError ? "Could not load your commune" : `Opening ${hub.name}…`}</h2>
+      <p>{contentError ? contentError : "Loading your shared activity."}</p>
+      {contentError ? <button className="a-btn" type="button" onClick={() => void refresh()}>Try again</button>
         : <div className="a-loading-lines" aria-hidden="true"><span /><span /><span /></div>}
     </div>;
   }

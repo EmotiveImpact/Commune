@@ -113,6 +113,8 @@ export type LiveExpenseRow = ExpenseRow & {
 export type LiveHub = Hub & {
   currency: CurrencyCode;
   role: MemberRole;
+  activityState?: "loading" | "error" | "ready";
+  memberCount?: number;
   members: Array<Hub["members"][number] & { userId: string }>;
 };
 
