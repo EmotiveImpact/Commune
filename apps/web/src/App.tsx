@@ -31,6 +31,7 @@ import { Windows } from "./windows/Windows";
 import { cx } from "./ui/cx";
 import type { ScreenId } from "./data/household";
 import { keepSearch } from "./nav";
+import { PendingShell } from "./shell/PendingShell";
 
 export function App() {
   return (
@@ -92,7 +93,7 @@ function AuthenticatedOnly({ children }: { children: ReactNode }) {
 }
 
 function AppLoading() {
-  return <div className="a-empty" role="status"><h2>Opening Commune…</h2><p>Loading your account and shared spaces.</p></div>;
+  return <PendingShell />;
 }
 
 function AppUnavailable() {

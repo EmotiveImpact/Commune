@@ -113,3 +113,16 @@ body,
     padding-inline: 7px;
   }
 }
+.a-pending-line {
+  height: 12px;
+  width: 140px;
+  max-width: 70%;
+  border-radius: 6px;
+  background: currentColor;
+  opacity: 0.08;
+}
+.a-pending-nav { display: grid; gap: 24px; padding: 18px 10px; }
+.a-pending .a-side .a-pending-line { opacity: 0.12; }
+.a-pending-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr)); gap: 20px; }
+.a-pending-card { min-height: 160px; border-radius: 20px; padding: 24px; background: rgba(255, 255, 255, 0.45); }
+.a-pending-card .a-pending-line + .a-pending-line { margin-top: 20px; width: 210px; }

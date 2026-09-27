@@ -1,4 +1,24 @@
-# Commune production backend (in progress)
+# Commune production backend
+
+## Current status — 27 September 2026
+
+The app is served at `https://app.ourcommune.io` from `main`. The latest
+verified incident fix is PR 18 / `cbb7e29`, with production migration 0011.
+Fresh browser checks confirmed both existing communes and their activity
+load after correcting cold-connection membership identity loss. Loading UX
+and further query-efficiency work are still open; this is not an assertion
+that every product feature or launch requirement has been signed off.
+
+- [Bugs, fixes and remaining loading work](BUGS-AND-FIXES.md)
+- [Root cause, reproduction and production verification](LOADING-INVESTIGATION.md)
+
+The 24 September rollout notes and release checklist below are historical,
+not a current inventory of production blockers. In particular, their claims
+that `main` still has the old app or no merge has happened are superseded.
+Other feature-specific entries need fresh verification before being treated
+as either current failures or completed work.
+
+## Original rollout context
 
 This is the fresh-data path for the Direction A web app on PR 11. It does not
 migrate the old Supabase project or its sample users. The current web UI uses a
@@ -76,7 +96,7 @@ local API or present a static build as a working product before hosted tests.
    Broad grants would let direct writes bypass ledger invariants. Keep preview
    branches separate from production.
 3. Apply `migrations/0001_commune_core.sql` through
-   `migrations/0010_reminder_usage.sql` in numeric order to the
+   `migrations/0011_request_identity.sql` in numeric order to the
    development branch via an **unpooled** connection. Run `tests/grants.sql`,
    review RLS, and run two-account signed-JWT tests before applying the same
    reviewed migrations to production. After a migration adds or changes a
@@ -109,7 +129,7 @@ local API or present a static build as a working product before hosted tests.
    complete app and release checklist pass. Do not merge or deploy production
    solely because the static Vite build succeeds.
 
-## Current hosted state (2026-09-24)
+## Historical hosted state (2026-09-24)
 
 - The new Vercel `commune-web` project builds PR 11 as a **Preview** and now
   also serves a Production rebuild of PR commit `901e8ca` at
@@ -230,7 +250,7 @@ Run `apps/reminder-worker/tests/monthly-limits-concurrency.mjs` against that
 same disposable local database to prove that only one of two simultaneous
 sends takes the sixtieth monthly slot.
 
-## Release checks still missing
+## Historical release checklist (2026-09-24; reverify before use)
 
 - Hosted sign-up, verification, reset, and multi-commune sessions proven with
   real accounts. One two-account invite acceptance and Google OAuth sign-in

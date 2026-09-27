@@ -1,8 +1,8 @@
 # Production loading investigation — 27 September 2026
 
-Status: loading orchestration fixed; cold-connection identity loss reproduced
-on a production branch and corrected by migration 0011. Production rollout
-and browser results are recorded in the release PR.
+Status: membership identity fix deployed and verified on production on
+27 September 2026. Loading UX and further read-efficiency work remain open.
+See [the bug/fix register](BUGS-AND-FIXES.md) for the outstanding work.
 
 ## Identity root cause and fix (follow-up)
 
@@ -37,7 +37,7 @@ and browser results are recorded in the release PR.
   All 27 web tests and the Vite build passed. The client now also rejects
   malformed/inconsistent membership responses rather than displaying empty.
 
-## Evidence
+## Initial evidence (before migration 0011)
 
 - Production commit `b14fbb7` has browser-local request diagnostics. Open a
   product URL with `?diagnostics=1`. Logs contain resource names, HTTP status,
@@ -49,9 +49,9 @@ and browser results are recorded in the release PR.
   check took 828 ms and data calls took 124–355 ms. All succeeded. Compute
   suspension was not independently observed, so this is an idle-load test,
   not a claim that a database cold start was definitely measured.
-- The production `is_commune_member(uuid)` function is STABLE, SECURITY
+- Before the fix, production `is_commune_member(uuid)` was STABLE, SECURITY
   DEFINER, owned by neondb_owner, with a fixed search_path. It checks the
-  commune ID and `m.user_id = auth.user_id()`. `member_profiles(uuid)` uses
+  commune ID and `m.user_id = auth.user_id()`. `member_profiles(uuid)` used
   that guard and the managed Auth UUID-to-text join from migration 0008.
 - These initial warm tests predated the captured failures and cold-connection
   reproduction above; they did not establish that the problem was fixed.
@@ -75,7 +75,7 @@ No private ledger is persisted to browser storage. Permission failures remove
 that commune's cached activity rather than quietly showing stale private data.
 Unknown balances and partial overviews never claim zero, even, or nothing due.
 
-## Verification
+## Initial loader verification
 
 - `pnpm --dir apps/web test`: 22 tests passed, including delayed/failing
   snapshots, cross-commune isolation, selection races, changed accounts,
@@ -90,13 +90,37 @@ Unknown balances and partial overviews never claim zero, even, or nothing due.
 
 ## Remaining scope
 
-Repeat real-browser reads after rollout and watch for recurrence. Browser
-diagnostics are opt-in request traces, not continuous incident monitoring.
+Post-rollout browser verification passed (below). Watch for recurrence:
+browser diagnostics are opt-in request traces, not continuous incident monitoring.
 
 The per-commune snapshot still includes several unrelated features and is not
 paged. Further section-level reads/batched summaries and realistic volume
 benchmarks are necessary before any 100,000-user performance claim. A paid
 plan alone does not fix the application's read pattern.
+
+## Production verification — 27 September 2026
+
+- [PR 18](https://github.com/EmotiveImpact/Commune/pull/18) merged as
+  `cbb7e299af741cc243ed3daba9e6e5df08ffc327`. Vercel reported Production Ready
+  for `app.ourcommune.io`; the Vite build took 17 seconds.
+- Migration 0011 committed on the production database. Catalog checks found
+  15 corrected functions, no remaining old identity calls in public functions
+  or policies, all 14 public tables retaining RLS, and no anonymous access to
+  the private identity helper. No production ledger rows were changed.
+- Fresh production browser reads showed both existing communes, membership,
+  and the existing settled expense. Home, Hub, Expenses, Operations, Funds
+  and Notes loaded without the previous 403s or browser errors.
+- One fresh post-release request chain measured session 467 ms, commune-list
+  reads about 130 ms, snapshot reads 128–136 ms and dependent shares 120 ms.
+  This is roughly 0.9 seconds of sequential request stages, **not** a measured
+  first-paint time, percentile benchmark, or guaranteed cold-start latency.
+- Final checks: 27 web tests, eight local database suites, worker integration
+  and monthly-limit concurrency tests, and the web build passed. Fresh Neon
+  connection assertions verified member access and nonmember rejection.
+- Remaining UX: initial authentication still replaces the entire app with
+  “Opening Commune…”, followed by section loading. Reloads lose the in-memory
+  snapshot cache. See the open loading work in the bug/fix register; do not
+  describe the experience as instant or the performance work as complete.
 
 References: [Data API access control](https://neon.com/docs/data-api/access-control),
 [Data API troubleshooting](https://neon.com/docs/data-api/troubleshooting),
