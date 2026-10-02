@@ -40,6 +40,7 @@ import { PageHeader } from '../../components/page-header';
 import { EmptyState } from '../../components/empty-state';
 import { ExpenseListSkeleton } from '../../components/page-skeleton';
 import { QueryErrorState } from '../../components/query-error-state';
+import { MetricCard, PageStack } from '../../components/ui-primitives';
 
 export const Route = createLazyFileRoute('/_app/recurring')({
   component: RecurringPage,
@@ -190,7 +191,7 @@ export function RecurringPage() {
   }
 
   return (
-    <Stack gap="xl">
+    <PageStack gap="xl">
       <PageHeader
         title="Recurring Expenses"
         subtitle="Manage expenses that automatically repeat on a schedule."
@@ -198,21 +199,23 @@ export function RecurringPage() {
 
       {/* Stats summary */}
       <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
-        <Paper className="commune-soft-panel commune-stat-card" p="lg">
-          <Text size="sm" c="dimmed">Active · Paused</Text>
-          <Text fw={800} size="1.8rem" lh={1.1}>
-            {activeExpenses?.length ?? 0} · {pausedExpenses?.length ?? 0}
-          </Text>
-        </Paper>
-        <Paper className="commune-soft-panel commune-stat-card" p="lg">
-          <Text size="sm" c="dimmed">Monthly total</Text>
-          <Text fw={800} size="1.8rem" lh={1.1}>
-            {formatCurrency(
-              (activeExpenses ?? []).reduce((sum, e) => sum + (e as any).amount, 0),
-              group?.currency,
-            )}
-          </Text>
-        </Paper>
+        <MetricCard
+          label="Active · Paused"
+          value={`${activeExpenses?.length ?? 0} · ${pausedExpenses?.length ?? 0}`}
+          detail="Recurring rules in this group"
+          icon={IconRepeat}
+          tone="sage"
+        />
+        <MetricCard
+          label="Monthly total"
+          value={formatCurrency(
+            (activeExpenses ?? []).reduce((sum, e) => sum + (e as any).amount, 0),
+            group?.currency,
+          )}
+          detail="Projected active recurring spend"
+          icon={IconPlayerPlay}
+          tone="mist"
+        />
       </SimpleGrid>
 
       {/* Tab toggle */}
@@ -356,7 +359,7 @@ export function RecurringPage() {
           </Group>
         </Stack>
       </Modal>
-    </Stack>
+    </PageStack>
   );
 }
 

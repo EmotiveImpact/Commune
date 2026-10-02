@@ -1,12 +1,28 @@
 import { useEffect, useState } from 'react';
 import { Tabs, useRouter, usePathname } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import {
+  IconBell,
+  IconChartBar,
+  IconChecklist,
+  IconCopy,
+  IconHome2,
+  IconLayoutDashboard,
+  IconLifebuoy,
+  IconMenu2,
+  IconMessageCircle,
+  IconCash,
+  IconPlus,
+  IconReceipt,
+  IconRepeat,
+  IconSettings,
+  IconUserPlus,
+  IconUsers,
+  IconUsersGroup,
+  IconWallet,
+} from '@tabler/icons-react-native';
 import {
   Image,
-  Modal,
-  Pressable,
   Text,
-  TouchableOpacity,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -15,15 +31,42 @@ import { usePendingInvites, useUserGroups } from '@/hooks/use-groups';
 import { useNotifications } from '@/hooks/use-notifications';
 import { useAuthStore } from '@/stores/auth';
 import { useGroupStore } from '@/stores/group';
-import { colors, elevation, font, radius, space } from '@/constants/design';
-import { IconTile } from '@/components/primitives';
+import { colors, elevation, space } from '@/constants/design';
+import { Pressable, type TablerIcon } from '@/components/primitives';
+import { BottomSheet, SheetRow } from '@/components/bottom-sheet';
+import { SideDrawer } from '@/components/side-drawer';
+import { SpeedDial, type SpeedDialAction } from '@/components/speed-dial';
+import Animated, { useAnimatedStyle, useSharedValue, withTiming, withSpring } from 'react-native-reanimated';
 
 const TAB_BAR_BG = '#1d2130';
 const ACTIVE_COLOR = '#FFFFFF';
 const INACTIVE_COLOR = 'rgba(255,255,255,0.45)';
 
+/**
+ * Animated tab icon — gently springs to scale 1.12 on focus, settles to 1.0
+ * when inactive. Subtle fade between active/inactive colour states. Keeps
+ * the tab bar feeling alive without being distracting. ~25 lines.
+ */
+function AnimatedTabIcon({ Icon, focused }: { Icon: TablerIcon; focused: boolean }) {
+  const scale = useSharedValue(focused ? 1.12 : 1);
+  const opacity = useSharedValue(focused ? 1 : 0.45);
+  useEffect(() => {
+    scale.value = withSpring(focused ? 1.12 : 1, { damping: 14, stiffness: 220 });
+    opacity.value = withTiming(focused ? 1 : 0.45, { duration: 180 });
+  }, [focused, opacity, scale]);
+  const style = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+    opacity: opacity.value,
+  }));
+  return (
+    <Animated.View style={style}>
+      <Icon size={28} strokeWidth={1.75} color={ACTIVE_COLOR} />
+    </Animated.View>
+  );
+}
+
 type QuickAction = {
-  icon: React.ComponentProps<typeof Ionicons>['name'];
+  icon: TablerIcon;
   label: string;
   description: string;
   route: string;
@@ -33,7 +76,7 @@ type QuickAction = {
 
 const QUICK_ACTIONS: QuickAction[] = [
   {
-    icon: 'add-circle-outline',
+    icon: IconReceipt,
     label: 'Add expense',
     description: 'Log a new shared cost',
     route: '/expenses/new',
@@ -41,7 +84,7 @@ const QUICK_ACTIONS: QuickAction[] = [
     bg: colors.sageSoft,
   },
   {
-    icon: 'repeat-outline',
+    icon: IconRepeat,
     label: 'Add recurring bill',
     description: 'A cost that repeats monthly',
     route: '/recurring',
@@ -49,7 +92,7 @@ const QUICK_ACTIONS: QuickAction[] = [
     bg: colors.typeCouple.bg,
   },
   {
-    icon: 'checkmark-circle-outline',
+    icon: IconChecklist,
     label: 'Add a chore',
     description: 'Track a non-money task',
     route: '/operations',
@@ -57,7 +100,7 @@ const QUICK_ACTIONS: QuickAction[] = [
     bg: colors.owedBg,
   },
   {
-    icon: 'person-add-outline',
+    icon: IconUserPlus,
     label: 'Add a member',
     description: 'Invite someone into this space',
     route: '/members',
@@ -65,7 +108,7 @@ const QUICK_ACTIONS: QuickAction[] = [
     bg: colors.typeTrip.bg,
   },
   {
-    icon: 'copy-outline',
+    icon: IconCopy,
     label: 'Add from template',
     description: 'Apply a saved expense preset',
     route: '/templates',
@@ -74,9 +117,54 @@ const QUICK_ACTIONS: QuickAction[] = [
   },
 ];
 
+function buildSpeedDialActions(router: ReturnType<typeof useRouter>): SpeedDialAction[] {
+  return [
+    {
+      key: 'expense',
+      Icon: IconReceipt,
+      label: 'Add expense',
+      color: colors.sage,
+      bg: colors.sageSoft,
+      onPress: () => router.push('/expenses/new'),
+    },
+    {
+      key: 'recurring',
+      Icon: IconRepeat,
+      label: 'Add recurring bill',
+      color: colors.typeCouple.accent,
+      bg: colors.typeCouple.bg,
+      onPress: () => router.push('/recurring'),
+    },
+    {
+      key: 'chore',
+      Icon: IconChecklist,
+      label: 'Add a chore',
+      color: colors.owedText,
+      bg: colors.owedBg,
+      onPress: () => router.push('/operations'),
+    },
+    {
+      key: 'member',
+      Icon: IconUserPlus,
+      label: 'Add a member',
+      color: colors.typeTrip.accent,
+      bg: colors.typeTrip.bg,
+      onPress: () => router.push('/members'),
+    },
+    {
+      key: 'template',
+      Icon: IconCopy,
+      label: 'Add from template',
+      color: colors.typeProject.accent,
+      bg: colors.typeProject.bg,
+      onPress: () => router.push('/templates'),
+    },
+  ];
+}
+
 const MORE_ACTIONS: QuickAction[] = [
   {
-    icon: 'checkbox-outline',
+    icon: IconChecklist,
     label: 'Chores',
     description: 'Track non-money tasks',
     route: '/operations',
@@ -84,15 +172,15 @@ const MORE_ACTIONS: QuickAction[] = [
     bg: colors.owedBg,
   },
   {
-    icon: 'wallet-outline',
+    icon: IconWallet,
     label: 'Settle up',
     description: 'Clear balances with members',
-    route: '/command-centre',
+    route: '/settle-up',
     color: colors.typeWorkspace.accent,
     bg: colors.typeWorkspace.bg,
   },
   {
-    icon: 'bar-chart-outline',
+    icon: IconChartBar,
     label: 'Analytics',
     description: 'Spending trends and breakdown',
     route: '/analytics',
@@ -100,7 +188,7 @@ const MORE_ACTIONS: QuickAction[] = [
     bg: colors.sageSoft,
   },
   {
-    icon: 'chatbubble-ellipses-outline',
+    icon: IconMessageCircle,
     label: 'Activity',
     description: 'Full log of recent changes',
     route: '/activity',
@@ -108,7 +196,7 @@ const MORE_ACTIONS: QuickAction[] = [
     bg: colors.typeCouple.bg,
   },
   {
-    icon: 'copy-outline',
+    icon: IconCopy,
     label: 'Templates',
     description: 'Manage saved expense presets',
     route: '/templates',
@@ -116,7 +204,7 @@ const MORE_ACTIONS: QuickAction[] = [
     bg: colors.typeProject.bg,
   },
   {
-    icon: 'people-outline',
+    icon: IconUsersGroup,
     label: 'Members',
     description: 'Manage people in this group',
     route: '/members',
@@ -124,7 +212,7 @@ const MORE_ACTIONS: QuickAction[] = [
     bg: colors.typeTrip.bg,
   },
   {
-    icon: 'settings-outline',
+    icon: IconSettings,
     label: 'Profile & settings',
     description: 'Your account and preferences',
     route: '/settings',
@@ -138,6 +226,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/groups': 'Groups',
   '/chores': 'More',
   '/operations': 'Chores',
+  '/settings': 'Profile',
 };
 
 export default function TabLayout() {
@@ -155,6 +244,17 @@ export default function TabLayout() {
   const unreadCount = notifications.filter((n) => !n.read).length;
   const [menuOpen, setMenuOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
+  const fabRotation = useSharedValue(0);
+  useEffect(() => {
+    fabRotation.value = withTiming(menuOpen ? 45 : 0, { duration: 200 });
+  }, [menuOpen, fabRotation]);
+  const fabIconStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${fabRotation.value}deg` }],
+  }));
+
+  const speedDialActions = buildSpeedDialActions(router);
 
   useEffect(() => {
     if (!activeGroupId && groups[0]?.id) {
@@ -186,8 +286,8 @@ export default function TabLayout() {
             <View
               style={{
                 backgroundColor: colors.bgBase,
-                paddingTop: insets.top + space.md,
-                paddingBottom: space.base,
+                paddingTop: insets.top + space.xs,
+                paddingBottom: space.xs,
                 paddingHorizontal: space.gutter,
               }}
             >
@@ -201,7 +301,7 @@ export default function TabLayout() {
                 }}
               >
                 <Pressable
-                  onPress={() => { hapticLight(); setMoreOpen(true); }}
+                  onPress={() => { hapticLight(); setDrawerOpen(true); }}
                   hitSlop={8}
                   accessibilityLabel="Open menu"
                   style={({ pressed }) => [
@@ -215,7 +315,7 @@ export default function TabLayout() {
                     },
                   ]}
                 >
-                  <Ionicons name="menu" size={28} color={colors.textPrimary} />
+                  <IconMenu2 size={26} strokeWidth={2} color={colors.textPrimary} />
                 </Pressable>
 
                 <View
@@ -231,11 +331,11 @@ export default function TabLayout() {
                   {isHome ? (
                     <Text
                       style={{
-                        fontSize: 28,
-                        fontWeight: '600',
+                        fontSize: 21,
+                        lineHeight: 26,
+                        fontWeight: '700',
                         color: colors.textPrimary,
-                        letterSpacing: 1.4,
-                        textTransform: 'uppercase',
+                        letterSpacing: 0.2,
                       }}
                     >
                       Commune
@@ -243,10 +343,11 @@ export default function TabLayout() {
                   ) : (
                     <Text
                       style={{
-                        fontSize: 28,
+                        fontSize: 21,
+                        lineHeight: 26,
                         fontWeight: '700',
                         color: colors.textPrimary,
-                        letterSpacing: -0.3,
+                        letterSpacing: 0,
                       }}
                     >
                       {pageTitle}
@@ -270,17 +371,13 @@ export default function TabLayout() {
                       },
                     ]}
                   >
-                    <Ionicons
-                      name="notifications-outline"
-                      size={28}
-                      color={colors.textPrimary}
-                    />
+                    <IconBell size={26} strokeWidth={1.75} color={colors.textPrimary} />
                     {unreadCount > 0 && (
                     <View
                       style={{
                         position: 'absolute',
-                        top: 2,
-                        right: 4,
+                        top: -2,
+                        right: -2,
                         minWidth: 16,
                         height: 16,
                         borderRadius: 8,
@@ -304,40 +401,6 @@ export default function TabLayout() {
                       </Text>
                     </View>
                   )}
-                  </Pressable>
-
-                  <Pressable
-                    onPress={() => { hapticLight(); router.push('/settings'); }}
-                    hitSlop={8}
-                    style={({ pressed }) => [
-                      {
-                        height: 32,
-                        width: 32,
-                        borderRadius: 16,
-                        backgroundColor: '#1A1E2B',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        overflow: 'hidden',
-                        opacity: pressed ? 0.75 : 1,
-                      },
-                    ]}
-                    accessibilityLabel="Profile"
-                  >
-                    {user?.avatar_url ? (
-                      <Image
-                        source={{ uri: user.avatar_url }}
-                        style={{ width: 32, height: 32, borderRadius: 16 }}
-                      />
-                    ) : (() => {
-                      const initial = (user?.name ?? user?.email ?? '').trim().charAt(0).toUpperCase();
-                      return initial ? (
-                        <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '700' }}>
-                          {initial}
-                        </Text>
-                      ) : (
-                        <Ionicons name="person" size={20} color="#FFFFFF" />
-                      );
-                    })()}
                   </Pressable>
                 </View>
               </View>
@@ -373,7 +436,7 @@ export default function TabLayout() {
             title: 'Home',
             tabBarLabel: 'Home',
             tabBarIcon: ({ focused }) => (
-              <Ionicons name="home-outline" size={30} color={focused ? ACTIVE_COLOR : INACTIVE_COLOR} />
+              <AnimatedTabIcon Icon={IconLayoutDashboard} focused={focused} />
             ),
           }}
         />
@@ -384,8 +447,9 @@ export default function TabLayout() {
           options={{
             title: 'Expenses',
             tabBarLabel: 'Expenses',
+            tabBarItemStyle: { paddingTop: 2, paddingLeft: 12 },
             tabBarIcon: ({ focused }) => (
-              <Ionicons name="receipt-outline" size={30} color={focused ? ACTIVE_COLOR : INACTIVE_COLOR} />
+              <AnimatedTabIcon Icon={IconReceipt} focused={focused} />
             ),
           }}
         />
@@ -397,7 +461,7 @@ export default function TabLayout() {
             tabPress: (e) => {
               e.preventDefault();
               hapticMedium();
-              setMenuOpen(true);
+              setMenuOpen((open) => !open);
             },
           }}
           options={{
@@ -421,7 +485,9 @@ export default function TabLayout() {
                   ...elevation.fab,
                 }}
               >
-                <Ionicons name="add" size={34} color="#FFFFFF" />
+                <Animated.View style={fabIconStyle}>
+                  <IconPlus size={30} strokeWidth={2.25} color="#FFFFFF" />
+                </Animated.View>
               </View>
             ),
           }}
@@ -433,271 +499,269 @@ export default function TabLayout() {
           options={{
             title: 'Groups',
             tabBarLabel: 'Groups',
+            tabBarItemStyle: { paddingTop: 2, paddingRight: 12 },
             tabBarIcon: ({ focused }) => (
-              <Ionicons name="people-outline" size={30} color={focused ? ACTIVE_COLOR : INACTIVE_COLOR} />
+              <AnimatedTabIcon Icon={IconUsers} focused={focused} />
             ),
           }}
         />
 
-        {/* 5. More — opens the More sheet instead of navigating */}
+        {/* 5. Profile — tapping the avatar opens settings */}
         <Tabs.Screen
-          name="chores"
-          listeners={{
-            tabPress: (e) => {
-              e.preventDefault();
-              hapticMedium();
-              setMoreOpen(true);
-            },
-          }}
+          name="settings"
           options={{
-            title: 'More',
-            tabBarLabel: 'More',
-            tabBarIcon: ({ focused }) => (
-              <Ionicons name="apps-outline" size={28} color={focused ? ACTIVE_COLOR : INACTIVE_COLOR} />
-            ),
+            title: 'Profile',
+            tabBarLabel: 'Profile',
+            tabBarIcon: ({ focused }) => {
+              const initial = (user?.name ?? user?.email ?? '').trim().charAt(0).toUpperCase();
+              if (user?.avatar_url) {
+                return (
+                  <Image
+                    source={{ uri: user.avatar_url }}
+                    style={{
+                      width: 28,
+                      height: 28,
+                      borderRadius: 14,
+                      opacity: focused ? 1 : 0.6,
+                    }}
+                  />
+                );
+              }
+              return (
+                <View
+                  style={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: 14,
+                    backgroundColor: 'rgba(255,255,255,0.12)',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Text
+                    style={{
+                      color: focused ? ACTIVE_COLOR : INACTIVE_COLOR,
+                      fontSize: 12,
+                      fontWeight: '700',
+                    }}
+                  >
+                    {initial || '?'}
+                  </Text>
+                </View>
+              );
+            },
           }}
         />
 
         <Tabs.Screen name="analytics" options={{ href: null }} />
-        <Tabs.Screen name="settings" options={{ href: null }} />
+        <Tabs.Screen name="chores" options={{ href: null }} />
       </Tabs>
 
-      {/* ─── Quick Actions Sheet ──────────────────────────────────── */}
-      <Modal
+      {/* ─── Quick Actions · Speed Dial ─────────────────────────── */}
+      <SpeedDial
         visible={menuOpen}
-        animationType="slide"
-        transparent
-        onRequestClose={() => setMenuOpen(false)}
-      >
-        <Pressable
-          onPress={() => setMenuOpen(false)}
-          style={{
-            flex: 1,
-            backgroundColor: 'rgba(26,30,43,0.45)',
-            justifyContent: 'flex-end',
-          }}
-        >
-          <Pressable
-            onPress={(e) => e.stopPropagation()}
-            style={{
-              width: '100%',
-              alignSelf: 'stretch',
-              backgroundColor: colors.bgSurface,
-              borderTopLeftRadius: radius.sheet,
-              borderTopRightRadius: radius.sheet,
-              paddingTop: space.md,
-              paddingBottom: insets.bottom + space.md,
-              ...elevation.sheet,
-            }}
-          >
-            {/* Grabber */}
-            <View
-              style={{
-                alignSelf: 'center',
-                width: 40,
-                height: 4,
-                borderRadius: 2,
-                backgroundColor: colors.border,
-                marginBottom: space.lg,
-              }}
-            />
-
-            {/* Header */}
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'flex-start',
-                paddingHorizontal: space.gutter,
-                marginBottom: space.base,
-              }}
-            >
-              <View style={{ flex: 1 }}>
-                <Text style={[font.h2, { color: colors.textPrimary }]}>
-                  What would you like to do?
-                </Text>
-                <Text
-                  style={[
-                    font.caption,
-                    { color: colors.textTertiary, marginTop: 4 },
-                  ]}
-                >
-                  Pick an action to jump straight in.
-                </Text>
-              </View>
-              <TouchableOpacity
-                activeOpacity={0.7}
-                onPress={() => { hapticLight(); setMenuOpen(false); }}
-                accessibilityLabel="Close"
-                style={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: 16,
-                  backgroundColor: TAB_BAR_BG,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  marginLeft: space.sm,
-                }}
-              >
-                <Ionicons name="close" size={20} color="#FFFFFF" />
-              </TouchableOpacity>
-            </View>
-
-            {/* Single-column action list */}
-            <View style={{ paddingHorizontal: space.gutter, width: '100%' }}>
-              {QUICK_ACTIONS.map((action, idx) => {
-                const isLast = idx === QUICK_ACTIONS.length - 1;
-                return (
-                  <TouchableOpacity
-                    key={action.label}
-                    activeOpacity={0.55}
-                    onPress={() => handleQuickAction(action)}
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      paddingVertical: space.md + 2,
-                      borderBottomWidth: isLast ? 0 : 1,
-                      borderBottomColor: colors.borderSubtle,
-                    }}
-                  >
-                    <IconTile
-                      icon={action.icon}
-                      color={action.color}
-                      bg={action.bg}
-                      size={44}
-                    />
-                    <View style={{ flex: 1, marginLeft: space.md, marginRight: space.md }}>
-                      <Text style={{ fontSize: 15, fontWeight: '600', color: colors.textPrimary }}>
-                        {action.label}
-                      </Text>
-                      <Text
-                        numberOfLines={1}
-                        style={{ fontSize: 13, fontWeight: '500', color: colors.textTertiary, marginTop: 2 }}
-                      >
-                        {action.description}
-                      </Text>
-                    </View>
-                    <Ionicons
-                      name="chevron-forward"
-                      size={18}
-                      color={colors.textTertiary}
-                    />
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-
-          </Pressable>
-        </Pressable>
-      </Modal>
+        onClose={() => setMenuOpen(false)}
+        actions={speedDialActions}
+        fabOffsetFromBottom={insets.bottom + 52}
+      />
 
       {/* ─── More Sheet ─────────────────────────────────────────────── */}
-      <Modal
+      <BottomSheet
         visible={moreOpen}
-        animationType="slide"
-        transparent
-        onRequestClose={() => setMoreOpen(false)}
+        onClose={() => setMoreOpen(false)}
+        title="More"
+        subtitle="Chores, analytics, and everything else."
       >
-        <Pressable
-          onPress={() => setMoreOpen(false)}
-          style={{
-            flex: 1,
-            backgroundColor: 'rgba(26,30,43,0.45)',
-            justifyContent: 'flex-end',
-          }}
-        >
-          <Pressable
-            onPress={(e) => e.stopPropagation()}
-            style={{
-              width: '100%',
-              alignSelf: 'stretch',
-              backgroundColor: colors.bgSurface,
-              borderTopLeftRadius: radius.sheet,
-              borderTopRightRadius: radius.sheet,
-              paddingTop: space.md,
-              paddingBottom: insets.bottom + space.md,
-              ...elevation.sheet,
-            }}
-          >
-            <View
-              style={{
-                alignSelf: 'center',
-                width: 40,
-                height: 4,
-                borderRadius: 2,
-                backgroundColor: colors.border,
-                marginBottom: space.lg,
-              }}
-            />
+        {MORE_ACTIONS.map((action, idx) => (
+          <SheetRow
+            key={action.label}
+            icon={action.icon}
+            iconColor={action.color}
+            iconBg={action.bg}
+            title={action.label}
+            subtitle={action.description}
+            onPress={() => handleQuickAction(action)}
+            isLast={idx === MORE_ACTIONS.length - 1}
+          />
+        ))}
+      </BottomSheet>
 
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'flex-start',
-                paddingHorizontal: space.gutter,
-                marginBottom: space.base,
-              }}
-            >
-              <View style={{ flex: 1 }}>
-                <Text style={[font.h2, { color: colors.textPrimary }]}>More</Text>
-                <Text style={[font.caption, { color: colors.textTertiary, marginTop: 4 }]}>
-                  Chores, analytics, and everything else.
-                </Text>
-              </View>
-              <TouchableOpacity
-                activeOpacity={0.7}
-                onPress={() => { hapticLight(); setMoreOpen(false); }}
-                accessibilityLabel="Close"
-                style={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: 16,
-                  backgroundColor: TAB_BAR_BG,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  marginLeft: space.sm,
-                }}
-              >
-                <Ionicons name="close" size={20} color="#FFFFFF" />
-              </TouchableOpacity>
-            </View>
-
-            <View style={{ paddingHorizontal: space.gutter, width: '100%' }}>
-              {MORE_ACTIONS.map((action, idx) => {
-                const isLast = idx === MORE_ACTIONS.length - 1;
-                return (
-                  <TouchableOpacity
-                    key={action.label}
-                    activeOpacity={0.55}
-                    onPress={() => handleQuickAction(action)}
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      paddingVertical: space.md + 2,
-                      borderBottomWidth: isLast ? 0 : 1,
-                      borderBottomColor: colors.borderSubtle,
-                    }}
-                  >
-                    <IconTile icon={action.icon} color={action.color} bg={action.bg} size={44} />
-                    <View style={{ flex: 1, marginLeft: space.md, marginRight: space.md }}>
-                      <Text style={{ fontSize: 15, fontWeight: '600', color: colors.textPrimary }}>
-                        {action.label}
-                      </Text>
-                      <Text
-                        numberOfLines={1}
-                        style={{ fontSize: 13, fontWeight: '500', color: colors.textTertiary, marginTop: 2 }}
-                      >
-                        {action.description}
-                      </Text>
-                    </View>
-                    <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-
-          </Pressable>
-        </Pressable>
-      </Modal>
+      <SideDrawer
+        visible={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        userLabel={user?.name ?? user?.email ?? undefined}
+        userCaption={user?.email ?? undefined}
+        userAvatarUrl={user?.avatar_url ?? null}
+        panels={[
+          {
+            key: 'main',
+            title: 'Menu',
+            items: [
+              {
+                type: 'nested',
+                key: 'groups',
+                Icon: IconUsersGroup,
+                label: 'Switch group',
+                caption: 'See all your groups',
+                color: colors.typeWorkspace.accent,
+                bg: colors.typeWorkspace.bg,
+                panel: 'groups',
+              },
+              {
+                type: 'action',
+                key: 'chores',
+                Icon: IconChecklist,
+                label: 'Chores',
+                color: colors.owedText,
+                bg: colors.owedBg,
+                onPress: () => {
+                  setDrawerOpen(false);
+                  setTimeout(() => router.push('/operations'), 220);
+                },
+              },
+              {
+                type: 'action',
+                key: 'analytics',
+                Icon: IconChartBar,
+                label: 'Analytics',
+                color: colors.sage,
+                bg: colors.sageSoft,
+                onPress: () => {
+                  setDrawerOpen(false);
+                  setTimeout(() => router.push('/analytics'), 220);
+                },
+              },
+              {
+                type: 'action',
+                key: 'activity',
+                Icon: IconMessageCircle,
+                label: 'Activity',
+                color: colors.typeCouple.accent,
+                bg: colors.typeCouple.bg,
+                onPress: () => {
+                  setDrawerOpen(false);
+                  setTimeout(() => router.push('/activity'), 220);
+                },
+              },
+              {
+                type: 'action',
+                key: 'settle',
+                Icon: IconWallet,
+                label: 'Settle up',
+                color: colors.sage,
+                bg: colors.sageSoft,
+                onPress: () => {
+                  setDrawerOpen(false);
+                  setTimeout(() => router.push('/settle-up'), 220);
+                },
+              },
+              {
+                type: 'action',
+                key: 'templates',
+                Icon: IconCopy,
+                label: 'Templates',
+                color: colors.typeProject.accent,
+                bg: colors.typeProject.bg,
+                onPress: () => {
+                  setDrawerOpen(false);
+                  setTimeout(() => router.push('/templates'), 220);
+                },
+              },
+              {
+                type: 'action',
+                key: 'recurring',
+                Icon: IconRepeat,
+                label: 'Recurring expenses',
+                color: colors.typeCouple.accent,
+                bg: colors.typeCouple.bg,
+                onPress: () => {
+                  setDrawerOpen(false);
+                  setTimeout(() => router.push('/recurring'), 220);
+                },
+              },
+              {
+                type: 'action',
+                key: 'funds',
+                Icon: IconCash,
+                label: 'Shared funds',
+                color: colors.sage,
+                bg: colors.sageSoft,
+                onPress: () => {
+                  setDrawerOpen(false);
+                  setTimeout(() => router.push('/funds'), 220);
+                },
+              },
+              {
+                type: 'action',
+                key: 'members',
+                Icon: IconUserPlus,
+                label: 'Members',
+                color: colors.infoText,
+                bg: colors.infoBg,
+                onPress: () => {
+                  setDrawerOpen(false);
+                  setTimeout(() => router.push('/members'), 220);
+                },
+              },
+              {
+                type: 'action',
+                key: 'support',
+                Icon: IconLifebuoy,
+                label: 'Help & support',
+                color: colors.infoText,
+                bg: colors.infoBg,
+                onPress: () => {
+                  setDrawerOpen(false);
+                },
+              },
+              {
+                type: 'action',
+                key: 'settings',
+                Icon: IconSettings,
+                label: 'Settings',
+                color: colors.textSecondary,
+                bg: colors.bgSubtle,
+                onPress: () => {
+                  setDrawerOpen(false);
+                  setTimeout(() => router.push('/settings'), 220);
+                },
+              },
+            ],
+          },
+          {
+            key: 'groups',
+            title: 'Switch group',
+            subtitle: `${groups.length} ${groups.length === 1 ? 'group' : 'groups'}`,
+            items: [
+              ...groups.map((g) => ({
+                type: 'action' as const,
+                key: g.id,
+                Icon: IconHome2,
+                label: g.name,
+                caption: g.id === activeGroupId ? 'Active' : undefined,
+                color: colors.sage,
+                bg: colors.sageSoft,
+                onPress: () => {
+                  setActiveGroupId(g.id);
+                  setDrawerOpen(false);
+                },
+              })),
+              {
+                type: 'action' as const,
+                key: 'create-group',
+                Icon: IconPlus,
+                label: 'Create new group',
+                color: colors.sage,
+                bg: colors.sageSoft,
+                onPress: () => {
+                  setDrawerOpen(false);
+                  setTimeout(() => router.push('/onboarding'), 220);
+                },
+              },
+            ],
+          },
+        ]}
+      />
     </>
   );
 }

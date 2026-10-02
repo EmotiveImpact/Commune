@@ -486,7 +486,7 @@ function Pricing() {
             <p className="section-label">Pricing</p>
             <h2 className="section-title">Simple, transparent pricing</h2>
             <p className="section-subtitle" style={{ margin: '0 auto' }}>
-              Start with a 7-day free trial for your first shared space.
+              Start with a 3-day free trial for your first shared space.
             </p>
           </div>
         </Reveal>
@@ -509,7 +509,7 @@ function Pricing() {
                   href="https://app.ourcommune.io/signup"
                   className="plan-cta"
                 >
-                  Start 7-day trial
+                  Start 3-day trial
                 </a>
               </div>
             </Reveal>

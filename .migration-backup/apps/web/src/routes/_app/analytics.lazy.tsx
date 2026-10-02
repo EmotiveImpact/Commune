@@ -41,6 +41,8 @@ import { useWorkspaceBilling } from '../../hooks/use-workspace-billing';
 import { useDeferredSection } from '../../hooks/use-deferred-section';
 import { PageHeader } from '../../components/page-header';
 import { QueryErrorState } from '../../components/query-error-state';
+import { EmptyState } from '../../components/empty-state';
+import { PageStack } from '../../components/ui-primitives';
 
 export const Route = createLazyFileRoute('/_app/analytics')({
   component: AnalyticsPage,
@@ -339,32 +341,25 @@ export function AnalyticsPage() {
 
   if (!hasData) {
     return (
-      <Stack gap="xl">
+      <PageStack gap="xl">
         <PageHeader
           title="Analytics"
-          subtitle="Deep insights into your group spending patterns."
+          subtitle="Clear spending patterns without extra dashboard noise."
         />
-        <Paper className="commune-soft-panel" p="xl">
-          <Stack align="center" gap="md" py="xl">
-            <ThemeIcon size={48} variant="light" color="gray" radius="xl">
-              <IconChartBar size={24} />
-            </ThemeIcon>
-            <Text fw={700} size="lg">No analytics data yet</Text>
-            <Text size="sm" c="dimmed" ta="center" maw={400}>
-              Once your group starts tracking expenses, spending trends and
-              insights will appear here automatically.
-            </Text>
-          </Stack>
-        </Paper>
-      </Stack>
+        <EmptyState
+          icon={IconChartBar}
+          title="No analytics data yet"
+          description="Once your group starts tracking expenses, spending trends and insights will appear here automatically."
+        />
+      </PageStack>
     );
   }
 
   return (
-    <Stack gap="xl">
+    <PageStack gap="xl">
       <PageHeader
         title="Analytics"
-        subtitle="Deep insights into your group spending patterns."
+        subtitle="Clear spending patterns without extra dashboard noise."
       />
 
       {/* Row 1: Stat cards */}
@@ -692,6 +687,6 @@ export function AnalyticsPage() {
           )}
         </Paper>
       </SimpleGrid>
-    </Stack>
+    </PageStack>
   );
 }

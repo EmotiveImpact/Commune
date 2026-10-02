@@ -1,39 +1,39 @@
-import { useEffect, useRef } from 'react';
-import {
-  Alert,
-  Animated,
-  Linking,
-  Platform,
-  Pressable,
-  ScrollView,
-  Text,
-  View,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { useMemo, useState } from 'react';
+import { Alert, Linking, ScrollView, Text, View } from 'react-native';
+import { Stack, useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { IconCheck, IconChevronLeft, IconTag } from '@tabler/icons-react-native';
 import { SubscriptionPlan } from '@commune/types';
-import { formatDate } from '@commune/utils';
 import { useAuthStore } from '@/stores/auth';
-import { useThemeStore } from '@/stores/theme';
 import { useCheckout, useSubscription } from '@/hooks/use-subscriptions';
+import { colors, font, radius, space } from '@/constants/design';
+import { Button, EmptyState, Pressable, Screen, SkeletonBlock } from '@/components/primitives';
 import { getErrorMessage } from '@/lib/errors';
-import { hapticMedium, hapticWarning } from '@/lib/haptics';
+import { hapticLight, hapticMedium, hapticWarning } from '@/lib/haptics';
+
+/* ============================================================================
+ * Plan configuration
+ * ============================================================================ */
+
+type Cycle = 'monthly' | 'yearly';
 
 interface PlanConfig {
   id: SubscriptionPlan;
   name: string;
-  price: string;
-  priceNote: string;
+  tagline: string;
+  monthly: number;
+  yearly: number; // total charged for a full year
   features: string[];
-  limits: { groups: string; members: string };
-  highlight?: boolean;
+  recommended?: boolean;
 }
 
 const PLANS: PlanConfig[] = [
   {
     id: SubscriptionPlan.STANDARD,
     name: 'Standard',
-    price: '\u00a34.99',
-    priceNote: '/month',
+    tagline: 'For a single household getting organised.',
+    monthly: 4.99,
+    yearly: 47.9,
     features: [
       'Up to 1 group',
       'Up to 8 members per group',
@@ -41,211 +41,266 @@ const PLANS: PlanConfig[] = [
       'Payment tracking',
       'Monthly breakdown',
     ],
-    limits: { groups: '1', members: '8' },
   },
   {
     id: SubscriptionPlan.PRO,
     name: 'Pro',
-    price: '\u00a39.99',
-    priceNote: '/month',
+    tagline: 'Cross-group settlements, analytics and OCR.',
+    monthly: 9.99,
+    yearly: 95.9,
     features: [
       'Up to 3 groups',
       'Up to 15 members per group',
       'Everything in Standard',
-      'Advanced analytics',
-      'Exports and stronger admin workflows',
+      'Advanced analytics and exports',
+      'Receipts OCR and stronger admin tools',
     ],
-    limits: { groups: '3', members: '15' },
-    highlight: true,
+    recommended: true,
   },
   {
     id: SubscriptionPlan.AGENCY,
     name: 'Pro Max',
-    price: '\u00a399.99',
-    priceNote: '/month',
+    tagline: 'For larger communal operations and agencies.',
+    monthly: 99.99,
+    yearly: 959.9,
     features: [
       'Unlimited groups',
-      'Unlimited members',
+      'Unlimited members per group',
       'Everything in Pro',
       'Priority support',
-      'Best fit for larger communal operations',
+      'Best fit for larger operations',
     ],
-    limits: { groups: 'Unlimited', members: 'Unlimited' },
   },
 ];
 
-const shadow = Platform.select({
-  ios: {
-    shadowColor: '#000',
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-  },
-  android: { elevation: 2 },
-  default: {},
-});
-
-/* -- Shimmer skeleton ---------------------------------------------------- */
-
-function PricingLoadingSkeleton() {
-  const mode = useThemeStore((s) => s.mode);
-  const bg = mode === 'dark' ? '#0A0A0A' : '#FAFAFA';
-  const shimmerBg =
-    mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(23,27,36,0.08)';
-  const opacity = useRef(new Animated.Value(0.4)).current;
-
-  useEffect(() => {
-    const anim = Animated.loop(
-      Animated.sequence([
-        Animated.timing(opacity, {
-          toValue: 1,
-          duration: 900,
-          useNativeDriver: true,
-        }),
-        Animated.timing(opacity, {
-          toValue: 0.4,
-          duration: 900,
-          useNativeDriver: true,
-        }),
-      ]),
-    );
-    anim.start();
-    return () => anim.stop();
-  }, [opacity]);
-
-  return (
-    <ScrollView
-      style={{ flex: 1, backgroundColor: bg }}
-      contentContainerStyle={{ padding: 20, paddingBottom: 120 }}
-    >
-      <Animated.View style={{ opacity }}>
-        <View
-          style={{
-            height: 80,
-            borderRadius: 16,
-            backgroundColor: shimmerBg,
-            marginBottom: 20,
-          }}
-        />
-        {[1, 2, 3].map((i) => (
-          <View
-            key={i}
-            style={{
-              height: 320,
-              borderRadius: 16,
-              backgroundColor: shimmerBg,
-              marginBottom: 16,
-            }}
-          />
-        ))}
-      </Animated.View>
-    </ScrollView>
-  );
+function formatGBP(value: number): string {
+  return Number.isInteger(value) ? `\u00a3${value}` : `\u00a3${value.toFixed(2)}`;
 }
 
-/* -- Empty state --------------------------------------------------------- */
+/* ============================================================================
+ * Segmented billing-cycle control
+ * ============================================================================ */
 
-function EmptyState({
-  icon,
-  title,
-  description,
+function CycleSegmented({
+  value,
+  onChange,
 }: {
-  icon: keyof typeof Ionicons.glyphMap;
-  title: string;
-  description: string;
+  value: Cycle;
+  onChange: (v: Cycle) => void;
 }) {
-  const mode = useThemeStore((s) => s.mode);
-  const isDark = mode === 'dark';
-
+  const pills: Array<{ key: Cycle; label: string }> = [
+    { key: 'monthly', label: 'Monthly' },
+    { key: 'yearly', label: 'Yearly \u00b7 save 20%' },
+  ];
   return (
     <View
       style={{
-        alignItems: 'center',
-        padding: 24,
-        borderRadius: 16,
-        backgroundColor: isDark ? '#1A1A1A' : '#FFFFFF',
-        ...shadow,
+        flexDirection: 'row',
+        backgroundColor: '#F3F1EC',
+        borderRadius: 12,
+        padding: 4,
+        alignSelf: 'stretch',
       }}
     >
-      <View
-        style={{
-          marginBottom: 16,
-          height: 64,
-          width: 64,
-          alignItems: 'center',
-          justifyContent: 'center',
-          borderRadius: 32,
-          backgroundColor: isDark ? 'rgba(45,106,79,0.15)' : '#EEF6F3',
-        }}
-      >
-        <Ionicons name={icon} size={26} color="#2d6a4f" />
-      </View>
-      <Text
-        style={{
-          textAlign: 'center',
-          fontSize: 20,
-          fontWeight: '600',
-          color: isDark ? '#E5E5E5' : '#171b24',
-        }}
-      >
-        {title}
-      </Text>
-      <Text
-        style={{
-          marginTop: 12,
-          textAlign: 'center',
-          fontSize: 14,
-          lineHeight: 24,
-          color: isDark ? '#888' : '#667085',
-        }}
-      >
-        {description}
-      </Text>
+      {pills.map((p) => {
+        const active = p.key === value;
+        return (
+          <Pressable
+            key={p.key}
+            onPress={() => {
+              hapticLight();
+              onChange(p.key);
+            }}
+            style={{
+              flex: 1,
+              paddingVertical: 8,
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderRadius: 8,
+              backgroundColor: active ? colors.bgSurface : 'transparent',
+            }}
+          >
+            <Text
+              style={{
+                fontSize: 13,
+                fontWeight: '600',
+                color: active ? colors.textPrimary : colors.textMuted,
+              }}
+            >
+              {p.label}
+            </Text>
+          </Pressable>
+        );
+      })}
     </View>
   );
 }
 
-/* -- Main screen --------------------------------------------------------- */
+/* ============================================================================
+ * Plan card
+ * ============================================================================ */
+
+function PlanCard({
+  plan,
+  cycle,
+  currentPlan,
+  isActive,
+  onSelect,
+  disabled,
+}: {
+  plan: PlanConfig;
+  cycle: Cycle;
+  currentPlan: SubscriptionPlan | undefined;
+  isActive: boolean;
+  onSelect: () => void;
+  disabled: boolean;
+}) {
+  const isCurrent = currentPlan === plan.id && isActive;
+  const highlight = isCurrent || plan.recommended;
+
+  const price = cycle === 'monthly' ? plan.monthly : plan.yearly;
+  const unit = cycle === 'monthly' ? '/month' : '/year';
+  const annualAtMonthly = plan.monthly * 12;
+  const showStrike = cycle === 'yearly' && plan.yearly < annualAtMonthly;
+
+  const ctaLabel = isCurrent
+    ? 'Current plan'
+    : plan.id === SubscriptionPlan.PRO
+      ? 'Get Pro'
+      : 'Upgrade';
+
+  return (
+    <View
+      style={{
+        backgroundColor: colors.bgSurface,
+        borderRadius: 18,
+        borderWidth: highlight ? 1.5 : 1,
+        borderColor: highlight ? colors.sage : colors.borderSubtle,
+        padding: 20,
+        marginBottom: 10,
+      }}
+    >
+      {highlight ? (
+        <View
+          style={{
+            position: 'absolute',
+            top: 14,
+            right: 14,
+            paddingHorizontal: 10,
+            paddingVertical: 4,
+            borderRadius: radius.pill,
+            backgroundColor: colors.sageSoft,
+          }}
+        >
+          <Text
+            style={{
+              fontSize: 11,
+              fontWeight: '700',
+              color: colors.sage,
+              letterSpacing: 0.3,
+            }}
+          >
+            {isCurrent ? 'Current' : 'Recommended'}
+          </Text>
+        </View>
+      ) : null}
+
+      {/* Name + tagline */}
+      <Text style={{ fontSize: 18, fontWeight: '700', color: colors.textPrimary }}>
+        {plan.name}
+      </Text>
+      <Text
+        numberOfLines={1}
+        style={{ fontSize: 12, color: colors.textMuted, marginTop: 2 }}
+      >
+        {plan.tagline}
+      </Text>
+
+      {/* Price */}
+      <View style={{ marginTop: 14 }}>
+        {showStrike ? (
+          <Text
+            style={{
+              fontSize: 12,
+              color: colors.textMuted,
+              textDecorationLine: 'line-through',
+              marginBottom: 2,
+            }}
+          >
+            {formatGBP(annualAtMonthly)}/year
+          </Text>
+        ) : null}
+        <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
+          <Text style={{ fontSize: 32, fontWeight: '700', color: colors.textPrimary }}>
+            {formatGBP(price)}
+          </Text>
+          <Text style={{ fontSize: 13, color: colors.textMuted, marginLeft: 4 }}>
+            {unit}
+          </Text>
+        </View>
+      </View>
+
+      {/* Features */}
+      <View style={{ marginTop: 14, gap: 8 }}>
+        {plan.features.slice(0, 5).map((feature) => (
+          <View
+            key={feature}
+            style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}
+          >
+            <View style={{ marginTop: 2 }}>
+              <IconCheck size={16} strokeWidth={2.2} color={colors.sage} />
+            </View>
+            <Text
+              style={{
+                flex: 1,
+                fontSize: 13,
+                lineHeight: 18,
+                color: colors.textPrimary,
+              }}
+            >
+              {feature}
+            </Text>
+          </View>
+        ))}
+      </View>
+
+      {/* CTA */}
+      <View style={{ marginTop: 18 }}>
+        <Button
+          label={ctaLabel}
+          onPress={onSelect}
+          variant={isCurrent ? 'ghost' : 'primary'}
+          disabled={isCurrent || disabled}
+          fullWidth
+        />
+      </View>
+    </View>
+  );
+}
+
+/* ============================================================================
+ * Screen
+ * ============================================================================ */
 
 export default function PricingScreen() {
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
   const user = useAuthStore((s) => s.user);
-  const mode = useThemeStore((s) => s.mode);
-  const isDark = mode === 'dark';
-  const bg = isDark ? '#0A0A0A' : '#FAFAFA';
-  const textPrimary = isDark ? '#E5E5E5' : '#171b24';
-  const textSecondary = isDark ? '#888' : '#667085';
-  const cardBg = isDark ? '#1A1A1A' : '#FFFFFF';
-
   const { data: subscription, isLoading } = useSubscription(user?.id ?? '');
   const checkout = useCheckout();
 
-  if (!user) {
-    return (
-      <ScrollView
-        style={{ flex: 1, backgroundColor: bg }}
-        contentContainerStyle={{ padding: 20, paddingBottom: 120 }}
-      >
-        <EmptyState
-          icon="pricetag-outline"
-          title="Not signed in"
-          description="Sign in to view pricing plans."
-        />
-      </ScrollView>
-    );
-  }
+  const [cycle, setCycle] = useState<Cycle>('monthly');
 
-  if (isLoading) {
-    return <PricingLoadingSkeleton />;
-  }
+  const { currentPlan, isActive } = useMemo(() => {
+    const plan = subscription?.plan;
+    const active =
+      subscription?.status === 'active' || subscription?.status === 'trialing';
+    return { currentPlan: plan, isActive: active };
+  }, [subscription]);
 
-  const currentPlan = subscription?.plan;
-  const isTrialing = subscription?.status === 'trialing';
-  const isActive = subscription?.status === 'active' || isTrialing;
-
-  async function handleSelectPlan(plan: SubscriptionPlan) {
+  async function handleSelect(plan: SubscriptionPlan) {
     if (isActive && plan === currentPlan) return;
     hapticMedium();
-
     try {
       const url = await checkout.mutateAsync(plan);
       await Linking.openURL(url);
@@ -259,305 +314,139 @@ export default function PricingScreen() {
   }
 
   return (
-    <ScrollView
-      style={{ flex: 1, backgroundColor: bg }}
-      contentContainerStyle={{ padding: 20, paddingBottom: 120 }}
-      showsVerticalScrollIndicator={false}
-    >
-      {/* Trial banner */}
-      {isTrialing && subscription?.trial_ends_at ? (
+    <Screen>
+      <Stack.Screen options={{ headerShown: false }} />
+
+      {/* In-screen header */}
+      <View
+        style={{
+          paddingTop: insets.top + 12,
+          paddingHorizontal: space.gutter,
+          backgroundColor: colors.bgBase,
+        }}
+      >
         <View
           style={{
-            marginBottom: 16,
-            padding: 14,
-            borderRadius: 12,
-            backgroundColor: isDark ? 'rgba(45,106,79,0.12)' : '#ECFDF5',
             flexDirection: 'row',
             alignItems: 'center',
+            justifyContent: 'space-between',
+            height: 48,
           }}
         >
-          <View
-            style={{
-              height: 32,
-              width: 32,
-              borderRadius: 16,
-              backgroundColor: isDark ? 'rgba(5,150,105,0.2)' : '#D1FAE5',
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginRight: 12,
+          <Pressable
+            onPress={() => {
+              hapticLight();
+              router.back();
             }}
+            hitSlop={10}
+            style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 2, paddingVertical: 6, paddingRight: 10, marginLeft: -4, opacity: pressed ? 0.6 : 1, zIndex: 2 })}
           >
-            <Ionicons name="time-outline" size={16} color="#059669" />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text
-              style={{
-                fontSize: 13,
-                fontWeight: '600',
-                color: '#059669',
-              }}
-            >
-              Free trial active
-            </Text>
-            <Text
-              style={{
-                fontSize: 12,
-                color: isDark ? '#6EE7B7' : '#047857',
-                marginTop: 2,
-              }}
-            >
-              Ends {formatDate(subscription.trial_ends_at)}. No charge until
-              then.
-            </Text>
-          </View>
+            <IconChevronLeft size={22} color={colors.textPrimary} strokeWidth={2} />
+            <Text style={{ fontSize: 15, fontWeight: '600', color: colors.textPrimary }}>Back</Text>
+          </Pressable>
+          <Text style={[font.h3, { color: colors.textPrimary }]}>Plans</Text>
+          <View style={{ width: 36 }} />
         </View>
-      ) : null}
-
-      {/* Header */}
-      <View style={{ marginBottom: 24 }}>
-        <Text
-          style={{
-            fontSize: 28,
-            fontWeight: '700',
-            color: textPrimary,
-          }}
-        >
-          Choose your plan
-        </Text>
-        <Text
-          style={{
-            marginTop: 8,
-            fontSize: 14,
-            lineHeight: 22,
-            color: textSecondary,
-          }}
-        >
-          Every plan starts with a 7-day free trial. Pick the level that matches
-          how many groups and members you manage.
-        </Text>
       </View>
 
-      {/* Plan cards */}
-      {PLANS.map((plan) => {
-        const isCurrent = currentPlan === plan.id;
-        const isHighlighted = isCurrent || plan.highlight;
-
-        const buttonLabel = isCurrent
-          ? isTrialing
-            ? 'Current plan (trial)'
-            : 'Current plan'
-          : isActive
-            ? 'Switch plan'
-            : 'Start 7-day trial';
-
-        return (
-          <View
-            key={plan.id}
-            style={{
-              marginBottom: 16,
-              borderRadius: 16,
-              padding: 20,
-              backgroundColor: isCurrent
-                ? isDark
-                  ? 'rgba(45,106,79,0.08)'
-                  : '#F7FDF9'
-                : cardBg,
-              borderWidth: isHighlighted ? 2 : 1,
-              borderColor: isHighlighted ? '#2d6a4f' : '#E5E7EB',
-              ...shadow,
-            }}
-          >
-            {/* Plan header row */}
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'flex-start',
-                justifyContent: 'space-between',
-              }}
-            >
-              <View style={{ flex: 1 }}>
-                <Text
-                  style={{
-                    fontSize: 20,
-                    fontWeight: '600',
-                    color: textPrimary,
-                  }}
-                >
-                  {plan.name}
-                </Text>
-                <Text
-                  style={{
-                    marginTop: 4,
-                    fontSize: 13,
-                    color: textSecondary,
-                  }}
-                >
-                  {plan.limits.groups} group
-                  {plan.limits.groups === '1' ? '' : 's'} &middot;{' '}
-                  {plan.limits.members} members
-                </Text>
-              </View>
-
-              {/* Badges */}
-              <View style={{ flexDirection: 'row', gap: 6 }}>
-                {plan.highlight ? (
-                  <View
-                    style={{
-                      paddingHorizontal: 10,
-                      paddingVertical: 4,
-                      borderRadius: 8,
-                      backgroundColor: '#ECFDF5',
-                    }}
-                  >
-                    <Text
-                      style={{
-                        fontSize: 11,
-                        fontWeight: '600',
-                        color: '#059669',
-                      }}
-                    >
-                      Most popular
-                    </Text>
-                  </View>
-                ) : null}
-                {isCurrent ? (
-                  <View
-                    style={{
-                      paddingHorizontal: 10,
-                      paddingVertical: 4,
-                      borderRadius: 8,
-                      backgroundColor: isDark
-                        ? 'rgba(45,106,79,0.2)'
-                        : '#ECFDF5',
-                    }}
-                  >
-                    <Text
-                      style={{
-                        fontSize: 11,
-                        fontWeight: '600',
-                        color: '#059669',
-                      }}
-                    >
-                      {isTrialing ? 'Trial' : 'Active'}
-                    </Text>
-                  </View>
-                ) : null}
-              </View>
-            </View>
-
-            {/* Price */}
-            <View
-              style={{
-                marginTop: 16,
-                flexDirection: 'row',
-                alignItems: 'baseline',
-              }}
-            >
+      <ScrollView
+        contentContainerStyle={{
+          paddingTop: 12,
+          paddingBottom: 120,
+          paddingHorizontal: space.gutter,
+          gap: space.base,
+        }}
+        showsVerticalScrollIndicator={false}
+      >
+        {!user ? (
+          <EmptyState
+            icon={IconTag}
+            title="Not signed in"
+            description="Sign in to view pricing plans."
+          />
+        ) : (
+          <>
+            {/* Hero intro */}
+            <View>
+              <Text
+                style={{
+                  fontSize: 11,
+                  fontWeight: '700',
+                  letterSpacing: 0.8,
+                  textTransform: 'uppercase',
+                  color: colors.textMuted,
+                }}
+              >
+                Unlock more
+              </Text>
               <Text
                 style={{
                   fontSize: 28,
                   fontWeight: '700',
-                  color: textPrimary,
+                  lineHeight: 34,
+                  color: colors.textPrimary,
+                  marginTop: 6,
                 }}
               >
-                {plan.price}
+                Pick a plan that fits your home
               </Text>
               <Text
                 style={{
-                  fontSize: 14,
-                  color: textSecondary,
-                  marginLeft: 4,
+                  fontSize: 13,
+                  lineHeight: 20,
+                  color: colors.textMuted,
+                  marginTop: 6,
                 }}
               >
-                {plan.priceNote}
+                Cross-group settlements, analytics, receipts OCR, and more.
               </Text>
             </View>
 
-            {/* Feature list */}
-            <View style={{ marginTop: 16 }}>
-              {plan.features.map((feature) => (
-                <View
-                  key={feature}
-                  style={{
-                    marginBottom: 10,
-                    flexDirection: 'row',
-                    alignItems: 'flex-start',
-                  }}
-                >
-                  <View
-                    style={{
-                      marginRight: 10,
-                      marginTop: 2,
-                      height: 20,
-                      width: 20,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      borderRadius: 10,
-                      backgroundColor: isDark
-                        ? 'rgba(45,106,79,0.15)'
-                        : '#EEF6F3',
-                    }}
-                  >
-                    <Ionicons name="checkmark" size={12} color="#2d6a4f" />
-                  </View>
-                  <Text
-                    style={{
-                      flex: 1,
-                      fontSize: 14,
-                      lineHeight: 20,
-                      color: textPrimary,
-                    }}
-                  >
-                    {feature}
-                  </Text>
-                </View>
-              ))}
-            </View>
+            {/* Billing cycle */}
+            <CycleSegmented value={cycle} onChange={setCycle} />
 
-            {/* CTA button */}
-            <Pressable
-              onPress={() => handleSelectPlan(plan.id)}
-              disabled={isCurrent}
-              style={({ pressed }) => ({
-                marginTop: 16,
-                height: 48,
-                borderRadius: 14,
-                alignItems: 'center',
-                justifyContent: 'center',
-                opacity: isCurrent ? 0.5 : pressed ? 0.85 : 1,
-                ...(isCurrent
-                  ? {
-                      backgroundColor: 'transparent',
-                      borderWidth: 1,
-                      borderColor: '#E5E7EB',
-                    }
-                  : plan.highlight
-                    ? {
-                        backgroundColor: '#1f2330',
-                      }
-                    : {
-                        backgroundColor: 'transparent',
-                        borderWidth: 1,
-                        borderColor: '#E5E7EB',
-                      }),
-              })}
+            {/* Plan cards or skeletons */}
+            {isLoading ? (
+              <View>
+                {[0, 1, 2].map((i) => (
+                  <SkeletonBlock
+                    key={i}
+                    height={220}
+                    radius={18}
+                    style={{ marginBottom: 10 }}
+                  />
+                ))}
+              </View>
+            ) : (
+              <View>
+                {PLANS.map((plan) => (
+                  <PlanCard
+                    key={plan.id}
+                    plan={plan}
+                    cycle={cycle}
+                    currentPlan={currentPlan}
+                    isActive={isActive}
+                    onSelect={() => handleSelect(plan.id)}
+                    disabled={checkout.isPending}
+                  />
+                ))}
+              </View>
+            )}
+
+            {/* Footer note */}
+            <Text
+              style={{
+                fontSize: 12,
+                color: colors.textMuted,
+                textAlign: 'center',
+                marginTop: space.sm,
+              }}
             >
-              <Text
-                style={{
-                  fontSize: 15,
-                  fontWeight: '600',
-                  color:
-                    !isCurrent && plan.highlight
-                      ? '#FFFFFF'
-                      : textPrimary,
-                }}
-              >
-                {buttonLabel}
-              </Text>
-            </Pressable>
-          </View>
-        );
-      })}
-    </ScrollView>
+              Cancel anytime \u00b7 billed via Apple / your method
+            </Text>
+          </>
+        )}
+      </ScrollView>
+    </Screen>
   );
 }

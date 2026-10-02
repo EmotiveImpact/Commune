@@ -1,10 +1,10 @@
 import { StyleSheet, Text, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { IconChartPie } from '@tabler/icons-react-native';
 import Svg, { Circle, G } from 'react-native-svg';
-import { colors, font, getCategoryMeta, space } from '@/constants/design';
+import { colors, font, space } from '@/constants/design';
 import { formatCategoryLabel } from '@/lib/ui';
-import { formatCurrency } from '@commune/core';
-import { Badge, Card } from './primitives';
+import { formatCurrency } from '@commune/utils';
+import { Card } from './primitives';
 
 export type CategoryItem = {
   category: string;
@@ -15,21 +15,20 @@ export type CategoryItem = {
 export function CategoryBreakdownCard({
   items,
   currency,
-  scopeLabel,
 }: {
   items: CategoryItem[];
   currency: string;
-  scopeLabel: string;
+  /** @deprecated retained for back-compat — scope is shown by the page header's month picker. */
+  scopeLabel?: string;
 }) {
   return (
     <Card variant="surface" padding={space.lg}>
       <View style={s.categoryHeader}>
         <Text style={[font.h3, { color: colors.textPrimary }]}>Spending by category</Text>
-        <Badge label={scopeLabel} tone="neutral" />
       </View>
       {items.length === 0 ? (
         <View style={s.categoryEmpty}>
-          <Ionicons name="pie-chart-outline" size={28} color={colors.textSecondary} />
+          <IconChartPie size={28} color={colors.textSecondary} strokeWidth={1.7} />
           <Text style={[font.bodyStrong, { color: colors.textSecondary }]}>No categories yet</Text>
           <Text style={[font.caption, { color: colors.textTertiary, textAlign: 'center' }]}>
             Add an expense to see where money goes.
@@ -42,6 +41,15 @@ export function CategoryBreakdownCard({
   );
 }
 
+// Unified analytics palette — sage primary, sage-mid secondary, cream tertiary,
+// extra slices fall back to a muted neutral so the chart never reintroduces
+// out-of-system hues.
+const SLICE_PALETTE = [colors.sage, colors.sageMid, colors.cream, colors.bgSubtle];
+
+function sliceColor(index: number): string {
+  return SLICE_PALETTE[Math.min(index, SLICE_PALETTE.length - 1)] ?? colors.bgSubtle;
+}
+
 function DonutChart({ items, currency }: { items: CategoryItem[]; currency: string }) {
   const size = 104;
   const strokeWidth = 16;
@@ -51,14 +59,12 @@ function DonutChart({ items, currency }: { items: CategoryItem[]; currency: stri
   const top = items.slice(0, 4);
   const restPct = items.slice(4).reduce((sum, i) => sum + i.pct, 0);
 
-  let offset = 0;
-  const segments = items.map((item) => {
-    const meta = getCategoryMeta(item.category);
+  const segments = items.reduce<Array<{ key: string; color: string; length: number; offset: number }>>((acc, item, idx) => {
     const length = (Math.max(0, item.pct) / 100) * c;
-    const seg = { key: item.category, color: meta.color, length, offset };
-    offset += length;
-    return seg;
-  });
+    const offset = acc.reduce((sum, segment) => sum + segment.length, 0);
+    acc.push({ key: item.category, color: sliceColor(idx), length, offset });
+    return acc;
+  }, []);
 
   return (
     <View style={s.donutRow}>
@@ -97,16 +103,13 @@ function DonutChart({ items, currency }: { items: CategoryItem[]; currency: stri
         </View>
       </View>
       <View style={s.legend}>
-        {top.map((item) => {
-          const meta = getCategoryMeta(item.category);
-          return (
-            <View key={item.category} style={s.legendRow}>
-              <View style={[s.legendDot, { backgroundColor: meta.color }]} />
-              <Text style={s.legendName} numberOfLines={1}>{formatCategoryLabel(item.category)}</Text>
-              <Text style={s.legendPct}>{item.pct}%</Text>
-            </View>
-          );
-        })}
+        {top.map((item, idx) => (
+          <View key={item.category} style={s.legendRow}>
+            <View style={[s.legendDot, { backgroundColor: sliceColor(idx) }]} />
+            <Text style={s.legendName} numberOfLines={1}>{formatCategoryLabel(item.category)}</Text>
+            <Text style={s.legendPct}>{item.pct}%</Text>
+          </View>
+        ))}
         {items.length > 4 && (
           <View style={s.legendRow}>
             <View style={[s.legendDot, { backgroundColor: colors.bgSubtle }]} />

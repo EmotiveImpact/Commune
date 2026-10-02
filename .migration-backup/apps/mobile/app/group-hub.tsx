@@ -1,23 +1,33 @@
-import { useMemo } from 'react';
-import { ScrollView, Text, TouchableOpacity, View, Image } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { useMemo, useState } from 'react';
+import { Alert, ScrollView, Text, View } from 'react-native';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import {
+  IconAdjustments,
+  IconAlertTriangle,
+  IconArchive,
+  IconCash,
+  IconChevronLeft,
+  IconChevronRight,
+  IconCurrencyPound,
+  IconCut,
+  IconHome,
+  IconLogout,
+  IconRefresh,
+  IconTag,
+  IconUserPlus,
+  IconUsers,
+  IconGitBranch,
+} from '@tabler/icons-react-native';
 import { formatCurrency } from '@commune/utils';
-import { useThemeStore } from '@/stores/theme';
+import { Avatar, EmptyState, IconTile, Pressable, Screen } from '@/components/primitives';
+import { colors, font, radius, space } from '@/constants/design';
+import { getGroupTypeMeta } from '@/constants/design';
 import { useAuthStore } from '@/stores/auth';
-import { useGroupHub } from '@/hooks/use-group-hub';
-import { useGroupSettlement } from '@/hooks/use-settlement';
+import { useGroupStore } from '@/stores/group';
+import { useArchiveGroup, useGroup, useLeaveGroup, useUpdateGroup } from '@/hooks/use-groups';
 
-const GROUP_TYPE_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
-  home: 'home-outline',
-  couple: 'heart-outline',
-  workspace: 'briefcase-outline',
-  project: 'people-outline',
-  trip: 'airplane-outline',
-  other: 'grid-outline',
-};
-
-const GROUP_TYPE_LABELS: Record<string, string> = {
+const TYPE_LABELS: Record<string, string> = {
   home: 'Household',
   couple: 'Couple',
   workspace: 'Workspace',
@@ -26,192 +36,454 @@ const GROUP_TYPE_LABELS: Record<string, string> = {
   other: 'Other',
 };
 
-export default function GroupHubScreen() {
-  const { groupId } = useLocalSearchParams<{ groupId: string }>();
-  const router = useRouter();
-  const isDark = useThemeStore((s) => s.mode) === 'dark';
-  const user = useAuthStore((s) => s.user);
-  const { data: hub, isLoading } = useGroupHub(groupId ?? '');
-  const { data: settlement } = useGroupSettlement(groupId ?? '');
+function SectionLabel({
+  title,
+  action,
+  color = colors.textMuted,
+}: {
+  title: string;
+  action?: { label: string; onPress: () => void };
+  color?: string;
+}) {
+  return (
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingTop: space.base,
+        paddingBottom: space.sm,
+      }}
+    >
+      <Text
+        style={{
+          fontSize: 10,
+          fontWeight: '700',
+          color,
+          letterSpacing: 0.6,
+          textTransform: 'uppercase',
+        }}
+      >
+        {title}
+      </Text>
+      {action ? (
+        <Pressable onPress={action.onPress} hitSlop={8}>
+          <Text style={{ fontSize: 12, fontWeight: '700', color: colors.sageInk }}>
+            {action.label} →
+          </Text>
+        </Pressable>
+      ) : null}
+    </View>
+  );
+}
 
-  const bg = isDark ? '#0A0A0A' : '#FAFAFA';
-  const surface = isDark ? '#18181B' : '#FFFFFF';
-  const text = isDark ? '#FAFAFA' : '#171b24';
-  const textSoft = isDark ? '#A1A1AA' : '#667085';
-  const border = isDark ? 'rgba(255,255,255,0.10)' : 'rgba(23,27,36,0.10)';
-  const accent = '#2d6a4f';
+function Row({
+  tile,
+  title,
+  caption,
+  onPress,
+  titleColor = colors.textPrimary,
+  trailing,
+}: {
+  tile: React.ReactNode;
+  title: string;
+  caption?: string;
+  onPress?: () => void;
+  titleColor?: string;
+  trailing?: React.ReactNode;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: space.md,
+          backgroundColor: colors.bgSurface,
+          borderRadius: radius.card,
+          paddingVertical: space.md,
+          paddingHorizontal: space.base,
+          marginBottom: space.sm,
+          borderWidth: 1,
+          borderColor: colors.borderSubtle,
+          opacity: pressed && onPress ? 0.85 : 1,
+        },
+      ]}
+    >
+      {tile}
+      <View style={{ flex: 1 }}>
+        <Text style={[font.bodyStrong, { color: titleColor }]} numberOfLines={1}>
+          {title}
+        </Text>
+        {caption ? (
+          <Text style={[font.caption, { color: colors.textTertiary, marginTop: 2 }]} numberOfLines={1}>
+            {caption}
+          </Text>
+        ) : null}
+      </View>
+      {trailing ??
+        (onPress ? (
+          <IconChevronRight size={18} color={colors.textMuted} strokeWidth={2} />
+        ) : null)}
+    </Pressable>
+  );
+}
+
+export default function GroupHubScreen() {
+  const insets = useSafeAreaInsets();
+  const { groupId: routeGroupId } = useLocalSearchParams<{ groupId?: string }>();
+  const router = useRouter();
+  const user = useAuthStore((s) => s.user);
+  const activeGroupId = useGroupStore((s) => s.activeGroupId);
+  const groupId = routeGroupId ?? activeGroupId ?? '';
+
+  const { data: group, isLoading } = useGroup(groupId);
+  const updateGroup = useUpdateGroup(groupId);
+  const leaveGroup = useLeaveGroup();
+  const archiveGroup = useArchiveGroup(groupId);
+
+  // Pending edits are a placeholder for future inline editing; rename/type/currency
+  // currently flow through the dedicated group-edit route. The hasEdits flag is kept
+  // so we can swap in an inline-editing variant without reshaping the header.
+  const [hasEdits] = useState(false);
 
   const activeMembers = useMemo(
-    () => (hub?.group?.members ?? []).filter((m: any) => m.status === 'active'),
-    [hub?.group?.members],
+    () => (group?.members ?? []).filter((m: any) => m.status !== 'removed'),
+    [group?.members],
   );
 
-  const mySettlement = useMemo(() => {
-    if (!settlement?.transactions || !user?.id) return null;
-    const iOwe = settlement.transactions
-      .filter((t: any) => t.fromUserId === user.id)
-      .reduce((sum: number, t: any) => sum + t.amount, 0);
-    const owedToMe = settlement.transactions
-      .filter((t: any) => t.toUserId === user.id)
-      .reduce((sum: number, t: any) => sum + t.amount, 0);
-    if (iOwe === 0 && owedToMe === 0) return { status: 'settled' as const, amount: 0 };
-    if (iOwe > owedToMe) return { status: 'owe' as const, amount: iOwe - owedToMe };
-    return { status: 'owed' as const, amount: owedToMe - iOwe };
-  }, [settlement, user?.id]);
+  const isOwner = useMemo(
+    () => Boolean(group?.owner_id && user?.id && group.owner_id === user.id),
+    [group?.owner_id, user?.id],
+  );
 
-  if (isLoading || !hub) {
+  if (!groupId || (!isLoading && !group)) {
     return (
-      <View style={{ flex: 1, backgroundColor: bg, justifyContent: 'center', alignItems: 'center' }}>
-        <Text style={{ color: textSoft }}>Loading...</Text>
-      </View>
+      <Screen>
+        <Stack.Screen options={{ headerShown: false }} />
+        <View style={{ flex: 1, justifyContent: 'center' }}>
+          <EmptyState
+            icon={IconUsers}
+            title="No active group"
+            description="Create or join a group to get started."
+            actionLabel="Get started"
+            onAction={() => router.push('/onboarding')}
+          />
+        </View>
+      </Screen>
     );
   }
 
-  const group = hub.group;
-  const typeIcon = GROUP_TYPE_ICONS[group.type] ?? 'grid-outline';
-  const typeLabel = GROUP_TYPE_LABELS[group.type] ?? 'Group';
+  if (isLoading || !group) {
+    return (
+      <Screen>
+        <Stack.Screen options={{ headerShown: false }} />
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <Text style={[font.caption, { color: colors.textTertiary }]}>Loading…</Text>
+        </View>
+      </Screen>
+    );
+  }
+
+  const typeMeta = getGroupTypeMeta(group.type);
+  const typeLabel = TYPE_LABELS[group.type] ?? typeMeta.label;
+  const memberCount = activeMembers.length;
+  const previewMembers = activeMembers.slice(0, 3);
+
+  const handleSave = () => {
+    // Placeholder: inline edits should call updateGroup.mutate({ ... })
+    updateGroup.mutate({});
+  };
+
+  const handleLeave = () => {
+    if (!user?.id) return;
+    Alert.alert(
+      'Leave group?',
+      `You'll lose access to ${group.name}'s history and balances. You can rejoin if you're invited again.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Leave',
+          style: 'destructive',
+          onPress: () => {
+            leaveGroup.mutate(
+              { groupId, userId: user.id },
+              {
+                onSuccess: () => router.replace('/(tabs)'),
+                onError: (err: any) => Alert.alert('Could not leave', err?.message ?? 'Please try again.'),
+              },
+            );
+          },
+        },
+      ],
+    );
+  };
+
+  const handleArchive = () => {
+    Alert.alert(
+      'Archive group?',
+      'You can restore it later.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Archive',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await archiveGroup.mutateAsync();
+              router.replace('/(tabs)');
+            } catch (err: any) {
+              Alert.alert('Could not archive', err?.message ?? 'Please try again.');
+            }
+          },
+        },
+      ],
+    );
+  };
 
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: bg }}>
-      {/* Hero */}
-      <View style={{
-        backgroundColor: isDark ? '#1f2330' : '#e8f0eb',
-        paddingTop: 60,
-        paddingBottom: 24,
-        paddingHorizontal: 20,
-        borderBottomLeftRadius: 24,
-        borderBottomRightRadius: 24,
-      }}>
-        {group.cover_url && (
-          <Image
-            source={{ uri: group.cover_url }}
-            style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderBottomLeftRadius: 24, borderBottomRightRadius: 24, opacity: 0.3 }}
-          />
-        )}
-        <TouchableOpacity onPress={() => router.back()} style={{ marginBottom: 16 }}>
-          <Ionicons name="arrow-back" size={24} color={text} />
-        </TouchableOpacity>
+    <Screen>
+      <Stack.Screen options={{ headerShown: false }} />
 
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-          {group.avatar_url ? (
-            <Image source={{ uri: group.avatar_url }} style={{ width: 48, height: 48, borderRadius: 24 }} />
-          ) : (
-            <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: accent, justifyContent: 'center', alignItems: 'center' }}>
-              <Ionicons name={typeIcon} size={24} color="#fff" />
-            </View>
-          )}
-          <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 22, fontWeight: '700', color: text }}>{group.name}</Text>
-            {group.tagline && <Text style={{ fontSize: 13, color: textSoft, marginTop: 2 }}>{group.tagline}</Text>}
-          </View>
+      {/* Header */}
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          paddingHorizontal: space.gutter,
+          paddingTop: insets.top + 12,
+          paddingBottom: space.sm,
+          position: 'relative',
+        }}
+      >
+        <Pressable
+          onPress={() => router.back()}
+          hitSlop={10}
+          style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 2, paddingVertical: 6, paddingRight: 10, marginLeft: -4, opacity: pressed ? 0.6 : 1, zIndex: 2 })}
+        >
+          <IconChevronLeft size={22} strokeWidth={2} color={colors.textPrimary} />
+          <Text style={{ fontSize: 15, fontWeight: '600', color: colors.textPrimary }}>Back</Text>
+        </Pressable>
+        <View
+          pointerEvents="none"
+          style={{ position: 'absolute', left: 0, right: 0, top: insets.top + 12, bottom: 0, alignItems: 'center', justifyContent: 'center' }}
+        >
+          <Text style={{ fontSize: 17, fontWeight: '700', color: colors.textPrimary }}>Group</Text>
         </View>
-
-        <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
-          <View style={{ backgroundColor: 'rgba(45,106,79,0.15)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 }}>
-            <Text style={{ fontSize: 12, fontWeight: '600', color: accent }}>{typeLabel}</Text>
-          </View>
-          <View style={{ backgroundColor: border, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 }}>
-            <Text style={{ fontSize: 12, color: textSoft }}>{activeMembers.length} members</Text>
-          </View>
-          {mySettlement && (
-            <View style={{
-              backgroundColor: mySettlement.status === 'settled' ? 'rgba(16,185,129,0.15)' : mySettlement.status === 'owe' ? 'rgba(239,68,68,0.15)' : 'rgba(59,130,246,0.15)',
-              paddingHorizontal: 10,
-              paddingVertical: 4,
-              borderRadius: 12,
-            }}>
-              <Text style={{
-                fontSize: 12,
-                fontWeight: '600',
-                color: mySettlement.status === 'settled' ? '#10B981' : mySettlement.status === 'owe' ? '#EF4444' : '#3B82F6',
-              }}>
-                {mySettlement.status === 'settled' ? 'Settled' : mySettlement.status === 'owe' ? `You owe ${formatCurrency(mySettlement.amount, group.currency)}` : `Owed ${formatCurrency(mySettlement.amount, group.currency)}`}
+        <View style={{ width: 40, alignItems: 'flex-end', zIndex: 2 }}>
+          {hasEdits ? (
+            <Pressable onPress={handleSave} hitSlop={8}>
+              <Text style={{ fontSize: 12, fontWeight: '700', color: colors.sageInk }}>
+                Save
               </Text>
-            </View>
-          )}
+            </Pressable>
+          ) : null}
         </View>
       </View>
 
-      <View style={{ padding: 20, gap: 16 }}>
-        {/* Pinned message */}
-        {group.pinned_message && (
-          <View style={{ backgroundColor: surface, borderRadius: 16, padding: 16, borderLeftWidth: 3, borderLeftColor: accent }}>
-            <Text style={{ fontSize: 13, color: textSoft, fontWeight: '600', marginBottom: 4 }}>Pinned</Text>
-            <Text style={{ fontSize: 14, color: text }}>{group.pinned_message}</Text>
-          </View>
-        )}
+      <ScrollView
+        contentContainerStyle={{
+          paddingTop: space.md,
+          paddingBottom: 120,
+          paddingHorizontal: space.gutter,
+          gap: space.base,
+        }}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Dark-ink hero */}
+        <View
+          style={{
+            backgroundColor: colors.bgInk,
+            borderRadius: radius.hero,
+            padding: space.xl,
+          }}
+        >
+          <Text
+            style={{
+              fontSize: 11,
+              fontWeight: '700',
+              color: 'rgba(255,255,255,0.6)',
+              letterSpacing: 0.6,
+              textTransform: 'uppercase',
+            }}
+          >
+            Active group
+          </Text>
+          <Text
+            style={{
+              fontSize: 32,
+              fontWeight: '700',
+              color: colors.textInverse,
+              letterSpacing: -0.5,
+              marginTop: space.sm,
+            }}
+          >
+            {group.name}
+          </Text>
+          <Text
+            style={{
+              fontSize: 13,
+              fontWeight: '500',
+              color: 'rgba(255,255,255,0.7)',
+              marginTop: space.sm,
+            }}
+          >
+            {typeLabel} ·{' '}
+            <Text style={{ fontWeight: '700', color: colors.textInverse }}>
+              {memberCount} {memberCount === 1 ? 'member' : 'members'}
+            </Text>{' '}
+            · {group.currency}
+          </Text>
+        </View>
 
-        {/* Stats */}
-        <View style={{ flexDirection: 'row', gap: 12 }}>
-          <View style={{ flex: 1, backgroundColor: surface, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: border }}>
-            <Text style={{ fontSize: 12, color: textSoft }}>This month</Text>
-            <Text style={{ fontSize: 18, fontWeight: '700', color: text, marginTop: 4 }}>
-              {formatCurrency(hub.totalMonthly ?? 0, group.currency)}
-            </Text>
-          </View>
-          <View style={{ flex: 1, backgroundColor: surface, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: border }}>
-            <Text style={{ fontSize: 12, color: textSoft }}>Expenses</Text>
-            <Text style={{ fontSize: 18, fontWeight: '700', color: text, marginTop: 4 }}>
-              {hub.expenses.length}
-            </Text>
-          </View>
+        {/* Details */}
+        <View>
+          <SectionLabel title="Details" />
+          <Row
+            tile={<IconTile icon={IconTag} color={colors.sage} bg={colors.sageSoft} />}
+            title="Name"
+            caption={group.name}
+            onPress={() => router.push('/group-edit')}
+          />
+          <Row
+            tile={
+              <IconTile
+                icon={typeMeta.icon}
+                color={typeMeta.accent}
+                bg={typeMeta.bg}
+              />
+            }
+            title="Type"
+            caption={typeLabel}
+            onPress={() => router.push('/group-edit')}
+          />
+          <Row
+            tile={<IconTile icon={IconCash} color={colors.warnText} bg={colors.warnBg} />}
+            title="Currency"
+            caption={group.currency}
+            onPress={() => router.push('/group-edit')}
+          />
         </View>
 
         {/* Members */}
         <View>
-          <Text style={{ fontSize: 16, fontWeight: '700', color: text, marginBottom: 12 }}>Members</Text>
-          {activeMembers.map((m: any) => {
-            const memberTotal = hub.memberTotals?.[m.user_id];
+          <SectionLabel
+            title={`Members · ${memberCount}`}
+            action={{ label: 'See all', onPress: () => router.push('/members') }}
+          />
+          {previewMembers.length === 0 ? (
+            <Row
+              tile={<IconTile icon={IconUserPlus} color={colors.sage} bg={colors.sageSoft} />}
+              title="Invite members"
+              caption="Your group is just you right now"
+              onPress={() => router.push('/members')}
+            />
+          ) : (
+            previewMembers.map((m: any) => {
+              const name = m.user?.name ?? 'Member';
+              const isYou = m.user_id === user?.id;
+              const roleLabel = m.role === 'admin' ? 'Admin' : 'Member';
+              const caption = isYou ? `${roleLabel} · You` : roleLabel;
+              return (
+                <Row
+                  key={m.user_id ?? m.id}
+                  tile={
+                    <Avatar
+                      name={name}
+                      uri={m.user?.avatar_url ?? null}
+                      size={40}
+                      bg={colors.sageSoft}
+                      fg={colors.sageInk}
+                    />
+                  }
+                  title={isYou ? `${name} (You)` : name}
+                  caption={caption}
+                  onPress={() => router.push('/members')}
+                />
+              );
+            })
+          )}
+        </View>
 
-            return (
-              <View key={m.user_id} style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                backgroundColor: surface,
-                borderRadius: 12,
-                padding: 12,
-                marginBottom: 8,
-                borderWidth: 1,
-                borderColor: border,
-              }}>
-                <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#e8f0eb', justifyContent: 'center', alignItems: 'center', marginRight: 12 }}>
-                  <Text style={{ fontSize: 14, fontWeight: '600', color: accent }}>
-                    {(m.user?.name ?? 'U')[0].toUpperCase()}
-                  </Text>
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 14, fontWeight: '600', color: text }}>
-                    {m.user?.name ?? 'Unknown'}
-                    {m.user_id === user?.id ? ' (You)' : ''}
-                  </Text>
-                  <Text style={{ fontSize: 12, color: textSoft }}>{m.role === 'admin' ? 'Admin' : 'Member'}</Text>
-                </View>
-                {memberTotal != null && (
-                  <Text style={{ fontSize: 13, fontWeight: '600', color: textSoft }}>
-                    {formatCurrency(memberTotal, group.currency)}
-                  </Text>
-                )}
+        {/* Policies */}
+        <View>
+          <SectionLabel title="Policies" />
+          <Row
+            tile={<IconTile icon={IconGitBranch} color={colors.sage} bg={colors.sageSoft} />}
+            title="Split rule"
+            caption="Equal by default"
+            onPress={() => router.push('/group-edit')}
+          />
+          <Row
+            tile={<IconTile icon={IconRefresh} color={colors.infoText} bg={colors.infoBg} />}
+            title="Cycle"
+            caption={
+              group.cycle_date
+                ? `Monthly · starts ${formatDayOfMonth(group.cycle_date)}`
+                : 'Monthly · starts 1st'
+            }
+            onPress={() => router.push('/group-edit')}
+          />
+        </View>
+
+        {/* Danger zone */}
+        <View>
+          <SectionLabel title="Danger zone" color={colors.warnText} />
+          <Row
+            tile={
+              <View
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 12,
+                  backgroundColor: '#FEE9E5',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <IconLogout size={20} color="#8C2F1F" strokeWidth={2} />
               </View>
-            );
-          })}
+            }
+            title="Leave group"
+            caption="You can rejoin if invited again"
+            titleColor={colors.warnText}
+            onPress={handleLeave}
+          />
+          {isOwner ? (
+            <Row
+              tile={
+                <View
+                  style={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: 12,
+                    backgroundColor: '#FEE9E5',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <IconArchive size={20} color="#8C2F1F" strokeWidth={2} />
+                </View>
+              }
+              title="Archive group"
+              caption="Hide it for now · you can restore it later"
+              titleColor={colors.warnText}
+              onPress={handleArchive}
+            />
+          ) : null}
         </View>
-
-        {/* Quick actions */}
-        <View style={{ flexDirection: 'row', gap: 10 }}>
-          <TouchableOpacity
-            onPress={() => router.push('/expenses/new')}
-            style={{ flex: 1, backgroundColor: accent, borderRadius: 12, paddingVertical: 14, alignItems: 'center' }}
-          >
-            <Text style={{ color: '#fff', fontWeight: '600', fontSize: 14 }}>Add expense</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => router.back()}
-            style={{ flex: 1, backgroundColor: surface, borderRadius: 12, paddingVertical: 14, alignItems: 'center', borderWidth: 1, borderColor: border }}
-          >
-            <Text style={{ color: text, fontWeight: '600', fontSize: 14 }}>Dashboard</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </ScrollView>
+      </ScrollView>
+    </Screen>
   );
+}
+
+function formatDayOfMonth(day: number) {
+  const j = day % 10;
+  const k = day % 100;
+  if (j === 1 && k !== 11) return `${day}st`;
+  if (j === 2 && k !== 12) return `${day}nd`;
+  if (j === 3 && k !== 13) return `${day}rd`;
+  return `${day}th`;
 }

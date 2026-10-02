@@ -1,17 +1,20 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react';
-import {
-  Animated,
-  Pressable,
-  SectionList,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { useCallback, useMemo } from 'react';
+import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import {
+  IconBell,
+  IconChevronLeft,
+  IconCircleCheck,
+  IconCreditCard,
+  IconRefresh,
+  IconUser,
+  type Icon as TablerIcon,
+} from '@tabler/icons-react-native';
+import { Screen, EmptyState, Pressable } from '@/components/primitives';
+import { colors, font, radius, space } from '@/constants/design';
 import { useAuthStore } from '@/stores/auth';
 import { useGroupStore } from '@/stores/group';
-import { useThemeStore } from '@/stores/theme';
 import {
   useNotifications,
   useMarkNotificationRead,
@@ -19,7 +22,7 @@ import {
 } from '@/hooks/use-notifications';
 import { hapticLight, hapticMedium } from '@/lib/haptics';
 
-type NotificationType = 'expense_added' | 'payment_made' | 'payment_overdue';
+/* ---------- Types ---------- */
 
 interface NotificationItem {
   id: string;
@@ -31,14 +34,72 @@ interface NotificationItem {
   expense_id?: string;
 }
 
-const typeConfig: Record<
-  NotificationType,
-  { icon: keyof typeof Ionicons.glyphMap; color: string; bgColor: string }
-> = {
-  expense_added: { icon: 'receipt-outline', color: '#1a56db', bgColor: '#E8F0FE' },
-  payment_made: { icon: 'checkmark-circle-outline', color: '#2d6a4f', bgColor: '#EEF6F3' },
-  payment_overdue: { icon: 'alert-circle-outline', color: '#C4620A', bgColor: '#FFF1DB' },
+type TypeCategory = 'bills' | 'chores' | 'people' | 'system';
+
+type TypeMeta = {
+  category: TypeCategory;
+  Icon: TablerIcon;
+  bg: string;
+  ink: string;
 };
+
+/* ---------- Type-coded row tint map ----------
+ * Bills    → #FEE9E5 / #8C2F1F
+ * Chores   → colors.sageSoft-ish #E8F3EC / colors.sageInk #14594E
+ * People   → #E4EDFD / #1a56db
+ * System   → colors.bgSubtle / colors.textSecondary
+ */
+
+const CATEGORY_STYLE: Record<TypeCategory, { bg: string; ink: string; Icon: TablerIcon }> = {
+  bills: { bg: '#FEE9E5', ink: '#8C2F1F', Icon: IconCreditCard },
+  chores: { bg: '#E8F3EC', ink: '#14594E', Icon: IconCircleCheck },
+  people: { bg: '#E4EDFD', ink: '#1a56db', Icon: IconUser },
+  system: { bg: colors.bgSubtle, ink: colors.textSecondary, Icon: IconRefresh },
+};
+
+function getTypeMeta(type: string): TypeMeta {
+  const t = (type ?? '').toLowerCase();
+  if (
+    t === 'expense_added' ||
+    t === 'payment_made' ||
+    t === 'payment_overdue' ||
+    t.startsWith('bill') ||
+    t.startsWith('expense') ||
+    t.startsWith('payment')
+  ) {
+    return { category: 'bills', ...CATEGORY_STYLE.bills };
+  }
+  if (t.startsWith('chore') || t.startsWith('task')) {
+    return { category: 'chores', ...CATEGORY_STYLE.chores };
+  }
+  if (t.startsWith('member') || t.startsWith('people') || t.startsWith('invite') || t.startsWith('user')) {
+    return { category: 'people', ...CATEGORY_STYLE.people };
+  }
+  return { category: 'system', ...CATEGORY_STYLE.system };
+}
+
+/* ---------- Date bucketing ---------- */
+
+type Bucket = 'Today' | 'Yesterday' | 'This week' | 'Earlier';
+
+function startOfDay(d: Date): Date {
+  const x = new Date(d);
+  x.setHours(0, 0, 0, 0);
+  return x;
+}
+
+function getBucket(dateString: string, now: Date): Bucket {
+  const date = new Date(dateString);
+  const today = startOfDay(now);
+  const target = startOfDay(date);
+  const dayMs = 24 * 60 * 60 * 1000;
+  const diffDays = Math.round((today.getTime() - target.getTime()) / dayMs);
+
+  if (diffDays <= 0) return 'Today';
+  if (diffDays === 1) return 'Yesterday';
+  if (diffDays < 7) return 'This week';
+  return 'Earlier';
+}
 
 function formatTimeAgo(dateString: string): string {
   const now = new Date();
@@ -47,154 +108,216 @@ function formatTimeAgo(dateString: string): string {
   const diffMins = Math.floor(diffMs / 60_000);
 
   if (diffMins < 1) return 'Just now';
-  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffMins < 60) return `${diffMins}m`;
 
   const diffHours = Math.floor(diffMins / 60);
-  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffHours < 24) return `${diffHours}h`;
 
   const diffDays = Math.floor(diffHours / 24);
-  if (diffDays < 7) return `${diffDays}d ago`;
+  if (diffDays < 7) return `${diffDays}d`;
 
   return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
 }
 
-function getTimeBucket(dateString: string): 'Today' | 'This week' | 'Earlier' {
-  const now = new Date();
-  const date = new Date(dateString);
-  const diffMs = now.getTime() - date.getTime();
-  const diffHours = diffMs / (1000 * 60 * 60);
+/* ---------- Section header ---------- */
 
-  if (diffHours < 24 && now.getDate() === date.getDate()) return 'Today';
-
-  const diffDays = diffMs / (1000 * 60 * 60 * 24);
-  if (diffDays < 7) return 'This week';
-
-  return 'Earlier';
-}
-
-/* ---------- Shimmer skeleton ---------- */
-function ShimmerBlock({ width, height, style }: { width: number | string; height: number; style?: object }) {
-  const opacity = useRef(new Animated.Value(0.3)).current;
-
-  useEffect(() => {
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(opacity, { toValue: 1, duration: 800, useNativeDriver: true }),
-        Animated.timing(opacity, { toValue: 0.3, duration: 800, useNativeDriver: true }),
-      ]),
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [opacity]);
-
+function SectionLabel({ label, newCount }: { label: string; newCount?: number }) {
+  const text = newCount && newCount > 0 ? `${label} · ${newCount} new` : label;
   return (
-    <Animated.View
-      style={[
-        { width: width as number, height, borderRadius: 8, backgroundColor: '#E5E7EB', opacity },
-        style,
-      ]}
-    />
-  );
-}
-
-function NotificationSkeleton() {
-  const mode = useThemeStore((s) => s.mode);
-  const bg = mode === 'dark' ? '#0A0A0A' : '#FAFAFA';
-
-  return (
-    <View style={{ flex: 1, backgroundColor: bg, paddingHorizontal: 20, paddingTop: 60 }}>
-      <ShimmerBlock width="50%" height={28} style={{ marginBottom: 8 }} />
-      <ShimmerBlock width="80%" height={14} style={{ marginBottom: 24 }} />
-      {[1, 2, 3].map((i) => (
-        <View key={i} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
-          <ShimmerBlock width={40} height={40} style={{ borderRadius: 20, marginRight: 12 }} />
-          <View style={{ flex: 1 }}>
-            <ShimmerBlock width="70%" height={14} style={{ marginBottom: 6 }} />
-            <ShimmerBlock width="90%" height={12} />
-          </View>
-        </View>
-      ))}
+    <View style={{ paddingTop: space.base, paddingBottom: space.sm }}>
+      <Text
+        style={{
+          fontSize: 10,
+          fontWeight: '700',
+          letterSpacing: 0.6,
+          textTransform: 'uppercase',
+          color: colors.textMuted,
+        }}
+      >
+        {text}
+      </Text>
     </View>
   );
 }
 
-/* ---------- Empty state ---------- */
-function NotificationEmpty({
-  icon,
-  title,
-  description,
-}: {
-  icon: keyof typeof Ionicons.glyphMap;
-  title: string;
-  description: string;
-}) {
-  const mode = useThemeStore((s) => s.mode);
-  const isDark = mode === 'dark';
+/* ---------- Row ---------- */
 
+function NotificationRow({
+  item,
+  onPress,
+}: {
+  item: NotificationItem;
+  onPress: () => void;
+}) {
+  const meta = getTypeMeta(item.type);
+  const isUnread = !item.read;
+  const Icon = meta.Icon;
+
+  return (
+    <TouchableOpacity
+      activeOpacity={0.7}
+      onPress={onPress}
+      style={{
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        gap: space.md,
+        padding: space.md,
+        borderRadius: 14,
+        borderWidth: 1,
+        borderColor: isUnread ? '#D9EADF' : colors.borderSubtle,
+        backgroundColor: isUnread ? '#F6FAF7' : colors.bgSurface,
+        marginBottom: space.sm,
+      }}
+    >
+      {/* Icon tile */}
+      <View
+        style={{
+          width: 40,
+          height: 40,
+          borderRadius: 12,
+          backgroundColor: meta.bg,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <Icon size={18} color={meta.ink} strokeWidth={1.7} />
+      </View>
+
+      {/* Content */}
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: space.sm }}>
+          <Text
+            numberOfLines={2}
+            style={{
+              flex: 1,
+              fontSize: 14,
+              lineHeight: 14 * 1.3,
+              fontWeight: isUnread ? '700' : '600',
+              color: colors.textPrimary,
+            }}
+          >
+            {item.title}
+          </Text>
+          <Text
+            style={{
+              fontSize: 12,
+              color: colors.textMuted,
+              marginTop: 1,
+            }}
+          >
+            {formatTimeAgo(item.created_at)}
+          </Text>
+        </View>
+        {item.description ? (
+          <Text
+            numberOfLines={2}
+            style={{
+              marginTop: 2,
+              fontSize: 12,
+              lineHeight: 16,
+              color: colors.textMuted,
+            }}
+          >
+            {item.description}
+          </Text>
+        ) : null}
+      </View>
+
+      {/* Unread dot */}
+      {isUnread ? (
+        <View
+          style={{
+            width: 8,
+            height: 8,
+            borderRadius: 4,
+            backgroundColor: colors.sage,
+            marginTop: 6,
+          }}
+        />
+      ) : null}
+    </TouchableOpacity>
+  );
+}
+
+/* ---------- Header (inline, since this screen has no tab header) ---------- */
+
+function NotificationsHeader({
+  onBack,
+  onMarkAllRead,
+  canMarkAll,
+}: {
+  onBack: () => void;
+  onMarkAllRead: () => void;
+  canMarkAll: boolean;
+}) {
   return (
     <View
       style={{
-        marginHorizontal: 20,
-        backgroundColor: isDark ? '#1A1A1A' : '#FFFFFF',
-        borderRadius: 16,
-        padding: 20,
-        shadowColor: '#000',
-        shadowOpacity: 0.04,
-        shadowRadius: 8,
-        shadowOffset: { width: 0, height: 2 },
-        elevation: 2,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        height: 48,
+        position: 'relative',
       }}
     >
-      <View style={{ alignItems: 'center', paddingVertical: 24 }}>
-        <View
-          style={{
-            width: 48,
-            height: 48,
-            borderRadius: 24,
-            backgroundColor: isDark ? '#1A1A1A' : '#F3F4F6',
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginBottom: 16,
-          }}
-        >
-          <Ionicons name={icon} size={24} color={isDark ? '#6B7280' : '#9CA3AF'} />
-        </View>
-        <Text
-          style={{
-            fontSize: 18,
-            fontWeight: '600',
-            color: isDark ? '#F9FAFB' : '#171b24',
-            marginBottom: 6,
-          }}
-        >
-          {title}
-        </Text>
-        <Text
-          style={{
-            fontSize: 14,
-            lineHeight: 20,
-            color: isDark ? '#9CA3AF' : '#9CA3AF',
-            textAlign: 'center',
-            maxWidth: 280,
-          }}
-        >
-          {description}
-        </Text>
+      <Pressable
+        onPress={onBack}
+        hitSlop={10}
+        style={({ pressed }) => ({
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 2,
+          paddingVertical: 6,
+          paddingRight: 10,
+          marginLeft: -4,
+          opacity: pressed ? 0.6 : 1,
+          zIndex: 2,
+        })}
+      >
+        <IconChevronLeft size={22} color={colors.textPrimary} strokeWidth={2} />
+        <Text style={{ fontSize: 15, fontWeight: '600', color: colors.textPrimary }}>Back</Text>
+      </Pressable>
+
+      <View
+        pointerEvents="none"
+        style={{
+          position: 'absolute',
+          left: 0,
+          right: 0,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <Text style={[font.h3, { color: colors.textPrimary }]}>Notifications</Text>
       </View>
+
+      <Pressable
+        onPress={onMarkAllRead}
+        disabled={!canMarkAll}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        style={{
+          minWidth: 36,
+          alignItems: 'flex-end',
+          opacity: canMarkAll ? 1 : 0.4,
+          zIndex: 2,
+        }}
+      >
+        <Text style={{ fontSize: 12, fontWeight: '700', color: colors.sageInk }}>
+          Mark all read
+        </Text>
+      </Pressable>
     </View>
   );
 }
 
 /* ---------- Main screen ---------- */
+
 export default function NotificationsScreen() {
   const router = useRouter();
-  const mode = useThemeStore((s) => s.mode);
-  const isDark = mode === 'dark';
-  const bg = isDark ? '#0A0A0A' : '#FAFAFA';
-  const cardBg = isDark ? '#1A1A1A' : '#FFFFFF';
-
+  const insets = useSafeAreaInsets();
   const user = useAuthStore((s) => s.user);
   const activeGroupId = useGroupStore((s) => s.activeGroupId);
+
   const { data: notifications, isLoading } = useNotifications(
     user?.id ?? '',
     activeGroupId ?? '',
@@ -202,284 +325,105 @@ export default function NotificationsScreen() {
   const markRead = useMarkNotificationRead(user?.id ?? '');
   const markAllRead = useMarkAllNotificationsRead(user?.id ?? '');
 
-  const items = useMemo(() => notifications ?? [], [notifications]);
-  const unreadCount = items.filter((n) => !n.read).length;
+  const items = useMemo<NotificationItem[]>(
+    () => (notifications ?? []) as NotificationItem[],
+    [notifications],
+  );
 
   const sections = useMemo(() => {
-    const buckets: Record<string, NotificationItem[]> = {
+    const now = new Date();
+    const buckets: Record<Bucket, NotificationItem[]> = {
       Today: [],
+      Yesterday: [],
       'This week': [],
       Earlier: [],
     };
-    for (const item of items) {
-      const bucket = getTimeBucket(item.created_at);
-      buckets[bucket]!.push(item);
+    for (const n of items) {
+      buckets[getBucket(n.created_at, now)].push(n);
     }
-    return Object.entries(buckets)
-      .filter(([, data]) => data.length > 0)
-      .map(([title, data]) => ({ title, data }));
+    const order: Bucket[] = ['Today', 'Yesterday', 'This week', 'Earlier'];
+    return order
+      .filter((key) => buckets[key].length > 0)
+      .map((key) => ({
+        key,
+        label: key,
+        data: buckets[key],
+        newCount: key === 'Today' ? buckets[key].filter((n) => !n.read).length : 0,
+      }));
   }, [items]);
 
+  const unreadIds = useMemo(
+    () => items.filter((n) => !n.read).map((n) => n.id),
+    [items],
+  );
+
+  const handleBack = useCallback(() => {
+    hapticLight();
+    if (router.canGoBack()) router.back();
+    else router.replace('/(tabs)');
+  }, [router]);
+
   const handleMarkAllRead = useCallback(() => {
+    if (unreadIds.length === 0) return;
     hapticMedium();
-    const unreadIds = items.filter((n) => !n.read).map((n) => n.id);
-    if (unreadIds.length > 0) {
-      markAllRead.mutate(unreadIds);
-    }
-  }, [items, markAllRead]);
+    markAllRead.mutate(unreadIds);
+  }, [unreadIds, markAllRead]);
 
-  const handleToggleRead = useCallback(
+  const handleRowPress = useCallback(
     (item: NotificationItem) => {
-      hapticLight();
-      if (!item.read) {
-        markRead.mutate(item.id);
-      }
+      hapticMedium();
+      if (!item.read) markRead.mutate(item.id);
+      if (item.expense_id) router.push(`/expenses/${item.expense_id}`);
     },
-    [markRead],
-  );
-
-  const renderItem = useCallback(
-    ({ item }: { item: NotificationItem }) => {
-      const config =
-        typeConfig[item.type as NotificationType] ?? typeConfig.expense_added;
-
-      return (
-        <TouchableOpacity
-          activeOpacity={0.7}
-          onPress={() => {
-            hapticMedium();
-            if (!item.read) markRead.mutate(item.id);
-            if (item.expense_id) router.push(`/expenses/${item.expense_id}`);
-          }}
-          style={{
-            marginHorizontal: 20,
-            marginBottom: 2,
-            flexDirection: 'row',
-            alignItems: 'flex-start',
-            paddingVertical: 14,
-            paddingHorizontal: 16,
-            backgroundColor: isDark
-              ? item.read ? cardBg : '#111A15'
-              : item.read ? '#FFFFFF' : '#F8FBF9',
-            borderBottomWidth: 1,
-            borderBottomColor: isDark ? 'rgba(255,255,255,0.06)' : '#F0F0F0',
-          }}
-        >
-          {/* Icon */}
-          <View
-            style={{
-              marginRight: 12,
-              width: 40,
-              height: 40,
-              alignItems: 'center',
-              justifyContent: 'center',
-              borderRadius: 20,
-              backgroundColor: isDark ? `${config.bgColor}22` : config.bgColor,
-            }}
-          >
-            <Ionicons name={config.icon} size={18} color={config.color} />
-          </View>
-
-          {/* Content */}
-          <View style={{ flex: 1 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-              <Text
-                numberOfLines={1}
-                style={{
-                  flex: 1,
-                  fontSize: 14,
-                  fontWeight: item.read ? '400' : '600',
-                  color: isDark ? '#F9FAFB' : '#171b24',
-                }}
-              >
-                {item.title}
-              </Text>
-              <Text
-                style={{
-                  marginLeft: 8,
-                  fontSize: 12,
-                  color: isDark ? '#6B7280' : '#9CA3AF',
-                }}
-              >
-                {formatTimeAgo(item.created_at)}
-              </Text>
-            </View>
-            <Text
-              numberOfLines={2}
-              style={{
-                marginTop: 2,
-                fontSize: 12,
-                lineHeight: 18,
-                color: isDark ? '#9CA3AF' : '#9CA3AF',
-              }}
-            >
-              {item.description}
-            </Text>
-          </View>
-
-          {/* Unread dot */}
-          <TouchableOpacity
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            onPress={() => handleToggleRead(item)}
-            style={{ marginLeft: 8, marginTop: 4 }}
-          >
-            <View
-              style={{
-                width: 10,
-                height: 10,
-                borderRadius: 5,
-                backgroundColor: item.read ? 'transparent' : '#2d6a4f',
-                borderWidth: item.read ? 1.5 : 0,
-                borderColor: isDark ? '#374151' : '#D1D5DB',
-              }}
-            />
-          </TouchableOpacity>
-        </TouchableOpacity>
-      );
-    },
-    [markRead, router, handleToggleRead, isDark, cardBg],
-  );
-
-  const renderSectionHeader = useCallback(
-    ({ section }: { section: { title: string } }) => (
-      <View style={{ marginHorizontal: 20, marginBottom: 8, marginTop: 20 }}>
-        <Text
-          style={{
-            fontSize: 12,
-            fontWeight: '600',
-            textTransform: 'uppercase',
-            letterSpacing: 1.5,
-            color: isDark ? '#6B7280' : '#9CA3AF',
-          }}
-        >
-          {section.title}
-        </Text>
-      </View>
-    ),
-    [isDark],
-  );
-
-  // Not signed in
-  if (!user) {
-    return (
-      <View style={{ flex: 1, backgroundColor: bg, justifyContent: 'center' }}>
-        <NotificationEmpty
-          icon="notifications-outline"
-          title="Not signed in"
-          description="Sign in to view your notifications."
-        />
-      </View>
-    );
-  }
-
-  // Loading
-  if (isLoading) {
-    return <NotificationSkeleton />;
-  }
-
-  const ListHeader = (
-    <View style={{ paddingHorizontal: 20, paddingTop: 60, paddingBottom: 4 }}>
-      {/* Page title */}
-      <Text
-        style={{
-          fontSize: 28,
-          fontWeight: '700',
-          color: isDark ? '#F9FAFB' : '#171b24',
-          marginBottom: 4,
-        }}
-      >
-        Notifications
-      </Text>
-      <Text
-        style={{
-          fontSize: 14,
-          color: isDark ? '#9CA3AF' : '#9CA3AF',
-          marginBottom: 20,
-        }}
-      >
-        Recent activity across your group
-      </Text>
-
-      {/* Unread badge + mark all read */}
-      {unreadCount > 0 && (
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            marginBottom: 8,
-          }}
-        >
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <View
-              style={{
-                height: 24,
-                minWidth: 24,
-                borderRadius: 12,
-                backgroundColor: '#2d6a4f',
-                alignItems: 'center',
-                justifyContent: 'center',
-                paddingHorizontal: 8,
-                marginRight: 8,
-              }}
-            >
-              <Text style={{ fontSize: 12, fontWeight: '700', color: '#FFFFFF' }}>
-                {unreadCount}
-              </Text>
-            </View>
-            <Text
-              style={{
-                fontSize: 14,
-                fontWeight: '500',
-                color: isDark ? '#D1D5DB' : '#374151',
-              }}
-            >
-              unread
-            </Text>
-          </View>
-          <Pressable
-            onPress={handleMarkAllRead}
-            style={{
-              borderWidth: 1,
-              borderColor: isDark ? '#333' : '#E5E7EB',
-              borderRadius: 10,
-              paddingVertical: 8,
-              paddingHorizontal: 14,
-            }}
-          >
-            <Text
-              style={{
-                fontSize: 13,
-                fontWeight: '600',
-                color: isDark ? '#D1D5DB' : '#374151',
-              }}
-            >
-              Mark all read
-            </Text>
-          </Pressable>
-        </View>
-      )}
-    </View>
+    [markRead, router],
   );
 
   return (
-    <SectionList
-      sections={sections}
-      renderItem={renderItem}
-      renderSectionHeader={renderSectionHeader}
-      keyExtractor={(item) => item.id}
-      style={{ flex: 1, backgroundColor: bg }}
-      contentContainerStyle={{ paddingBottom: 120 }}
-      showsVerticalScrollIndicator={false}
-      ListHeaderComponent={ListHeader}
-      ListEmptyComponent={
-        <NotificationEmpty
-          icon="notifications-off-outline"
-          title="No notifications"
-          description="When expenses are added, payments are made, or balances go overdue, they will appear here."
+    <Screen>
+      <View
+        style={{
+          paddingTop: insets.top + 12,
+          paddingHorizontal: space.gutter,
+          backgroundColor: colors.bgBase,
+        }}
+      >
+        <NotificationsHeader
+          onBack={handleBack}
+          onMarkAllRead={handleMarkAllRead}
+          canMarkAll={unreadIds.length > 0}
         />
-      }
-      stickySectionHeadersEnabled={false}
-    />
+      </View>
+      <ScrollView
+        contentContainerStyle={{
+          paddingTop: 4,
+          paddingBottom: 120,
+          paddingHorizontal: space.gutter,
+        }}
+        showsVerticalScrollIndicator={false}
+      >
+        {!user ? (
+          <EmptyState
+            icon={IconBell}
+            title="Not signed in"
+            description="Sign in to view your notifications."
+          />
+        ) : isLoading ? null : items.length === 0 ? (
+          <EmptyState
+            icon={IconBell}
+            title="You're all caught up"
+            description="We'll let you know when something needs you."
+          />
+        ) : (
+          sections.map((section) => (
+            <View key={section.key}>
+              <SectionLabel label={section.label} newCount={section.newCount} />
+              {section.data.map((n) => (
+                <NotificationRow key={n.id} item={n} onPress={() => handleRowPress(n)} />
+              ))}
+            </View>
+          ))
+        )}
+      </ScrollView>
+    </Screen>
   );
 }

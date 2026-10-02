@@ -74,6 +74,27 @@ export function calculateCustomSplit(
 }
 
 /**
+ * Derive the percentage share each participant represents of the total.
+ *
+ * Useful for UI previews that want to show "% of total" alongside a share
+ * amount produced by {@link calculateEqualSplit}, {@link calculatePercentageSplit},
+ * or {@link calculateCustomSplit}. Returns 0 for every entry when the total is
+ * zero or negative to avoid divide-by-zero and NaN in rendered output.
+ *
+ * @returns Array of percentages (0-100, rounded to 2 decimal places) in the
+ *          same order as the input shares.
+ */
+export function toSharePercentages(
+  shares: { amount: number }[],
+  total: number,
+): number[] {
+  if (total <= 0) {
+    return shares.map(() => 0);
+  }
+  return shares.map((s) => Number(((s.amount / total) * 100).toFixed(2)));
+}
+
+/**
  * Given the shares for an expense and the payer, calculate what each
  * non-payer participant owes to the payer.
  */

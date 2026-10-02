@@ -1,5 +1,9 @@
-import type { PaymentStatus } from '@commune/types';
-import { supabase } from './client';
+import type {
+  PaymentRecordRow,
+  PaymentRecordUpdate,
+  PaymentStatus,
+} from '@commune/types';
+import { getTypedSupabase } from './client';
 import { ensureExpenseCycleOpen, ensureGroupCycleOpenForDate } from './cycles';
 
 export async function markPayment(
@@ -7,14 +11,36 @@ export async function markPayment(
   userId: string,
   status: PaymentStatus,
   note?: string,
-) {
+): Promise<PaymentRecordRow> {
   await ensureExpenseCycleOpen(expenseId, 'update payment status in this cycle');
+  const supabase = getTypedSupabase();
 
-  const updateData: Record<string, unknown> = {
-    status,
+  // Read current state first so we don't clobber paid_at / confirmed_by on no-op
+  // re-marks (preserves the audit trail). Select * so callers relying on other
+  // columns still receive a full row on the no-op early-return path.
+  const { data: existing, error: readError } = await supabase
+    .from('payment_records')
+    .select('*')
+    .eq('expense_id', expenseId)
+    .eq('user_id', userId)
+    .single();
+
+  if (readError) throw readError;
+
+  const statusUnchanged = existing?.status === status;
+  const noteUnchanged = note === undefined || existing?.note === note;
+  if (statusUnchanged && noteUnchanged) {
+    return existing as PaymentRecordRow;
+  }
+
+  const updateData: PaymentRecordUpdate = {
     ...(note !== undefined && { note }),
-    paid_at: status === 'paid' ? new Date().toISOString() : null,
   };
+  if (!statusUnchanged) {
+    updateData.status = status;
+    // Only stamp paid_at on the paid-transition; keep the original stamp otherwise.
+    updateData.paid_at = status === 'paid' ? new Date().toISOString() : null;
+  }
 
   const { data, error } = await supabase
     .from('payment_records')
@@ -25,10 +51,14 @@ export async function markPayment(
     .single();
 
   if (error) throw error;
-  return data;
+  return data as PaymentRecordRow;
 }
 
-export async function batchMarkPaid(expenseIds: string[], userId: string) {
+export async function batchMarkPaid(
+  expenseIds: string[],
+  userId: string,
+): Promise<PaymentRecordRow[]> {
+  const supabase = getTypedSupabase();
   const { data: expenseRows, error: expenseFetchError } = await supabase
     .from('expenses')
     .select('id, group_id, due_date')
@@ -36,11 +66,7 @@ export async function batchMarkPaid(expenseIds: string[], userId: string) {
 
   if (expenseFetchError) throw expenseFetchError;
 
-  for (const expense of (expenseRows ?? []) as Array<{
-    id: string;
-    group_id: string;
-    due_date: string;
-  }>) {
+  for (const expense of expenseRows ?? []) {
     await ensureGroupCycleOpenForDate(
       expense.group_id,
       expense.due_date,
@@ -48,36 +74,44 @@ export async function batchMarkPaid(expenseIds: string[], userId: string) {
     );
   }
 
+  const update: PaymentRecordUpdate = {
+    status: 'paid',
+    paid_at: new Date().toISOString(),
+  };
+
   const { data, error } = await supabase
     .from('payment_records')
-    .update({ status: 'paid', paid_at: new Date().toISOString() })
+    .update(update)
     .in('expense_id', expenseIds)
     .eq('user_id', userId)
     .eq('status', 'unpaid')
     .select();
 
   if (error) throw error;
-  return data;
+  return (data ?? []) as PaymentRecordRow[];
 }
 
 export async function confirmPayment(
   expenseId: string,
   userId: string,
   confirmedBy: string,
-) {
+): Promise<PaymentRecordRow> {
   await ensureExpenseCycleOpen(expenseId, 'confirm payments in this cycle');
+  const supabase = getTypedSupabase();
+
+  const update: PaymentRecordUpdate = {
+    status: 'confirmed',
+    confirmed_by: confirmedBy,
+  };
 
   const { data, error } = await supabase
     .from('payment_records')
-    .update({
-      status: 'confirmed',
-      confirmed_by: confirmedBy,
-    })
+    .update(update)
     .eq('expense_id', expenseId)
     .eq('user_id', userId)
     .select()
     .single();
 
   if (error) throw error;
-  return data;
+  return data as PaymentRecordRow;
 }

@@ -9,12 +9,12 @@ import {
   NumberInput,
   Paper,
   Progress,
+  SimpleGrid,
   Stack,
   Table,
   Tabs,
   Text,
   TextInput,
-  Title,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
@@ -51,6 +51,7 @@ import { PageHeader } from '../../components/page-header';
 import { EmptyState } from '../../components/empty-state';
 import { ExpenseListSkeleton } from '../../components/page-skeleton';
 import { QueryErrorState } from '../../components/query-error-state';
+import { MetricCard, PageStack } from '../../components/ui-primitives';
 
 export const Route = createLazyFileRoute('/_app/funds')({
   component: FundsPage,
@@ -219,7 +220,7 @@ function FundListView({
   }
 
   return (
-    <Stack gap="xl">
+    <PageStack gap="xl">
       <PageHeader
         title="Shared Funds"
         subtitle="Pool money together for group goals, trips, or shared expenses."
@@ -431,7 +432,7 @@ function FundListView({
           </Group>
         </Stack>
       </Modal>
-    </Stack>
+    </PageStack>
   );
 }
 
@@ -600,21 +601,17 @@ function FundDetailView({
   const fundCurrency = fund.currency ?? currency;
 
   return (
-    <Stack gap="xl">
-      <Group>
-        <ActionIcon variant="subtle" onClick={onBack} aria-label="Back to funds">
-          <IconArrowLeft size={20} />
-        </ActionIcon>
-        <div style={{ flex: 1 }}>
-          <Title order={3}>{fund.name}</Title>
-          <Text size="sm" c="dimmed">
-            Balance: {formatCurrency(fund.balance, fundCurrency)}
-            {fund.target_amount
-              ? ` / ${formatCurrency(fund.target_amount, fundCurrency)} target`
-              : ''}
-          </Text>
-        </div>
-      </Group>
+    <PageStack gap="xl">
+      <PageHeader
+        title={fund.name}
+        subtitle={`Balance: ${formatCurrency(fund.balance, fundCurrency)}${
+          fund.target_amount ? ` / ${formatCurrency(fund.target_amount, fundCurrency)} target` : ''
+        }`}
+      >
+        <Button variant="default" leftSection={<IconArrowLeft size={16} />} onClick={onBack}>
+          All funds
+        </Button>
+      </PageHeader>
 
       {progress !== null && (
         <Progress
@@ -626,36 +623,29 @@ function FundDetailView({
       )}
 
       {/* Summary cards */}
-      <Group grow>
-        <Paper className="commune-soft-panel" p="md">
-          <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
-            Total In
-          </Text>
-          <Text size="xl" fw={700} c="teal">
-            {formatCurrency(fund.total_contributions, fundCurrency)}
-          </Text>
-        </Paper>
-        <Paper className="commune-soft-panel" p="md">
-          <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
-            Total Out
-          </Text>
-          <Text size="xl" fw={700} c="red">
-            {formatCurrency(fund.total_expenses, fundCurrency)}
-          </Text>
-        </Paper>
-        <Paper className="commune-soft-panel" p="md">
-          <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
-            Balance
-          </Text>
-          <Text
-            size="xl"
-            fw={700}
-            c={fund.balance >= 0 ? 'teal' : 'red'}
-          >
-            {formatCurrency(fund.balance, fundCurrency)}
-          </Text>
-        </Paper>
-      </Group>
+      <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
+        <MetricCard
+          label="Total in"
+          value={formatCurrency(fund.total_contributions, fundCurrency)}
+          detail="Contributions received"
+          icon={IconCash}
+          tone="sage"
+        />
+        <MetricCard
+          label="Total out"
+          value={formatCurrency(fund.total_expenses, fundCurrency)}
+          detail="Spending from this fund"
+          icon={IconReceipt}
+          tone="peach"
+        />
+        <MetricCard
+          label="Balance"
+          value={formatCurrency(fund.balance, fundCurrency)}
+          detail={fund.balance >= 0 ? 'Available to spend' : 'Overspent'}
+          icon={IconPigMoney}
+          tone="mist"
+        />
+      </SimpleGrid>
 
       {/* Action buttons */}
       <Group>
@@ -896,6 +886,6 @@ function FundDetailView({
           </Stack>
         </form>
       </Modal>
-    </Stack>
+    </PageStack>
   );
 }

@@ -5,11 +5,14 @@ import {
   getSpacePreset,
   type SpacePreset,
 } from '@commune/core';
-import type {
-  SpaceEssentials,
-  SetupChecklistProgress,
+import {
+  asJson,
+  fromJson,
+  type GroupUpdate,
+  type SpaceEssentials,
+  type SetupChecklistProgress,
 } from '@commune/types';
-import { supabase } from './client';
+import { getTypedSupabase } from './client';
 
 export interface ApplyStarterPackInput {
   groupType: string;
@@ -39,6 +42,7 @@ export async function applyGroupStarterPack(
   groupId: string,
   input: ApplyStarterPackInput,
 ): Promise<ApplyStarterPackResult> {
+  const supabase = getTypedSupabase();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -69,20 +73,20 @@ export async function applyGroupStarterPack(
   const checklistProgress = createSetupChecklistProgress(
     input.groupType,
     input.subtype,
-    (existingGroup?.setup_checklist_progress as SetupChecklistProgress | null | undefined) ?? null,
+    fromJson<SetupChecklistProgress>(existingGroup?.setup_checklist_progress),
   );
 
   if (normalizedEssentials !== undefined || checklistProgress !== undefined) {
-    const updatePayload: Record<string, unknown> = {
-      setup_checklist_progress: checklistProgress,
+    const updatePayload: GroupUpdate = {
+      setup_checklist_progress: asJson(checklistProgress),
     };
 
     if (normalizedEssentials !== undefined) {
-      updatePayload.space_essentials = normalizedEssentials;
+      updatePayload.space_essentials = asJson(normalizedEssentials);
     }
 
     if (normalizedEssentials !== undefined && input.groupType === 'home') {
-      updatePayload.house_info = toLegacyHouseInfo(normalizedEssentials);
+      updatePayload.house_info = asJson(toLegacyHouseInfo(normalizedEssentials));
     }
 
     const { error: groupUpdateError } = await supabase

@@ -50,6 +50,7 @@ import { ExpenseListSkeleton } from '../../../components/page-skeleton';
 import { EmptyState } from '../../../components/empty-state';
 import { PageHeader } from '../../../components/page-header';
 import { QueryErrorState } from '../../../components/query-error-state';
+import { FilterBar, InlineIssue, PageStack } from '../../../components/ui-primitives';
 
 export const Route = createLazyFileRoute('/_app/expenses/')({
   component: ExpensesPage,
@@ -409,7 +410,7 @@ export function ExpensesPage() {
   ];
 
   return (
-    <Stack gap="lg">
+    <PageStack>
       <PageHeader
         title="Expenses"
         subtitle={`${totalLedgerCount} expenses · ${formatCurrency(totalAmount, group?.currency)} tracked`}
@@ -466,14 +467,25 @@ export function ExpensesPage() {
       </PageHeader>
 
       {isPlanLimitsError && (
-        <QueryErrorState
-          title="Failed to load export access"
-          error={planLimitsError}
-          onRetry={() => {
-            void refetchPlanLimits();
-          }}
-          icon={IconDownload}
-        />
+        <InlineIssue
+          title="Export access is temporarily unavailable"
+          color="orange"
+          icon={<IconDownload size={16} />}
+          action={(
+            <Button
+              size="compact-xs"
+              variant="light"
+              color="orange"
+              onClick={() => {
+                void refetchPlanLimits();
+              }}
+            >
+              Retry
+            </Button>
+          )}
+        >
+          {planLimitsError instanceof Error ? planLimitsError.message : 'CSV and PDF access could not be checked.'}
+        </InlineIssue>
       )}
 
       {workspaceSummary && (
@@ -605,7 +617,7 @@ export function ExpensesPage() {
         </Stack>
       )}
 
-      <Group gap="sm" wrap="wrap">
+      <FilterBar>
         <Select
           placeholder="Category"
           data={categoryOptions}
@@ -650,7 +662,7 @@ export function ExpensesPage() {
             clearable
           />
         </DatesProvider>
-      </Group>
+      </FilterBar>
 
       <div className="commune-filter-chips">
         {chipData.map((chip) => (
@@ -929,6 +941,6 @@ export function ExpensesPage() {
           </Group>
         </Stack>
       </Modal>
-    </Stack>
+    </PageStack>
   );
 }

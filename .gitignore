@@ -55,3 +55,16 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+.supabase
+.superpowers/
+.playwright-mcp/
+apps/web/.claude/
+apps/web/apps/
+apps/web/load/*.json
+apps/mobile/.claude/
+apps/mobile/.reference-backup/
+backup-anything/
+supabase/.temp/
+.vercel
+/.comparisons/
+/.pnpm-store/

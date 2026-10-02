@@ -5,14 +5,19 @@ const getUserMock = vi.hoisted(() => vi.fn());
 const fromMock = vi.hoisted(() => vi.fn());
 const ensureGroupCycleOpenForDateMock = vi.hoisted(() => vi.fn());
 
-vi.mock('./client', () => ({
-  supabase: {
+vi.mock('./client', () => {
+  const client = {
     auth: {
       getUser: getUserMock,
     },
     from: fromMock,
-  },
-}));
+  };
+  return {
+    supabase: client,
+    getSupabase: () => client,
+    getTypedSupabase: () => client,
+  };
+});
 
 vi.mock('./cycles', () => ({
   ensureGroupCycleOpenForDate: ensureGroupCycleOpenForDateMock,

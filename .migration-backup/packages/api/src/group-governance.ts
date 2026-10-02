@@ -1,7 +1,7 @@
 import type { Group, GroupApprovalPolicy, GroupMember } from '@commune/types';
-import { GroupType, MemberRole } from '@commune/types';
+import { fromJson, GroupType, MemberRole } from '@commune/types';
 import { canMemberApproveWithPolicy, normalizeGroupApprovalPolicy } from '@commune/core';
-import { supabase } from './client';
+import { getTypedSupabase } from './client';
 
 export type GovernanceGroup = Pick<
   Group,
@@ -23,6 +23,7 @@ export async function getGroupGovernanceContext(groupId: string): Promise<{
   group: GovernanceGroup;
   members: GovernanceMember[];
 }> {
+  const supabase = getTypedSupabase();
   const [{ data: groupData, error: groupError }, { data: membersData, error: membersError }] =
     await Promise.all([
       supabase
@@ -39,9 +40,14 @@ export async function getGroupGovernanceContext(groupId: string): Promise<{
   if (groupError) throw groupError;
   if (membersError) throw membersError;
 
+  const group: GovernanceGroup = {
+    ...(groupData as Omit<GovernanceGroup, 'approval_policy'>),
+    approval_policy: fromJson<GroupApprovalPolicy>(groupData?.approval_policy),
+  };
+
   return {
-    group: groupData as GovernanceGroup,
-    members: (membersData ?? []) as GovernanceMember[],
+    group,
+    members: (membersData ?? []) as unknown as GovernanceMember[],
   };
 }
 

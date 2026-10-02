@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Commune — Remaining screens</title>
+<style>
+  :root{
+    --bg:#FAF9F7; --surface:#ffffff; --ink:#171b24; --muted:#6b7280;
+    --border:#eceae5; --border-soft:#f1efe9;
+    --sage:#1f7a6a; --sage-soft:#E8F3EC; --sage-ink:#14594e;
+    --cream:#eadfd4; --danger:#E35D5D; --warn:#8C2F1F;
+    --navy:#1A1E2B;
+    --bill-bg:#FEE9E5; --bill-ink:#8C2F1F;
+    --chore-bg:#E8F3EC;
+    --people-bg:#E4EDFD; --people-ink:#1a56db;
+    --system-bg:#F3F1EC; --system-ink:#4B4E57;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:#efece6;color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Inter",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+  .page{max-width:1600px;margin:0 auto;padding:48px 24px 96px}
+  h1{font-size:38px;letter-spacing:-0.8px;margin:0 0 6px;font-weight:700}
+  .lede{color:var(--muted);font-size:15px;margin:0 0 36px;max-width:780px;line-height:1.55}
+  h2.sub{font-size:24px;letter-spacing:-0.4px;margin:60px 0 6px;font-weight:700}
+  .why{background:var(--sage-soft);border-radius:14px;padding:14px 18px;margin:10px 0 20px;color:var(--sage-ink);font-size:13.5px;line-height:1.55;max-width:640px;border:1px solid #cfe3d5}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,420px));gap:28px;justify-content:start}
+
+  .frame{background:var(--bg);border-radius:38px;border:1px solid var(--border-soft);overflow:hidden;height:780px;display:flex;flex-direction:column;box-shadow:0 8px 28px rgba(0,0,0,0.06)}
+  .sb{display:flex;align-items:center;justify-content:space-between;padding:14px 22px 0;color:var(--ink);font-size:11px;font-weight:600}
+  .hdr{display:flex;align-items:center;justify-content:space-between;padding:12px 20px 14px;position:relative;min-height:48px}
+  .hdr .back{font-size:22px;color:var(--ink);width:28px}
+  .hdr .title{position:absolute;left:0;right:0;display:flex;align-items:center;justify-content:center;pointer-events:none;font-size:20px;font-weight:700;letter-spacing:-0.3px}
+  .hdr .action{font-size:12px;color:var(--sage-ink);font-weight:700}
+  .body{flex:1;overflow:auto;padding:4px 16px 24px;scrollbar-width:none}
+  .body::-webkit-scrollbar{display:none}
+
+  .seclbl{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px;padding:16px 0 8px;display:flex;justify-content:space-between;align-items:center}
+  .seclbl .ct{color:var(--muted);font-size:10px;font-weight:600;text-transform:none}
+
+  /* Rows */
+  .r{background:#fff;border-radius:14px;padding:12px;display:flex;align-items:center;gap:12px;margin-bottom:6px;border:1px solid var(--border-soft)}
+  .r .ic{width:40px;height:40px;border-radius:12px;background:var(--sage-soft);display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
+  .r .meta{flex:1;min-width:0}
+  .r .t{font-size:14px;font-weight:600;line-height:1.3}
+  .r .c{font-size:12px;color:var(--muted);margin-top:2px}
+  .r .amt{font-size:13px;font-weight:700}
+  .r .chev{color:var(--muted);font-size:16px}
+
+  /* Hero */
+  .hero{background:var(--navy);border-radius:22px;padding:18px;color:#fff;margin:4px 0 14px}
+  .hero .lab{font-size:11px;font-weight:700;letter-spacing:0.6px;color:rgba(255,255,255,0.55);text-transform:uppercase}
+  .hero .big{font-size:32px;font-weight:700;letter-spacing:-0.5px;margin-top:3px;line-height:1.15}
+  .hero .inl{font-size:12px;color:rgba(255,255,255,0.55);margin-top:6px}
+  .hero .inl b{color:#fff;font-weight:700}
+
+  /* Hero centred (Profile B style) */
+  .hero-centred{background:var(--navy);border-radius:22px;padding:22px 18px 18px;color:#fff;margin:4px 0 14px;text-align:center}
+  .hero-centred .av{width:80px;height:80px;border-radius:40px;background:var(--cream);color:var(--ink);display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:700;margin:0 auto 12px}
+  .hero-centred .name{font-size:22px;font-weight:700}
+  .hero-centred .mt{font-size:13px;color:rgba(255,255,255,0.55);margin-top:4px}
+  .hero-centred .pill{display:inline-block;margin-top:12px;background:rgba(255,255,255,0.12);padding:6px 14px;border-radius:999px;font-size:12px;font-weight:700;color:#fff}
+  .hero-centred .stats{display:flex;margin-top:16px;padding-top:16px;border-top:1px solid rgba(255,255,255,0.08)}
+  .hero-centred .stat{flex:1}
+  .hero-centred .stat .v{font-size:16px;font-weight:700;color:#fff}
+  .hero-centred .stat .l{font-size:10px;text-transform:uppercase;letter-spacing:0.4px;color:rgba(255,255,255,0.45);font-weight:700;margin-top:2px}
+
+  /* Amount input (new expense) */
+  .amount-input{text-align:center;padding:24px 0 16px}
+  .amount-input .label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px}
+  .amount-input .big{font-size:54px;font-weight:700;letter-spacing:-1.5px;margin-top:8px;line-height:1}
+  .amount-input .big .cur{color:var(--muted);font-size:36px;font-weight:600;margin-right:4px}
+
+  /* Form field */
+  .f{background:#fff;border:1px solid var(--border-soft);border-radius:14px;margin-bottom:6px;display:flex;align-items:center;padding:12px 14px;gap:12px}
+  .f .lbl{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.4px;min-width:72px}
+  .f .val{font-size:14px;font-weight:600;flex:1}
+  .f .placeholder{color:var(--muted);font-weight:500}
+  .f .chev{color:var(--muted);font-size:16px}
+
+  /* Segmented */
+  .seg{display:flex;gap:6px;background:#F3F1EC;border-radius:12px;padding:4px;margin:4px 0 10px}
+  .seg .s{flex:1;padding:8px;font-size:12px;font-weight:700;color:var(--muted);text-align:center;border-radius:8px}
+  .seg .s.on{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,0.05)}
+
+  /* Primary CTA */
+  .cta{background:var(--sage);color:#fff;border-radius:16px;height:56px;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;margin:14px 0;gap:8px}
+  .cta.solid-red{background:#C74A3A}
+
+  /* Split breakdown rows */
+  .split{background:#fff;border:1px solid var(--border-soft);border-radius:14px;padding:12px 14px;display:flex;align-items:center;gap:10px;margin-bottom:4px}
+  .split .a{width:32px;height:32px;border-radius:16px;background:var(--sage-soft);color:var(--sage-ink);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700}
+  .split .nm{flex:1;font-size:13px;font-weight:700}
+  .split .sh{font-size:12px;color:var(--muted);margin-right:8px}
+  .split .pill-paid{background:var(--sage-soft);color:var(--sage-ink);padding:4px 8px;border-radius:999px;font-size:10px;font-weight:700}
+  .split .pill-owe{background:#F3F1EC;color:var(--warn);padding:4px 8px;border-radius:999px;font-size:10px;font-weight:700}
+
+  /* Onboarding bits */
+  .ob-hero{background:var(--navy);border-radius:22px;padding:28px 22px;color:#fff;margin:8px 0 14px;text-align:center}
+  .ob-hero .emoji{font-size:48px;margin-bottom:10px}
+  .ob-hero h3{font-size:22px;margin:0 0 6px;letter-spacing:-0.3px;font-weight:700}
+  .ob-hero p{font-size:13px;color:rgba(255,255,255,0.65);margin:0;line-height:1.5}
+  .ob-dots{display:flex;gap:6px;justify-content:center;margin-top:16px}
+  .ob-dots i{width:24px;height:4px;border-radius:2px;background:rgba(255,255,255,0.2)}
+  .ob-dots i.on{background:#fff;width:32px}
+
+  .tile{background:#fff;border:1px solid var(--border-soft);border-radius:16px;padding:16px;margin-bottom:10px;display:flex;align-items:flex-start;gap:12px}
+  .tile .ic{width:40px;height:40px;border-radius:12px;background:var(--sage-soft);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+  .tile .t{font-size:14px;font-weight:700}
+  .tile .c{font-size:12px;color:var(--muted);margin-top:2px;line-height:1.5}
+
+  .caption{font-size:12px;color:var(--muted);margin-top:8px;line-height:1.5;max-width:360px}
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>Remaining screens · recommended designs</h1>
+  <p class="lede">One synthesised design per screen. Each follows the house rules: hero speaks to the next action, single primary CTA per view, temporal grouping where relevant, Tabler icons, avatar-led rows for social contexts, cream bg with dark-ink hero accents.</p>
+
+  <div class="grid">
+
+    <!-- 1 GROUP HUB -->
+    <div>
+      <h2 class="sub">1 · Group hub <span style="font-size:11px;color:var(--muted);font-weight:500;letter-spacing:0">(/group-hub)</span></h2>
+      <div class="why"><b>Purpose:</b> settings for the currently-active group (name, type, members, policies, danger zone). <b>Fix:</b> "Edit profile" on the Profile page currently routes here — wrong destination. Point Edit profile at a real profile editor; make this screen purely group-admin. Dark-ink hero shows the group identity, grouped rows below for each settings area.</div>
+      <div class="frame">
+        <div class="sb"><span>9:41</span><span>●●●</span></div>
+        <div class="hdr"><div class="back">←</div><div class="title">Group</div><div class="action">Save</div></div>
+        <div class="body">
+          <div class="hero">
+            <div class="lab">Active group</div>
+            <div class="big">Shared Flat</div>
+            <div class="inl">Home · <b>4 members</b> · GBP</div>
+          </div>
+          <div class="seclbl">Details</div>
+          <div class="r"><div class="ic" style="background:var(--sage-soft)">🏷️</div><div class="meta"><div class="t">Name</div><div class="c">Shared Flat</div></div><div class="chev">›</div></div>
+          <div class="r"><div class="ic" style="background:var(--people-bg)">🏠</div><div class="meta"><div class="t">Type</div><div class="c">Home group</div></div><div class="chev">›</div></div>
+          <div class="r"><div class="ic" style="background:#F3E4D8">💷</div><div class="meta"><div class="t">Currency</div><div class="c">GBP · £</div></div><div class="chev">›</div></div>
+
+          <div class="seclbl">Members <span class="ct">See all →</span></div>
+          <div class="r"><div class="ic" style="background:var(--sage-soft);color:var(--sage-ink);font-weight:700;font-size:13px">JD</div><div class="meta"><div class="t">Jordan (you)</div><div class="c">Admin · Paid £200 this month</div></div><div class="chev">›</div></div>
+          <div class="r"><div class="ic" style="background:#F3E4D8;color:#8a593b;font-weight:700;font-size:13px">S</div><div class="meta"><div class="t">Sam</div><div class="c">Member · Owes £120</div></div><div class="chev">›</div></div>
+
+          <div class="seclbl">Policies</div>
+          <div class="r"><div class="ic" style="background:#F3F1EC">✂️</div><div class="meta"><div class="t">Split rule</div><div class="c">Equal by default</div></div><div class="chev">›</div></div>
+          <div class="r"><div class="ic" style="background:#F3F1EC">🔁</div><div class="meta"><div class="t">Cycle</div><div class="c">Monthly · starts 1st</div></div><div class="chev">›</div></div>
+
+          <div class="seclbl" style="color:var(--warn)">Danger zone</div>
+          <div class="r" style="border-color:#FDE4DF"><div class="ic" style="background:var(--bill-bg);color:var(--warn)">⇤</div><div class="meta"><div class="t" style="color:var(--warn)">Leave group</div></div><div class="chev">›</div></div>
+          <div class="r" style="border-color:#FDE4DF"><div class="ic" style="background:var(--bill-bg);color:var(--warn)">✕</div><div class="meta"><div class="t" style="color:var(--warn)">Archive group</div><div class="c">Admins only</div></div><div class="chev">›</div></div>
+        </div>
+      </div>
+      <div class="caption">Grouped rows keep it scannable. "Danger zone" label + red-tinted tiles signal destructive actions without shouting.</div>
+    </div>
+
+    <!-- 2 MEMBER PROFILE -->
+    <div>
+      <h2 class="sub">2 · Member profile <span style="font-size:11px;color:var(--muted);font-weight:500;letter-spacing:0">(/member-profile)</span></h2>
+      <div class="why"><b>Purpose:</b> tap a member on the Groups tab to see their activity, balance, and chores in this group. <b>Design:</b> Profile page P-B hero, but for another person. Social-feeling with Venmo-style stats. Secondary context rows follow — their balance with you, their recent activity, their share of chores.</div>
+      <div class="frame">
+        <div class="sb"><span>9:41</span><span>●●●</span></div>
+        <div class="hdr"><div class="back">←</div><div class="title">Sam</div><div class="action">⋯</div></div>
+        <div class="body">
+          <div class="hero-centred">
+            <div class="av">S</div>
+            <div class="name">Sam Rhodes</div>
+            <div class="mt">sam@example.com · Shared Flat</div>
+            <div class="pill">Message Sam</div>
+            <div class="stats">
+              <div class="stat"><div class="v">£120</div><div class="l">Owes you</div></div>
+              <div class="stat"><div class="v">18</div><div class="l">Expenses</div></div>
+              <div class="stat"><div class="v">4</div><div class="l">Chores done</div></div>
+            </div>
+          </div>
+
+          <div class="seclbl">Balance in this group</div>
+          <div class="r"><div class="ic" style="background:var(--bill-bg);color:var(--warn)">↓</div><div class="meta"><div class="t">Sam owes you</div><div class="c">across 3 unsettled expenses</div></div><div class="amt" style="color:var(--warn)">-£120</div></div>
+
+          <div class="seclbl">Recent activity</div>
+          <div class="r"><div class="ic" style="background:var(--sage-soft)">🏠</div><div class="meta"><div class="t">Paid Rent</div><div class="c">£650 · 2 days ago</div></div></div>
+          <div class="r"><div class="ic" style="background:var(--chore-bg)">✅</div><div class="meta"><div class="t">Did "Take bins out"</div><div class="c">Yesterday</div></div></div>
+          <div class="r"><div class="ic" style="background:#F3E4D8">⚡</div><div class="meta"><div class="t">Added Electric</div><div class="c">5 days ago · £60</div></div></div>
+        </div>
+      </div>
+      <div class="caption">Venmo-style stat row in the hero gives immediate context. "⋯" top-right opens the existing Remove/Make admin actions sheet.</div>
+    </div>
+
+    <!-- 3 EXPENSE DETAIL -->
+    <div>
+      <h2 class="sub">3 · Expense detail <span style="font-size:11px;color:var(--muted);font-weight:500;letter-spacing:0">(/expenses/[id])</span></h2>
+      <div class="why"><b>Purpose:</b> single expense view. Most-viewed power-user surface. <b>Design:</b> dark-ink amount hero with status pill; key facts (who paid, when, category) as compact rows; a clean split table showing each participant's status. Actions (Mark paid, Edit, Delete) pinned at the bottom so they don't scroll away.</div>
+      <div class="frame">
+        <div class="sb"><span>9:41</span><span>●●●</span></div>
+        <div class="hdr"><div class="back">←</div><div class="title">Expense</div><div class="action">Edit</div></div>
+        <div class="body">
+          <div class="hero">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between">
+              <div>
+                <div class="lab">Groceries</div>
+                <div class="big">£42.50</div>
+              </div>
+              <div style="background:rgba(255,255,255,0.12);color:#fff;padding:5px 10px;border-radius:999px;font-size:10px;font-weight:700;letter-spacing:0.3px">OVERDUE · 3d</div>
+            </div>
+            <div class="inl"><b>Paid by you</b> · Apr 18 · Groceries category</div>
+          </div>
+
+          <div class="seclbl">Details</div>
+          <div class="r"><div class="ic" style="background:var(--sage-soft)">🛒</div><div class="meta"><div class="t">Category</div><div class="c">Groceries</div></div></div>
+          <div class="r"><div class="ic" style="background:var(--people-bg)">📅</div><div class="meta"><div class="t">Due</div><div class="c">Apr 18 · Overdue 3 days</div></div></div>
+          <div class="r"><div class="ic" style="background:#F3E4D8">💳</div><div class="meta"><div class="t">Paid by</div><div class="c">You</div></div></div>
+
+          <div class="seclbl">Split · 4 members</div>
+          <div class="split"><div class="a">JD</div><div class="nm">Jordan (you)</div><div class="sh">£10.63</div><div class="pill-paid">Paid</div></div>
+          <div class="split"><div class="a" style="background:#F3E4D8;color:#8a593b">S</div><div class="nm">Sam</div><div class="sh">£10.63</div><div class="pill-owe">Owes</div></div>
+          <div class="split"><div class="a" style="background:var(--people-bg);color:var(--people-ink)">A</div><div class="nm">Alex</div><div class="sh">£10.63</div><div class="pill-owe">Owes</div></div>
+          <div class="split"><div class="a" style="background:#ECE7F5;color:#6D5DC7">M</div><div class="nm">Mia</div><div class="sh">£10.63</div><div class="pill-owe">Owes</div></div>
+
+          <div class="seclbl">Receipt</div>
+          <div class="r"><div class="ic" style="background:var(--system-bg)">🧾</div><div class="meta"><div class="t">receipt.jpg</div><div class="c">1.2 MB · tap to view</div></div><div class="chev">›</div></div>
+        </div>
+        <div style="padding:12px 16px 16px;background:var(--bg)">
+          <div class="cta">Mark as paid</div>
+        </div>
+      </div>
+      <div class="caption">Hero status pill catches the eye first. Split rows use participant avatars + pill status so you scan who's paid at a glance. Primary action pinned at the bottom — not scrolled.</div>
+    </div>
+
+    <!-- 4 NEW EXPENSE -->
+    <div>
+      <h2 class="sub">4 · New expense <span style="font-size:11px;color:var(--muted);font-weight:500;letter-spacing:0">(/expenses/new)</span></h2>
+      <div class="why"><b>Purpose:</b> add a shared cost fast. <b>Design:</b> amount-first — big number-pad-friendly input at the top (the field users fill 100% of the time). Everything else is inline form rows with sensible defaults so you can save after typing just the amount. Scroll-to-reveal advanced options.</div>
+      <div class="frame">
+        <div class="sb"><span>9:41</span><span>●●●</span></div>
+        <div class="hdr"><div class="back">✕</div><div class="title">Add expense</div><div class="action">Save</div></div>
+        <div class="body">
+          <div class="amount-input">
+            <div class="label">Amount</div>
+            <div class="big"><span class="cur">£</span>42.50</div>
+          </div>
+
+          <div class="f"><div class="lbl">What</div><div class="val">Groceries</div></div>
+          <div class="f"><div class="lbl">Category</div><div class="val">🛒 Groceries</div><div class="chev">›</div></div>
+          <div class="f"><div class="lbl">Paid by</div><div class="val">You</div><div class="chev">›</div></div>
+          <div class="f"><div class="lbl">Split</div><div class="val">Equal · 4 members</div><div class="chev">›</div></div>
+          <div class="f"><div class="lbl">Date</div><div class="val">Today · Apr 23</div><div class="chev">›</div></div>
+
+          <div class="seclbl">Optional</div>
+          <div class="f"><div class="lbl">Notes</div><div class="val placeholder">Add a note</div></div>
+          <div class="f"><div class="lbl">Receipt</div><div class="val placeholder">Attach photo</div><div class="chev">›</div></div>
+          <div class="f"><div class="lbl">Recurring</div><div class="val placeholder">One-off</div><div class="chev">›</div></div>
+
+          <div class="cta">+ Add expense</div>
+        </div>
+      </div>
+      <div class="caption">Big amount input sets the stage — the first and often only field you care about. "Save" in the header is enabled once amount + category are set. Optional fields are labelled so the user knows they're not required.</div>
+    </div>
+
+    <!-- 5 ONBOARDING -->
+    <div>
+      <h2 class="sub">5 · Onboarding <span style="font-size:11px;color:var(--muted);font-weight:500;letter-spacing:0">(/onboarding)</span></h2>
+      <div class="why"><b>Purpose:</b> first-run setup — create a group, name it, invite people. <b>Design:</b> one decision per screen (not a multi-field form). Progress dots show where you are. Each step has a focus-stealing dark-ink hero that frames the question + a single primary CTA. Skip is always available.</div>
+      <div class="frame">
+        <div class="sb"><span>9:41</span><span>●●●</span></div>
+        <div class="hdr"><div class="back"></div><div class="title">Set up</div><div class="action">Skip</div></div>
+        <div class="body">
+          <div class="ob-hero">
+            <div class="emoji">🏠</div>
+            <h3>Let's set up your group</h3>
+            <p>A group is the shared space where you track bills, chores, and balances together.</p>
+            <div class="ob-dots"><i class="on"></i><i></i><i></i></div>
+          </div>
+
+          <div class="seclbl">Choose a type</div>
+          <div class="tile"><div class="ic" style="background:var(--sage-soft)">🏠</div><div style="flex:1"><div class="t">Shared home</div><div class="c">Rent, bills, groceries with housemates or family.</div></div></div>
+          <div class="tile"><div class="ic" style="background:#FCE4EC">💛</div><div style="flex:1"><div class="t">Couple</div><div class="c">Day-to-day expenses with your partner.</div></div></div>
+          <div class="tile"><div class="ic" style="background:var(--people-bg)">✈️</div><div style="flex:1"><div class="t">Trip</div><div class="c">A one-off group for travel and events.</div></div></div>
+          <div class="tile"><div class="ic" style="background:#F3E4D8">💼</div><div style="flex:1"><div class="t">Project / Business</div><div class="c">Team expenses with budgets and roles.</div></div></div>
+
+          <div class="cta">Continue →</div>
+        </div>
+      </div>
+      <div class="caption">Single-decision steps avoid form overwhelm on first run. "Skip" stays in the header so the bold user can jump ahead. Dark-ink hero puts the question front and centre.</div>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

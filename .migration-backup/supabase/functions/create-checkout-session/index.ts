@@ -123,7 +123,7 @@ Deno.serve(async (req: Request) => {
       payment_method_types: ['card'],
       line_items: [{ price: priceId, quantity: 1 }],
       subscription_data: {
-        ...(isFirstSubscription && { trial_period_days: 7 }),
+        ...(isFirstSubscription && { trial_period_days: 3 }),
         metadata: { supabase_user_id: user.id, plan },
       },
       success_url: `${APP_URL}/pricing?success=true`,

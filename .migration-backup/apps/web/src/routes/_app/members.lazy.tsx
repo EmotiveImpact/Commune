@@ -58,6 +58,7 @@ import { MembersSkeleton } from '../../components/page-skeleton';
 import { EmptyState } from '../../components/empty-state';
 import { PageHeader } from '../../components/page-header';
 import { QueryErrorState } from '../../components/query-error-state';
+import { InlineIssue, PageStack } from '../../components/ui-primitives';
 
 export const Route = createLazyFileRoute('/_app/members')({
   component: MembersLayout,
@@ -699,7 +700,7 @@ export function MembersPage() {
     : isAdmin;
 
   return (
-    <Stack gap="lg">
+    <PageStack>
       <PageHeader
         title="Members"
         subtitle={`${totalMembers} people in ${group?.name ?? 'this group'}`}
@@ -745,14 +746,13 @@ export function MembersPage() {
       )}
 
       {missingMemberProfileCount > 0 && (
-        <Alert
+        <InlineIssue
           color="yellow"
-          variant="light"
           icon={<IconAlertCircle size={16} />}
           title="Some member profiles are temporarily unavailable"
         >
           {missingMemberProfileCount} member{missingMemberProfileCount === 1 ? '' : 's'} were hidden because their profile details did not load cleanly. This page now stays up instead of crashing, and you can retry the section once the related user rows are available again.
-        </Alert>
+        </InlineIssue>
       )}
 
       {isLifecycleError && (
@@ -767,16 +767,11 @@ export function MembersPage() {
       )}
 
       {isLinkedPairsError && (
-        <Alert
+        <InlineIssue
           color="orange"
-          variant="light"
           icon={<IconHeartOff size={16} />}
           title="Couple linking is temporarily unavailable"
-        >
-          <Group justify="space-between" align="center" wrap="wrap">
-            <Text size="sm">
-              Linked balance data did not load cleanly, so link and unlink actions are hidden until this section can be refreshed.
-            </Text>
+          action={(
             <Button
               size="compact-xs"
               variant="light"
@@ -787,21 +782,18 @@ export function MembersPage() {
             >
               Retry
             </Button>
-          </Group>
-        </Alert>
+          )}
+        >
+          Linked balance data did not load cleanly, so link and unlink actions are hidden until this section can be refreshed.
+        </InlineIssue>
       )}
 
       {isMemberStatsError && (
-        <Alert
+        <InlineIssue
           color="orange"
-          variant="light"
           icon={<IconAlertCircle size={16} />}
           title="Member activity is temporarily unavailable"
-        >
-          <Group justify="space-between" align="center" wrap="wrap">
-            <Text size="sm">
-              Monthly owed and paid totals did not load cleanly, so activity summaries may be incomplete until this section is refreshed.
-            </Text>
+          action={(
             <Button
               size="compact-xs"
               variant="light"
@@ -812,8 +804,10 @@ export function MembersPage() {
             >
               Retry
             </Button>
-          </Group>
-        </Alert>
+          )}
+        >
+          Monthly owed and paid totals did not load cleanly, so activity summaries may be incomplete until this section is refreshed.
+        </InlineIssue>
       )}
 
       {lifecycle && (
@@ -1624,6 +1618,6 @@ export function MembersPage() {
           </Group>
         </Stack>
       </Modal>
-    </Stack>
+    </PageStack>
   );
 }

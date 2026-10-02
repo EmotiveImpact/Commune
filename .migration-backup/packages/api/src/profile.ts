@@ -1,4 +1,5 @@
-import { supabase } from './client';
+import { asJson, fromJson, type UserInsert, type UserUpdate } from '@commune/types';
+import { getTypedSupabase } from './client';
 import type { User as AuthUser } from '@supabase/supabase-js';
 
 export interface NotificationPreferences {
@@ -24,6 +25,7 @@ export interface UserProfile {
   deletion_requested_at: string | null;
   deletion_scheduled_for: string | null;
   notification_preferences: NotificationPreferences;
+  acquisition_source: string | null;
   created_at: string;
 }
 
@@ -72,6 +74,7 @@ function buildProfileFromAuthUser(authUser: AuthUser): UserProfile {
     deletion_requested_at: null,
     deletion_scheduled_for: null,
     notification_preferences: DEFAULT_NOTIFICATION_PREFS,
+    acquisition_source: null,
     created_at: authUser.created_at ?? new Date().toISOString(),
   };
 }
@@ -87,11 +90,13 @@ function normalizeProfile(data: Record<string, any>): UserProfile {
     default_currency: data.default_currency ?? 'GBP',
     timezone: data.timezone ?? 'Europe/London',
     show_shared_groups: data.show_shared_groups ?? true,
-    notification_preferences: data.notification_preferences ?? DEFAULT_NOTIFICATION_PREFS,
+    notification_preferences:
+      fromJson<NotificationPreferences>(data.notification_preferences) ?? DEFAULT_NOTIFICATION_PREFS,
   } as UserProfile;
 }
 
 async function getAuthenticatedUser(userId: string) {
+  const supabase = getTypedSupabase();
   const {
     data: { user },
     error,
@@ -106,6 +111,7 @@ async function getAuthenticatedUser(userId: string) {
 }
 
 export async function ensureProfile(userId: string): Promise<UserProfile> {
+  const supabase = getTypedSupabase();
   const authUser = await getAuthenticatedUser(userId);
 
   // Check if profile already exists — if so, return it without overwriting
@@ -121,15 +127,17 @@ export async function ensureProfile(userId: string): Promise<UserProfile> {
   // Profile doesn't exist — create it from auth metadata
   const fallbackProfile = buildProfileFromAuthUser(authUser);
 
+  const insertPayload: UserInsert = {
+    id: fallbackProfile.id,
+    first_name: fallbackProfile.first_name,
+    last_name: fallbackProfile.last_name,
+    email: fallbackProfile.email,
+    avatar_url: fallbackProfile.avatar_url,
+  };
+
   const { data, error } = await supabase
     .from('users')
-    .insert({
-      id: fallbackProfile.id,
-      first_name: fallbackProfile.first_name,
-      last_name: fallbackProfile.last_name,
-      email: fallbackProfile.email,
-      avatar_url: fallbackProfile.avatar_url,
-    })
+    .insert(insertPayload)
     .select('*')
     .single();
 
@@ -150,6 +158,7 @@ export async function ensureProfile(userId: string): Promise<UserProfile> {
 }
 
 export async function getProfile(userId: string): Promise<UserProfile> {
+  const supabase = getTypedSupabase();
   const { data, error } = await supabase
     .from('users')
     .select('*')
@@ -166,6 +175,7 @@ export async function uploadAvatar(
   userId: string,
   file: File,
 ): Promise<string> {
+  const supabase = getTypedSupabase();
   const maxSize = 1 * 1024 * 1024; // 1 MB
   if (file.size > maxSize) {
     throw new Error('File must be under 1 MB.');
@@ -198,11 +208,21 @@ export async function updateProfile(
     timezone?: string;
     show_shared_groups?: boolean;
     notification_preferences?: NotificationPreferences;
+    acquisition_source?: string | null;
   },
 ): Promise<UserProfile> {
+  const supabase = getTypedSupabase();
+  const { notification_preferences, ...rest } = updates;
+  const updatePayload: UserUpdate = {
+    ...rest,
+    ...(notification_preferences !== undefined
+      ? { notification_preferences: asJson(notification_preferences) }
+      : {}),
+  };
+
   let { data, error } = await supabase
     .from('users')
-    .update(updates)
+    .update(updatePayload)
     .eq('id', userId)
     .select('*')
     .maybeSingle();
@@ -211,7 +231,7 @@ export async function updateProfile(
     await ensureProfile(userId);
     const retry = await supabase
       .from('users')
-      .update(updates)
+      .update(updatePayload)
       .eq('id', userId)
       .select('*')
       .single();
@@ -220,21 +240,25 @@ export async function updateProfile(
   }
 
   if (error) throw error;
+  if (!data) throw new Error('Failed to load profile after update.');
 
   return normalizeProfile(data);
 }
 
 export async function deleteAccount(): Promise<void> {
+  const supabase = getTypedSupabase();
   const { error } = await supabase.rpc('soft_delete_account');
   if (error) throw error;
 }
 
 export async function reactivateAccount(): Promise<void> {
+  const supabase = getTypedSupabase();
   const { error } = await supabase.rpc('reactivate_account');
   if (error) throw error;
 }
 
 export async function checkAccountStatus(): Promise<{ isDeactivated: boolean; deletionScheduledFor: string | null }> {
+  const supabase = getTypedSupabase();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { isDeactivated: false, deletionScheduledFor: null };
 

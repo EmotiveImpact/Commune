@@ -2,10 +2,10 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "web",
-      "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["--filter", "@commune/web", "dev"],
-      "port": 5173
+      "name": "web-review",
+      "runtimeExecutable": "/usr/bin/tail",
+      "runtimeArgs": ["-f", "/dev/null"],
+      "port": 5180
     },
     {
       "name": "landing",
@@ -18,6 +18,30 @@
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["--filter", "@commune/mobile", "dev"],
       "port": 8081
+    },
+    {
+      "name": "mobile-v2",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@commune/mobile-v2", "dev", "--", "--port", "8082"],
+      "port": 8082
+    },
+    {
+      "name": "supabase",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["db:start"],
+      "port": 54321
+    },
+    {
+      "name": "all (turbo)",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["dev"],
+      "port": 5173
+    },
+    {
+      "name": "design-mocks",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "5600", "--directory", "/tmp/commune-design-mocks", "--bind", "127.0.0.1"],
+      "port": 5600
     }
   ]
 }

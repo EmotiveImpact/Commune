@@ -85,8 +85,8 @@ export function TrialExpiryModal({ userId }: TrialExpiryModalProps) {
     },
     no_subscription: {
       title: 'Start your free trial',
-      badge: { label: '7 days free', color: 'emerald' },
-      message: 'Pick a plan to start your 7-day free trial and unlock all of Commune.',
+      badge: { label: '3 days free', color: 'emerald' },
+      message: 'Pick a plan to start your 3-day free trial and unlock all of Commune.',
     },
   }[variant];
 

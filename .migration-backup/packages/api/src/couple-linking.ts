@@ -40,7 +40,11 @@ export async function linkMembers(
     throw new Error('One or both members are already linked to a partner');
   }
 
-  // Create bidirectional link
+  // Create bidirectional link. These are two separate UPDATEs (no multi-row
+  // transaction over supabase-js), so we have to roll back manually if the
+  // second one fails — otherwise we end up with a silent one-way link that
+  // getLinkedPairs() filters out, giving the user a "linked" confirmation
+  // for a relationship that never took effect in settlement math.
   const { error: updateError1 } = await supabase
     .from('group_members')
     .update({ linked_partner_id: memberIdB })
@@ -53,7 +57,14 @@ export async function linkMembers(
     .update({ linked_partner_id: memberIdA })
     .eq('id', memberIdB);
 
-  if (updateError2) throw updateError2;
+  if (updateError2) {
+    // Best-effort rollback of the first update.
+    await supabase
+      .from('group_members')
+      .update({ linked_partner_id: null })
+      .eq('id', memberIdA);
+    throw updateError2;
+  }
 }
 
 /**
@@ -66,19 +77,15 @@ export async function unlinkMembers(
   memberIdA: string,
   memberIdB: string,
 ): Promise<void> {
-  const { error: e1 } = await supabase
+  // Unlink both in one statement where possible so a partial failure can't
+  // leave a dangling half-link. .in() on the PK applies the same UPDATE to
+  // both rows in a single round-trip.
+  const { error } = await supabase
     .from('group_members')
     .update({ linked_partner_id: null })
-    .eq('id', memberIdA);
+    .in('id', [memberIdA, memberIdB]);
 
-  if (e1) throw e1;
-
-  const { error: e2 } = await supabase
-    .from('group_members')
-    .update({ linked_partner_id: null })
-    .eq('id', memberIdB);
-
-  if (e2) throw e2;
+  if (error) throw error;
 }
 
 /**

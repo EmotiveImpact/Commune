@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   acceptInvite,
+  archiveGroup,
   createGroup,
   deleteGroup,
   getGroup,
@@ -10,6 +11,7 @@ import {
   leaveGroup,
   removeMember,
   transferOwnership,
+  unarchiveGroup,
   updateGroup,
   updateMemberResponsibilityLabel,
   updateMemberRole,
@@ -167,6 +169,8 @@ export function useUpdateGroup(groupId: string) {
       setup_checklist_progress?: SetupChecklistProgress | null;
       approval_threshold?: number | null;
       approval_policy?: GroupApprovalPolicyInput | null;
+      avatar_url?: string;
+      cover_url?: string;
     }) =>
       updateGroup(groupId, updates),
     onSuccess: () => {
@@ -199,6 +203,32 @@ export function useDeleteGroup() {
     mutationFn: (groupId: string) => deleteGroup(groupId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: groupKeys.list() });
+      queryClient.invalidateQueries({ queryKey: groupKeys.all });
+    },
+  });
+}
+
+export function useArchiveGroup(groupId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => archiveGroup(groupId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: groupKeys.list() });
+      queryClient.invalidateQueries({ queryKey: groupKeys.detail(groupId) });
+      queryClient.invalidateQueries({ queryKey: groupKeys.all });
+    },
+  });
+}
+
+export function useUnarchiveGroup(groupId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => unarchiveGroup(groupId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: groupKeys.list() });
+      queryClient.invalidateQueries({ queryKey: groupKeys.detail(groupId) });
       queryClient.invalidateQueries({ queryKey: groupKeys.all });
     },
   });

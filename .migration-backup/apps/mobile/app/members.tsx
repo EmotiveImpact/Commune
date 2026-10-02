@@ -1,22 +1,52 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   Alert,
-  Animated,
-  FlatList,
   ScrollView,
   Text,
   TextInput,
   TouchableOpacity,
   View,
-  type AlertButton,
 } from 'react-native';
-import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { Stack, useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
-  canMemberApproveWithPolicy,
+  IconArrowsLeftRight,
+  IconBriefcase,
+  IconCalendarTime,
+  IconChevronDown,
+  IconChevronLeft,
+  IconCircleCheck,
+  IconCloudOff,
+  IconCrown,
+  IconDoorExit,
+  IconDotsVertical,
+  IconLogout,
+  IconMail,
+  IconMailOpened,
+  IconPlus,
+  IconRefresh,
+  IconRotateClockwise2,
+  IconShield,
+  IconShieldCheck,
+  IconTag,
+  IconTrash,
+  IconUsers,
+} from '@tabler/icons-react-native';
+
+import {
+  Avatar,
+  DateField,
+  EmptyState,
+  Pressable,
+  Screen,
+  SegmentedControl,
+} from '@/components/primitives';
+import { BottomSheet, SheetRow } from '@/components/bottom-sheet';
+import { colors, font, radius, space } from '@/constants/design';
+import {
   countCompletedSetupChecklistItems,
-  getWorkspaceGovernancePreview,
   getIncompleteSetupChecklistItems,
+  getWorkspaceGovernancePreview,
   inviteMemberSchema,
 } from '@commune/core';
 import { formatCurrency, formatDate } from '@commune/utils';
@@ -38,204 +68,53 @@ import {
   useRestoreMemberAccess,
   useScheduleMemberDeparture,
 } from '@/hooks/use-member-lifecycle';
-import { usePlanLimits } from '@/hooks/use-plan-limits';
 import { useMemberMonthlyStats } from '@/hooks/use-member-stats';
-import { DateField } from '@/components/ui';
-import { GroupSwitcher } from '@/components/group-switcher';
+import { usePlanLimits } from '@/hooks/use-plan-limits';
 import { getErrorMessage } from '@/lib/errors';
-import { hapticMedium, hapticHeavy, hapticSuccess, hapticWarning } from '@/lib/haptics';
+import { hapticHeavy, hapticMedium, hapticSuccess, hapticWarning } from '@/lib/haptics';
 
-/* -------------------------------------------------------------------------- */
-/*  Shimmer skeleton                                                          */
-/* -------------------------------------------------------------------------- */
+/* ============================================================================
+ * Avatar palette — seeded by user_id so the same person stays the same color.
+ * Mirrors the swatches in the v3 mockup (sage, travel, partner, work).
+ * ============================================================================ */
 
-function MembersShimmer() {
-  const opacity = useRef(new Animated.Value(0.3)).current;
+const AVATAR_PALETTE: Array<{ bg: string; fg: string }> = [
+  { bg: colors.sageSoft, fg: colors.sageInk },
+  { bg: colors.typeTrip.bg, fg: colors.typeTrip.accent },
+  { bg: colors.typeCouple.bg, fg: colors.typeCouple.accent },
+  { bg: colors.typeWorkspace.bg, fg: colors.typeWorkspace.accent },
+];
 
-  useEffect(() => {
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(opacity, { toValue: 1, duration: 800, useNativeDriver: true }),
-        Animated.timing(opacity, { toValue: 0.3, duration: 800, useNativeDriver: true }),
-      ]),
-    );
-
-    loop.start();
-    return () => loop.stop();
-  }, [opacity]);
-
-  const bar = (w: string | number, h = 14) => (
-    <Animated.View
-      style={{
-        width: w as number,
-        height: h,
-        borderRadius: 8,
-        backgroundColor: '#E5E7EB',
-        opacity,
-        marginBottom: 10,
-      }}
-    />
-  );
-
-  return (
-    <ScrollView
-      style={{ flex: 1, paddingHorizontal: 20, paddingTop: 24, backgroundColor: '#FAFAFA' }}
-    >
-      {bar('50%', 20)}
-      {bar('80%')}
-      <View style={{ marginTop: 24 }}>{bar('100%', 120)}</View>
-      <View style={{ marginTop: 16 }}>{bar('100%', 120)}</View>
-      <View style={{ marginTop: 16 }}>{bar('100%', 120)}</View>
-    </ScrollView>
-  );
+function hashString(input: string): number {
+  let h = 0;
+  for (let i = 0; i < input.length; i += 1) {
+    h = (h * 31 + input.charCodeAt(i)) | 0;
+  }
+  return Math.abs(h);
 }
 
-/* -------------------------------------------------------------------------- */
-/*  Stat card                                                                 */
-/* -------------------------------------------------------------------------- */
-
-type StatProps = {
-  icon: React.ComponentProps<typeof Ionicons>['name'];
-  label: string;
-  value: string;
-  note: string;
-  color: string;
-};
-
-function StatItem({ icon, label, value, note, color }: StatProps) {
-  return (
-    <View
-      style={{
-        flex: 1,
-        marginHorizontal: 3,
-        padding: 12,
-        marginBottom: 8,
-        backgroundColor: '#FFFFFF',
-        borderRadius: 16,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.06,
-        shadowRadius: 12,
-        elevation: 3,
-      }}
-    >
-      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4, gap: 6 }}>
-        <View
-          style={{
-            height: 28,
-            width: 28,
-            alignItems: 'center',
-            justifyContent: 'center',
-            borderRadius: 8,
-            backgroundColor: color + '1A',
-          }}
-        >
-          <Ionicons name={icon} size={14} color={color} />
-        </View>
-        <Text style={{ fontSize: 12, fontWeight: '500', color: '#667085' }}>
-          {label}
-        </Text>
-      </View>
-      <Text style={{ fontSize: 24, fontWeight: '700', color: '#171b24' }}>
-        {value}
-      </Text>
-      <Text style={{ fontSize: 10, marginTop: 2, color: '#98a1b0' }}>
-        {note}
-      </Text>
-    </View>
-  );
+function avatarColors(seed: string): { bg: string; fg: string } {
+  return AVATAR_PALETTE[hashString(seed) % AVATAR_PALETTE.length]!;
 }
 
-/* -------------------------------------------------------------------------- */
-/*  Empty state                                                               */
-/* -------------------------------------------------------------------------- */
+/* ============================================================================
+ * Filter
+ * ============================================================================ */
 
-function EmptyStateCard({
-  icon,
-  title,
-  description,
-  actionLabel,
-  onAction,
-}: {
-  icon: keyof typeof Ionicons.glyphMap;
-  title: string;
-  description: string;
-  actionLabel?: string;
-  onAction?: () => void;
-}) {
-  return (
-    <View
-      style={{
-        flex: 1,
-        backgroundColor: '#FAFAFA',
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: 40,
-      }}
-    >
-      <View
-        style={{
-          backgroundColor: '#FFFFFF',
-          borderRadius: 16,
-          padding: 20,
-          alignItems: 'center',
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.06,
-          shadowRadius: 12,
-          elevation: 3,
-        }}
-      >
-        <View
-          style={{
-            width: 56,
-            height: 56,
-            borderRadius: 28,
-            backgroundColor: '#F3F4F6',
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginBottom: 16,
-          }}
-        >
-          <Ionicons name={icon} size={24} color="#9CA3AF" />
-        </View>
-        <Text style={{ fontSize: 17, fontWeight: '600', color: '#111827', marginBottom: 6 }}>
-          {title}
-        </Text>
-        <Text
-          style={{
-            fontSize: 14,
-            lineHeight: 20,
-            color: '#6B7280',
-            textAlign: 'center',
-            maxWidth: 280,
-            marginBottom: actionLabel ? 16 : 0,
-          }}
-        >
-          {description}
-        </Text>
-        {actionLabel && onAction && (
-          <TouchableOpacity onPress={onAction}>
-            <Text style={{ fontSize: 14, fontWeight: '600', color: '#2d6a4f' }}>
-              {actionLabel}
-            </Text>
-          </TouchableOpacity>
-        )}
-      </View>
-    </View>
-  );
-}
+type Filter = 'all' | 'active' | 'pending' | 'past';
 
-/* -------------------------------------------------------------------------- */
-/*  Main screen                                                               */
-/* -------------------------------------------------------------------------- */
+/* ============================================================================
+ * Screen
+ * ============================================================================ */
 
 export default function MembersScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { user } = useAuthStore();
   const { activeGroupId, setActiveGroupId } = useGroupStore();
   const { data: groups = [] } = useUserGroups();
-  const { data: pendingInvites } = usePendingInvites();
+  const { data: pendingInvitesQuery } = usePendingInvites();
+
   const referenceDate = useMemo(() => new Date().toISOString().slice(0, 10), []);
   const {
     data: group,
@@ -244,61 +123,112 @@ export default function MembersScreen() {
     refetch: refetchGroup,
   } = useGroup(activeGroupId ?? '');
   const { data: lifecycle } = useGroupLifecycleSummary(activeGroupId ?? '', referenceDate);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [inviteEmail, setInviteEmail] = useState('');
-  const [departureTarget, setDepartureTarget] = useState<{
-    memberId: string;
-    memberName: string;
-  } | null>(null);
-  const [transferTarget, setTransferTarget] = useState<{
-    userId: string;
-    name: string;
-  } | null>(null);
-  const [departureDate, setDepartureDate] = useState<Date>(() => {
-    const value = new Date();
-    value.setDate(value.getDate() + 1);
-    return value;
-  });
+  const { stats: memberStats } = useMemberMonthlyStats(activeGroupId ?? '');
 
   const { canInviteMember, memberLimit, currentMembers } = usePlanLimits(user?.id ?? '');
-  const { stats: memberStats } = useMemberMonthlyStats(activeGroupId ?? '');
   const inviteMember = useInviteMember(activeGroupId ?? '');
   const updateRole = useUpdateMemberRole(activeGroupId ?? '');
   const updateResponsibility = useUpdateMemberResponsibility(activeGroupId ?? '');
-  const removeMember = useRemoveMember(activeGroupId ?? '');
   const transferOwnership = useTransferOwnership(activeGroupId ?? '');
+  const removeMember = useRemoveMember(activeGroupId ?? '');
   const leaveGroupMutation = useLeaveGroup();
   const scheduleDeparture = useScheduleMemberDeparture(activeGroupId ?? '');
   const restoreAccess = useRestoreMemberAccess(activeGroupId ?? '');
 
-  const filteredMembers = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase();
-    const members = group?.members ?? [];
-    if (!query) return members;
-    return members.filter((member) =>
-      [member.user.name, member.user.email, member.role, member.status]
-        .join(' ')
-        .toLowerCase()
-        .includes(query),
-    );
-  }, [group?.members, searchQuery]);
+  const [filter, setFilter] = useState<Filter>('all');
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [groupSwitcherOpen, setGroupSwitcherOpen] = useState(false);
+  const [responsibilityTarget, setResponsibilityTarget] = useState<{
+    memberId: string;
+    name: string;
+    current: string | null;
+  } | null>(null);
+  const [departureTarget, setDepartureTarget] = useState<{
+    memberId: string;
+    name: string;
+  } | null>(null);
+  const [departureDate, setDepartureDate] = useState<Date>(() => {
+    const next = new Date();
+    next.setDate(next.getDate() + 1);
+    return next;
+  });
 
-  const isAdmin =
-    group?.members.some(
-      (member) => member.user_id === user?.id && member.role === 'admin',
-    ) ?? false;
+  type SheetTarget =
+    | {
+        kind: 'active';
+        memberId: string;
+        userId: string;
+        name: string;
+        role: 'admin' | 'member';
+        responsibilityLabel: string | null;
+        scheduledUntil: string | null;
+      }
+    | { kind: 'pending'; memberId: string; email: string }
+    | { kind: 'past'; memberId: string; name: string };
+  const [sheetTarget, setSheetTarget] = useState<SheetTarget | null>(null);
 
-  const totalMembers = group?.members.length ?? 0;
-  const activeCount = group?.members.filter((m) => m.status === 'active').length ?? 0;
-  const adminCount = group?.members.filter((m) => m.role === 'admin').length ?? 0;
-  const invitedCount = group?.members.filter((m) => m.status === 'invited').length ?? 0;
-  const isOwner = user?.id === group?.owner_id;
+  const members = group?.members ?? [];
+  const ownerId = group?.owner_id ?? null;
+  const isOwner = Boolean(user?.id && ownerId && user.id === ownerId);
+
+  const adminMembers = useMemo(
+    () => members.filter((m) => m.status === 'active' && m.role === 'admin'),
+    [members],
+  );
+  const regularMembers = useMemo(
+    () => members.filter((m) => m.status === 'active' && m.role !== 'admin'),
+    [members],
+  );
+  const pendingMembers = useMemo(
+    () => members.filter((m) => m.status === 'invited'),
+    [members],
+  );
+  const pastMembers = useMemo(
+    () => members.filter((m) => m.status === 'removed'),
+    [members],
+  );
+
+  const activeCount = adminMembers.length + regularMembers.length;
+  const pendingCount = pendingMembers.length;
+  const pastCount = pastMembers.length;
+  const allCount = activeCount + pendingCount;
+
+  const isAdmin = useMemo(
+    () =>
+      Boolean(
+        user?.id &&
+          members.some((m) => m.user_id === user.id && m.status === 'active' && m.role === 'admin'),
+      ),
+    [members, user?.id],
+  );
+
+  const adminCount = adminMembers.length;
   const canLeave = Boolean(
-    user &&
-      group?.members.some((member) => member.user_id === user.id && member.status === 'active') &&
+    user?.id &&
+      members.some((m) => m.user_id === user.id && m.status === 'active') &&
       !isOwner &&
       (!isAdmin || adminCount > 1),
   );
+
+  const workspaceGovernance = useMemo(
+    () => getWorkspaceGovernancePreview(group),
+    [group],
+  );
+  const responsibilityPresets = workspaceGovernance.rolePresets.filter(
+    (preset) => preset.responsibility_label,
+  );
+  const responsibilityLabelMap = useMemo(
+    () =>
+      new Map(
+        responsibilityPresets.map((preset) => [
+          preset.responsibility_label as string,
+          preset.label,
+        ]),
+      ),
+    [responsibilityPresets],
+  );
+
   const incompleteChecklistItems = getIncompleteSetupChecklistItems(
     group?.setup_checklist_progress,
   );
@@ -306,35 +236,29 @@ export default function MembersScreen() {
     group?.setup_checklist_progress,
   );
   const totalChecklistCount = Object.keys(group?.setup_checklist_progress ?? {}).length;
-  const workspaceGovernance = useMemo(
-    () => getWorkspaceGovernancePreview(group),
-    [group],
-  );
-  const workspaceResponsibilityPresets = workspaceGovernance.rolePresets;
-  const responsibilityLabelMap = useMemo(
-    () =>
-      new Map(
-        workspaceGovernance.rolePresets
-          .filter((preset) => preset.responsibility_label)
-          .map((preset) => [preset.responsibility_label as string, preset.label]),
-      ),
-    [workspaceGovernance.rolePresets],
-  );
-  const currentMember =
-    group?.members.find((member) => member.user_id === user?.id) ?? null;
-  const canApproveWorkspaceSpend = workspaceGovernance.isWorkspaceGroup
-    ? canMemberApproveWithPolicy(currentMember, group?.approval_policy)
-    : isAdmin;
-  const departureTargetMember = departureTarget
-    ? group?.members.find((member) => member.id === departureTarget.memberId)
-    : null;
-  const departureTargetIsLastAdmin =
-    Boolean(departureTargetMember?.role === 'admin' && adminCount <= 1);
-  const departureTargetIsOwner = departureTargetMember?.user_id === group?.owner_id;
+  const checklistComplete =
+    totalChecklistCount > 0 && completedChecklistCount >= totalChecklistCount;
 
-  /* -- handlers ------------------------------------------------------------ */
+  // Lifecycle summary surfaces only when the group has work pending —
+  // scheduled departures, joiners, owner transitions, or unfinished setup.
+  const lifecycleNeedsAttention = Boolean(
+    lifecycle &&
+      (lifecycle.scheduled_departures.length > 0 ||
+        lifecycle.joiners_this_cycle.length > 0 ||
+        lifecycle.owner_transition_required ||
+        (totalChecklistCount > 0 && !checklistComplete)),
+  );
 
-  async function handleInvite() {
+  /* -- handlers ---------------------------------------------------------- */
+
+  const closeSheet = useCallback(() => setSheetTarget(null), []);
+
+  const openInvite = useCallback(() => {
+    hapticMedium();
+    setInviteOpen(true);
+  }, []);
+
+  const handleSendInvite = useCallback(async () => {
     hapticMedium();
     if (!canInviteMember) {
       hapticWarning();
@@ -356,118 +280,155 @@ export default function MembersScreen() {
       await inviteMember.mutateAsync(validation.data.email);
       hapticSuccess();
       setInviteEmail('');
+      setInviteOpen(false);
       Alert.alert('Invite sent', 'The member has been invited.');
     } catch (error) {
       hapticWarning();
       Alert.alert('Invite failed', getErrorMessage(error, 'Could not send the invite.'));
     }
-  }
+  }, [canInviteMember, currentMembers, memberLimit, inviteMember, inviteEmail]);
 
-  const handleRoleChange = useCallback(async (memberId: string, role: 'admin' | 'member') => {
-    hapticMedium();
-    try {
-      await updateRole.mutateAsync({ memberId, role });
-      hapticSuccess();
-    } catch (error) {
-      hapticWarning();
-      Alert.alert('Update failed', getErrorMessage(error));
-    }
-  }, [updateRole]);
-
-  const handleResponsibilityChange = useCallback(async (
-    memberId: string,
-    label: string | null,
-  ) => {
-    hapticMedium();
-    try {
-      await updateResponsibility.mutateAsync({
-        memberId,
-        responsibilityLabel: label,
-      });
-      hapticSuccess();
-    } catch (error) {
-      hapticWarning();
-      Alert.alert('Responsibility update failed', getErrorMessage(error));
-    }
-  }, [updateResponsibility]);
-
-  const openResponsibilityPicker = useCallback(
-    (member: (typeof filteredMembers)[0]) => {
-      const buttons: AlertButton[] = workspaceResponsibilityPresets
-        .filter((preset) => preset.responsibility_label)
-        .map((preset) => ({
-          text:
-            member.responsibility_label === preset.responsibility_label
-              ? `${preset.label} (current)`
-              : preset.label,
-          onPress: () => {
-            void handleResponsibilityChange(
-              member.id,
-              preset.responsibility_label ?? null,
-            );
-          },
-        }));
-
-      if (member.responsibility_label) {
-        buttons.push({
-          text: 'Clear label',
-          style: 'destructive' as const,
-          onPress: () => {
-            void handleResponsibilityChange(member.id, null);
-          },
-        });
+  const handleRoleChange = useCallback(
+    async (memberId: string, role: 'admin' | 'member') => {
+      hapticMedium();
+      try {
+        await updateRole.mutateAsync({ memberId, role });
+        hapticSuccess();
+      } catch (error) {
+        hapticWarning();
+        Alert.alert('Update failed', getErrorMessage(error));
       }
-
-      buttons.push({ text: 'Cancel', style: 'cancel' as const });
-
-      Alert.alert(
-        'Workspace responsibility',
-        `Choose a responsibility label for ${member.user.name}.`,
-        buttons,
-      );
     },
-    [handleResponsibilityChange, workspaceResponsibilityPresets],
+    [updateRole],
   );
 
-  const handleRemove = useCallback((memberId: string) => {
-    hapticHeavy();
-    Alert.alert('Remove member', 'This member will lose access to the group.', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Remove',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await removeMember.mutateAsync(memberId);
-            hapticSuccess();
-          } catch (error) {
-            hapticWarning();
-            Alert.alert('Remove failed', getErrorMessage(error));
-          }
-        },
-      },
-    ]);
-  }, [removeMember]);
+  const handleResponsibilityChange = useCallback(
+    async (memberId: string, label: string | null) => {
+      hapticMedium();
+      try {
+        await updateResponsibility.mutateAsync({ memberId, responsibilityLabel: label });
+        hapticSuccess();
+      } catch (error) {
+        hapticWarning();
+        Alert.alert('Responsibility update failed', getErrorMessage(error));
+      }
+    },
+    [updateResponsibility],
+  );
 
-  const handleRestoreAccess = useCallback(async (memberId: string) => {
+  const handleTransferOwnership = useCallback(
+    (targetUserId: string, targetName: string) => {
+      hapticHeavy();
+      Alert.alert(
+        'Transfer ownership',
+        `Transfer ownership of ${group?.name ?? 'this group'} to ${targetName}? You will become a regular admin.`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Transfer',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                await transferOwnership.mutateAsync(targetUserId);
+                hapticSuccess();
+              } catch (error) {
+                hapticWarning();
+                Alert.alert('Transfer failed', getErrorMessage(error));
+              }
+            },
+          },
+        ],
+      );
+    },
+    [group?.name, transferOwnership],
+  );
+
+  const handleRemove = useCallback(
+    (memberId: string, name: string) => {
+      hapticHeavy();
+      Alert.alert(
+        'Remove from group',
+        `${name} will lose access to this group. Their balance will be settled out.`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Remove',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                await removeMember.mutateAsync(memberId);
+                hapticSuccess();
+              } catch (error) {
+                hapticWarning();
+                Alert.alert('Remove failed', getErrorMessage(error));
+              }
+            },
+          },
+        ],
+      );
+    },
+    [removeMember],
+  );
+
+  const handleResendInvite = useCallback(
+    async (email: string) => {
+      hapticMedium();
+      try {
+        await inviteMember.mutateAsync(email);
+        hapticSuccess();
+        Alert.alert('Invite resent', `Sent a fresh invite to ${email}.`);
+      } catch (error) {
+        hapticWarning();
+        Alert.alert('Resend failed', getErrorMessage(error));
+      }
+    },
+    [inviteMember],
+  );
+
+  const handleCancelInvite = useCallback(
+    (memberId: string, email: string) => {
+      hapticHeavy();
+      Alert.alert(
+        'Cancel invite',
+        `Cancel the invite sent to ${email}? They won't be able to join with the existing link.`,
+        [
+          { text: 'Keep invite', style: 'cancel' },
+          {
+            text: 'Cancel invite',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                await removeMember.mutateAsync(memberId);
+                hapticSuccess();
+              } catch (error) {
+                hapticWarning();
+                Alert.alert('Cancel failed', getErrorMessage(error));
+              }
+            },
+          },
+        ],
+      );
+    },
+    [removeMember],
+  );
+
+  const handleRestoreAccess = useCallback(
+    async (memberId: string) => {
+      hapticMedium();
+      try {
+        await restoreAccess.mutateAsync(memberId);
+        hapticSuccess();
+      } catch (error) {
+        hapticWarning();
+        Alert.alert('Restore failed', getErrorMessage(error));
+      }
+    },
+    [restoreAccess],
+  );
+
+  const handleScheduleDeparture = useCallback(async () => {
+    if (!departureTarget) return;
     hapticMedium();
-
-    try {
-      await restoreAccess.mutateAsync(memberId);
-      hapticSuccess();
-    } catch (error) {
-      hapticWarning();
-      Alert.alert('Restore failed', getErrorMessage(error));
-    }
-  }, [restoreAccess]);
-
-  async function handleScheduleDeparture() {
-    if (!departureTarget) {
-      return;
-    }
-
-    hapticMedium();
-
     try {
       await scheduleDeparture.mutateAsync({
         memberId: departureTarget.memberId,
@@ -479,1121 +440,1382 @@ export default function MembersScreen() {
       hapticWarning();
       Alert.alert('Schedule failed', getErrorMessage(error));
     }
-  }
+  }, [departureTarget, departureDate, scheduleDeparture]);
 
-  async function handleTransferOwnership() {
-    if (!transferTarget) {
-      return;
-    }
-
-    hapticMedium();
-
-    try {
-      await transferOwnership.mutateAsync(transferTarget.userId);
-      hapticSuccess();
+  const handleLeaveGroup = useCallback(() => {
+    if (!activeGroupId || !user?.id || !group) return;
+    if (!canLeave) {
       Alert.alert(
-        'Ownership transferred',
-        `${transferTarget.name} is now the owner of ${group?.name ?? 'the group'}.`,
+        'Cannot leave yet',
+        isOwner
+          ? 'Transfer ownership to someone else before leaving.'
+          : 'Promote another admin before leaving — you are the only admin.',
       );
-      setTransferTarget(null);
-    } catch (error) {
-      hapticWarning();
-      Alert.alert('Transfer failed', getErrorMessage(error));
-    }
-  }
-
-  async function handleLeaveGroup() {
-    if (!activeGroupId || !user?.id) {
       return;
     }
+    hapticHeavy();
+    Alert.alert(
+      `Leave ${group.name}?`,
+      "You'll lose access to expenses and chores.",
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Leave group',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await leaveGroupMutation.mutateAsync({
+                groupId: activeGroupId,
+                userId: user.id,
+              });
+              hapticSuccess();
+              const remainingGroups = groups.filter((g) => g.id !== activeGroupId);
+              if (remainingGroups[0]) {
+                setActiveGroupId(remainingGroups[0].id);
+                router.replace('/(tabs)');
+              } else {
+                setActiveGroupId(null);
+                router.replace('/onboarding');
+              }
+            } catch (error) {
+              hapticWarning();
+              Alert.alert('Leave failed', getErrorMessage(error));
+            }
+          },
+        },
+      ],
+    );
+  }, [
+    activeGroupId,
+    canLeave,
+    group,
+    groups,
+    isOwner,
+    leaveGroupMutation,
+    router,
+    setActiveGroupId,
+    user?.id,
+  ]);
 
-    hapticMedium();
-
-    try {
-      await leaveGroupMutation.mutateAsync({ groupId: activeGroupId, userId: user.id });
-      hapticSuccess();
-      const remainingGroups = groups.filter((candidate) => candidate.id !== activeGroupId);
-      if (remainingGroups[0]) {
-        setActiveGroupId(remainingGroups[0].id);
-        router.replace('/(tabs)');
-      } else {
-        setActiveGroupId(null);
-        router.replace('/onboarding');
-      }
-    } catch (error) {
-      hapticWarning();
-      Alert.alert('Leave failed', getErrorMessage(error));
-    }
-  }
-
-  /* -- member row ---------------------------------------------------------- */
-
-  const renderMember = useCallback(
-    ({ item: member, index }: { item: (typeof filteredMembers)[0]; index: number }) => {
-      const roleTarget = member.role === 'admin' ? 'member' : 'admin';
-      const isLastItem = index === filteredMembers.length - 1;
-
-      const stat = memberStats.get(member.user_id);
-      const remaining = stat ? Math.max(0, stat.totalOwed - stat.totalPaid) : 0;
-      const isSettled = stat ? remaining < 0.01 : false;
-
-      const initials = member.user.name
-        .split(' ')
-        .map((n: string) => n[0])
-        .join('')
-        .slice(0, 2)
-        .toUpperCase();
-      const canRestoreAccess = Boolean(member.effective_until || member.status === 'removed');
-      const isMemberOwner = member.user_id === group?.owner_id;
-
-      return (
-        <View
-          style={{
-            paddingVertical: 14,
-            paddingHorizontal: 16,
-            borderBottomWidth: isLastItem ? 0 : 1,
-            borderBottomColor: '#F0F0F0',
-          }}
-        >
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            {/* Avatar */}
-            <View
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: 20,
-                backgroundColor: '#1f2330',
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginRight: 12,
-              }}
-            >
-              <Text style={{ fontSize: 14, fontWeight: '600', color: '#FFFFFF' }}>
-                {initials}
-              </Text>
-            </View>
-
-            {/* Name + email */}
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 16, fontWeight: '600', color: '#171b24' }}>
-                {member.user.name}
-                {member.user_id === user?.id ? ' (You)' : ''}
-              </Text>
-              <Text style={{ fontSize: 12, marginTop: 2, color: '#667085' }}>
-                {member.user.email}
-              </Text>
-            </View>
-
-            {/* Role chip */}
-            <View
-              style={{
-                paddingHorizontal: 10,
-                paddingVertical: 4,
-                borderRadius: 20,
-                backgroundColor: member.role === 'admin' ? '#ECFDF5' : '#F3F4F6',
-                marginRight: 8,
-              }}
-            >
-              <Text
-                style={{
-                  fontSize: 12,
-                  fontWeight: '500',
-                  color: member.role === 'admin' ? '#059669' : '#6B7280',
-                }}
-              >
-                {member.role === 'admin' ? 'Admin' : 'Member'}
-              </Text>
-            </View>
-
-            {/* Chevron */}
-            <Ionicons name="chevron-forward" size={16} color="#D1D5DB" />
-          </View>
-
-          {/* Status chip row */}
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 8, marginLeft: 52, gap: 6 }}>
-            <View
-              style={{
-                paddingHorizontal: 10,
-                paddingVertical: 4,
-                borderRadius: 20,
-                backgroundColor:
-                  member.status === 'active'
-                    ? '#ECFDF5'
-                    : member.status === 'invited'
-                      ? '#FFF7ED'
-                      : '#F3F4F6',
-              }}
-            >
-              <Text
-                style={{
-                  fontSize: 11,
-                  fontWeight: '500',
-                  color:
-                    member.status === 'active'
-                      ? '#059669'
-                      : member.status === 'invited'
-                        ? '#D97706'
-                        : '#6B7280',
-                }}
-              >
-                {member.status}
-              </Text>
-            </View>
-            {workspaceGovernance.isWorkspaceGroup && member.responsibility_label ? (
-              <View
-                style={{
-                  paddingHorizontal: 10,
-                  paddingVertical: 4,
-                  borderRadius: 20,
-                  backgroundColor: '#EEF2FF',
-                }}
-              >
-                <Text
-                  style={{
-                    fontSize: 11,
-                    fontWeight: '500',
-                    color: '#4F46E5',
-                  }}
-                >
-                  {responsibilityLabelMap.get(member.responsibility_label) ?? member.responsibility_label}
-                </Text>
-              </View>
-            ) : null}
-          </View>
-
-          {/* Monthly financial summary */}
-          {member.status === 'active' && (
-            <View
-              style={{
-                marginTop: 10,
-                marginLeft: 52,
-                borderRadius: 12,
-                paddingHorizontal: 12,
-                paddingVertical: 8,
-                backgroundColor: '#F5F5F5',
-              }}
-            >
-              {!stat || stat.totalOwed === 0 ? (
-                <Text style={{ fontSize: 12, color: '#667085' }}>
-                  No activity this month
-                </Text>
-              ) : (
-                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                    <View
-                      style={{
-                        paddingHorizontal: 8,
-                        paddingVertical: 3,
-                        borderRadius: 20,
-                        backgroundColor: '#ECFDF5',
-                      }}
-                    >
-                      <Text style={{ fontSize: 11, fontWeight: '500', color: '#059669' }}>
-                        Paid {formatCurrency(stat.totalPaid, group?.currency)}
-                      </Text>
-                    </View>
-                    {!isSettled && (
-                      <View
-                        style={{
-                          paddingHorizontal: 8,
-                          paddingVertical: 3,
-                          borderRadius: 20,
-                          backgroundColor: '#FEF2F2',
-                        }}
-                      >
-                        <Text style={{ fontSize: 11, fontWeight: '500', color: '#DC2626' }}>
-                          Owes {formatCurrency(remaining, group?.currency)}
-                        </Text>
-                      </View>
-                    )}
-                  </View>
-                  <Text
-                    style={{ fontSize: 14, fontWeight: '700', color: isSettled ? '#2d6a4f' : '#B9382F' }}
-                  >
-                    {isSettled ? 'Settled' : formatCurrency(remaining, group?.currency)}
-                  </Text>
-                </View>
-              )}
-            </View>
-          )}
-
-          {/* Admin actions */}
-          {isAdmin && member.user_id !== user?.id && (
-            <View style={{ marginTop: 10, marginLeft: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 8 }}>
-              <TouchableOpacity
-                onPress={() => handleRoleChange(member.id, roleTarget)}
-                activeOpacity={0.7}
-              >
-                <Text style={{ fontSize: 13, fontWeight: '600', color: '#2d6a4f' }}>
-                  {roleTarget === 'admin' ? 'Make admin' : 'Make member'}
-                </Text>
-              </TouchableOpacity>
-              {user?.id === group?.owner_id && member.status === 'active' && member.user_id !== group?.owner_id ? (
-                <TouchableOpacity
-                  onPress={() => {
-                    setTransferTarget({
-                      userId: member.user_id,
-                      name: member.user.name,
-                    });
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <Text style={{ fontSize: 13, fontWeight: '600', color: '#7C3AED' }}>
-                    Make owner
-                  </Text>
-                </TouchableOpacity>
-              ) : null}
-              <TouchableOpacity
-                onPress={() => openResponsibilityPicker(member)}
-                activeOpacity={0.7}
-              >
-                <Text style={{ fontSize: 13, fontWeight: '600', color: '#7C3AED' }}>
-                  Role label
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => {
-                  if (canRestoreAccess) {
-                    void handleRestoreAccess(member.id);
-                    return;
-                  }
-
-                  setDepartureTarget({
-                    memberId: member.id,
-                    memberName: member.user.name,
-                  });
-                  const defaultDate = member.effective_until
-                    ? new Date(member.effective_until)
-                    : (() => {
-                        const value = new Date();
-                        value.setDate(value.getDate() + 1);
-                        return value;
-                      })();
-                  setDepartureDate(defaultDate);
-                }}
-                activeOpacity={0.7}
-              >
-                <Text style={{ fontSize: 13, fontWeight: '600', color: '#B45309' }}>
-                  {canRestoreAccess ? 'Restore' : 'Schedule leave'}
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={{
-                  paddingHorizontal: 12,
-                  paddingVertical: 6,
-                  borderRadius: 8,
-                  backgroundColor: '#FEF2F2',
-                }}
-                onPress={() => handleRemove(member.id)}
-                activeOpacity={0.7}
-              >
-                <Text style={{ fontSize: 13, fontWeight: '600', color: '#DC2626' }}>
-                  Remove
-                </Text>
-              </TouchableOpacity>
-            </View>
-          )}
-
-          {(member.effective_until || isMemberOwner) && (
-            <View style={{ marginTop: 10, marginLeft: 52, gap: 6 }}>
-              {member.effective_until ? (
-                <Text style={{ fontSize: 12, color: '#B45309' }}>
-                  Scheduled until {formatDate(member.effective_until)}
-                </Text>
-              ) : null}
-              {isMemberOwner ? (
-                <Text style={{ fontSize: 12, color: '#B9382F' }}>
-                  Owner handover required before this member can leave.
-                </Text>
-              ) : null}
-            </View>
-          )}
-        </View>
-      );
+  const handleRowPress = useCallback(
+    (userId: string) => {
+      if (!activeGroupId) return;
+      hapticMedium();
+      router.push({
+        pathname: '/member-profile',
+        params: { userId, groupId: activeGroupId },
+      });
     },
-    [
-      user,
-      isAdmin,
-      memberStats,
-      group?.currency,
-      group?.owner_id,
-      filteredMembers.length,
-      handleRemove,
-      handleRoleChange,
-      handleRestoreAccess,
-      openResponsibilityPicker,
-      responsibilityLabelMap,
-      workspaceGovernance.isWorkspaceGroup,
-    ],
+    [activeGroupId, router],
   );
 
-  /* -- early returns ------------------------------------------------------- */
+  const handleSelectGroup = useCallback(
+    (groupId: string) => {
+      hapticMedium();
+      setActiveGroupId(groupId);
+      setGroupSwitcherOpen(false);
+    },
+    [setActiveGroupId],
+  );
+
+  /* -- early states ------------------------------------------------------ */
 
   if (!activeGroupId) {
     return (
-      <EmptyStateCard
-        icon="people-outline"
-        title="Choose a group first"
-        description="Pick a group from the dashboard before managing members."
-        actionLabel="Open onboarding"
-        onAction={() => router.push('/onboarding')}
-      />
+      <Screen>
+        <Stack.Screen options={{ headerShown: false }} />
+        <Header
+          topInset={insets.top}
+          title="Members"
+          onBack={() => router.replace('/(tabs)')}
+        />
+        <EmptyState
+          icon={IconUsers}
+          title="Choose a group first"
+          description="Pick a group from the dashboard before managing members."
+          actionLabel="Open onboarding"
+          onAction={() => router.push('/onboarding')}
+        />
+      </Screen>
     );
   }
 
   if (groupError) {
     return (
-      <EmptyStateCard
-        icon="cloud-offline-outline"
-        title="Members unavailable"
-        description={getErrorMessage(groupError, 'Could not load the member list right now.')}
-        actionLabel="Try again"
-        onAction={() => {
-          void refetchGroup();
-        }}
-      />
+      <Screen>
+        <Stack.Screen options={{ headerShown: false }} />
+        <Header topInset={insets.top} title="Members" onBack={() => router.back()} />
+        <EmptyState
+          icon={IconCloudOff}
+          title="Members unavailable"
+          description={getErrorMessage(groupError, 'Could not load the member list right now.')}
+          actionLabel="Try again"
+          onAction={() => {
+            void refetchGroup();
+          }}
+        />
+      </Screen>
     );
   }
 
   if (isLoading || !group) {
-    return <MembersShimmer />;
+    return (
+      <Screen>
+        <Stack.Screen options={{ headerShown: false }} />
+        <Header topInset={insets.top} title="Members" onBack={() => router.back()} />
+      </Screen>
+    );
   }
 
-  /* -- header -------------------------------------------------------------- */
+  /* -- render ------------------------------------------------------------ */
 
-  const ListHeader = (
-      <View style={{ paddingHorizontal: 20, paddingTop: 20 }}>
-      <GroupSwitcher
-        groups={groups}
-        activeGroupId={activeGroupId}
-        pendingInvites={pendingInvites?.length ?? 0}
-        onSelect={setActiveGroupId}
-        onOpenSetup={() => router.push('/onboarding')}
+  const showAdmins =
+    filter !== 'pending' && filter !== 'past' && adminMembers.length > 0;
+  const showMembers =
+    filter !== 'pending' && filter !== 'past' && regularMembers.length > 0;
+  const showPending = (filter === 'all' || filter === 'pending') && pendingMembers.length > 0;
+  const showPast = filter === 'past' && pastMembers.length > 0;
+  const showPendingEmpty = filter === 'pending' && pendingMembers.length === 0;
+  const showPastEmpty = filter === 'past' && pastMembers.length === 0;
+
+  const segmentOptions: Array<{ value: Filter; label: string }> = [
+    { value: 'all', label: `All · ${allCount}` },
+    { value: 'active', label: `Active · ${activeCount}` },
+    { value: 'pending', label: `Pending · ${pendingCount}` },
+  ];
+  if (pastCount > 0 || filter === 'past') {
+    segmentOptions.push({ value: 'past', label: `Past · ${pastCount}` });
+  }
+
+  return (
+    <Screen>
+      <Stack.Screen options={{ headerShown: false }} />
+      <Header
+        topInset={insets.top}
+        title="Members"
+        groupName={group.name}
+        showSwitcher={groups.length > 1}
+        onSwitcher={() => {
+          hapticMedium();
+          setGroupSwitcherOpen(true);
+        }}
+        onBack={() => {
+          hapticMedium();
+          if (router.canGoBack()) router.back();
+          else router.replace('/(tabs)');
+        }}
+        onInvite={isAdmin ? openInvite : undefined}
       />
 
-      {/* Header */}
-      <View style={{ marginBottom: 20, marginTop: 8 }}>
-        <Text style={{ fontSize: 24, fontWeight: '700', color: '#171b24' }}>
-          Members
-        </Text>
-        <Text style={{ marginTop: 4, fontSize: 14, color: '#667085' }}>
-          Manage who belongs to this group and who can administer it.
-        </Text>
-        <View style={{ marginTop: 8, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <View
-            style={{
-              paddingHorizontal: 10,
-              paddingVertical: 4,
-              borderRadius: 20,
-              backgroundColor: '#F3F4F6',
-            }}
-          >
-            <Text style={{ fontSize: 12, fontWeight: '500', color: '#6B7280' }}>
-              {totalMembers} people
-            </Text>
+      <ScrollView
+        style={{ flex: 1, backgroundColor: colors.bgBase }}
+        contentContainerStyle={{
+          paddingHorizontal: space.base,
+          paddingTop: space.xs,
+          paddingBottom: 120,
+        }}
+        showsVerticalScrollIndicator={false}
+      >
+        {lifecycleNeedsAttention && lifecycle ? (
+          <LifecycleCard
+            scheduledDepartures={lifecycle.scheduled_departures.length}
+            joiners={lifecycle.joiners_this_cycle.length}
+            ownerTransitionRequired={lifecycle.owner_transition_required}
+            checklistDone={completedChecklistCount}
+            checklistTotal={totalChecklistCount}
+            onOpenSetup={
+              totalChecklistCount > 0 && !checklistComplete
+                ? () => {
+                    hapticMedium();
+                    router.push('/group-edit');
+                  }
+                : undefined
+            }
+          />
+        ) : null}
+
+        <SegmentedControl<Filter>
+          value={filter}
+          onChange={setFilter}
+          options={segmentOptions}
+        />
+
+        {showAdmins ? (
+          <>
+            <SectionLabel>Admins</SectionLabel>
+            <Group>
+              {adminMembers.map((m, idx) => {
+                const isSelf = m.user_id === user?.id;
+                const memberIsOwner = m.user_id === ownerId;
+                const isLast = idx === adminMembers.length - 1;
+                const responsibilityName = m.responsibility_label
+                  ? responsibilityLabelMap.get(m.responsibility_label) ?? m.responsibility_label
+                  : null;
+                const baseSub = memberIsOwner
+                  ? `Owner · since ${formatDate(m.joined_at)}`
+                  : `Admin · joined ${formatDate(m.joined_at)}`;
+                const sub = responsibilityName
+                  ? `${memberIsOwner ? 'Owner' : 'Admin'} · ${responsibilityName} · joined ${formatDate(m.joined_at)}`
+                  : baseSub;
+                return (
+                  <MemberRow
+                    key={m.id}
+                    seed={m.user_id}
+                    name={m.user.name}
+                    isSelf={isSelf}
+                    sub={sub}
+                    statsLine={statsLineFor(m.user_id, memberStats, group.currency)}
+                    scheduledUntil={m.effective_until}
+                    tag={memberIsOwner ? 'Owner' : 'Admin'}
+                    showKebab={!isSelf && isAdmin}
+                    isLast={isLast}
+                    onPress={isSelf ? undefined : () => handleRowPress(m.user_id)}
+                    onKebab={
+                      !isSelf && isAdmin
+                        ? () =>
+                            setSheetTarget({
+                              kind: 'active',
+                              memberId: m.id,
+                              userId: m.user_id,
+                              name: m.user.name,
+                              role: 'admin',
+                              responsibilityLabel: m.responsibility_label,
+                              scheduledUntil: m.effective_until,
+                            })
+                        : undefined
+                    }
+                  />
+                );
+              })}
+            </Group>
+          </>
+        ) : null}
+
+        {showMembers ? (
+          <>
+            <SectionLabel>Members</SectionLabel>
+            <Group>
+              {regularMembers.map((m, idx) => {
+                const isSelf = m.user_id === user?.id;
+                const isLast = idx === regularMembers.length - 1;
+                const responsibilityName = m.responsibility_label
+                  ? responsibilityLabelMap.get(m.responsibility_label) ?? m.responsibility_label
+                  : null;
+                const sub = responsibilityName
+                  ? `Member · ${responsibilityName} · joined ${formatDate(m.joined_at)}`
+                  : `Member · joined ${formatDate(m.joined_at)}`;
+                return (
+                  <MemberRow
+                    key={m.id}
+                    seed={m.user_id}
+                    name={m.user.name}
+                    isSelf={isSelf}
+                    sub={sub}
+                    statsLine={statsLineFor(m.user_id, memberStats, group.currency)}
+                    scheduledUntil={m.effective_until}
+                    showKebab={isAdmin && !isSelf}
+                    isLast={isLast}
+                    onPress={isSelf ? undefined : () => handleRowPress(m.user_id)}
+                    onKebab={
+                      isAdmin && !isSelf
+                        ? () =>
+                            setSheetTarget({
+                              kind: 'active',
+                              memberId: m.id,
+                              userId: m.user_id,
+                              name: m.user.name,
+                              role: 'member',
+                              responsibilityLabel: m.responsibility_label,
+                              scheduledUntil: m.effective_until,
+                            })
+                        : undefined
+                    }
+                  />
+                );
+              })}
+            </Group>
+          </>
+        ) : null}
+
+        {showPending ? (
+          <>
+            <SectionLabel>Pending invites</SectionLabel>
+            <Group>
+              {pendingMembers.map((m, idx) => {
+                const isLast = idx === pendingMembers.length - 1;
+                const email = m.user.email;
+                const sentDate = m.joined_at;
+                return (
+                  <PendingRow
+                    key={m.id}
+                    email={email}
+                    sentAt={sentDate}
+                    isLast={isLast}
+                    showKebab={isAdmin}
+                    onKebab={
+                      isAdmin
+                        ? () =>
+                            setSheetTarget({
+                              kind: 'pending',
+                              memberId: m.id,
+                              email,
+                            })
+                        : undefined
+                    }
+                  />
+                );
+              })}
+            </Group>
+          </>
+        ) : null}
+
+        {showPast ? (
+          <>
+            <SectionLabel>Past members</SectionLabel>
+            <Group>
+              {pastMembers.map((m, idx) => {
+                const isLast = idx === pastMembers.length - 1;
+                const sub = m.effective_until
+                  ? `Removed ${formatDate(m.effective_until)}`
+                  : 'No longer in group';
+                return (
+                  <PastRow
+                    key={m.id}
+                    seed={m.user_id}
+                    name={m.user.name}
+                    sub={sub}
+                    isLast={isLast}
+                    canRestore={isAdmin}
+                    isPending={restoreAccess.isPending}
+                    onRestore={
+                      isAdmin
+                        ? () => {
+                            void handleRestoreAccess(m.id);
+                          }
+                        : undefined
+                    }
+                    onKebab={
+                      isAdmin
+                        ? () =>
+                            setSheetTarget({
+                              kind: 'past',
+                              memberId: m.id,
+                              name: m.user.name,
+                            })
+                        : undefined
+                    }
+                  />
+                );
+              })}
+            </Group>
+          </>
+        ) : null}
+
+        {showPendingEmpty ? (
+          <EmptyState
+            icon={IconMailOpened}
+            title="No pending invites"
+            description="Invite people from the top to get them on board."
+          />
+        ) : null}
+
+        {showPastEmpty ? (
+          <EmptyState
+            icon={IconUsers}
+            title="No past members"
+            description="Anyone who has left the group will show up here."
+          />
+        ) : null}
+
+        {/* Leave-group affordance for non-admin / non-owner members. */}
+        {canLeave ? (
+          <View style={{ marginTop: space.lg }}>
+            <Group>
+              <Pressable
+                onPress={handleLeaveGroup}
+                accessibilityRole="button"
+                accessibilityLabel="Leave group"
+                style={({ pressed }) => ({
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: space.md,
+                  paddingVertical: space.md,
+                  paddingHorizontal: space.md + 2,
+                  opacity: pressed ? 0.7 : 1,
+                })}
+              >
+                <View
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: radius.chip + 2,
+                    backgroundColor: colors.dangerBg,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <IconLogout size={18} color={colors.dangerText} strokeWidth={2} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 14, fontWeight: '700', color: colors.dangerText }}>
+                    Leave {group.name}
+                  </Text>
+                  <Text style={{ fontSize: 11.5, color: colors.textTertiary, marginTop: 1 }}>
+                    You'll lose access to expenses and chores.
+                  </Text>
+                </View>
+              </Pressable>
+            </Group>
           </View>
-          <Text style={{ fontSize: 12, color: '#98a1b0' }}>
-            {group.name} · {group.currency}
-          </Text>
-        </View>
-      </View>
+        ) : null}
+      </ScrollView>
 
-      {/* Stats grid */}
-      <View style={{ flexDirection: 'row', marginBottom: 8 }}>
-        <StatItem
-          icon="people-outline"
-          label="Total"
-          value={String(totalMembers)}
-          note="People in this group"
-          color="#2d6a4f"
-        />
-        <StatItem
-          icon="checkmark-done-outline"
-          label="Active"
-          value={String(activeCount)}
-          note="Participating now"
-          color="#166534"
-        />
-      </View>
-      <View style={{ flexDirection: 'row', marginBottom: 16 }}>
-        <StatItem
-          icon="shield-checkmark-outline"
-          label="Admins"
-          value={String(adminCount)}
-          note="Can manage group"
-          color="#0284C7"
-        />
-        <StatItem
-          icon="mail-unread-outline"
-          label="Invited"
-          value={String(invitedCount)}
-          note="Waiting to join"
-          color="#D97706"
-        />
-      </View>
-
-      {lifecycle && (
-        <View style={{ flexDirection: 'row', marginBottom: 16 }}>
-          <StatItem
-            icon="person-add-outline"
-            label="Joiners"
-            value={String(lifecycle.joiners_this_cycle.length)}
-            note="This cycle"
-            color="#7C3AED"
-          />
-          <StatItem
-            icon="exit-outline"
-            label="Leaving"
-            value={String(lifecycle.scheduled_departures.length)}
-            note="Scheduled departures"
-            color="#B45309"
-          />
-        </View>
-      )}
-
-      {lifecycle && (
+      {/* Pinned CTA */}
+      {isAdmin ? (
         <View
           style={{
-            backgroundColor: '#FFFFFF',
-            borderRadius: 16,
-            padding: 20,
-            marginBottom: 16,
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.06,
-            shadowRadius: 12,
-            elevation: 3,
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            bottom: 0,
+            paddingHorizontal: space.base,
+            paddingTop: space.md,
+            paddingBottom: Math.max(insets.bottom, space.lg),
+            backgroundColor: colors.bgBase,
+            borderTopWidth: 1,
+            borderTopColor: colors.border,
           }}
         >
-          <Text style={{ fontSize: 18, fontWeight: '600', color: '#171b24' }}>
-            Handover checklist
-          </Text>
-          <Text style={{ marginTop: 4, fontSize: 14, color: '#667085' }}>
-            Use setup progress and cycle close before key admins or owners leave.
-          </Text>
-
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 14 }}>
-            <View
-              style={{
-                paddingHorizontal: 10,
-                paddingVertical: 4,
-                borderRadius: 16,
-                backgroundColor: '#F3F4F6',
-              }}
-            >
-              <Text style={{ fontSize: 12, fontWeight: '500', color: '#6B7280' }}>
-                {completedChecklistCount}/{totalChecklistCount} setup complete
-              </Text>
-            </View>
-            <View
-              style={{
-                paddingHorizontal: 10,
-                paddingVertical: 4,
-                borderRadius: 16,
-                backgroundColor: lifecycle.owner_transition_required ? '#FEF2F2' : '#ECFDF5',
-              }}
-            >
-              <Text
-                style={{
-                  fontSize: 12,
-                  fontWeight: '500',
-                  color: lifecycle.owner_transition_required ? '#DC2626' : '#059669',
-                }}
-              >
-                {lifecycle.owner_transition_required ? 'Owner transition needed' : 'Owner covered'}
-              </Text>
-            </View>
-          </View>
-
-          {incompleteChecklistItems.slice(0, 3).map((item) => (
-            <Text key={item.id} style={{ marginTop: 10, fontSize: 13, color: '#667085' }}>
-              • {item.label}
-            </Text>
-          ))}
-
-          <View style={{ flexDirection: 'row', gap: 16, marginTop: 16 }}>
-            <TouchableOpacity
-              onPress={() => {
-                hapticMedium();
-                router.push('/group-edit');
-              }}
-              activeOpacity={0.7}
-            >
-              <Text style={{ fontSize: 13, fontWeight: '600', color: '#2d6a4f' }}>
-                Open setup checklist
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => {
-                hapticMedium();
-                router.push('/group-close');
-              }}
-              activeOpacity={0.7}
-            >
-              <Text style={{ fontSize: 13, fontWeight: '600', color: '#2d6a4f' }}>
-                Open cycle close
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => {
-                hapticMedium();
-                router.push('/operations');
-              }}
-              activeOpacity={0.7}
-            >
-              <Text style={{ fontSize: 13, fontWeight: '600', color: '#2d6a4f' }}>
-                Open operations
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      )}
-
-      {group?.type === 'workspace' ? (
-        <View
-          style={{
-            backgroundColor: '#FFFFFF',
-            borderRadius: 16,
-            padding: 20,
-            marginBottom: 16,
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.06,
-            shadowRadius: 12,
-            elevation: 3,
-          }}
-        >
-          <Text style={{ fontSize: 18, fontWeight: '600', color: '#171b24' }}>
-            Workspace responsibilities
-          </Text>
-          <Text style={{ marginTop: 4, fontSize: 14, lineHeight: 20, color: '#667085' }}>
-            Keep the approval chain and role labels visible so the group knows who handles what.
-          </Text>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 14 }}>
-            <View
-              style={{
-                paddingHorizontal: 10,
-                paddingVertical: 4,
-                borderRadius: 16,
-                backgroundColor: canApproveWorkspaceSpend ? '#ECFDF5' : '#F3F4F6',
-              }}
-            >
-              <Text
-                style={{
-                  fontSize: 12,
-                  fontWeight: '500',
-                  color: canApproveWorkspaceSpend ? '#059669' : '#6B7280',
-                }}
-              >
-                {canApproveWorkspaceSpend ? 'You can approve' : 'Policy preview'}
-              </Text>
-            </View>
-          </View>
-
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
-            {workspaceResponsibilityPresets.map((preset) => (
-              <View
-                key={preset.label}
-                style={{
-                  paddingHorizontal: 12,
-                  paddingVertical: 8,
-                  borderRadius: 18,
-                  backgroundColor: '#F3F4F6',
-                }}
-              >
-                <Text style={{ fontSize: 13, fontWeight: '600', color: '#374151' }}>
-                  {preset.label}
-                </Text>
-              </View>
-            ))}
-          </View>
-
-          <View
+          <TouchableOpacity
+            activeOpacity={0.85}
+            onPress={openInvite}
             style={{
-              marginTop: 14,
-              borderRadius: 14,
-              backgroundColor: '#F9FAFB',
-              padding: 14,
+              height: 52,
+              borderRadius: radius.button - 2,
+              backgroundColor: colors.bgInk,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: space.sm,
             }}
           >
-            <Text style={{ fontSize: 13, fontWeight: '600', color: '#171b24', marginBottom: 8 }}>
-              Approval chain
+            <IconPlus size={18} color={colors.textInverse} strokeWidth={2.2} />
+            <Text style={{ fontSize: 15, fontWeight: '700', color: colors.textInverse }}>
+              Invite people
             </Text>
-            <Text style={{ fontSize: 12, lineHeight: 18, color: '#667085' }}>
-              {workspaceGovernance.approvalSummary}
-            </Text>
-            {workspaceResponsibilityPresets.map((preset) => (
-              <Text
-                key={preset.label}
-                style={{ fontSize: 12, lineHeight: 18, color: '#667085', marginTop: 6 }}
-              >
-                {preset.label}: {preset.description}
-              </Text>
-            ))}
-          </View>
+          </TouchableOpacity>
         </View>
       ) : null}
 
-      {transferTarget && (
-        <View
-          style={{
-            backgroundColor: '#F5F3FF',
-            borderRadius: 16,
-            padding: 20,
-            marginBottom: 16,
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.06,
-            shadowRadius: 12,
-            elevation: 3,
-          }}
-        >
-          <Text style={{ fontSize: 18, fontWeight: '600', color: '#5B21B6' }}>
-            Transfer ownership
-          </Text>
-          <Text style={{ marginTop: 4, fontSize: 14, lineHeight: 22, color: '#6D28D9' }}>
-            Transfer ownership of {group.name} to {transferTarget.name}. You will become a regular member.
-          </Text>
-          <View style={{ flexDirection: 'row', gap: 12, marginTop: 16 }}>
-            <TouchableOpacity
-              style={{
-                flex: 1,
-                backgroundColor: '#FFFFFF',
-                height: 48,
-                borderRadius: 14,
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-              onPress={() => setTransferTarget(null)}
-              activeOpacity={0.7}
-            >
-              <Text style={{ fontSize: 15, fontWeight: '600', color: '#374151' }}>
-                Cancel
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={{
-                flex: 1,
-                backgroundColor: '#7C3AED',
-                height: 48,
-                borderRadius: 14,
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-              onPress={() => {
-                void handleTransferOwnership();
-              }}
-              activeOpacity={0.8}
-            >
-              <Text style={{ fontSize: 15, fontWeight: '600', color: '#FFFFFF' }}>
-                Transfer
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      )}
-
-      {departureTarget && (
-        <View
-          style={{
-            backgroundColor: '#FFF7ED',
-            borderRadius: 16,
-            padding: 20,
-            marginBottom: 16,
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.06,
-            shadowRadius: 12,
-            elevation: 3,
-          }}
-        >
-          <Text style={{ fontSize: 18, fontWeight: '600', color: '#9A3412' }}>
-            Schedule departure
-          </Text>
-          <Text style={{ marginTop: 4, fontSize: 14, lineHeight: 22, color: '#9A3412' }}>
-            Set when {departureTarget.memberName} should stop participating in this shared space.
-          </Text>
-
-          <DateField
-            label="Effective until"
-            value={departureDate}
-            onChange={setDepartureDate}
-            hint="Proration and handover warnings use this date."
-            minimumDate={new Date()}
-          />
-
-          {(departureTargetIsOwner || departureTargetIsLastAdmin || incompleteChecklistItems.length > 0) && (
-            <View style={{ marginBottom: 14, gap: 8 }}>
-              {departureTargetIsOwner ? (
-                <Text style={{ fontSize: 13, color: '#9A3412' }}>
-                  • Transfer ownership before scheduling the owner to leave.
-                </Text>
-              ) : null}
-              {departureTargetIsLastAdmin ? (
-                <Text style={{ fontSize: 13, color: '#9A3412' }}>
-                  • Promote another admin before scheduling this departure.
-                </Text>
-              ) : null}
-              {incompleteChecklistItems.length > 0 ? (
-                <Text style={{ fontSize: 13, color: '#9A3412' }}>
-                  • Setup checklist is still incomplete for this group.
-                </Text>
-              ) : null}
-            </View>
-          )}
-
-          <View style={{ flexDirection: 'row', gap: 12 }}>
-            <TouchableOpacity
-              style={{
-                flex: 1,
-                backgroundColor: '#FFFFFF',
-                height: 48,
-                borderRadius: 14,
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-              onPress={() => setDepartureTarget(null)}
-              activeOpacity={0.7}
-            >
-              <Text style={{ fontSize: 15, fontWeight: '600', color: '#374151' }}>
-                Cancel
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={{
-                flex: 1,
-                backgroundColor: '#B45309',
-                height: 48,
-                borderRadius: 14,
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-              onPress={() => {
-                void handleScheduleDeparture();
-              }}
-              activeOpacity={0.8}
-            >
-              <Text style={{ fontSize: 15, fontWeight: '600', color: '#FFFFFF' }}>
-                Save departure
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      )}
-
-      <View
-        style={{
-          backgroundColor: '#FFFFFF',
-          borderRadius: 16,
-          padding: 20,
-          marginBottom: 16,
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.06,
-          shadowRadius: 12,
-          elevation: 3,
+      {/* Invite bottom sheet */}
+      <BottomSheet
+        visible={inviteOpen}
+        onClose={() => {
+          setInviteOpen(false);
+          setInviteEmail('');
         }}
+        title="Invite someone"
+        subtitle="Invite housemates or teammates by email."
       >
-        <Text style={{ fontSize: 18, fontWeight: '600', color: '#171b24' }}>
-          Ownership and exit
-        </Text>
-        <Text style={{ marginTop: 4, fontSize: 14, color: '#667085' }}>
-          Keep ownership and admin coverage explicit before anyone leaves.
-        </Text>
-
-        {isOwner ? (
-          <Text style={{ marginTop: 12, fontSize: 13, lineHeight: 20, color: '#B9382F' }}>
-            You own this group. Transfer ownership before leaving.
-          </Text>
+        {!canInviteMember ? (
+          <View
+            style={{
+              backgroundColor: colors.warnBg,
+              borderRadius: radius.chip,
+              paddingHorizontal: space.md,
+              paddingVertical: space.sm + 2,
+              marginVertical: space.sm,
+            }}
+          >
+            <Text style={[font.caption, { color: colors.warnText }]}>
+              You've reached the member limit ({currentMembers}/
+              {memberLimit === Infinity ? 'unlimited' : memberLimit}). Upgrade to invite more.
+            </Text>
+          </View>
         ) : null}
-        {isAdmin && adminCount <= 1 ? (
-          <Text style={{ marginTop: 12, fontSize: 13, lineHeight: 20, color: '#B45309' }}>
-            You are the only admin. Promote another admin before leaving.
+        <Text
+          style={[
+            font.label,
+            { color: colors.textTertiary, marginTop: space.sm, marginBottom: space.xs },
+          ]}
+        >
+          Email
+        </Text>
+        <TextInput
+          autoCapitalize="none"
+          autoCorrect={false}
+          keyboardType="email-address"
+          placeholder="member@example.com"
+          placeholderTextColor={colors.textMuted}
+          value={inviteEmail}
+          onChangeText={setInviteEmail}
+          style={{
+            backgroundColor: colors.bgSubtle,
+            borderRadius: radius.chip + 4,
+            height: 48,
+            paddingHorizontal: space.md,
+            fontSize: 15,
+            color: colors.textPrimary,
+            marginBottom: space.md,
+          }}
+        />
+        <TouchableOpacity
+          activeOpacity={0.85}
+          onPress={handleSendInvite}
+          disabled={!canInviteMember || inviteMember.isPending}
+          style={{
+            height: 48,
+            borderRadius: radius.button - 2,
+            backgroundColor: colors.bgInk,
+            alignItems: 'center',
+            justifyContent: 'center',
+            opacity: !canInviteMember || inviteMember.isPending ? 0.5 : 1,
+            flexDirection: 'row',
+            gap: space.sm,
+          }}
+        >
+          <IconMail size={16} color={colors.textInverse} strokeWidth={2} />
+          <Text style={{ fontSize: 15, fontWeight: '700', color: colors.textInverse }}>
+            {inviteMember.isPending ? 'Sending…' : 'Send invite'}
           </Text>
-        ) : null}
+        </TouchableOpacity>
+      </BottomSheet>
 
-        <View style={{ flexDirection: 'row', gap: 12, marginTop: 16 }}>
-          {isOwner ? (
-            <View
+      {/* Group switcher bottom sheet */}
+      <BottomSheet
+        visible={groupSwitcherOpen}
+        onClose={() => setGroupSwitcherOpen(false)}
+        title="Switch group"
+        subtitle="Pick the shared space you want to manage."
+      >
+        {groups.map((g, idx) => {
+          const isCurrent = g.id === activeGroupId;
+          const isLast = idx === groups.length - 1;
+          return (
+            <SheetRow
+              key={g.id}
+              icon={isCurrent ? IconCircleCheck : IconArrowsLeftRight}
+              iconColor={isCurrent ? colors.sageInk : colors.textTertiary}
+              iconBg={isCurrent ? colors.sageSoft : colors.bgSubtle}
+              title={g.name}
+              subtitle={`${g.type} · ${g.currency}${
+                pendingInvitesQuery && pendingInvitesQuery.some((inv) => inv.group_id === g.id)
+                  ? ' · invite pending'
+                  : ''
+              }`}
+              isLast={isLast}
+              onPress={isCurrent ? undefined : () => handleSelectGroup(g.id)}
+            />
+          );
+        })}
+      </BottomSheet>
+
+      {/* Responsibility picker bottom sheet */}
+      <BottomSheet
+        visible={responsibilityTarget !== null}
+        onClose={() => setResponsibilityTarget(null)}
+        title={responsibilityTarget ? `Responsibility · ${responsibilityTarget.name}` : undefined}
+        subtitle="Surfaces who handles what for the group."
+      >
+        {responsibilityTarget ? (
+          <>
+            {responsibilityPresets.length === 0 ? (
+              <View style={{ paddingVertical: space.md }}>
+                <Text style={[font.caption, { color: colors.textTertiary }]}>
+                  No responsibility presets are configured for this group type yet.
+                </Text>
+              </View>
+            ) : null}
+            {responsibilityPresets.map((preset, idx) => {
+              const presetLabel = preset.responsibility_label as string;
+              const isCurrent = responsibilityTarget.current === presetLabel;
+              const isLast =
+                idx === responsibilityPresets.length - 1 && !responsibilityTarget.current;
+              return (
+                <SheetRow
+                  key={presetLabel}
+                  icon={isCurrent ? IconCircleCheck : IconBriefcase}
+                  iconColor={isCurrent ? colors.sageInk : colors.textTertiary}
+                  iconBg={isCurrent ? colors.sageSoft : colors.bgSubtle}
+                  title={preset.label}
+                  subtitle={preset.description ?? undefined}
+                  isLast={isLast}
+                  onPress={() => {
+                    const target = responsibilityTarget;
+                    setResponsibilityTarget(null);
+                    void handleResponsibilityChange(target.memberId, presetLabel);
+                  }}
+                />
+              );
+            })}
+            {responsibilityTarget.current ? (
+              <SheetRow
+                icon={IconTrash}
+                title="Clear responsibility"
+                subtitle="Remove the current label"
+                destructive
+                isLast
+                onPress={() => {
+                  const target = responsibilityTarget;
+                  setResponsibilityTarget(null);
+                  void handleResponsibilityChange(target.memberId, null);
+                }}
+              />
+            ) : null}
+          </>
+        ) : null}
+      </BottomSheet>
+
+      {/* Schedule departure sheet */}
+      <BottomSheet
+        visible={departureTarget !== null}
+        onClose={() => setDepartureTarget(null)}
+        title={departureTarget ? `Schedule ${departureTarget.name}'s departure` : undefined}
+        subtitle="They keep access until this date, then are removed."
+      >
+        {departureTarget ? (
+          <View style={{ paddingTop: space.sm }}>
+            <DateField
+              label="Effective until"
+              value={departureDate}
+              onChange={setDepartureDate}
+              hint="Proration and handover warnings use this date."
+              minimumDate={new Date()}
+            />
+            <TouchableOpacity
+              activeOpacity={0.85}
+              onPress={handleScheduleDeparture}
+              disabled={scheduleDeparture.isPending}
               style={{
-                flex: 1,
-                backgroundColor: '#F5F3FF',
                 height: 48,
-                borderRadius: 14,
+                borderRadius: radius.button - 2,
+                backgroundColor: colors.bgInk,
                 alignItems: 'center',
                 justifyContent: 'center',
+                flexDirection: 'row',
+                gap: space.sm,
+                opacity: scheduleDeparture.isPending ? 0.5 : 1,
               }}
             >
-              <Text style={{ fontSize: 15, fontWeight: '600', color: '#7C3AED' }}>
-                Choose a new owner below
+              <IconCalendarTime size={16} color={colors.textInverse} strokeWidth={2} />
+              <Text style={{ fontSize: 15, fontWeight: '700', color: colors.textInverse }}>
+                {scheduleDeparture.isPending ? 'Saving…' : 'Save departure'}
               </Text>
-            </View>
-          ) : (
-            <TouchableOpacity
-              style={{
-                flex: 1,
-                backgroundColor: canLeave ? '#FEF2F2' : '#F3F4F6',
-                height: 48,
-                borderRadius: 14,
-                alignItems: 'center',
-                justifyContent: 'center',
-                opacity: canLeave ? 1 : 0.6,
-              }}
-              onPress={() => {
-                if (!canLeave) {
-                  return;
+            </TouchableOpacity>
+          </View>
+        ) : null}
+      </BottomSheet>
+
+      {/* Admin kebab sheet */}
+      <BottomSheet
+        visible={sheetTarget !== null}
+        onClose={closeSheet}
+        title={
+          sheetTarget?.kind === 'pending'
+            ? sheetTarget.email
+            : sheetTarget?.kind === 'active'
+              ? sheetTarget.name
+              : sheetTarget?.kind === 'past'
+                ? sheetTarget.name
+                : undefined
+        }
+        subtitle={
+          sheetTarget?.kind === 'pending'
+            ? 'Pending invite'
+            : sheetTarget?.kind === 'active'
+              ? sheetTarget.role === 'admin'
+                ? 'Admin'
+                : 'Member'
+              : sheetTarget?.kind === 'past'
+                ? 'Past member'
+                : undefined
+        }
+      >
+        {sheetTarget?.kind === 'active' ? (
+          <>
+            {sheetTarget.role === 'admin' ? (
+              <SheetRow
+                icon={IconShield}
+                title="Revoke admin"
+                subtitle="Will become a regular member"
+                onPress={() => {
+                  closeSheet();
+                  void handleRoleChange(sheetTarget.memberId, 'member');
+                }}
+              />
+            ) : (
+              <SheetRow
+                icon={IconShieldCheck}
+                title="Make admin"
+                subtitle="Can invite and manage the group"
+                onPress={() => {
+                  closeSheet();
+                  void handleRoleChange(sheetTarget.memberId, 'admin');
+                }}
+              />
+            )}
+
+            {isOwner && sheetTarget.role === 'admin' && sheetTarget.userId !== ownerId ? (
+              <SheetRow
+                icon={IconCrown}
+                iconColor={colors.warnText}
+                iconBg={colors.warnBg}
+                title="Transfer ownership"
+                subtitle="You stay as admin"
+                onPress={() => {
+                  closeSheet();
+                  handleTransferOwnership(sheetTarget.userId, sheetTarget.name);
+                }}
+              />
+            ) : null}
+
+            {responsibilityPresets.length > 0 ? (
+              <SheetRow
+                icon={IconTag}
+                title="Edit responsibility"
+                subtitle={
+                  sheetTarget.responsibilityLabel
+                    ? `Current: ${responsibilityLabelMap.get(sheetTarget.responsibilityLabel) ?? sheetTarget.responsibilityLabel}`
+                    : 'Add a Bills lead, Chores lead, etc.'
                 }
-                Alert.alert(
-                  'Leave group',
-                  `Are you sure you want to leave ${group.name}? You'll lose access to its history and balances.`,
-                  [
-                    { text: 'Cancel', style: 'cancel' },
-                    {
-                      text: 'Leave group',
-                      style: 'destructive',
-                      onPress: () => {
-                        void handleLeaveGroup();
-                      },
-                    },
-                  ],
+                onPress={() => {
+                  const target = sheetTarget;
+                  closeSheet();
+                  setResponsibilityTarget({
+                    memberId: target.memberId,
+                    name: target.name,
+                    current: target.responsibilityLabel,
+                  });
+                }}
+              />
+            ) : null}
+
+            <SheetRow
+              icon={IconArrowsLeftRight}
+              title="Open profile"
+              subtitle="Balance, expenses, chores"
+              onPress={() => {
+                closeSheet();
+                handleRowPress(sheetTarget.userId);
+              }}
+            />
+
+            <SheetRow
+              icon={IconCalendarTime}
+              title={sheetTarget.scheduledUntil ? 'Update scheduled departure' : 'Schedule departure'}
+              subtitle={
+                sheetTarget.scheduledUntil
+                  ? `Currently ${formatDate(sheetTarget.scheduledUntil)}`
+                  : 'Set a future date when access ends'
+              }
+              onPress={() => {
+                const target = sheetTarget;
+                closeSheet();
+                setDepartureTarget({
+                  memberId: target.memberId,
+                  name: target.name,
+                });
+                setDepartureDate(
+                  target.scheduledUntil
+                    ? new Date(target.scheduledUntil)
+                    : (() => {
+                        const next = new Date();
+                        next.setDate(next.getDate() + 1);
+                        return next;
+                      })(),
                 );
               }}
-              disabled={!canLeave}
-              activeOpacity={0.7}
+            />
+
+            <SheetRow
+              icon={IconTrash}
+              title="Remove from group"
+              subtitle="Settles balance, removes access"
+              destructive
+              isLast
+              onPress={() => {
+                closeSheet();
+                handleRemove(sheetTarget.memberId, sheetTarget.name);
+              }}
+            />
+          </>
+        ) : sheetTarget?.kind === 'pending' ? (
+          <>
+            <SheetRow
+              icon={IconRefresh}
+              title="Resend invite"
+              subtitle="Sends a fresh email link"
+              onPress={() => {
+                const email = sheetTarget.email;
+                closeSheet();
+                void handleResendInvite(email);
+              }}
+            />
+            <SheetRow
+              icon={IconTrash}
+              title="Cancel invite"
+              subtitle="Existing link stops working"
+              destructive
+              isLast
+              onPress={() => {
+                const memberId = sheetTarget.memberId;
+                const email = sheetTarget.email;
+                closeSheet();
+                handleCancelInvite(memberId, email);
+              }}
+            />
+          </>
+        ) : sheetTarget?.kind === 'past' ? (
+          <>
+            <SheetRow
+              icon={IconRotateClockwise2}
+              title="Restore access"
+              subtitle="Re-add to the group with a fresh start"
+              onPress={() => {
+                const memberId = sheetTarget.memberId;
+                closeSheet();
+                void handleRestoreAccess(memberId);
+              }}
+            />
+            <SheetRow
+              icon={IconDoorExit}
+              title="Keep removed"
+              subtitle="Close this menu"
+              isLast
+              onPress={closeSheet}
+            />
+          </>
+        ) : null}
+      </BottomSheet>
+    </Screen>
+  );
+}
+
+/* ============================================================================
+ * Helpers
+ * ============================================================================ */
+
+function statsLineFor(
+  userId: string,
+  stats: Map<string, { totalOwed: number; totalPaid: number }>,
+  currency: string,
+): string | null {
+  const stat = stats.get(userId);
+  if (!stat) return null;
+  if (stat.totalOwed === 0 && stat.totalPaid === 0) return null;
+  const remaining = Math.max(0, stat.totalOwed - stat.totalPaid);
+  if (remaining < 0.01) {
+    return `Settled · paid ${formatCurrency(stat.totalPaid, currency)} this month`;
+  }
+  return `${formatCurrency(stat.totalPaid, currency)} paid · ${formatCurrency(remaining, currency)} owing`;
+}
+
+/* ============================================================================
+ * Header — back chevron · centered title (with optional switcher) · invite
+ * ============================================================================ */
+
+function Header({
+  topInset,
+  title,
+  groupName,
+  showSwitcher = false,
+  onSwitcher,
+  onBack,
+  onInvite,
+}: {
+  topInset: number;
+  title: string;
+  groupName?: string;
+  showSwitcher?: boolean;
+  onSwitcher?: () => void;
+  onBack: () => void;
+  onInvite?: () => void;
+}) {
+  return (
+    <View
+      style={{
+        paddingTop: topInset + 12,
+        paddingHorizontal: space.gutter,
+        backgroundColor: colors.bgBase,
+        position: 'relative',
+      }}
+    >
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          height: 48,
+        }}
+      >
+        <Pressable
+          onPress={onBack}
+          hitSlop={10}
+          style={({ pressed }) => ({
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 2,
+            paddingVertical: space.xs + 2,
+            paddingRight: space.sm + 2,
+            marginLeft: -space.xs,
+            opacity: pressed ? 0.6 : 1,
+            zIndex: 2,
+          })}
+        >
+          <IconChevronLeft size={22} color={colors.textPrimary} strokeWidth={2} />
+          <Text style={{ fontSize: 15, fontWeight: '600', color: colors.textPrimary }}>
+            Back
+          </Text>
+        </Pressable>
+
+        <View style={{ minWidth: 44, alignItems: 'flex-end', zIndex: 2 }}>
+          {onInvite ? (
+            <Pressable
+              onPress={onInvite}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
-              <Text style={{ fontSize: 15, fontWeight: '600', color: canLeave ? '#DC2626' : '#9CA3AF' }}>
-                Leave group
-              </Text>
-            </TouchableOpacity>
-          )}
-          <TouchableOpacity
-            style={{
-              flex: 1,
-              backgroundColor: '#FFFFFF',
-              borderWidth: 1,
-              borderColor: '#E5E7EB',
-              height: 48,
-              borderRadius: 14,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-            onPress={() => {
-              hapticMedium();
-              router.push('/group-close');
-            }}
-            activeOpacity={0.7}
-          >
-            <Text style={{ fontSize: 15, fontWeight: '600', color: '#374151' }}>
-              Review cycle close
-            </Text>
-          </TouchableOpacity>
+              {({ pressed }) => (
+                <Text
+                  style={{
+                    fontSize: 13,
+                    fontWeight: '700',
+                    color: colors.sageInk,
+                    opacity: pressed ? 0.6 : 1,
+                  }}
+                >
+                  Invite
+                </Text>
+              )}
+            </Pressable>
+          ) : null}
         </View>
       </View>
 
-      {/* Group settings card */}
-      {isAdmin && (
-        <View
-          style={{
-            backgroundColor: '#FFFFFF',
-            borderRadius: 16,
-            padding: 20,
-            marginBottom: 16,
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.06,
-            shadowRadius: 12,
-            elevation: 3,
-          }}
-        >
-          <Text style={{ fontSize: 18, fontWeight: '600', color: '#171b24' }}>
-            Group settings
-          </Text>
-          <Text style={{ marginTop: 4, fontSize: 14, color: '#667085' }}>
-            Update the group name, type, currency, or billing cycle.
-          </Text>
-          <TouchableOpacity
-            style={{
-              marginTop: 12,
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 6,
-            }}
-            onPress={() => { hapticMedium(); router.push('/group-edit'); }}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="settings-outline" size={16} color="#667085" />
-            <Text style={{ fontSize: 14, fontWeight: '600', color: '#2d6a4f' }}>
-              Edit group
-            </Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {/* Invite card */}
-      {isAdmin && (
-        <View
-          style={{
-            backgroundColor: '#FFFFFF',
-            borderRadius: 16,
-            padding: 20,
-            marginBottom: 16,
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.06,
-            shadowRadius: 12,
-            elevation: 3,
-          }}
-        >
-          <Text style={{ fontSize: 18, fontWeight: '600', color: '#171b24' }}>
-            Invite someone new
-          </Text>
-          <Text style={{ marginTop: 4, fontSize: 14, color: '#667085' }}>
-            Invite housemates or teammates by email.
-          </Text>
-
-          {!canInviteMember && (
-            <View style={{ marginTop: 12, borderRadius: 12, backgroundColor: '#FFF1DB', paddingHorizontal: 16, paddingVertical: 12 }}>
-              <Text style={{ fontSize: 14, color: '#8A593B' }}>
-                You've reached the member limit ({currentMembers}/
-                {memberLimit === Infinity ? 'unlimited' : memberLimit}). Upgrade to invite more
-                members.
-              </Text>
-            </View>
-          )}
-
-          <Text
-            style={{
-              fontSize: 14,
-              fontWeight: '600',
-              color: '#374151',
-              marginBottom: 8,
-              marginTop: 16,
-            }}
-          >
-            Email
-          </Text>
-          <TextInput
-            style={{
-              backgroundColor: '#F3F4F6',
-              borderRadius: 12,
-              height: 50,
-              paddingHorizontal: 16,
-              fontSize: 16,
-              color: '#111827',
-            }}
-            placeholder="member@example.com"
-            placeholderTextColor="#9CA3AF"
-            value={inviteEmail}
-            onChangeText={setInviteEmail}
-            autoCapitalize="none"
-            keyboardType="email-address"
-          />
-          <TouchableOpacity
-            style={{
-              marginTop: 12,
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 6,
-              opacity: canInviteMember ? 1 : 0.4,
-            }}
-            onPress={handleInvite}
-            disabled={!canInviteMember}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="mail-outline" size={16} color="#667085" />
-            <Text style={{ fontSize: 14, fontWeight: '600', color: '#2d6a4f' }}>
-              Send invite
-            </Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {/* Search / Member list card header */}
       <View
+        pointerEvents="box-none"
         style={{
-          backgroundColor: '#FFFFFF',
-          borderRadius: 16,
-          padding: 20,
-          marginBottom: 0,
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.06,
-          shadowRadius: 12,
-          elevation: 3,
-          borderBottomLeftRadius: 0,
-          borderBottomRightRadius: 0,
+          position: 'absolute',
+          left: 0,
+          right: 0,
+          top: topInset + 12,
+          height: 48,
+          alignItems: 'center',
+          justifyContent: 'center',
         }}
       >
-        <Text style={{ fontSize: 18, fontWeight: '600', color: '#171b24' }}>
-          Member list
-        </Text>
-        <Text style={{ marginTop: 4, fontSize: 14, color: '#667085' }}>
-          Search by name, email, role, or status.
-        </Text>
-        <Text
-          style={{
-            fontSize: 14,
-            fontWeight: '600',
-            color: '#374151',
-            marginBottom: 8,
-            marginTop: 16,
-          }}
-        >
-          Search
-        </Text>
-        <TextInput
-          style={{
-            backgroundColor: '#F3F4F6',
-            borderRadius: 12,
-            height: 50,
-            paddingHorizontal: 16,
-            fontSize: 16,
-            color: '#111827',
-          }}
-          placeholder="Search members"
-          placeholderTextColor="#9CA3AF"
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-        />
+        {showSwitcher && groupName && onSwitcher ? (
+          <Pressable
+            onPress={onSwitcher}
+            accessibilityRole="button"
+            accessibilityLabel={`Switch group. Currently ${groupName}.`}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            style={({ pressed }) => ({
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 4,
+              opacity: pressed ? 0.6 : 1,
+            })}
+          >
+            <Text style={{ fontSize: 17, fontWeight: '700', color: colors.textPrimary }}>
+              {title}
+            </Text>
+            <IconChevronDown size={14} color={colors.textTertiary} strokeWidth={2.2} />
+          </Pressable>
+        ) : (
+          <Text style={{ fontSize: 17, fontWeight: '700', color: colors.textPrimary }}>
+            {title}
+          </Text>
+        )}
+        {showSwitcher && groupName ? (
+          <Text
+            style={{ fontSize: 11, color: colors.textTertiary, marginTop: 1 }}
+            numberOfLines={1}
+          >
+            {groupName}
+          </Text>
+        ) : null}
       </View>
     </View>
   );
+}
 
-  /* -- render -------------------------------------------------------------- */
+/* ============================================================================
+ * Lifecycle card — surfaces work that needs attention before close.
+ * ============================================================================ */
+
+function LifecycleCard({
+  scheduledDepartures,
+  joiners,
+  ownerTransitionRequired,
+  checklistDone,
+  checklistTotal,
+  onOpenSetup,
+}: {
+  scheduledDepartures: number;
+  joiners: number;
+  ownerTransitionRequired: boolean;
+  checklistDone: number;
+  checklistTotal: number;
+  onOpenSetup?: () => void;
+}) {
+  const tone = ownerTransitionRequired ? 'warn' : 'info';
+  const tileBg = tone === 'warn' ? colors.warnBg : colors.infoBg;
+  const tileFg = tone === 'warn' ? colors.warnText : colors.infoText;
+  const headline = ownerTransitionRequired
+    ? 'Owner transition needed'
+    : scheduledDepartures > 0
+      ? `${scheduledDepartures} scheduled to leave`
+      : joiners > 0
+        ? `${joiners} joiner${joiners === 1 ? '' : 's'} this cycle`
+        : 'Group lifecycle';
+
+  const summaryParts: string[] = [];
+  if (joiners > 0) summaryParts.push(`${joiners} joiner${joiners === 1 ? '' : 's'}`);
+  if (scheduledDepartures > 0)
+    summaryParts.push(`${scheduledDepartures} scheduled departure${scheduledDepartures === 1 ? '' : 's'}`);
+  if (checklistTotal > 0) summaryParts.push(`${checklistDone}/${checklistTotal} setup complete`);
+  const summary = summaryParts.length > 0 ? summaryParts.join(' · ') : 'Group is healthy.';
 
   return (
-    <FlatList
-      data={filteredMembers}
-      renderItem={renderMember}
-      keyExtractor={(item) => item.id}
-      style={{ flex: 1, backgroundColor: '#FAFAFA' }}
-      contentContainerStyle={{ paddingBottom: 120 }}
-      showsVerticalScrollIndicator={false}
-      ListHeaderComponent={ListHeader}
-      ListEmptyComponent={
-        <View style={{ paddingHorizontal: 20 }}>
-          <View
-            style={{
-              backgroundColor: '#FFFFFF',
-              borderRadius: 16,
-              padding: 20,
-              marginBottom: 16,
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.06,
-              shadowRadius: 12,
-              elevation: 3,
-            }}
-          >
-            <Text style={{ fontSize: 14, color: '#667085' }}>
-              No members match that search.
-            </Text>
-          </View>
-        </View>
-      }
-      initialNumToRender={15}
-      maxToRenderPerBatch={10}
-      windowSize={5}
-    />
+    <View
+      style={{
+        marginTop: space.sm,
+        marginBottom: space.sm,
+        backgroundColor: colors.bgSurface,
+        borderRadius: radius.card - 2,
+        borderWidth: 1,
+        borderColor: colors.borderSubtle,
+        padding: space.md + 2,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: space.md,
+      }}
+    >
+      <View
+        style={{
+          width: 36,
+          height: 36,
+          borderRadius: radius.chip + 2,
+          backgroundColor: tileBg,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <IconCalendarTime size={18} color={tileFg} strokeWidth={2} />
+      </View>
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text style={{ fontSize: 14, fontWeight: '700', color: colors.textPrimary }}>
+          {headline}
+        </Text>
+        <Text style={{ fontSize: 11.5, color: colors.textTertiary, marginTop: 1 }}>
+          {summary}
+        </Text>
+      </View>
+      {onOpenSetup ? (
+        <Pressable
+          onPress={onOpenSetup}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel="Open setup"
+          style={({ pressed }) => ({
+            paddingHorizontal: space.sm + 2,
+            paddingVertical: space.xs + 2,
+            borderRadius: radius.chip,
+            backgroundColor: colors.sageSoft,
+            opacity: pressed ? 0.6 : 1,
+          })}
+        >
+          <Text style={{ fontSize: 12, fontWeight: '700', color: colors.sageInk }}>Setup</Text>
+        </Pressable>
+      ) : null}
+    </View>
   );
+}
+
+/* ============================================================================
+ * Row primitives — section label, grouped card, member/pending rows.
+ * ============================================================================ */
+
+const ROW_STYLE = {
+  flexDirection: 'row' as const,
+  alignItems: 'center' as const,
+  gap: space.md,
+  paddingVertical: space.md,
+  paddingHorizontal: space.md + 2,
+};
+
+const TAG_STYLE = {
+  paddingHorizontal: space.sm,
+  paddingVertical: 2,
+  borderRadius: radius.pill,
+};
+
+const TAG_TEXT_STYLE = {
+  fontSize: 10,
+  fontWeight: '700' as const,
+  letterSpacing: 0.3,
+  textTransform: 'uppercase' as const,
+};
+
+const SECTION_LABEL_STYLE = {
+  fontSize: 10.5,
+  fontWeight: '700' as const,
+  color: colors.textTertiary,
+  textTransform: 'uppercase' as const,
+  letterSpacing: 0.6,
+  paddingTop: space.base,
+  paddingBottom: space.sm,
+  paddingHorizontal: space.xs,
+};
+
+const GROUP_STYLE = {
+  backgroundColor: colors.bgSurface,
+  borderRadius: radius.card - 2,
+  borderWidth: 1,
+  borderColor: colors.borderSubtle,
+  overflow: 'hidden' as const,
+};
+
+function SectionLabel({ children }: { children: string }) {
+  return <Text style={SECTION_LABEL_STYLE}>{children}</Text>;
+}
+
+function Group({ children }: { children: React.ReactNode }) {
+  return <View style={GROUP_STYLE}>{children}</View>;
+}
+
+function Kebab({ onPress, label }: { onPress: () => void; label: string }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      hitSlop={10}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      style={({ pressed }) => ({ padding: space.xs, opacity: pressed ? 0.5 : 1 })}
+    >
+      <IconDotsVertical size={18} color={colors.textMuted} strokeWidth={1.8} />
+    </Pressable>
+  );
+}
+
+function MemberRow({
+  seed,
+  name,
+  isSelf,
+  sub,
+  statsLine,
+  scheduledUntil,
+  tag,
+  isLast,
+  showKebab,
+  onPress,
+  onKebab,
+}: {
+  seed: string;
+  name: string;
+  isSelf: boolean;
+  sub: string;
+  statsLine: string | null;
+  scheduledUntil: string | null;
+  tag?: 'Owner' | 'Admin';
+  isLast: boolean;
+  showKebab: boolean;
+  onPress?: () => void;
+  onKebab?: () => void;
+}) {
+  const palette = avatarColors(seed);
+  const rowContent = (
+    <View
+      style={{
+        ...ROW_STYLE,
+        borderBottomWidth: isLast ? 0 : 1,
+        borderBottomColor: colors.borderSubtle,
+      }}
+    >
+      <Avatar name={name} size={40} bg={palette.bg} fg={palette.fg} />
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'baseline', flexWrap: 'wrap' }}>
+          <Text
+            numberOfLines={1}
+            style={{ fontSize: 14, fontWeight: '700', color: colors.textPrimary }}
+          >
+            {name}
+          </Text>
+          {isSelf ? (
+            <Text
+              style={{
+                fontSize: 12,
+                fontWeight: '500',
+                color: colors.textTertiary,
+                marginLeft: 6,
+              }}
+            >
+              · You
+            </Text>
+          ) : null}
+        </View>
+        <Text style={{ fontSize: 11.5, color: colors.textTertiary, marginTop: 2 }}>{sub}</Text>
+        {statsLine ? (
+          <Text
+            style={{ fontSize: 11, color: colors.textMuted, marginTop: 2 }}
+            numberOfLines={1}
+          >
+            {statsLine}
+          </Text>
+        ) : null}
+        {scheduledUntil ? (
+          <Text
+            style={{ fontSize: 11, color: colors.warnText, marginTop: 2 }}
+            numberOfLines={1}
+          >
+            Leaving {formatDate(scheduledUntil)}
+          </Text>
+        ) : null}
+      </View>
+      {tag ? (
+        <View style={{ ...TAG_STYLE, backgroundColor: colors.sageSoft }}>
+          <Text style={{ ...TAG_TEXT_STYLE, color: colors.sageInk }}>{tag}</Text>
+        </View>
+      ) : null}
+      {showKebab && onKebab ? <Kebab onPress={onKebab} label="More actions" /> : null}
+    </View>
+  );
+
+  if (!onPress) return rowContent;
+  return (
+    <Pressable onPress={onPress} style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}>
+      {rowContent}
+    </Pressable>
+  );
+}
+
+function PendingRow({
+  email,
+  sentAt,
+  isLast,
+  showKebab,
+  onKebab,
+}: {
+  email: string;
+  sentAt: string;
+  isLast: boolean;
+  showKebab: boolean;
+  onKebab?: () => void;
+}) {
+  const days = daysSince(sentAt);
+  const subline =
+    days <= 0
+      ? 'Invited today'
+      : days === 1
+        ? 'Invited yesterday'
+        : `Invited ${days} days ago`;
+
+  return (
+    <View
+      style={{
+        ...ROW_STYLE,
+        borderBottomWidth: isLast ? 0 : 1,
+        borderBottomColor: colors.borderSubtle,
+      }}
+    >
+      <View
+        style={{
+          width: 40,
+          height: 40,
+          borderRadius: 20,
+          backgroundColor: colors.warnBg,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <Text style={{ fontSize: 16, fontWeight: '700', color: colors.warnText }}>?</Text>
+      </View>
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text
+          numberOfLines={1}
+          style={{ fontSize: 14, fontWeight: '600', color: colors.textTertiary }}
+        >
+          {email}
+        </Text>
+        <Text style={{ fontSize: 11.5, color: colors.textTertiary, marginTop: 2 }}>
+          {subline}
+        </Text>
+      </View>
+      <View style={{ ...TAG_STYLE, backgroundColor: colors.warnBg }}>
+        <Text style={{ ...TAG_TEXT_STYLE, color: colors.warnText }}>Pending</Text>
+      </View>
+      {showKebab && onKebab ? <Kebab onPress={onKebab} label="Invite actions" /> : null}
+    </View>
+  );
+}
+
+function PastRow({
+  seed,
+  name,
+  sub,
+  isLast,
+  canRestore,
+  isPending,
+  onRestore,
+  onKebab,
+}: {
+  seed: string;
+  name: string;
+  sub: string;
+  isLast: boolean;
+  canRestore: boolean;
+  isPending: boolean;
+  onRestore?: () => void;
+  onKebab?: () => void;
+}) {
+  const palette = avatarColors(seed);
+  return (
+    <View
+      style={{
+        ...ROW_STYLE,
+        borderBottomWidth: isLast ? 0 : 1,
+        borderBottomColor: colors.borderSubtle,
+      }}
+    >
+      <Avatar name={name} size={40} bg={palette.bg} fg={palette.fg} />
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text
+          numberOfLines={1}
+          style={{ fontSize: 14, fontWeight: '700', color: colors.textTertiary }}
+        >
+          {name}
+        </Text>
+        <Text style={{ fontSize: 11.5, color: colors.textTertiary, marginTop: 2 }}>{sub}</Text>
+      </View>
+      {canRestore && onRestore ? (
+        <Pressable
+          onPress={onRestore}
+          hitSlop={6}
+          accessibilityRole="button"
+          accessibilityLabel={`Restore ${name}`}
+          disabled={isPending}
+          style={({ pressed }) => ({
+            paddingHorizontal: space.sm + 2,
+            paddingVertical: space.xs + 2,
+            borderRadius: radius.chip,
+            backgroundColor: colors.sageSoft,
+            opacity: pressed || isPending ? 0.6 : 1,
+          })}
+        >
+          <Text style={{ fontSize: 12, fontWeight: '700', color: colors.sageInk }}>
+            {isPending ? 'Restoring…' : 'Restore'}
+          </Text>
+        </Pressable>
+      ) : null}
+      {onKebab ? <Kebab onPress={onKebab} label="Member actions" /> : null}
+    </View>
+  );
+}
+
+function daysSince(dateStr: string | null | undefined): number {
+  if (!dateStr) return 0;
+  const then = new Date(dateStr).getTime();
+  if (Number.isNaN(then)) return 0;
+  const diff = Date.now() - then;
+  return Math.max(0, Math.floor(diff / (24 * 60 * 60 * 1000)));
 }

@@ -69,6 +69,7 @@ export interface User {
   is_deactivated: boolean;
   deletion_requested_at: string | null;
   deletion_scheduled_for: string | null;
+  acquisition_source: string | null;
   created_at: string;
 }
 
@@ -103,6 +104,7 @@ export interface Group {
   avatar_url: string | null;
   cover_url: string | null;
   tagline: string | null;
+  archived_at: string | null;
   created_at: string;
 }
 
@@ -341,9 +343,10 @@ export type ExpenseListItem = Pick<
   | 'invoice_reference'
   | 'invoice_date'
   | 'payment_due_date'
+  | 'paid_by_user_id'
 > & {
-  participants: Pick<ExpenseParticipant, 'user_id'>[];
-  payment_records: Pick<PaymentRecord, 'status'>[];
+  participants: Pick<ExpenseParticipant, 'user_id' | 'share_amount'>[];
+  payment_records: Pick<PaymentRecord, 'user_id' | 'status' | 'amount'>[];
 };
 
 export interface ProrationInfo {

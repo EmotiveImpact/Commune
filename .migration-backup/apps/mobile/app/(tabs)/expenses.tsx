@@ -2,6 +2,13 @@ import { useCallback, useMemo, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import {
+  IconCloudOff,
+  IconPlus,
+  IconReceipt,
+  IconSearch,
+  IconUsers,
+} from '@tabler/icons-react-native';
 import { formatCurrency, formatDate, isOverdue, isUpcoming } from '@commune/utils';
 import type { ExpenseListItem } from '@commune/types';
 import { hapticLight, hapticMedium } from '@/lib/haptics';
@@ -23,10 +30,12 @@ import {
   SearchField,
   SkeletonBlock,
   StatusPill,
+  type TablerIcon,
 } from '@/components/primitives';
 import { colors, font, getCategoryMeta, radius, space } from '@/constants/design';
 import { getErrorMessage } from '@/lib/errors';
 import { formatCategoryLabel } from '@/lib/ui';
+import { CategoryBreakdownCard, type CategoryItem } from '@/components/category-breakdown';
 
 type StatusFilter = 'all' | 'owe' | 'owed' | 'paid';
 
@@ -107,6 +116,29 @@ export default function ExpensesScreen() {
     });
   }, [expenses, searchQuery, statusFilter, categoryFilter]);
 
+  const categoryData = useMemo(() => {
+    const now = new Date();
+    const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const inMonth = expenses.filter((e) => e.due_date?.startsWith(monthKey));
+    const source = inMonth.length > 0 ? inMonth : expenses;
+    const scopeLabel = inMonth.length > 0 ? 'This month' : 'All time';
+    const totals = new Map<string, number>();
+    let grand = 0;
+    for (const e of source) {
+      totals.set(e.category, (totals.get(e.category) ?? 0) + e.amount);
+      grand += e.amount;
+    }
+    const items: CategoryItem[] = Array.from(totals.entries())
+      .map(([category, amount]) => ({
+        category,
+        amount,
+        pct: grand > 0 ? Math.round((amount / grand) * 100) : 0,
+      }))
+      .sort((a, b) => b.amount - a.amount)
+      .slice(0, 6);
+    return { items, scopeLabel };
+  }, [expenses]);
+
   const summary = useMemo(() => {
     const now = new Date();
     const y = now.getFullYear();
@@ -142,7 +174,7 @@ export default function ExpensesScreen() {
         <View style={{ paddingTop: insets.top + space.base, paddingHorizontal: space.gutter, flex: 1 }}>
           <TitleRow onAdd={goToNew} />
           <EmptyState
-            icon="cloud-offline-outline"
+            icon={IconCloudOff}
             title="Couldn't load expenses"
             description={getErrorMessage(loadError, 'Please try again in a moment.')}
             actionLabel="Retry"
@@ -160,7 +192,7 @@ export default function ExpensesScreen() {
         <View style={{ paddingTop: insets.top + space.base, paddingHorizontal: space.gutter, flex: 1 }}>
           <TitleRow onAdd={goToNew} />
           <EmptyState
-            icon="people-outline"
+            icon={IconUsers}
             title="Select a group first"
             description="Choose a group before viewing the shared expense ledger."
             actionLabel="Open onboarding"
@@ -185,6 +217,14 @@ export default function ExpensesScreen() {
           gap: space.base,
         }}
       >
+        {!loading && categoryData.items.length > 0 && (
+          <CategoryBreakdownCard
+            items={categoryData.items}
+            currency={group?.currency ?? 'GBP'}
+            scopeLabel={categoryData.scopeLabel}
+          />
+        )}
+
         <SearchField
           value={searchQuery}
           onChangeText={setSearchQuery}
@@ -249,7 +289,7 @@ export default function ExpensesScreen() {
         ) : filtered.length === 0 ? (
           expenses.length === 0 ? (
             <EmptyState
-              icon="receipt-outline"
+              icon={IconReceipt}
               title="No expenses yet"
               description="Start tracking shared costs to keep everyone on the same page."
               actionLabel="Add expense"
@@ -257,7 +297,7 @@ export default function ExpensesScreen() {
             />
           ) : (
             <EmptyState
-              icon="search-outline"
+              icon={IconSearch}
               title="No matches"
               description="Try a different filter or search term."
               actionLabel="Clear filters"
@@ -295,7 +335,7 @@ function TitleRow({ onAdd }: { onAdd: () => void }) {
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
       <Text style={[font.h1, { color: colors.textPrimary }]}>Expenses</Text>
-      <FAB onPress={onAdd} icon="add" size={44} />
+      <FAB onPress={onAdd} icon={IconPlus} size={44} />
     </View>
   );
 }
@@ -362,7 +402,7 @@ function CategoryChip({
   onPress,
 }: {
   label: string;
-  icon?: string;
+  icon?: TablerIcon;
   selected: boolean;
   onPress: () => void;
 }) {
@@ -381,7 +421,7 @@ function CategoryChip({
       }]}
     >
       {icon ? (
-        <IconTile icon={icon as never} size={20} iconSize={12} color={selected ? colors.sage : colors.textTertiary} bg="transparent" />
+        <IconTile icon={icon} size={20} iconSize={12} color={selected ? colors.sage : colors.textTertiary} bg="transparent" />
       ) : null}
       <Text style={{ fontSize: 13, fontWeight: '600', color: selected ? colors.sage : colors.textTertiary }}>
         {label}
@@ -408,7 +448,7 @@ function ExpenseRow({
   return (
     <Card onPress={onPress} variant="surface" padding={space.base}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
-        <IconTile icon={meta.icon as never} color={meta.color} bg={meta.bg} size={44} />
+        <IconTile icon={meta.icon} color={meta.color} bg={meta.bg} size={44} />
         <View style={{ flex: 1 }}>
           <Text style={[font.h3, { color: colors.textPrimary }]} numberOfLines={1}>{expense.title}</Text>
           <Text style={[font.caption, { color: colors.textTertiary, marginTop: 2 }]} numberOfLines={1}>

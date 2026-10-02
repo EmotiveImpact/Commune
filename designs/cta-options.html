@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Commune — Sell-page CTA options</title>
+<style>
+  :root{
+    --bg:#FAF9F7; --surface:#ffffff; --ink:#171b24; --muted:#6b7280; --muted2:#9aa0aa;
+    --border:#eceae5; --border-soft:#f1efe9;
+    --sage:#1f7a6a; --sage-soft:#E8F3EC; --sage-ink:#14594e;
+    --peach:#FFE8D8; --peach-deep:#F8C9A8;
+    --mint:#D4F1E5; --mint-deep:#9ED9BD;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:#efece6;color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Inter",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+  .page{max-width:1500px;margin:0 auto;padding:48px 24px 96px}
+  h1{font-size:34px;letter-spacing:-0.7px;margin:0 0 6px;font-weight:700}
+  .lede{color:var(--muted);font-size:15px;margin:0 0 28px;max-width:780px;line-height:1.55}
+
+  h2.opt{font-size:22px;letter-spacing:-0.4px;margin:48px 0 6px;font-weight:700}
+  .why{background:var(--sage-soft);border-radius:12px;padding:14px 18px;margin:8px 0 20px;color:var(--sage-ink);font-size:13.5px;line-height:1.55;max-width:680px;border:1px solid #cfe3d5}
+  .why b{font-weight:700}
+  .why.peach{background:var(--peach);color:#8C4F2F;border-color:var(--peach-deep)}
+
+  .row{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,320px));gap:24px;justify-content:start;margin-bottom:8px}
+
+  .frame{background:var(--bg);border-radius:34px;border:1px solid var(--border-soft);overflow:hidden;height:560px;display:flex;flex-direction:column;box-shadow:0 8px 28px rgba(0,0,0,0.06);position:relative}
+  .label{font-size:11px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+
+  .topnav{display:flex;align-items:center;justify-content:space-between;padding:14px 18px 6px;height:50px;color:#fff}
+  .topnav .btn{font-size:13px;font-weight:600;display:flex;align-items:center;gap:2px}
+  .topnav .btn .chev{font-size:18px;line-height:1;margin-right:-2px}
+  .topnav .dots{display:flex;gap:4px}
+  .topnav .dots i{width:5px;height:5px;border-radius:3px;background:rgba(255,255,255,0.4);display:inline-block}
+  .topnav .dots i.on{width:14px;background:#fff}
+  .topnav .invisible{visibility:hidden}
+
+  .hero{flex:1;background:linear-gradient(160deg,var(--peach) 0%,var(--peach-deep) 100%);position:relative}
+  .hero .meta{position:absolute;bottom:14px;left:18px;right:18px;color:var(--ink)}
+  .hero .meta .h{font-size:24px;font-weight:700;letter-spacing:-0.5px;line-height:1.2}
+  .hero .meta .s{font-size:13px;color:var(--muted);margin-top:6px;line-height:1.5;max-width:80%}
+
+  .ctabar{padding:12px 16px 22px;background:var(--bg);border-top:1px solid var(--border-soft)}
+  .cta{height:46px;border-radius:12px;background:var(--ink);color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;gap:6px}
+  .cta.sage{background:var(--sage)}
+  .cta-row{display:flex;gap:8px}
+  .cta-row .back{width:60px;border-radius:12px;background:var(--surface);border:1px solid var(--border-soft);color:var(--ink);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;height:46px}
+  .cta-row .cta{flex:1}
+
+  .breakdown{margin-top:14px;padding:14px 16px;background:var(--surface);border:1px solid var(--border-soft);border-radius:14px;font-size:13px;line-height:1.6;color:var(--muted)}
+  .breakdown b{color:var(--ink)}
+  .breakdown ul{margin:6px 0 0;padding-left:20px}
+
+  .axis-table{margin:24px 0 36px;background:#fff;border:1px solid var(--border);border-radius:14px;overflow:hidden;max-width:920px}
+  .axis-table table{width:100%;border-collapse:collapse;font-size:13.5px}
+  .axis-table th,.axis-table td{padding:12px 16px;text-align:left;vertical-align:top;border-bottom:1px solid var(--border-soft)}
+  .axis-table th{background:var(--bg);font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:0.4px;color:var(--muted)}
+  .axis-table tr:last-child td{border-bottom:0}
+  .axis-table b{color:var(--ink)}
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>Sell-page CTA — option 1 vs option 2</h1>
+  <p class="lede">Two changes I described, on different axes. Option 1 is a <b>layout</b> change. Option 2 is a <b>copy</b> change. They don't replace each other; you could pick either, both, or neither. Below is what each looks like compared to what we shipped just now (chevron only).</p>
+
+  <div class="axis-table">
+    <table>
+      <tr>
+        <th style="width:18%"></th>
+        <th style="width:27%">Today (just shipped)</th>
+        <th style="width:27%">Option 1 — Back at bottom</th>
+        <th style="width:28%">Option 2 — Escalating copy</th>
+      </tr>
+      <tr>
+        <td><b>What changes</b></td>
+        <td>Tiny visual nudge inside the existing button</td>
+        <td>The CTA bar gets a second button</td>
+        <td>The CTA label rewrites per screen</td>
+      </tr>
+      <tr>
+        <td><b>Layout</b></td>
+        <td>Single full-width button</td>
+        <td><b>Two buttons</b> — slim Back + wide Continue</td>
+        <td>Single full-width button (unchanged)</td>
+      </tr>
+      <tr>
+        <td><b>Wording</b></td>
+        <td>"Continue" everywhere on screens 1–4</td>
+        <td>"Continue" everywhere on screens 1–4</td>
+        <td><b>Different per screen</b> — escalates from "Continue" to "Get me set up"</td>
+      </tr>
+      <tr>
+        <td><b>Top-bar Back</b></td>
+        <td>Still there</td>
+        <td>Could stay or be removed (redundant)</td>
+        <td>Untouched</td>
+      </tr>
+      <tr>
+        <td><b>Best for</b></td>
+        <td>You want a small nudge and ship it</td>
+        <td>Watching users hesitate to swipe</td>
+        <td>Wanting each step to feel intentional</td>
+      </tr>
+    </table>
+  </div>
+
+  <h2 class="opt">Today — chevron only (already shipped)</h2>
+  <div class="why"><b>Visible change:</b> a small <code>›</code> after "Continue". Nothing else.</div>
+  <div class="row">
+    <div>
+      <div class="label">Sell page 1</div>
+      <div class="frame">
+        <div class="topnav">
+          <div class="btn invisible"><span class="chev">‹</span>Back</div>
+          <div class="dots"><i class="on"></i><i></i><i></i><i></i></div>
+          <div class="btn">Skip tour</div>
+        </div>
+        <div class="hero">
+          <div class="meta"><div class="h">Welcome, Augustus 👋</div><div class="s">Let's set up your first group.</div></div>
+        </div>
+        <div class="ctabar">
+          <div class="cta">Continue ›</div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="label">Sell page 4 (last)</div>
+      <div class="frame">
+        <div class="topnav">
+          <div class="btn"><span class="chev">‹</span>Back</div>
+          <div class="dots"><i></i><i></i><i></i><i class="on"></i></div>
+          <div class="btn">Skip tour</div>
+        </div>
+        <div class="hero" style="background:linear-gradient(160deg,var(--mint) 0%,var(--mint-deep) 100%)">
+          <div class="meta"><div class="h">See everything in one place.</div><div class="s">Recurring bills, who owes whom, monthly rhythm — one calm dashboard.</div></div>
+        </div>
+        <div class="ctabar">
+          <div class="cta">Continue ›</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h2 class="opt">Option 1 — Back at the bottom (layout change)</h2>
+  <div class="why"><b>Visible change:</b> a slim Back button appears next to Continue at the bottom. Top-bar Back can stay (familiar) or be removed (redundant). Same wording on all four sell screens.</div>
+  <div class="row">
+    <div>
+      <div class="label">Sell page 1 — no back yet</div>
+      <div class="frame">
+        <div class="topnav">
+          <div class="btn invisible"><span class="chev">‹</span>Back</div>
+          <div class="dots"><i class="on"></i><i></i><i></i><i></i></div>
+          <div class="btn">Skip tour</div>
+        </div>
+        <div class="hero">
+          <div class="meta"><div class="h">Welcome, Augustus 👋</div><div class="s">Let's set up your first group.</div></div>
+        </div>
+        <div class="ctabar">
+          <div class="cta">Continue ›</div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="label">Sell page 2 — back appears</div>
+      <div class="frame">
+        <div class="topnav">
+          <div class="btn"><span class="chev">‹</span>Back</div>
+          <div class="dots"><i></i><i class="on"></i><i></i><i></i></div>
+          <div class="btn">Skip tour</div>
+        </div>
+        <div class="hero" style="background:linear-gradient(160deg,var(--mint) 0%,var(--mint-deep) 100%)">
+          <div class="meta"><div class="h">Split anything fairly.</div><div class="s">Equal, percentages, fixed amounts, one person paid.</div></div>
+        </div>
+        <div class="ctabar">
+          <div class="cta-row">
+            <div class="back">‹</div>
+            <div class="cta">Continue ›</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="label">Sell page 4 — last sell screen</div>
+      <div class="frame">
+        <div class="topnav">
+          <div class="btn"><span class="chev">‹</span>Back</div>
+          <div class="dots"><i></i><i></i><i></i><i class="on"></i></div>
+          <div class="btn">Skip tour</div>
+        </div>
+        <div class="hero" style="background:linear-gradient(160deg,var(--mint) 0%,var(--mint-deep) 100%)">
+          <div class="meta"><div class="h">See everything in one place.</div><div class="s">Recurring bills, who owes whom, monthly rhythm.</div></div>
+        </div>
+        <div class="ctabar">
+          <div class="cta-row">
+            <div class="back">‹</div>
+            <div class="cta">Continue ›</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h2 class="opt">Option 2 — Escalating copy (wording change)</h2>
+  <div class="why peach"><b>Visible change:</b> the word on the button shifts as the user walks the path. "Continue" feels neutral; "Get me set up" feels like crossing a threshold. Layout untouched. We already do this on screens 8–10 — this extends it to screens 1–4.</div>
+  <div class="row">
+    <div>
+      <div class="label">Page 1 — entry</div>
+      <div class="frame">
+        <div class="topnav">
+          <div class="btn invisible"><span class="chev">‹</span>Back</div>
+          <div class="dots"><i class="on"></i><i></i><i></i><i></i></div>
+          <div class="btn">Skip tour</div>
+        </div>
+        <div class="hero">
+          <div class="meta"><div class="h">Welcome, Augustus 👋</div><div class="s">Let's set up your first group.</div></div>
+        </div>
+        <div class="ctabar"><div class="cta">Continue ›</div></div>
+      </div>
+    </div>
+    <div>
+      <div class="label">Page 2 — feature</div>
+      <div class="frame">
+        <div class="topnav">
+          <div class="btn"><span class="chev">‹</span>Back</div>
+          <div class="dots"><i></i><i class="on"></i><i></i><i></i></div>
+          <div class="btn">Skip tour</div>
+        </div>
+        <div class="hero" style="background:linear-gradient(160deg,var(--mint) 0%,var(--mint-deep) 100%)">
+          <div class="meta"><div class="h">Split anything fairly.</div><div class="s">Equal, percentages, fixed amounts.</div></div>
+        </div>
+        <div class="ctabar"><div class="cta">Show me more ›</div></div>
+      </div>
+    </div>
+    <div>
+      <div class="label">Page 4 — escalates</div>
+      <div class="frame">
+        <div class="topnav">
+          <div class="btn"><span class="chev">‹</span>Back</div>
+          <div class="dots"><i></i><i></i><i></i><i class="on"></i></div>
+          <div class="btn">Skip tour</div>
+        </div>
+        <div class="hero" style="background:linear-gradient(160deg,var(--mint) 0%,var(--mint-deep) 100%)">
+          <div class="meta"><div class="h">See everything in one place.</div><div class="s">Recurring bills, who owes whom, monthly rhythm.</div></div>
+        </div>
+        <div class="ctabar"><div class="cta sage">Get me set up ›</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="breakdown">
+    <b>Full copy ladder (proposed):</b>
+    <ul>
+      <li><b>Page 1 (Welcome)</b> — "Continue ›"</li>
+      <li><b>Page 2 (Split)</b> — "Show me more ›"</li>
+      <li><b>Page 3 (Settle)</b> — "Keep going ›"</li>
+      <li><b>Page 4 (See everything)</b> — <b>"Get me set up ›"</b> — sage variant, signals threshold</li>
+      <li><b>Page 5 (Acquisition)</b> — "Continue"</li>
+      <li><b>Page 6 (Type)</b> — "Continue"</li>
+      <li><b>Page 7 (Subtype)</b> — "Continue"</li>
+      <li><b>Page 8 (Contextual sell)</b> — "Sounds good — set it up" <i>(already this)</i></li>
+      <li><b>Page 9 (Form)</b> — "Create my group" <i>(already this)</i></li>
+      <li><b>Page 10 (Celebration)</b> — "Open Commune" <i>(already this)</i></li>
+    </ul>
+  </div>
+
+  <h2 class="opt">Both combined</h2>
+  <div class="why"><b>If you pick both:</b> Back-button-at-bottom layout PLUS escalating copy. Maximum polish — also maximum visual weight at the bottom.</div>
+  <div class="row">
+    <div>
+      <div class="label">Page 4 with both</div>
+      <div class="frame">
+        <div class="topnav">
+          <div class="btn"><span class="chev">‹</span>Back</div>
+          <div class="dots"><i></i><i></i><i></i><i class="on"></i></div>
+          <div class="btn">Skip tour</div>
+        </div>
+        <div class="hero" style="background:linear-gradient(160deg,var(--mint) 0%,var(--mint-deep) 100%)">
+          <div class="meta"><div class="h">See everything in one place.</div><div class="s">Recurring bills, who owes whom, monthly rhythm.</div></div>
+        </div>
+        <div class="ctabar">
+          <div class="cta-row">
+            <div class="back">‹</div>
+            <div class="cta sage">Get me set up ›</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

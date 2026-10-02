@@ -1,929 +1,506 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  Alert,
-  Animated,
-  FlatList,
-  Platform,
-  Pressable,
-  ScrollView,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
-import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { useMemo } from 'react';
+import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { Stack, useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { IconChevronLeft, IconPlus, IconRepeat, IconUsers } from '@tabler/icons-react-native';
 import type { ExpenseWithParticipants } from '@commune/types';
-import { formatCurrency, formatDate } from '@commune/utils';
+import { formatCurrency } from '@commune/utils';
+import { EmptyState, IconTile, Screen } from '@/components/primitives';
+import { colors, font, radius, space, elevation, getCategoryMeta } from '@/constants/design';
 import { useGroupStore } from '@/stores/group';
-import { useThemeStore } from '@/stores/theme';
 import { useGroup } from '@/hooks/use-groups';
-import {
-  useActiveRecurring,
-  usePausedRecurring,
-  usePauseRecurring,
-  useResumeRecurring,
-  useArchiveRecurring,
-} from '@/hooks/use-recurring-management';
-import { getErrorMessage } from '@/lib/errors';
+import { useActiveRecurring } from '@/hooks/use-recurring-management';
 import { formatCategoryLabel } from '@/lib/ui';
-import { hapticLight, hapticMedium, hapticHeavy, hapticSuccess, hapticWarning } from '@/lib/haptics';
+import { hapticLight, hapticMedium } from '@/lib/haptics';
 
-type Tab = 'active' | 'paused';
+/* -- Helpers ------------------------------------------------------------ */
 
-const CATEGORY_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
-  shopping: 'bag-outline',
-  food: 'restaurant-outline',
-  transport: 'car-outline',
-  bills: 'document-text-outline',
-  entertainment: 'game-controller-outline',
-  groceries: 'cart-outline',
-  rent: 'home-outline',
-  utilities: 'flash-outline',
-  subscriptions: 'card-outline',
-  other: 'ellipsis-horizontal-circle-outline',
-};
+const MONTH_FULL = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+];
+const MONTH_ABBR = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
 
-const CATEGORY_COLORS: Record<string, { bg: string; icon: string }> = {
-  shopping: { bg: '#F3EEFF', icon: '#6D5DC7' },
-  food: { bg: '#E8F0FE', icon: '#1a56db' },
-  transport: { bg: '#FFF1DB', icon: '#C4620A' },
-  bills: { bg: '#EEF6F3', icon: '#2d6a4f' },
-  entertainment: { bg: '#E8FAF5', icon: '#0D9488' },
-  groceries: { bg: '#FEE8E8', icon: '#B9382F' },
-  rent: { bg: '#F2F6EC', icon: '#55704B' },
-  utilities: { bg: '#FFF8E1', icon: '#C4620A' },
-  subscriptions: { bg: '#F4F1F8', icon: '#4F4660' },
-  other: { bg: '#F1ECE4', icon: '#667085' },
-};
-
-const FREQ_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
-  weekly: { label: 'Weekly', color: '#1a56db', bg: '#E8F0FE' },
-  monthly: { label: 'Monthly', color: '#2d6a4f', bg: '#EEF6F3' },
-  yearly: { label: 'Yearly', color: '#4F4660', bg: '#F4F1F8' },
-};
-
-const shadow = Platform.select({
-  ios: {
-    shadowColor: '#000',
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-  },
-  android: { elevation: 2 },
-  default: {},
-});
-
-function extractPausedType(description: string | null): string {
-  if (!description) return 'unknown';
-  const match = description.match(/\[paused:(weekly|monthly)\]/);
-  return match?.[1] ?? 'unknown';
+/** Parse a YYYY-MM-DD key into a UTC Date (timezone-safe calendar day). */
+function parseDateKey(key: string): Date {
+  const [y, m, d] = key.split('-').map(Number);
+  return new Date(Date.UTC(y ?? 1970, (m ?? 1) - 1, d ?? 1));
 }
 
-function getCategoryIcon(category: string): keyof typeof Ionicons.glyphMap {
-  return (
-    CATEGORY_ICONS[category?.toLowerCase()] ??
-    'ellipsis-horizontal-circle-outline'
-  );
+function toDateKey(d: Date): string {
+  const y = d.getUTCFullYear();
+  const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(d.getUTCDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
 }
 
-function getCategoryColor(category: string): { bg: string; icon: string } {
-  return (
-    CATEGORY_COLORS[category?.toLowerCase()] ?? { bg: '#F1ECE4', icon: '#667085' }
-  );
+function todayKey(): string {
+  const n = new Date();
+  return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`;
 }
 
-/* -- Shimmer skeleton ---------------------------------------------------- */
-
-function RecurringLoadingSkeleton() {
-  const mode = useThemeStore((s) => s.mode);
-  const bg = mode === 'dark' ? '#0A0A0A' : '#FAFAFA';
-  const shimmerBg =
-    mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(23,27,36,0.08)';
-  const opacity = useRef(new Animated.Value(0.4)).current;
-
-  useEffect(() => {
-    const anim = Animated.loop(
-      Animated.sequence([
-        Animated.timing(opacity, {
-          toValue: 1,
-          duration: 900,
-          useNativeDriver: true,
-        }),
-        Animated.timing(opacity, {
-          toValue: 0.4,
-          duration: 900,
-          useNativeDriver: true,
-        }),
-      ]),
-    );
-    anim.start();
-    return () => anim.stop();
-  }, [opacity]);
-
-  return (
-    <ScrollView
-      style={{ flex: 1, backgroundColor: bg }}
-      contentContainerStyle={{ padding: 20, paddingBottom: 120 }}
-    >
-      <Animated.View style={{ opacity }}>
-        <View
-          style={{
-            height: 60,
-            borderRadius: 16,
-            backgroundColor: shimmerBg,
-            marginBottom: 16,
-          }}
-        />
-        <View style={{ flexDirection: 'row', gap: 12, marginBottom: 16 }}>
-          <View
-            style={{
-              flex: 1,
-              height: 120,
-              borderRadius: 16,
-              backgroundColor: shimmerBg,
-            }}
-          />
-          <View
-            style={{
-              flex: 1,
-              height: 120,
-              borderRadius: 16,
-              backgroundColor: shimmerBg,
-            }}
-          />
-        </View>
-        <View style={{ flexDirection: 'row', gap: 8, marginBottom: 20 }}>
-          <View
-            style={{
-              width: 100,
-              height: 36,
-              borderRadius: 18,
-              backgroundColor: shimmerBg,
-            }}
-          />
-          <View
-            style={{
-              width: 100,
-              height: 36,
-              borderRadius: 18,
-              backgroundColor: shimmerBg,
-            }}
-          />
-        </View>
-        {[1, 2, 3, 4].map((i) => (
-          <View
-            key={i}
-            style={{
-              height: 130,
-              borderRadius: 16,
-              backgroundColor: shimmerBg,
-              marginBottom: 12,
-            }}
-          />
-        ))}
-      </Animated.View>
-    </ScrollView>
-  );
+function daysBetween(fromKey: string, toKey: string): number {
+  const a = parseDateKey(fromKey).getTime();
+  const b = parseDateKey(toKey).getTime();
+  return Math.round((b - a) / (1000 * 60 * 60 * 24));
 }
 
-/* -- Empty state --------------------------------------------------------- */
+/**
+ * Compute the next upcoming due date (YYYY-MM-DD) for a recurring expense,
+ * based on its source `due_date` + `recurrence_type`. Advances past today.
+ */
+function computeNextDueKey(expense: ExpenseWithParticipants): string {
+  const today = todayKey();
+  const src = expense.due_date;
+  if (!src) return today;
 
-function EmptyState({
-  icon,
-  title,
-  description,
-  actionLabel,
-  onAction,
-}: {
-  icon: keyof typeof Ionicons.glyphMap;
-  title: string;
-  description: string;
-  actionLabel?: string;
-  onAction?: () => void;
-}) {
-  const mode = useThemeStore((s) => s.mode);
-  const isDark = mode === 'dark';
+  // If the source due_date is still in the future, that IS the next due.
+  if (src >= today) return src;
 
-  return (
-    <View
-      style={{
-        alignItems: 'center',
-        padding: 24,
-        borderRadius: 16,
-        backgroundColor: isDark ? '#1A1A1A' : '#FFFFFF',
-        ...shadow,
-      }}
-    >
-      <View
-        style={{
-          marginBottom: 16,
-          height: 64,
-          width: 64,
-          alignItems: 'center',
-          justifyContent: 'center',
-          borderRadius: 32,
-          backgroundColor: isDark ? 'rgba(45,106,79,0.15)' : '#EEF6F3',
-        }}
-      >
-        <Ionicons name={icon} size={26} color="#2d6a4f" />
-      </View>
-      <Text
-        style={{
-          textAlign: 'center',
-          fontSize: 20,
-          fontWeight: '600',
-          color: isDark ? '#E5E5E5' : '#171b24',
-        }}
-      >
-        {title}
-      </Text>
-      <Text
-        style={{
-          marginTop: 12,
-          textAlign: 'center',
-          fontSize: 14,
-          lineHeight: 24,
-          color: isDark ? '#888' : '#667085',
-        }}
-      >
-        {description}
-      </Text>
-      {actionLabel && onAction ? (
-        <Pressable
-          onPress={onAction}
-          style={({ pressed }) => ({
-            marginTop: 24,
-            width: '100%',
-            height: 48,
-            borderRadius: 14,
-            backgroundColor: '#1f2330',
-            alignItems: 'center',
-            justifyContent: 'center',
-            opacity: pressed ? 0.85 : 1,
-          })}
-        >
-          <Text
-            style={{ fontSize: 15, fontWeight: '600', color: '#FFFFFF' }}
-          >
-            {actionLabel}
-          </Text>
-        </Pressable>
-      ) : null}
-    </View>
-  );
+  const srcDate = parseDateKey(src);
+  const type = expense.recurrence_type;
+
+  if (type === 'weekly') {
+    const todayDate = parseDateKey(today);
+    const srcDow = srcDate.getUTCDay();
+    const todayDow = todayDate.getUTCDay();
+    let delta = srcDow - todayDow;
+    if (delta <= 0) delta += 7;
+    const next = new Date(todayDate);
+    next.setUTCDate(todayDate.getUTCDate() + delta);
+    return toDateKey(next);
+  }
+
+  // Default: treat as monthly (the other supported recurrence in the schema).
+  const todayDate = parseDateKey(today);
+  const year = todayDate.getUTCFullYear();
+  const month = todayDate.getUTCMonth();
+  const day = srcDate.getUTCDate();
+
+  const thisMonthLast = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+  const thisMonthDay = Math.min(day, thisMonthLast);
+  const thisMonth = new Date(Date.UTC(year, month, thisMonthDay));
+  if (toDateKey(thisMonth) >= today) return toDateKey(thisMonth);
+
+  const nextMonthLast = new Date(Date.UTC(year, month + 2, 0)).getUTCDate();
+  const nextMonthDay = Math.min(day, nextMonthLast);
+  return toDateKey(new Date(Date.UTC(year, month + 1, nextMonthDay)));
 }
 
-/* -- Main screen --------------------------------------------------------- */
+function frequencyLabel(type: string | null | undefined): string {
+  switch (type) {
+    case 'weekly': return 'Weekly';
+    case 'monthly': return 'Monthly';
+    default: return 'Recurring';
+  }
+}
+
+function ordinal(n: number): string {
+  const s = ['th', 'st', 'nd', 'rd'];
+  const v = n % 100;
+  return n + (s[(v - 20) % 10] ?? s[v] ?? s[0] ?? 'th');
+}
+
+/** "Monthly · 1st · Next May 1" style caption. */
+function buildRowCaption(type: string | null | undefined, nextKey: string): string {
+  const d = parseDateKey(nextKey);
+  const day = d.getUTCDate();
+  const monthAbbr = MONTH_ABBR[d.getUTCMonth()] ?? '';
+  const monthTitle = monthAbbr.charAt(0) + monthAbbr.slice(1).toLowerCase();
+  const freq = frequencyLabel(type);
+
+  if (type === 'monthly') {
+    return `${freq} · ${ordinal(day)} · Next ${monthTitle} ${day}`;
+  }
+  if (type === 'weekly') {
+    const dow = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d.getUTCDay()];
+    return `${freq} · ${dow} · Next ${monthTitle} ${day}`;
+  }
+  return `${freq} · Next ${monthTitle} ${day}`;
+}
+
+function formatNextBillingLabel(nextKey: string): string {
+  const d = parseDateKey(nextKey);
+  const monthAbbr = MONTH_ABBR[d.getUTCMonth()] ?? '';
+  const monthTitle = monthAbbr.charAt(0) + monthAbbr.slice(1).toLowerCase();
+  return `Next billing · ${monthTitle} ${d.getUTCDate()}`;
+}
+
+function daysUntilText(nextKey: string): string {
+  const delta = daysBetween(todayKey(), nextKey);
+  if (delta <= 0) return 'auto-generates today';
+  if (delta === 1) return 'auto-generates tomorrow';
+  return `auto-generates in ${delta} days`;
+}
+
+/* -- Screen ------------------------------------------------------------- */
 
 export default function RecurringScreen() {
   const router = useRouter();
-  const mode = useThemeStore((s) => s.mode);
-  const isDark = mode === 'dark';
-  const bg = isDark ? '#0A0A0A' : '#FAFAFA';
-  const textPrimary = isDark ? '#E5E5E5' : '#171b24';
-  const textSecondary = isDark ? '#888' : '#667085';
-  const cardBg = isDark ? '#1A1A1A' : '#FFFFFF';
-  const dividerColor = isDark
-    ? 'rgba(255,255,255,0.06)'
-    : 'rgba(23,27,36,0.06)';
-
+  const insets = useSafeAreaInsets();
   const { activeGroupId } = useGroupStore();
   const { data: group } = useGroup(activeGroupId ?? '');
-  const {
-    data: activeExpenses,
-    isLoading: activeLoading,
-    error: activeError,
-    refetch: refetchActive,
-  } = useActiveRecurring(activeGroupId ?? '');
-  const {
-    data: pausedExpenses,
-    isLoading: pausedLoading,
-    error: pausedError,
-    refetch: refetchPaused,
-  } = usePausedRecurring(activeGroupId ?? '');
+  const { data: activeExpenses, isLoading } = useActiveRecurring(activeGroupId ?? '');
 
-  const pauseMutation = usePauseRecurring(activeGroupId ?? '');
-  const resumeMutation = useResumeRecurring(activeGroupId ?? '');
-  const archiveMutation = useArchiveRecurring(activeGroupId ?? '');
+  const currency = group?.currency ?? 'GBP';
 
-  const [tab, setTab] = useState<Tab>('active');
-  const isLoading = activeLoading || pausedLoading;
-  const loadError = activeError ?? pausedError;
-  const expenses =
-    tab === 'active' ? (activeExpenses ?? []) : (pausedExpenses ?? []);
-
-  const handlePause = useCallback((expenseId: string) => {
+  const handleAdd = () => {
     hapticMedium();
-    pauseMutation.mutate(expenseId, {
-      onSuccess: () => {
-        hapticSuccess();
-        Alert.alert('Paused', 'This recurring expense has been paused.');
-      },
-      onError: (err) => { hapticWarning(); Alert.alert('Error', getErrorMessage(err)); },
-    });
-  }, [pauseMutation]);
+    router.push('/expenses/new');
+  };
 
-  const handleResume = useCallback((expenseId: string) => {
+  const handleBack = () => {
+    hapticLight();
+    if (router.canGoBack()) router.back();
+  };
+
+  const handleOpen = (expenseId: string) => {
     hapticMedium();
-    resumeMutation.mutate(expenseId, {
-      onSuccess: () => {
-        hapticSuccess();
-        Alert.alert(
-          'Resumed',
-          'This recurring expense will generate copies again.',
-        );
-      },
-      onError: (err) => { hapticWarning(); Alert.alert('Error', getErrorMessage(err)); },
-    });
-  }, [resumeMutation]);
+    router.push(`/expenses/${expenseId}`);
+  };
 
-  const handleArchive = useCallback((expenseId: string, title: string) => {
-    hapticHeavy();
-    Alert.alert(
-      'Archive recurring expense?',
-      `"${title}" will stop generating and be removed from your recurring list. Existing expenses are unaffected.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Archive',
-          style: 'destructive',
-          onPress: () => {
-            archiveMutation.mutate(expenseId, {
-              onSuccess: () => { hapticSuccess(); },
-              onError: (err) => { hapticWarning(); Alert.alert('Error', getErrorMessage(err)); },
-            });
-          },
-        },
-      ],
+  /* Sort ascending by next_due; derive hero, strip, and list. */
+  const { sorted, nextBilling, stripTiles, monthTotal, monthLabel } = useMemo(() => {
+    const raw = (activeExpenses ?? []) as ExpenseWithParticipants[];
+    const withNext = raw
+      .map((e) => ({ expense: e, nextKey: computeNextDueKey(e) }))
+      .sort((a, b) => a.nextKey.localeCompare(b.nextKey));
+
+    const next = withNext[0] ?? null;
+
+    // Group into distinct dates within next ~45 days, up to 6 tiles.
+    const byDate = new Map<string, number>();
+    const horizonDays = 45;
+    const today = todayKey();
+    for (const { expense, nextKey } of withNext) {
+      const delta = daysBetween(today, nextKey);
+      if (delta < 0 || delta > horizonDays) continue;
+      byDate.set(nextKey, (byDate.get(nextKey) ?? 0) + expense.amount);
+    }
+    const tiles = Array.from(byDate.entries())
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .slice(0, 6)
+      .map(([dateKey, sum]) => ({ dateKey, sum }));
+
+    // Month total = sum of amounts whose next_due falls within the current calendar month.
+    const now = new Date();
+    const curYear = now.getFullYear();
+    const curMonth = now.getMonth();
+    let total = 0;
+    for (const { expense, nextKey } of withNext) {
+      const d = parseDateKey(nextKey);
+      if (d.getUTCFullYear() === curYear && d.getUTCMonth() === curMonth) {
+        total += expense.amount;
+      }
+    }
+    const mLabel = MONTH_FULL[curMonth] ?? '';
+
+    return {
+      sorted: withNext,
+      nextBilling: next,
+      stripTiles: tiles,
+      monthTotal: total,
+      monthLabel: mLabel,
+    };
+  }, [activeExpenses]);
+
+  /* ---------------------------------------------------------------- Header */
+
+  const header = (
+    <View
+      style={{
+        paddingTop: insets.top + 12,
+        paddingBottom: space.md,
+        paddingHorizontal: space.gutter,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        backgroundColor: colors.bgBase,
+        position: 'relative',
+      }}
+    >
+      <TouchableOpacity
+        onPress={handleBack}
+        hitSlop={10}
+        activeOpacity={0.6}
+        style={{ flexDirection: 'row', alignItems: 'center', gap: 2, paddingVertical: 6, paddingRight: 10, marginLeft: -4, zIndex: 2 }}
+      >
+        <IconChevronLeft size={22} color={colors.textPrimary} strokeWidth={2} />
+        <Text style={{ fontSize: 15, fontWeight: '600', color: colors.textPrimary }}>Back</Text>
+      </TouchableOpacity>
+      <View
+        pointerEvents="none"
+        style={{
+          position: 'absolute',
+          left: 0,
+          right: 0,
+          top: 0,
+          bottom: 0,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <Text style={[font.h3, { color: colors.textPrimary }]}>Recurring</Text>
+      </View>
+      <TouchableOpacity
+        onPress={handleAdd}
+        hitSlop={12}
+        activeOpacity={0.7}
+        style={{ flexDirection: 'row', alignItems: 'center', gap: 2, minWidth: 32, justifyContent: 'flex-end', zIndex: 2 }}
+      >
+        <IconPlus size={14} color={colors.sageInk} strokeWidth={2.5} />
+        <Text style={{ fontSize: 12, fontWeight: '700', color: colors.sageInk, letterSpacing: 0.2 }}>
+          Add
+        </Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  /* ---------------------------------------------------------------- Empty */
+
+  if (!activeGroupId) {
+    return (
+      <Screen>
+        <Stack.Screen options={{ headerShown: false }} />
+        {header}
+        <EmptyState
+          icon={IconUsers}
+          title="Select a group first"
+          description="Choose a group to manage recurring bills."
+        />
+      </Screen>
     );
-  }, [archiveMutation]);
+  }
 
-  const renderItem = useCallback(
-    ({ item: expense }: { item: ExpenseWithParticipants }) => {
-      const freq =
-        tab === 'paused'
-          ? extractPausedType(expense.description)
-          : expense.recurrence_type;
-      const isPaused = tab === 'paused';
-      const catColor = getCategoryColor(expense.category);
-      const catIcon = getCategoryIcon(expense.category);
-      const freqConfig = FREQ_CONFIG[freq] ?? {
-        label: freq,
-        color: '#667085',
-        bg: '#F1ECE4',
-      };
+  const empty = !isLoading && sorted.length === 0;
 
-      return (
-        <View style={{ marginHorizontal: 20, marginBottom: 12 }}>
-          <View
-            style={{
-              padding: 16,
-              borderRadius: 16,
-              backgroundColor: cardBg,
-              borderWidth: 1,
-              borderColor: isDark ? 'rgba(255,255,255,0.06)' : '#E5E7EB',
-              ...shadow,
-            }}
-          >
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={() => { hapticMedium(); router.push(`/expenses/${expense.id}`); }}
-            >
+  /* ---------------------------------------------------------------- Render */
+
+  return (
+    <Screen>
+      <Stack.Screen options={{ headerShown: false }} />
+      {header}
+
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{
+          paddingTop: space.md,
+          paddingBottom: 120,
+          paddingHorizontal: space.gutter,
+        }}
+        showsVerticalScrollIndicator={false}
+      >
+        {empty ? (
+          <EmptyState
+            icon={IconRepeat}
+            title="No recurring bills"
+            description="Turn any expense into a recurring bill and we'll auto-generate it each cycle."
+            actionLabel="Add recurring bill"
+            onAction={handleAdd}
+          />
+        ) : (
+          <>
+            {/* Dark-ink hero: next billing anchor */}
+            {nextBilling ? (
               <View
-                style={{ flexDirection: 'row', alignItems: 'center' }}
+                style={{
+                  backgroundColor: colors.bgInk,
+                  borderRadius: radius.hero,
+                  padding: space.xl,
+                  marginBottom: space.xl,
+                }}
               >
-                {/* Category icon */}
-                <View
+                <Text
                   style={{
-                    marginRight: 12,
-                    height: 44,
-                    width: 44,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    borderRadius: 22,
-                    backgroundColor: catColor.bg,
+                    fontSize: 11,
+                    fontWeight: '700',
+                    letterSpacing: 0.8,
+                    color: 'rgba(255,255,255,0.55)',
+                    textTransform: 'uppercase',
                   }}
                 >
-                  <Ionicons
-                    name={catIcon}
-                    size={20}
-                    color={catColor.icon}
-                  />
-                </View>
-
-                {/* Title + frequency */}
-                <View style={{ marginRight: 12, flex: 1 }}>
-                  <Text
-                    style={{
-                      fontSize: 16,
-                      fontWeight: '600',
-                      color: textPrimary,
-                    }}
-                    numberOfLines={1}
-                  >
-                    {expense.title}
+                  {formatNextBillingLabel(nextBilling.nextKey)}
+                </Text>
+                <Text
+                  style={{
+                    marginTop: space.sm,
+                    fontSize: 34,
+                    fontWeight: '700',
+                    lineHeight: 40,
+                    letterSpacing: -0.5,
+                    color: colors.textInverse,
+                    fontVariant: ['tabular-nums'],
+                  }}
+                >
+                  {formatCurrency(nextBilling.expense.amount, currency)}
+                </Text>
+                <Text
+                  style={{
+                    marginTop: space.sm,
+                    fontSize: 13,
+                    color: 'rgba(255,255,255,0.75)',
+                  }}
+                  numberOfLines={1}
+                >
+                  <Text style={{ fontWeight: '700', color: colors.textInverse }}>
+                    {nextBilling.expense.title}
                   </Text>
-                  <View
-                    style={{
-                      marginTop: 6,
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      gap: 8,
-                    }}
-                  >
-                    {/* Frequency chip */}
+                  {' · '}
+                  {daysUntilText(nextBilling.nextKey)}
+                </Text>
+              </View>
+            ) : null}
+
+            {/* Upcoming section label */}
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'baseline',
+                justifyContent: 'space-between',
+                marginBottom: space.md,
+              }}
+            >
+              <Text style={[font.h3, { color: colors.textPrimary }]}>
+                Upcoming in {monthLabel}
+              </Text>
+              <Text style={[font.caption, { color: colors.textTertiary }]}>
+                {formatCurrency(monthTotal, currency)} total
+              </Text>
+            </View>
+
+            {/* Horizontal date strip */}
+            {stripTiles.length > 0 ? (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ paddingRight: space.gutter, gap: space.sm }}
+                style={{ marginHorizontal: -space.gutter, marginBottom: space.xl }}
+              >
+                <View style={{ width: space.gutter }} />
+                {stripTiles.map((tile, idx) => {
+                  const isNext = idx === 0;
+                  const d = parseDateKey(tile.dateKey);
+                  const monthAbbr = MONTH_ABBR[d.getUTCMonth()] ?? '';
+                  const day = d.getUTCDate();
+                  return (
                     <View
+                      key={tile.dateKey}
                       style={{
-                        paddingHorizontal: 8,
-                        paddingVertical: 3,
-                        borderRadius: 6,
-                        backgroundColor: isPaused
-                          ? '#FEF2F2'
-                          : '#F3F4F6',
+                        minWidth: 68,
+                        paddingHorizontal: 10,
+                        paddingVertical: 8,
+                        borderRadius: 14,
+                        alignItems: 'center',
+                        backgroundColor: isNext ? colors.bgInk : colors.bgSurface,
+                        borderWidth: isNext ? 0 : 1,
+                        borderColor: colors.borderSubtle,
                       }}
                     >
                       <Text
                         style={{
-                          fontSize: 11,
-                          fontWeight: '500',
-                          color: isPaused ? '#B9382F' : '#6B7280',
+                          fontSize: 10,
+                          fontWeight: '700',
+                          letterSpacing: 0.6,
+                          color: isNext ? 'rgba(255,255,255,0.7)' : colors.textMuted,
                         }}
                       >
-                        {isPaused ? 'Paused' : freqConfig.label}
+                        {monthAbbr}
+                      </Text>
+                      <Text
+                        style={{
+                          marginTop: 2,
+                          fontSize: 22,
+                          fontWeight: '700',
+                          lineHeight: 26,
+                          color: isNext ? colors.textInverse : colors.textPrimary,
+                          fontVariant: ['tabular-nums'],
+                        }}
+                      >
+                        {day}
+                      </Text>
+                      <Text
+                        style={{
+                          marginTop: 2,
+                          fontSize: 10,
+                          fontWeight: '500',
+                          color: isNext ? 'rgba(255,255,255,0.7)' : colors.textMuted,
+                          fontVariant: ['tabular-nums'],
+                        }}
+                      >
+                        {formatCurrency(tile.sum, currency)}
+                      </Text>
+                    </View>
+                  );
+                })}
+              </ScrollView>
+            ) : null}
+
+            {/* All recurring */}
+            <Text
+              style={[
+                font.h3,
+                { color: colors.textPrimary, marginBottom: space.md },
+              ]}
+            >
+              All recurring
+            </Text>
+
+            <View style={{ gap: space.sm }}>
+              {sorted.map(({ expense, nextKey }) => {
+                const meta = getCategoryMeta(expense.category ?? 'miscellaneous');
+                return (
+                  <TouchableOpacity
+                    key={expense.id}
+                    activeOpacity={0.8}
+                    onPress={() => handleOpen(expense.id)}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: space.md,
+                      backgroundColor: colors.bgSurface,
+                      borderRadius: 14,
+                      padding: space.md,
+                      ...elevation.card,
+                    }}
+                  >
+                    <IconTile
+                      icon={meta.icon as never}
+                      color={meta.color}
+                      bg={meta.bg}
+                      size={40}
+                    />
+                    <View style={{ flex: 1 }}>
+                      <Text
+                        style={{ fontSize: 14, fontWeight: '600', color: colors.textPrimary }}
+                        numberOfLines={1}
+                      >
+                        {expense.title}
+                      </Text>
+                      <Text
+                        style={{ marginTop: 2, fontSize: 12, color: colors.textTertiary }}
+                        numberOfLines={1}
+                      >
+                        {buildRowCaption(expense.recurrence_type, nextKey)}
+                        {expense.category ? ` · ${formatCategoryLabel(expense.category)}` : ''}
                       </Text>
                     </View>
                     <Text
                       style={{
-                        fontSize: 12,
-                        color: textSecondary,
+                        fontSize: 13,
+                        fontWeight: '700',
+                        color: colors.textPrimary,
+                        fontVariant: ['tabular-nums'],
                       }}
                     >
-                      {formatCategoryLabel(expense.category)}
+                      {formatCurrency(expense.amount, currency)}
                     </Text>
-                  </View>
-                </View>
-
-                {/* Amount + due date */}
-                <View style={{ alignItems: 'flex-end' }}>
-                  <Text
-                    style={{
-                      fontSize: 16,
-                      fontWeight: '700',
-                      color: textPrimary,
-                    }}
-                  >
-                    {formatCurrency(expense.amount, group?.currency)}
-                  </Text>
-                  <Text
-                    style={{
-                      marginTop: 4,
-                      fontSize: 12,
-                      color: textSecondary,
-                    }}
-                  >
-                    Due {formatDate(expense.due_date)}
-                  </Text>
-                </View>
-              </View>
-            </TouchableOpacity>
-
-            {/* Action buttons */}
-            <View
-              style={{
-                marginTop: 14,
-                flexDirection: 'row',
-                alignItems: 'center',
-                paddingTop: 14,
-                gap: 8,
-                borderTopWidth: 1,
-                borderTopColor: dividerColor,
-              }}
-            >
-              {isPaused ? (
-                <Pressable
-                  onPress={() => handleResume(expense.id)}
-                  disabled={resumeMutation.isPending}
-                  style={({ pressed }) => ({
-                    flex: 1,
-                    height: 38,
-                    borderRadius: 10,
-                    backgroundColor: '#1f2330',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    opacity: resumeMutation.isPending
-                      ? 0.5
-                      : pressed
-                        ? 0.85
-                        : 1,
-                  })}
-                >
-                  <Text
-                    style={{
-                      fontSize: 13,
-                      fontWeight: '600',
-                      color: '#FFFFFF',
-                    }}
-                  >
-                    Resume
-                  </Text>
-                </Pressable>
-              ) : (
-                <Pressable
-                  onPress={() => handlePause(expense.id)}
-                  disabled={pauseMutation.isPending}
-                  style={({ pressed }) => ({
-                    flex: 1,
-                    height: 38,
-                    borderRadius: 10,
-                    borderWidth: 1,
-                    borderColor: '#E5E7EB',
-                    backgroundColor: 'transparent',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    opacity: pauseMutation.isPending
-                      ? 0.5
-                      : pressed
-                        ? 0.85
-                        : 1,
-                  })}
-                >
-                  <Text
-                    style={{
-                      fontSize: 13,
-                      fontWeight: '600',
-                      color: textPrimary,
-                    }}
-                  >
-                    Pause
-                  </Text>
-                </Pressable>
-              )}
-              <Pressable
-                onPress={() => handleArchive(expense.id, expense.title)}
-                disabled={archiveMutation.isPending}
-                style={({ pressed }) => ({
-                  height: 38,
-                  width: 38,
-                  borderRadius: 10,
-                  backgroundColor: '#FEF2F2',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  opacity: archiveMutation.isPending
-                    ? 0.5
-                    : pressed
-                      ? 0.85
-                      : 1,
-                })}
-              >
-                <Ionicons name="trash-outline" size={15} color="#B9382F" />
-              </Pressable>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
-          </View>
-        </View>
-      );
-    },
-    [
-      tab,
-      group?.currency,
-      router,
-      handleArchive,
-      handlePause,
-      handleResume,
-      pauseMutation,
-      resumeMutation,
-      archiveMutation,
-      cardBg,
-      isDark,
-      textPrimary,
-      textSecondary,
-      dividerColor,
-    ],
-  );
-
-  if (!activeGroupId) {
-    return (
-      <ScrollView
-        style={{ flex: 1, backgroundColor: bg }}
-        contentContainerStyle={{ padding: 20, paddingBottom: 120 }}
-      >
-        <EmptyState
-          icon="repeat-outline"
-          title="Select a group first"
-          description="Choose a group to manage recurring expenses."
-        />
+          </>
+        )}
       </ScrollView>
-    );
-  }
-
-  if (loadError) {
-    return (
-      <ScrollView
-        style={{ flex: 1, backgroundColor: bg }}
-        contentContainerStyle={{ padding: 20, paddingBottom: 120 }}
-      >
-        <EmptyState
-          icon="cloud-offline-outline"
-          title="Could not load recurring expenses"
-          description={getErrorMessage(loadError)}
-          actionLabel="Try again"
-          onAction={() => {
-            hapticLight();
-            void refetchActive();
-            void refetchPaused();
-          }}
-        />
-      </ScrollView>
-    );
-  }
-
-  if (isLoading) {
-    return <RecurringLoadingSkeleton />;
-  }
-
-  const monthlyTotal = (activeExpenses ?? []).reduce(
-    (sum: number, e: ExpenseWithParticipants) => sum + e.amount,
-    0,
-  );
-
-  const ListHeader = (
-    <View style={{ paddingHorizontal: 20, paddingTop: 20 }}>
-      {/* Header */}
-      <View style={{ marginBottom: 20 }}>
-        <Text
-          style={{
-            fontSize: 28,
-            fontWeight: '700',
-            color: textPrimary,
-          }}
-        >
-          Recurring
-        </Text>
-        <Text
-          style={{
-            marginTop: 8,
-            fontSize: 14,
-            lineHeight: 22,
-            color: textSecondary,
-          }}
-        >
-          Manage expenses that automatically repeat on a schedule.
-        </Text>
-        {group ? (
-          <Text
-            style={{
-              marginTop: 8,
-              fontSize: 12,
-              fontWeight: '500',
-              textTransform: 'uppercase',
-              letterSpacing: 1.5,
-              color: textSecondary,
-            }}
-          >
-            {group.name} &middot; {group.currency}
-          </Text>
-        ) : null}
-      </View>
-
-      {/* Stat cards row */}
-      <View
-        style={{ marginBottom: 16, flexDirection: 'row', gap: 12 }}
-      >
-        {/* Active count */}
-        <View
-          style={{
-            flex: 1,
-            padding: 16,
-            borderRadius: 14,
-            backgroundColor: cardBg,
-            borderWidth: 1,
-            borderColor: isDark ? 'rgba(255,255,255,0.06)' : '#E5E7EB',
-            ...shadow,
-          }}
-        >
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'flex-start',
-              justifyContent: 'space-between',
-            }}
-          >
-            <View style={{ flex: 1 }}>
-              <Text
-                style={{
-                  fontSize: 13,
-                  fontWeight: '500',
-                  color: textSecondary,
-                }}
-              >
-                Active
-              </Text>
-              <Text
-                style={{
-                  marginTop: 8,
-                  fontSize: 24,
-                  fontWeight: '700',
-                  color: textPrimary,
-                }}
-              >
-                {String((activeExpenses ?? []).length)}
-              </Text>
-            </View>
-            <View
-              style={{
-                height: 40,
-                width: 40,
-                alignItems: 'center',
-                justifyContent: 'center',
-                borderRadius: 12,
-                backgroundColor: isDark
-                  ? 'rgba(45,106,79,0.15)'
-                  : '#EEF6F3',
-              }}
-            >
-              <Ionicons
-                name="repeat-outline"
-                size={18}
-                color="#2d6a4f"
-              />
-            </View>
-          </View>
-          <Text
-            style={{ marginTop: 8, fontSize: 12, color: textSecondary }}
-          >
-            Generating copies
-          </Text>
-        </View>
-
-        {/* Monthly total */}
-        <View
-          style={{
-            flex: 1,
-            padding: 16,
-            borderRadius: 14,
-            backgroundColor: cardBg,
-            borderWidth: 1,
-            borderColor: isDark ? 'rgba(255,255,255,0.06)' : '#E5E7EB',
-            ...shadow,
-          }}
-        >
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'flex-start',
-              justifyContent: 'space-between',
-            }}
-          >
-            <View style={{ flex: 1 }}>
-              <Text
-                style={{
-                  fontSize: 13,
-                  fontWeight: '500',
-                  color: textSecondary,
-                }}
-              >
-                Monthly total
-              </Text>
-              <Text
-                style={{
-                  marginTop: 8,
-                  fontSize: 24,
-                  fontWeight: '700',
-                  color: textPrimary,
-                }}
-              >
-                {formatCurrency(monthlyTotal, group?.currency)}
-              </Text>
-            </View>
-            <View
-              style={{
-                height: 40,
-                width: 40,
-                alignItems: 'center',
-                justifyContent: 'center',
-                borderRadius: 12,
-                backgroundColor: isDark
-                  ? 'rgba(79,70,96,0.15)'
-                  : '#F4F1F8',
-              }}
-            >
-              <Ionicons
-                name="wallet-outline"
-                size={18}
-                color="#4F4660"
-              />
-            </View>
-          </View>
-          <Text
-            style={{ marginTop: 8, fontSize: 12, color: textSecondary }}
-          >
-            Active recurring spend
-          </Text>
-        </View>
-      </View>
-
-      {/* Tab pills */}
-      <View
-        style={{ marginBottom: 16, flexDirection: 'row', gap: 8 }}
-      >
-        <Pressable
-          onPress={() => { hapticLight(); setTab('active'); }}
-          style={({ pressed }) => ({
-            paddingHorizontal: 16,
-            paddingVertical: 9,
-            borderRadius: 20,
-            backgroundColor:
-              tab === 'active' ? '#1f2330' : isDark ? '#1A1A1A' : '#F3F4F6',
-            opacity: pressed ? 0.85 : 1,
-          })}
-        >
-          <Text
-            style={{
-              fontSize: 13,
-              fontWeight: '600',
-              color: tab === 'active' ? '#FFFFFF' : textSecondary,
-            }}
-          >
-            Active ({(activeExpenses ?? []).length})
-          </Text>
-        </Pressable>
-        <Pressable
-          onPress={() => { hapticLight(); setTab('paused'); }}
-          style={({ pressed }) => ({
-            paddingHorizontal: 16,
-            paddingVertical: 9,
-            borderRadius: 20,
-            backgroundColor:
-              tab === 'paused' ? '#1f2330' : isDark ? '#1A1A1A' : '#F3F4F6',
-            opacity: pressed ? 0.85 : 1,
-          })}
-        >
-          <Text
-            style={{
-              fontSize: 13,
-              fontWeight: '600',
-              color: tab === 'paused' ? '#FFFFFF' : textSecondary,
-            }}
-          >
-            Paused ({(pausedExpenses ?? []).length})
-          </Text>
-        </Pressable>
-      </View>
-    </View>
-  );
-
-  const ListFooter = (
-    <View style={{ marginHorizontal: 20, marginTop: 8, marginBottom: 16 }}>
-      <Pressable
-        onPress={() => { hapticMedium(); router.push('/add-expense'); }}
-        style={({ pressed }) => ({
-          width: '100%',
-          height: 48,
-          borderRadius: 14,
-          backgroundColor: '#1f2330',
-          alignItems: 'center',
-          justifyContent: 'center',
-          opacity: pressed ? 0.85 : 1,
-        })}
-      >
-        <Text
-          style={{ fontSize: 15, fontWeight: '600', color: '#FFFFFF' }}
-        >
-          Add recurring expense
-        </Text>
-      </Pressable>
-    </View>
-  );
-
-  return (
-    <FlatList
-      data={expenses}
-      renderItem={renderItem}
-      keyExtractor={(item) => item.id}
-      style={{ flex: 1, backgroundColor: bg }}
-      contentContainerStyle={{ paddingBottom: 120 }}
-      showsVerticalScrollIndicator={false}
-      ListHeaderComponent={ListHeader}
-      ListFooterComponent={ListFooter}
-      ListEmptyComponent={
-        <View style={{ paddingHorizontal: 20 }}>
-          <EmptyState
-            icon="repeat-outline"
-            title={
-              tab === 'active'
-                ? 'No active recurring expenses'
-                : 'No paused expenses'
-            }
-            description={
-              tab === 'active'
-                ? 'Create an expense with weekly or monthly recurrence to see it here.'
-                : 'Paused expenses will appear here. Resume them any time.'
-            }
-          />
-        </View>
-      }
-      initialNumToRender={15}
-      maxToRenderPerBatch={10}
-      windowSize={5}
-    />
+    </Screen>
   );
 }

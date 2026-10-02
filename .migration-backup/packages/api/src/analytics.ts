@@ -1,4 +1,4 @@
-import { supabase } from './client';
+import { getTypedSupabase } from './client';
 import {
   toDateKey,
   toMonthKey,
@@ -53,6 +53,7 @@ export async function getAnalyticsData(
   const currentMonth = getMonthRange(0);
   const lastMonth = getMonthRange(1);
 
+  const supabase = getTypedSupabase();
   const { data: expenses, error } = await supabase
     .from('expenses')
     .select(
@@ -73,7 +74,7 @@ export async function getAnalyticsData(
 
   if (error) throw error;
 
-  const rows = (expenses ?? []) as AnalyticsExpenseRow[];
+  const rows = (expenses ?? []) as unknown as AnalyticsExpenseRow[];
 
   const monthBuckets = new Map<string, number>();
   for (let i = 5; i >= 0; i--) {

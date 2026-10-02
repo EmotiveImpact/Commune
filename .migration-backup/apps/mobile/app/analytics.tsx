@@ -1,773 +1,450 @@
-import { useEffect, useRef, useState } from 'react';
-import { Animated, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { useMemo } from 'react';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { IconChartBar, IconChevronDown, IconChevronLeft, IconSparkles } from '@tabler/icons-react-native';
 import { formatCurrency } from '@commune/utils';
 import { useAuthStore } from '@/stores/auth';
 import { useGroupStore } from '@/stores/group';
-import { useThemeStore } from '@/stores/theme';
 import { useGroup } from '@/hooks/use-groups';
 import { useSubscription } from '@/hooks/use-subscriptions';
 import { useAnalytics } from '@/hooks/use-analytics';
+import { useGroupExpenses } from '@/hooks/use-expenses';
 import { hapticMedium } from '@/lib/haptics';
+import { formatCategoryLabel } from '@/lib/ui';
 import { CategoryBreakdownCard, type CategoryItem } from '@/components/category-breakdown';
+import { EmptyState, IconTile, Screen } from '@/components/primitives';
+import { colors, font, getCategoryMeta, radius, space } from '@/constants/design';
 
-const CATEGORY_COLORS = [
-  '#84CC16', '#1a56db', '#C4620A', '#6D5DC7', '#0D9488',
-  '#B9382F', '#55704B', '#8A593B', '#4F4660', '#667085',
-];
+const MONTH_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-function ShimmerBlock({ width, height, style }: { width: number | string; height: number; style?: object }) {
-  const anim = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(anim, { toValue: 1, duration: 800, useNativeDriver: true }),
-        Animated.timing(anim, { toValue: 0, duration: 800, useNativeDriver: true }),
-      ]),
-    ).start();
-  }, [anim]);
-  const opacity = anim.interpolate({ inputRange: [0, 1], outputRange: [0.3, 0.7] });
-  return (
-    <Animated.View
-      style={[{ width: width as number, height, borderRadius: 8, backgroundColor: '#E5E7EB', opacity }, style]}
-    />
-  );
+function monthKeyToAbbr(key: string): string {
+  // key format: YYYY-MM
+  const [, mm] = key.split('-');
+  const idx = Number(mm) - 1;
+  return MONTH_ABBR[idx] ?? key;
 }
 
-function ContentSkeleton({ isDark }: { isDark: boolean }) {
-  const bg = isDark ? '#0A0A0A' : '#FAFAFA';
-  return (
-    <View style={{ flex: 1, backgroundColor: bg, padding: 20 }}>
-      <ShimmerBlock width="40%" height={28} style={{ alignSelf: 'center', marginBottom: 24 }} />
-      <ShimmerBlock width="100%" height={140} style={{ marginBottom: 16, borderRadius: 24 }} />
-      <ShimmerBlock width="100%" height={200} style={{ marginBottom: 16, borderRadius: 24 }} />
-      <ShimmerBlock width="100%" height={160} style={{ marginBottom: 16, borderRadius: 24 }} />
-    </View>
-  );
+function currentMonthLabel(): string {
+  return MONTH_ABBR[new Date().getMonth()] ?? 'This month';
 }
 
-function getInitials(name: string): string {
-  return name
-    .split(' ')
-    .map((n: string) => n[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase();
+function formatDayMonth(isoDate: string): string {
+  // isoDate: YYYY-MM-DD
+  const [, mm, dd] = isoDate.split('-');
+  const idx = Number(mm) - 1;
+  const abbr = MONTH_ABBR[idx] ?? '';
+  const day = Number(dd);
+  return Number.isFinite(day) && abbr ? `${day} ${abbr}` : isoDate;
 }
 
 export default function AnalyticsScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { user } = useAuthStore();
   const { activeGroupId } = useGroupStore();
-  const { mode } = useThemeStore();
-  const isDark = mode === 'dark';
-  const bgColor = isDark ? '#0A0A0A' : '#F9FAFB';
-  const textPrimary = isDark ? '#FFFFFF' : '#111827';
-  const textSecondary = isDark ? '#9CA3AF' : '#6B7280';
-  const cardBg = isDark ? '#1A1A1A' : '#FFFFFF';
-  const separatorColor = isDark ? '#1F2937' : '#F3F4F6';
-  const pillBg = isDark ? '#1F2937' : '#F3F4F6';
-
-  const [selectedMonth, setSelectedMonth] = useState(() => {
-    const now = new Date();
-    return MONTH_LABELS[now.getMonth()] ?? 'Jan';
-  });
 
   const { data: group } = useGroup(activeGroupId ?? '');
   const { data: subscription, isLoading: subLoading } = useSubscription(user?.id ?? '');
   const { data: analytics, isLoading: analyticsLoading } = useAnalytics(activeGroupId ?? '');
+  const { data: expensesList } = useGroupExpenses(activeGroupId ?? '');
 
-  // No active group
+  const currency = group?.currency ?? 'GBP';
+  const monthLabel = currentMonthLabel();
+
+  // --- Derivations (hooks must run every render; compute upfront) ---
+  const categoryBreakdown = useMemo(
+    () => analytics?.categoryBreakdown ?? [],
+    [analytics?.categoryBreakdown],
+  );
+  const spendingTrend = useMemo(
+    () => analytics?.spendingTrend ?? [],
+    [analytics?.spendingTrend],
+  );
+  const monthComparison = analytics?.monthComparison;
+
+  const totalThisMonth = useMemo(
+    () => categoryBreakdown.reduce((sum, c) => sum + c.amount, 0),
+    [categoryBreakdown],
+  );
+
+  const prevMonthAbbr = useMemo(() => {
+    const idx = new Date().getMonth();
+    return MONTH_ABBR[(idx + 11) % 12] ?? '';
+  }, []);
+
+  // Biggest expense: prefer actual expense from list (current month), fallback to largest category
+  const biggestExpense = useMemo(() => {
+    const ym = new Date().toISOString().slice(0, 7);
+    const monthExpenses = (expensesList ?? []).filter((e) => (e.due_date ?? '').startsWith(ym));
+    const candidates = monthExpenses.length > 0 ? monthExpenses : (expensesList ?? []);
+    let best: { title: string; amount: number; due_date?: string; category?: string } | null = null;
+    for (const e of candidates) {
+      const amt = Number(e.amount ?? 0);
+      if (!best || amt > best.amount) {
+        best = {
+          title: String(e.title ?? 'Expense'),
+          amount: amt,
+          due_date: e.due_date ?? undefined,
+          category: e.category ?? undefined,
+        };
+      }
+    }
+    if (best && best.amount > 0) return best;
+    const topCat = categoryBreakdown[0];
+    if (topCat && topCat.amount > 0) {
+      return {
+        title: formatCategoryLabel(topCat.category),
+        amount: topCat.amount,
+        due_date: undefined,
+        category: topCat.category,
+      };
+    }
+    return null;
+  }, [expensesList, categoryBreakdown]);
+
+  // --- No group selected ---
   if (!activeGroupId) {
     return (
-      <ScrollView
-        style={{ flex: 1, backgroundColor: bgColor }}
-        contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 20 }}
-      >
-        <View
-          style={{
-            backgroundColor: cardBg,
-            borderRadius: 24,
-            padding: 20,
-            shadowColor: '#000',
-            shadowOpacity: 0.05,
-            shadowRadius: 12,
-            shadowOffset: { width: 0, height: 4 },
-            elevation: 3,
-          }}
-        >
-          <View style={{ alignItems: 'center', paddingVertical: 24 }}>
-            <View
-              style={{
-                width: 48,
-                height: 48,
-                borderRadius: 24,
-                backgroundColor: isDark ? '#1F2937' : '#F3F4F6',
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginBottom: 16,
-              }}
-            >
-              <Ionicons name="bar-chart-outline" size={24} color={textSecondary} />
-            </View>
-            <Text style={{ fontSize: 18, fontWeight: '600', color: textPrimary }}>
-              Select a group first
-            </Text>
-            <Text style={{ fontSize: 14, color: textSecondary, marginTop: 8, textAlign: 'center' }}>
-              Choose a group to view analytics.
-            </Text>
-          </View>
-        </View>
-      </ScrollView>
+      <Screen>
+        <Header monthLabel={monthLabel} onBack={() => router.back()} topInset={insets.top} />
+        <EmptyState
+          icon={IconChartBar}
+          title="Select a group first"
+          description="Choose a group to view analytics."
+        />
+      </Screen>
     );
   }
 
-  // Loading
+  // --- Loading ---
   if (subLoading || analyticsLoading) {
-    return <ContentSkeleton isDark={isDark} />;
+    return (
+      <Screen>
+        <Header monthLabel={monthLabel} onBack={() => router.back()} topInset={insets.top} />
+        <View style={{ padding: space.gutter, gap: space.base }}>
+          <View style={[s.skeleton, { height: 220 }]} />
+          <View style={{ flexDirection: 'row', gap: space.base }}>
+            <View style={[s.skeleton, { flex: 1, height: 96 }]} />
+            <View style={[s.skeleton, { flex: 1, height: 96 }]} />
+          </View>
+          <View style={[s.skeleton, { height: 180 }]} />
+        </View>
+      </Screen>
+    );
   }
 
   const plan = subscription?.plan;
   const isProOrAgency = plan === 'pro' || plan === 'agency';
 
-  // Upgrade gate
+  // --- Paywall (Pro / Agency gate preserved) ---
   if (!isProOrAgency) {
     return (
-      <ScrollView
-        style={{ flex: 1, backgroundColor: bgColor }}
-        contentContainerStyle={{ padding: 20 }}
-      >
-        <Text style={{ fontSize: 28, fontWeight: '700', color: textPrimary, textAlign: 'center', marginBottom: 24 }}>
-          Analytics
-        </Text>
-
-        <View
-          style={{
-            backgroundColor: cardBg,
-            borderRadius: 24,
-            padding: 20,
-            shadowColor: '#000',
-            shadowOpacity: 0.05,
-            shadowRadius: 12,
-            shadowOffset: { width: 0, height: 4 },
-            elevation: 3,
-          }}
-        >
-          <View style={{ alignItems: 'center', paddingVertical: 24 }}>
-            <View
-              style={{
-                marginBottom: 16,
-                height: 64,
-                width: 64,
-                alignItems: 'center',
-                justifyContent: 'center',
-                borderRadius: 24,
-                backgroundColor: isDark ? 'rgba(132,204,22,0.12)' : '#F7FEE7',
-              }}
-            >
-              <Ionicons name="bar-chart-outline" size={28} color="#84CC16" />
+      <Screen>
+        <Header monthLabel={monthLabel} onBack={() => router.back()} topInset={insets.top} />
+        <ScrollView contentContainerStyle={s.scrollContent}>
+          <View style={s.card}>
+            <View style={s.paywallIconWrap}>
+              <IconTile icon={IconSparkles} color={colors.sage} bg={colors.sageSoft} size={56} />
             </View>
-            <Text style={{ fontSize: 20, fontWeight: '700', color: textPrimary }}>
-              Upgrade to Pro
-            </Text>
-            <Text
-              style={{
-                marginTop: 8,
-                textAlign: 'center',
-                fontSize: 14,
-                lineHeight: 20,
-                color: textSecondary,
-                maxWidth: 280,
-              }}
-            >
-              Advanced analytics is available on Pro and Agency plans. Get spending trends, category breakdowns, compliance tracking, and more.
+            <Text style={s.paywallTitle}>Upgrade to Pro</Text>
+            <Text style={s.paywallBody}>
+              Advanced analytics is available on Pro and Agency plans. Get spending trends,
+              category breakdowns, compliance tracking, and more.
             </Text>
             <TouchableOpacity
-              onPress={() => { hapticMedium(); router.push('/pricing'); }}
-              activeOpacity={0.8}
-              style={{
-                marginTop: 24,
-                flexDirection: 'row',
-                alignItems: 'center',
-                backgroundColor: '#111827',
-                borderRadius: 12,
-                paddingVertical: 14,
-                paddingHorizontal: 24,
-                gap: 8,
+              onPress={() => {
+                hapticMedium();
+                router.push('/pricing');
               }}
+              activeOpacity={0.85}
+              style={s.paywallCta}
             >
-              <Ionicons name="sparkles-outline" size={16} color="#FFFFFF" />
-              <Text style={{ fontSize: 14, fontWeight: '600', color: '#FFFFFF' }}>View plans</Text>
+              <Text style={s.paywallCtaLabel}>View plans</Text>
             </TouchableOpacity>
           </View>
-        </View>
-      </ScrollView>
+        </ScrollView>
+      </Screen>
     );
   }
 
-  // No analytics data at all
-  if (!analytics) {
-    return (
-      <ScrollView
-        style={{ flex: 1, backgroundColor: bgColor }}
-        contentContainerStyle={{ padding: 20 }}
-      >
-        <Text style={{ fontSize: 28, fontWeight: '700', color: textPrimary, textAlign: 'center', marginBottom: 24 }}>
-          Analytics
-        </Text>
-        <View
-          style={{
-            backgroundColor: cardBg,
-            borderRadius: 24,
-            padding: 20,
-            shadowColor: '#000',
-            shadowOpacity: 0.05,
-            shadowRadius: 12,
-            shadowOffset: { width: 0, height: 4 },
-            elevation: 3,
-          }}
-        >
-          <View style={{ alignItems: 'center', paddingVertical: 24 }}>
-            <View
-              style={{
-                width: 48,
-                height: 48,
-                borderRadius: 24,
-                backgroundColor: isDark ? '#1F2937' : '#F3F4F6',
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginBottom: 16,
-              }}
-            >
-              <Ionicons name="bar-chart-outline" size={24} color={textSecondary} />
-            </View>
-            <Text style={{ fontSize: 18, fontWeight: '600', color: textPrimary }}>
-              No analytics data yet
-            </Text>
-            <Text style={{ fontSize: 14, color: textSecondary, marginTop: 8, textAlign: 'center' }}>
-              Once your group starts tracking expenses, insights will appear here.
-            </Text>
-          </View>
-        </View>
-      </ScrollView>
-    );
-  }
+  const donutItems: CategoryItem[] = categoryBreakdown.map((c) => ({
+    category: c.category,
+    amount: c.amount,
+    pct: totalThisMonth > 0 ? Math.round((c.amount / totalThisMonth) * 100) : 0,
+  }));
+  const hasData = totalThisMonth > 0;
 
-  const { spendingTrend, categoryBreakdown, topSpenders, complianceRate, monthComparison } = analytics;
-  const hasData = spendingTrend.some((item) => item.amount > 0);
+  // MoM delta (fallback 0)
+  const deltaPercent = monthComparison?.deltaPercent ?? 0;
+  const deltaPositive = deltaPercent >= 0;
 
-  // Has analytics object but no spending data
-  if (!hasData) {
-    return (
-      <ScrollView
-        style={{ flex: 1, backgroundColor: bgColor }}
-        contentContainerStyle={{ padding: 20 }}
-      >
-        <Text style={{ fontSize: 28, fontWeight: '700', color: textPrimary, textAlign: 'center', marginBottom: 24 }}>
-          Analytics
-        </Text>
-        <View
-          style={{
-            backgroundColor: cardBg,
-            borderRadius: 24,
-            padding: 20,
-            shadowColor: '#000',
-            shadowOpacity: 0.05,
-            shadowRadius: 12,
-            shadowOffset: { width: 0, height: 4 },
-            elevation: 3,
-          }}
-        >
-          <View style={{ alignItems: 'center', paddingVertical: 24 }}>
-            <View
-              style={{
-                width: 48,
-                height: 48,
-                borderRadius: 24,
-                backgroundColor: isDark ? '#1F2937' : '#F3F4F6',
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginBottom: 16,
-              }}
-            >
-              <Ionicons name="bar-chart-outline" size={24} color={textSecondary} />
-            </View>
-            <Text style={{ fontSize: 18, fontWeight: '600', color: textPrimary }}>
-              No analytics data yet
-            </Text>
-            <Text style={{ fontSize: 14, color: textSecondary, marginTop: 8, textAlign: 'center' }}>
-              Once your group starts tracking expenses, spending trends and insights will appear here.
-            </Text>
-          </View>
-        </View>
-      </ScrollView>
-    );
-  }
-
-  const deltaPositive = monthComparison.delta >= 0;
-  const totalCat = categoryBreakdown.reduce((s, c) => s + c.amount, 0);
-
-  // Build daily spending data for mini bar chart (7 bars)
-  const dailySpending = spendingTrend.length > 0
-    ? spendingTrend.slice(-7).map((item) => item.amount)
-    : [0, 0, 0, 0, 0, 0, 0];
-  // Pad to 7 if fewer
-  while (dailySpending.length < 7) {
-    dailySpending.unshift(0);
-  }
-  const maxDaily = Math.max(...dailySpending, 1);
-
-  // Spending trend for area chart (last 6 months)
+  // 6-month bar chart
   const last6 = spendingTrend.slice(-6);
-  const maxTrendAmount = Math.max(...last6.map((m) => m.amount), 1);
+  const bars6 = last6.length > 0 ? last6 : Array.from({ length: 6 }, (_, i) => ({
+    month: `0000-0${i + 1}`.slice(-7),
+    amount: 0,
+  }));
+  const maxBar = Math.max(...bars6.map((b) => b.amount), 1);
+  const trendTotal = bars6.reduce((sum, b) => sum + b.amount, 0);
 
-  // Total spending (sum of trend)
-  const totalSpending = spendingTrend.reduce((s, item) => s + item.amount, 0);
+  // Top 3 categories
+  const topCategories = donutItems.slice(0, 3);
 
   return (
-    <ScrollView
-      style={{ flex: 1, backgroundColor: bgColor }}
-      contentContainerStyle={{ padding: 20, paddingBottom: 120 }}
-      showsVerticalScrollIndicator={false}
-    >
-      {/* Header - centered */}
-      <Text
-        style={{
-          fontSize: 28,
-          fontWeight: '700',
-          color: textPrimary,
-          textAlign: 'center',
-          marginBottom: 24,
-        }}
+    <Screen>
+      <Header monthLabel={monthLabel} onBack={() => router.back()} topInset={insets.top} />
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={s.scrollContent}
+        showsVerticalScrollIndicator={false}
       >
-        Analytics
-      </Text>
+        {/* Donut first */}
+        <CategoryBreakdownCard
+          items={hasData ? donutItems : []}
+          currency={currency}
+          scopeLabel={monthLabel}
+        />
 
-      {/* ========== MY SPENDING CARD ========== */}
-      <View
-        style={{
-          backgroundColor: cardBg,
-          borderRadius: 24,
-          padding: 20,
-          marginBottom: 16,
-          shadowColor: '#000',
-          shadowOpacity: 0.05,
-          shadowRadius: 12,
-          shadowOffset: { width: 0, height: 4 },
-          elevation: 3,
-        }}
-      >
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-          {/* Left side: label, amount, trend */}
-          <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 14, color: textSecondary }}>My Spending</Text>
-            <Text style={{ fontSize: 32, fontWeight: '700', color: textPrimary, marginTop: 4 }}>
-              {formatCurrency(monthComparison.thisMonth, group?.currency)}
-            </Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8 }}>
-              <Text
-                style={{
-                  fontSize: 13,
-                  fontWeight: '600',
-                  color: deltaPositive ? '#EF4444' : '#84CC16',
-                }}
-              >
-                {deltaPositive ? '\u25B2' : '\u25BC'} {Math.abs(monthComparison.deltaPercent).toFixed(1)}%
-              </Text>
-              <Text style={{ fontSize: 13, color: textSecondary, marginLeft: 4 }}>
-                From last week
-              </Text>
-            </View>
-          </View>
-
-          {/* Right side: mini bar chart */}
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'flex-end',
-              height: 48,
-              gap: 4,
-            }}
-          >
-            {dailySpending.map((amount, i) => {
-              const barH = Math.max((amount / maxDaily) * 40, 4);
-              const isActive = i === dailySpending.length - 1;
-              return (
-                <View
-                  key={i}
-                  style={{
-                    width: 8,
-                    height: barH,
-                    borderRadius: 4,
-                    backgroundColor: isActive ? '#84CC16' : '#D1FAE5',
-                  }}
-                />
-              );
-            })}
-          </View>
-        </View>
-      </View>
-
-      {/* ========== GROUP EXPENSE CARD ========== */}
-      <View
-        style={{
-          backgroundColor: cardBg,
-          borderRadius: 24,
-          padding: 20,
-          marginBottom: 16,
-          shadowColor: '#000',
-          shadowOpacity: 0.05,
-          shadowRadius: 12,
-          shadowOffset: { width: 0, height: 4 },
-          elevation: 3,
-        }}
-      >
-        {/* Top row: label + month pill */}
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Text style={{ fontSize: 14, color: textSecondary }}>Group Expense</Text>
-          <TouchableOpacity
-            activeOpacity={0.7}
-            style={{
-              backgroundColor: pillBg,
-              borderRadius: 12,
-              paddingVertical: 6,
-              paddingHorizontal: 12,
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 4,
-            }}
-          >
-            <Text style={{ fontSize: 13, fontWeight: '500', color: textPrimary }}>{selectedMonth}</Text>
-            <Ionicons name="chevron-down" size={14} color={textSecondary} />
-          </TouchableOpacity>
-        </View>
-
-        {/* Amount */}
-        <Text style={{ fontSize: 32, fontWeight: '700', color: textPrimary, marginTop: 8 }}>
-          -{formatCurrency(totalSpending, group?.currency)}
-        </Text>
-
-        {/* Simplified area chart representation */}
-        <View style={{ marginTop: 20, height: 120, position: 'relative' }}>
-          {/* Green gradient background area */}
-          <View
-            style={{
-              position: 'absolute',
-              bottom: 20,
-              left: 0,
-              right: 0,
-              height: 80,
-              borderRadius: 8,
-              backgroundColor: 'rgba(209,250,229,0.3)',
-            }}
-          />
-
-          {/* Area chart bars (simplified line representation) */}
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'flex-end',
-              justifyContent: 'space-between',
-              height: 100,
-              paddingHorizontal: 4,
-            }}
-          >
-            {last6.map((item, idx) => {
-              const pct = item.amount / maxTrendAmount;
-              const barH = Math.max(pct * 80, 4);
-              return (
-                <View key={item.month} style={{ alignItems: 'center', flex: 1 }}>
-                  {/* Gradient bar segment */}
-                  <View
-                    style={{
-                      width: '80%',
-                      height: barH,
-                      borderTopLeftRadius: 4,
-                      borderTopRightRadius: 4,
-                      backgroundColor: 'rgba(209,250,229,0.5)',
-                      borderTopWidth: 2,
-                      borderTopColor: '#84CC16',
-                    }}
-                  />
-                </View>
-              );
-            })}
-          </View>
-
-          {/* X-axis month labels */}
-          <View
-            style={{
-              flexDirection: 'row',
-              justifyContent: 'space-between',
-              paddingHorizontal: 4,
-              marginTop: 4,
-            }}
-          >
-            {last6.map((item) => {
-              const monthLabel = new Date(`${item.month}-01`).toLocaleDateString('en-GB', { month: 'short' });
-              return (
+        {hasData && (
+          <>
+            {/* 2-column stats grid */}
+            <View style={s.statsRow}>
+              <View style={s.statCard}>
+                <Text style={s.statLabel}>{`Total \u00B7 ${monthLabel}`}</Text>
+                <Text style={s.statValue} numberOfLines={1}>
+                  {formatCurrency(totalThisMonth, currency)}
+                </Text>
                 <Text
-                  key={item.month}
-                  style={{
-                    flex: 1,
-                    textAlign: 'center',
-                    fontSize: 12,
-                    color: textSecondary,
-                  }}
+                  style={[
+                    s.statSub,
+                    { color: deltaPositive ? colors.warnText : colors.sageInk },
+                  ]}
                 >
-                  {monthLabel}
-                </Text>
-              );
-            })}
-          </View>
-        </View>
-      </View>
-
-      {/* ========== SPENDING BY CATEGORY DONUT ========== */}
-      {categoryBreakdown.length > 0 && (() => {
-        const total = categoryBreakdown.reduce((s: number, c: { amount: number }) => s + c.amount, 0);
-        const donutItems: CategoryItem[] = categoryBreakdown.map((c: { category: string; amount: number }) => ({
-          category: c.category,
-          amount: c.amount,
-          pct: total > 0 ? Math.round((c.amount / total) * 100) : 0,
-        }));
-        return (
-          <View style={{ marginBottom: 16 }}>
-            <CategoryBreakdownCard
-              items={donutItems}
-              currency={group?.currency ?? 'GBP'}
-              scopeLabel="This month"
-            />
-          </View>
-        );
-      })()}
-
-      {/* ========== CATEGORY BREAKDOWN CARD ========== */}
-      <View
-        style={{
-          backgroundColor: cardBg,
-          borderRadius: 24,
-          padding: 20,
-          marginBottom: 16,
-          shadowColor: '#000',
-          shadowOpacity: 0.05,
-          shadowRadius: 12,
-          shadowOffset: { width: 0, height: 4 },
-          elevation: 3,
-        }}
-      >
-        <Text style={{ fontSize: 16, fontWeight: '600', color: textPrimary, marginBottom: 16 }}>
-          Categories
-        </Text>
-
-        {categoryBreakdown.length === 0 ? (
-          <Text style={{ fontSize: 14, color: textSecondary }}>
-            No expenses this month yet.
-          </Text>
-        ) : (
-          categoryBreakdown.map((cat, i) => {
-            const color = CATEGORY_COLORS[i % CATEGORY_COLORS.length]!;
-            const label = cat.category
-              .split('_')
-              .map((w: string) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
-              .join(' ');
-            const isLast = i === categoryBreakdown.length - 1;
-
-            return (
-              <View
-                key={cat.category}
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  paddingVertical: 14,
-                  borderBottomWidth: isLast ? 0 : 1,
-                  borderBottomColor: separatorColor,
-                }}
-              >
-                {/* Colored dot */}
-                <View
-                  style={{
-                    width: 8,
-                    height: 8,
-                    borderRadius: 4,
-                    backgroundColor: color,
-                    marginRight: 12,
-                  }}
-                />
-                {/* Category name */}
-                <Text style={{ flex: 1, fontSize: 16, fontWeight: '600', color: textPrimary }}>
-                  {label}
-                </Text>
-                {/* Amount */}
-                <Text style={{ fontSize: 16, fontWeight: '600', color: textPrimary }}>
-                  {formatCurrency(cat.amount, group?.currency)}
+                  {`${deltaPositive ? '\u2191' : '\u2193'} ${Math.abs(deltaPercent).toFixed(1)}% vs ${prevMonthAbbr}`}
                 </Text>
               </View>
-            );
-          })
-        )}
-      </View>
 
-      {/* ========== TOP SPENDERS CARD ========== */}
-      {topSpenders.length > 0 && (
-        <View
-          style={{
-            backgroundColor: cardBg,
-            borderRadius: 24,
-            padding: 20,
-            marginBottom: 16,
-            shadowColor: '#000',
-            shadowOpacity: 0.05,
-            shadowRadius: 12,
-            shadowOffset: { width: 0, height: 4 },
-            elevation: 3,
-          }}
-        >
-          <Text style={{ fontSize: 16, fontWeight: '600', color: textPrimary, marginBottom: 16 }}>
-            Top Spenders
-          </Text>
+              <View style={s.statCard}>
+                <Text style={s.statLabel}>Biggest expense</Text>
+                <Text style={s.statValue} numberOfLines={1}>
+                  {biggestExpense ? formatCurrency(biggestExpense.amount, currency) : '—'}
+                </Text>
+                <Text style={[s.statSub, { color: colors.textTertiary }]} numberOfLines={1}>
+                  {biggestExpense
+                    ? `${biggestExpense.title}${biggestExpense.due_date ? ` \u00B7 ${formatDayMonth(biggestExpense.due_date)}` : ''}`
+                    : 'No expenses yet'}
+                </Text>
+              </View>
+            </View>
 
-          {topSpenders.map((spender, i) => {
-            const initials = getInitials(spender.name);
-            const isLast = i === topSpenders.length - 1;
-
-            return (
-              <View
-                key={spender.name}
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  paddingVertical: 12,
-                  borderBottomWidth: isLast ? 0 : 1,
-                  borderBottomColor: separatorColor,
-                }}
-              >
-                {/* Avatar */}
-                <View
-                  style={{
-                    width: 48,
-                    height: 48,
-                    borderRadius: 24,
-                    backgroundColor: isDark ? '#374151' : '#1F2937',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    marginRight: 12,
-                  }}
-                >
-                  <Text style={{ fontSize: 16, fontWeight: '700', color: '#FFFFFF' }}>
-                    {initials}
+            {/* 6-month bar chart */}
+            <View style={s.chartCard}>
+              <View style={s.chartHeader}>
+                <Text style={s.sectionLabel}>Last 6 months</Text>
+                <Text style={s.chartTotal}>{formatCurrency(trendTotal, currency)}</Text>
+              </View>
+              <View style={s.barsRow}>
+                {bars6.map((b, i) => {
+                  const isLatest = i === bars6.length - 1;
+                  const h = Math.max((b.amount / maxBar) * 90, 4);
+                  return (
+                    <View key={`${b.month}-${i}`} style={s.barCol}>
+                      <View style={s.barTrack}>
+                        <View
+                          style={[
+                            s.barFill,
+                            {
+                              height: h,
+                              backgroundColor: isLatest ? colors.sage : colors.cream,
+                            },
+                          ]}
+                        />
+                      </View>
+                    </View>
+                  );
+                })}
+              </View>
+              <View style={s.labelsRow}>
+                {bars6.map((b, i) => (
+                  <Text key={`lbl-${b.month}-${i}`} style={s.barLabel}>
+                    {monthKeyToAbbr(b.month)}
                   </Text>
-                </View>
-                {/* Name */}
-                <Text style={{ flex: 1, fontSize: 16, fontWeight: '600', color: textPrimary }}>
-                  {spender.name}
-                </Text>
-                {/* Amount */}
-                <Text style={{ fontSize: 16, fontWeight: '600', color: textPrimary }}>
-                  {formatCurrency(spender.amount, group?.currency)}
-                </Text>
+                ))}
               </View>
-            );
-          })}
-        </View>
-      )}
+            </View>
 
-      {/* ========== COMPLIANCE SUMMARY CARD ========== */}
-      {complianceRate.total > 0 && (
-        <View
-          style={{
-            backgroundColor: cardBg,
-            borderRadius: 24,
-            padding: 20,
-            marginBottom: 16,
-            shadowColor: '#000',
-            shadowOpacity: 0.05,
-            shadowRadius: 12,
-            shadowOffset: { width: 0, height: 4 },
-            elevation: 3,
-          }}
-        >
-          <Text style={{ fontSize: 16, fontWeight: '600', color: textPrimary, marginBottom: 16 }}>
-            Compliance
-          </Text>
-
-          {/* On time row */}
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              paddingVertical: 14,
-              borderBottomWidth: 1,
-              borderBottomColor: separatorColor,
-            }}
-          >
-            <View
-              style={{
-                width: 8,
-                height: 8,
-                borderRadius: 4,
-                backgroundColor: '#84CC16',
-                marginRight: 12,
-              }}
-            />
-            <Text style={{ flex: 1, fontSize: 16, fontWeight: '600', color: textPrimary }}>On Time</Text>
-            <Text style={{ fontSize: 16, fontWeight: '600', color: textPrimary }}>
-              {complianceRate.onTime}
-            </Text>
-          </View>
-
-          {/* Overdue row */}
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              paddingVertical: 14,
-              borderBottomWidth: 1,
-              borderBottomColor: separatorColor,
-            }}
-          >
-            <View
-              style={{
-                width: 8,
-                height: 8,
-                borderRadius: 4,
-                backgroundColor: '#EF4444',
-                marginRight: 12,
-              }}
-            />
-            <Text style={{ flex: 1, fontSize: 16, fontWeight: '600', color: textPrimary }}>Overdue</Text>
-            <Text style={{ fontSize: 16, fontWeight: '600', color: textPrimary }}>
-              {complianceRate.overdue}
-            </Text>
-          </View>
-
-          {/* Total row */}
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              paddingVertical: 14,
-            }}
-          >
-            <View
-              style={{
-                width: 8,
-                height: 8,
-                borderRadius: 4,
-                backgroundColor: textSecondary,
-                marginRight: 12,
-              }}
-            />
-            <Text style={{ flex: 1, fontSize: 16, fontWeight: '600', color: textPrimary }}>Total</Text>
-            <Text style={{ fontSize: 16, fontWeight: '600', color: textPrimary }}>
-              {complianceRate.total}
-            </Text>
-          </View>
-        </View>
-      )}
-    </ScrollView>
+            {/* Top categories */}
+            {topCategories.length > 0 && (
+              <View>
+                <Text style={[s.sectionLabel, { marginBottom: space.sm }]}>Top categories</Text>
+                <View style={{ gap: space.sm }}>
+                  {topCategories.map((cat) => {
+                    const meta = getCategoryMeta(cat.category);
+                    return (
+                      <View key={cat.category} style={s.catRow}>
+                        <IconTile
+                          icon={meta.icon as never}
+                          color={meta.color}
+                          bg={meta.bg}
+                          size={40}
+                        />
+                        <View style={{ flex: 1, marginLeft: space.md }}>
+                          <Text style={s.catTitle} numberOfLines={1}>
+                            {formatCategoryLabel(cat.category)}
+                          </Text>
+                          <Text style={s.catCaption} numberOfLines={1}>
+                            {`${formatCurrency(cat.amount, currency)} \u00B7 ${cat.pct}%`}
+                          </Text>
+                        </View>
+                      </View>
+                    );
+                  })}
+                </View>
+              </View>
+            )}
+          </>
+        )}
+      </ScrollView>
+    </Screen>
   );
 }
+
+/* ============================================================================
+ * Header — back + centered title + month picker action
+ * ========================================================================== */
+
+function Header({
+  monthLabel,
+  onBack,
+  topInset,
+}: {
+  monthLabel: string;
+  onBack: () => void;
+  topInset: number;
+}) {
+  return (
+    <View style={{ paddingTop: topInset + 12, paddingHorizontal: space.gutter, backgroundColor: colors.bgBase }}>
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          height: 48,
+          position: 'relative',
+        }}
+      >
+        <TouchableOpacity
+          onPress={onBack}
+          hitSlop={10}
+          activeOpacity={0.6}
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 2, paddingVertical: 6, paddingRight: 10, marginLeft: -4, zIndex: 2 }}
+        >
+          <IconChevronLeft size={22} color={colors.textPrimary} strokeWidth={2} />
+          <Text style={{ fontSize: 15, fontWeight: '600', color: colors.textPrimary }}>Back</Text>
+        </TouchableOpacity>
+        <View
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Text style={[font.h3, { color: colors.textPrimary }]}>Analytics</Text>
+        </View>
+        <TouchableOpacity
+          activeOpacity={0.7}
+          onPress={hapticMedium}
+          hitSlop={12}
+          style={s.monthPicker}
+        >
+          <Text style={s.monthPickerLabel}>{monthLabel}</Text>
+          <IconChevronDown size={14} color={colors.sage} strokeWidth={2} />
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
+
+/* ============================================================================
+ * Styles
+ * ========================================================================== */
+
+const panel = {
+  backgroundColor: colors.bgSurface,
+  borderRadius: 14,
+  borderWidth: 1,
+  borderColor: colors.border,
+} as const;
+
+const sectionLabelText = {
+  fontSize: 10,
+  fontWeight: '700' as const,
+  color: colors.textMuted,
+  letterSpacing: 0.6,
+  textTransform: 'uppercase' as const,
+};
+
+const s = StyleSheet.create({
+  header: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: space.gutter, paddingTop: space.md, paddingBottom: space.sm,
+  },
+  headerIconBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  headerTitle: { fontSize: 17, fontWeight: '700', color: colors.textPrimary, letterSpacing: -0.1 },
+  monthPicker: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    paddingHorizontal: space.sm, paddingVertical: 6,
+  },
+  monthPickerLabel: { fontSize: 14, fontWeight: '600', color: colors.textSecondary },
+  scrollContent: {
+    paddingTop: space.md, paddingBottom: 120, paddingHorizontal: space.gutter, gap: space.base,
+  },
+
+  statsRow: { flexDirection: 'row', gap: space.base },
+  statCard: { ...panel, flex: 1, padding: 14, gap: 4 },
+  statLabel: sectionLabelText,
+  statValue: { fontSize: 20, fontWeight: '700', color: colors.textPrimary, marginTop: 2 },
+  statSub: { fontSize: 11, fontWeight: '600', marginTop: 2 },
+
+  chartCard: { ...panel, padding: 14 },
+  chartHeader: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    marginBottom: space.md,
+  },
+  sectionLabel: sectionLabelText,
+  chartTotal: { fontSize: 15, fontWeight: '700', color: colors.textPrimary },
+  barsRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, height: 90 },
+  barCol: { flex: 1, height: 90, justifyContent: 'flex-end' },
+  barTrack: { width: '100%', justifyContent: 'flex-end', alignItems: 'center' },
+  barFill: { width: '100%', borderTopLeftRadius: 4, borderTopRightRadius: 4 },
+  labelsRow: { flexDirection: 'row', gap: 8, marginTop: space.sm },
+  barLabel: {
+    flex: 1, textAlign: 'center', fontSize: 10, fontWeight: '600', color: colors.textMuted,
+  },
+
+  catRow: { ...panel, flexDirection: 'row', alignItems: 'center', padding: 12 },
+  catTitle: { fontSize: 14, fontWeight: '600', color: colors.textPrimary },
+  catCaption: { fontSize: 12, color: colors.textTertiary, marginTop: 2 },
+
+  card: {
+    backgroundColor: colors.bgSurface, borderRadius: radius.sheet, padding: space.xl,
+    alignItems: 'center', borderWidth: 1, borderColor: colors.border,
+  },
+  paywallIconWrap: { marginBottom: space.base },
+  paywallTitle: { fontSize: 20, fontWeight: '700', color: colors.textPrimary },
+  paywallBody: {
+    marginTop: space.sm, textAlign: 'center', fontSize: 14, lineHeight: 20,
+    color: colors.textSecondary, maxWidth: 280,
+  },
+  paywallCta: {
+    marginTop: space.lg, backgroundColor: colors.bgInk, borderRadius: radius.button,
+    paddingVertical: 14, paddingHorizontal: 24,
+  },
+  paywallCtaLabel: { fontSize: 14, fontWeight: '600', color: colors.textInverse },
+
+  skeleton: { backgroundColor: colors.bgSubtle, borderRadius: 14 },
+});

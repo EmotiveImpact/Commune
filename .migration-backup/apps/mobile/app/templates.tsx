@@ -1,9 +1,12 @@
-import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
-import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { useThemeStore } from '@/stores/theme';
+import { Pressable, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { Stack, useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { IconChevronLeft, IconCopy, IconPlus, IconUsers } from '@tabler/icons-react-native';
+import { EmptyState, IconTile, Screen } from '@/components/primitives';
+import { colors, font, radius, space, getCategoryMeta } from '@/constants/design';
 import { useGroupStore } from '@/stores/group';
 import { useTemplates } from '@/hooks/use-templates';
+import { hapticLight, hapticMedium } from '@/lib/haptics';
 
 const SPLIT_METHOD_LABELS: Record<string, string> = {
   equal: 'Equal',
@@ -11,95 +14,258 @@ const SPLIT_METHOD_LABELS: Record<string, string> = {
   custom: 'Custom',
 };
 
+/**
+ * Templates screen — saved split templates a user can reuse in the new-expense flow.
+ *
+ * Template entry shape (`SplitTemplate` in packages/types): id, group_id, name,
+ * split_method, participants[], created_by, created_at. There is NO amount /
+ * currency / frequency on the entry, so the row caption falls back to split-method
+ * + participant count (preserving previous behavior).
+ */
+
 export default function TemplatesScreen() {
   const router = useRouter();
-  const isDark = useThemeStore((s) => s.mode) === 'dark';
+  const insets = useSafeAreaInsets();
   const activeGroupId = useGroupStore((s) => s.activeGroupId);
   const { data: templates, isLoading } = useTemplates(activeGroupId ?? '');
 
-  const bg = isDark ? '#0A0A0A' : '#FAFAFA';
-  const surface = isDark ? '#18181B' : '#FFFFFF';
-  const text = isDark ? '#FAFAFA' : '#171b24';
-  const textSoft = isDark ? '#A1A1AA' : '#667085';
-  const border = isDark ? 'rgba(255,255,255,0.10)' : 'rgba(23,27,36,0.10)';
-  const accent = '#2d6a4f';
+  const list = templates ?? [];
+  const count = list.length;
+
+  const handleBack = () => {
+    hapticLight();
+    if (router.canGoBack()) router.back();
+  };
+
+  const handleNew = () => {
+    hapticMedium();
+    // New-template creation currently lives on the web app; the button is a
+    // discoverable entry point for the mobile flow. Route to new-expense for now.
+    router.push('/expenses/new');
+  };
+
+  const handleUse = (templateId: string) => {
+    hapticMedium();
+    router.push(`/expenses/new?template=${templateId}` as never);
+  };
+
+  const handleLearn = () => {
+    // No-op placeholder; hooked up when docs/onboarding for templates ships.
+  };
+
+  const header = (
+    <View
+      style={{
+        paddingTop: insets.top + 12,
+        paddingBottom: space.md,
+        paddingHorizontal: space.gutter,
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: colors.bgBase,
+      }}
+    >
+      <Pressable
+        onPress={handleBack}
+        hitSlop={10}
+        style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 2, paddingVertical: 6, paddingRight: 10, marginLeft: -4, opacity: pressed ? 0.6 : 1, zIndex: 2 })}
+      >
+        <IconChevronLeft size={22} color={colors.textPrimary} strokeWidth={2} />
+        <Text style={{ fontSize: 15, fontWeight: '600', color: colors.textPrimary }}>Back</Text>
+      </Pressable>
+      <Text
+        style={{
+          flex: 1,
+          textAlign: 'center',
+          fontSize: 20,
+          fontWeight: '700',
+          color: colors.textPrimary,
+          letterSpacing: -0.2,
+        }}
+      >
+        Templates
+      </Text>
+      <TouchableOpacity
+        onPress={handleNew}
+        hitSlop={12}
+        activeOpacity={0.7}
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 2,
+          minWidth: 32,
+          justifyContent: 'flex-end',
+        }}
+      >
+        <IconPlus size={14} color={colors.sageInk} strokeWidth={2.5} />
+        <Text style={{ fontSize: 12, fontWeight: '700', color: colors.sageInk, letterSpacing: 0.2 }}>
+          New
+        </Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  /* ---------------------------------------------------------------- No group */
 
   if (!activeGroupId) {
     return (
-      <View style={{ flex: 1, backgroundColor: bg, justifyContent: 'center', alignItems: 'center', padding: 40 }}>
-        <Ionicons name="copy-outline" size={48} color={textSoft} />
-        <Text style={{ fontSize: 16, fontWeight: '600', color: text, marginTop: 16 }}>Select a group first</Text>
-      </View>
+      <Screen>
+        <Stack.Screen options={{ headerShown: false }} />
+        {header}
+        <EmptyState
+          icon={IconUsers}
+          title="Select a group first"
+          description="Choose a group to see its saved templates."
+        />
+      </Screen>
     );
   }
 
+  const empty = !isLoading && count === 0;
+
+  /* ---------------------------------------------------------------- Render */
+
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: bg }}>
-      <View style={{ padding: 20, gap: 16 }}>
-        <Text style={{ fontSize: 20, fontWeight: '700', color: text }}>Split Templates</Text>
-        <Text style={{ fontSize: 13, color: textSoft }}>
-          Saved split configurations you can apply when adding expenses.
-        </Text>
+    <Screen>
+      <Stack.Screen options={{ headerShown: false }} />
+      {header}
 
-        {isLoading && (
-          <View style={{ alignItems: 'center', paddingVertical: 40 }}>
-            <Text style={{ color: textSoft }}>Loading...</Text>
-          </View>
-        )}
-
-        {!isLoading && (!templates || templates.length === 0) && (
-          <View style={{ alignItems: 'center', paddingVertical: 40 }}>
-            <Ionicons name="copy-outline" size={40} color={textSoft} />
-            <Text style={{ fontSize: 15, fontWeight: '600', color: text, marginTop: 12 }}>No templates yet</Text>
-            <Text style={{ fontSize: 13, color: textSoft, marginTop: 4, textAlign: 'center' }}>
-              Create templates on the web app to save common split patterns.
-            </Text>
-          </View>
-        )}
-
-        {(templates ?? []).map((template: any) => (
-          <TouchableOpacity
-            key={template.id}
-            onPress={() => router.push('/expenses/new')}
-            activeOpacity={0.7}
-            style={{
-              backgroundColor: surface,
-              borderRadius: 16,
-              padding: 16,
-              borderWidth: 1,
-              borderColor: border,
-              flexDirection: 'row',
-              alignItems: 'center',
-            }}
-          >
-            <View style={{
-              width: 40,
-              height: 40,
-              borderRadius: 12,
-              backgroundColor: isDark ? '#1f2330' : '#e8f0eb',
-              justifyContent: 'center',
-              alignItems: 'center',
-              marginRight: 14,
-            }}>
-              <Ionicons name="copy-outline" size={20} color={accent} />
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{
+          paddingTop: space.md,
+          paddingBottom: 120,
+          paddingHorizontal: space.gutter,
+          gap: space.base,
+        }}
+        showsVerticalScrollIndicator={false}
+      >
+        {empty ? (
+          <EmptyState
+            icon={IconCopy}
+            title="No templates yet"
+            description="Save an expense as a template to quickly reuse it later."
+            actionLabel="Learn how"
+            onAction={handleLearn}
+          />
+        ) : (
+          <>
+            {/* Dark-ink hero (compact) */}
+            <View
+              style={{
+                backgroundColor: colors.bgInk,
+                borderRadius: radius.hero,
+                paddingVertical: space.lg,
+                paddingHorizontal: space.xl,
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 11,
+                  fontWeight: '700',
+                  letterSpacing: 0.8,
+                  color: 'rgba(255,255,255,0.55)',
+                  textTransform: 'uppercase',
+                }}
+              >
+                Saved templates
+              </Text>
+              <Text
+                style={{
+                  marginTop: space.xs,
+                  fontSize: 28,
+                  fontWeight: '700',
+                  lineHeight: 34,
+                  letterSpacing: -0.3,
+                  color: colors.textInverse,
+                  fontVariant: ['tabular-nums'],
+                }}
+              >
+                {count} {count === 1 ? 'template' : 'templates'}
+              </Text>
+              <Text
+                style={{
+                  marginTop: space.xs,
+                  fontSize: 13,
+                  lineHeight: 18,
+                  color: 'rgba(255,255,255,0.75)',
+                }}
+              >
+                Tap any template to quickly add the expense
+              </Text>
             </View>
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 15, fontWeight: '600', color: text }}>{template.name}</Text>
-              <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
-                <View style={{ backgroundColor: 'rgba(45,106,79,0.12)', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 }}>
-                  <Text style={{ fontSize: 11, fontWeight: '600', color: accent }}>
-                    {SPLIT_METHOD_LABELS[template.split_method] ?? template.split_method}
-                  </Text>
-                </View>
-                <Text style={{ fontSize: 12, color: textSoft }}>
-                  {template.participants?.length ?? 0} members
-                </Text>
-              </View>
-            </View>
-            <Ionicons name="chevron-forward" size={16} color={textSoft} />
-          </TouchableOpacity>
-        ))}
-      </View>
-    </ScrollView>
+
+            {/* Rows */}
+            {list.map((template) => {
+              // Category isn't on SplitTemplate today — fall back to miscellaneous.
+              const categoryKey =
+                (template as unknown as { category?: string }).category ?? 'miscellaneous';
+              const meta = getCategoryMeta(categoryKey);
+              const methodLabel =
+                SPLIT_METHOD_LABELS[template.split_method] ?? template.split_method;
+              const members = template.participants?.length ?? 0;
+              const caption = `${methodLabel} · ${members} ${members === 1 ? 'member' : 'members'}`;
+
+              return (
+                <TouchableOpacity
+                  key={template.id}
+                  onPress={() => handleUse(template.id)}
+                  activeOpacity={0.8}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: space.md,
+                    backgroundColor: colors.bgSurface,
+                    borderRadius: 14,
+                    padding: 14,
+                    borderWidth: 1,
+                    borderColor: colors.borderSubtle,
+                  }}
+                >
+                  <IconTile
+                    icon={meta.icon as never}
+                    color={meta.color}
+                    bg={meta.bg}
+                    size={40}
+                  />
+                  <View style={{ flex: 1 }}>
+                    <Text
+                      style={{ fontSize: 15, fontWeight: '600', color: colors.textPrimary }}
+                      numberOfLines={1}
+                    >
+                      {template.name}
+                    </Text>
+                    <Text
+                      style={{ marginTop: 2, fontSize: 12, color: colors.textMuted }}
+                      numberOfLines={1}
+                    >
+                      {caption}
+                    </Text>
+                  </View>
+                  <View
+                    style={{
+                      paddingVertical: 8,
+                      paddingHorizontal: 12,
+                      borderRadius: 10,
+                      backgroundColor: colors.sageSoft,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 12,
+                        fontWeight: '700',
+                        color: colors.sageInk,
+                        letterSpacing: 0.2,
+                      }}
+                    >
+                      Use
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </>
+        )}
+      </ScrollView>
+    </Screen>
   );
 }

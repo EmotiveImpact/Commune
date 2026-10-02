@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Commune — Sub-screen fix audit</title>
+<style>
+  :root{
+    --bg:#FAF9F7; --surface:#ffffff; --ink:#171b24; --muted:#6b7280;
+    --border:#eceae5; --border-soft:#f1efe9;
+    --sage:#1f7a6a; --sage-soft:#E8F3EC;
+    --danger:#E35D5D; --warn:#8C2F1F; --info:#1a56db;
+    --high:#C74A3A; --med:#C4620A; --low:#1f7a6a;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:#efece6;color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Inter",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+  .page{max-width:1100px;margin:0 auto;padding:48px 24px 96px}
+  h1{font-size:34px;letter-spacing:-0.8px;margin:0 0 6px;font-weight:700}
+  .lede{color:var(--muted);font-size:15px;margin:0 0 8px;max-width:780px}
+  .meta{color:var(--muted);font-size:13px;margin:0 0 28px}
+  .meta b{color:var(--ink)}
+
+  h2{font-size:20px;margin:32px 0 10px;letter-spacing:-0.3px;display:flex;align-items:center;gap:10px}
+  h2 .dot{width:10px;height:10px;border-radius:5px}
+  h2.high .dot{background:var(--high)}
+  h2.med .dot{background:var(--med)}
+  h2.low .dot{background:var(--low)}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px}
+  .row{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px}
+  .row .top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:10px}
+  .row .name{font-size:15px;font-weight:700}
+  .row .route{font-size:11px;color:var(--muted);font-family:ui-monospace,Menlo,monospace;margin-top:2px}
+  .row .pill{font-size:9px;font-weight:700;padding:3px 8px;border-radius:999px;text-transform:uppercase;letter-spacing:0.5px;flex-shrink:0}
+  .row .pill.high{background:#FDE4DF;color:var(--high)}
+  .row .pill.med{background:#F8E4C4;color:var(--med)}
+  .row .pill.low{background:var(--sage-soft);color:var(--sage)}
+
+  .row h4{font-size:11px;font-weight:700;color:var(--muted);margin:12px 0 4px;text-transform:uppercase;letter-spacing:0.4px}
+  .row p, .row ul{font-size:13px;color:var(--ink);margin:0;line-height:1.45}
+  .row ul{padding-left:18px;margin-top:2px}
+  .row ul li{margin-bottom:2px}
+  .row .muted{color:var(--muted)}
+  .row .fix{background:var(--sage-soft);border-radius:10px;padding:10px 12px;margin-top:10px;font-size:12.5px;color:var(--sage-ink, #14594e);line-height:1.5}
+
+  .entry-chip{display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px;background:#F3F1EC;color:var(--ink);margin-left:6px;text-transform:uppercase;letter-spacing:0.4px}
+
+  .summary{background:#fff;border:1px solid var(--border);border-radius:16px;padding:20px;margin-bottom:24px}
+  .summary h3{font-size:14px;font-weight:700;margin:0 0 10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px}
+  .summary table{width:100%;border-collapse:collapse}
+  .summary td{font-size:13px;padding:6px 8px;border-bottom:1px solid var(--border-soft)}
+  .summary td:last-child{text-align:right;font-weight:700}
+  .summary tr:last-child td{border-bottom:none}
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>Sub-screen fix audit</h1>
+  <p class="lede">Every non-tab screen ranked by how off-style they are compared to the new look (floating nav, tab header, Tabler icons, cream bg, dark ink hero cards, unified rows).</p>
+  <p class="meta">Signals used: <b>hardcoded dark-theme colors</b> (<code>#0A0A0A</code>, <code>rgba(0,0,0,…)</code>, <code>useThemeStore</code>) vs the shared <b>design system tokens</b> (<code>colors.sage</code>, <code>IconTile</code>, <code>font.h*</code>).</p>
+
+  <div class="summary">
+    <h3>At-a-glance</h3>
+    <table>
+      <tr><td>notifications</td><td>29 ❗</td></tr>
+      <tr><td>recurring</td><td>24 ❗</td></tr>
+      <tr><td>pricing</td><td>21 ❗</td></tr>
+      <tr><td>activity</td><td>17 ❗</td></tr>
+      <tr><td>analytics</td><td>17 ❗</td></tr>
+      <tr><td>command-centre (Settle up)</td><td>8 ⚠</td></tr>
+      <tr><td>group-hub</td><td>8 ⚠</td></tr>
+      <tr><td>templates</td><td>8 ⚠</td></tr>
+      <tr><td>member-profile</td><td>7 ⚠</td></tr>
+      <tr><td>funds</td><td>7 ⚠</td></tr>
+      <tr><td>operations (Chores)</td><td>0 ✓</td></tr>
+      <tr><td>members</td><td>0 ✓</td></tr>
+      <tr><td>group-edit</td><td>0 ✓</td></tr>
+    </table>
+  </div>
+
+  <!-- =========== HIGH =========== -->
+  <h2 class="high"><span class="dot"></span>High priority — users hit these daily</h2>
+  <div class="grid">
+
+    <div class="row">
+      <div class="top">
+        <div>
+          <div class="name">Notifications <span class="entry-chip">Bell tap</span></div>
+          <div class="route">/notifications</div>
+        </div>
+        <span class="pill high">High</span>
+      </div>
+      <h4>Issues</h4>
+      <ul>
+        <li>Uses its own dark-theme switching (`isDark`) — doesn't match the new cream-page look.</li>
+        <li>List rows use hardcoded colors, not the design tokens.</li>
+        <li>Top padding fights the new tab header (double-inset).</li>
+      </ul>
+      <div class="fix">Reuse the compact A3 row style from the Home "For you" card — same 44px icon tile, 15/600 title, 13 caption. Remove the theme switcher, use cream bg + <code>colors.textPrimary</code> throughout.</div>
+    </div>
+
+    <div class="row">
+      <div class="top">
+        <div>
+          <div class="name">Settle up (Command Centre) <span class="entry-chip">Hero CTA</span></div>
+          <div class="route">/command-centre</div>
+        </div>
+        <span class="pill high">High</span>
+      </div>
+      <h4>Issues</h4>
+      <ul>
+        <li>Rename screen — users see "Settle up" in hero, land on "Command Centre" header. Jarring.</li>
+        <li>Dark-theme code path leaks through; lists aren't the new row style.</li>
+      </ul>
+      <div class="fix">Rename to <b>Settle up</b>. Replace the two "You owe / Owed to you" sections with the same A3 rows. Balance summary at the top as a small dark ink card (not a full hero).</div>
+    </div>
+
+    <div class="row">
+      <div class="top">
+        <div>
+          <div class="name">Analytics <span class="entry-chip">Drawer</span></div>
+          <div class="route">/analytics</div>
+        </div>
+        <span class="pill high">High</span>
+      </div>
+      <h4>Issues</h4>
+      <ul>
+        <li>773 lines, shimmer loaders + dark-theme bg. Uses its own chart scaffolding.</li>
+        <li>Donut card we added is fine — the rest of the page is a different app.</li>
+      </ul>
+      <div class="fix">Adopt the tab header, strip top inset padding, wrap content in cream bg. Reuse <code>CategoryBreakdownCard</code> and small white stat cards. Keep the trend bar chart but match ink colors to tokens.</div>
+    </div>
+
+    <div class="row">
+      <div class="top">
+        <div>
+          <div class="name">Recurring expenses <span class="entry-chip">Drawer</span></div>
+          <div class="route">/recurring</div>
+        </div>
+        <span class="pill high">High</span>
+      </div>
+      <h4>Issues</h4>
+      <ul>
+        <li>929 lines · lots of hardcoded colors.</li>
+        <li>Custom form UI with its own input styles instead of <code>SearchField</code> / row patterns.</li>
+      </ul>
+      <div class="fix">List of recurring items as A3 rows. "Add recurring" as a sage CTA at top (or via FAB). Detail edit in a bottom sheet using the existing sheet style.</div>
+    </div>
+
+    <div class="row">
+      <div class="top">
+        <div>
+          <div class="name">Activity feed <span class="entry-chip">Drawer</span></div>
+          <div class="route">/activity</div>
+        </div>
+        <span class="pill high">High</span>
+      </div>
+      <h4>Issues</h4>
+      <ul>
+        <li>Grouped-by-day activity log but with old row style, off-brand colors.</li>
+        <li>Redundant with Home's Activity tab — shouldn't look worse than the tab view.</li>
+      </ul>
+      <div class="fix">Use the same A3 dense rows as the Home "Activity" tab. Date-group headers in the section-label style.</div>
+    </div>
+
+  </div>
+
+  <!-- =========== MED =========== -->
+  <h2 class="med"><span class="dot"></span>Medium priority — visible but less frequent</h2>
+  <div class="grid">
+
+    <div class="row">
+      <div class="top">
+        <div>
+          <div class="name">Templates <span class="entry-chip">Drawer</span></div>
+          <div class="route">/templates</div>
+        </div>
+        <span class="pill med">Med</span>
+      </div>
+      <h4>Issues</h4>
+      <ul>
+        <li>105 lines — simple but hardcoded colors.</li>
+      </ul>
+      <div class="fix">Simple list of saved templates as row cards. Easy.</div>
+    </div>
+
+    <div class="row">
+      <div class="top">
+        <div>
+          <div class="name">Pricing / upgrade <span class="entry-chip">Profile</span></div>
+          <div class="route">/pricing</div>
+        </div>
+        <span class="pill med">Med</span>
+      </div>
+      <h4>Issues</h4>
+      <ul>
+        <li>563 lines of plan comparison UI with old style.</li>
+        <li>Reached from "Subscription & billing" on the Profile page.</li>
+      </ul>
+      <div class="fix">Plan cards as stacked dark ink → cream surface cards. Clear upgrade CTA. Keep it on a brand page, not a themed one.</div>
+    </div>
+
+    <div class="row">
+      <div class="top">
+        <div>
+          <div class="name">Shared funds <span class="entry-chip">Drawer</span></div>
+          <div class="route">/funds</div>
+        </div>
+        <span class="pill med">Med</span>
+      </div>
+      <h4>Issues</h4>
+      <ul>
+        <li>144 lines — basic; just needs the cream bg + row restyle.</li>
+      </ul>
+      <div class="fix">Same list+hero pattern as Home. Each fund as a row. Light lift.</div>
+    </div>
+
+    <div class="row">
+      <div class="top">
+        <div>
+          <div class="name">Group hub</div>
+          <div class="route">/group-hub</div>
+        </div>
+        <span class="pill med">Med</span>
+      </div>
+      <h4>Issues</h4>
+      <ul>
+        <li>Referenced from the Profile hero ("Edit profile" → routes here).</li>
+        <li>Custom dark-theme colors.</li>
+      </ul>
+      <div class="fix">Decide: is this the right destination for "Edit profile"? Probably not. Point Edit profile to a real profile editor. Leave group-hub for group-specific edits.</div>
+    </div>
+
+    <div class="row">
+      <div class="top">
+        <div>
+          <div class="name">Member profile</div>
+          <div class="route">/member-profile</div>
+        </div>
+        <span class="pill med">Med</span>
+      </div>
+      <h4>Issues</h4>
+      <ul>
+        <li>Tapping a member in Groups → opens this. Doesn't match the new Profile hero style.</li>
+      </ul>
+      <div class="fix">Mirror the Profile page P-B hero but for that member. Show their activity in the group.</div>
+    </div>
+
+  </div>
+
+  <!-- =========== LOW =========== -->
+  <h2 class="low"><span class="dot"></span>Low priority — already OK or rarely hit</h2>
+  <div class="grid">
+
+    <div class="row">
+      <div class="top">
+        <div>
+          <div class="name">Operations (Chores) <span class="entry-chip">Drawer</span></div>
+          <div class="route">/operations</div>
+        </div>
+        <span class="pill low">Low</span>
+      </div>
+      <p class="muted">No dark-theme markers — uses shared tokens. Probably fine; give it a once-over for padding with the new tab header.</p>
+    </div>
+
+    <div class="row">
+      <div class="top">
+        <div>
+          <div class="name">Members</div>
+          <div class="route">/members</div>
+        </div>
+        <span class="pill low">Low</span>
+      </div>
+      <p class="muted">1599 lines but no dark-theme markers. Audit for old spacing/padding; otherwise leave.</p>
+    </div>
+
+    <div class="row">
+      <div class="top">
+        <div>
+          <div class="name">Group edit · Group close</div>
+          <div class="route">/group-edit, /group-close</div>
+        </div>
+        <span class="pill low">Low</span>
+      </div>
+      <p class="muted">Settings-like flows. Not frequently opened. Fix after the high-priority ones.</p>
+    </div>
+
+    <div class="row">
+      <div class="top">
+        <div>
+          <div class="name">Onboarding</div>
+          <div class="route">/onboarding</div>
+        </div>
+        <span class="pill low">Low</span>
+      </div>
+      <p class="muted">First-run only. Fix once everything else is stable.</p>
+    </div>
+
+    <div class="row">
+      <div class="top">
+        <div>
+          <div class="name">Expense detail / new</div>
+          <div class="route">/expenses/[id], /expenses/new</div>
+        </div>
+        <span class="pill low">Low</span>
+      </div>
+      <p class="muted">Need an audit — the expense detail form is where power users spend time. Worth checking style consistency.</p>
+    </div>
+
+  </div>
+
+  <p class="meta" style="margin-top:32px">My recommendation: start with <b>Notifications</b>, <b>Settle up</b>, and <b>Activity</b> — those are the highest-traffic destinations from the new chrome. Let me know which to tackle first.</p>
+</div>
+</body>
+</html>

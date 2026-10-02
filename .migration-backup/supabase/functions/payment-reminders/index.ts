@@ -335,6 +335,23 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
+    // Only the cron scheduler (authenticated with the service role key) may
+    // invoke this function. Without this check, anyone who knows the URL can
+    // trigger unlimited payment reminder emails, draining the Resend quota
+    // and spamming users. The in-memory `lastInvocationTime` guard below is
+    // only a cold-start deduplicator; it is not an auth control.
+    const authHeader = req.headers.get('Authorization');
+    const expectedKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const provided = authHeader?.startsWith('Bearer ')
+      ? authHeader.slice('Bearer '.length)
+      : null;
+    if (!provided || provided !== expectedKey) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { 'Content-Type': 'application/json', ...corsHeaders } },
+      );
+    }
+
     // Guard: skip if invoked within the last 5 minutes
     const now = Date.now();
     if (now - lastInvocationTime < MIN_INTERVAL_MS) {

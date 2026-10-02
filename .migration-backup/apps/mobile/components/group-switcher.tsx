@@ -1,8 +1,15 @@
 import { useMemo, useState } from 'react';
-import { Modal, Pressable, Text, TouchableOpacity, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Modal, Text, TouchableOpacity, View } from 'react-native';
+import {
+  IconArrowsLeftRight,
+  IconChevronDown,
+  IconChevronRight,
+  IconCircleCheckFilled,
+  IconX,
+} from '@tabler/icons-react-native';
 import { Card, Chip, Button, Avatar } from 'heroui-native';
 import type { Group } from '@commune/types';
+import { Pressable } from '@/components/primitives';
 import { useThemeStore } from '@/stores/theme';
 
 export function GroupSwitcher({
@@ -75,10 +82,10 @@ export function GroupSwitcher({
                   : `${activeGroup.type} group`}
               </Text>
             </View>
-            <Ionicons
-              name="chevron-down"
+            <IconChevronDown
               size={14}
               color={isDark ? '#A1A1AA' : '#667085'}
+              strokeWidth={1.7}
             />
           </View>
         ) : (
@@ -112,7 +119,7 @@ export function GroupSwitcher({
                   justifyContent: 'center',
                 }}
               >
-                <Ionicons name="swap-horizontal" size={18} color="#2d6a4f" />
+                <IconArrowsLeftRight size={18} color="#2d6a4f" strokeWidth={1.7} />
               </View>
             </View>
           </Card>
@@ -162,7 +169,7 @@ export function GroupSwitcher({
                 accessibilityLabel="Close group switcher"
                 accessibilityRole="button"
               >
-                <Ionicons name="close" size={20} color={isDark ? '#FAFAFA' : '#171b24'} />
+                <IconX size={20} color={isDark ? '#FAFAFA' : '#171b24'} strokeWidth={1.7} />
               </TouchableOpacity>
             </View>
 
@@ -204,9 +211,9 @@ export function GroupSwitcher({
                       </View>
                     </View>
                     {selected ? (
-                      <Ionicons name="checkmark-circle" size={24} color="#2d6a4f" />
+                      <IconCircleCheckFilled size={24} color="#2d6a4f" />
                     ) : (
-                      <Ionicons name="chevron-forward" size={20} color="#667085" />
+                      <IconChevronRight size={20} color="#667085" strokeWidth={1.7} />
                     )}
                   </View>
                 </TouchableOpacity>

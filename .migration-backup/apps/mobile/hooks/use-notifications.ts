@@ -10,7 +10,7 @@ export const notificationKeys = {
 export function useNotifications(userId: string, groupId: string) {
   return useQuery({
     queryKey: notificationKeys.list(userId, groupId),
-    queryFn: () => getNotifications(userId, groupId),
+    queryFn: () => getNotifications(groupId),
     enabled: !!userId && !!groupId,
   });
 }

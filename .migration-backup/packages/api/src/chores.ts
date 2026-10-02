@@ -1,4 +1,4 @@
-import { supabase } from './client';
+import { getTypedSupabase } from './client';
 import {
   calculateNextDue,
   createChoreSchema,
@@ -7,6 +7,7 @@ import {
 import type { ChoreFrequency, CreateChoreInput } from '@commune/core';
 
 export async function getGroupChores(groupId: string) {
+  const supabase = getTypedSupabase();
   const { data, error } = await supabase
     .from('chores')
     .select('*, assigned_user:users!chores_assigned_to_fkey(id, name, avatar_url)')
@@ -41,6 +42,7 @@ export async function getGroupChores(groupId: string) {
 }
 
 export async function createChore(data: CreateChoreInput) {
+  const supabase = getTypedSupabase();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
 
@@ -67,9 +69,10 @@ export async function createChore(data: CreateChoreInput) {
 }
 
 export async function updateChore(choreId: string, updates: Record<string, unknown>) {
+  const supabase = getTypedSupabase();
   const { data, error } = await supabase
     .from('chores')
-    .update(updates)
+    .update(updates as never)
     .eq('id', choreId)
     .select('*')
     .single();
@@ -79,6 +82,7 @@ export async function updateChore(choreId: string, updates: Record<string, unkno
 }
 
 export async function deleteChore(choreId: string) {
+  const supabase = getTypedSupabase();
   const { error } = await supabase
     .from('chores')
     .update({ is_active: false })
@@ -88,6 +92,7 @@ export async function deleteChore(choreId: string) {
 }
 
 export async function completeChore(choreId: string) {
+  const supabase = getTypedSupabase();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
 
@@ -121,14 +126,17 @@ export async function completeChore(choreId: string) {
 
   // Advance rotation
   if (chore.rotation_order && Array.isArray(chore.rotation_order) && chore.rotation_order.length > 1) {
-    const nextPerson = getNextInRotation(chore.rotation_order, chore.assigned_to);
+    const nextPerson = getNextInRotation(
+      chore.rotation_order as unknown as string[],
+      chore.assigned_to,
+    );
     if (nextPerson) updates.assigned_to = nextPerson;
   }
 
   if (Object.keys(updates).length > 0) {
     const { error: updateError } = await supabase
       .from('chores')
-      .update(updates)
+      .update(updates as never)
       .eq('id', choreId);
 
     if (updateError) throw updateError;

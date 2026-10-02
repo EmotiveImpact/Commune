@@ -5,7 +5,7 @@ import type {
   PaymentProvider,
 } from '@commune/types';
 import { buildPaymentUrl, calculateSettlementWithCouples } from '@commune/core';
-import { supabase } from './client';
+import { getTypedSupabase } from './client';
 
 interface PaymentMethodRow {
   user_id: string;
@@ -44,11 +44,12 @@ export async function getGroupSettlement(
   groupId: string,
   month?: string,
 ): Promise<SettlementResult> {
+  const supabase = getTypedSupabase();
   const { data: rollup, error } = await supabase.rpc(
     'fn_get_group_settlement_rollup',
     {
       p_group_id: groupId,
-      p_month: month ?? null,
+      p_month: month ?? undefined,
     },
   );
 

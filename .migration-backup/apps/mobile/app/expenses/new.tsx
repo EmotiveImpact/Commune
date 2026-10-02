@@ -1,18 +1,28 @@
-import { useEffect, useMemo, useState, useRef } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Animated,
+  Image,
+  Keyboard,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
   ScrollView,
-  Switch,
   Text,
   TextInput,
-  TouchableOpacity,
+  TouchableWithoutFeedback,
   View,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import { calculateEqualSplit, calculatePercentageSplit, createExpenseSchema } from '@commune/core';
+import * as ImagePicker from 'expo-image-picker';
+import { Stack, useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { IconAlertTriangle, IconChevronDown, IconChevronRight, IconCloudOff, IconUsers, IconX } from '@tabler/icons-react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import {
+  calculateEqualSplit,
+  calculatePercentageSplit,
+  createExpenseSchema,
+} from '@commune/core';
 import type { ExpenseCategory as ExpenseCategoryType } from '@commune/types';
 import { ExpenseCategory, SplitMethod } from '@commune/types';
 import { formatCurrency } from '@commune/utils';
@@ -20,176 +30,240 @@ import { useAuthStore } from '@/stores/auth';
 import { useGroupStore } from '@/stores/group';
 import { toWorkspaceExpenseContextPayload, useCreateExpense } from '@/hooks/use-expenses';
 import { useGroup } from '@/hooks/use-groups';
-import { DateField } from '@/components/ui';
+import { EmptyState, Picker, Pressable, Screen } from '@/components/primitives';
+import { colors, getCategoryMeta, radius, space } from '@/constants/design';
 import { getErrorMessage } from '@/lib/errors';
 import { formatCategoryLabel } from '@/lib/ui';
-import { hapticLight, hapticMedium, hapticSuccess, hapticWarning, hapticSelection } from '@/lib/haptics';
+import {
+  hapticLight,
+  hapticMedium,
+  hapticSelection,
+  hapticSuccess,
+  hapticWarning,
+} from '@/lib/haptics';
 
 const categories = Object.values(ExpenseCategory);
 
-function ShimmerSkeleton() {
-  const opacity = useRef(new Animated.Value(0.3)).current;
+const CURRENCY_SYMBOLS: Record<string, string> = {
+  GBP: '£', USD: '$', EUR: '€', CAD: 'CA$', AUD: 'A$',
+  NZD: 'NZ$', JPY: '¥', CHF: 'CHF', SEK: 'kr', NOK: 'kr', DKK: 'kr',
+};
+const symbolFor = (code?: string) =>
+  code ? CURRENCY_SYMBOLS[code] ?? `${code} ` : '£';
 
-  useEffect(() => {
-    const animation = Animated.loop(
-      Animated.sequence([
-        Animated.timing(opacity, {
-          toValue: 1,
-          duration: 800,
-          useNativeDriver: true,
-        }),
-        Animated.timing(opacity, {
-          toValue: 0.3,
-          duration: 800,
-          useNativeDriver: true,
-        }),
-      ])
-    );
-    animation.start();
-    return () => animation.stop();
-  }, [opacity]);
+const CURRENCY_COUNTRIES: Record<string, string> = {
+  GBP: 'United Kingdom',
+  USD: 'United States',
+  EUR: 'Eurozone',
+  CAD: 'Canada',
+  AUD: 'Australia',
+  NZD: 'New Zealand',
+  JPY: 'Japan',
+  CHF: 'Switzerland',
+  SEK: 'Sweden',
+  NOK: 'Norway',
+  DKK: 'Denmark',
+};
 
-  return (
-    <View style={{ flex: 1, backgroundColor: '#FAFAFA', padding: 16 }}>
-      {[120, 80, 200, 100].map((h, i) => (
-        <Animated.View
-          key={i}
-          style={{
-            opacity,
-            height: h,
-            backgroundColor: 'rgba(0,0,0,0.06)',
-            borderRadius: 16,
-            marginBottom: 16,
-          }}
-        />
-      ))}
-    </View>
-  );
+const CURRENCY_OPTIONS = Object.keys(CURRENCY_SYMBOLS).map((code) => ({
+  value: code,
+  label: `${code} · ${CURRENCY_COUNTRIES[code] ?? code}`,
+}));
+
+const SPLIT_LABELS: Record<SplitMethod, string> = {
+  [SplitMethod.EQUAL]: 'Equal',
+  [SplitMethod.PERCENTAGE]: 'By percent',
+  [SplitMethod.CUSTOM]: 'Exact amounts',
+};
+
+const RECURRENCE_OPTIONS = [
+  { value: 'none', label: 'One-off' },
+  { value: 'weekly', label: 'Weekly' },
+  { value: 'monthly', label: 'Monthly' },
+];
+
+function formatDueDate(date: Date) {
+  const today = new Date();
+  const isToday =
+    today.getFullYear() === date.getFullYear() &&
+    today.getMonth() === date.getMonth() &&
+    today.getDate() === date.getDate();
+  const formatted = date.toLocaleDateString('en-GB', { month: 'short', day: 'numeric' });
+  return isToday ? `Today · ${formatted}` : formatted;
 }
+
+type SheetKey = 'split' | 'date' | 'invoiceDate' | 'paymentDueDate' | 'currency' | null;
+
+function categoriesSorted(active: ExpenseCategoryType): ExpenseCategoryType[] {
+  return [active, ...categories.filter((c) => c !== active)];
+}
+
+function formatOptionalDate(date: Date | null) {
+  if (!date) return 'Not set';
+  return date.toLocaleDateString('en-GB', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+/* ====================================================================== */
+/* Screen                                                                  */
+/* ====================================================================== */
 
 export default function NewExpenseScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { user } = useAuthStore();
   const { activeGroupId } = useGroupStore();
 
-  const {
-    data: group,
-    isLoading,
-    error: groupError,
-    refetch: refetchGroup,
-  } = useGroup(activeGroupId ?? '');
+  const { data: group, isLoading, error: groupError } = useGroup(activeGroupId ?? '');
   const createExpense = useCreateExpense(activeGroupId ?? '');
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
-  const [category, setCategory] = useState<ExpenseCategoryType>(
-    ExpenseCategory.MISCELLANEOUS
-  );
-  const [dueDate, setDueDate] = useState<Date | null>(null);
-  const [vendorName, setVendorName] = useState('');
-  const [invoiceReference, setInvoiceReference] = useState('');
-  const [invoiceDate, setInvoiceDate] = useState<Date | null>(null);
-  const [paymentDueDate, setPaymentDueDate] = useState<Date | null>(null);
-  const [isRecurring, setIsRecurring] = useState(false);
-  const [recurrenceType, setRecurrenceType] = useState('monthly');
+  const [category, setCategory] = useState<ExpenseCategoryType>(ExpenseCategory.MISCELLANEOUS);
+  const [dueDate, setDueDate] = useState<Date>(new Date());
+  const [recurrenceType, setRecurrenceType] = useState('none');
   const [splitMethod, setSplitMethod] = useState<SplitMethod>(SplitMethod.EQUAL);
   const [paidByUserId, setPaidByUserId] = useState<string | null>(null);
   const [participantIds, setParticipantIds] = useState<string[]>([]);
   const [percentages, setPercentages] = useState<Record<string, string>>({});
   const [customAmounts, setCustomAmounts] = useState<Record<string, string>>({});
+  const [sheet, setSheet] = useState<SheetKey>(null);
+  const [receiptUri, setReceiptUri] = useState<string | null>(null);
+  const [vendorName, setVendorName] = useState('');
+  const [invoiceReference, setInvoiceReference] = useState('');
+  const [invoiceDate, setInvoiceDate] = useState<Date | null>(null);
+  const [paymentDueDate, setPaymentDueDate] = useState<Date | null>(null);
 
   const activeMembers = useMemo(
-    () => (group?.members ?? []).filter((member) => member.status === 'active'),
+    () => (group?.members ?? []).filter((m) => m.status === 'active'),
     [group?.members]
   );
   const activeMemberIds = useMemo(
-    () => activeMembers.map((member) => member.user_id),
+    () => activeMembers.map((m) => m.user_id),
     [activeMembers]
   );
 
+  const [currencyOverride, setCurrencyOverride] = useState<string | null>(null);
+  const effectiveCurrency = currencyOverride ?? group?.currency ?? 'GBP';
   const numericAmount = Number(amount) || 0;
+  const symbol = symbolFor(effectiveCurrency);
+  const currencyChipLabel = `${effectiveCurrency} · ${
+    CURRENCY_COUNTRIES[effectiveCurrency] ?? effectiveCurrency
+  }`;
+  const isValid = numericAmount > 0 && title.trim().length > 0;
+  const isRecurring = recurrenceType !== 'none';
+  const isWorkspace = group?.type === 'workspace';
+  const approvalThreshold = group?.approval_threshold ?? null;
+  const needsApproval =
+    isWorkspace && approvalThreshold != null && numericAmount >= approvalThreshold;
 
   useEffect(() => {
-    if (!group?.id || activeMemberIds.length === 0) {
-      return;
-    }
-
-    setParticipantIds((current) => {
-      if (current.length === 0) {
-        return activeMemberIds;
-      }
-      return current.filter((userId) => activeMemberIds.includes(userId));
+    if (!group?.id || activeMemberIds.length === 0) return;
+    setParticipantIds((c) => (c.length === 0 ? activeMemberIds : c.filter((id) => activeMemberIds.includes(id))));
+    setPaidByUserId((c) => {
+      if (c && activeMemberIds.includes(c)) return c;
+      return activeMemberIds.includes(user?.id ?? '') ? user?.id ?? null : null;
     });
-    setPaidByUserId((current) => {
-      if (current && activeMemberIds.includes(current)) {
-        return current;
-      }
-      return activeMemberIds.includes(user?.id ?? '') ? (user?.id ?? null) : null;
-    });
-    setPercentages((current) =>
-      Object.fromEntries(
-        Object.entries(current).filter(([userId]) => activeMemberIds.includes(userId))
-      )
+    setPercentages((c) =>
+      Object.fromEntries(Object.entries(c).filter(([id]) => activeMemberIds.includes(id)))
     );
-    setCustomAmounts((current) =>
-      Object.fromEntries(
-        Object.entries(current).filter(([userId]) => activeMemberIds.includes(userId))
-      )
+    setCustomAmounts((c) =>
+      Object.fromEntries(Object.entries(c).filter(([id]) => activeMemberIds.includes(id)))
     );
   }, [activeMemberIds, group?.id, user?.id]);
 
-  const splitPreview = useMemo(() => {
-    if (participantIds.length === 0 || numericAmount <= 0) {
-      return [];
-    }
+  const paidByLabel = useMemo(() => {
+    if (!paidByUserId) return 'Nobody yet';
+    const m = activeMembers.find((x) => x.user_id === paidByUserId);
+    if (!m) return 'Choose a payer';
+    return paidByUserId === user?.id ? 'You' : m.user.name;
+  }, [activeMembers, paidByUserId, user?.id]);
 
+  const splitSummary = useMemo(() => {
+    if (participantIds.length === 0) return 'No participants';
     if (splitMethod === SplitMethod.EQUAL) {
-      const shares = calculateEqualSplit(numericAmount, participantIds.length);
-      return participantIds.map((userId, index) => ({
-        userId,
-        amount: shares[index] ?? 0,
-      }));
+      const n = participantIds.length;
+      return `Equal · ${n} ${n === 1 ? 'person' : 'people'}`;
     }
+    return SPLIT_LABELS[splitMethod];
+  }, [participantIds.length, splitMethod]);
 
-    if (splitMethod === SplitMethod.PERCENTAGE) {
-      const values = participantIds.map((userId) => ({
-        userId,
-        percentage: Number(percentages[userId]) || 0,
-      }));
-
-      try {
-        return calculatePercentageSplit(numericAmount, values);
-      } catch {
-        return [];
+  async function pickReceiptFromLibrary() {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      hapticWarning();
+      Alert.alert('Permission needed to access photos');
+      return;
+    }
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        quality: 0.75,
+      });
+      if (!result.canceled && result.assets?.[0]?.uri) {
+        hapticSelection();
+        setReceiptUri(result.assets[0].uri);
       }
+    } catch (e) {
+      hapticWarning();
+      Alert.alert('Could not open photos', getErrorMessage(e));
     }
-
-    return participantIds.map((userId) => ({
-      userId,
-      amount: Number(customAmounts[userId]) || 0,
-    }));
-  }, [customAmounts, numericAmount, participantIds, percentages, splitMethod]);
-  const workspaceApprovalThreshold =
-    group?.type === 'workspace' ? group.approval_threshold : null;
-  const workspaceApprovalNeedsReview =
-    workspaceApprovalThreshold != null && numericAmount > workspaceApprovalThreshold;
-  const workspaceApprovalMessage = workspaceApprovalThreshold != null
-    ? `Expenses above ${formatCurrency(workspaceApprovalThreshold, group?.currency ?? 'GBP')} move into admin approval before they settle.`
-    : 'No approval threshold is set for this workspace yet.';
-
-  function toggleParticipant(userId: string) {
-    hapticLight();
-    setParticipantIds((current) =>
-      current.includes(userId)
-        ? current.filter((value) => value !== userId)
-        : [...current, userId]
-    );
   }
+
+  async function takeReceiptPhoto() {
+    const perm = await ImagePicker.requestCameraPermissionsAsync();
+    if (!perm.granted) {
+      hapticWarning();
+      Alert.alert('Permission needed to access photos');
+      return;
+    }
+    try {
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        quality: 0.75,
+      });
+      if (!result.canceled && result.assets?.[0]?.uri) {
+        hapticSelection();
+        setReceiptUri(result.assets[0].uri);
+      }
+    } catch (e) {
+      hapticWarning();
+      Alert.alert('Could not open camera', getErrorMessage(e));
+    }
+  }
+
+  function promptReceiptSource() {
+    hapticLight();
+    Alert.alert('Add receipt', undefined, [
+      { text: 'Choose from library', onPress: pickReceiptFromLibrary },
+      { text: 'Take photo', onPress: takeReceiptPhoto },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  }
+
+  function clearReceipt() {
+    hapticLight();
+    setReceiptUri(null);
+  }
+
+  const receiptFileName = useMemo(() => {
+    if (!receiptUri) return null;
+    try {
+      const tail = receiptUri.split('/').pop() ?? 'receipt';
+      return tail.split('?')[0] || 'receipt';
+    } catch {
+      return 'receipt';
+    }
+  }, [receiptUri]);
 
   async function handleSubmit() {
     hapticMedium();
-    if (!activeGroupId || !group) {
+    if (!activeGroupId || !group) return;
+    if (!isValid) {
+      hapticWarning();
+      Alert.alert('Check the form', 'Add a title and amount before saving.');
       return;
     }
 
@@ -198,28 +272,27 @@ export default function NewExpenseScreen() {
       description: description.trim() || undefined,
       category,
       amount: numericAmount,
-      currency: group.currency,
-      due_date: dueDate ? dueDate.toISOString().split('T')[0]! : '',
+      currency: effectiveCurrency,
+      due_date: dueDate.toISOString().split('T')[0]!,
       recurrence_type: isRecurring ? recurrenceType : 'none',
       recurrence_interval: isRecurring ? 1 : undefined,
       split_method: splitMethod,
       paid_by_user_id: paidByUserId ?? undefined,
       participant_ids: participantIds,
       ...toWorkspaceExpenseContextPayload({
-        vendor_name: vendorName,
-        invoice_reference: invoiceReference,
-        invoice_date: invoiceDate ? invoiceDate.toISOString().split('T')[0]! : '',
-        payment_due_date: paymentDueDate ? paymentDueDate.toISOString().split('T')[0]! : '',
+        vendor_name: isWorkspace ? vendorName : '',
+        invoice_reference: isWorkspace ? invoiceReference : '',
+        invoice_date:
+          isWorkspace && invoiceDate ? invoiceDate.toISOString().split('T')[0]! : '',
+        payment_due_date:
+          isWorkspace && paymentDueDate ? paymentDueDate.toISOString().split('T')[0]! : '',
       }),
     };
 
     const validation = createExpenseSchema.safeParse(basePayload);
     if (!validation.success) {
       hapticWarning();
-      Alert.alert(
-        'Check the form',
-        validation.error.issues[0]?.message ?? 'Some required fields are missing.'
-      );
+      Alert.alert('Check the form', validation.error.issues[0]?.message ?? 'Some required fields are missing.');
       return;
     }
 
@@ -228,846 +301,864 @@ export default function NewExpenseScreen() {
       group_id: activeGroupId,
     };
 
+    // TODO(receipt upload): createExpenseSchema does not currently include a
+    // `receipt_url` field, and we have not yet wired uploads to Supabase
+    // Storage. When the schema gains `receipt_url` and the storage bucket is
+    // set up, upload `receiptUri` (if set) and attach the returned public URL
+    // to `payload.receipt_url` here.
+    if (receiptUri) {
+      console.log('[new-expense] receipt selected but upload is not wired yet:', receiptUri);
+    }
+
     if (splitMethod === SplitMethod.PERCENTAGE) {
-      const pctRows = participantIds.map((userId) => ({
-        userId,
-        percentage: Number(percentages[userId]) || 0,
-      }));
-      const totalPct = pctRows.reduce((sum, row) => sum + row.percentage, 0);
-      if (Math.abs(totalPct - 100) > 0.01) {
+      const rows = participantIds.map((id) => ({ userId: id, percentage: Number(percentages[id]) || 0 }));
+      const total = rows.reduce((s, r) => s + r.percentage, 0);
+      if (Math.abs(total - 100) > 0.01) {
         hapticWarning();
         Alert.alert('Split must add up', 'Percentage splits need to total 100%.');
         return;
       }
-      payload.percentages = pctRows;
+      payload.percentages = rows;
     }
 
     if (splitMethod === SplitMethod.CUSTOM) {
-      const amountRows = participantIds.map((userId) => ({
-        userId,
-        amount: Number(customAmounts[userId]) || 0,
-      }));
-      const totalCustom = amountRows.reduce((sum, row) => sum + row.amount, 0);
-      if (Math.abs(totalCustom - numericAmount) > 0.01) {
+      const rows = participantIds.map((id) => ({ userId: id, amount: Number(customAmounts[id]) || 0 }));
+      const total = rows.reduce((s, r) => s + r.amount, 0);
+      if (Math.abs(total - numericAmount) > 0.01) {
         hapticWarning();
         Alert.alert(
           'Split must add up',
-          `Custom amounts must sum to ${formatCurrency(numericAmount, group.currency)}.`
+          `Custom amounts must sum to ${formatCurrency(numericAmount, effectiveCurrency)}.`
         );
         return;
       }
-      payload.custom_amounts = amountRows;
+      payload.custom_amounts = rows;
     }
 
     try {
       await createExpense.mutateAsync(payload);
       hapticSuccess();
-      Alert.alert('Expense created', `${title.trim()} has been added.`, [
-        {
-          text: 'View expenses',
-          onPress: () => router.replace('/(tabs)/expenses'),
-        },
-      ]);
-    } catch (error) {
+      router.replace('/(tabs)/expenses');
+    } catch (e) {
       hapticWarning();
-      Alert.alert(
-        'Could not save expense',
-        getErrorMessage(error)
-      );
+      Alert.alert('Could not save expense', getErrorMessage(e));
     }
   }
 
-  /* ------------------------------------------------------------------ */
-  /*  No active group                                                    */
-  /* ------------------------------------------------------------------ */
+  /* ---- early states ---- */
+
   if (!activeGroupId) {
     return (
-      <ScrollView
-        style={{ flex: 1, backgroundColor: '#FAFAFA' }}
-        contentContainerStyle={{ flexGrow: 1, padding: 16 }}
-      >
-        <View
-          style={{
-            backgroundColor: '#FFFFFF',
-            borderRadius: 16,
-            padding: 20,
-            alignItems: 'center',
-            paddingVertical: 40,
-            shadowColor: '#000',
-            shadowOpacity: 0.04,
-            shadowRadius: 8,
-            shadowOffset: { width: 0, height: 2 },
-          }}
-        >
-          <Ionicons name="receipt-outline" size={48} color="#9CA3AF" />
-          <Text style={{ fontSize: 18, fontWeight: '600', color: '#171b24', marginTop: 16 }}>
-            Select a group first
-          </Text>
-          <Text style={{ fontSize: 14, color: '#9CA3AF', textAlign: 'center', marginTop: 8, lineHeight: 20 }}>
-            Create or join a group before adding a shared expense.
-          </Text>
-          <TouchableOpacity
-            style={{
-              marginTop: 20,
-              backgroundColor: '#1f2330',
-              height: 52,
-              borderRadius: 14,
-              alignItems: 'center',
-              justifyContent: 'center',
-              paddingHorizontal: 32,
-            }}
-            activeOpacity={0.85}
-            onPress={() => router.push('/onboarding')}
-          >
-            <Text style={{ fontSize: 16, fontWeight: '600', color: '#FFFFFF' }}>
-              Open onboarding
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
+      <Screen>
+        <Stack.Screen options={{ headerShown: false }} />
+        <Header topInset={insets.top} onClose={() => router.back()} onSave={() => {}} canSave={false} />
+        <EmptyState
+          icon={IconUsers}
+          title="Select a group first"
+          description="Create or join a group before adding a shared expense."
+          actionLabel="Open onboarding"
+          onAction={() => router.push('/onboarding')}
+        />
+      </Screen>
     );
   }
 
-  /* ------------------------------------------------------------------ */
-  /*  Error state                                                        */
-  /* ------------------------------------------------------------------ */
   if (groupError) {
     return (
-      <ScrollView
-        style={{ flex: 1, backgroundColor: '#FAFAFA' }}
-        contentContainerStyle={{ flexGrow: 1, padding: 16 }}
-      >
-        <View
-          style={{
-            backgroundColor: '#FFFFFF',
-            borderRadius: 16,
-            padding: 20,
-            alignItems: 'center',
-            paddingVertical: 40,
-            shadowColor: '#000',
-            shadowOpacity: 0.04,
-            shadowRadius: 8,
-            shadowOffset: { width: 0, height: 2 },
-          }}
-        >
-          <Ionicons name="cloud-offline-outline" size={48} color="#9CA3AF" />
-          <Text style={{ fontSize: 18, fontWeight: '600', color: '#171b24', marginTop: 16 }}>
-            Expense form unavailable
-          </Text>
-          <Text style={{ fontSize: 14, color: '#9CA3AF', textAlign: 'center', marginTop: 8, lineHeight: 20 }}>
-            {getErrorMessage(groupError, 'Could not load the selected group right now.')}
-          </Text>
-          <TouchableOpacity
-            style={{
-              marginTop: 20,
-              backgroundColor: '#1f2330',
-              height: 52,
-              borderRadius: 14,
-              alignItems: 'center',
-              justifyContent: 'center',
-              paddingHorizontal: 32,
-            }}
-            activeOpacity={0.85}
-            onPress={() => { void refetchGroup(); }}
-          >
-            <Text style={{ fontSize: 16, fontWeight: '600', color: '#FFFFFF' }}>
-              Try again
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
+      <Screen>
+        <Stack.Screen options={{ headerShown: false }} />
+        <Header topInset={insets.top} onClose={() => router.back()} onSave={() => {}} canSave={false} />
+        <EmptyState
+          icon={IconCloudOff}
+          title="Expense form unavailable"
+          description={getErrorMessage(groupError, 'Could not load the selected group.')}
+        />
+      </Screen>
     );
   }
 
-  /* ------------------------------------------------------------------ */
-  /*  Loading                                                            */
-  /* ------------------------------------------------------------------ */
   if (isLoading || !group) {
-    return <ShimmerSkeleton />;
+    return (
+      <Screen>
+        <Stack.Screen options={{ headerShown: false }} />
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <ActivityIndicator color={colors.sage} />
+        </View>
+      </Screen>
+    );
   }
 
-  /* ------------------------------------------------------------------ */
-  /*  Main form                                                          */
-  /* ------------------------------------------------------------------ */
+  /* ---- main ---- */
+
   return (
-    <ScrollView
-      style={{ flex: 1, backgroundColor: '#FAFAFA' }}
-      contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
-      keyboardShouldPersistTaps="handled"
-    >
-      {/* Header banner */}
-      <View
-        style={{
-          marginBottom: 16,
-          borderRadius: 24,
-          backgroundColor: '#1f2330',
-          paddingHorizontal: 24,
-          paddingVertical: 24,
-        }}
-      >
-        <Text style={{ fontSize: 13, fontWeight: '500', color: 'rgba(255,255,255,0.6)' }}>
-          New expense
-        </Text>
-        <Text style={{ marginTop: 6, fontSize: 28, fontWeight: '700', lineHeight: 34, color: '#FFFFFF' }}>
-          Add expense
-        </Text>
-        <Text style={{ marginTop: 6, fontSize: 14, lineHeight: 20, color: 'rgba(255,255,255,0.6)' }}>
-          Create a shared cost, decide who is included, and preview the split.
-        </Text>
-      </View>
+    <Screen>
+      <Stack.Screen options={{ headerShown: false }} />
+      <Header topInset={insets.top} onClose={() => router.back()} onSave={handleSubmit} canSave={isValid && !createExpense.isPending} />
 
-      {/* Amount card */}
-      <View
-        style={{
-          backgroundColor: '#FFFFFF',
-          borderRadius: 16,
-          padding: 20,
-          marginBottom: 16,
-          alignItems: 'center',
-          shadowColor: '#000',
-          shadowOpacity: 0.04,
-          shadowRadius: 8,
-          shadowOffset: { width: 0, height: 2 },
-        }}
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <Text style={{ fontSize: 14, fontWeight: '600', color: '#374151', marginBottom: 8 }}>
-          Amount ({group.currency})
-        </Text>
-        <TextInput
-          style={{
-            width: '100%',
-            backgroundColor: '#F3F4F6',
-            borderRadius: 12,
-            height: 50,
-            paddingHorizontal: 16,
-            fontSize: 15,
-            color: '#171b24',
-            textAlign: 'center',
-          }}
-          placeholder="0.00"
-          placeholderTextColor="#9CA3AF"
-          value={amount}
-          onChangeText={setAmount}
-          keyboardType="decimal-pad"
-        />
-      </View>
-
-      {group.type === 'workspace' ? (
-        <View
-          style={{
-            backgroundColor: '#FFFFFF',
-            borderRadius: 16,
-            padding: 20,
-            marginBottom: 16,
-            shadowColor: '#000',
-            shadowOpacity: 0.04,
-            shadowRadius: 8,
-            shadowOffset: { width: 0, height: 2 },
-          }}
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={{ paddingTop: 12, paddingBottom: 120 }}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
         >
-          <Text style={{ fontSize: 16, fontWeight: '600', color: '#171b24', marginBottom: 4 }}>
-            Approval chain
-          </Text>
-          <Text style={{ fontSize: 14, lineHeight: 20, color: '#6B7280' }}>
-            {workspaceApprovalMessage}
-          </Text>
-          {workspaceApprovalThreshold != null && numericAmount > 0 ? (
+          {/* Amount hero — amount-first hierarchy */}
+          <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+            <View style={{ alignItems: 'center', paddingTop: 28, paddingBottom: 20, paddingHorizontal: space.gutter }}>
+              <Text style={styles.eyebrow}>Amount</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'baseline', marginTop: 10 }}>
+                <Text style={[styles.heroAmount, { color: colors.textMuted, marginRight: 2 }]}>{symbol}</Text>
+                <TextInput
+                  style={[styles.heroAmount, { color: colors.textPrimary, textAlign: 'left', minWidth: 80, padding: 0 }]}
+                  placeholder="0"
+                  placeholderTextColor={colors.textMuted}
+                  value={amount}
+                  onChangeText={setAmount}
+                  keyboardType="decimal-pad"
+                  selectionColor={colors.sage}
+                  accessibilityLabel="Amount"
+                />
+              </View>
+
+              {/* Currency / country chip */}
+              <Pressable
+                onPress={() => { hapticSelection(); setSheet('currency'); }}
+                accessibilityRole="button"
+                accessibilityLabel={`Currency ${currencyChipLabel}. Tap to change.`}
+                style={({ pressed }) => ({
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 6,
+                  marginTop: 14,
+                  paddingHorizontal: 12,
+                  paddingVertical: 7,
+                  borderRadius: radius.pill,
+                  backgroundColor: colors.sageSoft,
+                  opacity: pressed ? 0.8 : 1,
+                })}
+              >
+                <Text style={{ fontSize: 12, fontWeight: '700', color: colors.sageInk, letterSpacing: 0.2 }}>
+                  {currencyChipLabel}
+                </Text>
+                <IconChevronDown size={13} color={colors.sageInk} strokeWidth={2.5} />
+              </Pressable>
+            </View>
+          </TouchableWithoutFeedback>
+
+          {/* Category chips — horizontal scroll */}
+          <View style={{ paddingHorizontal: space.gutter, marginBottom: 16 }}>
+            <Text style={[styles.eyebrow, { textAlign: 'left', marginBottom: 10 }]}>Category</Text>
+          </View>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={{ paddingHorizontal: space.gutter, gap: 8, paddingBottom: 4 }}
+            style={{ marginBottom: 16 }}
+          >
+            {categoriesSorted(category).map((c) => {
+              const sel = c === category;
+              const meta = getCategoryMeta(c);
+              const Icon = meta.icon;
+              return (
+                <Pressable
+                  key={c}
+                  onPress={() => {
+                    hapticSelection();
+                    setCategory(c);
+                  }}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: sel }}
+                  accessibilityLabel={formatCategoryLabel(c)}
+                  style={({ pressed }) => ({
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 6,
+                    paddingHorizontal: 14,
+                    height: 36,
+                    borderRadius: radius.pill,
+                    backgroundColor: sel ? colors.sage : colors.bgSurface,
+                    borderWidth: 1,
+                    borderColor: sel ? colors.sage : colors.borderSubtle,
+                    opacity: pressed ? 0.85 : 1,
+                  })}
+                >
+                  <Icon size={14} color={sel ? colors.textInverse : meta.color} strokeWidth={2} />
+                  <Text
+                    style={{
+                      fontSize: 13,
+                      fontWeight: '700',
+                      color: sel ? colors.textInverse : colors.textPrimary,
+                      letterSpacing: 0.1,
+                    }}
+                  >
+                    {formatCategoryLabel(c)}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+
+          {/* Field rows */}
+          <View style={{ paddingHorizontal: space.gutter }}>
+          {needsApproval ? (
             <View
+              accessibilityRole="alert"
               style={{
-                marginTop: 12,
-                paddingHorizontal: 12,
-                paddingVertical: 10,
-                borderRadius: 14,
-                backgroundColor: workspaceApprovalNeedsReview ? '#FFF7ED' : '#ECFDF5',
+                flexDirection: 'row', alignItems: 'center', gap: 10,
+                backgroundColor: colors.warnBg, borderRadius: 14,
+                paddingVertical: 12, paddingHorizontal: 14, marginBottom: 12,
               }}
             >
-              <Text
-                style={{
-                  fontSize: 12,
-                  fontWeight: '600',
-                  color: workspaceApprovalNeedsReview ? '#C2410C' : '#2d6a4f',
-                }}
-              >
-                {workspaceApprovalNeedsReview
-                  ? 'This amount will be routed for approval after save.'
-                  : 'This amount stays below the approval line.'}
+              <IconAlertTriangle size={18} color={colors.warnText} strokeWidth={2} />
+              <Text style={{ flex: 1, fontSize: 13, fontWeight: '600', color: colors.warnText, lineHeight: 18 }}>
+                This expense needs approval before it posts.
               </Text>
             </View>
           ) : null}
-        </View>
-      ) : null}
 
-      {/* Title, category, date, description card */}
-      <View
-        style={{
-          backgroundColor: '#FFFFFF',
-          borderRadius: 16,
-          padding: 20,
-          marginBottom: 16,
-          shadowColor: '#000',
-          shadowOpacity: 0.04,
-          shadowRadius: 8,
-          shadowOffset: { width: 0, height: 2 },
-        }}
-      >
-        {/* Title */}
-        <Text style={{ fontSize: 14, fontWeight: '600', color: '#374151', marginBottom: 8 }}>
-          Title
-        </Text>
-        <TextInput
-          style={{
-            backgroundColor: '#F3F4F6',
-            borderRadius: 12,
-            height: 50,
-            paddingHorizontal: 16,
-            fontSize: 15,
-            color: '#171b24',
-          }}
-          placeholder="Electricity, cleaner, internet"
-          placeholderTextColor="#9CA3AF"
-          value={title}
-          onChangeText={setTitle}
-        />
-
-        <View style={{ height: 1, backgroundColor: '#F0F0F0', marginVertical: 16 }} />
-
-        {/* Category */}
-        <Text style={{ fontSize: 14, fontWeight: '600', color: '#374151', marginBottom: 12 }}>
-          Category
-        </Text>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
-          {categories.map((value) => {
-            const selected = category === value;
-            return (
-              <TouchableOpacity
-                key={value}
-                style={{
-                  backgroundColor: selected ? '#1f2330' : '#F3F4F6',
-                  borderRadius: 20,
-                  paddingHorizontal: 16,
-                  paddingVertical: 8,
-                }}
-                activeOpacity={0.8}
-                onPress={() => { hapticSelection(); setCategory(value); }}
-              >
-                <Text
-                  style={{
-                    fontSize: 12,
-                    fontWeight: '600',
-                    color: selected ? '#FFFFFF' : '#6B7280',
-                  }}
-                >
-                  {formatCategoryLabel(value)}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-
-        {/* Due date */}
-        <DateField
-          label="Due date"
-          value={dueDate}
-          onChange={setDueDate}
-          hint="When this expense is due."
-        />
-
-        <View style={{ height: 1, backgroundColor: '#F0F0F0', marginVertical: 16 }} />
-
-        {/* Description */}
-        <Text style={{ fontSize: 14, fontWeight: '600', color: '#374151', marginBottom: 8 }}>
-          Description
-        </Text>
-        <TextInput
-          style={{
-            backgroundColor: '#F3F4F6',
-            borderRadius: 12,
-            minHeight: 80,
-            paddingHorizontal: 16,
-            paddingTop: 14,
-            fontSize: 15,
-            color: '#171b24',
-            textAlignVertical: 'top',
-          }}
-          placeholder="Optional note for the group"
-          placeholderTextColor="#9CA3AF"
-          value={description}
-          onChangeText={setDescription}
-          multiline
-        />
-
-        <View style={{ height: 1, backgroundColor: '#F0F0F0', marginVertical: 16 }} />
-
-        {group.type === 'workspace' ? (
-          <>
-            <Text style={{ fontSize: 14, fontWeight: '600', color: '#374151', marginBottom: 6 }}>
-              Workspace context
-            </Text>
-            <Text style={{ fontSize: 13, color: '#6B7280', lineHeight: 18, marginBottom: 12 }}>
-              Vendor, invoice, and due-date details keep workspace subscriptions and tool costs visible later.
-            </Text>
+          {/* Primary rows */}
+          <Row label="What">
             <TextInput
-              style={{
-                backgroundColor: '#F3F4F6',
-                borderRadius: 12,
-                height: 50,
-                paddingHorizontal: 16,
-                fontSize: 15,
-                color: '#171b24',
-                marginBottom: 12,
-              }}
-              placeholder="Vendor / supplier"
-              placeholderTextColor="#9CA3AF"
-              value={vendorName}
-              onChangeText={setVendorName}
+              style={styles.rowInput}
+              placeholder="Electricity, cleaner, internet"
+              placeholderTextColor={colors.textMuted}
+              value={title}
+              onChangeText={setTitle}
             />
-            <TextInput
-              style={{
-                backgroundColor: '#F3F4F6',
-                borderRadius: 12,
-                height: 50,
-                paddingHorizontal: 16,
-                fontSize: 15,
-                color: '#171b24',
-                marginBottom: 12,
-              }}
-              placeholder="Invoice reference"
-              placeholderTextColor="#9CA3AF"
-              value={invoiceReference}
-              onChangeText={setInvoiceReference}
-            />
-            <DateField
-              label="Invoice date"
-              value={invoiceDate}
-              onChange={setInvoiceDate}
-              hint="When the vendor issued the bill."
-            />
-            <DateField
-              label="Payment due date"
-              value={paymentDueDate}
-              onChange={setPaymentDueDate}
-              hint="Optional vendor payment deadline."
-            />
+          </Row>
 
-            <View style={{ height: 1, backgroundColor: '#F0F0F0', marginVertical: 16 }} />
-          </>
-        ) : null}
-
-        {/* Recurring toggle */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <View style={{ flex: 1, marginRight: 12 }}>
-            <Text style={{ fontSize: 15, fontWeight: '600', color: '#171b24' }}>
-              Recurring expense
-            </Text>
-            <Text style={{ fontSize: 13, color: '#6B7280', marginTop: 2 }}>
-              Turn this on for subscriptions, software, or bills that repeat.
-            </Text>
+          <View style={{ marginBottom: 8 }}>
+            <Picker
+              label="Paid by"
+              value={paidByUserId ?? ''}
+              placeholder="Choose a payer"
+              options={[
+                { value: '', label: 'Nobody yet' },
+                ...activeMembers.map((m) => ({
+                  value: m.user_id,
+                  label: m.user_id === user?.id ? `${m.user.name} (you)` : m.user.name,
+                })),
+              ]}
+              onChange={(v) => {
+                hapticSelection();
+                setPaidByUserId(v === '' ? null : v);
+              }}
+            />
           </View>
-          <Switch
-            value={isRecurring}
-            onValueChange={(val) => { hapticLight(); setIsRecurring(val); }}
-            trackColor={{ false: '#D4D4D8', true: '#2d6a4f' }}
-          />
-        </View>
 
-        {isRecurring ? (
-          <View style={{ flexDirection: 'row', marginTop: 12, gap: 8 }}>
-            {(['weekly', 'monthly'] as const).map((value) => {
-              const selected = recurrenceType === value;
-              return (
-                <TouchableOpacity
-                  key={value}
-                  style={{
-                    backgroundColor: selected ? '#1f2330' : '#F3F4F6',
-                    borderRadius: 20,
-                    paddingHorizontal: 16,
-                    paddingVertical: 8,
-                  }}
-                  activeOpacity={0.8}
-                  onPress={() => { hapticLight(); setRecurrenceType(value); }}
-                >
-                  <Text
-                    style={{
-                      fontSize: 12,
-                      fontWeight: '600',
-                      color: selected ? '#FFFFFF' : '#6B7280',
-                    }}
-                  >
-                    {value.charAt(0).toUpperCase() + value.slice(1)}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        ) : null}
-      </View>
+          <Row label="Split" chevron onPress={() => { hapticSelection(); setSheet('split'); }}>
+            <Text style={styles.rowValue}>{splitSummary}</Text>
+          </Row>
 
-      {/* Participants card */}
-      <View
-        style={{
-          backgroundColor: '#FFFFFF',
-          borderRadius: 16,
-          padding: 20,
-          marginBottom: 16,
-          shadowColor: '#000',
-          shadowOpacity: 0.04,
-          shadowRadius: 8,
-          shadowOffset: { width: 0, height: 2 },
-        }}
-      >
-        <Text style={{ fontSize: 16, fontWeight: '600', color: '#171b24', marginBottom: 4 }}>
-          Participants
-        </Text>
-        <Text style={{ fontSize: 14, lineHeight: 20, color: '#6B7280', marginBottom: 12 }}>
-          Select the people who should share this cost.
-        </Text>
+          <Row label="Date" chevron onPress={() => { hapticLight(); setSheet('date'); }}>
+            <Text style={styles.rowValue}>{formatDueDate(dueDate)}</Text>
+          </Row>
 
-        {/* Select all / Clear */}
-        <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
-          <TouchableOpacity
-            style={{
-              backgroundColor: '#FFFFFF',
-              borderWidth: 1,
-              borderColor: '#E5E7EB',
-              borderRadius: 14,
-              height: 38,
-              paddingHorizontal: 16,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-            activeOpacity={0.8}
-            onPress={() => { hapticLight(); setParticipantIds(activeMemberIds); }}
-          >
-            <Text style={{ fontSize: 13, fontWeight: '600', color: '#171b24' }}>Select all</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={{
-              backgroundColor: '#FFFFFF',
-              borderWidth: 1,
-              borderColor: '#E5E7EB',
-              borderRadius: 14,
-              height: 38,
-              paddingHorizontal: 16,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-            activeOpacity={0.8}
-            onPress={() => { hapticLight(); setParticipantIds([]); }}
-          >
-            <Text style={{ fontSize: 13, fontWeight: '600', color: '#171b24' }}>Clear</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Member list */}
-        {activeMembers.map((member) => {
-          const selected = participantIds.includes(member.user_id);
-
-          return (
-            <TouchableOpacity
-              key={member.id}
-              style={{
-                marginBottom: 10,
-                borderRadius: 16,
-                borderWidth: 1,
-                borderColor: selected ? '#2d6a4f' : '#E5E7EB',
-                backgroundColor: selected ? '#F0FDF4' : '#FFFFFF',
-                paddingHorizontal: 16,
-                paddingVertical: 14,
-              }}
-              activeOpacity={0.86}
-              onPress={() => toggleParticipant(member.user_id)}
-            >
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 15, fontWeight: '600', color: '#171b24' }}>
-                    {member.user.name}
-                  </Text>
-                  <Text style={{ marginTop: 2, fontSize: 13, color: '#6B7280' }}>
-                    {member.user.email}
-                  </Text>
-                </View>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  {selected ? (
-                    <View
-                      style={{
-                        marginRight: 6,
-                        height: 22,
-                        width: 22,
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        borderRadius: 11,
-                        backgroundColor: '#2d6a4f',
-                      }}
-                    >
-                      <Ionicons name="checkmark" size={13} color="#FFFFFF" />
-                    </View>
-                  ) : null}
-                  <Text style={{ fontSize: 13, fontWeight: '600', color: '#2d6a4f' }}>
-                    {selected ? 'Included' : 'Add'}
-                  </Text>
-                </View>
-              </View>
-            </TouchableOpacity>
-          );
-        })}
-
-        <View style={{ height: 1, backgroundColor: '#F0F0F0', marginVertical: 16 }} />
-
-        {/* Paid by */}
-        <Text style={{ fontSize: 14, fontWeight: '600', color: '#374151', marginBottom: 12 }}>
-          Who paid upfront?
-        </Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            <TouchableOpacity
-              style={{
-                backgroundColor: !paidByUserId ? '#1f2330' : '#F3F4F6',
-                borderRadius: 20,
-                paddingHorizontal: 16,
-                paddingVertical: 8,
-              }}
-              activeOpacity={0.8}
-              onPress={() => { hapticLight(); setPaidByUserId(null); }}
-            >
-              <Text
-                style={{
-                  fontSize: 12,
-                  fontWeight: '600',
-                  color: !paidByUserId ? '#FFFFFF' : '#6B7280',
-                }}
-              >
-                Nobody
+          {isWorkspace ? (
+            <>
+              <Text style={[styles.microLabel, { paddingTop: 16, paddingBottom: 8 }]}>
+                Workspace details
               </Text>
-            </TouchableOpacity>
-            {activeMembers.map((member) => {
-              const selected = paidByUserId === member.user_id;
-              return (
-                <TouchableOpacity
-                  key={member.id}
+
+              <Row label="Vendor">
+                <TextInput
+                  style={styles.rowInput} placeholder="Acme Ltd"
+                  placeholderTextColor={colors.textMuted}
+                  value={vendorName} onChangeText={setVendorName}
+                />
+              </Row>
+              <Row label="Invoice no.">
+                <TextInput
+                  style={styles.rowInput} placeholder="INV-0042"
+                  placeholderTextColor={colors.textMuted}
+                  value={invoiceReference} onChangeText={setInvoiceReference}
+                  autoCapitalize="characters"
+                />
+              </Row>
+              <Row label="Invoice date" chevron onPress={() => { hapticLight(); setSheet('invoiceDate'); }}>
+                <Text style={[styles.rowValue, !invoiceDate && { color: colors.textMuted }]}>
+                  {formatOptionalDate(invoiceDate)}
+                </Text>
+              </Row>
+              <Row label="Payment due" chevron onPress={() => { hapticLight(); setSheet('paymentDueDate'); }}>
+                <Text style={[styles.rowValue, !paymentDueDate && { color: colors.textMuted }]}>
+                  {formatOptionalDate(paymentDueDate)}
+                </Text>
+              </Row>
+            </>
+          ) : null}
+
+          {/* Optional */}
+          <Text style={[styles.microLabel, { paddingTop: 16, paddingBottom: 8 }]}>Optional</Text>
+
+          <Row label="Notes" align="top">
+            <TextInput
+              style={[styles.rowInput, { minHeight: 40, textAlignVertical: 'top' }]}
+              placeholder="Add a note"
+              placeholderTextColor={colors.textMuted}
+              value={description}
+              onChangeText={setDescription}
+              multiline
+              numberOfLines={2}
+            />
+          </Row>
+
+          <Row
+            label="Receipt"
+            chevron
+            onPress={promptReceiptSource}
+            onLongPress={receiptUri ? clearReceipt : undefined}
+          >
+            {receiptUri ? (
+              <View style={{ position: 'relative', marginRight: 4 }}>
+                <Image
+                  source={{ uri: receiptUri }}
                   style={{
-                    backgroundColor: selected ? '#1f2330' : '#F3F4F6',
-                    borderRadius: 20,
-                    paddingHorizontal: 16,
-                    paddingVertical: 8,
+                    width: 40, height: 40, borderRadius: 8,
+                    backgroundColor: colors.bgSubtle,
                   }}
-                  activeOpacity={0.8}
-                  onPress={() => { hapticLight(); setPaidByUserId(member.user_id); }}
+                  accessibilityLabel="Receipt preview"
+                />
+                <Pressable
+                  onPress={clearReceipt}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Remove receipt"
+                  style={{
+                    position: 'absolute', top: -6, right: -6,
+                    width: 18, height: 18, borderRadius: 9,
+                    backgroundColor: colors.textPrimary,
+                    alignItems: 'center', justifyContent: 'center',
+                  }}
                 >
-                  <Text
-                    style={{
-                      fontSize: 12,
-                      fontWeight: '600',
-                      color: selected ? '#FFFFFF' : '#6B7280',
-                    }}
-                  >
-                    {member.user.name}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
+                  <IconX size={10} color={colors.textInverse} strokeWidth={3} />
+                </Pressable>
+              </View>
+            ) : null}
+            <Text style={[styles.rowValue, !receiptUri && { color: colors.textMuted }]}>
+              {receiptUri
+                ? `${receiptFileName ?? 'receipt'} · tap to change`
+                : 'Add receipt'}
+            </Text>
+          </Row>
+
+          <View style={{ marginTop: 8, marginBottom: 8 }}>
+            <Picker
+              label="Recurring"
+              value={recurrenceType}
+              options={RECURRENCE_OPTIONS}
+              onChange={(v) => {
+                hapticSelection();
+                setRecurrenceType(v);
+              }}
+            />
+          </View>
           </View>
         </ScrollView>
-      </View>
 
-      {/* Split method card */}
-      <View
+        {/* Bottom CTA */}
+        <View
+          style={{
+            position: 'absolute', left: 0, right: 0, bottom: 0,
+            paddingHorizontal: space.gutter,
+            paddingTop: 12, paddingBottom: 24,
+            backgroundColor: colors.bgBase,
+            borderTopWidth: 1, borderTopColor: colors.borderSubtle,
+          }}
+        >
+          <Pressable
+            onPress={handleSubmit}
+            disabled={!isValid || createExpense.isPending}
+            style={({ pressed }) => ({
+              height: 56, borderRadius: 16, backgroundColor: colors.sage,
+              alignItems: 'center', justifyContent: 'center',
+              opacity: !isValid || createExpense.isPending ? 0.5 : pressed ? 0.9 : 1,
+            })}
+          >
+            {createExpense.isPending ? (
+              <ActivityIndicator color={colors.textInverse} />
+            ) : (
+              <Text style={{ fontSize: 16, fontWeight: '700', color: colors.textInverse, letterSpacing: 0.2 }}>
+                Add expense
+              </Text>
+            )}
+          </Pressable>
+        </View>
+      </KeyboardAvoidingView>
+
+      {/* Sheets */}
+      <SplitSheet
+        visible={sheet === 'split'}
+        splitMethod={splitMethod}
+        setSplitMethod={setSplitMethod}
+        participantIds={participantIds}
+        setParticipantIds={setParticipantIds}
+        activeMembers={activeMembers}
+        activeMemberIds={activeMemberIds}
+        percentages={percentages}
+        setPercentages={setPercentages}
+        customAmounts={customAmounts}
+        setCustomAmounts={setCustomAmounts}
+        numericAmount={numericAmount}
+        currency={effectiveCurrency}
+        onClose={() => setSheet(null)}
+      />
+
+      <DateSheet
+        visible={sheet === 'date'}
+        value={dueDate}
+        onChange={setDueDate}
+        onClose={() => setSheet(null)}
+      />
+
+      <DateSheet
+        visible={sheet === 'invoiceDate'} title="Invoice date"
+        value={invoiceDate ?? new Date()} onChange={setInvoiceDate}
+        onClose={() => setSheet(null)}
+      />
+      <DateSheet
+        visible={sheet === 'paymentDueDate'} title="Payment due"
+        value={paymentDueDate ?? new Date()} onChange={setPaymentDueDate}
+        onClose={() => setSheet(null)}
+      />
+
+      <CurrencySheet
+        visible={sheet === 'currency'}
+        value={effectiveCurrency}
+        onChange={(code) => {
+          hapticSelection();
+          setCurrencyOverride(code);
+        }}
+        onClose={() => setSheet(null)}
+      />
+
+    </Screen>
+  );
+}
+
+/* ====================================================================== */
+/* Subcomponents                                                           */
+/* ====================================================================== */
+
+function Header({
+  onClose, onSave, canSave, topInset = 0,
+}: { onClose: () => void; onSave: () => void; canSave: boolean; topInset?: number }) {
+  return (
+    <View
+      style={{
+        paddingTop: topInset + 12,
+        paddingHorizontal: space.gutter,
+        backgroundColor: colors.bgBase,
+      }}
+    >
+    <View
+      style={{
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+        height: 48,
+      }}
+    >
+      <Pressable
+        onPress={onClose}
+        hitSlop={12}
+        style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1, minWidth: 64 })}
+        accessibilityRole="button"
+        accessibilityLabel="Cancel"
+      >
+        <Text style={{ fontSize: 15, fontWeight: '500', color: colors.textTertiary }}>Cancel</Text>
+      </Pressable>
+      <Text style={{ fontSize: 17, fontWeight: '700', color: colors.textPrimary }}>Add expense</Text>
+      <Pressable
+        onPress={onSave}
+        hitSlop={12}
+        disabled={!canSave}
+        style={({ pressed }) => ({
+          opacity: !canSave ? 0.4 : pressed ? 0.6 : 1,
+          minWidth: 64, alignItems: 'flex-end',
+        })}
+        accessibilityRole="button"
+        accessibilityLabel="Save expense"
+      >
+        <Text style={{ fontSize: 15, fontWeight: '700', color: colors.sageInk }}>Save</Text>
+      </Pressable>
+    </View>
+    </View>
+  );
+}
+
+function Row({
+  label, children, onPress, onLongPress, chevron, align = 'center',
+}: {
+  label: string;
+  children: ReactNode;
+  onPress?: () => void;
+  onLongPress?: () => void;
+  chevron?: boolean;
+  align?: 'center' | 'top';
+}) {
+  const body = (
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: align === 'top' ? 'flex-start' : 'center',
+        gap: 12,
+        backgroundColor: colors.bgSurface,
+        borderRadius: 14,
+        borderWidth: 1,
+        borderColor: colors.borderSubtle,
+        paddingVertical: 12,
+        paddingHorizontal: 14,
+        marginBottom: 8,
+      }}
+    >
+      <Text
         style={{
-          backgroundColor: '#FFFFFF',
-          borderRadius: 16,
-          padding: 20,
-          marginBottom: 16,
-          shadowColor: '#000',
-          shadowOpacity: 0.04,
-          shadowRadius: 8,
-          shadowOffset: { width: 0, height: 2 },
+          fontSize: 10, fontWeight: '700', letterSpacing: 0.4,
+          color: colors.textMuted, textTransform: 'uppercase',
+          minWidth: 72, paddingTop: align === 'top' ? 3 : 0,
         }}
       >
-        <Text style={{ fontSize: 16, fontWeight: '600', color: '#171b24', marginBottom: 12 }}>
-          Split method
-        </Text>
-        <View style={{ flexDirection: 'row', gap: 8 }}>
+        {label}
+      </Text>
+      {children}
+      {chevron ? <IconChevronRight size={16} color={colors.textMuted} strokeWidth={2} /> : null}
+    </View>
+  );
+  if (onPress) {
+    return (
+      <Pressable
+        onPress={onPress}
+        onLongPress={onLongPress}
+        style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+      >
+        {body}
+      </Pressable>
+    );
+  }
+  return body;
+}
+
+function SheetFrame({
+  visible, title, onClose, children,
+}: { visible: boolean; title: string; onClose: () => void; children: ReactNode }) {
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <Pressable style={{ flex: 1, backgroundColor: 'rgba(26,30,43,0.4)' }} onPress={onClose}>
+        <Pressable
+          onPress={() => {}}
+          style={{
+            marginTop: 'auto',
+            backgroundColor: colors.bgBase,
+            borderTopLeftRadius: radius.sheet,
+            borderTopRightRadius: radius.sheet,
+            paddingTop: 12, paddingBottom: 32, paddingHorizontal: space.gutter,
+            maxHeight: '80%',
+          }}
+        >
+          <View style={{ alignSelf: 'center', height: 4, width: 40, borderRadius: 2, backgroundColor: colors.border, marginBottom: 12 }} />
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <Text style={{ fontSize: 18, fontWeight: '700', color: colors.textPrimary }}>{title}</Text>
+            <Pressable onPress={onClose} hitSlop={12}>
+              <IconX size={22} color={colors.textSecondary} strokeWidth={2} />
+            </Pressable>
+          </View>
+          {children}
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+
+function DateSheet({
+  visible, value, onChange, onClose, title = 'Date',
+}: {
+  visible: boolean;
+  value: Date;
+  onChange: (d: Date) => void;
+  onClose: () => void;
+  title?: string;
+}) {
+  // Android: skip the bottom-sheet modal entirely. The platform's native date
+  // dialog floats above all content, so layering it inside a Modal causes
+  // dismissed-but-still-visible races and double-tap dismissals.
+  if (Platform.OS === 'android') {
+    if (!visible) return null;
+    return (
+      <DateTimePicker
+        value={value}
+        mode="date"
+        display="default"
+        onChange={(event, selected) => {
+          onClose();
+          if (event.type === 'set' && selected) onChange(selected);
+        }}
+      />
+    );
+  }
+
+  return (
+    <SheetFrame visible={visible} title={title} onClose={onClose}>
+      <View style={{ alignItems: 'center', paddingVertical: 8 }}>
+        <DateTimePicker
+          value={value}
+          mode="date"
+          display="inline"
+          onChange={(_e, selected) => {
+            if (selected) onChange(selected);
+          }}
+          accentColor={colors.sage}
+          themeVariant="light"
+        />
+      </View>
+      <Pressable
+        onPress={onClose}
+        style={({ pressed }) => ({
+          height: 48, borderRadius: 14, backgroundColor: colors.sage,
+          alignItems: 'center', justifyContent: 'center', marginTop: 8, opacity: pressed ? 0.9 : 1,
+        })}
+      >
+        <Text style={{ fontSize: 15, fontWeight: '700', color: colors.textInverse }}>Done</Text>
+      </Pressable>
+    </SheetFrame>
+  );
+}
+
+function CurrencySheet({
+  visible, value, onChange, onClose,
+}: {
+  visible: boolean;
+  value: string;
+  onChange: (code: string) => void;
+  onClose: () => void;
+}) {
+  return (
+    <SheetFrame visible={visible} title="Currency" onClose={onClose}>
+      <ScrollView keyboardShouldPersistTaps="handled" style={{ maxHeight: 420 }}>
+        {CURRENCY_OPTIONS.map((opt) => {
+          const sel = value === opt.value;
+          return (
+            <Pressable
+              key={opt.value}
+              onPress={() => {
+                onChange(opt.value);
+                onClose();
+              }}
+              style={{
+                flexDirection: 'row', alignItems: 'center', gap: 12,
+                paddingVertical: 14, paddingHorizontal: 14, borderRadius: 12,
+                backgroundColor: sel ? colors.sageSoft : colors.bgSurface,
+                borderWidth: 1, borderColor: sel ? colors.sage : colors.borderSubtle,
+                marginBottom: 6,
+              }}
+            >
+              <Text style={{ width: 38, fontSize: 15, fontWeight: '700', color: colors.textPrimary }}>
+                {CURRENCY_SYMBOLS[opt.value] ?? opt.value}
+              </Text>
+              <Text style={{ flex: 1, fontSize: 14, fontWeight: '600', color: colors.textPrimary }}>
+                {opt.label}
+              </Text>
+              {sel ? (
+                <Text style={{ color: colors.sageInk, fontSize: 13, fontWeight: '700' }}>Selected</Text>
+              ) : null}
+            </Pressable>
+          );
+        })}
+      </ScrollView>
+    </SheetFrame>
+  );
+}
+
+type MemberRow = { id: string; user_id: string; user: { name: string } };
+
+function SplitSheet({
+  visible, splitMethod, setSplitMethod,
+  participantIds, setParticipantIds,
+  activeMembers, activeMemberIds,
+  percentages, setPercentages,
+  customAmounts, setCustomAmounts,
+  numericAmount, currency, onClose,
+}: {
+  visible: boolean;
+  splitMethod: SplitMethod;
+  setSplitMethod: (m: SplitMethod) => void;
+  participantIds: string[];
+  setParticipantIds: React.Dispatch<React.SetStateAction<string[]>>;
+  activeMembers: MemberRow[];
+  activeMemberIds: string[];
+  percentages: Record<string, string>;
+  setPercentages: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  customAmounts: Record<string, string>;
+  setCustomAmounts: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  numericAmount: number;
+  currency: string;
+  onClose: () => void;
+}) {
+  const preview = useMemo(() => {
+    if (participantIds.length === 0 || numericAmount <= 0) return [];
+    if (splitMethod === SplitMethod.EQUAL) {
+      const shares = calculateEqualSplit(numericAmount, participantIds.length);
+      return participantIds.map((id, i) => ({ userId: id, amount: shares[i] ?? 0 }));
+    }
+    if (splitMethod === SplitMethod.PERCENTAGE) {
+      const rows = participantIds.map((id) => ({ userId: id, percentage: Number(percentages[id]) || 0 }));
+      try { return calculatePercentageSplit(numericAmount, rows); } catch { return []; }
+    }
+    return participantIds.map((id) => ({ userId: id, amount: Number(customAmounts[id]) || 0 }));
+  }, [customAmounts, numericAmount, participantIds, percentages, splitMethod]);
+
+  const toggle = (id: string) => {
+    hapticLight();
+    setParticipantIds((c) => c.includes(id) ? c.filter((v) => v !== id) : [...c, id]);
+  };
+
+  return (
+    <SheetFrame visible={visible} title="Split" onClose={onClose}>
+      <ScrollView keyboardShouldPersistTaps="handled">
+        <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
           {([
             { value: SplitMethod.EQUAL, label: 'Equal' },
-            { value: SplitMethod.PERCENTAGE, label: 'Percentage' },
-            { value: SplitMethod.CUSTOM, label: 'Custom' },
+            { value: SplitMethod.PERCENTAGE, label: 'By percent' },
+            { value: SplitMethod.CUSTOM, label: 'Exact' },
           ] as const).map((item) => {
-            const selected = splitMethod === item.value;
+            const sel = splitMethod === item.value;
             return (
-              <TouchableOpacity
+              <Pressable
                 key={item.value}
-                style={{
-                  backgroundColor: selected ? '#1f2330' : '#F3F4F6',
-                  borderRadius: 20,
-                  paddingHorizontal: 16,
-                  paddingVertical: 8,
-                }}
-                activeOpacity={0.8}
                 onPress={() => { hapticSelection(); setSplitMethod(item.value); }}
+                style={{
+                  flex: 1, height: 40, borderRadius: radius.pill,
+                  backgroundColor: sel ? colors.sage : colors.bgSubtle,
+                  alignItems: 'center', justifyContent: 'center',
+                }}
               >
-                <Text
-                  style={{
-                    fontSize: 12,
-                    fontWeight: '600',
-                    color: selected ? '#FFFFFF' : '#6B7280',
-                  }}
-                >
+                <Text style={{ fontSize: 13, fontWeight: '700', color: sel ? colors.textInverse : colors.textSecondary }}>
                   {item.label}
                 </Text>
-              </TouchableOpacity>
+              </Pressable>
             );
           })}
         </View>
 
-        {/* Percentage inputs */}
-        {splitMethod === SplitMethod.PERCENTAGE
-          ? participantIds.map((userId) => {
-              const name =
-                activeMembers.find((member) => member.user_id === userId)?.user.name ??
-                userId;
-              return (
-                <View key={userId} style={{ marginTop: 14 }}>
-                  <Text style={{ fontSize: 14, fontWeight: '600', color: '#374151', marginBottom: 8 }}>
-                    {name} percentage
-                  </Text>
-                  <TextInput
-                    style={{
-                      backgroundColor: '#F3F4F6',
-                      borderRadius: 12,
-                      height: 50,
-                      paddingHorizontal: 16,
-                      fontSize: 15,
-                      color: '#171b24',
-                    }}
-                    placeholder="0"
-                    placeholderTextColor="#9CA3AF"
-                    value={percentages[userId] ?? ''}
-                    onChangeText={(value: string) =>
-                      setPercentages((current) => ({ ...current, [userId]: value }))
-                    }
-                    keyboardType="decimal-pad"
-                  />
-                </View>
-              );
-            })
-          : null}
+        <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
+          {([
+            { label: 'Select all', onPress: () => { hapticLight(); setParticipantIds(activeMemberIds); } },
+            { label: 'Clear', onPress: () => { hapticLight(); setParticipantIds([]); } },
+          ]).map((b) => (
+            <Pressable
+              key={b.label}
+              onPress={b.onPress}
+              style={{
+                paddingHorizontal: 14, height: 32, borderRadius: radius.pill,
+                borderWidth: 1, borderColor: colors.border,
+                alignItems: 'center', justifyContent: 'center',
+              }}
+            >
+              <Text style={{ fontSize: 12, fontWeight: '700', color: colors.textSecondary }}>{b.label}</Text>
+            </Pressable>
+          ))}
+        </View>
 
-        {/* Custom amount inputs */}
-        {splitMethod === SplitMethod.CUSTOM
-          ? participantIds.map((userId) => {
-              const name =
-                activeMembers.find((member) => member.user_id === userId)?.user.name ??
-                userId;
-              return (
-                <View key={userId} style={{ marginTop: 14 }}>
-                  <Text style={{ fontSize: 14, fontWeight: '600', color: '#374151', marginBottom: 8 }}>
-                    {name} amount
-                  </Text>
-                  <TextInput
-                    style={{
-                      backgroundColor: '#F3F4F6',
-                      borderRadius: 12,
-                      height: 50,
-                      paddingHorizontal: 16,
-                      fontSize: 15,
-                      color: '#171b24',
-                    }}
-                    placeholder="0.00"
-                    placeholderTextColor="#9CA3AF"
-                    value={customAmounts[userId] ?? ''}
-                    onChangeText={(value: string) =>
-                      setCustomAmounts((current) => ({ ...current, [userId]: value }))
-                    }
-                    keyboardType="decimal-pad"
-                  />
-                </View>
-              );
-            })
-          : null}
-      </View>
-
-      {/* Preview card */}
-      <View
-        style={{
-          backgroundColor: '#FFFFFF',
-          borderRadius: 16,
-          padding: 20,
-          marginBottom: 16,
-          shadowColor: '#000',
-          shadowOpacity: 0.04,
-          shadowRadius: 8,
-          shadowOffset: { width: 0, height: 2 },
-        }}
-      >
-        <Text style={{ fontSize: 16, fontWeight: '600', color: '#171b24', marginBottom: 4 }}>
-          Preview
-        </Text>
-        <Text style={{ fontSize: 14, lineHeight: 20, color: '#6B7280' }}>
-          Double-check the split before saving.
-        </Text>
-
-        {splitPreview.length === 0 ? (
-          <Text style={{ marginTop: 12, fontSize: 14, color: '#9CA3AF' }}>
-            Add an amount and at least one participant to see the split.
-          </Text>
-        ) : (
-          splitPreview.map((row) => {
-            const memberName =
-              activeMembers.find((member) => member.user_id === row.userId)?.user.name ??
-              row.userId;
-
-            return (
+        {activeMembers.map((m) => {
+          const sel = participantIds.includes(m.user_id);
+          const share = preview.find((p) => p.userId === m.user_id)?.amount ?? 0;
+          return (
+            <Pressable
+              key={m.id}
+              onPress={() => toggle(m.user_id)}
+              style={{
+                flexDirection: 'row', alignItems: 'center', gap: 12,
+                paddingVertical: 10, paddingHorizontal: 12, borderRadius: 12,
+                backgroundColor: sel ? colors.sageSoft : colors.bgSurface,
+                borderWidth: 1, borderColor: sel ? colors.sage : colors.borderSubtle,
+                marginBottom: 6,
+              }}
+            >
               <View
-                key={row.userId}
                 style={{
-                  marginTop: 10,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  borderRadius: 14,
-                  backgroundColor: '#F0FDF4',
-                  paddingHorizontal: 16,
-                  paddingVertical: 12,
+                  width: 20, height: 20, borderRadius: 10, borderWidth: 2,
+                  borderColor: sel ? colors.sage : colors.border,
+                  backgroundColor: sel ? colors.sage : 'transparent',
+                  alignItems: 'center', justifyContent: 'center',
                 }}
               >
-                <Text style={{ fontSize: 14, fontWeight: '500', color: '#171b24' }}>
-                  {memberName}
-                </Text>
-                <Text style={{ fontSize: 14, fontWeight: '600', color: '#2d6a4f' }}>
-                  {formatCurrency(row.amount, group.currency)}
-                </Text>
+                {sel ? <Text style={{ color: colors.textInverse, fontSize: 11, fontWeight: '700' }}>✓</Text> : null}
               </View>
-            );
-          })
-        )}
-      </View>
+              <Text style={{ flex: 1, fontSize: 14, fontWeight: '600', color: colors.textPrimary }}>
+                {m.user.name}
+              </Text>
 
-      {/* Submit button */}
-      <TouchableOpacity
-        style={{
-          backgroundColor: '#1f2330',
-          height: 52,
-          borderRadius: 14,
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 8,
-          marginBottom: 16,
-        }}
-        activeOpacity={0.85}
-        onPress={handleSubmit}
-        disabled={createExpense.isPending}
+              {sel && splitMethod === SplitMethod.PERCENTAGE ? (
+                <TextInput
+                  style={styles.numberInput}
+                  placeholder="0%"
+                  placeholderTextColor={colors.textMuted}
+                  value={percentages[m.user_id] ?? ''}
+                  onChangeText={(v) => setPercentages((c) => ({ ...c, [m.user_id]: v }))}
+                  keyboardType="decimal-pad"
+                />
+              ) : sel && splitMethod === SplitMethod.CUSTOM ? (
+                <TextInput
+                  style={[styles.numberInput, { width: 96 }]}
+                  placeholder="0.00"
+                  placeholderTextColor={colors.textMuted}
+                  value={customAmounts[m.user_id] ?? ''}
+                  onChangeText={(v) => setCustomAmounts((c) => ({ ...c, [m.user_id]: v }))}
+                  keyboardType="decimal-pad"
+                />
+              ) : sel ? (
+                <Text style={{ fontSize: 13, fontWeight: '700', color: colors.sageInk, fontVariant: ['tabular-nums'] }}>
+                  {formatCurrency(share, currency)}
+                </Text>
+              ) : null}
+            </Pressable>
+          );
+        })}
+      </ScrollView>
+
+      <Pressable
+        onPress={onClose}
+        style={({ pressed }) => ({
+          height: 48, borderRadius: 14, backgroundColor: colors.sage,
+          alignItems: 'center', justifyContent: 'center', marginTop: 12, opacity: pressed ? 0.9 : 1,
+        })}
       >
-        {createExpense.isPending ? (
-          <ActivityIndicator size="small" color="#FFFFFF" />
-        ) : (
-          <>
-            <Ionicons name="add-circle-outline" size={18} color="#FFFFFF" />
-            <Text style={{ fontSize: 16, fontWeight: '600', color: '#FFFFFF' }}>
-              Create expense
-            </Text>
-          </>
-        )}
-      </TouchableOpacity>
-    </ScrollView>
+        <Text style={{ fontSize: 15, fontWeight: '700', color: colors.textInverse }}>Done</Text>
+      </Pressable>
+    </SheetFrame>
   );
 }
+
+/* ====================================================================== */
+/* Styles                                                                  */
+/* ====================================================================== */
+
+const styles = {
+  microLabel: {
+    fontSize: 10, fontWeight: '700' as const, letterSpacing: 0.5,
+    color: colors.textMuted, textTransform: 'uppercase' as const,
+  },
+  eyebrow: {
+    fontSize: 11, fontWeight: '700' as const, letterSpacing: 0.8,
+    color: colors.textMuted, textTransform: 'uppercase' as const,
+    textAlign: 'center' as const,
+  },
+  heroAmount: {
+    fontSize: 64, fontWeight: '700' as const, letterSpacing: -2,
+    lineHeight: 72, includeFontPadding: false,
+    fontVariant: ['tabular-nums'] as ['tabular-nums'],
+  },
+  rowInput: {
+    flex: 1, fontSize: 14, fontWeight: '600' as const, color: colors.textPrimary, padding: 0,
+  },
+  rowValue: {
+    flex: 1, fontSize: 14, fontWeight: '600' as const, color: colors.textPrimary,
+  },
+  numberInput: {
+    width: 72, height: 36, borderRadius: 10, borderWidth: 1, borderColor: colors.border,
+    paddingHorizontal: 10, fontSize: 13, fontWeight: '600' as const, color: colors.textPrimary,
+    backgroundColor: colors.bgSurface, textAlign: 'right' as const,
+  },
+};

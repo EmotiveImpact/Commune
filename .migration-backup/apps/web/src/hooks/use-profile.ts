@@ -33,6 +33,7 @@ export function useUpdateProfile() {
         timezone?: string;
         show_shared_groups?: boolean;
         notification_preferences?: NotificationPreferences;
+        acquisition_source?: string | null;
       };
     }) => updateProfile(userId, data),
     onSuccess: (result) => {

@@ -1,8 +1,18 @@
-import type { ComponentProps } from 'react';
 import { useEffect, useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import {
+  IconChartBar,
+  IconChecklist,
+  IconChecks,
+  IconCircleCheck,
+  IconCloudOff,
+  IconHome2,
+  IconMessageCircle,
+  IconPlus,
+  IconReceipt,
+  IconWallet,
+} from '@tabler/icons-react-native';
 import { formatCurrency, getMonthKey } from '@commune/utils';
 import { hapticMedium } from '@/lib/haptics';
 import { useAuthStore } from '@/stores/auth';
@@ -14,11 +24,12 @@ import { useRecurringGenerationOnMount } from '@/hooks/use-recurring';
 import { useChores } from '@/hooks/use-chores';
 import { getErrorMessage } from '@/lib/errors';
 import {
-  Card, EmptyState, IconTile, Pressable, Screen,
-  SectionHeader, SkeletonBlock, StatusPill,
+  EmptyState, IconTile, Pressable, Screen,
+  SkeletonBlock,
+  type TablerIcon,
 } from '@/components/primitives';
 import {
-  colors, font, getCategoryMeta, getGroupTypeMeta, radius, space,
+  colors, elevation, font, getCategoryMeta, radius, space,
 } from '@/constants/design';
 
 /* --- Helpers -------------------------------------------------------------- */
@@ -109,119 +120,138 @@ function getPaidByName(e: ExpenseLike, userId: string | undefined, group: GroupL
 /* --- Styles --------------------------------------------------------------- */
 
 const s = StyleSheet.create({
-  switcherRow: { flexDirection: 'row', alignItems: 'center', gap: space.md, paddingVertical: space.sm },
+  /* Hero */
   hero: { backgroundColor: colors.bgInk, borderRadius: radius.hero, padding: space.xl },
-  heroLabel: { color: colors.limeSoft, marginBottom: space.md },
-  heroHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: space.md },
-  heroPctPill: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.1)' },
-  heroPctPillText: { fontSize: 11, fontWeight: '700', color: colors.textInverse, letterSpacing: 0.3 },
-  heroAmount: { fontSize: 44, fontWeight: '700', color: colors.textInverse, letterSpacing: -0.8, lineHeight: 50 },
-  heroRemaining: { fontSize: 20, fontWeight: '600', color: colors.textInverse, marginTop: 4, letterSpacing: -0.3 },
-  heroRemainingMuted: { color: 'rgba(255,255,255,0.55)', fontWeight: '500' },
+  heroHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: space.md,
+  },
+  heroLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+    color: colors.limeSoft,
+  },
+  heroPctPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: radius.pill,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+  },
+  heroPctPillText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.textInverse,
+    letterSpacing: 0.3,
+  },
+  heroAmount: {
+    fontSize: 44,
+    fontWeight: '700',
+    color: colors.textInverse,
+    letterSpacing: -0.8,
+    lineHeight: 50,
+    fontVariant: ['tabular-nums'],
+  },
   heroInlineStats: { fontSize: 14, marginTop: space.sm },
   heroInlineStrong: { color: colors.textInverse, fontWeight: '700' },
   heroInlineHero: { color: colors.textInverse, fontWeight: '800' },
   heroInlineMuted: { color: 'rgba(255,255,255,0.55)', fontWeight: '500' },
-  heroCaption: { fontSize: 13, fontWeight: '500', color: 'rgba(255,255,255,0.6)', marginTop: space.xs },
-  heroTrack: { height: 6, borderRadius: 3, backgroundColor: '#374151', overflow: 'hidden', marginTop: space.base, marginBottom: space.lg },
-  heroFill: { height: '100%', backgroundColor: colors.lime, borderRadius: 3 },
-  heroDivider: { height: 1, backgroundColor: 'rgba(255,255,255,0.12)', marginTop: space.base, marginBottom: space.base },
-  heroStatsRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: space.lg },
-  heroStatCell: { flex: 1 },
-  heroStatLabel: { fontSize: 10, fontWeight: '700', color: 'rgba(255,255,255,0.55)', letterSpacing: 0.8, textTransform: 'uppercase' as const },
-  heroStatValue: { fontSize: 15, fontWeight: '700', color: colors.textInverse, marginTop: 4 },
-  heroBtnRow: { flexDirection: 'row' },
+  heroTrack: {
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    overflow: 'hidden',
+    marginTop: space.base,
+    marginBottom: space.lg,
+  },
+  heroFill: { height: '100%', backgroundColor: colors.sageMid, borderRadius: 3 },
+  heroBtnRow: { flexDirection: 'row', gap: space.md },
   btnPrimary: {
     flex: 1,
     height: 52,
-    borderRadius: 16,
-    backgroundColor: '#eadfd4',
-    marginRight: 6,
-    shadowColor: '#000',
-    shadowOpacity: 0.18,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 3,
+    borderRadius: radius.button,
+    backgroundColor: colors.cream,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: space.sm,
+    ...elevation.raised,
   },
   btnSecondary: {
     flex: 1,
     height: 52,
-    borderRadius: 16,
+    borderRadius: radius.button,
     backgroundColor: 'rgba(255,255,255,0.08)',
-    marginLeft: 6,
-  },
-  btnInner: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: space.sm,
   },
   btnPrimaryText: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#1f2330',
+    color: colors.textPrimary,
     letterSpacing: -0.1,
-    marginLeft: 8,
   },
   btnSecondaryText: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#fffaf6',
+    color: colors.textInverse,
     letterSpacing: -0.1,
-    marginLeft: 8,
   },
+
+  /* Quick actions */
   quickActionsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingHorizontal: 4,
-    marginBottom: 32,
+    marginBottom: space.xxl,
   },
-  quickActionTile: {
-    alignItems: 'center',
-    flex: 1,
-  },
+  quickActionTile: { alignItems: 'center', flex: 1 },
   quickActionIconWrap: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: '#F3F4F6',
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: colors.bgSurface,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
     alignItems: 'center',
     justifyContent: 'center',
+    ...elevation.card,
   },
   quickActionLabel: {
-    marginTop: 8,
+    marginTop: space.sm,
     fontSize: 12,
-    fontWeight: '500',
-    color: '#6B7280',
+    fontWeight: '600',
+    color: colors.textTertiary,
     textAlign: 'center',
+    letterSpacing: 0.1,
   },
-  attStrip: { paddingRight: space.gutter, gap: 6 },
-  attCard: {
-    width: 140,
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    padding: 10,
-    borderWidth: 1,
-    borderColor: colors.border,
+
+  /* For-you tabs */
+  forYouWrap: { marginBottom: space.xl },
+  tabBar: { flexDirection: 'row', gap: space.sm, marginBottom: space.md },
+  tab: {
+    flex: 1,
+    height: 40,
+    borderRadius: radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.bgSubtle,
+    paddingHorizontal: space.sm,
   },
-  attCardTop: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 },
-  attCardTitle: { flex: 1, fontSize: 12, fontWeight: '700', color: colors.textPrimary },
-  attCardDue: { fontSize: 10, fontWeight: '600', color: colors.textTertiary, marginTop: 2 },
-  attCardDueOverdue: { color: '#8C2F1F' },
-  attCardAmount: { fontSize: 12, fontWeight: '700', color: '#8C2F1F', marginTop: 6 },
-  todoRow: { flexDirection: 'row', alignItems: 'center', gap: space.md },
-  todoMeta: { flex: 1 },
-  todoTitle: { color: colors.textPrimary },
-  todoCaption: { color: colors.textTertiary, marginTop: 2 },
-  rowInner: { flexDirection: 'row', alignItems: 'center', gap: space.md },
-  focusAmount: { fontSize: 17, fontWeight: '600', color: colors.textPrimary },
-  emptyFocus: { color: colors.textTertiary, paddingVertical: space.md },
-  groupLabel: { fontSize: 10, fontWeight: '700', letterSpacing: 1, color: colors.textTertiary, textTransform: 'uppercase' as const, paddingTop: space.md, paddingBottom: space.xs },
-  forYouEmpty: { fontSize: 13, color: colors.textTertiary, paddingVertical: space.md, textAlign: 'center' },
-  attSec: { backgroundColor: '#f5f2ec', borderRadius: 18, padding: 6 },
-  attTabBar: { flexDirection: 'row', gap: 8, marginBottom: 12 },
-  attTab: { flex: 1, height: 40, borderRadius: 999, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.bgSubtle, paddingHorizontal: 8 },
-  attTabBadge: {
+  tabOn: { backgroundColor: colors.textPrimary },
+  tabText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.textSecondary,
+    letterSpacing: 0.2,
+  },
+  tabTextOn: { color: colors.textInverse },
+  tabBadge: {
     position: 'absolute',
     top: -4,
     right: -4,
@@ -229,26 +259,67 @@ const s = StyleSheet.create({
     height: 18,
     borderRadius: 9,
     paddingHorizontal: 5,
-    backgroundColor: '#E35D5D',
+    backgroundColor: colors.dangerText,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
     borderColor: colors.bgBase,
   },
-  attTabBadgeOn: {},
-  attTabBadgeText: { fontSize: 10, fontWeight: '800', color: '#fff', lineHeight: 12 },
-  attTabBadgeTextOn: { color: '#fff' },
-  attTabOn: { backgroundColor: colors.textPrimary },
-  attTabText: { fontSize: 14, fontWeight: '700', color: colors.textSecondary, letterSpacing: 0.2 },
-  attTabTextOn: { color: '#fff' },
-  attRow: { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 14, backgroundColor: '#fff', borderRadius: 14, marginBottom: 6 },
-  attRowIcon: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  attRowMeta: { flex: 1 },
-  attRowTitle: { fontSize: 16, fontWeight: '600', color: colors.textPrimary },
-  attRowCaption: { fontSize: 13, color: colors.textTertiary, marginTop: 2 },
-  attRowAmount: { fontSize: 15, fontWeight: '700', color: '#8C2F1F' },
-  attRowAmountSettled: { color: colors.textTertiary },
-  attRowAmountOwed: { color: colors.sage },
+  tabBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: colors.textInverse,
+    lineHeight: 12,
+  },
+  forYouEmpty: {
+    fontSize: 13,
+    color: colors.textTertiary,
+    paddingVertical: space.md,
+    textAlign: 'center',
+  },
+
+  /* Form-group card list */
+  rowGroup: {
+    backgroundColor: colors.bgSurface,
+    borderRadius: radius.card,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
+    ...elevation.card,
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.md,
+    paddingVertical: space.md,
+    paddingHorizontal: space.base,
+  },
+  rowDivider: {
+    height: 1,
+    backgroundColor: colors.borderSubtle,
+    marginLeft: space.base + 40 + space.md,
+  },
+  rowMeta: { flex: 1, minWidth: 0 },
+  rowTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.textPrimary,
+  },
+  rowCaption: {
+    fontSize: 12,
+    color: colors.textTertiary,
+    marginTop: 2,
+  },
+  rowAmount: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.oweText,
+    fontVariant: ['tabular-nums'],
+  },
+  rowAmountSettled: { color: colors.textTertiary, fontWeight: '600' },
+  rowAmountOwed: { color: colors.owedText },
+  rowAmountNeutral: { color: colors.textPrimary },
+  rowCaptionOverdue: { color: colors.oweText, fontWeight: '600' },
 });
 
 /* --- Sub-components ------------------------------------------------------- */
@@ -256,35 +327,18 @@ const s = StyleSheet.create({
 function HomeSkeleton() {
   return (
     <View style={{ gap: space.lg }}>
-      <SkeletonBlock height={60} radius={radius.card} />
       <SkeletonBlock height={230} radius={radius.hero} />
       <View style={{ flexDirection: 'row', gap: space.md }}>
         <SkeletonBlock height={84} radius={radius.card} style={{ flex: 1 }} />
         <SkeletonBlock height={84} radius={radius.card} style={{ flex: 1 }} />
         <SkeletonBlock height={84} radius={radius.card} style={{ flex: 1 }} />
+        <SkeletonBlock height={84} radius={radius.card} style={{ flex: 1 }} />
       </View>
+      <SkeletonBlock height={44} radius={radius.pill} />
       <SkeletonBlock height={72} radius={radius.card} />
       <SkeletonBlock height={72} radius={radius.card} />
       <SkeletonBlock height={72} radius={radius.card} />
     </View>
-  );
-}
-
-function GroupSwitcher({
-  group, memberCount, onPress,
-}: { group: GroupLike; memberCount: number; onPress: () => void }) {
-  const meta = getGroupTypeMeta(group.type);
-  return (
-    <Pressable onPress={onPress} style={({ pressed }) => [s.switcherRow, { opacity: pressed ? 0.7 : 1 }]}>
-      <IconTile icon={meta.icon as never} color={meta.accent} bg={meta.bg} size={44} />
-      <View style={{ flex: 1 }}>
-        <Text style={[font.h3, { color: colors.textPrimary }]} numberOfLines={1}>{group.name}</Text>
-        <Text style={[font.caption, { color: colors.textTertiary, marginTop: 2 }]} numberOfLines={1}>
-          {memberCount} {memberCount === 1 ? 'member' : 'members'} · {meta.label}
-        </Text>
-      </View>
-      <Ionicons name="chevron-down" size={20} color={colors.textTertiary} />
-    </Pressable>
   );
 }
 
@@ -301,7 +355,7 @@ function HeroBalanceCard({
   return (
     <View style={s.hero}>
       <View style={s.heroHeaderRow}>
-        <Text style={[font.label, s.heroLabel, { marginBottom: 0 }]}>Your Share · {monthLabel}</Text>
+        <Text style={s.heroLabel}>Your Share · {monthLabel}</Text>
         <View style={s.heroPctPill}>
           <Text style={s.heroPctPillText}>{pct}% settled</Text>
         </View>
@@ -319,46 +373,50 @@ function HeroBalanceCard({
         <View style={[s.heroFill, { width: `${pct}%` }]} />
       </View>
       <View style={s.heroBtnRow}>
-        <TouchableOpacity activeOpacity={0.85} onPress={onAdd} style={s.btnPrimary}>
-          <View style={s.btnInner}>
-            <Ionicons name="add" size={18} color="#1f2330" />
-            <Text style={s.btnPrimaryText}>Add Expense</Text>
-          </View>
-        </TouchableOpacity>
-        <TouchableOpacity activeOpacity={0.7} onPress={onSettle} style={s.btnSecondary}>
-          <View style={s.btnInner}>
-            <Ionicons name="checkmark-done" size={18} color="#fffaf6" />
-            <Text style={s.btnSecondaryText}>Settle Up</Text>
-          </View>
-        </TouchableOpacity>
+        <Pressable
+          onPress={onAdd}
+          style={({ pressed }) => [s.btnPrimary, pressed && { opacity: 0.85, transform: [{ scale: 0.99 }] }]}
+        >
+          <IconPlus size={18} color={colors.textPrimary} strokeWidth={1.7} />
+          <Text style={s.btnPrimaryText}>Add Expense</Text>
+        </Pressable>
+        <Pressable
+          onPress={onSettle}
+          style={({ pressed }) => [s.btnSecondary, pressed && { opacity: 0.7 }]}
+        >
+          <IconChecks size={18} color={colors.textInverse} strokeWidth={1.7} />
+          <Text style={s.btnSecondaryText}>Settle Up</Text>
+        </Pressable>
       </View>
     </View>
   );
 }
 
-
 type QuickAction = {
   key: string;
   label: string;
-  icon: ComponentProps<typeof Ionicons>['name'];
+  icon: TablerIcon;
   onPress: () => void;
 };
 
 function QuickActions({ items }: { items: QuickAction[] }) {
   return (
     <View style={s.quickActionsRow}>
-      {items.map((item) => (
-        <Pressable
-          key={item.key}
-          onPress={item.onPress}
-          style={({ pressed }) => [s.quickActionTile, pressed && { opacity: 0.7 }]}
-        >
-          <View style={s.quickActionIconWrap}>
-            <Ionicons name={item.icon} size={28} color={colors.textPrimary} />
-          </View>
-          <Text style={s.quickActionLabel} numberOfLines={1}>{item.label}</Text>
-        </Pressable>
-      ))}
+      {items.map((item) => {
+        const Icon = item.icon;
+        return (
+          <Pressable
+            key={item.key}
+            onPress={item.onPress}
+            style={({ pressed }) => [s.quickActionTile, pressed && { opacity: 0.7 }]}
+          >
+            <View style={s.quickActionIconWrap}>
+              <Icon size={26} color={colors.textPrimary} strokeWidth={1.7} />
+            </View>
+            <Text style={s.quickActionLabel} numberOfLines={1}>{item.label}</Text>
+          </Pressable>
+        );
+      })}
     </View>
   );
 }
@@ -374,6 +432,63 @@ type ActivityItem = {
 type UpcomingItem = { e: ExpenseLike; dueStr: string; dueTs: number; daysAway: number };
 
 type TabKey = 'bills' | 'chores' | 'upcoming' | 'activity';
+
+/**
+ * Vertically stacked rows in a single rounded card, with hairline dividers
+ * between rows. Mirrors the form-group pattern used across other screens.
+ */
+function RowGroup({ children }: { children: React.ReactNode }) {
+  const items = Array.isArray(children) ? children : [children];
+  return (
+    <View style={s.rowGroup}>
+      {items.map((node, idx) => (
+        <View key={idx}>
+          {node}
+          {idx < items.length - 1 ? <View style={s.rowDivider} /> : null}
+        </View>
+      ))}
+    </View>
+  );
+}
+
+function AttRow({
+  icon: Icon,
+  iconColor,
+  iconBg,
+  title,
+  caption,
+  captionOverdue,
+  trailing,
+  onPress,
+}: {
+  icon: TablerIcon;
+  iconColor: string;
+  iconBg: string;
+  title: string;
+  caption: string;
+  captionOverdue?: boolean;
+  trailing?: React.ReactNode;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [s.row, pressed && { backgroundColor: colors.bgSubtle }]}
+    >
+      <IconTile icon={Icon} color={iconColor} bg={iconBg} size={40} />
+      <View style={s.rowMeta}>
+        <Text style={s.rowTitle} numberOfLines={1}>{title}</Text>
+        <Text
+          style={[s.rowCaption, captionOverdue && s.rowCaptionOverdue]}
+          numberOfLines={1}
+        >
+          {caption}
+        </Text>
+      </View>
+      {trailing}
+    </Pressable>
+  );
+}
 
 function ForYouTabs({
   attention, chores, activity, upcoming,
@@ -395,8 +510,8 @@ function ForYouTabs({
   const [tab, setTab] = useState<TabKey>(defaultTab);
 
   return (
-    <View style={{ marginBottom: space.xl }}>
-      <View style={s.attTabBar}>
+    <View style={s.forYouWrap}>
+      <View style={s.tabBar}>
         {([
           { key: 'bills', label: 'Bills', count: attention.length },
           { key: 'chores', label: 'Chores', count: chores.length },
@@ -408,12 +523,12 @@ function ForYouTabs({
             <Pressable
               key={t.key}
               onPress={() => { hapticMedium(); setTab(t.key); }}
-              style={[s.attTab, on && s.attTabOn]}
+              style={({ pressed }) => [s.tab, on && s.tabOn, pressed && !on && { opacity: 0.7 }]}
             >
-              <Text style={[s.attTabText, on && s.attTabTextOn]}>{t.label}</Text>
+              <Text style={[s.tabText, on && s.tabTextOn]}>{t.label}</Text>
               {t.count > 0 && (
-                <View style={[s.attTabBadge, on && s.attTabBadgeOn]}>
-                  <Text style={[s.attTabBadgeText, on && s.attTabBadgeTextOn]}>{t.count}</Text>
+                <View style={s.tabBadge}>
+                  <Text style={s.tabBadgeText}>{t.count}</Text>
                 </View>
               )}
             </Pressable>
@@ -423,32 +538,30 @@ function ForYouTabs({
 
       {tab === 'bills' && (
         attention.length === 0 ? (
-          <Text style={s.forYouEmpty}>All bills settled 🎉</Text>
+          <Text style={s.forYouEmpty}>All bills settled</Text>
         ) : (
-          <View>
+          <RowGroup>
             {attention.map(({ e, dueStr, overdue }) => {
               const meta = getCategoryMeta(e.category);
               return (
-                <Pressable key={e.id} onPress={() => onExpensePress(e.id)} style={s.attRow}>
-                  <View style={[s.attRowIcon, { backgroundColor: meta.bg }]}>
-                    <Ionicons name={meta.icon as never} size={22} color={meta.color} />
-                  </View>
-                  <View style={s.attRowMeta}>
-                    <Text style={s.attRowTitle} numberOfLines={1}>{e.title}</Text>
-                    <Text
-                      style={[s.attRowCaption, overdue && { color: '#8C2F1F', fontWeight: '600' }]}
-                      numberOfLines={1}
-                    >
-                      {overdue ? 'Overdue · ' : 'Due '}{formatDueDate(dueStr)}
+                <AttRow
+                  key={e.id}
+                  icon={meta.icon as TablerIcon}
+                  iconColor={meta.color}
+                  iconBg={meta.bg}
+                  title={e.title}
+                  caption={`${overdue ? 'Overdue · ' : 'Due '}${formatDueDate(dueStr)}`}
+                  captionOverdue={overdue}
+                  trailing={
+                    <Text style={s.rowAmount} numberOfLines={1}>
+                      -{formatCurrency(getUserShare(e, currentUserId), e.currency)}
                     </Text>
-                  </View>
-                  <Text style={s.attRowAmount}>
-                    -{formatCurrency(getUserShare(e, currentUserId), e.currency)}
-                  </Text>
-                </Pressable>
+                  }
+                  onPress={() => onExpensePress(e.id)}
+                />
               );
             })}
-          </View>
+          </RowGroup>
         )
       )}
 
@@ -456,24 +569,20 @@ function ForYouTabs({
         chores.length === 0 ? (
           <Text style={s.forYouEmpty}>No chores due</Text>
         ) : (
-          <View>
+          <RowGroup>
             {chores.map(({ c, overdue }) => (
-              <Pressable key={c.id} onPress={onChorePress} style={s.attRow}>
-                <View style={[s.attRowIcon, { backgroundColor: colors.sageSoft }]}>
-                  <Ionicons name="checkmark-circle-outline" size={22} color={colors.sage} />
-                </View>
-                <View style={s.attRowMeta}>
-                  <Text style={s.attRowTitle} numberOfLines={1}>{c.title}</Text>
-                  <Text
-                    style={[s.attRowCaption, overdue && { color: '#8C2F1F', fontWeight: '600' }]}
-                    numberOfLines={1}
-                  >
-                    {overdue ? 'Overdue · ' : 'Due '}{formatDueDate(c.next_due)}
-                  </Text>
-                </View>
-              </Pressable>
+              <AttRow
+                key={c.id}
+                icon={IconCircleCheck}
+                iconColor={colors.sage}
+                iconBg={colors.sageSoft}
+                title={c.title}
+                caption={`${overdue ? 'Overdue · ' : 'Due '}${formatDueDate(c.next_due)}`}
+                captionOverdue={overdue}
+                onPress={onChorePress}
+              />
             ))}
-          </View>
+          </RowGroup>
         )
       )}
 
@@ -481,7 +590,7 @@ function ForYouTabs({
         upcoming.length === 0 ? (
           <Text style={s.forYouEmpty}>Nothing scheduled</Text>
         ) : (
-          <View>
+          <RowGroup>
             {upcoming.map(({ e, dueStr, daysAway }) => {
               const meta = getCategoryMeta(e.category);
               const label =
@@ -490,21 +599,23 @@ function ForYouTabs({
                 daysAway < 7 ? `in ${daysAway}d` :
                 formatDueDate(dueStr);
               return (
-                <Pressable key={e.id} onPress={() => onExpensePress(e.id)} style={s.attRow}>
-                  <View style={[s.attRowIcon, { backgroundColor: meta.bg }]}>
-                    <Ionicons name={meta.icon as never} size={22} color={meta.color} />
-                  </View>
-                  <View style={s.attRowMeta}>
-                    <Text style={s.attRowTitle} numberOfLines={1}>{e.title}</Text>
-                    <Text style={s.attRowCaption} numberOfLines={1}>{label}</Text>
-                  </View>
-                  <Text style={[s.attRowAmount, { color: colors.textPrimary }]}>
-                    -{formatCurrency(getUserShare(e, currentUserId), e.currency)}
-                  </Text>
-                </Pressable>
+                <AttRow
+                  key={e.id}
+                  icon={meta.icon as TablerIcon}
+                  iconColor={meta.color}
+                  iconBg={meta.bg}
+                  title={e.title}
+                  caption={label}
+                  trailing={
+                    <Text style={[s.rowAmount, s.rowAmountNeutral]} numberOfLines={1}>
+                      -{formatCurrency(getUserShare(e, currentUserId), e.currency)}
+                    </Text>
+                  }
+                  onPress={() => onExpensePress(e.id)}
+                />
               );
             })}
-          </View>
+          </RowGroup>
         )
       )}
 
@@ -512,62 +623,33 @@ function ForYouTabs({
         activity.length === 0 ? (
           <Text style={s.forYouEmpty}>Nothing recent</Text>
         ) : (
-          <View>
+          <RowGroup>
             {activity.map(({ e, caption, trailingAmount, tone }) => {
               const meta = getCategoryMeta(e.category);
               const amountStyle = [
-                s.attRowAmount,
-                tone === 'settled' && s.attRowAmountSettled,
-                tone === 'owed' && s.attRowAmountOwed,
+                s.rowAmount,
+                tone === 'settled' && s.rowAmountSettled,
+                tone === 'owed' && s.rowAmountOwed,
               ];
               return (
-                <Pressable key={e.id} onPress={() => onExpensePress(e.id)} style={s.attRow}>
-                  <View style={[s.attRowIcon, { backgroundColor: meta.bg }]}>
-                    <Ionicons name={meta.icon as never} size={22} color={meta.color} />
-                  </View>
-                  <View style={s.attRowMeta}>
-                    <Text style={s.attRowTitle} numberOfLines={1}>{e.title}</Text>
-                    <Text style={s.attRowCaption} numberOfLines={1}>{caption}</Text>
-                  </View>
-                  <Text style={amountStyle} numberOfLines={1}>{trailingAmount}</Text>
-                </Pressable>
+                <AttRow
+                  key={e.id}
+                  icon={meta.icon as TablerIcon}
+                  iconColor={meta.color}
+                  iconBg={meta.bg}
+                  title={e.title}
+                  caption={caption}
+                  trailing={
+                    <Text style={amountStyle} numberOfLines={1}>{trailingAmount}</Text>
+                  }
+                  onPress={() => onExpensePress(e.id)}
+                />
               );
             })}
-          </View>
+          </RowGroup>
         )
       )}
     </View>
-  );
-}
-
-function ExpenseRow({
-  expense, caption, trailing, onPress, dense,
-}: {
-  expense: ExpenseLike;
-  caption: string;
-  trailing: React.ReactNode;
-  onPress: () => void;
-  dense?: boolean;
-}) {
-  const meta = getCategoryMeta(expense.category);
-  return (
-    <Card padding={dense ? space.sm : space.base} onPress={onPress}>
-      <View style={[s.rowInner, dense && { gap: space.sm }]}>
-        <IconTile icon={meta.icon as never} color={meta.color} bg={meta.bg} size={dense ? 32 : undefined} />
-        <View style={{ flex: 1 }}>
-          <Text
-            style={[dense ? font.bodyStrong : font.h3, { color: colors.textPrimary }]}
-            numberOfLines={1}
-          >
-            {expense.title}
-          </Text>
-          <Text style={[font.caption, { color: colors.textTertiary, marginTop: 1 }]} numberOfLines={1}>
-            {caption}
-          </Text>
-        </View>
-        {trailing}
-      </View>
-    </Card>
   );
 }
 
@@ -637,36 +719,6 @@ export default function HomeScreen() {
     [expenses],
   );
 
-  const todoItems = useMemo(() => {
-    const now = Date.now();
-    const weekAhead = now + 7 * 86400000;
-    return (expenses as ExpenseLike[])
-      .filter((e) => !isExpenseFullyPaid(e) && !userHasPaid(e, user?.id))
-      .map((e) => {
-        const dueStr = getExpenseBillingDueDate(e) ?? e.due_date;
-        const dueTs = new Date(dueStr).getTime();
-        const overdue = Number.isFinite(dueTs) && dueTs < now;
-        const dueSoon = Number.isFinite(dueTs) && dueTs >= now && dueTs <= weekAhead;
-        return { e, dueStr, dueTs, overdue, dueSoon };
-      })
-      .filter((x) => x.overdue || x.dueSoon)
-      .sort((a, b) => a.dueTs - b.dueTs)
-      .slice(0, 4);
-  }, [expenses, user?.id]);
-
-  const focusItems = useMemo(
-    () =>
-      ([...expenses] as ExpenseLike[])
-        .filter((e) => !isExpenseFullyPaid(e))
-        .sort((a, b) => {
-          const da = getExpenseBillingDueDate(a) ?? a.due_date;
-          const db = getExpenseBillingDueDate(b) ?? b.due_date;
-          return new Date(da).getTime() - new Date(db).getTime();
-        })
-        .slice(0, 3),
-    [expenses],
-  );
-
   const isLoading =
     groupsLoading || invitesLoading || groupLoading || statsLoading || expensesLoading;
 
@@ -674,7 +726,7 @@ export default function HomeScreen() {
     return (
       <Screen>
         <EmptyState
-          icon="cloud-offline-outline"
+          icon={IconCloudOff}
           title="Couldn't load dashboard"
           description={getErrorMessage(loadError, 'Something went wrong fetching your group.')}
           actionLabel="Try again"
@@ -694,7 +746,7 @@ export default function HomeScreen() {
     return (
       <Screen>
         <EmptyState
-          icon="home-outline"
+          icon={IconHome2}
           title="Set up your first group"
           description="Create a group or accept an invite to start tracking shared expenses."
           actionLabel="Get started"
@@ -708,7 +760,7 @@ export default function HomeScreen() {
     <Screen>
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingTop: 12, paddingBottom: 120, paddingHorizontal: space.gutter }}
+        contentContainerStyle={{ paddingTop: space.md, paddingBottom: 120, paddingHorizontal: space.gutter }}
       >
         {isLoading || !group ? (
           <HomeSkeleton />
@@ -723,7 +775,7 @@ export default function HomeScreen() {
                 remainingLabel={formatCurrency(amountRemaining, group.currency)}
                 openCount={openCount}
                 onAdd={() => { hapticMedium(); router.push('/expenses/new'); }}
-                onSettle={() => { hapticMedium(); router.push('/command-centre'); }}
+                onSettle={() => { hapticMedium(); router.push('/settle-up'); }}
               />
             </View>
 
@@ -732,25 +784,25 @@ export default function HomeScreen() {
                 {
                   key: 'settle',
                   label: 'Settle',
-                  icon: 'wallet-outline',
-                  onPress: () => { hapticMedium(); router.push('/command-centre'); },
+                  icon: IconWallet,
+                  onPress: () => { hapticMedium(); router.push('/settle-up'); },
                 },
                 {
                   key: 'chores',
                   label: 'Chores',
-                  icon: 'checkbox-outline',
+                  icon: IconChecklist,
                   onPress: () => { hapticMedium(); router.push('/operations'); },
                 },
                 {
                   key: 'analytics',
                   label: 'Analytics',
-                  icon: 'bar-chart-outline',
+                  icon: IconChartBar,
                   onPress: () => { hapticMedium(); router.push('/analytics'); },
                 },
                 {
                   key: 'activity',
                   label: 'Activity',
-                  icon: 'chatbubble-ellipses-outline',
+                  icon: IconMessageCircle,
                   onPress: () => { hapticMedium(); router.push('/activity'); },
                 },
               ]}
@@ -826,7 +878,7 @@ export default function HomeScreen() {
               ) {
                 return (
                   <EmptyState
-                    icon="receipt-outline"
+                    icon={IconReceipt}
                     title="No expenses yet"
                     description="Track your first shared expense to see it here."
                     actionLabel="Add your first expense"

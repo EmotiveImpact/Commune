@@ -10,7 +10,7 @@ import {
   needsProration,
   calculateDaysPresent,
 } from '@commune/core';
-import { supabase } from './client';
+import { getTypedSupabase } from './client';
 
 /**
  * Membership dates for a single group member, keyed by user_id.
@@ -145,6 +145,7 @@ export async function getUserBreakdown(
   const [year, mon] = month.split('-').map(Number);
   const endDate = new Date(year!, mon!, 1).toISOString().split('T')[0];
 
+  const supabase = getTypedSupabase();
   // Fetch expenses and ALL group members' effective dates in parallel
   const [expenseResult, allMembersResult] = await Promise.all([
     supabase
