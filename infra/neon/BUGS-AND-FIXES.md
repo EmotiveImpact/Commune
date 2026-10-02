@@ -3,6 +3,66 @@
 Last updated: 27 September 2026. This register distinguishes verified fixes
 from unfinished work; it is not a full product release sign-off.
 
+## Local fix: reminder allowance belongs to the account
+
+Moved the aggregate reminder counter out of Funds and Settle toolbars into
+the sidebar beneath the profile, plus the Settings profile card for mobile.
+The sidebar details open upward; Settings expands inline. Escape closes the
+details and returns focus. Existing rolling totals, limits, and per-recipient
+Nudge/Chase counters are unchanged; no extra API request was added.
+
+Verified locally in the in-app browser on desktop and at 392px mobile width
+(no horizontal overflow), with 45 web tests and the production build passing.
+Three regressions cover toolbar removal, account placement and Escape. Not
+pushed or deployed as part of this change.
+
+## Local implementation: invitations can be sent by email
+
+The previous Invite dialog only created a link and explicitly sent no email.
+It now offers Send invitation, a separate link-only path, confirmed provider
+acceptance, failure/retry and retained copyable links. The authenticated Neon
+sender route reuses Resend with admin checks, expiry checks, durable send
+deduplication and rate limits. Migration 0012 and the sender/frontend rollout
+are still required on hosted branches; real inbox delivery is not yet tested.
+See [invitation email implementation and release checklist](INVITATION-EMAIL.md).
+
+## Local fixes: screen and dialog consistency
+
+**Contact editor follow-up:** landlord-only notes replaced by Contacts with
+custom person/business and role, phone/email, and optional prose. Legacy
+Landlord records remain readable and editable without losing their fields.
+Shared checkbox sizing and label typography corrected; Hub previews now
+use the same privacy-safe rendering policy as the Notes board. 39 web tests
+and build pass. No schema, grants or production changes. See the
+[window review](../../audit/2026-09-27/window-review.md).
+
+Local review corrected unrelated expense subtitles on non-money screens,
+page headings changing behind dialogs, misleading Pinned empty-state copy,
+and a search label broader than its actual expense-search scope. Note form
+copy is shorter, selection state is exposed to assistive technology, and
+new note previews use the note body instead of arbitrary metadata.
+
+Dialogs now take keyboard focus, wrap Tab navigation, make background
+controls inert and restore focus when closed. Local note creation and reload
+passed; 30 web tests and the production build passed. These changes are not
+yet deployed. Evidence and remaining functional gaps are in the
+[local screen review](../../audit/2026-09-27/README.md).
+
+## Implemented locally: Notes board and saved-note actions
+
+The approved pinned-first Notes board replaces the single list. Saved notes
+open in an inline desktop reader or full-screen phone reader. Edit and pin/
+unpin now use the existing authenticated note update endpoint; no database
+grants or membership rules changed. Search is scoped to Notes, independent
+of expense search. Private-type previews exclude access/contact details;
+password/code fields are masked until revealed and support copy feedback.
+This is display privacy, not encrypted storage.
+
+Creation, edit, pin/unpin and reload were tested against the local database.
+35 web tests and the production build passed. Mobile sizing and missing-note
+recovery were fixed during QA. No production deployment in this pass.
+Evidence and limits: [Notes design QA](../../design-qa.md).
+
 ## Fixed: valid members appeared to have no communes
 
 **Symptoms:** intermittent “No communes yet”, “Not a commune member”, and

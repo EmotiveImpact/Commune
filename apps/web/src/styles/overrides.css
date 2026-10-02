@@ -72,7 +72,7 @@ body,
   border-color: var(--border-strong);
 }
 
-.a-body.is-dark :is(.a-set-row:hover, .a-table tbody tr:hover td, .a-more > button:hover) {
+.a-body.is-dark :is(.a-table tbody tr:hover td, .a-more > button:hover) {
   background: rgba(217, 235, 229, 0.07);
 }
 

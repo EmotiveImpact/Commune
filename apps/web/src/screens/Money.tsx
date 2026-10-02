@@ -3,7 +3,10 @@ import { useApp } from "../state";
 import { Avatar, Pill } from "../ui/widgets";
 import { cx } from "../ui/cx";
 import { LIMITS } from "../data/limits";
-import { RecipientReminderCount, ReminderUsageMeter, reminderLimitReached } from "../ui/ReminderUsage";
+import { RecipientReminderCount, reminderLimitReached } from "../ui/ReminderUsage";
+import { Plus, ReceiptText, ChevronRight, HandCoins } from "lucide-react";
+import { ReminderConfirm } from "../ui/ReminderConfirm";
+import "./Money.css";
 
 function formatMoney(minor: number, currency: string): string {
   return new Intl.NumberFormat("en-GB", {
@@ -60,64 +63,18 @@ export function ExpensesScreen() {
           </button>
         ) : null}
         <button className="a-btn" type="button" onClick={() => go("add-expense")}>
-          Add expense
+          <Plus size={16} aria-hidden="true" /> Add expense
         </button>
       </div>
-      <div className="a-panel">
-        <table className="a-table">
-          <thead>
-            <tr>
-              <th>Expense</th>
-              <th>Category</th>
-              <th>Paid by</th>
-              <th>Due</th>
-              <th>Status</th>
-              <th style={{ textAlign: "right" }}>Amount</th>
-              <th style={{ textAlign: "right" }}>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr key={row.id}>
-                <td data-label="Expense">
-                  {row.open ? (
-                    <button
-                      className="a-name-btn"
-                      type="button"
-                      onClick={() => go("expense", { expense: row.id })}
-                    >
-                      {row.name}
-                    </button>
-                  ) : (
-                    <strong>{row.name}</strong>
-                  )}
-                </td>
-                <td data-label="Category">{row.category}</td>
-                <td data-label="Paid by">{row.paidBy}</td>
-                <td data-label="Due">{row.due}</td>
-                <td data-label="Status">
-                  <Pill tone={row.status}>{row.statusLabel}</Pill>
-                </td>
-                <td className="amt" data-label="Amount">
-                  {row.amount}
-                </td>
-                <td data-label="Actions">
-                  <div className="a-row-actions">
-                    <button className="a-btn ghost" type="button" onClick={() => go("expense", { expense: row.id })}>
-                      View shares
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-            {!rows.length ? (
-              <tr>
-                <td colSpan={7}>No expenses match this view.</td>
-              </tr>
-            ) : null}
-          </tbody>
-        </table>
-      </div>
+      <section className="c-expense-list" aria-label="Shared expenses">
+        {rows.map(row => <button className="c-expense-entry" type="button" key={row.id} onClick={() => go("expense", { expense: row.id })}>
+          <span className="c-money-icon"><ReceiptText size={19} strokeWidth={1.5} /></span>
+          <span className="c-expense-copy"><strong>{row.name}</strong><small>{row.paidBy} · {row.category}{row.dueOn ? ` · due ${row.due}` : ""}</small></span>
+          <span className="c-expense-amount"><strong>{row.amount}</strong><Pill tone={row.status}>{row.statusLabel}</Pill></span>
+          <ChevronRight size={16} aria-hidden="true" />
+        </button>)}
+        {!rows.length && <p className="c-money-empty">No expenses match this view. Try another filter or search.</p>}
+      </section>
     </>
   );
 }
@@ -137,12 +94,12 @@ export function ExpensesEmptyScreen() {
     <>
       <div className="a-toolbar">
         <button className="a-btn" type="button" onClick={() => go("add-expense")}>
-          Add expense
+          <Plus size={16} aria-hidden="true" /> Add expense
         </button>
       </div>
       <div className="a-empty">
-        <h2>Nothing shared this cycle.</h2>
-        <p>The first bill is how the house starts telling the truth.</p>
+        <h2>No expenses yet.</h2>
+        <p>Add something you’ve paid for and share it with your commune.</p>
       </div>
     </>
   );
@@ -153,6 +110,7 @@ export function SettleScreen() {
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [reminderFor, setReminderFor] = useState<{ id: string; name: string; subject: string; amount: string } | null>(null);
   const me = session?.userId;
   const moves = expenses.flatMap((expense) =>
     expense.shares
@@ -187,6 +145,7 @@ export function SettleScreen() {
     setPendingId(sourceId);
     try {
       await sendReminder("nudge", sourceId);
+      setReminderFor(null);
       setMessage("Nudge sent in Commune.");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not send the nudge.");
@@ -197,38 +156,13 @@ export function SettleScreen() {
 
   return (
     <>
-      <div className="a-settle-hero">
-        <div className="a-panel a-settle-card">
-          <span>You owe</span>
-          <strong>{formatMoney(youOwe, hub.currency)}</strong>
-          <div style={{ color: "var(--ink-soft)", fontSize: 13 }}>
-            {youOwe ? "Pay your share outside Commune; the bill payer confirms receipt." : "Nothing to send this cycle"}
-          </div>
-        </div>
-        <div className="a-panel a-settle-card">
-          <span>You’re owed</span>
-          <strong>{formatMoney(youAreOwed, hub.currency)}</strong>
-          <div style={{ color: "var(--ink-soft)", fontSize: 13 }}>
-            {youAreOwed ? "Confirm each share after you receive payment." : "Nothing waiting to collect"}
-          </div>
-        </div>
-      </div>
-      <div className="a-card">
-        <div className="a-card-head a-settle-head">
-          <div>
-            <h2>Outstanding shares</h2>
-            <p className="sub">Each share is tracked separately. Commune does not move money.</p>
-          </div>
-          <div className="a-reminder-actions">
-          <button className="a-btn ghost" type="button" onClick={() => go("breakdown")}>
-            Breakdown
-          </button>
-          <ReminderUsageMeter usage={reminderUsage} />
-          </div>
-        </div>
         {error ? <p className="a-form-error" role="alert">{error}</p> : null}
         {message ? <p className="a-window-note" role="status">{message}</p> : null}
-        {moves.length ? moves.map(({ expense, share, outstanding }) => {
+      <div className="c-settle-columns">{[false, true].map(receivingGroup => <section className="a-panel c-settle-column" aria-label={receivingGroup ? "You’re owed" : "You owe"} key={String(receivingGroup)}>
+        <h2>{receivingGroup ? "You’re owed" : "You owe"}</h2>
+        <strong className="c-settle-total">{formatMoney(receivingGroup ? youAreOwed : youOwe, hub.currency)}</strong>
+        <p className="c-settle-explainer">{receivingGroup ? "Confirm each share after you receive payment." : "Pay outside Commune; the bill payer confirms receipt."}</p>
+        {moves.filter(({ expense }) => (expense.paidByUserId === me) === receivingGroup).map(({ expense, share, outstanding }) => {
           const payer = hub.members.find((member) => member.userId === expense.paidByUserId);
           const debtor = hub.members.find((member) => member.userId === share.userId);
           const receiving = expense.paidByUserId === me;
@@ -242,9 +176,9 @@ export function SettleScreen() {
               className="a-move"
               key={share.id}
             >
-              <div className="a-arrow">→</div>
+              <Avatar tone={receiving ? debtor?.cls ?? "house" : payer?.cls ?? "house"} initials={receiving ? debtor?.ini ?? "?" : payer?.ini ?? "?"} />
               <div>
-                <div className="names">{receiving ? `${debtor?.name ?? "Member"} → You` : `You → ${payer?.name ?? "Bill payer"}`}</div>
+                <div className="names">{receiving ? `${debtor?.name ?? "Member"} owes you` : `You owe ${payer?.name ?? "the bill payer"}`}</div>
                 <div className="why">{expense.name}{expense.dueOn ? ` · due ${expense.dueOn}` : ""}</div>
                 {receiving && (target || (reminderUsage?.recipientUsage[share.userId] ?? 0) > 0) ? (
                   <RecipientReminderCount usage={reminderUsage} recipientId={share.userId} />
@@ -254,7 +188,7 @@ export function SettleScreen() {
               {receiving ? (
                 <div className="a-row-actions">
                   {target && !cooldown && !quotaReached ? (
-                    <button className="a-btn nudge" type="button" disabled={pendingId !== null} onClick={() => void nudge(share.id)}>
+                    <button className="a-btn nudge" type="button" disabled={pendingId !== null} onClick={() => { setError(""); setReminderFor({ id: share.id, name: debtor?.name ?? "your housemate", subject: expense.name, amount: formatMoney(outstanding, hub.currency) }); }}>
                       Nudge
                     </button>
                   ) : null}
@@ -267,13 +201,11 @@ export function SettleScreen() {
               )}
             </div>
           );
-        }) : (
-          <div className="a-empty" style={{ minHeight: 180 }}>
-            <h2>Everyone is even.</h2>
-            <p>No share is waiting in {hub.name}.</p>
-          </div>
-        )}
-      </div>
+        })}
+        {!(receivingGroup ? youAreOwed : youOwe) && <p className="c-money-empty">{receivingGroup ? "Nothing waiting to collect." : "Nothing to pay."}</p>}
+      </section>)}</div>
+      <div className="c-settle-footer"><p>Each share is tracked separately. Commune does not move money.</p><button className="a-btn ghost" type="button" onClick={() => go("breakdown")}>View breakdown</button></div>
+      {reminderFor && <ReminderConfirm {...reminderFor} remaining={reminderUsage ? Math.max(0, reminderUsage.totalLimit - reminderUsage.totalUsed) : null} pending={pendingId !== null} error={error} onClose={() => setReminderFor(null)} onSend={() => void nudge(reminderFor.id)} />}
     </>
   );
 }
@@ -396,7 +328,6 @@ export function FundsScreen() {
   return (
     <>
       <div className="a-toolbar">
-        {isAdmin && funds.length > 0 ? <ReminderUsageMeter usage={reminderUsage} /> : null}
         {isAdmin ? (
           <button className="a-btn" type="button" onClick={() => setNewFundOpen((open) => !open)}>
             {newFundOpen ? "Cancel" : "Create fund"}
@@ -420,15 +351,19 @@ export function FundsScreen() {
       ) : funds.map((fund) => {
         const myPledge = fund.commitments.find((commitment) => commitment.userId === session?.userId);
         return (
-          <div className="a-panel" key={fund.id} style={{ marginBottom: 20 }}>
+          <section className="a-panel c-fund-card" key={fund.id} aria-label={fund.name}>
             <div className="a-fund-hero">
               <div>
-                <span>{fund.name}</span>
+                <span className="c-fund-title"><HandCoins size={18} strokeWidth={1.5} aria-hidden="true" />{fund.name}</span>
                 <strong>{formatMoney(fund.contributedMinor ?? 0, hub.currency)}</strong>
                 <p>{fund.targetMinor !== null ? `Target ${formatMoney(fund.targetMinor, hub.currency)}` : "No target set"} · recorded contributions, not money held by Commune</p>
               </div>
               <Pill tone="sage">{fund.commitments.length} pledge{fund.commitments.length === 1 ? "" : "s"}</Pill>
             </div>
+            {fund.targetMinor !== null && fund.targetMinor > 0 && <div className="c-fund-progress">
+              <div role="progressbar" aria-label={`${fund.name} target progress`} aria-valuemin={0} aria-valuemax={fund.targetMinor} aria-valuenow={Math.min(fund.contributedMinor ?? 0, fund.targetMinor)} aria-valuetext={`${formatMoney(fund.contributedMinor ?? 0, hub.currency)} recorded of ${formatMoney(fund.targetMinor, hub.currency)}`}><span style={{ width: `${Math.min(100, ((fund.contributedMinor ?? 0) / fund.targetMinor) * 100)}%` }} /></div>
+              <small>{formatMoney(Math.max(0, fund.targetMinor - (fund.contributedMinor ?? 0)), hub.currency)} to target</small>
+            </div>}
             {fund.commitments.map((commitment) => {
               const member = hub.members.find((item) => item.userId === commitment.userId);
               const outstanding = commitment.amountMinor - commitment.contributedMinor;
@@ -476,7 +411,7 @@ export function FundsScreen() {
                 )}
               </div>
             ) : null}
-          </div>
+          </section>
         );
       })}
     </>

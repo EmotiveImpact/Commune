@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import { useLocation } from "wouter";
+import { allocateExpense, validateExpenseAllocation, type ExpenseAllocation } from "../../../packages/core/src/expenseSplit";
 import {
   PAGE_LEDES,
   PAGE_TITLES,
@@ -35,7 +36,6 @@ import { isStoredImage, readHubPhotos } from "./data/images";
 import { isNativeNow, keepSearch, pathOnly } from "./nav";
 import { api, post, loadCommunes, loadSnapshot, ApiError } from "./live/api";
 import {
-  equalShares,
   expenseRows,
   hubFromSnapshot,
   money,
@@ -80,6 +80,7 @@ export type CreateExpenseInput = {
   category?: string;
   dueOn?: string | null;
   shareUserIds: string[];
+  allocations?: ExpenseAllocation[];
 };
 
 function locationForKind(input: {
@@ -176,6 +177,7 @@ export type AppState = {
   noticesOn: boolean;
   currency: "£ GBP" | "$ USD" | "€ EUR";
   searchQuery: string;
+  noteSearchQuery: string;
   invites: PendingInvite[];
   payMethods: PayMethod[];
   native: boolean;
@@ -197,10 +199,12 @@ export type AppState = {
   setNoticesOn: (on: boolean) => void;
   setCurrency: (currency: "£ GBP" | "$ USD" | "€ EUR") => void;
   setSearchQuery: (query: string) => void;
+  setNoteSearchQuery: (query: string) => void;
   savePayMethod: (method: PayMethod) => boolean;
   setHubPhoto: (id: HubId, dataUrl: string | null) => void;
   setAvatar: (dataUrl: string | null) => void;
   addNote: (card: NoteCard & { id: string }) => Promise<string>;
+  updateNote: (card: NoteCard & { id: string }) => Promise<string>;
   addOperation: (item: NewOperation) => Promise<string>;
   updateOperation: (id: string, item: NewOperation) => Promise<void>;
   toggleOperation: (id: string) => Promise<void>;
@@ -215,6 +219,7 @@ export type AppState = {
   confirmExpenseShare: (shareId: string) => Promise<void>;
   markExpensePaid: (expenseId: string) => Promise<void>;
   createInvite: (email: string, role: "admin" | "member") => Promise<{ token: string; url: string }>;
+  sendInviteEmail: (token: string) => Promise<void>;
   revokeInvite: (id: string) => Promise<void>;
   previewInvite: (token: string) => Promise<InvitePreview | null>;
   acceptInvite: (token: string) => Promise<string>;
@@ -350,6 +355,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [operationDate, setOperationDate] = useState(todayIso());
   const [operationTime, setOperationTime] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [noteSearchQuery, setNoteSearchQuery] = useState("");
   const loadedRef = useRef(false);
   const refreshSequence = useRef(0);
   const refreshing = useRef(false);
@@ -698,7 +704,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!input.shareUserIds.includes(data.user.id)) {
       throw new Error("Include yourself in an expense you paid.");
     }
-    const shares = equalShares(input.amountMinor, input.shareUserIds);
+    const shares = input.allocations ? validateExpenseAllocation(input.amountMinor, input.allocations) : allocateExpense(input.amountMinor, input.shareUserIds, "Equal");
+    if (shares.length !== input.shareUserIds.length || shares.some(share => !input.shareUserIds.includes(share.userId))) throw new Error("The split must match the selected people.");
     const result = await post<{ id: string }>(`/communes/${encodeURIComponent(activeId)}/expenses`, {
       title: input.name.trim(),
       amountMinor: input.amountMinor,
@@ -740,6 +747,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await post(`/invites/${encodeURIComponent(id)}/revoke`, {});
     await refresh();
   }), [mutate, refresh]);
+  const sendInviteEmail = useCallback(async (token: string) => {
+    const result = await post<{ status: string }>("/invitation-email", { token });
+    if (result.status !== "sent") throw new Error("Email sending could not be confirmed. Retry or copy the link.");
+  }, []);
   const previewInvite = useCallback(async (token: string) => {
     const result = await api<{ invite: InvitePreview | null }>(`/invites/${encodeURIComponent(token)}`);
     return result.invite;
@@ -786,6 +797,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setNoteKey(result.id);
     return result.id;
   }), [activeId, mutate, refresh]);
+  const updateNote = useCallback((card: NoteCard & { id: string }) => mutate(async () => {
+    if (!data?.snapshots[activeId]?.notes?.some((note) => note.id === card.id)) {
+      throw new Error("Note not found in this commune");
+    }
+    const { id, ...payload } = card;
+    await api(`/notes/${encodeURIComponent(id)}`, { method: "PUT", body: JSON.stringify(payload) });
+    await refresh();
+    setNoteKey(id);
+    return id;
+  }), [activeId, data, mutate, refresh]);
   const addOperation = useCallback((item: NewOperation) => mutate(async () => {
     if (!activeId) throw new Error("Choose a commune first");
     const result = await post<{ id: string }>(`/communes/${encodeURIComponent(activeId)}/operations`, operationPayload(item));
@@ -887,27 +908,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setLocation(keepSearch(SCREEN_PATH[dest]));
   }, [activeId, data, places, savePrefs, screen, session?.hasHubs, setLocation]);
 
-  const pageTitle = windowId
-    ? windowId === "expense" || windowId === "expense-paid"
-      ? selectedExpense?.name ?? "Expense"
-      : windowId === "note"
-        ? notes[noteKey]?.title ?? "Note"
-        : windowId === "operation" || windowId === "operation-edit"
-          ? selectedOperation?.title ?? "Schedule item"
-          : PAGE_TITLES[windowId] ?? PAGE_TITLES[screen]
-    : PAGE_TITLES[screen] ?? "Home";
+  // Dialogs have their own heading; the page behind them remains the page.
+  const pageTitle = PAGE_TITLES[screen] ?? "Home";
   const outstandingShareCount = places.reduce((sum, place) => sum + place.moves.length, 0);
-  const pageLede = windowId
-    ? windowId === "expense" || windowId === "expense-paid"
-      ? selectedExpense
-        ? `${selectedExpense.paidBy} paid ${selectedExpense.amount}. ${selectedExpense.open ? "Some shares remain open." : "All shares are settled."}`
-        : "Expense"
-      : windowId === "add-expense"
-        ? hub.members.length === 1
-          ? "Just you for now. Add an expense to start the ledger."
-          : `Split an expense among ${hub.members.length} members.`
-        : PAGE_LEDES[windowId] ?? ""
-    : screen === "home" || screen === "communes"
+  const pageLede = screen === "home" || screen === "communes"
       ? session?.hasHubs
         ? places.some((place) => place.activityState !== "ready")
           ? `${places.length} ${places.length === 1 ? "commune" : "communes"} · ${places.some((place) => place.activityState === "error") ? "Some activity is unavailable" : "Shared activity is still loading"}`
@@ -917,7 +921,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         ? `Everything ${hub.name} has shared.`
         : screen === "settle" || screen === "settle-even"
           ? hub.oweCopy
-          : hub.status;
+          : screen === "hub" || screen === "hub-empty"
+            ? hub.status
+            : PAGE_LEDES[screen] ?? "";
 
   return <Ctx.Provider value={{
     authStatus, apiError, clearApiError: () => setApiError(null), refresh,
@@ -926,7 +932,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     navMode: prefs.navMode, noteKey, notes, operationKey, operationDate,
     operationTime, operationsByHub, operations, selectedOperation,
     dark: prefs.dark, noticesOn: prefs.noticesOn, currency: prefs.currency,
-    searchQuery, invites: data?.invites[activeId] ?? [], payMethods: prefs.payMethods, native, you,
+    searchQuery, noteSearchQuery, invites: data?.invites[activeId] ?? [], payMethods: prefs.payMethods, native, you,
     lastExpense, expenses, selectedExpense, createdExpenses: expenses,
     funds, reminderTargets, reminderUsage, notifications, signOut, go,
     closeWindow: () => setWindowId(null), setMoreOpen,
@@ -934,10 +940,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setDark: (dark) => savePrefs({ dark }),
     setNoticesOn: (noticesOn) => savePrefs({ noticesOn }),
     setCurrency: (currency) => savePrefs({ currency }),
-    setSearchQuery, savePayMethod, setHubPhoto, setAvatar, addNote,
+    setSearchQuery, setNoteSearchQuery, savePayMethod, setHubPhoto, setAvatar, addNote, updateNote,
     addOperation, updateOperation, toggleOperation, skipOperation,
     removeOperation, createHub, updateCommune, recordExpense, confirmExpenseShare,
-    markExpensePaid, createInvite, revokeInvite, previewInvite, acceptInvite, createFund,
+    markExpensePaid, createInvite, sendInviteEmail, revokeInvite, previewInvite, acceptInvite, createFund,
     pledgeFund, recordFundContribution, sendReminder, markNotificationRead,
     pageTitle, pageLede,
   }}>{children}</Ctx.Provider>;

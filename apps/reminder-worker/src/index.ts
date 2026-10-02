@@ -2,6 +2,7 @@ import { attachDatabasePool } from "@neon/functions";
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import { Pool } from "pg";
 import { renderReminderEmail } from "./email.ts";
+import { InvitationEmailError, sendInvitationEmail } from "./invitations.ts";
 
 type Outbox = {
   reminder_id: string;
@@ -347,6 +348,25 @@ async function drainScheduled(config: { apiKey: string; from: string; appUrl: st
   return processed;
 }
 
+async function dispatchInvitation(request: Request, config: { apiKey: string; from: string; appUrl: string }) {
+  const headers = dispatchCors(request, config.appUrl);
+  if (!headers) return new Response("Forbidden origin", { status: 403 });
+  if (request.method === "OPTIONS") return new Response(null, { status: 204, headers });
+  if (request.method !== "POST") return new Response("Method not allowed", { status: 405, headers });
+  const sender = await verifiedSender(request);
+  if (!sender) return Response.json({ error: "Sign in with a verified account." }, { status: 401, headers });
+  try {
+    const body = await request.text();
+    if (body.length > 1024) return Response.json({ error: "Invalid invitation." }, { status: 400, headers });
+    const token = (JSON.parse(body) as { token?: unknown }).token;
+    if (typeof token !== "string") return Response.json({ error: "Invalid invitation." }, { status: 400, headers });
+    return Response.json(await sendInvitationEmail(pool, sender, token, config), { headers: { ...headers, "Cache-Control": "no-store" } });
+  } catch (error) {
+    const known = error instanceof InvitationEmailError;
+    return Response.json({ error: known ? error.message : "Could not send the invitation email." }, { status: known ? error.status : 500, headers });
+  }
+}
+
 export default {
   async fetch(request: Request): Promise<Response> {
     const config = mailConfig();
@@ -355,6 +375,7 @@ export default {
       return new Response("Mail provider not configured", { status: 503 });
     }
     const pathname = new URL(request.url).pathname;
+    if (pathname === "/invite") return dispatchInvitation(request, config);
     if (pathname === "/dispatch") return dispatch(request, config);
     // Neon strips client-set X-Neon-* headers before invoking a Function.
     // Only the platform's scheduled trigger can supply this header.

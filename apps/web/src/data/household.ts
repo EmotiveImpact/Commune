@@ -42,6 +42,7 @@ export type WindowId =
   | "pay-method"
   | "note"
   | "note-new"
+  | "note-edit"
   | "operation"
   | "operation-new"
   | "operation-edit";
@@ -408,10 +409,10 @@ export const NOTE_BODY_HINT: Record<string, string> = {
   wifi: "Network name and anything guests need to know.",
   bins: "Which bags, which day, where they go.",
   keys: "Who has the spare, last lockup, anything that bites.",
-  landlord: "How rent leaves, what to say when something breaks.",
+  contacts: "When to contact them, opening hours, or anything helpful.",
   emergency: "Who to call when the boiler dies at 11pm.",
   rules: "Quiet hours, shoes, guests — the old chat pin.",
-  other: "Whatever the house needs to remember.",
+  other: "Anything this commune needs to remember.",
 };
 
 export const PAGE_TITLES: Record<string, string> = {
@@ -442,6 +443,7 @@ export const PAGE_TITLES: Record<string, string> = {
   notes: "Notes",
   note: "Note",
   "note-new": "Add note",
+  "note-edit": "Edit note",
   activity: "Activity",
   "commune-settings": "Commune settings",
   notices: "Notices",
@@ -466,7 +468,7 @@ export const PAGE_LEDES: Record<string, string> = {
   "expense-paid": "A member share has been confirmed.",
   settle: "Outstanding shares involving you.",
   "settle-even": "Nothing to send this cycle.",
-  recurring: "Expenses that repeat.",
+  recurring: "Automatic recurring expenses are not available yet.",
   funds: "Pledges and recorded contributions.",
   templates: "Shared split preferences.",
   billing: "Plan and billing details.",
@@ -477,9 +479,10 @@ export const PAGE_LEDES: Record<string, string> = {
   operation: "The date, owner, and details in one place.",
   "operation-new": "A task to finish, or something everyone should know is happening.",
   "operation-edit": "Change the time, the owner, or take it off the calendar.",
-  notes: "Wi-Fi, bin day, landlord. Add what the house keeps forgetting.",
+  notes: "Shared details, easy to find.",
   note: "Pinned · everyone",
   "note-new": "Type first. Extras change. The note itself stays so you can keep writing.",
+  "note-edit": "Update shared details and pin this note on This Hub.",
   activity: "The log, without the group chat.",
   "commune-settings": "Details and people for this commune.",
   notices: "Updates sent to you in Commune.",
@@ -505,6 +508,7 @@ export const WINDOW_IDS: WindowId[] = [
   "pay-method",
   "note",
   "note-new",
+  "note-edit",
   "operation",
   "operation-new",
   "operation-edit",
@@ -520,6 +524,7 @@ export const WINDOW_PAGE: Partial<Record<WindowId, ScreenId>> = {
   pay: "settle",
   note: "notes",
   "note-new": "notes",
+  "note-edit": "notes",
   operation: "operations",
   "operation-new": "operations",
   "operation-edit": "operations",

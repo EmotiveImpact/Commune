@@ -102,19 +102,23 @@ function AppUnavailable() {
 }
 
 function ProductShell() {
-  const { screen, navMode, moreOpen, native, dark, window: win, apiError, clearApiError, contentError, hub, refresh } = useApp();
+  const { screen, navMode, moreOpen, native, dark, window: win, notes, noteKey, apiError, clearApiError, contentError, hub, refresh } = useApp();
+  const noteReader = screen === "notes" && win === "note" && Boolean(notes[noteKey]);
+  const modalOpen = Boolean(win) && !noteReader;
   return (
     <div
       className={cx(
         "a-body",
+        (screen === "hub" || screen === "hub-empty") && "hub-editorial",
         navMode === "advanced" ? "nav-advanced" : "nav-basic",
         moreOpen && "more-open",
         native && "is-native",
         dark && "is-dark",
-        win && "has-window",
+        modalOpen && "has-window",
+        noteReader && "has-note-reader",
       )}
     >
-      <div className="a-app">
+      <div className="a-app" inert={modalOpen}>
         <Sidebar screen={screen} />
         <div className="a-main">
           <Header screen={screen} />
@@ -126,8 +130,10 @@ function ProductShell() {
           </div>
         </div>
       </div>
-      <PhoneTabs screen={screen} />
-      <MoreSheet />
+      <div inert={modalOpen} style={{ display: "contents" }}>
+        <PhoneTabs screen={screen} />
+        <MoreSheet />
+      </div>
       <Windows />
     </div>
   );

@@ -1,0 +1,49 @@
+/* Approved mockup language, retaining the application's page gutters and forms. */
+.c-expense-list { background: var(--white, #fffefa); border: 1px solid var(--border); border-radius: 15px; padding: 0 23px; }
+.c-expense-entry { width: 100%; display: flex; align-items: center; gap: 16px; padding: 21px 0; border: 0; border-bottom: 1px solid var(--border); background: transparent; text-align: left; color: var(--ink); font: inherit; cursor: pointer; }
+.c-expense-entry:last-child { border-bottom: 0; }
+.c-expense-entry:hover .c-expense-copy strong { color: var(--sage); }
+.c-expense-entry:focus-visible { outline: 2px solid var(--sage); outline-offset: 3px; }
+.c-money-icon { width: 37px; height: 37px; flex: none; border-radius: 10px; background: #edf0f3; color: #637689; display: grid; place-items: center; }
+.c-expense-copy { flex: 1; min-width: 0; }
+.c-expense-copy strong, .c-expense-amount strong { display: block; font-size: 14px; font-weight: 500; overflow-wrap: anywhere; }
+.c-expense-copy small { display: block; color: var(--ink-soft); margin-top: 5px; font-size: 12px; }
+.c-expense-amount { text-align: right; flex: none; }
+.c-expense-amount strong { font-size: 17px; font-variant-numeric: tabular-nums; margin-bottom: 6px; }
+.c-money-empty { padding: 28px 0; color: var(--ink-soft); }
+#expenses .a-btn, #expenses-empty .a-btn, #notes .a-btn, #funds .a-btn, #settle .a-btn { border-radius: 9px; font-weight: 500; gap: 7px; }
+#settle .a-settle-card { border-radius: 15px; box-shadow: none; }
+#settle .a-settle-card > span { font-size: 18px; font-weight: 550; text-transform: none; letter-spacing: -.4px; }
+#settle .a-settle-card > strong { font-size: 41px; font-weight: 450; letter-spacing: -1.7px; }
+#settle .a-card { box-shadow: none; border-radius: 15px; }
+#settle .a-move { gap: 16px; }
+#settle .a-move .names { font-weight: 500; }
+#settle .a-move > .avatar { flex: none; }
+.c-fund-card { margin-bottom: 22px; box-shadow: none; border-radius: 15px; }
+.c-fund-title { display: flex; align-items: center; gap: 9px; font-weight: 550; }
+.c-fund-title svg { color: #6c8277; flex: none; }
+.c-fund-card .a-fund-hero strong { font-size: 36px; font-weight: 450; letter-spacing: -1px; }
+.c-fund-progress { display: flex; align-items: center; gap: 16px; margin: 18px 0 24px; }
+.c-fund-progress > div { flex: 1; height: 6px; background: var(--border); border-radius: 4px; overflow: hidden; }
+.c-fund-progress > div > span { display: block; height: 100%; background: var(--sage); border-radius: inherit; }
+.c-fund-progress small { color: var(--ink-soft); font-size: 12px; }
+.c-reminder-dialog { padding: 28px; width: min(470px,calc(100% - 32px)); border: 1px solid var(--border); border-radius: 17px; background: var(--white,#fffefa); color: var(--ink); }
+.c-reminder-dialog::backdrop { background: #111b2866; }
+.c-reminder-dialog h2 { font-size: 21px; font-weight: 550; line-height: 1.4; padding-right: 20px; }
+.c-reminder-message { padding: 18px 0; font-size: 14px; line-height: 1.7; }
+.c-reminder-help { font-size: 12px; line-height: 1.6; color: var(--ink-soft); margin-bottom: 16px; }
+.c-reminder-close { float: right; border: 0; background: transparent; color: inherit; padding: 6px; cursor: pointer; }
+@media(max-width:560px) { .c-expense-list { padding-inline: 16px; } .c-expense-entry { gap: 10px; } .c-expense-entry > svg { display: none; } .c-expense-copy small { line-height: 1.6; } .c-fund-progress { align-items: flex-start; flex-direction: column; } .c-fund-progress > div { width: 100%; min-height: 6px; flex: none; } }
+.is-dark .c-money-icon { background: #2a3440; color: #b5c6bb; }
+.c-settle-columns { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 22px; }
+.c-settle-column { min-width: 0; box-shadow: none; border-radius: 15px; padding: 23px; align-self: start; }
+.c-settle-column h2 { font-size: 18px; font-weight: 550; }
+.c-settle-total { display: block; font-size: 41px; font-weight: 450; letter-spacing: -1.7px; margin: 10px 0; font-variant-numeric: tabular-nums; }
+.c-settle-explainer { color: var(--ink-soft); font-size: 12px; line-height: 1.7; }
+#settle .c-settle-column .a-move { display: grid; grid-template-columns: 32px minmax(0,1fr) auto; margin-top: 18px; padding: 18px 0 0; border-top: 1px solid var(--border); }
+.c-settle-column .a-move .a-row-actions, .c-settle-column .a-move > .sub { grid-column: 2 / -1; justify-content: flex-start; }
+.c-settle-column .a-move .names { font-size: 13px; }
+.c-settle-column .a-move .why { overflow-wrap: anywhere; }
+.c-settle-footer { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 22px; }
+.c-settle-footer p { color: var(--ink-soft); font-size: 12px; }
+@media(max-width:900px) { .c-settle-columns { grid-template-columns: 1fr; } }

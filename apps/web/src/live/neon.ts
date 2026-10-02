@@ -100,6 +100,25 @@ async function dispatchReminderEmail(reminderId: string): Promise<void> {
   if (!response.ok) console.warn(`Reminder email dispatch returned HTTP ${response.status}`);
 }
 
+async function dispatchInvitationEmail(token: unknown): Promise<{ status: "sent" }> {
+  if (!reminderFunctionUrl) throw new Error("Email sending is not configured here. Copy the invitation link instead.");
+  const endpoint = new URL(reminderFunctionUrl);
+  if (endpoint.protocol !== "https:" || endpoint.username || endpoint.password || endpoint.search || endpoint.hash) {
+    throw new Error("Invitation email endpoint is not configured correctly.");
+  }
+  endpoint.pathname = "/invite";
+  const session = await db().auth.getSession();
+  const jwt = session.data?.session?.token;
+  if (session.error || !jwt) throw new Error("Sign in again to send the invitation.");
+  const response = await fetch(endpoint, {
+    method: "POST", headers: { Authorization: `Bearer ${jwt}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ token }), signal: AbortSignal.timeout(25_000),
+  });
+  const result = await response.json().catch(() => null) as { status?: string; error?: string } | null;
+  if (!response.ok || result?.status !== "sent") throw new Error(result?.error || "Email sending could not be confirmed. Retry or copy the invitation link.");
+  return { status: "sent" };
+}
+
 type Row = Record<string, unknown>;
 function rows(value: unknown): Row[] { return Array.isArray(value) ? value as Row[] : []; }
 function str(value: unknown): string { return typeof value === "string" ? value : ""; }
@@ -415,6 +434,8 @@ export async function neonApi<T>(path: string, init: RequestInit = {}): Promise<
     });
   } else if (method === "POST" && pathId(path, /^\/notifications\/([^/]+)\/read$/)) {
     response = await rpcVoid("mark_notification_read", { p_notification_id: pathId(path, /^\/notifications\/([^/]+)\/read$/) });
+  } else if (method === "POST" && path === "/invitation-email") {
+    response = await dispatchInvitationEmail(body.token);
   } else if (method === "POST" && pathId(path, /^\/communes\/([^/]+)\/invites$/)) {
     const token = unwrap(await db().rpc("create_commune_invite", {
       p_commune_id: pathId(path, /^\/communes\/([^/]+)\/invites$/),

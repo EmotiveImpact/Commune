@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { ArrowRightLeft, ChartColumn, Clock3, CreditCard, FileText, Files, House, LayoutGrid, ReceiptText, Repeat2, ShoppingBag, SquareCheck, UsersRound, type LucideIcon } from "lucide-react";
 import type { IconName } from "../ui/Icon";
 import { Icon } from "../ui/Icon";
 import { Avatar } from "../ui/widgets";
@@ -6,8 +7,16 @@ import { useApp } from "../state";
 import type { ScreenId, WindowId } from "../data/household";
 import { LIMITS } from "../data/limits";
 import { cx } from "../ui/cx";
+import { ReminderUsageMeter } from "../ui/ReminderUsage";
 
 type NavItem = { id: ScreenId; label: string; icon: IconName };
+
+const NAV_ICONS: Partial<Record<IconName, LucideIcon>> = {
+  home: LayoutGrid, hub: House, expenses: ReceiptText, settle: ArrowRightLeft,
+  recurring: Repeat2, funds: ShoppingBag, notes: FileText, operations: SquareCheck,
+  templates: Files, billing: CreditCard, analytics: ChartColumn,
+  activity: Clock3, members: UsersRound,
+};
 
 const BASIC: NavItem[] = [
   { id: "expenses", label: "Expenses", icon: "expenses" },
@@ -96,7 +105,7 @@ function CommuneSwitch() {
           <strong>{hub.name}</strong>
           <span>{hub.switchMeta}</span>
         </div>
-        <span className={cx("a-hub-chev", open && "is-open")}>
+        <span className={cx("a-hub-chev", open && "is-open")} aria-hidden="true">
           <Icon name="chevronDown" size={14} />
         </span>
       </button>
@@ -145,16 +154,17 @@ function NavButton({
   active: boolean;
   onClick: () => void;
 }) {
+  const NavIcon = NAV_ICONS[item.icon];
   return (
-    <button className={cx("a-link", active && "is-active")} type="button" onClick={onClick}>
-      <Icon name={item.icon} />
+    <button className={cx("a-link", active && "is-active")} aria-current={active ? "page" : undefined} type="button" onClick={onClick}>
+      {NavIcon ? <NavIcon size={19} strokeWidth={1.6} aria-hidden="true" /> : <Icon name={item.icon} />}
       {item.label}
     </button>
   );
 }
 
 export function Sidebar({ screen }: { screen: ScreenId }) {
-  const { go, hub, you } = useApp();
+  const { go, hub, you, reminderUsage } = useApp();
   const active = (id: ScreenId) =>
     screen === id ||
     (id === "settle" && screen === "settle-even") ||
@@ -165,8 +175,7 @@ export function Sidebar({ screen }: { screen: ScreenId }) {
   return (
     <aside className="a-side">
       <button className="a-brand" type="button" onClick={() => go("home")}>
-        <img className="a-logo" src="/logo.png" width={36} height={36} alt="" />
-        <span className="a-wordmark">Commune</span>
+        <span className="a-wordmark">commune.</span>
       </button>
 
       <nav className="a-nav" aria-label="Primary">
@@ -203,13 +212,16 @@ export function Sidebar({ screen }: { screen: ScreenId }) {
 
       <CommuneSwitch />
 
-      <button className="a-side-foot" type="button" onClick={() => go("settings")}>
+      <div className="a-side-account">
         <Avatar tone="maya" initials={you.initials} />
-        <div className="meta">
-          <strong>{you.name}</strong>
-          <span>{hub.youMeta}</span>
+        <div className="a-side-account-copy">
+          <button className="a-side-foot" type="button" onClick={() => go("settings")}>
+            <strong>{you.name}</strong>
+            {hub.youMeta && <span>{hub.youMeta.split(" · ")[0]}</span>}
+          </button>
+          <ReminderUsageMeter usage={reminderUsage} placement="sidebar" />
         </div>
-      </button>
+      </div>
     </aside>
   );
 }
@@ -226,8 +238,10 @@ export function Header({ screen }: { screen: ScreenId }) {
     notifications,
     searchQuery,
     setSearchQuery,
+    noteSearchQuery,
+    setNoteSearchQuery,
   } = useApp();
-  void screen;
+  const searchingNotes = screen === "notes";
   return (
     <header className="a-header">
       <button className="a-icon-btn a-more-btn" type="button" aria-label="More" onClick={() => setMoreOpen(true)}>
@@ -244,17 +258,17 @@ export function Header({ screen }: { screen: ScreenId }) {
           role="search"
           onSubmit={(event) => {
             event.preventDefault();
-            go("expenses");
+            if (!searchingNotes) go("expenses");
           }}
         >
           <Icon name="search" size={16} />
           <input
             type="search"
-            value={searchQuery}
+            value={searchingNotes ? noteSearchQuery : searchQuery}
             maxLength={LIMITS.search}
-            onChange={(event) => setSearchQuery(event.target.value)}
-            placeholder="Search expenses, people, bills"
-            aria-label="Search expenses, people, bills"
+            onChange={(event) => (searchingNotes ? setNoteSearchQuery : setSearchQuery)(event.target.value)}
+            placeholder={searchingNotes ? "Search notes…" : "Search expenses"}
+            aria-label={searchingNotes ? "Search notes" : "Search expenses"}
           />
         </form>
       )}

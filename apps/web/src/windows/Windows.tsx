@@ -1,5 +1,5 @@
-import { useEffect, useState, type CSSProperties } from "react";
-import { NOTE_BODY_HINT } from "../data/household";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { NOTE_BODY_HINT, type NoteCard } from "../data/household";
 import { LIMITS } from "../data/limits";
 import { useApp } from "../state";
 import { Icon } from "../ui/Icon";
@@ -9,12 +9,16 @@ import { cx } from "../ui/cx";
 import { OperationEdit, OperationNew, OperationView } from "./OperationsWindows";
 import { CommuneLocationFields, EMPTY_COMMUNE_LOCATION } from "../ui/CommuneLocationFields";
 import { RecipientReminderCount, ReminderUsageMeter, reminderLimitReached } from "../ui/ReminderUsage";
+import { isNotePinned } from "../data/notePresentation";
+import "./NoteEditor.css";
+import { allocateExpense, type SplitMethod } from "../../../../packages/core/src/expenseSplit";
+import "./ExpenseEditor.css";
 
 const NOTE_TYPES = [
   ["wifi", "Wi-Fi"],
   ["bins", "Bins"],
   ["keys", "Keys / door"],
-  ["landlord", "Landlord"],
+  ["contacts", "Contacts"],
   ["emergency", "Emergency"],
   ["rules", "House rules"],
   ["other", "Other"],
@@ -35,6 +39,7 @@ function parseMoney(value: string): number | null {
 export function Windows() {
   const {
     window,
+    screen,
     closeWindow,
     go,
     notes,
@@ -42,16 +47,45 @@ export function Windows() {
     selectedExpense,
     selectedOperation,
     addNote,
+    updateNote,
   } = useApp();
+  const frameRef = useRef<HTMLDivElement>(null);
+  const closeRef = useRef(closeWindow);
+  const inlineNote = window === "note" && screen === "notes" && Boolean(notes[noteKey]);
+  const isOpen = Boolean(window) && !inlineNote;
+  useEffect(() => { closeRef.current = closeWindow; }, [closeWindow]);
   useEffect(() => {
-    if (!window) return;
+    if (!isOpen) return;
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const frame = frameRef.current;
+    if (!frame) return;
+    frame.focus();
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") closeWindow();
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeRef.current();
+      }
+      if (event.key !== "Tab") return;
+      const controls = Array.from(frame.querySelectorAll<HTMLElement>(
+        'button:not(:disabled), a[href], input:not(:disabled), textarea:not(:disabled), select:not(:disabled), [tabindex="0"]',
+      )).filter((element) => !element.closest('[hidden], [inert]') && getComputedStyle(element).visibility !== "hidden" && !element.closest('[style*="display: none"]'));
+      const first = controls[0];
+      const last = controls.at(-1);
+      if (!first || !last) { event.preventDefault(); frame.focus(); return; }
+      if (event.shiftKey && (document.activeElement === first || document.activeElement === frame)) {
+        event.preventDefault(); last.focus();
+      } else if (!event.shiftKey && (document.activeElement === last || document.activeElement === frame)) {
+        event.preventDefault(); first.focus();
+      }
     };
     document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [closeWindow, window]);
-  if (!window) return null;
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      if (opener?.isConnected) opener.focus();
+    };
+  }, [isOpen]);
+  useEffect(() => { if (window) frameRef.current?.focus(); }, [window]);
+  if (!window || inlineNote) return null;
   const title =
     window === "expense" || window === "expense-paid"
       ? selectedExpense?.name ?? "Expense"
@@ -63,8 +97,8 @@ export function Windows() {
 
   return (
     <div className="a-windows">
-      <button className="a-window-back" type="button" aria-label="Close" onClick={closeWindow} />
-      <div className="a-window-frame" role="dialog" aria-modal="true" aria-labelledby="commune-window-title">
+      <button className="a-window-back" type="button" tabIndex={-1} aria-hidden="true" onClick={closeWindow} />
+      <div ref={frameRef} tabIndex={-1} className={cx("a-window-frame", window === "add-expense" && "c-expense-frame")} role="dialog" aria-modal="true" aria-labelledby="commune-window-title">
         <header className="a-window-bar">
           <h2 id="commune-window-title">{title}</h2>
           <button className="a-window-x" type="button" aria-label="Close" onClick={closeWindow}>
@@ -84,7 +118,10 @@ export function Windows() {
           {window === "pay" && <Pay />}
           {window === "pay-method" && <PayMethod />}
           {window === "note" && <NoteCardView />}
-          {window === "note-new" && <NoteNew onSave={addNote} />}
+          {window === "note-new" && <NoteNew key="new" onSave={addNote} />}
+          {window === "note-edit" && (notes[noteKey]
+            ? <NoteNew key={noteKey} initial={{ ...notes[noteKey], id: noteKey }} onSave={updateNote} />
+            : <p className="a-window-note" role="alert">This note is no longer available.</p>)}
           {window === "operation" && <OperationView />}
           {window === "operation-new" && <OperationNew />}
           {window === "operation-edit" && <OperationEdit />}
@@ -108,6 +145,7 @@ function titleFor(id: string): string {
     pay: "Settle a share",
     "pay-method": "Pay me",
     "note-new": "Add note",
+    "note-edit": "Edit note",
     "operation-new": "Add to calendar",
     "operation-edit": "Edit",
   };
@@ -180,10 +218,16 @@ function AddExpense() {
   const [amount, setAmount] = useState("");
   const [due, setDue] = useState("");
   const [includedIds, setIncludedIds] = useState<string[]>(() => members.map((member) => member.userId));
+  const [method, setMethod] = useState<SplitMethod>("Equal");
+  const [values, setValues] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const amountMinor = parseMoney(amount);
   const included = members.filter((member) => includedIds.includes(member.userId));
+  let allocations: ReturnType<typeof allocateExpense> = [];
+  let splitError = "";
+  try { allocations = allocateExpense(amountMinor ?? 0, included.map(member => member.userId), method, values); }
+  catch (cause) { splitError = cause instanceof Error ? cause.message : "Check the split."; }
 
   async function save() {
     const name = what.trim();
@@ -199,6 +243,7 @@ function AddExpense() {
       setError("Include yourself in the split.");
       return;
     }
+    if (splitError) { setError(splitError); return; }
     setSaving(true);
     setError("");
     try {
@@ -207,6 +252,7 @@ function AddExpense() {
         amountMinor,
         dueOn: due || null,
         shareUserIds: included.map((member) => member.userId),
+        allocations,
       });
       go("expense", { expense: id });
     } catch (cause) {
@@ -227,10 +273,9 @@ function AddExpense() {
   }
 
   return (
-    <section className="a-window">
-      <p className="a-window-kicker">Expense</p>
+    <div className="c-expense-editor"><section className="a-window c-expense-form">
       <div className="a-field">
-        <label htmlFor="exp-what">What</label>
+        <label htmlFor="exp-what">What was it for?</label>
         <input
           id="exp-what"
           type="text"
@@ -248,6 +293,7 @@ function AddExpense() {
       <div className="a-field half">
         <label htmlFor="exp-who">Paid by</label>
         <input id="exp-who" value={you.name} readOnly aria-readonly="true" />
+        <small>You’re recording an expense you paid.</small>
       </div>
       <div className="a-field">
         <label htmlFor="exp-due">Due date (optional)</label>
@@ -255,30 +301,28 @@ function AddExpense() {
         <p className="a-window-note">Nudge becomes available to the payer once this date arrives.</p>
       </div>
       <div className="a-field">
-        <strong>Split equally between</strong>
+        <strong>How should we split it?</strong>
+        <div className="c-split-methods" role="group" aria-label="Split method">{(["Equal", "Exact", "Percentage", "Shares"] as const).map(choice => <button type="button" key={choice} disabled={saving} aria-pressed={method === choice} onClick={() => { setMethod(choice); setError(""); if (choice === "Shares") setValues(Object.fromEntries(included.map(member => [member.userId, "1"]))); }}>{choice}</button>)}</div>
         {members.map((member) => {
           const isSelf = member.userId === session?.userId;
           return (
-            <label className="a-settle-row" key={member.userId}>
+            <div className="a-settle-row c-split-person" key={member.userId}>
               <input
                 type="checkbox"
                 checked={includedIds.includes(member.userId)}
                 disabled={isSelf || saving}
+                aria-label={`Include ${member.name}`}
                 onChange={(event) => setIncludedIds((current) => event.target.checked
                   ? [...current, member.userId]
                   : current.filter((id) => id !== member.userId))}
               />
-              <span>{member.name}{isSelf ? " (you)" : ""}</span>
-              {amountMinor !== null && includedIds.includes(member.userId)
-                ? <span className="amt">{formatMoney(
-                    Math.floor(amountMinor / included.length) + (included.findIndex((item) => item.userId === member.userId) < amountMinor % included.length ? 1 : 0),
-                    hub.currency,
-                  )}</span>
-                : null}
-            </label>
+              <Avatar tone={member.cls} initials={member.ini} /><span className="c-split-name">{member.name}{isSelf ? " (you)" : ""}</span>
+              {method !== "Equal" && includedIds.includes(member.userId) && <input className="c-split-value" aria-label={`${member.name} ${method.toLowerCase()}`} inputMode="decimal" maxLength={LIMITS.money} value={values[member.userId] ?? ""} disabled={saving} placeholder={method === "Percentage" ? "%" : method === "Shares" ? "1" : "0.00"} onChange={event => setValues(current => ({ ...current, [member.userId]: event.target.value }))} />}
+              {allocations.find(share => share.userId === member.userId) && <span className="amt">{formatMoney(allocations.find(share => share.userId === member.userId)!.amountMinor, hub.currency)}</span>}
+            </div>
           );
         })}
-        <div className="when">The server validates that all individual shares add up to the total.</div>
+        <div className="when">{amount && splitError ? splitError : method === "Percentage" ? "Percentages total 100%." : "Every penny is included in the split."}</div>
         </div>
       {error ? <p className="a-form-error" role="alert">{error}</p> : null}
       <div className="a-field-row">
@@ -289,7 +333,7 @@ function AddExpense() {
           Cancel
         </button>
       </div>
-    </section>
+    </section><aside className="c-expense-summary" aria-label="Split summary"><h3>The split, at a glance</h3><div><span>Total</span><strong>{formatMoney(amountMinor ?? 0, hub.currency)}</strong></div><div><span>Your share</span><strong>{formatMoney(allocations.find(share => share.userId === session?.userId)?.amountMinor ?? 0, hub.currency)}</strong></div><p>Paid by {you.name}. Each person will see their exact share.</p><p>Commune records who paid and who owes what. It doesn’t move money.</p></aside></div>
   );
 }
 
@@ -504,24 +548,38 @@ function CommuneNew() {
 }
 
 function MemberInvite() {
-  const { closeWindow, createInvite, hub } = useApp();
+  const { closeWindow, createInvite, sendInviteEmail, hub } = useApp();
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<"member" | "admin">("member");
   const [url, setUrl] = useState("");
+  const [token, setToken] = useState("");
+  const [sent, setSent] = useState(false);
+  const [sendingEmail, setSendingEmail] = useState(false);
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState("");
 
-  async function create() {
+  async function create(emailDelivery: boolean) {
+    if (saving) return;
     if (!/^\S+@\S+\.\S+$/.test(email.trim())) {
       setError("Enter a valid email address.");
       return;
     }
     setSaving(true);
+    setSendingEmail(emailDelivery);
     setError("");
     try {
-      const invite = await createInvite(email.trim(), role);
-      setUrl(invite.url);
+      let inviteToken = token;
+      if (!inviteToken) {
+        const invite = await createInvite(email.trim(), role);
+        inviteToken = invite.token;
+        setToken(inviteToken);
+        setUrl(invite.url);
+      }
+      if (emailDelivery) {
+        await sendInviteEmail(inviteToken);
+        setSent(true);
+      }
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not create the invite.");
     } finally {
@@ -539,37 +597,42 @@ function MemberInvite() {
   }
 
   return (
-    <section className="a-window">
-      <p className="a-window-kicker">Members</p>
+    <form className="a-window" onSubmit={(event) => { event.preventDefault(); void create(true); }}>
+      <p className="a-window-note">Invite someone to {hub.name}. Send an email invitation or create a link to share yourself.</p>
       <div className="a-field">
         <label htmlFor="inv-email">Email</label>
-        <input id="inv-email" type="email" maxLength={LIMITS.email} value={email} disabled={Boolean(url)} onChange={(event) => setEmail(event.target.value)} />
+        <input id="inv-email" type="email" required placeholder="name@example.com" maxLength={LIMITS.email} value={email} disabled={Boolean(url) || saving} onChange={(event) => setEmail(event.target.value)} />
       </div>
       <div className="a-field">
         <label htmlFor="inv-role">Role</label>
-        <select id="inv-role" value={role} disabled={Boolean(url)} onChange={(event) => setRole(event.target.value as "member" | "admin")}>
+        <select id="inv-role" value={role} disabled={Boolean(url) || saving} onChange={(event) => setRole(event.target.value as "member" | "admin")}>
           <option value="member">Member</option>
           <option value="admin">Admin</option>
         </select>
+        <p className="a-window-note">{role === "admin" ? "Admins can manage commune settings, members and invitations." : "Members can take part in shared expenses and commune activity."}</p>
       </div>
+      {sent ? <p role="status" className="a-window-note">Invitation email sent to {email.trim()}. Delivery to their inbox may take a moment.</p> : null}
       {url ? (
         <div className="a-field">
           <label htmlFor="inv-link">Invitation link</label>
           <input id="inv-link" value={url} readOnly onFocus={(event) => event.target.select()} />
-          <p className="a-window-note">Share this link with {email.trim()}. No email was sent by Commune. Only that verified email address can accept it.</p>
+          <p className="a-window-note">{sent ? "You can also share this link directly." : "The invitation link is ready. Email sending has not been confirmed."} Only {email.trim()} can accept it after verifying their email. The link expires in seven days.</p>
         </div>
       ) : null}
+      {error ? <p className="a-form-error" role="alert">{error}</p> : null}
       <div className="a-field-row">
-        <button className="a-btn" type="button" disabled={saving || hub.role !== "admin"} onClick={() => void (url ? copy() : create())}>
-          {saving ? "Creating…" : url ? (copied ? "Copied" : "Copy link") : "Create invite link"}
+        <button className="a-btn" type="submit" disabled={saving || sent || hub.role !== "admin"}>
+          {saving && sendingEmail ? "Sending…" : sent ? "Email sent" : error && token ? "Retry email" : "Send invitation"}
+        </button>
+        <button className="a-btn ghost" type="button" disabled={saving || hub.role !== "admin"} onClick={() => void (url ? copy() : create(false))}>
+          {saving && !sendingEmail ? "Creating…" : url ? (copied ? "Copied" : "Copy link") : "Create link only"}
         </button>
         <button className="a-btn ghost" type="button" onClick={closeWindow}>
           Close
         </button>
       </div>
-      {hub.role !== "admin" ? <p className="a-window-note">Only a commune admin can create an invite link.</p> : null}
-      {error ? <p className="a-form-error" role="alert">{error}</p> : null}
-    </section>
+      {hub.role !== "admin" ? <p className="a-window-note">Only a commune admin can invite people.</p> : null}
+    </form>
   );
 }
 
@@ -731,7 +794,10 @@ function NoteCardView() {
       </div>
       <p className="a-window-note">{card.body}</p>
       <div className="a-field-row">
-        <button className="a-btn" type="button" onClick={() => go("note-new")}>
+        <button className="a-btn" type="button" onClick={() => go("note-edit", { note: noteKey })}>
+          Edit note
+        </button>
+        <button className="a-btn ghost" type="button" onClick={() => go("note-new")}>
           Add another
         </button>
         <button className="a-btn ghost" type="button" onClick={closeWindow}>
@@ -742,21 +808,24 @@ function NoteCardView() {
   );
 }
 
-function NoteNew({ onSave }: { onSave: (card: { id: string; title: string; pill: string; kicker: string; lede: string; body: string; facts: Array<[string, string]> }) => Promise<string> }) {
+function NoteNew({ onSave, initial }: { onSave: (card: NoteCard & { id: string }) => Promise<string>; initial?: NoteCard & { id: string } }) {
   const { go, closeWindow } = useApp();
-  const [type, setType] = useState<(typeof NOTE_TYPES)[number][0]>("wifi");
-  const [title, setTitle] = useState("");
-  const [body, setBody] = useState("");
-  const [pin, setPin] = useState(false);
-  const [net, setNet] = useState("");
-  const [pass, setPass] = useState("");
-  const [code, setCode] = useState("");
-  const [day, setDay] = useState("");
-  const [where, setWhere] = useState("");
-  const [phone, setPhone] = useState("");
-  const [email, setEmail] = useState("");
-  const [contact, setContact] = useState("");
-  const [detail, setDetail] = useState("");
+  const fact = (label: string) => initial?.facts.find(([key]) => key === label)?.[1] ?? "";
+  const [type, setType] = useState<(typeof NOTE_TYPES)[number][0]>(() => initial?.pill === "Landlord" ? "contacts" : initial ? NOTE_TYPES.find(([, label]) => label === initial.pill)?.[0] ?? "other" : "other");
+  const [title, setTitle] = useState(initial?.title ?? "");
+  const [body, setBody] = useState(initial?.body ?? "");
+  const [pin, setPin] = useState(initial ? isNotePinned(initial) : false);
+  const [net, setNet] = useState(fact("Network"));
+  const [pass, setPass] = useState(fact("Password"));
+  const [code, setCode] = useState(fact("Door code"));
+  const [day, setDay] = useState(fact("Collection"));
+  const [where, setWhere] = useState(fact("Where"));
+  const [phone, setPhone] = useState(fact("Phone"));
+  const [email, setEmail] = useState(fact("Email"));
+  const [contact, setContact] = useState(fact("Who to call"));
+  const [contactName, setContactName] = useState(fact("Contact name"));
+  const [contactRole, setContactRole] = useState(fact("Role") || (initial?.pill === "Landlord" ? "Landlord" : ""));
+  const [detail, setDetail] = useState(fact("Detail"));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -765,20 +834,21 @@ function NoteNew({ onSave }: { onSave: (card: { id: string; title: string; pill:
       (kind === "wifi" && type === "wifi") ||
       (kind === "keys" && type === "keys") ||
       (kind === "bins" && type === "bins") ||
-      (kind === "landlord" && (type === "landlord" || type === "emergency")) ||
-      (kind === "landlord-only" && type === "landlord") ||
+      (kind === "contact-method" && (type === "contacts" || type === "emergency")) ||
+      (kind === "contacts" && type === "contacts") ||
       (kind === "emergency" && type === "emergency") ||
       (kind === "other" && (type === "other" || type === "rules"));
     return { display: show ? undefined : "none" };
   }
 
   async function save() {
-    if (!title.trim() || !body.trim()) {
-      setError("Add a title and note before saving.");
+    if (!title.trim()) {
+      setError("Add a title before saving.");
       return;
     }
     const typeLabel = NOTE_TYPES.find((t) => t[0] === type)?.[1] ?? "Note";
-    const facts: Array<[string, string]> = [];
+    const managedFacts = new Set(["Network", "Password", "Door code", "Collection", "Where", "Phone", "Email", "Contact name", "Role", "Who to call", "Detail", "Who can see", "This Hub"]);
+    const facts: Array<[string, string]> = (initial?.facts ?? []).filter(([key]) => !managedFacts.has(key));
     if (type === "wifi") {
       if (net) facts.push(["Network", net]);
       if (pass) facts.push(["Password", pass]);
@@ -788,25 +858,33 @@ function NoteNew({ onSave }: { onSave: (card: { id: string; title: string; pill:
       if (day) facts.push(["Collection", day]);
       if (where) facts.push(["Where", where]);
     }
-    if (type === "landlord" || type === "emergency") {
-      if (phone) facts.push(["Phone", phone]);
+    if (type === "contacts") {
+      if (contactName) facts.push(["Contact name", contactName]);
+      if (contactRole) facts.push(["Role", contactRole]);
     }
-    if (type === "landlord" && email) facts.push(["Email", email]);
+    if (type === "contacts" || type === "emergency") {
+      if (phone) facts.push(["Phone", phone]);
+      if (email) facts.push(["Email", email]);
+    }
     if (type === "emergency" && contact) facts.push(["Who to call", contact]);
     if ((type === "other" || type === "rules") && detail) facts.push(["Detail", detail]);
+    if (!body.trim() && !facts.some(([, value]) => value.trim())) {
+      setError("Add some details or a note before saving.");
+      return;
+    }
     facts.push(["Who can see", "Everyone in this commune"]);
     if (pin) facts.push(["This Hub", "Pinned"]);
     setSaving(true);
     setError("");
     try {
       const id = await onSave({
-        id: `draft-${Date.now()}`,
+        id: initial?.id ?? `draft-${Date.now()}`,
         title: title.trim(),
         pill: typeLabel,
         kicker: pin ? "Pinned · everyone" : "Everyone",
-        lede: facts[0]?.[1] ?? body.trim().slice(0, 200),
+        lede: body.trim().slice(0, 200),
         body: body.trim(),
-        facts,
+        facts: facts.map(([key, value]) => [key, value.trim()] as [string, string]).filter(([, value]) => value),
       });
       go("note", { note: id });
     } catch (cause) {
@@ -817,27 +895,29 @@ function NoteNew({ onSave }: { onSave: (card: { id: string; title: string; pill:
   }
 
   return (
-    <section className="a-window">
-      <p className="a-window-kicker">Note</p>
-      <div className="a-field">
+    <form className="a-window note-editor" onSubmit={(event) => { event.preventDefault(); if (!saving) void save(); }}>
+      <p className="note-editor-intro">{type === "contacts" ? "Add one person or service per note. " : "Keep useful details together. "}Everyone in this commune can view and edit them.</p>
+      <div className="a-field half">
+        <label htmlFor="note-type">Type</label>
+        <select id="note-type" value={type} onChange={(event) => setType(event.target.value as typeof type)}>
+          {NOTE_TYPES.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
+        </select>
+      </div>
+      <div className="a-field half">
         <label htmlFor="note-title">
           Title <span className="need">Required</span>
         </label>
-        <input id="note-title" type="text" maxLength={LIMITS.noteTitle} value={title} onChange={(e) => setTitle(e.target.value)} />
+        <input id="note-title" type="text" required maxLength={LIMITS.noteTitle} value={title} onChange={(e) => setTitle(e.target.value)} placeholder={type === "contacts" ? "e.g. Repairs & maintenance" : "Give this note a clear name"} />
         <span className="a-field-limit">{title.length}/{LIMITS.noteTitle}</span>
       </div>
-      <div className="a-field">
-        <label>
-          Type <span className="need">Required</span>
-        </label>
-        <div className="a-note-types" role="group" aria-label="Type">
-          {NOTE_TYPES.map(([id, label]) => (
-            <button key={id} type="button" className={cx(type === id && "is-on")} onClick={() => setType(id)}>
-              {label}
-            </button>
-          ))}
-        </div>
-        <p className="hint">Type only changes the extras. The note below stays, so you can keep writing.</p>
+      <div className="note-editor-details">
+      <div className="a-field" style={extra("contacts")}>
+        <label htmlFor="note-contact-name">Person or business</label>
+        <input id="note-contact-name" maxLength={LIMITS.noteDetail} value={contactName} onChange={(e) => setContactName(e.target.value)} placeholder="e.g. Alex at Riverside Repairs" />
+      </div>
+      <div className="a-field" style={extra("contacts")}>
+        <label htmlFor="note-contact-role">Role or service</label>
+        <input id="note-contact-role" maxLength={LIMITS.noteDetail} value={contactRole} onChange={(e) => setContactRole(e.target.value)} placeholder="e.g. Plumber, cleaner, landlord" />
       </div>
       <div className="a-field half" style={extra("wifi")}>
         <label htmlFor="note-net">Network</label>
@@ -859,13 +939,13 @@ function NoteNew({ onSave }: { onSave: (card: { id: string; title: string; pill:
         <label htmlFor="note-where">Where they go</label>
         <input id="note-where" maxLength={LIMITS.noteDetail} value={where} onChange={(e) => setWhere(e.target.value)} placeholder="Alley behind the kitchen" />
       </div>
-      <div className="a-field half" style={extra("landlord")}>
+      <div className="a-field half" style={extra("contact-method")}>
         <label htmlFor="note-phone">Phone</label>
-        <input id="note-phone" maxLength={LIMITS.noteDetail} value={phone} onChange={(e) => setPhone(e.target.value)} />
+        <input id="note-phone" type="tel" maxLength={LIMITS.noteDetail} value={phone} onChange={(e) => setPhone(e.target.value)} />
       </div>
-      <div className="a-field half" style={extra("landlord-only")}>
+      <div className="a-field half" style={extra("contact-method")}>
         <label htmlFor="note-email">Email</label>
-        <input id="note-email" maxLength={LIMITS.noteDetail} value={email} onChange={(e) => setEmail(e.target.value)} />
+        <input id="note-email" type={type === "contacts" || type === "emergency" ? "email" : "text"} maxLength={LIMITS.noteDetail} value={email} onChange={(e) => setEmail(e.target.value)} />
       </div>
       <div className="a-field" style={extra("emergency")}>
         <label htmlFor="note-contact">Who to call</label>
@@ -875,42 +955,34 @@ function NoteNew({ onSave }: { onSave: (card: { id: string; title: string; pill:
         <label htmlFor="note-extra">Detail</label>
         <input id="note-extra" maxLength={LIMITS.noteDetail} value={detail} onChange={(e) => setDetail(e.target.value)} />
       </div>
+      </div>
       <div className="a-field">
         <label htmlFor="note-body">
-          Note <span className="need">Required</span>
+          Note <span className="a-field-optional">(optional if details are filled in)</span>
         </label>
         <textarea
           id="note-body"
-          rows={4}
+          rows={3}
           value={body}
           maxLength={LIMITS.noteBody}
           onChange={(e) => setBody(e.target.value)}
           placeholder={NOTE_BODY_HINT[type]}
         />
-        <p className="hint">Always here. Add the story after the type extras.</p>
         <span className="a-field-limit">{body.length}/{LIMITS.noteBody}</span>
       </div>
-      <div className="a-field half">
-        <label>Pin on This Hub</label>
-        <div className="a-seg" role="group" aria-label="Pin on This Hub">
-          <button type="button" className={cx(!pin && "is-on")} onClick={() => setPin(false)}>
-            Off
-          </button>
-          <button type="button" className={cx(pin && "is-on")} onClick={() => setPin(true)}>
-            Pin
-          </button>
-        </div>
-      </div>
-      <p className="a-window-note">Everyone in this commune can see the note. Admin-only notes are not supported yet.</p>
-      <div className="a-field-row">
-        <button className="a-btn" type="button" onClick={() => void save()} disabled={saving}>
-          {saving ? "Saving…" : "Save"}
-        </button>
-        <button className="a-btn ghost" type="button" onClick={closeWindow}>
+      <label className="note-editor-pin">
+        <input type="checkbox" checked={pin} onChange={(event) => setPin(event.target.checked)} />
+        <span>Pin this note<span className="note-editor-hint">Keep it at the top of the notes board.</span></span>
+      </label>
+      {error ? <p className="a-form-error" role="alert">{error}</p> : null}
+      <div className="a-field-row note-editor-actions">
+        <button className="a-btn ghost" type="button" disabled={saving} onClick={() => initial ? go("note", { note: initial.id }) : closeWindow()}>
           Cancel
         </button>
+        <button className="a-btn" type="submit" disabled={saving}>
+          {saving ? "Saving…" : initial ? "Save changes" : "Save"}
+        </button>
       </div>
-      {error ? <p className="a-form-error" role="alert">{error}</p> : null}
-    </section>
+    </form>
   );
 }

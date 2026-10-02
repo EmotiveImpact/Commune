@@ -17,10 +17,11 @@ export function Avatar({
 }) {
   const { you } = useApp();
   const photo = src ?? (tone === "maya" ? you.photo : undefined);
-  if (photo) {
+  const [failedPhoto, setFailedPhoto] = useState<string | null>(null);
+  if (photo && photo !== failedPhoto) {
     return (
       <span className={cx("avatar", "has-photo", tone, className)}>
-        <img src={photo} alt="" />
+        <img src={photo} alt="" onError={() => setFailedPhoto(photo)} />
       </span>
     );
   }

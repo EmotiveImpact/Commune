@@ -15,7 +15,8 @@ files in order using a database owner connection:
 9. `infra/neon/migrations/0008_managed_auth_uuid.sql`
 10. `infra/neon/migrations/0009_reminder_monthly_limits.sql`
 11. `infra/neon/migrations/0010_reminder_usage.sql`
-12. `infra/local/after-core.sql`
+12. `infra/neon/migrations/0012_invitation_email.sql`
+13. `infra/local/after-core.sql`
 
 `apps/local-api` serves `127.0.0.1:3002` with `DATABASE_URL` set to that
 database. The Vite app proxies `/api` to it on `localhost:3000`.
@@ -32,3 +33,10 @@ Nudge and Chase create real in-app notifications. Email outbox rows are
 suppressed locally, so no email is claimed or sent. Contributions and settled
 shares are confirmations recorded by the relevant admin/payer, not payment
 transfers; Stripe is not yet connected.
+
+Invitation emails now have a separate explicit send action. The local server
+returns an honest unavailable message unless server-only `RESEND_API_KEY`,
+`RESEND_FROM`, and `APP_URL` are configured. It still creates a real copyable
+invite link. Never point `APP_URL` at production while testing local invites:
+the email's HTTPS origin must serve this same database. Default local setup
+sends no email. Delivery service tests use a mocked provider and isolated DB.

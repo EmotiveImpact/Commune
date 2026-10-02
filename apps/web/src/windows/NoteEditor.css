@@ -1,0 +1,50 @@
+.note-editor-intro {
+  margin: 0 0 12px;
+  color: var(--ink-soft);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.note-editor-details {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0 16px;
+}
+
+.note-editor .a-field { align-content: start; }
+
+.note-editor-hint {
+  display: block;
+  margin: 4px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  font-weight: 400;
+  color: var(--ink-soft);
+}
+
+.note-editor-pin {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 12px 0;
+  font-size: 14px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.note-editor-pin input {
+  flex: 0 0 18px;
+  width: 18px;
+  height: 18px;
+  margin: 2px 0 0;
+  accent-color: var(--sage);
+}
+
+.note-editor .note-editor-actions {
+  justify-content: flex-end;
+}
+
+@media (max-width: 600px) {
+  .note-editor-details { grid-template-columns: minmax(0, 1fr); }
+  .note-editor .note-editor-actions > button { flex: 1; }
+}

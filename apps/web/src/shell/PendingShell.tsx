@@ -5,8 +5,7 @@ export function PendingShell() {
       <div className="a-app" aria-hidden="true">
         <aside className="a-side">
           <div className="a-brand">
-            <img className="a-logo" src="/logo.png" width={36} height={36} alt="" />
-            <span className="a-wordmark">Commune</span>
+            <span className="a-wordmark">commune.</span>
           </div>
           <div className="a-pending-nav">
             {Array.from({ length: 8 }, (_, index) => <div className="a-pending-line" key={index} />)}

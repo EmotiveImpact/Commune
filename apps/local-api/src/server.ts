@@ -2,6 +2,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from "node:ht
 import type { PoolClient } from "pg";
 import { createAccount, getUser, login, logout, setSessionCookie, type User } from "./auth.js";
 import { minor, pool, withActor } from "./db.js";
+import { InvitationEmailError, invitationMailConfig, sendInvitationEmail } from "../../reminder-worker/src/invitations.js";
 
 const host = "127.0.0.1";
 const port = Number(process.env.API_PORT ?? "3002");
@@ -676,6 +677,17 @@ route("GET", /^\/api\/invites\/([0-9a-f]{64})$/, async (req, res, match) => {
   send(res, { invite: row ? {
     communeName: row.commune_name, role: row.role, expiresAt: row.expires_at,
   } : null });
+});
+
+route("POST", /^\/api\/invitation-email$/, async (req, res) => {
+  const user = await actor(req);
+  const input = await body(req);
+  try {
+    send(res, await sendInvitationEmail(pool, user.id, text(input.token, "token", 64), invitationMailConfig()));
+  } catch (error) {
+    if (error instanceof InvitationEmailError) throw new ApiError(error.status, error.message);
+    throw error;
+  }
 });
 
 route("POST", /^\/api\/invites\/([0-9a-f]{64})\/accept$/, async (req, res, match) => {

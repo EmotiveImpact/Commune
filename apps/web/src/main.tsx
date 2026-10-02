@@ -6,6 +6,7 @@ import "./styles/shared.css";
 import "./styles/app.css";
 import "./styles/auth.css";
 import "./styles/overrides.css";
+import "@fontsource-variable/dm-sans/standard.css";
 
 const root = document.getElementById("root");
 if (!root) throw new Error("Missing #root");

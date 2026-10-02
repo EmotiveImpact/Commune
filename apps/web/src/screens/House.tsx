@@ -1,33 +1,7 @@
 import { useState } from "react";
 import { useApp } from "../state";
 import { Avatar, Pill } from "../ui/widgets";
-import { cx } from "../ui/cx";
-
-export function NotesScreen() {
-  const { go, hub, notes } = useApp();
-  const [filter, setFilter] = useState<"All" | "Pinned">("All");
-  const rows = hub.notes.filter((row) => filter === "All" || notes[row.note]?.kicker.toLowerCase().includes("pinned"));
-  return (
-    <>
-      <div className="a-toolbar">
-        <div className="a-filters">
-          {(["All", "Pinned"] as const).map((chip) => (
-            <button key={chip} className={cx("a-chip", filter === chip && "is-on")} type="button" onClick={() => setFilter(chip)}>{chip}</button>
-          ))}
-        </div>
-        <button className="a-btn" type="button" onClick={() => go("note-new")}>Add note</button>
-      </div>
-      <div className="a-panel">
-        {rows.map((row) => (
-          <button key={row.note} className="a-item a-item-plain" type="button" onClick={() => go("note", { note: row.note })}>
-            <div><strong>{row.title}</strong><div className="when">{row.when}</div></div>
-          </button>
-        ))}
-        {!rows.length ? <div className="a-empty" style={{ padding: 24 }}><h2>No notes yet.</h2><p>Keep Wi-Fi, bin day or other shared details here.</p></div> : null}
-      </div>
-    </>
-  );
-}
+export { NotesScreen } from "./Notes";
 
 export function MembersScreen() {
   const { hub, go, invites, revokeInvite } = useApp();

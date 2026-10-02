@@ -7,6 +7,7 @@ import {
   type NoteCard,
 } from "../data/household";
 import type { OperationItem } from "../data/operations";
+import { notePreview } from "../data/notePresentation";
 
 export type CurrencyCode = "GBP" | "USD" | "EUR";
 export type MemberRole = "admin" | "member";
@@ -278,7 +279,7 @@ export function hubFromSnapshot(
     go: "note" as const,
     note: note.id,
     title: note.title,
-    when: note.lede,
+    when: notePreview(note),
   }));
   return {
     id: commune.id,
@@ -321,9 +322,9 @@ export function hubFromSnapshot(
     })),
     moves,
     members,
-    activity: snapshot.expenses.slice(0, 8).map((expense, index) => ({
+    activity: snapshot.expenses.slice(0, 8).map((expense) => ({
       go: "expenses" as const,
-      cls: TONES[index % TONES.length],
+      cls: members.find(member => member.userId === expense.paidByUserId)?.cls ?? "jordan",
       ini: initialsOf(names.get(expense.paidByUserId) ?? "Member"),
       title: expense.title,
       when: `${names.get(expense.paidByUserId) ?? "Member"} logged an expense`,

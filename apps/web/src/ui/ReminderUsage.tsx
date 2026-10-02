@@ -7,7 +7,7 @@ export function reminderLimitReached(usage: Usage | null, recipientId: string): 
   );
 }
 
-export function ReminderUsageMeter({ usage }: { usage: Usage | null }) {
+export function ReminderUsageMeter({ usage, placement = "default" }: { usage: Usage | null; placement?: "default" | "sidebar" | "account" }) {
   if (!usage) return null;
   const full = usage.totalUsed >= usage.totalLimit;
   const next = usage.nextSlotAt ? new Date(usage.nextSlotAt) : null;
@@ -15,9 +15,16 @@ export function ReminderUsageMeter({ usage }: { usage: Usage | null }) {
     ? new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }).format(next)
     : null;
   return (
-    <details className="a-reminder-usage">
+    <details className={`a-reminder-usage a-reminder-usage--${placement}`} onKeyDown={(event) => {
+      if (event.key === "Escape") {
+        event.currentTarget.open = false;
+        event.currentTarget.querySelector("summary")?.focus();
+      }
+    }}>
       <summary aria-label={`Reminder allowance: ${usage.totalUsed} of ${usage.totalLimit} used in the last 30 days`}>
-        <span>Reminders</span><strong>{usage.totalUsed}/{usage.totalLimit}</strong>
+        {placement === "sidebar"
+          ? <span>{Math.max(0, usage.totalLimit - usage.totalUsed)} reminders left</span>
+          : <><span>Reminders</span><strong>{usage.totalUsed}/{usage.totalLimit}</strong></>}
       </summary>
       <div className="a-reminder-usage-details">
       <div className="a-reminder-usage-copy">

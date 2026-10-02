@@ -6,6 +6,7 @@ import { useApp } from "../state";
 import { cx } from "../ui/cx";
 import { LIMITS } from "../data/limits";
 import { CommuneLocationFields, type CommuneLocation } from "../ui/CommuneLocationFields";
+import { ReminderUsageMeter } from "../ui/ReminderUsage";
 
 export function SettingsScreen() {
   const {
@@ -23,6 +24,7 @@ export function SettingsScreen() {
     setAvatar,
     hub,
     places,
+    reminderUsage,
   } = useApp();
   return (
     <div className="a-set">
@@ -47,6 +49,7 @@ export function SettingsScreen() {
               />
             </div>
           </div>
+          <ReminderUsageMeter usage={reminderUsage} placement="account" />
         </div>
         <div className="a-set-card">
           <p className="a-set-plan-k">Local build</p>
