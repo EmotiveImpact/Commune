@@ -63,7 +63,7 @@ try {
   const parallel = await Promise.allSettled(Array.from({ length: 4 }, () => sendInvitationEmail(pool, actor, parallelToken, config)));
   assert.ok(parallel.some(result => result.status === "fulfilled"));
   assert.equal(calls.length, before + 1, "simultaneous sends dispatch only once");
-  await pool.query("UPDATE public.commune_members SET role='member' WHERE commune_id=$1 AND user_id=$2", [commune, actor]);
+  await asActor(c => c.query("UPDATE public.commune_members SET role='member' WHERE commune_id=$1 AND user_id=$2", [commune, actor]));
   await assert.rejects(sendInvitationEmail(pool, actor, parallelToken, config), e => e.status === 404, "former admins cannot send");
   console.log('Invitation email: authorization, provider failure/retry, deduplication, rate limit, expiry, token privacy and HTML escaping passed. No real email sent.');
 } finally {

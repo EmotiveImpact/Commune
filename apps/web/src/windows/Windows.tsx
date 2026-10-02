@@ -13,6 +13,7 @@ import { isNotePinned } from "../data/notePresentation";
 import "./NoteEditor.css";
 import { allocateExpense, type SplitMethod } from "../../../../packages/core/src/expenseSplit";
 import "./ExpenseEditor.css";
+import { SplitEditor } from "../ui/SplitEditor";
 
 const NOTE_TYPES = [
   ["wifi", "Wi-Fi"],
@@ -48,6 +49,10 @@ export function Windows() {
     selectedOperation,
     addNote,
     updateNote,
+    mutationPending,
+    contentLoading,
+    contentError,
+    refresh,
   } = useApp();
   const frameRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef(closeWindow);
@@ -86,6 +91,7 @@ export function Windows() {
   }, [isOpen]);
   useEffect(() => { if (window) frameRef.current?.focus(); }, [window]);
   if (!window || inlineNote) return null;
+  const waitingForRecord = contentLoading && ["expense", "expense-paid", "note", "note-edit", "operation", "operation-edit"].includes(window);
   const title =
     window === "expense" || window === "expense-paid"
       ? selectedExpense?.name ?? "Expense"
@@ -101,11 +107,14 @@ export function Windows() {
       <div ref={frameRef} tabIndex={-1} className={cx("a-window-frame", window === "add-expense" && "c-expense-frame")} role="dialog" aria-modal="true" aria-labelledby="commune-window-title">
         <header className="a-window-bar">
           <h2 id="commune-window-title">{title}</h2>
-          <button className="a-window-x" type="button" aria-label="Close" onClick={closeWindow}>
+          <button className="a-window-x" type="button" aria-label="Close" disabled={mutationPending} onClick={closeWindow}>
             <Icon name="close" size={16} />
           </button>
         </header>
         <div className="a-window-body">
+          {waitingForRecord ? contentError ? <div role="alert"><p>{contentError}</p>
+            <button className="a-btn" type="button" onClick={() => void refresh()}>Try again</button></div> :
+            <div className="c-window-record-loading" role="status" aria-label="Loading selected record"><span /><span /><span /></div> : <>
           {window === "notices" && <Notices />}
           {window === "reminder-preview" && <ReminderPreview />}
           {window === "add-expense" && <AddExpense />}
@@ -125,6 +134,7 @@ export function Windows() {
           {window === "operation" && <OperationView />}
           {window === "operation-new" && <OperationNew />}
           {window === "operation-edit" && <OperationEdit />}
+          </>}
         </div>
       </div>
     </div>
@@ -212,14 +222,20 @@ function AddExpense() {
     you,
     session,
     recordExpense,
+    splitTemplates,
+    expenseTemplateId,
   } = useApp();
   const members = hub.members.flatMap((member) => member.userId ? [{ ...member, userId: member.userId }] : []);
+  const initialTemplate = splitTemplates.find(template => template.id === expenseTemplateId && !template.archivedAt && template.participants.every(item => members.some(member => member.userId === item.userId)));
   const [what, setWhat] = useState("");
-  const [amount, setAmount] = useState("");
+  const [amount, setAmount] = useState(() => initialTemplate?.method === "Exact" ? (initialTemplate.participants.reduce((total, item) => total + (parseMoney(item.value) ?? 0), 0) / 100).toFixed(2) : "");
   const [due, setDue] = useState("");
-  const [includedIds, setIncludedIds] = useState<string[]>(() => members.map((member) => member.userId));
-  const [method, setMethod] = useState<SplitMethod>("Equal");
-  const [values, setValues] = useState<Record<string, string>>({});
+  const [payer, setPayer] = useState(session?.userId ?? "");
+  const [category, setCategory] = useState("Other");
+  const [templateId,setTemplateId] = useState(initialTemplate?.id ?? "");
+  const [includedIds, setIncludedIds] = useState<string[]>(() => initialTemplate?.participants.map(item => item.userId) ?? members.map(member => member.userId));
+  const [method, setMethod] = useState<SplitMethod>(initialTemplate?.method ?? "Equal");
+  const [values, setValues] = useState<Record<string, string>>(() => Object.fromEntries(initialTemplate?.participants.map(item => [item.userId, item.value]) ?? []));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const amountMinor = parseMoney(amount);
@@ -239,8 +255,8 @@ function AddExpense() {
       setError("Enter a valid amount of at least one penny per selected person.");
       return;
     }
-    if (!included.length || !included.some((member) => member.userId === session?.userId)) {
-      setError("Include yourself in the split.");
+    if (!included.length) {
+      setError("Choose at least one person in the split.");
       return;
     }
     if (splitError) { setError(splitError); return; }
@@ -253,6 +269,8 @@ function AddExpense() {
         dueOn: due || null,
         shareUserIds: included.map((member) => member.userId),
         allocations,
+        paidByUserId:payer,
+        category,
       });
       go("expense", { expense: id });
     } catch (cause) {
@@ -281,6 +299,7 @@ function AddExpense() {
           type="text"
           value={what}
           maxLength={LIMITS.expenseTitle}
+          disabled={saving}
           onChange={(e) => setWhat(e.target.value)}
           placeholder="e.g. Rent"
         />
@@ -288,52 +307,37 @@ function AddExpense() {
       </div>
       <div className="a-field half">
         <label htmlFor="exp-amt">Amount ({hub.currency})</label>
-        <input id="exp-amt" type="text" inputMode="decimal" maxLength={LIMITS.money} value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" />
+        <input id="exp-amt" type="text" inputMode="decimal" maxLength={LIMITS.money} value={amount} disabled={saving} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" />
       </div>
       <div className="a-field half">
         <label htmlFor="exp-who">Paid by</label>
-        <input id="exp-who" value={you.name} readOnly aria-readonly="true" />
-        <small>You’re recording an expense you paid.</small>
+        <select id="exp-who" value={payer} onChange={event=>setPayer(event.target.value)} disabled={saving || hub.role!=="admin"}>{members.map(member=><option key={member.userId} value={member.userId}>{member.name}</option>)}</select>
+        <small>{hub.role==="admin" ? "Admins can record on someone’s behalf; the actual payer confirms receipt." : "You’re recording an expense you paid."}</small>
       </div>
+      <div className="a-field"><label htmlFor="exp-category">Category</label><select id="exp-category" value={category} disabled={saving} onChange={event=>setCategory(event.target.value)}>{["Other","Rent","Bills","Groceries","Travel"].map(choice=><option key={choice}>{choice}</option>)}</select></div>
+      {splitTemplates.some(template=>!template.archivedAt) && <div className="a-field"><label htmlFor="exp-template">Saved split (optional)</label><select id="exp-template" value={templateId} disabled={saving} onChange={event=>{
+        const id=event.target.value;setTemplateId(id);const template=splitTemplates.find(item=>item.id===id);
+        if(!template) {setIncludedIds(members.map(member=>member.userId));setMethod("Equal");setValues({});return;}
+        if(template.participants.some(item=>!members.some(member=>member.userId===item.userId))) {setError("This template includes a former member. Update it in Templates first.");setTemplateId("");return;}
+        setIncludedIds(template.participants.map(item=>item.userId));setMethod(template.method);setValues(Object.fromEntries(template.participants.map(item=>[item.userId,item.value])));setError("");
+        if(template.method==="Exact" && !amount.trim()) {const sum=template.participants.reduce((total,item)=>total+(parseMoney(item.value) ?? 0),0);setAmount((sum/100).toFixed(2));}
+      }}><option value="">Custom split</option>{splitTemplates.filter(template=>!template.archivedAt).map(template=><option key={template.id} value={template.id}>{template.name} · {template.method}</option>)}</select></div>}
       <div className="a-field">
         <label htmlFor="exp-due">Due date (optional)</label>
-        <input id="exp-due" type="date" value={due} onChange={(e) => setDue(e.target.value)} />
+        <input id="exp-due" type="date" value={due} disabled={saving} onChange={(e) => setDue(e.target.value)} />
         <p className="a-window-note">Nudge becomes available to the payer once this date arrives.</p>
       </div>
-      <div className="a-field">
-        <strong>How should we split it?</strong>
-        <div className="c-split-methods" role="group" aria-label="Split method">{(["Equal", "Exact", "Percentage", "Shares"] as const).map(choice => <button type="button" key={choice} disabled={saving} aria-pressed={method === choice} onClick={() => { setMethod(choice); setError(""); if (choice === "Shares") setValues(Object.fromEntries(included.map(member => [member.userId, "1"]))); }}>{choice}</button>)}</div>
-        {members.map((member) => {
-          const isSelf = member.userId === session?.userId;
-          return (
-            <div className="a-settle-row c-split-person" key={member.userId}>
-              <input
-                type="checkbox"
-                checked={includedIds.includes(member.userId)}
-                disabled={isSelf || saving}
-                aria-label={`Include ${member.name}`}
-                onChange={(event) => setIncludedIds((current) => event.target.checked
-                  ? [...current, member.userId]
-                  : current.filter((id) => id !== member.userId))}
-              />
-              <Avatar tone={member.cls} initials={member.ini} /><span className="c-split-name">{member.name}{isSelf ? " (you)" : ""}</span>
-              {method !== "Equal" && includedIds.includes(member.userId) && <input className="c-split-value" aria-label={`${member.name} ${method.toLowerCase()}`} inputMode="decimal" maxLength={LIMITS.money} value={values[member.userId] ?? ""} disabled={saving} placeholder={method === "Percentage" ? "%" : method === "Shares" ? "1" : "0.00"} onChange={event => setValues(current => ({ ...current, [member.userId]: event.target.value }))} />}
-              {allocations.find(share => share.userId === member.userId) && <span className="amt">{formatMoney(allocations.find(share => share.userId === member.userId)!.amountMinor, hub.currency)}</span>}
-            </div>
-          );
-        })}
-        <div className="when">{amount && splitError ? splitError : method === "Percentage" ? "Percentages total 100%." : "Every penny is included in the split."}</div>
-        </div>
+      <SplitEditor members={members} includedIds={includedIds} onIncludedIds={setIncludedIds} method={method} onMethod={setMethod} values={values} onValues={setValues} amountMinor={amountMinor} currency={hub.currency} disabled={saving} />
       {error ? <p className="a-form-error" role="alert">{error}</p> : null}
       <div className="a-field-row">
         <button className="a-btn" type="button" onClick={() => void save()} disabled={saving}>
           {saving ? "Saving…" : "Save expense"}
         </button>
-        <button className="a-btn ghost" type="button" onClick={closeWindow}>
+        <button className="a-btn ghost" type="button" disabled={saving} onClick={closeWindow}>
           Cancel
         </button>
       </div>
-    </section><aside className="c-expense-summary" aria-label="Split summary"><h3>The split, at a glance</h3><div><span>Total</span><strong>{formatMoney(amountMinor ?? 0, hub.currency)}</strong></div><div><span>Your share</span><strong>{formatMoney(allocations.find(share => share.userId === session?.userId)?.amountMinor ?? 0, hub.currency)}</strong></div><p>Paid by {you.name}. Each person will see their exact share.</p><p>Commune records who paid and who owes what. It doesn’t move money.</p></aside></div>
+    </section><aside className="c-expense-summary" aria-label="Split summary"><h3>The split, at a glance</h3><div><span>Total</span><strong>{formatMoney(amountMinor ?? 0, hub.currency)}</strong></div><div><span>Your share</span><strong>{formatMoney(allocations.find(share => share.userId === session?.userId)?.amountMinor ?? 0, hub.currency)}</strong></div><p>Paid by {members.find(member=>member.userId===payer)?.name ?? you.name}. Each person will see their exact share.</p><p>Commune records who paid and who owes what. It doesn’t move money.</p></aside></div>
   );
 }
 

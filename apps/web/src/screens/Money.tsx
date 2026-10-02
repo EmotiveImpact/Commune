@@ -1,11 +1,12 @@
-import { useState, type FormEvent } from "react";
+import { useState } from "react";
 import { useApp } from "../state";
 import { Avatar, Pill } from "../ui/widgets";
 import { cx } from "../ui/cx";
-import { LIMITS } from "../data/limits";
 import { RecipientReminderCount, reminderLimitReached } from "../ui/ReminderUsage";
-import { Plus, ReceiptText, ChevronRight, HandCoins } from "lucide-react";
+import { Plus, ReceiptText, ChevronRight, Search } from "lucide-react";
+import { LIMITS } from "../data/limits";
 import { ReminderConfirm } from "../ui/ReminderConfirm";
+import { CalendarDate } from "../ui/CalendarDate";
 import "./Money.css";
 
 function formatMoney(minor: number, currency: string): string {
@@ -15,16 +16,9 @@ function formatMoney(minor: number, currency: string): string {
   }).format(minor / 100);
 }
 
-function parseMoney(value: string): number | null {
-  const clean = value.trim();
-  if (!/^\d+(?:\.\d{1,2})?$/.test(clean)) return null;
-  const [pounds, pennies = ""] = clean.split(".");
-  const minor = Number(pounds) * 100 + Number(pennies.padEnd(2, "0"));
-  return Number.isSafeInteger(minor) && minor > 0 ? minor : null;
-}
-
 export function ExpensesScreen() {
-  const { go, expenses, searchQuery, setSearchQuery } = useApp();
+  const { go, expenses, session, hub } = useApp();
+  const [searchQuery, setSearchQuery] = useState("");
   const [filter, setFilter] = useState<"All" | "Open" | "Settled">("All");
   const needle = searchQuery.trim().toLocaleLowerCase();
   const rows = expenses
@@ -51,27 +45,26 @@ export function ExpensesScreen() {
               key={chip}
               className={cx("a-chip", filter === chip && "is-on")}
               type="button"
+              aria-pressed={filter === chip}
               onClick={() => setFilter(chip)}
             >
               {chip}
             </button>
           ))}
         </div>
-        {needle ? (
-          <button className="a-chip is-on" type="button" onClick={() => setSearchQuery("")}>
-            Search: {searchQuery} ×
-          </button>
-        ) : null}
+        <label className="c-record-filter"><Search size={16} aria-hidden="true" /><input type="search"
+          aria-label="Filter expenses in this commune" placeholder="Filter expenses…" maxLength={LIMITS.search}
+          value={searchQuery} onChange={event => setSearchQuery(event.target.value)} /></label>
         <button className="a-btn" type="button" onClick={() => go("add-expense")}>
           <Plus size={16} aria-hidden="true" /> Add expense
         </button>
       </div>
+      <p className="c-scope-label">{rows.length} {rows.length === 1 ? "expense" : "expenses"} · {formatMoney(rows.reduce((sum, row) => sum + row.amountMinor, 0), hub.currency)} total recorded in this view</p>
       <section className="c-expense-list" aria-label="Shared expenses">
         {rows.map(row => <button className="c-expense-entry" type="button" key={row.id} onClick={() => go("expense", { expense: row.id })}>
-          <span className="c-money-icon"><ReceiptText size={19} strokeWidth={1.5} /></span>
-          <span className="c-expense-copy"><strong>{row.name}</strong><small>{row.paidBy} · {row.category}{row.dueOn ? ` · due ${row.due}` : ""}</small></span>
-          <span className="c-expense-amount"><strong>{row.amount}</strong><Pill tone={row.status}>{row.statusLabel}</Pill></span>
-          <ChevronRight size={16} aria-hidden="true" />
+          <span className="c-expense-card-head"><span className="c-money-icon"><ReceiptText size={19} strokeWidth={1.5} aria-hidden="true" /></span><span className="c-expense-copy"><strong>{row.name}</strong></span><Pill tone={row.status}>{row.statusLabel}</Pill></span>
+          <span className="c-expense-amount"><span><small>Total paid</small><strong>{row.amount}</strong></span><span className="c-expense-personal"><small>Your share</small><span>{row.shares.some(share => share.userId === session?.userId) ? formatMoney(row.shares.find(share => share.userId === session?.userId)!.amountMinor, hub.currency) : "Not included"}</span></span></span>
+          <span className="c-expense-card-foot">{row.dueOn && <CalendarDate date={row.dueOn} label="Due" />}<span className="c-expense-footer-copy"><span>Paid by {row.paidBy}</span><small>{row.category}{row.dueOn ? ` · due ${row.due}` : ""}</small></span><ChevronRight size={16} aria-hidden="true" /></span>
         </button>)}
         {!rows.length && <p className="c-money-empty">No expenses match this view. Try another filter or search.</p>}
       </section>
@@ -171,6 +164,7 @@ export function SettleScreen() {
             : undefined;
           const cooldown = target?.lastSentAt && Date.now() - Date.parse(target.lastSentAt) < 72 * 60 * 60 * 1000;
           const quotaReached = reminderLimitReached(reminderUsage, share.userId);
+          const reminderReason = quotaReached ? "Reminder allowance reached." : cooldown ? `Next nudge ${new Date(Date.parse(target!.lastSentAt!) + 72 * 60 * 60 * 1000).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}.` : !target ? (expense.dueOn ? `Nudge available from ${expense.due}.` : "Add a due date to enable reminders.") : "";
           return (
             <div
               className="a-move"
@@ -187,14 +181,13 @@ export function SettleScreen() {
               <div className="amt">{formatMoney(outstanding, hub.currency)}</div>
               {receiving ? (
                 <div className="a-row-actions">
-                  {target && !cooldown && !quotaReached ? (
-                    <button className="a-btn nudge" type="button" disabled={pendingId !== null} onClick={() => { setError(""); setReminderFor({ id: share.id, name: debtor?.name ?? "your housemate", subject: expense.name, amount: formatMoney(outstanding, hub.currency) }); }}>
+                    <button className="a-btn nudge" type="button" disabled={pendingId !== null || !!reminderReason} title={reminderReason || undefined} onClick={() => { setError(""); setReminderFor({ id: share.id, name: debtor?.name ?? "your housemate", subject: expense.name, amount: formatMoney(outstanding, hub.currency) }); }}>
                       Nudge
                     </button>
-                  ) : null}
                   <button className="a-btn ghost" type="button" disabled={pendingId !== null} onClick={() => void confirm(share.id)}>
                     Confirm received
                   </button>
+                  {reminderReason && <p className="c-action-hint">{reminderReason}</p>}
                 </div>
               ) : (
                 <span className="sub">Awaiting payer confirmation</span>
@@ -211,7 +204,7 @@ export function SettleScreen() {
 }
 
 export function SettleEvenScreen() {
-  const { go, hub, session } = useApp();
+  const { go, session } = useApp();
   if (!session?.hasHubs) {
     return (
       <div className="a-empty">
@@ -222,198 +215,9 @@ export function SettleEvenScreen() {
     );
   }
   return (
-    <div className="a-empty">
-      <h2>You’re even.</h2>
-      <p>{hub.name} has no outstanding shares for you. Add an expense when something is shared.</p>
-      <button className="a-btn" type="button" onClick={() => go("add-expense", { hub: hub.id })}>
-        Add expense
-      </button>
-    </div>
+    <SettleScreen />
   );
 }
 
-export function RecurringScreen() {
-  const { go } = useApp();
-  return (
-    <div className="a-empty">
-      <h2>Recurring bills are not enabled yet.</h2>
-      <p>New expenses are one-off entries. Nothing will be created or charged automatically.</p>
-      <button className="a-btn" type="button" onClick={() => go("add-expense")}>Add a one-off expense</button>
-    </div>
-  );
-}
-
-export function FundsScreen() {
-  const {
-    hub, session, funds, reminderTargets, reminderUsage,
-    createFund, pledgeFund, recordFundContribution, sendReminder,
-  } = useApp();
-  const [newFundOpen, setNewFundOpen] = useState(false);
-  const [fundName, setFundName] = useState("");
-  const [target, setTarget] = useState("");
-  const [pledgeFor, setPledgeFor] = useState<string | null>(null);
-  const [pledgeAmount, setPledgeAmount] = useState("");
-  const [pledgeDue, setPledgeDue] = useState("");
-  const [contributionFor, setContributionFor] = useState<string | null>(null);
-  const [contributionAmount, setContributionAmount] = useState("");
-  const [pending, setPending] = useState(false);
-  const [error, setError] = useState("");
-  const [message, setMessage] = useState("");
-  const isAdmin = hub.role === "admin";
-
-  async function run(action: () => Promise<unknown>, success: string) {
-    setError("");
-    setMessage("");
-    setPending(true);
-    try {
-      await action();
-      setMessage(success);
-      setNewFundOpen(false);
-      setPledgeFor(null);
-      setContributionFor(null);
-      setFundName("");
-      setTarget("");
-      setPledgeAmount("");
-      setPledgeDue("");
-      setContributionAmount("");
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "The change could not be saved.");
-    } finally {
-      setPending(false);
-    }
-  }
-
-  function submitFund(event: FormEvent) {
-    event.preventDefault();
-    const targetMinor = target.trim() ? parseMoney(target) : null;
-    if (!fundName.trim() || (target.trim() && targetMinor === null)) {
-      setError("Enter a fund name and a valid target amount.");
-      return;
-    }
-    void run(() => createFund(fundName.trim(), targetMinor ?? undefined), "Fund created.");
-  }
-
-  function submitPledge(event: FormEvent, fundId: string) {
-    event.preventDefault();
-    const amountMinor = parseMoney(pledgeAmount);
-    if (amountMinor === null || !pledgeDue) {
-      setError("Enter a pledge amount and a due date.");
-      return;
-    }
-    void run(() => pledgeFund(fundId, amountMinor, pledgeDue), "Your pledge was saved for this commune.");
-  }
-
-  function submitContribution(event: FormEvent, commitmentId: string, outstanding: number) {
-    event.preventDefault();
-    const amountMinor = parseMoney(contributionAmount);
-    if (amountMinor === null || amountMinor > outstanding) {
-      setError(`Enter an amount up to ${formatMoney(outstanding, hub.currency)}.`);
-      return;
-    }
-    void run(
-      () => recordFundContribution(commitmentId, amountMinor),
-      "Contribution recorded. Commune did not take a payment.",
-    );
-  }
-
-  if (!hub.id) {
-    return (
-      <div className="a-empty">
-        <h2>No commune yet.</h2>
-        <p>Create one before setting up a fund.</p>
-      </div>
-    );
-  }
-
-  return (
-    <>
-      <div className="a-toolbar">
-        {isAdmin ? (
-          <button className="a-btn" type="button" onClick={() => setNewFundOpen((open) => !open)}>
-            {newFundOpen ? "Cancel" : "Create fund"}
-          </button>
-        ) : null}
-      </div>
-      {error ? <p className="a-form-error" role="alert">{error}</p> : null}
-      {message ? <p className="a-window-note" role="status">{message}</p> : null}
-      {newFundOpen ? (
-        <form className="a-panel" onSubmit={submitFund}>
-          <div className="a-field"><label htmlFor="fund-name">Fund name</label><input id="fund-name" value={fundName} onChange={(event) => setFundName(event.target.value)} maxLength={LIMITS.fundName} required /><span className="a-field-limit">{fundName.length}/{LIMITS.fundName}</span></div>
-          <div className="a-field"><label htmlFor="fund-target">Target (optional)</label><input id="fund-target" value={target} onChange={(event) => setTarget(event.target.value)} inputMode="decimal" maxLength={LIMITS.money} placeholder="0.00" /></div>
-          <button className="a-btn" type="submit" disabled={pending}>Save fund</button>
-        </form>
-      ) : null}
-      {!funds.length ? (
-        <div className="a-empty">
-          <h2>No fund yet.</h2>
-          <p>{isAdmin ? "Create a fund, then members can pledge to it." : "An admin can create a fund for this commune."}</p>
-        </div>
-      ) : funds.map((fund) => {
-        const myPledge = fund.commitments.find((commitment) => commitment.userId === session?.userId);
-        return (
-          <section className="a-panel c-fund-card" key={fund.id} aria-label={fund.name}>
-            <div className="a-fund-hero">
-              <div>
-                <span className="c-fund-title"><HandCoins size={18} strokeWidth={1.5} aria-hidden="true" />{fund.name}</span>
-                <strong>{formatMoney(fund.contributedMinor ?? 0, hub.currency)}</strong>
-                <p>{fund.targetMinor !== null ? `Target ${formatMoney(fund.targetMinor, hub.currency)}` : "No target set"} · recorded contributions, not money held by Commune</p>
-              </div>
-              <Pill tone="sage">{fund.commitments.length} pledge{fund.commitments.length === 1 ? "" : "s"}</Pill>
-            </div>
-            {fund.targetMinor !== null && fund.targetMinor > 0 && <div className="c-fund-progress">
-              <div role="progressbar" aria-label={`${fund.name} target progress`} aria-valuemin={0} aria-valuemax={fund.targetMinor} aria-valuenow={Math.min(fund.contributedMinor ?? 0, fund.targetMinor)} aria-valuetext={`${formatMoney(fund.contributedMinor ?? 0, hub.currency)} recorded of ${formatMoney(fund.targetMinor, hub.currency)}`}><span style={{ width: `${Math.min(100, ((fund.contributedMinor ?? 0) / fund.targetMinor) * 100)}%` }} /></div>
-              <small>{formatMoney(Math.max(0, fund.targetMinor - (fund.contributedMinor ?? 0)), hub.currency)} to target</small>
-            </div>}
-            {fund.commitments.map((commitment) => {
-              const member = hub.members.find((item) => item.userId === commitment.userId);
-              const outstanding = commitment.amountMinor - commitment.contributedMinor;
-              const reminder = reminderTargets.find((item) => item.kind === "chase" && item.sourceId === commitment.id);
-              const cooldown = reminder?.lastSentAt && Date.now() - Date.parse(reminder.lastSentAt) < 72 * 60 * 60 * 1000;
-              const quotaReached = reminderLimitReached(reminderUsage, commitment.userId);
-              return (
-                <div className="a-settle-row" key={commitment.id}>
-                  <Avatar tone="house" initials={member?.ini ?? "?"} />
-                  <div style={{ flex: 1 }}>
-                    <strong>{member?.name ?? "Member"}</strong>
-                    <div className="when">Pledged {formatMoney(commitment.amountMinor, hub.currency)} · due {commitment.dueOn} · recorded {formatMoney(commitment.contributedMinor, hub.currency)}</div>
-                    {isAdmin && (reminder || (reminderUsage?.recipientUsage[commitment.userId] ?? 0) > 0) ? (
-                      <RecipientReminderCount usage={reminderUsage} recipientId={commitment.userId} />
-                    ) : null}
-                    {contributionFor === commitment.id && isAdmin && outstanding > 0 ? (
-                      <form className="a-field-row" onSubmit={(event) => submitContribution(event, commitment.id, outstanding)}>
-                        <input aria-label={`Contribution from ${member?.name ?? "member"}`} value={contributionAmount} onChange={(event) => setContributionAmount(event.target.value)} inputMode="decimal" maxLength={LIMITS.money} placeholder="0.00" />
-                        <button className="a-btn" type="submit" disabled={pending}>Record</button>
-                      </form>
-                    ) : null}
-                  </div>
-                  <Pill tone={outstanding ? "open" : "settled"}>{outstanding ? formatMoney(outstanding, hub.currency) + " due" : "Paid"}</Pill>
-                  {isAdmin && outstanding > 0 ? (
-                    <div className="a-row-actions">
-                      <button className="a-btn ghost" type="button" disabled={pending} onClick={() => setContributionFor(contributionFor === commitment.id ? null : commitment.id)}>Record contribution</button>
-                      {reminder && !cooldown && !quotaReached ? (
-                        <button className="a-btn nudge" type="button" disabled={pending} onClick={() => void run(() => sendReminder("chase", commitment.id), "Chase sent in Commune.")}>Chase</button>
-                      ) : null}
-                    </div>
-                  ) : null}
-                </div>
-              );
-            })}
-            {!myPledge ? (
-              <div className="a-settle-row">
-                {pledgeFor === fund.id ? (
-                  <form className="a-field-row" onSubmit={(event) => submitPledge(event, fund.id)}>
-                    <input aria-label="Your pledge amount" value={pledgeAmount} onChange={(event) => setPledgeAmount(event.target.value)} inputMode="decimal" maxLength={LIMITS.money} placeholder="Amount, e.g. 25.00" />
-                    <input aria-label="Pledge due date" type="date" value={pledgeDue} onChange={(event) => setPledgeDue(event.target.value)} />
-                    <button className="a-btn" type="submit" disabled={pending}>Save pledge</button>
-                  </form>
-                ) : (
-                  <button className="a-btn ghost" type="button" onClick={() => setPledgeFor(fund.id)}>Make a pledge</button>
-                )}
-              </div>
-            ) : null}
-          </section>
-        );
-      })}
-    </>
-  );
-}
+export { RecurringScreen } from "./Recurring";
+export { FundsScreen } from "./Funds";

@@ -114,7 +114,7 @@
 .commune-auth-alert {
   margin: 0 0 18px;
   padding: 12px 14px;
-  border-radius: 14px;
+  border-radius: var(--radius-surface);
   background: #f8eadc;
   color: #7a3e1d;
   font-size: 0.875rem;
@@ -136,7 +136,7 @@
 .commune-auth-field input {
   height: 42px;
   padding: 0 14px;
-  border-radius: 12px;
+  border-radius: var(--radius-control);
   border: 1px solid rgba(23, 27, 36, 0.14);
   background: #f8f5f0;
   color: #171b24;
@@ -185,7 +185,7 @@
   width: 100%;
   height: 42px;
   padding: 0 18px;
-  border-radius: 999px;
+  border-radius: var(--radius-control);
   border: 0;
   background: #1a1e2b;
   color: #fff;

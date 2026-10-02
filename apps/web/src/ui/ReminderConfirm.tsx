@@ -18,7 +18,7 @@ export function ReminderConfirm({ name, subject, amount, remaining, pending, err
     <h2 id="reminder-title">A gentle reminder for {name}</h2>
     <p className="c-reminder-message">Remind {name} about {amount} outstanding for {subject}.</p>
     <p className="c-reminder-help">This sends a notification in Commune. Email delivery depends on their email preferences and the connected service.</p>
-    {remaining !== null && <p className="c-reminder-help">{remaining} reminders left in your allowance. Each share has a 72-hour cooldown.</p>}
+    {remaining !== null && <p className="c-reminder-help">{remaining} reminders left in your allowance. Each reminder has a 72-hour cooldown.</p>}
     {error && <p className="a-form-error" role="alert">{error}</p>}
     <div className="a-field-row"><button className="a-btn" disabled={pending || remaining === 0} onClick={onSend}>{pending ? "Sending…" : "Send reminder"}</button><button className="a-btn ghost" disabled={pending} onClick={onClose}>Cancel</button></div>
   </dialog>;

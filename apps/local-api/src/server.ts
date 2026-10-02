@@ -1,7 +1,7 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import type { PoolClient } from "pg";
 import { createAccount, getUser, login, logout, setSessionCookie, type User } from "./auth.js";
-import { minor, pool, withActor } from "./db.js";
+import { pool, withActor } from "./db.js";
 import { InvitationEmailError, invitationMailConfig, sendInvitationEmail } from "../../reminder-worker/src/invitations.js";
 
 const host = "127.0.0.1";
@@ -70,19 +70,6 @@ function isoDate(value: unknown, optional = false): string | null {
     throw new ApiError(400, "Invalid dueOn");
   }
   return value;
-}
-
-function dateOnly(value: unknown): string | null {
-  if (value == null) return null;
-  // node-postgres parses DATE as local midnight. Converting that instant to
-  // UTC can shift the calendar day (for example during British Summer Time).
-  if (value instanceof Date) {
-    const year = value.getFullYear();
-    const month = String(value.getMonth() + 1).padStart(2, "0");
-    const day = String(value.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
-  }
-  return String(value).slice(0, 10);
 }
 
 function optionalText(value: unknown, field: string, max: number): string {
@@ -219,10 +206,10 @@ async function listCommunes(user: User) {
       SELECT c.id, c.name, c.kind, c.currency, c.address,
         c.destination, c.stay_name, c.stay_address, m.role,
         (SELECT count(*)::integer FROM public.commune_members mm
-         WHERE mm.commune_id = c.id) AS member_count
+         WHERE mm.commune_id = c.id AND mm.active) AS member_count
       FROM public.communes c
       JOIN public.commune_members m ON m.commune_id = c.id
-      WHERE m.user_id = auth.user_id()
+      WHERE m.user_id = auth.user_id() AND m.active
       ORDER BY c.created_at DESC
     `);
     return { communes: rows.map((row) => ({
@@ -235,140 +222,12 @@ async function listCommunes(user: User) {
 }
 
 async function snapshot(user: User, communeId: string) {
-  return withActor(user.id, async (client) => {
-    const communeResult = await client.query(`
-      SELECT c.id, c.name, c.kind, c.currency, c.address,
-        c.destination, c.stay_name, c.stay_address, m.role
-      FROM public.communes c
-      JOIN public.commune_members m ON m.commune_id = c.id
-      WHERE c.id = $1 AND m.user_id = auth.user_id()
-    `, [communeId]);
-    if (!communeResult.rows[0]) throw new ApiError(404, "Commune not found");
-    const membersResult = await client.query(
-      "SELECT id, name, email, role FROM public.member_profiles($1)", [communeId]);
-    const expenseResult = await client.query(`
-      SELECT id, title, amount_minor, paid_by_user_id, due_on, created_at
-      FROM public.expenses WHERE commune_id = $1 ORDER BY created_at DESC
-    `, [communeId]);
-    const shareResult = await client.query(`
-      SELECT s.id, s.expense_id, s.user_id, s.amount_minor,
-        s.settled_minor, s.settled_at
-      FROM public.expense_shares s
-      JOIN public.expenses e ON e.id = s.expense_id
-      WHERE e.commune_id = $1
-    `, [communeId]);
-    const fundResult = await client.query(`
-      SELECT id, name, target_minor, created_by, created_at
-      FROM public.funds WHERE commune_id = $1 ORDER BY created_at DESC
-    `, [communeId]);
-    const commitmentResult = await client.query(`
-      SELECT c.id, c.fund_id, c.user_id, c.amount_minor, c.due_on,
-        coalesce(sum(fc.amount_minor), 0)::bigint AS contributed_minor
-      FROM public.fund_commitments c
-      JOIN public.funds f ON f.id = c.fund_id
-      LEFT JOIN public.fund_contributions fc ON fc.commitment_id = c.id
-      WHERE f.commune_id = $1
-      GROUP BY c.id
-    `, [communeId]);
-    const notificationResult = await client.query(`
-      SELECT n.id, n.commune_id, n.created_at, n.read_at,
-        r.kind, r.source_id, r.amount_minor, r.sender_user_id,
-        coalesce(e.title, f.name) AS label
-      FROM public.notifications n
-      JOIN public.reminders r ON r.id = n.reminder_id
-      LEFT JOIN public.expense_shares s
-        ON r.kind = 'nudge' AND s.id = r.source_id
-      LEFT JOIN public.expenses e ON e.id = s.expense_id
-      LEFT JOIN public.fund_commitments c
-        ON r.kind = 'chase' AND c.id = r.source_id
-      LEFT JOIN public.funds f ON f.id = c.fund_id
-      WHERE n.commune_id = $1 AND n.recipient_user_id = auth.user_id()
-      ORDER BY n.created_at DESC
-    `, [communeId]);
-    const targetResult = await client.query(
-      "SELECT * FROM public.list_reminder_targets($1)", [communeId]);
-    const noteResult = await client.query(`
-      SELECT id, title, pill, kicker, lede, body, facts
-      FROM public.commune_notes WHERE commune_id = $1 ORDER BY created_at DESC
-    `, [communeId]);
-    const operationResult = await client.query(`
-      SELECT id, kind, category, title, date, time, all_day,
-        assignee, rotation, last_done, repeat, status, notes
-      FROM public.commune_operations WHERE commune_id = $1
-      ORDER BY date, time NULLS LAST
-    `, [communeId]);
-
-    const members = membersResult.rows.map((row) => ({
-      userId: row.id, name: row.name, email: row.email, role: row.role,
-    }));
-    const names = new Map<string, string>(members.map((member) => [member.userId, member.name]));
-    const sharesByExpense = new Map<string, unknown[]>();
-    for (const row of shareResult.rows) {
-      const shares = sharesByExpense.get(row.expense_id) ?? [];
-      shares.push({
-        id: row.id, userId: row.user_id, amountMinor: minor(row.amount_minor),
-        settledMinor: minor(row.settled_minor), settledAt: row.settled_at,
-      });
-      sharesByExpense.set(row.expense_id, shares);
-    }
-    const commitmentsByFund = new Map<string, unknown[]>();
-    for (const row of commitmentResult.rows) {
-      const commitments = commitmentsByFund.get(row.fund_id) ?? [];
-      commitments.push({
-        id: row.id, userId: row.user_id, amountMinor: minor(row.amount_minor),
-        dueOn: dateOnly(row.due_on), contributedMinor: minor(row.contributed_minor),
-      });
-      commitmentsByFund.set(row.fund_id, commitments);
-    }
-    return {
-      commune: {
-        id: communeResult.rows[0].id, name: communeResult.rows[0].name,
-        kind: communeResult.rows[0].kind, currency: communeResult.rows[0].currency,
-        address: communeResult.rows[0].address,
-        destination: communeResult.rows[0].destination,
-        stayName: communeResult.rows[0].stay_name,
-        stayAddress: communeResult.rows[0].stay_address,
-        role: communeResult.rows[0].role,
-      },
-      members,
-      expenses: expenseResult.rows.map((row) => ({
-        id: row.id, title: row.title, amountMinor: minor(row.amount_minor),
-        paidByUserId: row.paid_by_user_id, dueOn: dateOnly(row.due_on),
-        createdAt: row.created_at, shares: sharesByExpense.get(row.id) ?? [],
-      })),
-      funds: fundResult.rows.map((row) => ({
-        id: row.id, name: row.name, targetMinor: minor(row.target_minor),
-        createdBy: row.created_by, createdAt: row.created_at,
-        commitments: commitmentsByFund.get(row.id) ?? [],
-      })),
-      notifications: notificationResult.rows.map((row) => ({
-        id: row.id, communeId: row.commune_id, kind: row.kind,
-        sourceId: row.source_id, senderUserId: row.sender_user_id,
-        label: row.label, amountMinor: minor(row.amount_minor),
-        senderName: names.get(row.sender_user_id) ?? "A member",
-        createdAt: row.created_at, readAt: row.read_at,
-      })),
-      reminderTargets: targetResult.rows.map((row) => ({
-        kind: row.kind, sourceId: row.source_id,
-        recipientUserId: row.recipient_user_id,
-        amountMinor: minor(row.amount_minor), currency: row.currency,
-        label: row.label, dueOn: dateOnly(row.due_on), lastSentAt: row.last_sent_at,
-      })),
-      notes: noteResult.rows.map((row) => ({
-        id: row.id, title: row.title, pill: row.pill,
-        kicker: row.kicker, lede: row.lede, body: row.body, facts: row.facts,
-      })),
-      operations: operationResult.rows.map((row) => ({
-        id: row.id, kind: row.kind, category: row.category, title: row.title,
-        date: dateOnly(row.date), time: row.time?.slice(0, 5) ?? null,
-        allDay: row.all_day, assignee: row.assignee,
-        rotation: row.rotation, lastDone: row.last_done,
-        repeat: row.repeat, status: row.status, notes: row.notes,
-      })),
-    };
+  return withActor(user.id, async client => {
+    const result = await client.query("SELECT CASE WHEN public.is_commune_member($1) THEN public.commune_snapshot($1) ELSE NULL END AS snapshot", [communeId]);
+    if (!result.rows[0].snapshot) throw new ApiError(404,"Commune not found");
+    return result.rows[0].snapshot;
   });
 }
-
 type Handler = (req: IncomingMessage, res: ServerResponse,
   match: RegExpMatchArray) => Promise<void>;
 const routes: { method: string; pattern: RegExp; handle: Handler }[] = [];
@@ -436,6 +295,20 @@ route("POST", /^\/api\/auth\/logout$/, async (req, res) => {
 
 route("GET", /^\/api\/communes$/, async (req, res) => {
   send(res, await listCommunes(await actor(req)));
+});
+
+route("GET", /^\/api\/search$/, async (req, res) => {
+  const params = new URL(req.url ?? "", "http://127.0.0.1").searchParams;
+  const query = (params.get("q") ?? "").trim();
+  const communeId = params.has("commune") ? uuid(params.get("commune"), "commune") : null;
+  const limit = Number(params.get("limit") ?? 8);
+  if (query.length > 80 || !Number.isInteger(limit) || limit < 1 || limit > 25) {
+    throw new ApiError(400, "Search needs at most 80 characters and a result limit of 1–25");
+  }
+  const result = await userAction(req, async client => (await client.query(
+    "SELECT public.search_commune_records($1,$2,$3) AS result", [query, communeId, limit],
+  )).rows[0].result);
+  send(res, result);
 });
 
 route("POST", /^\/api\/communes$/, async (req, res) => {
@@ -517,8 +390,8 @@ route("POST", /^\/api\/communes\/([0-9a-f-]{36})\/expenses$/, async (req, res, m
   });
   const dueOn = isoDate(input.dueOn, true);
   const result = await userAction(req, async (client) => client.query(
-    "SELECT public.create_expense($1, $2, $3, $4::jsonb, $5::date) AS id",
-    [communeId, title, amountMinor, JSON.stringify(shares), dueOn]));
+    "SELECT public.create_expense_for($1, $2, $3, $4::jsonb, $5::date, $6, $7) AS id",
+    [communeId, title, amountMinor, JSON.stringify(shares), dueOn, input.paidByUserId == null ? null : uuid(input.paidByUserId), input.category == null ? "Other" : text(input.category,"category",40)]));
   send(res, { id: result.rows[0].id }, 201);
 });
 
@@ -554,6 +427,55 @@ route("POST", /^\/api\/commitments\/([0-9a-f-]{36})\/contributions$/, async (req
     "SELECT public.record_fund_contribution($1, $2) AS id",
     [uuid(match[1]), amount(input.amountMinor)]));
   send(res, { id: result.rows[0].id }, 201);
+});
+
+route("PATCH", /^\/api\/funds\/([0-9a-f-]{36})$/, async (req, res, match) => {
+  const input = await body(req);
+  await userAction(req, client => client.query("SELECT public.update_fund($1,$2,$3)", [uuid(match[1]),text(input.name,"name",80),input.targetMinor == null ? null : amount(input.targetMinor)]));
+  send(res,{ok:true});
+});
+route("POST", /^\/api\/funds\/([0-9a-f-]{36})\/archive$/, async (req, res, match) => {
+  const input = await body(req);
+  if (typeof input.archived !== "boolean") throw new ApiError(400,"Invalid archived state");
+  await userAction(req, client => client.query("SELECT public.set_fund_archived($1,$2)",[uuid(match[1]),input.archived]));
+  send(res,{ok:true});
+});
+route("PATCH", /^\/api\/commitments\/([0-9a-f-]{36})$/, async (req,res,match) => {
+  const input=await body(req);
+  if (input.cancel != null && typeof input.cancel !== "boolean") throw new ApiError(400,"Invalid cancellation");
+  await userAction(req,client=>client.query("SELECT public.update_fund_pledge($1,$2,$3::date,$4)",[uuid(match[1]),input.cancel === true ? null : amount(input.amountMinor),input.cancel === true ? null : isoDate(input.dueOn),input.cancel === true]));
+  send(res,{ok:true});
+});
+route("POST", /^\/api\/contributions\/([0-9a-f-]{36})\/void$/, async (req,res,match) => {
+  const input=await body(req);
+  await userAction(req,client=>client.query("SELECT public.void_fund_contribution($1,$2)",[uuid(match[1]),text(input.reason,"reason",240)]));
+  send(res,{ok:true});
+});
+route("POST", /^\/api\/communes\/([0-9a-f-]{36})\/members\/([0-9a-f-]{36})$/, async (req,res,match) => {
+  const input=await body(req);
+  if (!["admin","member","leave","remove"].includes(String(input.action))) throw new ApiError(400,"Invalid membership action");
+  await userAction(req,client=>client.query("SELECT public.manage_commune_member($1,$2,$3)",[uuid(match[1]),uuid(match[2]),input.action]));
+  send(res,{ok:true});
+});
+route("POST", /^\/api\/communes\/([0-9a-f-]{36})\/recurring$/, async (req,res,match) => {
+  const input=await body(req);
+  if (!Array.isArray(input.allocations) || input.allocations.length>100 || !["weekly","monthly"].includes(String(input.frequency)) || typeof input.paused !== "boolean") throw new ApiError(400,"Invalid recurring bill");
+  const shares=input.allocations.map(value=>{const share=value as Record<string,unknown>; return {user_id:uuid(share?.userId),amount_minor:amount(share?.amountMinor)};});
+  const result=await userAction(req,client=>client.query("SELECT public.save_recurring_bill($1,$2,$3,$4,$5::jsonb,$6,$7::date,$8,$9) AS id",[uuid(match[1]),text(input.title,"title",80),amount(input.amountMinor),uuid(input.paidByUserId),JSON.stringify(shares),input.frequency,isoDate(input.nextDueOn),input.paused,input.id == null ? null : uuid(input.id)]));
+  send(res,{id:result.rows[0].id},201);
+});
+route("POST", /^\/api\/recurring\/([0-9a-f-]{36})\/record$/, async (req,res,match) => {
+  const input=await body(req);
+  const result=await userAction(req,client=>client.query("SELECT public.record_recurring_bill($1,$2::date) AS id",[uuid(match[1]),isoDate(input.expectedDueOn)]));
+  send(res,{id:result.rows[0].id},201);
+});
+route("POST", /^\/api\/communes\/([0-9a-f-]{36})\/templates$/, async (req,res,match) => {
+  const input=await body(req);
+  if (!Array.isArray(input.participants) || input.participants.length>100 || !["Equal","Exact","Percentage","Shares"].includes(String(input.method))) throw new ApiError(400,"Invalid split template");
+  if (input.archived != null && typeof input.archived !== "boolean") throw new ApiError(400,"Invalid archived state");
+  const participants=input.participants.map(value=>{const item=value as Record<string,unknown>;return {user_id:uuid(item?.userId),value:optionalText(item?.value,"split value",20)};});
+  const result=await userAction(req,client=>client.query("SELECT public.save_split_template($1,$2,$3,$4::jsonb,$5,$6) AS id",[uuid(match[1]),text(input.name,"name",60),input.method,JSON.stringify(participants),input.id == null ? null : uuid(input.id),input.archived === true]));
+  send(res,{id:result.rows[0].id},201);
 });
 
 route("POST", /^\/api\/reminders$/, async (req, res) => {

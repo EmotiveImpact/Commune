@@ -20,6 +20,9 @@ export async function withActor<T>(
   try {
     await client.query("BEGIN");
     await client.query("SELECT set_config('request.jwt.sub', $1, true)", [userId]);
+    // Mirror the hosted Data API's verified claim shape. Identity comes only
+    // from our HttpOnly session lookup, never a request body/user ID header.
+    await client.query("SELECT set_config('request.jwt.claims', $1, true)", [JSON.stringify({ sub: userId })]);
     await client.query("SET LOCAL ROLE authenticated");
     const result = await fn(client);
     await client.query("COMMIT");

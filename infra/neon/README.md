@@ -1,6 +1,18 @@
 # Commune production backend
 
-## Current status — 27 September 2026
+## Local implementation — 2 October 2026
+
+The next workflow batch is implemented and tested **locally**, not promoted to
+hosted preview/production in this pass. Migration 0013, the web client and the
+reminder/invitation sender must be released together after hosted verification.
+The app uses a single membership-guarded `commune_snapshot` RPC per commune
+instead of sequential per-table reads. Existing 0011 identity rules are kept;
+this is not a replacement of Neon Auth or a switch back to Supabase.
+
+- [Implemented workflows, evidence and remaining release gates](../../docs/WORKFLOW-COMPLETION-2026-10-02.md)
+- [Current design language and preserved layouts](../../docs/DESIGN-LANGUAGE.md)
+
+## Last recorded production evidence — 27 September 2026
 
 The app is served at `https://app.ourcommune.io` from `main`. The latest
 verified incident fix is PR 18 / `cbb7e29`, with production migration 0011.
@@ -34,6 +46,31 @@ local API or present a static build as a working product before hosted tests.
 
 ## Business rules now encoded in Postgres
 
+The following lifecycle rules are supplied by **local migration 0013**; do not
+treat them as applied production configuration until its release is verified:
+
+- Membership is active/inactive rather than deleting the member's history.
+  Leaving/removal revokes access; outstanding expense obligations, unfulfilled
+  pledges and active recurring allocations must be resolved first. The last
+  admin cannot leave or be demoted. Re-invitation reactivates the original row.
+- A member records their own payment; an admin can record another active
+  member as the actual payer. Participants can exclude the recorder. Split
+  sums, duplicates and membership are checked in Postgres; only the actual
+  payer confirms receipts.
+- Recurring schedules save exact minor-unit allocations. Recording a due paid
+  occurrence and advancing its schedule are atomic and guarded by the expected
+  due date. Weekly/monthly cadence preserves month-end anchors. Pause/resume
+  does not charge a card or silently insert an expense.
+- Saved splits are shared, with creator/admin edit/archive permissions.
+  Archiving and restoring do not bypass active-member and financial validation.
+- Fund/pledge edits respect contributions already recorded. Contributions are
+  corrected with a retained original entry/reason, not deleted or refunded.
+  Archiving preserves history and is blocked by outstanding active pledges.
+- Current members can read append-only workflow events. Private note bodies,
+  passwords and contact values are not copied into event metadata.
+- Reminder targets and sender retries exclude former members, cancelled
+  pledges, archived funds and corrected contribution amounts.
+
 - An expense payer can **Nudge** only a different commune member with an
   outstanding, due share of that payer's expense.
 - A commune admin can **Chase** only a different member's own outstanding,
@@ -43,8 +80,9 @@ local API or present a static build as a working product before hosted tests.
   only `kind` and the obligation's UUID to `send_reminder`.
 - `reminder_usage()` reports the signed-in sender's accepted Nudge/Chase count,
   per-person counts, and next available global slot from the same rolling
-  server-time window used by the send rule. Settle, Funds, and expense details
-  display this allowance; the counter is not the authority for a send.
+  server-time window used by the send rule. The account area/Settings displays
+  the aggregate allowance; obligation actions show recipient limits. The
+  counter is not the authority for a send.
 - An obligation must have an explicit due date that has arrived. A row lock,
   a three-day same-obligation cooldown, and a one-day sender/recipient cap
   block rapid duplicates. In addition, each sender is limited to 60 accepted
@@ -96,7 +134,7 @@ local API or present a static build as a working product before hosted tests.
    Broad grants would let direct writes bypass ledger invariants. Keep preview
    branches separate from production.
 3. Apply `migrations/0001_commune_core.sql` through
-   `migrations/0011_request_identity.sql` in numeric order to the
+   `migrations/0014_commune_search.sql` in numeric order to the
    development branch via an **unpooled** connection. Run `tests/grants.sql`,
    review RLS, and run two-account signed-JWT tests before applying the same
    reviewed migrations to production. After a migration adds or changes a
@@ -125,9 +163,9 @@ local API or present a static build as a working product before hosted tests.
    safety net, not the primary path for newly clicked reminders.
    Never put those secrets in a `VITE_` variable or the repository.
 6. Use Vercel's Neon integration for preview branch isolation, then test the
-   deployed preview with two real accounts. Keep PR 11 draft until the
-   complete app and release checklist pass. Do not merge or deploy production
-   solely because the static Vite build succeeds.
+   deployed preview with two real accounts. Open/review the current release
+   branch's PR; PR 11 is historical, not the destination for this batch. Do not
+   merge or deploy production solely because the static Vite build succeeds.
 
 ## Historical hosted state (2026-09-24)
 

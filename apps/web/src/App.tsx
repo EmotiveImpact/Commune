@@ -32,11 +32,15 @@ import { cx } from "./ui/cx";
 import type { ScreenId } from "./data/household";
 import { keepSearch } from "./nav";
 import { PendingShell } from "./shell/PendingShell";
+import { AllActivityScreen, SearchScreen } from "./screens/Search";
 
 export function App() {
   return (
     <Switch>
       <Route path="/hub-empty"><Redirect to={keepSearch("/hub")} replace /></Route>
+      <Route path="/expenses-empty"><Redirect to={keepSearch("/expenses")} replace /></Route>
+      <Route path="/settle-even"><Redirect to={keepSearch("/settle")} replace /></Route>
+      <Route path="/home-empty"><Redirect to={keepSearch("/")} replace /></Route>
       <Route path="/login">
         <GuestOnly>
           <LoginPage />
@@ -134,7 +138,7 @@ function ProductShell() {
         <PhoneTabs screen={screen} />
         <MoreSheet />
       </div>
-      <Windows />
+      <Windows key={hub.id} />
     </div>
   );
 }
@@ -177,13 +181,9 @@ function ScreenBody({ screen }: { screen: ScreenId }) {
   const hasHubs = Boolean(session?.hasHubs);
   const hasSettlement = hub.moves.some((move) => !move.even);
 
-  if (contentLoading && screen !== "settings") {
-    return <div className="a-content-loading" role={contentError ? "alert" : "status"} aria-busy={!contentError}>
-      <h2>{contentError ? "Could not load your commune" : `Opening ${hub.name}…`}</h2>
-      <p>{contentError ? contentError : "Loading your shared activity."}</p>
-      {contentError ? <button className="a-btn" type="button" onClick={() => void refresh()}>Try again</button>
-        : <div className="a-loading-lines" aria-hidden="true"><span /><span /><span /></div>}
-    </div>;
+  if (contentLoading && screen !== "settings" && screen !== "search") {
+    if (contentError) return <div className="a-content-loading" role="alert"><h2>Could not load {hub.name}</h2><p>{contentError}</p><button className="a-btn" type="button" onClick={() => void refresh()}>Try again</button></div>;
+    return <div className="c-content-skeleton" role="status" aria-label="Loading shared records" aria-busy="true"><span className="c-visually-hidden">Loading shared records</span>{screen === "hub" && <div className="c-skeleton-identity" style={hub.photo ? { backgroundImage: `linear-gradient(0deg, rgba(26,30,43,.8), rgba(26,30,43,.1)), url("${hub.photo}")` } : undefined}><h2>{hub.name}</h2><p>{hub.switchMeta}</p></div>}<div className="c-skeleton-grid" aria-hidden="true"><div /><div /><div /><div /></div></div>;
   }
 
   switch (screen) {
@@ -202,43 +202,47 @@ function ScreenBody({ screen }: { screen: ScreenId }) {
     case "commune-settings":
       return <CommuneSettingsScreen key={hub.id} />;
     case "expenses":
-      return emptyHub ? <ExpensesEmptyScreen /> : <ExpensesScreen />;
+      return emptyHub ? <ExpensesEmptyScreen /> : <ExpensesScreen key={hub.id} />;
     case "expenses-empty":
       return emptyHub || !hasHubs ? (
         <ExpensesEmptyScreen />
       ) : (
-        <ExpensesScreen />
+        <ExpensesScreen key={hub.id} />
       );
     case "settle":
       return !hasSettlement || !hasHubs ? (
-        <SettleEvenScreen />
+        <SettleEvenScreen key={hub.id} />
       ) : (
-        <SettleScreen />
+        <SettleScreen key={hub.id} />
       );
     case "settle-even":
       return !hasSettlement || !hasHubs ? (
-        <SettleEvenScreen />
+        <SettleEvenScreen key={hub.id} />
       ) : (
-        <SettleScreen />
+        <SettleScreen key={hub.id} />
       );
     case "recurring":
-      return <RecurringScreen />;
+      return <RecurringScreen key={hub.id} />;
     case "funds":
-      return <FundsScreen />;
+      return <FundsScreen key={hub.id} />;
     case "templates":
-      return <TemplatesScreen />;
+      return <TemplatesScreen key={hub.id} />;
     case "billing":
       return <BillingScreen />;
     case "analytics":
       return <AnalyticsScreen />;
     case "members":
-      return <MembersScreen />;
+      return <MembersScreen key={hub.id} />;
     case "operations":
-      return <OperationsScreen />;
+      return <OperationsScreen key={hub.id} />;
     case "notes":
-      return <NotesScreen />;
+      return <NotesScreen key={hub.id} />;
     case "activity":
       return <ActivityScreen />;
+    case "home-activity":
+      return <AllActivityScreen />;
+    case "search":
+      return <SearchScreen />;
     case "settings":
       return <SettingsScreen />;
     default:

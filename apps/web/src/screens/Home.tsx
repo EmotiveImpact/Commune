@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { useApp } from "../state";
 import { Avatar, Pill } from "../ui/widgets";
+import { CalendarDate } from "../ui/CalendarDate";
 import { heroClass } from "../data/household";
 import type { LiveHub } from "../live/model";
 import { cx } from "../ui/cx";
@@ -40,29 +41,28 @@ function PlaceCard({ hub, focus = false }: { hub: LiveHub; focus?: boolean }) {
       </PhotoFace>
       <div className="a-place-foot">
         <span>{ready ? hasBalance ? hub.oweLabel : "Even" : hub.activityState === "error" ? "Balance unavailable" : "Loading balance…"}</span>
-        <span className={cx("amt", hub.credit && "credit", !hasBalance && "even")}>{ready ? balance : "—"}</span>
+        <span className={cx("amt", hub.credit && "credit", !hasBalance && "even")}>{ready ? balance : "-"}</span>
       </div>
     </button>
   );
 }
 
 export function HomeScreen() {
-  const { go, places, you } = useApp();
+  const { go, places, hubId } = useApp();
   if (!places.length) return <HomeEmptyScreen />;
-  const [first, ...others] = places;
-  const needs = places.flatMap((hub) => hub.now.map((item) => ({ hub, item }))).slice(0, 6);
-  const activity = places.flatMap((hub) => hub.activity.map((item) => ({ hub, item }))).slice(0, 6);
+  const first = places.find(place => place.id === hubId) ?? places[0];
+  const others = places.filter(place => place.id !== first.id);
+  const needs = places.flatMap((hub) => hub.now.map((item) => ({ hub, item })))
+    .sort((a, b) => (a.item.dueOn ?? "9999").localeCompare(b.item.dueOn ?? "9999")).slice(0, 6);
+  const activity = places.flatMap((hub) => hub.activity.map((item) => ({ hub, item })))
+    .sort((a, b) => (Date.parse(b.item.createdAt ?? "") || 0) - (Date.parse(a.item.createdAt ?? "") || 0)).slice(0, 6);
   const incomplete = places.some((hub) => hub.activityState !== "ready");
   const unavailable = places.some((hub) => hub.activityState === "error");
   const partialMessage = unavailable ? "Some commune activity could not be loaded. Open that commune to retry." : "Still loading activity from your communes…";
   return (
     <>
-      <PlaceCard hub={first} focus />
-      {others.length ? <div className="a-place-grid" style={{ marginTop: 12 }}>{others.map((hub) => <PlaceCard key={hub.id} hub={hub} />)}</div> : null}
-      <div className="a-home-greet is-after">
-        <h1>Your communes, {you.name.split(" ")[0]}.</h1>
-        <p>{places.length} {places.length === 1 ? "space" : "spaces"} · shared details that stay in sync for everyone.</p>
-      </div>
+      <div className="a-home-featured"><PlaceCard hub={first} focus /></div>
+      {others.length ? <div className="a-home-places">{others.map((hub) => <PlaceCard key={hub.id} hub={hub} />)}</div> : null}
       <div className="a-week">
         <div className="a-card">
           <h2>Needs you</h2>
@@ -70,8 +70,9 @@ export function HomeScreen() {
           {needs.length ? (
             <div className="hub-feed">
               {needs.map(({ hub, item }, index) => (
-                <button key={`${hub.id}-${item.title}-${index}`} className="hub-feed-row" type="button" onClick={() => go(item.go, { hub: hub.id })}>
+                <button key={`${hub.id}-${item.title}-${index}`} className="hub-feed-row" type="button" onClick={() => go(item.go, { hub: hub.id, expense: item.expenseId, operation: item.operationId })}>
                   <Pill tone={item.pill === "warn" ? "warn" : "open"}>{hub.name}</Pill>
+                  {item.dueOn && <CalendarDate date={item.dueOn} label="Due" />}
                   <div><strong>{item.title}</strong><div className="when">{item.when}</div></div>
                   <span className="hub-feed-go">Open</span>
                 </button>
@@ -83,10 +84,10 @@ export function HomeScreen() {
         <div className="a-card">
           <div className="a-card-head">
             <div><h2>Recent activity</h2><p className="sub">What has been recorded.</p></div>
-            <button className="a-btn ghost" type="button" onClick={() => go("activity")}>Activity</button>
+            <button className="a-btn ghost" type="button" onClick={() => go("home-activity")}>All activity</button>
           </div>
           {activity.length ? activity.map(({ hub, item }, index) => (
-            <button className="a-item" type="button" key={`${hub.id}-${item.title}-${index}`} onClick={() => go(item.go, { hub: hub.id })}>
+            <button className="a-item" type="button" key={`${hub.id}-${item.title}-${index}`} onClick={() => go(item.expenseId ? "expense" : item.go, { hub: hub.id, expense: item.expenseId })}>
               <Avatar tone={item.cls} initials={item.ini} />
               <div><strong>{item.title}</strong><div className="when">{hub.name} · {item.when}</div></div>
               <span className="when">{item.time}</span>

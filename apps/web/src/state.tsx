@@ -49,6 +49,8 @@ import {
   type ReminderUsage,
   type Snapshot,
   type User,
+  type RecurringBill,
+  type SplitTemplate,
 } from "./live/model";
 
 const LOCAL_PREFIX = "commune.local.";
@@ -81,7 +83,10 @@ export type CreateExpenseInput = {
   dueOn?: string | null;
   shareUserIds: string[];
   allocations?: ExpenseAllocation[];
+  paidByUserId?: string;
 };
+export type RecurringBillInput = Omit<RecurringBill, "id" | "createdBy"> & { id?: string };
+export type SplitTemplateInput = Omit<SplitTemplate, "id" | "createdBy" | "archivedAt"> & { id?: string; archived?: boolean };
 
 function locationForKind(input: {
   type: LiveHub["type"];
@@ -125,7 +130,10 @@ type GoOpts = {
   time?: string;
   window?: WindowId;
   expense?: string;
+  template?: string;
+  record?: { kind: "fund" | "recurring" | "member" | "template"; id: string };
 };
+export type SearchTarget = NonNullable<GoOpts["record"]> & { communeId: string };
 type LocalPrefs = {
   activeHubId?: string;
   navMode: NavMode;
@@ -148,6 +156,7 @@ type AuthStatus = "loading" | "guest" | "authenticated" | "error";
 export type AppState = {
   authStatus: AuthStatus;
   apiError: string | null;
+  mutationPending: boolean;
   clearApiError: () => void;
   refresh: () => Promise<void>;
   signInWithPassword: (email: string, password: string) => Promise<void>;
@@ -159,6 +168,7 @@ export type AppState = {
   hubId: HubId;
   hub: LiveHub;
   places: LiveHub[];
+  snapshots: Record<string, Snapshot>;
   contentLoading: boolean;
   contentError: string | null;
   emptyHub: boolean;
@@ -177,6 +187,8 @@ export type AppState = {
   noticesOn: boolean;
   currency: "£ GBP" | "$ USD" | "€ EUR";
   searchQuery: string;
+  searchScope: string | null;
+  searchTarget: SearchTarget | null;
   noteSearchQuery: string;
   invites: PendingInvite[];
   payMethods: PayMethod[];
@@ -187,6 +199,9 @@ export type AppState = {
   selectedExpense: LiveExpenseRow | null;
   createdExpenses: LiveExpenseRow[];
   funds: Fund[];
+  recurringBills: RecurringBill[];
+  splitTemplates: SplitTemplate[];
+  expenseTemplateId: string;
   reminderTargets: ReminderTarget[];
   reminderUsage: ReminderUsage | null;
   notifications: Notification[];
@@ -199,6 +214,8 @@ export type AppState = {
   setNoticesOn: (on: boolean) => void;
   setCurrency: (currency: "£ GBP" | "$ USD" | "€ EUR") => void;
   setSearchQuery: (query: string) => void;
+  setSearchScope: (id: string | null) => void;
+  clearSearchTarget: () => void;
   setNoteSearchQuery: (query: string) => void;
   savePayMethod: (method: PayMethod) => boolean;
   setHubPhoto: (id: HubId, dataUrl: string | null) => void;
@@ -226,6 +243,14 @@ export type AppState = {
   createFund: (name: string, targetMinor?: number | null) => Promise<string>;
   pledgeFund: (fundId: string, amountMinor: number, dueOn: string) => Promise<string>;
   recordFundContribution: (commitmentId: string, amountMinor: number) => Promise<string>;
+  updateFund: (fundId: string, name: string, targetMinor: number | null) => Promise<void>;
+  archiveFund: (fundId: string, archived: boolean) => Promise<void>;
+  updatePledge: (commitmentId: string, input: { amountMinor?: number; dueOn?: string; cancel?: boolean }) => Promise<void>;
+  voidContribution: (contributionId: string, reason: string) => Promise<void>;
+  saveRecurringBill: (input: RecurringBillInput) => Promise<string>;
+  recordRecurringBill: (id: string, expectedDueOn: string) => Promise<string>;
+  saveSplitTemplate: (input: SplitTemplateInput) => Promise<string>;
+  manageMember: (userId: string, action: "admin" | "member" | "leave" | "remove") => Promise<void>;
   sendReminder: (kind: "nudge" | "chase", sourceId: string) => Promise<void>;
   markNotificationRead: (id: string) => Promise<void>;
   pageTitle: string;
@@ -338,6 +363,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const screen: ScreenId = PATH_SCREEN[pathOnly(location)] ?? "home";
   const [authStatus, setAuthStatus] = useState<AuthStatus>("loading");
   const [apiError, setApiError] = useState<string | null>(null);
+  const [mutationCount, setMutationCount] = useState(0);
   const [data, setData] = useState<LiveData | null>(null);
   const dataRef = useRef<LiveData | null>(null);
   const publishData = useCallback((next: LiveData | null) => {
@@ -351,10 +377,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [moreOpen, setMoreOpen] = useState(false);
   const [noteKey, setNoteKey] = useState("");
   const [selectedExpenseId, setSelectedExpenseId] = useState("");
+  const [expenseTemplateId, setExpenseTemplateId] = useState("");
   const [operationKey, setOperationKey] = useState("");
   const [operationDate, setOperationDate] = useState(todayIso());
   const [operationTime, setOperationTime] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [searchScope, setSearchScope] = useState<string | null>(null);
+  const [searchTarget, setSearchTarget] = useState<SearchTarget | null>(null);
+  const clearSearchTarget = useCallback(() => setSearchTarget(null), []);
   const [noteSearchQuery, setNoteSearchQuery] = useState("");
   const loadedRef = useRef(false);
   const refreshSequence = useRef(0);
@@ -362,7 +392,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const lastRefreshAt = useRef(0);
   const snapshotReads = useRef(new Map<string, Promise<void>>());
   const snapshotTimes = useRef(new Map<string, number>());
-  const overview = screen === "home" || screen === "home-empty" || screen === "home-inbox" || screen === "communes";
+  const snapshotRevisions = useRef(new Map<string, number>());
+  const overview = screen === "home" || screen === "home-empty" || screen === "home-inbox" || screen === "communes" || screen === "home-activity";
   const viewRef = useRef({ hubId, overview });
   viewRef.current = { hubId, overview };
   const native = isNativeNow();
@@ -370,10 +401,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const readSnapshot = useCallback((commune: Commune, sequence: number, force = false): Promise<void> => {
     const current = dataRef.current;
     if (!current || sequence !== refreshSequence.current) return Promise.resolve();
-    const key = `${sequence}:${commune.id}`;
+    const cacheKey = `${current.user.id}:${commune.id}`;
+    const revision = snapshotRevisions.current.get(cacheKey) ?? 0;
+    const key = `${sequence}:${commune.id}:${revision}`;
     const pending = snapshotReads.current.get(key);
     if (pending) return pending;
-    const cacheKey = `${current.user.id}:${commune.id}`;
     if (!force && current.snapshots[commune.id] && Date.now() - (snapshotTimes.current.get(cacheKey) ?? 0) < 15_000) {
       return Promise.resolve();
     }
@@ -383,16 +415,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return next;
     });
     const request = loadSnapshot(commune).then((snapshot) => {
-      if (sequence !== refreshSequence.current || dataRef.current?.user.id !== current.user.id) return;
+      if (sequence !== refreshSequence.current || dataRef.current?.user.id !== current.user.id || revision !== (snapshotRevisions.current.get(cacheKey) ?? 0)) return;
       if (snapshot.commune.id !== commune.id) throw new ApiError("Commune response did not match the request", 502);
       snapshotTimes.current.set(cacheKey, Date.now());
       publishData({ ...dataRef.current, snapshots: { ...dataRef.current.snapshots, [commune.id]: snapshot } });
     }).catch((error: unknown) => {
-      if (sequence !== refreshSequence.current || dataRef.current?.user.id !== current.user.id) return;
+      if (sequence !== refreshSequence.current || dataRef.current?.user.id !== current.user.id || revision !== (snapshotRevisions.current.get(cacheKey) ?? 0)) return;
       setSnapshotErrors((errors) => ({ ...errors, [commune.id]: error instanceof Error ? error.message : "Activity unavailable" }));
       // A permission failure is not a transient offline state: do not retain
       // cached private activity after the server has rejected access.
-      if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
+      if (error instanceof ApiError && [401, 403, 404].includes(error.status)) {
         const snapshots = { ...dataRef.current.snapshots };
         delete snapshots[commune.id];
         snapshotTimes.current.delete(cacheKey);
@@ -431,6 +463,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         publishData(null);
         setSnapshotErrors({});
         snapshotTimes.current.clear();
+        snapshotRevisions.current.clear();
         setHubId("");
         setAuthStatus("guest");
         setApiError(null);
@@ -443,6 +476,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (!previous) {
         setSnapshotErrors({});
         snapshotTimes.current.clear();
+        snapshotRevisions.current.clear();
       }
       // Identity and membership are ready. Keep existing content on refresh;
       // missing snapshots render a loading state, never a false empty ledger.
@@ -522,6 +556,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [authStatus, refresh]);
 
   const mutate = useCallback(async <T,>(action: () => Promise<T>): Promise<T> => {
+    setMutationCount(count => count + 1);
     try {
       setApiError(null);
       return await action();
@@ -529,6 +564,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const message = error instanceof Error ? error.message : "The action could not be saved";
       setApiError(message);
       throw error;
+    } finally {
+      setMutationCount(count => Math.max(0, count - 1));
     }
   }, []);
 
@@ -562,6 +599,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     publishData(null);
     setSnapshotErrors({});
     snapshotTimes.current.clear();
+    snapshotRevisions.current.clear();
     setHubId("");
     setWindowId(null);
     setAuthStatus("guest");
@@ -599,7 +637,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const contentLoading = !!data?.communes.length && !overview && !snapshot;
   const contentError = snapshotErrors[activeId] ?? null;
   const expenses = snapshot && data ? expenseRows(snapshot, data.user.id) : [];
-  const selectedExpense = expenses.find((row) => row.id === selectedExpenseId) ?? expenses[0] ?? null;
+  const selectedExpense = selectedExpenseId ? expenses.find((row) => row.id === selectedExpenseId) ?? null : expenses[0] ?? null;
   const lastExpense = selectedExpense
     ? { name: selectedExpense.name, amount: selectedExpense.amount, paidBy: selectedExpense.paidBy }
     : null;
@@ -617,6 +655,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     ...fund,
     contributedMinor: fund.commitments.reduce((sum, commitment) => sum + commitment.contributedMinor, 0),
   }));
+  const recurringBills = snapshot?.recurringBills ?? [];
+  const splitTemplates = snapshot?.splitTemplates ?? [];
   const reminderTargets = snapshot?.reminderTargets ?? [];
   const reminderUsage = data?.reminderUsage ?? null;
   const notifications = snapshot?.notifications ?? [];
@@ -626,6 +666,47 @@ export function AppProvider({ children }: { children: ReactNode }) {
     initials: data ? initialsOf(data.user.name) : "",
     photo: prefs.avatar,
   };
+
+  // A normal mutation does not need another sign-in/list/invitations waterfall.
+  // Refresh just its commune, and keep confirmed content visible throughout.
+  const refreshRecords = useCallback(async () => {
+    const current = dataRef.current;
+    const commune = current?.communes.find(item => item.id === activeId);
+    if (!current || !commune) return;
+    const cacheKey = `${current.user.id}:${activeId}`;
+    const revision = (snapshotRevisions.current.get(cacheKey) ?? 0) + 1;
+    snapshotRevisions.current.set(cacheKey, revision);
+    const sequence = refreshSequence.current;
+    const stillCurrent = () => sequence === refreshSequence.current &&
+      dataRef.current?.user.id === current.user.id && snapshotRevisions.current.get(cacheKey) === revision;
+    try {
+      const snapshot = await loadSnapshot(commune);
+      const latest = dataRef.current;
+      if (!stillCurrent() || !latest || !latest.communes.some(item => item.id === activeId)) return;
+      if (snapshot.commune.id !== activeId) throw new ApiError("Commune response did not match the request", 502);
+      snapshotTimes.current.set(cacheKey, Date.now());
+      publishData({ ...latest, communes: latest.communes.map(item => item.id === activeId ? { ...item, ...snapshot.commune } : item), snapshots: { ...latest.snapshots, [activeId]: snapshot } });
+      setSnapshotErrors(errors => { const next = { ...errors }; delete next[activeId]; return next; });
+    } catch (error) {
+      const latest = dataRef.current;
+      if (!stillCurrent() || !latest) return;
+      setSnapshotErrors(errors => ({ ...errors, [activeId]: error instanceof Error ? error.message : "Could not refresh saved activity" }));
+      if (error instanceof ApiError && [401, 403, 404].includes(error.status)) {
+        const snapshots = { ...latest.snapshots };
+        delete snapshots[activeId];
+        snapshotTimes.current.delete(cacheKey);
+        publishData({ ...latest, snapshots });
+      }
+      // The write already committed. Do not invite a duplicate submission when
+      // only the following read failed; expose Retry without losing the data.
+    }
+  }, [activeId, publishData]);
+
+  const workflow = useCallback(async <T,>(path: string, body: unknown, method = "POST"): Promise<T> => mutate(async () => {
+    const result = await api<T>(path,{method,body:JSON.stringify(body)});
+    await refreshRecords();
+    return result;
+  }), [mutate, refreshRecords]);
 
   const setHubPhoto = useCallback((id: string, dataUrl: string | null) => {
     const photos = { ...prefs.hubPhotos };
@@ -695,15 +776,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
         ...locationForKind(input),
       }),
     });
-    await refresh();
-  }), [activeId, mutate, refresh]);
+    await refreshRecords();
+  }), [activeId, mutate, refreshRecords]);
 
   const recordExpense = useCallback((input: CreateExpenseInput) => mutate(async () => {
     if (!activeId) throw new Error("Create or join a commune first");
     if (!data) throw new Error("Sign in first");
-    if (!input.shareUserIds.includes(data.user.id)) {
-      throw new Error("Include yourself in an expense you paid.");
-    }
     const shares = input.allocations ? validateExpenseAllocation(input.amountMinor, input.allocations) : allocateExpense(input.amountMinor, input.shareUserIds, "Equal");
     if (shares.length !== input.shareUserIds.length || shares.some(share => !input.shareUserIds.includes(share.userId))) throw new Error("The split must match the selected people.");
     const result = await post<{ id: string }>(`/communes/${encodeURIComponent(activeId)}/expenses`, {
@@ -711,17 +789,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
       amountMinor: input.amountMinor,
       shares,
       dueOn: input.dueOn ?? null,
+      paidByUserId: input.paidByUserId ?? data.user.id,
       ...(input.category ? { category: input.category } : {}),
     });
-    await refresh();
+    await refreshRecords();
     setSelectedExpenseId(result.id);
     return result.id;
-  }), [activeId, data, mutate, refresh]);
+  }), [activeId, data, mutate, refreshRecords]);
 
   const confirmExpenseShare = useCallback((shareId: string) => mutate(async () => {
     await post(`/shares/${encodeURIComponent(shareId)}/confirm`, {});
-    await refresh();
-  }), [mutate, refresh]);
+    await refreshRecords();
+  }), [mutate, refreshRecords]);
   const markExpensePaid = useCallback((expenseId: string) => mutate(async () => {
     const expense = expenses.find((row) => row.id === expenseId);
     if (!expense || expense.paidByUserId !== data?.user.id) {
@@ -733,8 +812,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       throw new Error("Choose the member’s outstanding share to confirm");
     }
     await post(`/shares/${encodeURIComponent(outstanding[0].id)}/confirm`, {});
-    await refresh();
-  }), [data?.user.id, expenses, mutate, refresh]);
+    await refreshRecords();
+  }), [data?.user.id, expenses, mutate, refreshRecords]);
 
   const createInvite = useCallback((email: string, role: "admin" | "member") => mutate(async () => {
     if (!activeId) throw new Error("Choose a commune first");
@@ -767,54 +846,70 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const createFund = useCallback((name: string, targetMinor?: number | null) => mutate(async () => {
     if (!activeId) throw new Error("Choose a commune first");
     const result = await post<{ id: string }>(`/communes/${encodeURIComponent(activeId)}/funds`, { name, targetMinor: targetMinor ?? null });
-    await refresh();
+    await refreshRecords();
     return result.id;
-  }), [activeId, mutate, refresh]);
+  }), [activeId, mutate, refreshRecords]);
   const pledgeFund = useCallback((fundId: string, amountMinor: number, dueOn: string) => mutate(async () => {
     const result = await post<{ id: string }>(`/funds/${encodeURIComponent(fundId)}/pledges`, { amountMinor, dueOn });
-    await refresh();
+    await refreshRecords();
     return result.id;
-  }), [mutate, refresh]);
+  }), [mutate, refreshRecords]);
   const recordFundContribution = useCallback((commitmentId: string, amountMinor: number) => mutate(async () => {
     const result = await post<{ id: string }>(`/commitments/${encodeURIComponent(commitmentId)}/contributions`, { amountMinor });
-    await refresh();
+    await refreshRecords();
     return result.id;
-  }), [mutate, refresh]);
-  const sendReminder = useCallback((kind: "nudge" | "chase", sourceId: string) => mutate(async () => {
-    await post("/reminders", { kind, sourceId });
+  }), [mutate, refreshRecords]);
+  const updateFund = async (id: string, name: string, targetMinor: number | null) => { await workflow(`/funds/${encodeURIComponent(id)}`,{name,targetMinor},"PATCH"); };
+  const archiveFund = async (id: string, archived: boolean) => { await workflow(`/funds/${encodeURIComponent(id)}/archive`,{archived}); };
+  const updatePledge = async (id: string, input: { amountMinor?: number; dueOn?: string; cancel?: boolean }) => { await workflow(`/commitments/${encodeURIComponent(id)}`,input,"PATCH"); };
+  const voidContribution = async (id: string, reason: string) => { await workflow(`/contributions/${encodeURIComponent(id)}/void`,{reason}); };
+  const saveRecurringBill = async (input: RecurringBillInput) => (await workflow<{id:string}>(`/communes/${encodeURIComponent(activeId)}/recurring`,input)).id;
+  const recordRecurringBill = async (id: string, expectedDueOn: string) => (await workflow<{id:string}>(`/recurring/${encodeURIComponent(id)}/record`,{expectedDueOn})).id;
+  const saveSplitTemplate = async (input: SplitTemplateInput) => (await workflow<{id:string}>(`/communes/${encodeURIComponent(activeId)}/templates`,input)).id;
+  const manageMember = async (userId: string, action: "admin" | "member" | "leave" | "remove") => mutate(async () => {
+    await post(`/communes/${encodeURIComponent(activeId)}/members/${encodeURIComponent(userId)}`,{action});
     await refresh();
-  }), [mutate, refresh]);
+    if (action === "leave") { setWindowId(null); setLocation(keepSearch("/")); }
+  });
+  const sendReminder = useCallback((kind: "nudge" | "chase", sourceId: string) => mutate(async () => {
+    const actorId = dataRef.current?.user.id;
+    await post("/reminders", { kind, sourceId });
+    await Promise.all([refreshRecords(), api<ReminderUsage>("/reminders/usage").then(reminderUsage => {
+      const latest = dataRef.current;
+      if (latest && latest.user.id === actorId) publishData({ ...latest, reminderUsage });
+    })]);
+  }), [mutate, refreshRecords, publishData]);
   const markNotificationRead = useCallback((id: string) => mutate(async () => {
     await post(`/notifications/${encodeURIComponent(id)}/read`, {});
-    await refresh();
-  }), [mutate, refresh]);
+    await refreshRecords();
+  }), [mutate, refreshRecords]);
 
   const addNote = useCallback((card: NoteCard & { id: string }) => mutate(async () => {
     if (!activeId) throw new Error("Choose a commune first");
     const { id: _draftId, ...payload } = card;
     const result = await post<{ id: string }>(`/communes/${encodeURIComponent(activeId)}/notes`, payload);
-    await refresh();
+    await refreshRecords();
     setNoteKey(result.id);
     return result.id;
-  }), [activeId, mutate, refresh]);
+  }), [activeId, mutate, refreshRecords]);
   const updateNote = useCallback((card: NoteCard & { id: string }) => mutate(async () => {
     if (!data?.snapshots[activeId]?.notes?.some((note) => note.id === card.id)) {
       throw new Error("Note not found in this commune");
     }
     const { id, ...payload } = card;
     await api(`/notes/${encodeURIComponent(id)}`, { method: "PUT", body: JSON.stringify(payload) });
-    await refresh();
+    await refreshRecords();
     setNoteKey(id);
     return id;
-  }), [activeId, data, mutate, refresh]);
+  }), [activeId, data, mutate, refreshRecords]);
   const addOperation = useCallback((item: NewOperation) => mutate(async () => {
     if (!activeId) throw new Error("Choose a commune first");
     const result = await post<{ id: string }>(`/communes/${encodeURIComponent(activeId)}/operations`, operationPayload(item));
-    await refresh();
+    await refreshRecords();
     setOperationKey(result.id);
     setOperationDate(item.date);
     return result.id;
-  }), [activeId, mutate, refresh]);
+  }), [activeId, mutate, refreshRecords]);
   const updateOperation = useCallback((id: string, item: NewOperation) => mutate(async () => {
     const existing = operations.find((row) => row.id === id);
     if (!existing) throw new Error("Schedule item not found");
@@ -822,10 +917,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       method: "PUT",
       body: JSON.stringify(operationPayload({ ...existing, ...item })),
     });
-    await refresh();
+    await refreshRecords();
     setOperationDate(item.date);
     if (item.time) setOperationTime(item.time);
-  }), [mutate, operations, refresh]);
+  }), [mutate, operations, refreshRecords]);
   const toggleOperation = useCallback((id: string) => mutate(async () => {
     const item = operations.find((row) => row.id === id);
     if (!item) throw new Error("Schedule item not found");
@@ -843,8 +938,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
           }
         : { ...item, status: "done", lastDone: { by: data?.user.name ?? "Member", date: today } };
     await api(`/operations/${encodeURIComponent(id)}`, { method: "PUT", body: JSON.stringify(operationPayload(next)) });
-    await refresh();
-  }), [data?.user.name, mutate, operations, refresh]);
+    await refreshRecords();
+  }), [data?.user.name, mutate, operations, refreshRecords]);
   const skipOperation = useCallback((id: string) => mutate(async () => {
     const item = operations.find((row) => row.id === id);
     if (!item) throw new Error("Schedule item not found");
@@ -853,21 +948,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
       method: "PUT",
       body: JSON.stringify(operationPayload({ ...item, date: addDays(from, 7) })),
     });
-    await refresh();
-  }), [mutate, operations, refresh]);
+    await refreshRecords();
+  }), [mutate, operations, refreshRecords]);
   const removeOperation = useCallback((id: string) => mutate(async () => {
     await api(`/operations/${encodeURIComponent(id)}`, { method: "DELETE" });
-    await refresh();
+    await refreshRecords();
     setWindowId(null);
-  }), [mutate, refresh]);
+  }), [mutate, refreshRecords]);
 
   const go = useCallback((target: GoTarget, opts?: GoOpts) => {
-    const nextHubId = opts?.hub ?? activeId;
+    setSearchTarget(opts?.record ? { ...opts.record, communeId: opts.hub ?? activeId } : null);
     if (opts?.hub && places.some((place) => place.id === opts.hub)) {
+      if (opts.hub !== activeId) {
+        setSelectedExpenseId("");
+        setNoteKey("");
+        setOperationKey("");
+      }
       setHubId(opts.hub);
       savePrefs({ activeHubId: opts.hub });
     }
     if (opts?.expense) setSelectedExpenseId(opts.expense);
+    if (target === "add-expense") setExpenseTemplateId(opts?.template ?? "");
     if (opts?.note) setNoteKey(opts.note);
     if (opts?.operation) setOperationKey(opts.operation);
     if (opts?.date) setOperationDate(opts.date);
@@ -880,19 +981,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setLocation(keepSearch(authPath(target)));
       return;
     }
-    const nextSnapshot = data?.snapshots[nextHubId];
-    const nextEmpty = !nextSnapshot?.expenses.length;
-    const nextHub = places.find((place) => place.id === nextHubId);
-    const hasSettlement = !!nextHub?.moves.length;
     if (isWindowId(target)) {
       const stay = target === "add-expense" &&
         (screen === "hub-empty" || screen === "home-empty" || screen === "expenses-empty");
       if (!stay) {
         const page = WINDOW_PAGE[target];
         if (page) {
-          let dest: ScreenId = page;
-          if (page === "expenses" && nextEmpty && target === "add-expense") dest = "expenses-empty";
-          if (page === "settle" && !hasSettlement) dest = "settle-even";
+          const dest: ScreenId = page;
           if (dest !== screen) setLocation(keepSearch(SCREEN_PATH[dest]));
         }
       }
@@ -900,18 +995,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return;
     }
     let dest: ScreenId = target;
-    if (target === "home" && !session?.hasHubs) dest = "home-empty";
+    if (target === "home-empty") dest = "home";
     if (target === "hub-empty") dest = "hub";
-    if (target === "expenses" && (nextEmpty || !session?.hasHubs)) dest = "expenses-empty";
-    if (target === "settle" && (!hasSettlement || !session?.hasHubs)) dest = "settle-even";
+    if (target === "expenses-empty") dest = "expenses";
+    if (target === "settle-even") dest = "settle";
     setWindowId(opts?.window ?? null);
     setLocation(keepSearch(SCREEN_PATH[dest]));
   }, [activeId, data, places, savePrefs, screen, session?.hasHubs, setLocation]);
 
   // Dialogs have their own heading; the page behind them remains the page.
-  const pageTitle = PAGE_TITLES[screen] ?? "Home";
+  const isHome = screen === "home" || screen === "home-empty";
+  const firstName = you.name.trim().split(/\s+/)[0];
+  const pageTitle = isHome
+    ? firstName ? `Your communes, ${firstName}.` : "Your communes."
+    : PAGE_TITLES[screen] ?? "Home";
   const outstandingShareCount = places.reduce((sum, place) => sum + place.moves.length, 0);
-  const pageLede = screen === "home" || screen === "communes"
+  const pageLede = isHome
+    ? `${places.length} ${places.length === 1 ? "space" : "spaces"} · shared details that stay in sync for everyone.`
+    : screen === "communes"
       ? session?.hasHubs
         ? places.some((place) => place.activityState !== "ready")
           ? `${places.length} ${places.length === 1 ? "commune" : "communes"} · ${places.some((place) => place.activityState === "error") ? "Some activity is unavailable" : "Shared activity is still loading"}`
@@ -926,25 +1027,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
             : PAGE_LEDES[screen] ?? "";
 
   return <Ctx.Provider value={{
-    authStatus, apiError, clearApiError: () => setApiError(null), refresh,
+    authStatus, apiError, mutationPending: mutationCount > 0, clearApiError: () => setApiError(null), refresh,
     signInWithPassword, signInWithGoogle, signUpWithPassword, verifyEmailCode, session, screen, hubId: activeId,
-    hub, places, contentLoading, contentError, emptyHub: empty, window: windowId, moreOpen,
+    hub, places, snapshots: data?.snapshots ?? {}, contentLoading, contentError, emptyHub: empty, window: windowId, moreOpen,
     navMode: prefs.navMode, noteKey, notes, operationKey, operationDate,
     operationTime, operationsByHub, operations, selectedOperation,
     dark: prefs.dark, noticesOn: prefs.noticesOn, currency: prefs.currency,
-    searchQuery, noteSearchQuery, invites: data?.invites[activeId] ?? [], payMethods: prefs.payMethods, native, you,
+    searchQuery, searchScope, searchTarget, noteSearchQuery, invites: data?.invites[activeId] ?? [], payMethods: prefs.payMethods, native, you,
     lastExpense, expenses, selectedExpense, createdExpenses: expenses,
-    funds, reminderTargets, reminderUsage, notifications, signOut, go,
-    closeWindow: () => setWindowId(null), setMoreOpen,
+    funds, recurringBills, splitTemplates, expenseTemplateId, reminderTargets, reminderUsage, notifications, signOut, go,
+    closeWindow: () => { if (!mutationCount) setWindowId(null); }, setMoreOpen,
     setNavMode: (navMode) => savePrefs({ navMode }),
     setDark: (dark) => savePrefs({ dark }),
     setNoticesOn: (noticesOn) => savePrefs({ noticesOn }),
     setCurrency: (currency) => savePrefs({ currency }),
-    setSearchQuery, setNoteSearchQuery, savePayMethod, setHubPhoto, setAvatar, addNote, updateNote,
+    setSearchQuery, setSearchScope, clearSearchTarget, setNoteSearchQuery, savePayMethod, setHubPhoto, setAvatar, addNote, updateNote,
     addOperation, updateOperation, toggleOperation, skipOperation,
     removeOperation, createHub, updateCommune, recordExpense, confirmExpenseShare,
     markExpensePaid, createInvite, sendInviteEmail, revokeInvite, previewInvite, acceptInvite, createFund,
     pledgeFund, recordFundContribution, sendReminder, markNotificationRead,
+    updateFund, archiveFund, updatePledge, voidContribution, saveRecurringBill, recordRecurringBill, saveSplitTemplate, manageMember,
     pageTitle, pageLede,
   }}>{children}</Ctx.Provider>;
 }

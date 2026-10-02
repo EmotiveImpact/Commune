@@ -9,7 +9,7 @@ export function AuthLayout({ children }: { children: ReactNode }) {
         <div className="commune-auth-brand-top">
           <img src="/logo.png" alt="Commune" width={44} height={44} />
           <span className="commune-auth-word">Commune</span>
-          <span className="commune-auth-tag">— for people who do life, together.</span>
+          <span className="commune-auth-tag">for people who do life, together.</span>
         </div>
         <div className="commune-auth-hero">
           <h1>Effortlessly manage your shared expenses.</h1>
@@ -22,7 +22,7 @@ export function AuthLayout({ children }: { children: ReactNode }) {
         <div className="commune-auth-mobile-header">
           <img src="/logo.png" alt="" width={32} height={32} />
           <span>Commune</span>
-          <em>— for people who do life, together.</em>
+          <em>for people who do life, together.</em>
         </div>
         <div className="commune-auth-form-wrap">{children}</div>
         <div className="commune-auth-desktop-footer">

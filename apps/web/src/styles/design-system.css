@@ -1,0 +1,422 @@
+/* Approved design-language primitives. Auth and Operations retain their layouts. */
+.a-body:not(.is-gate) {
+  --ink: #1a1e2b;
+  --ink-soft: #60706b;
+  background: var(--paper);
+}
+.a-body.is-dark:not(.is-gate) {
+  --ink: #f5f1ea;
+  --ink-soft: #b5bdca;
+}
+.a-header-title h1 {
+  font-size: 21px;
+  font-weight: 550;
+  letter-spacing: -0.5px;
+}
+.a-content :is(.a-btn, .c-hub-button),
+.a-windows .a-btn,
+.c-reminder-dialog .a-btn {
+  min-height: 40px;
+  border-radius: var(--radius-control);
+  font-weight: 500;
+  gap: 7px;
+}
+.a-content :is(.a-panel, .a-card):not(.c-settle-column) {
+  box-shadow: none;
+}
+.a-content :is(.a-panel, .a-card) h2 {
+  font-size: 18px;
+  font-weight: 550;
+}
+.a-content .a-field label,
+.a-windows .a-field label {
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 500;
+}
+.a-body :is(button, a, input, select, textarea, summary):focus-visible {
+  outline: 2px solid var(--sage);
+  outline-offset: 3px;
+}
+.a-body .a-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+.c-hub {
+  --hub-panel: var(--white);
+  --hub-muted: var(--ink-soft);
+}
+.a-content .a-empty {
+  padding-block: 24px;
+}
+.a-content .a-empty h2 {
+  font-size: 23px;
+  font-weight: 550;
+  letter-spacing: -0.5px;
+}
+@media (max-width: 560px) {
+  .a-header-home { flex-wrap: wrap; }
+  .a-header-home .a-header-title { order: 1; flex-basis: 100%; }
+  .a-header-home .a-header-title h1 { white-space: normal; overflow-wrap: anywhere; }
+  .a-header-home .c-search-trigger { margin-left: auto; }
+  .a-content :is(.a-btn, .c-hub-button),
+  .a-windows .a-btn,
+  .c-reminder-dialog .a-btn {
+    min-height: 44px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .a-place {
+    transition: none;
+  }
+}
+
+.c-panel {
+  overflow: hidden;
+}
+.c-section-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+.c-section-heading h2 {
+  margin: 0;
+}
+.c-section-heading p {
+  font-size: 13px;
+  color: var(--ink-soft);
+  margin: 5px 0 0;
+}
+.c-field-label {
+  display: grid;
+  gap: 8px;
+}
+.c-field-label :is(input, select, textarea) {
+  width: 100%;
+}
+.c-product-dialog {
+  width: min(560px, calc(100vw - 32px));
+  max-height: calc(100dvh - 48px);
+  overflow: auto;
+  background: var(--white, #fff);
+  color: var(--ink);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-surface);
+  padding: 26px;
+}
+.c-product-dialog::backdrop {
+  background: rgba(26, 30, 43, 0.45);
+}
+.c-product-dialog h2 {
+  font-size: 21px;
+  font-weight: 550;
+  margin: 0 30px 20px 0;
+}
+.c-dialog-close {
+  position: absolute;
+  right: 16px;
+  top: 16px;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--ink-soft);
+}
+.c-result-row {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  padding: 18px 20px;
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  background: var(--white);
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+.c-result-row:last-child {
+  border-bottom: 0;
+}
+.c-result-row > span:not(.avatar) {
+  flex: 1;
+  min-width: 0;
+}
+.c-result-row strong {
+  font-weight: 500;
+}
+.c-result-row small {
+  display: block;
+  font-size: 12px;
+  color: var(--ink-soft);
+  margin-top: 5px;
+  overflow-wrap: anywhere;
+}
+.c-result-row time {
+  color: var(--ink-soft);
+  font-size: 12px;
+  flex-shrink: 0;
+}
+.c-result-row:hover {
+  background: var(--paper);
+}
+.c-scope-label {
+  font-size: 12px;
+  color: var(--ink-soft);
+  margin: 0 0 14px;
+}
+.c-search-form {
+  margin-bottom: 22px;
+  max-width: 650px;
+}
+.c-search-form label {
+  display: block;
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+.c-search-form > div {
+  display: flex;
+  gap: 10px;
+}
+.c-search-form input {
+  flex: 1;
+  min-width: 0;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  padding: 12px;
+  color: var(--ink);
+  font: inherit;
+}
+.c-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+.c-skeleton-identity {
+  background-color: var(--sage);
+  background-size: cover;
+  background-position: center;
+  border-radius: var(--radius-surface);
+  padding: 36px 24px;
+  min-height: 220px;
+  color: white;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  margin-bottom: 22px;
+}
+.c-skeleton-identity h2 {
+  font-size: 28px;
+  font-weight: 550;
+  margin: 0;
+}
+.c-skeleton-identity p {
+  margin: 8px 0 0;
+  font-size: 13px;
+}
+.c-skeleton-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 22px;
+}
+.c-skeleton-grid > div {
+  min-height: 160px;
+  border-radius: var(--radius-surface);
+  background: var(--white);
+  border: 1px solid var(--border);
+}
+@media (max-width: 560px) {
+  .c-skeleton-grid {
+    grid-template-columns: 1fr;
+  }
+  .c-result-row {
+    padding: 16px;
+  }
+  .c-product-dialog {
+    padding: 22px;
+  }
+}
+.c-form-fields {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.c-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.c-form-help {
+  color: var(--ink-soft);
+  font-size: 12px;
+  line-height: 1.7;
+  margin: 12px 0 18px;
+}
+.c-form-help svg {
+  vertical-align: middle;
+}
+.c-dated-detail { display: flex; align-items: center; gap: 12px; margin: 12px 0 18px; }
+.c-dated-detail .c-form-help { min-width: 0; margin: 0; overflow-wrap: anywhere; }
+.c-toolbar-context {
+  color: var(--ink-soft);
+  font-size: 12px;
+  margin: 0;
+}
+.c-workflow-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 22px;
+  align-items: start;
+}
+.c-workflow-card {
+  padding: 22px;
+  min-width: 0;
+}
+.c-workflow-amount {
+  display: block;
+  font-size: 32px;
+  font-weight: 450;
+  letter-spacing: -0.8px;
+  font-variant-numeric: tabular-nums;
+}
+.c-muted-icon {
+  color: var(--ink-soft);
+  flex-shrink: 0;
+}
+.c-metric-label {
+  display: block;
+  color: var(--ink-soft);
+  font-size: 12px;
+  margin: 0 0 7px;
+}
+.c-split-editor {
+  border: 0;
+  padding: 0;
+  margin: 18px 0;
+  min-width: 0;
+}
+.c-split-editor legend {
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 12px;
+}
+.c-split-editor .a-settle-row {
+  padding: 12px 0;
+  min-height: 0;
+}
+.c-split-editor .a-settle-row .amt {
+  font-size: 13px;
+  font-weight: 500;
+  margin-left: auto;
+}
+.c-split-editor .c-split-methods {
+  flex-wrap: wrap;
+}
+.c-split-editor .c-split-methods button {
+  min-height: 36px;
+}
+.c-split-editor input[type="checkbox"] {
+  accent-color: var(--sage);
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+.c-split-hint {
+  color: var(--ink-soft);
+  font-size: 12px;
+  line-height: 1.6;
+  /* Two guidance lines prevent method changes from moving the form footer. */
+  min-height: 3.2em;
+}
+.c-pledge-row {
+  border-top: 1px solid var(--border);
+  padding: 18px 0;
+}
+.c-pledge-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.c-pledge-head strong {
+  font-size: 14px;
+  font-weight: 500;
+}
+.c-pledge-head small {
+  display: block;
+  font-size: 12px;
+  color: var(--ink-soft);
+  margin-top: 6px;
+}
+.c-contribution-history {
+  color: var(--ink-soft);
+  font-size: 12px;
+  margin-top: 12px;
+}
+.c-contribution-history summary {
+  cursor: pointer;
+}
+.c-contribution-history > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 12px;
+}
+.c-contribution-history > div > span {
+  overflow-wrap: anywhere;
+}
+.c-member-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.c-member-row {
+  flex-wrap: wrap;
+}
+.c-member-row .bal {
+  font-weight: 500;
+}
+.c-member-row .c-member-actions {
+  margin-left: auto;
+}
+.ops-card h2 {
+  font-weight: 550;
+}
+.ops-kicker {
+  font-weight: 550;
+}
+.c-product-dialog .a-field-row {
+  flex-wrap: wrap;
+}
+.c-product-dialog .a-field-label {
+  font-weight: 500;
+}
+@media (max-width: 760px) {
+  .c-workflow-grid {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 460px) {
+  .c-form-grid {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+}
+
+@media (max-width: 560px) {
+  .c-split-hint { min-height: 4.8em; }
+}

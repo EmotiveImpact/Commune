@@ -48,6 +48,7 @@ export function NotesScreen() {
     noteKey,
     window: win,
     hubId,
+    native,
     noteSearchQuery,
     setNoteSearchQuery,
   } = useApp();
@@ -133,12 +134,12 @@ export function NotesScreen() {
             <Plus size={16} aria-hidden="true" /> Add note
           </button>
         </div>
-        <label className="notes-mobile-search">
+        <label className="notes-mobile-search c-record-filter">
           <Search size={18} aria-hidden="true" />
           <input
             type="search"
-            aria-label="Search notes on mobile"
-            placeholder="Search notes…"
+            aria-label="Search notes in this commune"
+            placeholder="Filter notes…"
             maxLength={LIMITS.search}
             value={noteSearchQuery}
             onChange={(event) => setNoteSearchQuery(event.target.value)}

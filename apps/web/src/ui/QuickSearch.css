@@ -1,0 +1,97 @@
+/* One interaction, Commune's existing control/surface radius and restrained type. */
+.a-header .c-search-trigger {
+  display: flex;
+  width: 238px;
+  min-height: 36px;
+  gap: 9px;
+  padding: 7px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--white);
+  color: var(--ink-soft);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.c-search-trigger span { flex: 1; text-align: left; }
+.c-search-trigger kbd, .c-search-key-hint kbd {
+  padding: 1px 4px; border: 1px solid var(--border); border-radius: 3px;
+  font: inherit; font-size: 10px; color: var(--ink-soft);
+}
+.c-product-dialog.c-quick-search {
+  width: min(640px, calc(100vw - 32px));
+  max-width: 640px;
+  max-height: calc(100dvh - 56px);
+  padding: 0;
+  margin: max(28px, 12dvh) auto auto;
+  overflow: hidden;
+  border-radius: var(--radius-surface);
+  color: var(--ink);
+  background: var(--white);
+}
+.c-product-dialog.c-quick-search > h2 { margin: 0; padding: 18px 22px 0; font-size: 17px; font-weight: 550; }
+.c-quick-search .c-dialog-close { top: 11px; right: 12px; }
+.c-quick-search-input { display: flex; align-items: center; gap: 12px; padding: 18px 22px; color: var(--ink-soft); }
+.c-quick-search-input input {
+  flex: 1; min-width: 0; border: 0; background: transparent; color: var(--ink);
+  font: inherit; font-size: 17px; line-height: 1.5; border-radius: var(--radius-control); padding: 5px 7px;
+}
+.c-search-scope { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; padding: 0 22px 16px; border-bottom: 1px solid var(--border); }
+.c-search-scope button {
+  min-height: 32px; padding: 6px 10px; border: 1px solid var(--border);
+  border-radius: var(--radius-control); background: transparent; color: var(--ink-soft);
+  font: inherit; font-size: 12px; cursor: pointer;
+}
+.c-search-scope button[aria-pressed="true"] { background: var(--paper); border-color: var(--sage); color: var(--sage); }
+.c-search-scope > span { margin-left: 5px; max-width: 230px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; color: var(--ink-soft); }
+.c-quick-search-body { overflow-y: auto; max-height: min(440px, calc(100dvh - 300px)); min-height: 142px; }
+.c-search-group { padding: 12px 8px 0; }
+.c-search-group:last-child { padding-bottom: 12px; }
+.c-search-group h3 { margin: 0; padding: 0 14px 8px; color: var(--ink-soft); font-size: 11px; font-weight: 550; letter-spacing: .6px; text-transform: uppercase; }
+.c-search-result {
+  display: flex; align-items: center; gap: 12px; width: 100%; padding: 11px 14px;
+  border: 0; border-radius: var(--radius-control); background: transparent; color: var(--ink);
+  text-align: left; font: inherit; cursor: pointer;
+}
+.c-search-result:hover, .c-search-result.is-active { background: var(--paper); }
+.c-search-result-icon { display: flex; flex-shrink: 0; color: var(--ink-soft); }
+.c-search-result-copy { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: 4px; }
+.c-search-result strong { font-size: 14px; font-weight: 550; overflow-wrap: anywhere; }
+.c-search-result-copy small { font-size: 12px; color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.c-search-result-meta { display: flex; flex-direction: column; gap: 4px; align-items: flex-end; max-width: 135px; text-align: right; }
+.c-search-result-meta small { font-size: 11px; color: var(--ink-soft); overflow-wrap: anywhere; }
+.c-search-state { padding: 28px 22px; color: var(--ink-soft); font-size: 13px; }
+.c-search-state p { margin: 0 0 8px; color: var(--ink); font-weight: 500; }
+.c-search-state span { display: block; line-height: 1.6; }
+.c-search-state .a-btn { margin-top: 16px; }
+.c-quick-search-footer { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; padding: 14px 22px; border-top: 1px solid var(--border); color: var(--ink-soft); font-size: 11px; }
+.c-quick-search-footer button { border: 0; padding: 3px 0; background: transparent; color: var(--sage); font: inherit; cursor: pointer; }
+.c-search-key-hint { display: flex; gap: 5px; align-items: center; }
+.c-search-announcement { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.c-record-filter, .notes-mobile-search.c-record-filter {
+  display: flex; align-items: center; gap: 8px; width: min(260px, 100%); min-height: 40px;
+  padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius-control);
+  color: var(--ink-soft); background: var(--white);
+}
+.c-record-filter input { width: 100%; min-width: 0; border: 0; color: var(--ink); background: transparent; font: inherit; font-size: 12px; }
+.notes-mobile-search.c-record-filter { margin-bottom: 22px; }
+.c-search-full .c-search-scope { padding: 0 0 18px; margin-bottom: 18px; }
+.c-search-full .c-search-results { border: 1px solid var(--border); border-radius: var(--radius-surface); background: var(--white); }
+.c-search-full .c-search-count { color: var(--ink-soft); font-size: 12px; margin-bottom: 16px; }
+.c-search-record-highlight { outline: 2px solid var(--sage); outline-offset: 3px; scroll-margin-top: 90px; }
+.c-window-record-loading { display: grid; gap: 14px; padding: 12px 0; }
+.c-window-record-loading span { display: block; height: 18px; width: 85%; border-radius: var(--radius-control); background: var(--paper); }
+.c-window-record-loading span:nth-child(2) { width: 60%; }
+.c-window-record-loading span:last-child { height: 64px; width: 100%; }
+.c-search-full .c-search-scope label { font-size: 12px; color: var(--ink-soft); }
+.c-search-full .c-search-scope select { margin-left: 8px; max-width: 250px; min-height: 40px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--white); color: var(--ink); font: inherit; padding: 7px 12px; }
+@media (max-width: 700px) {
+  .a-header .c-search-trigger { width: 44px; min-height: 44px; flex-shrink: 0; padding: 12px; }
+  .c-search-trigger span, .c-search-trigger kbd { display: none; }
+  .c-product-dialog.c-quick-search { margin-top: 20px; }
+  .c-quick-search-input input { font-size: 16px; }
+  .c-search-key-hint { display: none; }
+  .c-search-result-meta { max-width: 100px; }
+  .c-search-scope > span { max-width: 180px; }
+  .c-record-filter { flex: 1; min-width: 150px; }
+}

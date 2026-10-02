@@ -9,7 +9,8 @@ DECLARE
     'communes', 'commune_members', 'expenses', 'expense_shares',
     'funds', 'fund_commitments', 'fund_contributions',
     'reminders', 'notifications', 'reminder_email_outbox',
-    'commune_invites'
+    'commune_invites', 'recurring_bills', 'recurring_bill_occurrences',
+    'split_templates', 'commune_events'
   ];
 BEGIN
   FOREACH table_name IN ARRAY denied_tables LOOP
@@ -26,6 +27,15 @@ BEGIN
       RAISE EXCEPTION 'Direct authenticated write grant on public.%', table_name;
     END IF;
   END LOOP;
+
+  IF has_function_privilege('anonymous', 'public.commune_snapshot(uuid)', 'EXECUTE')
+    OR NOT has_function_privilege('authenticated', 'public.commune_snapshot(uuid)', 'EXECUTE') THEN
+    RAISE EXCEPTION 'Unexpected snapshot execution grant';
+  END IF;
+  IF has_function_privilege('anonymous', 'public.create_expense_for(uuid,text,bigint,jsonb,date,text,text)', 'EXECUTE')
+    OR has_function_privilege('anonymous', 'public.manage_commune_member(uuid,text,text)', 'EXECUTE') THEN
+    RAISE EXCEPTION 'Anonymous workflow execution grant';
+  END IF;
 
   FOREACH table_name IN ARRAY ARRAY['commune_notes', 'commune_operations'] LOOP
     IF NOT (SELECT relrowsecurity FROM pg_class

@@ -119,12 +119,12 @@ async function loadReminderDetails(reminderId: string) {
       EXISTS (
         SELECT 1 FROM public.commune_members m
         WHERE m.commune_id = r.commune_id
-          AND m.user_id = r.recipient_user_id
+          AND m.user_id = r.recipient_user_id AND m.active
       ) AS member_active,
       pref.email_reminders,
       CASE WHEN r.kind = 'nudge'
         THEN coalesce(s.amount_minor > s.settled_minor, false)
-        ELSE coalesce(fc.amount_minor > paid.total, false)
+        ELSE coalesce(fc.cancelled_at IS NULL AND f.archived_at IS NULL AND fc.amount_minor > paid.total, false)
       END AS still_due,
       (CASE WHEN r.kind = 'nudge'
         THEN s.amount_minor - s.settled_minor
@@ -146,7 +146,7 @@ async function loadReminderDetails(reminderId: string) {
     LEFT JOIN LATERAL (
       SELECT coalesce(sum(amount_minor), 0) AS total
       FROM public.fund_contributions
-      WHERE commitment_id = fc.id
+      WHERE commitment_id = fc.id AND voided_at IS NULL
     ) paid ON true
     WHERE r.id = $1
   `, [reminderId]);

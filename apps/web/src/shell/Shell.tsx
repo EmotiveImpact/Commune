@@ -5,7 +5,7 @@ import { Icon } from "../ui/Icon";
 import { Avatar } from "../ui/widgets";
 import { useApp } from "../state";
 import type { ScreenId, WindowId } from "../data/household";
-import { LIMITS } from "../data/limits";
+import { QuickSearch } from "../ui/QuickSearch";
 import { cx } from "../ui/cx";
 import { ReminderUsageMeter } from "../ui/ReminderUsage";
 
@@ -165,6 +165,7 @@ function NavButton({
 
 export function Sidebar({ screen }: { screen: ScreenId }) {
   const { go, hub, you, reminderUsage } = useApp();
+  const accountRole = hub.youMeta?.split(" · ")[0];
   const active = (id: ScreenId) =>
     screen === id ||
     (id === "settle" && screen === "settle-even") ||
@@ -217,9 +218,12 @@ export function Sidebar({ screen }: { screen: ScreenId }) {
         <div className="a-side-account-copy">
           <button className="a-side-foot" type="button" onClick={() => go("settings")}>
             <strong>{you.name}</strong>
-            {hub.youMeta && <span>{hub.youMeta.split(" · ")[0]}</span>}
           </button>
-          <ReminderUsageMeter usage={reminderUsage} placement="sidebar" />
+          <div className="a-side-account-meta">
+            {accountRole && <span className="a-side-account-role">{accountRole}</span>}
+            {accountRole && reminderUsage && <span className="a-side-account-separator" aria-hidden="true">·</span>}
+            <ReminderUsageMeter usage={reminderUsage} placement="sidebar" />
+          </div>
         </div>
       </div>
     </aside>
@@ -236,14 +240,29 @@ export function Header({ screen }: { screen: ScreenId }) {
     you,
     noticesOn,
     notifications,
-    searchQuery,
-    setSearchQuery,
-    noteSearchQuery,
-    setNoteSearchQuery,
+    hubId,
+    session,
+    window: currentWindow,
   } = useApp();
-  const searchingNotes = screen === "notes";
+  const [searchOpen, setSearchOpen] = useState(false);
+  const searchingAll = ["home", "home-empty", "communes", "home-activity"].includes(screen);
+  useEffect(() => {
+    function shortcut(event: KeyboardEvent) {
+      if (event.isComposing || event.repeat) return;
+      const target = event.target instanceof Element ? event.target : null;
+      const typing = target?.closest("input, textarea, select, [contenteditable='true']");
+      const toggle = (event.metaKey || event.ctrlKey) && !event.altKey && event.key.toLowerCase() === "k";
+      const slash = event.key === "/" && !typing && !event.metaKey && !event.ctrlKey && !event.altKey;
+      if (!toggle && !slash) return;
+      // Never open a second modal over an expense, invite or editor.
+      if (!searchOpen && (currentWindow || document.querySelector("dialog[open]"))) return;
+      event.preventDefault(); setSearchOpen(open => toggle ? !open : true);
+    }
+    document.addEventListener("keydown", shortcut);
+    return () => document.removeEventListener("keydown", shortcut);
+  }, [searchOpen, currentWindow]);
   return (
-    <header className="a-header">
+    <header className={cx("a-header", (screen === "home" || screen === "home-empty") && "a-header-home")}>
       <button className="a-icon-btn a-more-btn" type="button" aria-label="More" onClick={() => setMoreOpen(true)}>
         <Icon name="menu" size={16} />
       </button>
@@ -252,26 +271,11 @@ export function Header({ screen }: { screen: ScreenId }) {
         <h1>{pageTitle}</h1>
         {pageLede ? <p>{pageLede}</p> : null}
       </div>
-      {native ? null : (
-        <form
-          className="a-search"
-          role="search"
-          onSubmit={(event) => {
-            event.preventDefault();
-            if (!searchingNotes) go("expenses");
-          }}
-        >
+      <button className="a-search c-search-trigger" type="button" aria-label="Open search"
+        aria-haspopup="dialog" aria-keyshortcuts="Meta+K Control+K" onClick={() => setSearchOpen(true)}>
           <Icon name="search" size={16} />
-          <input
-            type="search"
-            value={searchingNotes ? noteSearchQuery : searchQuery}
-            maxLength={LIMITS.search}
-            onChange={(event) => (searchingNotes ? setNoteSearchQuery : setSearchQuery)(event.target.value)}
-            placeholder={searchingNotes ? "Search notes…" : "Search expenses"}
-            aria-label={searchingNotes ? "Search notes" : "Search expenses"}
-          />
-        </form>
-      )}
+          {!native && <><span>Search Commune</span><kbd>⌘ K</kbd></>}
+      </button>
       <div className="a-header-actions">
         <button className="a-icon-btn a-you-btn" type="button" aria-label="You" onClick={() => go("settings")}>
           <Avatar tone="maya" initials={you.initials} />
@@ -280,6 +284,8 @@ export function Header({ screen }: { screen: ScreenId }) {
           <Icon name="bell" size={16} />
         </button>
       </div>
+      {searchOpen && <QuickSearch onClose={() => setSearchOpen(false)}
+        initialScope={!session?.hasHubs || searchingAll || screen === "search" ? null : hubId} />}
     </header>
   );
 }
@@ -319,9 +325,11 @@ export function PhoneTabs({ screen }: { screen: ScreenId }) {
 const MORE: Array<{ id: ScreenId | WindowId; title: string; hint: string; icon: IconName; dash?: boolean }> = [
   { id: "commune-new", title: "Create a commune", hint: "A home, a studio, or a trip", icon: "plus", dash: true },
   { id: "communes", title: "Places", hint: "Switch house, studio, or trip", icon: "hub" },
+  { id: "search", title: "Search", hint: "Find expenses, notes and jobs across your communes", icon: "search" },
   { id: "notes", title: "Notes", hint: "Shared details to remember", icon: "notes" },
   { id: "funds", title: "Funds", hint: "Contributions and commitments", icon: "funds" },
-  { id: "recurring", title: "Recurring", hint: "Schedule setup coming later", icon: "refresh" },
+  { id: "recurring", title: "Recurring", hint: "Regular bills, recorded after payment", icon: "refresh" },
+  { id: "templates", title: "Saved splits", hint: "Participants, percentages and share weights", icon: "templates" },
   { id: "operations", title: "Operations", hint: "What’s late, what’s yours, then the week", icon: "operations" },
   { id: "members", title: "Members", hint: "Who’s here this cycle", icon: "members" },
   { id: "settings", title: "You & settings", hint: "Profile and preferences", icon: "settings" },

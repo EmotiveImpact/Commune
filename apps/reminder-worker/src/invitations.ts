@@ -54,7 +54,7 @@ export async function sendInvitationEmail(pool: Pool, actor: string, token: stri
         AND EXISTS (SELECT 1 FROM public.commune_members m
           JOIN neon_auth."user" u ON u.id::text=m.user_id
           WHERE m.commune_id=i.commune_id AND m.user_id=$2
-            AND m.role='admin' AND u."emailVerified" IS TRUE)
+            AND m.role='admin' AND m.active AND u."emailVerified" IS TRUE)
       FOR UPDATE OF i`, [token, actor]);
     const invite = rows[0];
     if (!invite) throw new InvitationEmailError(404, "Invitation is unavailable or you are no longer a commune admin.");

@@ -1,0 +1,70 @@
+/* Shared with the HTML reference. Preserve Operations' calendar silhouette,
+   weekday strip and number weights; never add a shadow or coloured side edge. */
+.c-calendar-date {
+  display: grid;
+  justify-items: center;
+  justify-self: center;
+  width: 60px;
+  max-width: 100%;
+  flex: none;
+  padding: 0 0 3px;
+  overflow: hidden;
+  border: 1px solid #e8e2d8;
+  border-radius: 10px;
+  background: #fffdf9;
+  color: #1a1e2b;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.c-calendar-date .c-calendar-weekday {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  min-height: 16px;
+  margin: 0;
+  background: #e8efe8;
+  color: #2d6a4f;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.c-calendar-date.is-today .c-calendar-weekday {
+  background: #2d6a4f;
+  color: #fff;
+}
+.c-calendar-date .c-calendar-number {
+  padding-top: 2px;
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1.1;
+}
+.c-calendar-date .c-calendar-caption {
+  margin-top: 1px;
+  color: #2d6a4f;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 1.5;
+}
+.a-body.is-dark .c-calendar-date {
+  border-color: #465347;
+  background: #202a37;
+  color: #eff2f5;
+}
+.a-body.is-dark .c-calendar-date .c-calendar-weekday {
+  background: #253b34;
+  color: #c2ddcc;
+}
+.a-body.is-dark .c-calendar-date.is-today .c-calendar-weekday {
+  background: #2d6a4f;
+  color: #fff;
+}
+.a-body.is-dark .c-calendar-date .c-calendar-caption { color: #c2ddcc; }
+@media (max-width: 1000px) {
+  .c-calendar-date { width: 52px; }
+  .c-calendar-date .c-calendar-number { font-size: 22px; }
+}
+.a-body.is-native .c-calendar-date { width: 52px; }
+.a-body.is-native .c-calendar-date .c-calendar-number { font-size: 22px; }

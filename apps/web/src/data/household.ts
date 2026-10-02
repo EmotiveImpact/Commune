@@ -25,6 +25,8 @@ export type ScreenId =
   | "operations"
   | "notes"
   | "activity"
+  | "home-activity"
+  | "search"
   | "commune-settings"
   | "settings";
 
@@ -82,7 +84,7 @@ export type Hub = {
   oweCta: string;
   credit: boolean;
   kpis: Array<{ go: ScreenId | WindowId; tone: string; kicker: string; num: string; hint: string }>;
-  now: Array<{ go: ScreenId | WindowId; pill: string; tag: string; title: string; when: string }>;
+  now: Array<{ go: ScreenId | WindowId; pill: string; tag: string; title: string; when: string; expenseId?: string; operationId?: string; dueOn?: string }>;
   moves: SettlementMove[];
   members: Array<{
     userId?: string;
@@ -101,6 +103,8 @@ export type Hub = {
     title: string;
     when: string;
     time: string;
+    createdAt?: string;
+    expenseId?: string;
   }>;
   notes: Array<{ go: "note"; note: string; title: string; when: string }>;
   jumps: Array<{ go: ScreenId | WindowId; kicker: string; title: string; hint: string }>;
@@ -411,7 +415,7 @@ export const NOTE_BODY_HINT: Record<string, string> = {
   keys: "Who has the spare, last lockup, anything that bites.",
   contacts: "When to contact them, opening hours, or anything helpful.",
   emergency: "Who to call when the boiler dies at 11pm.",
-  rules: "Quiet hours, shoes, guests — the old chat pin.",
+  rules: "Quiet hours, shoes and guests.",
   other: "Anything this commune needs to remember.",
 };
 
@@ -445,6 +449,8 @@ export const PAGE_TITLES: Record<string, string> = {
   "note-new": "Add note",
   "note-edit": "Edit note",
   activity: "Activity",
+  "home-activity": "All activity",
+  search: "Search",
   "commune-settings": "Commune settings",
   notices: "Notices",
   "add-expense": "Add expense",
@@ -468,7 +474,7 @@ export const PAGE_LEDES: Record<string, string> = {
   "expense-paid": "A member share has been confirmed.",
   settle: "Outstanding shares involving you.",
   "settle-even": "Nothing to send this cycle.",
-  recurring: "Automatic recurring expenses are not available yet.",
+  recurring: "Repeat a bill, check it, then record what was paid.",
   funds: "Pledges and recorded contributions.",
   templates: "Shared split preferences.",
   billing: "Plan and billing details.",
@@ -484,10 +490,12 @@ export const PAGE_LEDES: Record<string, string> = {
   "note-new": "Type first. Extras change. The note itself stays so you can keep writing.",
   "note-edit": "Update shared details and pin this note on This Hub.",
   activity: "The log, without the group chat.",
+  "home-activity": "Recent records across all your communes.",
+  search: "Find an expense, note, task or commune.",
   "commune-settings": "Details and people for this commune.",
   notices: "Updates sent to you in Commune.",
   "add-expense": "Choose the members and check the split.",
-  "member-invite": "Create a secure link for this commune.",
+  "member-invite": "Send an email invitation or share a secure link.",
   pay: "Choose how to settle outside Commune.",
   "pay-method": "A username they can tap from Settle.",
   profile: "Your account and payment methods.",
@@ -550,6 +558,8 @@ export const SCREEN_PATH: Record<ScreenId, string> = {
   operations: "/operations",
   notes: "/notes",
   activity: "/activity",
+  "home-activity": "/activity/all",
+  search: "/search",
   "commune-settings": "/commune-settings",
   settings: "/settings",
 };
@@ -657,7 +667,7 @@ export const STUDIO_EXPENSES: ExpenseRow[] = [
     due: "Wednesday",
     status: "settled",
     statusLabel: "Settled",
-    amount: "—",
+    amount: "-",
     action: "none",
   },
   {
@@ -668,7 +678,7 @@ export const STUDIO_EXPENSES: ExpenseRow[] = [
     due: "1 Aug",
     status: "settled",
     statusLabel: "Settled",
-    amount: "—",
+    amount: "-",
     action: "none",
     recurring: true,
   },
@@ -695,7 +705,7 @@ export const LISBON_EXPENSES: ExpenseRow[] = [
     due: "Sunday",
     status: "settled",
     statusLabel: "Settled",
-    amount: "—",
+    amount: "-",
     action: "none",
   },
   {
@@ -706,7 +716,7 @@ export const LISBON_EXPENSES: ExpenseRow[] = [
     due: "Sunday",
     status: "settled",
     statusLabel: "Settled",
-    amount: "—",
+    amount: "-",
     action: "none",
   },
 ];
@@ -814,7 +824,7 @@ export function buildCreatedHub(opts: {
         go: "expenses",
         tone: "ink",
         kicker: "Next due",
-        num: openExpenses[0]?.due ?? "—",
+        num: openExpenses[0]?.due ?? "-",
         hint: openExpenses[0]?.name ?? "Ledger is clear",
       },
     ],

@@ -153,14 +153,14 @@
 
 .a-app {
   display: grid;
-  grid-template-columns: 272px minmax(0, 1fr);
+  grid-template-columns: 248px minmax(0, 1fr);
   min-height: 100vh;
 }
 
 .a-side {
   background: #1a1e2b;
   color: #f8f5f0;
-  padding: 27px 20px 20px;
+  padding: 27px 16px 20px;
   display: flex;
   flex-direction: column;
   gap: 0;
@@ -224,7 +224,7 @@
   align-items: center;
   gap: 10px;
   padding: 8px 10px;
-  border-radius: 10px;
+  border-radius: var(--radius-control);
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.06);
   width: 100%;
@@ -295,7 +295,7 @@
   flex-direction: column;
   gap: 2px;
   padding: 6px;
-  border-radius: 12px;
+  border-radius: var(--radius-surface);
   background: #161a26;
   border: 1px solid rgba(255, 255, 255, 0.12);
   box-shadow: none;
@@ -310,7 +310,7 @@
   width: 100%;
   padding: 8px;
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--radius-control);
   background: transparent;
   color: inherit;
   font: inherit;
@@ -399,7 +399,7 @@
 .a-nav {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 3px;
   flex: 1;
   min-height: 0;
   overflow-y: auto;
@@ -410,7 +410,7 @@
   display: flex;
   align-items: center;
   gap: 15px;
-  padding: 12px 15px;
+  padding: 9px 15px;
   border-radius: 9px;
   color: #f8f5f0;
   text-decoration: none;
@@ -467,12 +467,12 @@
 .a-nav-advanced {
   display: none;
   flex-direction: column;
-  gap: 5px;
+  gap: 3px;
 }
 
 .a-nav-basic {
-  margin-top: 12px;
-  padding-top: 17px;
+  margin-top: 8px;
+  padding-top: 10px;
   border-top: 1px solid rgba(255, 255, 255, 0.12);
 }
 
@@ -515,8 +515,7 @@
   flex: 1;
 }
 
-.a-side-foot strong,
-.a-side-foot span {
+.a-side-foot strong {
   display: block;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -527,9 +526,23 @@
   font-size: 13px;
 }
 
-.a-side-foot span {
+.a-side-account-role,
+.a-side-account-separator {
   font-size: 11px;
   color: rgba(255, 255, 255, 0.45);
+}
+
+.a-side-account-meta {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.a-side-account-role,
+.a-side-account-separator {
+  flex-shrink: 0;
 }
 
 .a-side-account {
@@ -545,7 +558,7 @@
 
 .a-side-account .a-reminder-usage--sidebar {
   position: static;
-  margin: 1px 0 0;
+  margin: 0;
   width: auto;
   font-size: 10px;
   color: rgba(255, 255, 255, 0.65);
@@ -588,6 +601,7 @@
   padding: 12px 28px;
   border-bottom: 1px solid var(--border);
   background: rgba(245, 241, 234, 0.86);
+  color: var(--ink);
   backdrop-filter: blur(10px);
   position: sticky;
   top: 0;
@@ -626,7 +640,7 @@
   width: 240px;
   max-width: 240px;
   height: 38px;
-  border-radius: 999px;
+  border-radius: var(--radius-control);
   border: 1px solid var(--border);
   background: #fff;
   display: flex;
@@ -664,7 +678,7 @@
 .a-btn {
   height: 38px;
   padding: 0 14px;
-  border-radius: 999px;
+  border-radius: var(--radius-control);
   border: 0;
   background: var(--sage);
   color: #fff;
@@ -699,7 +713,7 @@
 .a-photo-btn {
   height: 32px;
   padding: 0 12px;
-  border-radius: 999px;
+  border-radius: var(--radius-control);
   border: 1px solid rgba(248, 245, 240, 0.28);
   background: rgba(26, 30, 46, 0.45);
   color: #f8f5f0;
@@ -845,7 +859,7 @@
   flex-shrink: 0;
   color: inherit;
   cursor: pointer;
-  border-radius: 999px;
+  border-radius: var(--radius-control);
 }
 
 .a-more-btn svg {
@@ -1331,7 +1345,7 @@ div.a-set-row {
   position: relative;
   width: 38px;
   height: 38px;
-  border-radius: 999px;
+  border-radius: var(--radius-control);
   border: 1px solid var(--border);
   background: #fff;
   display: grid;
@@ -1343,6 +1357,11 @@ div.a-set-row {
 .a-icon-btn svg {
   width: 16px;
   height: 16px;
+}
+
+/* Account portraits remain circular; the bell and other icon actions are controls. */
+.a-icon-btn.a-you-btn {
+  border-radius: var(--radius-pill);
 }
 
 .a-icon-btn.has-unread::after {
@@ -2436,7 +2455,7 @@ button.a-kpi {
   min-width: 0;
   box-sizing: border-box;
   padding: 0 12px;
-  border-radius: 10px;
+  border-radius: var(--radius-control);
   border: 1px solid var(--border);
   background: #fff;
   font: inherit;
@@ -3485,7 +3504,7 @@ button.a-item {
   max-height: min(86vh, 840px);
   overflow: hidden;
   background: #f8f5f0;
-  border-radius: 20px;
+  border-radius: var(--radius-surface);
   box-shadow: 0 24px 60px rgba(26, 30, 46, 0.28);
 }
 
@@ -3508,7 +3527,7 @@ button.a-item {
 .a-window-x {
   width: 36px;
   height: 36px;
-  border-radius: 999px;
+  border-radius: var(--radius-control);
   border: 1px solid var(--border);
   background: #fff;
   display: grid;
@@ -3662,7 +3681,7 @@ button.a-item {
 
 @media (max-width: 1100px) {
   .a-search {
-    display: none;
+    width: 190px;
   }
 }
 
@@ -3831,7 +3850,7 @@ button.a-item {
   .a-window-frame {
     width: 100%;
     max-height: 92vh;
-    border-radius: 20px 20px 0 0;
+    border-radius: var(--radius-surface) var(--radius-surface) 0 0;
   }
   .a-window {
     grid-template-columns: 1fr;
@@ -3859,7 +3878,7 @@ button.a-item {
     max-height: min(86vh, 640px);
     overflow: auto;
     border: 0;
-    border-radius: 20px 20px 0 0;
+    border-radius: var(--radius-surface) var(--radius-surface) 0 0;
     padding: 10px 0 calc(18px + env(safe-area-inset-bottom, 0px));
     box-shadow: 0 -18px 50px rgba(26, 30, 43, 0.28);
     background: #fff;
@@ -4059,7 +4078,7 @@ button.a-item {
   max-height: min(86vh, 640px);
   overflow: auto;
   border: 0;
-  border-radius: 20px 20px 0 0;
+  border-radius: var(--radius-surface) var(--radius-surface) 0 0;
   padding: 10px 0 28px;
   transform: translateX(-50%);
   box-shadow: 0 -18px 50px rgba(26, 30, 43, 0.28);
@@ -4211,7 +4230,7 @@ button.a-item {
 .a-body.is-native .a-window-frame {
   width: 100%;
   max-height: 92vh;
-  border-radius: 20px 20px 0 0;
+  border-radius: var(--radius-surface) var(--radius-surface) 0 0;
 }
 
 .a-body.is-native .a-choose.is-open .a-choose-menu {
@@ -5591,54 +5610,7 @@ button.a-item {
   border-top: 1px solid rgba(26, 30, 43, 0.05);
 }
 
-.ops-week-date {
-  display: grid;
-  justify-items: center;
-  justify-self: center;
-  width: min(100%, 60px);
-  padding: 0 0 3px;
-  overflow: hidden;
-  border: 1px solid #e8e2d8;
-  border-radius: 10px;
-  background: #fffdf9;
-  color: #1a1e2b;
-  font-variant-numeric: tabular-nums;
-}
-
-.ops-week-date small {
-  display: grid;
-  place-items: center;
-  width: 100%;
-  min-height: 16px;
-  background: #e8efe8;
-  color: #2d6a4f;
-  font-size: 9px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.ops-week-date.is-today small {
-  background: var(--sage);
-  color: #fff;
-}
-
-.ops-week-date strong {
-  padding-top: 2px;
-  font-size: 24px;
-  font-weight: 800;
-  letter-spacing: -0.04em;
-  line-height: 1.1;
-}
-
-.ops-week-date em {
-  margin-top: 1px;
-  color: #2d6a4f;
-  font-size: 10px;
-  font-style: normal;
-  font-weight: 700;
-}
-
+/* Calendar appearance is shared in public/styles/calendar-date.css. */
 .ops-week-items {
   display: grid;
   gap: 6px;

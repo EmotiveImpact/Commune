@@ -1,14 +1,15 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 
-const base = process.env.API_BASE ?? "http://127.0.0.1:3002";
+const base = process.env.API_BASE;
+if (!base) throw new Error("Set API_BASE to an isolated local test API, not the user's database.");
 const baseUrl = new URL(base);
 if (baseUrl.protocol !== "http:" ||
     !["127.0.0.1", "localhost"].includes(baseUrl.hostname) ||
     !Number.isInteger(Number(baseUrl.port)) || Number(baseUrl.port) < 1024 ||
-    Number(baseUrl.port) > 65535 || baseUrl.pathname !== "/" ||
+    Number(baseUrl.port) > 65535 || baseUrl.port === "3002" || baseUrl.pathname !== "/" ||
     baseUrl.search || baseUrl.hash || baseUrl.username || baseUrl.password) {
-  throw new Error("Smoke tests only target an explicit loopback API port");
+  throw new Error("Smoke tests require an isolated loopback API port (not 3002)");
 }
 const suffix = randomUUID().slice(0, 8);
 const password = "LocalSmokePassword-2026!";

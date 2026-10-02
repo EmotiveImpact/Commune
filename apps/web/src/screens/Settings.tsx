@@ -90,7 +90,7 @@ export function SettingsScreen() {
               </span>
               <span className="a-set-row-copy">
                 <strong>Places</strong>
-                <span>Switch house, studio, or trip — or create one.</span>
+                <span>Switch house, studio, or trip. Or create one.</span>
               </span>
               <Icon name="chevron" size={16} />
             </button>
@@ -102,12 +102,13 @@ export function SettingsScreen() {
             <div className="a-set-row">
               <span className="a-set-row-copy">
                 <strong>Sidebar</strong>
-                <span>Basic is Home, This Hub, and the jumps. Advanced adds the rest.</span>
+                <span>Basic keeps everyday tools visible. Advanced adds templates and insights.</span>
               </span>
               <div className="a-seg" role="group" aria-label="Sidebar density">
                 <button
                   type="button"
                   className={cx(navMode === "basic" && "is-on")}
+                  aria-pressed={navMode === "basic"}
                   onClick={() => setNavMode("basic")}
                 >
                   Basic
@@ -115,6 +116,7 @@ export function SettingsScreen() {
                 <button
                   type="button"
                   className={cx(navMode === "advanced" && "is-on")}
+                  aria-pressed={navMode === "advanced"}
                   onClick={() => setNavMode("advanced")}
                 >
                   Advanced
@@ -305,7 +307,7 @@ export function CommuneSettingsScreen() {
             </button>
             {canEdit ? <button className="a-set-row" type="button" onClick={() => go("member-invite")}>
               <span className="a-set-row-ic" aria-hidden="true"><Icon name="plus" /></span>
-              <span className="a-set-row-copy"><strong>Invite someone</strong><span>Create a link for an invited email address.</span></span>
+              <span className="a-set-row-copy"><strong>Invite someone</strong><span>Send an email invitation or copy a secure link.</span></span>
               <Icon name="chevron" size={16} />
             </button> : null}
           </div>

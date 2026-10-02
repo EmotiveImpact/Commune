@@ -3,6 +3,9 @@ DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
     CREATE ROLE authenticated NOLOGIN;
   END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anonymous') THEN
+    CREATE ROLE anonymous NOLOGIN;
+  END IF;
 END $$;
 CREATE SCHEMA auth;
 CREATE OR REPLACE FUNCTION auth.user_id() RETURNS text LANGUAGE sql STABLE AS $$

@@ -8,6 +8,7 @@ import {
 } from "../data/household";
 import type { OperationItem } from "../data/operations";
 import { notePreview } from "../data/notePresentation";
+import { todayIso } from "../data/operations";
 
 export type CurrencyCode = "GBP" | "USD" | "EUR";
 export type MemberRole = "admin" | "member";
@@ -34,6 +35,7 @@ export type Member = {
   name: string;
   email?: string;
   role: MemberRole;
+  active?: boolean;
 };
 export type Share = {
   id: string;
@@ -58,6 +60,8 @@ export type Commitment = {
   amountMinor: number;
   dueOn: string;
   contributedMinor: number;
+  cancelledAt?: string | null;
+  contributions?: Array<{ id: string; amountMinor: number; contributedAt: string; voidedAt: string | null; voidReason: string | null }>;
 };
 export type Fund = {
   id: string;
@@ -66,6 +70,16 @@ export type Fund = {
   createdBy?: string;
   commitments: Commitment[];
   contributedMinor: number;
+  archivedAt?: string | null;
+};
+export type RecurringBill = {
+  id: string; title: string; amountMinor: number; paidByUserId: string;
+  allocations: Array<{ userId: string; amountMinor: number }>;
+  frequency: "weekly" | "monthly"; nextDueOn: string; paused: boolean; createdBy: string;
+};
+export type SplitTemplate = {
+  id: string; name: string; method: "Equal" | "Exact" | "Percentage" | "Shares";
+  participants: Array<{ userId: string; value: string }>; createdBy: string; archivedAt: string | null;
 };
 export type ReminderTarget = {
   kind: "nudge" | "chase";
@@ -104,14 +118,18 @@ export type Snapshot = {
   reminderTargets: ReminderTarget[];
   notes?: LiveNote[];
   operations?: OperationItem[];
+  recurringBills?: RecurringBill[];
+  splitTemplates?: SplitTemplate[];
+  activityEvents?: Array<{id:string;actorId:string;kind:"funds"|"members"|"recurring"|"templates"|"notes"|"operations"|"expenses";entityId:string;title:string;description:string;createdAt:string}>;
 };
 export type LiveExpenseRow = ExpenseRow & {
   amountMinor: number;
   paidByUserId: string;
   dueOn: string | null;
   shares: Share[];
+  createdAt?: string;
 };
-export type LiveHub = Hub & {
+export type LiveHub = Omit<Hub, "members"> & {
   currency: CurrencyCode;
   role: MemberRole;
   activityState?: "loading" | "error" | "ready";
@@ -176,6 +194,7 @@ export function expenseRows(snapshot: Snapshot, viewerId: string): LiveExpenseRo
       amountMinor: expense.amountMinor,
       due: dateLabel(expense.dueOn),
       dueOn: expense.dueOn,
+      createdAt: expense.createdAt,
       status: outstanding ? (overdue ? "warn" : "open") : "settled",
       statusLabel: outstanding ? (overdue ? "Overdue" : "Open") : "Settled",
       action: outstanding && isPayer ? "choose" : "none",
@@ -237,7 +256,8 @@ export function hubFromSnapshot(
       }
     }
   }
-  const members: LiveHub["members"] = snapshot.members.map((member, index) => {
+  const activeMembers = snapshot.members.filter(member => member.active !== false);
+  const members: LiveHub["members"] = activeMembers.map((member, index) => {
     const relation = byMember.get(member.userId) ?? { owesYou: 0, youOwe: 0 };
     const balance = member.userId === viewer.id
       ? youOwe > 0
@@ -281,6 +301,21 @@ export function hubFromSnapshot(
     title: note.title,
     when: notePreview(note),
   }));
+  const today = todayIso();
+  const personalNeeds: Hub["now"] = [
+    ...openRows.filter(row => row.paidByUserId === viewer.id || row.shares.some(share => share.userId === viewer.id && share.settledMinor < share.amountMinor)).map(row => ({
+      go: "expense" as const, pill: row.status, tag: row.due, title: row.name,
+      when: `${row.amount} · ${row.paidBy} paid`, expenseId: row.id, dueOn: row.dueOn ?? undefined,
+    })),
+    ...(snapshot.operations ?? []).filter(item => item.kind === "task" && item.status === "open" && item.assignee === viewer.name && item.date <= today).map(item => ({
+      go: "operation" as const, pill: item.date < today ? "warn" : "open", tag: item.date < today ? "Overdue" : "Today",
+      title: item.title, when: item.date < today ? "Overdue · your turn" : "Your turn today", operationId: item.id, dueOn: item.date,
+    })),
+    ...snapshot.funds.filter(fund => !fund.archivedAt).flatMap(fund => fund.commitments.filter(pledge => !pledge.cancelledAt && pledge.userId === viewer.id && pledge.amountMinor > pledge.contributedMinor && pledge.dueOn <= today).map(pledge => ({
+      go: "funds" as const, pill: pledge.dueOn < today ? "warn" : "open", tag: dateLabel(pledge.dueOn), title: fund.name,
+      when: `${money(pledge.amountMinor - pledge.contributedMinor, currency)} remaining on your pledge`, dueOn: pledge.dueOn,
+    }))),
+  ];
   return {
     id: commune.id,
     currency,
@@ -291,10 +326,10 @@ export function hubFromSnapshot(
     destination: commune.destination ?? "",
     stayName: commune.stayName ?? "",
     stayAddress: commune.stayAddress ?? "",
-    lede: `${type} · ${snapshot.members.length} ${snapshot.members.length === 1 ? "person" : "people"}`,
-    people: snapshot.members.map((member) => member.name.split(" ")[0]).join(", "),
+    lede: `${type} · ${activeMembers.length} ${activeMembers.length === 1 ? "person" : "people"}`,
+    people: activeMembers.map((member) => member.name.split(" ")[0]).join(", "),
     photo: photo ?? defaultPhoto,
-    switchMeta: `${type} · ${snapshot.members.length} ${snapshot.members.length === 1 ? "person" : "people"}`,
+    switchMeta: `${type} · ${activeMembers.length} ${activeMembers.length === 1 ? "person" : "people"}`,
     status: `${openRows.length} open ${openRows.length === 1 ? "expense" : "expenses"} · ${moves.length} outstanding ${moves.length === 1 ? "share" : "shares"}`,
     youMeta: `${commune.role === "admin" ? "Admin" : "Member"} · ${commune.name}`,
     avatars: members.slice(0, 5).map((member) => [member.cls, member.ini]),
@@ -311,29 +346,30 @@ export function hubFromSnapshot(
       { go: "funds", tone: "peach", kicker: "Recorded contributions", num: money(fundTotal, currency), hint: `${snapshot.funds.length} ${snapshot.funds.length === 1 ? "fund" : "funds"}` },
       { go: "analytics", tone: "lilac", kicker: "This month", num: money(monthTotal, currency), hint: `${monthExpenses.length} ${monthExpenses.length === 1 ? "expense" : "expenses"} logged` },
       { go: "expenses", tone: "sage", kicker: "Open bills", num: String(openRows.length), hint: openRows[0]?.name ?? "Nothing waiting" },
-      { go: "expenses", tone: "ink", kicker: "Next due", num: nextDue ? dateLabel(nextDue.dueOn) : "—", hint: nextDue?.name ?? "No dated open bills" },
+      { go: "expenses", tone: "ink", kicker: "Next due", num: nextDue ? dateLabel(nextDue.dueOn) : "-", hint: nextDue?.name ?? "No dated open bills" },
     ],
-    now: openRows.slice(0, 4).map((row) => ({
-      go: "expenses" as const,
-      pill: row.status,
-      tag: row.due,
-      title: row.name,
-      when: `${row.amount} · ${row.paidBy} paid`,
-    })),
+    now: personalNeeds.sort((a, b) => (a.dueOn ?? "9999").localeCompare(b.dueOn ?? "9999")),
     moves,
     members,
-    activity: snapshot.expenses.slice(0, 8).map((expense) => ({
+    activity: [...snapshot.expenses.map((expense) => ({
       go: "expenses" as const,
       cls: members.find(member => member.userId === expense.paidByUserId)?.cls ?? "jordan",
       ini: initialsOf(names.get(expense.paidByUserId) ?? "Member"),
       title: expense.title,
-      when: `${names.get(expense.paidByUserId) ?? "Member"} logged an expense`,
+      when: `${names.get(expense.paidByUserId) ?? "Member"} paid`,
       time: expense.createdAt ? dateLabel(expense.createdAt.slice(0, 10)) : "Recently",
-    })),
+      createdAt: expense.createdAt,
+      expenseId: expense.id,
+    })), ...(snapshot.activityEvents ?? []).map(event => ({
+      go:event.kind,cls:members.find(member=>member.userId===event.actorId)?.cls ?? "jordan" as const,
+      ini:initialsOf(names.get(event.actorId) ?? "Member"), title:event.title,
+      when:`${event.description} · ${names.get(event.actorId) ?? "Member"}`, time:dateLabel(event.createdAt),createdAt:event.createdAt,
+      expenseId:event.kind==="expenses" ? event.entityId : undefined,
+    }))].sort((a,b)=>(Date.parse(b.createdAt ?? "")||0)-(Date.parse(a.createdAt ?? "")||0)),
     notes,
     jumps: [
       { go: "expenses", kicker: "Expenses", title: `${snapshot.expenses.length} logged`, hint: `${openRows.length} open` },
-      { go: "settle", kicker: "Settle", title: moves.length ? oweLabel : "Everyone is even", hint: moves.length ? money(moneyFocus, currency) : "No outstanding shares" },
+      { go: "settle", kicker: "Settle", title: moves.length ? oweLabel : "You’re even", hint: moves.length ? money(moneyFocus, currency) : "No outstanding shares involving you" },
       { go: "funds", kicker: "Funds", title: `${snapshot.funds.length} funds`, hint: `${money(fundTotal, currency)} recorded in` },
       { go: "notes", kicker: "Notes", title: `${notes.length} notes`, hint: "Shared information" },
       { go: "operations", kicker: "Operations", title: `${snapshot.operations?.length ?? 0} items`, hint: "The week ahead" },

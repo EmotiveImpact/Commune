@@ -14,6 +14,7 @@ import {
 import { useApp } from "../state";
 import { Icon } from "../ui/Icon";
 import { Avatar } from "../ui/widgets";
+import { CalendarDate } from "../ui/CalendarDate";
 import { cx } from "../ui/cx";
 
 type Cut = "week" | "people" | "month";
@@ -242,19 +243,7 @@ export function OperationsScreen() {
             <div className="ops-week-list">
               {weekGroups.map((group) => (
                 <div className="ops-week-day" key={group.date}>
-                  <time
-                    className={cx("ops-week-date", group.date === today && "is-today")}
-                    dateTime={group.date}
-                    title={dayFormatter.format(dateFromIso(group.date))}
-                  >
-                    <small>{weekdayOf(group.date)}</small>
-                    <strong>{Number(group.date.slice(-2))}</strong>
-                    {group.date === today ? (
-                      <em>Today</em>
-                    ) : group.date === addDays(today, 1) ? (
-                      <em>Tomorrow</em>
-                    ) : null}
-                  </time>
+                  <CalendarDate className="ops-week-date" date={group.date} today={today} showMonth={false} />
                   <div className="ops-week-items">
                     {group.items.map((item) => (
                       <button
@@ -486,10 +475,6 @@ function metaLine(item: OperationItem): string {
       ? ` · then ${firstNameOf(nextInRotation(item.rotation, item.assignee))}`
       : "";
   return `${when} · ${who}${next}`;
-}
-
-function weekdayOf(date: string): string {
-  return new Intl.DateTimeFormat("en-GB", { weekday: "short" }).format(dateFromIso(date));
 }
 
 function groupByDate(items: OperationItem[]) {

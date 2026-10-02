@@ -18,7 +18,7 @@ describe("hosted read authentication", () => {
     mocks.getSession.mockResolvedValue({ data: { user: { id: "viewer", emailVerified: true } } });
     mocks.from.mockImplementation((table: string) => {
       const result = Promise.resolve({ data: table === "communes" ? communes : members, error });
-      return { select: () => Object.assign(result, { order: () => result }) };
+      return { select: () => Object.assign(result, { order: () => result, eq: () => result }) };
     });
   }
 
@@ -59,6 +59,22 @@ describe("hosted read authentication", () => {
     expect(mocks.rpc).not.toHaveBeenCalled();
   });
 
+  it("loads the complete hosted snapshot through one guarded database RPC", async () => {
+    mocks.getSession.mockResolvedValue({data:{user:{id:"viewer",emailVerified:true}}});
+    const data={commune,members:[],expenses:[],funds:[],reminderTargets:[],notifications:[],recurringBills:[],splitTemplates:[]};
+    mocks.rpc.mockResolvedValue({data,error:null});
+    const {snapshot}=await import("../src/live/neon");
+    expect(await snapshot(commune.id,commune)).toEqual(data);
+    expect(mocks.rpc).toHaveBeenCalledExactlyOnceWith("commune_snapshot",{p_commune_id:commune.id});
+    expect(mocks.from).not.toHaveBeenCalled();
+  });
+  it("rejects a mis-scoped snapshot instead of rendering another commune's records",async()=>{
+    mocks.getSession.mockResolvedValue({data:{user:{id:"viewer",emailVerified:true}}});
+    mocks.rpc.mockResolvedValue({data:{commune:{...commune,id:"other"},members:[],expenses:[],funds:[]},error:null});
+    const {snapshot}=await import("../src/live/neon");
+    await expect(snapshot(commune.id,commune)).rejects.toMatchObject({status:502});
+  });
+
   it("rejects a changed account before using a previous viewer", async () => {
     mocks.getSession.mockResolvedValue({ data: { user: { id: "new-user", emailVerified: true } } });
     const { listCommunes } = await import("../src/live/neon");
@@ -71,5 +87,22 @@ describe("hosted read authentication", () => {
     const { neonApi } = await import("../src/live/neon");
     await expect(neonApi("/reminders/usage")).rejects.toThrow("Sign in required");
     expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+
+  it("checks a verified session before searching", async () => {
+    const { neonApi } = await import("../src/live/neon");
+    await expect(neonApi("/search?q=garden")).rejects.toThrow("Sign in required");
+    expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+  it("uses the bounded guarded RPC for hosted search without downloading snapshots", async () => {
+    mocks.getSession.mockResolvedValue({ data: { user: { id: "viewer", emailVerified: true } } });
+    const data = { query: "garden", items: [], total: 0, hasMore: false };
+    mocks.rpc.mockResolvedValue({ data, error: null });
+    const { neonApi } = await import("../src/live/neon");
+    expect(await neonApi("/search?q=garden&commune=commune-1&limit=8")).toEqual(data);
+    expect(mocks.rpc).toHaveBeenCalledExactlyOnceWith("search_commune_records", {
+      p_query: "garden", p_commune_id: "commune-1", p_limit: 8,
+    });
+    expect(mocks.from).not.toHaveBeenCalled();
   });
 });

@@ -123,10 +123,10 @@ try {
     return result.rows[0].id;
   });
   testCommune = commune;
-  await db.query(`
+  await asUser(alice, client => client.query(`
     INSERT INTO public.commune_members (commune_id, user_id, role)
     VALUES ($1, $2, 'member')
-  `, [commune, bob]);
+  `, [commune, bob]));
 
   async function createShare(title) {
     return asUser(alice, async (client) => {

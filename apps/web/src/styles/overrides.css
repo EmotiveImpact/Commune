@@ -124,5 +124,28 @@ body,
 .a-pending-nav { display: grid; gap: 24px; padding: 18px 10px; }
 .a-pending .a-side .a-pending-line { opacity: 0.12; }
 .a-pending-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr)); gap: 20px; }
-.a-pending-card { min-height: 160px; border-radius: 20px; padding: 24px; background: rgba(255, 255, 255, 0.45); }
+.a-pending-card { min-height: 160px; border-radius: var(--radius-surface); padding: 24px; background: rgba(255, 255, 255, 0.45); }
 .a-pending-card .a-pending-line + .a-pending-line { margin-top: 20px; width: 210px; }
+/* Home keeps one featured commune with smaller places beneath it. */
+.a-home-featured { margin-bottom: 16px; }
+.a-home-places { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-bottom: 22px; }
+#home .a-home-greet h1 { font-size: 24px; font-weight: 550; }
+#home .a-home-greet p { font-size: 13px; color: var(--ink-soft); }
+#home .a-place { box-shadow: none; border-radius: var(--radius-surface); }
+#home .a-place-hero { min-height: 208px; padding: 18px; }
+#home .a-place-hero h3 { font-size: 21px; font-weight: 500; letter-spacing: -.6px; }
+#home .a-week { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 22px; }
+#home .a-card { background: var(--white); box-shadow: none; border: 1px solid var(--border); border-radius: var(--radius-surface); padding: 23px; min-width: 0; }
+#home .a-card h2 { font-size: 18px; font-weight: 550; }
+#home .a-card strong:not(.c-calendar-number) { font-weight: 500; }
+#home .hub-feed-row { grid-template-columns: minmax(0,1fr) auto; }
+#home .hub-feed-row > .pill { grid-column: 1 / -1; justify-self: start; }
+#home .hub-feed-row:has(> .c-calendar-date) { grid-template-columns: auto minmax(0,1fr) auto; }
+.a-search:focus-within { outline: 2px solid var(--sage); outline-offset: 2px; }
+@media (max-width: 850px) {
+  .a-home-places { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #home .a-week { grid-template-columns: 1fr; }
+  .a-body:not(.is-native) .a-header { flex-wrap: wrap; height: auto; min-height: 60px; }
+  .a-body:not(.is-native) .a-search { display: flex; order: 3; flex: 1 0 100%; width: 100%; max-width: none; margin-top: 8px; background: var(--white); color: var(--ink-soft); }
+}
+@media (max-width: 560px) { .a-home-places { grid-template-columns: 1fr; } }

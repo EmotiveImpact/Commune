@@ -133,9 +133,30 @@ describe("commune loading", () => {
     const summary = await screen.findByLabelText("Reminder allowance: 0 of 60 used in the last 30 days");
     expect(summary.closest(".a-side-account")).not.toBeNull();
     expect(summary.textContent).toContain("60 reminders left");
+    const metadata = summary.closest(".a-side-account-meta")!;
+    expect(metadata.querySelector(".a-side-account-role")?.textContent).toBe("Admin");
+    expect(metadata.querySelector(".a-side-account-separator")?.getAttribute("aria-hidden")).toBe("true");
+    expect(metadata.textContent).toContain("Admin·60 reminders left");
+    expect(summary.closest("details")?.parentElement).toBe(metadata);
+    expect(summary.closest("button")).toBeNull();
     expect(summary.closest(".a-side-account")?.textContent).not.toContain(commune.name);
     expect(document.querySelector(`${path.replace("/", "#")} .a-reminder-usage`)).toBeNull();
     expect(document.querySelectorAll(".a-reminder-usage")).toHaveLength(1);
+  });
+
+  it("does not show a separator or an invented count while the reminder allowance is pending", async () => {
+    const usage = deferred<{ totalUsed: number; totalLimit: number; recipientLimit: number; recipientUsage: Record<string, number>; nextSlotAt: null }>();
+    const baseApi = vi.mocked(api).getMockImplementation()!;
+    vi.mocked(api).mockImplementation(async (path, options) => path === "/reminders/usage" ? usage.promise : baseApi(path, options));
+    mount();
+    await screen.findByRole("heading", { name: commune.name });
+    const metadata = document.querySelector(".a-side-account-meta")!;
+    expect(metadata.textContent).toBe("Admin");
+    expect(metadata.querySelector(".a-side-account-separator")).toBeNull();
+    await act(async () => usage.resolve({ totalUsed: 12, totalLimit: 60, recipientLimit: 6, recipientUsage: {}, nextSlotAt: null }));
+    await screen.findByLabelText("Reminder allowance: 12 of 60 used in the last 30 days");
+    expect(metadata.textContent).toContain("Admin·48 reminders left");
+    expect(metadata.querySelectorAll(".a-side-account-separator")).toHaveLength(1);
   });
 
   it("offers the same allowance in account settings and closes its details with Escape", async () => {
@@ -321,7 +342,7 @@ describe("commune loading", () => {
     vi.mocked(loadSnapshot).mockResolvedValue({ ...snapshot, notes: [wifiNote] });
     mount("/notes");
     await screen.findByRole("button", { name: "Open Wi-Fi & internet" });
-    fireEvent.change(screen.getByRole("searchbox", { name: "Search notes", exact: true }), { target: { value: "private-secret" } });
+    fireEvent.change(screen.getByRole("searchbox", { name: "Search notes in this commune", exact: true }), { target: { value: "private-secret" } });
     expect(screen.getByRole("heading", { name: "No matching notes." })).toBeTruthy();
     expect(app.searchQuery).toBe("");
     fireEvent.click(screen.getByRole("button", { name: "Show all notes" }));
@@ -407,7 +428,7 @@ describe("commune loading", () => {
     expect((screen.getByRole("combobox", { name: "Filter notes" }) as HTMLSelectElement).value).toBe("Pinned");
     fireEvent.click(screen.getByRole("button", { name: "Show all notes" }));
     expect(screen.getByRole("heading", { name: "No notes yet." })).toBeTruthy();
-    expect(screen.getByRole("searchbox", { name: "Search notes", exact: true })).toBeTruthy();
+    expect(screen.getByRole("searchbox", { name: "Search notes in this commune", exact: true })).toBeTruthy();
     expect(within(screen.getByRole("navigation", { name: "Primary" })).getAllByRole("button", { name: "Notes", exact: true }).every((button) => button.getAttribute("aria-current") === "page")).toBe(true);
   });
 
@@ -439,7 +460,7 @@ describe("commune loading", () => {
     expect(screen.queryByText("Nothing waiting right now.")).toBeNull();
     await act(async () => pending.reject(new Error("Not a commune member")));
     expect(screen.getByRole("heading", { name: "Our home" })).toBeTruthy();
-    expect(screen.queryByRole("heading", { name: "Could not load your commune" })).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Could not load Our home" })).toBeNull();
     expect(screen.getByText("Activity unavailable · Open to retry")).toBeTruthy();
   });
 
@@ -453,7 +474,7 @@ describe("commune loading", () => {
     });
     mount();
     await screen.findByText("Invitations unavailable");
-    expect(screen.getByText("Opening Our home…")).toBeTruthy();
+    expect(screen.getByRole("status", { name: "Loading shared records" })).toBeTruthy();
     expect(screen.queryByRole("heading", { name: "Could not load your commune" })).toBeNull();
     await act(async () => pending.resolve(snapshot));
   });
@@ -462,7 +483,7 @@ describe("commune loading", () => {
     const pending = deferred<Snapshot>();
     vi.mocked(loadSnapshot).mockReturnValue(pending.promise);
     mount();
-    await screen.findByText("Opening Our home…");
+    await screen.findByRole("status", { name: "Loading shared records" });
     expect(app.session?.hasHubs).toBe(true);
     expect(app.hub.name).toBe("Our home");
     expect(screen.queryByText("No expenses yet. Add the first one to start the shared ledger.")).toBeNull();
@@ -527,7 +548,7 @@ describe("commune loading", () => {
     await screen.findByRole("heading", { name: "Our home" });
     vi.mocked(loadSnapshot).mockRejectedValue(new ApiError("Not a commune member", 403));
     await act(async () => app.refresh());
-    await screen.findByRole("heading", { name: "Could not load your commune" });
+    await screen.findByRole("heading", { name: "Could not load Our home" });
     expect(app.contentLoading).toBe(true);
     expect(app.hub.members).toHaveLength(0);
   });
@@ -539,7 +560,7 @@ describe("commune loading", () => {
     vi.mocked(loadSnapshot).mockImplementation((item) => item.id === commune.id
       ? pending.promise : Promise.resolve({ ...snapshot, commune: other }));
     mount();
-    await screen.findByText("Opening Our home…");
+    await screen.findByRole("status", { name: "Loading shared records" });
     await act(async () => app.go("hub", { hub: other.id }));
     await screen.findByRole("heading", { name: "Second home" });
     await act(async () => pending.resolve(snapshot));
@@ -590,7 +611,7 @@ describe("commune loading", () => {
   it("offers retry instead of showing an empty commune after a failed load", async () => {
     vi.mocked(loadSnapshot).mockRejectedValue(new Error("Network unavailable"));
     mount();
-    await screen.findByRole("heading", { name: "Could not load your commune" });
+    await screen.findByRole("heading", { name: "Could not load Our home" });
     expect(screen.getByRole("button", { name: "Try again" })).toBeTruthy();
     expect(screen.queryByText("No expenses yet. Add the first one to start the shared ledger.")).toBeNull();
   });
