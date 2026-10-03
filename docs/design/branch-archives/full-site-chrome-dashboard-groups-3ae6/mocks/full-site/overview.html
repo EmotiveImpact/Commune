@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Command Centre — Commune</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="logo">COMMUNE</div>
+    
+    <div class="nav-label">MENU</div>
+    <a href="index.html" class="nav-link">Dashboard</a>
+    <a href="groups.html" class="nav-link">My Groups</a>
+
+    <div class="nav-label">MONEY</div>
+    <a href="expenses.html" class="nav-link">Expenses</a>
+    <a href="recurring.html" class="nav-link">Recurring</a>
+    <a href="templates.html" class="nav-link">Templates</a>
+    <a href="funds.html" class="nav-link">Funds</a>
+    <a href="billing.html" class="nav-link">Billing</a>
+
+    <div class="nav-label">INSIGHTS</div>
+    <a href="overview.html" class="nav-link active">Command Centre</a>
+    <a href="breakdown.html" class="nav-link">Breakdown</a>
+    <a href="analytics.html" class="nav-link">Analytics</a>
+
+    <div class="nav-label">TEAM</div>
+    <a href="members.html" class="nav-link">Members</a>
+    <a href="operations.html" class="nav-link">Operations</a>
+    <a href="activity.html" class="nav-link">Activity</a>
+
+    <div class="user-profile">
+      <div class="avatar">AE</div>
+      <div>
+        <div style="font-size: 14px; font-weight: 600;">Augustus Edem</div>
+        <div class="plan-badge">Pro</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main content -->
+  <div class="main">
+    <div class="header">
+      <input type="text" class="search" placeholder="Search expenses, members...">
+    </div>
+
+    <div class="content">
+      <!-- Page header -->
+      <div class="page-header">
+        <h1 class="page-title">Command Centre</h1>
+        <p class="page-subtitle">Your cross-group financial overview</p>
+      </div>
+
+      <!-- Command Centre Content -->
+      <div>
+        <!-- Summary Cards -->
+        <div class="summary-cards">
+          <div class="summary-card owe">
+            <div class="summary-card-label">You owe</div>
+            <div class="summary-card-value">£89.20</div>
+            <div class="summary-card-meta">Across 2 people · 2 groups</div>
+          </div>
+
+          <div class="summary-card owed">
+            <div class="summary-card-label">Owed to you</div>
+            <div class="summary-card-value">£42.50</div>
+            <div class="summary-card-meta">From 1 person · 1 group</div>
+          </div>
+
+          <div class="summary-card">
+            <div class="summary-card-label">Net position</div>
+            <div class="summary-card-value" style="color: #171b24;">-£46.70</div>
+            <div class="summary-card-meta">After cross-group netting</div>
+          </div>
+        </div>
+
+        <!-- Smart Nudges -->
+        <div class="nudge-card">
+          <div class="nudge-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="rgb(161, 98, 7)" stroke-width="2" style="width: 24px; height: 24px;">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="8" x2="12" y2="12"></line>
+              <line x1="12" y1="16" x2="12.01" y2="16"></line>
+            </svg>
+          </div>
+          <div class="nudge-content">
+            <div class="nudge-title">Payment reminder</div>
+            <div class="nudge-text">You have £89.20 in outstanding payments. Consider settling up to keep your groups healthy.</div>
+            <button class="nudge-action">View payments</button>
+          </div>
+        </div>
+
+        <!-- Group Status List -->
+        <div class="panel">
+          <div class="panel-header">
+            <h2 class="section-heading">Your Groups</h2>
+          </div>
+          <div class="group-status-list">
+            <!-- Household -->
+            <a href="./group-hub.html" class="group-status-card">
+              <div class="group-status-avatar">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 24px; height: 24px; color: var(--commune-sage);">
+                  <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                  <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                </svg>
+              </div>
+              <div class="group-status-info">
+                <div class="group-status-name">Household</div>
+                <div class="group-status-details">
+                  <span>4 members</span>
+                  <span>·</span>
+                  <span>£1,247.80/mo</span>
+                  <span>·</span>
+                  <span class="status-badge status-settled" style="font-size: 11px; padding: 2px 6px;">All settled</span>
+                </div>
+              </div>
+              <div class="group-status-position">
+                <div class="group-status-amount settled">£0.00</div>
+                <div class="status-badge status-settled">Settled</div>
+              </div>
+            </a>
+
+            <!-- Workspace -->
+            <a href="./group-hub.html" class="group-status-card">
+              <div class="group-status-avatar">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 24px; height: 24px; color: #888880;">
+                  <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                  <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+                </svg>
+              </div>
+              <div class="group-status-info">
+                <div class="group-status-name">Workspace</div>
+                <div class="group-status-details">
+                  <span>8 members</span>
+                  <span>·</span>
+                  <span>£3,420.00/mo</span>
+                  <span>·</span>
+                  <span class="status-badge status-pending" style="font-size: 11px; padding: 2px 6px;">Bills overdue</span>
+                </div>
+              </div>
+              <div class="group-status-position">
+                <div class="group-status-amount owe">-£89.20</div>
+                <div class="status-badge status-pending">You owe</div>
+              </div>
+            </a>
+          </div>
+        </div>
+
+        <!-- Workspace Billing Watch -->
+        <div class="panel workspace-billing-panel">
+          <div class="panel-header">
+            <h2 class="section-heading">Workspace billing watch</h2>
+            <span class="status-badge status-pending">2 alerts</span>
+          </div>
+          <div>
+            <div class="billing-alert-item">
+              <svg class="billing-alert-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+              </svg>
+              <div class="billing-alert-text">
+                <strong>Overdue:</strong> Office Rent (£1,200.00) was due 3 days ago
+              </div>
+            </div>
+            <div class="billing-alert-item">
+              <svg class="billing-alert-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="16" x2="12" y2="12"></line>
+                <line x1="12" y1="8" x2="12.01" y2="8"></line>
+              </svg>
+              <div class="billing-alert-text">
+                <strong>Upcoming:</strong> SaaS Subscriptions (£840.00) due in 5 days
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recent Cross-Group Activity -->
+        <div class="panel">
+          <div class="panel-header">
+            <h2 class="section-heading">Recent Activity</h2>
+          </div>
+          <div class="table-container">
+            <table class="expense-table">
+              <thead>
+                <tr>
+                  <th>Event</th>
+                  <th>Group</th>
+                  <th>Amount</th>
+                  <th>Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>
+                    <div class="expense-title">Council Tax payment</div>
+                    <div style="font-size: 12px; color: var(--commune-ink-soft);">Augustus Edem</div>
+                  </td>
+                  <td>Household</td>
+                  <td class="amount">£187.50</td>
+                  <td>27 Aug</td>
+                </tr>
+                <tr>
+                  <td>
+                    <div class="expense-title">Office Supplies added</div>
+                    <div style="font-size: 12px; color: var(--commune-ink-soft);">Sarah Jones</div>
+                  </td>
+                  <td>Workspace</td>
+                  <td class="amount">£42.10</td>
+                  <td>24 Aug</td>
+                </tr>
+                <tr>
+                  <td>
+                    <div class="expense-title">Weekly Groceries</div>
+                    <div style="font-size: 12px; color: var(--commune-ink-soft);">Michael Kim</div>
+                  </td>
+                  <td>Household</td>
+                  <td class="amount">£84.32</td>
+                  <td>23 Aug</td>
+                </tr>
+                <tr>
+                  <td>
+                    <div class="expense-title">Internet settled</div>
+                    <div style="font-size: 12px; color: var(--commune-ink-soft);">Lisa Martinez</div>
+                  </td>
+                  <td>Household</td>
+                  <td class="amount">£38.00</td>
+                  <td>22 Aug</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

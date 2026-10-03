@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Templates — Commune</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f5f1ea;
+      color: #171b24;
+      min-height: 100vh;
+      display: flex;
+    }
+
+    .sidebar {
+      width: 230px;
+      background: #1f2330;
+      color: rgba(255, 255, 255, 0.92);
+      padding: 20px 14px;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      position: fixed;
+      left: 0;
+      top: 0;
+    }
+
+    .logo {
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #fff;
+      margin-bottom: 24px;
+    }
+
+    .nav-label {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 8px;
+      margin-top: 16px;
+    }
+
+    .nav-label:first-of-type {
+      margin-top: 0;
+    }
+
+    .nav-link {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 14px;
+      border-radius: 10px;
+      color: rgba(255, 255, 255, 0.76);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 2px;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .nav-link:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: #ffffff;
+    }
+
+    .nav-link.active {
+      background: rgba(255, 255, 255, 0.12);
+      color: #ffffff;
+    }
+
+    .user-profile {
+      margin-top: auto;
+      padding: 10px 14px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: #fff;
+    }
+
+    .avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .plan-badge {
+      font-size: 11px;
+      color: rgba(255, 255, 255, 0.45);
+    }
+
+    .main {
+      margin-left: 230px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .header {
+      height: 64px;
+      background: #f5f1ea;
+      border-bottom: 1px solid rgba(23, 27, 36, 0.06);
+      padding: 0 32px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .search {
+      flex: 1;
+      max-width: 460px;
+      padding: 10px 16px;
+      background: #ffffff;
+      border: 1px solid rgba(23, 27, 36, 0.06);
+      border-radius: 10px;
+      font-family: inherit;
+      font-size: 14px;
+      color: #171b24;
+    }
+
+    .search::placeholder {
+      color: #667085;
+    }
+
+    .content {
+      padding: 24px 48px;
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    .empty-state-wrapper {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 300px;
+    }
+
+    .empty-state {
+      background: rgba(255, 255, 255, 0.82);
+      border: 1px solid rgba(23, 27, 36, 0.06);
+      border-radius: 14px;
+      padding: 32px;
+      max-width: 440px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 1px 3px rgba(23, 27, 36, 0.06), 0 1px 2px rgba(23, 27, 36, 0.04);
+    }
+
+    .empty-icon {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: rgba(45, 106, 79, 0.12);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 20px;
+      opacity: 0.85;
+    }
+
+    .empty-icon svg {
+      width: 28px;
+      height: 28px;
+      stroke: #2d6a4f;
+      stroke-width: 2;
+      fill: none;
+    }
+
+    .empty-title {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: #171b24;
+    }
+
+    .empty-description {
+      font-size: 14px;
+      color: #667085;
+      max-width: 340px;
+      margin: 0 auto;
+    }
+  </style>
+</head>
+<body>
+  <div class="sidebar">
+    <div class="logo">COMMUNE</div>
+    
+    <div class="nav-label">MENU</div>
+    <a href="dashboard.html" class="nav-link">Dashboard</a>
+    <a href="groups.html" class="nav-link">My Groups</a>
+
+    <div class="nav-label">MONEY</div>
+    <a href="expenses.html" class="nav-link">Expenses</a>
+    <a href="recurring.html" class="nav-link">Recurring</a>
+    <a href="templates.html" class="nav-link active">Templates</a>
+    <a href="funds.html" class="nav-link">Funds</a>
+    <a href="billing.html" class="nav-link">Billing</a>
+
+    <div class="nav-label">INSIGHTS</div>
+    <a href="index.html" class="nav-link">Command Centre</a>
+    <a href="breakdown.html" class="nav-link">Breakdown</a>
+    <a href="analytics.html" class="nav-link">Analytics</a>
+
+    <div class="nav-label">TEAM</div>
+    <a href="members.html" class="nav-link">Members</a>
+    <a href="operations.html" class="nav-link">Operations</a>
+    <a href="activity.html" class="nav-link">Activity</a>
+
+    <div class="user-profile">
+      <div class="avatar">AE</div>
+      <div>
+        <div style="font-size: 14px; font-weight: 600;">Augustus Edem</div>
+        <div class="plan-badge">Pro</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="header">
+      <input type="text" class="search" placeholder="Search expenses, members...">
+    </div>
+
+    <div class="content">
+      <div class="empty-state-wrapper">
+        <div class="empty-state">
+          <div class="empty-icon">
+            <svg viewBox="0 0 24 24">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="3" y1="9" x2="21" y2="9"></line>
+              <line x1="9" y1="21" x2="9" y2="9"></line>
+            </svg>
+          </div>
+          <div class="empty-title">Select a group first</div>
+          <div class="empty-description">Open My Groups to see split templates for that house.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

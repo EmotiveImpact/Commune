@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard — Commune</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="logo">COMMUNE</div>
+    
+    <div class="nav-label">MENU</div>
+    <a href="index.html" class="nav-link active">Dashboard</a>
+    <a href="groups.html" class="nav-link">My Groups</a>
+
+    <div class="nav-label">MONEY</div>
+    <a href="expenses.html" class="nav-link">Expenses</a>
+    <a href="recurring.html" class="nav-link">Recurring</a>
+    <a href="templates.html" class="nav-link">Templates</a>
+    <a href="funds.html" class="nav-link">Funds</a>
+    <a href="billing.html" class="nav-link">Billing</a>
+
+    <div class="nav-label">INSIGHTS</div>
+    <a href="overview.html" class="nav-link">Command Centre</a>
+    <a href="breakdown.html" class="nav-link">Breakdown</a>
+    <a href="analytics.html" class="nav-link">Analytics</a>
+
+    <div class="nav-label">TEAM</div>
+    <a href="members.html" class="nav-link">Members</a>
+    <a href="operations.html" class="nav-link">Operations</a>
+    <a href="activity.html" class="nav-link">Activity</a>
+
+    <div class="user-profile">
+      <div class="avatar">AE</div>
+      <div>
+        <div style="font-size: 14px; font-weight: 600;">Augustus Edem</div>
+        <div class="plan-badge">Pro</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main content -->
+  <div class="main">
+    <div class="header">
+      <input type="text" class="search" placeholder="Search expenses, members...">
+    </div>
+
+    <div class="content">
+      <!-- Page header -->
+      <div class="page-header">
+        <h1 class="page-title">Dashboard</h1>
+        <p class="page-subtitle">Overview of your groups and finances</p>
+      </div>
+
+      <!-- Dashboard Content -->
+      <div>
+        <!-- Stats Grid -->
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-label">Total Monthly Spend</div>
+            <div class="stat-value">£1,247.80</div>
+            <div class="stat-meta">Split 4 ways · £311.95/person</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Total Outstanding</div>
+            <div class="stat-value">£89.20</div>
+            <div class="stat-meta">Across 2 groups</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Pending Approvals</div>
+            <div class="stat-value">3</div>
+            <div class="stat-meta">Workspace expenses awaiting review</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Active Groups</div>
+            <div class="stat-value">2</div>
+            <div class="stat-meta">Household, Workspace</div>
+          </div>
+        </div>
+
+        <!-- Transaction Overview Chart -->
+        <div class="panel">
+          <div class="panel-header">
+            <h2 class="section-heading">Transaction Overview</h2>
+            <div class="chart-period-selector">
+              <button class="period-btn">Week</button>
+              <button class="period-btn active">Month</button>
+              <button class="period-btn">Quarter</button>
+            </div>
+          </div>
+          <div style="margin-top: 16px;">
+            <svg viewBox="0 0 800 200" style="width: 100%; height: 200px;">
+              <polyline
+                fill="none"
+                stroke="#2d6a4f"
+                stroke-width="2"
+                points="0,150 100,120 200,140 300,90 400,110 500,70 600,95 700,60 800,80"
+              />
+              <polyline
+                fill="none"
+                stroke="#667085"
+                stroke-width="2"
+                stroke-dasharray="4"
+                points="0,180 100,170 200,175 300,160 400,165 500,150 600,155 700,140 800,145"
+              />
+            </svg>
+            <div style="display: flex; gap: 16px; margin-top: 12px; justify-content: center; font-size: 13px; color: #667085;">
+              <span style="display: flex; align-items: center; gap: 8px;">
+                <span style="width: 12px; height: 12px; border-radius: 50%; background: #2d6a4f;"></span>
+                Expenses
+              </span>
+              <span style="display: flex; align-items: center; gap: 8px;">
+                <span style="width: 12px; height: 12px; border-radius: 50%; background: #667085;"></span>
+                Recurring
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recent Expenses -->
+        <div class="panel">
+          <div class="panel-header">
+            <h2 class="section-heading">Recent Expenses</h2>
+            <a href="#" class="text-link">View all →</a>
+          </div>
+          <div class="table-container">
+            <table class="expense-table">
+              <thead>
+                <tr>
+                  <th>Title</th>
+                  <th>Category</th>
+                  <th>Group</th>
+                  <th>Amount</th>
+                  <th>Status</th>
+                  <th>Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>
+                    <div class="expense-title">Council Tax</div>
+                  </td>
+                  <td><span class="category-badge">Bills</span></td>
+                  <td>Household</td>
+                  <td class="amount">£187.50</td>
+                  <td><span class="status-badge status-settled">Settled</span></td>
+                  <td>27 Aug</td>
+                </tr>
+                <tr>
+                  <td>
+                    <div class="expense-title">Weekly Groceries</div>
+                  </td>
+                  <td><span class="category-badge">Groceries</span></td>
+                  <td>Household</td>
+                  <td class="amount">£84.32</td>
+                  <td><span class="status-badge status-pending">Pending</span></td>
+                  <td>25 Aug</td>
+                </tr>
+                <tr>
+                  <td>
+                    <div class="expense-title">Office Supplies</div>
+                  </td>
+                  <td><span class="category-badge">Workspace</span></td>
+                  <td>Workspace</td>
+                  <td class="amount">£42.10</td>
+                  <td><span class="status-badge status-pending">Pending</span></td>
+                  <td>24 Aug</td>
+                </tr>
+                <tr>
+                  <td>
+                    <div class="expense-title">Internet</div>
+                  </td>
+                  <td><span class="category-badge">Bills</span></td>
+                  <td>Household</td>
+                  <td class="amount">£38.00</td>
+                  <td><span class="status-badge status-settled">Settled</span></td>
+                  <td>22 Aug</td>
+                </tr>
+                <tr>
+                  <td>
+                    <div class="expense-title">Electricity</div>
+                  </td>
+                  <td><span class="category-badge">Bills</span></td>
+                  <td>Household</td>
+                  <td class="amount">£125.45</td>
+                  <td><span class="status-badge status-settled">Settled</span></td>
+                  <td>20 Aug</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Category Breakdown & Budget Progress -->
+        <div class="two-column-grid">
+          <div class="panel">
+            <div class="panel-header">
+              <h2 class="section-heading">Category Breakdown</h2>
+            </div>
+            <div class="category-list">
+              <div class="category-item">
+                <div class="category-header">
+                  <span class="category-name">Bills</span>
+                  <span class="category-amount">£350.95 <span class="category-meta">(28%)</span></span>
+                </div>
+                <div class="progress-bar">
+                  <div class="progress-fill" style="width: 28%"></div>
+                </div>
+              </div>
+              <div class="category-item">
+                <div class="category-header">
+                  <span class="category-name">Groceries</span>
+                  <span class="category-amount">£284.32 <span class="category-meta">(23%)</span></span>
+                </div>
+                <div class="progress-bar">
+                  <div class="progress-fill" style="width: 23%"></div>
+                </div>
+              </div>
+              <div class="category-item">
+                <div class="category-header">
+                  <span class="category-name">Transport</span>
+                  <span class="category-amount">£156.80 <span class="category-meta">(13%)</span></span>
+                </div>
+                <div class="progress-bar">
+                  <div class="progress-fill" style="width: 13%"></div>
+                </div>
+              </div>
+              <div class="category-item">
+                <div class="category-header">
+                  <span class="category-name">Entertainment</span>
+                  <span class="category-amount">£98.40 <span class="category-meta">(8%)</span></span>
+                </div>
+                <div class="progress-bar">
+                  <div class="progress-fill" style="width: 8%"></div>
+                </div>
+              </div>
+              <div class="category-item">
+                <div class="category-header">
+                  <span class="category-name">Other</span>
+                  <span class="category-amount">£357.33 <span class="category-meta">(28%)</span></span>
+                </div>
+                <div class="progress-bar">
+                  <div class="progress-fill" style="width: 28%"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-header">
+              <h2 class="section-heading">Budget Tracking</h2>
+            </div>
+            <div class="budget-summary">
+              <div class="budget-stat">
+                <div class="budget-label">This Month</div>
+                <div class="budget-value">£1,247.80</div>
+              </div>
+              <div class="budget-stat">
+                <div class="budget-label">Target</div>
+                <div class="budget-value">£1,500.00</div>
+              </div>
+              <div class="budget-stat">
+                <div class="budget-label">Remaining</div>
+                <div class="budget-value budget-positive">£252.20</div>
+              </div>
+            </div>
+            <div class="progress-bar progress-bar-lg">
+              <div class="progress-fill" style="width: 83%"></div>
+            </div>
+            <div class="budget-meta">83% of budget used · 3 days remaining</div>
+          </div>
+        </div>
+
+        <!-- Onboarding Tips -->
+        <div class="panel onboarding-panel">
+          <div class="panel-header">
+            <h2 class="section-heading">Getting Started</h2>
+          </div>
+          <div class="onboarding-checklist">
+            <div class="onboarding-item completed">
+              <div class="onboarding-icon">✓</div>
+              <div class="onboarding-content">
+                <div class="onboarding-title">Create your first group</div>
+                <div class="onboarding-desc">Get started by setting up a household or workspace</div>
+              </div>
+            </div>
+            <div class="onboarding-item completed">
+              <div class="onboarding-icon">✓</div>
+              <div class="onboarding-content">
+                <div class="onboarding-title">Invite members</div>
+                <div class="onboarding-desc">Add roommates, colleagues, or friends to share expenses</div>
+              </div>
+            </div>
+            <div class="onboarding-item">
+              <div class="onboarding-icon">3</div>
+              <div class="onboarding-content">
+                <div class="onboarding-title">Set up recurring expenses</div>
+                <div class="onboarding-desc">Automate bills like rent, utilities, and subscriptions</div>
+              </div>
+              <button class="onboarding-action">Set up</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

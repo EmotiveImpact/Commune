@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Add expense — Commune</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div class="sidebar">
+    <div class="logo">COMMUNE</div>
+    <div class="nav-label">MENU</div>
+    <a href="index.html" class="nav-link">Dashboard</a>
+    <a href="groups.html" class="nav-link">My Groups</a>
+    <div class="nav-label">MONEY</div>
+    <a href="./expenses.html" class="nav-link active">Expenses</a>
+    <a href="./recurring.html" class="nav-link">Recurring</a>
+    <a href="./templates.html" class="nav-link">Templates</a>
+    <a href="./funds.html" class="nav-link">Funds</a>
+    <a href="./billing.html" class="nav-link">Billing</a>
+    <div class="nav-label">INSIGHTS</div>
+    <a href="overview.html" class="nav-link">Command Centre</a>
+    <a href="breakdown.html" class="nav-link">Breakdown</a>
+    <a href="analytics.html" class="nav-link">Analytics</a>
+    <div class="nav-label">TEAM</div>
+    <a href="members.html" class="nav-link">Members</a>
+    <a href="operations.html" class="nav-link">Operations</a>
+    <a href="activity.html" class="nav-link">Activity</a>
+    <div class="user-profile">
+      <div class="avatar">AE</div>
+      <div><div style="font-size: 14px; font-weight: 600;">Augustus Edem</div><div class="plan-badge">Pro</div></div>
+    </div>
+  </div>
+  <div class="main">
+    <div class="header"><input type="text" class="search" placeholder="Search expenses, members..."></div>
+    <div class="content">
+      <div class="page-header">
+        <h1 class="page-title">Add expense</h1>
+        <p class="page-subtitle">Create a new shared cost, pick participants, and preview the split</p>
+      </div>
+      <div class="page-actions">
+        <a href="./expenses.html" class="btn-default">Cancel</a>
+        <button class="btn-primary">Create expense</button>
+      </div>
+      <div class="form-grid">
+        <div class="form-main">
+          <div class="panel">
+            <h3 class="section-heading">Basics</h3>
+            <div class="form-group">
+              <label class="form-label">Title <span class="required">*</span></label>
+              <input type="text" class="form-input" placeholder="e.g. Electricity" value="Electricity bill">
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Amount <span class="required">*</span></label>
+                <input type="number" class="form-input" placeholder="0.00" value="120.00">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Category <span class="required">*</span></label>
+                <select class="form-input"><option value="utilities" selected>Utilities</option><option>Groceries</option><option>Rent</option></select>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Due date <span class="required">*</span></label>
+              <input type="date" class="form-input" value="2024-12-15">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Description</label>
+              <textarea class="form-input" placeholder="Optional notes" rows="3"></textarea>
+            </div>
+          </div>
+          <div class="panel">
+            <h3 class="section-heading">Participants</h3>
+            <div class="form-group">
+              <label class="form-label">Who shares this expense? <span class="required">*</span></label>
+              <select class="form-input" multiple style="min-height: 100px;"><option selected>Alice Johnson</option><option selected>Bob Smith</option><option selected>Charlie Davis</option><option selected>Dana Lee</option></select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Who paid?</label>
+              <select class="form-input"><option value="">Nobody (group expense)</option><option selected>Alice Johnson</option><option>Bob Smith</option></select>
+            </div>
+          </div>
+          <div class="panel">
+            <h3 class="section-heading">Split method</h3>
+            <div class="segmented-control">
+              <button class="segment-btn active">Equal</button>
+              <button class="segment-btn">Percentage</button>
+              <button class="segment-btn">Custom</button>
+            </div>
+          </div>
+          <div class="panel">
+            <h3 class="section-heading">Split preview</h3>
+            <div class="table-container">
+              <table class="expense-table">
+                <thead><tr><th>Person</th><th style="text-align: right;">Share</th><th style="text-align: right;">%</th></tr></thead>
+                <tbody>
+                  <tr><td>Alice Johnson</td><td class="amount">£30.00</td><td style="text-align: right; color: #667085;">25%</td></tr>
+                  <tr><td>Bob Smith</td><td class="amount">£30.00</td><td style="text-align: right; color: #667085;">25%</td></tr>
+                  <tr><td>Charlie Davis</td><td class="amount">£30.00</td><td style="text-align: right; color: #667085;">25%</td></tr>
+                  <tr><td>Dana Lee</td><td class="amount">£30.00</td><td style="text-align: right; color: #667085;">25%</td></tr>
+                </tbody>
+                <tfoot><tr><td><strong>Total</strong></td><td class="amount"><strong>£120.00</strong></td><td style="text-align: right; color: #2d6a4f;"><strong>100%</strong></td></tr></tfoot>
+              </table>
+            </div>
+          </div>
+        </div>
+        <div class="form-sidebar">
+          <div class="panel">
+            <h3 class="section-heading">Receipt</h3>
+            <p class="text-sm text-muted">Attach a photo or PDF of the receipt (optional).</p>
+            <div class="dropzone"><div class="dropzone-icon">📎</div><p class="dropzone-text">Click or drag to upload</p><p class="dropzone-hint">PNG, JPG, or PDF up to 10MB</p></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,146 @@
+/* Blocks — closest Obodo recreation. Structure from tokens; page rhythm only. */
+
+a:focus-visible {
+  outline: 2px solid var(--sage);
+  outline-offset: 3px;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+  padding-top: 6px;
+}
+
+/* Full-width (of the 1280 shell) photo — 32px, ~42vh */
+.hero {
+  height: 42vh;
+  min-height: 260px;
+}
+.hero img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Bento — 22px gap, unequal then equal */
+.bento {
+  display: grid;
+  gap: var(--gap);
+  align-items: stretch;
+}
+.bento--lead { grid-template-columns: 1.6fr 1fr; }
+.bento--pair { grid-template-columns: 1fr 1fr; }
+
+.lead {
+  padding: 40px 44px;
+  display: flex;
+  align-items: flex-start;
+  min-height: 280px;
+}
+
+.stat {
+  padding: 40px 44px 36px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 28px;
+  min-height: 280px;
+}
+.stat__note {
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.45;
+  letter-spacing: -0.015em;
+  color: var(--muted);
+  max-width: 18ch;
+}
+.block--ink .stat__note { color: rgba(255, 255, 255, 0.52); }
+
+/* Case-study chapter */
+.studies {
+  padding: 96px 0 8px;
+  text-align: center;
+}
+.studies .t-kicker { margin-bottom: 18px; }
+.studies .t-display {
+  font-size: clamp(56px, 8vw, 80px);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin: 28px 0 48px;
+}
+
+.studies__grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--gap);
+  text-align: left;
+}
+
+.study {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+.study__well {
+  margin: 16px 16px 0;
+  padding: 16px;
+  border-radius: var(--r-inner);
+}
+.study__well img {
+  width: 100%;
+  height: 220px;
+  object-fit: cover;
+  border-radius: 16px;
+}
+.study__well--sage { background: var(--sage-tint); }
+.study__well--sand { background: var(--sand); }
+.study__well--lav { background: var(--lav); }
+
+.study__body {
+  padding: 26px 28px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  flex: 1;
+}
+.study__body .t-card { max-width: 18ch; }
+.study__more {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  text-decoration-thickness: 1px;
+}
+.study__body .t-small { margin-top: auto; padding-top: 8px; }
+
+@media (max-width: 800px) {
+  .bento--lead,
+  .bento--pair,
+  .studies__grid { grid-template-columns: 1fr; }
+
+  .hero {
+    height: 36vh;
+    min-height: 220px;
+  }
+  .lead,
+  .stat {
+    min-height: 0;
+    padding: 32px 28px;
+  }
+  .studies { padding-top: 72px; }
+  .chips { margin-bottom: 28px; }
+  .study__well img { height: 200px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+}

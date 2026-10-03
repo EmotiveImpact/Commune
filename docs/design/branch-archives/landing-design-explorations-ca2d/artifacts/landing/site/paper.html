@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Commune — The house journal</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/landing.css" />
+</head>
+<body>
+  <header class="top">
+    <div class="top__in">
+      <a href="/" class="top__brand">
+        <img src="/logo.png" alt="" />
+        <span class="t-logo">Commune</span>
+      </a>
+      <nav class="top__nav">
+        <a href="#month">This month</a>
+        <a href="#spaces">Spaces</a>
+        <a href="#membership">Membership</a>
+      </nav>
+      <div class="top__acts">
+        <a class="top__signin" href="https://app.ourcommune.io">Sign in</a>
+        <a class="btn btn--sage" href="https://app.ourcommune.io/signup">Start for free</a>
+      </div>
+    </div>
+  </header>
+
+  <section class="mast">
+    <div class="mast__copy">
+      <p class="t-label mast__issue">The house journal · August</p>
+      <h1 class="t-display mast__h">Live clearly, together.</h1>
+      <p class="t-body mast__sub">
+        One hub for the house, the studio, the trip. What you owe, what needs
+        doing, who owns it — without the chase.
+      </p>
+      <div class="mast__cta">
+        <a class="btn btn--sage" href="https://app.ourcommune.io/signup">Start 7-day trial</a>
+        <a class="btn btn--ghost" href="#month">This month at 14 Park Street</a>
+      </div>
+    </div>
+    <div class="mast__photo">
+      <img src="/photo/kitchen.jpg" alt="Housemates at the kitchen table" />
+    </div>
+  </section>
+
+  <section class="spread">
+    <div class="spread__text">
+      <p class="t-label" style="color: var(--sage)">About the house</p>
+      <h2 class="t-title">A shared space should feel like a place, not a spreadsheet.</h2>
+      <p class="t-body">
+        At 14 Park Street the month is rent, British Gas, the Tuesday bins, and
+        who still owes whom. Commune is the one surface for that — communal
+        finance and the practical running of the group, in the same calm room.
+      </p>
+    </div>
+    <div class="spread__photo">
+      <img src="/photo/house.jpg" alt="The living room at 14 Park Street" />
+    </div>
+  </section>
+
+  <section id="month" class="ledger">
+    <div class="wrap">
+      <div class="ledger__head">
+        <div>
+          <p class="t-label" style="color: var(--sage); margin-bottom: 6px">August cycle</p>
+          <h2 class="t-title">14 Park Street</h2>
+        </div>
+        <p class="t-body">Maya, Jordan, Alex · household since 2024</p>
+      </div>
+      <div class="ledger__grid">
+        <div class="ledger__cell">
+          <p class="t-label">You owe</p>
+          <p class="ledger__amt">£42.00</p>
+          <p class="t-body">Pay Jordan this week. Or net the Tesco £18 and send £24.</p>
+        </div>
+        <div class="ledger__cell">
+          <p class="t-label">Right now</p>
+          <p class="ledger__amt" style="font-size: 24px; padding-top: 8px">Gas Friday</p>
+          <p class="t-body">British Gas £94.20 · Jordan paid · your share open.</p>
+        </div>
+        <div class="ledger__cell">
+          <p class="t-label">House fund</p>
+          <p class="ledger__amt">£420</p>
+          <p class="t-body">£180 still to collect from Alex.</p>
+        </div>
+      </div>
+      <div class="ledger__moves">
+        <div class="move">
+          <span class="move__arr">→</span>
+          <div>
+            <p class="move__n">You → Jordan</p>
+            <p class="move__w">Gas share · or £24 if you net Tesco</p>
+          </div>
+          <span class="move__a">£42</span>
+        </div>
+        <div class="move">
+          <span class="move__arr">→</span>
+          <div>
+            <p class="move__n">Jordan → You</p>
+            <p class="move__w">Tesco extras from Monday</p>
+          </div>
+          <span class="move__a">£18</span>
+        </div>
+        <div class="move">
+          <span class="move__arr" style="background: #f0ece4; color: var(--muted)">↔</span>
+          <div>
+            <p class="move__n">Alex ↔ You</p>
+            <p class="move__w">Even on expenses · still £180 for the fund</p>
+          </div>
+          <span class="move__a" style="color: var(--muted)">£0</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="spaces" class="wrap">
+    <p class="t-label" style="color: var(--sage); padding-top: 56px">How people share</p>
+    <h2 class="t-title" style="margin: 10px 0 22px">The same model. Different houses.</h2>
+    <div class="essay">
+      <figure>
+        <img src="/photo/kitchen.jpg" alt="" />
+        <figcaption>House shares · rent, bills, the Tuesday bins</figcaption>
+      </figure>
+      <figure>
+        <img src="/photo/couple.jpg" alt="" />
+        <figcaption>Couples · one picture of the month</figcaption>
+      </figure>
+      <figure>
+        <img src="/photo/trip.jpg" alt="" />
+        <figcaption>Trips · log on the go, settle before you land</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section id="membership" class="rates">
+    <div class="wrap">
+      <p class="t-label" style="color: var(--sage)">Membership</p>
+      <h2 class="t-title" style="margin: 10px 0 8px">Simple, on the page.</h2>
+      <p class="t-body" style="margin-bottom: 28px">7-day trial on your first space. No card.</p>
+      <div class="rates__row">
+        <span class="rates__name">Standard</span>
+        <span class="rates__price">£4.99</span>
+        <span class="rates__for">1 space · 8 members · finance, responsibilities, hub</span>
+        <a class="btn btn--ghost" href="https://app.ourcommune.io/signup">Start trial</a>
+      </div>
+      <div class="rates__row is-feat">
+        <span class="rates__name">Pro</span>
+        <span class="rates__price">£9.99</span>
+        <span class="rates__for">3 spaces · 15 members · exports, analytics, priority</span>
+        <a class="btn btn--light" href="https://app.ourcommune.io/signup">Start trial</a>
+      </div>
+      <div class="rates__row">
+        <span class="rates__name">Agency</span>
+        <span class="rates__price">£29.99</span>
+        <span class="rates__for">Unlimited spaces and members · operator path</span>
+        <a class="btn btn--ghost" href="https://app.ourcommune.io/signup">Start trial</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="close">
+    <img src="/photo/couple.jpg" alt="" />
+    <div class="close__veil"></div>
+    <div class="close__in wrap">
+      <h2 class="t-title">Live clearly, together.</h2>
+      <a class="btn btn--light" href="https://app.ourcommune.io/signup">Start your space</a>
+    </div>
+  </section>
+
+  <footer class="foot">
+    <div class="foot__in">
+      <div class="foot__brand">
+        <img src="/logo.png" alt="" />
+        <span class="t-logo">Commune</span>
+      </div>
+      <p class="t-body">© 2026 Commune</p>
+      <a class="t-ui" href="mailto:support@ourcommune.io">support@ourcommune.io</a>
+    </div>
+  </footer>
+  <nav class="dswitch" aria-label="Design explorations">
+    <a href="/">All</a>
+    <a href="/paper" class="is-on">Paper</a>
+    <a href="/ink">Ink</a>
+    <a href="/product">Product</a>
+  </nav>
+</body>
+</html>

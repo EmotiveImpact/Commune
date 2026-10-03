@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Recurring — Commune</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div class="sidebar">
+    <div class="logo">COMMUNE</div>
+    <div class="nav-label">MENU</div><a href="index.html" class="nav-link">Dashboard</a><a href="groups.html" class="nav-link">My Groups</a>
+    <div class="nav-label">MONEY</div><a href="./expenses.html" class="nav-link">Expenses</a><a href="./recurring.html" class="nav-link active">Recurring</a><a href="./templates.html" class="nav-link">Templates</a><a href="./funds.html" class="nav-link">Funds</a><a href="./billing.html" class="nav-link">Billing</a>
+    <div class="nav-label">INSIGHTS</div><a href="overview.html" class="nav-link">Command Centre</a><a href="breakdown.html" class="nav-link">Breakdown</a><a href="analytics.html" class="nav-link">Analytics</a>
+    <div class="nav-label">TEAM</div><a href="members.html" class="nav-link">Members</a><a href="operations.html" class="nav-link">Operations</a><a href="activity.html" class="nav-link">Activity</a>
+    <div class="user-profile"><div class="avatar">AE</div><div><div style="font-size: 14px; font-weight: 600;">Augustus Edem</div><div class="plan-badge">Pro</div></div></div>
+  </div>
+  <div class="main">
+    <div class="header"><input type="text" class="search" placeholder="Search expenses, members..."></div>
+    <div class="content">
+      <div class="page-header">
+        <h1 class="page-title">Recurring Expenses</h1>
+        <p class="page-subtitle">Manage expenses that automatically repeat on a schedule.</p>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-label">Active · Paused</div><div class="stat-value">3 · 1</div></div>
+        <div class="stat-card"><div class="stat-label">Monthly total</div><div class="stat-value">£1,735.00</div></div>
+      </div>
+      <div class="segmented-control"><button class="segment-btn active">Active (3)</button><button class="segment-btn">Paused (1)</button></div>
+      <div class="panel">
+        <div class="table-container">
+          <table class="expense-table">
+            <thead><tr><th>Title</th><th>Category</th><th>Amount</th><th>Frequency</th><th>Next due</th><th>Participants</th><th style="width:60px;"></th></tr></thead>
+            <tbody>
+              <tr><td>Monthly rent</td><td><span class="category-badge">Rent</span></td><td class="amount">£1,600.00</td><td><span class="status-badge status-settled">monthly</span></td><td>01 Jan 2025</td><td>4 members</td><td>⋮</td></tr>
+              <tr><td>Internet service</td><td><span class="category-badge">Utilities</span></td><td class="amount">£45.00</td><td><span class="status-badge status-settled">monthly</span></td><td>05 Jan 2025</td><td>4 members</td><td>⋮</td></tr>
+              <tr><td>Weekly groceries</td><td><span class="category-badge">Groceries</span></td><td class="amount">£90.00</td><td><span class="status-badge status-pending">weekly</span></td><td>22 Dec 2024</td><td>4 members</td><td>⋮</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

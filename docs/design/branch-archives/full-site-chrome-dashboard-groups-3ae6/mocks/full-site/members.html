@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Members — Commune</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div class="sidebar">
+    <div class="logo">COMMUNE</div>
+    
+    <div class="nav-label">MENU</div>
+    <a href="index.html" class="nav-link">Dashboard</a>
+    <a href="groups.html" class="nav-link">My Groups</a>
+
+    <div class="nav-label">MONEY</div>
+    <a href="expenses.html" class="nav-link">Expenses</a>
+    <a href="recurring.html" class="nav-link">Recurring</a>
+    <a href="templates.html" class="nav-link">Templates</a>
+    <a href="funds.html" class="nav-link">Funds</a>
+    <a href="billing.html" class="nav-link">Billing</a>
+
+    <div class="nav-label">INSIGHTS</div>
+    <a href="overview.html" class="nav-link">Command Centre</a>
+    <a href="breakdown.html" class="nav-link">Breakdown</a>
+    <a href="analytics.html" class="nav-link">Analytics</a>
+
+    <div class="nav-label">TEAM</div>
+    <a href="members.html" class="nav-link active">Members</a>
+    <a href="operations.html" class="nav-link">Operations</a>
+    <a href="activity.html" class="nav-link">Activity</a>
+
+    <div class="user-profile">
+      <div class="avatar">AE</div>
+      <div>
+        <div style="font-size: 14px; font-weight: 600;">Augustus Edem</div>
+        <div class="plan-badge">Pro</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="header">
+      <input type="text" class="search" placeholder="Search expenses, members...">
+    </div>
+
+    <div class="content">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Members</h1>
+          <p class="page-subtitle">4 active members</p>
+        </div>
+        <button class="btn">+ Invite member</button>
+      </div>
+
+      <!-- Member lifecycle -->
+      <div class="section">
+        <div class="section-title">Member lifecycle</div>
+        <div class="section-subtitle">Joiners and departures this month</div>
+        <div class="stat-grid">
+          <div class="stat-card">
+            <div class="stat-label">Joined</div>
+            <div class="stat-value">2</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Invited</div>
+            <div class="stat-value">0</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Departing</div>
+            <div class="stat-value">0</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Left</div>
+            <div class="stat-value">1</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Workspace roles -->
+      <div class="section">
+        <div class="section-title">Workspace roles and approvals</div>
+        <div class="section-subtitle">Admin presets and spending approval thresholds</div>
+        <div style="font-size: 14px; color: #667085;">
+          <p style="margin-bottom: 8px;"><strong>Admin:</strong> Full control · Can invite, remove, approve all expenses</p>
+          <p style="margin-bottom: 8px;"><strong>Member:</strong> Standard access · Can submit expenses for approval</p>
+          <p><strong>Approval threshold:</strong> Expenses over £100 require admin approval</p>
+        </div>
+      </div>
+
+      <!-- Members grid -->
+      <div class="members-grid">
+        <a href="member.html" class="member-card">
+          <div class="member-header">
+            <div class="member-avatar">SJ</div>
+            <div class="member-info">
+              <div class="member-name">Sarah Johnson</div>
+              <div class="member-email">sarah@example.com</div>
+            </div>
+          </div>
+          <div>
+            <span class="badge badge-green">Active</span>
+            <span class="badge badge-blue">Admin</span>
+          </div>
+          <div class="financial-summary">
+            <div class="balance-row">
+              <span class="balance-label">Balance</span>
+              <span class="balance-value negative">-£124.50</span>
+            </div>
+            <div class="balance-row">
+              <span class="balance-label">Total paid</span>
+              <span class="balance-value">£856.00</span>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill" style="width: 45%"></div>
+            </div>
+            <div style="font-size: 11px; color: #667085; margin-top: 4px;">45% settled this month</div>
+          </div>
+        </a>
+
+        <a href="member.html" class="member-card">
+          <div class="member-header">
+            <div class="member-avatar">TC</div>
+            <div class="member-info">
+              <div class="member-name">Tom Chen</div>
+              <div class="member-email">tom@example.com</div>
+            </div>
+          </div>
+          <div>
+            <span class="badge badge-green">Active</span>
+            <span class="badge badge-gray">Member</span>
+          </div>
+          <div class="financial-summary">
+            <div class="balance-row">
+              <span class="balance-label">Balance</span>
+              <span class="balance-value positive">+£86.25</span>
+            </div>
+            <div class="balance-row">
+              <span class="balance-label">Total paid</span>
+              <span class="balance-value">£1,286.25</span>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill" style="width: 100%"></div>
+            </div>
+            <div style="font-size: 11px; color: #667085; margin-top: 4px;">100% settled this month</div>
+          </div>
+        </a>
+
+        <a href="member.html" class="member-card">
+          <div class="member-header">
+            <div class="member-avatar">AR</div>
+            <div class="member-info">
+              <div class="member-name">Alex Rivera</div>
+              <div class="member-email">alex@example.com</div>
+            </div>
+          </div>
+          <div>
+            <span class="badge badge-green">Active</span>
+            <span class="badge badge-gray">Member</span>
+          </div>
+          <div class="financial-summary">
+            <div class="balance-row">
+              <span class="balance-label">Balance</span>
+              <span class="balance-value negative">-£42.00</span>
+            </div>
+            <div class="balance-row">
+              <span class="balance-label">Total paid</span>
+              <span class="balance-value">£428.75</span>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill" style="width: 0%"></div>
+            </div>
+            <div style="font-size: 11px; color: #667085; margin-top: 4px;">0% settled this month</div>
+          </div>
+        </a>
+
+        <a href="member.html" class="member-card">
+          <div class="member-header">
+            <div class="member-avatar">MP</div>
+            <div class="member-info">
+              <div class="member-name">Maya Patel</div>
+              <div class="member-email">maya@example.com</div>
+            </div>
+          </div>
+          <div>
+            <span class="badge badge-green">Active</span>
+            <span class="badge badge-blue">Admin</span>
+          </div>
+          <div class="financial-summary">
+            <div class="balance-row">
+              <span class="balance-label">Balance</span>
+              <span class="balance-value positive">+£80.25</span>
+            </div>
+            <div class="balance-row">
+              <span class="balance-label">Total paid</span>
+              <span class="balance-value">£1,180.50</span>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill" style="width: 72%"></div>
+            </div>
+            <div style="font-size: 11px; color: #667085; margin-top: 4px;">72% settled this month</div>
+          </div>
+        </a>
+
+        <div class="member-card invite-card">
+          <div class="invite-content">
+            <div class="invite-icon">+</div>
+            <div class="invite-text">Invite new member</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

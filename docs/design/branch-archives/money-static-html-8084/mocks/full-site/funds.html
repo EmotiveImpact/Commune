@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shared Funds — Commune</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div class="sidebar">
+    <div class="logo">COMMUNE</div>
+    <div class="nav-label">MENU</div><a href="#" class="nav-link">Dashboard</a><a href="#" class="nav-link">My Groups</a>
+    <div class="nav-label">MONEY</div><a href="./expenses.html" class="nav-link">Expenses</a><a href="./recurring.html" class="nav-link">Recurring</a><a href="./templates.html" class="nav-link">Templates</a><a href="./funds.html" class="nav-link active">Funds</a><a href="./billing.html" class="nav-link">Billing</a>
+    <div class="nav-label">INSIGHTS</div><a href="#" class="nav-link">Command Centre</a><a href="#" class="nav-link">Breakdown</a><a href="#" class="nav-link">Analytics</a>
+    <div class="nav-label">TEAM</div><a href="#" class="nav-link">Members</a><a href="#" class="nav-link">Operations</a><a href="#" class="nav-link">Activity</a>
+    <div class="user-profile"><div class="avatar">AE</div><div><div style="font-size: 14px; font-weight: 600;">Augustus Edem</div><div class="plan-badge">Pro</div></div></div>
+  </div>
+  <div class="main">
+    <div class="header"><input type="text" class="search" placeholder="Search expenses, members..."></div>
+    <div class="content">
+      <div class="page-header">
+        <h1 class="page-title">Shared Funds</h1>
+        <p class="page-subtitle">Pool money together for group goals, trips, or shared expenses.</p>
+      </div>
+      <div class="page-actions"><button class="btn-primary">New fund</button></div>
+      <div class="panel">
+        <div class="table-container">
+          <table class="expense-table">
+            <thead><tr><th>Name</th><th>Balance</th><th>Target</th><th>Progress</th><th style="width:60px;"></th></tr></thead>
+            <tbody>
+              <tr><td>Holiday trip</td><td class="amount" style="color:#2d6a4f;">£1,240.00</td><td>£2,000.00</td><td><div style="width:120px;height:8px;background:#e2e8f0;border-radius:4px;overflow:hidden;"><div style="width:62%;height:100%;background:#2d6a4f;"></div></div></td><td>⋮</td></tr>
+              <tr><td>House deposit</td><td class="amount" style="color:#2d6a4f;">£3,400.00</td><td>£5,000.00</td><td><div style="width:120px;height:8px;background:#e2e8f0;border-radius:4px;overflow:hidden;"><div style="width:68%;height:100%;background:#2d6a4f;"></div></div></td><td>⋮</td></tr>
+              <tr><td>Emergency fund</td><td class="amount" style="color:#2d6a4f;">£820.00</td><td><span class="category-badge">No target</span></td><td style="color:#667085;">--</td><td>⋮</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

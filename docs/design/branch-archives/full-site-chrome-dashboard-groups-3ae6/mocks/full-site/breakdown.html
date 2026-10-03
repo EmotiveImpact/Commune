@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Breakdown — Commune</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="logo">COMMUNE</div>
+    
+    <div class="nav-label">MENU</div>
+    <a href="index.html" class="nav-link">Dashboard</a>
+    <a href="groups.html" class="nav-link">My Groups</a>
+
+    <div class="nav-label">MONEY</div>
+    <a href="expenses.html" class="nav-link">Expenses</a>
+    <a href="recurring.html" class="nav-link">Recurring</a>
+    <a href="templates.html" class="nav-link">Templates</a>
+    <a href="funds.html" class="nav-link">Funds</a>
+    <a href="billing.html" class="nav-link">Billing</a>
+
+    <div class="nav-label">INSIGHTS</div>
+    <a href="overview.html" class="nav-link">Command Centre</a>
+    <a href="breakdown.html" class="nav-link active">Breakdown</a>
+    <a href="analytics.html" class="nav-link">Analytics</a>
+
+    <div class="nav-label">TEAM</div>
+    <a href="members.html" class="nav-link">Members</a>
+    <a href="operations.html" class="nav-link">Operations</a>
+    <a href="activity.html" class="nav-link">Activity</a>
+
+    <div class="user-profile">
+      <div class="avatar">AE</div>
+      <div>
+        <div style="font-size: 14px; font-weight: 600;">Augustus Edem</div>
+        <div class="plan-badge">Pro</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main content -->
+  <div class="main">
+    <div class="header">
+      <input type="text" class="search" placeholder="Search expenses, members...">
+    </div>
+
+    <div class="content">
+      <div class="page-header">
+        <h1 class="page-title">Breakdown</h1>
+        <p class="page-subtitle">Settlement and payment summary</p>
+      </div>
+
+      <!-- Payment summaries -->
+      <div class="payment-grid">
+        <div class="payment-card">
+          <div class="payment-header">
+            <div>
+              <div class="payment-name">Sarah Johnson</div>
+              <div class="payment-email">sarah@example.com</div>
+            </div>
+            <div class="payment-amount negative">-£124.50</div>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-fill" style="width: 45%"></div>
+          </div>
+          <div class="progress-text">£56.00 paid · £124.50 total</div>
+          <button class="btn" style="margin-top: 12px; width: 100%;">Mark payment</button>
+        </div>
+
+        <div class="payment-card">
+          <div class="payment-header">
+            <div>
+              <div class="payment-name">Tom Chen</div>
+              <div class="payment-email">tom@example.com</div>
+            </div>
+            <div class="payment-amount positive">+£86.25</div>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-fill" style="width: 100%"></div>
+          </div>
+          <div class="progress-text">£86.25 paid · £86.25 total</div>
+        </div>
+
+        <div class="payment-card">
+          <div class="payment-header">
+            <div>
+              <div class="payment-name">Alex Rivera</div>
+              <div class="payment-email">alex@example.com</div>
+            </div>
+            <div class="payment-amount negative">-£42.00</div>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-fill" style="width: 0%"></div>
+          </div>
+          <div class="progress-text">£0.00 paid · £42.00 total</div>
+          <button class="btn" style="margin-top: 12px; width: 100%;">Mark payment</button>
+        </div>
+
+        <div class="payment-card">
+          <div class="payment-header">
+            <div>
+              <div class="payment-name">Maya Patel</div>
+              <div class="payment-email">maya@example.com</div>
+            </div>
+            <div class="payment-amount positive">+£80.25</div>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-fill" style="width: 72%"></div>
+          </div>
+          <div class="progress-text">£57.75 paid · £80.25 total</div>
+        </div>
+      </div>
+
+      <!-- Smart Settlement -->
+      <div class="section">
+        <div class="section-title">Smart Settlement</div>
+        <div class="section-subtitle">Optimized payment path to settle all balances</div>
+        
+        <div class="settlement-item">
+          <div>
+            <span class="settlement-from">Sarah Johnson</span>
+            <span class="settlement-arrow">→</span>
+            <span class="settlement-to">Tom Chen</span>
+          </div>
+          <div class="settlement-amount">£86.25</div>
+        </div>
+        
+        <div class="settlement-item">
+          <div>
+            <span class="settlement-from">Sarah Johnson</span>
+            <span class="settlement-arrow">→</span>
+            <span class="settlement-to">Maya Patel</span>
+          </div>
+          <div class="settlement-amount">£38.25</div>
+        </div>
+
+        <div class="settlement-item">
+          <div>
+            <span class="settlement-from">Alex Rivera</span>
+            <span class="settlement-arrow">→</span>
+            <span class="settlement-to">Maya Patel</span>
+          </div>
+          <div class="settlement-amount">£42.00</div>
+        </div>
+      </div>
+
+      <!-- Expense list -->
+      <div class="section">
+        <div class="section-title">Recent expenses</div>
+        <div class="section-subtitle">All expenses contributing to current balances</div>
+
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>Expense</th>
+                <th>Paid by</th>
+                <th>Amount</th>
+                <th>Date</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="expense-title">Monthly rent</td>
+                <td>Tom Chen</td>
+                <td>£1,200.00</td>
+                <td class="expense-date">Feb 1, 2024</td>
+                <td><span class="badge badge-green">Settled</span></td>
+              </tr>
+              <tr>
+                <td class="expense-title">Electricity bill</td>
+                <td>Maya Patel</td>
+                <td>£86.50</td>
+                <td class="expense-date">Feb 3, 2024</td>
+                <td><span class="badge badge-orange">Partial</span></td>
+              </tr>
+              <tr>
+                <td class="expense-title">Internet & broadband</td>
+                <td>Tom Chen</td>
+                <td>£45.00</td>
+                <td class="expense-date">Feb 5, 2024</td>
+                <td><span class="badge badge-gray">Pending</span></td>
+              </tr>
+              <tr>
+                <td class="expense-title">Grocery shopping</td>
+                <td>Sarah Johnson</td>
+                <td>£124.30</td>
+                <td class="expense-date">Feb 10, 2024</td>
+                <td><span class="badge badge-orange">Partial</span></td>
+              </tr>
+              <tr>
+                <td class="expense-title">Water bill</td>
+                <td>Maya Patel</td>
+                <td>£42.00</td>
+                <td class="expense-date">Feb 12, 2024</td>
+                <td><span class="badge badge-gray">Pending</span></td>
+              </tr>
+              <tr>
+                <td class="expense-title">Cleaning supplies</td>
+                <td>Alex Rivera</td>
+                <td>£28.75</td>
+                <td class="expense-date">Feb 15, 2024</td>
+                <td><span class="badge badge-green">Settled</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

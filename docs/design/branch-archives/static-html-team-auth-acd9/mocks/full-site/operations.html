@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Operations — Commune</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f5f1ea;
+      color: #171b24;
+      min-height: 100vh;
+      display: flex;
+    }
+
+    .sidebar {
+      width: 230px;
+      background: #1f2330;
+      color: rgba(255, 255, 255, 0.92);
+      padding: 20px 14px;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      position: fixed;
+      left: 0;
+      top: 0;
+      overflow-y: auto;
+    }
+
+    .logo {
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #fff;
+      margin-bottom: 24px;
+    }
+
+    .nav-label {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 8px;
+      margin-top: 16px;
+    }
+
+    .nav-label:first-of-type { margin-top: 0; }
+
+    .nav-link {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 14px;
+      border-radius: 10px;
+      color: rgba(255, 255, 255, 0.76);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 2px;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .nav-link:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: #ffffff;
+    }
+
+    .nav-link.active {
+      background: rgba(255, 255, 255, 0.12);
+      color: #ffffff;
+    }
+
+    .user-profile {
+      margin-top: auto;
+      padding: 10px 14px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: #fff;
+    }
+
+    .avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .plan-badge {
+      font-size: 11px;
+      color: rgba(255, 255, 255, 0.45);
+    }
+
+    .main {
+      margin-left: 230px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .header {
+      height: 64px;
+      background: #f5f1ea;
+      border-bottom: 1px solid rgba(23, 27, 36, 0.06);
+      padding: 0 32px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .search {
+      flex: 1;
+      max-width: 460px;
+      padding: 10px 16px;
+      background: #ffffff;
+      border: 1px solid rgba(23, 27, 36, 0.06);
+      border-radius: 10px;
+      font-family: inherit;
+      font-size: 14px;
+      color: #171b24;
+    }
+
+    .search::placeholder { color: #667085; }
+
+    .content {
+      padding: 24px 48px;
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    .page-header {
+      padding-bottom: 16px;
+      margin-bottom: 24px;
+      border-bottom: 1px solid rgba(23, 27, 36, 0.06);
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+
+    .page-title {
+      font-size: 24px;
+      font-weight: 800;
+      line-height: 1.2;
+      letter-spacing: -0.01em;
+      color: #171b24;
+    }
+
+    .page-subtitle {
+      font-size: 14px;
+      color: #667085;
+      margin-top: 2px;
+    }
+
+    .btn {
+      padding: 8px 16px;
+      border-radius: 8px;
+      border: none;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .btn-primary {
+      background: #2d6a4f;
+      color: #ffffff;
+    }
+
+    .btn-primary:hover { background: #25543f; }
+
+    .btn-light {
+      background: rgba(45, 106, 79, 0.1);
+      color: #2d6a4f;
+      margin-right: 8px;
+    }
+
+    .btn-light:hover { background: rgba(45, 106, 79, 0.15); }
+
+    .btn-sm {
+      padding: 5px 12px;
+      font-size: 12px;
+    }
+
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+
+    .stat-card {
+      background: rgba(255, 255, 255, 0.82);
+      border: 1px solid rgba(23, 27, 36, 0.06);
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 1px 3px rgba(23, 27, 36, 0.06);
+    }
+
+    .stat-label {
+      font-size: 12px;
+      color: #667085;
+      margin-bottom: 4px;
+    }
+
+    .stat-value {
+      font-size: 26px;
+      font-weight: 800;
+      color: #171b24;
+    }
+
+    .section-heading {
+      font-size: 14px;
+      font-weight: 700;
+      color: #171b24;
+      margin-bottom: 16px;
+    }
+
+    .section-heading.overdue { color: #dc2626; }
+
+    .chores-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+
+    .chore-card {
+      background: rgba(255, 255, 255, 0.82);
+      border: 1px solid rgba(23, 27, 36, 0.06);
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: 0 1px 3px rgba(23, 27, 36, 0.06);
+    }
+
+    .chore-card.overdue {
+      border-color: rgba(220, 38, 38, 0.3);
+      background: rgba(220, 38, 38, 0.02);
+    }
+
+    .chore-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+
+    .chore-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: #171b24;
+      margin-bottom: 4px;
+    }
+
+    .chore-description {
+      font-size: 13px;
+      color: #667085;
+      margin-bottom: 8px;
+    }
+
+    .chore-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .badge-red {
+      background: rgba(220, 38, 38, 0.1);
+      color: #dc2626;
+    }
+
+    .badge-gray {
+      background: rgba(100, 116, 139, 0.1);
+      color: #64748b;
+    }
+
+    .badge-blue {
+      background: rgba(45, 106, 79, 0.1);
+      color: #2d6a4f;
+    }
+
+    .badge-teal {
+      background: rgba(20, 184, 166, 0.1);
+      color: #14b8a6;
+    }
+
+    .badge-purple {
+      background: rgba(139, 92, 246, 0.1);
+      color: #8b5cf6;
+    }
+
+    .chore-meta {
+      font-size: 11px;
+      color: #667085;
+      margin-top: 8px;
+    }
+
+    .chore-actions {
+      display: flex;
+      gap: 6px;
+    }
+  </style>
+</head>
+<body>
+  <div class="sidebar">
+    <div class="logo">COMMUNE</div>
+    
+    <div class="nav-label">MENU</div>
+    <a href="index.html" class="nav-link">Dashboard</a>
+    <a href="groups.html" class="nav-link">My Groups</a>
+
+    <div class="nav-label">MONEY</div>
+    <a href="expenses.html" class="nav-link">Expenses</a>
+    <a href="recurring.html" class="nav-link">Recurring</a>
+    <a href="templates.html" class="nav-link">Templates</a>
+    <a href="funds.html" class="nav-link">Funds</a>
+    <a href="billing.html" class="nav-link">Billing</a>
+
+    <div class="nav-label">INSIGHTS</div>
+    <a href="overview.html" class="nav-link">Command Centre</a>
+    <a href="breakdown.html" class="nav-link">Breakdown</a>
+    <a href="analytics.html" class="nav-link">Analytics</a>
+
+    <div class="nav-label">TEAM</div>
+    <a href="members.html" class="nav-link">Members</a>
+    <a href="operations.html" class="nav-link active">Operations</a>
+    <a href="activity.html" class="nav-link">Activity</a>
+
+    <div class="user-profile">
+      <div class="avatar">AE</div>
+      <div>
+        <div style="font-size: 14px; font-weight: 600;">Augustus Edem</div>
+        <div class="plan-badge">Pro</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="header">
+      <input type="text" class="search" placeholder="Search expenses, members...">
+    </div>
+
+    <div class="content">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Operations</h1>
+          <p class="page-subtitle">8 active operations</p>
+        </div>
+        <div>
+          <button class="btn btn-light">Load starter board</button>
+          <button class="btn btn-primary">+ Add operation</button>
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div class="stat-grid">
+        <div class="stat-card">
+          <div class="stat-label">Overdue</div>
+          <div class="stat-value">2</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Recurring · Checklists</div>
+          <div class="stat-value">6 · 2</div>
+        </div>
+      </div>
+
+      <!-- Overdue -->
+      <div class="section-heading overdue">Overdue (2)</div>
+      <div class="chores-grid">
+        <div class="chore-card overdue">
+          <div class="chore-header">
+            <div style="flex: 1;">
+              <div class="chore-title">Take bins out</div>
+              <div class="chore-description">Weekly bin collection day</div>
+              <div class="chore-badges">
+                <span class="badge badge-red">Overdue</span>
+                <span class="badge badge-blue">Maintenance</span>
+                <span class="badge badge-red" style="background: #dc2626; color: white;">⚠ Escalated</span>
+              </div>
+              <div class="chore-badges">
+                <span class="badge badge-teal">Weekly · Mon</span>
+                <span class="badge badge-teal">Recurring</span>
+              </div>
+              <div class="chore-meta">Last done by Sarah 18 Feb</div>
+            </div>
+            <div class="chore-actions">
+              <button class="btn btn-primary btn-sm">✓ Done</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="chore-card overdue">
+          <div class="chore-header">
+            <div style="flex: 1;">
+              <div class="chore-title">Restock supplies</div>
+              <div class="chore-description">Check kitchen and bathroom supplies</div>
+              <div class="chore-badges">
+                <span class="badge badge-red">Overdue</span>
+                <span class="badge badge-blue">Supplies</span>
+              </div>
+              <div class="chore-badges">
+                <span class="badge badge-purple">Monthly · 1st</span>
+                <span class="badge badge-purple">Checklist · 5 items</span>
+              </div>
+              <div class="chore-meta">Paper towels • Dish soap • Trash bags • Toilet paper • Cleaning spray</div>
+            </div>
+            <div class="chore-actions">
+              <button class="btn btn-primary btn-sm">✓ Done</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Upcoming -->
+      <div class="section-heading">Upcoming (6)</div>
+      <div class="chores-grid">
+        <div class="chore-card">
+          <div class="chore-header">
+            <div style="flex: 1;">
+              <div class="chore-title">Clean kitchen</div>
+              <div class="chore-description">Deep clean kitchen surfaces, appliances, floor</div>
+              <div class="chore-badges">
+                <span class="badge badge-gray">Due 4 Mar</span>
+                <span class="badge badge-blue">Cleaning</span>
+              </div>
+              <div class="chore-badges">
+                <span class="badge badge-teal">Weekly · Mon</span>
+                <span class="badge badge-teal">Recurring</span>
+              </div>
+              <div class="chore-meta">Last done by Tom 25 Feb</div>
+            </div>
+            <div class="chore-actions">
+              <button class="btn btn-primary btn-sm">✓ Done</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="chore-card">
+          <div class="chore-header">
+            <div style="flex: 1;">
+              <div class="chore-title">Clean bathrooms</div>
+              <div class="chore-badges">
+                <span class="badge badge-gray">Due 5 Mar</span>
+                <span class="badge badge-blue">Cleaning</span>
+              </div>
+              <div class="chore-badges">
+                <span class="badge badge-teal">Weekly · Tue</span>
+                <span class="badge badge-teal">Recurring</span>
+              </div>
+            </div>
+            <div class="chore-actions">
+              <button class="btn btn-primary btn-sm">✓ Done</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="chore-card">
+          <div class="chore-header">
+            <div style="flex: 1;">
+              <div class="chore-title">Vacuum common areas</div>
+              <div class="chore-badges">
+                <span class="badge badge-gray">Due 6 Mar</span>
+                <span class="badge badge-blue">Cleaning</span>
+              </div>
+              <div class="chore-badges">
+                <span class="badge badge-teal">Every 2 weeks · Wed</span>
+                <span class="badge badge-teal">Recurring</span>
+              </div>
+            </div>
+            <div class="chore-actions">
+              <button class="btn btn-primary btn-sm">✓ Done</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="chore-card">
+          <div class="chore-header">
+            <div style="flex: 1;">
+              <div class="chore-title">Submit utility readings</div>
+              <div class="chore-description">Take meter readings and submit to provider</div>
+              <div class="chore-badges">
+                <span class="badge badge-gray">Due 10 Mar</span>
+                <span class="badge badge-blue">Admin</span>
+              </div>
+              <div class="chore-badges">
+                <span class="badge badge-purple">Monthly · 10th</span>
+                <span class="badge badge-teal">Recurring</span>
+              </div>
+            </div>
+            <div class="chore-actions">
+              <button class="btn btn-primary btn-sm">✓ Done</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="chore-card">
+          <div class="chore-header">
+            <div style="flex: 1;">
+              <div class="chore-title">Check smoke alarms</div>
+              <div class="chore-description">Test all smoke and CO2 alarms</div>
+              <div class="chore-badges">
+                <span class="badge badge-gray">Due 15 Mar</span>
+                <span class="badge badge-blue">Maintenance</span>
+              </div>
+              <div class="chore-badges">
+                <span class="badge badge-purple">Monthly · 15th</span>
+                <span class="badge badge-purple">Checklist · 3 items</span>
+              </div>
+              <div class="chore-meta">Test kitchen alarm • Test hallway alarm • Test bedroom alarms</div>
+            </div>
+            <div class="chore-actions">
+              <button class="btn btn-primary btn-sm">✓ Done</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="chore-card">
+          <div class="chore-header">
+            <div style="flex: 1;">
+              <div class="chore-title">Organize group meal</div>
+              <div class="chore-description">Plan and organize monthly group dinner</div>
+              <div class="chore-badges">
+                <span class="badge badge-gray">Due 20 Mar</span>
+                <span class="badge badge-blue">Other</span>
+              </div>
+              <div class="chore-badges">
+                <span class="badge badge-purple">Monthly · 20th</span>
+                <span class="badge badge-gray">One-off</span>
+              </div>
+            </div>
+            <div class="chore-actions">
+              <button class="btn btn-primary btn-sm">✓ Done</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

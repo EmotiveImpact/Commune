@@ -138,7 +138,7 @@ Use disposable accounts/databases for destructive or financial integration
 tests. Never expose provider secrets in Git, handoffs or browser output. Obtain
 the next explicit task before pushing, deploying or changing cloud settings.
 
-## 2026-10-03: connection recovery (local, uncommitted)
+## 2026-10-03: connection recovery (local, committed)
 
 Replaced the bare startup “Failed to fetch” screen with a branded, compact
 recovery card. Identity/membership startup reads share one bounded retry;
@@ -155,3 +155,12 @@ Screenshot: `artifacts/connection-recovery/desktop.png`.
 Local UI is running on 127.0.0.1:3000 with its normal API on port 3002.
 The screenshot alone does not establish why the user's earlier fetch failed;
 the local API health check was responding during this investigation.
+
+## 2026-10-03: local branches consolidated
+
+`81fff05` saves local work and the optional house-game concept. `020a170`
+integrates the legal worktree's signup and unpublished privacy draft changes.
+`4c2c0f4` records the remaining local branch histories without restoring the
+retired runtime. All local branches are incorporated into main; nothing was
+pushed or deployed. See [consolidation details](BRANCH-CONSOLIDATION-2026-10-03.md)
+for the preserved references and exclusions. Branches/worktrees remain intact.

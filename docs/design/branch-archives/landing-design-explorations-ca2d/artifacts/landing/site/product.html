@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Commune — The operating surface</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/landing.css" />
+</head>
+<body>
+  <div class="surface">
+    <header class="top">
+      <div class="top__in">
+        <a href="/" class="top__brand">
+          <img src="/logo.png" alt="" />
+          <span class="t-logo">Commune</span>
+        </a>
+        <nav class="top__nav">
+          <a href="#hub">The hub</a>
+          <a href="#spaces">Spaces</a>
+          <a href="#membership">Membership</a>
+        </nav>
+        <div class="top__acts">
+          <a class="top__signin" href="https://app.ourcommune.io">Sign in</a>
+          <a class="btn btn--sage" href="https://app.ourcommune.io/signup">Start for free</a>
+        </div>
+      </div>
+    </header>
+
+    <section class="surface__intro wrap">
+      <p class="t-label" style="color: var(--sage); margin-bottom: 10px">Communal finance + group operations</p>
+      <h1 class="t-display">The command centre for a shared space.</h1>
+      <p class="t-body">Open the hub. See what you owe, what is paid, and what needs a person. Then switch to the next space.</p>
+      <div class="surface__cta">
+        <a class="btn btn--sage" href="https://app.ourcommune.io/signup">Start 7-day trial</a>
+        <a class="btn btn--ghost" href="#membership">View membership</a>
+      </div>
+
+      <div class="app" id="hub" aria-hidden="true">
+        <aside class="side">
+          <div class="t-logo">Commune</div>
+          <p class="side__g">Menu</p>
+          <span class="lk is-on">Home</span>
+          <p class="side__g">Money</p>
+          <span class="lk">Expenses</span>
+          <span class="lk">Recurring</span>
+          <span class="lk">Settle</span>
+          <p class="side__g">House</p>
+          <span class="lk">Members</span>
+          <span class="lk">Operations</span>
+          <div class="hubsw">
+            <div>
+              <strong>14 Park Street</strong>
+              <em>Household · switch</em>
+            </div>
+          </div>
+        </aside>
+        <div class="main">
+          <div class="ah">
+            <div>
+              <h1>14 Park Street</h1>
+              <p>August · you owe £42 · gas Friday · fund £420</p>
+            </div>
+            <div class="ah__search">Search expenses, people, bills</div>
+            <a class="btn btn--ink" href="https://app.ourcommune.io/signup">Add expense</a>
+          </div>
+          <div class="ac">
+            <div class="answers">
+              <div class="inkcard">
+                <p class="t-label">You owe</p>
+                <p class="num">£42.00</p>
+                <p>Pay Jordan this week. Or net the Tesco £18 and send £24.</p>
+                <a class="btn btn--sage" href="https://app.ourcommune.io/signup">Settle with Jordan</a>
+              </div>
+              <div class="card">
+                <h2>Right now</h2>
+                <p class="sub">What still needs a person this week.</p>
+                <div class="now">
+                  <span class="pill warn">Friday</span>
+                  <div>
+                    <strong>British Gas</strong>
+                    <div class="when">£94.20 · Jordan paid · your share open</div>
+                  </div>
+                </div>
+                <div class="now">
+                  <span class="pill warn">Overdue</span>
+                  <div>
+                    <strong>Bins</strong>
+                    <div class="when">Still Jordan’s Tuesday</div>
+                  </div>
+                </div>
+                <div class="now">
+                  <span class="pill open">Collect</span>
+                  <div>
+                    <strong>Alex · house fund</strong>
+                    <div class="when">£180 still to pay in</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="card">
+              <h2>Who owes whom</h2>
+              <p class="sub">This cycle. Settle when you’re ready.</p>
+              <div class="move">
+                <span class="move__arr">→</span>
+                <div>
+                  <p class="move__n">You → Jordan</p>
+                  <p class="move__w">Gas share · or £24 if you net Tesco</p>
+                </div>
+                <span class="move__a">£42</span>
+              </div>
+              <div class="move">
+                <span class="move__arr">→</span>
+                <div>
+                  <p class="move__n">Jordan → You</p>
+                  <p class="move__w">Tesco extras from Monday</p>
+                </div>
+                <span class="move__a">£18</span>
+              </div>
+              <div class="move">
+                <span class="move__arr" style="background:#f0ece4;color:var(--muted)">↔</span>
+                <div>
+                  <p class="move__n">Alex ↔ You</p>
+                  <p class="move__w">Even on expenses · still £180 for the fund</p>
+                </div>
+                <span class="move__a" style="color:var(--muted)">£0</span>
+              </div>
+            </div>
+            <div class="kpis">
+              <div class="kpi">
+                <span>House fund</span>
+                <strong>£420</strong>
+                <small>£180 to collect from Alex</small>
+              </div>
+              <div class="kpi">
+                <span>This month</span>
+                <strong>£2,140</strong>
+                <small>of £2,400 · on track</small>
+              </div>
+              <div class="kpi">
+                <span>Open bills</span>
+                <strong>2</strong>
+                <small>Gas + Virgin Media</small>
+              </div>
+              <div class="kpi">
+                <span>Next due</span>
+                <strong>Fri</strong>
+                <small>British Gas · 29 Aug</small>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="spaces" class="wrap">
+      <p class="t-label" style="color: var(--sage)">The same model, elsewhere</p>
+      <h2 class="t-title" style="margin: 10px 0 18px">Studio East. Lisbon. The house.</h2>
+      <div class="film">
+        <img src="/photo/kitchen.jpg" alt="" />
+        <img src="/photo/studio.jpg" alt="" />
+        <img src="/photo/trip.jpg" alt="" />
+      </div>
+    </section>
+
+    <section id="membership" class="rates">
+      <div class="wrap">
+        <p class="t-label" style="color: var(--sage)">Membership</p>
+        <h2 class="t-title" style="margin: 10px 0 8px">Simple, transparent pricing.</h2>
+        <p class="t-body" style="margin-bottom: 28px">7-day trial on your first space. No card required.</p>
+        <div class="rates__row">
+          <span class="rates__name">Standard</span>
+          <span class="rates__price">£4.99</span>
+          <span class="rates__for">1 space · 8 members · finance, responsibilities, hub</span>
+          <a class="btn btn--ghost" href="https://app.ourcommune.io/signup">Start trial</a>
+        </div>
+        <div class="rates__row is-feat">
+          <span class="rates__name">Pro</span>
+          <span class="rates__price">£9.99</span>
+          <span class="rates__for">3 spaces · 15 members · exports, analytics, priority</span>
+          <a class="btn btn--light" href="https://app.ourcommune.io/signup">Start trial</a>
+        </div>
+        <div class="rates__row">
+          <span class="rates__name">Agency</span>
+          <span class="rates__price">£29.99</span>
+          <span class="rates__for">Unlimited spaces and members · operator path</span>
+          <a class="btn btn--ghost" href="https://app.ourcommune.io/signup">Start trial</a>
+        </div>
+      </div>
+    </section>
+
+    <footer class="foot">
+      <div class="foot__in">
+        <div class="foot__brand">
+          <img src="/logo.png" alt="" />
+          <span class="t-logo">Commune</span>
+        </div>
+        <p class="t-body">© 2026 Commune</p>
+        <a class="t-ui" href="mailto:support@ourcommune.io">support@ourcommune.io</a>
+      </div>
+    </footer>
+  </div>
+  <nav class="dswitch" aria-label="Design explorations">
+    <a href="/">All</a>
+    <a href="/paper">Paper</a>
+    <a href="/ink">Ink</a>
+    <a href="/product" class="is-on">Product</a>
+  </nav>
+</body>
+</html>

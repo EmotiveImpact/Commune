@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Edit expense — Commune</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div class="sidebar">
+    <div class="logo">COMMUNE</div>
+    <div class="nav-label">MENU</div><a href="#" class="nav-link">Dashboard</a><a href="#" class="nav-link">My Groups</a>
+    <div class="nav-label">MONEY</div><a href="./expenses.html" class="nav-link active">Expenses</a><a href="./recurring.html" class="nav-link">Recurring</a><a href="./templates.html" class="nav-link">Templates</a><a href="./funds.html" class="nav-link">Funds</a><a href="./billing.html" class="nav-link">Billing</a>
+    <div class="nav-label">INSIGHTS</div><a href="#" class="nav-link">Command Centre</a><a href="#" class="nav-link">Breakdown</a><a href="#" class="nav-link">Analytics</a>
+    <div class="nav-label">TEAM</div><a href="#" class="nav-link">Members</a><a href="#" class="nav-link">Operations</a><a href="#" class="nav-link">Activity</a>
+    <div class="user-profile"><div class="avatar">AE</div><div><div style="font-size: 14px; font-weight: 600;">Augustus Edem</div><div class="plan-badge">Pro</div></div></div>
+  </div>
+  <div class="main">
+    <div class="header"><input type="text" class="search" placeholder="Search expenses, members..."></div>
+    <div class="content">
+      <div class="page-header">
+        <h1 class="page-title">Edit expense</h1>
+        <p class="page-subtitle">Update the amount, dates, category, and description</p>
+      </div>
+      <div class="page-actions">
+        <a href="./expenses-detail.html" class="btn-default">Cancel</a>
+        <button class="btn-primary">Save changes</button>
+      </div>
+      <div class="panel">
+        <div class="form-group">
+          <label class="form-label">Title *</label>
+          <input type="text" class="form-input" value="Electricity bill">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Amount *</label>
+            <input type="number" class="form-input" value="120.00">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Category *</label>
+            <select class="form-input"><option value="utilities" selected>Utilities</option><option>Groceries</option><option>Rent</option></select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Due date *</label>
+          <input type="date" class="form-input" value="2024-12-15">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Description</label>
+          <textarea class="form-input" rows="3"></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Recurrence</label>
+          <select class="form-input"><option value="none" selected>None</option><option>Weekly</option><option>Monthly</option></select>
+        </div>
+      </div>
+      <div class="panel">
+        <p class="text-sm text-muted">Split method and participant changes still require a new expense, but vendor and invoice context can be updated here.</p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

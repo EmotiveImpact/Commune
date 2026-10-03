@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Activity — Commune</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f5f1ea;
+      color: #171b24;
+      min-height: 100vh;
+      display: flex;
+    }
+
+    .sidebar {
+      width: 230px;
+      background: #1f2330;
+      color: rgba(255, 255, 255, 0.92);
+      padding: 20px 14px;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      position: fixed;
+      left: 0;
+      top: 0;
+      overflow-y: auto;
+    }
+
+    .logo {
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #fff;
+      margin-bottom: 24px;
+    }
+
+    .nav-label {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 8px;
+      margin-top: 16px;
+    }
+
+    .nav-label:first-of-type { margin-top: 0; }
+
+    .nav-link {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 14px;
+      border-radius: 10px;
+      color: rgba(255, 255, 255, 0.76);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 2px;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .nav-link:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: #ffffff;
+    }
+
+    .nav-link.active {
+      background: rgba(255, 255, 255, 0.12);
+      color: #ffffff;
+    }
+
+    .user-profile {
+      margin-top: auto;
+      padding: 10px 14px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: #fff;
+    }
+
+    .avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .plan-badge {
+      font-size: 11px;
+      color: rgba(255, 255, 255, 0.45);
+    }
+
+    .main {
+      margin-left: 230px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .header {
+      height: 64px;
+      background: #f5f1ea;
+      border-bottom: 1px solid rgba(23, 27, 36, 0.06);
+      padding: 0 32px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .search {
+      flex: 1;
+      max-width: 460px;
+      padding: 10px 16px;
+      background: #ffffff;
+      border: 1px solid rgba(23, 27, 36, 0.06);
+      border-radius: 10px;
+      font-family: inherit;
+      font-size: 14px;
+      color: #171b24;
+    }
+
+    .search::placeholder { color: #667085; }
+
+    .content {
+      padding: 24px 48px;
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    .page-header {
+      padding-bottom: 16px;
+      margin-bottom: 24px;
+      border-bottom: 1px solid rgba(23, 27, 36, 0.06);
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+
+    .page-title {
+      font-size: 24px;
+      font-weight: 800;
+      line-height: 1.2;
+      letter-spacing: -0.01em;
+      color: #171b24;
+    }
+
+    .page-subtitle {
+      font-size: 14px;
+      color: #667085;
+      margin-top: 2px;
+    }
+
+    .btn {
+      padding: 8px 16px;
+      border-radius: 8px;
+      border: 1px solid rgba(23, 27, 36, 0.1);
+      background: #ffffff;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .btn:hover {
+      background: #f8f8f8;
+      border-color: rgba(23, 27, 36, 0.14);
+    }
+
+    .filter-chips {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+
+    .filter-chip {
+      padding: 6px 14px;
+      border-radius: 8px;
+      border: 1px solid rgba(23, 27, 36, 0.1);
+      background: #ffffff;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      color: #667085;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .filter-chip:hover {
+      background: #f8f8f8;
+    }
+
+    .filter-chip.active {
+      background: #2d6a4f;
+      color: #ffffff;
+      border-color: #2d6a4f;
+    }
+
+    .layout-grid {
+      display: grid;
+      grid-template-columns: 1fr 2fr;
+      gap: 24px;
+    }
+
+    @media (max-width: 1024px) {
+      .layout-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .section {
+      background: rgba(255, 255, 255, 0.82);
+      border: 1px solid rgba(23, 27, 36, 0.06);
+      border-radius: 14px;
+      padding: 24px;
+      margin-bottom: 24px;
+      box-shadow: 0 1px 3px rgba(23, 27, 36, 0.06);
+    }
+
+    .section-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #171b24;
+      margin-bottom: 4px;
+    }
+
+    .section-subtitle {
+      font-size: 13px;
+      color: #667085;
+      margin-bottom: 20px;
+    }
+
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .stat-card {
+      background: rgba(45, 106, 79, 0.04);
+      border: 1px solid rgba(45, 106, 79, 0.08);
+      border-radius: 10px;
+      padding: 14px;
+    }
+
+    .stat-label {
+      font-size: 11px;
+      color: #667085;
+      margin-bottom: 4px;
+    }
+
+    .stat-value {
+      font-size: 20px;
+      font-weight: 700;
+      color: #171b24;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .badge-green {
+      background: rgba(22, 163, 74, 0.1);
+      color: #16a34a;
+    }
+
+    .badge-gray {
+      background: rgba(100, 116, 139, 0.1);
+      color: #64748b;
+    }
+
+    .badge-violet {
+      background: rgba(139, 92, 246, 0.1);
+      color: #8b5cf6;
+    }
+
+    .badge-teal {
+      background: rgba(20, 184, 166, 0.1);
+      color: #14b8a6;
+    }
+
+    .date-header {
+      font-size: 13px;
+      font-weight: 700;
+      color: #667085;
+      margin: 20px 0 12px;
+    }
+
+    .activity-item {
+      background: rgba(255, 255, 255, 0.82);
+      border: 1px solid rgba(23, 27, 36, 0.06);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 12px;
+      box-shadow: 0 1px 3px rgba(23, 27, 36, 0.06);
+      display: flex;
+      gap: 12px;
+    }
+
+    .activity-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      font-size: 16px;
+    }
+
+    .activity-icon.green {
+      background: rgba(22, 163, 74, 0.1);
+    }
+
+    .activity-icon.blue {
+      background: rgba(59, 130, 246, 0.1);
+    }
+
+    .activity-icon.orange {
+      background: rgba(249, 115, 22, 0.1);
+    }
+
+    .activity-icon.teal {
+      background: rgba(20, 184, 166, 0.1);
+    }
+
+    .activity-content {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .activity-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 4px;
+    }
+
+    .activity-user {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .activity-avatar {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #2d6a4f 0%, #16a34a 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-weight: 700;
+      color: white;
+    }
+
+    .activity-name {
+      font-size: 13px;
+      font-weight: 600;
+      color: #171b24;
+    }
+
+    .activity-time {
+      font-size: 12px;
+      color: #667085;
+    }
+
+    .activity-description {
+      font-size: 13px;
+      color: #667085;
+      margin-bottom: 8px;
+    }
+
+    .member-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(23, 27, 36, 0.04);
+    }
+
+    .member-item:last-child { border-bottom: none; }
+
+    .member-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #2d6a4f 0%, #16a34a 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 700;
+      color: white;
+      flex-shrink: 0;
+    }
+
+    .member-name {
+      flex: 1;
+      font-size: 13px;
+      color: #171b24;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  </style>
+</head>
+<body>
+  <div class="sidebar">
+    <div class="logo">COMMUNE</div>
+    
+    <div class="nav-label">MENU</div>
+    <a href="index.html" class="nav-link">Dashboard</a>
+    <a href="groups.html" class="nav-link">My Groups</a>
+
+    <div class="nav-label">MONEY</div>
+    <a href="expenses.html" class="nav-link">Expenses</a>
+    <a href="recurring.html" class="nav-link">Recurring</a>
+    <a href="templates.html" class="nav-link">Templates</a>
+    <a href="funds.html" class="nav-link">Funds</a>
+    <a href="billing.html" class="nav-link">Billing</a>
+
+    <div class="nav-label">INSIGHTS</div>
+    <a href="overview.html" class="nav-link">Command Centre</a>
+    <a href="breakdown.html" class="nav-link">Breakdown</a>
+    <a href="analytics.html" class="nav-link">Analytics</a>
+
+    <div class="nav-label">TEAM</div>
+    <a href="members.html" class="nav-link">Members</a>
+    <a href="operations.html" class="nav-link">Operations</a>
+    <a href="activity.html" class="nav-link active">Activity</a>
+
+    <div class="user-profile">
+      <div class="avatar">AE</div>
+      <div>
+        <div style="font-size: 14px; font-weight: 600;">Augustus Edem</div>
+        <div class="plan-badge">Pro</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="header">
+      <input type="text" class="search" placeholder="Search expenses, members...">
+    </div>
+
+    <div class="content">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Activity</h1>
+          <p class="page-subtitle">Everything that happened in this group</p>
+        </div>
+        <button class="btn">Export CSV</button>
+      </div>
+
+      <!-- Filter chips -->
+      <div class="filter-chips">
+        <button class="filter-chip active">All</button>
+        <button class="filter-chip">Expenses</button>
+        <button class="filter-chip">Payments</button>
+        <button class="filter-chip">Members</button>
+        <button class="filter-chip">Chores</button>
+      </div>
+
+      <div class="layout-grid">
+        <!-- Left sidebar -->
+        <div>
+          <div class="section">
+            <div class="section-title">This month</div>
+            <div class="stat-grid">
+              <div class="stat-card">
+                <div class="stat-label">Events</div>
+                <div class="stat-value">42</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-label">All time</div>
+                <div class="stat-value">284</div>
+              </div>
+            </div>
+            <div style="margin-top: 12px;">
+              <div style="font-size: 12px; color: #667085; margin-bottom: 4px;">Most active:</div>
+              <span class="badge badge-green">Sarah Johnson</span>
+              <span style="font-size: 12px; color: #667085; margin-left: 4px;">(18)</span>
+            </div>
+          </div>
+
+          <div class="section">
+            <div class="section-title">By type</div>
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 13px; color: #171b24;">Expenses</span>
+                <span class="badge badge-gray">24</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 13px; color: #171b24;">Payments</span>
+                <span class="badge badge-gray">12</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 13px; color: #171b24;">Members</span>
+                <span class="badge badge-gray">4</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 13px; color: #171b24;">Chores</span>
+                <span class="badge badge-gray">2</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="section">
+            <div class="section-title">Members</div>
+            <div>
+              <div class="member-item">
+                <div class="member-avatar">SJ</div>
+                <div class="member-name">Sarah Johnson</div>
+                <span class="badge badge-gray" style="font-size: 10px;">Admin</span>
+              </div>
+              <div class="member-item">
+                <div class="member-avatar">TC</div>
+                <div class="member-name">Tom Chen</div>
+              </div>
+              <div class="member-item">
+                <div class="member-avatar">AR</div>
+                <div class="member-name">Alex Rivera</div>
+              </div>
+              <div class="member-item">
+                <div class="member-avatar">MP</div>
+                <div class="member-name">Maya Patel</div>
+                <span class="badge badge-gray" style="font-size: 10px;">Admin</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right main feed -->
+        <div>
+          <!-- Workspace billing watch -->
+          <div class="section">
+            <div class="section-title">Shared subscriptions & tools</div>
+            <div class="section-subtitle">Recent invoice refs, due dates, recurring subscriptions for this workspace</div>
+
+            <div class="stat-grid" style="grid-template-columns: repeat(4, 1fr); margin-bottom: 20px;">
+              <div class="stat-card">
+                <div class="stat-label">Tracked bills</div>
+                <div class="stat-value">8</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-label">Work tools spend</div>
+                <div class="stat-value">£142</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-label">Due soon</div>
+                <div class="stat-value">2</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-label">Overdue</div>
+                <div class="stat-value">0</div>
+              </div>
+            </div>
+
+            <div style="background: rgba(45, 106, 79, 0.04); border: 1px solid rgba(45, 106, 79, 0.08); border-radius: 10px; padding: 16px; display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <div style="font-weight: 700; font-size: 14px; margin-bottom: 4px; display: flex; align-items: center; gap: 8px;">
+                  <span>Figma Professional</span>
+                  <span class="badge badge-violet">Subscription</span>
+                </div>
+                <div style="font-size: 12px; color: #667085;">Ref INV-2024-0283</div>
+              </div>
+              <div style="text-align: right;">
+                <div style="font-weight: 700; font-size: 14px;">£45.00</div>
+                <div style="font-size: 11px; color: #667085;">Due Mar 1</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Activity feed -->
+          <div class="date-header">Today</div>
+
+          <div class="activity-item">
+            <div class="activity-icon green">📝</div>
+            <div class="activity-content">
+              <div class="activity-header">
+                <div class="activity-user">
+                  <div class="activity-avatar">SJ</div>
+                  <span class="activity-name">Sarah Johnson</span>
+                </div>
+                <span class="activity-time">2h ago</span>
+              </div>
+              <div class="activity-description">
+                Created expense 'Monthly rent'
+              </div>
+            </div>
+          </div>
+
+          <div class="activity-item">
+            <div class="activity-icon orange">💰</div>
+            <div class="activity-content">
+              <div class="activity-header">
+                <div class="activity-user">
+                  <div class="activity-avatar">TC</div>
+                  <span class="activity-name">Tom Chen</span>
+                </div>
+                <span class="activity-time">3h ago</span>
+              </div>
+              <div class="activity-description">
+                Marked a payment on 'Electricity bill'
+              </div>
+            </div>
+          </div>
+
+          <div class="date-header">Yesterday</div>
+
+          <div class="activity-item">
+            <div class="activity-icon teal">✓</div>
+            <div class="activity-content">
+              <div class="activity-header">
+                <div class="activity-user">
+                  <div class="activity-avatar">MP</div>
+                  <span class="activity-name">Maya Patel</span>
+                </div>
+                <span class="activity-time">1d ago</span>
+              </div>
+              <div class="activity-description">
+                Completed chore 'Clean kitchen'
+              </div>
+            </div>
+          </div>
+
+          <div class="activity-item">
+            <div class="activity-icon blue">⚙️</div>
+            <div class="activity-content">
+              <div class="activity-header">
+                <div class="activity-user">
+                  <div class="activity-avatar">AR</div>
+                  <span class="activity-name">Alex Rivera</span>
+                </div>
+                <span class="activity-time">1d ago</span>
+              </div>
+              <div class="activity-description">
+                Updated expense 'Grocery shopping' — amount £98.50 → £124.30
+              </div>
+            </div>
+          </div>
+
+          <div class="activity-item">
+            <div class="activity-icon green">👤</div>
+            <div class="activity-content">
+              <div class="activity-header">
+                <div class="activity-user">
+                  <div class="activity-avatar">AR</div>
+                  <span class="activity-name">Alex Rivera</span>
+                </div>
+                <span class="activity-time">1d ago</span>
+              </div>
+              <div class="activity-description">
+                Joined the group
+              </div>
+            </div>
+          </div>
+
+          <div class="date-header">February 25</div>
+
+          <div class="activity-item">
+            <div class="activity-icon green">💳</div>
+            <div class="activity-content">
+              <div class="activity-header">
+                <div class="activity-user">
+                  <div class="activity-avatar">TC</div>
+                  <span class="activity-name">Tom Chen</span>
+                </div>
+                <span class="activity-time">3d ago</span>
+              </div>
+              <div class="activity-description">
+                Confirmed a payment on 'Internet & broadband'
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

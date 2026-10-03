@@ -1,0 +1,1090 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Commune — For people who do life, together</title>
+  <meta name="description" content="One hub for shared homes, studios, workspaces, trips, and projects. Split costs, assign responsibilities, stay clear." />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='96' fill='%231a1e2e'/%3E%3Cpath d='M256 56C145.5 56 56 145.5 56 256s89.5 200 200 200c40.3 0 77.8-11.9 109.2-32.4 7.2-4.7 8.4-15.2 1.8-21.2l-3.4-3.1c-5.3-4.8-13.1-4.2-19 0.6C320.5 418.4 289.4 428 256 428c-95 0-172-77-172-172s77-172 172-172c33.4 0 64.5 9.6 90.6 26.1 5.9 3.7 13.7 4.3 19-0.6l3.4-3.1c6.6-6 5.4-16.5-1.8-21.2C335.8 67.9 296.3 56 256 56z' fill='%23f5f3ef'/%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --sage: #2d6a4f;
+      --navy: #1a1e2e;
+      --cream: #f5f3ef;
+      --cream-2: #faf8f4;
+      --muted: #888880;
+      --line: #e4e0d8;
+      --ink: #1a1e2e;
+      --white: #ffffff;
+      --footer: #12151f;
+      --peach: #efd9c8;
+      --mist: #d8ebe4;
+      --display: "DM Serif Display", Georgia, serif;
+      --sans: "DM Sans", system-ui, sans-serif;
+      --max: 1120px;
+      --hdr: 64px;
+      --ease: cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: var(--sans);
+      background: var(--cream);
+      color: var(--ink);
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+      font-size: 17px;
+      line-height: 1.65;
+    }
+    a { color: inherit; text-decoration: none; }
+    img { max-width: 100%; display: block; }
+    button { font-family: inherit; cursor: pointer; border: none; background: none; }
+    ul { list-style: none; }
+
+    .wrap {
+      max-width: var(--max);
+      margin: 0 auto;
+      padding-left: clamp(20px, 4vw, 48px);
+      padding-right: clamp(20px, 4vw, 48px);
+    }
+
+    .eyebrow {
+      font-size: 0.6875rem;
+      font-weight: 600;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--sage);
+      margin-bottom: 14px;
+    }
+    .eyebrow--muted { color: var(--muted); }
+    .eyebrow--light { color: rgba(255,255,255,0.38); }
+
+    .display {
+      font-family: var(--display);
+      font-weight: 400;
+      letter-spacing: -0.02em;
+      line-height: 1.08;
+      color: var(--ink);
+    }
+
+    /* ── Header ── */
+    .hdr {
+      position: fixed; inset: 0 0 auto 0; z-index: 40;
+      height: var(--hdr);
+      display: flex; align-items: center;
+      transition: background 0.35s var(--ease), border-color 0.35s, backdrop-filter 0.35s;
+      border-bottom: 1px solid transparent;
+    }
+    .hdr.is-solid {
+      background: rgba(26, 30, 46, 0.94);
+      backdrop-filter: blur(16px);
+      border-bottom-color: rgba(255,255,255,0.06);
+    }
+    .hdr__inner {
+      width: 100%; max-width: var(--max); margin: 0 auto;
+      padding: 0 clamp(20px, 4vw, 48px);
+      display: flex; align-items: center; justify-content: space-between; gap: 24px;
+    }
+    .logo {
+      display: flex; align-items: center; gap: 9px;
+      font-size: 0.72rem; font-weight: 700; letter-spacing: 0.16em;
+      color: var(--white);
+    }
+    .logo svg { display: block; }
+    .hdr__nav { display: flex; align-items: center; gap: 28px; }
+    .hdr__nav a {
+      font-size: 0.875rem; font-weight: 500;
+      color: rgba(255,255,255,0.72);
+      transition: color 0.2s;
+    }
+    .hdr__nav a:hover { color: var(--white); }
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 0.8125rem; font-weight: 600; letter-spacing: 0.01em;
+      border-radius: 999px; padding: 10px 18px;
+      transition: background 0.2s, color 0.2s, border-color 0.2s, opacity 0.2s;
+    }
+    .btn--light { background: var(--white); color: var(--navy); }
+    .btn--light:hover { opacity: 0.88; }
+    .btn--sage { background: var(--sage); color: var(--white); }
+    .btn--sage:hover { background: #245a43; }
+    .btn--ghost {
+      background: transparent; color: var(--white);
+      border: 1px solid rgba(255,255,255,0.38); padding: 11px 22px;
+    }
+    .btn--ghost:hover { background: var(--white); color: var(--navy); border-color: var(--white); }
+    .btn--line {
+      background: transparent; color: var(--ink);
+      border: 1px solid var(--line);
+    }
+    .btn--line:hover { background: var(--ink); color: var(--white); border-color: var(--ink); }
+    .btn--block { width: 100%; }
+
+    /* ── Hero ── */
+    .hero {
+      position: relative;
+      min-height: 100vh;
+      background: var(--navy);
+      color: var(--white);
+      overflow: hidden;
+    }
+    .hero__slide {
+      position: absolute; inset: 0;
+      opacity: 0; transition: opacity 1.1s var(--ease);
+    }
+    .hero__slide.is-on { opacity: 1; }
+    .hero__slide img {
+      width: 100%; height: 100%;
+      object-fit: cover; object-position: center 38%;
+      transform: scale(1.04);
+      transition: transform 8s linear;
+    }
+    .hero__slide.is-on img { transform: scale(1); }
+    .hero__veil {
+      position: absolute; inset: 0; z-index: 1;
+      background:
+        linear-gradient(180deg, rgba(18,21,31,0.28) 0%, rgba(18,21,31,0.18) 38%, rgba(18,21,31,0.82) 100%),
+        linear-gradient(90deg, rgba(18,21,31,0.42) 0%, transparent 58%);
+    }
+    .hero__body {
+      position: relative; z-index: 2;
+      min-height: 100vh;
+      display: flex; flex-direction: column; justify-content: flex-end;
+      padding: calc(var(--hdr) + 24px) 0 88px;
+    }
+    .hero__label {
+      display: inline-block;
+      font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase;
+      color: #b7cfc3;
+      margin-bottom: 16px;
+    }
+    .hero h1 {
+      font-family: var(--display);
+      font-size: clamp(2.75rem, 5.4vw, 4.75rem);
+      font-weight: 400;
+      line-height: 1.02;
+      letter-spacing: -0.025em;
+      max-width: 14ch;
+      margin-bottom: 16px;
+    }
+    .hero__sub {
+      font-size: 1.0625rem;
+      color: rgba(245,243,239,0.62);
+      max-width: 36ch;
+      margin-bottom: 36px;
+    }
+    .hero__foot {
+      display: flex; align-items: center; gap: 20px; flex-wrap: wrap;
+    }
+    .hero__proof {
+      font-size: 0.8125rem;
+      color: rgba(245,243,239,0.5);
+    }
+    .hero__proof strong { color: var(--white); font-weight: 600; }
+    .hero__track {
+      position: absolute; left: 0; right: 0; bottom: 0; z-index: 3;
+      display: grid; grid-template-columns: repeat(5, 1fr);
+      border-top: 1px solid rgba(255,255,255,0.08);
+      background: rgba(18,21,31,0.28);
+    }
+    .hero__tick {
+      position: relative;
+      padding: 11px 12px 13px;
+      text-align: left;
+      color: rgba(255,255,255,0.42);
+      border-right: 1px solid rgba(255,255,255,0.06);
+    }
+    .hero__tick:last-child { border-right: none; }
+    .hero__tick.is-on { color: var(--white); }
+    .hero__tick span {
+      display: block;
+      font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.04em;
+    }
+    .hero__tick i {
+      position: absolute; left: 0; right: 0; top: 0; height: 2px;
+      background: rgba(255,255,255,0.16);
+    }
+    .hero__tick i::after {
+      content: "";
+      position: absolute; inset: 0 auto 0 0; width: 0;
+      background: var(--white);
+    }
+    .hero__tick.is-on i::after { width: var(--p, 0%); transition: width 0.08s linear; }
+    .hero__tick.is-done i::after { width: 100%; }
+
+    /* ── Statement ── */
+    .stmt { background: var(--white); }
+    .stmt__inner {
+      max-width: var(--max); margin: 0 auto;
+      display: grid; grid-template-columns: 1fr 1fr;
+      min-height: 620px;
+    }
+    .stmt__copy {
+      padding: clamp(72px, 10vw, 112px) clamp(28px, 5vw, 64px);
+      display: flex; flex-direction: column; justify-content: center;
+      max-width: 560px; margin-left: auto;
+    }
+    .stmt h2 {
+      font-size: clamp(2rem, 3.2vw, 3.1rem);
+      margin-bottom: 20px;
+    }
+    .stmt p {
+      color: var(--muted);
+      margin-bottom: 28px;
+      max-width: 42ch;
+    }
+    .stmt__img {
+      padding: clamp(36px, 5vw, 64px);
+      display: flex; align-items: center;
+    }
+    .stmt__img img {
+      width: 100%; height: 100%; max-height: 480px;
+      object-fit: cover; border-radius: 12px;
+    }
+    .link {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-size: 0.875rem; font-weight: 550;
+      color: var(--ink);
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 2px; width: fit-content;
+    }
+    .link:hover { border-color: var(--ink); }
+
+    /* ── Why ── */
+    .why {
+      background: var(--navy);
+      color: var(--white);
+      padding: clamp(72px, 10vw, 112px) 0;
+    }
+    .why__inner {
+      display: grid; grid-template-columns: 0.9fr 1.1fr;
+      gap: clamp(40px, 6vw, 88px);
+      align-items: start;
+    }
+    .why h2 {
+      font-size: clamp(2.6rem, 4.8vw, 4.25rem);
+      color: var(--white);
+      max-width: 8ch;
+    }
+    .why__item { border-top: 1px solid rgba(255,255,255,0.08); }
+    .why__item:last-child { border-bottom: 1px solid rgba(255,255,255,0.08); }
+    .why__q {
+      width: 100%;
+      display: grid; grid-template-columns: 32px 1fr 20px;
+      gap: 16px; align-items: center;
+      padding: 20px 0;
+      text-align: left; color: inherit;
+    }
+    .why__n {
+      font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.16em;
+      color: rgba(255,255,255,0.28);
+    }
+    .why__title {
+      font-size: 1rem; font-weight: 500;
+      color: rgba(255,255,255,0.72);
+      line-height: 1.4;
+    }
+    .why__item.is-open .why__title { color: var(--white); }
+    .why__chevron {
+      color: rgba(255,255,255,0.28);
+      font-size: 1.25rem; font-weight: 300; text-align: center;
+      transition: transform 0.25s var(--ease);
+    }
+    .why__item.is-open .why__chevron { transform: rotate(45deg); color: var(--white); }
+    .why__ans {
+      display: none;
+      padding: 0 0 22px 48px;
+      font-size: 0.9375rem;
+      color: rgba(255,255,255,0.48);
+      max-width: 52ch;
+    }
+    .why__item.is-open .why__ans { display: block; }
+
+    /* ── Command Centre peek ── */
+    .peek {
+      background: var(--cream);
+      padding: clamp(72px, 10vw, 112px) 0;
+    }
+    .peek__intro { max-width: 36rem; margin-bottom: 40px; }
+    .peek h2 { font-size: clamp(2rem, 3.2vw, 3.1rem); margin-bottom: 14px; }
+    .peek__lead { color: var(--muted); max-width: 46ch; }
+
+    .app {
+      background: var(--cream-2);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 18px 48px rgba(26, 30, 46, 0.08);
+    }
+    .app__chrome {
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 14px;
+      background: var(--white);
+      border-bottom: 1px solid var(--line);
+    }
+    .app__dot { width: 8px; height: 8px; border-radius: 50%; background: var(--line); }
+    .app__url {
+      margin-left: 8px;
+      font-size: 0.6875rem; color: var(--muted); letter-spacing: 0.02em;
+    }
+    .app__shell { display: grid; grid-template-columns: 196px 1fr; min-height: 560px; }
+    .side {
+      background: #f3efe8;
+      border-right: 1px solid var(--line);
+      padding: 18px 12px 20px;
+    }
+    .side__brand {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.14em;
+      padding: 0 8px 16px;
+    }
+    .side__group { margin-bottom: 16px; }
+    .side__label {
+      font-size: 0.625rem; font-weight: 600; letter-spacing: 0.12em;
+      text-transform: uppercase; color: var(--muted);
+      padding: 0 8px 6px;
+    }
+    .side a, .side span.nav {
+      display: flex; align-items: center; gap: 8px;
+      padding: 7px 8px; border-radius: 8px;
+      font-size: 0.8125rem; color: #5c5c56;
+    }
+    .side a.is-on, .side span.nav.is-on {
+      background: rgba(45,106,79,0.12);
+      color: var(--sage); font-weight: 600;
+    }
+    .main { padding: 22px 24px 28px; background: var(--cream); }
+    .cc-head { margin-bottom: 18px; }
+    .cc-head h3 {
+      font-family: var(--display);
+      font-size: 1.65rem;
+      font-weight: 400;
+      letter-spacing: -0.02em;
+      line-height: 1.15;
+    }
+    .cc-head p { font-size: 0.8125rem; color: var(--muted); margin-top: 4px; }
+
+    .kpis { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+    .kpi {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 14px 16px;
+    }
+    .kpi--out { background: linear-gradient(180deg, rgba(239,217,200,0.42), rgba(239,217,200,0.12)); }
+    .kpi--in { background: linear-gradient(180deg, rgba(216,235,228,0.5), rgba(216,235,228,0.14)); }
+    .kpi small { display: block; font-size: 0.75rem; color: var(--muted); margin-bottom: 4px; }
+    .kpi b {
+      display: block;
+      font-family: var(--display);
+      font-size: 1.65rem; font-weight: 400;
+      letter-spacing: -0.02em;
+    }
+    .kpi em { display: block; font-style: normal; font-size: 0.75rem; color: var(--muted); margin-top: 2px; }
+
+    .panel {
+      background: rgba(255,255,255,0.78);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 14px 16px;
+      margin-bottom: 10px;
+    }
+    .panel__h {
+      font-size: 0.8125rem; font-weight: 700;
+      margin-bottom: 10px;
+    }
+    .nudge, .action, .group {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 12px;
+    }
+    .nudge + .nudge, .action + .action { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
+    .nudge strong, .action strong, .group strong { display: block; font-size: 0.8125rem; font-weight: 600; }
+    .nudge span, .action span { display: block; font-size: 0.75rem; color: var(--muted); }
+    .amt { font-size: 0.8125rem; font-weight: 700; color: #b42318; white-space: nowrap; }
+    .pill {
+      font-size: 0.6875rem; font-weight: 600;
+      padding: 3px 8px; border-radius: 999px;
+      background: #eef1ee; color: #5c5c56;
+      white-space: nowrap;
+    }
+    .pill--red { background: #f8e8e6; color: #9b2c20; }
+    .pill--sage { background: var(--mist); color: var(--sage); }
+    .pill--wait { background: #f3ead8; color: #8a6a2a; }
+    .groups { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .group {
+      background: var(--white);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px 12px;
+    }
+    .group__left { display: flex; align-items: center; gap: 8px; min-width: 0; }
+    .av {
+      width: 28px; height: 28px; border-radius: 50%;
+      display: grid; place-items: center;
+      background: var(--mist); color: var(--sage);
+      font-size: 0.6875rem; font-weight: 700; flex-shrink: 0;
+    }
+    .netting {
+      display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    }
+    .netting p { font-size: 0.75rem; color: var(--muted); max-width: 36ch; }
+    .switch {
+      width: 36px; height: 20px; border-radius: 999px;
+      background: var(--sage); position: relative; flex-shrink: 0;
+    }
+    .switch i {
+      position: absolute; top: 2px; right: 2px;
+      width: 16px; height: 16px; border-radius: 50%;
+      background: var(--white);
+    }
+
+    /* ── Use cases ── */
+    .cases {
+      background: var(--white);
+      padding: clamp(72px, 10vw, 112px) 0;
+    }
+    .cases__hdr { margin-bottom: 40px; }
+    .cases h2 { font-size: clamp(2rem, 3.4vw, 3.25rem); }
+    .cases__grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 12px;
+    }
+    .case {
+      background: var(--cream-2);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .case__img { aspect-ratio: 3/4; overflow: hidden; }
+    .case__img img { width: 100%; height: 100%; object-fit: cover; }
+    .case__copy { padding: 14px 14px 16px; }
+    .case__copy strong { display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 3px; }
+    .case__copy span { font-size: 0.75rem; color: var(--muted); }
+
+    /* ── Photo CTA ── */
+    .cta {
+      position: relative;
+      min-height: 58vh;
+      display: flex; align-items: flex-end;
+      overflow: hidden;
+      background: var(--navy);
+    }
+    .cta img {
+      position: absolute; inset: 0;
+      width: 100%; height: 100%;
+      object-fit: cover; object-position: center 40%;
+    }
+    .cta__veil {
+      position: absolute; inset: 0;
+      background: linear-gradient(180deg, rgba(18,21,31,0.12) 0%, rgba(18,21,31,0.72) 100%);
+    }
+    .cta__body {
+      position: relative; z-index: 1;
+      width: 100%;
+      padding: clamp(48px, 8vw, 80px) 0;
+    }
+    .cta h2 {
+      font-size: clamp(2.75rem, 5.4vw, 4.75rem);
+      color: var(--white);
+      margin-bottom: 24px;
+    }
+
+    /* ── Pricing ── */
+    .pricing {
+      background: var(--cream);
+      padding: clamp(72px, 10vw, 112px) 0;
+    }
+    .pricing__hdr { margin-bottom: 40px; }
+    .pricing h2 { font-size: clamp(2rem, 3.4vw, 3.25rem); margin-bottom: 10px; }
+    .pricing__sub { color: var(--muted); font-size: 0.9375rem; }
+    .plans { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+    .plan {
+      background: var(--white);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 28px 24px 24px;
+      display: flex; flex-direction: column;
+      position: relative;
+    }
+    .plan--feat {
+      background: var(--navy);
+      border-color: var(--navy);
+      color: var(--white);
+    }
+    .plan__badge {
+      position: absolute; top: -10px; left: 24px;
+      font-size: 0.625rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+      background: var(--sage); color: var(--white);
+      padding: 4px 10px; border-radius: 999px;
+    }
+    .plan__name {
+      font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase;
+      color: var(--muted); margin-bottom: 12px;
+    }
+    .plan--feat .plan__name { color: rgba(255,255,255,0.38); }
+    .plan__price {
+      font-family: var(--display);
+      font-size: 2.75rem;
+      letter-spacing: -0.03em;
+      line-height: 1;
+    }
+    .plan__mo { font-size: 0.8125rem; color: var(--muted); margin-left: 4px; }
+    .plan--feat .plan__mo { color: rgba(255,255,255,0.38); }
+    .plan hr { border: none; border-top: 1px solid var(--line); margin: 20px 0; }
+    .plan--feat hr { border-color: rgba(255,255,255,0.08); }
+    .plan ul { flex: 1; margin-bottom: 22px; display: flex; flex-direction: column; gap: 10px; }
+    .plan li {
+      display: flex; align-items: flex-start; gap: 8px;
+      font-size: 0.875rem; color: var(--muted);
+    }
+    .plan li svg { flex-shrink: 0; margin-top: 4px; color: var(--sage); }
+    .plan--feat li { color: rgba(255,255,255,0.52); }
+    .plan--feat li svg { color: rgba(255,255,255,0.42); }
+    .plan--feat .btn--light:hover { background: var(--cream); }
+
+    /* ── Footer ── */
+    .footer { background: var(--footer); color: rgba(255,255,255,0.42); }
+    .footer__top {
+      display: grid; grid-template-columns: 1.1fr 1fr;
+      gap: 64px;
+      padding: 72px 0 56px;
+    }
+    .footer h3 {
+      font-family: var(--display);
+      font-size: clamp(1.75rem, 3vw, 2.5rem);
+      color: var(--white);
+      margin-bottom: 10px;
+    }
+    .footer__lead { font-size: 0.875rem; margin-bottom: 22px; max-width: 36ch; }
+    .footer__form { display: flex; gap: 8px; max-width: 400px; }
+    .footer__form input {
+      flex: 1; padding: 11px 16px; border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.1);
+      background: rgba(255,255,255,0.04);
+      color: var(--white); font-family: var(--sans); font-size: 0.875rem;
+      outline: none;
+    }
+    .footer__form input::placeholder { color: rgba(255,255,255,0.28); }
+    .footer__links { display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; }
+    .footer h4 {
+      font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase;
+      color: rgba(255,255,255,0.28); margin-bottom: 16px;
+    }
+    .footer li + li { margin-top: 10px; }
+    .footer__links a { font-size: 0.875rem; color: rgba(255,255,255,0.42); }
+    .footer__links a:hover { color: var(--white); }
+    .footer__bar {
+      display: flex; align-items: center; gap: 20px;
+      padding: 20px 0;
+      border-top: 1px solid rgba(255,255,255,0.06);
+      font-size: 0.75rem;
+    }
+    .footer__copy { flex: 1; color: rgba(255,255,255,0.28); }
+
+    /* ── Responsive ── */
+    @media (max-width: 1024px) {
+      .cases__grid { grid-template-columns: repeat(3, 1fr); }
+      .app__shell { grid-template-columns: 1fr; }
+      .side { display: none; }
+    }
+    @media (max-width: 860px) {
+      .stmt__inner { grid-template-columns: 1fr; }
+      .stmt__copy { max-width: none; margin: 0; padding-bottom: 0; }
+      .stmt__img { min-height: 320px; padding-top: 28px; }
+      .why__inner { grid-template-columns: 1fr; gap: 36px; }
+      .plans { grid-template-columns: 1fr; max-width: 420px; }
+      .footer__top { grid-template-columns: 1fr; gap: 40px; }
+      .groups { grid-template-columns: 1fr; }
+      .hero__tick { padding: 10px 8px 12px; }
+      .hero__tick span { font-size: 0.625rem; }
+    }
+    @media (max-width: 640px) {
+      .hdr__nav { display: none; }
+      .cases__grid {
+        display: flex;
+        overflow-x: auto;
+        scroll-snap-type: x mandatory;
+        gap: 10px;
+        padding-bottom: 4px;
+        -webkit-overflow-scrolling: touch;
+      }
+      .case { min-width: 72vw; scroll-snap-align: start; }
+      .kpis { grid-template-columns: 1fr; }
+      .footer__links { grid-template-columns: 1fr 1fr; }
+      .hero__body { padding-bottom: 80px; }
+      .hero__foot { flex-direction: column; align-items: flex-start; gap: 14px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="hdr" id="hdr">
+    <div class="hdr__inner">
+      <a class="logo" href="#">
+        <svg width="22" height="22" viewBox="0 0 512 512" aria-hidden="true">
+          <rect width="512" height="512" rx="96" fill="#f5f3ef"/>
+          <path d="M256 56C145.5 56 56 145.5 56 256s89.5 200 200 200c40.3 0 77.8-11.9 109.2-32.4 7.2-4.7 8.4-15.2 1.8-21.2l-3.4-3.1c-5.3-4.8-13.1-4.2-19 0.6C320.5 418.4 289.4 428 256 428c-95 0-172-77-172-172s77-172 172-172c33.4 0 64.5 9.6 90.6 26.1 5.9 3.7 13.7 4.3 19-0.6l3.4-3.1c6.6-6 5.4-16.5-1.8-21.2C335.8 67.9 296.3 56 256 56z" fill="#1a1e2e"/>
+        </svg>
+        <span>COMMUNE</span>
+      </a>
+      <nav class="hdr__nav">
+        <a href="#why">Why Commune</a>
+        <a href="#product">Product</a>
+        <a href="#usecases">Use cases</a>
+        <a href="#pricing">Pricing</a>
+        <a href="https://app.ourcommune.io">Sign in</a>
+      </nav>
+      <a class="btn btn--light" href="https://app.ourcommune.io/signup">Get started</a>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero" id="hero">
+      <div class="hero__slide is-on">
+        <img src="https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=1920&q=80&auto=format&fit=crop" alt="House share living room" />
+      </div>
+      <div class="hero__slide">
+        <img src="https://images.unsplash.com/photo-1516627145497-ae6968895b74?w=1920&q=80&auto=format&fit=crop" alt="Couple at home" />
+      </div>
+      <div class="hero__slide">
+        <img src="https://images.unsplash.com/photo-1497366216548-37526070297c?w=1920&q=80&auto=format&fit=crop" alt="Shared studio" />
+      </div>
+      <div class="hero__slide">
+        <img src="https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=1920&q=80&auto=format&fit=crop" alt="Group trip" />
+      </div>
+      <div class="hero__slide">
+        <img src="https://images.unsplash.com/photo-1521737604893-d14cc237f11d?w=1920&q=80&auto=format&fit=crop" alt="Creative project" />
+      </div>
+      <div class="hero__veil"></div>
+      <div class="hero__body wrap">
+        <p class="hero__label" id="hero-label">House shares</p>
+        <h1 id="hero-h">Your home,<br />run smoothly.</h1>
+        <p class="hero__sub" id="hero-sub">Split rent, track bills, keep everyone on the same page.</p>
+        <div class="hero__foot">
+          <p class="hero__proof"><strong>2,400+</strong> groups doing life together</p>
+          <a class="btn btn--light" href="https://app.ourcommune.io/signup">Start for free</a>
+        </div>
+      </div>
+      <div class="hero__track" id="hero-track"></div>
+    </section>
+
+    <section class="stmt">
+      <div class="stmt__inner">
+        <div class="stmt__copy">
+          <p class="eyebrow">About Commune</p>
+          <h2 class="display">Managing shared money and shared spaces shouldn’t be complicated.</h2>
+          <p>Whether you share a home, run a studio, travel in groups, or manage a creative project — Commune gives you one clear place for every cost, every responsibility, and every person involved.</p>
+          <a class="link" href="#usecases">Explore use cases →</a>
+        </div>
+        <div class="stmt__img">
+          <img src="https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=900&q=80&auto=format&fit=crop" alt="A calm shared interior" />
+        </div>
+      </div>
+    </section>
+
+    <section class="why" id="why">
+      <div class="why__inner wrap">
+        <h2 class="display">Why<br />Commune?</h2>
+        <div>
+          <div class="why__item is-open">
+            <button class="why__q" type="button">
+              <span class="why__n">01</span>
+              <span class="why__title">Communal finance that actually works</span>
+              <span class="why__chevron">+</span>
+            </button>
+            <p class="why__ans">Track recurring bills, split costs fairly, automate reimbursements, and maintain one financial truth across every member.</p>
+          </div>
+          <div class="why__item">
+            <button class="why__q" type="button">
+              <span class="why__n">02</span>
+              <span class="why__title">Space hubs with full context</span>
+              <span class="why__chevron">+</span>
+            </button>
+            <p class="why__ans">Every space gets its own hub — members, roles, pinned notices, essentials, and shared identity in one place.</p>
+          </div>
+          <div class="why__item">
+            <button class="why__q" type="button">
+              <span class="why__n">03</span>
+              <span class="why__title">Clear responsibilities &amp; ownership</span>
+              <span class="why__chevron">+</span>
+            </button>
+            <p class="why__ans">Assign tasks, track who owns what, set reminders, and know what needs approval before it becomes a problem.</p>
+          </div>
+          <div class="why__item">
+            <button class="why__q" type="button">
+              <span class="why__n">04</span>
+              <span class="why__title">One command centre, many spaces</span>
+              <span class="why__chevron">+</span>
+            </button>
+            <p class="why__ans">Switch between a home, studio, and trip in seconds. See what is owed and what needs attention across all your spaces at once.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="peek" id="product">
+      <div class="wrap">
+        <div class="peek__intro">
+          <p class="eyebrow">In the app</p>
+          <h2 class="display">A command centre for every space you share.</h2>
+          <p class="peek__lead">Priorities, balances, and group status in one view. The same finance backbone whether you are in a house share, a studio, or on a trip.</p>
+        </div>
+
+        <div class="app" aria-label="Command Centre preview">
+          <div class="app__chrome">
+            <span class="app__dot"></span><span class="app__dot"></span><span class="app__dot"></span>
+            <span class="app__url">app.ourcommune.io/overview</span>
+          </div>
+          <div class="app__shell">
+            <aside class="side">
+              <div class="side__brand">
+                <svg width="16" height="16" viewBox="0 0 512 512" aria-hidden="true">
+                  <rect width="512" height="512" rx="96" fill="#1a1e2e"/>
+                  <path d="M256 56C145.5 56 56 145.5 56 256s89.5 200 200 200c40.3 0 77.8-11.9 109.2-32.4 7.2-4.7 8.4-15.2 1.8-21.2l-3.4-3.1c-5.3-4.8-13.1-4.2-19 0.6C320.5 418.4 289.4 428 256 428c-95 0-172-77-172-172s77-172 172-172c33.4 0 64.5 9.6 90.6 26.1 5.9 3.7 13.7 4.3 19-0.6l3.4-3.1c6.6-6 5.4-16.5-1.8-21.2C335.8 67.9 296.3 56 256 56z" fill="#f5f3ef"/>
+                </svg>
+                COMMUNE
+              </div>
+              <div class="side__group">
+                <p class="side__label">Pinned</p>
+                <span class="nav">Dashboard</span>
+                <span class="nav">My Groups</span>
+              </div>
+              <div class="side__group">
+                <p class="side__label">Money</p>
+                <span class="nav">Expenses</span>
+                <span class="nav">Recurring</span>
+                <span class="nav">Funds</span>
+              </div>
+              <div class="side__group">
+                <p class="side__label">Insights</p>
+                <span class="nav is-on">Command Centre</span>
+                <span class="nav">Breakdown</span>
+              </div>
+              <div class="side__group">
+                <p class="side__label">Team</p>
+                <span class="nav">Members</span>
+                <span class="nav">Operations</span>
+              </div>
+            </aside>
+
+            <div class="main">
+              <div class="cc-head">
+                <h3>Command Centre</h3>
+                <p>Your priorities across all groups</p>
+              </div>
+
+              <div class="kpis">
+                <div class="kpi kpi--out">
+                  <small>Outstanding</small>
+                  <b>£120.50</b>
+                  <em>2 payments to make</em>
+                </div>
+                <div class="kpi kpi--in">
+                  <small>Coming your way</small>
+                  <b>£64.00</b>
+                  <em>1 payment incoming</em>
+                </div>
+              </div>
+
+              <div class="panel">
+                <p class="panel__h">Insights</p>
+                <div class="nudge">
+                  <div>
+                    <strong>Council tax due in 5 days</strong>
+                    <span>Recurring bill on 42 Maple · £186.00</span>
+                  </div>
+                  <span class="pill">42 Maple</span>
+                </div>
+                <div class="nudge">
+                  <div>
+                    <strong>Adobe seat still unused</strong>
+                    <span>Shared tool cost on Northlight Studio</span>
+                  </div>
+                  <span class="pill">Northlight</span>
+                </div>
+              </div>
+
+              <div class="panel" style="border-left: 3px solid #c75b4a;">
+                <p class="panel__h">Priority actions</p>
+                <div class="action">
+                  <div>
+                    <strong>Pay Sam</strong>
+                    <span>42 Maple</span>
+                  </div>
+                  <span class="amt">£84.00</span>
+                </div>
+                <div class="action">
+                  <div>
+                    <strong>Pay Jules</strong>
+                    <span>Lisbon trip</span>
+                  </div>
+                  <span class="amt">£36.50</span>
+                </div>
+              </div>
+
+              <p class="panel__h" style="margin: 14px 0 8px;">My Groups</p>
+              <div class="groups">
+                <div class="group">
+                  <div class="group__left">
+                    <span class="av">42</span>
+                    <strong>42 Maple</strong>
+                  </div>
+                  <span class="pill pill--red">£84 outstanding</span>
+                </div>
+                <div class="group">
+                  <div class="group__left">
+                    <span class="av">N</span>
+                    <strong>Northlight Studio</strong>
+                  </div>
+                  <span class="pill pill--wait">Waiting on 2</span>
+                </div>
+                <div class="group">
+                  <div class="group__left">
+                    <span class="av">L</span>
+                    <strong>Lisbon trip</strong>
+                  </div>
+                  <span class="pill pill--red">£36.50 outstanding</span>
+                </div>
+                <div class="group">
+                  <div class="group__left">
+                    <span class="av">M</span>
+                    <strong>Maya &amp; Alex</strong>
+                  </div>
+                  <span class="pill pill--sage">Settled</span>
+                </div>
+              </div>
+
+              <div class="panel netting" style="margin-top: 10px; margin-bottom: 0;">
+                <div>
+                  <strong style="font-size: 0.8125rem;">Cross-group netting</strong>
+                  <p>Combine debts across groups to minimise payments</p>
+                </div>
+                <span class="switch" aria-hidden="true"><i></i></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="cases" id="usecases">
+      <div class="wrap">
+        <div class="cases__hdr">
+          <p class="eyebrow">Use cases</p>
+          <h2 class="display">Built for every way<br />people share space.</h2>
+        </div>
+        <div class="cases__grid">
+          <article class="case">
+            <div class="case__img"><img src="https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=700&q=80&auto=format&fit=crop" alt="House shares" /></div>
+            <div class="case__copy"><strong>House shares</strong><span>Rent · Bills · Chores</span></div>
+          </article>
+          <article class="case">
+            <div class="case__img"><img src="https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?w=700&q=80&auto=format&fit=crop" alt="Couples" /></div>
+            <div class="case__copy"><strong>Couples</strong><span>Budgets · Joint expenses</span></div>
+          </article>
+          <article class="case">
+            <div class="case__img"><img src="https://images.unsplash.com/photo-1504384308090-c894fdcc538d?w=700&q=80&auto=format&fit=crop" alt="Studios and offices" /></div>
+            <div class="case__copy"><strong>Studios &amp; offices</strong><span>Shared costs · Tools · Roles</span></div>
+          </article>
+          <article class="case">
+            <div class="case__img"><img src="https://images.unsplash.com/photo-1527631746610-bca00a040d60?w=700&q=80&auto=format&fit=crop" alt="Group trips" /></div>
+            <div class="case__copy"><strong>Group trips</strong><span>Expenses on the go · Settle up</span></div>
+          </article>
+          <article class="case">
+            <div class="case__img"><img src="https://images.unsplash.com/photo-1561070791-2526d30994b5?w=700&q=80&auto=format&fit=crop" alt="Creative projects" /></div>
+            <div class="case__copy"><strong>Creative projects</strong><span>Budget · Ownership · Handover</span></div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="cta">
+      <img src="https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=1920&q=80&auto=format&fit=crop" alt="A well-run shared home" />
+      <div class="cta__veil"></div>
+      <div class="cta__body wrap">
+        <h2 class="display">Live Clearly,<br />Together.</h2>
+        <a class="btn btn--ghost" href="https://app.ourcommune.io/signup">Start your space</a>
+      </div>
+    </section>
+
+    <section class="pricing" id="pricing">
+      <div class="wrap">
+        <div class="pricing__hdr">
+          <p class="eyebrow">Membership</p>
+          <h2 class="display">Simple, transparent pricing.</h2>
+          <p class="pricing__sub">7-day free trial on your first space. No card required.</p>
+        </div>
+        <div class="plans">
+          <article class="plan">
+            <p class="plan__name">Standard</p>
+            <p><span class="plan__price">£4.99</span><span class="plan__mo">/mo</span></p>
+            <hr />
+            <ul>
+              <li><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M2 7l3.5 3.5L12 3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>1 space</li>
+              <li><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M2 7l3.5 3.5L12 3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Up to 8 members</li>
+              <li><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M2 7l3.5 3.5L12 3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Communal finance &amp; splits</li>
+              <li><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M2 7l3.5 3.5L12 3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Responsibilities &amp; reminders</li>
+              <li><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M2 7l3.5 3.5L12 3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Monthly breakdown</li>
+              <li><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M2 7l3.5 3.5L12 3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Group hub</li>
+            </ul>
+            <a class="btn btn--line btn--block" href="https://app.ourcommune.io/signup">Start 7-day trial</a>
+          </article>
+          <article class="plan plan--feat">
+            <span class="plan__badge">Most popular</span>
+            <p class="plan__name">Pro</p>
+            <p><span class="plan__price">£9.99</span><span class="plan__mo">/mo</span></p>
+            <hr />
+            <ul>
+              <li><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M2 7l3.5 3.5L12 3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Up to 3 spaces</li>
+              <li><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M2 7l3.5 3.5L12 3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Up to 15 members</li>
+              <li><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M2 7l3.5 3.5L12 3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Everything in Standard</li>
+              <li><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M2 7l3.5 3.5L12 3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Advanced analytics</li>
+              <li><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M2 7l3.5 3.5L12 3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Exports &amp; templates</li>
+              <li><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M2 7l3.5 3.5L12 3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Priority support</li>
+            </ul>
+            <a class="btn btn--light btn--block" href="https://app.ourcommune.io/signup">Start 7-day trial</a>
+          </article>
+          <article class="plan">
+            <p class="plan__name">Agency</p>
+            <p><span class="plan__price">£29.99</span><span class="plan__mo">/mo</span></p>
+            <hr />
+            <ul>
+              <li><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M2 7l3.5 3.5L12 3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Unlimited spaces</li>
+              <li><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M2 7l3.5 3.5L12 3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Unlimited members</li>
+              <li><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M2 7l3.5 3.5L12 3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Everything in Pro</li>
+              <li><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M2 7l3.5 3.5L12 3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Priority workflows</li>
+              <li><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M2 7l3.5 3.5L12 3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Dedicated onboarding</li>
+              <li><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M2 7l3.5 3.5L12 3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Operator-ready path</li>
+            </ul>
+            <a class="btn btn--line btn--block" href="https://app.ourcommune.io/signup">Start 7-day trial</a>
+          </article>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="wrap">
+      <div class="footer__top">
+        <div>
+          <h3>Stay connected</h3>
+          <p class="footer__lead">Get updates on new features and spaces.</p>
+          <form class="footer__form" onsubmit="return false;">
+            <input type="email" placeholder="Your email address" />
+            <button class="btn btn--light" type="submit">Subscribe</button>
+          </form>
+        </div>
+        <div class="footer__links">
+          <div>
+            <h4>Product</h4>
+            <ul>
+              <li><a href="#why">Features</a></li>
+              <li><a href="#usecases">Use cases</a></li>
+              <li><a href="#pricing">Pricing</a></li>
+              <li><a href="https://app.ourcommune.io">Sign in</a></li>
+            </ul>
+          </div>
+          <div>
+            <h4>Company</h4>
+            <ul>
+              <li><a href="#why">About</a></li>
+              <li><a href="mailto:support@ourcommune.io">Contact</a></li>
+            </ul>
+          </div>
+          <div>
+            <h4>Legal</h4>
+            <ul>
+              <li><a href="#">Privacy</a></li>
+              <li><a href="#">Terms</a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="footer__bar">
+        <a class="logo" href="#">
+          <svg width="18" height="18" viewBox="0 0 512 512" aria-hidden="true">
+            <rect width="512" height="512" rx="96" fill="#f5f3ef"/>
+            <path d="M256 56C145.5 56 56 145.5 56 256s89.5 200 200 200c40.3 0 77.8-11.9 109.2-32.4 7.2-4.7 8.4-15.2 1.8-21.2l-3.4-3.1c-5.3-4.8-13.1-4.2-19 0.6C320.5 418.4 289.4 428 256 428c-95 0-172-77-172-172s77-172 172-172c33.4 0 64.5 9.6 90.6 26.1 5.9 3.7 13.7 4.3 19-0.6l3.4-3.1c6.6-6 5.4-16.5-1.8-21.2C335.8 67.9 296.3 56 256 56z" fill="#1a1e2e"/>
+          </svg>
+          <span>COMMUNE</span>
+        </a>
+        <p class="footer__copy">© 2026 Commune. All rights reserved.</p>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    (function () {
+      var hdr = document.getElementById("hdr");
+      var onScroll = function () {
+        hdr.classList.toggle("is-solid", window.scrollY > 48);
+      };
+      window.addEventListener("scroll", onScroll, { passive: true });
+      onScroll();
+
+      var slides = [
+        { label: "House shares", h: "Your home,<br />run smoothly.", sub: "Split rent, track bills, keep everyone on the same page." },
+        { label: "Couples", h: "Money, together.<br />No awkwardness.", sub: "Share expenses, set budgets, and settle up fairly." },
+        { label: "Studios &amp; workspaces", h: "Your workspace,<br />one hub.", sub: "Shared costs, pooled tools, and clear ownership." },
+        { label: "Group trips", h: "Every trip,<br />fully settled.", sub: "Log on the go, split instantly, settle before you land." },
+        { label: "Creative projects", h: "Projects that<br />don’t fall apart.", sub: "Budget visibility and shared ownership, from start to finish." }
+      ];
+
+      var track = document.getElementById("hero-track");
+      slides.forEach(function (s, i) {
+        var b = document.createElement("button");
+        b.className = "hero__tick" + (i === 0 ? " is-on" : "");
+        b.type = "button";
+        b.innerHTML = "<i></i><span>" + s.label + "</span>";
+        b.setAttribute("aria-label", s.label);
+        b.addEventListener("click", function () { go(i); });
+        track.appendChild(b);
+      });
+
+      var panes = document.querySelectorAll(".hero__slide");
+      var ticks = track.querySelectorAll(".hero__tick");
+      var label = document.getElementById("hero-label");
+      var h1 = document.getElementById("hero-h");
+      var sub = document.getElementById("hero-sub");
+      var cur = 0;
+      var t0 = Date.now();
+      var MS = 4200;
+
+      function paint(i) {
+        panes.forEach(function (p, n) { p.classList.toggle("is-on", n === i); });
+        ticks.forEach(function (t, n) {
+          t.classList.toggle("is-on", n === i);
+          t.classList.toggle("is-done", n < i);
+          t.style.setProperty("--p", n === i ? "0%" : n < i ? "100%" : "0%");
+        });
+        label.innerHTML = slides[i].label;
+        h1.innerHTML = slides[i].h;
+        sub.textContent = slides[i].sub;
+      }
+
+      function go(i) {
+        cur = i;
+        t0 = Date.now();
+        paint(i);
+      }
+
+      setInterval(function () { go((cur + 1) % slides.length); }, MS);
+      setInterval(function () {
+        var p = Math.min(((Date.now() - t0) / MS) * 100, 100);
+        if (ticks[cur]) ticks[cur].style.setProperty("--p", p + "%");
+      }, 40);
+
+      document.querySelectorAll(".why__q").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          var item = btn.parentElement;
+          var open = item.classList.contains("is-open");
+          document.querySelectorAll(".why__item").forEach(function (el) { el.classList.remove("is-open"); });
+          if (!open) item.classList.add("is-open");
+        });
+      });
+    })();
+  </script>
+</body>
+</html>

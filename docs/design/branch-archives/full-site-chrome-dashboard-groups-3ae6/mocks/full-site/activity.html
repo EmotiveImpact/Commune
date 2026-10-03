@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Activity — Commune</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div class="sidebar">
+    <div class="logo">COMMUNE</div>
+    
+    <div class="nav-label">MENU</div>
+    <a href="index.html" class="nav-link">Dashboard</a>
+    <a href="groups.html" class="nav-link">My Groups</a>
+
+    <div class="nav-label">MONEY</div>
+    <a href="expenses.html" class="nav-link">Expenses</a>
+    <a href="recurring.html" class="nav-link">Recurring</a>
+    <a href="templates.html" class="nav-link">Templates</a>
+    <a href="funds.html" class="nav-link">Funds</a>
+    <a href="billing.html" class="nav-link">Billing</a>
+
+    <div class="nav-label">INSIGHTS</div>
+    <a href="overview.html" class="nav-link">Command Centre</a>
+    <a href="breakdown.html" class="nav-link">Breakdown</a>
+    <a href="analytics.html" class="nav-link">Analytics</a>
+
+    <div class="nav-label">TEAM</div>
+    <a href="members.html" class="nav-link">Members</a>
+    <a href="operations.html" class="nav-link">Operations</a>
+    <a href="activity.html" class="nav-link active">Activity</a>
+
+    <div class="user-profile">
+      <div class="avatar">AE</div>
+      <div>
+        <div style="font-size: 14px; font-weight: 600;">Augustus Edem</div>
+        <div class="plan-badge">Pro</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="header">
+      <input type="text" class="search" placeholder="Search expenses, members...">
+    </div>
+
+    <div class="content">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Activity</h1>
+          <p class="page-subtitle">Everything that happened in this group</p>
+        </div>
+        <button class="btn">Export CSV</button>
+      </div>
+
+      <!-- Filter chips -->
+      <div class="filter-chips">
+        <button class="filter-chip active">All</button>
+        <button class="filter-chip">Expenses</button>
+        <button class="filter-chip">Payments</button>
+        <button class="filter-chip">Members</button>
+        <button class="filter-chip">Chores</button>
+      </div>
+
+      <div class="layout-grid">
+        <!-- Left sidebar -->
+        <div>
+          <div class="section">
+            <div class="section-title">This month</div>
+            <div class="stat-grid">
+              <div class="stat-card">
+                <div class="stat-label">Events</div>
+                <div class="stat-value">42</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-label">All time</div>
+                <div class="stat-value">284</div>
+              </div>
+            </div>
+            <div style="margin-top: 12px;">
+              <div style="font-size: 12px; color: #667085; margin-bottom: 4px;">Most active:</div>
+              <span class="badge badge-green">Sarah Johnson</span>
+              <span style="font-size: 12px; color: #667085; margin-left: 4px;">(18)</span>
+            </div>
+          </div>
+
+          <div class="section">
+            <div class="section-title">By type</div>
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 13px; color: #171b24;">Expenses</span>
+                <span class="badge badge-gray">24</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 13px; color: #171b24;">Payments</span>
+                <span class="badge badge-gray">12</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 13px; color: #171b24;">Members</span>
+                <span class="badge badge-gray">4</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 13px; color: #171b24;">Chores</span>
+                <span class="badge badge-gray">2</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="section">
+            <div class="section-title">Members</div>
+            <div>
+              <div class="member-item">
+                <div class="member-avatar">SJ</div>
+                <div class="member-name">Sarah Johnson</div>
+                <span class="badge badge-gray" style="font-size: 10px;">Admin</span>
+              </div>
+              <div class="member-item">
+                <div class="member-avatar">TC</div>
+                <div class="member-name">Tom Chen</div>
+              </div>
+              <div class="member-item">
+                <div class="member-avatar">AR</div>
+                <div class="member-name">Alex Rivera</div>
+              </div>
+              <div class="member-item">
+                <div class="member-avatar">MP</div>
+                <div class="member-name">Maya Patel</div>
+                <span class="badge badge-gray" style="font-size: 10px;">Admin</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right main feed -->
+        <div>
+          <!-- Workspace billing watch -->
+          <div class="section">
+            <div class="section-title">Shared subscriptions & tools</div>
+            <div class="section-subtitle">Recent invoice refs, due dates, recurring subscriptions for this workspace</div>
+
+            <div class="stat-grid" style="grid-template-columns: repeat(4, 1fr); margin-bottom: 20px;">
+              <div class="stat-card">
+                <div class="stat-label">Tracked bills</div>
+                <div class="stat-value">8</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-label">Work tools spend</div>
+                <div class="stat-value">£142</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-label">Due soon</div>
+                <div class="stat-value">2</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-label">Overdue</div>
+                <div class="stat-value">0</div>
+              </div>
+            </div>
+
+            <div style="background: rgba(45, 106, 79, 0.04); border: 1px solid rgba(45, 106, 79, 0.08); border-radius: 10px; padding: 16px; display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <div style="font-weight: 700; font-size: 14px; margin-bottom: 4px; display: flex; align-items: center; gap: 8px;">
+                  <span>Figma Professional</span>
+                  <span class="badge badge-violet">Subscription</span>
+                </div>
+                <div style="font-size: 12px; color: #667085;">Ref INV-2024-0283</div>
+              </div>
+              <div style="text-align: right;">
+                <div style="font-weight: 700; font-size: 14px;">£45.00</div>
+                <div style="font-size: 11px; color: #667085;">Due Mar 1</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Activity feed -->
+          <div class="date-header">Today</div>
+
+          <div class="activity-item">
+            <div class="activity-icon green">📝</div>
+            <div class="activity-content">
+              <div class="activity-header">
+                <div class="activity-user">
+                  <div class="activity-avatar">SJ</div>
+                  <span class="activity-name">Sarah Johnson</span>
+                </div>
+                <span class="activity-time">2h ago</span>
+              </div>
+              <div class="activity-description">
+                Created expense 'Monthly rent'
+              </div>
+            </div>
+          </div>
+
+          <div class="activity-item">
+            <div class="activity-icon orange">💰</div>
+            <div class="activity-content">
+              <div class="activity-header">
+                <div class="activity-user">
+                  <div class="activity-avatar">TC</div>
+                  <span class="activity-name">Tom Chen</span>
+                </div>
+                <span class="activity-time">3h ago</span>
+              </div>
+              <div class="activity-description">
+                Marked a payment on 'Electricity bill'
+              </div>
+            </div>
+          </div>
+
+          <div class="date-header">Yesterday</div>
+
+          <div class="activity-item">
+            <div class="activity-icon teal">✓</div>
+            <div class="activity-content">
+              <div class="activity-header">
+                <div class="activity-user">
+                  <div class="activity-avatar">MP</div>
+                  <span class="activity-name">Maya Patel</span>
+                </div>
+                <span class="activity-time">1d ago</span>
+              </div>
+              <div class="activity-description">
+                Completed chore 'Clean kitchen'
+              </div>
+            </div>
+          </div>
+
+          <div class="activity-item">
+            <div class="activity-icon blue">⚙️</div>
+            <div class="activity-content">
+              <div class="activity-header">
+                <div class="activity-user">
+                  <div class="activity-avatar">AR</div>
+                  <span class="activity-name">Alex Rivera</span>
+                </div>
+                <span class="activity-time">1d ago</span>
+              </div>
+              <div class="activity-description">
+                Updated expense 'Grocery shopping' — amount £98.50 → £124.30
+              </div>
+            </div>
+          </div>
+
+          <div class="activity-item">
+            <div class="activity-icon green">👤</div>
+            <div class="activity-content">
+              <div class="activity-header">
+                <div class="activity-user">
+                  <div class="activity-avatar">AR</div>
+                  <span class="activity-name">Alex Rivera</span>
+                </div>
+                <span class="activity-time">1d ago</span>
+              </div>
+              <div class="activity-description">
+                Joined the group
+              </div>
+            </div>
+          </div>
+
+          <div class="date-header">February 25</div>
+
+          <div class="activity-item">
+            <div class="activity-icon green">💳</div>
+            <div class="activity-content">
+              <div class="activity-header">
+                <div class="activity-user">
+                  <div class="activity-avatar">TC</div>
+                  <span class="activity-name">Tom Chen</span>
+                </div>
+                <span class="activity-time">3d ago</span>
+              </div>
+              <div class="activity-description">
+                Confirmed a payment on 'Internet & broadband'
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

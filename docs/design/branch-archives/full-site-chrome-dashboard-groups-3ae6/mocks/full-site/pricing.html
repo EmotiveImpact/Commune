@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pricing — Commune</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div class="sidebar">
+    <div class="logo">COMMUNE</div>
+    
+    <div class="nav-label">MENU</div>
+    <a href="dashboard.html" class="nav-link">Dashboard</a>
+    <a href="groups.html" class="nav-link">My Groups</a>
+
+    <div class="nav-label">MONEY</div>
+    <a href="expenses.html" class="nav-link">Expenses</a>
+    <a href="recurring.html" class="nav-link">Recurring</a>
+    <a href="templates.html" class="nav-link">Templates</a>
+    <a href="funds.html" class="nav-link">Funds</a>
+    <a href="billing.html" class="nav-link active">Billing</a>
+
+    <div class="nav-label">INSIGHTS</div>
+    <a href="index.html" class="nav-link">Command Centre</a>
+    <a href="breakdown.html" class="nav-link">Breakdown</a>
+    <a href="analytics.html" class="nav-link">Analytics</a>
+
+    <div class="nav-label">TEAM</div>
+    <a href="members.html" class="nav-link">Members</a>
+    <a href="operations.html" class="nav-link">Operations</a>
+    <a href="activity.html" class="nav-link">Activity</a>
+
+    <div class="user-profile">
+      <div class="avatar">AE</div>
+      <div>
+        <div style="font-size: 14px; font-weight: 600;">Augustus Edem</div>
+        <div class="plan-badge">Pro</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="header">
+      <input type="text" class="search" placeholder="Search expenses, members...">
+    </div>
+
+    <div class="content">
+      <div class="page-header">
+        <h1 class="page-title">Pricing</h1>
+        <p class="page-subtitle">Choose the plan that fits your community</p>
+      </div>
+
+      <!-- Billing toggle -->
+      <div class="toggle-group">
+        <button class="toggle-button active">Monthly</button>
+        <button class="toggle-button">Annual (save 17%)</button>
+      </div>
+
+      <!-- Plans grid -->
+      <div class="plans-grid">
+        <!-- Standard -->
+        <div class="plan-card">
+          <div class="plan-name">Standard</div>
+          <div class="plan-price">£4.99<span class="plan-price-small">/mo</span></div>
+          <div class="plan-period">Billed monthly</div>
+          
+          <ul class="plan-features">
+            <li class="plan-feature">
+              <span class="plan-feature-icon">✓</span>
+              <span>Up to 1 group</span>
+            </li>
+            <li class="plan-feature">
+              <span class="plan-feature-icon">✓</span>
+              <span>Up to 8 members per group</span>
+            </li>
+            <li class="plan-feature">
+              <span class="plan-feature-icon">✓</span>
+              <span>Expense tracking and split logic</span>
+            </li>
+            <li class="plan-feature">
+              <span class="plan-feature-icon">✓</span>
+              <span>Payment tracking</span>
+            </li>
+            <li class="plan-feature">
+              <span class="plan-feature-icon">✓</span>
+              <span>Monthly breakdown</span>
+            </li>
+          </ul>
+
+          <button class="btn btn-secondary">Choose Standard</button>
+        </div>
+
+        <!-- Pro -->
+        <div class="plan-card highlight">
+          <div class="plan-badge-popular">Most Popular</div>
+          <div class="current-plan-badge">Current Plan</div>
+          <div class="plan-name">Pro</div>
+          <div class="plan-price">£9.99<span class="plan-price-small">/mo</span></div>
+          <div class="plan-period">Billed monthly</div>
+          
+          <ul class="plan-features">
+            <li class="plan-feature">
+              <span class="plan-feature-icon">✓</span>
+              <span>Up to 3 groups</span>
+            </li>
+            <li class="plan-feature">
+              <span class="plan-feature-icon">✓</span>
+              <span>Up to 15 members per group</span>
+            </li>
+            <li class="plan-feature">
+              <span class="plan-feature-icon">✓</span>
+              <span>Everything in Standard</span>
+            </li>
+            <li class="plan-feature">
+              <span class="plan-feature-icon">✓</span>
+              <span>Advanced analytics</span>
+            </li>
+            <li class="plan-feature">
+              <span class="plan-feature-icon">✓</span>
+              <span>Exports and stronger admin workflows</span>
+            </li>
+          </ul>
+
+          <button class="btn btn-secondary">Manage Subscription</button>
+        </div>
+
+        <!-- Pro Max -->
+        <div class="plan-card">
+          <div class="plan-name">Pro Max</div>
+          <div class="plan-price">£29.99<span class="plan-price-small">/mo</span></div>
+          <div class="plan-period">Billed monthly</div>
+          
+          <ul class="plan-features">
+            <li class="plan-feature">
+              <span class="plan-feature-icon">✓</span>
+              <span>Unlimited groups</span>
+            </li>
+            <li class="plan-feature">
+              <span class="plan-feature-icon">✓</span>
+              <span>Unlimited members</span>
+            </li>
+            <li class="plan-feature">
+              <span class="plan-feature-icon">✓</span>
+              <span>Everything in Pro</span>
+            </li>
+            <li class="plan-feature">
+              <span class="plan-feature-icon">✓</span>
+              <span>Priority support</span>
+            </li>
+            <li class="plan-feature">
+              <span class="plan-feature-icon">✓</span>
+              <span>Best fit for larger communal operations</span>
+            </li>
+          </ul>
+
+          <button class="btn btn-primary">Upgrade to Pro Max</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

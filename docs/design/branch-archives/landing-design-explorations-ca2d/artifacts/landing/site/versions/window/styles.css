@@ -1,0 +1,156 @@
+:root { --radius: 38px; }
+body { background: #ede8de; }
+
+.window {
+  margin: 0 18px 18px;
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.hero-window {
+  min-height: calc(100svh - 90px);
+  padding: clamp(38px, 6vw, 82px);
+  background: var(--forest);
+  color: var(--white);
+  display: grid;
+  grid-template-rows: 1fr auto;
+  gap: 80px;
+}
+.hero-window__top {
+  display: grid;
+  grid-template-columns: 1.2fr .8fr;
+  gap: 50px;
+}
+.hero-window h1 {
+  max-width: 10ch;
+  margin-top: 16px;
+  font-family: var(--serif);
+  font-size: clamp(60px, 8vw, 116px);
+  font-weight: 400;
+  line-height: .9;
+  letter-spacing: -.055em;
+}
+.hero-window__intro {
+  align-self: end;
+  max-width: 38ch;
+  font-size: 18px;
+  line-height: 1.55;
+  color: rgba(255,253,248,.73);
+}
+.hero-window__actions { margin-top: 26px; display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+.hero-window__note { font-size: 12px; }
+
+.specimen {
+  padding-top: 24px;
+  border-top: 1px solid rgba(255,253,248,.42);
+  display: grid;
+  grid-template-columns: 1fr 1fr 2fr;
+  gap: 28px;
+  align-items: end;
+}
+.specimen__label { color: rgba(255,253,248,.6); }
+.specimen__value { margin-top: 8px; font-size: 22px; }
+.specimen__balance {
+  text-align: right;
+  font-family: var(--serif);
+  font-size: clamp(78px, 11vw, 160px);
+  line-height: .72;
+  letter-spacing: -.07em;
+}
+.specimen__to { display: block; margin-top: 18px; font-family: var(--sans); font-size: 13px; letter-spacing: 0; }
+
+.plain {
+  padding: 104px 7vw 92px;
+}
+.plain__head {
+  max-width: 870px;
+  margin-bottom: 70px;
+}
+.plain h2,
+.colour-window h2 {
+  margin-top: 14px;
+  font-family: var(--serif);
+  font-size: clamp(44px, 6vw, 82px);
+  font-weight: 400;
+  line-height: .97;
+  letter-spacing: -.045em;
+}
+.chronology { border-top: 1px solid var(--ink); }
+.chronology__row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: baseline;
+  padding: 28px 0;
+  border-bottom: 1px solid rgba(23,23,20,.28);
+  font-size: clamp(24px, 3vw, 44px);
+}
+.chronology__row span:last-child { font-family: var(--serif); }
+
+.colour-window {
+  min-height: 70svh;
+  padding: clamp(38px, 7vw, 92px);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+.colour-window--mint { background: var(--mint); }
+.colour-window--ink { background: var(--ink); color: var(--white); }
+.colour-window--orange { background: var(--orange); color: var(--ink); }
+.colour-window__fact {
+  margin-top: 80px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: end;
+  padding-top: 24px;
+  border-top: 1px solid currentColor;
+}
+.colour-window__fact strong {
+  font-family: var(--serif);
+  font-size: clamp(94px, 18vw, 260px);
+  font-weight: 400;
+  line-height: .72;
+  letter-spacing: -.075em;
+}
+.colour-window__fact p { max-width: 32ch; line-height: 1.5; opacity: .68; }
+
+.plans {
+  padding: 110px 7vw;
+}
+.plans h2 {
+  font-family: var(--serif);
+  font-size: clamp(44px, 6vw, 82px);
+  font-weight: 400;
+  letter-spacing: -.045em;
+}
+.plans__grid {
+  margin-top: 68px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border-top: 1px solid var(--ink);
+}
+.plan { padding: 28px 32px 30px 0; border-right: 1px solid rgba(23,23,20,.25); }
+.plan + .plan { padding-left: 32px; }
+.plan:last-child { border-right: 0; }
+.plan h3 { font-size: 18px; font-weight: 500; }
+.plan p { margin-top: 28px; font-family: var(--serif); font-size: clamp(44px, 5vw, 76px); letter-spacing: -.05em; }
+.plans__note { margin-top: 28px; color: var(--muted); }
+
+.close-window { min-height: 62svh; }
+.close-window h2 { max-width: 10ch; }
+.close-window .button { margin-top: 40px; background: var(--ink); color: var(--white); border-color: var(--ink); }
+
+@media (max-width: 740px) {
+  :root { --radius: 23px; }
+  .window { margin: 0 10px 10px; }
+  .hero-window { min-height: calc(100svh - 72px); padding: 34px 22px; gap: 56px; }
+  .hero-window__top { grid-template-columns: 1fr; }
+  .hero-window h1 { font-size: clamp(56px, 18vw, 88px); }
+  .specimen { grid-template-columns: 1fr 1fr; }
+  .specimen__balance { grid-column: 1 / -1; text-align: left; margin-top: 26px; font-size: 34vw; }
+  .plain, .plans { padding: 80px 16px; }
+  .colour-window { padding: 42px 22px; min-height: 62svh; }
+  .colour-window__fact { grid-template-columns: 1fr; gap: 36px; }
+  .colour-window__fact strong { font-size: 31vw; }
+  .plans__grid { grid-template-columns: 1fr; }
+  .plan, .plan + .plan { padding: 22px 0; border-right: 0; border-bottom: 1px solid rgba(23,23,20,.25); }
+}

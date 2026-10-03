@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Breakdown — Commune</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f5f1ea;
+      color: #171b24;
+      min-height: 100vh;
+      display: flex;
+    }
+
+    .sidebar {
+      width: 230px;
+      background: #1f2330;
+      color: rgba(255, 255, 255, 0.92);
+      padding: 20px 14px;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      position: fixed;
+      left: 0;
+      top: 0;
+      overflow-y: auto;
+    }
+
+    .logo {
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #fff;
+      margin-bottom: 24px;
+    }
+
+    .nav-label {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 8px;
+      margin-top: 16px;
+    }
+
+    .nav-label:first-of-type {
+      margin-top: 0;
+    }
+
+    .nav-link {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 14px;
+      border-radius: 10px;
+      color: rgba(255, 255, 255, 0.76);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 2px;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .nav-link:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: #ffffff;
+    }
+
+    .nav-link.active {
+      background: rgba(255, 255, 255, 0.12);
+      color: #ffffff;
+    }
+
+    .user-profile {
+      margin-top: auto;
+      padding: 10px 14px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: #fff;
+    }
+
+    .avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .plan-badge {
+      font-size: 11px;
+      color: rgba(255, 255, 255, 0.45);
+    }
+
+    /* Main content */
+    .main {
+      margin-left: 230px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .header {
+      height: 64px;
+      background: #f5f1ea;
+      border-bottom: 1px solid rgba(23, 27, 36, 0.06);
+      padding: 0 32px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .search {
+      flex: 1;
+      max-width: 460px;
+      padding: 10px 16px;
+      background: #ffffff;
+      border: 1px solid rgba(23, 27, 36, 0.06);
+      border-radius: 10px;
+      font-family: inherit;
+      font-size: 14px;
+      color: #171b24;
+    }
+
+    .search::placeholder {
+      color: #667085;
+    }
+
+    .content {
+      padding: 24px 48px;
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    .page-header {
+      padding-bottom: 16px;
+      margin-bottom: 24px;
+      border-bottom: 1px solid rgba(23, 27, 36, 0.06);
+    }
+
+    .page-title {
+      font-size: 24px;
+      font-weight: 800;
+      line-height: 1.2;
+      letter-spacing: -0.01em;
+      color: #171b24;
+    }
+
+    .page-subtitle {
+      font-size: 14px;
+      color: #667085;
+      margin-top: 2px;
+    }
+
+    /* Payment summaries */
+    .payment-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+
+    .payment-card {
+      background: rgba(255, 255, 255, 0.82);
+      border: 1px solid rgba(23, 27, 36, 0.06);
+      border-radius: 14px;
+      padding: 20px;
+      box-shadow: 0 1px 3px rgba(23, 27, 36, 0.06);
+    }
+
+    .payment-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 16px;
+    }
+
+    .payment-name {
+      font-size: 15px;
+      font-weight: 700;
+      color: #171b24;
+    }
+
+    .payment-email {
+      font-size: 12px;
+      color: #667085;
+      margin-top: 2px;
+    }
+
+    .payment-amount {
+      font-size: 22px;
+      font-weight: 800;
+      color: #171b24;
+    }
+
+    .payment-amount.positive {
+      color: #16a34a;
+    }
+
+    .payment-amount.negative {
+      color: #dc2626;
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 6px;
+      background: rgba(23, 27, 36, 0.06);
+      border-radius: 3px;
+      overflow: hidden;
+      margin: 12px 0 8px;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: #16a34a;
+      border-radius: 3px;
+      transition: width 0.3s;
+    }
+
+    .progress-text {
+      font-size: 12px;
+      color: #667085;
+    }
+
+    .btn {
+      padding: 6px 14px;
+      border-radius: 8px;
+      border: 1px solid rgba(23, 27, 36, 0.1);
+      background: #ffffff;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      color: #171b24;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .btn:hover {
+      background: #f8f8f8;
+      border-color: rgba(23, 27, 36, 0.14);
+    }
+
+    .btn-primary {
+      background: #2d6a4f;
+      color: #ffffff;
+      border-color: #2d6a4f;
+    }
+
+    .btn-primary:hover {
+      background: #25543f;
+    }
+
+    /* Settlement section */
+    .section {
+      background: rgba(255, 255, 255, 0.82);
+      border: 1px solid rgba(23, 27, 36, 0.06);
+      border-radius: 14px;
+      padding: 24px;
+      margin-bottom: 24px;
+      box-shadow: 0 1px 3px rgba(23, 27, 36, 0.06);
+    }
+
+    .section-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #171b24;
+      margin-bottom: 4px;
+    }
+
+    .section-subtitle {
+      font-size: 13px;
+      color: #667085;
+      margin-bottom: 20px;
+    }
+
+    .settlement-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 0;
+      border-bottom: 1px solid rgba(23, 27, 36, 0.04);
+    }
+
+    .settlement-item:last-child {
+      border-bottom: none;
+    }
+
+    .settlement-from, .settlement-to {
+      font-size: 14px;
+      font-weight: 600;
+      color: #171b24;
+    }
+
+    .settlement-arrow {
+      color: #667085;
+      margin: 0 12px;
+    }
+
+    .settlement-amount {
+      font-size: 15px;
+      font-weight: 700;
+      color: #dc2626;
+    }
+
+    /* Expense table */
+    .table-wrapper {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th {
+      text-align: left;
+      padding: 10px 12px;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      color: #667085;
+      border-bottom: 1px solid rgba(23, 27, 36, 0.06);
+    }
+
+    td {
+      padding: 14px 12px;
+      font-size: 14px;
+      border-bottom: 1px solid rgba(23, 27, 36, 0.04);
+    }
+
+    .expense-title {
+      font-weight: 600;
+      color: #171b24;
+    }
+
+    .expense-date {
+      color: #667085;
+      font-size: 13px;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .badge-green {
+      background: rgba(22, 163, 74, 0.1);
+      color: #16a34a;
+    }
+
+    .badge-orange {
+      background: rgba(249, 115, 22, 0.1);
+      color: #f97316;
+    }
+
+    .badge-gray {
+      background: rgba(100, 116, 139, 0.1);
+      color: #64748b;
+    }
+  </style>
+</head>
+<body>
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="logo">COMMUNE</div>
+    
+    <div class="nav-label">MENU</div>
+    <a href="index.html" class="nav-link">Dashboard</a>
+    <a href="groups.html" class="nav-link">My Groups</a>
+
+    <div class="nav-label">MONEY</div>
+    <a href="expenses.html" class="nav-link">Expenses</a>
+    <a href="recurring.html" class="nav-link">Recurring</a>
+    <a href="templates.html" class="nav-link">Templates</a>
+    <a href="funds.html" class="nav-link">Funds</a>
+    <a href="billing.html" class="nav-link">Billing</a>
+
+    <div class="nav-label">INSIGHTS</div>
+    <a href="overview.html" class="nav-link">Command Centre</a>
+    <a href="breakdown.html" class="nav-link active">Breakdown</a>
+    <a href="analytics.html" class="nav-link">Analytics</a>
+
+    <div class="nav-label">TEAM</div>
+    <a href="members.html" class="nav-link">Members</a>
+    <a href="operations.html" class="nav-link">Operations</a>
+    <a href="activity.html" class="nav-link">Activity</a>
+
+    <div class="user-profile">
+      <div class="avatar">AE</div>
+      <div>
+        <div style="font-size: 14px; font-weight: 600;">Augustus Edem</div>
+        <div class="plan-badge">Pro</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main content -->
+  <div class="main">
+    <div class="header">
+      <input type="text" class="search" placeholder="Search expenses, members...">
+    </div>
+
+    <div class="content">
+      <div class="page-header">
+        <h1 class="page-title">Breakdown</h1>
+        <p class="page-subtitle">Settlement and payment summary</p>
+      </div>
+
+      <!-- Payment summaries -->
+      <div class="payment-grid">
+        <div class="payment-card">
+          <div class="payment-header">
+            <div>
+              <div class="payment-name">Sarah Johnson</div>
+              <div class="payment-email">sarah@example.com</div>
+            </div>
+            <div class="payment-amount negative">-£124.50</div>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-fill" style="width: 45%"></div>
+          </div>
+          <div class="progress-text">£56.00 paid · £124.50 total</div>
+          <button class="btn" style="margin-top: 12px; width: 100%;">Mark payment</button>
+        </div>
+
+        <div class="payment-card">
+          <div class="payment-header">
+            <div>
+              <div class="payment-name">Tom Chen</div>
+              <div class="payment-email">tom@example.com</div>
+            </div>
+            <div class="payment-amount positive">+£86.25</div>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-fill" style="width: 100%"></div>
+          </div>
+          <div class="progress-text">£86.25 paid · £86.25 total</div>
+        </div>
+
+        <div class="payment-card">
+          <div class="payment-header">
+            <div>
+              <div class="payment-name">Alex Rivera</div>
+              <div class="payment-email">alex@example.com</div>
+            </div>
+            <div class="payment-amount negative">-£42.00</div>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-fill" style="width: 0%"></div>
+          </div>
+          <div class="progress-text">£0.00 paid · £42.00 total</div>
+          <button class="btn" style="margin-top: 12px; width: 100%;">Mark payment</button>
+        </div>
+
+        <div class="payment-card">
+          <div class="payment-header">
+            <div>
+              <div class="payment-name">Maya Patel</div>
+              <div class="payment-email">maya@example.com</div>
+            </div>
+            <div class="payment-amount positive">+£80.25</div>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-fill" style="width: 72%"></div>
+          </div>
+          <div class="progress-text">£57.75 paid · £80.25 total</div>
+        </div>
+      </div>
+
+      <!-- Smart Settlement -->
+      <div class="section">
+        <div class="section-title">Smart Settlement</div>
+        <div class="section-subtitle">Optimized payment path to settle all balances</div>
+        
+        <div class="settlement-item">
+          <div>
+            <span class="settlement-from">Sarah Johnson</span>
+            <span class="settlement-arrow">→</span>
+            <span class="settlement-to">Tom Chen</span>
+          </div>
+          <div class="settlement-amount">£86.25</div>
+        </div>
+        
+        <div class="settlement-item">
+          <div>
+            <span class="settlement-from">Sarah Johnson</span>
+            <span class="settlement-arrow">→</span>
+            <span class="settlement-to">Maya Patel</span>
+          </div>
+          <div class="settlement-amount">£38.25</div>
+        </div>
+
+        <div class="settlement-item">
+          <div>
+            <span class="settlement-from">Alex Rivera</span>
+            <span class="settlement-arrow">→</span>
+            <span class="settlement-to">Maya Patel</span>
+          </div>
+          <div class="settlement-amount">£42.00</div>
+        </div>
+      </div>
+
+      <!-- Expense list -->
+      <div class="section">
+        <div class="section-title">Recent expenses</div>
+        <div class="section-subtitle">All expenses contributing to current balances</div>
+
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>Expense</th>
+                <th>Paid by</th>
+                <th>Amount</th>
+                <th>Date</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="expense-title">Monthly rent</td>
+                <td>Tom Chen</td>
+                <td>£1,200.00</td>
+                <td class="expense-date">Feb 1, 2024</td>
+                <td><span class="badge badge-green">Settled</span></td>
+              </tr>
+              <tr>
+                <td class="expense-title">Electricity bill</td>
+                <td>Maya Patel</td>
+                <td>£86.50</td>
+                <td class="expense-date">Feb 3, 2024</td>
+                <td><span class="badge badge-orange">Partial</span></td>
+              </tr>
+              <tr>
+                <td class="expense-title">Internet & broadband</td>
+                <td>Tom Chen</td>
+                <td>£45.00</td>
+                <td class="expense-date">Feb 5, 2024</td>
+                <td><span class="badge badge-gray">Pending</span></td>
+              </tr>
+              <tr>
+                <td class="expense-title">Grocery shopping</td>
+                <td>Sarah Johnson</td>
+                <td>£124.30</td>
+                <td class="expense-date">Feb 10, 2024</td>
+                <td><span class="badge badge-orange">Partial</span></td>
+              </tr>
+              <tr>
+                <td class="expense-title">Water bill</td>
+                <td>Maya Patel</td>
+                <td>£42.00</td>
+                <td class="expense-date">Feb 12, 2024</td>
+                <td><span class="badge badge-gray">Pending</span></td>
+              </tr>
+              <tr>
+                <td class="expense-title">Cleaning supplies</td>
+                <td>Alex Rivera</td>
+                <td>£28.75</td>
+                <td class="expense-date">Feb 15, 2024</td>
+                <td><span class="badge badge-green">Settled</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
