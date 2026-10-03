@@ -4657,6 +4657,16 @@ button.a-item {
   font-weight: 650;
 }
 
+/* The window's sticky footer is for full-width action rows, not this card. */
+.a-window .operation-delete .a-field-row,
+.a-body.is-dark .a-window .operation-delete .a-field-row {
+  position: static;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  border-top: 0;
+}
+
 .ops-calendar-head,
 .ops-agenda-head {
   display: flex;
@@ -5060,7 +5070,7 @@ button.a-item {
   padding: 14px 16px;
   border: 1px solid var(--border);
   border-radius: 12px;
-  background: #fff;
+  background: var(--white);
   white-space: pre-wrap;
 }
 
@@ -5923,6 +5933,29 @@ button.a-item {
   box-shadow: none;
 }
 
+.ops-toast {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  max-width: calc(100vw - 32px);
+}
+
+.ops-toast-undo {
+  flex: none;
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid rgba(248, 245, 240, 0.45);
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.ops-toast-undo:hover {
+  background: rgba(248, 245, 240, 0.12);
+}
+
 @media (max-width: 1000px) {
   .ops-people {
     grid-template-columns: 1fr 1fr;
@@ -5990,3 +6023,14 @@ button.a-item {
 .a-body.is-native .ops-tile {
   min-height: 84px;
 }
+
+.operation-history { margin: 0 0 16px; }
+.operation-history strong { font-weight: 500; color: var(--ink); }
+.operation-history em { font-style: normal; }
+.operation-history .is-undone strong { text-decoration: line-through; color: var(--ink-soft); }
+
+/* Clear the phone tab bar so the toast and its Undo never sit on top of it. */
+@media (max-width: 1000px) {
+  .ops-toast { bottom: calc(74px + env(safe-area-inset-bottom)); }
+}
+.a-body.is-native .ops-toast { bottom: calc(90px + env(safe-area-inset-bottom)); }

@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Archive, CalendarDays, ChevronRight, CircleAlert, Plus, ReceiptText, UsersRound, Wallet, type LucideIcon } from "lucide-react";
 import { useApp } from "../state";
 import { Avatar } from "../ui/widgets";
@@ -41,25 +41,57 @@ function HubLocation({ hub }: { hub: Hub }) {
 }
 
 function Responsibilities() {
-  const { operations, toggleOperation, go } = useApp();
+  const { operations, toggleOperation, undoOperation, go } = useApp();
   const [pending, setPending] = useState<string | null>(null);
   const [error, setError] = useState("");
-  const [feedback, setFeedback] = useState("");
+  const [feedback, setFeedback] = useState<{ text: string; undoId?: string } | null>(null);
+  // A completed task leaves the list (and its checkbox with it). Move focus to
+  // the result once the controls are enabled again, so it is not lost.
+  const [focusTarget, setFocusTarget] = useState<{ kind: "undo" | "feedback" } | { kind: "task"; id: string } | null>(null);
+  const feedbackRef = useRef<HTMLParagraphElement>(null);
+  const undoRef = useRef<HTMLButtonElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (pending !== null || !focusTarget) return;
+    if (focusTarget.kind === "task") {
+      (listRef.current?.querySelector<HTMLElement>(`[data-task="${focusTarget.id}"] input`) ?? feedbackRef.current)?.focus();
+    } else if (focusTarget.kind === "undo" && undoRef.current) {
+      undoRef.current.focus();
+    } else {
+      feedbackRef.current?.focus();
+    }
+    setFocusTarget(null);
+  }, [pending, focusTarget]);
   const today = todayIso();
   const end = addDays(today, 6);
   const items = operations.filter(item => item.status === "open" && item.date <= end && (item.date >= today || item.kind === "task"))
     .sort((a, b) => a.date.localeCompare(b.date)).slice(0, 5);
   async function complete(id: string, title: string) {
-    setPending(id); setError(""); setFeedback("");
-    try { await toggleOperation(id); setFeedback(`${title} updated.`); }
+    setPending(id); setError(""); setFeedback(null);
+    try {
+      const result = await toggleOperation(id);
+      setFeedback({ text: result.status === "done" ? `${title} marked done.` : `${title} done. Next: ${result.assignee ?? "unassigned"}.`, undoId: result.occurrenceId });
+      setFocusTarget({ kind: "undo" });
+    }
     catch (cause) { setError(cause instanceof Error ? cause.message : "Could not update the task. Please try again."); }
     finally { setPending(null); }
   }
+  async function undo(occurrenceId: string) {
+    setPending(occurrenceId); setError("");
+    try {
+      const result = await undoOperation(occurrenceId);
+      setFeedback({ text: "Undone. The task is back as it was." });
+      setFocusTarget({ kind: "task", id: operations.find(item => item.history?.some(entry => entry.id === result.occurrenceId))?.id ?? "" });
+    }
+    catch (cause) { setError(cause instanceof Error ? cause.message : "Could not undo that. Please try again."); }
+    finally { setPending(null); }
+  }
   return <HubSection title="This week" icon={CalendarDays} action={{ label: "View week", to: "operations" }}>
+    <div ref={listRef}>
     {items.map(item => {
       const due = item.date === today ? "Today" : new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "numeric", month: "short" }).format(dateFromIso(item.date));
       const late = item.status === "open" && item.date < today;
-      return <div className={`c-hub-task${item.status === "done" ? " is-done" : ""}`} key={item.id}>
+      return <div className={`c-hub-task${item.status === "done" ? " is-done" : ""}`} key={item.id} data-task={item.id}>
         <CalendarDate date={item.date} today={today} showMonth={false} />
         <button className="c-hub-task-copy" type="button" onClick={() => go("operation", { operation: item.id })}>
           <strong>{item.title}</strong><span>{item.assignee || "Unassigned"} · <span className={late ? "c-hub-late" : undefined}>{late ? "Overdue · " : ""}{due}</span>{item.time ? ` · ${item.time}` : ""}</span>
@@ -68,9 +100,11 @@ function Responsibilities() {
           checked={item.status === "done"} disabled={pending !== null} onChange={() => void complete(item.id, item.title)} />}
       </div>;
     })}
+    </div>
     {!items.length && <div className="c-hub-empty"><p>Nothing planned for this week.</p><button className="c-hub-link" type="button" onClick={() => go("operation-new")}>Add a task or event</button></div>}
     {error && <p role="alert" className="a-form-error">{error}</p>}
-    <span className="sr-only" role="status">{feedback}</span>
+    <p ref={feedbackRef} tabIndex={-1} className={feedback ? "c-hub-task-feedback" : "sr-only"} role="status">{feedback?.text}{feedback?.undoId
+      ? <button ref={undoRef} className="c-hub-link" type="button" disabled={pending !== null} onClick={() => void undo(feedback.undoId!)}>Undo</button> : null}</p>
   </HubSection>;
 }
 

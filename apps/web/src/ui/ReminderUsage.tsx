@@ -16,7 +16,10 @@ export function ReminderUsageMeter({ usage, placement = "default" }: { usage: Us
     : null;
   return (
     <details className={`a-reminder-usage a-reminder-usage--${placement}`} onKeyDown={(event) => {
-      if (event.key === "Escape") {
+      // Close only this popover, not the window or dialog around it.
+      if (event.key === "Escape" && event.currentTarget.open) {
+        event.preventDefault();
+        event.stopPropagation();
         event.currentTarget.open = false;
         event.currentTarget.querySelector("summary")?.focus();
       }

@@ -100,6 +100,28 @@ export function EmptyState({
     </div>
   );
 }
+/**
+ * Where keyboard focus can go back to when a dialog closes, nearest first. A
+ * successful action can disable or remove its own trigger (a sent reminder,
+ * a settled share), and focus must not fall to the page behind a window.
+ */
+export function focusScopes(opener: HTMLElement | null): Element[] {
+  const scopes: Element[] = [];
+  for (const selector of [".a-row-actions", ".c-panel", ".a-toolbar", ".a-panel", ".a-window"]) {
+    const scope = opener?.closest(selector);
+    if (scope && !scopes.includes(scope)) scopes.push(scope);
+  }
+  return scopes;
+}
+export function returnFocus(opener: HTMLElement | null, scopes: Element[]): void {
+  if (opener?.isConnected && !opener.matches(":disabled")) { opener.focus(); return; }
+  for (const scope of scopes) {
+    if (!scope.isConnected) continue;
+    const target = scope.querySelector<HTMLElement>("button:not(:disabled)");
+    if (target) { target.focus(); return; }
+  }
+}
+
 export function Dialog({
   title,
   children,
@@ -117,19 +139,12 @@ export function Dialog({
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     const opener = document.activeElement as HTMLElement | null;
-    const openerPanel = opener?.closest(".c-panel, .a-toolbar");
+    const scopes = focusScopes(opener);
     const dialog = ref.current;
     dialog?.showModal();
     return () => {
       dialog?.close();
-      if (opener?.isConnected) opener.focus();
-      else if (openerPanel?.isConnected) {
-        // A successful action can remove its own trigger (e.g. Record paid).
-        // Keep keyboard users in that card rather than dropping to the body.
-        openerPanel
-          .querySelector<HTMLButtonElement>("button:not(:disabled)")
-          ?.focus();
-      }
+      returnFocus(opener, scopes);
     };
   }, []);
   return (

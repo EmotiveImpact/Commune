@@ -9,6 +9,7 @@
   --hub-line: #eeece8;
   --hub-action: #2d6a4f;
   --hub-action-text: #fff;
+  --hub-action-hover: #245a42;
   --hub-warning: #964417;
   --hub-heading-icon: #60706b;
   color: var(--hub-ink);
@@ -24,6 +25,7 @@
   --hub-line: #374350;
   --hub-action: #e7edf3;
   --hub-action-text: #14243b;
+  --hub-action-hover: #cfd8e1;
   --hub-warning: #f4ba94;
   --hub-heading-icon: #b5c6bb;
 }
@@ -62,7 +64,7 @@
 .c-hub-balance p { max-width: 42ch; margin-bottom: 22px; color: var(--hub-muted); }
 .c-hub-balance-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 14px 24px; }
 .c-hub-button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 40px; padding: 10px 17px; border: 0; border-radius: var(--radius-control); background: var(--hub-action); color: var(--hub-action-text); font-size: 13px !important; font-weight: 500 !important; }
-.c-hub-button:hover { background: #245a42; }
+.c-hub-button:hover { background: var(--hub-action-hover); }
 .c-hub-stats { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); overflow: hidden; border: 1px solid var(--hub-line); border-radius: 14px; background: var(--hub-panel); }
 .c-hub-stats button { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; padding: 18px 24px; border: 0; background: none; color: var(--hub-ink); text-align: left; }
 .c-hub-stats button:hover { background: var(--hub-quiet); }
@@ -167,3 +169,8 @@
   .c-hub-members { grid-template-columns: 1fr; }
   .c-hub-expense-row > time { display: none; }
 }
+
+.c-hub-task-feedback { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0; padding: 12px 0 0; border-top: 1px solid var(--hub-line); color: var(--hub-ink); font-size: 13px; line-height: 1.6; }
+.c-hub-task-feedback:focus { outline: none; }
+.c-hub-task-feedback .c-hub-link { flex: none; display: inline-flex; align-items: center; min-height: 40px; padding: 0 4px; text-decoration: underline; }
+@media (max-width: 560px) { .c-hub-task-feedback .c-hub-link { min-height: 44px; } }

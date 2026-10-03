@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   addDays,
   dateFromIso,
@@ -6,7 +6,6 @@ import {
   formatTimeLabel,
   isoFromDate,
   nextInRotation,
-  nextOccurrence,
   overdueDays,
   todayIso,
   type OperationItem,
@@ -51,12 +50,17 @@ export function OperationsScreen() {
     you,
     toggleOperation,
     skipOperation,
+    undoOperation,
   } = useApp();
   const today = todayIso();
   const [cut, setCut] = useState<Cut>("week");
   const [month, setMonth] = useState(today.slice(0, 7));
   const [selectedDate, setSelectedDate] = useState(today);
-  const [toast, setToast] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ text: string; undoId?: string; error?: boolean } | null>(null);
+  const [undoing, setUndoing] = useState(false);
+  const toastTimer = useRef<number | undefined>(undefined);
+  const toastRef = useRef<HTMLDivElement>(null);
+  const toastHeld = useRef(false);
 
   const ordered = useMemo(
     () =>
@@ -93,9 +97,43 @@ export function OperationsScreen() {
     (item) => item.date <= weekEnd || item.lastDone?.date === today,
   );
 
-  function flash(text: string) {
-    setToast(text);
-    window.setTimeout(() => setToast(null), 2200);
+  useEffect(() => () => window.clearTimeout(toastTimer.current), []);
+
+  // Messages with an Undo, and errors, stay long enough to read and use. The
+  // timer pauses while the pointer or keyboard focus is on the toast.
+  function scheduleToastClose(ms: number) {
+    window.clearTimeout(toastTimer.current);
+    toastTimer.current = window.setTimeout(() => {
+      if (toastHeld.current) return;
+      const hadFocus = toastRef.current?.contains(document.activeElement);
+      setToast(null);
+      if (hadFocus) document.querySelector<HTMLElement>(".ops-prod-head button")?.focus();
+    }, ms);
+  }
+  function flash(text: string, undoId?: string) {
+    setToast({ text, undoId });
+    scheduleToastClose(undoId ? 9000 : 2600);
+  }
+  function flashError(text: string) {
+    setToast({ text, error: true });
+    scheduleToastClose(8000);
+  }
+  function holdToast(held: boolean) {
+    toastHeld.current = held;
+    if (!held && toast) scheduleToastClose(4000);
+  }
+
+  async function undo(occurrenceId: string) {
+    if (undoing) return;
+    setUndoing(true);
+    try {
+      const result = await undoOperation(occurrenceId);
+      flash(`Undone · back with ${firstNameOf(result.assignee ?? undefined) || "the commune"} for ${shortDateFormatter.format(dateFromIso(result.date))}`);
+    } catch (error) {
+      flashError(error instanceof Error ? error.message : "Could not undo that");
+    } finally {
+      setUndoing(false);
+    }
   }
 
   function showDate(date: string) {
@@ -110,35 +148,30 @@ export function OperationsScreen() {
   }
 
   async function completeTask(item: OperationItem) {
-    const nextName = item.rotation?.length
-      ? firstNameOf(nextInRotation(item.rotation, item.assignee))
-      : "";
     try {
-      await toggleOperation(item.id);
+      // The server decides the next date and person; report what it saved.
+      const result = await toggleOperation(item.id);
+      const handed = item.repeat !== "none" && item.rotation?.length ? firstNameOf(result.assignee ?? undefined) : "";
+      flash(
+        handed
+          ? `Handed to ${handed} · ${shortDateFormatter.format(dateFromIso(result.date))}`
+          : item.repeat !== "none"
+            ? `Done · next ${shortDateFormatter.format(dateFromIso(result.date))}`
+            : `Done · ${item.title}`,
+        result.occurrenceId,
+      );
     } catch (error) {
-      flash(error instanceof Error ? error.message : "Could not update task");
-      return;
+      flashError(error instanceof Error ? error.message : "Could not update task");
     }
-    const handedOn =
-      item.repeat !== "none"
-        ? shortDateFormatter.format(dateFromIso(nextOccurrence(item.date, item.repeat, today)))
-        : "";
-    flash(
-      nextName
-        ? `Handed to ${nextName}${handedOn ? ` · ${handedOn}` : ""}`
-        : `Done · ${item.title}`,
-    );
   }
 
   async function skipTask(item: OperationItem) {
-    const from = item.date < today ? today : item.date;
     try {
-      await skipOperation(item.id);
+      const result = await skipOperation(item.id);
+      flash(`Moved to ${shortDateFormatter.format(dateFromIso(result.date))}`, result.occurrenceId);
     } catch (error) {
-      flash(error instanceof Error ? error.message : "Could not move task");
-      return;
+      flashError(error instanceof Error ? error.message : "Could not move task");
     }
-    flash(`Moved to ${shortDateFormatter.format(dateFromIso(addDays(from, 7)))}`);
   }
 
   const peopleBuckets = [
@@ -401,11 +434,24 @@ export function OperationsScreen() {
         </section>
       ) : null}
 
-      {toast ? (
-        <div className="ops-toast" role="status">
-          {toast}
-        </div>
-      ) : null}
+      {/* Always present so screen readers announce each new message. */}
+      <div
+        ref={toastRef}
+        className={toast ? "ops-toast" : "sr-only"}
+        // Errors are also raised in the app's alert banner; one alert is enough.
+        role="status"
+        onMouseEnter={() => holdToast(true)}
+        onMouseLeave={() => holdToast(false)}
+        onFocus={() => holdToast(true)}
+        onBlur={() => holdToast(false)}
+      >
+        {toast ? <span>{toast.text}</span> : null}
+        {toast?.undoId ? (
+          <button type="button" className="ops-toast-undo" disabled={undoing} onClick={() => void undo(toast.undoId!)}>
+            {undoing ? "Undoing…" : "Undo"}
+          </button>
+        ) : null}
+      </div>
     </div>
   );
 }

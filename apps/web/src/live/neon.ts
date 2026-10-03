@@ -125,16 +125,25 @@ function minor(value: unknown): number {
   if (!Number.isSafeInteger(number)) throw new ApiError("Invalid amount returned by database", 502);
   return number;
 }
+// Same classification as the local API's normalizedError, so a rejection is a
+// 4xx (nothing saved) and only a genuine transport or server failure is 5xx
+// (outcome unknown) on both backends.
 function message(error: unknown): never {
   const item = error as { message?: string; code?: string; status?: number };
   const status = item.code === "28000" ? 401 : item.code === "42501" ? 403
-    : item.code === "22023" || item.code === "23514" ? 400
+    : item.code === "22023" || item.code === "23514" || item.code === "22P02" || item.code === "23503" ? 400
       : item.code === "23505" || item.code === "P0001" ? 409
         : typeof item.status === "number" ? item.status : 502;
   throw new ApiError(item.message || "Neon request failed", status);
 }
-function unwrap<T>(result: { data: T | null; error: unknown }): T {
-  if (result.error) message(result.error);
+// The Data API puts the HTTP status beside the error, not inside it. Carry it
+// across so, for example, a missing function (404) or an expired session
+// (401) is not reported as an unknown outcome.
+function unwrap<T>(result: { data: T | null; error: unknown; status?: number }): T {
+  if (result.error) {
+    message(typeof result.status === "number" && result.status >= 400
+      ? { ...(result.error as object), status: result.status } : result.error);
+  }
   return result.data as T;
 }
 function pathId(path: string, pattern: RegExp): string | null { return path.match(pattern)?.[1] ?? null; }
@@ -235,6 +244,8 @@ async function reminderUsage(): Promise<ReminderUsage> {
     totalUsed: minor(record.total_used), totalLimit: minor(record.total_limit),
     recipientLimit: minor(record.recipient_limit), recipientUsage,
     nextSlotAt: record.next_slot_at == null ? null : str(record.next_slot_at),
+    recipientLastSent: record.recipient_last_sent && typeof record.recipient_last_sent === "object" && !Array.isArray(record.recipient_last_sent)
+      ? Object.fromEntries(Object.entries(record.recipient_last_sent as Row).map(([id, at]) => [id, str(at)])) : {},
   };
 }
 
@@ -245,6 +256,15 @@ async function rpcId(name: string, arguments_: Row): Promise<{ id: string }> {
 async function rpcVoid(name: string, arguments_: Row): Promise<{ ok: true }> {
   unwrap(await db().rpc(name, arguments_));
   return { ok: true };
+}
+function expenseChangeResult(value: unknown) {
+  const item = asObject(value);
+  return { version: minor(item.version), duplicate: item.duplicate === true };
+}
+function receiptResult(value: unknown) {
+  const item = asObject(value);
+  return { ...idResult(item.id), duplicate: item.duplicate === true,
+    settledMinor: minor(item.settledMinor), outstandingMinor: minor(item.outstandingMinor) };
 }
 function asObject(value: unknown): Row { return value && typeof value === "object" && !Array.isArray(value) ? value as Row : {}; }
 
@@ -337,6 +357,30 @@ export async function neonApi<T>(path: string, init: RequestInit = {}): Promise<
     });
   } else if (method === "POST" && pathId(path, /^\/shares\/([^/]+)\/confirm$/)) {
     response = await rpcVoid("confirm_expense_share", { p_share_id: pathId(path, /^\/shares\/([^/]+)\/confirm$/) });
+  } else if (method === "PUT" && pathId(path, /^\/expenses\/([^/]+)$/)) {
+    const shares = Array.isArray(body.shares) ? body.shares.map((share) => {
+      const item = asObject(share);
+      return { user_id: item.userId, amount_minor: item.amountMinor };
+    }) : [];
+    response = expenseChangeResult(unwrap(await db().rpc("correct_expense", {
+      p_expense_id: pathId(path, /^\/expenses\/([^/]+)$/), p_expected_version: body.expectedVersion,
+      p_title: body.title, p_amount_minor: body.amountMinor, p_shares: shares, p_due_on: body.dueOn ?? null,
+      p_paid_by: body.paidByUserId ?? null, p_category: body.category, p_reason: body.reason, p_request_id: body.requestId,
+    })));
+  } else if (method === "POST" && pathId(path, /^\/expenses\/([^/]+)\/void$/)) {
+    response = expenseChangeResult(unwrap(await db().rpc("void_expense", {
+      p_expense_id: pathId(path, /^\/expenses\/([^/]+)\/void$/), p_expected_version: body.expectedVersion,
+      p_reason: body.reason, p_request_id: body.requestId,
+    })));
+  } else if (method === "POST" && pathId(path, /^\/shares\/([^/]+)\/receipts$/)) {
+    response = receiptResult(unwrap(await db().rpc("record_share_receipt", {
+      p_share_id: pathId(path, /^\/shares\/([^/]+)\/receipts$/), p_amount_minor: body.amountMinor,
+      p_received_on: body.receivedOn, p_reference: body.reference ?? null, p_request_id: body.requestId,
+    })));
+  } else if (method === "POST" && pathId(path, /^\/receipts\/([^/]+)\/reverse$/)) {
+    response = receiptResult(unwrap(await db().rpc("reverse_share_receipt", {
+      p_receipt_id: pathId(path, /^\/receipts\/([^/]+)\/reverse$/), p_reason: body.reason,
+    })));
   } else if (method === "POST" && pathId(path, /^\/communes\/([^/]+)\/funds$/)) {
     response = await rpcId("create_fund", {
       p_commune_id: pathId(path, /^\/communes\/([^/]+)\/funds$/),
@@ -371,13 +415,22 @@ export async function neonApi<T>(path: string, init: RequestInit = {}): Promise<
     response = await rpcId("save_split_template", {p_commune_id:pathId(path,/^\/communes\/([^/]+)\/templates$/),p_name:body.name,p_method:body.method,
       p_participants:Array.isArray(body.participants) ? body.participants.map(value=>{const item=asObject(value);return {user_id:item.userId,value:item.value ?? ""};}) : [],p_id:body.id ?? null,p_archived:body.archived ?? false});
   } else if (path === "/reminders" && method === "POST") {
-    const reminder = await rpcId("send_reminder", { p_kind: body.kind, p_source_id: body.sourceId });
-    response = reminder;
-    void dispatchReminderEmail(reminder.id).catch((error: unknown) => {
-      // Log only the error type, never the JWT or full request. The outbox
-      // remains queued for scheduled delivery or retry.
-      console.warn("Reminder email dispatch request failed", error instanceof Error ? error.name : "unknown");
-    });
+    // The command is idempotent on requestId: a retry returns the reminder it
+    // already created. This client never claims an email was sent: whether
+    // one goes out depends on the recipient's preference, which a sender must
+    // not be able to read.
+    const result = asObject(unwrap(await db().rpc("send_reminder_command", {
+      p_kind: body.kind, p_source_id: body.sourceId, p_request_id: body.requestId,
+    })));
+    const reminder = idResult(result.id);
+    response = { ...reminder, duplicate: result.duplicate === true, delivery: "in-app", emailStatus: result.emailStatus === "possible" ? "possible" : "none" };
+    if (result.duplicate !== true && result.emailStatus === "possible") {
+      void dispatchReminderEmail(reminder.id).catch((error: unknown) => {
+        // Log only the error type, never the JWT or full request. The outbox
+        // remains queued for scheduled delivery or retry.
+        console.warn("Reminder email dispatch request failed", error instanceof Error ? error.name : "unknown");
+      });
+    }
   } else if (method === "POST" && pathId(path, /^\/notifications\/([^/]+)\/read$/)) {
     response = await rpcVoid("mark_notification_read", { p_notification_id: pathId(path, /^\/notifications\/([^/]+)\/read$/) });
   } else if (method === "POST" && path === "/invitation-email") {
@@ -438,6 +491,15 @@ export async function neonApi<T>(path: string, init: RequestInit = {}): Promise<
       repeat: body.repeat, status: body.status, notes: body.notes ?? "",
     }).select("id").single();
     response = idResult(asObject(unwrap(result)).id);
+  } else if (method === "POST" && pathId(path, /^\/operations\/([^/]+)\/occurrences$/)) {
+    response = asObject(unwrap(await db().rpc("record_operation_occurrence", {
+      p_operation_id: pathId(path, /^\/operations\/([^/]+)\/occurrences$/), p_action: body.action,
+      p_expected_date: body.expectedDate, p_today: body.today, p_request_id: body.requestId,
+    })));
+  } else if (method === "POST" && pathId(path, /^\/occurrences\/([^/]+)\/undo$/)) {
+    response = asObject(unwrap(await db().rpc("undo_operation_occurrence", {
+      p_occurrence_id: pathId(path, /^\/occurrences\/([^/]+)\/undo$/),
+    })));
   } else if (method === "PUT" && pathId(path, /^\/operations\/([^/]+)$/)) {
     const result = await db().from("commune_operations").update({
       kind: body.kind, category: body.category, title: body.title, date: body.date,

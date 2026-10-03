@@ -24,15 +24,14 @@ import {
   type WindowId,
 } from "./data/household";
 import {
-  addDays,
-  nextInRotation,
-  nextOccurrence,
   todayIso,
   type NewOperation,
+  type OperationChange,
   type OperationItem,
   type OperationStore,
 } from "./data/operations";
 import { isStoredImage, readHubPhotos } from "./data/images";
+import { newRequestId } from "./data/requestId";
 import { isNativeNow, keepSearch, pathOnly } from "./nav";
 import { api, post, loadCommunes, loadSnapshot, ApiError } from "./live/api";
 import {
@@ -45,8 +44,12 @@ import {
   type LiveExpenseRow,
   type LiveHub,
   type Notification,
+  type ExpenseChangeResult,
+  type ReceiptResult,
+  type ReminderResult,
   type ReminderTarget,
   type ReminderUsage,
+  type SentReminder,
   type Snapshot,
   type User,
   type RecurringBill,
@@ -84,6 +87,17 @@ export type CreateExpenseInput = {
   shareUserIds: string[];
   allocations?: ExpenseAllocation[];
   paidByUserId?: string;
+};
+export type CorrectExpenseInput = {
+  expectedVersion: number;
+  name: string;
+  amountMinor: number;
+  category: string;
+  dueOn: string | null;
+  paidByUserId: string;
+  allocations: ExpenseAllocation[];
+  reason: string;
+  requestId: string;
 };
 export type RecurringBillInput = Omit<RecurringBill, "id" | "createdBy"> & { id?: string };
 export type SplitTemplateInput = Omit<SplitTemplate, "id" | "createdBy" | "archivedAt"> & { id?: string; archived?: boolean };
@@ -198,12 +212,15 @@ export type AppState = {
   expenses: LiveExpenseRow[];
   selectedExpense: LiveExpenseRow | null;
   createdExpenses: LiveExpenseRow[];
+  /** Kept for history. Never part of a balance, total or open count. */
+  voidedExpenses: LiveExpenseRow[];
   funds: Fund[];
   recurringBills: RecurringBill[];
   splitTemplates: SplitTemplate[];
   expenseTemplateId: string;
   reminderTargets: ReminderTarget[];
   reminderUsage: ReminderUsage | null;
+  sentReminders: SentReminder[];
   notifications: Notification[];
   signOut: () => Promise<void>;
   go: (target: GoTarget, opts?: GoOpts) => void;
@@ -224,8 +241,11 @@ export type AppState = {
   updateNote: (card: NoteCard & { id: string }) => Promise<string>;
   addOperation: (item: NewOperation) => Promise<string>;
   updateOperation: (id: string, item: NewOperation) => Promise<void>;
-  toggleOperation: (id: string) => Promise<void>;
-  skipOperation: (id: string) => Promise<void>;
+  /** Completes an open task, or reopens a done one. The server advances repeats and rotation. */
+  toggleOperation: (id: string) => Promise<OperationChange>;
+  skipOperation: (id: string) => Promise<OperationChange>;
+  /** Restores the task to exactly how it was before that action. */
+  undoOperation: (occurrenceId: string) => Promise<OperationChange>;
   removeOperation: (id: string) => Promise<void>;
   createHub: (input: CreatedHub, opts?: { openExpense?: boolean }) => Promise<string>;
   updateCommune: (input: {
@@ -234,6 +254,14 @@ export type AppState = {
   }) => Promise<void>;
   recordExpense: (input: CreateExpenseInput) => Promise<string>;
   confirmExpenseShare: (shareId: string) => Promise<void>;
+  /** Payer or admin corrects an expense. A stale expectedVersion is a conflict. */
+  correctExpense: (expenseId: string, input: CorrectExpenseInput) => Promise<ExpenseChangeResult>;
+  /** Payer or admin voids an expense, keeping it and its history. */
+  voidExpense: (expenseId: string, input: { expectedVersion: number; reason: string; requestId: string }) => Promise<ExpenseChangeResult>;
+  /** Payer records money received against one share. Retry-safe on requestId. */
+  recordShareReceipt: (shareId: string, input: { amountMinor: number; receivedOn: string; reference?: string; requestId: string }) => Promise<ReceiptResult>;
+  /** Payer reverses one receipt with a reason. The original entry is kept. */
+  reverseShareReceipt: (receiptId: string, reason: string) => Promise<ReceiptResult>;
   markExpensePaid: (expenseId: string) => Promise<void>;
   createInvite: (email: string, role: "admin" | "member") => Promise<{ token: string; url: string }>;
   sendInviteEmail: (token: string) => Promise<void>;
@@ -251,7 +279,8 @@ export type AppState = {
   recordRecurringBill: (id: string, expectedDueOn: string) => Promise<string>;
   saveSplitTemplate: (input: SplitTemplateInput) => Promise<string>;
   manageMember: (userId: string, action: "admin" | "member" | "leave" | "remove") => Promise<void>;
-  sendReminder: (kind: "nudge" | "chase", sourceId: string) => Promise<void>;
+  /** requestId stays the same across retries so one decision sends once. */
+  sendReminder: (kind: "nudge" | "chase", sourceId: string, requestId: string) => Promise<ReminderResult>;
   markNotificationRead: (id: string) => Promise<void>;
   pageTitle: string;
   pageLede: string;
@@ -334,7 +363,8 @@ function operationFromApi(item: OperationItem, communeId: string): OperationItem
   return {
     ...item,
     hubId: communeId,
-    time: item.time ?? undefined,
+    // Postgres returns a time column as HH:MM:SS; the app and API use HH:MM.
+    time: item.time ? item.time.slice(0, 5) : undefined,
     assignee: item.assignee ?? undefined,
     rotation: item.rotation ?? undefined,
     lastDone: item.lastDone ?? undefined,
@@ -636,12 +666,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const snapshot = data?.snapshots[activeId];
   const contentLoading = !!data?.communes.length && !overview && !snapshot;
   const contentError = snapshotErrors[activeId] ?? null;
-  const expenses = snapshot && data ? expenseRows(snapshot, data.user.id) : [];
-  const selectedExpense = selectedExpenseId ? expenses.find((row) => row.id === selectedExpenseId) ?? null : expenses[0] ?? null;
+  const allExpenses = snapshot && data ? expenseRows(snapshot, data.user.id) : [];
+  const expenses = allExpenses.filter((row) => !row.voidedAt);
+  const voidedExpenses = allExpenses.filter((row) => row.voidedAt);
+  const selectedExpense = selectedExpenseId ? allExpenses.find((row) => row.id === selectedExpenseId) ?? null : expenses[0] ?? null;
   const lastExpense = selectedExpense
     ? { name: selectedExpense.name, amount: selectedExpense.amount, paidBy: selectedExpense.paidBy }
     : null;
-  const empty = !!session?.hasHubs && expenses.length === 0;
+  // A commune whose only expenses are voided still has a ledger to show.
+  const empty = !!session?.hasHubs && allExpenses.length === 0;
   const notes: Record<string, NoteCard> = Object.fromEntries(
     (snapshot?.notes ?? []).map((note) => [note.id, note]),
   );
@@ -659,6 +692,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const splitTemplates = snapshot?.splitTemplates ?? [];
   const reminderTargets = snapshot?.reminderTargets ?? [];
   const reminderUsage = data?.reminderUsage ?? null;
+  const sentReminders = snapshot?.sentReminders ?? [];
   const notifications = snapshot?.notifications ?? [];
   const you = {
     name: data?.user.name ?? "",
@@ -801,6 +835,42 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await post(`/shares/${encodeURIComponent(shareId)}/confirm`, {});
     await refreshRecords();
   }), [mutate, refreshRecords]);
+  // A conflict means someone else's change landed first. Load it before the
+  // error reaches the form, so the editor can show the latest version.
+  const expenseChange = useCallback((path: string, body: unknown, method: string) => mutate(async () => {
+    let result: ExpenseChangeResult;
+    try {
+      result = await api<ExpenseChangeResult>(path, { method, body: JSON.stringify(body) });
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 409) await refreshRecords();
+      throw error;
+    }
+    await refreshRecords();
+    return result;
+  }), [mutate, refreshRecords]);
+  const correctExpense = useCallback((expenseId: string, input: CorrectExpenseInput) => {
+    const shares = validateExpenseAllocation(input.amountMinor, input.allocations);
+    return expenseChange(`/expenses/${encodeURIComponent(expenseId)}`, {
+      expectedVersion: input.expectedVersion, title: input.name.trim(), amountMinor: input.amountMinor,
+      category: input.category, dueOn: input.dueOn, paidByUserId: input.paidByUserId, shares,
+      reason: input.reason.trim(), requestId: input.requestId,
+    }, "PUT");
+  }, [expenseChange]);
+  const voidExpense = useCallback((expenseId: string, input: { expectedVersion: number; reason: string; requestId: string }) =>
+    expenseChange(`/expenses/${encodeURIComponent(expenseId)}/void`, { ...input, reason: input.reason.trim() }, "POST"), [expenseChange]);
+  const recordShareReceipt = useCallback((shareId: string, input: { amountMinor: number; receivedOn: string; reference?: string; requestId: string }) => mutate(async () => {
+    const result = await post<ReceiptResult>(`/shares/${encodeURIComponent(shareId)}/receipts`, {
+      amountMinor: input.amountMinor, receivedOn: input.receivedOn,
+      reference: input.reference?.trim() || null, requestId: input.requestId,
+    });
+    await refreshRecords();
+    return result;
+  }), [mutate, refreshRecords]);
+  const reverseShareReceipt = useCallback((receiptId: string, reason: string) => mutate(async () => {
+    const result = await post<ReceiptResult>(`/receipts/${encodeURIComponent(receiptId)}/reverse`, { reason });
+    await refreshRecords();
+    return result;
+  }), [mutate, refreshRecords]);
   const markExpensePaid = useCallback((expenseId: string) => mutate(async () => {
     const expense = expenses.find((row) => row.id === expenseId);
     if (!expense || expense.paidByUserId !== data?.user.id) {
@@ -871,13 +941,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await refresh();
     if (action === "leave") { setWindowId(null); setLocation(keepSearch("/")); }
   });
-  const sendReminder = useCallback((kind: "nudge" | "chase", sourceId: string) => mutate(async () => {
+  const sendReminder = useCallback((kind: "nudge" | "chase", sourceId: string, requestId: string) => mutate(async () => {
     const actorId = dataRef.current?.user.id;
-    await post("/reminders", { kind, sourceId });
+    const raw = await post<Partial<ReminderResult>>("/reminders", { kind, sourceId, requestId });
+    if (typeof raw?.id !== "string" || !raw.id) throw new ApiError("The reminder service returned an unexpected response", 502);
+    const result: ReminderResult = {
+      id: raw.id, duplicate: raw.duplicate === true,
+      emailStatus: raw.emailStatus === "possible" ? "possible" : "none",
+    };
+    // The reminder is recorded. A failed follow-up read must not turn an
+    // accepted reminder into an apparent failure; the display catches up later.
     await Promise.all([refreshRecords(), api<ReminderUsage>("/reminders/usage").then(reminderUsage => {
       const latest = dataRef.current;
       if (latest && latest.user.id === actorId) publishData({ ...latest, reminderUsage });
+    }).catch((error: unknown) => {
+      console.warn("Reminder usage could not be refreshed", error instanceof Error ? error.name : "unknown");
     })]);
+    return result;
   }), [mutate, refreshRecords, publishData]);
   const markNotificationRead = useCallback((id: string) => mutate(async () => {
     await post(`/notifications/${encodeURIComponent(id)}/read`, {});
@@ -921,35 +1001,41 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setOperationDate(item.date);
     if (item.time) setOperationTime(item.time);
   }), [mutate, operations, refreshRecords]);
-  const toggleOperation = useCallback((id: string) => mutate(async () => {
-    const item = operations.find((row) => row.id === id);
-    if (!item) throw new Error("Schedule item not found");
-    const completing = item.status === "open";
-    const today = todayIso();
-    const next: OperationItem = !completing
-      ? { ...item, status: "open" }
-      : item.repeat !== "none"
-        ? {
-            ...item,
-            status: "open",
-            date: nextOccurrence(item.date, item.repeat, today),
-            assignee: item.rotation?.length ? nextInRotation(item.rotation, item.assignee) : item.assignee,
-            lastDone: item.assignee ? { by: item.assignee, date: today } : item.lastDone,
-          }
-        : { ...item, status: "done", lastDone: { by: data?.user.name ?? "Member", date: today } };
-    await api(`/operations/${encodeURIComponent(id)}`, { method: "PUT", body: JSON.stringify(operationPayload(next)) });
+  // Task actions are commands: the database advances the date and rotation
+  // and rejects a stale click, so two people cannot complete one occurrence.
+  const occurrenceCommand = useCallback((path: string, body: unknown) => mutate(async () => {
+    let raw: { id?: unknown; duplicate?: unknown; date?: unknown; assignee?: unknown; status?: unknown };
+    try {
+      raw = await post(path, body);
+    } catch (error) {
+      // Someone else acted first. Show their result rather than a stale card.
+      if (error instanceof ApiError && error.status === 409) await refreshRecords();
+      throw error;
+    }
     await refreshRecords();
-  }), [data?.user.name, mutate, operations, refreshRecords]);
-  const skipOperation = useCallback((id: string) => mutate(async () => {
+    if (typeof raw?.id !== "string" || typeof raw.date !== "string") throw new ApiError("The task service returned an unexpected response", 502);
+    return {
+      occurrenceId: raw.id, duplicate: raw.duplicate === true, date: raw.date,
+      assignee: typeof raw.assignee === "string" ? raw.assignee : null, status: raw.status === "done" ? "done" : "open",
+    } satisfies OperationChange;
+  }), [mutate, refreshRecords]);
+  const taskAction = useCallback((id: string, action: "completed" | "skipped" | "reopened") => {
     const item = operations.find((row) => row.id === id);
-    if (!item) throw new Error("Schedule item not found");
-    const from = item.date < todayIso() ? todayIso() : item.date;
-    await api(`/operations/${encodeURIComponent(id)}`, {
-      method: "PUT",
-      body: JSON.stringify(operationPayload({ ...item, date: addDays(from, 7) })),
+    if (!item) return Promise.reject(new Error("Schedule item not found"));
+    return occurrenceCommand(`/operations/${encodeURIComponent(id)}/occurrences`, {
+      action, expectedDate: item.date, today: todayIso(), requestId: newRequestId(),
     });
-    await refreshRecords();
-  }), [mutate, operations, refreshRecords]);
+  }, [occurrenceCommand, operations]);
+  const undoOperation = useCallback((occurrenceId: string) =>
+    occurrenceCommand(`/occurrences/${encodeURIComponent(occurrenceId)}/undo`, {}), [occurrenceCommand]);
+  const toggleOperation = useCallback((id: string) => {
+    const item = operations.find((row) => row.id === id);
+    if (item?.status !== "done") return taskAction(id, "completed");
+    // Undo the completion when it is still the latest state; a task finished
+    // before occurrences existed is reopened as a new recorded action.
+    return item.undoOccurrenceId ? undoOperation(item.undoOccurrenceId) : taskAction(id, "reopened");
+  }, [operations, taskAction, undoOperation]);
+  const skipOperation = useCallback((id: string) => taskAction(id, "skipped"), [taskAction]);
   const removeOperation = useCallback((id: string) => mutate(async () => {
     await api(`/operations/${encodeURIComponent(id)}`, { method: "DELETE" });
     await refreshRecords();
@@ -1034,16 +1120,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     operationTime, operationsByHub, operations, selectedOperation,
     dark: prefs.dark, noticesOn: prefs.noticesOn, currency: prefs.currency,
     searchQuery, searchScope, searchTarget, noteSearchQuery, invites: data?.invites[activeId] ?? [], payMethods: prefs.payMethods, native, you,
-    lastExpense, expenses, selectedExpense, createdExpenses: expenses,
-    funds, recurringBills, splitTemplates, expenseTemplateId, reminderTargets, reminderUsage, notifications, signOut, go,
+    lastExpense, expenses, selectedExpense, createdExpenses: expenses, voidedExpenses,
+    funds, recurringBills, splitTemplates, expenseTemplateId, reminderTargets, reminderUsage, sentReminders, notifications, signOut, go,
     closeWindow: () => { if (!mutationCount) setWindowId(null); }, setMoreOpen,
     setNavMode: (navMode) => savePrefs({ navMode }),
     setDark: (dark) => savePrefs({ dark }),
     setNoticesOn: (noticesOn) => savePrefs({ noticesOn }),
     setCurrency: (currency) => savePrefs({ currency }),
     setSearchQuery, setSearchScope, clearSearchTarget, setNoteSearchQuery, savePayMethod, setHubPhoto, setAvatar, addNote, updateNote,
-    addOperation, updateOperation, toggleOperation, skipOperation,
-    removeOperation, createHub, updateCommune, recordExpense, confirmExpenseShare,
+    addOperation, updateOperation, toggleOperation, skipOperation, undoOperation,
+    removeOperation, createHub, updateCommune, recordExpense, confirmExpenseShare, correctExpense, voidExpense, recordShareReceipt, reverseShareReceipt,
     markExpensePaid, createInvite, sendInviteEmail, revokeInvite, previewInvite, acceptInvite, createFund,
     pledgeFund, recordFundContribution, sendReminder, markNotificationRead,
     updateFund, archiveFund, updatePledge, voidContribution, saveRecurringBill, recordRecurringBill, saveSplitTemplate, manageMember,
@@ -1057,4 +1143,4 @@ export function useApp(): AppState {
   return context;
 }
 
-export type { CurrencyCode, LiveExpenseRow, LiveHub, ReminderTarget, Notification, Fund };
+export type { CurrencyCode, LiveExpenseRow, LiveHub, ReminderTarget, ReminderResult, ReceiptResult, SentReminder, Notification, Fund };

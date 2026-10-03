@@ -1,4 +1,5 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
+import { randomUUID } from "node:crypto";
 import type { PoolClient } from "pg";
 import { createAccount, getUser, login, logout, setSessionCookie, type User } from "./auth.js";
 import { pool, withActor } from "./db.js";
@@ -60,14 +61,14 @@ function amount(value: unknown, field = "amountMinor"): number {
   return value;
 }
 
-function isoDate(value: unknown, optional = false): string | null {
+function isoDate(value: unknown, optional = false, field = "dueOn"): string | null {
   if ((value === null || value === undefined || value === "") && optional) return null;
   if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-    throw new ApiError(400, "Invalid dueOn");
+    throw new ApiError(400, `Invalid ${field}`);
   }
   const parsed = new Date(`${value}T00:00:00.000Z`);
   if (Number.isNaN(parsed.valueOf()) || parsed.toISOString().slice(0, 10) !== value) {
-    throw new ApiError(400, "Invalid dueOn");
+    throw new ApiError(400, `Invalid ${field}`);
   }
   return value;
 }
@@ -370,7 +371,7 @@ route("GET", /^\/api\/reminders\/usage$/, async (req, res) => {
   send(res, {
     totalUsed: row.total_used, totalLimit: row.total_limit,
     recipientLimit: row.recipient_limit, recipientUsage: row.recipient_usage,
-    nextSlotAt: row.next_slot_at,
+    nextSlotAt: row.next_slot_at, recipientLastSent: row.recipient_last_sent ?? {},
   });
 });
 
@@ -400,6 +401,62 @@ route("POST", /^\/api\/shares\/([0-9a-f-]{36})\/confirm$/, async (req, res, matc
   await userAction(req, async (client) => client.query(
     "SELECT public.confirm_expense_share($1)", [uuid(match[1])]));
   send(res, { ok: true });
+});
+
+function expectedVersion(value: unknown): number {
+  if (typeof value !== "number" || !Number.isInteger(value) || value < 1) {
+    throw new ApiError(400, "Invalid expectedVersion");
+  }
+  return value;
+}
+
+// Correction keeps the same expense id and writes a before/after revision.
+// expectedVersion is the version the editor loaded; a stale one is a 409.
+route("PUT", /^\/api\/expenses\/([0-9a-f-]{36})$/, async (req, res, match) => {
+  const input = await body(req);
+  if (!Array.isArray(input.shares) || input.shares.length < 1 || input.shares.length > 100) {
+    throw new ApiError(400, "Invalid shares");
+  }
+  const shares = input.shares.map((item) => {
+    if (!item || typeof item !== "object") throw new ApiError(400, "Invalid shares");
+    const share = item as Record<string, unknown>;
+    return { user_id: uuid(share.userId, "share userId"), amount_minor: amount(share.amountMinor, "share amountMinor") };
+  });
+  const result = await userAction(req, async (client) => client.query(
+    "SELECT public.correct_expense($1, $2, $3, $4, $5::jsonb, $6::date, $7, $8, $9, $10) AS result",
+    [uuid(match[1]), expectedVersion(input.expectedVersion), text(input.title, "title", 80), amount(input.amountMinor),
+      JSON.stringify(shares), isoDate(input.dueOn, true), input.paidByUserId == null ? null : uuid(input.paidByUserId, "paidByUserId"),
+      text(input.category, "category", 40), text(input.reason, "reason", 240), uuid(input.requestId, "requestId")]));
+  send(res, result.rows[0].result);
+});
+
+route("POST", /^\/api\/expenses\/([0-9a-f-]{36})\/void$/, async (req, res, match) => {
+  const input = await body(req);
+  const result = await userAction(req, async (client) => client.query(
+    "SELECT public.void_expense($1, $2, $3, $4) AS result",
+    [uuid(match[1]), expectedVersion(input.expectedVersion), text(input.reason, "reason", 240), uuid(input.requestId, "requestId")]));
+  send(res, result.rows[0].result);
+});
+
+// Repayment receipts: the payer records what was received against one share.
+// requestId makes a retry return the entry it already created.
+route("POST", /^\/api\/shares\/([0-9a-f-]{36})\/receipts$/, async (req, res, match) => {
+  const input = await body(req);
+  const reference = input.reference == null ? null : optionalText(input.reference, "reference", 80);
+  const result = await userAction(req, async (client) => client.query(
+    "SELECT public.record_share_receipt($1, $2, $3::date, $4, $5) AS result",
+    [uuid(match[1]), amount(input.amountMinor), isoDate(input.receivedOn, false, "receivedOn"),
+      reference, uuid(input.requestId, "requestId")]));
+  const receipt = result.rows[0].result as { duplicate: boolean };
+  send(res, receipt, receipt.duplicate ? 200 : 201);
+});
+
+route("POST", /^\/api\/receipts\/([0-9a-f-]{36})\/reverse$/, async (req, res, match) => {
+  const input = await body(req);
+  const result = await userAction(req, async (client) => client.query(
+    "SELECT public.reverse_share_receipt($1, $2) AS result",
+    [uuid(match[1]), text(input.reason, "reason", 240)]));
+  send(res, result.rows[0].result);
 });
 
 route("POST", /^\/api\/communes\/([0-9a-f-]{36})\/funds$/, async (req, res, match) => {
@@ -483,10 +540,15 @@ route("POST", /^\/api\/reminders$/, async (req, res) => {
   if (input.kind !== "nudge" && input.kind !== "chase") {
     throw new ApiError(400, "Invalid reminder kind");
   }
+  // A client-supplied request id makes a retry return the reminder it already
+  // created. Older callers without one still work, without retry protection.
+  const requestId = input.requestId == null ? randomUUID() : uuid(input.requestId, "requestId");
   const result = await userAction(req, async (client) => client.query(
-    "SELECT public.send_local_reminder($1, $2) AS id",
-    [input.kind, uuid(input.sourceId, "sourceId")]));
-  send(res, { id: result.rows[0].id, delivery: "in-app", email: "not-configured" }, 201);
+    "SELECT public.send_local_reminder_command($1, $2, $3) AS result",
+    [input.kind, uuid(input.sourceId, "sourceId"), requestId]));
+  const reminder = result.rows[0].result as { id: string; duplicate: boolean; emailStatus: string };
+  send(res, { id: reminder.id, duplicate: reminder.duplicate, delivery: "in-app",
+    emailStatus: reminder.emailStatus, email: "not-configured" }, reminder.duplicate ? 200 : 201);
 });
 
 route("POST", /^\/api\/notifications\/([0-9a-f-]{36})\/read$/, async (req, res, match) => {
@@ -561,6 +623,28 @@ route("PUT", /^\/api\/operations\/([0-9a-f-]{36})$/, async (req, res, match) => 
       item.repeat, item.status, item.notes]));
   if (!result.rowCount) throw new ApiError(404, "Operation not found");
   send(res, { ok: true });
+});
+
+// Completing, skipping or reopening a task is a recorded occurrence. The
+// database advances the date and rotation; expectedDate rejects a stale click.
+route("POST", /^\/api\/operations\/([0-9a-f-]{36})\/occurrences$/, async (req, res, match) => {
+  const input = await body(req);
+  if (!["completed", "skipped", "reopened"].includes(String(input.action))) {
+    throw new ApiError(400, "Invalid task action");
+  }
+  const result = await userAction(req, async (client) => client.query(
+    "SELECT public.record_operation_occurrence($1, $2, $3::date, $4::date, $5) AS result",
+    [uuid(match[1]), input.action, isoDate(input.expectedDate, false, "expectedDate"),
+      isoDate(input.today, false, "today"), uuid(input.requestId, "requestId")]));
+  const occurrence = result.rows[0].result as { duplicate: boolean };
+  send(res, occurrence, occurrence.duplicate ? 200 : 201);
+});
+
+route("POST", /^\/api\/occurrences\/([0-9a-f-]{36})\/undo$/, async (req, res, match) => {
+  await body(req);
+  const result = await userAction(req, async (client) => client.query(
+    "SELECT public.undo_operation_occurrence($1) AS result", [uuid(match[1])]));
+  send(res, result.rows[0].result);
 });
 
 route("DELETE", /^\/api\/operations\/([0-9a-f-]{36})$/, async (req, res, match) => {

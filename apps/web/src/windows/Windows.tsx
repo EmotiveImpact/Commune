@@ -8,7 +8,12 @@ import { ImagePick } from "../ui/photos";
 import { cx } from "../ui/cx";
 import { OperationEdit, OperationNew, OperationView } from "./OperationsWindows";
 import { CommuneLocationFields, EMPTY_COMMUNE_LOCATION } from "../ui/CommuneLocationFields";
-import { RecipientReminderCount, ReminderUsageMeter, reminderLimitReached } from "../ui/ReminderUsage";
+import { RecipientReminderCount, ReminderUsageMeter } from "../ui/ReminderUsage";
+import { ReminderFlowDialog, useReminderFlow } from "../ui/ReminderConfirm";
+import { reminderEligibility } from "../data/reminders";
+import { ReceiptHistory, useReceiptActions } from "../ui/Receipts";
+import { ExpenseHistory, useExpenseChange } from "../ui/ExpenseChange";
+import { formatReminderDay, formatTimestampDay } from "../data/reminders";
 import { isNotePinned } from "../data/notePresentation";
 import "./NoteEditor.css";
 import { allocateExpense, type SplitMethod } from "../../../../packages/core/src/expenseSplit";
@@ -66,6 +71,9 @@ export function Windows() {
     if (!frame) return;
     frame.focus();
     const onKey = (event: KeyboardEvent) => {
+      // A native modal opened from this window (a reminder preview, a receipt
+      // form) owns Escape and Tab until it closes.
+      if (document.querySelector("dialog[open]")) return;
       if (event.key === "Escape") {
         event.preventDefault();
         closeRef.current();
@@ -179,6 +187,21 @@ function ReminderPreview() {
   );
 }
 
+const NOTICE_COPY: Record<string, { pill: string; title: string }> = {
+  nudge: { pill: "Nudge", title: "Expense share reminder" },
+  chase: { pill: "Chase", title: "Fund pledge reminder" },
+  "receipt-reversed": { pill: "Reversed", title: "Repayment reversed" },
+  "expense-corrected": { pill: "Corrected", title: "Expense corrected" },
+  "expense-voided": { pill: "Voided", title: "Expense voided" },
+};
+
+/** One plain sentence for a ledger notice: what changed, by whom, for you. */
+function ledgerNoticeLine(kind: string, amount: string, actor: string): string {
+  if (kind === "receipt-reversed") return `${amount ? `${amount} ` : ""}repayment reversed by ${actor}`;
+  if (kind === "expense-voided") return `Voided by ${actor}${amount ? ` · your ${amount} share no longer counts` : ""}`;
+  return `Corrected by ${actor}${amount ? ` · your share is now ${amount}` : ""}`;
+}
+
 function Notices() {
   const { go, hub, notifications, markNotificationRead } = useApp();
   const [error, setError] = useState("");
@@ -186,7 +209,7 @@ function Notices() {
     return (
       <section className="a-window">
         <p className="a-window-kicker">Bell</p>
-        <p className="a-window-note">No in-app reminders for you in this commune.</p>
+        <p className="a-window-note">No notices for you in this commune.</p>
       </section>
     );
   }
@@ -194,22 +217,33 @@ function Notices() {
     <section className="a-window">
       <p className="a-window-kicker">Bell</p>
       {error ? <p className="a-form-error" role="alert">{error}</p> : null}
-      {notifications.map((notice) => (
+      {notifications.map((notice) => {
+        const copy = NOTICE_COPY[notice.kind] ?? { pill: "Notice", title: "Update" };
+        const actor = hub.members.find((member) => member.userId === notice.senderUserId)?.name ?? "a former member";
+        const ledger = notice.kind !== "nudge" && notice.kind !== "chase";
+        const amount = notice.amountMinor != null ? formatMoney(notice.amountMinor, hub.currency) : "";
+        const date = new Date(notice.createdAt).toLocaleDateString("en-GB");
+        return (
           <button
             className="a-notice"
             type="button"
             key={notice.id}
             onClick={() => void markNotificationRead(notice.id)
-              .then(() => go(notice.kind === "chase" ? "funds" : "settle"))
+              .then(() => ledger && notice.expenseId ? go("expense", { expense: notice.expenseId }) : go(notice.kind === "chase" ? "funds" : "settle"))
               .catch((cause) => setError(cause instanceof Error ? cause.message : "Could not mark the notice read."))}
           >
-            <Pill tone={notice.readAt ? "settled" : "open"}>{notice.kind === "chase" ? "Chase" : "Nudge"}</Pill>
+            <Pill tone={notice.readAt ? undefined : "open"}>{copy.pill}</Pill>
             <div className="grow">
-              <strong>{notice.kind === "chase" ? "Fund pledge reminder" : "Expense share reminder"}</strong>
-              <div className="when">{formatMoney(notice.amountMinor, hub.currency)} · {new Date(notice.createdAt).toLocaleDateString("en-GB")}</div>
+              <strong>{notice.readAt ? null : <span className="c-notice-new">New<span className="sr-only">:</span> </span>}{ledger ? notice.title ?? copy.title : copy.title}</strong>
+              <div className="when">
+                {ledger
+                  ? `${ledgerNoticeLine(notice.kind, amount, actor)} · ${date}${notice.detail ? ` · ${notice.detail}` : ""}`
+                  : `${amount ? `${amount} · ` : ""}${date}`}
+              </div>
             </div>
           </button>
-      ))}
+        );
+      })}
     </section>
   );
 }
@@ -329,26 +363,29 @@ function AddExpense() {
       </div>
       <SplitEditor members={members} includedIds={includedIds} onIncludedIds={setIncludedIds} method={method} onMethod={setMethod} values={values} onValues={setValues} amountMinor={amountMinor} currency={hub.currency} disabled={saving} />
       {error ? <p className="a-form-error" role="alert">{error}</p> : null}
-      <div className="a-field-row">
+    </section><aside className="c-expense-summary" aria-label="Split summary"><h3>The split, at a glance</h3><div><span>Total</span><strong>{formatMoney(amountMinor ?? 0, hub.currency)}</strong></div><div><span>Your share</span><strong>{formatMoney(allocations.find(share => share.userId === session?.userId)?.amountMinor ?? 0, hub.currency)}</strong></div><p>Paid by {members.find(member=>member.userId===payer)?.name ?? you.name}. Each person will see their exact share.</p><p>Commune records who paid and who owes what. It doesn’t move money.</p></aside>
+      {/* One footer under both columns, so it never cuts across the split list. */}
+      <div className="c-expense-actions">
         <button className="a-btn" type="button" onClick={() => void save()} disabled={saving}>
           {saving ? "Saving…" : "Save expense"}
         </button>
         <button className="a-btn ghost" type="button" disabled={saving} onClick={closeWindow}>
           Cancel
         </button>
-      </div>
-    </section><aside className="c-expense-summary" aria-label="Split summary"><h3>The split, at a glance</h3><div><span>Total</span><strong>{formatMoney(amountMinor ?? 0, hub.currency)}</strong></div><div><span>Your share</span><strong>{formatMoney(allocations.find(share => share.userId === session?.userId)?.amountMinor ?? 0, hub.currency)}</strong></div><p>Paid by {members.find(member=>member.userId===payer)?.name ?? you.name}. Each person will see their exact share.</p><p>Commune records who paid and who owes what. It doesn’t move money.</p></aside></div>
+      </div></div>
   );
 }
 
 function Expense() {
   const {
     go, closeWindow, hub, selectedExpense, session,
-    reminderTargets, reminderUsage, confirmExpenseShare, sendReminder,
+    reminderTargets, reminderUsage, sentReminders, sendReminder,
   } = useApp();
-  const [pendingId, setPendingId] = useState<string | null>(null);
-  const [error, setError] = useState("");
+  const reminder = useReminderFlow(sendReminder);
   const [message, setMessage] = useState("");
+  const receipts = useReceiptActions(setMessage);
+  const fullName = (userId: string) => hub.members.find((item) => item.userId === userId)?.name ?? "A former member";
+  const change = useExpenseChange(fullName, setMessage);
   if (!selectedExpense) {
     return (
       <section className="a-window">
@@ -361,20 +398,9 @@ function Expense() {
   const remaining = selectedExpense.shares.reduce(
     (total, share) => total + Math.max(0, share.amountMinor - share.settledMinor), 0,
   );
-
-  async function act(id: string, action: () => Promise<void>, success: string) {
-    setPendingId(id);
-    setError("");
-    setMessage("");
-    try {
-      await action();
-      setMessage(success);
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not update this share.");
-    } finally {
-      setPendingId(null);
-    }
-  }
+  const nameOf = (userId: string) => userId === session?.userId ? "you" : hub.members.find((item) => item.userId === userId)?.name ?? "a former member";
+  const voided = !!selectedExpense.voidedAt;
+  const canChange = !voided && (isPayer || hub.role === "admin");
 
   return (
     <section className="a-window">
@@ -384,54 +410,64 @@ function Expense() {
           <span className="a-hero-kicker">{selectedExpense.dueOn ? `Due ${selectedExpense.dueOn}` : "No due date"}</span>
           <strong>{selectedExpense.name}</strong>
           <p>
-            {payer?.name ?? selectedExpense.paidBy} paid {formatMoney(selectedExpense.amountMinor, hub.currency)}. {remaining ? `${formatMoney(remaining, hub.currency)} of shares remain open.` : "All shares are settled."}
+            {payer?.name ?? selectedExpense.paidBy} paid {formatMoney(selectedExpense.amountMinor, hub.currency)}. {voided ? "This expense is voided and no longer counts towards any balance." : remaining ? `${formatMoney(remaining, hub.currency)} of shares remain open.` : "All shares are settled."}
           </p>
         </div>
-        <Pill tone={selectedExpense.status}>{selectedExpense.statusLabel}</Pill>
+        <Pill tone={voided ? undefined : selectedExpense.status}>{selectedExpense.statusLabel}</Pill>
       </div>
-      {isPayer ? <ReminderUsageMeter usage={reminderUsage} /> : null}
+      {voided ? <p className="c-expense-voided" role="note">Voided by {fullName(selectedExpense.voidedBy ?? "")} on {formatTimestampDay(selectedExpense.voidedAt)}: {selectedExpense.voidReason}</p> : null}
+      {isPayer && !voided ? <ReminderUsageMeter usage={reminderUsage} /> : null}
       <div className="a-split">
         {selectedExpense.shares.map((share) => {
           const member = hub.members.find((item) => item.userId === share.userId);
-          const outstanding = share.amountMinor - share.settledMinor;
+          const outstanding = voided ? 0 : share.amountMinor - share.settledMinor;
           const isOwnPayerShare = share.userId === selectedExpense.paidByUserId;
+          const partPaid = !isOwnPayerShare && share.settledMinor > 0 && outstanding > 0;
           const target = isPayer && !isOwnPayerShare
             ? reminderTargets.find((item) => item.kind === "nudge" && item.sourceId === share.id)
             : undefined;
-          const cooldown = target?.lastSentAt && Date.now() - Date.parse(target.lastSentAt) < 72 * 60 * 60 * 1000;
-          const quotaReached = reminderLimitReached(reminderUsage, share.userId);
+          const eligibility = reminderEligibility({ kind: "nudge", recipientId: share.userId, target, usage: reminderUsage, sent: sentReminders, dueOn: selectedExpense.dueOn });
           return (
-            <div className="a-split-row" key={share.id}>
+            <div className="c-share-block" key={share.id}>
+            <div className="a-split-row">
               <Avatar tone={member?.cls ?? "house"} initials={member?.ini ?? "?"} />
               <div className="grow">
                 <strong>{member?.name ?? "Member"}{share.userId === session?.userId ? " (you)" : ""}</strong>
-                <div className="when">{formatMoney(share.amountMinor, hub.currency)} share · {outstanding ? `${formatMoney(outstanding, hub.currency)} outstanding` : "settled"}</div>
+                <div className="when">{formatMoney(share.amountMinor, hub.currency)} share · {voided ? "not counted" : outstanding ? `${formatMoney(outstanding, hub.currency)} outstanding` : isOwnPayerShare ? "paid the bill" : "settled"}</div>
                 {isPayer && (target || (reminderUsage?.recipientUsage[share.userId] ?? 0) > 0) ? (
                   <RecipientReminderCount usage={reminderUsage} recipientId={share.userId} />
                 ) : null}
               </div>
-              <Pill tone={outstanding ? "open" : "settled"}>{outstanding ? "Open" : "Settled"}</Pill>
+              <Pill tone={voided ? undefined : outstanding ? "open" : "settled"}>{voided ? "Voided" : outstanding ? partPaid ? "Part paid" : "Open" : "Settled"}</Pill>
               {isPayer && !isOwnPayerShare && outstanding ? (
                 <div className="a-row-actions">
-                  {target && !cooldown && !quotaReached ? (
-                    <button className="a-btn nudge" type="button" disabled={pendingId !== null} onClick={() => void act(share.id, () => sendReminder("nudge", share.id), "Nudge sent in Commune.")}>Nudge</button>
-                  ) : null}
-                  <button className="a-btn ghost" type="button" disabled={pendingId !== null} onClick={() => void act(share.id, () => confirmExpenseShare(share.id), "Share confirmed as received. No payment was taken by Commune.")}>Confirm received</button>
+                  <button className="a-btn nudge" type="button" disabled={!eligibility.canSend} title={eligibility.reason || undefined}
+                    onClick={() => { setMessage(""); reminder.open({ kind: "nudge", sourceId: share.id, recipientId: share.userId, name: member?.name ?? "your housemate", subject: selectedExpense.name, amount: formatMoney(outstanding, hub.currency), dueOn: selectedExpense.dueOn }); }}>Nudge</button>
+                  <button className="a-btn ghost" type="button" onClick={() => { setMessage(""); receipts.record({ shareId: share.id, debtorName: member?.name ?? "this member", expenseName: selectedExpense.name, shareMinor: share.amountMinor, outstandingMinor: outstanding, currency: hub.currency }); }}>Confirm received</button>
+                  {eligibility.reason && <p className="c-action-hint">{eligibility.reason}</p>}
                 </div>
               ) : null}
+            </div>
+            {!isOwnPayerShare && <ReceiptHistory share={share} currency={hub.currency} names={nameOf}
+              onReverse={isPayer && !voided ? (receipt) => { setMessage(""); receipts.reverse({ receipt, debtorName: member?.name ?? "this member", expenseName: selectedExpense.name, currency: hub.currency }); } : undefined} />}
             </div>
           );
         })}
       </div>
-      {error ? <p className="a-form-error" role="alert">{error}</p> : null}
+      <ExpenseHistory revisions={selectedExpense.revisions} names={fullName} currency={hub.currency} />
       {message ? <p className="a-window-note" role="status">{message}</p> : null}
-      {!isPayer && remaining ? <p className="a-window-note">Arrange payment with the bill payer outside Commune. Only they can confirm receipt here.</p> : null}
+      {!isPayer && remaining && !voided ? <p className="a-window-note">Arrange payment with the bill payer outside Commune. Only they can confirm receipt here.</p> : null}
       <div className="a-field-row">
         <button className="a-btn" type="button" onClick={() => go("settle")}>Open settlement</button>
+        {canChange ? <button className="a-btn ghost" type="button" onClick={() => { setMessage(""); change.correct(selectedExpense.id); }}>Correct</button> : null}
+        {canChange ? <button className="a-btn ghost" type="button" onClick={() => { setMessage(""); change.void(selectedExpense.id); }}>Void</button> : null}
         <button className="a-btn ghost" type="button" onClick={closeWindow}>
           Close
         </button>
       </div>
+      <ReminderFlowDialog flow={reminder} usage={reminderUsage} />
+      {receipts.dialogs}
+      {change.dialogs}
     </section>
   );
 }

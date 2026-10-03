@@ -19,7 +19,15 @@ files in order using a database owner connection:
 13. `infra/neon/migrations/0012_invitation_email.sql`
 14. `infra/neon/migrations/0013_complete_shared_workflows.sql`
 15. `infra/neon/migrations/0014_commune_search.sql`
-16. `infra/local/after-core.sql`
+16. `infra/neon/migrations/0015_reminder_commands.sql`
+17. `infra/neon/migrations/0016_share_receipts.sql`
+18. `infra/neon/migrations/0017_expense_revisions.sql`
+19. `infra/neon/migrations/0018_operation_occurrences.sql`
+20. `infra/neon/migrations/0019_lifecycle_corrections.sql`
+21. `infra/local/after-core.sql`
+
+`after-core.sql` is idempotent. Re-run it after applying a newer migration to
+an existing local database so the local-only reminder helpers stay current.
 
 `apps/local-api` serves `127.0.0.1:3002` with `DATABASE_URL` set to that
 database. The Vite app proxies `/api` to it on `localhost:3000`.
@@ -60,3 +68,15 @@ This local migration is not evidence of a hosted Neon migration or deployment.
 Recurring bills record a reviewed paid occurrence; they do not automatically
 charge cards. Contributions/receipt confirmations record money received
 outside Commune. Financial corrections retain the original record and reason.
+
+## Money lifecycle and task history (0015 to 0018)
+
+Reminders are sent through a retry-safe command. It tells the sender only
+whether an email is possible or not (locally always `none`), never the
+recipient's preference or a delivery state. Repayments are ledger entries on an expense
+share with explicit reversals; `settled_minor` is their projection and a
+commit-time trigger rejects any write that leaves the two out of step.
+Expenses can be corrected or voided by the payer or an admin with a reason, an
+expected version and a kept revision. Task completion, skip and reopen are
+recorded occurrences that can be undone. Fund contribution corrections (0013)
+are a separate ledger and are unchanged.

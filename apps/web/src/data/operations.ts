@@ -10,6 +10,30 @@ export type OperationCategory =
 export type OperationRepeat = "none" | "weekly" | "monthly";
 export type OperationStatus = "open" | "done";
 
+/** One recorded action on a task. Undone actions stay in the history. */
+export type OperationOccurrence = {
+  id: string;
+  action: "completed" | "skipped" | "reopened";
+  /** The occurrence acted on, and who held it then. */
+  dueOn: string;
+  assignee?: string | null;
+  actorId: string;
+  actedOn: string;
+  actedAt: string;
+  nextDate: string;
+  nextAssignee?: string | null;
+  undoneAt: string | null;
+  undoneBy: string | null;
+};
+/** What the server reports after a task action or its undo. */
+export type OperationChange = {
+  occurrenceId: string;
+  duplicate: boolean;
+  date: string;
+  assignee: string | null;
+  status: OperationStatus;
+};
+
 export type OperationItem = {
   id: string;
   hubId: HubId;
@@ -25,12 +49,17 @@ export type OperationItem = {
   repeat: OperationRepeat;
   status: OperationStatus;
   notes: string;
+  /** Day of the month a monthly task was set for; months shorter than it clamp. */
+  anchorDay?: number | null;
+  /** Latest action that can still be undone, if the task has not moved since. */
+  undoOccurrenceId?: string | null;
+  history?: OperationOccurrence[];
 };
 
 /** Legacy fixture date, never the live app clock. */
 export const HOUSE_TODAY = "2026-09-01";
 
-export type NewOperation = Omit<OperationItem, "id" | "hubId" | "status">;
+export type NewOperation = Omit<OperationItem, "id" | "hubId" | "status" | "undoOccurrenceId" | "history" | "anchorDay">;
 export type OperationStore = Record<HubId, OperationItem[]>;
 
 export const OPERATIONS_SEED: OperationStore = {
@@ -280,14 +309,16 @@ export function nextInRotation(rotation: string[], current?: string): string {
   return rotation[(index + 1) % rotation.length];
 }
 
+/** Mirrors the server: strictly after today, monthly steps keep the anchor day. */
 export function nextOccurrence(
   date: string,
   repeat: OperationRepeat,
   today = todayIso(),
+  anchorDay?: number | null,
 ): string {
   if (repeat === "none") return date;
-  let next = addRepeat(date, repeat);
-  while (next <= today) next = addRepeat(next, repeat);
+  let next = addRepeat(date, repeat, anchorDay);
+  while (next <= today) next = addRepeat(next, repeat, anchorDay);
   return next;
 }
 
@@ -311,11 +342,12 @@ export function overdueDays(date: string, today = todayIso()): number {
   return Math.max(0, Math.round((end - start) / 86400000));
 }
 
-export function addRepeat(date: string, repeat: OperationRepeat): string {
+export function addRepeat(date: string, repeat: OperationRepeat, anchorDay?: number | null): string {
   const next = dateFromIso(date);
   if (repeat === "weekly") next.setDate(next.getDate() + 7);
   if (repeat === "monthly") {
-    const day = next.getDate();
+    // Without the anchor, 31 Jan would become 28 Feb and then 28 Mar for good.
+    const day = anchorDay ?? next.getDate();
     next.setDate(1);
     next.setMonth(next.getMonth() + 1);
     const lastDay = new Date(next.getFullYear(), next.getMonth() + 1, 0).getDate();

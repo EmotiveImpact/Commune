@@ -1,6 +1,13 @@
-.c-expense-frame { width: min(930px,100%); }
+/* Qualified with the frame class: the shared 600px window width otherwise wins. */
+.a-window-frame.c-expense-frame { width: min(930px,100%); }
+.c-expense-frame .a-window-body { container-type: inline-size; }
 .c-expense-editor { display: grid; grid-template-columns: minmax(0,1.65fr) minmax(240px,1fr); gap: 24px; }
 .c-expense-form { padding: 0; }
+/* Paired fields keep their inputs level even when one has a longer hint. */
+.c-expense-form .a-field { align-content: start; }
+.c-expense-actions { grid-column: 1 / -1; position: sticky; bottom: -24px; z-index: 1; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 -24px -24px; padding: 16px 24px 24px; background: #f8f5f0; border-top: 1px solid rgba(23, 27, 36, 0.06); }
+.c-expense-actions .a-btn { height: 38px; min-width: 118px; justify-content: center; }
+.is-dark .c-expense-actions { background: #242b39; border-top-color: var(--border); }
 .c-expense-form #exp-amt { font-size: 28px; font-weight: 450; letter-spacing: -.8px; }
 .c-expense-form .a-field small { display: block; color: var(--ink-soft); font-size: 11px; margin-top: 6px; }
 .c-expense-summary { align-self: start; border-radius: var(--radius-surface); padding: 22px; background: #edf1e7; color: var(--ink); }
@@ -22,4 +29,6 @@
 .c-split-amount > span { grid-area: 1 / 1; text-align: right; }
 .c-split-amount::before { content: attr(data-space); grid-area: 1 / 1; visibility: hidden; pointer-events: none; user-select: none; }
 .is-dark .c-expense-summary { background: #253b34; }
+/* Two columns only when the dialog itself has room for them. */
+@container (max-width: 640px) { .c-expense-editor { grid-template-columns: 1fr; } }
 @media(max-width:700px) { .c-expense-editor { grid-template-columns: 1fr; } .c-split-person .avatar { display: none; } .c-split-value-slot { flex-basis: 64px; } }

@@ -10,7 +10,8 @@ DECLARE
     'funds', 'fund_commitments', 'fund_contributions',
     'reminders', 'notifications', 'reminder_email_outbox',
     'commune_invites', 'recurring_bills', 'recurring_bill_occurrences',
-    'split_templates', 'commune_events'
+    'split_templates', 'commune_events',
+    'expense_share_receipts', 'expense_revisions', 'operation_occurrences'
   ];
 BEGIN
   FOREACH table_name IN ARRAY denied_tables LOOP
@@ -36,6 +37,42 @@ BEGIN
     OR has_function_privilege('anonymous', 'public.manage_commune_member(uuid,text,text)', 'EXECUTE') THEN
     RAISE EXCEPTION 'Anonymous workflow execution grant';
   END IF;
+
+  -- Money-lifecycle and occurrence commands (0015-0018): members only, never
+  -- anonymous, and the private helpers are not callable by any client role.
+  FOREACH table_name IN ARRAY ARRAY[
+    'public.send_reminder_command(text,uuid,uuid)',
+    'public.record_share_receipt(uuid,bigint,date,text,uuid)',
+    'public.reverse_share_receipt(uuid,text)',
+    'public.correct_expense(uuid,integer,text,bigint,jsonb,date,text,text,text,uuid)',
+    'public.void_expense(uuid,integer,text,uuid)',
+    'public.record_operation_occurrence(uuid,text,date,date,uuid)',
+    'public.undo_operation_occurrence(uuid)'
+  ] LOOP
+    IF has_function_privilege('anonymous', table_name, 'EXECUTE')
+      OR has_function_privilege('public', table_name, 'EXECUTE')
+      OR NOT has_function_privilege('authenticated', table_name, 'EXECUTE') THEN
+      RAISE EXCEPTION 'Unexpected execution grant on %', table_name;
+    END IF;
+  END LOOP;
+  FOREACH table_name IN ARRAY ARRAY[
+    'commune_private.snapshot_expenses(uuid)',
+    'commune_private.snapshot_operations(uuid)',
+    'commune_private.snapshot_notifications(uuid,text)',
+    'commune_private.snapshot_sent_reminders(uuid,text)',
+    'commune_private.reminder_email_state(uuid)',
+    'commune_private.project_share_settlement(uuid)',
+    'commune_private.notify_ledger(uuid,text,text,uuid,text,bigint,text)',
+    'commune_private.expense_state(uuid)',
+    'commune_private.expense_is_voided(uuid)',
+    'commune_private.occurrence_result(uuid,boolean,uuid)',
+    'commune_private.set_operation_anchor()'
+  ] LOOP
+    IF has_function_privilege('authenticated', table_name, 'EXECUTE')
+      OR has_function_privilege('anonymous', table_name, 'EXECUTE') THEN
+      RAISE EXCEPTION 'Private helper % is callable by a client role', table_name;
+    END IF;
+  END LOOP;
 
   FOREACH table_name IN ARRAY ARRAY['commune_notes', 'commune_operations'] LOOP
     IF NOT (SELECT relrowsecurity FROM pg_class

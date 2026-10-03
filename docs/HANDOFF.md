@@ -1,54 +1,102 @@
 # Commune local handoff
 
-Prepared 2 October 2026. Work is paused for a handoff, not a production release.
+Prepared 2 October 2026 and updated later the same day after the money
+lifecycle pack. Work is paused for a handoff, not a production release.
 
 ## Start here
 
 - Work in `/Users/augustusedem/Commune`, on local `main`.
-- `4fa63eb` checkpoints the approved app and workflow changes.
-- `a125cfd` integrates that app with the primary folder's landing/mobile work.
-- No push, deployment, hosted migration or provider change was made during this
-  checkpoint/handoff. Do not infer hosted parity from the local commit.
-- Preserve the existing modified `AGENTS.md`, `.claude/launch.json` and all
-  untracked work. Do not reset or clean the checkout.
+- `4fa63eb` checkpoints the approved app and workflow changes; `a125cfd`
+  integrates it with the primary folder's landing/mobile work; `0165354` is the
+  earlier handoff.
+- **Uncommitted in the working tree (later on 2 October):** the money lifecycle
+  and task history pack, migrations 0015 to 0019, their tests and docs, plus
+  the 3 October review fixes (dark mode, layout, accessibility, parity). See
+  [money lifecycle](MONEY-LIFECYCLE-2026-10-02.md). It was left uncommitted on
+  purpose; commit it only when asked.
+- No push, deployment, hosted migration or provider change has been made. Do
+  not infer hosted parity from local work.
+- Preserve the modified `.claude/launch.json` and all untracked landing, mobile
+  and artifact work. Do not reset or clean the checkout.
 
 The active app is `apps/web`: React 19, Vite, TypeScript and wouter, using pnpm.
 Hosted data/auth use Neon. Local development uses the loopback PostgreSQL API
 in `apps/local-api`; it must not be deployed as production authentication.
-The root AGENTS/CLAUDE files still describe historical Supabase/Mantine
-architecture. That description does not match the migrated app in this commit.
-Reconcile that documentation before making architecture decisions; do not
-restore the old runtime or scaffold a replacement app.
+Root `AGENTS.md` and `CLAUDE.md` now describe this migrated architecture and
+mark the Supabase/Mantine stack as historical.
 
 ## Running application
 
-At handoff, the existing UI listens on `http://localhost:3000/` (also
-`http://127.0.0.1:3000/`), and the API on `127.0.0.1:3002`.
-Their processes still run from
-`/Users/augustusedem/.codex/worktrees/commune-loading/apps/web` and
-`/Users/augustusedem/.codex/worktrees/commune-loading/apps/local-api`.
-The primary folder now has identical active app/backend code, but edits there
-will not hot-reload the worktree's server. Before restarting from the primary
-folder, check the listeners, stop the existing UI deliberately and reuse port
-3000. Never launch a second UI server. Preserve the existing local database,
-accounts and records; do not bootstrap over them or reseed the user's household.
+Development now runs from the primary folder. The old worktree servers are no
+longer running and are not needed.
 
-Dependency installation in the primary folder was not verified after transfer.
-The checks below used the worktree's installed dependencies. pnpm's automatic
-dependency check attempted a broader workspace install and hit ENOSPC; it did
-not establish installed dependency parity. The merged frozen lockfile check
-subsequently passed. The Mac still has very little free space: resolve that
-before installing dependencies, without deleting user work or caches blindly.
+- UI: `http://localhost:3000/` (and `http://127.0.0.1:3000/`), Vite, started
+  from `apps/web`. Launch name `commune-web`.
+- API: `127.0.0.1:3002`, started from `apps/local-api` against the everyday
+  local database `commune_loading_test_20260927`. Log:
+  `.local/logs/local-api-3002.log`.
+
+To restart them by hand:
+
+```
+cd apps/local-api && DATABASE_URL=postgres://<you>@127.0.0.1:5432/commune_loading_test_20260927 node --import tsx src/server.ts
+cd apps/web && node node_modules/vite/bin/vite.js --host 127.0.0.1 --port 3000 --strictPort
+```
+
+Never launch a second UI server. For browser checks that create or change
+records, point the one UI at an isolated API instead: `COMMUNE_API_PORT=3005`
+(launch name `commune-web-qa`) with a test API on port 3005 and a disposable
+database. `commune_depth_test_a` holds a synthetic household for that purpose
+(`apps/local-api/tests/lifecycle-fixture.mjs`); it can be dropped at any time.
+
+The Claude desktop session folder is `/Users/augustusedem/Commune ` (with a
+trailing space). It is a set of symlinks into this repository with its own
+`.claude/launch.json`; the two `commune-web*` entries were added there as well.
+
+### The everyday local database
+
+`commune_loading_test_20260927` was migrated from 0014 to 0018 on 2 October,
+and to 0019 on 3 October after a further backup
+(`.local/backups/commune_loading_test_20260927-before-0019-*.dump`),
+after an owner `pg_dump` to
+`.local/backups/commune_loading_test_20260927-before-0015-0018-20261002-222701.dump`.
+User, commune, member, expense, share, fund, note, operation, notification,
+reminder and event counts, and the money totals, were identical before and
+after. Two previously confirmed shares became two `migrated` receipts. The new
+snapshot loads for all six active memberships. No account was created in it
+and no record of the existing households was changed. To go back:
+`pg_restore --clean` that dump into the same database.
+
+### Dependencies
+
+The root `node_modules` is an older pnpm 9 tree that the untracked landing and
+mobile apps rely on. It was left untouched. `apps/web`, `apps/local-api` and
+`apps/reminder-worker` resolve their packages through symlinks into
+`.deps-web/node_modules/.pnpm`, an APFS clone (about 20 MB of real disk) of the
+worktree's verified pnpm 11 install against the identical lockfile. No network
+install was run.
+
+- Run tools directly, for example `node node_modules/vitest/vitest.mjs run`
+  from `apps/web`. The `.bin` shims were not recreated.
+- Avoid `pnpm run` and `pnpm install` here for now. pnpm 11 checks the whole
+  workspace first, the untracked apps are not in the lockfile, and the last
+  attempt ran out of disk.
+- A proper `pnpm install` needs a decision about the untracked workspace apps
+  and several GB free. **Free disk fell to about 1.6 GB during this session**
+  (from 4.4 GB); this work accounts for under 200 MB of that.
 
 ## Verified baseline
 
-- All 166 web tests across 14 files passed after integration.
-- Web TypeScript check and Vite production build passed after integration.
-- Active app, local API, sender and Neon migration code were compared against
-  `4fa63eb` after transfer; no integration changes to that code were introduced.
-- Prior browser, isolated PostgreSQL/HTTP and simulated-mail evidence is in
-  [workflow completion](WORKFLOW-COMPLETION-2026-10-02.md) and its linked reports.
-  Those checks are not fresh hosted or live-inbox verification.
+- 222 web tests across 17 files pass. Web TypeScript and the Vite production
+  build pass. Local API and reminder worker type-check.
+- On a fresh isolated database: smoke, workflow, search, money-lifecycle and
+  operations-history HTTP suites pass; `grants.sql` passes; the reminder
+  worker integration test (simulated provider) passes.
+- Browser journeys with synthetic accounts on an isolated database are listed
+  in [money lifecycle](MONEY-LIFECYCLE-2026-10-02.md), with what was not
+  checked. Earlier evidence is in
+  [workflow completion](WORKFLOW-COMPLETION-2026-10-02.md).
+- None of this is hosted or live-inbox verification.
 
 ## Preserve the design and real functions
 
@@ -65,26 +113,28 @@ no further copy-cleanup pass is needed for the handoff.
 
 ## What remains
 
-Read [the product-depth roadmap](PRODUCT-DEPTH-ROADMAP-2026-10-02.md). Proposed
-features in it are not completed merely because they appear in the HTML.
+Read [the product-depth roadmap](PRODUCT-DEPTH-ROADMAP-2026-10-02.md) and the
+Remaining section of [money lifecycle](MONEY-LIFECYCLE-2026-10-02.md).
 
-1. Establish hosted parity for migrations 0013/0014, schema-cache refresh,
-   compatible web/sender code, auth, invitations and real email delivery. Measure
-   cold/warm/idle loading with separate accounts. Do not declare production or
-   100k-user readiness from local tests.
-2. Money lifecycle: unify reminder preview/confirmation across entry points,
-   add auditable partial receipts/reversals, then safe expense correction/void
-   with reason, version checks and history. Full receipt confirmation currently
-   has no implemented reversal flow. Fund contribution correction is separate.
-3. Operations completion undo/occurrence history also needs design and server
-   rules; it was discussed, not delivered in this checkpoint.
-4. Google address autocomplete, cloud photos/profile/payment hints, billing,
+1. **Hosted parity.** Migrations 0013 to 0018, schema-cache refresh, the
+   matching web client and sender, auth, invitations and real email delivery
+   are all unverified on Neon. Apply migrations before deploying the client.
+   Measure cold/warm/idle loading with separate accounts. Do not declare
+   production or 100k-user readiness from local tests.
+2. **Money lifecycle, next depth.** Debtor-reported transfers, statements,
+   receipt attachments, recurring-bill occurrence edits and history.
+3. **Operations, next depth.** Stable member ids in assignee and rotation,
+   exceptions and reassignment.
+4. **A product decision to confirm:** senders are not shown whether a reminder
+   email was queued or delivered, because any such state would reveal the
+   recipient's email preference. The other decisions taken are listed in the
+   money lifecycle document.
+5. Google address autocomplete, cloud photos/profile/payment hints, billing,
    native Neon parity and the other roadmap additions remain separate work.
    Manual location fields are implemented; recording money is not moving money.
-
-Current Settle uses `ReminderConfirm`. The contextual Nudge side panel and
-timestamped recent-confirmations view in States are design targets, not shipped
-application features. Verify each gap against source before implementing it.
+6. The contextual Nudge side panel in the HTML States tab is still a design
+   target. The HTML also still says the recent-confirmations view is not
+   implemented; it now is, as Recent repayments in Settle.
 
 Use disposable accounts/databases for destructive or financial integration
 tests. Never expose provider secrets in Git, handoffs or browser output. Obtain

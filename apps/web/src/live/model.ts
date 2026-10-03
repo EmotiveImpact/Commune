@@ -37,21 +37,74 @@ export type Member = {
   role: MemberRole;
   active?: boolean;
 };
+/** One entry in a share's repayment ledger. Reversed entries stay visible. */
+export type Receipt = {
+  id: string;
+  amountMinor: number;
+  receivedOn: string;
+  reference: string | null;
+  recordedBy: string;
+  recordedAt: string;
+  /** "migrated" marks a confirmation made before the ledger existed. */
+  origin?: "recorded" | "migrated";
+  reversedAt: string | null;
+  reversedBy: string | null;
+  reversalReason: string | null;
+};
+export type ReceiptResult = {
+  id: string;
+  duplicate: boolean;
+  settledMinor: number;
+  outstandingMinor: number;
+};
 export type Share = {
   id: string;
   userId: string;
   amountMinor: number;
+  /** Projection of the receipts that have not been reversed. */
   settledMinor: number;
+  settledAt?: string | null;
+  receipts?: Receipt[];
 };
+/** The financial and descriptive fields a correction can change. */
+export type ExpenseState = {
+  title: string;
+  amountMinor: number;
+  paidByUserId: string;
+  category: string;
+  dueOn: string | null;
+  shares: Array<{ userId: string; amountMinor: number }>;
+  voided?: boolean;
+};
+export type ExpenseRevision = {
+  id: string;
+  /** The version this change produced. Version 1 is the expense as recorded. */
+  version: number;
+  action: "corrected" | "voided";
+  actorId: string;
+  reason: string;
+  before: ExpenseState;
+  after: ExpenseState;
+  createdAt: string;
+};
+export type ExpenseChangeResult = { version: number; duplicate: boolean };
 export type Expense = {
   id: string;
   title: string;
   category?: string;
   amountMinor: number;
   paidByUserId: string;
+  recordedBy?: string;
   dueOn: string | null;
   createdAt?: string;
   recurring?: boolean;
+  /** Increments on every correction or void. Sent back as expectedVersion. */
+  version?: number;
+  updatedAt?: string | null;
+  voidedAt?: string | null;
+  voidedBy?: string | null;
+  voidReason?: string | null;
+  revisions?: ExpenseRevision[];
   shares: Share[];
 };
 export type Commitment = {
@@ -97,14 +150,42 @@ export type ReminderUsage = {
   recipientLimit: number;
   recipientUsage: Record<string, number>;
   nextSlotAt: string | null;
+  /** Last reminder to each person in the past day, across all communes. */
+  recipientLastSent?: Record<string, string>;
 };
-export type Notification = {
+/**
+ * "none": no email can go out (delivery is not configured, or the obligation
+ * was withdrawn). "possible": one may be sent, depending on the recipient's
+ * own preference. Finer states would reveal that preference to the sender.
+ */
+export type ReminderEmailStatus = "possible" | "none";
+/** What the server reports after accepting (or recognising a repeat of) a reminder. */
+export type ReminderResult = {
+  id: string;
+  duplicate: boolean;
+  emailStatus: ReminderEmailStatus;
+};
+/** The signed-in sender's own recent reminders in one commune. */
+export type SentReminder = {
   id: string;
   kind: "nudge" | "chase";
   sourceId: string;
+  recipientUserId: string;
   amountMinor: number;
+  createdAt: string;
+  emailStatus: ReminderEmailStatus;
+};
+export type Notification = {
+  id: string;
+  /** Reminders, plus ledger notices about an expense the reader is part of. */
+  kind: "nudge" | "chase" | "receipt-reversed" | "expense-corrected" | "expense-voided";
+  sourceId: string;
+  amountMinor: number | null;
   communeId: string;
   senderUserId: string;
+  expenseId?: string | null;
+  title?: string | null;
+  detail?: string | null;
   createdAt: string;
   readAt: string | null;
 };
@@ -116,18 +197,24 @@ export type Snapshot = {
   funds: Array<Omit<Fund, "contributedMinor">>;
   notifications: Notification[];
   reminderTargets: ReminderTarget[];
+  sentReminders?: SentReminder[];
   notes?: LiveNote[];
   operations?: OperationItem[];
   recurringBills?: RecurringBill[];
   splitTemplates?: SplitTemplate[];
   activityEvents?: Array<{id:string;actorId:string;kind:"funds"|"members"|"recurring"|"templates"|"notes"|"operations"|"expenses";entityId:string;title:string;description:string;createdAt:string}>;
 };
-export type LiveExpenseRow = ExpenseRow & {
+export type LiveExpenseRow = Omit<ExpenseRow, "amountMinor" | "paidByUserId" | "dueOn" | "shares"> & {
   amountMinor: number;
   paidByUserId: string;
   dueOn: string | null;
   shares: Share[];
   createdAt?: string;
+  version: number;
+  voidedAt: string | null;
+  voidedBy: string | null;
+  voidReason: string | null;
+  revisions: ExpenseRevision[];
 };
 export type LiveHub = Omit<Hub, "members"> & {
   currency: CurrencyCode;
@@ -176,9 +263,12 @@ export function equalShares(
 export function expenseRows(snapshot: Snapshot, viewerId: string): LiveExpenseRow[] {
   const currency = snapshot.commune.currency;
   const names = new Map(snapshot.members.map((member) => [member.userId, member.name]));
-  const today = new Date().toISOString().slice(0, 10);
+  // The member's own calendar date, as tasks and pledges use.
+  const today = todayIso();
   return snapshot.expenses.map((expense) => {
-    const outstanding = expense.shares.some((share) => share.settledMinor < share.amountMinor);
+    const voided = !!expense.voidedAt;
+    // A voided expense keeps its shares for history but is never outstanding.
+    const outstanding = !voided && expense.shares.some((share) => share.settledMinor < share.amountMinor);
     const overdue = outstanding && !!expense.dueOn && expense.dueOn < today;
     const isPayer = expense.paidByUserId === viewerId;
     const splitEqual = expense.shares.length > 0 &&
@@ -196,7 +286,12 @@ export function expenseRows(snapshot: Snapshot, viewerId: string): LiveExpenseRo
       dueOn: expense.dueOn,
       createdAt: expense.createdAt,
       status: outstanding ? (overdue ? "warn" : "open") : "settled",
-      statusLabel: outstanding ? (overdue ? "Overdue" : "Open") : "Settled",
+      statusLabel: voided ? "Voided" : outstanding ? (overdue ? "Overdue" : "Open") : "Settled",
+      version: expense.version ?? 1,
+      voidedAt: expense.voidedAt ?? null,
+      voidedBy: expense.voidedBy ?? null,
+      voidReason: expense.voidReason ?? null,
+      revisions: expense.revisions ?? [],
       action: outstanding && isPayer ? "choose" : "none",
       open: outstanding,
       recurring: expense.recurring ?? false,
@@ -209,10 +304,13 @@ export function expenseRows(snapshot: Snapshot, viewerId: string): LiveExpenseRo
 }
 
 export function hubFromSnapshot(
-  snapshot: Snapshot,
+  source: Snapshot,
   viewer: User,
   photo?: string,
 ): LiveHub {
+  // Voided expenses stay in the ledger as history but never count towards a
+  // balance, a total or an outstanding share anywhere on the hub.
+  const snapshot: Snapshot = { ...source, expenses: source.expenses.filter((expense) => !expense.voidedAt) };
   const { commune } = snapshot;
   const currency = commune.currency;
   const names = new Map(snapshot.members.map((member) => [member.userId, member.name]));
@@ -284,7 +382,7 @@ export function hubFromSnapshot(
   });
   const fundTotal = snapshot.funds.reduce((sum, fund) => sum +
     fund.commitments.reduce((subtotal, commitment) => subtotal + commitment.contributedMinor, 0), 0);
-  const month = new Date().toISOString().slice(0, 7);
+  const month = todayIso().slice(0, 7);
   const monthExpenses = snapshot.expenses.filter((expense) => expense.createdAt?.startsWith(month));
   const monthTotal = monthExpenses
     .reduce((sum, expense) => sum + expense.amountMinor, 0);

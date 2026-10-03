@@ -41,16 +41,27 @@
 .c-fund-progress > div { flex: 1; height: 6px; background: var(--border); border-radius: 4px; overflow: hidden; }
 .c-fund-progress > div > span { display: block; height: 100%; background: var(--sage); border-radius: inherit; }
 .c-fund-progress small { color: var(--ink-soft); font-size: 12px; }
-.c-reminder-dialog { padding: 28px; width: min(470px,calc(100% - 32px)); border: 1px solid var(--border); border-radius: var(--radius-surface); background: var(--white,#fffefa); color: var(--ink); }
+.c-reminder-dialog { padding: 28px; width: min(470px,calc(100% - 32px)); max-height: calc(100dvh - 32px); overflow: auto; border: 1px solid var(--border); border-radius: var(--radius-surface); background: var(--white,#fffefa); color: var(--ink); }
 .c-reminder-dialog::backdrop { background: #111b2866; }
 .c-reminder-dialog h2 { font-size: 21px; font-weight: 550; line-height: 1.4; padding-right: 20px; }
-.c-reminder-message { padding: 18px 0; font-size: 14px; line-height: 1.7; }
+.c-reminder-message { padding: 18px 0 14px; font-size: 14px; line-height: 1.7; }
 .c-reminder-help { font-size: 12px; line-height: 1.6; color: var(--ink-soft); margin-bottom: 16px; }
-.c-reminder-close { float: right; border: 0; background: transparent; color: inherit; padding: 6px; cursor: pointer; }
+.c-reminder-close { float: right; border: 0; border-radius: var(--radius-control); background: transparent; color: inherit; padding: 6px; cursor: pointer; }
+.c-reminder-close:disabled { opacity: .4; cursor: default; }
+.c-reminder-facts { display: grid; grid-template-columns: 1fr 1fr; gap: 0 20px; margin: 0 0 14px; padding: 4px 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+.c-reminder-facts div { padding: 10px 0; min-width: 0; }
+.c-reminder-facts dt { font-size: 12px; color: var(--ink-soft); line-height: 1.5; }
+.c-reminder-facts dd { margin: 0; font-size: 14px; font-weight: 500; line-height: 1.5; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.c-reminder-result { margin: 0 0 16px; padding: 12px 14px; border-radius: var(--radius-control); border: 1px solid var(--border-strong); font-size: 13px; line-height: 1.6; }
+.c-reminder-dialog .a-form-error { margin: 0 0 16px; }
+@media (max-width: 420px) {
+  .c-reminder-dialog { padding: 22px 18px; }
+  .c-reminder-facts { grid-template-columns: 1fr; }
+}
 @media(max-width:560px) { .c-expense-entry { gap: 10px; padding: 18px; } .c-expense-entry > svg { display: none; } .c-expense-copy small { line-height: 1.6; } .c-fund-progress { align-items: flex-start; flex-direction: column; } .c-fund-progress > div { width: 100%; min-height: 6px; flex: none; } }
 .is-dark .c-money-icon { background: #2a3440; color: #b5c6bb; }
 .c-settle-columns { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 22px; }
-.c-settle-column { min-width: 0; background: var(--white); box-shadow: none; border-radius: var(--radius-surface); padding: 23px; align-self: stretch; }
+.a-panel.c-settle-column { min-width: 0; background: var(--white); box-shadow: none; border-radius: var(--radius-surface); padding: 23px; align-self: stretch; }
 .a-panel.c-settle-column h2 { font-size: 18px; font-weight: 550; }
 .c-settle-total { display: block; font-size: 41px; font-weight: 450; letter-spacing: -1.7px; margin: 10px 0; font-variant-numeric: tabular-nums; }
 .c-settle-explainer { color: var(--ink-soft); font-size: 12px; line-height: 1.7; }
@@ -72,3 +83,80 @@
   .c-settle-column .a-move .a-row-actions { grid-column: 1 / -1; }
   #settle .c-settle-column .a-move > .amt { grid-column: 3; justify-self: end; }
 }
+
+/* Repayment receipts: one form, one history pattern, everywhere. */
+/* Qualified: .c-product-dialog is bundled later and would otherwise win. */
+.c-product-dialog.c-receipt-dialog { width: min(480px, calc(100vw - 32px)); }
+.c-receipt-context { font-size: 13px; line-height: 1.6; color: var(--ink-soft); margin: -8px 0 18px; overflow-wrap: anywhere; }
+.c-receipt-outcome { font-size: 13px; font-weight: 500; line-height: 1.6; margin: 4px 0 16px; font-variant-numeric: tabular-nums; }
+.c-receipt-note { font-size: 12px; line-height: 1.6; color: var(--ink-soft); margin: 14px 0 0; }
+.c-receipt-dialog form > .c-receipt-note:not(:last-child) { margin: 0 0 16px; }
+.c-receipt-dialog textarea { width: 100%; resize: vertical; }
+.c-share-block { border-bottom: 1px solid rgba(23, 27, 36, 0.06); }
+.c-share-block:last-child { border-bottom: 0; }
+/* Identity and status on one line; actions get their own line so a long
+   name or a reminder hint never squeezes the share's figures. */
+.c-share-block .a-split-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 6px 12px; border-bottom: 0; }
+.c-share-block .a-row-actions { grid-column: 2 / -1; display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 8px; }
+.c-share-block .c-action-hint { text-align: right; }
+.c-share-block .c-receipt-history { margin: 0 0 14px 44px; }
+.c-receipt-history strong { font-weight: 500; color: var(--ink); font-variant-numeric: tabular-nums; }
+.c-receipt-history .is-reversed > span { text-decoration: none; }
+.c-receipt-history .is-reversed strong { text-decoration: line-through; color: var(--ink-soft); }
+.c-receipt-history em { font-style: normal; }
+.c-receipt-history .a-btn { padding: 0 12px; font-size: 12px; flex: none; }
+/* Compact beside the history line on desktop; phones keep the 44px target. */
+@media (min-width: 561px) { .a-windows .c-receipt-history .a-btn { min-height: 32px; } }
+.a-panel.c-settle-recent { margin-top: 22px; background: var(--white); box-shadow: none; border-radius: var(--radius-surface); padding: 23px; }
+.a-panel.c-settle-recent h2 { font-size: 18px; font-weight: 550; margin-bottom: 4px; }
+.c-settle-receipt { display: flex; align-items: center; gap: 12px; width: 100%; padding: 14px 0; border: 0; border-top: 1px solid var(--border); background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.c-settle-receipt:first-of-type { border-top: 0; }
+.c-settle-receipt .grow { flex: 1; min-width: 0; }
+.c-settle-receipt strong { display: block; font-size: 13px; font-weight: 500; overflow-wrap: anywhere; }
+.c-settle-receipt small { display: block; font-size: 12px; color: var(--ink-soft); line-height: 1.6; overflow-wrap: anywhere; }
+.c-settle-receipt .amt { font-size: 15px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.c-settle-recent .c-settle-explainer { margin-top: 10px; }
+@media(max-width:560px) {
+  .c-settle-receipt { flex-wrap: wrap; }
+  .c-settle-receipt .grow { flex-basis: calc(100% - 100px); }
+  .c-share-block .c-receipt-history { margin-left: 0; }
+  .c-share-block .a-row-actions { grid-column: 1 / -1; }
+}
+
+/* Expense correction, void and version history. */
+.c-product-dialog.c-expense-change { width: min(600px, calc(100vw - 32px)); }
+.c-change-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 16px; }
+.c-change-lock { font-size: 13px; line-height: 1.6; padding: 12px 14px; border: 1px solid var(--border-strong); border-radius: var(--radius-control); margin: 4px 0 16px; }
+.c-change-review { margin: 0 0 16px; }
+.c-change-review h3 { font-size: 14px; font-weight: 550; margin: 0 0 8px; }
+.c-change-review ul + h3, .c-change-review p + h3 { margin-top: 18px; }
+.c-change-review ul, .c-change-conflict ul { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.7; font-variant-numeric: tabular-nums; }
+.c-change-review li, .c-change-conflict li { overflow-wrap: anywhere; }
+.c-change-review p { font-size: 13px; color: var(--ink-soft); margin: 0; }
+.c-change-conflict { border: 1px solid #c8553d; border-radius: var(--radius-control); padding: 14px 16px; margin: 0 0 18px; font-size: 13px; line-height: 1.6; }
+.c-change-conflict strong { font-weight: 550; }
+.c-change-conflict p { margin: 4px 0 8px; }
+.c-change-conflict .a-field-row { margin-top: 12px; }
+.c-expense-change textarea { width: 100%; resize: vertical; }
+.c-expense-voided { font-size: 13px; line-height: 1.6; padding: 12px 14px; border: 1px solid var(--border-strong); border-radius: var(--radius-control); margin: 0 0 16px; overflow-wrap: anywhere; }
+.c-expense-history { margin: 14px 0 16px; }
+.c-expense-history strong { font-weight: 500; color: var(--ink); }
+.c-expense-history em { font-style: normal; }
+.c-history-lines { display: block; margin-top: 4px; font-variant-numeric: tabular-nums; }
+@media(max-width:560px) { .c-change-pair { grid-template-columns: 1fr; } }
+
+/* A native dialog opened from inside a window (receipts, corrections) keeps
+   the shared dialog form, not the window's sticky footer or label size. */
+.a-window .c-product-dialog .a-field label { font-size: 11px; color: var(--ink-soft); }
+.a-window .c-product-dialog .a-field { padding: 14px 0; border-bottom: 1px solid rgba(23, 27, 36, 0.05); }
+.a-window .c-product-dialog .a-field:last-of-type { border-bottom: 0; }
+.a-window :is(.c-product-dialog, .c-reminder-dialog) .a-field-row,
+.a-body.is-dark .a-window :is(.c-product-dialog, .c-reminder-dialog) .a-field-row { position: static; margin: 16px 0 0; padding: 0; background: transparent; border-top: 0; }
+.a-window :is(.c-product-dialog, .c-reminder-dialog) .a-field-row .a-btn { height: auto; min-width: 0; }
+
+/* A failure in a money dialog must not read like body copy. Same tone as the
+   Overdue label; the text and role="alert" carry the meaning, not the colour. */
+:is(.c-receipt-dialog, .c-expense-change, .c-reminder-dialog) .a-form-error { color: #9b2c2c; font-size: 13px; line-height: 1.6; margin: 0 0 14px; }
+.is-dark :is(.c-receipt-dialog, .c-expense-change, .c-reminder-dialog) .a-form-error { color: #f3b4a8; }
+/* Unread notices say so in text, not only by the pill's colour. */
+.c-notice-new { display: inline-block; margin-right: 6px; padding: 1px 6px; border-radius: var(--radius-pill); background: var(--sage-soft); color: var(--sage-strong); font-size: 10px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; vertical-align: 1px; }

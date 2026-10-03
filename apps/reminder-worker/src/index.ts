@@ -123,7 +123,9 @@ async function loadReminderDetails(reminderId: string) {
       ) AS member_active,
       pref.email_reminders,
       CASE WHEN r.kind = 'nudge'
-        THEN coalesce(s.amount_minor > s.settled_minor, false)
+        -- voided_at arrives with migration 0017. Reading it through to_jsonb
+        -- keeps this query valid on a database that has not had it applied.
+        THEN coalesce(s.amount_minor > s.settled_minor AND (to_jsonb(e) ->> 'voided_at') IS NULL, false)
         ELSE coalesce(fc.cancelled_at IS NULL AND f.archived_at IS NULL AND fc.amount_minor > paid.total, false)
       END AS still_due,
       (CASE WHEN r.kind = 'nudge'

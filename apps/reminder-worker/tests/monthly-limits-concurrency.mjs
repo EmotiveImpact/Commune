@@ -1,5 +1,5 @@
-// Run against a disposable local database with the auth stub and migrations
-// 0001-0011. Never point this test at a shared or production branch.
+// Run against a disposable local database with the auth stub and all
+// migrations. Never point this test at a shared or production branch.
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { Pool } from "pg";
@@ -53,10 +53,13 @@ try {
     `);
     return result.rows[0].id;
   });
-  await db.query(`
+  // Fixture rows bypass the invitation flow, but since migration 0013 every
+  // membership change is written to the history with its actor. Record the
+  // commune's creator as that actor, as the invitation RPC would.
+  await asUser(sender, (client) => client.query(`
     INSERT INTO public.commune_members (commune_id, user_id, role)
     VALUES ($1, $2, 'member'), ($1, $3, 'member')
-  `, [commune, firstRecipient, secondRecipient]);
+  `, [commune, firstRecipient, secondRecipient]));
   const [firstShare, secondShare] = await Promise.all([
     createShare(firstRecipient, "First due share"),
     createShare(secondRecipient, "Second due share"),

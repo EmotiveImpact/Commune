@@ -10,7 +10,19 @@ instead of sequential per-table reads. Existing 0011 identity rules are kept;
 this is not a replacement of Neon Auth or a switch back to Supabase.
 
 - [Implemented workflows, evidence and remaining release gates](../../docs/WORKFLOW-COMPLETION-2026-10-02.md)
+- [Money lifecycle and task history: migrations 0015 to 0018](../../docs/MONEY-LIFECYCLE-2026-10-02.md)
 - [Current design language and preserved layouts](../../docs/DESIGN-LANGUAGE.md)
+
+Migrations **0015 to 0019 are local only**. They have not been applied to any
+Neon branch. Release order when they are: apply 0013 to 0019 in numeric order
+to the preview branch, refresh that branch's Data API schema cache, then
+deploy the matching web client. The new client calls `send_reminder_command`,
+`record_share_receipt`, `reverse_share_receipt`, `correct_expense`,
+`void_expense`, `record_operation_occurrence` and `undo_operation_occurrence`,
+so it must not be deployed ahead of the migrations. The previous client keeps
+working after them. 0016 backfills one receipt per previously confirmed share
+and adds a commit-time check that `settled_minor` matches its receipts; check
+the backfill count on the branch before promoting.
 
 ## Last recorded production evidence — 27 September 2026
 
@@ -134,7 +146,7 @@ treat them as applied production configuration until its release is verified:
    Broad grants would let direct writes bypass ledger invariants. Keep preview
    branches separate from production.
 3. Apply `migrations/0001_commune_core.sql` through
-   `migrations/0014_commune_search.sql` in numeric order to the
+   `migrations/0019_lifecycle_corrections.sql` in numeric order to the
    development branch via an **unpooled** connection. Run `tests/grants.sql`,
    review RLS, and run two-account signed-JWT tests before applying the same
    reviewed migrations to production. After a migration adds or changes a

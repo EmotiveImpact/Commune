@@ -64,7 +64,7 @@ assert.equal(userD.status, 201, JSON.stringify(userD));
 assert.equal((await a("GET", "/auth/me")).user.email, addressA);
 assert.deepEqual(await a("GET", "/reminders/usage"), {
   status: 200, totalUsed: 0, totalLimit: 60, recipientLimit: 8,
-  recipientUsage: {}, nextSlotAt: null,
+  recipientUsage: {}, nextSlotAt: null, recipientLastSent: {},
 });
 assert.equal((await b("GET", "/auth/me")).user.emailVerified, true);
 assert.equal((await a("GET", "/preferences")).emailReminders, true);

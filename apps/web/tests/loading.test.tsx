@@ -96,10 +96,13 @@ describe("commune loading", () => {
   it("shows task saving and confirms completion only after a successful save", async () => {
     let task = { ...hubTask };
     const saved = deferred<void>();
-    const baseApi = vi.mocked(api).getMockImplementation()!;
-    vi.mocked(api).mockImplementation(async (path, options) => {
-      if (path === "/operations/task-1") { await saved.promise; task = { ...task, ...JSON.parse(String(options?.body)) }; return { ok: true }; }
-      return baseApi(path, options);
+    vi.mocked(post).mockImplementation(async (path, body) => {
+      if (path !== "/operations/task-1/occurrences") return { ok: true };
+      // The browser sends a command; the server decides the resulting state.
+      expect(body).toMatchObject({ action: "completed", expectedDate: hubTask.date, today: todayIso() });
+      await saved.promise;
+      task = { ...task, status: "done", undoOccurrenceId: "occurrence-1" };
+      return { id: "occurrence-1", duplicate: false, date: task.date, assignee: task.assignee, status: "done" };
     });
     vi.mocked(loadSnapshot).mockImplementation(async () => ({ ...snapshot, operations: [task] }));
     mount();
@@ -109,15 +112,25 @@ describe("commune loading", () => {
     expect(check.disabled).toBe(true);
     await act(async () => saved.resolve());
     await waitFor(() => expect(screen.queryByRole("checkbox", { name: "Mark Take recycling out done" })).toBeNull());
-    expect(within(screen.getByRole("region", { name: "This week" })).getByText("Nothing planned for this week.")).toBeTruthy();
+    const week = within(screen.getByRole("region", { name: "This week" }));
+    expect(week.getByText("Nothing planned for this week.")).toBeTruthy();
     expect(task.status).toBe("done");
+    // The confirmation is visible and offers the way back.
+    expect(week.getByRole("status").textContent).toContain("Take recycling out marked done.");
+    vi.mocked(post).mockImplementation(async (path) => {
+      expect(path).toBe("/occurrences/occurrence-1/undo");
+      task = { ...hubTask };
+      return { id: "occurrence-1", duplicate: false, date: task.date, assignee: task.assignee, status: "open" };
+    });
+    await act(async () => { fireEvent.click(week.getByRole("button", { name: "Undo" })); });
+    expect(await screen.findByRole("checkbox", { name: "Mark Take recycling out done" })).toBeTruthy();
+    expect(week.getByRole("status").textContent).toBe("Undone. The task is back as it was.");
   });
 
   it("retains an open task and offers an actionable error when completion fails", async () => {
-    const baseApi = vi.mocked(api).getMockImplementation()!;
-    vi.mocked(api).mockImplementation(async (path, options) => {
-      if (path === "/operations/task-1") throw new Error("Task could not be saved");
-      return baseApi(path, options);
+    vi.mocked(post).mockImplementation(async (path) => {
+      if (path === "/operations/task-1/occurrences") throw new Error("Task could not be saved");
+      return { ok: true };
     });
     vi.mocked(loadSnapshot).mockResolvedValue({ ...snapshot, operations: [hubTask] });
     mount();

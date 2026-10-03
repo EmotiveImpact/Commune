@@ -2,6 +2,14 @@
 
 Review date: 2 October 2026.
 
+> **Status update, later on 2 October 2026.** The first pack below (B1 one
+> reminder interaction, B2 partial receipts with history, B3 safe expense
+> correction and void) and task occurrence history with undo are now
+> implemented and verified **locally**. See
+> [money lifecycle](MONEY-LIFECYCLE-2026-10-02.md). Nothing is hosted. The
+> statements and source-backed gaps 1 to 3 in this document describe the app
+> before that work and are kept as the original review.
+
 ## Recommendation and scope
 
 Keep the current design. Make Commune the trusted operating system for a shared

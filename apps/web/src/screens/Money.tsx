@@ -2,10 +2,12 @@ import { useState } from "react";
 import { useApp } from "../state";
 import { Avatar, Pill } from "../ui/widgets";
 import { cx } from "../ui/cx";
-import { RecipientReminderCount, reminderLimitReached } from "../ui/ReminderUsage";
+import { RecipientReminderCount } from "../ui/ReminderUsage";
 import { Plus, ReceiptText, ChevronRight, Search } from "lucide-react";
 import { LIMITS } from "../data/limits";
-import { ReminderConfirm } from "../ui/ReminderConfirm";
+import { ReminderFlowDialog, useReminderFlow } from "../ui/ReminderConfirm";
+import { formatReminderDay, reminderEligibility } from "../data/reminders";
+import { useReceiptActions } from "../ui/Receipts";
 import { CalendarDate } from "../ui/CalendarDate";
 import "./Money.css";
 
@@ -17,11 +19,13 @@ function formatMoney(minor: number, currency: string): string {
 }
 
 export function ExpensesScreen() {
-  const { go, expenses, session, hub } = useApp();
+  const { go, expenses, voidedExpenses, session, hub } = useApp();
   const [searchQuery, setSearchQuery] = useState("");
-  const [filter, setFilter] = useState<"All" | "Open" | "Settled">("All");
+  const [filter, setFilter] = useState<"All" | "Open" | "Settled" | "Voided">("All");
   const needle = searchQuery.trim().toLocaleLowerCase();
-  const rows = expenses
+  // Voided expenses are history only: never in All, Open, Settled or a total.
+  const showVoided = filter === "Voided" && voidedExpenses.length > 0;
+  const rows = (showVoided ? voidedExpenses : expenses)
     .filter((row) => {
       if (filter === "All") return true;
       if (filter === "Open") return row.open === true;
@@ -40,7 +44,7 @@ export function ExpensesScreen() {
     <>
       <div className="a-toolbar">
         <div className="a-filters">
-          {(["All", "Open", "Settled"] as const).map((chip) => (
+          {(voidedExpenses.length ? ["All", "Open", "Settled", "Voided"] as const : ["All", "Open", "Settled"] as const).map((chip) => (
             <button
               key={chip}
               className={cx("a-chip", filter === chip && "is-on")}
@@ -59,10 +63,12 @@ export function ExpensesScreen() {
           <Plus size={16} aria-hidden="true" /> Add expense
         </button>
       </div>
-      <p className="c-scope-label">{rows.length} {rows.length === 1 ? "expense" : "expenses"} · {formatMoney(rows.reduce((sum, row) => sum + row.amountMinor, 0), hub.currency)} total recorded in this view</p>
+      <p className="c-scope-label">{showVoided
+        ? `${rows.length} voided ${rows.length === 1 ? "expense" : "expenses"} · kept for history, not counted in any balance`
+        : `${rows.length} ${rows.length === 1 ? "expense" : "expenses"} · ${formatMoney(rows.reduce((sum, row) => sum + row.amountMinor, 0), hub.currency)} total recorded in this view`}</p>
       <section className="c-expense-list" aria-label="Shared expenses">
         {rows.map(row => <button className="c-expense-entry" type="button" key={row.id} onClick={() => go("expense", { expense: row.id })}>
-          <span className="c-expense-card-head"><span className="c-money-icon"><ReceiptText size={19} strokeWidth={1.5} aria-hidden="true" /></span><span className="c-expense-copy"><strong>{row.name}</strong></span><Pill tone={row.status}>{row.statusLabel}</Pill></span>
+          <span className="c-expense-card-head"><span className="c-money-icon"><ReceiptText size={19} strokeWidth={1.5} aria-hidden="true" /></span><span className="c-expense-copy"><strong>{row.name}</strong></span><Pill tone={row.voidedAt ? undefined : row.status}>{row.statusLabel}</Pill></span>
           <span className="c-expense-amount"><span><small>Total paid</small><strong>{row.amount}</strong></span><span className="c-expense-personal"><small>Your share</small><span>{row.shares.some(share => share.userId === session?.userId) ? formatMoney(row.shares.find(share => share.userId === session?.userId)!.amountMinor, hub.currency) : "Not included"}</span></span></span>
           <span className="c-expense-card-foot">{row.dueOn && <CalendarDate date={row.dueOn} label="Due" />}<span className="c-expense-footer-copy"><span>Paid by {row.paidBy}</span><small>{row.category}{row.dueOn ? ` · due ${row.due}` : ""}</small></span><ChevronRight size={16} aria-hidden="true" /></span>
         </button>)}
@@ -99,11 +105,10 @@ export function ExpensesEmptyScreen() {
 }
 
 export function SettleScreen() {
-  const { go, hub, expenses, session, reminderTargets, reminderUsage, sendReminder, confirmExpenseShare } = useApp();
-  const [pendingId, setPendingId] = useState<string | null>(null);
-  const [error, setError] = useState("");
+  const { go, hub, expenses, session, reminderTargets, reminderUsage, sentReminders, sendReminder } = useApp();
+  const reminder = useReminderFlow(sendReminder);
   const [message, setMessage] = useState("");
-  const [reminderFor, setReminderFor] = useState<{ id: string; name: string; subject: string; amount: string } | null>(null);
+  const receipts = useReceiptActions(setMessage);
   const me = session?.userId;
   const moves = expenses.flatMap((expense) =>
     expense.shares
@@ -117,44 +122,21 @@ export function SettleScreen() {
   const youAreOwed = moves
     .filter(({ expense }) => expense.paidByUserId === me)
     .reduce((total, { outstanding }) => total + outstanding, 0);
-
-  async function confirm(shareId: string) {
-    setError("");
-    setMessage("");
-    setPendingId(shareId);
-    try {
-      await confirmExpenseShare(shareId);
-      setMessage("Share confirmed as received. No payment was taken by Commune.");
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not confirm the share.");
-    } finally {
-      setPendingId(null);
-    }
-  }
-
-  async function nudge(sourceId: string) {
-    setError("");
-    setMessage("");
-    setPendingId(sourceId);
-    try {
-      await sendReminder("nudge", sourceId);
-      setReminderFor(null);
-      setMessage("Nudge sent in Commune.");
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not send the nudge.");
-    } finally {
-      setPendingId(null);
-    }
-  }
+  // The receipt ledger is the confirmation history: every entry the viewer
+  // recorded or had recorded against their own share, newest first.
+  const recent = expenses.flatMap((expense) => expense.shares
+    .filter((share) => share.userId !== expense.paidByUserId && (share.userId === me || expense.paidByUserId === me))
+    .flatMap((share) => (share.receipts ?? []).map((receipt) => ({ expense, share, receipt }))))
+    .sort((a, b) => Date.parse(b.receipt.reversedAt ?? b.receipt.recordedAt) - Date.parse(a.receipt.reversedAt ?? a.receipt.recordedAt))
+    .slice(0, 8);
 
   return (
     <>
-        {error ? <p className="a-form-error" role="alert">{error}</p> : null}
         {message ? <p className="a-window-note" role="status">{message}</p> : null}
       <div className="c-settle-columns">{[false, true].map(receivingGroup => <section className="a-panel c-settle-column" aria-label={receivingGroup ? "You’re owed" : "You owe"} key={String(receivingGroup)}>
         <h2>{receivingGroup ? "You’re owed" : "You owe"}</h2>
         <strong className="c-settle-total">{formatMoney(receivingGroup ? youAreOwed : youOwe, hub.currency)}</strong>
-        <p className="c-settle-explainer">{receivingGroup ? "Confirm each share after you receive payment." : "Pay outside Commune; the bill payer confirms receipt."}</p>
+        <p className="c-settle-explainer">{receivingGroup ? "Record each repayment after you receive it, in full or in part." : "Pay outside Commune; the bill payer confirms receipt."}</p>
         {moves.filter(({ expense }) => (expense.paidByUserId === me) === receivingGroup).map(({ expense, share, outstanding }) => {
           const payer = hub.members.find((member) => member.userId === expense.paidByUserId);
           const debtor = hub.members.find((member) => member.userId === share.userId);
@@ -162,9 +144,8 @@ export function SettleScreen() {
           const target = receiving
             ? reminderTargets.find((item) => item.kind === "nudge" && item.sourceId === share.id)
             : undefined;
-          const cooldown = target?.lastSentAt && Date.now() - Date.parse(target.lastSentAt) < 72 * 60 * 60 * 1000;
-          const quotaReached = reminderLimitReached(reminderUsage, share.userId);
-          const reminderReason = quotaReached ? "Reminder allowance reached." : cooldown ? `Next nudge ${new Date(Date.parse(target!.lastSentAt!) + 72 * 60 * 60 * 1000).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}.` : !target ? (expense.dueOn ? `Nudge available from ${expense.due}.` : "Add a due date to enable reminders.") : "";
+          const eligibility = reminderEligibility({ kind: "nudge", recipientId: share.userId, target, usage: reminderUsage, sent: sentReminders, dueOn: expense.dueOn });
+          const reminderReason = eligibility.reason;
           return (
             <div
               className="a-move"
@@ -174,6 +155,7 @@ export function SettleScreen() {
               <div>
                 <div className="names">{receiving ? `${debtor?.name ?? "Member"} owes you` : `You owe ${payer?.name ?? "the bill payer"}`}</div>
                 <div className="why">{expense.name}{expense.dueOn ? ` · due ${expense.dueOn}` : ""}</div>
+                {share.settledMinor > 0 ? <div className="why">{formatMoney(share.settledMinor, hub.currency)} of {formatMoney(share.amountMinor, hub.currency)} received</div> : null}
                 {receiving && (target || (reminderUsage?.recipientUsage[share.userId] ?? 0) > 0) ? (
                   <RecipientReminderCount usage={reminderUsage} recipientId={share.userId} />
                 ) : null}
@@ -181,10 +163,10 @@ export function SettleScreen() {
               <div className="amt">{formatMoney(outstanding, hub.currency)}</div>
               {receiving ? (
                 <div className="a-row-actions">
-                    <button className="a-btn nudge" type="button" disabled={pendingId !== null || !!reminderReason} title={reminderReason || undefined} onClick={() => { setError(""); setReminderFor({ id: share.id, name: debtor?.name ?? "your housemate", subject: expense.name, amount: formatMoney(outstanding, hub.currency) }); }}>
+                    <button className="a-btn nudge" type="button" disabled={!eligibility.canSend} title={reminderReason || undefined} onClick={() => { setMessage(""); reminder.open({ kind: "nudge", sourceId: share.id, recipientId: share.userId, name: debtor?.name ?? "your housemate", subject: expense.name, amount: formatMoney(outstanding, hub.currency), dueOn: expense.dueOn }); }}>
                       Nudge
                     </button>
-                  <button className="a-btn ghost" type="button" disabled={pendingId !== null} onClick={() => void confirm(share.id)}>
+                  <button className="a-btn ghost" type="button" onClick={() => { setMessage(""); receipts.record({ shareId: share.id, debtorName: debtor?.name ?? "this member", expenseName: expense.name, shareMinor: share.amountMinor, outstandingMinor: outstanding, currency: hub.currency }); }}>
                     Confirm received
                   </button>
                   {reminderReason && <p className="c-action-hint">{reminderReason}</p>}
@@ -197,8 +179,25 @@ export function SettleScreen() {
         })}
         {!(receivingGroup ? youAreOwed : youOwe) && <p className="c-money-empty">{receivingGroup ? "Nothing waiting to collect." : "Nothing to pay."}</p>}
       </section>)}</div>
+      {recent.length > 0 && <section className="a-panel c-settle-recent" aria-label="Recent repayments">
+        <h2>Recent repayments</h2>
+        {recent.map(({ expense, share, receipt }) => {
+          const debtor = hub.members.find((member) => member.userId === share.userId);
+          const payer = hub.members.find((member) => member.userId === expense.paidByUserId);
+          const mine = share.userId === me;
+          return <button className="c-settle-receipt" type="button" key={receipt.id} onClick={() => go("expense", { expense: expense.id })}>
+            <Avatar tone={mine ? payer?.cls ?? "house" : debtor?.cls ?? "house"} initials={mine ? payer?.ini ?? "?" : debtor?.ini ?? "?"} />
+            <span className="grow"><strong>{mine ? `You to ${payer?.name ?? "the bill payer"}` : `${debtor?.name ?? "A former member"} to you`}</strong>
+              <small>{expense.name} · received {formatReminderDay(receipt.receivedOn)}{receipt.reference ? ` · ${receipt.reference}` : ""}{receipt.reversedAt ? ` · reversed: ${receipt.reversalReason}` : ""}</small></span>
+            <span className="amt">{formatMoney(receipt.amountMinor, hub.currency)}</span>
+            <Pill tone={receipt.reversedAt ? "open" : "settled"}>{receipt.reversedAt ? "Reversed" : "Recorded as received"}</Pill>
+          </button>;
+        })}
+        <p className="c-settle-explainer">A receipt record in Commune, not bank verification. Open an expense to see its full history.</p>
+      </section>}
       <div className="c-settle-footer"><p>Each share is tracked separately. Commune does not move money.</p><button className="a-btn ghost" type="button" onClick={() => go("breakdown")}>View breakdown</button></div>
-      {reminderFor && <ReminderConfirm {...reminderFor} remaining={reminderUsage ? Math.max(0, reminderUsage.totalLimit - reminderUsage.totalUsed) : null} pending={pendingId !== null} error={error} onClose={() => setReminderFor(null)} onSend={() => void nudge(reminderFor.id)} />}
+      <ReminderFlowDialog flow={reminder} usage={reminderUsage} />
+      {receipts.dialogs}
     </>
   );
 }

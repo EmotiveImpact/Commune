@@ -23,7 +23,11 @@ browser code sends same-origin `/api` requests. Non-2xx errors are
 | PATCH | `/api/communes/:id` | `{name,kind,currency,address?,destination?,stayName?,stayAddress?}` admin; currency locks once money exists | `{ok:true}` |
 | GET | `/api/communes/:id/snapshot` | membership checked; outsiders get 404 | `{commune,members,expenses,funds,notes,operations,notifications,reminderTargets,recurringBills,splitTemplates,activityEvents}` |
 | POST | `/api/communes/:id/expenses` | `{title,amountMinor,paidByUserId?,category?,shares:[{userId,amountMinor}],dueOn?}`; recording for another payer requires admin | `{id}` |
-| POST | `/api/shares/:id/confirm` | `{}` | `{ok:true}` |
+| POST | `/api/shares/:id/confirm` | `{}` payer only; records one receipt for everything outstanding | `{ok:true}` |
+| POST | `/api/shares/:id/receipts` | `{amountMinor,receivedOn,reference?,requestId}` payer only; amount up to the outstanding share; a repeated `requestId` returns the same entry | `{id,duplicate,settledMinor,outstandingMinor}` (201, or 200 for a repeat) |
+| POST | `/api/receipts/:id/reverse` | `{reason}` payer only; keeps the original entry; refused for a former member's share | `{id,duplicate,settledMinor,outstandingMinor}` |
+| PUT | `/api/expenses/:id` | `{expectedVersion,title,amountMinor,category,dueOn?,paidByUserId,shares:[{userId,amountMinor}],reason,requestId}` payer or admin; only an admin changes the payer; money fields are locked while repayments exist | `{version,duplicate}`; a stale `expectedVersion` is 409 |
+| POST | `/api/expenses/:id/void` | `{expectedVersion,reason,requestId}` payer or admin; refused while repayments exist; nothing is deleted | `{version,duplicate}` |
 | POST | `/api/communes/:id/funds` | `{name,targetMinor?}` | `{id}` |
 | PATCH | `/api/funds/:id` | `{name,targetMinor?}` admin | `{ok:true}` |
 | POST | `/api/funds/:id/archive` | `{archived:boolean}` admin; outstanding pledges block archive | `{ok:true}` |
@@ -35,7 +39,7 @@ browser code sends same-origin `/api` requests. Non-2xx errors are
 | POST | `/api/recurring/:id/record` | `{expectedDueOn}` payer/admin; advances the due period once | `{id}` of the created expense |
 | POST | `/api/communes/:id/templates` | `{id?,name,method,participants:[{userId,value}],archived?}`; methods Equal/Exact/Percentage/Shares | `{id}` |
 | POST | `/api/communes/:id/members/:userId` | `{action:"admin"\|"member"\|"remove"\|"leave"}`; admin changes roles/removes, member can leave | `{ok:true}` |
-| POST | `/api/reminders` | `{kind:"nudge"\|"chase",sourceId}` | `{id,delivery:"in-app",email:"not-configured"}` |
+| POST | `/api/reminders` | `{kind:"nudge"\|"chase",sourceId,requestId?}`; a repeated `requestId` returns the reminder it already created | `{id,duplicate,delivery:"in-app",emailStatus:"none",email:"not-configured"}` (201, or 200 for a repeat) |
 | POST | `/api/notifications/:id/read` | `{}` | `{ok:true}` |
 | GET | `/api/communes/:id/invites` | admin | `{invites:[...]}` |
 | POST | `/api/communes/:id/invites` | `{email,role}` admin | `{token,url}` to copy; no email sent |
@@ -45,11 +49,18 @@ browser code sends same-origin `/api` requests. Non-2xx errors are
 | GET/PUT | `/api/preferences` | PUT `{emailReminders:boolean}` | `{emailReminders}` |
 | POST/PUT/DELETE | `/api/communes/:id/notes`, `/api/notes/:id` | full NoteCard on POST/PUT | `{id}` or `{ok:true}` |
 | POST/PUT/DELETE | `/api/communes/:id/operations`, `/api/operations/:id` | full OperationItem sans id on POST/PUT | `{id}` or `{ok:true}` |
+| POST | `/api/operations/:id/occurrences` | `{action:"completed"\|"skipped"\|"reopened",expectedDate,today,requestId}`; the database advances the date and rotation; a stale `expectedDate` is 409 | `{id,duplicate,date,assignee,status}` |
+| POST | `/api/occurrences/:id/undo` | `{}` latest action only, and only while the task is unchanged since | `{id,duplicate,date,assignee,status}` |
 
 Amounts are integer minor units (pence/cents). Due dates are ISO calendar
 dates. `snapshot.members` has `{userId,name,email,role,active,leftAt}`; former
-members retain their historical identity but no longer have access. Expense shares have
-`{id,userId,amountMinor,settledMinor,settledAt}`; funds contain commitments
+members retain their historical identity but no longer have access. Expenses
+carry `version`, `voidedAt/voidedBy/voidReason` and their last 20 `revisions`
+(`{version,action,actorId,reason,before,after,createdAt}`). Expense shares have
+`{id,userId,amountMinor,settledMinor,settledAt,receipts}`; `settledMinor` is
+the sum of receipts that have not been reversed. Operations carry `history`
+(recent occurrences) and `undoOccurrenceId`. `sentReminders` lists the
+signed-in sender's own recent reminders with their email state. Funds contain commitments
 with `contributedMinor`, cancellation and contribution-correction history.
 Notifications and reminder targets include the IDs
 needed to confirm and send a reminder.
@@ -70,7 +81,15 @@ location editing; the workflow test also covers lifecycle/permission rules:
 API_BASE=http://127.0.0.1:3005 pnpm --filter @commune/local-api test:smoke
 API_BASE=http://127.0.0.1:3005 node apps/local-api/tests/workflows.mjs
 API_BASE=http://127.0.0.1:3006 node apps/local-api/tests/search.mjs
+API_BASE=http://127.0.0.1:3006 node apps/local-api/tests/money-lifecycle.mjs
+API_BASE=http://127.0.0.1:3006 node apps/local-api/tests/operations-history.mjs
 ```
+
+`money-lifecycle.mjs` needs migrations 0015 to 0017 and covers reminder
+commands, partial receipts and reversals, expense correction/void and
+former-member protection, including retries and parallel requests.
+`operations-history.mjs` needs 0018 and covers completion, skip, reopen, undo,
+rotation and concurrent completion. Both refuse port 3002.
 
 Search integration requires migration 0014. It covers all eight result types,
 active membership, selected/all-commune scopes, removed-member denial, literal
@@ -82,6 +101,12 @@ The local auth adapter treats signup email as verified solely to test invites
 without an email provider. Do not expose this API publicly or deploy it as
 production auth. Password reset, outbound email, payment transfer, and file
 storage are separate release work.
+
+`lifecycle-fixture.mjs` builds a synthetic household for browser checks of the
+money lifecycle and task history on an isolated API only:
+`SEED_LIFECYCLE_FIXTURE=yes API_BASE=http://127.0.0.1:3005 node apps/local-api/tests/lifecycle-fixture.mjs`.
+It refuses port 3002. Point the single UI at that API with
+`COMMUNE_API_PORT=3005` (see `apps/web/vite.config.ts`).
 
 `browser-fixture.mjs` is an explicit opt-in UI fixture builder:
 `SEED_LOCAL_BROWSER_FIXTURE=yes node apps/local-api/tests/browser-fixture.mjs`.

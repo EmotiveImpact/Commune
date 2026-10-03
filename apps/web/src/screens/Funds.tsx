@@ -15,11 +15,9 @@ import {
   SectionHeading,
 } from "../ui/components";
 import { Pill } from "../ui/widgets";
-import { ReminderConfirm } from "../ui/ReminderConfirm";
-import {
-  RecipientReminderCount,
-  reminderLimitReached,
-} from "../ui/ReminderUsage";
+import { ReminderFlowDialog, useReminderFlow } from "../ui/ReminderConfirm";
+import { RecipientReminderCount } from "../ui/ReminderUsage";
+import { reminderEligibility } from "../data/reminders";
 
 type Mode =
   | { kind: "create" }
@@ -35,6 +33,7 @@ export function FundsScreen() {
     funds,
     reminderTargets,
     reminderUsage,
+    sentReminders,
     createFund,
     updateFund,
     archiveFund,
@@ -54,12 +53,7 @@ export function FundsScreen() {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
-  const [chase, setChase] = useState<{
-    id: string;
-    name: string;
-    subject: string;
-    amount: string;
-  } | null>(null);
+  const chase = useReminderFlow(sendReminder);
   const isAdmin = hub.role === "admin";
   const searchRecord = useSearchRecord("fund", funds.filter(item => !item.archivedAt).map(item => item.id),
     id => { setShowArchived(false); setMode({ kind: "view", fundId: id }); });
@@ -122,7 +116,6 @@ export function FundsScreen() {
     try {
       await action();
       setMode(null);
-      setChase(null);
       setMessage(success);
     } catch (cause) {
       setError(
@@ -196,10 +189,14 @@ export function FundsScreen() {
     const target = reminderTargets.find(
       (item) => item.kind === "chase" && item.sourceId === pledge.id,
     );
-    const cooldown =
-      !!target?.lastSentAt &&
-      Date.now() - Date.parse(target.lastSentAt) < 72 * 60 * 60 * 1000;
-    const quota = reminderLimitReached(reminderUsage, pledge.userId);
+    const eligibility = reminderEligibility({
+      kind: "chase",
+      recipientId: pledge.userId,
+      target,
+      usage: reminderUsage,
+      sent: sentReminders,
+      dueOn: pledge.dueOn,
+    });
     return (
       <div className="c-pledge-row" key={pledge.id}>
         <div className="c-pledge-head">
@@ -245,18 +242,23 @@ export function FundsScreen() {
             {isAdmin && target && !isMine && (
               <Button
                 variant="secondary"
-                disabled={pending || cooldown || quota}
+                disabled={pending || !eligibility.canSend}
+                title={eligibility.reason || undefined}
                 onClick={() => {
                   setError("");
-                  setChase({
-                    id: pledge.id,
+                  setMessage("");
+                  chase.open({
+                    kind: "chase",
+                    sourceId: pledge.id,
+                    recipientId: pledge.userId,
                     name: member?.name ?? "Member",
                     subject: fund!.name,
                     amount: money(remaining, hub.currency),
+                    dueOn: pledge.dueOn,
                   });
                 }}
               >
-                Chase{cooldown ? " · cooldown" : ""}
+                Chase{eligibility.state === "cooldown" ? " · cooldown" : ""}
               </Button>
             )}
             {(isMine || isAdmin) && (
@@ -296,6 +298,9 @@ export function FundsScreen() {
             usage={reminderUsage}
             recipientId={pledge.userId}
           />
+        )}
+        {isAdmin && target && !isMine && eligibility.reason && (
+          <p className="c-action-hint">{eligibility.reason}</p>
         )}
         {(pledge.contributions ?? []).length > 0 && (
           <details className="c-contribution-history">
@@ -373,7 +378,7 @@ export function FundsScreen() {
           </Button>
         )}
       </div>
-      <Feedback error={!mode && !chase ? error || searchRecord.error : ""} message={message} />
+      <Feedback error={!mode && !chase.request ? error || searchRecord.error : ""} message={message} />
       {!visible.length && (
         <EmptyState
           title={
@@ -708,25 +713,7 @@ export function FundsScreen() {
           )}
         </Dialog>
       )}
-      {chase && (
-        <ReminderConfirm
-          {...chase}
-          remaining={
-            reminderUsage
-              ? Math.max(0, reminderUsage.totalLimit - reminderUsage.totalUsed)
-              : null
-          }
-          pending={pending}
-          error={error}
-          onClose={() => setChase(null)}
-          onSend={() =>
-            void run(
-              () => sendReminder("chase", chase.id),
-              "Chase sent in Commune.",
-            )
-          }
-        />
-      )}
+      <ReminderFlowDialog flow={chase} usage={reminderUsage} />
     </>
   );
 }

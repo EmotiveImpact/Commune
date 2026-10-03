@@ -81,6 +81,32 @@ body,
   color: var(--ink);
 }
 
+/* Selected states. The light theme marks a choice with a navy face on a pale
+   track; on the dark canvas that navy matched the track and the choice was
+   invisible. Invert it (cream face, navy text) and keep the chip's own tone. */
+.a-body.is-dark :is(.ops-cuts button.is-on, .c-split-methods button[aria-pressed=true]) {
+  background: var(--ink);
+  color: #1a1e2b;
+}
+.a-body.is-dark .a-chip.is-on {
+  background: var(--sage-soft);
+  color: var(--sage-strong);
+  border-color: transparent;
+}
+/* The sticky action row of a window kept its cream face in dark mode. */
+.a-body.is-dark .a-window .a-field-row {
+  background: #242b39;
+  border-top-color: var(--border);
+}
+
+/* The bell and other icon actions are white in the light theme. In dark mode
+   their light icon on that white face was invisible; use the input surface. */
+.a-body.is-dark .a-icon-btn:not(.a-you-btn) {
+  background: #1d2330;
+  color: var(--ink);
+  border-color: var(--border-strong);
+}
+
 /* Keep the production Operations switcher and Add item action on one row. */
 .ops-prod-head {
   flex-wrap: nowrap;
@@ -149,3 +175,99 @@ body,
   .a-body:not(.is-native) .a-search { display: flex; order: 3; flex: 1 0 100%; width: 100%; max-width: none; margin-top: 8px; background: var(--white); color: var(--ink-soft); }
 }
 @media (max-width: 560px) { .a-home-places { grid-template-columns: 1fr; } }
+
+/* Operations was drawn for the light theme only: cream cards with ink text,
+   so in dark mode the titles turned light-on-cream and disappeared. Give its
+   surfaces the dark card face and keep the approved geometry unchanged. */
+.a-body.is-dark :is(.ops-card, .ops-late, .ops-yours) {
+  background: #242b39;
+  border-color: var(--border);
+}
+.a-body.is-dark :is(.ops-note, .ops-board-head small, .ops-cuts button:not(.is-on)) {
+  color: var(--ink-soft);
+}
+.a-body.is-dark :is(.ops-board-head, .ops-week-day + .ops-week-day) {
+  border-color: var(--border);
+}
+.a-body.is-dark .ops-rotation em {
+  background: #1d2330;
+  border-color: var(--border-strong);
+  color: var(--ink);
+}
+.a-body.is-dark .ops-rotation em.is-on {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: #1a1e2b;
+}
+.a-body.is-dark .ops-rotation i {
+  background: var(--border-strong);
+}
+.a-body.is-dark .ops-week-row:hover {
+  background: rgba(217, 235, 229, 0.07);
+}
+.a-body.is-dark .ops-kicker.is-late {
+  color: #f2b9a2;
+}
+.a-body.is-dark .ops-kicker.is-sage {
+  color: #9fd3b8;
+}
+.a-body.is-dark :is(.ops-person, .ops-month-shell, .ops-tile, .ops-month-selected-list button) {
+  background: #242b39;
+  border-color: var(--border);
+}
+.a-body.is-dark .ops-month-selected {
+  background: #202633;
+  border-top-color: var(--border);
+}
+.a-body.is-dark .ops-month-toolbar {
+  border-bottom-color: var(--border);
+}
+.a-body.is-dark .ops-tile.is-out {
+  background: transparent;
+  color: rgba(245, 241, 234, 0.32);
+}
+.a-body.is-dark .ops-tile.is-on {
+  background: #23352f;
+}
+.a-body.is-dark :is(.ops-person-task:hover, .ops-month-selected-list button:hover) {
+  background: rgba(217, 235, 229, 0.07);
+}
+.a-body.is-dark .ops-person-task {
+  border-top-color: var(--border);
+}
+.a-body.is-dark :is(.ops-person h3 small, .ops-person-task small, .ops-month-dows span, .ops-month-selected p, .ops-month-selected-list span) {
+  color: var(--ink-soft);
+}
+.a-body.is-dark .ops-person-task.is-late strong {
+  color: #f2b9a2;
+}
+.a-body.is-dark .ops-month-toolbar button {
+  background: #1d2330;
+  border-color: var(--border-strong);
+  color: var(--ink);
+}
+.a-body.is-dark .hub-feed-go {
+  color: #9fd3b8;
+}
+
+/* A pill with no tone (for example Voided) used a white face with soft ink,
+   which in dark mode was the same colour as its text. */
+.a-body.is-dark .pill:not(.sage, .open, .settled, .warn, .navy) {
+  background: rgba(245, 241, 234, 0.08);
+  color: var(--ink-soft);
+  border-color: var(--border-strong);
+}
+/* Form segmented controls (Task/Event, All day/Set time) and required marks. */
+.a-body.is-dark .a-seg {
+  background: #1d2330;
+  border-color: var(--border-strong);
+}
+.a-body.is-dark .a-seg button:not(.is-on) {
+  color: var(--ink-soft);
+}
+.a-body.is-dark .a-field label .need {
+  color: #9fd3b8;
+}
+.a-body.is-dark .a-reminder-usage-track {
+  background: rgba(245, 241, 234, 0.14);
+}

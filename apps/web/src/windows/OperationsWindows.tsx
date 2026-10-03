@@ -6,6 +6,7 @@ import {
   nextOccurrence,
   todayIso,
   type NewOperation,
+  type OperationOccurrence,
   type OperationCategory,
   type OperationItem,
   type OperationKind,
@@ -33,12 +34,21 @@ export function OperationView() {
     selectedOperation: item,
     toggleOperation,
     skipOperation,
+    undoOperation,
     removeOperation,
     go,
     closeWindow,
+    hub,
+    mutationPending,
   } = useApp();
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
+  const run = (action: () => Promise<unknown>, success: string) => {
+    setError(""); setMessage("");
+    void action().then(() => setMessage(success))
+      .catch((failure) => setError(failure instanceof Error ? failure.message : "Could not update item"));
+  };
   if (!item) {
     return (
       <section className="a-window">
@@ -69,7 +79,7 @@ export function OperationView() {
     : "";
   const nextDate =
     item.repeat !== "none"
-      ? nextOccurrence(item.date, item.repeat, todayIso())
+      ? nextOccurrence(item.date, item.repeat, todayIso(), item.anchorDay)
       : "";
 
   return (
@@ -140,6 +150,15 @@ export function OperationView() {
           ))}
         </div>
       ) : null}
+      {error ? <p className="a-form-error" role="alert">{error}</p> : null}
+      {message ? <p className="a-window-note" role="status">{message}</p> : null}
+      <OccurrenceHistory
+        history={item.history ?? []}
+        undoId={item.undoOccurrenceId ?? null}
+        nameOf={(userId) => hub.members.find((member) => member.userId === userId)?.name ?? "A former member"}
+        disabled={mutationPending}
+        onUndo={(occurrenceId) => run(() => undoOperation(occurrenceId), "Undone. The task is back as it was.")}
+      />
       {confirmDelete ? (
         <div className="operation-delete">
           <p>Remove this from the calendar? It won’t come back.</p>
@@ -167,8 +186,8 @@ export function OperationView() {
             <button
               className="a-btn"
               type="button"
-              onClick={() => void toggleOperation(item.id).catch((failure) =>
-                setError(failure instanceof Error ? failure.message : "Could not update item"))}
+              disabled={mutationPending}
+              onClick={() => run(() => toggleOperation(item.id), item.status === "done" ? "Reopened." : "Marked done. You can undo this in History.")}
             >
               {item.status === "done"
                 ? "Mark open"
@@ -181,8 +200,8 @@ export function OperationView() {
             <button
               className="a-btn ghost"
               type="button"
-              onClick={() => void skipOperation(item.id).catch((failure) =>
-                setError(failure instanceof Error ? failure.message : "Could not update item"))}
+              disabled={mutationPending}
+              onClick={() => run(() => skipOperation(item.id), "Moved on a week. You can undo this in History.")}
             >
               Skip a week
             </button>
@@ -203,8 +222,38 @@ export function OperationView() {
           </button>
         </div>
       )}
-      {error ? <p className="a-form-error" role="alert">{error}</p> : null}
     </section>
+  );
+}
+
+const occurrenceDay = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short" });
+const OCCURRENCE_VERB: Record<OperationOccurrence["action"], string> = { completed: "Completed", skipped: "Skipped", reopened: "Reopened" };
+
+/** What happened to each occurrence, newest first. Only the latest can be undone. */
+function OccurrenceHistory({ history, undoId, nameOf, disabled, onUndo }: {
+  history: OperationOccurrence[]; undoId: string | null; nameOf: (userId: string) => string;
+  disabled: boolean; onUndo: (occurrenceId: string) => void;
+}) {
+  if (!history.length) return null;
+  return (
+    <details className="c-contribution-history operation-history" open={Boolean(undoId)}>
+      <summary>History · {history.length} {history.length === 1 ? "entry" : "entries"}</summary>
+      {history.map((entry) => (
+        <div key={entry.id} className={entry.undoneAt ? "is-undone" : undefined}>
+          <span>
+            <strong>{OCCURRENCE_VERB[entry.action]}</strong> by {nameOf(entry.actorId)} on {occurrenceDay.format(dateFromIso(entry.actedOn))}
+            {entry.action !== "reopened" ? ` · was due ${occurrenceDay.format(dateFromIso(entry.dueOn))}${entry.assignee ? ` with ${firstNameOf(entry.assignee)}` : ""}` : ""}
+            {entry.action === "completed" && entry.nextDate !== entry.dueOn
+              ? ` · next ${occurrenceDay.format(dateFromIso(entry.nextDate))}${entry.nextAssignee ? ` with ${firstNameOf(entry.nextAssignee)}` : ""}` : ""}
+            {entry.action === "skipped" ? ` · moved to ${occurrenceDay.format(dateFromIso(entry.nextDate))}` : ""}
+            {entry.undoneAt ? <em> · Undone by {nameOf(entry.undoneBy ?? "")}</em> : null}
+          </span>
+          {entry.id === undoId ? (
+            <button className="a-btn ghost" type="button" disabled={disabled} onClick={() => onUndo(entry.id)}>Undo</button>
+          ) : null}
+        </div>
+      ))}
+    </details>
   );
 }
 

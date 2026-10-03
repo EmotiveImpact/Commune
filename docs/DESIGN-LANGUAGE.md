@@ -145,10 +145,15 @@ The States tab includes:
 - A screen coverage checklist and explicit responsive, keyboard, focus,
   permission and uncertain-write rules.
 
-The contextual Nudge panel and recent-confirmations view are **not implemented
-app UI** yet. Current Settle uses `ReminderConfirm`; the current share snapshot
-does not include a reliable timestamped receipt-history source. Implement that
-source before presenting a chronological confirmation record. Preview email
+Status after the money-lifecycle pass (local only): every Nudge and Chase entry
+point (Expense, Settle, Funds) now uses the one `ReminderConfirm` dialog with
+the same preview, allowance, cooldown explanation and reported result. The
+receipt ledger is the timestamped confirmation source, and Settle shows it as
+**Recent repayments**. The contextual Nudge **side panel** and the illustrative
+email preview in States remain design targets and are not app UI. The HTML
+reference still says the recent-confirmations view is not implemented; that
+sentence is now out of date and was left unchanged pending a decision on the
+reference. Preview email
 copy is not a promise of the sender's exact template or successful delivery.
 Cooldown and quota checks disable sending; they are not decorative messages
 beside an enabled button. Server authority remains essential.
@@ -169,3 +174,43 @@ explicit overdue/paused labels in row copy rather than recolouring the calendar
 into a second status system. Keep existing task/open/complete and record
 navigation interactions intact. The calendar alone retains Operations' approved
 number weight; this does not authorize another global font-weight pass.
+
+## Money lifecycle and task history (2 October, later pass)
+
+Implemented locally with the existing primitives (`Dialog`, `Field`, `Button`,
+`Feedback`, `Pill`, the `c-contribution-history` disclosure). No new visual
+language, no change to the Hub, Home, sidebar, expense boxes or Operations
+geometry. Details and evidence: [money lifecycle](MONEY-LIFECYCLE-2026-10-02.md).
+
+- **One reminder interaction.** Preview (who, what for, amount, due date,
+  count to this person, allowance left), explicit Send, then the result the
+  server reported. A disabled Nudge or Chase always shows why: not due, no due
+  date, 72-hour cooldown, reminded in the last day, or allowance reached. Never
+  say an email was sent, queued or delivered: that depends on the recipient's
+  own preference, which the sender must not be able to read.
+- **Confirm received is a repayment form.** The label and position are
+  unchanged. It opens one dialog with the full outstanding amount prefilled;
+  changing the amount records a part payment. Date received and an optional
+  reference (visible to the commune, no account or card numbers). The line
+  under the fields states what remains after the entry.
+- **History uses one disclosure pattern.** Repayments under each share,
+  changes to an expense, and task occurrences all use the contribution-history
+  disclosure: newest first, who and when, the reason in plain words, struck
+  amount or verb for a reversed or undone entry. The original entry is never
+  removed.
+- **Share rows.** Identity, figures and status on the first line; actions and
+  the reminder hint on their own line, right-aligned, as in Settle. Status
+  adds **Part paid** and **Voided**; colour is never the only signal.
+- **Correct and Void** sit with the other quiet actions in the expense window,
+  for the payer or an admin only. Correction is edit, then review: what
+  changes, whose balance changes, a required reason. Money fields show as
+  locked, with the reason, while repayments exist. A competing change appears
+  as a conflict banner that keeps the editor's work.
+- **Voided expenses** leave All, Open and Settled and every total. A Voided
+  filter appears only when one exists.
+- **Tasks.** After Done or Skip, the existing toast carries an Undo for a few
+  seconds; the Hub confirms in a visible line with Undo; the task window lists
+  history with Undo on the latest entry only.
+- **Failure wording.** A server rejection says nothing was saved. An unknown
+  outcome (offline, timeout) says so and that trying again is safe. Money
+  dialogs show errors in the Overdue tone with `role="alert"`.
