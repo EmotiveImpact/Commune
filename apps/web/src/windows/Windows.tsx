@@ -596,12 +596,12 @@ function Profile() {
         <Pill tone="sage">You</Pill>
       </div>
       <p className="a-window-note">
-        Your photo is saved in this browser session. Expense shares and balances are shared through the local database.
+        Your photo is saved in this browser session. Expense shares and balances are shared with your commune.
       </p>
       <div className="a-settle-row">
         <div>
           <strong>Communes</strong>
-          <div className="when">{places.length} {places.length === 1 ? "commune" : "communes"} · billing is not enabled locally</div>
+          <div className="when">{places.length} {places.length === 1 ? "commune" : "communes"} · billing is not enabled</div>
         </div>
       </div>
       <div className="a-settle-row">

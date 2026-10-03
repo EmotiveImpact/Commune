@@ -109,7 +109,7 @@ export function BillingScreen() {
   return (
     <div className="a-empty">
       <h2>Billing is not connected yet.</h2>
-      <p>You can use the local app to test shared expenses. No subscription is active and no payment will be taken.</p>
+      <p>You can track shared expenses here. No subscription is active and Commune will not take a payment.</p>
     </div>
   );
 }

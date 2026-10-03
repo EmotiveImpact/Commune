@@ -4,9 +4,10 @@ import { AuthLayout } from "./AuthLayout";
 import { useApp } from "../state";
 import { LIMITS } from "../data/limits";
 import { keepSearch } from "../nav";
+import { GoogleMark } from "../ui/Icon";
 
 export function SignupPage() {
-  const { signUpWithPassword, verifyEmailCode, signInWithPassword } = useApp();
+  const { signUpWithPassword, verifyEmailCode, signInWithPassword, signInWithGoogle } = useApp();
   const [, setLocation] = useLocation();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -57,6 +58,17 @@ export function SignupPage() {
     }
   }
 
+  async function onGoogleSignIn() {
+    setError("");
+    setBusy(true);
+    try {
+      await signInWithGoogle();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not sign up with Google.");
+      setBusy(false);
+    }
+  }
+
   return (
     <AuthLayout>
       <div className="commune-auth-panel">
@@ -91,6 +103,12 @@ export function SignupPage() {
             {busy ? "Creating account…" : "Create account"}
           </button>
         </form>}
+        {!verificationPending && import.meta.env.VITE_GOOGLE_OAUTH_ENABLED === "true" ? <>
+          <div className="commune-auth-or">or</div>
+          <button className="commune-auth-btn commune-auth-btn-google" type="button" disabled={busy} onClick={() => void onGoogleSignIn()}>
+            <GoogleMark /> Continue with Google
+          </button>
+        </> : null}
         <p className="commune-auth-foot">
           Already have an account?{" "}
           <Link href={keepSearch("/login")} className="commune-auth-link">Sign in</Link>

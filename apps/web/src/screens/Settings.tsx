@@ -49,7 +49,7 @@ export function SettingsScreen() {
           </div>
         </div>
         <div className="a-set-card">
-          <p className="a-set-plan-k">Local build</p>
+          <p className="a-set-plan-k">Early access</p>
           <h3 className="a-set-plan-name">No subscription yet</h3>
           <p className="a-set-plan-lede">Billing and payments are not connected.</p>
           <div className="a-set-meter-meta">
