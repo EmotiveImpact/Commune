@@ -45,6 +45,49 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("commune loading", () => {
+  it("recovers from one brief startup connection failure without showing the error page", async () => {
+    vi.mocked(api).mockRejectedValueOnce(new TypeError("Failed to fetch"));
+    mount();
+    await screen.findByRole("heading", { name: commune.name });
+    expect(vi.mocked(api).mock.calls.filter(([path]) => path === "/auth/me")).toHaveLength(2);
+    expect(screen.queryByRole("heading", { name: "We couldn’t connect" })).toBeNull();
+    expect(post).not.toHaveBeenCalled();
+  });
+
+  it("bounds startup retries and hides raw errors and private content in the recovery page", async () => {
+    vi.mocked(api).mockRejectedValue(new TypeError("Failed to fetch"));
+    mount("/operations");
+    await screen.findByRole("heading", { name: "We couldn’t connect" });
+    expect(vi.mocked(api).mock.calls).toHaveLength(2);
+    expect(screen.queryByText("Failed to fetch")).toBeNull();
+    expect(screen.queryByText(commune.name)).toBeNull();
+    expect(document.querySelector(".a-side")).toBeNull();
+    const pending = deferred<{ user: typeof user }>();
+    vi.mocked(api).mockImplementation(async (path) => path === "/auth/me" ? pending.promise : path.endsWith("/invites") ? { invites: [] } : null);
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect((screen.getByRole("button", { name: "Reconnecting…" }) as HTMLButtonElement).disabled).toBe(true);
+    await act(async () => pending.resolve({ user }));
+    await screen.findByRole("heading", { name: "Operations", exact: true });
+    expect(post).not.toHaveBeenCalled();
+  });
+
+  it("does not retry access failures automatically", async () => {
+    vi.mocked(api).mockRejectedValue(new ApiError("Access denied", 403));
+    mount();
+    await screen.findByRole("heading", { name: "We couldn’t connect" });
+    expect(api).toHaveBeenCalledTimes(1);
+  });
+
+  it("retains loaded content with a useful notice when a later connection fails", async () => {
+    mount();
+    await screen.findByRole("heading", { name: commune.name });
+    vi.mocked(api).mockRejectedValue(new TypeError("Failed to fetch"));
+    await act(async () => app.refresh());
+    expect(screen.getByRole("heading", { name: commune.name })).toBeTruthy();
+    expect(screen.getByText("Connection interrupted. Your last loaded view is still available.")).toBeTruthy();
+    expect(screen.queryByText("Failed to fetch")).toBeNull();
+  });
+
   it("saves exact allocations through the real expense command without re-splitting them", async () => {
     vi.mocked(loadSnapshot).mockResolvedValue({ ...snapshot, members: [...snapshot.members, { userId: "user-2", name: "Housemate", role: "member" }] });
     vi.mocked(post).mockResolvedValue({ id: "saved-expense" });

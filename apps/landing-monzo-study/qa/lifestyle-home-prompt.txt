@@ -1,0 +1,8 @@
+Use case: photorealistic-natural
+Asset type: original lifestyle photograph for a shared-expenses website, usable as a community feature image, a landscape pricing-card crop and wide footer background.
+Primary request: Four adult friends and housemates sharing a sunny late-afternoon garden lunch at their real shared home. A candid, close human happy moment: naturally laughing together as one person passes a ceramic bowl of salad across the table. Diverse adult friends in casual blue and cream linen; oranges, tomatoes and a relaxed lunch on the table; vibrant real greenery and glimpses of blue sky behind.
+Style/medium: exceptionally realistic contemporary lifestyle editorial photography, authentic skin texture, natural faces, realistic hands, subtle camera grain, not a studio advertising pose. Shot at eye level on a 35mm lens with realistic depth of field.
+Composition/framing: landscape 1536x1024. The four friends spread naturally across the center of the frame for flexible wide cropping, with faces all in the middle half of the image. A real modest British shared-home garden; nothing overly styled.
+Lighting/mood: warm late-afternoon sunlight, airy, sociable, playful, bright and alive.
+Color palette: vibrant natural greens, clear blues, orange citrus, cream linen, warm skin. Rich fresh colors without oversaturation.
+Constraints: photograph only, no interface, typography, logos, watermarks or framed images displayed on walls. No staged gaze at camera. No brown or desaturated color grade. Exactly four adult people, anatomically natural hands and bodies.

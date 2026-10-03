@@ -1,0 +1,9 @@
+Use case: photorealistic-natural
+Asset type: vibrant lifestyle photograph for a communal expense app homepage, a wide banner and pricing-card crop
+Primary request: Four adult friends on a sunny coastal walking holiday, pausing for a spontaneous laugh together on a trail above brilliant blue sea.
+Scene/backdrop: a real green coastal headland, rough grassy trail, open clear sky and sparkling blue water; the coastline stretches into the distance.
+Subject: four adult friends of varied appearances, wearing colorful but natural rust orange and teal lightweight outerwear, with simple unbranded backpacks; genuine unposed interaction, looking at each other, not the camera.
+Style/medium: high quality candid editorial travel photography, realistic natural skin and hands, believable everyday people living their lives.
+Composition/framing: landscape 1536x1024 or similar. Group and faces mainly center-right, waist-up or three-quarter framing with wider coastline context at left. Compose the group so it also works in wide banner crops. Natural camera perspective.
+Lighting/mood: bright clear daylight, spontaneous joyful energy, vivid fresh color with rich blues and greens and colorful clothes.
+Constraints: genuine people living, not a branded outdoor advertisement. No phones, no UI, no text, no logos, no watermark, no stylized illustration, no muted brown grade.

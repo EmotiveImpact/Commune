@@ -10,6 +10,9 @@ out-tsc
 
 # dependencies
 node_modules
+.turbo/
+# External design-research clones stay local, not broken embedded repositories.
+/docs/design/motion-lab/repos/
 
 # Local service credentials and account/branch context
 .env

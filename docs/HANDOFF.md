@@ -9,11 +9,9 @@ lifecycle pack. Work is paused for a handoff, not a production release.
 - `4fa63eb` checkpoints the approved app and workflow changes; `a125cfd`
   integrates it with the primary folder's landing/mobile work; `0165354` is the
   earlier handoff.
-- **Uncommitted in the working tree (later on 2 October):** the money lifecycle
-  and task history pack, migrations 0015 to 0019, their tests and docs, plus
-  the 3 October review fixes (dark mode, layout, accessibility, parity). See
-  [money lifecycle](MONEY-LIFECYCLE-2026-10-02.md). It was left uncommitted on
-  purpose; commit it only when asked.
+- `8cfd33b` checkpoints the money lifecycle and task history pack, migrations
+  0015 to 0019, their tests and docs, plus the review fixes. See
+  [money lifecycle](MONEY-LIFECYCLE-2026-10-02.md).
 - No push, deployment, hosted migration or provider change has been made. Do
   not infer hosted parity from local work.
 - Preserve the modified `.claude/launch.json` and all untracked landing, mobile
@@ -139,3 +137,21 @@ Remaining section of [money lifecycle](MONEY-LIFECYCLE-2026-10-02.md).
 Use disposable accounts/databases for destructive or financial integration
 tests. Never expose provider secrets in Git, handoffs or browser output. Obtain
 the next explicit task before pushing, deploying or changing cloud settings.
+
+## 2026-10-03: connection recovery (local, uncommitted)
+
+Replaced the bare startup “Failed to fetch” screen with a branded, compact
+recovery card. Identity/membership startup reads share one bounded retry;
+commands and permission failures are not automatically retried. Offline state
+and returning-online recovery are supported. Later connection failures retain
+the loaded app with a readable retry notice.
+
+Verification: 228 web tests passed; web typecheck and production build passed.
+In-app browser verified failed connection and repeated manual retry against an
+unused API port, then the normal local Operations screen after restoring the
+connection. No everyday database mutations, hosted changes or email sends.
+Screenshot: `artifacts/connection-recovery/desktop.png`.
+
+Local UI is running on 127.0.0.1:3000 with its normal API on port 3002.
+The screenshot alone does not establish why the user's earlier fetch failed;
+the local API health check was responding during this investigation.

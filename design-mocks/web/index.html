@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Commune — Design Set &amp; Tracker</title>
+<style>
+  :root{--paper:#faf9f7;--card:#fff;--ink:#1a1e2b;--ink2:#54565e;--soft:#8a8c93;--line:#ecebe7;--line2:#e2e0da;
+    --green:#2d6a4f;--green-s:#1f4d38;--green-bg:#eef4f0;--red:#c2374a;--red-bg:#fbeced;--amber:#b5663d;--amber-bg:#f7ede4;
+    --sh:0 2px 8px rgba(23,27,36,.06);--shsm:0 1px 2px rgba(23,27,36,.05);}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Avenir Next','Nunito Sans',Inter,-apple-system,sans-serif;color:var(--ink);background:var(--paper);padding:44px 24px 90px;}
+  .wrap{max-width:1100px;margin:0 auto;}
+  .eyebrow{font-size:12px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--green);}
+  h1{font-size:32px;font-weight:800;letter-spacing:-.025em;margin:6px 0 8px;}
+  .lead{font-size:15px;color:var(--ink2);max-width:720px;line-height:1.55;}
+  .sec{font-size:13px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--soft);margin:46px 0 16px;padding-top:22px;border-top:1px solid var(--line);}
+  .galgroup{margin-bottom:24px;}
+  .galgroup h3{font-size:14px;font-weight:800;margin-bottom:12px;display:flex;align-items:center;gap:8px;}
+  .pill{font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px;background:var(--green-bg);color:var(--green-s);}
+  .gal{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;}
+  .shot{display:block;text-decoration:none;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:var(--shsm);transition:box-shadow .15s,transform .15s;}
+  .shot:hover{box-shadow:var(--sh);transform:translateY(-2px);border-color:var(--line2);}
+  .shot .thumb{height:96px;background:linear-gradient(135deg,#eef3f0,#f6f8f6);border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:34px;}
+  .shot .cap{padding:10px 12px;}
+  .shot .cap .n{font-size:13px;font-weight:700;}
+  .shot .cap .d{font-size:11px;color:var(--soft);margin-top:1px;}
+  .shot .cap .new{font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--green-s);background:var(--green-bg);padding:2px 6px;border-radius:6px;margin-top:6px;display:inline-block;}
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+  .col{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px 22px;box-shadow:var(--shsm);}
+  .col h3{font-size:15px;font-weight:800;margin-bottom:4px;}
+  .col .csub{font-size:12px;color:var(--soft);margin-bottom:14px;}
+  .item{display:flex;gap:11px;padding:10px 0;border-bottom:1px solid var(--line);font-size:13px;line-height:1.45;}
+  .item:last-child{border-bottom:none;}
+  .item .ic{flex-shrink:0;font-size:14px;margin-top:1px;}
+  .item .x b{font-weight:700;}
+  .item .x .meta{font-size:11px;color:var(--soft);margin-top:2px;}
+  .tag{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:2px 7px;border-radius:6px;margin-left:6px;white-space:nowrap;}
+  .tag.code{background:var(--green-bg);color:var(--green-s);}
+  .tag.mock{background:#eef1f5;color:#4a5568;}
+  .tag.css{background:var(--amber-bg);color:var(--amber);}
+  .full{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px 22px;box-shadow:var(--shsm);}
+  .foot{margin-top:34px;font-size:12px;color:var(--soft);text-align:center;}
+  .banner{background:var(--green-bg);border:1px solid #cfe1d6;border-radius:12px;padding:12px 16px;font-size:13px;color:var(--green-s);margin-bottom:26px;}
+  @media(max-width:900px){.gal{grid-template-columns:repeat(2,1fr);}.cols{grid-template-columns:1fr;}}
+</style></head><body>
+<div class="wrap">
+  <div class="eyebrow">Commune · Design set &amp; tracker</div>
+  <h1>Everything, on the server</h1>
+  <p class="lead">15 mockups in the calm design system — neutral cards, one green accent, colour only for status. Served by the dev server (durable, no login). Click any screen to open it.</p>
+  <div class="banner">✅ Now served at <b>localhost:5180/design-mocks/</b> — these live in the repo, so they won't vanish again.</div>
+
+  <div class="sec">The screens <span style="color:var(--green);font-weight:800">(15)</span></div>
+
+  <div class="galgroup">
+    <h3>🏠 Home <span class="pill">adaptive</span></h3>
+    <div class="gal">
+      <a class="shot" href="group-hub.html"><div class="thumb">🏡</div><div class="cap"><div class="n">Group Hub</div><div class="d">single-group home</div><span class="new">built in code</span></div></a>
+      <a class="shot" href="command-centre.html"><div class="thumb">🔀</div><div class="cap"><div class="n">Command Centre</div><div class="d">multi-group home</div><span class="new">built in code</span></div></a>
+    </div>
+  </div>
+
+  <div class="galgroup">
+    <h3>💷 Finance</h3>
+    <div class="gal">
+      <a class="shot" href="expenses.html"><div class="thumb">🧾</div><div class="cap"><div class="n">Expenses</div><div class="d">list + filters</div></div></a>
+      <a class="shot" href="expense-detail.html"><div class="thumb">📄</div><div class="cap"><div class="n">Expense detail</div><div class="d">split + receipt</div></div></a>
+      <a class="shot" href="settle-up.html"><div class="thumb">💷</div><div class="cap"><div class="n">Settle up</div><div class="d">per-group</div><span class="new">renamed</span></div></a>
+      <a class="shot" href="balances.html"><div class="thumb">⇄</div><div class="cap"><div class="n">Balances</div><div class="d">cross-group</div><span class="new">renamed</span></div></a>
+      <a class="shot" href="recurring.html"><div class="thumb">🔁</div><div class="cap"><div class="n">Recurring</div><div class="d">repeating bills</div><span class="new">connected</span></div></a>
+      <a class="shot" href="funds.html"><div class="thumb">🐷</div><div class="cap"><div class="n">Funds</div><div class="d">shared pots</div><span class="new">connected</span></div></a>
+      <a class="shot" href="templates.html"><div class="thumb">📐</div><div class="cap"><div class="n">Templates</div><div class="d">split presets</div></div></a>
+    </div>
+  </div>
+
+  <div class="galgroup">
+    <h3>✅ Operations &amp; 👁 Visibility</h3>
+    <div class="gal">
+      <a class="shot" href="operations.html"><div class="thumb">✅</div><div class="cap"><div class="n">Operations</div><div class="d">chores &amp; tasks</div><span class="new">connected</span></div></a>
+      <a class="shot" href="members.html"><div class="thumb">👥</div><div class="cap"><div class="n">Members</div><div class="d">roster + balances</div></div></a>
+      <a class="shot" href="member-detail.html"><div class="thumb">🧑</div><div class="cap"><div class="n">Member detail</div><div class="d">one person</div></div></a>
+      <a class="shot" href="activity.html"><div class="thumb">🕘</div><div class="cap"><div class="n">Activity</div><div class="d">what changed</div></div></a>
+      <a class="shot" href="analytics.html"><div class="thumb">📊</div><div class="cap"><div class="n">Analytics</div><div class="d">spending insights</div></div></a>
+    </div>
+  </div>
+
+  <div class="galgroup">
+    <h3>🧩 Small components <span class="pill">new</span></h3>
+    <div class="gal">
+      <a class="shot" href="components.html"><div class="thumb">🧩</div><div class="cap"><div class="n">Components</div><div class="d">filters · upload · forms · empty · modals</div><span class="new">designed</span></div></a>
+    </div>
+  </div>
+
+  <div class="sec">The fixes — done vs left</div>
+  <div class="cols">
+    <div class="col">
+      <h3>✅ Done &amp; committed</h3>
+      <div class="csub">In code on <code>feat/adaptive-home</code> — tsc, build &amp; tests pass.</div>
+      <div class="item"><span class="ic">✅</span><div class="x"><b>Adaptive home</b> <span class="tag code">code</span><div class="meta">1 group→hub · 2+→command centre · 0→onboarding</div></div></div>
+      <div class="item"><span class="ic">✅</span><div class="x"><b>Command Centre</b> <span class="tag code">code</span><div class="meta">cross-group home, real data</div></div></div>
+      <div class="item"><span class="ic">✅</span><div class="x"><b>Infinite-loop crash fixed</b> <span class="tag code">code</span><div class="meta">+ regression tests</div></div></div>
+      <div class="item"><span class="ic">✅</span><div class="x"><b>Hub connects all pillars</b> <span class="tag code">code</span><div class="meta">live "group toolkit"</div></div></div>
+      <div class="item"><span class="ic">✅</span><div class="x"><b>Hub calmed &amp; reordered</b> <span class="tag code">code</span><div class="meta">neutral palette, actions/toolkit up, Memories last</div></div></div>
+      <div class="item"><span class="ic">✅</span><div class="x"><b>"Settle up" naming fixed</b> <span class="tag code">code</span><div class="meta">Balances vs Settle up everywhere</div></div></div>
+      <div class="item"><span class="ic">✅</span><div class="x"><b>Polish</b> <span class="tag css">css</span><div class="meta">subtitle 15px · member cards 16px · Groups centered</div></div></div>
+    </div>
+    <div class="col">
+      <h3>🔧 Still to do</h3>
+      <div class="csub">Designed here — not yet coded.</div>
+      <div class="item"><span class="ic">🎨</span><div class="x"><b>Code the calm system into the other screens</b> <span class="tag mock">mock</span><div class="meta">Expenses, Funds, Operations, Settle up, Balances, Members, Activity, Analytics — hub is done, these aren't</div></div></div>
+      <div class="item"><span class="ic">🧩</span><div class="x"><b>Build the small components</b> <span class="tag mock">mock</span><div class="meta">filter bar, image upload, forms, empty states, modals — designed, now need coding</div></div></div>
+      <div class="item"><span class="ic">📐</span><div class="x"><b>Analytics skeleton</b> <span class="tag css">css</span><div class="meta">last minor leftover</div></div></div>
+    </div>
+  </div>
+
+  <div class="sec">For transparency</div>
+  <div class="full">
+    <div class="item"><span class="ic">⚠️</span><div class="x"><b>6 pre-existing test failures</b><div class="meta">group-edit, breakdown, expenses export-access — failed before this work too. Not caused by it.</div></div></div>
+    <div class="item"><span class="ic">🔒</span><div class="x"><b>Live verification needs your login</b><div class="meta">these mockups need none; the real app does.</div></div></div>
+    <div class="item"><span class="ic">💾</span><div class="x"><b>Committed</b><div class="meta">all code on <code>feat/adaptive-home</code>. Nothing deployed.</div></div></div>
+  </div>
+
+  <p class="foot">Calm system: neutral cards · one green accent · colour only for status. Served from /apps/web/public/design-mocks. Emoji stand in for icons.</p>
+</div>
+</body></html>

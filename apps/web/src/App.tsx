@@ -33,6 +33,8 @@ import type { ScreenId } from "./data/household";
 import { keepSearch } from "./nav";
 import { PendingShell } from "./shell/PendingShell";
 import { AllActivityScreen, SearchScreen } from "./screens/Search";
+import { ConnectionRecovery } from "./shell/ConnectionRecovery";
+import { isConnectionFailure } from "./live/connection";
 
 export function App() {
   return (
@@ -101,8 +103,8 @@ function AppLoading() {
 }
 
 function AppUnavailable() {
-  const { apiError, refresh } = useApp();
-  return <div className="a-empty" role="alert"><h2>Commune could not connect</h2><p>{apiError ?? "The local application service is unavailable."}</p><button className="a-btn" type="button" onClick={() => void refresh()}>Try again</button></div>;
+  const { refresh } = useApp();
+  return <ConnectionRecovery retry={refresh} />;
 }
 
 function ProductShell() {
@@ -127,7 +129,7 @@ function ProductShell() {
         <div className="a-main">
           <Header screen={screen} />
           {diagnosticsEnabled() ? <ConnectionCheck /> : null}
-          {apiError ? <div className="a-api-error" role="alert">{apiError}<button type="button" onClick={clearApiError} aria-label="Dismiss error">×</button></div> : null}
+          {apiError ? <div className="a-api-error" role="alert">{isConnectionFailure(apiError) ? <>Connection interrupted. Your last loaded view is still available.<button type="button" onClick={() => void refresh()}>Try again</button></> : apiError}<button type="button" onClick={clearApiError} aria-label="Dismiss error">×</button></div> : null}
           {contentError && hub.activityState === "ready" ? <div className="a-api-error" role="alert">Could not refresh this commune. Showing its last loaded activity.<button type="button" onClick={() => void refresh()}>Try again</button></div> : null}
           <div className="a-content">
             <Screen screen={screen} />

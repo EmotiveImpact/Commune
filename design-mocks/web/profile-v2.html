@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Commune — Profile &amp; Account</title>
+<link rel="stylesheet" href="ds.css">
+<style>
+/* ============================================================
+   Commune — Profile v2 (premium account page)
+   Deeper, confident palette layered over ds.css.
+   Deep green primary · navy/forest dark panels · real red danger.
+   ============================================================ */
+:root{
+  /* Confident brand greens (override the washed-out base) */
+  --green:#15573a; --green-strong:#0f3f2a; --green-bright:#2d8a5f;
+  --green-bg:#e9f1ec; --green-tint:#dcebe2; --green-line:#bcd6c8;
+  /* Navy / forest surfaces for dark panels + sidebar */
+  --navy:#14242b; --navy-2:#1b3038; --navy-line:rgba(255,255,255,.09);
+  /* Status — present, not grey */
+  --red:#c2374a; --red-strong:#a52a3c; --red-bg:#fbecef; --red-line:#f0c8ce;
+  --amber:#b5663d; --amber-bg:#f7ece3; --amber-line:#ecd3bf;
+  /* Neutrals */
+  --paper:#faf9f7; --card:#ffffff; --ink:#1a1e2b; --ink-2:#54565e; --ink-soft:#6b6d73;
+  --line:#e8e6e1; --line-2:#ddd9d2;
+  --sh-sm:0 1px 2px rgba(20,36,43,.06); --sh:0 4px 14px rgba(20,36,43,.08); --sh-md:0 14px 40px rgba(20,36,43,.12);
+}
+*{box-sizing:border-box;}
+body{background:var(--paper);}
+
+/* Sidebar — deep forest navy */
+.sb{background:var(--navy);}
+.sb-logo{background:var(--green-bright);}
+.sb-link.on{background:rgba(45,138,95,.18);color:#fff;}
+.sb-link.on .i{opacity:1;color:var(--green-bright);}
+.sb-foot{margin-top:auto;padding:10px 8px 2px;border-top:1px solid var(--navy-line);}
+.sb-acct{display:flex;align-items:center;gap:10px;padding:8px;border-radius:10px;cursor:pointer;}
+.sb-acct:hover{background:rgba(255,255,255,.05);}
+.sb-acct .sa-av{width:32px;height:32px;border-radius:50%;background:var(--green-bright);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0;}
+.sb-acct b{font-size:12.5px;color:#fff;font-weight:600;display:block;line-height:1.2;}
+.sb-acct span{font-size:10.5px;color:rgba(255,255,255,.45);}
+.sb-acct .sa-x{margin-left:auto;color:rgba(255,255,255,.4);font-size:13px;}
+
+/* Page width a touch wider for the split layout */
+.page{max-width:1120px;}
+
+/* ---------- Cover + identity header ---------- */
+.cover{position:relative;border-radius:var(--r-lg);overflow:hidden;box-shadow:var(--sh);}
+.cover-img{height:184px;
+  background:
+    radial-gradient(120% 160% at 12% -10%, rgba(45,138,95,.55), transparent 55%),
+    radial-gradient(130% 180% at 88% 120%, rgba(20,36,43,.85), transparent 60%),
+    linear-gradient(120deg,#0f3f2a 0%,#15573a 42%,#14242b 100%);
+  position:relative;}
+.cover-img::after{content:'';position:absolute;inset:0;
+  background-image:radial-gradient(rgba(255,255,255,.10) 1px,transparent 1.4px);
+  background-size:22px 22px;opacity:.5;}
+.cover-edit{position:absolute;top:14px;right:14px;z-index:2;display:inline-flex;align-items:center;gap:7px;
+  padding:8px 13px;border-radius:10px;font-size:12.5px;font-weight:600;color:#fff;cursor:pointer;
+  background:rgba(20,36,43,.42);border:1px solid rgba(255,255,255,.22);backdrop-filter:blur(6px);}
+.cover-edit:hover{background:rgba(20,36,43,.6);}
+.id{position:relative;padding:0 26px 22px;margin-top:-46px;display:flex;align-items:flex-end;gap:18px;flex-wrap:wrap;}
+.id-av{width:104px;height:104px;border-radius:26px;background:linear-gradient(140deg,#2d8a5f,#15573a);
+  color:#fff;display:flex;align-items:center;justify-content:center;font-size:38px;font-weight:800;letter-spacing:-.02em;
+  border:4px solid var(--card);box-shadow:var(--sh-md);flex-shrink:0;position:relative;}
+.id-av .cam{position:absolute;bottom:-4px;right:-4px;width:32px;height:32px;border-radius:50%;background:var(--card);
+  border:1px solid var(--line-2);display:flex;align-items:center;justify-content:center;font-size:14px;box-shadow:var(--sh-sm);cursor:pointer;}
+.id-meta{flex:1;min-width:220px;padding-bottom:4px;}
+.id-name{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.id-name h1{font-size:25px;font-weight:800;letter-spacing:-.025em;color:var(--ink);}
+.id-sub{font-size:13.5px;color:var(--ink-2);margin-top:5px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
+.id-sub .mi{display:inline-flex;align-items:center;gap:6px;}
+.id-actions{display:flex;gap:9px;padding-bottom:6px;}
+.verified{font-size:11px;font-weight:700;letter-spacing:.02em;padding:4px 10px;border-radius:999px;
+  background:var(--green-bg);color:var(--green-strong);border:1px solid var(--green-line);display:inline-flex;align-items:center;gap:5px;}
+
+/* ---------- Substantial buttons ---------- */
+.btn{font-size:13.5px;font-weight:600;height:42px;padding:0 18px;border-radius:11px;border:1px solid transparent;
+  cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;color:var(--ink);
+  transition:filter .12s,box-shadow .12s,background .12s,border-color .12s;line-height:1;}
+.btn.pri{background:var(--green);color:#fff;box-shadow:0 1px 0 rgba(15,63,42,.4),var(--sh-sm);}
+.btn.pri:hover{filter:brightness(1.08);box-shadow:var(--sh);}
+.btn.ghost{background:var(--card);border-color:var(--line-2);color:var(--ink);}
+.btn.ghost:hover{border-color:var(--green);color:var(--green-strong);background:var(--green-bg);}
+.btn.soft{background:var(--green-bg);color:var(--green-strong);border-color:var(--green-line);}
+.btn.soft:hover{background:var(--green-tint);}
+.btn.danger{background:var(--red);color:#fff;}
+.btn.danger:hover{background:var(--red-strong);}
+.btn.danger-ghost{background:var(--card);border-color:var(--red-line);color:var(--red-strong);}
+.btn.danger-ghost:hover{background:var(--red-bg);}
+.btn.sm{height:34px;padding:0 13px;font-size:12.5px;border-radius:9px;}
+.btn.full{width:100%;}
+
+/* ---------- Two-column settings layout ---------- */
+.acc-grid{display:grid;grid-template-columns:208px minmax(0,1fr);gap:30px;margin-top:26px;align-items:start;}
+
+/* Sticky section nav */
+.snav{position:sticky;top:78px;display:flex;flex-direction:column;gap:1px;}
+.snav a{display:flex;align-items:center;gap:11px;padding:9px 12px;border-radius:10px;font-size:13.5px;font-weight:600;
+  color:var(--ink-2);text-decoration:none;border:1px solid transparent;}
+.snav a:hover{background:var(--card);color:var(--ink);}
+.snav a.on{background:var(--green-bg);color:var(--green-strong);border-color:var(--green-line);}
+.snav a .si{width:18px;text-align:center;font-size:15px;}
+.snav .nlab{font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);padding:14px 12px 6px;}
+.snav .nlab:first-child{padding-top:2px;}
+
+/* Section cards */
+.col{display:flex;flex-direction:column;gap:26px;}
+.section{scroll-margin-top:80px;}
+.section-h{display:flex;align-items:baseline;gap:12px;margin-bottom:13px;}
+.section-h h2{font-size:18px;font-weight:800;letter-spacing:-.02em;color:var(--ink);}
+.section-h p{font-size:13px;color:var(--ink-soft);}
+.scard{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--sh-sm);overflow:hidden;}
+.scard-pad{padding:22px 24px;}
+
+/* Form rows — description left, control right */
+.frow{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr);gap:24px;padding:20px 24px;border-bottom:1px solid var(--line);align-items:start;}
+.frow:last-child{border-bottom:none;}
+.frow .lab{font-size:13.5px;font-weight:700;color:var(--ink);}
+.frow .hint{font-size:12.5px;color:var(--ink-soft);margin-top:4px;line-height:1.45;}
+.frow .ctl{display:flex;flex-direction:column;gap:8px;}
+.two-up{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+
+/* Inputs — substantial 44px */
+.field{display:flex;flex-direction:column;gap:6px;}
+.field > label{font-size:11.5px;font-weight:700;letter-spacing:.02em;color:var(--ink-2);}
+.inp{height:44px;width:100%;padding:0 14px;font-size:14px;font-family:inherit;color:var(--ink);
+  background:var(--card);border:1.5px solid var(--line-2);border-radius:11px;outline:none;transition:border-color .12s,box-shadow .12s;}
+.inp:hover{border-color:var(--line-2);}
+.inp:focus{border-color:var(--green);box-shadow:0 0 0 3px rgba(21,87,58,.13);}
+.inp::placeholder{color:var(--ink-soft);}
+.inp.ro{background:#f6f5f2;color:var(--ink-2);border-style:dashed;cursor:not-allowed;}
+.inp-icon{position:relative;}
+.inp-icon .il{position:absolute;left:13px;top:50%;transform:translateY(-50%);font-size:15px;color:var(--ink-soft);pointer-events:none;}
+.inp-icon .inp{padding-left:38px;}
+.inp-icon .ir{position:absolute;right:6px;top:50%;transform:translateY(-50%);}
+.sel{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%236b6d73' stroke-width='1.7' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 14px center;padding-right:38px;cursor:pointer;}
+.help{font-size:11.5px;color:var(--ink-soft);}
+.help.ok{color:var(--green-strong);}
+
+/* Badges (richer) */
+.badge{font-size:11px;font-weight:700;padding:4px 10px;border-radius:999px;display:inline-flex;align-items:center;gap:5px;letter-spacing:.01em;}
+.badge.green{background:var(--green-bg);color:var(--green-strong);border:1px solid var(--green-line);}
+.badge.red{background:var(--red-bg);color:var(--red-strong);border:1px solid var(--red-line);}
+.badge.amber{background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-line);}
+.badge.neutral{background:#f1f0ec;color:var(--ink-2);border:1px solid var(--line-2);}
+.badge.dot::before{content:'';width:6px;height:6px;border-radius:50%;background:currentColor;}
+
+/* ---------- Payment methods ---------- */
+.pm-default{background:linear-gradient(135deg,var(--green-bg),#f2f7f4);border-color:var(--green-line)!important;}
+.pm{display:flex;align-items:center;gap:14px;padding:16px 20px;border-bottom:1px solid var(--line);}
+.pm:last-child{border-bottom:none;}
+.pm-logo{width:46px;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;
+  font-weight:800;color:#fff;flex-shrink:0;box-shadow:var(--sh-sm);}
+.pm-logo.monzo{background:#14233a;}
+.pm-logo.revolut{background:#0a0a0a;}
+.pm-logo.paypal{background:#1a3a7a;}
+.pm-logo.bank{background:var(--green);}
+.pm-bd{flex:1;min-width:0;}
+.pm-bd .t{font-size:14px;font-weight:700;color:var(--ink);display:flex;align-items:center;gap:8px;}
+.pm-bd .s{font-size:12.5px;color:var(--ink-soft);margin-top:2px;}
+.pm-act{display:flex;align-items:center;gap:8px;flex-shrink:0;}
+.linkbtn{font-size:12.5px;font-weight:600;color:var(--ink-2);background:none;border:none;cursor:pointer;padding:6px 4px;}
+.linkbtn:hover{color:var(--green-strong);}
+.linkbtn.del:hover{color:var(--red-strong);}
+.pm-add{display:flex;align-items:center;justify-content:center;gap:9px;padding:15px;font-size:13.5px;font-weight:700;
+  color:var(--green-strong);background:repeating-linear-gradient(135deg,transparent,transparent 8px,rgba(21,87,58,.015) 8px,rgba(21,87,58,.015) 16px);
+  border-top:1px dashed var(--green-line);cursor:pointer;}
+.pm-add:hover{background:var(--green-bg);}
+
+/* ---------- Toggles / notification rows ---------- */
+.toggle{position:relative;width:46px;height:27px;flex-shrink:0;}
+.toggle input{opacity:0;width:0;height:0;position:absolute;}
+.toggle .tk{position:absolute;inset:0;background:#d6d3cc;border-radius:999px;transition:background .15s;cursor:pointer;}
+.toggle .tk::before{content:'';position:absolute;left:3px;top:3px;width:21px;height:21px;border-radius:50%;background:#fff;
+  box-shadow:0 1px 3px rgba(0,0,0,.22);transition:transform .15s;}
+.toggle input:checked + .tk{background:var(--green);}
+.toggle input:checked + .tk::before{transform:translateX(19px);}
+.nrow{display:flex;align-items:center;gap:14px;padding:15px 24px;border-bottom:1px solid var(--line);}
+.nrow:last-child{border-bottom:none;}
+.nrow .ni{width:38px;height:38px;border-radius:11px;background:var(--green-bg);color:var(--green);display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;}
+.nrow .nb{flex:1;min-width:0;}
+.nrow .nb .t{font-size:13.5px;font-weight:700;color:var(--ink);}
+.nrow .nb .s{font-size:12px;color:var(--ink-soft);margin-top:2px;line-height:1.4;}
+.seg{display:inline-flex;background:#f1f0ec;border:1px solid var(--line-2);border-radius:10px;padding:3px;gap:2px;}
+.seg button{font-size:12px;font-weight:600;padding:6px 12px;border-radius:7px;border:none;background:none;color:var(--ink-2);cursor:pointer;}
+.seg button.on{background:var(--card);color:var(--green-strong);box-shadow:var(--sh-sm);}
+
+/* ---------- Security ---------- */
+.sess{display:flex;align-items:center;gap:14px;padding:15px 24px;border-bottom:1px solid var(--line);}
+.sess:last-child{border-bottom:none;}
+.sess .di{width:40px;height:40px;border-radius:11px;background:#f3f2ee;color:var(--ink-2);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;}
+.sess .db{flex:1;min-width:0;}
+.sess .db .t{font-size:13.5px;font-weight:700;color:var(--ink);display:flex;align-items:center;gap:9px;}
+.sess .db .s{font-size:12px;color:var(--ink-soft);margin-top:2px;}
+
+/* ---------- Danger zone ---------- */
+.danger-zone{border:1.5px solid var(--red-line);border-radius:var(--r);background:linear-gradient(180deg,#fdf3f4,#fff 70%);overflow:hidden;box-shadow:var(--sh-sm);}
+.danger-zone .dz-h{display:flex;align-items:center;gap:11px;padding:18px 24px 14px;}
+.danger-zone .dz-h .dz-ic{width:34px;height:34px;border-radius:10px;background:var(--red-bg);color:var(--red-strong);display:flex;align-items:center;justify-content:center;font-size:17px;border:1px solid var(--red-line);}
+.danger-zone .dz-h h2{font-size:16px;font-weight:800;color:var(--red-strong);letter-spacing:-.01em;}
+.dz-row{display:flex;align-items:center;gap:18px;padding:16px 24px;border-top:1px solid var(--red-line);}
+.dz-row .dz-bd{flex:1;}
+.dz-row .dz-bd .t{font-size:14px;font-weight:700;color:var(--ink);}
+.dz-row .dz-bd .s{font-size:12.5px;color:var(--ink-soft);margin-top:3px;line-height:1.45;max-width:48ch;}
+
+/* Save bar (sticky footer) */
+.savebar{position:sticky;bottom:0;z-index:6;margin-top:30px;display:flex;align-items:center;gap:14px;
+  background:rgba(255,255,255,.92);backdrop-filter:blur(10px);border:1px solid var(--line-2);border-radius:14px;
+  padding:13px 18px;box-shadow:var(--sh-md);}
+.savebar .sv-dot{width:8px;height:8px;border-radius:50%;background:var(--amber);box-shadow:0 0 0 4px var(--amber-bg);}
+.savebar .sv-t{font-size:13px;font-weight:600;color:var(--ink);}
+.savebar .sv-sp{flex:1;}
+
+.foot-note{font-size:12px;color:var(--ink-soft);text-align:center;margin:26px 0 8px;}
+
+@media(max-width:920px){
+  .acc-grid{grid-template-columns:1fr;gap:18px;}
+  .snav{position:static;flex-direction:row;flex-wrap:wrap;gap:6px;}
+  .snav .nlab{display:none;}
+  .frow{grid-template-columns:1fr;gap:12px;}
+}
+@media(max-width:600px){
+  .two-up,.frow .two-up{grid-template-columns:1fr;}
+  .id-actions{width:100%;}
+}
+</style>
+</head>
+<body>
+
+<!-- ============ SIDEBAR ============ -->
+<aside class="sb">
+  <div class="sb-brand">
+    <div class="sb-logo">C</div>
+    <b>Commune</b>
+  </div>
+  <div class="sb-switch">
+    <div class="si">🏠</div>
+    <div>
+      <b>Maple Street</b>
+      <span>4 members · Household</span>
+    </div>
+  </div>
+
+  <div class="sb-lab">Home</div>
+  <a class="sb-link"><span class="i">▦</span> Dashboard</a>
+  <a class="sb-link"><span class="i">💸</span> Expenses</a>
+  <a class="sb-link"><span class="i">⇄</span> Settle up</a>
+  <a class="sb-link"><span class="i">📋</span> Bills &amp; recurring</a>
+
+  <div class="sb-lab">Household</div>
+  <a class="sb-link"><span class="i">👥</span> Members</a>
+  <a class="sb-link"><span class="i">📊</span> Balances</a>
+  <a class="sb-link"><span class="i">🗂</span> Categories</a>
+
+  <div class="sb-sp"></div>
+
+  <a class="sb-link on"><span class="i">⚙</span> Settings</a>
+
+  <div class="sb-foot">
+    <div class="sb-acct">
+      <div class="sa-av">AE</div>
+      <div>
+        <b>Augustus Edem</b>
+        <span>emotiveimpact@gmail.com</span>
+      </div>
+      <span class="sa-x">⌄</span>
+    </div>
+  </div>
+</aside>
+
+<!-- ============ MAIN ============ -->
+<main class="main">
+
+  <!-- Topbar -->
+  <div class="top">
+    <div class="search">Search settings, members, expenses…</div>
+    <div class="top-sp"></div>
+    <div class="ibtn">🔔<span class="dot"></span></div>
+    <div class="me">AE</div>
+  </div>
+
+  <div class="page">
+
+    <!-- ===== Cover + identity header ===== -->
+    <div class="cover">
+      <div class="cover-img">
+        <span class="cover-edit">🖼 Change cover</span>
+      </div>
+    </div>
+
+    <div class="id">
+      <div class="id-av">AE
+        <span class="cam">📷</span>
+      </div>
+      <div class="id-meta">
+        <div class="id-name">
+          <h1>Augustus Edem</h1>
+          <span class="verified">✓ Verified</span>
+        </div>
+        <div class="id-sub">
+          <span class="mi">✉ emotiveimpact@gmail.com</span>
+          <span class="mi">📍 United Kingdom</span>
+          <span class="mi">🕒 Member since Mar 2025</span>
+        </div>
+      </div>
+      <div class="id-actions">
+        <a class="btn ghost">View public profile</a>
+        <a class="btn pri">✓ Save changes</a>
+      </div>
+    </div>
+
+    <!-- ===== Split: section nav + content ===== -->
+    <div class="acc-grid">
+
+      <!-- Sticky section nav -->
+      <nav class="snav">
+        <div class="nlab">Account</div>
+        <a class="on"><span class="si">👤</span> Profile</a>
+        <a><span class="si">🌐</span> Preferences</a>
+        <a><span class="si">💳</span> Payment methods</a>
+        <div class="nlab">System</div>
+        <a><span class="si">🔔</span> Notifications</a>
+        <a><span class="si">🔒</span> Security</a>
+        <a><span class="si">⚠</span> Danger zone</a>
+      </nav>
+
+      <!-- Content column -->
+      <div class="col">
+
+        <!-- ===== PROFILE ===== -->
+        <section class="section" id="profile">
+          <div class="section-h">
+            <h2>Profile</h2>
+            <p>Your personal details, shown to others in your households.</p>
+          </div>
+          <div class="scard">
+            <div class="frow">
+              <div>
+                <div class="lab">Full name</div>
+                <div class="hint">Appears on expenses, settle-up requests and member lists.</div>
+              </div>
+              <div class="ctl">
+                <div class="two-up">
+                  <div class="field">
+                    <label>First name</label>
+                    <input class="inp" value="Augustus">
+                  </div>
+                  <div class="field">
+                    <label>Last name</label>
+                    <input class="inp" value="Edem">
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="frow">
+              <div>
+                <div class="lab">Email address</div>
+                <div class="hint">Used to sign in and receive receipts. Verified — contact support to change.</div>
+              </div>
+              <div class="ctl">
+                <div class="inp-icon">
+                  <span class="il">✉</span>
+                  <input class="inp ro" value="emotiveimpact@gmail.com" readonly>
+                  <span class="ir"><span class="badge green dot">Verified</span></span>
+                </div>
+              </div>
+            </div>
+
+            <div class="frow">
+              <div>
+                <div class="lab">Phone number</div>
+                <div class="hint">For settle-up reminders and account recovery. Never shared publicly.</div>
+              </div>
+              <div class="ctl">
+                <div class="two-up" style="grid-template-columns:120px 1fr;">
+                  <div class="field">
+                    <label>Country code</label>
+                    <select class="inp sel">
+                      <option>🇬🇧 +44</option>
+                      <option>🇺🇸 +1</option>
+                      <option>🇮🇪 +353</option>
+                      <option>🇳🇬 +234</option>
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label>Mobile</label>
+                    <input class="inp" value="7700 900 482">
+                  </div>
+                </div>
+                <span class="help">📱 We'll send a one-time code to confirm new numbers.</span>
+              </div>
+            </div>
+
+            <div class="frow">
+              <div>
+                <div class="lab">Country</div>
+                <div class="hint">Sets your region for tax categories and date formatting.</div>
+              </div>
+              <div class="ctl">
+                <select class="inp sel">
+                  <option>🇬🇧 United Kingdom</option>
+                  <option>🇺🇸 United States</option>
+                  <option>🇮🇪 Ireland</option>
+                  <option>🇳🇬 Nigeria</option>
+                  <option>🇩🇪 Germany</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===== PREFERENCES ===== -->
+        <section class="section" id="preferences">
+          <div class="section-h">
+            <h2>Preferences</h2>
+            <p>Currency, language and how dates &amp; times appear.</p>
+          </div>
+          <div class="scard">
+            <div class="frow">
+              <div>
+                <div class="lab">Default currency</div>
+                <div class="hint">New expenses default to this. Each household can override it.</div>
+              </div>
+              <div class="ctl">
+                <select class="inp sel">
+                  <option>£  British Pound (GBP)</option>
+                  <option>€  Euro (EUR)</option>
+                  <option>$  US Dollar (USD)</option>
+                  <option>₦  Nigerian Naira (NGN)</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="frow">
+              <div>
+                <div class="lab">Timezone</div>
+                <div class="hint">Reminders and recurring bills run on this clock.</div>
+              </div>
+              <div class="ctl">
+                <select class="inp sel">
+                  <option>(GMT+00:00) London — Greenwich Mean Time</option>
+                  <option>(GMT+01:00) Berlin, Paris</option>
+                  <option>(GMT−05:00) New York — Eastern</option>
+                  <option>(GMT+01:00) Lagos — West Africa</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="frow">
+              <div>
+                <div class="lab">Language</div>
+                <div class="hint">The language Commune's interface is shown in.</div>
+              </div>
+              <div class="ctl">
+                <select class="inp sel">
+                  <option>English (United Kingdom)</option>
+                  <option>English (United States)</option>
+                  <option>Français</option>
+                  <option>Deutsch</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="frow">
+              <div>
+                <div class="lab">First day of the week</div>
+                <div class="hint">Used across calendars and the recurring-bill schedule.</div>
+              </div>
+              <div class="ctl">
+                <div class="seg">
+                  <button class="on">Monday</button>
+                  <button>Sunday</button>
+                  <button>Saturday</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===== PAYMENT METHODS ===== -->
+        <section class="section" id="payment">
+          <div class="section-h">
+            <h2>Payment methods</h2>
+            <p>How you coordinate settling up. Commune never moves money — these route housemates to your preferred app.</p>
+          </div>
+          <div class="scard">
+            <!-- Default -->
+            <div class="pm pm-default">
+              <div class="pm-logo monzo">M</div>
+              <div class="pm-bd">
+                <div class="t">Monzo <span class="badge green dot">Default</span></div>
+                <div class="s">monzo.me/augustusedem · Instant bank transfer</div>
+              </div>
+              <div class="pm-act">
+                <button class="linkbtn">Edit</button>
+              </div>
+            </div>
+
+            <div class="pm">
+              <div class="pm-logo revolut">R</div>
+              <div class="pm-bd">
+                <div class="t">Revolut</div>
+                <div class="s">revolut.me/augustus · Tap to request</div>
+              </div>
+              <div class="pm-act">
+                <button class="linkbtn">Make default</button>
+                <button class="linkbtn">Edit</button>
+                <button class="linkbtn del">Remove</button>
+              </div>
+            </div>
+
+            <div class="pm">
+              <div class="pm-logo paypal">P</div>
+              <div class="pm-bd">
+                <div class="t">PayPal</div>
+                <div class="s">paypal.me/augustusedem</div>
+              </div>
+              <div class="pm-act">
+                <button class="linkbtn">Make default</button>
+                <button class="linkbtn">Edit</button>
+                <button class="linkbtn del">Remove</button>
+              </div>
+            </div>
+
+            <div class="pm">
+              <div class="pm-logo bank">🏦</div>
+              <div class="pm-bd">
+                <div class="t">Bank transfer <span class="badge amber dot">Details hidden</span></div>
+                <div class="s">Sort code •• •• 12 · Account ••••&nbsp;4821</div>
+              </div>
+              <div class="pm-act">
+                <button class="linkbtn">Make default</button>
+                <button class="linkbtn">Edit</button>
+                <button class="linkbtn del">Remove</button>
+              </div>
+            </div>
+
+            <div class="pm-add">＋ Add a payment method</div>
+          </div>
+        </section>
+
+        <!-- ===== NOTIFICATIONS ===== -->
+        <section class="section" id="notifications">
+          <div class="section-h">
+            <h2>Notifications</h2>
+            <p>Choose what reaches you, and where.</p>
+          </div>
+          <div class="scard">
+            <!-- Channel header -->
+            <div class="nrow" style="background:var(--card-2);">
+              <div class="nb"><div class="t">Delivery channels</div></div>
+              <div class="seg">
+                <button class="on">Push</button>
+                <button class="on" style="background:var(--card);color:var(--green-strong);box-shadow:var(--sh-sm);">Email</button>
+                <button>SMS</button>
+              </div>
+            </div>
+
+            <div class="nrow">
+              <div class="ni">💸</div>
+              <div class="nb">
+                <div class="t">New expense added</div>
+                <div class="s">When a housemate logs a shared cost you're part of.</div>
+              </div>
+              <label class="toggle"><input type="checkbox" checked><span class="tk"></span></label>
+            </div>
+
+            <div class="nrow">
+              <div class="ni">⇄</div>
+              <div class="nb">
+                <div class="t">Settle-up requests</div>
+                <div class="s">Someone asks you to pay, or marks a debt as settled.</div>
+              </div>
+              <label class="toggle"><input type="checkbox" checked><span class="tk"></span></label>
+            </div>
+
+            <div class="nrow">
+              <div class="ni" style="background:var(--amber-bg);color:var(--amber);">⏰</div>
+              <div class="nb">
+                <div class="t">Payment reminders</div>
+                <div class="s">Nudges when you owe money or a bill is overdue.</div>
+              </div>
+              <label class="toggle"><input type="checkbox" checked><span class="tk"></span></label>
+            </div>
+
+            <div class="nrow">
+              <div class="ni">📋</div>
+              <div class="nb">
+                <div class="t">Recurring bills due</div>
+                <div class="s">A heads-up before rent, utilities or subscriptions post.</div>
+              </div>
+              <label class="toggle"><input type="checkbox" checked><span class="tk"></span></label>
+            </div>
+
+            <div class="nrow">
+              <div class="ni">📊</div>
+              <div class="nb">
+                <div class="t">Weekly summary</div>
+                <div class="s">A Monday digest of household spending and balances.</div>
+              </div>
+              <label class="toggle"><input type="checkbox"><span class="tk"></span></label>
+            </div>
+
+            <div class="nrow">
+              <div class="ni" style="background:#f3f2ee;color:var(--ink-2);">📣</div>
+              <div class="nb">
+                <div class="t">Product updates &amp; tips</div>
+                <div class="s">Occasional news about new Commune features.</div>
+              </div>
+              <label class="toggle"><input type="checkbox"><span class="tk"></span></label>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===== SECURITY ===== -->
+        <section class="section" id="security">
+          <div class="section-h">
+            <h2>Security</h2>
+            <p>Keep your account locked down.</p>
+          </div>
+
+          <!-- Password + 2FA -->
+          <div class="scard" style="margin-bottom:18px;">
+            <div class="frow">
+              <div>
+                <div class="lab">Password</div>
+                <div class="hint">Last changed 3 months ago. Use 12+ characters with a mix of symbols.</div>
+              </div>
+              <div class="ctl">
+                <div class="field">
+                  <label>Current password</label>
+                  <input class="inp" type="password" value="************">
+                </div>
+                <div class="two-up">
+                  <div class="field">
+                    <label>New password</label>
+                    <input class="inp" type="password" placeholder="••••••••••••">
+                  </div>
+                  <div class="field">
+                    <label>Confirm new</label>
+                    <input class="inp" type="password" placeholder="••••••••••••">
+                  </div>
+                </div>
+                <span class="help">🔑 You'll be signed out of other devices after changing.</span>
+              </div>
+            </div>
+
+            <div class="frow">
+              <div>
+                <div class="lab">Two-factor authentication</div>
+                <div class="hint">Require a code from your authenticator app at sign-in.</div>
+              </div>
+              <div class="ctl" style="flex-direction:row;align-items:center;gap:14px;">
+                <span class="badge green">✓ Enabled · Authenticator app</span>
+                <button class="btn ghost sm">Manage</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Active sessions -->
+          <div class="scard">
+            <div class="nrow" style="background:var(--card-2);">
+              <div class="nb"><div class="t">Active sessions</div><div class="s">Devices currently signed in to your account.</div></div>
+              <button class="btn danger-ghost sm">Sign out all</button>
+            </div>
+
+            <div class="sess">
+              <div class="di">💻</div>
+              <div class="db">
+                <div class="t">MacBook Pro — Chrome <span class="badge green dot">This device</span></div>
+                <div class="s">London, UK · Active now</div>
+              </div>
+            </div>
+            <div class="sess">
+              <div class="di">📱</div>
+              <div class="db">
+                <div class="t">iPhone 15 — Commune iOS</div>
+                <div class="s">London, UK · 2 hours ago</div>
+              </div>
+              <button class="linkbtn del">Revoke</button>
+            </div>
+            <div class="sess">
+              <div class="di">💻</div>
+              <div class="db">
+                <div class="t">Windows PC — Edge</div>
+                <div class="s">Manchester, UK · 4 days ago</div>
+              </div>
+              <button class="linkbtn del">Revoke</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===== DANGER ZONE ===== -->
+        <section class="section" id="danger">
+          <div class="danger-zone">
+            <div class="dz-h">
+              <div class="dz-ic">⚠</div>
+              <h2>Danger zone</h2>
+            </div>
+
+            <div class="dz-row">
+              <div class="dz-bd">
+                <div class="t">Export your data</div>
+                <div class="s">Download a copy of your expenses, balances and payment history as CSV.</div>
+              </div>
+              <button class="btn ghost">⤓ Export data</button>
+            </div>
+
+            <div class="dz-row">
+              <div class="dz-bd">
+                <div class="t">Leave all households</div>
+                <div class="s">Remove yourself from every household. Outstanding balances must be settled first.</div>
+              </div>
+              <button class="btn danger-ghost">Leave households</button>
+            </div>
+
+            <div class="dz-row">
+              <div class="dz-bd">
+                <div class="t">Delete account</div>
+                <div class="s">Permanently erase your account and personal data. This cannot be undone, and any debts you owe will remain visible to housemates.</div>
+              </div>
+              <button class="btn danger">Delete account</button>
+            </div>
+          </div>
+        </section>
+
+      </div><!-- /col -->
+    </div><!-- /acc-grid -->
+
+    <!-- Sticky save bar -->
+    <div class="savebar">
+      <span class="sv-dot"></span>
+      <span class="sv-t">You have unsaved changes</span>
+      <span class="sv-sp"></span>
+      <button class="btn ghost">Discard</button>
+      <button class="btn pri">✓ Save changes</button>
+    </div>
+
+    <div class="foot-note">Commune · Your data is encrypted at rest. We never store full bank details or move money on your behalf.</div>
+
+  </div><!-- /page -->
+</main>
+
+</body>
+</html>

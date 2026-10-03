@@ -2,10 +2,10 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "web-review",
-      "runtimeExecutable": "/usr/bin/tail",
-      "runtimeArgs": ["-f", "/dev/null"],
-      "port": 5180
+      "name": "web",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@commune/web", "dev"],
+      "port": 5173
     },
     {
       "name": "landing",
@@ -42,6 +42,18 @@
       "runtimeExecutable": "python3",
       "runtimeArgs": ["-m", "http.server", "5600", "--directory", "/tmp/commune-design-mocks", "--bind", "127.0.0.1"],
       "port": 5600
+    },
+    {
+      "name": "commune-web",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["apps/web/node_modules/vite/bin/vite.js", "apps/web", "--host", "127.0.0.1", "--port", "3000", "--strictPort"],
+      "port": 3000
+    },
+    {
+      "name": "commune-web-qa",
+      "runtimeExecutable": "env",
+      "runtimeArgs": ["COMMUNE_API_PORT=3005", "node", "apps/web/node_modules/vite/bin/vite.js", "apps/web", "--host", "127.0.0.1", "--port", "3000", "--strictPort"],
+      "port": 3000
     }
   ]
 }

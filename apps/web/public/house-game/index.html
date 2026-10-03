@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A little lost | Commune</title>
+<style>
+@font-face{font-family:Wordmark;src:url('./wordmark.woff2') format('woff2');font-weight:100 1000;font-display:swap}
+:root{--paper:#f5f1ea;--ink:#1a1e2b;--sage:#2d6a4f;--muted:#60706b;--line:#dedfd7}[hidden]{display:none!important}
+*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font:14px/1.55 Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}button,a{font:inherit}button{cursor:pointer}button:disabled{cursor:default;opacity:.5}button:focus-visible,a:focus-visible,canvas:focus-visible{outline:3px solid var(--sage);outline-offset:4px}
+header{max-width:1120px;margin:auto;padding:32px 32px;display:flex;align-items:center;justify-content:space-between;gap:24px}.logo{font-family:Wordmark,'DM Sans',sans-serif;font-size:30px;font-weight:600;letter-spacing:-1.8px;text-decoration:none;color:var(--ink)}.preview{display:flex;align-items:center;gap:12px;color:var(--muted);font-size:12px}.switch{display:flex;background:#e8e8df;border-radius:9px;padding:3px}.switch button{border:0;background:transparent;color:var(--muted);padding:6px 12px;border-radius:7px}.switch button[aria-pressed=true]{background:white;color:var(--ink)}
+main{max-width:1120px;margin:72px auto 0;padding:0 32px;display:grid;grid-template-columns: .8fr 1.35fr;gap:64px;align-items:center}.copy{max-width:360px}.code{color:var(--muted);font-size:14px;margin:0 0 20px}h1{font-size:36px;line-height:1.16;font-weight:550;letter-spacing:-1.1px;margin:0 0 20px}.lede{color:var(--muted);font-size:15px;line-height:1.65;margin:0 0 28px}.actions{display:flex;gap:20px;align-items:center}.primary{display:inline-flex;justify-content:center;align-items:center;background:var(--sage);color:white;text-decoration:none;border:1px solid var(--sage);border-radius:9px;padding:10px 18px;min-height:44px;font-weight:500}.quiet{color:var(--sage);background:none;border:0;text-decoration:underline;text-underline-offset:4px;padding:10px 0;min-height:44px}.context{margin-top:28px;font-size:12px;color:var(--muted)}
+.arcade{min-width:0}.game-frame{position:relative;border:1px solid #d6ddd2;border-radius:15px;overflow:hidden;background:#e9eee4}.game-top{display:flex;justify-content:space-between;padding:16px 20px;gap:16px;border-bottom:1px solid #d6ddd2;font-size:13px}.game-top strong{font-weight:500}.meters{display:flex;gap:18px;font-variant-numeric:tabular-nums;color:var(--muted)}canvas{width:100%;display:block;aspect-ratio:560/340;image-rendering:pixelated;outline-offset:-5px!important}.game-bottom{background:white;padding:16px 20px;display:flex;justify-content:space-between;align-items:center;gap:16px;min-height:80px}.game-bottom p{margin:0;font-size:12px;color:var(--muted)}.game-bottom .primary{white-space:nowrap}.below{display:flex;justify-content:space-between;align-items:center;gap:20px;color:var(--muted);font-size:12px;margin:14px 4px}.below p{margin:0}.touch{display:flex;gap:8px}.touch button{width:44px;height:44px;border:1px solid var(--line);border-radius:9px;background:white;color:var(--ink);font-size:20px;touch-action:none;user-select:none}.pause{background:transparent;border:0;color:var(--muted);text-decoration:underline;padding:0;min-height:44px}.note{max-width:1120px;padding:0 32px;margin:72px auto 24px;color:var(--muted);font-size:12px}
+@media(max-width:800px){header{padding:24px}main{margin-top:32px;grid-template-columns:1fr;gap:32px;padding:0 24px}.copy{max-width:480px}h1{font-size:30px}.context{margin-top:16px}.note{margin-top:32px;padding:0 24px}.preview>span{display:none}}@media(max-width:420px){header{gap:12px}.logo{font-size:27px}.switch button{padding:6px 9px}.game-top,.game-bottom{padding:12px}.meters{gap:10px}.below{align-items:flex-start}.game-bottom{gap:12px}.game-bottom p{max-width:170px}}
+</style>
+</head>
+<body>
+<header><a class="logo" href="/">commune.</a><div class="preview"><span>Playable concept</span><div class="switch" aria-label="Preview page"><button aria-pressed="true" data-mode="404">404</button><button aria-pressed="false" data-mode="connection">Connection</button></div></div></header>
+<main>
+<section class="copy"><p class="code" id="code">404 / wrong door</p><h1 id="title">A little lost?<br>You’re still welcome.</h1><p class="lede" id="lede">We couldn’t find this page. Head back to your communes, or stay for a little housework.</p><div class="actions"><a class="primary" id="home" href="/">Back to Home</a><button class="quiet" id="back">Go back</button></div><p class="context" id="context">Just a missing page. Nothing in your commune has changed.</p></section>
+<section class="arcade" aria-label="Optional house game">
+<div class="game-frame"><div class="game-top"><strong>Keep the house alive</strong><div class="meters"><span id="score">0 points</span><span id="clock">45s</span></div></div>
+<canvas id="game" width="560" height="340" tabindex="0" aria-label="Pixel-art house game. Use left and right arrows or A and D to catch groceries and avoid laundry."></canvas>
+<div class="game-bottom"><p id="instruction">Catch the groceries.<br>Leave the laundry for later.</p><button class="primary" id="play">Play a round</button></div></div>
+<div class="below"><p>No pressure. No sound.<br>Move with ← → or A / D.</p><div class="touch"><button id="left" aria-label="Move left">←</button><button id="right" aria-label="Move right">→</button></div><button class="pause" id="pause" hidden>Pause</button></div><p id="announce" role="status" style="position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)"></p>
+</section>
+</main>
+<p class="note">Design preview only. The game stays optional on both pages. No account data or network connection needed to play.</p>
+<script>
+const canvas=document.querySelector('#game'),ctx=canvas.getContext('2d');ctx.imageSmoothingEnabled=false;
+const $=s=>document.querySelector(s),C={ink:'#1a1e2b',sage:'#2d6a4f',leaf:'#6d9877',sky:'#c6e3f2',cloud:'#f5fbff',cream:'#faf5e9',roof:'#687c6e',wood:'#bb9768',sun:'#e4c477',blue:'#c8d9d8'};
+function box(x,y,w,h,c){ctx.fillStyle=c;ctx.fillRect(Math.round(x),Math.round(y),w,h)}
+function plant(x,y){box(x,y,16,14,C.wood);box(x+4,y-18,8,20,C.sage);box(x-8,y-12,14,8,C.leaf);box(x+10,y-20,12,8,C.leaf)}
+function windowAt(x,y){box(x,y,42,46,C.roof);box(x+4,y+4,34,38,C.blue);box(x+20,y+4,4,38,C.cream);box(x+4,y+21,34,4,C.cream)}
+let x=280,items=[],score=0,lives=3,remaining=45,active=false,paused=false,last=0,spawn=0,raf=0;const keys={left:false,right:false};
+function house(){
+ box(0,0,560,340,C.sky);box(400,28,28,28,C.sun);box(390,36,48,12,C.sun);
+ box(188,25,42,12,C.cloud);box(179,33,62,12,C.cloud);box(472,69,28,8,C.cloud);box(460,77,52,8,C.cloud);
+ box(44,110,470,182,'#d5ddcd');box(72,98,416,188,C.cream);
+ for(let i=0;i<9;i++)box(60+i*24,90-i*8,440-i*48,8,C.roof);
+ box(115,48,20,32,C.roof);box(111,44,28,8,C.ink);
+ windowAt(105,138);windowAt(410,138);box(238,148,74,140,'#d2b795');box(246,156,58,132,C.sage);box(250,162,50,42,'#56795e');box(293,223,4,4,C.sun);
+ box(224,282,102,8,C.wood);box(206,290,138,8,'#c6c7b3');
+ plant(170,250);plant(370,250);
+ box(0,298,560,42,'#c1cfae');box(0,298,560,6,'#8ea685');
+ for(let i=0;i<16;i++){box(i*37+12,321,4,8,C.leaf);box(i*37+16,317,4,8,C.leaf)}
+ box(27,237,4,62,C.roof);box(510,237,4,62,C.roof);box(27,237,487,3,C.roof);
+ [47,78,439,474].forEach((a,i)=>{box(a,238,20,22,i%2?'#acbabb':'#ddd1bd');box(a-4,238,28,6,i%2?'#acbabb':'#ddd1bd')});
+}
+function person(){box(x-8,264,16,16,C.wood);box(x-8,260,16,6,C.ink);box(x-12,280,24,18,C.sage);box(x-12,298,8,12,C.ink);box(x+4,298,8,12,C.ink);box(x-23,287,46,5,C.wood);box(x-20,292,40,10,C.wood);box(x-16,296,32,3,'#977546');}
+function grocery(a){box(a.x-8,a.y,16,14,C.wood);box(a.x-6,a.y-6,6,8,C.sage);box(a.x+2,a.y-4,6,8,'#c68055');box(a.x-4,a.y+3,8,3,C.cream)}
+function laundry(a){box(a.x-8,a.y,16,17,'#8c91a8');box(a.x-14,a.y,6,8,'#8c91a8');box(a.x+8,a.y,6,8,'#8c91a8');box(a.x-3,a.y,6,4,C.cream)}
+function draw(){house();items.forEach(a=>a.bad?laundry(a):grocery(a));person();for(let i=0;i<3;i++){const c=i<lives?C.sage:'#91adb6',h=18+i*22;box(h,17,6,6,c);box(h+10,17,6,6,c);box(h-2,21,20,6,c);box(h+2,27,12,4,c);box(h+6,31,4,4,c)}
+ if(!active||paused){box(170,108,220,44,'#faf5e9');ctx.fillStyle=C.ink;ctx.font='500 14px monospace';ctx.textAlign='center';ctx.fillText(paused?'Taking a breather':score?"Nice work, neighbour.":'A little shared life.',280,135)}
+}
+function ui(){ $('#score').textContent=score+' points';$('#clock').textContent=Math.ceil(remaining)+'s'; }
+function finish(){active=false;paused=false;keys.left=keys.right=false;$('#play').textContent='Play again';$('#play').hidden=false;$('#pause').hidden=true;$('#instruction').textContent=`${score} points. The house can wait. Ready when you are.`;$('#announce').textContent=`Round finished. ${score} points.`;draw()}
+function tick(time){if(!active)return;const dt=Math.min((time-last)/1000,.05);last=time;if(!paused){remaining-=dt;spawn-=dt;x=Math.max(30,Math.min(530,x+((keys.right?1:0)-(keys.left?1:0))*260*dt));if(spawn<=0){items.push({x:35+Math.random()*490,y:0,bad:Math.random()<.27});spawn=.72}items.forEach(a=>a.y+=105*dt);items=items.filter(a=>{if(a.y>=278&&a.y<310&&Math.abs(a.x-x)<28){if(a.bad){lives--;$('#announce').textContent=`Laundry caught. ${lives} chances left.`}else score+=10;return false}return a.y<340});ui();if(remaining<=0||lives<=0){remaining=Math.max(0,remaining);ui();finish();return}draw()}raf=requestAnimationFrame(tick)}
+$('#play').onclick=()=>{cancelAnimationFrame(raf);x=280;items=[];score=0;lives=3;remaining=45;spawn=.5;active=true;paused=false;last=performance.now();$('#play').hidden=true;$('#pause').hidden=false;$('#pause').textContent='Pause';$('#instruction').textContent='Catch groceries. Dodge laundry. Three chances.';$('#announce').textContent='Round started. Move left and right to catch groceries.';canvas.focus();ui();raf=requestAnimationFrame(tick)};
+function pause(){if(!active)return;paused=!paused;keys.left=keys.right=false;$('#pause').textContent=paused?'Resume':'Pause';draw()}
+$('#pause').onclick=pause;
+canvas.addEventListener('keydown',e=>{const k=e.key.toLowerCase();if(['arrowleft','arrowright','a','d',' '].includes(k)){e.preventDefault();if(k===' ')pause();else keys[k==='arrowleft'||k==='a'?'left':'right']=true}});
+window.addEventListener('keyup',e=>{const k=e.key.toLowerCase();if(k==='a'||k==='arrowleft')keys.left=false;if(k==='d'||k==='arrowright')keys.right=false});
+window.addEventListener('blur',()=>{keys.left=keys.right=false;if(active&&!paused)pause()});document.addEventListener('visibilitychange',()=>{if(document.hidden&&active&&!paused)pause()});
+['left','right'].forEach(k=>{const b=$('#'+k);b.onpointerdown=e=>{e.preventDefault();b.setPointerCapture(e.pointerId);keys[k]=true};b.onpointerup=b.onpointercancel=()=>keys[k]=false});
+$('#back').onclick=()=>{if(history.length>1)history.back();else location.href='/'};
+document.querySelectorAll('[data-mode]').forEach(b=>b.onclick=()=>{const offline=b.dataset.mode==='connection';document.querySelectorAll('[data-mode]').forEach(a=>a.setAttribute('aria-pressed',String(a===b)));$('#code').textContent=offline?'Connection interrupted':'404 / wrong door';$('#title').innerHTML=offline?'A brief pause.<br>Make yourself at home.':'A little lost?<br>You’re still welcome.';$('#lede').textContent=offline?'We couldn’t connect to Commune. Try again, or play a quick round while you wait.':'We couldn’t find this page. Head back to your communes, or stay for a little housework.';$('#home').textContent=offline?'Try Commune again':'Back to Home';$('#home').href=offline?'/operations':'/';$('#context').textContent=offline?'The game works offline. It doesn’t check or change your account.':'Just a missing page. Nothing in your commune has changed.';$('#back').hidden=offline});draw();
+</script>
+</body></html>

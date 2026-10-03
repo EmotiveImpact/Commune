@@ -214,3 +214,15 @@ geometry. Details and evidence: [money lifecycle](MONEY-LIFECYCLE-2026-10-02.md)
 - **Failure wording.** A server rejection says nothing was saved. An unknown
   outcome (offline, timeout) says so and that trying again is safe. Money
   dialogs show errors in the Overdue tone with `role="alert"`.
+
+### Connection recovery
+
+- Before an account can be verified, use a compact white recovery card on the
+  cream canvas with the existing wordmark, 21px heading and shared corner tokens.
+  No raw fetch error, false empty commune or unverified private sidebar.
+- A brief startup connection failure gets one retry across identity and membership
+  reads. Never automatically retry a financial command or an access rejection.
+- Retry stays in the same card, disables while running and announces its result.
+  Offline copy explains the next step; returning online triggers a retry.
+- Once verified content is loaded, a temporary refresh failure preserves that
+  view and offers a small connection notice rather than replacing the whole app.

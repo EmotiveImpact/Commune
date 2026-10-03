@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import { useLocation } from "wouter";
+import { isConnectionFailure } from "./live/connection";
 import { allocateExpense, validateExpenseAllocation, type ExpenseAllocation } from "../../../packages/core/src/expenseSplit";
 import {
   PAGE_LEDES,
@@ -486,8 +487,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const sequence = ++refreshSequence.current;
     refreshing.current = true;
     setApiError(null);
+    // One retry budget for startup reads only, never for commands or access errors.
+    let retried = false;
+    async function startupRead<T>(read: () => Promise<T>): Promise<T> {
+      try { return await read(); }
+      catch (error) {
+        if (loadedRef.current || retried || !navigator.onLine || !isConnectionFailure(error)) throw error;
+        retried = true;
+        await new Promise((resolve) => setTimeout(resolve, 350));
+        if (sequence !== refreshSequence.current) throw error;
+        return read();
+      }
+    }
     try {
-      const result = await api<{ user: User | null }>("/auth/me");
+      const result = await startupRead(() => api<{ user: User | null }>("/auth/me"));
       if (sequence !== refreshSequence.current) return;
       if (!result.user) {
         publishData(null);
@@ -500,7 +513,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         loadedRef.current = true;
         return;
       }
-      const { communes } = await loadCommunes(result.user);
+      const { communes } = await startupRead(() => loadCommunes(result.user!));
       if (sequence !== refreshSequence.current) return;
       const previous = dataRef.current?.user.id === result.user.id ? dataRef.current : null;
       if (!previous) {
