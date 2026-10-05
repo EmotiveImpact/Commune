@@ -6,6 +6,7 @@
   --hub-panel: #fffefa;
   --hub-quiet: #f8f5f0;
   --hub-sage: #edf3eb;
+  --hub-sage-line: #e1e9df;
   --hub-line: #eeece8;
   --hub-action: #2d6a4f;
   --hub-action-text: #fff;
@@ -22,6 +23,7 @@
   --hub-panel: #202a37;
   --hub-quiet: #253140;
   --hub-sage: #253b34;
+  --hub-sage-line: #33503f;
   --hub-line: #374350;
   --hub-action: #e7edf3;
   --hub-action-text: #14243b;
@@ -59,7 +61,8 @@
 .c-hub-settings { display: flex; align-items: center; gap: 6px; padding: 9px 12px; min-height: 38px; border: 1px solid #ffffff55; border-radius: var(--radius-control); background: #15221c66; color: #fff; font-size: 12px !important; }
 
 .c-hub-overview { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 20px; }
-.c-hub-balance { padding: 23px; border: 1px solid var(--hub-line); border-radius: var(--radius-surface); background: var(--hub-panel); }
+/* The balance card keeps the prototype's pale sage so it reads first. */
+.c-hub-balance { padding: 23px; border: 1px solid var(--hub-sage-line); border-radius: var(--radius-surface); background: var(--hub-sage); }
 .c-hub-amount { display: block; margin: 9px 0; font-size: clamp(32px,4vw,44px); font-weight: 500; letter-spacing: -1.8px; line-height: 1.2; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .c-hub-balance p { max-width: 42ch; margin-bottom: 22px; color: var(--hub-muted); }
 .c-hub-balance-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 14px 24px; }

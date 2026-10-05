@@ -20,7 +20,7 @@ The application was migrated. The stack below is what runs today.
 - **Email:** `apps/reminder-worker`, an outbox sender for reminders and invitations.
 - **Shared logic:** `packages/core` (split arithmetic).
 - **Mobile:** `apps/mobile` and `apps/mobile-v2` (Expo). Separate work. `apps/mobile` still imports the historical Supabase client and is not a counterpart of the migrated web app.
-- **Landing:** `apps/landing*`. Separate work.
+- **Website:** `web/` is the v2 marketing website (moved from `apps/landing-v2`). Other landing studies live in `apps/landing*`. Separate work.
 
 ```
 commune/
@@ -28,7 +28,8 @@ commune/
 ├── apps/local-api/        # Local loopback API over PostgreSQL (dev only)
 ├── apps/reminder-worker/  # Reminder and invitation email sender
 ├── apps/mobile*/          # Expo apps (separate work)
-├── apps/landing*/         # Marketing pages (separate work)
+├── apps/landing*/         # Landing studies (separate work)
+├── web/                   # v2 marketing website (separate work)
 ├── infra/neon/            # Migrations and SQL tests for the hosted database
 ├── infra/local/           # Local-only auth bootstrap and helpers
 ├── packages/core/         # Split logic and shared rules
