@@ -11,7 +11,7 @@ DECLARE
     'reminders', 'notifications', 'reminder_email_outbox',
     'commune_invites', 'recurring_bills', 'recurring_bill_occurrences',
     'split_templates', 'commune_events',
-    'expense_share_receipts', 'expense_revisions', 'operation_occurrences', 'expense_share_payment_reports'
+    'expense_share_receipts', 'expense_revisions', 'operation_occurrences', 'expense_share_payment_reports', 'note_revisions'
   ];
 BEGIN
   FOREACH table_name IN ARRAY denied_tables LOOP
@@ -81,7 +81,9 @@ BEGIN
     'commune_private.close_payment_reports()',
     'commune_private.scale_recurring_shares(jsonb,bigint)',
     'commune_private.recurring_next_due(text,date,integer)',
-    'commune_private.recurring_period_result(uuid,date,boolean)'
+    'commune_private.recurring_period_result(uuid,date,boolean)',
+    'commune_private.record_note_revision()',
+    'commune_private.start_note_version()'
   ] LOOP
     IF has_function_privilege('authenticated', table_name, 'EXECUTE')
       OR has_function_privilege('anonymous', table_name, 'EXECUTE') THEN
@@ -109,6 +111,10 @@ BEGIN
       OR has_column_privilege('authenticated',
         format('public.%I', table_name), 'created_by', 'UPDATE') THEN
       RAISE EXCEPTION 'Unexpected column grants on public.%', table_name;
+    END IF;
+    -- A note's version is the database's to set (0023).
+    IF table_name = 'commune_notes' AND has_column_privilege('authenticated', 'public.commune_notes', 'version', 'UPDATE') THEN
+      RAISE EXCEPTION 'Clients can set a note version';
     END IF;
     -- Operations people are written by id (0020); the trigger checks them.
     IF table_name = 'commune_operations' AND NOT (

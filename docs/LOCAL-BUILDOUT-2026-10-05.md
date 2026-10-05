@@ -132,3 +132,36 @@ It was not pressed in testing, so no real email was sent.
 **Evidence.** A screen test covering all four stages, the history list and a
 new link (244 web tests), and a browser check on the QA database confirming
 the earlier link was revoked when the new one was created.
+
+## 6. Note history and conflict protection (migration 0023)
+
+**Why.** Two people editing a note at once silently overwrote each other, and
+a note's earlier content was gone after any edit.
+
+**What changed.**
+- Notes have a version, set only by the database. Every content change saves
+  the replaced content to `note_revisions` (who saved it, who replaced it,
+  when); the last 50 per note are kept. Unchanged saves make no new version.
+- A save names the version it started from. If someone saved since, nothing is
+  written and the client gets 409. Older clients that send no version still
+  save as before.
+- Members read an earlier version on demand (`GET /notes/:id/revisions/:rid`
+  locally; the `note_revisions` table through the Data API), so the snapshot
+  carries summaries only.
+- Web: the editor keeps the draft on a conflict, names who saved the newer
+  version, and offers **Save mine over theirs** (theirs stays in history) or
+  **Discard mine, see theirs**. The note reader lists earlier versions; one can
+  be opened (passwords and codes stay masked, as on the board) and restored as
+  the newest version. Nothing is deleted.
+
+**Found in testing.** The first draft's backfill fired the activity-history
+trigger, which needs a signed-in identity, so it failed on any database that
+already had notes (the fresh test database had none). The backfill now runs
+with that trigger disabled. Each remaining migration is rehearsed on a clone of
+the everyday database before it is applied there.
+
+**Evidence.** `apps/local-api/tests/note-revisions.mjs` (stale save refused,
+history, unchanged save, older client, revision read and outsider refusal,
+restore, a six-way race, delete), `tests/grants.sql`, two web tests (246 in
+all), all SQL and HTTP suites on a database built from zero, and a browser
+check of the history and a revision on the QA database.

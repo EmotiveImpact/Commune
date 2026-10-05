@@ -348,6 +348,67 @@ describe("commune loading", () => {
     expect(saved.facts).toEqual(expect.arrayContaining([["Phone", "020 0000 0000"], ["Email", "owner@example.com"], ["Role", "Landlord"], ["Office hours", "Weekdays"], ["This Hub", "Pinned"]]));
   });
 
+  it("refuses to overwrite someone else's newer save, keeps the draft, and can save on top", async () => {
+    const members = [...snapshot.members, { userId: "user-2", name: "Blake", role: "member" as const }];
+    let current = { ...wifiNote, title: "House rules", pill: "House rules", body: "Quiet after 11", facts: [] as Array<[string, string]>, version: 2, updatedBy: user.id, updatedAt: "2026-10-05T09:00:00Z", revisions: [] };
+    vi.mocked(loadSnapshot).mockImplementation(async () => ({ ...snapshot, members, notes: [current] }));
+    const puts: Array<Record<string, unknown>> = [];
+    vi.mocked(api).mockImplementation(async (path, options) => {
+      if (path === "/auth/me") return { user };
+      if (path === "/notes/note-1" && options?.method === "PUT") {
+        const body = JSON.parse(String(options.body));
+        puts.push(body);
+        if (body.expectedVersion !== current.version) throw new ApiError("Someone else saved this note while you were editing. Your text is still here; check their version before saving again.", 409);
+        current = { ...current, ...body, version: current.version + 1 };
+        return { ok: true, version: current.version };
+      }
+      return { invites: [] };
+    });
+    mount("/notes");
+    fireEvent.click(await screen.findByRole("button", { name: "Open House rules" }));
+    fireEvent.click(screen.getByRole("button", { name: "Edit note" }));
+    const dialog = await screen.findByRole("dialog", { name: "Edit note" });
+    // Blake saves while this edit is open.
+    current = { ...current, body: "Quiet after 10", version: 3, updatedBy: "user-2", updatedAt: "2026-10-05T10:15:00Z" };
+    fireEvent.change(within(dialog).getByLabelText(/^Note \(/), { target: { value: "Quiet after midnight" } });
+    await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Save changes" })); });
+    expect(puts[0].expectedVersion).toBe(2);
+    const conflict = await within(dialog).findByRole("alert");
+    expect(conflict.textContent).toContain("Blake saved a newer version");
+    expect(conflict.textContent).toContain("Your text is still in this form, unsaved.");
+    expect((within(dialog).getByLabelText(/^Note \(/) as HTMLTextAreaElement).value).toBe("Quiet after midnight");
+    expect(current.body).toBe("Quiet after 10");
+    await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Save mine over theirs" })); });
+    expect(puts[1].expectedVersion).toBe(3);
+    await screen.findByRole("complementary", { name: "House rules" });
+    expect([current.version, current.body]).toEqual([4, "Quiet after midnight"]);
+  });
+
+  it("shows a note's earlier versions and restores one as the newest", async () => {
+    let current = { ...wifiNote, title: "House rules", pill: "House rules", body: "Quiet after 10", facts: [] as Array<[string, string]>, version: 3, updatedBy: user.id, updatedAt: "2026-10-05T10:15:00Z",
+      revisions: [{ id: "rev-2", version: 2, title: "House rules", editedBy: user.id, editedAt: "2026-10-04T09:00:00Z", replacedBy: user.id, replacedAt: "2026-10-05T10:15:00Z" }] };
+    vi.mocked(loadSnapshot).mockImplementation(async () => ({ ...snapshot, notes: [current] }));
+    const puts: Array<Record<string, unknown>> = [];
+    vi.mocked(api).mockImplementation(async (path, options) => {
+      if (path === "/auth/me") return { user };
+      if (path === "/notes/note-1/revisions/rev-2") return { revision: { id: "rev-2", version: 2, title: "House rules", pill: "House rules", kicker: "Everyone", lede: "Quiet after 11", body: "Quiet after 11. Door code old-secret", facts: [["Door code", "old-secret"]], editedBy: user.id, editedAt: "2026-10-04T09:00:00Z" } };
+      if (path === "/notes/note-1" && options?.method === "PUT") { const body = JSON.parse(String(options.body)); puts.push(body); current = { ...current, ...body, version: 4 }; return { ok: true, version: 4 }; }
+      return { invites: [] };
+    });
+    mount("/notes");
+    fireEvent.click(await screen.findByRole("button", { name: "Open House rules" }));
+    const history = (await screen.findByText(/Version 3 · saved by Test Person · 1 earlier version/)).closest("details")!;
+    await act(async () => { fireEvent.click(within(history).getByRole("button", { name: "View" })); });
+    const opened = within(history).getByLabelText("Version 2");
+    expect(opened.textContent).toContain("Quiet after 11");
+    // An earlier code or password is masked here as it is on the board.
+    expect(opened.textContent).not.toContain("old-secret");
+    await act(async () => { fireEvent.click(within(opened).getByRole("button", { name: "Restore version 2" })); });
+    // Restoring brings back the real content, not the masked display.
+    expect(puts[0]).toMatchObject({ expectedVersion: 3, body: "Quiet after 11. Door code old-secret", facts: [["Door code", "old-secret"]] });
+    expect(within(history).getByRole("status").textContent).toBe("Version 2 restored as the newest version. Nothing was deleted.");
+  });
+
   it("does not save an empty note or lose a draft after a failed save", async () => {
     vi.mocked(post).mockRejectedValue(new Error("Could not save. Try again."));
     mount("/notes");

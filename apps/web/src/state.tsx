@@ -47,6 +47,8 @@ import {
   type Notification,
   type ExpenseChangeResult,
   type ReceiptResult,
+  type LiveNote,
+  type NoteRevision,
   type PaymentReportResult,
   type RecurringPeriodResult,
   type ReminderResult,
@@ -203,7 +205,7 @@ export type AppState = {
   moreOpen: boolean;
   navMode: NavMode;
   noteKey: string;
-  notes: Record<string, NoteCard>;
+  notes: Record<string, LiveNote>;
   operationKey: string;
   operationDate: string;
   operationTime: string;
@@ -251,7 +253,9 @@ export type AppState = {
   setHubPhoto: (id: HubId, dataUrl: string | null) => void;
   setAvatar: (dataUrl: string | null) => void;
   addNote: (card: NoteCard & { id: string }) => Promise<string>;
-  updateNote: (card: NoteCard & { id: string }) => Promise<string>;
+  /** expectedVersion: the version the edit started from. Defaults to the version on screen now. */
+  updateNote: (card: NoteCard & { id: string; expectedVersion?: number }) => Promise<string>;
+  loadNoteRevision: (noteId: string, revisionId: string) => Promise<NoteRevision>;
   addOperation: (item: NewOperation) => Promise<string>;
   updateOperation: (id: string, item: NewOperation) => Promise<void>;
   /** Completes an open task, or reopens a done one. The server advances repeats and rotation. */
@@ -711,7 +715,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     : null;
   // A commune whose only expenses are voided still has a ledger to show.
   const empty = !!session?.hasHubs && allExpenses.length === 0;
-  const notes: Record<string, NoteCard> = Object.fromEntries(
+  const notes: Record<string, LiveNote> = Object.fromEntries(
     (snapshot?.notes ?? []).map((note) => [note.id, note]),
   );
   const operationsByHub: OperationStore = Object.fromEntries((data?.communes ?? []).map((commune) => [
@@ -1032,16 +1036,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setNoteKey(result.id);
     return result.id;
   }), [activeId, mutate, refreshRecords]);
-  const updateNote = useCallback((card: NoteCard & { id: string }) => mutate(async () => {
-    if (!data?.snapshots[activeId]?.notes?.some((note) => note.id === card.id)) {
-      throw new Error("Note not found in this commune");
+  const updateNote = useCallback((card: NoteCard & { id: string; expectedVersion?: number }) => mutate(async () => {
+    const current = data?.snapshots[activeId]?.notes?.find((note) => note.id === card.id);
+    if (!current) throw new Error("Note not found in this commune");
+    const { id, expectedVersion, ...payload } = card;
+    try {
+      await api(`/notes/${encodeURIComponent(id)}`, { method: "PUT",
+        body: JSON.stringify({ ...payload, expectedVersion: expectedVersion ?? current.version ?? null }) });
+    } catch (error) {
+      // Someone else saved first: show their version, keep the editor's text.
+      if (error instanceof ApiError && error.status === 409) await refreshRecords();
+      throw error;
     }
-    const { id, ...payload } = card;
-    await api(`/notes/${encodeURIComponent(id)}`, { method: "PUT", body: JSON.stringify(payload) });
     await refreshRecords();
     setNoteKey(id);
     return id;
   }), [activeId, data, mutate, refreshRecords]);
+  const loadNoteRevision = useCallback(async (noteId: string, revisionId: string) =>
+    (await api<{ revision: NoteRevision }>(`/notes/${encodeURIComponent(noteId)}/revisions/${encodeURIComponent(revisionId)}`)).revision, []);
   const addOperation = useCallback((item: NewOperation) => mutate(async () => {
     if (!activeId) throw new Error("Choose a commune first");
     const result = await post<{ id: string }>(`/communes/${encodeURIComponent(activeId)}/operations`, operationPayload(item));
@@ -1188,7 +1200,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setDark: (dark) => savePrefs({ dark }),
     setNoticesOn: (noticesOn) => savePrefs({ noticesOn }),
     setCurrency: (currency) => savePrefs({ currency }),
-    setSearchQuery, setSearchScope, clearSearchTarget, setNoteSearchQuery, savePayMethod, setHubPhoto, setAvatar, addNote, updateNote,
+    setSearchQuery, setSearchScope, clearSearchTarget, setNoteSearchQuery, savePayMethod, setHubPhoto, setAvatar, addNote, updateNote, loadNoteRevision,
     addOperation, updateOperation, toggleOperation, skipOperation, undoOperation,
     removeOperation, createHub, updateCommune, recordExpense, confirmExpenseShare, correctExpense, voidExpense, recordShareReceipt, reverseShareReceipt,
     reportSharePayment, withdrawPaymentReport, resolvePaymentReport,

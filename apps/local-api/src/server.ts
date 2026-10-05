@@ -630,17 +630,41 @@ route("POST", /^\/api\/communes\/([0-9a-f-]{36})\/notes$/, async (req, res, matc
   send(res, { id: result.rows[0].id }, 201);
 });
 
+// expectedVersion names the version the edit was based on. When someone else
+// saved since, nothing is written and the caller is told (409).
 route("PUT", /^\/api\/notes\/([0-9a-f-]{36})$/, async (req, res, match) => {
-  const card = noteInput(await body(req));
-  const result = await userAction(req, async (client) => client.query(`
-    UPDATE public.commune_notes
-      SET title = $2, pill = $3, kicker = $4, lede = $5,
-        body = $6, facts = $7::jsonb, updated_at = now()
-      WHERE id = $1 RETURNING id
-  `, [uuid(match[1]), card.title, card.pill, card.kicker,
-      card.lede, card.body, JSON.stringify(card.facts)]));
+  const input = await body(req);
+  const card = noteInput(input);
+  const expected = input.expectedVersion == null ? null : Number(input.expectedVersion);
+  if (expected !== null && (!Number.isInteger(expected) || expected < 1)) throw new ApiError(400, "Invalid expectedVersion");
+  const result = await userAction(req, async (client) => {
+    const updated = await client.query(`
+      UPDATE public.commune_notes
+        SET title = $2, pill = $3, kicker = $4, lede = $5,
+          body = $6, facts = $7::jsonb, updated_at = now()
+        WHERE id = $1 AND ($8::integer IS NULL OR version = $8) RETURNING id, version
+    `, [uuid(match[1]), card.title, card.pill, card.kicker,
+        card.lede, card.body, JSON.stringify(card.facts), expected]);
+    if (updated.rowCount || expected === null) return updated;
+    const current = await client.query("SELECT version FROM public.commune_notes WHERE id = $1", [uuid(match[1])]);
+    if (current.rowCount) {
+      throw new ApiError(409, "Someone else saved this note while you were editing. Your text is still here; check their version before saving again.");
+    }
+    return updated;
+  });
   if (!result.rowCount) throw new ApiError(404, "Note not found");
-  send(res, { ok: true });
+  send(res, { ok: true, version: result.rows[0].version });
+});
+
+route("GET", /^\/api\/notes\/([0-9a-f-]{36})\/revisions\/([0-9a-f-]{36})$/, async (req, res, match) => {
+  const result = await userAction(req, async (client) => client.query(`
+    SELECT id, version, title, pill, kicker, lede, body, facts, edited_by, edited_at
+      FROM public.note_revisions WHERE note_id = $1 AND id = $2
+  `, [uuid(match[1]), uuid(match[2])]));
+  const row = result.rows[0];
+  if (!row) throw new ApiError(404, "Revision not found");
+  send(res, { revision: { id: row.id, version: row.version, title: row.title, pill: row.pill, kicker: row.kicker,
+    lede: row.lede, body: row.body, facts: row.facts, editedBy: row.edited_by, editedAt: row.edited_at } });
 });
 
 route("DELETE", /^\/api\/notes\/([0-9a-f-]{36})$/, async (req, res, match) => {

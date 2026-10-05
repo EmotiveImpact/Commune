@@ -27,7 +27,8 @@ files in order using a database owner connection:
 21. `infra/neon/migrations/0020_operation_member_ids.sql`
 22. `infra/neon/migrations/0021_payment_reports.sql`
 23. `infra/neon/migrations/0022_recurring_periods.sql`
-24. `infra/local/after-core.sql`
+24. `infra/neon/migrations/0023_note_revisions.sql`
+25. `infra/local/after-core.sql`
 
 `after-core.sql` is idempotent. Re-run it after applying a newer migration to
 an existing local database so the local-only reminder helpers stay current.

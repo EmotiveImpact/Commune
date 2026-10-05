@@ -495,13 +495,32 @@ export async function neonApi<T>(path: string, init: RequestInit = {}): Promise<
     }).select("id").single();
     response = idResult(asObject(unwrap(result)).id);
   } else if (method === "PUT" && pathId(path, /^\/notes\/([^/]+)$/)) {
-    const result = await db().from("commune_notes").update({
+    const noteId = pathId(path, /^\/notes\/([^/]+)$/)!;
+    let update = db().from("commune_notes").update({
       title: body.title, pill: body.pill ?? "", kicker: body.kicker ?? "",
       lede: body.lede ?? "", body: body.body ?? "", facts: body.facts ?? [],
       updated_at: new Date().toISOString(),
-    }).eq("id", pathId(path, /^\/notes\/([^/]+)$/)!).select("id");
-    if (!rows(unwrap(result)).length) throw new ApiError("Note not found", 404);
-    response = { ok: true };
+    }).eq("id", noteId);
+    // Only the version the edit was based on may be replaced (migration 0023).
+    if (typeof body.expectedVersion === "number") update = update.eq("version", body.expectedVersion);
+    const saved = rows(unwrap(await update.select("id,version")));
+    if (!saved.length) {
+      const exists = typeof body.expectedVersion === "number"
+        && rows(unwrap(await db().from("commune_notes").select("id").eq("id", noteId))).length > 0;
+      if (exists) throw new ApiError("Someone else saved this note while you were editing. Your text is still here; check their version before saving again.", 409);
+      throw new ApiError("Note not found", 404);
+    }
+    response = { ok: true, version: Number(asObject(saved[0]).version) };
+  } else if (method === "GET" && pathId(path, /^\/notes\/[^/]+\/revisions\/([^/]+)$/)) {
+    const found = rows(unwrap(await db().from("note_revisions")
+      .select("id,version,title,pill,kicker,lede,body,facts,edited_by,edited_at")
+      .eq("note_id", pathId(path, /^\/notes\/([^/]+)\/revisions\/[^/]+$/)!)
+      .eq("id", pathId(path, /^\/notes\/[^/]+\/revisions\/([^/]+)$/)!)));
+    if (!found.length) throw new ApiError("Revision not found", 404);
+    const row = asObject(found[0]);
+    response = { revision: { id: str(row.id), version: Number(row.version), title: str(row.title), pill: str(row.pill),
+      kicker: str(row.kicker), lede: str(row.lede), body: str(row.body), facts: Array.isArray(row.facts) ? row.facts : [],
+      editedBy: row.edited_by == null ? null : str(row.edited_by), editedAt: str(row.edited_at) } };
   } else if (method === "DELETE" && pathId(path, /^\/notes\/([^/]+)$/)) {
     const result = await db().from("commune_notes").delete().eq("id", pathId(path, /^\/notes\/([^/]+)$/)!).select("id");
     if (!rows(unwrap(result)).length) throw new ApiError("Note not found", 404);

@@ -230,7 +230,18 @@ export type Notification = {
   createdAt: string;
   readAt: string | null;
 };
-export type LiveNote = NoteCard & { id: string };
+/** A note's earlier content, as a summary; the content is read on demand. */
+export type NoteRevisionSummary = {
+  id: string; version: number; title: string;
+  editedBy: string | null; editedAt: string; replacedBy: string | null; replacedAt: string;
+};
+export type NoteRevision = NoteCard & { id: string; version: number; editedBy: string | null; editedAt: string };
+export type LiveNote = NoteCard & {
+  id: string;
+  /** Saves name the version they were based on (migration 0023). */
+  version?: number; createdBy?: string; updatedBy?: string | null; updatedAt?: string;
+  revisions?: NoteRevisionSummary[];
+};
 export type Snapshot = {
   commune: Commune;
   members: Member[];

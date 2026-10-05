@@ -18,6 +18,7 @@ import {
 import type { NoteCard } from "../data/household";
 import { LIMITS } from "../data/limits";
 import { useApp } from "../state";
+import { NoteHistory } from "../ui/NoteHistory";
 import {
   isNotePinned,
   isSecretFact,
@@ -336,6 +337,7 @@ function NoteReader({ note, id }: { note: NoteCard; id: string }) {
         <p className="note-feedback" role="status">
           {notice}
         </p>
+        <NoteHistory noteId={id} />
         <p className="note-visibility">
           <Users size={20} aria-hidden="true" />
           Visible to commune members

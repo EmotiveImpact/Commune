@@ -48,3 +48,13 @@
   .note-editor-details { grid-template-columns: minmax(0, 1fr); }
   .note-editor .note-editor-actions > button { flex: 1; }
 }
+
+/* Someone else saved first: their version is named, the editor's text kept. */
+.c-note-conflict { margin: 0 0 14px; padding: 12px 14px; border: 1px solid var(--border-strong); border-radius: var(--radius-control); background: var(--paper-2); font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
+.c-note-conflict p { margin: 0 0 10px; }
+/* A note's earlier versions, and one opened for reading. */
+.c-note-history { margin: 0 0 16px; }
+.c-note-revision { margin-top: 10px; padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--paper-2); font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
+.c-note-revision p { margin: 4px 0; }
+.c-note-revision p span { color: var(--ink-soft); }
+.c-contribution-history > .c-note-revision { display: block; }

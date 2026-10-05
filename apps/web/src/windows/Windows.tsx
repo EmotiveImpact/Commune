@@ -16,6 +16,7 @@ import { ExpenseHistory, useExpenseChange } from "../ui/ExpenseChange";
 import { formatReminderDay, formatTimestampDay } from "../data/reminders";
 import { isNotePinned } from "../data/notePresentation";
 import { buildStatement, statementCsv } from "../data/statement";
+import { NoteHistory } from "../ui/NoteHistory";
 import "./NoteEditor.css";
 import { allocateExpense, type SplitMethod } from "../../../../packages/core/src/expenseSplit";
 import "./ExpenseEditor.css";
@@ -898,6 +899,7 @@ function NoteCardView() {
         ))}
       </div>
       <p className="a-window-note">{card.body}</p>
+      <NoteHistory noteId={noteKey} />
       <div className="a-field-row">
         <button className="a-btn" type="button" onClick={() => go("note-edit", { note: noteKey })}>
           Edit note
@@ -913,8 +915,16 @@ function NoteCardView() {
   );
 }
 
-function NoteNew({ onSave, initial }: { onSave: (card: NoteCard & { id: string }) => Promise<string>; initial?: NoteCard & { id: string } }) {
-  const { go, closeWindow } = useApp();
+function NoteNew({ onSave, initial }: {
+  onSave: (card: NoteCard & { id: string; expectedVersion?: number }) => Promise<string>;
+  initial?: NoteCard & { id: string; version?: number };
+}) {
+  const { go, closeWindow, notes, hub } = useApp();
+  // The version this edit started from. A save replaces only that version.
+  const baseVersion = useRef(initial?.version);
+  const [conflict, setConflict] = useState(false);
+  const latest = initial ? notes[initial.id] : undefined;
+  const editorName = (userId: string | null | undefined) => hub.members.find((member) => member.userId === userId)?.name ?? "Someone";
   const fact = (label: string) => initial?.facts.find(([key]) => key === label)?.[1] ?? "";
   const [type, setType] = useState<(typeof NOTE_TYPES)[number][0]>(() => initial?.pill === "Landlord" ? "contacts" : initial ? NOTE_TYPES.find(([, label]) => label === initial.pill)?.[0] ?? "other" : "other");
   const [title, setTitle] = useState(initial?.title ?? "");
@@ -984,6 +994,7 @@ function NoteNew({ onSave, initial }: { onSave: (card: NoteCard & { id: string }
     try {
       const id = await onSave({
         id: initial?.id ?? `draft-${Date.now()}`,
+        expectedVersion: baseVersion.current,
         title: title.trim(),
         pill: typeLabel,
         kicker: pin ? "Pinned · everyone" : "Everyone",
@@ -993,6 +1004,7 @@ function NoteNew({ onSave, initial }: { onSave: (card: NoteCard & { id: string }
       });
       go("note", { note: id });
     } catch (cause) {
+      if (cause instanceof Error && /Someone else saved this note/.test(cause.message)) setConflict(true);
       setError(cause instanceof Error ? cause.message : "Could not save the note.");
     } finally {
       setSaving(false);
@@ -1079,7 +1091,25 @@ function NoteNew({ onSave, initial }: { onSave: (card: NoteCard & { id: string }
         <input type="checkbox" checked={pin} onChange={(event) => setPin(event.target.checked)} />
         <span>Pin this note<span className="note-editor-hint">Keep it at the top of the notes board.</span></span>
       </label>
-      {error ? <p className="a-form-error" role="alert">{error}</p> : null}
+      {conflict && latest ? (
+        <div className="c-note-conflict" role="alert">
+          <p>
+            {editorName(latest.updatedBy)} saved a newer version
+            {latest.updatedAt ? ` at ${new Date(latest.updatedAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}` : ""}:
+            “{latest.title}”. Your text is still in this form, unsaved.
+          </p>
+          <div className="a-field-row">
+            <button className="a-btn" type="button" disabled={saving} onClick={() => {
+              // Their version stays in the note's history; this saves yours on top.
+              baseVersion.current = latest.version;
+              setConflict(false);
+              setError("");
+              void save();
+            }}>Save mine over theirs</button>
+            <button className="a-btn ghost" type="button" disabled={saving} onClick={() => go("note", { note: latest.id })}>Discard mine, see theirs</button>
+          </div>
+        </div>
+      ) : error ? <p className="a-form-error" role="alert">{error}</p> : null}
       <div className="a-field-row note-editor-actions">
         <button className="a-btn ghost" type="button" disabled={saving} onClick={() => initial ? go("note", { note: initial.id }) : closeWindow()}>
           Cancel
