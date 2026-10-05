@@ -195,3 +195,9 @@
 .c-period-split li { display: flex; justify-content: space-between; gap: 12px; padding: 3px 0; font-size: 13px; }
 .c-period-split li span:last-child { font-variant-numeric: tabular-nums; }
 .c-period-history { margin-top: 12px; }
+
+/* Funds: promised, received, still to come and not yet pledged. */
+.c-fund-figures { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 14px; margin: 10px 0 12px; }
+.c-fund-figures div { min-width: 0; }
+.c-fund-figures dt { font-size: 11px; color: var(--ink-soft); }
+.c-fund-figures dd { margin: 2px 0 0; font-size: 14px; font-weight: 550; color: var(--ink); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }

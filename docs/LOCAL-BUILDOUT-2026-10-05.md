@@ -165,3 +165,17 @@ history, unchanged save, older client, revision read and outsider refusal,
 restore, a six-way race, delete), `tests/grants.sql`, two web tests (246 in
 all), all SQL and HTTP suites on a database built from zero, and a browser
 check of the history and a revision on the QA database.
+
+## 7. Fund figures (web only)
+
+Fund cards and the fund view now show **Promised** (active pledges),
+**Received** (recorded contributions, net of corrections), **Still to come**
+(promised but not yet received) and, with a target, **Not yet pledged**. A
+cancelled pledge's recorded money still counts as received; its promise does
+not. Gaps never go negative. Tested in `apps/web/tests/funds-figures.test.ts`
+(249 web tests) and checked in the browser on the QA database.
+
+**Not built: linking a fund to an expense.** Spending from a fund changes what
+people owe (does the fund pay the bill, or reimburse the payer, and how are
+the shares settled?). That is a product decision, so it is listed as an open
+question rather than guessed at.

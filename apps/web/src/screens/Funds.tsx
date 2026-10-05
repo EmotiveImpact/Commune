@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react";
+import { fundFigures } from "../data/funds";
 import { HandCoins, Plus } from "lucide-react";
 import { useApp } from "../state";
 import { useSearchRecord } from "../ui/useSearchRecord";
@@ -25,6 +26,28 @@ type Mode =
   | { kind: "pledge"; fundId: string; commitmentId?: string }
   | { kind: "contribute" | "cancel"; fundId: string; commitmentId: string }
   | { kind: "void"; fundId: string; contributionId: string };
+
+/** Promised, received, still to come and (with a target) not yet pledged. */
+function FundFigures({ fund }: { fund: Fund }) {
+  const { hub } = useApp();
+  const figures = fundFigures(fund);
+  const cells: Array<[string, number]> = [
+    ["Promised", figures.promisedMinor],
+    ["Received", figures.receivedMinor],
+    ["Still to come", figures.stillToComeMinor],
+  ];
+  if (figures.unpledgedMinor !== null) cells.push(["Not yet pledged", figures.unpledgedMinor]);
+  return (
+    <dl className="c-fund-figures">
+      {cells.map(([label, value]) => (
+        <div key={label}>
+          <dt>{label}</dt>
+          <dd>{money(value, hub.currency)}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
 
 export function FundsScreen() {
   const {
@@ -447,6 +470,7 @@ export function FundsScreen() {
                   </div>
                 </div>
               )}
+              <FundFigures fund={item} />
               {my && (
                 <p className="c-form-help">
                   Your pledge: {money(my.amountMinor, hub.currency)} ·{" "}
@@ -523,6 +547,7 @@ export function FundsScreen() {
                   : ""}
                 . These are confirmations, not money held by Commune.
               </p>
+              <FundFigures fund={fund} />
               {fund.commitments.map(renderPledge)}
               {!fund.commitments.length && (
                 <p className="c-form-help">No pledges yet.</p>
