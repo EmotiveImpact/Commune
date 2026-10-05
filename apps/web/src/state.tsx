@@ -62,8 +62,18 @@ import {
 const LOCAL_PREFIX = "commune.local.";
 export type Seed = "new";
 export type NavMode = "basic" | "advanced";
-export type PendingInvite = { id: string; email: string; role: "Member" | "Admin"; expiresAt: string };
-type InviteRecord = { id: string; email: string; role: "member" | "admin"; expiresAt: string; acceptedAt: string | null; revokedAt: string | null };
+/** An invitation and where it is in its life. Admins see them all. */
+export type PendingInvite = {
+  id: string; email: string; role: "Member" | "Admin";
+  status: "pending" | "expired" | "accepted" | "revoked";
+  createdAt: string; expiresAt: string; acceptedAt: string | null; revokedAt: string | null;
+};
+type InviteRecord = { id: string; email: string; role: "member" | "admin"; createdAt: string; expiresAt: string; acceptedAt: string | null; revokedAt: string | null };
+export function inviteStatus(invite: Pick<InviteRecord, "acceptedAt" | "revokedAt" | "expiresAt">, now = Date.now()): PendingInvite["status"] {
+  if (invite.acceptedAt) return "accepted";
+  if (invite.revokedAt) return "revoked";
+  return Date.parse(invite.expiresAt) > now ? "pending" : "expired";
+}
 export type PayMethod = {
   provider: "Revolut" | "PayPal" | "Monzo" | "Bank transfer";
   value: string;
@@ -563,12 +573,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       void Promise.all(communes.filter((commune) => commune.role === "admin")
           .map(async (commune) => {
             const result = await api<{ invites: InviteRecord[] }>(`/communes/${encodeURIComponent(commune.id)}/invites`);
-            return [commune.id, result.invites.filter((invite) =>
-              !invite.acceptedAt && !invite.revokedAt && Date.parse(invite.expiresAt) > Date.now())
-              .map((invite) => ({
+            return [commune.id, result.invites.map((invite) => ({
                 id: invite.id, email: invite.email,
                 role: invite.role === "admin" ? "Admin" as const : "Member" as const,
-                expiresAt: invite.expiresAt,
+                status: inviteStatus(invite), createdAt: invite.createdAt, expiresAt: invite.expiresAt,
+                acceptedAt: invite.acceptedAt, revokedAt: invite.revokedAt,
               }))] as const;
           })).then((inviteEntries) => {
         if (sequence !== refreshSequence.current || !dataRef.current) return;

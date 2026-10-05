@@ -1,9 +1,85 @@
 import { useState } from "react";
 import { Plus } from "lucide-react";
-import { useApp } from "../state";
+import { useApp, type PendingInvite } from "../state";
+import { formatTimestampDay } from "../data/reminders";
 import { useSearchRecord } from "../ui/useSearchRecord";
 import { Avatar, Pill } from "../ui/widgets";
 import { Button, Dialog, EmptyState, Feedback, Panel } from "../ui/components";
+
+/**
+ * A fresh link for an invitation that is pending or has expired. Creating it
+ * retires the earlier link, so the dialog asks first.
+ */
+function NewInviteLinkDialog({ invite, onClose, onDone }: {
+  invite: PendingInvite; onClose: () => void; onDone: (message: string) => void;
+}) {
+  const { createInvite, sendInviteEmail } = useApp();
+  const [url, setUrl] = useState("");
+  const [token, setToken] = useState("");
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState("");
+  const [note, setNote] = useState("");
+  async function issue() {
+    if (pending) return;
+    setPending(true); setError("");
+    try {
+      const result = await createInvite(invite.email, invite.role === "Admin" ? "admin" : "member");
+      setUrl(result.url); setToken(result.token);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not create a new link.");
+    } finally {
+      setPending(false);
+    }
+  }
+  async function email() {
+    if (pending || !token) return;
+    setPending(true); setError("");
+    try {
+      await sendInviteEmail(token);
+      onDone(`New invitation emailed to ${invite.email}.`);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Email sending could not be confirmed. Copy the link instead.");
+    } finally {
+      setPending(false);
+    }
+  }
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(url);
+      setNote("Link copied.");
+    } catch {
+      setError("Copy failed. Select the link and copy it manually.");
+    }
+  }
+  return (
+    <Dialog title={`New invitation link for ${invite.email}`} pending={pending} onClose={url ? () => onDone(`New link ready for ${invite.email}. The earlier link no longer works.`) : onClose}>
+      {!url ? (
+        <>
+          <p>{invite.status === "expired" ? "This invitation has expired." : "This invitation is still open."} A new link replaces it: the earlier link stops working, and the new one lasts seven days.</p>
+          <Feedback error={error} />
+          <div className="a-field-row">
+            <Button disabled={pending} onClick={() => void issue()}>{pending ? "Creating…" : "Create new link"}</Button>
+            <Button variant="secondary" disabled={pending} onClick={onClose}>Cancel</Button>
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="a-field">
+            <label htmlFor="new-invite-link">New invitation link</label>
+            <input id="new-invite-link" value={url} readOnly onFocus={(event) => event.target.select()} />
+          </div>
+          <p className="c-form-help">Only {invite.email} can accept it, after verifying their email. The earlier link no longer works.</p>
+          <Feedback error={error} message={note} />
+          <div className="a-field-row">
+            <Button disabled={pending} onClick={() => void copy()}>Copy link</Button>
+            <Button variant="secondary" disabled={pending} onClick={() => void email()}>{pending ? "Sending…" : "Email it"}</Button>
+            <Button variant="secondary" disabled={pending} onClick={() => onDone(`New link ready for ${invite.email}. The earlier link no longer works.`)}>Done</Button>
+          </div>
+        </>
+      )}
+    </Dialog>
+  );
+}
 
 export function MembersScreen() {
   const { hub, go, session, snapshots, invites, revokeInvite, manageMember } =
@@ -12,6 +88,9 @@ export function MembersScreen() {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const searchRecord = useSearchRecord("member", hub.members.map(item => item.userId));
+  const [reissue, setReissue] = useState<PendingInvite | null>(null);
+  const openInvites = invites.filter((invite) => invite.status === "pending" || invite.status === "expired");
+  const pastInvites = invites.filter((invite) => invite.status === "accepted" || invite.status === "revoked").slice(0, 12);
   const [action, setAction] = useState<{
     userId: string;
     name: string;
@@ -149,7 +228,7 @@ export function MembersScreen() {
           );
         })}
         {isAdmin &&
-          invites.map((invite) => (
+          openInvites.map((invite) => (
             <div key={invite.id} className="a-member-row c-member-row">
               <Avatar
                 tone="house"
@@ -157,19 +236,36 @@ export function MembersScreen() {
               />
               <div className="who">
                 <strong>{invite.email}</strong>
-                <span>{invite.role} invitation · pending acceptance</span>
+                <span>
+                  {invite.role} invitation ·{" "}
+                  {invite.status === "expired"
+                    ? `expired ${formatTimestampDay(invite.expiresAt)}`
+                    : `sent ${formatTimestampDay(invite.createdAt)}, expires ${formatTimestampDay(invite.expiresAt)}`}
+                </span>
               </div>
-              <Pill tone="open">Pending</Pill>
+              <Pill tone={invite.status === "expired" ? undefined : "open"}>
+                {invite.status === "expired" ? "Expired" : "Pending"}
+              </Pill>
               <Button
                 variant="secondary"
                 disabled={pending}
-                aria-label={`Revoke invitation for ${invite.email}`}
-                onClick={() =>
-                  void run(() => revokeInvite(invite.id), "Invitation revoked.")
-                }
+                aria-label={`New link for ${invite.email}`}
+                onClick={() => { setError(""); setMessage(""); setReissue(invite); }}
               >
-                Revoke
+                New link
               </Button>
+              {invite.status === "pending" ? (
+                <Button
+                  variant="secondary"
+                  disabled={pending}
+                  aria-label={`Revoke invitation for ${invite.email}`}
+                  onClick={() =>
+                    void run(() => revokeInvite(invite.id), "Invitation revoked.")
+                  }
+                >
+                  Revoke
+                </Button>
+              ) : null}
             </div>
           ))}
       </Panel>
@@ -178,6 +274,30 @@ export function MembersScreen() {
         must be resolved, and recurring bills updated, before membership can
         end. A commune always keeps at least one admin.
       </p>
+      {isAdmin && pastInvites.length > 0 && (
+        <details className="c-form-help c-invite-history">
+          <summary>
+            {pastInvites.length} past invitation{pastInvites.length === 1 ? "" : "s"}
+          </summary>
+          <ul>
+            {pastInvites.map((invite) => (
+              <li key={invite.id}>
+                {invite.email} · {invite.role.toLowerCase()} ·{" "}
+                {invite.status === "accepted"
+                  ? `accepted ${formatTimestampDay(invite.acceptedAt)}`
+                  : `revoked ${formatTimestampDay(invite.revokedAt)}`}
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+      {reissue && (
+        <NewInviteLinkDialog
+          invite={reissue}
+          onClose={() => setReissue(null)}
+          onDone={(text) => { setReissue(null); setMessage(text); }}
+        />
+      )}
       {former.length > 0 && (
         <details className="c-form-help">
           <summary>

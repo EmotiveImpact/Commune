@@ -111,3 +111,24 @@ three-way race), `workflows.mjs` (old contract), `tests/grants.sql`,
 `apps/web/tests/recurring-periods.test.ts` (client preview matches the server
 cases), two new screen tests (243 web tests), and a browser check on the QA
 database (recorded £97.50 against a usual £90.00).
+
+## 5. Invitation lifecycle (web only)
+
+**Why.** Admins only saw invitations still pending, so an expired invite
+silently disappeared and there was no way to send a fresh link.
+
+**What changed.** The client keeps every invitation with a derived stage:
+pending, expired, accepted or revoked. Members shows open invitations with
+when they were sent and when they expire (or expired), **New link** for pending
+and expired ones, and **Revoke** for pending ones; accepted and revoked
+invitations are listed under "past invitations". New link asks first, then uses
+the existing `create_commune_invite`, which already retires the earlier link
+for that address. Signing in from an invitation still returns to it
+(`commune.return-to`). No migration was needed.
+
+**Not exercised locally.** "Email it" uses the existing invitation-email path.
+It was not pressed in testing, so no real email was sent.
+
+**Evidence.** A screen test covering all four stages, the history list and a
+new link (244 web tests), and a browser check on the QA database confirming
+the earlier link was revoked when the new one was created.

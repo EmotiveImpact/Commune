@@ -713,6 +713,42 @@ describe("complete shared workflows", () => {
     ).toBeNull();
   });
 
+  it("shows each invitation's stage and issues a new link that retires the old one", async () => {
+    const day = 24 * 60 * 60 * 1000;
+    const at = (offset: number) => new Date(Date.now() + offset * day).toISOString();
+    const records = [
+      { id: "inv-open", email: "open@example.test", role: "member", createdAt: at(-1), expiresAt: at(6), acceptedAt: null, revokedAt: null },
+      { id: "inv-old", email: "late@example.test", role: "admin", createdAt: at(-9), expiresAt: at(-2), acceptedAt: null, revokedAt: null },
+      { id: "inv-yes", email: "joined@example.test", role: "member", createdAt: at(-20), expiresAt: at(-13), acceptedAt: at(-19), revokedAt: null },
+      { id: "inv-no", email: "gone@example.test", role: "member", createdAt: at(-20), expiresAt: at(-13), acceptedAt: null, revokedAt: at(-18) },
+    ];
+    const base = vi.mocked(api).getMockImplementation()!;
+    vi.mocked(api).mockImplementation(async (path, options) => path.endsWith("/invites") ? { invites: records } : base(path, options));
+    vi.mocked(post).mockImplementation(async (path) => path === "/communes/home-1/invites"
+      ? { token: "a".repeat(64), url: "http://localhost:3000/invite?token=new" } : { ok: true });
+    mount("/members");
+    const open = (await screen.findByText("open@example.test")).closest(".a-member-row") as HTMLElement;
+    expect(open.textContent).toContain("Pending");
+    expect(within(open).getByRole("button", { name: "Revoke invitation for open@example.test" })).toBeTruthy();
+    const expired = screen.getByText("late@example.test").closest(".a-member-row") as HTMLElement;
+    expect(expired.textContent).toContain("Expired");
+    expect(within(expired).queryByRole("button", { name: /Revoke/ })).toBeNull();
+    const history = screen.getByText("2 past invitations").closest("details")!;
+    expect(history.textContent).toContain("joined@example.test · member · accepted");
+    expect(history.textContent).toContain("gone@example.test · member · revoked");
+
+    fireEvent.click(within(expired).getByRole("button", { name: "New link for late@example.test" }));
+    const dialog = screen.getByRole("dialog", { name: "New invitation link for late@example.test" });
+    expect(dialog.textContent).toContain("This invitation has expired.");
+    // Nothing is created until the admin asks for it.
+    expect(vi.mocked(post).mock.calls.some(([path]) => path === "/communes/home-1/invites")).toBe(false);
+    await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Create new link" })); });
+    expect(vi.mocked(post)).toHaveBeenCalledWith("/communes/home-1/invites", { email: "late@example.test", role: "admin" });
+    expect((within(dialog).getByLabelText("New invitation link") as HTMLInputElement).value).toBe("http://localhost:3000/invite?token=new");
+    fireEvent.click(within(dialog).getByRole("button", { name: "Done" }));
+    expect(await screen.findByText("New link ready for late@example.test. The earlier link no longer works.")).toBeTruthy();
+  });
+
   it("requires confirmation for role changes and keeps the last admin protected", async () => {
     mount("/members");
     const promote = await screen.findByRole("button", { name: "Make admin" });

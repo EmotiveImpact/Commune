@@ -6066,3 +6066,7 @@ button.a-item {
   .ops-toast { bottom: calc(74px + env(safe-area-inset-bottom)); }
 }
 .a-body.is-native .ops-toast { bottom: calc(90px + env(safe-area-inset-bottom)); }
+
+/* Members: accepted and revoked invitations, kept for the record. */
+.c-invite-history ul { margin: 8px 0 0; padding-left: 18px; }
+.c-invite-history li { margin: 2px 0; overflow-wrap: anywhere; }
