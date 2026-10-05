@@ -159,6 +159,16 @@ export type RecurringBill = {
   id: string; title: string; amountMinor: number; paidByUserId: string;
   allocations: Array<{ userId: string; amountMinor: number }>;
   frequency: "weekly" | "monthly"; nextDueOn: string; paused: boolean; createdBy: string;
+  /** The latest periods, newest first. */
+  history?: RecurringPeriod[];
+};
+export type RecurringPeriod = {
+  dueOn: string; status: "recorded" | "skipped"; amountMinor: number | null; expenseId: string | null;
+  actorId: string | null; actedAt: string; note: string | null;
+};
+export type RecurringPeriodResult = {
+  status: RecurringPeriod["status"]; expenseId: string | null; amountMinor: number | null;
+  dueOn: string; nextDueOn: string; duplicate: boolean;
 };
 export type SplitTemplate = {
   id: string; name: string; method: "Equal" | "Exact" | "Percentage" | "Shares";

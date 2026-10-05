@@ -571,6 +571,21 @@ route("POST", /^\/api\/recurring\/([0-9a-f-]{36})\/record$/, async (req,res,matc
   const result=await userAction(req,client=>client.query("SELECT public.record_recurring_bill($1,$2::date) AS id",[uuid(match[1]),isoDate(input.expectedDueOn)]));
   send(res,{id:result.rows[0].id},201);
 });
+// A recurring bill period: recorded (at the usual or a different amount) or
+// skipped with a reason. expectedDueOn names the period, so a retry is safe.
+route("POST", /^\/api\/recurring\/([0-9a-f-]{36})\/periods$/, async (req,res,match) => {
+  const input=await body(req);
+  const amountMinor=input.amountMinor == null ? null : amount(input.amountMinor);
+  const result=await userAction(req,client=>client.query("SELECT public.record_recurring_period($1,$2::date,$3) AS result",[uuid(match[1]),isoDate(input.expectedDueOn,false,"expectedDueOn"),amountMinor]));
+  const period=result.rows[0].result as {duplicate:boolean};
+  send(res,period,period.duplicate ? 200 : 201);
+});
+route("POST", /^\/api\/recurring\/([0-9a-f-]{36})\/skip$/, async (req,res,match) => {
+  const input=await body(req);
+  const result=await userAction(req,client=>client.query("SELECT public.skip_recurring_period($1,$2::date,$3) AS result",[uuid(match[1]),isoDate(input.expectedDueOn,false,"expectedDueOn"),text(input.reason,"reason",240)]));
+  const period=result.rows[0].result as {duplicate:boolean};
+  send(res,period,period.duplicate ? 200 : 201);
+});
 route("POST", /^\/api\/communes\/([0-9a-f-]{36})\/templates$/, async (req,res,match) => {
   const input=await body(req);
   if (!Array.isArray(input.participants) || input.participants.length>100 || !["Equal","Exact","Percentage","Shares"].includes(String(input.method))) throw new ApiError(400,"Invalid split template");

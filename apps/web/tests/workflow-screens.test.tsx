@@ -531,7 +531,7 @@ describe("complete shared workflows", () => {
     const result = deferred<{ id: string }>();
     const base = vi.mocked(api).getMockImplementation()!;
     vi.mocked(api).mockImplementation(async (path, options) => {
-      if (path === "/recurring/bill-1/record") {
+      if (path === "/recurring/bill-1/periods") {
         const saved = await result.promise;
         current = {
           ...current,
@@ -552,16 +552,16 @@ describe("complete shared workflows", () => {
       name: "Record Broadband as paid?",
     });
     expect(api).not.toHaveBeenCalledWith(
-      "/recurring/bill-1/record",
+      "/recurring/bill-1/periods",
       expect.anything(),
     );
     fireEvent.click(
-      within(dialog).getByRole("button", { name: "Yes, record paid bill" }),
+      within(dialog).getByRole("button", { name: "Record £10.00 paid" }),
     );
     await waitFor(() =>
       expect(api).toHaveBeenCalledWith(
-        "/recurring/bill-1/record",
-        expect.objectContaining({ body: '{"expectedDueOn":"2026-01-31"}' }),
+        "/recurring/bill-1/periods",
+        expect.objectContaining({ body: '{"expectedDueOn":"2026-01-31","amountMinor":1000}' }),
       ),
     );
     expect(
@@ -581,6 +581,59 @@ describe("complete shared workflows", () => {
     await act(async () => result.resolve({ id: "expense-1" }));
     await screen.findByText("Bill recorded and next occurrence scheduled.");
     expect(app.recurringBills[0].nextDueOn).toBe("2026-02-28");
+  });
+
+  it("records one period at a different amount, previewing the scaled split", async () => {
+    current.recurringBills = [{
+      id: "bill-1", title: "Electricity", amountMinor: 9000, paidByUserId: user.id, frequency: "monthly", nextDueOn: "2026-01-31",
+      paused: false, createdBy: user.id,
+      allocations: [{ userId: user.id, amountMinor: 4500 }, { userId: "user-2", amountMinor: 4500 }],
+    }];
+    const base = vi.mocked(api).getMockImplementation()!;
+    vi.mocked(api).mockImplementation(async (path, options) => path === "/recurring/bill-1/periods"
+      ? { status: "recorded", expenseId: "expense-1", amountMinor: 10001, dueOn: "2026-01-31", nextDueOn: "2026-02-28", duplicate: false }
+      : base(path, options));
+    mount("/recurring");
+    fireEvent.click(await screen.findByRole("button", { name: "Record paid bill" }));
+    const dialog = screen.getByRole("dialog", { name: "Record Electricity as paid?" });
+    fireEvent.change(within(dialog).getByLabelText(/Amount paid this time/), { target: { value: "100.01" } });
+    const preview = within(dialog).getByRole("status");
+    expect(preview.textContent).toContain("Test Person£50.01");
+    expect(preview.textContent).toContain("Housemate£50.00");
+    await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Record £100.01 paid" })); });
+    expect(api).toHaveBeenCalledWith("/recurring/bill-1/periods",
+      expect.objectContaining({ body: '{"expectedDueOn":"2026-01-31","amountMinor":10001}' }));
+    expect(await screen.findByText("Bill recorded at £100.01 and next occurrence scheduled.")).toBeTruthy();
+  });
+
+  it("skips a period only with a reason, and lists recorded and skipped periods", async () => {
+    current.recurringBills = [{
+      id: "bill-1", title: "Electricity", amountMinor: 9000, paidByUserId: user.id, frequency: "monthly", nextDueOn: "2099-03-31",
+      paused: false, createdBy: user.id, allocations: [{ userId: user.id, amountMinor: 9000 }],
+      history: [
+        { dueOn: "2099-02-28", status: "skipped", amountMinor: null, expenseId: null, actorId: user.id, actedAt: "2099-02-01T09:00:00Z", note: "Away" },
+        { dueOn: "2099-01-31", status: "recorded", amountMinor: 10001, expenseId: "expense-1", actorId: user.id, actedAt: "2099-01-31T09:00:00Z", note: null },
+      ],
+    }];
+    const base = vi.mocked(api).getMockImplementation()!;
+    vi.mocked(api).mockImplementation(async (path, options) => path === "/recurring/bill-1/skip"
+      ? { status: "skipped", expenseId: null, amountMinor: null, dueOn: "2099-03-31", nextDueOn: "2099-04-30", duplicate: false }
+      : base(path, options));
+    mount("/recurring");
+    // Not due yet, so it cannot be recorded, but it can be skipped ahead of time.
+    expect(screen.queryByRole("button", { name: "Record paid bill" })).toBeNull();
+    const history = (await screen.findByText("2 recent periods")).closest("details")!;
+    expect(history.textContent).toContain("28 Feb 2099 · skipped by Test Person: Away");
+    expect(history.textContent).toContain("31 Jan 2099 · £100.01 recorded (usually £90.00) by Test Person");
+    fireEvent.click(screen.getByRole("button", { name: "Skip this period" }));
+    const dialog = screen.getByRole("dialog", { name: /Skip Electricity for/ });
+    await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Skip this period" })); });
+    expect(api).not.toHaveBeenCalledWith("/recurring/bill-1/skip", expect.anything());
+    fireEvent.change(within(dialog).getByLabelText("Why is it skipped?"), { target: { value: "Moving out" } });
+    await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Skip this period" })); });
+    expect(api).toHaveBeenCalledWith("/recurring/bill-1/skip",
+      expect.objectContaining({ body: '{"expectedDueOn":"2099-03-31","reason":"Moving out"}' }));
+    expect(await screen.findByText(/Electricity skipped for .*Nothing was charged\./)).toBeTruthy();
   });
 
   it("keeps a failed archive in its confirmation with an actionable error", async () => {

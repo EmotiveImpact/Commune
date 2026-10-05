@@ -430,6 +430,12 @@ export async function neonApi<T>(path: string, init: RequestInit = {}): Promise<
       p_frequency:body.frequency,p_next_due_on:body.nextDueOn,p_paused:body.paused,p_id:body.id ?? null});
   } else if (method === "POST" && pathId(path, /^\/recurring\/([^/]+)\/record$/)) {
     response = await rpcId("record_recurring_bill", {p_id:pathId(path,/^\/recurring\/([^/]+)\/record$/),p_expected_due_on:body.expectedDueOn});
+  } else if (method === "POST" && pathId(path, /^\/recurring\/([^/]+)\/periods$/)) {
+    response = asObject(unwrap(await db().rpc("record_recurring_period", {p_id:pathId(path,/^\/recurring\/([^/]+)\/periods$/),
+      p_expected_due_on:body.expectedDueOn,p_amount_minor:body.amountMinor ?? null})));
+  } else if (method === "POST" && pathId(path, /^\/recurring\/([^/]+)\/skip$/)) {
+    response = asObject(unwrap(await db().rpc("skip_recurring_period", {p_id:pathId(path,/^\/recurring\/([^/]+)\/skip$/),
+      p_expected_due_on:body.expectedDueOn,p_reason:body.reason})));
   } else if (method === "POST" && pathId(path, /^\/communes\/([^/]+)\/templates$/)) {
     response = await rpcId("save_split_template", {p_commune_id:pathId(path,/^\/communes\/([^/]+)\/templates$/),p_name:body.name,p_method:body.method,
       p_participants:Array.isArray(body.participants) ? body.participants.map(value=>{const item=asObject(value);return {user_id:item.userId,value:item.value ?? ""};}) : [],p_id:body.id ?? null,p_archived:body.archived ?? false});

@@ -21,6 +21,103 @@ import { CalendarDate } from "../ui/CalendarDate";
 import { SplitEditor } from "../ui/SplitEditor";
 import { parseMoneyInput } from "../data/moneyInput";
 import { todayIso } from "../data/operations";
+import { scaleRecurringShares } from "../data/recurring";
+import { formatReminderDay } from "../data/reminders";
+
+/** Record one period as paid: the usual amount, or what was actually paid. */
+function RecordPeriodDialog({ bill, pending, error, onRecord, onClose }: {
+  bill: RecurringBill; pending: boolean; error: string;
+  onRecord: (amountMinor: number) => void; onClose: () => void;
+}) {
+  const { hub } = useApp();
+  const [amount, setAmount] = useState((bill.amountMinor / 100).toFixed(2));
+  const [validation, setValidation] = useState("");
+  const minor = parseMoneyInput(amount);
+  const different = minor !== null && minor !== bill.amountMinor;
+  const preview = different && minor ? scaleRecurringShares(bill.allocations, minor) : [];
+  const name = (userId: string) => hub.members.find((member) => member.userId === userId)?.name ?? "Former member";
+  return (
+    <Dialog title={`Record ${bill.title} as paid?`} pending={pending} onClose={onClose}>
+      <form onSubmit={(event) => {
+        event.preventDefault();
+        if (!minor) { setValidation("Enter the amount paid, for example 55.00."); return; }
+        setValidation("");
+        onRecord(minor);
+      }}>
+        <p>Record the bill for {dateLabel(bill.nextDueOn)} only if it has actually been paid. This creates the member shares and advances the schedule once.</p>
+        <Field label={`Amount paid this time (${hub.currency})`} hint={`Usually ${money(bill.amountMinor, hub.currency)}. Change it if this bill came in different.`}>
+          <input value={amount} onChange={(event) => setAmount(event.target.value)} inputMode="decimal" maxLength={14} disabled={pending} required />
+        </Field>
+        {preview.length ? (
+          <div className="c-period-split" role="status">
+            <p className="c-form-help">The usual split, scaled to {money(minor!, hub.currency)}:</p>
+            <ul>{preview.map((share) => <li key={share.userId}><span>{name(share.userId)}</span><span>{money(share.amountMinor, hub.currency)}</span></li>)}</ul>
+          </div>
+        ) : null}
+        <p className="c-form-help">Commune does not charge a card or move money.</p>
+        <Feedback error={validation || error} />
+        <div className="a-field-row">
+          <Button type="submit" disabled={pending}>{pending ? "Recording…" : `Record ${minor ? money(minor, hub.currency) : "bill"} paid`}</Button>
+          <Button variant="secondary" disabled={pending} onClick={onClose}>Cancel</Button>
+        </div>
+      </form>
+    </Dialog>
+  );
+}
+
+/** Skip one period with a reason. Nothing is charged to anyone for it. */
+function SkipPeriodDialog({ bill, pending, error, onSkip, onClose }: {
+  bill: RecurringBill; pending: boolean; error: string;
+  onSkip: (reason: string) => void; onClose: () => void;
+}) {
+  const [reason, setReason] = useState("");
+  const [validation, setValidation] = useState("");
+  return (
+    <Dialog title={`Skip ${bill.title} for ${dateLabel(bill.nextDueOn)}?`} pending={pending} onClose={onClose}>
+      <form onSubmit={(event) => {
+        event.preventDefault();
+        if (reason.trim().length < 3) { setValidation("Say briefly why, so everyone knows."); return; }
+        setValidation("");
+        onSkip(reason);
+      }}>
+        <p>No expense is created for this period and nobody is charged. The schedule moves on to the next one.</p>
+        <Field label="Why is it skipped?">
+          <textarea rows={3} maxLength={240} value={reason} onChange={(event) => setReason(event.target.value)}
+            placeholder="e.g. Away for the month, nothing to pay" disabled={pending} required />
+        </Field>
+        <Feedback error={validation || error} />
+        <div className="a-field-row">
+          <Button type="submit" disabled={pending}>{pending ? "Skipping…" : "Skip this period"}</Button>
+          <Button variant="secondary" disabled={pending} onClick={onClose}>Cancel</Button>
+        </div>
+      </form>
+    </Dialog>
+  );
+}
+
+/** The latest periods of one bill, newest first. */
+function PeriodHistory({ bill }: { bill: RecurringBill }) {
+  const { hub, go } = useApp();
+  const history = bill.history ?? [];
+  if (!history.length) return null;
+  const name = (userId: string | null) => hub.members.find((member) => member.userId === userId)?.name ?? "a former member";
+  return (
+    <details className="c-contribution-history c-period-history">
+      <summary>{history.length === 1 ? "1 period" : `${history.length} recent periods`}</summary>
+      {history.map((period) => (
+        <div key={period.dueOn}>
+          <span>
+            <strong>{formatReminderDay(period.dueOn)}</strong>
+            {period.status === "skipped"
+              ? ` · skipped by ${name(period.actorId)}: ${period.note}`
+              : ` · ${money(period.amountMinor ?? 0, hub.currency)} recorded${period.amountMinor !== bill.amountMinor ? ` (usually ${money(bill.amountMinor, hub.currency)})` : ""}${period.actorId ? ` by ${name(period.actorId)}` : ""}`}
+          </span>
+          {period.expenseId ? <Button variant="secondary" onClick={() => go("expense", { expense: period.expenseId! })}>Open</Button> : null}
+        </div>
+      ))}
+    </details>
+  );
+}
 
 function RecurringEditor({
   bill,
@@ -184,12 +281,14 @@ export function RecurringScreen() {
     hub,
     recurringBills,
     saveRecurringBill,
-    recordRecurringBill,
+    recordRecurringPeriod,
+    skipRecurringPeriod,
     session,
     go,
   } = useApp();
   const [editor, setEditor] = useState<RecurringBill | "new" | null>(null);
   const [confirm, setConfirm] = useState<RecurringBill | null>(null);
+  const [skipping, setSkipping] = useState<RecurringBill | null>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
@@ -202,6 +301,7 @@ export function RecurringScreen() {
       await action();
       setEditor(null);
       setConfirm(null);
+      setSkipping(null);
       setMessage(success);
     } catch (cause) {
       setError(
@@ -239,7 +339,7 @@ export function RecurringScreen() {
           Add recurring bill
         </Button>
       </div>
-      <Feedback error={!editor && !confirm ? error || searchRecord.error : ""} message={message} />
+      <Feedback error={!editor && !confirm && !skipping ? error || searchRecord.error : ""} message={message} />
       {!recurringBills.length && (
         <EmptyState
           title="Make repeat bills easier."
@@ -290,6 +390,18 @@ export function RecurringScreen() {
                     Record paid bill
                   </Button>
                 )}
+                {!bill.paused && canRecord && (
+                  <Button
+                    variant="secondary"
+                    disabled={pending}
+                    onClick={() => {
+                      setError("");
+                      setSkipping(bill);
+                    }}
+                  >
+                    Skip this period
+                  </Button>
+                )}
                 {editable && (
                   <>
                     <Button
@@ -328,6 +440,7 @@ export function RecurringScreen() {
                   Waiting for the payer or an admin to record this bill.
                 </p>
               )}
+              <PeriodHistory bill={bill} />
             </Panel>
           );
         })}
@@ -344,42 +457,34 @@ export function RecurringScreen() {
         />
       )}
       {confirm && (
-        <Dialog
-          title={`Record ${confirm.title} as paid?`}
+        <RecordPeriodDialog
+          bill={confirm}
           pending={pending}
+          error={error}
           onClose={() => setConfirm(null)}
-        >
-          <p>
-            Record {money(confirm.amountMinor, hub.currency)} for{" "}
-            {dateLabel(confirm.nextDueOn)} only if the bill has actually been
-            paid. This creates the exact member shares and advances the schedule
-            once.
-          </p>
-          <p className="c-form-help">
-            Commune does not charge a card or move money.
-          </p>
-          <Feedback error={error} />
-          <div className="a-field-row">
-            <Button
-              disabled={pending}
-              onClick={() =>
-                void run(
-                  () => recordRecurringBill(confirm.id, confirm.nextDueOn),
-                  "Bill recorded and next occurrence scheduled.",
-                )
-              }
-            >
-              {pending ? "Recording…" : "Yes, record paid bill"}
-            </Button>
-            <Button
-              variant="secondary"
-              disabled={pending}
-              onClick={() => setConfirm(null)}
-            >
-              Cancel
-            </Button>
-          </div>
-        </Dialog>
+          onRecord={(amountMinor) =>
+            void run(
+              () => recordRecurringPeriod(confirm.id, confirm.nextDueOn, amountMinor),
+              amountMinor === confirm.amountMinor
+                ? "Bill recorded and next occurrence scheduled."
+                : `Bill recorded at ${money(amountMinor, hub.currency)} and next occurrence scheduled.`,
+            )
+          }
+        />
+      )}
+      {skipping && (
+        <SkipPeriodDialog
+          bill={skipping}
+          pending={pending}
+          error={error}
+          onClose={() => setSkipping(null)}
+          onSkip={(reason) =>
+            void run(
+              () => skipRecurringPeriod(skipping.id, skipping.nextDueOn, reason),
+              `${skipping.title} skipped for ${dateLabel(skipping.nextDueOn)}. Nothing was charged.`,
+            )
+          }
+        />
       )}
     </>
   );

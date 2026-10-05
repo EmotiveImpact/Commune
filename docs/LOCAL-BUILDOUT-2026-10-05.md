@@ -82,3 +82,32 @@ formula-like text is neutralised so a spreadsheet cannot run it.
 void, both directions, CSV quoting), 239 web tests, and a browser check on the
 QA database where the statement reconciled with Settle (£80 + £12 − £15 − £12
 repaid = £65).
+
+## 4. Recurring bill periods (migration 0022)
+
+**Why.** A recurring bill could only be recorded at its saved amount, never
+skipped, and kept no visible record of past periods.
+
+**What changed.**
+- Each period is a record: `recorded` (with the amount actually paid, who
+  recorded it and when) or `skipped` (with a reason, and no expense).
+- `record_recurring_period(bill, period, amount)`: a different amount scales
+  the saved split proportionally (largest remainder, ties in saved order), so
+  the shares always add up exactly. The saved bill is unchanged. Sending the
+  same period again reports the period already recorded.
+- `skip_recurring_period(bill, period, reason)`: nobody is charged; the
+  schedule moves on. A future period can be skipped ahead of time.
+- The original `record_recurring_bill` still works for older clients and keeps
+  its old contract (a second call for the same period is refused).
+- History lines say what happened ("Recorded for 31 Jan · £100.01 (usually
+  £90.00)", "Skipped 28 Feb: …") instead of a vague "Updated".
+- Web: the record dialog takes **Amount paid this time** and previews the
+  scaled split; **Skip this period** asks for a reason; each bill lists its
+  recent periods with a link to the recorded expense.
+
+**Evidence.** `apps/local-api/tests/recurring-periods.mjs` (permissions,
+scaling, retry, skip, skip-then-record refusal, old command, history,
+three-way race), `workflows.mjs` (old contract), `tests/grants.sql`,
+`apps/web/tests/recurring-periods.test.ts` (client preview matches the server
+cases), two new screen tests (243 web tests), and a browser check on the QA
+database (recorded £97.50 against a usual £90.00).

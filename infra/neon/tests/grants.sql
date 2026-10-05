@@ -50,7 +50,9 @@ BEGIN
     'public.undo_operation_occurrence(uuid)',
     'public.report_share_payment(uuid,bigint,date,text,uuid)',
     'public.withdraw_share_payment_report(uuid)',
-    'public.resolve_share_payment_report(uuid,text,text,uuid)'
+    'public.resolve_share_payment_report(uuid,text,text,uuid)',
+    'public.record_recurring_period(uuid,date,bigint)',
+    'public.skip_recurring_period(uuid,date,text)'
   ] LOOP
     IF has_function_privilege('anonymous', table_name, 'EXECUTE')
       OR has_function_privilege('public', table_name, 'EXECUTE')
@@ -76,7 +78,10 @@ BEGIN
     'commune_private.next_in_rotation(uuid,jsonb,text)',
     'commune_private.reassign_departed_member()',
     'commune_private.payment_report_result(uuid,boolean)',
-    'commune_private.close_payment_reports()'
+    'commune_private.close_payment_reports()',
+    'commune_private.scale_recurring_shares(jsonb,bigint)',
+    'commune_private.recurring_next_due(text,date,integer)',
+    'commune_private.recurring_period_result(uuid,date,boolean)'
   ] LOOP
     IF has_function_privilege('authenticated', table_name, 'EXECUTE')
       OR has_function_privilege('anonymous', table_name, 'EXECUTE') THEN

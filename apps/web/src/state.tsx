@@ -48,6 +48,7 @@ import {
   type ExpenseChangeResult,
   type ReceiptResult,
   type PaymentReportResult,
+  type RecurringPeriodResult,
   type ReminderResult,
   type ReminderTarget,
   type ReminderUsage,
@@ -284,6 +285,10 @@ export type AppState = {
   voidContribution: (contributionId: string, reason: string) => Promise<void>;
   saveRecurringBill: (input: RecurringBillInput) => Promise<string>;
   recordRecurringBill: (id: string, expectedDueOn: string) => Promise<string>;
+  /** Record one period as paid, optionally at a different amount. */
+  recordRecurringPeriod: (id: string, expectedDueOn: string, amountMinor?: number) => Promise<RecurringPeriodResult>;
+  /** Skip one period with a reason; nothing is charged for it. */
+  skipRecurringPeriod: (id: string, expectedDueOn: string, reason: string) => Promise<RecurringPeriodResult>;
   saveSplitTemplate: (input: SplitTemplateInput) => Promise<string>;
   manageMember: (userId: string, action: "admin" | "member" | "leave" | "remove") => Promise<void>;
   /** requestId stays the same across retries so one decision sends once. */
@@ -977,6 +982,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const voidContribution = async (id: string, reason: string) => { await workflow(`/contributions/${encodeURIComponent(id)}/void`,{reason}); };
   const saveRecurringBill = async (input: RecurringBillInput) => (await workflow<{id:string}>(`/communes/${encodeURIComponent(activeId)}/recurring`,input)).id;
   const recordRecurringBill = async (id: string, expectedDueOn: string) => (await workflow<{id:string}>(`/recurring/${encodeURIComponent(id)}/record`,{expectedDueOn})).id;
+  const recordRecurringPeriod = (id: string, expectedDueOn: string, amountMinor?: number) =>
+    workflow<RecurringPeriodResult>(`/recurring/${encodeURIComponent(id)}/periods`, { expectedDueOn, amountMinor: amountMinor ?? null });
+  const skipRecurringPeriod = (id: string, expectedDueOn: string, reason: string) =>
+    workflow<RecurringPeriodResult>(`/recurring/${encodeURIComponent(id)}/skip`, { expectedDueOn, reason: reason.trim() });
   const saveSplitTemplate = async (input: SplitTemplateInput) => (await workflow<{id:string}>(`/communes/${encodeURIComponent(activeId)}/templates`,input)).id;
   const manageMember = async (userId: string, action: "admin" | "member" | "leave" | "remove") => mutate(async () => {
     await post(`/communes/${encodeURIComponent(activeId)}/members/${encodeURIComponent(userId)}`,{action});
@@ -1176,7 +1185,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     reportSharePayment, withdrawPaymentReport, resolvePaymentReport,
     markExpensePaid, createInvite, sendInviteEmail, revokeInvite, previewInvite, acceptInvite, createFund,
     pledgeFund, recordFundContribution, sendReminder, markNotificationRead,
-    updateFund, archiveFund, updatePledge, voidContribution, saveRecurringBill, recordRecurringBill, saveSplitTemplate, manageMember,
+    updateFund, archiveFund, updatePledge, voidContribution, saveRecurringBill, recordRecurringBill, recordRecurringPeriod, skipRecurringPeriod, saveSplitTemplate, manageMember,
     pageTitle, pageLede,
   }}>{children}</Ctx.Provider>;
 }
