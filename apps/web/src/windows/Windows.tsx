@@ -15,6 +15,7 @@ import { LatestReportAnswer, PendingReport, ReceiptHistory, pendingReport, useRe
 import { ExpenseHistory, useExpenseChange } from "../ui/ExpenseChange";
 import { formatReminderDay, formatTimestampDay } from "../data/reminders";
 import { isNotePinned } from "../data/notePresentation";
+import { buildStatement, statementCsv } from "../data/statement";
 import "./NoteEditor.css";
 import { allocateExpense, type SplitMethod } from "../../../../packages/core/src/expenseSplit";
 import "./ExpenseEditor.css";
@@ -738,7 +739,22 @@ function Profile() {
 }
 
 function Breakdown() {
-  const { go, closeWindow, hub, expenses, session } = useApp();
+  const { go, closeWindow, hub, expenses, voidedExpenses, session } = useApp();
+  const others = hub.members.filter((member) => member.userId !== session?.userId);
+  const [statementWith, setStatementWith] = useState(others[0]?.userId ?? "");
+  const other = others.find((member) => member.userId === statementWith) ?? others[0];
+  const statement = other && session
+    ? buildStatement([...expenses, ...voidedExpenses], session.userId, other.userId, other.name)
+    : null;
+  function downloadStatement() {
+    if (!statement || !other) return;
+    const blob = new Blob([statementCsv(statement, hub.currency)], { type: "text/csv;charset=utf-8" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `${hub.name} - statement with ${other.name}.csv`.replace(/[\\/:*?"<>|]+/g, " ");
+    link.click();
+    URL.revokeObjectURL(link.href);
+  }
   const moves = expenses.flatMap((expense) => expense.shares
     .filter((share) => share.userId !== expense.paidByUserId && share.amountMinor > share.settledMinor)
     .filter((share) => share.userId === session?.userId || expense.paidByUserId === session?.userId)
@@ -779,6 +795,38 @@ function Breakdown() {
         );})}
         {!moves.length ? <p className="a-window-note">No outstanding shares for you in this commune.</p> : null}
       </div>
+      {other && statement ? (
+        <section className="c-statement" aria-label="Statement">
+          <div className="a-field">
+            <label htmlFor="statement-member">Statement with</label>
+            <select id="statement-member" value={other.userId} onChange={(event) => setStatementWith(event.target.value)}>
+              {others.map((member) => <option key={member.userId} value={member.userId}>{member.name}</option>)}
+            </select>
+          </div>
+          <p className="c-statement-net" role="status">
+            {statement.netMinor > 0 ? `${other.name} owes you ${formatMoney(statement.netMinor, hub.currency)}.`
+              : statement.netMinor < 0 ? `You owe ${other.name} ${formatMoney(-statement.netMinor, hub.currency)}.`
+                : `You and ${other.name} are square.`}
+          </p>
+          {statement.entries.length ? (
+            <ol className="c-statement-list">
+              {statement.entries.map((entry) => (
+                <li key={entry.key} className={entry.kind === "voided" ? "is-voided" : undefined}>
+                  <button type="button" onClick={() => go("expense", { expense: entry.expenseId })}>
+                    <span className="c-statement-day">{formatReminderDay(entry.on)}</span>
+                    <span className="c-statement-what">{entry.description}</span>
+                    <span className="c-statement-amount">{entry.kind === "voided" ? "Not counted"
+                      : `${entry.amountMinor > 0 ? "+" : "−"}${formatMoney(Math.abs(entry.amountMinor), hub.currency)}`}</span>
+                    <span className="c-statement-balance">{formatMoney(Math.abs(entry.balanceMinor), hub.currency)} {entry.balanceMinor > 0 ? "to you" : entry.balanceMinor < 0 ? "to them" : ""}</span>
+                  </button>
+                </li>
+              ))}
+            </ol>
+          ) : <p className="a-window-note">Nothing shared with {other.name} yet.</p>}
+          <p className="c-statement-note">+ adds to what {other.name} owes you; − reduces it or adds to what you owe. Voided bills are listed but never counted.</p>
+          {statement.entries.length ? <button className="a-btn ghost" type="button" onClick={downloadStatement}>Download CSV</button> : null}
+        </section>
+      ) : null}
     </section>
   );
 }

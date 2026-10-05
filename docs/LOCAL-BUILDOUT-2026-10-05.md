@@ -68,3 +68,17 @@ validation, idempotency, decline, withdraw, confirm-to-receipt, reversal,
 auto-close on settle and void, a four-way race), `tests/grants.sql`, four new
 web tests (236 in all), build, and a two-account browser run on the QA
 database: report as the debtor, then confirm as the payer.
+
+## 3. Statements between two members (web only)
+
+**What changed.** The Breakdown window (Settle → View breakdown) now has a
+**Statement with** picker. It lists, oldest first, every share one of you owes
+the other, each repayment, each reversal, and voided bills (listed, never
+counted), with a running balance. The closing figure is the same net that
+Settle shows. **Download CSV** saves it locally; text cells are quoted and
+formula-like text is neutralised so a spreadsheet cannot run it.
+
+**Evidence.** `apps/web/tests/statement.test.ts` (order, signs, reversal,
+void, both directions, CSV quoting), 239 web tests, and a browser check on the
+QA database where the statement reconciled with Settle (£80 + £12 − £15 − £12
+repaid = £65).
