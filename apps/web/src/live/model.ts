@@ -57,6 +57,34 @@ export type ReceiptResult = {
   settledMinor: number;
   outstandingMinor: number;
 };
+/**
+ * "I've sent it": a claim by the member who owes a share. It never changes a
+ * balance by itself; the bill payer confirms it (recording a receipt) or
+ * declines it with a reason. It closes on its own if the share is settled
+ * another way or the expense is voided.
+ */
+export type PaymentReport = {
+  id: string;
+  reportedBy: string;
+  amountMinor: number;
+  sentOn: string;
+  reference: string | null;
+  reportedAt: string;
+  status: "pending" | "confirmed" | "declined" | "withdrawn" | "closed";
+  resolvedAt: string | null;
+  resolvedBy: string | null;
+  /** Why it was declined, or why it closed on its own. */
+  note: string | null;
+  receiptId: string | null;
+};
+export type PaymentReportResult = {
+  id: string;
+  duplicate: boolean;
+  status: PaymentReport["status"];
+  receiptId: string | null;
+  settledMinor: number;
+  outstandingMinor: number;
+};
 export type Share = {
   id: string;
   userId: string;
@@ -65,6 +93,8 @@ export type Share = {
   settledMinor: number;
   settledAt?: string | null;
   receipts?: Receipt[];
+  /** The latest reports, newest first; at most one is pending. */
+  paymentReports?: PaymentReport[];
 };
 /** The financial and descriptive fields a correction can change. */
 export type ExpenseState = {
@@ -178,7 +208,8 @@ export type SentReminder = {
 export type Notification = {
   id: string;
   /** Reminders, plus ledger notices about an expense the reader is part of. */
-  kind: "nudge" | "chase" | "receipt-reversed" | "expense-corrected" | "expense-voided";
+  kind: "nudge" | "chase" | "receipt-reversed" | "expense-corrected" | "expense-voided"
+    | "payment-reported" | "payment-confirmed" | "payment-declined";
   sourceId: string;
   amountMinor: number | null;
   communeId: string;

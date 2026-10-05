@@ -105,6 +105,14 @@
 .c-receipt-history .is-reversed strong { text-decoration: line-through; color: var(--ink-soft); }
 .c-receipt-history em { font-style: normal; }
 .c-receipt-history .a-btn { padding: 0 12px; font-size: 12px; flex: none; }
+/* "I've sent it": a claim waiting for the bill payer, shown on the share. */
+.c-pending-report { margin: 0 0 14px 44px; padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--paper-2); font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
+.c-pending-report p { margin: 0; }
+.c-pending-report .a-row-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.c-pending-report .a-btn { padding: 0 12px; font-size: 12px; }
+.c-report-answer { margin: 0 0 14px 44px; font-size: 12px; line-height: 1.6; color: var(--ink-soft); overflow-wrap: anywhere; }
+.c-move-answer .c-report-answer, .a-move .c-report-answer { margin: 3px 0 0; }
+.a-move .c-report-line { color: var(--ink); }
 /* Compact beside the history line on desktop; phones keep the 44px target. */
 @media (min-width: 561px) { .a-windows .c-receipt-history .a-btn { min-height: 32px; } }
 .a-panel.c-settle-recent { margin-top: 22px; background: var(--white); box-shadow: none; border-radius: var(--radius-surface); padding: 23px; }

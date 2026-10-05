@@ -38,3 +38,33 @@ membership, legacy names, rename, departures, undo), `tests/grants.sql`,
 `apps/local-api/tests/operations-history.mjs` (ids, refusals, legacy client,
 leave and remove), the other four HTTP suites, 232 web tests, build, and a
 browser check of create and edit with turns on the QA database.
+
+## 2. "I've sent it" payment reports (migration 0021)
+
+**Why.** The member who owed a share could only wait: the screen said
+"Awaiting payer confirmation" and there was no way to say "I have paid".
+
+**What changed.**
+- `expense_share_payment_reports`: a claim by the member who owes, with
+  amount, date sent and optional reference (card-like numbers refused, as for
+  receipts). It never changes a balance. One pending report per share.
+- `report_share_payment`, `withdraw_share_payment_report` and
+  `resolve_share_payment_report` (confirm or decline). Confirming records an
+  ordinary receipt for exactly what was reported, through `record_share_receipt`,
+  so every receipt rule still applies and the receipt can be reversed as usual.
+  Declining needs a reason. All commands lock the commune first and are
+  idempotent; four concurrent answers produce exactly one outcome.
+- A pending report closes on its own ("Share settled" or "Expense voided")
+  when nothing is left to confirm.
+- Notices: the payer is told of a report; the reporter is told of a
+  confirmation or a decline (with the reason).
+- Web: Settle and the expense window offer **I've sent it** to the member who
+  owes, show the pending claim to both sides, let the reporter withdraw it,
+  and give the payer **Confirm** and **Not received**. Nudge is hidden while a
+  report waits for an answer.
+
+**Evidence.** `apps/local-api/tests/payment-reports.mjs` (permissions,
+validation, idempotency, decline, withdraw, confirm-to-receipt, reversal,
+auto-close on settle and void, a four-way race), `tests/grants.sql`, four new
+web tests (236 in all), build, and a two-account browser run on the QA
+database: report as the debtor, then confirm as the payer.

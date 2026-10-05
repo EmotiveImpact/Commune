@@ -266,6 +266,11 @@ function receiptResult(value: unknown) {
   return { ...idResult(item.id), duplicate: item.duplicate === true,
     settledMinor: minor(item.settledMinor), outstandingMinor: minor(item.outstandingMinor) };
 }
+function paymentReportResult(value: unknown) {
+  const item = asObject(value);
+  return { ...receiptResult(item), status: String(item.status ?? ""),
+    receiptId: typeof item.receiptId === "string" ? item.receiptId : null };
+}
 function asObject(value: unknown): Row { return value && typeof value === "object" && !Array.isArray(value) ? value as Row : {}; }
 
 export async function neonApi<T>(path: string, init: RequestInit = {}): Promise<T> {
@@ -376,6 +381,20 @@ export async function neonApi<T>(path: string, init: RequestInit = {}): Promise<
     response = receiptResult(unwrap(await db().rpc("record_share_receipt", {
       p_share_id: pathId(path, /^\/shares\/([^/]+)\/receipts$/), p_amount_minor: body.amountMinor,
       p_received_on: body.receivedOn, p_reference: body.reference ?? null, p_request_id: body.requestId,
+    })));
+  } else if (method === "POST" && pathId(path, /^\/shares\/([^/]+)\/payment-reports$/)) {
+    response = paymentReportResult(unwrap(await db().rpc("report_share_payment", {
+      p_share_id: pathId(path, /^\/shares\/([^/]+)\/payment-reports$/), p_amount_minor: body.amountMinor,
+      p_sent_on: body.sentOn, p_reference: body.reference ?? null, p_request_id: body.requestId,
+    })));
+  } else if (method === "POST" && pathId(path, /^\/payment-reports\/([^/]+)\/withdraw$/)) {
+    response = paymentReportResult(unwrap(await db().rpc("withdraw_share_payment_report", {
+      p_report_id: pathId(path, /^\/payment-reports\/([^/]+)\/withdraw$/),
+    })));
+  } else if (method === "POST" && pathId(path, /^\/payment-reports\/([^/]+)\/resolve$/)) {
+    response = paymentReportResult(unwrap(await db().rpc("resolve_share_payment_report", {
+      p_report_id: pathId(path, /^\/payment-reports\/([^/]+)\/resolve$/), p_decision: body.decision,
+      p_note: body.note ?? null, p_request_id: body.requestId ?? null,
     })));
   } else if (method === "POST" && pathId(path, /^\/receipts\/([^/]+)\/reverse$/)) {
     response = receiptResult(unwrap(await db().rpc("reverse_share_receipt", {

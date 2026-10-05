@@ -11,7 +11,7 @@ import { CommuneLocationFields, EMPTY_COMMUNE_LOCATION } from "../ui/CommuneLoca
 import { RecipientReminderCount, ReminderUsageMeter } from "../ui/ReminderUsage";
 import { ReminderFlowDialog, useReminderFlow } from "../ui/ReminderConfirm";
 import { reminderEligibility } from "../data/reminders";
-import { ReceiptHistory, useReceiptActions } from "../ui/Receipts";
+import { LatestReportAnswer, PendingReport, ReceiptHistory, pendingReport, useReceiptActions } from "../ui/Receipts";
 import { ExpenseHistory, useExpenseChange } from "../ui/ExpenseChange";
 import { formatReminderDay, formatTimestampDay } from "../data/reminders";
 import { isNotePinned } from "../data/notePresentation";
@@ -193,11 +193,17 @@ const NOTICE_COPY: Record<string, { pill: string; title: string }> = {
   "receipt-reversed": { pill: "Reversed", title: "Repayment reversed" },
   "expense-corrected": { pill: "Corrected", title: "Expense corrected" },
   "expense-voided": { pill: "Voided", title: "Expense voided" },
+  "payment-reported": { pill: "Sent", title: "Payment reported" },
+  "payment-confirmed": { pill: "Confirmed", title: "Payment confirmed" },
+  "payment-declined": { pill: "Not received", title: "Payment not received" },
 };
 
 /** One plain sentence for a ledger notice: what changed, by whom, for you. */
 function ledgerNoticeLine(kind: string, amount: string, actor: string): string {
   if (kind === "receipt-reversed") return `${amount ? `${amount} ` : ""}repayment reversed by ${actor}`;
+  if (kind === "payment-reported") return `${actor} says they sent ${amount || "a payment"}`;
+  if (kind === "payment-confirmed") return `${actor} confirmed ${amount || "your payment"} received`;
+  if (kind === "payment-declined") return `${actor} has not received ${amount || "your payment"}`;
   if (kind === "expense-voided") return `Voided by ${actor}${amount ? ` · your ${amount} share no longer counts` : ""}`;
   return `Corrected by ${actor}${amount ? ` · your share is now ${amount}` : ""}`;
 }
@@ -427,6 +433,8 @@ function Expense() {
             ? reminderTargets.find((item) => item.kind === "nudge" && item.sourceId === share.id)
             : undefined;
           const eligibility = reminderEligibility({ kind: "nudge", recipientId: share.userId, target, usage: reminderUsage, sent: sentReminders, dueOn: selectedExpense.dueOn });
+          const report = voided ? undefined : pendingReport(share);
+          const ownDebt = share.userId === session?.userId && !isOwnPayerShare && outstanding > 0;
           return (
             <div className="c-share-block" key={share.id}>
             <div className="a-split-row">
@@ -439,15 +447,24 @@ function Expense() {
                 ) : null}
               </div>
               <Pill tone={voided ? undefined : outstanding ? "open" : "settled"}>{voided ? "Voided" : outstanding ? partPaid ? "Part paid" : "Open" : "Settled"}</Pill>
-              {isPayer && !isOwnPayerShare && outstanding ? (
+              {isPayer && !isOwnPayerShare && outstanding && !report ? (
                 <div className="a-row-actions">
                   <button className="a-btn nudge" type="button" disabled={!eligibility.canSend} title={eligibility.reason || undefined}
                     onClick={() => { setMessage(""); reminder.open({ kind: "nudge", sourceId: share.id, recipientId: share.userId, name: member?.name ?? "your housemate", subject: selectedExpense.name, amount: formatMoney(outstanding, hub.currency), dueOn: selectedExpense.dueOn }); }}>Nudge</button>
                   <button className="a-btn ghost" type="button" onClick={() => { setMessage(""); receipts.record({ shareId: share.id, debtorName: member?.name ?? "this member", expenseName: selectedExpense.name, shareMinor: share.amountMinor, outstandingMinor: outstanding, currency: hub.currency }); }}>Confirm received</button>
                   {eligibility.reason && <p className="c-action-hint">{eligibility.reason}</p>}
                 </div>
+              ) : ownDebt && !report ? (
+                <div className="a-row-actions">
+                  <button className="a-btn ghost" type="button" onClick={() => { setMessage(""); receipts.report({ shareId: share.id, payerName: payer?.name ?? "the bill payer", expenseName: selectedExpense.name, outstandingMinor: outstanding, currency: hub.currency }); }}>I’ve sent it</button>
+                </div>
               ) : null}
             </div>
+            {report ? <PendingReport share={share} currency={hub.currency} viewerId={session?.userId} payerId={selectedExpense.paidByUserId}
+              names={fullName} disabled={receipts.busy}
+              onAnswer={(item, decision) => { setMessage(""); receipts.answer({ report: item, debtorName: member?.name ?? "this member", expenseName: selectedExpense.name, currency: hub.currency, decision }); }}
+              onWithdraw={(item) => { setMessage(""); void receipts.withdraw(item); }} /> : null}
+            {ownDebt ? <LatestReportAnswer share={share} currency={hub.currency} viewerId={session?.userId} names={fullName} /> : null}
             {!isOwnPayerShare && <ReceiptHistory share={share} currency={hub.currency} names={nameOf}
               onReverse={isPayer && !voided ? (receipt) => { setMessage(""); receipts.reverse({ receipt, debtorName: member?.name ?? "this member", expenseName: selectedExpense.name, currency: hub.currency }); } : undefined} />}
             </div>
@@ -456,7 +473,7 @@ function Expense() {
       </div>
       <ExpenseHistory revisions={selectedExpense.revisions} names={fullName} currency={hub.currency} />
       {message ? <p className="a-window-note" role="status">{message}</p> : null}
-      {!isPayer && remaining && !voided ? <p className="a-window-note">Arrange payment with the bill payer outside Commune. Only they can confirm receipt here.</p> : null}
+      {!isPayer && remaining && !voided ? <p className="a-window-note">Pay the bill payer outside Commune, then use I’ve sent it. Only they can confirm receipt.</p> : null}
       <div className="a-field-row">
         <button className="a-btn" type="button" onClick={() => go("settle")}>Open settlement</button>
         {canChange ? <button className="a-btn ghost" type="button" onClick={() => { setMessage(""); change.correct(selectedExpense.id); }}>Correct</button> : null}

@@ -474,6 +474,36 @@ route("POST", /^\/api\/receipts\/([0-9a-f-]{36})\/reverse$/, async (req, res, ma
   send(res, result.rows[0].result);
 });
 
+// "I've sent it": the member who owes a share reports a payment. It is a
+// claim, not a receipt, until the bill payer confirms it.
+route("POST", /^\/api\/shares\/([0-9a-f-]{36})\/payment-reports$/, async (req, res, match) => {
+  const input = await body(req);
+  const reference = input.reference == null ? null : optionalText(input.reference, "reference", 80);
+  const result = await userAction(req, async (client) => client.query(
+    "SELECT public.report_share_payment($1, $2, $3::date, $4, $5) AS result",
+    [uuid(match[1]), amount(input.amountMinor), isoDate(input.sentOn, false, "sentOn"),
+      reference, uuid(input.requestId, "requestId")]));
+  const report = result.rows[0].result as { duplicate: boolean };
+  send(res, report, report.duplicate ? 200 : 201);
+});
+
+route("POST", /^\/api\/payment-reports\/([0-9a-f-]{36})\/withdraw$/, async (req, res, match) => {
+  const result = await userAction(req, async (client) => client.query(
+    "SELECT public.withdraw_share_payment_report($1) AS result", [uuid(match[1])]));
+  send(res, result.rows[0].result);
+});
+
+route("POST", /^\/api\/payment-reports\/([0-9a-f-]{36})\/resolve$/, async (req, res, match) => {
+  const input = await body(req);
+  if (input.decision !== "confirm" && input.decision !== "decline") throw new ApiError(400, "Invalid decision");
+  const note = input.note == null ? null : optionalText(input.note, "note", 240);
+  const requestId = input.decision === "confirm" ? uuid(input.requestId, "requestId") : null;
+  const result = await userAction(req, async (client) => client.query(
+    "SELECT public.resolve_share_payment_report($1, $2, $3, $4) AS result",
+    [uuid(match[1]), input.decision, note, requestId]));
+  send(res, result.rows[0].result);
+});
+
 route("POST", /^\/api\/communes\/([0-9a-f-]{36})\/funds$/, async (req, res, match) => {
   const input = await body(req);
   const name = text(input.name, "name", 80);

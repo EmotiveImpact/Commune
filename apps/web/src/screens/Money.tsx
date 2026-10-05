@@ -7,7 +7,7 @@ import { Plus, ReceiptText, ChevronRight, Search } from "lucide-react";
 import { LIMITS } from "../data/limits";
 import { ReminderFlowDialog, useReminderFlow } from "../ui/ReminderConfirm";
 import { formatReminderDay, reminderEligibility } from "../data/reminders";
-import { useReceiptActions } from "../ui/Receipts";
+import { LatestReportAnswer, pendingReport, reportSummary, useReceiptActions } from "../ui/Receipts";
 import { CalendarDate } from "../ui/CalendarDate";
 import "./Money.css";
 
@@ -136,7 +136,7 @@ export function SettleScreen() {
       <div className="c-settle-columns">{[false, true].map(receivingGroup => <section className="a-panel c-settle-column" aria-label={receivingGroup ? "You’re owed" : "You owe"} key={String(receivingGroup)}>
         <h2>{receivingGroup ? "You’re owed" : "You owe"}</h2>
         <strong className="c-settle-total">{formatMoney(receivingGroup ? youAreOwed : youOwe, hub.currency)}</strong>
-        <p className="c-settle-explainer">{receivingGroup ? "Record each repayment after you receive it, in full or in part." : "Pay outside Commune; the bill payer confirms receipt."}</p>
+        <p className="c-settle-explainer">{receivingGroup ? "Record each repayment after you receive it, in full or in part." : "Pay outside Commune, then tell the bill payer. They confirm receipt."}</p>
         {moves.filter(({ expense }) => (expense.paidByUserId === me) === receivingGroup).map(({ expense, share, outstanding }) => {
           const payer = hub.members.find((member) => member.userId === expense.paidByUserId);
           const debtor = hub.members.find((member) => member.userId === share.userId);
@@ -146,6 +146,7 @@ export function SettleScreen() {
             : undefined;
           const eligibility = reminderEligibility({ kind: "nudge", recipientId: share.userId, target, usage: reminderUsage, sent: sentReminders, dueOn: expense.dueOn });
           const reminderReason = eligibility.reason;
+          const report = pendingReport(share);
           return (
             <div
               className="a-move"
@@ -156,12 +157,25 @@ export function SettleScreen() {
                 <div className="names">{receiving ? `${debtor?.name ?? "Member"} owes you` : `You owe ${payer?.name ?? "the bill payer"}`}</div>
                 <div className="why">{expense.name}{expense.dueOn ? ` · due ${expense.dueOn}` : ""}</div>
                 {share.settledMinor > 0 ? <div className="why">{formatMoney(share.settledMinor, hub.currency)} of {formatMoney(share.amountMinor, hub.currency)} received</div> : null}
+                {report ? <div className="why c-report-line">{receiving
+                  ? `${reportSummary(report, hub.currency, debtor?.name ?? "A member")}. Not yet confirmed.`
+                  : `You said you sent ${formatMoney(report.amountMinor, hub.currency)} on ${formatReminderDay(report.sentOn)}. Waiting for ${payer?.name ?? "the bill payer"}.`}</div> : null}
+                {!receiving ? <LatestReportAnswer share={share} currency={hub.currency} viewerId={me} names={(userId) => hub.members.find((member) => member.userId === userId)?.name ?? "The bill payer"} /> : null}
                 {receiving && (target || (reminderUsage?.recipientUsage[share.userId] ?? 0) > 0) ? (
                   <RecipientReminderCount usage={reminderUsage} recipientId={share.userId} />
                 ) : null}
               </div>
               <div className="amt">{formatMoney(outstanding, hub.currency)}</div>
-              {receiving ? (
+              {receiving && report ? (
+                <div className="a-row-actions">
+                  <button className="a-btn" type="button" disabled={receipts.busy} onClick={() => { setMessage(""); receipts.answer({ report, debtorName: debtor?.name ?? "this member", expenseName: expense.name, currency: hub.currency, decision: "confirm" }); }}>
+                    Confirm {formatMoney(report.amountMinor, hub.currency)}
+                  </button>
+                  <button className="a-btn ghost" type="button" disabled={receipts.busy} onClick={() => { setMessage(""); receipts.answer({ report, debtorName: debtor?.name ?? "this member", expenseName: expense.name, currency: hub.currency, decision: "decline" }); }}>
+                    Not received
+                  </button>
+                </div>
+              ) : receiving ? (
                 <div className="a-row-actions">
                     <button className="a-btn nudge" type="button" disabled={!eligibility.canSend} title={reminderReason || undefined} onClick={() => { setMessage(""); reminder.open({ kind: "nudge", sourceId: share.id, recipientId: share.userId, name: debtor?.name ?? "your housemate", subject: expense.name, amount: formatMoney(outstanding, hub.currency), dueOn: expense.dueOn }); }}>
                       Nudge
@@ -171,8 +185,18 @@ export function SettleScreen() {
                   </button>
                   {reminderReason && <p className="c-action-hint">{reminderReason}</p>}
                 </div>
+              ) : report ? (
+                <div className="a-row-actions">
+                  <button className="a-btn ghost" type="button" disabled={receipts.busy} onClick={() => { setMessage(""); void receipts.withdraw(report); }}>
+                    Withdraw
+                  </button>
+                </div>
               ) : (
-                <span className="sub">Awaiting payer confirmation</span>
+                <div className="a-row-actions">
+                  <button className="a-btn ghost" type="button" onClick={() => { setMessage(""); receipts.report({ shareId: share.id, payerName: payer?.name ?? "the bill payer", expenseName: expense.name, outstandingMinor: outstanding, currency: hub.currency }); }}>
+                    I’ve sent it
+                  </button>
+                </div>
               )}
             </div>
           );

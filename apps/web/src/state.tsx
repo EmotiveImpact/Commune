@@ -47,6 +47,7 @@ import {
   type Notification,
   type ExpenseChangeResult,
   type ReceiptResult,
+  type PaymentReportResult,
   type ReminderResult,
   type ReminderTarget,
   type ReminderUsage,
@@ -263,6 +264,11 @@ export type AppState = {
   recordShareReceipt: (shareId: string, input: { amountMinor: number; receivedOn: string; reference?: string; requestId: string }) => Promise<ReceiptResult>;
   /** Payer reverses one receipt with a reason. The original entry is kept. */
   reverseShareReceipt: (receiptId: string, reason: string) => Promise<ReceiptResult>;
+  /** The member who owes says they have paid. A claim, not a receipt. */
+  reportSharePayment: (shareId: string, input: { amountMinor: number; sentOn: string; reference?: string; requestId: string }) => Promise<PaymentReportResult>;
+  withdrawPaymentReport: (reportId: string) => Promise<PaymentReportResult>;
+  /** The bill payer confirms (records a receipt) or declines with a reason. */
+  resolvePaymentReport: (reportId: string, input: { decision: "confirm"; requestId: string } | { decision: "decline"; note: string }) => Promise<PaymentReportResult>;
   markExpensePaid: (expenseId: string) => Promise<void>;
   createInvite: (email: string, role: "admin" | "member") => Promise<{ token: string; url: string }>;
   sendInviteEmail: (token: string) => Promise<void>;
@@ -888,6 +894,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await refreshRecords();
     return result;
   }), [mutate, refreshRecords]);
+  const reportSharePayment = useCallback((shareId: string, input: { amountMinor: number; sentOn: string; reference?: string; requestId: string }) => mutate(async () => {
+    const result = await post<PaymentReportResult>(`/shares/${encodeURIComponent(shareId)}/payment-reports`, {
+      amountMinor: input.amountMinor, sentOn: input.sentOn,
+      reference: input.reference?.trim() || null, requestId: input.requestId,
+    });
+    await refreshRecords();
+    return result;
+  }), [mutate, refreshRecords]);
+  const withdrawPaymentReport = useCallback((reportId: string) => mutate(async () => {
+    const result = await post<PaymentReportResult>(`/payment-reports/${encodeURIComponent(reportId)}/withdraw`, {});
+    await refreshRecords();
+    return result;
+  }), [mutate, refreshRecords]);
+  const resolvePaymentReport = useCallback((reportId: string, input: { decision: "confirm"; requestId: string } | { decision: "decline"; note: string }) => mutate(async () => {
+    const result = await post<PaymentReportResult>(`/payment-reports/${encodeURIComponent(reportId)}/resolve`,
+      input.decision === "confirm" ? input : { decision: "decline", note: input.note.trim() });
+    await refreshRecords();
+    return result;
+  }), [mutate, refreshRecords]);
   const markExpensePaid = useCallback((expenseId: string) => mutate(async () => {
     const expense = expenses.find((row) => row.id === expenseId);
     if (!expense || expense.paidByUserId !== data?.user.id) {
@@ -1148,6 +1173,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setSearchQuery, setSearchScope, clearSearchTarget, setNoteSearchQuery, savePayMethod, setHubPhoto, setAvatar, addNote, updateNote,
     addOperation, updateOperation, toggleOperation, skipOperation, undoOperation,
     removeOperation, createHub, updateCommune, recordExpense, confirmExpenseShare, correctExpense, voidExpense, recordShareReceipt, reverseShareReceipt,
+    reportSharePayment, withdrawPaymentReport, resolvePaymentReport,
     markExpensePaid, createInvite, sendInviteEmail, revokeInvite, previewInvite, acceptInvite, createFund,
     pledgeFund, recordFundContribution, sendReminder, markNotificationRead,
     updateFund, archiveFund, updatePledge, voidContribution, saveRecurringBill, recordRecurringBill, saveSplitTemplate, manageMember,

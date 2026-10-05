@@ -351,7 +351,8 @@ describe("partial repayment receipts and reversals", () => {
     mount("/settle");
     const owe = await screen.findByRole("region", { name: "You owe" });
     expect(within(owe).getByText("£25.00 of £80.00 received")).toBeTruthy();
-    expect(within(owe).getByText("Awaiting payer confirmation")).toBeTruthy();
+    // The debtor can say they have paid; only the payer can record receipt.
+    expect(within(owe).getByRole("button", { name: "I’ve sent it" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Confirm received" })).toBeNull();
     expect(within(screen.getByRole("region", { name: "Recent repayments" })).getByText("You to Housemate")).toBeTruthy();
     act(() => app.go("expense", { expense: "expense-1" }));
@@ -376,6 +377,104 @@ describe("partial repayment receipts and reversals", () => {
     expect(vi.mocked(post)).toHaveBeenCalledWith("/notifications/notice-1/read", {});
     await waitFor(() => expect(app.window).toBe("expense"));
     expect(app.selectedExpense?.id).toBe("expense-1");
+  });
+});
+
+describe("I’ve sent it: a claim the bill payer answers", () => {
+  const reportPosts = () => vi.mocked(post).mock.calls.filter(([path]) => /payment-reports/.test(path));
+  /** The viewer owes user-2 (the payer) on this expense. */
+  function debt(reports: NonNullable<Snapshot["expenses"][number]["shares"][number]["paymentReports"]> = []): Snapshot["expenses"][number] {
+    const expense = owedExpense();
+    expense.paidByUserId = "user-2";
+    expense.shares = [
+      { id: "share-payer", userId: "user-2", amountMinor: 1200, settledMinor: 1200 },
+      { id: "share-mine", userId: user.id, amountMinor: 1200, settledMinor: 0, paymentReports: reports },
+    ];
+    return expense;
+  }
+  const pending = { id: "report-1", reportedBy: user.id, amountMinor: 1200, sentOn: "2026-01-06", reference: "Bank transfer",
+    reportedAt: "2026-01-06T09:00:00Z", status: "pending" as const, resolvedAt: null, resolvedBy: null, note: null, receiptId: null };
+
+  it("reports a payment once, as a claim, and never as received", async () => {
+    current.expenses = [debt()];
+    vi.mocked(post).mockImplementation(async (path) => /payment-reports$/.test(path)
+      ? (current.expenses = [debt([pending])], { id: "report-1", duplicate: false, status: "pending", receiptId: null, settledMinor: 0, outstandingMinor: 1200 })
+      : { ok: true });
+    mount("/settle");
+    fireEvent.click(await screen.findByRole("button", { name: "I’ve sent it" }));
+    const dialog = screen.getByRole("dialog", { name: "Tell Housemate you’ve paid" });
+    expect((within(dialog).getByLabelText(/Amount sent/) as HTMLInputElement).value).toBe("12.00");
+    fireEvent.change(within(dialog).getByLabelText(/Reference/), { target: { value: "Bank transfer" } });
+    await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Tell Housemate" })); });
+    expect(reportPosts()).toHaveLength(1);
+    const [path, body] = reportPosts()[0];
+    expect(path).toBe("/shares/share-mine/payment-reports");
+    expect(body).toMatchObject({ amountMinor: 1200, reference: "Bank transfer" });
+    expect((body as { requestId: string }).requestId).toMatch(/^[0-9a-f-]{36}$/);
+    expect(screen.getByRole("status").textContent).toContain("Your balance changes when they confirm it");
+    const owe = screen.getByRole("region", { name: "You owe" });
+    // Still owed in full; the row now waits for the payer and offers Withdraw.
+    expect(within(owe).getByText("£12.00", { selector: ".c-settle-total" })).toBeTruthy();
+    expect(within(owe).getByText(/You said you sent £12\.00 on 6 Jan 2026\. Waiting for Housemate/)).toBeTruthy();
+    expect(within(owe).queryByRole("button", { name: "I’ve sent it" })).toBeNull();
+    await act(async () => { fireEvent.click(within(owe).getByRole("button", { name: "Withdraw" })); });
+    expect(reportPosts().at(-1)?.[0]).toBe("/payment-reports/report-1/withdraw");
+  });
+
+  it("refuses card numbers in the reference before sending", async () => {
+    current.expenses = [debt()];
+    mount("/settle");
+    fireEvent.click(await screen.findByRole("button", { name: "I’ve sent it" }));
+    const dialog = screen.getByRole("dialog", { name: "Tell Housemate you’ve paid" });
+    fireEvent.change(within(dialog).getByLabelText(/Reference/), { target: { value: "4111 1111 1111 1111" } });
+    await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Tell Housemate" })); });
+    expect(reportPosts()).toHaveLength(0);
+    expect(within(dialog).getByRole("alert").textContent).toContain("Leave out card or account numbers");
+  });
+
+  it("lets the bill payer confirm a report as a receipt, or decline it with a reason", async () => {
+    const expense = owedExpense();
+    expense.shares[1].paymentReports = [{ ...pending, reportedBy: "user-2", amountMinor: 800 }];
+    current.expenses = [expense];
+    vi.mocked(post).mockImplementation(async () => ({ id: "report-1", duplicate: false, status: "confirmed", receiptId: "receipt-9", settledMinor: 800, outstandingMinor: 400 }));
+    mount("/settle");
+    const owed = await screen.findByRole("region", { name: "You’re owed" });
+    expect(within(owed).getByText(/Housemate sent £8\.00 on 6 Jan 2026 · Bank transfer\. Not yet confirmed\./)).toBeTruthy();
+    // While a report waits, the payer answers it rather than nudging.
+    expect(within(owed).queryByRole("button", { name: "Nudge" })).toBeNull();
+    fireEvent.click(within(owed).getByRole("button", { name: "Confirm £8.00" }));
+    const confirm = screen.getByRole("dialog", { name: "Confirm £8.00 received?" });
+    await act(async () => { fireEvent.click(within(confirm).getByRole("button", { name: "Confirm £8.00 received" })); });
+    const [path, body] = reportPosts()[0];
+    expect(path).toBe("/payment-reports/report-1/resolve");
+    expect(body).toMatchObject({ decision: "confirm" });
+    expect((body as { requestId: string }).requestId).toMatch(/^[0-9a-f-]{36}$/);
+    expect(screen.getByRole("status").textContent).toContain("£8.00 recorded as received from Housemate. £4.00 still outstanding.");
+
+    vi.mocked(post).mockClear();
+    vi.mocked(post).mockImplementation(async () => ({ id: "report-1", duplicate: false, status: "declined", receiptId: null, settledMinor: 0, outstandingMinor: 1200 }));
+    fireEvent.click(within(owed).getByRole("button", { name: "Not received" }));
+    const decline = screen.getByRole("dialog", { name: "Not received yet?" });
+    await act(async () => { fireEvent.click(within(decline).getByRole("button", { name: "Send" })); });
+    expect(reportPosts()).toHaveLength(0);
+    fireEvent.change(within(decline).getByLabelText("What should they check?"), { target: { value: "Nothing has arrived" } });
+    await act(async () => { fireEvent.click(within(decline).getByRole("button", { name: "Send" })); });
+    expect(reportPosts()[0][1]).toEqual({ decision: "decline", note: "Nothing has arrived" });
+    expect(screen.getByRole("status").textContent).toContain("Nothing was recorded");
+  });
+
+  it("tells the debtor why a report was declined, and names report notices plainly", async () => {
+    current.expenses = [debt([{ ...pending, status: "declined", resolvedAt: "2026-01-07T09:00:00Z", resolvedBy: "user-2", note: "Nothing has arrived" }])];
+    current.notifications = [{ id: "notice-2", kind: "payment-declined", sourceId: "expense-1", amountMinor: 1200, communeId: commune.id,
+      senderUserId: "user-2", expenseId: "expense-1", title: "House supplies", detail: "Nothing has arrived", createdAt: "2026-01-07T09:00:00Z", readAt: null }];
+    mount("/settle");
+    const owe = await screen.findByRole("region", { name: "You owe" });
+    expect(within(owe).getByText("Housemate has not received the £12.00 you reported: Nothing has arrived")).toBeTruthy();
+    expect(within(owe).getByRole("button", { name: "I’ve sent it" })).toBeTruthy();
+    act(() => app.go("notices"));
+    const notice = within(await screen.findByRole("dialog", { name: "Notices" })).getByRole("button", { name: /House supplies/ });
+    expect(notice.textContent).toContain("Not received");
+    expect(notice.textContent).toContain("Housemate has not received £12.00");
   });
 });
 

@@ -11,7 +11,7 @@ DECLARE
     'reminders', 'notifications', 'reminder_email_outbox',
     'commune_invites', 'recurring_bills', 'recurring_bill_occurrences',
     'split_templates', 'commune_events',
-    'expense_share_receipts', 'expense_revisions', 'operation_occurrences'
+    'expense_share_receipts', 'expense_revisions', 'operation_occurrences', 'expense_share_payment_reports'
   ];
 BEGIN
   FOREACH table_name IN ARRAY denied_tables LOOP
@@ -47,7 +47,10 @@ BEGIN
     'public.correct_expense(uuid,integer,text,bigint,jsonb,date,text,text,text,uuid)',
     'public.void_expense(uuid,integer,text,uuid)',
     'public.record_operation_occurrence(uuid,text,date,date,uuid)',
-    'public.undo_operation_occurrence(uuid)'
+    'public.undo_operation_occurrence(uuid)',
+    'public.report_share_payment(uuid,bigint,date,text,uuid)',
+    'public.withdraw_share_payment_report(uuid)',
+    'public.resolve_share_payment_report(uuid,text,text,uuid)'
   ] LOOP
     IF has_function_privilege('anonymous', table_name, 'EXECUTE')
       OR has_function_privilege('public', table_name, 'EXECUTE')
@@ -71,7 +74,9 @@ BEGIN
     'commune_private.member_by_name(uuid,text)',
     'commune_private.set_operation_people()',
     'commune_private.next_in_rotation(uuid,jsonb,text)',
-    'commune_private.reassign_departed_member()'
+    'commune_private.reassign_departed_member()',
+    'commune_private.payment_report_result(uuid,boolean)',
+    'commune_private.close_payment_reports()'
   ] LOOP
     IF has_function_privilege('authenticated', table_name, 'EXECUTE')
       OR has_function_privilege('anonymous', table_name, 'EXECUTE') THEN
