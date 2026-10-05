@@ -12,6 +12,13 @@ lifecycle pack. Work is paused for a handoff, not a production release.
 - `8cfd33b` checkpoints the money lifecycle and task history pack, migrations
   0015 to 0019, their tests and docs, plus the review fixes. See
   [money lifecycle](MONEY-LIFECYCLE-2026-10-02.md).
+- From 5 October: Operations people by member id, "I've sent it" payment
+  reports, statements, recurring periods, the invitation lifecycle, note
+  history and conflict protection, fund figures and data export. Migrations
+  0020 to 0023. See [local build-out](LOCAL-BUILDOUT-2026-10-05.md) and the
+  prepared [hosted release checklist](HOSTED-RELEASE-CHECKLIST.md).
+- The website is `web/` (the editorial homepage); the earlier v2 site is in
+  `web-backup/`. Launch names `website` (3004) and `website-backup` (3003).
 - No push, deployment, hosted migration or provider change has been made. Do
   not infer hosted parity from local work.
 - Preserve the modified `.claude/launch.json` and all untracked landing, mobile
@@ -58,6 +65,10 @@ and to 0019 on 3 October after a further backup
 (`.local/backups/commune_loading_test_20260927-before-0019-*.dump`),
 after an owner `pg_dump` to
 `.local/backups/commune_loading_test_20260927-before-0015-0018-20261002-222701.dump`.
+On 5 October it was migrated to 0023, after a backup
+(`.local/backups/commune_loading_test_20260927-before-0020-0023-20261005-084709.dump`)
+and a rehearsal on a clone of it. Counts and money totals were identical
+before and after; its four tasks resolved to member ids.
 User, commune, member, expense, share, fund, note, operation, notification,
 reminder and event counts, and the money totals, were identical before and
 after. Two previously confirmed shares became two `migrated` receipts. The new
