@@ -486,8 +486,11 @@ export async function neonApi<T>(path: string, init: RequestInit = {}): Promise<
     const result = await db().from("commune_operations").insert({
       commune_id: pathId(path, /^\/communes\/([^/]+)\/operations$/), created_by: user.id,
       kind: body.kind, category: body.category, title: body.title, date: body.date,
-      time: body.time ?? null, all_day: body.allDay, assignee: body.assignee ?? null,
-      rotation: body.rotation ?? null, last_done: body.lastDone ?? null,
+      time: body.time ?? null, all_day: body.allDay,
+      // Names are copied from the ids by the database (migration 0020).
+      assignee: null, rotation: null,
+      assignee_id: body.assigneeId ?? null, rotation_ids: body.rotationIds ?? null,
+      last_done: body.lastDone ?? null,
       repeat: body.repeat, status: body.status, notes: body.notes ?? "",
     }).select("id").single();
     response = idResult(asObject(unwrap(result)).id);
@@ -503,8 +506,11 @@ export async function neonApi<T>(path: string, init: RequestInit = {}): Promise<
   } else if (method === "PUT" && pathId(path, /^\/operations\/([^/]+)$/)) {
     const result = await db().from("commune_operations").update({
       kind: body.kind, category: body.category, title: body.title, date: body.date,
-      time: body.time ?? null, all_day: body.allDay, assignee: body.assignee ?? null,
-      rotation: body.rotation ?? null, last_done: body.lastDone ?? null,
+      time: body.time ?? null, all_day: body.allDay,
+      // Names are copied from the ids by the database (migration 0020).
+      assignee: null, rotation: null,
+      assignee_id: body.assigneeId ?? null, rotation_ids: body.rotationIds ?? null,
+      last_done: body.lastDone ?? null,
       repeat: body.repeat, status: body.status, notes: body.notes ?? "",
       updated_at: new Date().toISOString(),
     }).eq("id", pathId(path, /^\/operations\/([^/]+)$/)!).select("id");

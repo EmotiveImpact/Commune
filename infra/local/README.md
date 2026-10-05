@@ -24,7 +24,8 @@ files in order using a database owner connection:
 18. `infra/neon/migrations/0017_expense_revisions.sql`
 19. `infra/neon/migrations/0018_operation_occurrences.sql`
 20. `infra/neon/migrations/0019_lifecycle_corrections.sql`
-21. `infra/local/after-core.sql`
+21. `infra/neon/migrations/0020_operation_member_ids.sql`
+22. `infra/local/after-core.sql`
 
 `after-core.sql` is idempotent. Re-run it after applying a newer migration to
 an existing local database so the local-only reminder helpers stay current.

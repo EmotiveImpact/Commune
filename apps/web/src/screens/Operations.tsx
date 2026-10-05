@@ -5,7 +5,8 @@ import {
   firstNameOf,
   formatTimeLabel,
   isoFromDate,
-  nextInRotation,
+  holdsTurn,
+  nextPerson,
   overdueDays,
   todayIso,
   type OperationItem,
@@ -83,12 +84,12 @@ export function OperationsScreen() {
         item.lastDone?.date === today),
   );
   const yoursToday = open.filter(
-    (item) => item.kind === "task" && item.assignee === you.name && item.date === today,
+    (item) => item.kind === "task" && item.assigneeId === you.id && item.date === today,
   );
   const yoursNext = open.find(
     (item) =>
       item.kind === "task" &&
-      item.assignee === you.name &&
+      item.assigneeId === you.id &&
       item.date > today,
   );
   const calendarDays = useMemo(() => buildMonth(month), [month]);
@@ -176,15 +177,15 @@ export function OperationsScreen() {
 
   const peopleBuckets = [
     ...hub.members.map((member) => ({
-      key: member.name,
+      key: member.userId,
       label: firstNameOf(member.name),
-      you: member.name === you.name,
+      you: member.userId === you.id,
       tone: member.cls,
       initials: member.ini,
       items: peopleHorizon.filter(
         (item) =>
           item.kind === "task" &&
-          item.assignee === member.name &&
+          item.assigneeId === member.userId &&
           (item.date <= weekEnd || item.lastDone?.date === today),
       ),
     })),
@@ -194,9 +195,12 @@ export function OperationsScreen() {
       you: false,
       tone: "house",
       initials: "H",
+      // Visits and deliveries, and any task nobody holds (for example
+      // after the person who had it left).
       items: peopleHorizon.filter(
         (item) =>
-          item.kind === "event" &&
+          (item.kind === "event" ||
+            !hub.members.some((member) => member.userId === item.assigneeId)) &&
           (item.date <= weekEnd || item.lastDone?.date === today),
       ),
     },
@@ -322,10 +326,10 @@ export function OperationsScreen() {
                     <strong>{item.title}</strong>
                     <small>
                       {item.date < today
-                        ? `Late · ${item.rotation?.length ? `then ${firstNameOf(nextInRotation(item.rotation, item.assignee))}` : "open"}`
+                        ? `Late · ${item.rotation?.length ? `then ${firstNameOf(nextPerson(item))}` : "open"}`
                         : `${shortDateFormatter.format(dateFromIso(item.date))} · ${item.allDay ? "All day" : formatTimeLabel(item.time)}${
                             item.rotation?.length
-                              ? ` · then ${firstNameOf(nextInRotation(item.rotation, item.assignee))}`
+                              ? ` · then ${firstNameOf(nextPerson(item))}`
                               : ""
                           }`}
                     </small>
@@ -470,7 +474,7 @@ function LateCard({
   onDone: () => void;
 }) {
   const next = item.rotation?.length
-    ? firstNameOf(nextInRotation(item.rotation, item.assignee))
+    ? firstNameOf(nextPerson(item))
     : "";
   const who = firstNameOf(item.assignee) || "Unassigned";
   return (
@@ -483,9 +487,9 @@ function LateCard({
       {item.rotation?.length ? (
         <div className="ops-rotation">
           {item.rotation.map((name, index) => (
-            <span key={name}>
+            <span key={index}>
               {index ? <i /> : null}
-              <em className={cx(name === item.assignee && "is-on")}>
+              <em className={cx(holdsTurn(item, index) && "is-on")}>
                 {firstNameOf(name)}
               </em>
             </span>
@@ -518,7 +522,7 @@ function metaLine(item: OperationItem): string {
       : CATEGORY_LABEL[item.category];
   const next =
     item.kind === "task" && item.rotation?.length
-      ? ` · then ${firstNameOf(nextInRotation(item.rotation, item.assignee))}`
+      ? ` · then ${firstNameOf(nextPerson(item))}`
       : "";
   return `${when} · ${who}${next}`;
 }

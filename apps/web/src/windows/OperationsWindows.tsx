@@ -2,7 +2,8 @@ import { useState } from "react";
 import {
   dateFromIso,
   firstNameOf,
-  nextInRotation,
+  holdsTurn,
+  nextPerson,
   nextOccurrence,
   todayIso,
   type NewOperation,
@@ -12,7 +13,7 @@ import {
   type OperationKind,
 } from "../data/operations";
 import { useApp } from "../state";
-import { Pill } from "../ui/widgets";
+import { Avatar, Pill } from "../ui/widgets";
 import { cx } from "../ui/cx";
 import { LIMITS } from "../data/limits";
 
@@ -74,8 +75,8 @@ export function OperationView() {
       : item.repeat === "monthly"
         ? "Every month"
         : "Doesn’t repeat";
-  const nextPerson = item.rotation?.length
-    ? firstNameOf(nextInRotation(item.rotation, item.assignee))
+  const nextName = item.rotation?.length
+    ? firstNameOf(nextPerson(item))
     : "";
   const nextDate =
     item.repeat !== "none"
@@ -121,11 +122,11 @@ export function OperationView() {
             <strong>{repeat}</strong>
           </div>
         ) : null}
-        {item.kind === "task" && item.status === "open" && (nextPerson || nextDate) ? (
+        {item.kind === "task" && item.status === "open" && (nextName || nextDate) ? (
           <div className="a-note-fact">
             <span>Next</span>
             <strong>
-              {nextPerson || "Same person"}
+              {nextName || "Same person"}
               {nextDate ? ` · ${operationDateFormatter.format(dateFromIso(nextDate))}` : ""}
             </strong>
           </div>
@@ -141,9 +142,9 @@ export function OperationView() {
       {item.rotation?.length ? (
         <div className="ops-rotation" style={{ margin: "0 0 16px" }}>
           {item.rotation.map((name, index) => (
-            <span key={name}>
+            <span key={index}>
               {index ? <i /> : null}
-              <em className={name === item.assignee ? "is-on" : undefined}>
+              <em className={holdsTurn(item, index) ? "is-on" : undefined}>
                 {firstNameOf(name)}
               </em>
             </span>
@@ -191,8 +192,8 @@ export function OperationView() {
             >
               {item.status === "done"
                 ? "Mark open"
-                : nextPerson
-                  ? `Done · ${nextPerson}`
+                : nextName
+                  ? `Done · ${nextName}`
                   : "Mark done"}
             </button>
           ) : null}
@@ -322,7 +323,22 @@ function OperationForm({
   const [time, setTime] = useState(
     item?.time ?? (operationTime || "09:00"),
   );
-  const [assignee, setAssignee] = useState(item?.assignee ?? you.name);
+  // People are chosen by member id, so two members with one name stay apart.
+  const [assigneeId, setAssigneeId] = useState(
+    item ? item.assigneeId ?? "" : you.id,
+  );
+  const [rotationIds, setRotationIds] = useState<string[]>(() => {
+    if (item?.rotationIds?.length) return item.rotationIds;
+    // A task saved before ids existed: keep names that match one member.
+    return (item?.rotation ?? []).flatMap((name) => {
+      const matches = hub.members.filter((member) => member.name === name);
+      return matches.length === 1 ? [matches[0].userId] : [];
+    });
+  });
+  // The person who has it now always takes a turn; list order is turn order.
+  const turns = hub.members
+    .map((member) => member.userId)
+    .filter((id) => id === assigneeId || rotationIds.includes(id));
   const [repeat, setRepeat] = useState<NewOperation["repeat"]>(
     item?.repeat ?? "none",
   );
@@ -351,7 +367,11 @@ function OperationForm({
         date,
         time: allDay ? undefined : time,
         allDay,
-        assignee: kind === "task" ? assignee : undefined,
+        assigneeId: kind === "task" ? assigneeId || null : null,
+        rotationIds:
+          kind === "task" && repeat !== "none" && assigneeId && turns.length > 1
+            ? turns
+            : null,
         repeat: kind === "task" ? repeat : "none",
         notes: notes.trim(),
       });
@@ -478,12 +498,13 @@ function OperationForm({
             <label htmlFor="operation-assignee">Assigned to</label>
             <select
               id="operation-assignee"
-              value={assignee}
-              onChange={(event) => setAssignee(event.target.value)}
+              value={assigneeId}
+              onChange={(event) => setAssigneeId(event.target.value)}
             >
+              <option value="">Unassigned</option>
               {hub.members.map((member) => (
-                <option key={member.name} value={member.name}>
-                  {member.name === you.name
+                <option key={member.userId} value={member.userId}>
+                  {member.userId === you.id
                     ? `${member.name} · You`
                     : member.name}
                 </option>
@@ -504,6 +525,43 @@ function OperationForm({
               <option value="monthly">Every month</option>
             </select>
           </div>
+          {repeat !== "none" && assigneeId && hub.members.length > 1 ? (
+            <fieldset className="a-field operation-turns">
+              <legend>Takes turns</legend>
+              {hub.members.map((member) => {
+                const holder = member.userId === assigneeId;
+                const position = turns.indexOf(member.userId);
+                return (
+                  <label className="a-settle-row operation-turn" key={member.userId}>
+                    <input
+                      type="checkbox"
+                      checked={position >= 0}
+                      disabled={holder}
+                      onChange={(event) =>
+                        setRotationIds(
+                          event.target.checked
+                            ? [...rotationIds, member.userId]
+                            : rotationIds.filter((id) => id !== member.userId),
+                        )
+                      }
+                    />
+                    <Avatar tone={member.cls} initials={member.ini} />
+                    <span className="operation-turn-name">
+                      {member.userId === you.id ? `${member.name} · You` : member.name}
+                    </span>
+                    <span className="operation-turn-note">
+                      {holder ? "Has it now" : position >= 0 ? `Turn ${position + 1}` : ""}
+                    </span>
+                  </label>
+                );
+              })}
+              <p className="hint">
+                {turns.length > 1
+                  ? "When it is done, it passes to the next person in this order."
+                  : "Tick others to take turns. Otherwise it stays with one person."}
+              </p>
+            </fieldset>
+          ) : null}
         </>
       ) : null}
 

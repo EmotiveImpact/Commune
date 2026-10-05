@@ -134,6 +134,18 @@ function operationInput(input: Record<string, unknown>) {
       !input.rotation.every((name) => typeof name === "string" && name.length <= 80))) {
     throw new ApiError(400, "Invalid rotation");
   }
+  // Current clients name people by member id; older ones send names only.
+  const byId = "assigneeId" in input || "rotationIds" in input;
+  if (input.assigneeId != null && (typeof input.assigneeId !== "string" ||
+      !input.assigneeId || input.assigneeId.length > 128)) {
+    throw new ApiError(400, "Invalid assigneeId");
+  }
+  if (input.rotationIds != null && (!Array.isArray(input.rotationIds) ||
+      !input.rotationIds.length || input.rotationIds.length > 50 ||
+      new Set(input.rotationIds).size !== input.rotationIds.length ||
+      !input.rotationIds.every((id) => typeof id === "string" && id.length > 0 && id.length <= 128))) {
+    throw new ApiError(400, "Invalid rotationIds");
+  }
   if (input.status !== undefined && input.status !== "open" && input.status !== "done") {
     throw new ApiError(400, "Invalid status");
   }
@@ -151,8 +163,11 @@ function operationInput(input: Record<string, unknown>) {
     title: text(input.title, "title", 80),
     date: isoDate(input.date)!, time: input.time ?? null,
     allDay: input.allDay,
-    assignee: input.assignee == null ? null : optionalText(input.assignee, "assignee", 80),
-    rotation: input.rotation ?? null, lastDone,
+    byId,
+    assignee: byId || input.assignee == null ? null : optionalText(input.assignee, "assignee", 80),
+    rotation: byId ? null : input.rotation ?? null, lastDone,
+    assigneeId: (input.assigneeId as string | null | undefined) ?? null,
+    rotationIds: (input.rotationIds as string[] | null | undefined) ?? null,
     repeat: input.repeat, status: input.status === "done" ? "done" : "open",
     notes: optionalText(input.notes, "notes", 1000),
   };
@@ -595,15 +610,17 @@ route("POST", /^\/api\/communes\/([0-9a-f-]{36})\/operations$/, async (req, res,
   const result = await userAction(req, async (client) => client.query(`
     INSERT INTO public.commune_operations
       (commune_id, kind, category, title, date, time, all_day,
-        assignee, rotation, last_done, repeat, status, notes, created_by)
+        assignee, rotation, last_done, repeat, status, notes, created_by,
+        assignee_id, rotation_ids)
     VALUES ($1, $2, $3, $4, $5::date, $6::time, $7, $8,
-      $9::jsonb, $10::jsonb, $11, $12, $13, auth.user_id())
+      $9::jsonb, $10::jsonb, $11, $12, $13, auth.user_id(), $14, $15::jsonb)
     RETURNING id
   `, [uuid(match[1]), item.kind, item.category, item.title, item.date,
       item.time, item.allDay, item.assignee,
       item.rotation == null ? null : JSON.stringify(item.rotation),
       item.lastDone == null ? null : JSON.stringify(item.lastDone),
-      item.repeat, item.status, item.notes]));
+      item.repeat, item.status, item.notes, item.assigneeId,
+      item.rotationIds == null ? null : JSON.stringify(item.rotationIds)]));
   send(res, { id: result.rows[0].id }, 201);
 });
 
@@ -614,13 +631,17 @@ route("PUT", /^\/api\/operations\/([0-9a-f-]{36})$/, async (req, res, match) => 
       SET kind = $2, category = $3, title = $4, date = $5::date,
         time = $6::time, all_day = $7, assignee = $8,
         rotation = $9::jsonb, last_done = $10::jsonb,
-        repeat = $11, status = $12, notes = $13, updated_at = now()
+        repeat = $11, status = $12, notes = $13, updated_at = now(),
+        -- A names-only write leaves the ids for the database to resolve.
+        assignee_id = CASE WHEN $14 THEN $15 ELSE assignee_id END,
+        rotation_ids = CASE WHEN $14 THEN $16::jsonb ELSE rotation_ids END
       WHERE id = $1 RETURNING id
   `, [uuid(match[1]), item.kind, item.category, item.title, item.date,
       item.time, item.allDay, item.assignee,
       item.rotation == null ? null : JSON.stringify(item.rotation),
       item.lastDone == null ? null : JSON.stringify(item.lastDone),
-      item.repeat, item.status, item.notes]));
+      item.repeat, item.status, item.notes, item.byId, item.assigneeId,
+      item.rotationIds == null ? null : JSON.stringify(item.rotationIds)]));
   if (!result.rowCount) throw new ApiError(404, "Operation not found");
   send(res, { ok: true });
 });

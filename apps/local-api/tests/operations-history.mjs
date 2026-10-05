@@ -28,17 +28,19 @@ function session() {
   };
 }
 const ok = (result, status = 200) => { assert.equal(result.status, status, JSON.stringify(result)); return result; };
-const a = session(), b = session(), outsider = session();
+const a = session(), b = session(), c = session(), outsider = session();
 const users = [];
-for (const [index, call] of [a, b, outsider].entries()) {
+for (const [index, call] of [a, b, c, outsider].entries()) {
   users.push(ok(await call("POST", "/auth/signup", {
-    name: ["Avery Rota", "Blake Rota", "Outsider"][index], email: `operations-${index}-${suffix}@example.test`, password,
+    name: ["Avery Rota", "Blake Rota", "Casey Rota", "Outsider"][index], email: `operations-${index}-${suffix}@example.test`, password,
   }), 201).user);
 }
-const [avery, blake] = users;
+const [avery, blake, casey] = users;
 const id = ok(await a("POST", "/communes", { name: `Operations ${suffix}`, kind: "household", currency: "GBP" }), 201).id;
 const invite = ok(await a("POST", `/communes/${id}/invites`, { email: blake.email, role: "member" }), 201);
 ok(await b("POST", `/invites/${invite.token}/accept`, {}));
+const inviteCasey = ok(await a("POST", `/communes/${id}/invites`, { email: casey.email, role: "member" }), 201);
+ok(await c("POST", `/invites/${inviteCasey.token}/accept`, {}));
 
 const iso = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 const day = (offset) => { const date = new Date(); date.setDate(date.getDate() + offset); return iso(date); };
@@ -48,7 +50,8 @@ const addMonth = (value) => {
   const last = new Date(year, month + 1, 0).getDate();
   return iso(new Date(year, month, Math.min(dayOfMonth, last)));
 };
-const rotation = [avery.name, blake.name, "Casey Guest"];
+// People are named by member id; names are read back live.
+const rotationIds = [avery.id, blake.id, casey.id];
 const task = { kind: "task", category: "chore", allDay: true, notes: "", status: "open", repeat: "none" };
 const create = async (input) => ok(await a("POST", `/communes/${id}/operations`, { ...task, ...input }), 201).id;
 const read = async (operationId, call = a) => ok(await call("GET", `/communes/${id}/snapshot`)).operations.find(item => item.id === operationId);
@@ -56,7 +59,18 @@ const act = (operationId, action, expectedDate, call = a, extra = {}) =>
   call("POST", `/operations/${operationId}/occurrences`, { action, expectedDate, today, requestId: randomUUID(), ...extra });
 
 // ------------------------------------------ weekly rotation, retry and undo
-const bins = await create({ title: "Put the bins out", date: today, assignee: avery.name, rotation, repeat: "weekly" });
+const bins = await create({ title: "Put the bins out", date: today, assigneeId: avery.id, rotationIds, repeat: "weekly" });
+{
+  const created = await read(bins);
+  assert.deepEqual([created.assigneeId, created.assignee, created.rotationIds, created.rotation],
+    [avery.id, avery.name, rotationIds, [avery.name, blake.name, casey.name]]);
+  // Only current members of this commune, each once, and the holder in the rotation.
+  const outsiderId = users[3].id;
+  for (const bad of [{ assigneeId: outsiderId }, { assigneeId: avery.id, rotationIds: [avery.id, outsiderId] },
+      { assigneeId: blake.id, rotationIds: [avery.id] }, { rotationIds: [avery.id, avery.id] }]) {
+    assert.equal((await a("POST", `/communes/${id}/operations`, { ...task, title: "Bad", date: today, repeat: "weekly", ...bad })).status, 400, JSON.stringify(bad));
+  }
+}
 assert.equal((await read(bins)).undoOccurrenceId, null);
 assert.deepEqual((await read(bins)).history, []);
 // Permission and validation live on the server.
@@ -101,19 +115,20 @@ assert.deepEqual([saved.date, saved.assignee], [day(7), blake.name]);
 const first = saved.undoOccurrenceId;
 // Once the next person has completed their turn, the earlier one is history.
 const second = ok(await act(bins, "completed", day(7), b), 201);
-assert.deepEqual([second.date, second.assignee], [day(14), "Casey Guest"]);
+assert.deepEqual([second.date, second.assignee, second.assigneeId], [day(14), casey.name, casey.id]);
 const tooLate = await a("POST", `/occurrences/${first}/undo`, {});
 assert.equal(tooLate.status, 409);
 assert.match(tooLate.error, /can no longer be undone/);
 // A manual edit after completion also closes the undo, rather than being overwritten.
 saved = await read(bins);
-ok(await a("PUT", `/operations/${bins}`, { ...task, title: "Put the bins out", date: day(15), assignee: saved.assignee, rotation, repeat: "weekly", lastDone: saved.lastDone }));
+ok(await a("PUT", `/operations/${bins}`, { ...task, title: "Put the bins out", date: day(15), assigneeId: saved.assigneeId, rotationIds, repeat: "weekly", lastDone: saved.lastDone }));
 assert.equal((await read(bins)).undoOccurrenceId, null);
 assert.equal((await a("POST", `/occurrences/${second.id}/undo`, {})).status, 409);
-assert.deepEqual([(await read(bins)).date, (await read(bins)).assignee], [day(15), "Casey Guest"]);
+assert.deepEqual([(await read(bins)).date, (await read(bins)).assignee], [day(15), casey.name]);
 // The rotation wraps round to the first person.
 const wrapped = ok(await act(bins, "completed", day(15)), 201);
 assert.equal(wrapped.assignee, avery.name);
+
 
 // ------------------------------------------------- monthly, overdue, skip
 const late = await create({ title: "Deep clean", date: day(-40), assignee: blake.name, repeat: "monthly" });
@@ -179,4 +194,24 @@ assert.equal(events.filter(item => item === "Updated").length, 1, JSON.stringify
 // Removing a task removes its occurrences with it.
 ok(await a("DELETE", `/operations/${bins}`));
 assert.equal(await read(bins), undefined);
+// ------------------------------------------- older clients and departures
+{
+  // An older client that sends names only is resolved to member ids.
+  const legacyNames = await create({ title: "Water the plants", date: today, assignee: blake.name, rotation: [blake.name, casey.name], repeat: "weekly" });
+  assert.deepEqual([(await read(legacyNames)).assigneeId, (await read(legacyNames)).rotationIds], [blake.id, [blake.id, casey.id]]);
+  assert.equal((await a("POST", `/communes/${id}/operations`, { ...task, title: "Ghost", date: today, assignee: "Nobody Here" })).status, 400);
+  // Casey's turn on the plants, then Casey leaves: it passes on, and Casey leaves every rotation.
+  ok(await a("PUT", `/operations/${legacyNames}`, { ...task, title: "Water the plants", date: today, assigneeId: casey.id, rotationIds: [blake.id, casey.id], repeat: "weekly", lastDone: null }));
+  ok(await c("POST", `/communes/${id}/members/${casey.id}`, { action: "leave" }));
+  const plants = await read(legacyNames);
+  assert.deepEqual([plants.assigneeId, plants.assignee, plants.rotationIds], [blake.id, blake.name, [blake.id]]);
+  const notes = ok(await a("GET", `/communes/${id}/snapshot`)).activityEvents.filter(item => item.entityId === legacyNames).map(item => item.description);
+  assert.ok(notes.includes(`${casey.name} left. Now with ${blake.name}`), JSON.stringify(notes));
+  // A task held by someone outside any rotation becomes unassigned.
+  const solo = await create({ title: "Return library books", date: today, assigneeId: blake.id });
+  ok(await a("POST", `/communes/${id}/members/${blake.id}`, { action: "remove" }));
+  assert.deepEqual([(await read(solo)).assigneeId, (await read(solo)).assignee], [null, null]);
+  assert.deepEqual([(await read(legacyNames)).assigneeId, (await read(legacyNames)).rotationIds], [null, null]);
+  console.log("member ids and departures: ok");
+}
 console.log(`operation occurrence integration passed (${base})`);

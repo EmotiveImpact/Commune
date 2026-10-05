@@ -5066,6 +5066,38 @@ button.a-item {
   margin-bottom: 8px;
 }
 
+/* Takes turns: the existing member rows, inside a plain fieldset. */
+.operation-turns {
+  min-width: 0;
+  margin: 0 0 16px;
+  padding: 0;
+  border: 0;
+}
+
+.operation-turns legend {
+  margin-bottom: 4px;
+  padding: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+
+.a-field label.operation-turn {
+  padding: 9px 0;
+}
+
+.operation-turn-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.operation-turn-note {
+  margin-left: auto;
+  color: var(--ink-soft);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
 .operation-notes {
   padding: 14px 16px;
   border: 1px solid var(--border);

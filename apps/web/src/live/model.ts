@@ -405,7 +405,7 @@ export function hubFromSnapshot(
       go: "expense" as const, pill: row.status, tag: row.due, title: row.name,
       when: `${row.amount} · ${row.paidBy} paid`, expenseId: row.id, dueOn: row.dueOn ?? undefined,
     })),
-    ...(snapshot.operations ?? []).filter(item => item.kind === "task" && item.status === "open" && item.assignee === viewer.name && item.date <= today).map(item => ({
+    ...(snapshot.operations ?? []).filter(item => item.kind === "task" && item.status === "open" && item.assigneeId === viewer.id && item.date <= today).map(item => ({
       go: "operation" as const, pill: item.date < today ? "warn" : "open", tag: item.date < today ? "Overdue" : "Today",
       title: item.title, when: item.date < today ? "Overdue · your turn" : "Your turn today", operationId: item.id, dueOn: item.date,
     })),

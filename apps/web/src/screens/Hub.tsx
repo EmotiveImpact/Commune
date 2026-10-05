@@ -118,7 +118,7 @@ export function HubScreen() {
     return rank(a[1]) - rank(b[1]);
   });
   const outstanding = hub.moves.filter(move => !move.even);
-  const yours = operations.filter(item => item.status === "open" && item.kind === "task" && item.assignee === you.name && item.date <= todayIso());
+  const yours = operations.filter(item => item.status === "open" && item.kind === "task" && item.assigneeId === you.id && item.date <= todayIso());
   const yourPledges = hub.now.filter(item => item.go === "funds");
   const attentionCount = outstanding.length + yours.length + yourPledges.length;
   const canInvite = hub.role === "admin";

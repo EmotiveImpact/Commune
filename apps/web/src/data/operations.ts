@@ -17,11 +17,13 @@ export type OperationOccurrence = {
   /** The occurrence acted on, and who held it then. */
   dueOn: string;
   assignee?: string | null;
+  assigneeId?: string | null;
   actorId: string;
   actedOn: string;
   actedAt: string;
   nextDate: string;
   nextAssignee?: string | null;
+  nextAssigneeId?: string | null;
   undoneAt: string | null;
   undoneBy: string | null;
 };
@@ -31,6 +33,7 @@ export type OperationChange = {
   duplicate: boolean;
   date: string;
   assignee: string | null;
+  assigneeId: string | null;
   status: OperationStatus;
 };
 
@@ -43,8 +46,12 @@ export type OperationItem = {
   date: string;
   time?: string;
   allDay: boolean;
+  /** Display names, read live from the member ids below. */
   assignee?: string;
   rotation?: string[];
+  /** The member holding the task, and who takes turns, by member id. */
+  assigneeId?: string | null;
+  rotationIds?: string[] | null;
   lastDone?: { by: string; date: string };
   repeat: OperationRepeat;
   status: OperationStatus;
@@ -301,6 +308,28 @@ export function cloneOperationSeed(): OperationStore {
     lisbon: OPERATIONS_SEED.lisbon.map(cloneItem),
     created: [],
   };
+}
+
+/**
+ * The next person's name for display. Uses member ids when the task has them,
+ * so two members with the same name are never confused. The server decides
+ * who is actually next (and passes over anyone who has left).
+ */
+export function nextPerson(item: Pick<OperationItem, "rotation" | "rotationIds" | "assignee" | "assigneeId">): string {
+  const names = item.rotation ?? [];
+  const ids = item.rotationIds;
+  if (ids?.length && ids.length === names.length) {
+    const index = item.assigneeId ? ids.indexOf(item.assigneeId) : -1;
+    return names[(index + 1) % ids.length];
+  }
+  return names.length ? nextInRotation(names, item.assignee) : "";
+}
+
+/** Whether rotation position `index` is the person holding the task now. */
+export function holdsTurn(item: Pick<OperationItem, "rotation" | "rotationIds" | "assignee" | "assigneeId">, index: number): boolean {
+  const ids = item.rotationIds;
+  if (ids?.length && ids.length === (item.rotation ?? []).length) return ids[index] === item.assigneeId;
+  return item.rotation?.[index] === item.assignee;
 }
 
 export function nextInRotation(rotation: string[], current?: string): string {

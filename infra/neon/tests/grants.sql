@@ -38,7 +38,7 @@ BEGIN
     RAISE EXCEPTION 'Anonymous workflow execution grant';
   END IF;
 
-  -- Money-lifecycle and occurrence commands (0015-0018): members only, never
+  -- Money-lifecycle and occurrence commands (0015-0020): members only, never
   -- anonymous, and the private helpers are not callable by any client role.
   FOREACH table_name IN ARRAY ARRAY[
     'public.send_reminder_command(text,uuid,uuid)',
@@ -66,7 +66,12 @@ BEGIN
     'commune_private.expense_state(uuid)',
     'commune_private.expense_is_voided(uuid)',
     'commune_private.occurrence_result(uuid,boolean,uuid)',
-    'commune_private.set_operation_anchor()'
+    'commune_private.set_operation_anchor()',
+    'commune_private.member_name(text)',
+    'commune_private.member_by_name(uuid,text)',
+    'commune_private.set_operation_people()',
+    'commune_private.next_in_rotation(uuid,jsonb,text)',
+    'commune_private.reassign_departed_member()'
   ] LOOP
     IF has_function_privilege('authenticated', table_name, 'EXECUTE')
       OR has_function_privilege('anonymous', table_name, 'EXECUTE') THEN
@@ -93,6 +98,13 @@ BEGIN
         format('public.%I', table_name), 'commune_id', 'UPDATE')
       OR has_column_privilege('authenticated',
         format('public.%I', table_name), 'created_by', 'UPDATE') THEN
+      RAISE EXCEPTION 'Unexpected column grants on public.%', table_name;
+    END IF;
+    -- Operations people are written by id (0020); the trigger checks them.
+    IF table_name = 'commune_operations' AND NOT (
+        has_column_privilege('authenticated', 'public.commune_operations', 'assignee_id', 'UPDATE')
+        AND has_column_privilege('authenticated', 'public.commune_operations', 'rotation_ids', 'INSERT')
+        AND NOT has_column_privilege('authenticated', 'public.commune_operations', 'anchor_day', 'UPDATE')) THEN
       RAISE EXCEPTION 'Unexpected column grants on public.%', table_name;
     END IF;
   END LOOP;

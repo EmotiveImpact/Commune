@@ -208,7 +208,7 @@ export type AppState = {
   invites: PendingInvite[];
   payMethods: PayMethod[];
   native: boolean;
-  you: { name: string; email: string; initials: string; photo?: string };
+  you: { id: string; name: string; email: string; initials: string; photo?: string };
   lastExpense: { name: string; amount: string; paidBy: string } | null;
   expenses: LiveExpenseRow[];
   selectedExpense: LiveExpenseRow | null;
@@ -368,6 +368,8 @@ function operationFromApi(item: OperationItem, communeId: string): OperationItem
     time: item.time ? item.time.slice(0, 5) : undefined,
     assignee: item.assignee ?? undefined,
     rotation: item.rotation ?? undefined,
+    assigneeId: item.assigneeId ?? null,
+    rotationIds: item.rotationIds?.length ? item.rotationIds : null,
     lastDone: item.lastDone ?? undefined,
   };
 }
@@ -380,8 +382,9 @@ function operationPayload(item: NewOperation | OperationItem) {
     date: item.date,
     time: item.time ?? null,
     allDay: item.allDay,
-    assignee: item.assignee ?? null,
-    rotation: item.rotation ?? null,
+    // People are sent by member id; the server copies the names.
+    assigneeId: item.kind === "task" ? item.assigneeId ?? null : null,
+    rotationIds: item.kind === "task" && item.rotationIds?.length ? item.rotationIds : null,
     lastDone: "lastDone" in item ? item.lastDone ?? null : null,
     repeat: item.repeat,
     status: "status" in item ? item.status : "open",
@@ -708,6 +711,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const sentReminders = snapshot?.sentReminders ?? [];
   const notifications = snapshot?.notifications ?? [];
   const you = {
+    id: data?.user.id ?? "",
     name: data?.user.name ?? "",
     email: data?.user.email ?? "",
     initials: data ? initialsOf(data.user.name) : "",
@@ -1017,7 +1021,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Task actions are commands: the database advances the date and rotation
   // and rejects a stale click, so two people cannot complete one occurrence.
   const occurrenceCommand = useCallback((path: string, body: unknown) => mutate(async () => {
-    let raw: { id?: unknown; duplicate?: unknown; date?: unknown; assignee?: unknown; status?: unknown };
+    let raw: { id?: unknown; duplicate?: unknown; date?: unknown; assignee?: unknown; assigneeId?: unknown; status?: unknown };
     try {
       raw = await post(path, body);
     } catch (error) {
@@ -1029,7 +1033,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (typeof raw?.id !== "string" || typeof raw.date !== "string") throw new ApiError("The task service returned an unexpected response", 502);
     return {
       occurrenceId: raw.id, duplicate: raw.duplicate === true, date: raw.date,
-      assignee: typeof raw.assignee === "string" ? raw.assignee : null, status: raw.status === "done" ? "done" : "open",
+      assignee: typeof raw.assignee === "string" ? raw.assignee : null,
+      assigneeId: typeof raw.assigneeId === "string" ? raw.assigneeId : null, status: raw.status === "done" ? "done" : "open",
     } satisfies OperationChange;
   }), [mutate, refreshRecords]);
   const taskAction = useCallback((id: string, action: "completed" | "skipped" | "reopened") => {

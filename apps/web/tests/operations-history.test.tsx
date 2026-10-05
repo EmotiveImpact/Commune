@@ -6,7 +6,7 @@ import { App } from "../src/App";
 import { AppProvider, useApp, type AppState } from "../src/state";
 import { api, post, loadCommunes, loadSnapshot, ApiError } from "../src/live/api";
 import type { Commune, Snapshot } from "../src/live/model";
-import { addDays, todayIso, type OperationItem } from "../src/data/operations";
+import { addDays, holdsTurn, nextPerson, todayIso, type OperationItem } from "../src/data/operations";
 
 vi.mock("../src/live/api", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../src/live/api")>()),
@@ -180,3 +180,61 @@ describe("task completion, undo and occurrence history", () => {
     expect(within(toast).getByRole("button", { name: "Undo" })).toBeTruthy();
   });
 });
+
+describe("people by member id", () => {
+  it("finds the next person and the current turn by id when two members share a name", () => {
+    const item = { rotation: ["Sam", "Sam", "Ana"], rotationIds: ["sam-a", "sam-b", "ana"], assignee: "Sam", assigneeId: "sam-b" };
+    // By name the first "Sam" would be taken as current and the second "Sam" as next.
+    expect(nextPerson(item)).toBe("Ana");
+    expect([0, 1, 2].map((index) => holdsTurn(item, index))).toEqual([false, true, false]);
+    // Older rows without ids still work by name.
+    expect(nextPerson({ rotation: ["Ana", "Bo"], assignee: "Ana" })).toBe("Bo");
+  });
+
+  it("saves the person and the turns as member ids, never names", async () => {
+    current.operations = [{ ...rota, assigneeId: user.id, rotation: [user.name], rotationIds: null }];
+    mount("/operations");
+    await screen.findByRole("tablist", { name: "Operations view" });
+    act(() => app.go("operation-edit", { operation: "task-1" }));
+    const form = await screen.findByRole("group", { name: "Takes turns" });
+    const holder = within(form).getByRole("checkbox", { name: /Test Person · You/ }) as HTMLInputElement;
+    expect([holder.checked, holder.disabled]).toEqual([true, true]);
+    await act(async () => { fireEvent.click(within(form).getByRole("checkbox", { name: /Housemate Two/ })); });
+    expect(within(form).getByText("Turn 2")).toBeTruthy();
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Save changes" })); });
+    const put = vi.mocked(api).mock.calls.find(([path, init]) => path === "/operations/task-1" && init?.method === "PUT");
+    expect(put).toBeTruthy();
+    const body = JSON.parse(String(put![1]!.body));
+    expect(body).toMatchObject({ assigneeId: user.id, rotationIds: [user.id, "user-2"] });
+    expect(body).not.toHaveProperty("assignee");
+    expect(body).not.toHaveProperty("rotation");
+  });
+
+  it("drops the turns when the task stops repeating, and can leave a task unassigned", async () => {
+    current.operations = [{ ...rota, assigneeId: user.id, rotationIds: [user.id, "user-2"] }];
+    mount("/operations");
+    await screen.findByRole("tablist", { name: "Operations view" });
+    act(() => app.go("operation-edit", { operation: "task-1" }));
+    await screen.findByRole("group", { name: "Takes turns" });
+    fireEvent.change(screen.getByLabelText("Repeats"), { target: { value: "none" } });
+    expect(screen.queryByRole("group", { name: "Takes turns" })).toBeNull();
+    fireEvent.change(screen.getByLabelText("Assigned to"), { target: { value: "" } });
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Save changes" })); });
+    const put = vi.mocked(api).mock.calls.find(([path, init]) => path === "/operations/task-1" && init?.method === "PUT");
+    expect(JSON.parse(String(put![1]!.body))).toMatchObject({ assigneeId: null, rotationIds: null, repeat: "none" });
+  });
+
+  it("puts the viewer's own tasks under them by id, and unheld tasks under House", async () => {
+    current.operations = [
+      { ...rota, date: today, assignee: "Someone Renamed", assigneeId: user.id },
+      { ...rota, id: "task-2", title: "Return the keys", date: today, repeat: "none", assignee: undefined, assigneeId: null, rotation: undefined },
+    ];
+    mount("/operations");
+    const tabs = await screen.findByRole("tablist", { name: "Operations view" });
+    await act(async () => { fireEvent.click(within(tabs).getByText("People")); });
+    const buckets = [...document.querySelectorAll(".ops-person")].map((section) => [
+      section.querySelector("h3")?.textContent, [...section.querySelectorAll(".ops-person-task strong")].map((title) => title.textContent)]);
+    expect(buckets).toEqual([["TestYou", ["Put the bins out"]], ["Housemate", []], ["House", ["Return the keys"]]]);
+  });
+});
+
