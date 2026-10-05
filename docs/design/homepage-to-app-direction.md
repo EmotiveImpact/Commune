@@ -14,7 +14,7 @@ The homepage previews are a visual target with illustrative data. They are not s
 
 ## Reference and current differences
 
-Visual reference: `apps/landing-monzo-study/src/EditorialMock.tsx` and `apps/landing-monzo-study/src/editorial.css`, especially `.l-pillar-preview`, `.l-hub-demo`, `.l-demo-job` and `.l-demo-essentials`. Preview at `/editorial.html#how-it-works`.
+Visual reference: `web/src/EditorialMock.tsx` and `web/src/editorial.css`, especially `.l-pillar-preview`, `.l-hub-demo`, `.l-demo-job` and `.l-demo-essentials`. Preview at `/editorial.html#how-it-works`.
 
 Source inspection shows these differences:
 
@@ -90,4 +90,4 @@ Preserve authentication, group permissions, split calculations, payment confirma
 
 ## Ready-to-paste instruction for the app task
 
-> Align the real Commune app with the editorial homepage’s product previews. Read `docs/design/homepage-to-app-direction.md`, including its target branch clarification, then inspect the running app and `apps/landing-monzo-study/src/EditorialMock.tsx` and `editorial.css`. Start with the group hub in `apps/web`: DM Sans, navy primary actions, paper and white surfaces, restrained sage, clear hierarchy, member avatars and calm rows. Implement this through the target branch’s existing styling system and reusable components. Keep the app’s real data, permissions, financial logic and useful information density. Complete and visually verify the hub at desktop and mobile before extending the components to other eligible screens. Preserve existing explicit Operations layout constraints. Include loading, empty, error and supported colour-scheme states. Show the implemented result and explain any remaining differences from the reference.
+> Align the real Commune app with the editorial homepage’s product previews. Read `docs/design/homepage-to-app-direction.md`, including its target branch clarification, then inspect the running app and `web/src/EditorialMock.tsx` and `editorial.css`. Start with the group hub in `apps/web`: DM Sans, navy primary actions, paper and white surfaces, restrained sage, clear hierarchy, member avatars and calm rows. Implement this through the target branch’s existing styling system and reusable components. Keep the app’s real data, permissions, financial logic and useful information density. Complete and visually verify the hub at desktop and mobile before extending the components to other eligible screens. Preserve existing explicit Operations layout constraints. Include loading, empty, error and supported colour-scheme states. Show the implemented result and explain any remaining differences from the reference.

@@ -1,252 +1,92 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
-const signupUrl = 'https://app.ourcommune.io/signup';
-const loginUrl = 'https://app.ourcommune.io/login';
+const signup = 'https://app.ourcommune.io/signup';
+const login = 'https://app.ourcommune.io/login';
 
-const plans = [
-  {
-    name: 'Standard',
-    price: '£4.99',
-    description: 'For one shared space finding its rhythm.',
-    details: ['1 group', 'Up to 8 members', 'Expenses, splits and payment tracking'],
-  },
-  {
-    name: 'Pro',
-    price: '£9.99',
-    description: 'For the spaces and people you bring together.',
-    details: ['Up to 3 groups', 'Up to 15 members per group', 'Advanced analytics and exports'],
-  },
-  {
-    name: 'Agency',
-    price: '£29.99',
-    description: 'For bigger communities and operators.',
-    details: ['Unlimited groups', 'Unlimited members', 'Priority support'],
-  },
+const stories = [
+  { title: 'Every bill, in one place', body: 'Rent, utilities, internet and the little things. Everyone can see what is coming up.', visual: 'photo', image: '/cooking.png', alt: 'Housemates cooking together' },
+  { title: 'Split it your way', body: 'Equal shares, percentages or custom amounts. Keep the maths clear for the whole group.', visual: 'split' },
+  { title: 'Know what has been paid', body: 'See who has settled up and what is still outstanding, without asking the group chat.', visual: 'photo', image: '/groceries.png', alt: 'Housemates unpacking groceries' },
+  { title: 'A clearer month ahead', body: 'Each person can see their share before it is due.', visual: 'month' },
 ];
-
+const moments = [
+  { title: 'A home with housemates', body: 'Shared costs are easier when everyone sees the same picture.', visual: 'photo', image: '/groceries.png', alt: 'Housemates at home' },
+  { title: 'A studio you run together', body: 'Keep recurring space costs and one-off purchases organised.', visual: 'split' },
+  { title: 'A group making plans', body: 'Give every contribution a place, from first expense to final payment.', visual: 'photo', image: '/cooking.png', alt: 'Friends preparing a meal' },
+  { title: 'The everyday in between', body: 'Little shared expenses add up. Keep them easy to understand.', visual: 'month' },
+];
+type Story = typeof stories[number];
+const benefits = [
+  ['01', 'Groups that fit real life', 'Give your home, studio or group its own clear space.'],
+  ['02', 'Expenses with the detail', 'Add what it was for, when it is due and who is included.'],
+  ['03', 'Flexible splits', 'Share equally, by percentage or with custom amounts.'],
+  ['04', 'Payment tracking', 'See what has been paid and what still needs settling.'],
+  ['05', 'Monthly breakdowns', 'A view of each person’s share across the month.'],
+  ['06', 'Recurring expenses', 'Keep regular costs on the radar as each month begins.'],
+];
+const plans = [
+  ['Standard', '£4.99', 'One shared space, simply sorted.', '1 group · up to 8 members'],
+  ['Pro', '£9.99', 'More room for the groups you run.', '3 groups · up to 15 members each'],
+  ['Agency', '£29.99', 'For spaces and communities at scale.', 'Unlimited groups and members'],
+];
 function Header() {
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-
   useEffect(() => {
-    const update = () => setScrolled(window.scrollY > 24);
+    const update = () => setScrolled(window.scrollY > 36);
     update();
     window.addEventListener('scroll', update, { passive: true });
     return () => window.removeEventListener('scroll', update);
   }, []);
-
-  return (
-    <header className={'site-header' + (scrolled || menuOpen ? ' site-header--solid' : '')}>
-      <div className="site-header__inner shell">
-        <a className="wordmark" href="#top" aria-label="Commune home" onClick={() => setMenuOpen(false)}>
-          commune<span aria-hidden="true">.</span>
-        </a>
-        <nav className={'site-nav' + (menuOpen ? ' site-nav--open' : '')} aria-label="Main navigation">
-          <a href="#platform" onClick={() => setMenuOpen(false)}>The platform</a>
-          <a href="#spaces" onClick={() => setMenuOpen(false)}>Who it’s for</a>
-          <a href="#pricing" onClick={() => setMenuOpen(false)}>Pricing</a>
-          <a className="site-nav__login" href={loginUrl}>Sign in</a>
-          <a className="site-nav__mobile-cta" href={signupUrl}>Start your space</a>
-        </nav>
-        <div className="site-header__actions">
-          <a className="site-header__login" href={loginUrl}>Sign in</a>
-          <a className="header-cta" href={signupUrl}>Start your space <span aria-hidden="true">↗</span></a>
-          <button
-            className="menu-toggle"
-            type="button"
-            aria-label={menuOpen ? 'Close menu' : 'Open menu'}
-            aria-expanded={menuOpen}
-            onClick={() => setMenuOpen((value) => !value)}
-          >
-            <span />
-            <span />
-          </button>
-        </div>
-      </div>
-    </header>
-  );
+  return <header className={'header' + (scrolled || open ? ' header--solid' : '')}><div className="header__inner">
+    <button className="menu-button" aria-label={open ? 'Close menu' : 'Open menu'} aria-expanded={open} onClick={() => setOpen(!open)}><span /><span /><span /></button>
+    <a className="logo" href="#top" onClick={() => setOpen(false)}>commune<span>.</span></a>
+    <nav className={'nav-pill' + (open ? ' nav-pill--open' : '')} aria-label="Main navigation">
+      <a href="#how-it-works" onClick={() => setOpen(false)}>How it works</a><a href="#features" onClick={() => setOpen(false)}>Features</a><a href="#pricing" onClick={() => setOpen(false)}>Pricing</a><a className="nav-pill__login" href={login}>Log in</a>
+    </nav>
+    <a className="button button--dark header__cta" href={signup}>Start free trial</a>
+  </div></header>;
 }
-
 function Hero() {
-  return (
-    <section className="hero" id="top" aria-labelledby="hero-title">
-      <img className="hero__image" src="/hero-life.webp" alt="Friends sharing dinner in a lived-in home at dusk" fetchPriority="high" />
-      <div className="hero__shade" aria-hidden="true" />
-      <div className="hero__content shell">
-        <p className="eyebrow eyebrow--light">A better way to share space</p>
-        <h1 id="hero-title">For the life<br />you <em>share.</em></h1>
-        <p className="hero__description">
-          One clear place for shared money, responsibilities, and the everyday details that make a space work.
-        </p>
-        <div className="hero__actions">
-          <a className="button button--cream" href={signupUrl}>Start your space <span aria-hidden="true">↗</span></a>
-          <a className="text-link text-link--light" href="#platform">Explore Commune <span aria-hidden="true">↓</span></a>
-        </div>
-      </div>
-      <div className="hero__footer shell" aria-hidden="true">
-        <span>Shared life, clearer.</span>
-        <span>Scroll to explore <span className="hero__down">↓</span></span>
-      </div>
-    </section>
-  );
+  return <section className="hero" id="top" aria-labelledby="hero-title">
+    <img className="hero__image" src="/hero-life.webp" alt="Housemates sharing dinner in their home" fetchPriority="high" /><div className="hero__overlay" />
+    <div className="hero__content"><p className="hero__eyebrow">Shared life, clearer.</p><h1 id="hero-title">For people who <span>do life together.</span></h1><p className="hero__body">One clear place for shared expenses, splits and payments. Less chasing, more of the good stuff.</p><a className="button button--white" href={signup}>Start your 7-day free trial</a></div>
+    <div className="hero__tags"><span>Rent</span><span>Bills</span><span>Everyday costs</span></div>
+  </section>;
 }
-
-function Intro() {
-  return (
-    <section className="intro section-pad" aria-labelledby="intro-title">
-      <div className="shell intro__grid">
-        <p className="eyebrow">01 / Why Commune</p>
-        <div>
-          <h2 id="intro-title">A shared space should feel like <em>everyone’s.</em></h2>
-          <div className="intro__bottom">
-            <p>
-              Bills in one chat. Chores in another. The important stuff somewhere no one can find. Commune brings the moving parts together so everyone knows where things stand.
-            </p>
-            <a className="text-link" href="#platform">See how it works <span aria-hidden="true">↗</span></a>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
+function StoryVisual({ story }: { story: Story }) {
+  if (story.visual === 'photo') return <img src={story.image} alt={story.alt} loading="lazy" />;
+  if (story.visual === 'split') return <div className="story-visual story-visual--navy"><div className="split-card"><span>Shared this month</span><strong>£1,250.00</strong><div><span>4 people</span><b>£312.50 each</b></div></div></div>;
+  return <div className="story-visual story-visual--blue"><div className="month-card"><span>October</span><strong>All clear.</strong><i>One place for every share.</i></div></div>;
 }
-
-type PreviewTab = 'money' | 'responsibilities';
-
-function ProductPreview() {
-  const [activeTab, setActiveTab] = useState<PreviewTab>('money');
-  return (
-    <div className="preview" aria-label="Illustrative preview of Commune">
-      <div className="preview__rail">
-        <span className="preview__brand">commune<span>.</span></span>
-        <span className="preview__rail-label">YOUR SPACE</span>
-        <span className="preview__rail-space">Maple House <span aria-hidden="true">⌄</span></span>
-        <span className="preview__rail-bottom">A place for everyone.</span>
-      </div>
-      <div className="preview__main">
-        <div className="preview__topline"><span>Maple House</span><span>4 members</span></div>
-        <h3>Good morning, Alex.</h3>
-        <p className="preview__subhead">Here’s what’s happening in your space.</p>
-        <div className="preview__tabs" role="tablist" aria-label="Preview section">
-          <button type="button" role="tab" aria-selected={activeTab === 'money'} className={'preview__tab' + (activeTab === 'money' ? ' preview__tab--active' : '')} onClick={() => setActiveTab('money')}>Shared money</button>
-          <button type="button" role="tab" aria-selected={activeTab === 'responsibilities'} className={'preview__tab' + (activeTab === 'responsibilities' ? ' preview__tab--active' : '')} onClick={() => setActiveTab('responsibilities')}>Responsibilities</button>
-        </div>
-        {activeTab === 'money' ? (
-          <div className="preview__panel" role="tabpanel">
-            <div className="preview__summary">
-              <div><span className="preview__kicker">YOUR SHARE THIS MONTH</span><strong>£386.50</strong><span className="preview__summary-note">Across 3 shared expenses</span></div>
-              <span className="preview__status">Everything is up to date</span>
-            </div>
-            <div className="preview__list-head"><span>Shared expenses</span><span>Your share</span></div>
-            <div className="preview__row"><span><b>Rent</b><small>Due 1 October · Split 4 ways</small></span><strong>£300.00</strong></div>
-            <div className="preview__row"><span><b>Utilities</b><small>Due 5 October · Split 4 ways</small></span><strong>£52.50</strong></div>
-            <div className="preview__row"><span><b>Internet</b><small>Due 12 October · Split 4 ways</small></span><strong>£34.00</strong></div>
-          </div>
-        ) : (
-          <div className="preview__panel" role="tabpanel">
-            <div className="preview__summary">
-              <div><span className="preview__kicker">YOUR SPACE THIS WEEK</span><strong>3 things to do</strong><span className="preview__summary-note">The little things, clearly owned</span></div>
-              <span className="preview__status">1 finished</span>
-            </div>
-            <div className="preview__list-head"><span>Responsibilities</span><span>Owner</span></div>
-            <div className="preview__row"><span><b>Take the recycling out</b><small>Today</small></span><strong>Alex</strong></div>
-            <div className="preview__row"><span><b>Clean the kitchen</b><small>Tomorrow</small></span><strong>Sam</strong></div>
-            <div className="preview__row"><span><b>Water the plants</b><small>Friday</small></span><strong>Jordan</strong></div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
+function CardRail({ items, title, subtitle, cta }: { items: Story[]; title: string; subtitle: string; cta?: boolean }) {
+  const rail = useRef<HTMLDivElement>(null);
+  const move = (direction: number) => rail.current?.scrollBy({ left: direction * 350, behavior: 'smooth' });
+  return <section className="rail-section"><div className="section-top"><div><h2>{title}</h2><p>{subtitle}</p>{cta && <a className="button button--dark" href={signup}>Start your free trial</a>}</div><div className="rail-controls"><button onClick={() => move(-1)} aria-label="Previous cards">←</button><button onClick={() => move(1)} aria-label="Next cards">→</button></div></div><div className="story-rail" ref={rail}>{items.map((item) => <article className="story-card" key={item.title}><div className="story-card__visual"><StoryVisual story={item} /></div><h3>{item.title}</h3><p>{item.body}</p><a className="button button--outline" href="#features">Learn more</a></article>)}</div></section>;
 }
-
-function Platform() {
-  return (
-    <section className="platform section-pad" id="platform" aria-labelledby="platform-title">
-      <div className="shell">
-        <div className="platform__heading">
-          <div><p className="eyebrow eyebrow--light">02 / The platform</p><h2 id="platform-title">The whole picture.<br /><em>At a glance.</em></h2></div>
-          <p>See what you owe, what’s been paid, and what needs doing. Every person gets clarity. The group keeps moving.</p>
-        </div>
-        <ProductPreview />
-        <p className="platform__note">An illustrative look at a Commune space</p>
-      </div>
-    </section>
-  );
+const slides = [
+  ['One shared view', 'Everything together, at last.', 'A single space for the costs behind your shared life. See the full picture without searching through messages.', '/groceries.png', 'Housemates unpacking groceries'],
+  ['Made for your group', 'The right split for everyone.', 'Include the right people and choose equal, percentage or custom shares. The detail stays visible to the group.', '/cooking.png', 'Housemates making dinner'],
+  ['Less chasing', 'Know where things stand.', 'Track what is due and what has been paid, so the conversation can move on to better things.', '/hero-life.webp', 'Friends eating dinner'],
+];
+function Showcase() {
+  const [active, setActive] = useState(0);
+  const slide = slides[active];
+  return <section className="showcase" id="how-it-works"><div className="showcase__heading"><h2>Quit the money juggling act.</h2><p>One shared space for the people, payments and plans that make a place work.</p><a className="button button--dark" href={signup}>Start your free trial</a></div><div className="showcase__panel" key={active}><div className="showcase__copy"><span className="mini-label">{slide[0]}</span><h3>{slide[1]}</h3><p>{slide[2]}</p><a className="button button--outline" href="#features">Explore the features</a></div><div className="showcase__photo"><img src={slide[3]} alt={slide[4]} loading="lazy" /></div></div><div className="showcase__controls"><span>{String(active + 1).padStart(2, '0')} / 03</span><div className="showcase__dots">{slides.map((item, index) => <button key={item[0]} className={'dot' + (index === active ? ' dot--active' : '')} onClick={() => setActive(index)} aria-label={'Show ' + item[0]} aria-pressed={index === active} />)}</div><div><button onClick={() => setActive((active + 2) % 3)} aria-label="Previous feature">←</button><button onClick={() => setActive((active + 1) % 3)} aria-label="Next feature">→</button></div></div></section>;
 }
-
-function Spaces() {
-  return (
-    <section className="spaces section-pad" id="spaces" aria-labelledby="spaces-title">
-      <div className="shell">
-        <div className="spaces__top"><p className="eyebrow">03 / Made for your kind of together</p><h2 id="spaces-title">One platform.<br /><em>So many ways to share.</em></h2></div>
-        <div className="spaces__list">
-          <div className="spaces__item"><span>01</span><h3>Homes</h3><p>Keep rent, bills and household jobs clear for every housemate.</p></div>
-          <div className="spaces__item"><span>02</span><h3>Studios</h3><p>Run a shared workspace with costs and responsibilities in one place.</p></div>
-          <div className="spaces__item"><span>03</span><h3>Groups</h3><p>Make the moving parts of a trip or ongoing project easier to manage.</p></div>
-        </div>
-      </div>
-    </section>
-  );
+function Features() {
+  return <section className="features" id="features"><div className="features__heading"><h2>It starts with one clear place.</h2><p>The useful tools you need to make shared money feel simple.</p></div><div className="features__grid">{benefits.map(([number, title, body]) => <article className="feature-card" key={number}><div className="feature-card__top"><span>{number}</span><span className="feature-card__arrow">↗</span></div><div><h3>{title}</h3><p>{body}</p></div></article>)}</div><a className="button button--outline features__all" href={signup}>See what Commune can do</a></section>;
 }
-
+function Month() {
+  return <section className="month"><div className="month__copy"><span className="mini-label">Clarity, month after month</span><h2>Know your share. Enjoy the rest.</h2><p>Give every expense a place and let each person see what belongs to them. The numbers stay clear, even when life gets busy.</p><a className="button button--dark" href={signup}>Start your free trial</a></div><div className="month__visual"><div className="month__paper"><div className="month__paper-top"><span>Maple House</span><span>October</span></div><span className="month__small">YOUR SHARE THIS MONTH</span><strong>£386.50</strong><div className="month__line"><span>Rent</span><b>£300.00</b></div><div className="month__line"><span>Utilities</span><b>£52.50</b></div><div className="month__line"><span>Internet</span><b>£34.00</b></div><div className="month__paid">Everything in one place <span>✓</span></div></div></div></section>;
+}
 function Pricing() {
-  return (
-    <section className="pricing section-pad" id="pricing" aria-labelledby="pricing-title">
-      <div className="shell">
-        <div className="pricing__heading">
-          <div><p className="eyebrow">04 / Pricing</p><h2 id="pricing-title">Good things are <em>better shared.</em></h2></div>
-          <p>Choose the space that fits. Start with a free trial, then pick a plan that works for your group.</p>
-        </div>
-        <div className="pricing__grid">
-          {plans.map((plan) => (
-            <article className="plan" key={plan.name}>
-              <div className="plan__top"><h3>{plan.name}</h3><p>{plan.description}</p></div>
-              <div className="plan__price"><strong>{plan.price}</strong><span>/ month</span></div>
-              <ul>{plan.details.map((detail) => <li key={detail}>{detail}</li>)}</ul>
-              <a href={signupUrl}>Start free trial <span aria-hidden="true">↗</span></a>
-            </article>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
+  return <section className="pricing" id="pricing"><div className="pricing__heading"><h2>Find your fit.</h2><p>Try Commune free for 7 days. Then pick the plan that works for your group.</p></div><div className="pricing__grid">{plans.map(([name, price, description, detail]) => <article className="price-card" key={name}><h3>{name}</h3><p>{description}</p><div><strong>{price}</strong><span>/month</span></div><small>{detail}</small><a className="button button--outline" href={signup}>Start free trial</a></article>)}</div></section>;
 }
-
-function FinalCta() {
-  return (
-    <section className="final-cta" aria-labelledby="final-title">
-      <div className="shell final-cta__inner">
-        <p className="eyebrow eyebrow--light">Make space for more</p>
-        <h2 id="final-title">Let’s make sharing<br /><em>feel effortless.</em></h2>
-        <a className="button button--cream" href={signupUrl}>Start your space <span aria-hidden="true">↗</span></a>
-      </div>
-    </section>
-  );
+function Closing() {
+  return <section className="closing"><div className="closing__inner"><span className="mini-label">Less admin. More living.</span><h2>Make space for the good stuff.</h2><p>Shared life feels lighter when the money is clear.</p><a className="button button--white" href={signup}>Start your 7-day free trial</a></div></section>;
 }
-
 function Footer() {
-  return (
-    <footer className="footer">
-      <div className="shell footer__inner">
-        <div><a className="wordmark wordmark--dark" href="#top">commune<span aria-hidden="true">.</span></a><p>Shared life, clearer.</p></div>
-        <nav aria-label="Footer navigation">
-          <a href="#platform">The platform</a>
-          <a href="#spaces">Who it’s for</a>
-          <a href="#pricing">Pricing</a>
-          <a href="https://app.ourcommune.io/privacy">Privacy</a>
-          <a href="mailto:support@ourcommune.io">Contact</a>
-        </nav>
-      </div>
-      <div className="shell footer__bottom"><span>© {new Date().getFullYear()} Commune</span><span>For the life you share.</span></div>
-    </footer>
-  );
+  return <footer className="footer"><div className="footer__top"><div><a className="logo logo--white" href="#top">commune<span>.</span></a><p>For the life you share.</p></div><nav aria-label="Footer navigation"><div><strong>Explore</strong><a href="#how-it-works">How it works</a><a href="#features">Features</a><a href="#pricing">Pricing</a></div><div><strong>Get started</strong><a href={signup}>Start free trial</a><a href={login}>Log in</a><a href="mailto:support@ourcommune.io">Contact</a></div><div><strong>Information</strong><a href="https://app.ourcommune.io/privacy">Privacy</a><a href="https://app.ourcommune.io/terms">Terms</a></div></nav></div><div className="footer__bottom"><span>© {new Date().getFullYear()} Commune</span><span>Shared life, clearer.</span></div></footer>;
 }
-
-export default function App() {
-  return (
-    <>
-      <Header />
-      <main><Hero /><Intro /><Platform /><Spaces /><Pricing /><FinalCta /></main>
-      <Footer />
-    </>
-  );
-}
+export default function App() { return <><Header /><main><Hero /><CardRail items={stories} title="Get more out of living together." subtitle="Whatever your group looks like, keep the money side beautifully clear." cta /><Showcase /><Features /><CardRail items={moments} title="Made for the way you share." subtitle="Different people. Different spaces. One easier way to stay on top of it." /><Month /><Pricing /><Closing /></main><Footer /></>; }
