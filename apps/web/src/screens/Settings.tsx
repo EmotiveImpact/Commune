@@ -7,6 +7,8 @@ import { cx } from "../ui/cx";
 import { LIMITS } from "../data/limits";
 import { CommuneLocationFields, type CommuneLocation } from "../ui/CommuneLocationFields";
 import { ReminderUsageMeter } from "../ui/ReminderUsage";
+import { communeExportJson, downloadText, expensesCsv } from "../data/export";
+import { todayIso } from "../data/operations";
 
 export function SettingsScreen() {
   const {
@@ -201,7 +203,7 @@ export function SettingsScreen() {
 
 export function CommuneSettingsScreen() {
   const {
-    hub, session, expenses, funds, go, setHubPhoto, updateCommune,
+    hub, session, expenses, funds, go, setHubPhoto, updateCommune, snapshots,
   } = useApp();
   const [name, setName] = useState(hub.name);
   const [type, setType] = useState(hub.type);
@@ -296,6 +298,26 @@ export function CommuneSettingsScreen() {
             {saved ? <p className="a-form-success" role="status">Commune settings saved for everyone.</p> : null}
             {canEdit ? <div className="a-field-row"><button className="a-btn" type="submit" disabled={busy || !hasChanges}>{busy ? "Saving…" : "Save changes"}</button></div> : <p className="hint">Only a commune admin can edit shared details.</p>}
           </form>
+        </div>
+        <div className="a-set-group">
+          <h3>Records</h3>
+          <div className="a-set-list">
+            <button className="a-set-row" type="button" disabled={!snapshots[hub.id]} onClick={() => {
+              const snapshot = snapshots[hub.id];
+              if (snapshot) downloadText(`${hub.name} expenses ${todayIso()}.csv`, expensesCsv(snapshot), "text/csv;charset=utf-8");
+            }}>
+              <span className="a-set-row-ic" aria-hidden="true"><Icon name="expenses" /></span>
+              <span className="a-set-row-copy"><strong>Download expenses</strong><span>A spreadsheet with one row per share: amounts, payments received and what is outstanding.</span></span>
+            </button>
+            <button className="a-set-row" type="button" disabled={!snapshots[hub.id]} onClick={() => {
+              const snapshot = snapshots[hub.id];
+              if (snapshot) downloadText(`${hub.name} records ${todayIso()}.json`, communeExportJson(snapshot), "application/json");
+            }}>
+              <span className="a-set-row-ic" aria-hidden="true"><Icon name="notes" /></span>
+              <span className="a-set-row-copy"><strong>Download all records</strong><span>Everything you can see in this commune, as a file. Passwords and door codes in notes are left out.</span></span>
+            </button>
+          </div>
+          <p className="a-commune-setting-note">Files are made on this device from what you can already see. Nothing is sent anywhere.</p>
         </div>
         <div className="a-set-group">
           <h3>People</h3>

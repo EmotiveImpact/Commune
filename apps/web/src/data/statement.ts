@@ -78,7 +78,7 @@ export function buildStatement(expenses: StatementExpense[], viewerId: string, o
   return { entries, netMinor: balance };
 }
 
-function csvCell(value: string, text = true): string {
+export function csvCell(value: string, text = true): string {
   // Quote every cell, and stop a spreadsheet treating text as a formula.
   const safe = text && /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
   return `"${safe.replace(/"/g, '""')}"`;

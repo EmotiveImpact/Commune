@@ -179,3 +179,14 @@ not. Gaps never go negative. Tested in `apps/web/tests/funds-figures.test.ts`
 people owe (does the fund pay the bill, or reimburse the payer, and how are
 the shares settled?). That is a product decision, so it is listed as an open
 question rather than guessed at.
+
+## 8. Data export (web only)
+
+Commune settings has a **Records** group: **Download expenses** (CSV, one row
+per share with amounts, received, outstanding and status, voided bills marked)
+and **Download all records** (JSON of everything the member can see in that
+commune). Files are made on the device from data already loaded; nothing is
+sent anywhere. Passwords and door codes in notes are left out of the JSON, as
+they are masked on the board. CSV text cells are quoted and formula-like text
+is neutralised. Tested in `apps/web/tests/export.test.ts` (251 web tests) and
+checked in the browser.
