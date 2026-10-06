@@ -11,7 +11,8 @@ DECLARE
     'reminders', 'notifications', 'reminder_email_outbox',
     'commune_invites', 'recurring_bills', 'recurring_bill_occurrences',
     'split_templates', 'commune_events',
-    'expense_share_receipts', 'expense_revisions', 'operation_occurrences', 'expense_share_payment_reports', 'note_revisions'
+    'expense_share_receipts', 'expense_revisions', 'operation_occurrences', 'expense_share_payment_reports', 'note_revisions',
+    'commune_announcements', 'announcement_acknowledgements'
   ];
 BEGIN
   FOREACH table_name IN ARRAY denied_tables LOOP
@@ -38,7 +39,7 @@ BEGIN
     RAISE EXCEPTION 'Anonymous workflow execution grant';
   END IF;
 
-  -- Money-lifecycle and occurrence commands (0015-0020): members only, never
+  -- Money-lifecycle and occurrence and announcement commands (0015-0025): members only, never
   -- anonymous, and the private helpers are not callable by any client role.
   FOREACH table_name IN ARRAY ARRAY[
     'public.send_reminder_command(text,uuid,uuid)',
@@ -46,7 +47,11 @@ BEGIN
     'public.reverse_share_receipt(uuid,text)',
     'public.correct_expense(uuid,integer,text,bigint,jsonb,date,text,text,text,uuid)',
     'public.void_expense(uuid,integer,text,uuid)',
-    'public.record_operation_occurrence(uuid,text,date,date,uuid)',
+    'public.record_operation_occurrence(uuid,text,date,date,uuid,text)',
+    'public.hand_over_operation(uuid,text,date,text,date,text,uuid)',
+    'public.post_announcement(uuid,text,text,boolean,uuid)',
+    'public.acknowledge_announcement(uuid)',
+    'public.archive_announcement(uuid)',
     'public.undo_operation_occurrence(uuid)',
     'public.report_share_payment(uuid,bigint,date,text,uuid)',
     'public.withdraw_share_payment_report(uuid)',
@@ -71,6 +76,9 @@ BEGIN
     'commune_private.expense_state(uuid)',
     'commune_private.expense_is_voided(uuid)',
     'commune_private.occurrence_result(uuid,boolean,uuid)',
+    'commune_private.occurrence_reason(text)',
+    'commune_private.announcement_result(uuid,boolean)',
+    'commune_private.snapshot_announcements(uuid)',
     'commune_private.set_operation_anchor()',
     'commune_private.member_name(text)',
     'commune_private.member_by_name(uuid,text)',
@@ -120,7 +128,10 @@ BEGIN
     IF table_name = 'commune_operations' AND NOT (
         has_column_privilege('authenticated', 'public.commune_operations', 'assignee_id', 'UPDATE')
         AND has_column_privilege('authenticated', 'public.commune_operations', 'rotation_ids', 'INSERT')
-        AND NOT has_column_privilege('authenticated', 'public.commune_operations', 'anchor_day', 'UPDATE')) THEN
+        AND NOT has_column_privilege('authenticated', 'public.commune_operations', 'anchor_day', 'UPDATE')
+        -- Who is covering whose turn is set only by the handover command (0024).
+        AND NOT has_column_privilege('authenticated', 'public.commune_operations', 'turn_owner_id', 'INSERT')
+        AND NOT has_column_privilege('authenticated', 'public.commune_operations', 'turn_owner_id', 'UPDATE')) THEN
       RAISE EXCEPTION 'Unexpected column grants on public.%', table_name;
     END IF;
   END LOOP;

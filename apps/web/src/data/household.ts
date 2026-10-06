@@ -47,7 +47,8 @@ export type WindowId =
   | "note-edit"
   | "operation"
   | "operation-new"
-  | "operation-edit";
+  | "operation-edit"
+  | "announcement-new";
 
 export type RouteId = ScreenId | WindowId;
 
@@ -444,6 +445,7 @@ export const PAGE_TITLES: Record<string, string> = {
   operation: "Schedule item",
   "operation-new": "Add to calendar",
   "operation-edit": "Edit schedule item",
+  "announcement-new": "Post an announcement",
   notes: "Notes",
   note: "Note",
   "note-new": "Add note",
@@ -485,6 +487,7 @@ export const PAGE_LEDES: Record<string, string> = {
   operation: "The date, owner, and details in one place.",
   "operation-new": "A task to finish, or something everyone should know is happening.",
   "operation-edit": "Change the time, the owner, or take it off the calendar.",
+  "announcement-new": "A short notice everyone in the commune sees on This Hub.",
   notes: "Shared details, easy to find.",
   note: "Pinned · everyone",
   "note-new": "Type first. Extras change. The note itself stays so you can keep writing.",
@@ -520,6 +523,7 @@ export const WINDOW_IDS: WindowId[] = [
   "operation",
   "operation-new",
   "operation-edit",
+  "announcement-new",
 ];
 
 export const WINDOW_PAGE: Partial<Record<WindowId, ScreenId>> = {
@@ -536,6 +540,7 @@ export const WINDOW_PAGE: Partial<Record<WindowId, ScreenId>> = {
   operation: "operations",
   "operation-new": "operations",
   "operation-edit": "operations",
+  "announcement-new": "hub",
 };
 
 export const SCREEN_PATH: Record<ScreenId, string> = {

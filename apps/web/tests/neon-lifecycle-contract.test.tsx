@@ -70,6 +70,32 @@ describe("hosted money lifecycle and task commands", () => {
     expect(mocks.from).not.toHaveBeenCalled();
   });
 
+  it("posts, confirms and takes down announcements through commands", async () => {
+    mocks.rpc.mockResolvedValue({ data: { id: "notice-1", duplicate: false, archived: false }, error: null });
+    await send("/communes/home-1/announcements", { title: "Boiler", body: "From 8", needsAcknowledgement: true, requestId });
+    expect(mocks.rpc).toHaveBeenLastCalledWith("post_announcement", {
+      p_commune_id: "home-1", p_title: "Boiler", p_body: "From 8", p_needs_acknowledgement: true, p_request_id: requestId });
+    await send("/announcements/notice-1/acknowledge", {});
+    expect(mocks.rpc).toHaveBeenLastCalledWith("acknowledge_announcement", { p_announcement_id: "notice-1" });
+    await send("/announcements/notice-1/archive", {});
+    expect(mocks.rpc).toHaveBeenLastCalledWith("archive_announcement", { p_announcement_id: "notice-1" });
+    expect(mocks.from).not.toHaveBeenCalled();
+  });
+
+  it("skips with a reason and hands over a turn through commands", async () => {
+    mocks.rpc.mockResolvedValue({ data: { id: "occurrence-2", duplicate: false, date: "2026-10-09", assignee: "Dana", assigneeId: "dana", turnOwnerId: "avery", status: "open" }, error: null });
+    await send("/operations/task-1/occurrences", { action: "skipped", expectedDate: "2026-10-02", today: "2026-10-02", requestId, reason: "Away" });
+    expect(mocks.rpc).toHaveBeenLastCalledWith("record_operation_occurrence", {
+      p_operation_id: "task-1", p_action: "skipped", p_expected_date: "2026-10-02", p_today: "2026-10-02", p_request_id: requestId, p_reason: "Away" });
+    const handed = await send("/operations/task-1/handovers", {
+      toMemberId: "dana", expectedDate: "2026-10-02", expectedAssigneeId: "avery", today: "2026-10-02", reason: "", requestId });
+    expect(mocks.rpc).toHaveBeenLastCalledWith("hand_over_operation", {
+      p_operation_id: "task-1", p_to_member_id: "dana", p_expected_date: "2026-10-02", p_expected_assignee_id: "avery",
+      p_today: "2026-10-02", p_reason: "", p_request_id: requestId });
+    expect(handed).toMatchObject({ assigneeId: "dana", turnOwnerId: "avery" });
+    expect(mocks.from).not.toHaveBeenCalled();
+  });
+
   it.each([
     ["P0001", 409, "This expense was changed by someone else."],
     ["42501", 403, "Only the bill payer can record a repayment for this share"],

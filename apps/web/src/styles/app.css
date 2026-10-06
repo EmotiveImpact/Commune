@@ -4657,6 +4657,75 @@ button.a-item {
   font-weight: 650;
 }
 
+/* Skip and hand-over panels share the card's shape, without its warning tone. */
+.operation-delete.operation-panel {
+  border-color: var(--border);
+  background: var(--paper-2);
+}
+
+.operation-delete.operation-panel p {
+  color: var(--ink);
+  font-weight: 500;
+}
+
+.operation-panel .a-field {
+  margin-bottom: 12px;
+}
+
+/* Task actions sit on one line on desktop. Remove is a quiet red link at the
+   far end, apart from the everyday actions, so it is hard to hit by mistake. */
+.a-window .a-field-row.operation-actions {
+  flex-wrap: nowrap;
+}
+
+.a-window .a-field-row.operation-actions .a-btn {
+  min-width: 0;
+  white-space: nowrap;
+}
+
+/* Desktop has room for the full label; a phone shows the short one. */
+.operation-label-short {
+  display: none;
+}
+
+.operation-remove {
+  height: 38px;
+  margin-left: auto;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: #9b4e35;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.operation-remove:hover {
+  text-decoration: underline;
+}
+
+/* On a phone the buttons sit closer together so the row still fits on one
+   line. Only the narrowest screens wrap, with Remove last at the right. */
+@media (max-width: 560px) {
+  .a-window .a-field-row.operation-actions {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .a-window .a-field-row.operation-actions .a-btn {
+    padding: 0 10px;
+  }
+
+  .operation-label-long {
+    display: none;
+  }
+
+  .operation-label-short {
+    display: inline;
+  }
+}
+
 /* The window's sticky footer is for full-width action rows, not this card. */
 .a-window .operation-delete .a-field-row,
 .a-body.is-dark .a-window .operation-delete .a-field-row {

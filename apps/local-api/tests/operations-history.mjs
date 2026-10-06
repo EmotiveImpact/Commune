@@ -194,6 +194,44 @@ assert.equal(events.filter(item => item === "Updated").length, 1, JSON.stringify
 // Removing a task removes its occurrences with it.
 ok(await a("DELETE", `/operations/${bins}`));
 assert.equal(await read(bins), undefined);
+// ------------------------------------------- handovers and skip reasons
+{
+  // Avery's turn on the recycling; Casey covers it. Casey is credited, and
+  // the turn passes to Blake (after Avery), not to whoever follows Casey.
+  const recycling = await create({ title: "Recycling", date: today, assigneeId: avery.id, rotationIds: [avery.id, blake.id], repeat: "weekly" });
+  const handover = (call, input) => call("POST", `/operations/${recycling}/handovers`,
+    { expectedDate: today, expectedAssigneeId: avery.id, today, requestId: randomUUID(), ...input });
+  assert.equal((await handover(outsider, { toMemberId: casey.id })).status, 403);
+  assert.equal((await handover(b, { toMemberId: users[3].id })).status, 400);
+  assert.equal((await handover(b, { toMemberId: avery.id })).status, 400);
+  assert.equal((await handover(b, { toMemberId: casey.id, expectedAssigneeId: blake.id })).status, 409);
+  assert.equal((await handover(b, { toMemberId: casey.id, reason: "x".repeat(201) })).status, 400);
+  const requestId = randomUUID();
+  const handed = ok(await handover(b, { toMemberId: casey.id, reason: "Avery is away", requestId }), 201);
+  assert.deepEqual([handed.assigneeId, handed.turnOwnerId, handed.date], [casey.id, avery.id, today]);
+  // A retry returns the same handover.
+  const again = ok(await handover(b, { toMemberId: casey.id, requestId }));
+  assert.deepEqual([again.id, again.duplicate], [handed.id, true]);
+  const covered = await read(recycling);
+  assert.deepEqual([covered.assignee, covered.turnOwner, covered.undoOccurrenceId], [casey.name, avery.name, handed.id]);
+  assert.deepEqual([covered.history[0].action, covered.history[0].reason, covered.history[0].nextAssigneeId], ["handed_over", "Avery is away", casey.id]);
+  const done = ok(await act(recycling, "completed", today, c), 201);
+  assert.deepEqual([done.assigneeId, done.turnOwnerId], [blake.id, null]);
+  assert.equal((await read(recycling)).lastDone.by, casey.name);
+  // Undoing the completion brings the cover back exactly.
+  ok(await c("POST", `/occurrences/${done.id}/undo`, {}));
+  assert.deepEqual([(await read(recycling)).assigneeId, (await read(recycling)).turnOwnerId], [casey.id, avery.id]);
+  // A skip may say why; only a skip or a handover takes a reason.
+  assert.equal((await act(recycling, "completed", today, a, { reason: "Why" })).status, 400);
+  const skippedWithReason = ok(await act(recycling, "skipped", today, a, { reason: "Collection cancelled" }), 201);
+  assert.equal((await read(recycling)).history[0].reason, "Collection cancelled");
+  assert.equal((await act(recycling, "skipped", skippedWithReason.date, a, { reason: 42 })).status, 400);
+  const lines = ok(await a("GET", `/communes/${id}/snapshot`)).activityEvents.filter(item => item.entityId === recycling).map(item => item.description);
+  assert.ok(lines.includes(`Handed to ${casey.name}, covering for ${avery.name}: Avery is away`), JSON.stringify(lines));
+  assert.ok(lines.some(line => line.startsWith("Skipped to ") && line.endsWith(": Collection cancelled")), JSON.stringify(lines));
+  ok(await a("DELETE", `/operations/${recycling}`));
+  console.log("handovers and skip reasons: ok");
+}
 // ------------------------------------------- older clients and departures
 {
   // An older client that sends names only is resolved to member ids.

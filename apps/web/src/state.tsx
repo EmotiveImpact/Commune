@@ -59,6 +59,8 @@ import {
   type User,
   type RecurringBill,
   type SplitTemplate,
+  type Announcement,
+  type AnnouncementResult,
 } from "./live/model";
 
 const LOCAL_PREFIX = "commune.local.";
@@ -236,6 +238,12 @@ export type AppState = {
   reminderTargets: ReminderTarget[];
   reminderUsage: ReminderUsage | null;
   sentReminders: SentReminder[];
+  /** Notices up on This Hub, newest first. */
+  announcements: Announcement[];
+  /** Admin only. requestId comes from the form so a retry cannot post twice. */
+  postAnnouncement: (input: { title: string; body: string; needsAcknowledgement: boolean; requestId: string }) => Promise<AnnouncementResult>;
+  acknowledgeAnnouncement: (id: string) => Promise<AnnouncementResult>;
+  archiveAnnouncement: (id: string) => Promise<AnnouncementResult>;
   notifications: Notification[];
   signOut: () => Promise<void>;
   go: (target: GoTarget, opts?: GoOpts) => void;
@@ -260,7 +268,8 @@ export type AppState = {
   updateOperation: (id: string, item: NewOperation) => Promise<void>;
   /** Completes an open task, or reopens a done one. The server advances repeats and rotation. */
   toggleOperation: (id: string) => Promise<OperationChange>;
-  skipOperation: (id: string) => Promise<OperationChange>;
+  skipOperation: (id: string, reason?: string) => Promise<OperationChange>;
+  handOverOperation: (id: string, toMemberId: string, reason?: string) => Promise<OperationChange>;
   /** Restores the task to exactly how it was before that action. */
   undoOperation: (occurrenceId: string) => Promise<OperationChange>;
   removeOperation: (id: string) => Promise<void>;
@@ -395,6 +404,8 @@ function operationFromApi(item: OperationItem, communeId: string): OperationItem
     rotation: item.rotation ?? undefined,
     assigneeId: item.assigneeId ?? null,
     rotationIds: item.rotationIds?.length ? item.rotationIds : null,
+    turnOwnerId: item.turnOwnerId ?? null,
+    turnOwner: item.turnOwner ?? null,
     lastDone: item.lastDone ?? undefined,
   };
 }
@@ -733,6 +744,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const reminderTargets = snapshot?.reminderTargets ?? [];
   const reminderUsage = data?.reminderUsage ?? null;
   const sentReminders = snapshot?.sentReminders ?? [];
+  const announcements = snapshot?.announcements ?? [];
   const notifications = snapshot?.notifications ?? [];
   const you = {
     id: data?.user.id ?? "",
@@ -920,6 +932,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await refreshRecords();
     return result;
   }), [mutate, refreshRecords]);
+  const postAnnouncement = useCallback((input: { title: string; body: string; needsAcknowledgement: boolean; requestId: string }) => mutate(async () => {
+    const result = await post<AnnouncementResult>(`/communes/${encodeURIComponent(activeId)}/announcements`, {
+      title: input.title.trim(), body: input.body.trim(), needsAcknowledgement: input.needsAcknowledgement, requestId: input.requestId,
+    });
+    await refreshRecords();
+    return result;
+  }), [activeId, mutate, refreshRecords]);
+  const acknowledgeAnnouncement = useCallback((id: string) => mutate(async () => {
+    const result = await post<AnnouncementResult>(`/announcements/${encodeURIComponent(id)}/acknowledge`, {});
+    await refreshRecords();
+    return result;
+  }), [mutate, refreshRecords]);
+  const archiveAnnouncement = useCallback((id: string) => mutate(async () => {
+    const result = await post<AnnouncementResult>(`/announcements/${encodeURIComponent(id)}/archive`, {});
+    await refreshRecords();
+    return result;
+  }), [mutate, refreshRecords]);
   const withdrawPaymentReport = useCallback((reportId: string) => mutate(async () => {
     const result = await post<PaymentReportResult>(`/payment-reports/${encodeURIComponent(reportId)}/withdraw`, {});
     await refreshRecords();
@@ -1076,7 +1105,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Task actions are commands: the database advances the date and rotation
   // and rejects a stale click, so two people cannot complete one occurrence.
   const occurrenceCommand = useCallback((path: string, body: unknown) => mutate(async () => {
-    let raw: { id?: unknown; duplicate?: unknown; date?: unknown; assignee?: unknown; assigneeId?: unknown; status?: unknown };
+    let raw: { id?: unknown; duplicate?: unknown; date?: unknown; assignee?: unknown; assigneeId?: unknown; turnOwnerId?: unknown; status?: unknown };
     try {
       raw = await post(path, body);
     } catch (error) {
@@ -1089,14 +1118,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return {
       occurrenceId: raw.id, duplicate: raw.duplicate === true, date: raw.date,
       assignee: typeof raw.assignee === "string" ? raw.assignee : null,
-      assigneeId: typeof raw.assigneeId === "string" ? raw.assigneeId : null, status: raw.status === "done" ? "done" : "open",
+      assigneeId: typeof raw.assigneeId === "string" ? raw.assigneeId : null,
+      turnOwnerId: typeof raw.turnOwnerId === "string" ? raw.turnOwnerId : null, status: raw.status === "done" ? "done" : "open",
     } satisfies OperationChange;
   }), [mutate, refreshRecords]);
-  const taskAction = useCallback((id: string, action: "completed" | "skipped" | "reopened") => {
+  const taskAction = useCallback((id: string, action: "completed" | "skipped" | "reopened", reason?: string) => {
     const item = operations.find((row) => row.id === id);
     if (!item) return Promise.reject(new Error("Schedule item not found"));
     return occurrenceCommand(`/operations/${encodeURIComponent(id)}/occurrences`, {
       action, expectedDate: item.date, today: todayIso(), requestId: newRequestId(),
+      ...(reason?.trim() ? { reason: reason.trim() } : {}),
+    });
+  }, [occurrenceCommand, operations]);
+  // The expected date and holder reject a handover made from a stale screen.
+  const handOverOperation = useCallback((id: string, toMemberId: string, reason?: string) => {
+    const item = operations.find((row) => row.id === id);
+    if (!item) return Promise.reject(new Error("Schedule item not found"));
+    return occurrenceCommand(`/operations/${encodeURIComponent(id)}/handovers`, {
+      toMemberId, expectedDate: item.date, expectedAssigneeId: item.assigneeId ?? null, today: todayIso(),
+      reason: reason?.trim() || null, requestId: newRequestId(),
     });
   }, [occurrenceCommand, operations]);
   const undoOperation = useCallback((occurrenceId: string) =>
@@ -1108,7 +1148,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     // before occurrences existed is reopened as a new recorded action.
     return item.undoOccurrenceId ? undoOperation(item.undoOccurrenceId) : taskAction(id, "reopened");
   }, [operations, taskAction, undoOperation]);
-  const skipOperation = useCallback((id: string) => taskAction(id, "skipped"), [taskAction]);
+  const skipOperation = useCallback((id: string, reason?: string) => taskAction(id, "skipped", reason), [taskAction]);
   const removeOperation = useCallback((id: string) => mutate(async () => {
     await api(`/operations/${encodeURIComponent(id)}`, { method: "DELETE" });
     await refreshRecords();
@@ -1201,9 +1241,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setNoticesOn: (noticesOn) => savePrefs({ noticesOn }),
     setCurrency: (currency) => savePrefs({ currency }),
     setSearchQuery, setSearchScope, clearSearchTarget, setNoteSearchQuery, savePayMethod, setHubPhoto, setAvatar, addNote, updateNote, loadNoteRevision,
-    addOperation, updateOperation, toggleOperation, skipOperation, undoOperation,
+    addOperation, updateOperation, toggleOperation, skipOperation, handOverOperation, undoOperation,
     removeOperation, createHub, updateCommune, recordExpense, confirmExpenseShare, correctExpense, voidExpense, recordShareReceipt, reverseShareReceipt,
     reportSharePayment, withdrawPaymentReport, resolvePaymentReport,
+    announcements, postAnnouncement, acknowledgeAnnouncement, archiveAnnouncement,
     markExpensePaid, createInvite, sendInviteEmail, revokeInvite, previewInvite, acceptInvite, createFund,
     pledgeFund, recordFundContribution, sendReminder, markNotificationRead,
     updateFund, archiveFund, updatePledge, voidContribution, saveRecurringBill, recordRecurringBill, recordRecurringPeriod, skipRecurringPeriod, saveSplitTemplate, manageMember,

@@ -14,8 +14,8 @@ this is not a replacement of Neon Auth or a switch back to Supabase.
 - [Current design language and preserved layouts](../../docs/DESIGN-LANGUAGE.md)
 - [Local build-out from 5 October: migrations 0020 onwards](../../docs/LOCAL-BUILDOUT-2026-10-05.md)
 
-Migrations **0015 to 0023 are local only**. They have not been applied to any
-Neon branch. Release order when they are: apply 0013 to 0023 in numeric order
+Migrations **0015 to 0025 are local only**. They have not been applied to any
+Neon branch. Release order when they are: apply 0013 to 0025 in numeric order
 to the preview branch, refresh that branch's Data API schema cache, then
 deploy the matching web client. The new client calls `send_reminder_command`,
 `record_share_receipt`, `reverse_share_receipt`, `correct_expense`,
@@ -147,7 +147,7 @@ treat them as applied production configuration until its release is verified:
    Broad grants would let direct writes bypass ledger invariants. Keep preview
    branches separate from production.
 3. Apply `migrations/0001_commune_core.sql` through
-   `migrations/0023_note_revisions.sql` in numeric order to the
+   `migrations/0025_announcements.sql` in numeric order to the
    development branch via an **unpooled** connection. Run `tests/grants.sql`,
    review RLS, and run two-account signed-JWT tests before applying the same
    reviewed migrations to production. After a migration adds or changes a

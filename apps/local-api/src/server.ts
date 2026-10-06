@@ -504,6 +504,34 @@ route("POST", /^\/api\/payment-reports\/([0-9a-f-]{36})\/resolve$/, async (req, 
   send(res, result.rows[0].result);
 });
 
+// Announcements: an admin posts, members confirm an important one, and the
+// author or an admin takes it down. The database checks every rule.
+route("POST", /^\/api\/communes\/([0-9a-f-]{36})\/announcements$/, async (req, res, match) => {
+  const input = await body(req);
+  if (input.body != null && typeof input.body !== "string") throw new ApiError(400, "Invalid body");
+  if (typeof input.needsAcknowledgement !== "boolean") throw new ApiError(400, "Invalid needsAcknowledgement");
+  const result = await userAction(req, async (client) => client.query(
+    "SELECT public.post_announcement($1, $2, $3, $4, $5) AS result",
+    [uuid(match[1]), text(input.title, "title", 80), input.body ?? "", input.needsAcknowledgement,
+      uuid(input.requestId, "requestId")]));
+  const announcement = result.rows[0].result as { duplicate: boolean };
+  send(res, announcement, announcement.duplicate ? 200 : 201);
+});
+
+route("POST", /^\/api\/announcements\/([0-9a-f-]{36})\/acknowledge$/, async (req, res, match) => {
+  await body(req);
+  const result = await userAction(req, async (client) => client.query(
+    "SELECT public.acknowledge_announcement($1) AS result", [uuid(match[1])]));
+  send(res, result.rows[0].result);
+});
+
+route("POST", /^\/api\/announcements\/([0-9a-f-]{36})\/archive$/, async (req, res, match) => {
+  await body(req);
+  const result = await userAction(req, async (client) => client.query(
+    "SELECT public.archive_announcement($1) AS result", [uuid(match[1])]));
+  send(res, result.rows[0].result);
+});
+
 route("POST", /^\/api\/communes\/([0-9a-f-]{36})\/funds$/, async (req, res, match) => {
   const input = await body(req);
   const name = text(input.name, "name", 80);
@@ -722,12 +750,32 @@ route("POST", /^\/api\/operations\/([0-9a-f-]{36})\/occurrences$/, async (req, r
   if (!["completed", "skipped", "reopened"].includes(String(input.action))) {
     throw new ApiError(400, "Invalid task action");
   }
+  if (input.reason != null && typeof input.reason !== "string") throw new ApiError(400, "Invalid reason");
   const result = await userAction(req, async (client) => client.query(
-    "SELECT public.record_operation_occurrence($1, $2, $3::date, $4::date, $5) AS result",
+    "SELECT public.record_operation_occurrence($1, $2, $3::date, $4::date, $5, $6) AS result",
     [uuid(match[1]), input.action, isoDate(input.expectedDate, false, "expectedDate"),
-      isoDate(input.today, false, "today"), uuid(input.requestId, "requestId")]));
+      isoDate(input.today, false, "today"), uuid(input.requestId, "requestId"), input.reason ?? null]));
   const occurrence = result.rows[0].result as { duplicate: boolean };
   send(res, occurrence, occurrence.duplicate ? 200 : 201);
+});
+
+// Handing the current turn of a task to someone else. On a task that takes
+// turns the database remembers whose turn it was, so the rotation carries on
+// from them. expectedDate and expectedAssigneeId reject a stale screen.
+route("POST", /^\/api\/operations\/([0-9a-f-]{36})\/handovers$/, async (req, res, match) => {
+  const input = await body(req);
+  if (typeof input.toMemberId !== "string" || !input.toMemberId) throw new ApiError(400, "Choose who takes it");
+  if (input.expectedAssigneeId != null && typeof input.expectedAssigneeId !== "string") {
+    throw new ApiError(400, "Invalid expectedAssigneeId");
+  }
+  if (input.reason != null && typeof input.reason !== "string") throw new ApiError(400, "Invalid reason");
+  const result = await userAction(req, async (client) => client.query(
+    "SELECT public.hand_over_operation($1, $2, $3::date, $4, $5::date, $6, $7) AS result",
+    [uuid(match[1]), input.toMemberId, isoDate(input.expectedDate, false, "expectedDate"),
+      input.expectedAssigneeId ?? null, isoDate(input.today, false, "today"), input.reason ?? null,
+      uuid(input.requestId, "requestId")]));
+  const handover = result.rows[0].result as { duplicate: boolean };
+  send(res, handover, handover.duplicate ? 200 : 201);
 });
 
 route("POST", /^\/api\/occurrences\/([0-9a-f-]{36})\/undo$/, async (req, res, match) => {

@@ -17,6 +17,9 @@ lifecycle pack. Work is paused for a handoff, not a production release.
   history and conflict protection, fund figures and data export. Migrations
   0020 to 0023. See [local build-out](LOCAL-BUILDOUT-2026-10-05.md) and the
   prepared [hosted release checklist](HOSTED-RELEASE-CHECKLIST.md).
+- From 6 October, on a branch for review: task handovers and skip reasons
+  (migration 0024) and announcements (0025). See sections 9 and 10 of the
+  [local build-out](LOCAL-BUILDOUT-2026-10-05.md).
 - The website is `web/` (the editorial homepage); the earlier v2 site is in
   `web-backup/`. Launch names `website` (3004) and `website-backup` (3003).
 - No push, deployment, hosted migration or provider change has been made. Do
