@@ -233,3 +233,30 @@ seven HTTP suites on a fresh database, 256 web tests, web typecheck and
 production build, local API typecheck, and a browser check of the handover
 and skip panels at desktop and phone widths on a disposable database. Not
 applied to any hosted database.
+
+## 10. Announcements (migration 0025, 6 October)
+
+**Why.** The roadmap's communication item: important notices with optional
+acknowledgement, attached to the commune, before anything like a group chat.
+
+**What changed.**
+- `commune_announcements` and `announcement_acknowledgements`, readable by
+  members through RLS and the snapshot, with no client write grants.
+- `post_announcement` (admins only; title up to 80, body up to 1000
+  characters; at most 20 up at once; retry-safe by request id),
+  `acknowledge_announcement` (members, only for a notice that asks for it,
+  idempotent) and `archive_announcement` (author or admin; idempotent). A
+  notice is never edited; it is taken down, and the record and confirmations
+  stay. Posting and taking down write activity history lines.
+- Web: admins get **Announce** beside Invite on This Hub. Announcements show
+  above the balance when there are any. A notice that asks for confirmation
+  shows "Seen by 1 of 2", lists who is still to confirm for the author and
+  admins, and gives other members **I've seen this**. Unconfirmed notices also
+  appear in Needs you. **Take down** asks first.
+- No email or push is sent for an announcement; it is in-app only.
+
+**Evidence.** `infra/neon/tests/announcements.sql`, `tests/grants.sql`,
+`apps/local-api/tests/announcements.mjs` with the other eight HTTP suites on a
+fresh database, 260 web tests, typecheck and build, and a browser check as an
+admin and a member at desktop and phone widths on a disposable database. Not
+applied to any hosted database.

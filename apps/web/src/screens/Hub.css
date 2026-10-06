@@ -177,3 +177,12 @@
 .c-hub-task-feedback:focus { outline: none; }
 .c-hub-task-feedback .c-hub-link { flex: none; display: inline-flex; align-items: center; min-height: 40px; padding: 0 4px; text-decoration: underline; }
 @media (max-width: 560px) { .c-hub-task-feedback .c-hub-link { min-height: 44px; } }
+
+/* Announcements: a quiet list above the balance, shown only when there are any. */
+.c-hub-announcement { display: grid; gap: 6px; padding: 16px 0; border-top: 1px solid var(--hub-line); }
+.c-hub-announcement strong { font-size: 14px; font-weight: 500; overflow-wrap: anywhere; }
+.c-hub-announcement p { margin: 0; white-space: pre-line; overflow-wrap: anywhere; }
+.c-hub-announcement small { color: var(--hub-muted); font-size: 12px; }
+.c-hub-announcement-seen { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-top: 4px; color: var(--hub-muted); font-size: 12px; }
+.c-hub-announcement-done { color: var(--hub-action); font-weight: 500; }
+.c-hub-announcement-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; color: var(--hub-muted); font-size: 12px; }

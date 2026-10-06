@@ -504,6 +504,34 @@ route("POST", /^\/api\/payment-reports\/([0-9a-f-]{36})\/resolve$/, async (req, 
   send(res, result.rows[0].result);
 });
 
+// Announcements: an admin posts, members confirm an important one, and the
+// author or an admin takes it down. The database checks every rule.
+route("POST", /^\/api\/communes\/([0-9a-f-]{36})\/announcements$/, async (req, res, match) => {
+  const input = await body(req);
+  if (input.body != null && typeof input.body !== "string") throw new ApiError(400, "Invalid body");
+  if (typeof input.needsAcknowledgement !== "boolean") throw new ApiError(400, "Invalid needsAcknowledgement");
+  const result = await userAction(req, async (client) => client.query(
+    "SELECT public.post_announcement($1, $2, $3, $4, $5) AS result",
+    [uuid(match[1]), text(input.title, "title", 80), input.body ?? "", input.needsAcknowledgement,
+      uuid(input.requestId, "requestId")]));
+  const announcement = result.rows[0].result as { duplicate: boolean };
+  send(res, announcement, announcement.duplicate ? 200 : 201);
+});
+
+route("POST", /^\/api\/announcements\/([0-9a-f-]{36})\/acknowledge$/, async (req, res, match) => {
+  await body(req);
+  const result = await userAction(req, async (client) => client.query(
+    "SELECT public.acknowledge_announcement($1) AS result", [uuid(match[1])]));
+  send(res, result.rows[0].result);
+});
+
+route("POST", /^\/api\/announcements\/([0-9a-f-]{36})\/archive$/, async (req, res, match) => {
+  await body(req);
+  const result = await userAction(req, async (client) => client.query(
+    "SELECT public.archive_announcement($1) AS result", [uuid(match[1])]));
+  send(res, result.rows[0].result);
+});
+
 route("POST", /^\/api\/communes\/([0-9a-f-]{36})\/funds$/, async (req, res, match) => {
   const input = await body(req);
   const name = text(input.name, "name", 80);

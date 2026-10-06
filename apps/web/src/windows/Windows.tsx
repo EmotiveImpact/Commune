@@ -7,6 +7,7 @@ import { Avatar, Pill } from "../ui/widgets";
 import { ImagePick } from "../ui/photos";
 import { cx } from "../ui/cx";
 import { OperationEdit, OperationNew, OperationView } from "./OperationsWindows";
+import { AnnouncementNew } from "./AnnouncementWindows";
 import { CommuneLocationFields, EMPTY_COMMUNE_LOCATION } from "../ui/CommuneLocationFields";
 import { RecipientReminderCount, ReminderUsageMeter } from "../ui/ReminderUsage";
 import { ReminderFlowDialog, useReminderFlow } from "../ui/ReminderConfirm";
@@ -144,6 +145,7 @@ export function Windows() {
           {window === "operation" && <OperationView />}
           {window === "operation-new" && <OperationNew />}
           {window === "operation-edit" && <OperationEdit />}
+          {window === "announcement-new" && <AnnouncementNew />}
           </>}
         </div>
       </div>
@@ -168,6 +170,7 @@ function titleFor(id: string): string {
     "note-edit": "Edit note",
     "operation-new": "Add to calendar",
     "operation-edit": "Edit",
+    "announcement-new": "Post an announcement",
   };
   return map[id] ?? id;
 }

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Archive, CalendarDays, ChevronRight, CircleAlert, Plus, ReceiptText, UsersRound, Wallet, type LucideIcon } from "lucide-react";
+import { Archive, CalendarDays, ChevronRight, CircleAlert, Megaphone, Plus, ReceiptText, UsersRound, Wallet, type LucideIcon } from "lucide-react";
 import { useApp } from "../state";
 import { Avatar } from "../ui/widgets";
 import { Icon } from "../ui/Icon";
@@ -108,8 +108,57 @@ function Responsibilities() {
   </HubSection>;
 }
 
+const announcementDate = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short" });
+
+/** Notices from an admin. Important ones ask each member to confirm they have seen them. */
+function Announcements() {
+  const { announcements, hub, you, acknowledgeAnnouncement, archiveAnnouncement, go } = useApp();
+  const [pending, setPending] = useState<string | null>(null);
+  const [confirmDown, setConfirmDown] = useState<string | null>(null);
+  const [error, setError] = useState("");
+  if (!announcements.length) return null;
+  const nameOf = (userId: string) => hub.members.find(member => member.userId === userId)?.name ?? "A former member";
+  async function run(id: string, action: () => Promise<unknown>) {
+    setPending(id); setError("");
+    try { await action(); setConfirmDown(null); }
+    catch (cause) { setError(cause instanceof Error ? cause.message : "Could not update the announcement. Please try again."); }
+    finally { setPending(null); }
+  }
+  return <section className="c-hub-panel c-hub-announcements" aria-label="Announcements">
+    <div className="c-hub-section-head"><HubHeading title="Announcements" icon={Megaphone} />
+      {hub.role === "admin" && <button className="c-hub-link" type="button" onClick={() => go("announcement-new")}>Post another</button>}
+    </div>
+    {announcements.map(item => {
+      // Everyone currently in the commune apart from the person who posted it.
+      const audience = hub.members.filter(member => member.userId && member.userId !== item.authorId);
+      const seen = new Set(item.acknowledgements.map(entry => entry.userId));
+      const waiting = audience.filter(member => !seen.has(member.userId!));
+      const mine = item.authorId === you.id;
+      const canTakeDown = mine || hub.role === "admin";
+      return <article className="c-hub-announcement" key={item.id}>
+        <strong>{item.title}</strong>
+        {item.body && <p>{item.body}</p>}
+        <small>{mine ? "You" : nameOf(item.authorId)} · {announcementDate.format(new Date(item.createdAt))}</small>
+        {item.needsAcknowledgement && <div className="c-hub-announcement-seen">
+          <span>Seen by {audience.length - waiting.length} of {audience.length}{waiting.length && (mine || hub.role === "admin")
+            ? `. Waiting for ${waiting.map(member => member.name.split(" ")[0]).join(", ")}` : ""}</span>
+          {!mine && (seen.has(you.id)
+            ? <span className="c-hub-announcement-done">You have seen this</span>
+            : <button className="c-hub-button" type="button" disabled={pending !== null} onClick={() => void run(item.id, () => acknowledgeAnnouncement(item.id))}>I’ve seen this</button>)}
+        </div>}
+        {canTakeDown && (confirmDown === item.id
+          ? <div className="c-hub-announcement-actions"><span>Take it down? It stays in the activity history.</span>
+            <button className="c-hub-link" type="button" disabled={pending !== null} onClick={() => void run(item.id, () => archiveAnnouncement(item.id))}>Take down</button>
+            <button className="c-hub-link" type="button" onClick={() => setConfirmDown(null)}>Keep it</button></div>
+          : <div className="c-hub-announcement-actions"><button className="c-hub-link" type="button" onClick={() => setConfirmDown(item.id)}>Take down</button></div>)}
+      </article>;
+    })}
+    {error && <p role="alert" className="a-form-error">{error}</p>}
+  </section>;
+}
+
 export function HubScreen() {
-  const { hub, go, notes, expenses, operations, you } = useApp();
+  const { hub, go, notes, expenses, operations, you, announcements } = useApp();
   const entries = Object.entries(notes);
   const pinned = entries.filter(([, note]) => isNotePinned(note));
   const priority = ["Emergency", "Keys / door", "Wi-Fi", "Contacts", "Bins", "House rules", "Other"];
@@ -120,7 +169,10 @@ export function HubScreen() {
   const outstanding = hub.moves.filter(move => !move.even);
   const yours = operations.filter(item => item.status === "open" && item.kind === "task" && item.assigneeId === you.id && item.date <= todayIso());
   const yourPledges = hub.now.filter(item => item.go === "funds");
-  const attentionCount = outstanding.length + yours.length + yourPledges.length;
+  // Important notices this member has not yet confirmed.
+  const toConfirm = announcements.filter(item => item.needsAcknowledgement && item.authorId !== you.id
+    && !item.acknowledgements.some(entry => entry.userId === you.id));
+  const attentionCount = outstanding.length + yours.length + yourPledges.length + toConfirm.length;
   const canInvite = hub.role === "admin";
   return <div className="c-hub">
     <section className={`c-hub-identity${hub.photo ? " has-photo" : ""}`} aria-label="Commune identity">
@@ -134,10 +186,12 @@ export function HubScreen() {
         </button>
       </div>
       <div className="c-hub-hero-actions">
+        {canInvite && <button className="c-hub-settings" type="button" onClick={() => go("announcement-new")}><Megaphone size={16} strokeWidth={1.5} />Announce</button>}
         {canInvite && <button className="c-hub-settings" type="button" onClick={() => go("member-invite")}><UsersRound size={16} strokeWidth={1.5} />Invite</button>}
         <button className="c-hub-settings" type="button" aria-label="Commune settings" onClick={() => go("commune-settings")}><Icon name="settings" size={16} /></button>
       </div>
     </section>
+    <Announcements key={hub.id} />
     <div className="c-hub-overview">
       <section className="c-hub-balance" aria-label="Your balance"><HubHeading title={hub.oweLabel} icon={Wallet} /><strong className="c-hub-amount">{hub.oweAmount}</strong>
         <p>{hub.oweCopy}</p><div className="c-hub-balance-actions"><button className="c-hub-button" type="button" onClick={() => go("add-expense")}><Icon name="plus" size={16} />Add expense</button>
@@ -147,6 +201,9 @@ export function HubScreen() {
         {outstanding.slice(0, 3).map((move, index) => <div key={`${move.names}-${move.expenseId ?? index}`} className="c-hub-attention-row">
           <span className="c-hub-attention-copy"><span className="c-hub-icon-chip"><ReceiptText size={18} strokeWidth={1.5} /></span><span><strong>{move.why}</strong><small>{move.names}</small></span></span>
           <span className="c-hub-attention-end"><strong>{move.amt}</strong><button type="button" onClick={() => move.expenseId ? go("expense", { expense: move.expenseId }) : go("settle")}>View</button></span>
+        </div>)}
+        {toConfirm.slice(0, 2).map(item => <div key={item.id} className="c-hub-attention-row">
+          <span className="c-hub-attention-copy"><span className="c-hub-icon-chip"><Megaphone size={18} strokeWidth={1.5} /></span><span><strong>{item.title}</strong><small>Announcement · please confirm you have seen it</small></span></span>
         </div>)}
         {yours.slice(0, 2).map(item => <button className="c-hub-note-row" type="button" key={item.id} onClick={() => go("operation", { operation: item.id })}><span><strong>{item.title}</strong><small>{item.date < todayIso() ? "Overdue · your turn" : "Your turn today"}</small></span><ChevronRight size={16} /></button>)}
         {yourPledges.slice(0, 2).map((item, index) => <button className="c-hub-note-row" type="button" key={`pledge-${index}`} onClick={() => go("funds")}><span><strong>{item.title}</strong><small>{item.when}</small></span><ChevronRight size={16} /></button>)}

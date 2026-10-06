@@ -59,6 +59,8 @@ import {
   type User,
   type RecurringBill,
   type SplitTemplate,
+  type Announcement,
+  type AnnouncementResult,
 } from "./live/model";
 
 const LOCAL_PREFIX = "commune.local.";
@@ -236,6 +238,12 @@ export type AppState = {
   reminderTargets: ReminderTarget[];
   reminderUsage: ReminderUsage | null;
   sentReminders: SentReminder[];
+  /** Notices up on This Hub, newest first. */
+  announcements: Announcement[];
+  /** Admin only. requestId comes from the form so a retry cannot post twice. */
+  postAnnouncement: (input: { title: string; body: string; needsAcknowledgement: boolean; requestId: string }) => Promise<AnnouncementResult>;
+  acknowledgeAnnouncement: (id: string) => Promise<AnnouncementResult>;
+  archiveAnnouncement: (id: string) => Promise<AnnouncementResult>;
   notifications: Notification[];
   signOut: () => Promise<void>;
   go: (target: GoTarget, opts?: GoOpts) => void;
@@ -736,6 +744,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const reminderTargets = snapshot?.reminderTargets ?? [];
   const reminderUsage = data?.reminderUsage ?? null;
   const sentReminders = snapshot?.sentReminders ?? [];
+  const announcements = snapshot?.announcements ?? [];
   const notifications = snapshot?.notifications ?? [];
   const you = {
     id: data?.user.id ?? "",
@@ -920,6 +929,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
       amountMinor: input.amountMinor, sentOn: input.sentOn,
       reference: input.reference?.trim() || null, requestId: input.requestId,
     });
+    await refreshRecords();
+    return result;
+  }), [mutate, refreshRecords]);
+  const postAnnouncement = useCallback((input: { title: string; body: string; needsAcknowledgement: boolean; requestId: string }) => mutate(async () => {
+    const result = await post<AnnouncementResult>(`/communes/${encodeURIComponent(activeId)}/announcements`, {
+      title: input.title.trim(), body: input.body.trim(), needsAcknowledgement: input.needsAcknowledgement, requestId: input.requestId,
+    });
+    await refreshRecords();
+    return result;
+  }), [activeId, mutate, refreshRecords]);
+  const acknowledgeAnnouncement = useCallback((id: string) => mutate(async () => {
+    const result = await post<AnnouncementResult>(`/announcements/${encodeURIComponent(id)}/acknowledge`, {});
+    await refreshRecords();
+    return result;
+  }), [mutate, refreshRecords]);
+  const archiveAnnouncement = useCallback((id: string) => mutate(async () => {
+    const result = await post<AnnouncementResult>(`/announcements/${encodeURIComponent(id)}/archive`, {});
     await refreshRecords();
     return result;
   }), [mutate, refreshRecords]);
@@ -1218,6 +1244,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addOperation, updateOperation, toggleOperation, skipOperation, handOverOperation, undoOperation,
     removeOperation, createHub, updateCommune, recordExpense, confirmExpenseShare, correctExpense, voidExpense, recordShareReceipt, reverseShareReceipt,
     reportSharePayment, withdrawPaymentReport, resolvePaymentReport,
+    announcements, postAnnouncement, acknowledgeAnnouncement, archiveAnnouncement,
     markExpensePaid, createInvite, sendInviteEmail, revokeInvite, previewInvite, acceptInvite, createFund,
     pledgeFund, recordFundContribution, sendReminder, markNotificationRead,
     updateFund, archiveFund, updatePledge, voidContribution, saveRecurringBill, recordRecurringBill, recordRecurringPeriod, skipRecurringPeriod, saveSplitTemplate, manageMember,

@@ -12,6 +12,8 @@ export const LIMITS = {
   noteBody: 2000,
   operationTitle: 80,
   operationNotes: 1000,
+  announcementTitle: 80,
+  announcementBody: 1000,
   userName: 80,
   email: 254,
   search: 100,

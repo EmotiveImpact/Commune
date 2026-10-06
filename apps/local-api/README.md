@@ -51,6 +51,9 @@ browser code sends same-origin `/api` requests. Non-2xx errors are
 | POST/PUT/DELETE | `/api/communes/:id/operations`, `/api/operations/:id` | full OperationItem sans id on POST/PUT | `{id}` or `{ok:true}` |
 | POST | `/api/operations/:id/occurrences` | `{action:"completed"\|"skipped"\|"reopened",expectedDate,today,requestId,reason?}`; the database advances the date and rotation; a stale `expectedDate` is 409; only a skip takes a `reason` (up to 200 characters) | `{id,duplicate,date,assignee,assigneeId,turnOwnerId,status}` |
 | POST | `/api/operations/:id/handovers` | `{toMemberId,expectedDate,expectedAssigneeId,today,reason?,requestId}`; any member hands the current occurrence to another active member; on a task that takes turns the rotation then carries on from the person whose turn it was; a stale date or holder is 409 | `{id,duplicate,date,assignee,assigneeId,turnOwnerId,status}` |
+| POST | `/api/communes/:id/announcements` | `{title,body?,needsAcknowledgement,requestId}` admin only; title up to 80, body up to 1000 characters; at most 20 up at once; a repeated `requestId` returns the same notice | `{id,duplicate,archived}` (201, or 200 for a repeat) |
+| POST | `/api/announcements/:id/acknowledge` | `{}` member confirms an announcement that asks for it; repeating is harmless; refused once taken down | `{id,duplicate,archived}` |
+| POST | `/api/announcements/:id/archive` | `{}` author or admin takes it down; the record and confirmations stay | `{id,duplicate,archived}` |
 | POST | `/api/occurrences/:id/undo` | `{}` latest action only, and only while the task is unchanged since | `{id,duplicate,date,assignee,status}` |
 
 Amounts are integer minor units (pence/cents). Due dates are ISO calendar

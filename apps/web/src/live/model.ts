@@ -242,6 +242,17 @@ export type LiveNote = NoteCard & {
   version?: number; createdBy?: string; updatedBy?: string | null; updatedAt?: string;
   revisions?: NoteRevisionSummary[];
 };
+/** A notice from an admin. Taken-down notices are not in the snapshot. */
+export type Announcement = {
+  id: string;
+  title: string;
+  body: string;
+  authorId: string;
+  createdAt: string;
+  needsAcknowledgement: boolean;
+  acknowledgements: Array<{ userId: string; acknowledgedAt: string }>;
+};
+export type AnnouncementResult = { id: string; duplicate: boolean; archived: boolean };
 export type Snapshot = {
   commune: Commune;
   members: Member[];
@@ -254,7 +265,8 @@ export type Snapshot = {
   operations?: OperationItem[];
   recurringBills?: RecurringBill[];
   splitTemplates?: SplitTemplate[];
-  activityEvents?: Array<{id:string;actorId:string;kind:"funds"|"members"|"recurring"|"templates"|"notes"|"operations"|"expenses";entityId:string;title:string;description:string;createdAt:string}>;
+  announcements?: Announcement[];
+  activityEvents?: Array<{id:string;actorId:string;kind:"funds"|"members"|"recurring"|"templates"|"notes"|"operations"|"expenses"|"announcements";entityId:string;title:string;description:string;createdAt:string}>;
 };
 export type LiveExpenseRow = Omit<ExpenseRow, "amountMinor" | "paidByUserId" | "dueOn" | "shares"> & {
   amountMinor: number;
@@ -511,7 +523,8 @@ export function hubFromSnapshot(
       createdAt: expense.createdAt,
       expenseId: expense.id,
     })), ...(snapshot.activityEvents ?? []).map(event => ({
-      go:event.kind,cls:members.find(member=>member.userId===event.actorId)?.cls ?? "jordan" as const,
+      // Announcements live on This Hub.
+      go:event.kind === "announcements" ? "hub" as const : event.kind,cls:members.find(member=>member.userId===event.actorId)?.cls ?? "jordan" as const,
       ini:initialsOf(names.get(event.actorId) ?? "Member"), title:event.title,
       when:`${event.description} · ${names.get(event.actorId) ?? "Member"}`, time:dateLabel(event.createdAt),createdAt:event.createdAt,
       expenseId:event.kind==="expenses" ? event.entityId : undefined,

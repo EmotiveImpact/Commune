@@ -551,6 +551,19 @@ export async function neonApi<T>(path: string, init: RequestInit = {}): Promise<
       p_expected_date: body.expectedDate, p_expected_assignee_id: body.expectedAssigneeId ?? null,
       p_today: body.today, p_reason: body.reason ?? null, p_request_id: body.requestId,
     })));
+  } else if (method === "POST" && pathId(path, /^\/communes\/([^/]+)\/announcements$/)) {
+    response = asObject(unwrap(await db().rpc("post_announcement", {
+      p_commune_id: pathId(path, /^\/communes\/([^/]+)\/announcements$/), p_title: body.title, p_body: body.body ?? "",
+      p_needs_acknowledgement: body.needsAcknowledgement === true, p_request_id: body.requestId,
+    })));
+  } else if (method === "POST" && pathId(path, /^\/announcements\/([^/]+)\/acknowledge$/)) {
+    response = asObject(unwrap(await db().rpc("acknowledge_announcement", {
+      p_announcement_id: pathId(path, /^\/announcements\/([^/]+)\/acknowledge$/),
+    })));
+  } else if (method === "POST" && pathId(path, /^\/announcements\/([^/]+)\/archive$/)) {
+    response = asObject(unwrap(await db().rpc("archive_announcement", {
+      p_announcement_id: pathId(path, /^\/announcements\/([^/]+)\/archive$/),
+    })));
   } else if (method === "POST" && pathId(path, /^\/occurrences\/([^/]+)\/undo$/)) {
     response = asObject(unwrap(await db().rpc("undo_operation_occurrence", {
       p_occurrence_id: pathId(path, /^\/occurrences\/([^/]+)\/undo$/),
