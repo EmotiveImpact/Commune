@@ -4683,6 +4683,11 @@ button.a-item {
   white-space: nowrap;
 }
 
+/* Desktop has room for the full label; a phone shows the short one. */
+.operation-label-short {
+  display: none;
+}
+
 .operation-remove {
   height: 38px;
   margin-left: auto;
@@ -4710,6 +4715,14 @@ button.a-item {
 
   .a-window .a-field-row.operation-actions .a-btn {
     padding: 0 10px;
+  }
+
+  .operation-label-long {
+    display: none;
+  }
+
+  .operation-label-short {
+    display: inline;
   }
 }
 

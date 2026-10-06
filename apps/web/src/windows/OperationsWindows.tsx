@@ -291,7 +291,8 @@ export function OperationView() {
               aria-expanded={panel === "skip"}
               onClick={() => openPanel("skip")}
             >
-              Skip
+              <span className="operation-label-long">Skip a week</span>
+              <span className="operation-label-short">Skip</span>
             </button>
           ) : null}
           {item.kind === "task" && item.status === "open" && handTargets.length ? (
