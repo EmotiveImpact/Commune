@@ -4672,6 +4672,48 @@ button.a-item {
   margin-bottom: 12px;
 }
 
+/* Task actions sit on one line on desktop. Remove is a quiet red link at the
+   far end, apart from the everyday actions, so it is hard to hit by mistake. */
+.a-window .a-field-row.operation-actions {
+  flex-wrap: nowrap;
+}
+
+.a-window .a-field-row.operation-actions .a-btn {
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.operation-remove {
+  height: 38px;
+  margin-left: auto;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: #9b4e35;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.operation-remove:hover {
+  text-decoration: underline;
+}
+
+/* On a phone the buttons wrap, so Remove takes its own line at the top right. */
+@media (max-width: 560px) {
+  .a-window .a-field-row.operation-actions {
+    flex-wrap: wrap;
+  }
+
+  .operation-remove {
+    order: -1;
+    flex-basis: 100%;
+    height: 24px;
+    text-align: right;
+  }
+}
+
 /* The window's sticky footer is for full-width action rows, not this card. */
 .a-window .operation-delete .a-field-row,
 .a-body.is-dark .a-window .operation-delete .a-field-row {

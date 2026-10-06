@@ -271,7 +271,7 @@ export function OperationView() {
           </div>
         </div>
       ) : (
-        <div className="a-field-row">
+        <div className="a-field-row operation-actions">
           {item.kind === "task" ? (
             <button
               className="a-btn"
@@ -316,7 +316,7 @@ export function OperationView() {
             Edit
           </button>
           <button
-            className="a-btn ghost"
+            className="operation-remove"
             type="button"
             onClick={() => setConfirmDelete(true)}
           >

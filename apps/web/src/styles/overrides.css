@@ -99,6 +99,11 @@ body,
   border-top-color: var(--border);
 }
 
+/* The task window's red Remove link needs a lighter red on the dark canvas. */
+.a-body.is-dark .operation-remove {
+  color: #e39a80;
+}
+
 /* The bell and other icon actions are white in the light theme. In dark mode
    their light icon on that white face was invisible; use the input surface. */
 .a-body.is-dark .a-icon-btn:not(.a-you-btn) {
