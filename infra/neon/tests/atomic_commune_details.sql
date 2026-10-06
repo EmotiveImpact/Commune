@@ -161,7 +161,7 @@ BEGIN
       'Anonymous', 'household', 'GBP', '', '', '', ''
     );
     RAISE EXCEPTION 'Anonymous commune creation succeeded';
-  EXCEPTION WHEN SQLSTATE '28000' THEN NULL;
+  EXCEPTION WHEN SQLSTATE '42501' THEN NULL;
   END;
 END;
 $$;
