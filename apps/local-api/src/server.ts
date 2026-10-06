@@ -722,12 +722,32 @@ route("POST", /^\/api\/operations\/([0-9a-f-]{36})\/occurrences$/, async (req, r
   if (!["completed", "skipped", "reopened"].includes(String(input.action))) {
     throw new ApiError(400, "Invalid task action");
   }
+  if (input.reason != null && typeof input.reason !== "string") throw new ApiError(400, "Invalid reason");
   const result = await userAction(req, async (client) => client.query(
-    "SELECT public.record_operation_occurrence($1, $2, $3::date, $4::date, $5) AS result",
+    "SELECT public.record_operation_occurrence($1, $2, $3::date, $4::date, $5, $6) AS result",
     [uuid(match[1]), input.action, isoDate(input.expectedDate, false, "expectedDate"),
-      isoDate(input.today, false, "today"), uuid(input.requestId, "requestId")]));
+      isoDate(input.today, false, "today"), uuid(input.requestId, "requestId"), input.reason ?? null]));
   const occurrence = result.rows[0].result as { duplicate: boolean };
   send(res, occurrence, occurrence.duplicate ? 200 : 201);
+});
+
+// Handing the current turn of a task to someone else. On a task that takes
+// turns the database remembers whose turn it was, so the rotation carries on
+// from them. expectedDate and expectedAssigneeId reject a stale screen.
+route("POST", /^\/api\/operations\/([0-9a-f-]{36})\/handovers$/, async (req, res, match) => {
+  const input = await body(req);
+  if (typeof input.toMemberId !== "string" || !input.toMemberId) throw new ApiError(400, "Choose who takes it");
+  if (input.expectedAssigneeId != null && typeof input.expectedAssigneeId !== "string") {
+    throw new ApiError(400, "Invalid expectedAssigneeId");
+  }
+  if (input.reason != null && typeof input.reason !== "string") throw new ApiError(400, "Invalid reason");
+  const result = await userAction(req, async (client) => client.query(
+    "SELECT public.hand_over_operation($1, $2, $3::date, $4, $5::date, $6, $7) AS result",
+    [uuid(match[1]), input.toMemberId, isoDate(input.expectedDate, false, "expectedDate"),
+      input.expectedAssigneeId ?? null, isoDate(input.today, false, "today"), input.reason ?? null,
+      uuid(input.requestId, "requestId")]));
+  const handover = result.rows[0].result as { duplicate: boolean };
+  send(res, handover, handover.duplicate ? 200 : 201);
 });
 
 route("POST", /^\/api\/occurrences\/([0-9a-f-]{36})\/undo$/, async (req, res, match) => {

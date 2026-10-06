@@ -70,6 +70,20 @@ describe("hosted money lifecycle and task commands", () => {
     expect(mocks.from).not.toHaveBeenCalled();
   });
 
+  it("skips with a reason and hands over a turn through commands", async () => {
+    mocks.rpc.mockResolvedValue({ data: { id: "occurrence-2", duplicate: false, date: "2026-10-09", assignee: "Dana", assigneeId: "dana", turnOwnerId: "avery", status: "open" }, error: null });
+    await send("/operations/task-1/occurrences", { action: "skipped", expectedDate: "2026-10-02", today: "2026-10-02", requestId, reason: "Away" });
+    expect(mocks.rpc).toHaveBeenLastCalledWith("record_operation_occurrence", {
+      p_operation_id: "task-1", p_action: "skipped", p_expected_date: "2026-10-02", p_today: "2026-10-02", p_request_id: requestId, p_reason: "Away" });
+    const handed = await send("/operations/task-1/handovers", {
+      toMemberId: "dana", expectedDate: "2026-10-02", expectedAssigneeId: "avery", today: "2026-10-02", reason: "", requestId });
+    expect(mocks.rpc).toHaveBeenLastCalledWith("hand_over_operation", {
+      p_operation_id: "task-1", p_to_member_id: "dana", p_expected_date: "2026-10-02", p_expected_assignee_id: "avery",
+      p_today: "2026-10-02", p_reason: "", p_request_id: requestId });
+    expect(handed).toMatchObject({ assigneeId: "dana", turnOwnerId: "avery" });
+    expect(mocks.from).not.toHaveBeenCalled();
+  });
+
   it.each([
     ["P0001", 409, "This expense was changed by someone else."],
     ["42501", 403, "Only the bill payer can record a repayment for this share"],

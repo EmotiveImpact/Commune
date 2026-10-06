@@ -49,7 +49,8 @@ browser code sends same-origin `/api` requests. Non-2xx errors are
 | GET/PUT | `/api/preferences` | PUT `{emailReminders:boolean}` | `{emailReminders}` |
 | POST/PUT/DELETE | `/api/communes/:id/notes`, `/api/notes/:id` | full NoteCard on POST/PUT | `{id}` or `{ok:true}` |
 | POST/PUT/DELETE | `/api/communes/:id/operations`, `/api/operations/:id` | full OperationItem sans id on POST/PUT | `{id}` or `{ok:true}` |
-| POST | `/api/operations/:id/occurrences` | `{action:"completed"\|"skipped"\|"reopened",expectedDate,today,requestId}`; the database advances the date and rotation; a stale `expectedDate` is 409 | `{id,duplicate,date,assignee,status}` |
+| POST | `/api/operations/:id/occurrences` | `{action:"completed"\|"skipped"\|"reopened",expectedDate,today,requestId,reason?}`; the database advances the date and rotation; a stale `expectedDate` is 409; only a skip takes a `reason` (up to 200 characters) | `{id,duplicate,date,assignee,assigneeId,turnOwnerId,status}` |
+| POST | `/api/operations/:id/handovers` | `{toMemberId,expectedDate,expectedAssigneeId,today,reason?,requestId}`; any member hands the current occurrence to another active member; on a task that takes turns the rotation then carries on from the person whose turn it was; a stale date or holder is 409 | `{id,duplicate,date,assignee,assigneeId,turnOwnerId,status}` |
 | POST | `/api/occurrences/:id/undo` | `{}` latest action only, and only while the task is unchanged since | `{id,duplicate,date,assignee,status}` |
 
 Amounts are integer minor units (pence/cents). Due dates are ISO calendar
@@ -88,8 +89,8 @@ API_BASE=http://127.0.0.1:3006 node apps/local-api/tests/operations-history.mjs
 `money-lifecycle.mjs` needs migrations 0015 to 0017 and covers reminder
 commands, partial receipts and reversals, expense correction/void and
 former-member protection, including retries and parallel requests.
-`operations-history.mjs` needs 0018 and covers completion, skip, reopen, undo,
-rotation and concurrent completion. Both refuse port 3002.
+`operations-history.mjs` needs 0018 to 0024 and covers completion, skip, reopen, undo,
+rotation, concurrent completion, handovers and skip reasons. Both refuse port 3002.
 
 Search integration requires migration 0014. It covers all eight result types,
 active membership, selected/all-commune scopes, removed-member denial, literal

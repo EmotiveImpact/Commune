@@ -13,7 +13,7 @@ export type OperationStatus = "open" | "done";
 /** One recorded action on a task. Undone actions stay in the history. */
 export type OperationOccurrence = {
   id: string;
-  action: "completed" | "skipped" | "reopened";
+  action: "completed" | "skipped" | "reopened" | "handed_over";
   /** The occurrence acted on, and who held it then. */
   dueOn: string;
   assignee?: string | null;
@@ -24,6 +24,8 @@ export type OperationOccurrence = {
   nextDate: string;
   nextAssignee?: string | null;
   nextAssigneeId?: string | null;
+  /** Why it was skipped or handed over, when someone said. */
+  reason?: string | null;
   undoneAt: string | null;
   undoneBy: string | null;
 };
@@ -34,6 +36,7 @@ export type OperationChange = {
   date: string;
   assignee: string | null;
   assigneeId: string | null;
+  turnOwnerId: string | null;
   status: OperationStatus;
 };
 
@@ -52,6 +55,12 @@ export type OperationItem = {
   /** The member holding the task, and who takes turns, by member id. */
   assigneeId?: string | null;
   rotationIds?: string[] | null;
+  /**
+   * Whose turn it is while someone else covers it (set by a handover). The
+   * rotation carries on from this person, not from the one covering.
+   */
+  turnOwnerId?: string | null;
+  turnOwner?: string | null;
   lastDone?: { by: string; date: string };
   repeat: OperationRepeat;
   status: OperationStatus;
@@ -66,7 +75,7 @@ export type OperationItem = {
 /** Legacy fixture date, never the live app clock. */
 export const HOUSE_TODAY = "2026-09-01";
 
-export type NewOperation = Omit<OperationItem, "id" | "hubId" | "status" | "undoOccurrenceId" | "history" | "anchorDay">;
+export type NewOperation = Omit<OperationItem, "id" | "hubId" | "status" | "undoOccurrenceId" | "history" | "anchorDay" | "turnOwnerId" | "turnOwner">;
 export type OperationStore = Record<HubId, OperationItem[]>;
 
 export const OPERATIONS_SEED: OperationStore = {
@@ -315,20 +324,22 @@ export function cloneOperationSeed(): OperationStore {
  * so two members with the same name are never confused. The server decides
  * who is actually next (and passes over anyone who has left).
  */
-export function nextPerson(item: Pick<OperationItem, "rotation" | "rotationIds" | "assignee" | "assigneeId">): string {
+export function nextPerson(item: Pick<OperationItem, "rotation" | "rotationIds" | "assignee" | "assigneeId" | "turnOwnerId">): string {
   const names = item.rotation ?? [];
   const ids = item.rotationIds;
   if (ids?.length && ids.length === names.length) {
-    const index = item.assigneeId ? ids.indexOf(item.assigneeId) : -1;
+    // A cover does one turn; the rotation moves on from whose turn it was.
+    const turn = item.turnOwnerId ?? item.assigneeId;
+    const index = turn ? ids.indexOf(turn) : -1;
     return names[(index + 1) % ids.length];
   }
   return names.length ? nextInRotation(names, item.assignee) : "";
 }
 
-/** Whether rotation position `index` is the person holding the task now. */
-export function holdsTurn(item: Pick<OperationItem, "rotation" | "rotationIds" | "assignee" | "assigneeId">, index: number): boolean {
+/** Whether rotation position `index` is the person whose turn it is now. */
+export function holdsTurn(item: Pick<OperationItem, "rotation" | "rotationIds" | "assignee" | "assigneeId" | "turnOwnerId">, index: number): boolean {
   const ids = item.rotationIds;
-  if (ids?.length && ids.length === (item.rotation ?? []).length) return ids[index] === item.assigneeId;
+  if (ids?.length && ids.length === (item.rotation ?? []).length) return ids[index] === (item.turnOwnerId ?? item.assigneeId);
   return item.rotation?.[index] === item.assignee;
 }
 

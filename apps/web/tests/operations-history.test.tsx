@@ -238,3 +238,74 @@ describe("people by member id", () => {
   });
 });
 
+
+describe("handing over a turn and skip reasons", () => {
+  async function openTask() {
+    mount("/operations");
+    await screen.findByRole("tablist", { name: "Operations view" });
+    act(() => app.go("operation", { operation: "task-1" }));
+    return screen.findByRole("dialog", { name: "Put the bins out" });
+  }
+
+  it("moves the rotation on from whose turn it is, not from the person covering", () => {
+    const item = { rotation: ["Avery", "Blake", "Casey"], rotationIds: ["a", "b", "c"], assignee: "Dana", assigneeId: "d", turnOwnerId: "a" };
+    expect(nextPerson(item)).toBe("Blake");
+    expect([0, 1, 2].map((index) => holdsTurn(item, index))).toEqual([true, false, false]);
+  });
+
+  it("hands the turn to another member as a command, with an optional reason", async () => {
+    vi.mocked(post).mockImplementation(async () => {
+      current.operations = [{ ...rota, assignee: "Housemate Two", assigneeId: "user-2", turnOwnerId: user.id, turnOwner: user.name, undoOccurrenceId: "occurrence-3",
+        history: [{ id: "occurrence-3", action: "handed_over", dueOn: rota.date, assignee: user.name, actorId: user.id, actedOn: today,
+          actedAt: new Date().toISOString(), nextDate: rota.date, nextAssignee: "Housemate Two", reason: "Away this weekend", undoneAt: null, undoneBy: null }] }];
+      return { id: "occurrence-3", duplicate: false, date: rota.date, assignee: "Housemate Two", assigneeId: "user-2", turnOwnerId: user.id, status: "open" };
+    });
+    current.operations = [{ ...rota, assigneeId: user.id, rotationIds: [user.id, "user-2"] }];
+    const windowFrame = await openTask();
+    await act(async () => { fireEvent.click(within(windowFrame).getByRole("button", { name: "Hand over" })); });
+    const panel = windowFrame.querySelector<HTMLElement>(".operation-panel")!;
+    const confirm = within(panel).getByRole("button", { name: "Hand over" }) as HTMLButtonElement;
+    // Nobody is chosen yet, and the person who has it is not offered.
+    expect(confirm.disabled).toBe(true);
+    const choices = [...(within(windowFrame).getByLabelText("Hand to") as HTMLSelectElement).options].map((option) => option.value);
+    expect(choices).toEqual(["", "user-2"]);
+    fireEvent.change(within(windowFrame).getByLabelText("Hand to"), { target: { value: "user-2" } });
+    fireEvent.change(within(windowFrame).getByLabelText("Reason (optional)"), { target: { value: "  Away this weekend " } });
+    await act(async () => { fireEvent.click(confirm); });
+    const [path, body] = vi.mocked(post).mock.calls[0];
+    expect(path).toBe("/operations/task-1/handovers");
+    expect(body).toMatchObject({ toMemberId: "user-2", expectedDate: rota.date, expectedAssigneeId: user.id, today, reason: "Away this weekend" });
+    expect((body as { requestId: string }).requestId).toMatch(/^[0-9a-f-]{36}$/);
+    expect(within(windowFrame).getByRole("status").textContent).toBe("Handed to Housemate. You can undo this in History.");
+    expect(within(windowFrame).getByText(/covering for Test/)).toBeTruthy();
+    const line = within(windowFrame).getByText("Handed over").closest("div")?.textContent ?? "";
+    expect(line).toContain("to Housemate");
+    expect(line).toContain("“Away this weekend”");
+  });
+
+  it("asks for an optional reason before skipping from the task window", async () => {
+    vi.mocked(post).mockResolvedValue({ id: "occurrence-4", duplicate: false, date: addDays(today, 7), assignee: user.name, status: "open" });
+    const windowFrame = await openTask();
+    await act(async () => { fireEvent.click(within(windowFrame).getByRole("button", { name: "Skip a week" })); });
+    expect(vi.mocked(post)).not.toHaveBeenCalled();
+    fireEvent.change(within(windowFrame).getByLabelText("Reason (optional)"), { target: { value: "Bins not collected" } });
+    const panel = windowFrame.querySelector<HTMLElement>(".operation-panel")!;
+    await act(async () => { fireEvent.click(within(panel).getByRole("button", { name: "Skip a week" })); });
+    expect(vi.mocked(post).mock.calls[0][1]).toMatchObject({ action: "skipped", expectedDate: rota.date, reason: "Bins not collected" });
+  });
+
+  it("keeps a cover out of the rotation when the task is edited", async () => {
+    current.members.push({ userId: "user-3", name: "Guest Three", role: "member", active: true });
+    current.operations = [{ ...rota, assignee: "Guest Three", assigneeId: "user-3", rotation: [user.name, "Housemate Two"],
+      rotationIds: [user.id, "user-2"], turnOwnerId: user.id, turnOwner: user.name }];
+    mount("/operations");
+    await screen.findByRole("tablist", { name: "Operations view" });
+    act(() => app.go("operation-edit", { operation: "task-1" }));
+    const form = await screen.findByRole("group", { name: "Takes turns" });
+    expect(within(form).getByText("Their turn now, covered")).toBeTruthy();
+    expect((within(form).getByRole("checkbox", { name: /Guest Three/ }) as HTMLInputElement).checked).toBe(false);
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Save changes" })); });
+    const put = vi.mocked(api).mock.calls.find(([path, init]) => path === "/operations/task-1" && init?.method === "PUT");
+    expect(JSON.parse(String(put![1]!.body))).toMatchObject({ assigneeId: "user-3", rotationIds: [user.id, "user-2"] });
+  });
+});

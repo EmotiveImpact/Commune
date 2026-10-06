@@ -542,6 +542,14 @@ export async function neonApi<T>(path: string, init: RequestInit = {}): Promise<
     response = asObject(unwrap(await db().rpc("record_operation_occurrence", {
       p_operation_id: pathId(path, /^\/operations\/([^/]+)\/occurrences$/), p_action: body.action,
       p_expected_date: body.expectedDate, p_today: body.today, p_request_id: body.requestId,
+      // Sent only with a reason, so a skip without one matches the 0018 signature.
+      ...(body.reason ? { p_reason: body.reason } : {}),
+    })));
+  } else if (method === "POST" && pathId(path, /^\/operations\/([^/]+)\/handovers$/)) {
+    response = asObject(unwrap(await db().rpc("hand_over_operation", {
+      p_operation_id: pathId(path, /^\/operations\/([^/]+)\/handovers$/), p_to_member_id: body.toMemberId,
+      p_expected_date: body.expectedDate, p_expected_assignee_id: body.expectedAssigneeId ?? null,
+      p_today: body.today, p_reason: body.reason ?? null, p_request_id: body.requestId,
     })));
   } else if (method === "POST" && pathId(path, /^\/occurrences\/([^/]+)\/undo$/)) {
     response = asObject(unwrap(await db().rpc("undo_operation_occurrence", {

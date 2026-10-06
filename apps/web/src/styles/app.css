@@ -4657,6 +4657,21 @@ button.a-item {
   font-weight: 650;
 }
 
+/* Skip and hand-over panels share the card's shape, without its warning tone. */
+.operation-delete.operation-panel {
+  border-color: var(--border);
+  background: var(--paper-2);
+}
+
+.operation-delete.operation-panel p {
+  color: var(--ink);
+  font-weight: 500;
+}
+
+.operation-panel .a-field {
+  margin-bottom: 12px;
+}
+
 /* The window's sticky footer is for full-width action rows, not this card. */
 .a-window .operation-delete .a-field-row,
 .a-body.is-dark .a-window .operation-delete .a-field-row {
