@@ -279,11 +279,7 @@ export function OperationView() {
               disabled={mutationPending}
               onClick={() => run(() => toggleOperation(item.id), item.status === "done" ? "Reopened." : "Marked done. You can undo this in History.")}
             >
-              {item.status === "done"
-                ? "Mark open"
-                : nextName
-                  ? `Done · ${nextName}`
-                  : "Mark done"}
+              {item.status === "done" ? "Mark open" : "Done"}
             </button>
           ) : null}
           {item.kind === "task" && item.status === "open" && item.repeat !== "none" ? (
@@ -291,10 +287,11 @@ export function OperationView() {
               className="a-btn ghost"
               type="button"
               disabled={mutationPending}
+              aria-label="Skip a week"
               aria-expanded={panel === "skip"}
               onClick={() => openPanel("skip")}
             >
-              Skip a week
+              Skip
             </button>
           ) : null}
           {item.kind === "task" && item.status === "open" && handTargets.length ? (
