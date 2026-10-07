@@ -4,7 +4,7 @@ import type { IconName } from "../ui/Icon";
 import { Icon } from "../ui/Icon";
 import { Avatar } from "../ui/widgets";
 import { useApp } from "../state";
-import type { ScreenId, WindowId } from "../data/household";
+import type { ScreenId } from "../data/household";
 import { QuickSearch } from "../ui/QuickSearch";
 import { cx } from "../ui/cx";
 import { ReminderUsageMeter } from "../ui/ReminderUsage";
@@ -163,8 +163,12 @@ function NavButton({
   );
 }
 
-export function Sidebar({ screen }: { screen: ScreenId }) {
-  const { go, hub, you, reminderUsage } = useApp();
+export function Sidebar({ screen, drawer }: { screen: ScreenId; drawer?: boolean }) {
+  const { go, hub, you, reminderUsage, setMoreOpen } = useApp();
+  const closeRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (drawer) closeRef.current?.focus();
+  }, [drawer]);
   const accountRole = hub.youMeta?.split(" · ")[0];
   const active = (id: ScreenId) =>
     screen === id ||
@@ -174,10 +178,22 @@ export function Sidebar({ screen }: { screen: ScreenId }) {
     (id === "expenses" && screen === "expenses-empty");
 
   return (
-    <aside className="a-side">
-      <button className="a-brand" type="button" onClick={() => go("home")}>
-        <span className="a-wordmark">commune.</span>
-      </button>
+    <aside
+      className={cx("a-side", drawer && "a-drawer")}
+      role={drawer ? "dialog" : undefined}
+      aria-modal={drawer ? true : undefined}
+      aria-label={drawer ? "Menu" : undefined}
+    >
+      <div className="a-side-head">
+        <button className="a-brand" type="button" onClick={() => go("home")}>
+          <span className="a-wordmark">commune.</span>
+        </button>
+        {drawer ? (
+          <button ref={closeRef} className="a-drawer-x" type="button" aria-label="Close menu" onClick={() => setMoreOpen(false)}>
+            <Icon name="close" size={16} />
+          </button>
+        ) : null}
+      </div>
 
       <nav className="a-nav" aria-label="Primary">
         <NavButton item={{ id: "home", label: "Home", icon: "home" }} active={active("home")} onClick={() => go("home")} />
@@ -263,7 +279,7 @@ export function Header({ screen }: { screen: ScreenId }) {
   }, [searchOpen, currentWindow]);
   return (
     <header className={cx("a-header", (screen === "home" || screen === "home-empty") && "a-header-home")}>
-      <button className="a-icon-btn a-more-btn" type="button" aria-label="More" onClick={() => setMoreOpen(true)}>
+      <button className="a-icon-btn a-more-btn" type="button" aria-label="Menu" aria-haspopup="dialog" onClick={() => setMoreOpen(true)}>
         <Icon name="menu" size={16} />
       </button>
       <div className="a-header-title">
@@ -321,47 +337,22 @@ export function PhoneTabs({ screen }: { screen: ScreenId }) {
   );
 }
 
-const MORE: Array<{ id: ScreenId | WindowId; title: string; hint: string; icon: IconName; dash?: boolean }> = [
-  { id: "commune-new", title: "Create a commune", hint: "A home, a studio, or a trip", icon: "plus", dash: true },
-  { id: "communes", title: "Places", hint: "Switch house, studio, or trip", icon: "hub" },
-  { id: "search", title: "Search", hint: "Find expenses, notes and jobs across your communes", icon: "search" },
-  { id: "notes", title: "Notes", hint: "Shared details to remember", icon: "notes" },
-  { id: "funds", title: "Funds", hint: "Contributions and commitments", icon: "funds" },
-  { id: "recurring", title: "Recurring", hint: "Regular bills, recorded after payment", icon: "refresh" },
-  { id: "templates", title: "Saved splits", hint: "Participants, percentages and share weights", icon: "templates" },
-  { id: "operations", title: "Operations", hint: "What’s late, what’s yours, then the week", icon: "operations" },
-  { id: "members", title: "Members", hint: "Who’s here this cycle", icon: "members" },
-  { id: "settings", title: "You & settings", hint: "Profile and preferences", icon: "settings" },
-];
-
 export function MoreSheet() {
-  const { setMoreOpen, go } = useApp();
+  const { moreOpen, setMoreOpen, screen } = useApp();
+  useEffect(() => {
+    if (!moreOpen) return;
+    const onKey = (event: KeyboardEvent) => {
+      // An open commune list inside the drawer closes first.
+      if (event.key === "Escape" && !document.querySelector(".a-drawer .a-hub-menu")) setMoreOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [moreOpen, setMoreOpen]);
+  if (!moreOpen) return null;
   return (
     <>
       <div className="a-sheet-scrim" onClick={() => setMoreOpen(false)} />
-      <div className="a-more" role="dialog" aria-label="More">
-        <div className="a-more-head">
-          <div>
-            <p className="a-more-kicker">More</p>
-            <p className="a-more-lede">Notes, funds, and the rest of your commune. The four tabs stay the spine.</p>
-          </div>
-          <button className="a-more-x" type="button" aria-label="Close More" onClick={() => setMoreOpen(false)}>
-            <Icon name="close" size={16} />
-          </button>
-        </div>
-        {MORE.map((row) => (
-          <button key={row.id} type="button" onClick={() => go(row.id)}>
-            <span className={cx("a-more-ic", row.dash && "a-more-ic-dash")} aria-hidden="true">
-              <Icon name={row.icon} />
-            </span>
-            <span className="a-more-copy">
-              <strong>{row.title}</strong>
-              <span>{row.hint}</span>
-            </span>
-            <Icon name="chevron" size={16} />
-          </button>
-        ))}
-      </div>
+      <Sidebar screen={screen} drawer />
     </>
   );
 }

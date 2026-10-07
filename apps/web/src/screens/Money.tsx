@@ -155,7 +155,7 @@ export function SettleScreen() {
               <Avatar tone={receiving ? debtor?.cls ?? "house" : payer?.cls ?? "house"} initials={receiving ? debtor?.ini ?? "?" : payer?.ini ?? "?"} />
               <div>
                 <div className="names">{receiving ? `${debtor?.name ?? "Member"} owes you` : `You owe ${payer?.name ?? "the bill payer"}`}</div>
-                <div className="why">{expense.name}{expense.dueOn ? ` · due ${expense.dueOn}` : ""}</div>
+                <div className="why">{expense.name}{expense.dueOn ? ` · due ${expense.due}` : ""}</div>
                 {share.settledMinor > 0 ? <div className="why">{formatMoney(share.settledMinor, hub.currency)} of {formatMoney(share.amountMinor, hub.currency)} received</div> : null}
                 {report ? <div className="why c-report-line">{receiving
                   ? `${reportSummary(report, hub.currency, debtor?.name ?? "A member")}. Not yet confirmed.`

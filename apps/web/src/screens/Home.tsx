@@ -54,6 +54,8 @@ export function HomeScreen() {
   const others = places.filter(place => place.id !== first.id);
   const needs = places.flatMap((hub) => hub.now.map((item) => ({ hub, item })))
     .sort((a, b) => (a.item.dueOn ?? "9999").localeCompare(b.item.dueOn ?? "9999")).slice(0, 6);
+  // Name the commune on each row only when the list spans more than one.
+  const severalCommunes = new Set(needs.map(({ hub }) => hub.id)).size > 1;
   const activity = places.flatMap((hub) => hub.activity.map((item) => ({ hub, item })))
     .sort((a, b) => (Date.parse(b.item.createdAt ?? "") || 0) - (Date.parse(a.item.createdAt ?? "") || 0)).slice(0, 6);
   const incomplete = places.some((hub) => hub.activityState !== "ready");
@@ -71,7 +73,7 @@ export function HomeScreen() {
             <div className="hub-feed">
               {needs.map(({ hub, item }, index) => (
                 <button key={`${hub.id}-${item.title}-${index}`} className="hub-feed-row" type="button" onClick={() => go(item.go, { hub: hub.id, expense: item.expenseId, operation: item.operationId })}>
-                  <Pill tone={item.pill === "warn" ? "warn" : "open"}>{hub.name}</Pill>
+                  {severalCommunes && <Pill tone={item.pill === "warn" ? "warn" : "open"}>{hub.name}</Pill>}
                   {item.dueOn && <CalendarDate date={item.dueOn} label="Due" />}
                   <div><strong>{item.title}</strong><div className="when">{item.when}</div></div>
                   <span className="hub-feed-go">Open</span>

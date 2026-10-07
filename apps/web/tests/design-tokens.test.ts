@@ -87,11 +87,8 @@ describe("shared corner contracts", () => {
     expect(declarations("app", ".a-icon-btn.a-you-btn")).toContain("border-radius: var(--radius-pill);");
   });
 
-  it("uses the surface token for the top corners of narrow dialog and menu sheets", () => {
+  it("uses the surface token for the top corners of narrow dialog sheets", () => {
     expect(declarations("app", ".a-body.is-native .a-window-frame")).toContain(
-      "border-radius: var(--radius-surface) var(--radius-surface) 0 0;",
-    );
-    expect(declarations("app", ".a-body.is-native.more-open .a-more")).toContain(
       "border-radius: var(--radius-surface) var(--radius-surface) 0 0;",
     );
     expect(styles.app.includes("border-radius: 20px 20px 0 0;")).toBe(false);

@@ -58,7 +58,6 @@ body,
   .a-window-frame,
   .a-window-bar,
   .a-note-fact,
-  .a-more,
   .a-owe-card.a-card
 ) {
   background: #242b39;
@@ -72,7 +71,7 @@ body,
   border-color: var(--border-strong);
 }
 
-.a-body.is-dark :is(.a-table tbody tr:hover td, .a-more > button:hover) {
+.a-body.is-dark .a-table tbody tr:hover td {
   background: rgba(217, 235, 229, 0.07);
 }
 
@@ -160,22 +159,22 @@ body,
 /* Home keeps one featured commune with smaller places beneath it. */
 .a-home-featured { margin-bottom: 16px; }
 .a-home-places { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-bottom: 22px; }
-#home .a-home-greet h1 { font-size: 24px; font-weight: 550; }
-#home .a-home-greet p { font-size: 13px; color: var(--ink-soft); }
-#home .a-place { box-shadow: none; border-radius: var(--radius-surface); }
-#home .a-place-hero { min-height: 208px; padding: 18px; }
-#home .a-place-hero h3 { font-size: 21px; font-weight: 500; letter-spacing: -.6px; }
-#home .a-week { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 22px; }
-#home .a-card { background: var(--white); box-shadow: none; border: 1px solid var(--border); border-radius: var(--radius-surface); padding: 23px; min-width: 0; }
-#home .a-card h2 { font-size: 18px; font-weight: 550; }
-#home .a-card strong:not(.c-calendar-number) { font-weight: 500; }
-#home .hub-feed-row { grid-template-columns: minmax(0,1fr) auto; }
-#home .hub-feed-row > .pill { grid-column: 1 / -1; justify-self: start; }
-#home .hub-feed-row:has(> .c-calendar-date) { grid-template-columns: auto minmax(0,1fr) auto; }
+:is(#home, #home-inbox) .a-home-greet h1 { font-size: 24px; font-weight: 550; }
+:is(#home, #home-inbox) .a-home-greet p { font-size: 13px; color: var(--ink-soft); }
+:is(#home, #home-inbox) .a-place { box-shadow: none; border-radius: var(--radius-surface); }
+:is(#home, #home-inbox) .a-place-hero { min-height: 208px; padding: 18px; }
+:is(#home, #home-inbox) .a-place-hero h3 { font-size: 21px; font-weight: 500; letter-spacing: -.6px; }
+:is(#home, #home-inbox) .a-week { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 22px; }
+:is(#home, #home-inbox) .a-card { background: var(--white); box-shadow: none; border: 1px solid var(--border); border-radius: var(--radius-surface); padding: 23px; min-width: 0; }
+:is(#home, #home-inbox) .a-card h2 { font-size: 18px; font-weight: 550; }
+:is(#home, #home-inbox) .a-card strong:not(.c-calendar-number) { font-weight: 500; }
+:is(#home, #home-inbox) .hub-feed-row { grid-template-columns: minmax(0,1fr) auto; }
+:is(#home, #home-inbox) .hub-feed-row > .pill { grid-column: 1 / -1; justify-self: start; }
+:is(#home, #home-inbox) .hub-feed-row:has(> .c-calendar-date) { grid-template-columns: auto minmax(0,1fr) auto; }
 .a-search:focus-within { outline: 2px solid var(--sage); outline-offset: 2px; }
 @media (max-width: 850px) {
   .a-home-places { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  #home .a-week { grid-template-columns: 1fr; }
+  :is(#home, #home-inbox) .a-week { grid-template-columns: 1fr; }
 }
 /* A full-width search row only where the trigger still shows its label;
    narrower screens use the icon button from QuickSearch.css. */
