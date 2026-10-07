@@ -266,7 +266,6 @@ export function Header({ screen }: { screen: ScreenId }) {
       <button className="a-icon-btn a-more-btn" type="button" aria-label="More" onClick={() => setMoreOpen(true)}>
         <Icon name="menu" size={16} />
       </button>
-      <img className="a-header-mark" src="/logo-mark.svg" width={18} height={18} alt="" />
       <div className="a-header-title">
         <h1>{pageTitle}</h1>
         {pageLede ? <p>{pageLede}</p> : null}

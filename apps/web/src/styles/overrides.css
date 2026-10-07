@@ -176,6 +176,10 @@ body,
 @media (max-width: 850px) {
   .a-home-places { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   #home .a-week { grid-template-columns: 1fr; }
+}
+/* A full-width search row only where the trigger still shows its label;
+   narrower screens use the icon button from QuickSearch.css. */
+@media (min-width: 701px) and (max-width: 850px) {
   .a-body:not(.is-native) .a-header { flex-wrap: wrap; height: auto; min-height: 60px; }
   .a-body:not(.is-native) .a-search { display: flex; order: 3; flex: 1 0 100%; width: 100%; max-width: none; margin-top: 8px; background: var(--white); color: var(--ink-soft); }
 }

@@ -55,7 +55,19 @@
   letter-spacing: -0.5px;
 }
 @media (max-width: 560px) {
-  .a-header-home { flex-wrap: wrap; }
+  /* Phone top bar: one slim row of menu, title and icon actions. The page
+     description stays on larger screens; Home keeps its greeting below. */
+  .a-header .a-icon-btn,
+  .a-header .a-more-btn { width: 40px; height: 40px; }
+  .a-header .c-search-trigger {
+    width: 40px; min-height: 40px; height: 40px; padding: 0; justify-content: center; align-items: center;
+    background: rgba(255, 255, 255, 0.06); border-color: rgba(255, 255, 255, 0.12); color: #f5f1ea;
+  }
+  .a-header-actions { margin-left: 0; }
+  .a-header:not(.a-header-home) .a-header-title h1 { font-size: 18px; }
+  .a-header:not(.a-header-home) .a-header-title p { display: none; }
+  .a-header-home { flex-wrap: wrap; row-gap: 10px; padding-bottom: 14px; }
+  .a-body.is-native .a-header-home .a-header-actions { margin-left: auto; }
   .a-header-home .a-header-title { order: 1; flex-basis: 100%; }
   .a-header-home .a-header-title h1 { white-space: normal; overflow-wrap: anywhere; }
   .a-header-home .c-search-trigger { margin-left: auto; }
