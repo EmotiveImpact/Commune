@@ -27,6 +27,12 @@ const BASIC: NavItem[] = [
   { id: "operations", label: "Operations", icon: "operations" },
 ];
 
+// The phone menu has no other route to these in basic mode.
+const DRAWER_BASIC: NavItem[] = [
+  { id: "members", label: "Members", icon: "members" },
+  { id: "templates", label: "Templates", icon: "templates" },
+];
+
 const MONEY: NavItem[] = [
   { id: "expenses", label: "Expenses", icon: "expenses" },
   { id: "settle", label: "Settle", icon: "settle" },
@@ -200,7 +206,7 @@ export function Sidebar({ screen, drawer }: { screen: ScreenId; drawer?: boolean
         <NavButton item={{ id: "hub", label: "This Hub", icon: "hub" }} active={active("hub")} onClick={() => go("hub")} />
 
         <div className="a-nav-basic">
-          {BASIC.map((item) => (
+          {(drawer ? [...BASIC, ...DRAWER_BASIC] : BASIC).map((item) => (
             <NavButton key={item.id} item={item} active={active(item.id)} onClick={() => go(item.id)} />
           ))}
         </div>
