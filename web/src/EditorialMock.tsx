@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { BrandWordmark } from './BrandWordmark';
+import { SiteMenu, useSiteMenu } from './SiteMenu';
 
 const heroScenes = [
   { image: '/company-hero-home.jpg', label: 'Home' },
@@ -56,7 +57,7 @@ export default function EditorialMock() {
   const [step, setStep] = useState(0);
   const [completedJobs, setCompletedJobs] = useState<string[]>([]);
   const [yearly, setYearly] = useState(false);
-  const [menu, setMenu] = useState(false);
+  const phoneMenu = useSiteMenu();
   const [heroScene, setHeroScene] = useState(0);
   const [reducedMotion, setReducedMotion] = useState(() => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
   useEffect(() => {
@@ -74,20 +75,20 @@ export default function EditorialMock() {
   }, [reducedMotion]);
   const current = lives[life];
   return <div className="l-site" id="top">
+    <SiteMenu {...phoneMenu} tone="photo" />
     <section className="l-hero" aria-labelledby="hero-title">
       <div className="l-hero__scenes" aria-hidden="true">{heroScenes.map((scene, i) => <img key={scene.image} className={`l-hero__image l-hero__image--${scene.label.toLowerCase()} ${heroScene === i ? 'is-active' : ''}`} src={scene.image} alt="" fetchPriority={i === 0 ? 'high' : undefined} loading={i < 2 ? 'eager' : 'lazy'} />)}</div>
       <header className="l-header l-container">
         <BrandWordmark href="#top" />
-        <nav id="main-navigation" className={menu ? 'is-open' : ''} aria-label="Main navigation">
-          <a href="/how-it-works.html" onClick={() => setMenu(false)}>How it works</a>
-          <a href="/life-together.html" onClick={() => setMenu(false)}>Life together</a>
-          <a href="/pricing.html" onClick={() => setMenu(false)}>Pricing</a>
-          <a href="/journal.html" onClick={() => setMenu(false)}>Journal</a>
-          <a href="/about.html" onClick={() => setMenu(false)}>About</a>
+        <nav aria-label="Main navigation">
+          <a href="/how-it-works.html">How it works</a>
+          <a href="/life-together.html">Life together</a>
+          <a href="/pricing.html">Pricing</a>
+          <a href="/journal.html">Journal</a>
+          <a href="/about.html">About</a>
           <a className="l-login" href="https://app.ourcommune.io/login">Log in</a>
           <LinkButton variant="white">Start free trial</LinkButton>
         </nav>
-        <button className="l-menu" aria-expanded={menu} aria-controls="main-navigation" onClick={() => setMenu(!menu)}>{menu ? 'Close' : 'Menu'}</button>
       </header>
       <div className="l-hero__body l-container">
         <h1 id="hero-title">For people who<br />do life together.</h1>
