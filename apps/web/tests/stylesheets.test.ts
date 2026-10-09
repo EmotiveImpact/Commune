@@ -72,3 +72,33 @@ describe("cascade layers", () => {
     }
   });
 });
+
+describe("colours", () => {
+  it("are written as the token wherever a token holds that colour on every element", () => {
+    // A token defined once (on :root) and never set again has the same colour
+    // everywhere, so a literal of that colour can always name it instead.
+    // calendar-date.css keeps literals: the HTML design reference links it on
+    // its own, without the app's tokens.
+    const sheets = stylesheets(src).filter((path) => path !== "styles/calendar-date.css");
+    const css = sheets.map((path) => [path, withoutComments(read(path))] as const);
+    const hex = (value: string) => {
+      const digits = value.slice(1).toLowerCase();
+      return digits.length === 3 ? [...digits].map((digit) => digit + digit).join("") : digits;
+    };
+    const definitions = new Map<string, string[]>();
+    for (const [, text] of css) {
+      for (const [, name, value] of text.matchAll(/(--[\w-]+)\s*:\s*([^;}]+)/g)) {
+        definitions.set(name, [...(definitions.get(name) ?? []), value.trim()]);
+      }
+    }
+    const fixed = new Map([...definitions]
+      .filter(([, values]) => values.length === 1 && /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(values[0]))
+      .map(([name, [value]]) => [hex(value), name]));
+    expect(fixed.get("1a1e2b")).toBe("--navy");
+    expect(fixed.get("2d6a4f")).toBe("--sage");
+    const literals = css.flatMap(([path, text]) => [...text.replace(/--[\w-]+\s*:[^;}]+/g, "").matchAll(/#([0-9a-f]{6}|[0-9a-f]{3})\b/gi)]
+      .filter(([match]) => fixed.has(hex(match)))
+      .map(([match]) => `${path}: ${match} is ${fixed.get(hex(match))}`));
+    expect(literals).toEqual([]);
+  });
+});
