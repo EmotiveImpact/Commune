@@ -267,6 +267,9 @@ export type AppState = {
   /** The last sign-out cleared this tab but the server did not confirm it. */
   signOutUnconfirmed: boolean;
   retrySignOut: () => Promise<boolean>;
+  /** Both keep this device signed in and end the account's other sessions. */
+  changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
+  signOutOtherDevices: () => Promise<void>;
   /** Why this tab was sent back to sign-in, when it was not the person's choice. */
   sessionNotice: string | null;
   go: (target: GoTarget, opts?: GoOpts) => void;
@@ -802,6 +805,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setLocation(keepSearch("/login"));
     await confirmSignOut();
   }, [confirmSignOut, forgetSession, setLocation]);
+  const changePassword = useCallback((currentPassword: string, newPassword: string) => mutate(async () => {
+    await post("/auth/change-password", { currentPassword, newPassword });
+  }), [mutate]);
+  const signOutOtherDevices = useCallback(() => mutate(async () => {
+    await post("/auth/logout-others", {});
+  }), [mutate]);
 
   const session: Session | null = data ? {
     userId: data.user.id,
@@ -1389,6 +1398,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     lastExpense, expenses, selectedExpense, createdExpenses: expenses, voidedExpenses,
     funds, recurringBills, splitTemplates, expenseTemplateId, reminderTargets, reminderUsage, sentReminders, notifications,
     signOut, signOutUnconfirmed, retrySignOut: confirmSignOut, sessionNotice, go,
+    changePassword, signOutOtherDevices,
     closeWindow: () => { if (!mutationCount) setWindowId(null); }, setMoreOpen,
     setNavMode: (navMode) => savePrefs({ navMode }),
     setDark: (dark) => savePrefs({ dark }),
