@@ -274,9 +274,11 @@ const today = new Date().toISOString().slice(0, 10);
   saved = await find();
   assert.equal(saved.version, 3);
   assert.ok([9600, 9900].includes(saved.amountMinor));
-  // Affected members are told; the person who made the change is not.
+  // Affected members are told; the person who made the change is not. While
+  // unread, one notice per expense and person keeps up with the latest change.
   const corrections = (await snapshot(b)).notifications.filter(item => item.kind === "expense-corrected" && item.expenseId === create.id);
-  assert.equal(corrections.length, 2);
+  assert.equal(corrections.length, 1);
+  assert.equal(corrections[0].amountMinor, saved.amountMinor / 3);
   assert.deepEqual([corrections[0].detail, corrections[0].senderUserId], ["Receipt total was wrong", avery.id]);
   assert.equal((await snapshot(a)).notifications.some(item => item.kind === "expense-corrected"), false);
 
