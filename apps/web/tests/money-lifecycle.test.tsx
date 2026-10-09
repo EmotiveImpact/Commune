@@ -687,7 +687,9 @@ describe("safe expense correction and void", () => {
     act(() => app.go("expenses"));
     expect(await screen.findByText("1 expense · £24.00 total recorded in this view")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Voided" }));
-    expect(screen.getByText("1 voided expense · kept for history, not counted in any balance")).toBeTruthy();
+    // It was recorded in January; earlier months show on request.
+    fireEvent.click(screen.getByRole("button", { name: "Show earlier" }));
+    expect(await screen.findByText("1 voided expense · kept for history, not counted in any balance")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: /House supplies/ }));
     const windowFrame = await screen.findByRole("dialog", { name: "House supplies" });
     expect(within(windowFrame).getByText("Voided by Test Person on 8 Jan 2026: Entered twice")).toBeTruthy();
@@ -720,7 +722,8 @@ describe("review fixes: voided ledger, lost replies, locks and Escape", () => {
     expect(await screen.findByRole("button", { name: "Voided" })).toBeTruthy();
     expect(screen.queryByText("No expenses yet.")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Voided" }));
-    expect(screen.getByRole("button", { name: /House supplies/ })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Show earlier" }));
+    expect(await screen.findByRole("button", { name: /House supplies/ })).toBeTruthy();
   });
 
   it("tells an admin who did not pay to ask the payer to reverse, not to reverse themselves", async () => {

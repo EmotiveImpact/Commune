@@ -401,6 +401,8 @@ export function hubFromSnapshot(
   // Voided expenses stay in the ledger as history but never count towards a
   // balance, a total or an outstanding share anywhere on the hub.
   const snapshot: Snapshot = { ...source, expenses: source.expenses.filter((expense) => !expense.voidedAt) };
+  // Older settled expenses stay on the server until asked for; they still count as logged.
+  const olderLogged = (source.expenseHistory?.olderCount ?? 0) - (source.expenseHistory?.olderVoidedCount ?? 0);
   const { commune } = snapshot;
   const currency = commune.currency;
   const names = new Map(snapshot.members.map((member) => [member.userId, member.name]));
@@ -555,7 +557,7 @@ export function hubFromSnapshot(
     }))].sort((a,b)=>(Date.parse(b.createdAt ?? "")||0)-(Date.parse(a.createdAt ?? "")||0)),
     notes,
     jumps: [
-      { go: "expenses", kicker: "Expenses", title: `${snapshot.expenses.length} logged`, hint: `${openRows.length} open` },
+      { go: "expenses", kicker: "Expenses", title: `${snapshot.expenses.length + olderLogged} logged`, hint: `${openRows.length} open` },
       { go: "settle", kicker: "Settle", title: moves.length ? oweLabel : "You’re even", hint: moves.length ? money(moneyFocus, currency) : "No outstanding shares involving you" },
       { go: "funds", kicker: "Funds", title: `${snapshot.funds.length} funds`, hint: `${money(fundTotal, currency)} recorded in` },
       { go: "notes", kicker: "Notes", title: `${notes.length} notes`, hint: "Shared information" },

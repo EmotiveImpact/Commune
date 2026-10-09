@@ -34,7 +34,7 @@ import {
 import { isStoredImage, readHubPhotos } from "./data/images";
 import { newRequestId } from "./data/requestId";
 import { isNativeNow, keepSearch, pathOnly } from "./nav";
-import { api, post, loadCommunes, loadSnapshot, ApiError } from "./live/api";
+import { api, post, loadCommunes, loadExpensePage, loadExpenseRecords, loadSnapshot, ApiError } from "./live/api";
 import { announceSession, currentViewer, onOtherTabSession, setViewer } from "./live/session";
 import { readStored, removeStored, writeStored } from "./live/storage";
 import {
@@ -43,6 +43,7 @@ import {
   money,
   type Commune,
   type CurrencyCode,
+  type Expense,
   type Fund,
   type LiveExpenseRow,
   type LiveHub,
@@ -201,6 +202,30 @@ type LiveData = {
   snapshots: Record<string, Snapshot>;
   invites: Record<string, PendingInvite[]>;
   reminderUsage: ReminderUsage | null;
+  older: Record<string, OlderExpenses>;
+};
+/**
+ * Expenses older than a commune's snapshot holds, fetched when someone asks
+ * for earlier months, a statement, an export or a link to one. They are kept
+ * when the snapshot is read again, and the snapshot's copy of an expense wins.
+ */
+type OlderExpenses = {
+  /** The snapshot's window these continue. When it moves on, they are dropped. */
+  since: string;
+  /** Every expense created from this date (UTC) on is loaded; null once all are. */
+  from: string | null;
+  olderCount: number;
+  olderVoidedCount: number;
+  expenses: Record<string, Expense>;
+};
+/** How far back the open commune's expenses are loaded. */
+export type ExpenseHistoryState = {
+  /** Every expense created from this date (UTC) on is loaded. */
+  loadedFrom: string | null;
+  complete: boolean;
+  /** Expenses older than what is loaded, and how many of them are voided. */
+  olderCount: number;
+  olderVoidedCount: number;
 };
 type AuthStatus = "loading" | "guest" | "authenticated" | "error";
 
@@ -251,6 +276,21 @@ export type AppState = {
   createdExpenses: LiveExpenseRow[];
   /** Kept for history. Never part of a balance, total or open count. */
   voidedExpenses: LiveExpenseRow[];
+  /**
+   * The open expense window's expense is older than what is loaded: it is
+   * being fetched, or fetching it failed and can be tried again.
+   */
+  expenseRead: "loading" | "failed" | null;
+  retryExpenseRead: () => void;
+  expenseHistory: ExpenseHistoryState;
+  /**
+   * The month (UTC) to show settled expenses from, or voided ones, going back
+   * from `before`: the latest earlier month that has one, loading older
+   * expenses as needed. Null when there are none before it.
+   */
+  loadEarlierExpenses: (before: string, voided?: boolean) => Promise<string | null>;
+  /** Loads every older expense, for a statement or an export, and returns the whole record. */
+  loadFullHistory: () => Promise<Snapshot | null>;
   funds: Fund[];
   recurringBills: RecurringBill[];
   splitTemplates: SplitTemplate[];
@@ -478,6 +518,33 @@ function operationPayload(item: NewOperation | OperationItem) {
   };
 }
 
+// The older expenses kept for this snapshot's window, if any.
+function olderFor(snapshot: Snapshot, older: OlderExpenses | undefined): OlderExpenses | undefined {
+  return older && older.since === snapshot.expenseHistory?.since ? older : undefined;
+}
+
+function historyState(snapshot: Snapshot | undefined, older: OlderExpenses | undefined): ExpenseHistoryState {
+  const history = snapshot?.expenseHistory;
+  // A snapshot that does not say holds every expense.
+  if (!snapshot || !history) return { loadedFrom: null, complete: true, olderCount: 0, olderVoidedCount: 0 };
+  const kept = olderFor(snapshot, older);
+  return kept
+    ? { loadedFrom: kept.from, complete: kept.from === null || kept.olderCount === 0, olderCount: kept.olderCount, olderVoidedCount: kept.olderVoidedCount }
+    : { loadedFrom: history.since, complete: history.olderCount === 0, olderCount: history.olderCount, olderVoidedCount: history.olderVoidedCount };
+}
+
+// The snapshot's expenses and the older ones fetched for it, newest first as
+// the database orders them. The snapshot's copy of an expense is the latest.
+function withOlderExpenses(snapshot: Snapshot, older: OlderExpenses | undefined): Snapshot {
+  const kept = olderFor(snapshot, older);
+  if (!kept) return snapshot;
+  const held = new Set(snapshot.expenses.map((expense) => expense.id));
+  const extra = Object.values(kept.expenses).filter((expense) => !held.has(expense.id));
+  if (!extra.length) return snapshot;
+  return { ...snapshot, expenses: [...snapshot.expenses, ...extra].sort((a, b) =>
+    (Date.parse(b.createdAt ?? "") || 0) - (Date.parse(a.createdAt ?? "") || 0) || b.id.localeCompare(a.id)) };
+}
+
 export function AppProvider({ children }: { children: ReactNode }) {
   const [location, setLocation] = useLocation();
   const screen: ScreenId = PATH_SCREEN[pathOnly(location)] ?? "home";
@@ -520,6 +587,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const lastActivityAt = useRef(Date.now());
   const snapshotReads = useRef(new Map<string, Promise<void>>());
   const snapshotRevisions = useRef(new Map<string, number>());
+  const olderReads = useRef(new Map<string, Promise<void>>());
+  // Linked expenses being fetched, and the ones that were refused or failed,
+  // by account, commune and expense.
+  const recordReads = useRef(new Set<string>());
+  const [recordResults, setRecordResults] = useState<Partial<Record<string, "missing" | "failed">>>({});
   const overview = screen === "home" || screen === "home-empty" || screen === "home-inbox" || screen === "communes" || screen === "home-activity";
   const viewRef = useRef({ hubId, overview });
   viewRef.current = { hubId, overview };
@@ -662,6 +734,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const seen = new Map((previous?.communes ?? []).map((commune) => [commune.id, commune]));
       const changed = communes.filter((commune) => seen.get(commune.id)?.changeMark !== commune.changeMark ||
         seen.get(commune.id)?.role !== commune.role);
+      const listed = (id: string) => communes.some((commune) => commune.id === id);
       const admins = communes.filter((commune) => commune.role === "admin");
       const invites = Object.fromEntries(Object.entries(previous?.invites ?? {})
         .filter(([id]) => admins.some((commune) => commune.id === id)));
@@ -672,6 +745,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         snapshots: Object.fromEntries(communes.filter((commune) => previous?.snapshots[commune.id])
           .map((commune) => [commune.id, previous!.snapshots[commune.id]])),
         invites, reminderUsage: previous?.reminderUsage ?? null,
+        older: Object.fromEntries(Object.entries(previous?.older ?? {}).filter(([id]) => listed(id))),
       });
       setAuthStatus("authenticated");
       setHubId((current) => communes.some((commune) => commune.id === current)
@@ -875,8 +949,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     email: data.user.email,
     emailVerified: data.user.emailVerified === true,
     hasHubs: data.communes.length > 0,
-    emptyLedger: data.communes.every((commune) =>
-      (data.snapshots[commune.id]?.expenses.length ?? 0) === 0),
+    emptyLedger: data.communes.every((commune) => (data.snapshots[commune.id]?.expenses.length ?? 0) +
+      (data.snapshots[commune.id]?.expenseHistory?.olderCount ?? 0) === 0),
     seed: "new",
     hubPhotos: prefs.hubPhotos,
     avatar: prefs.avatar,
@@ -899,17 +973,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const held = data?.snapshots[activeId];
   // The open commune's own screens never show a summary; they wait for its record.
   const snapshot = held?.detail === "summary" ? undefined : held;
+  const older = data?.older[activeId];
+  const expenseHistory = historyState(snapshot, older);
   const contentLoading = !!data?.communes.length && !overview && !snapshot;
   const contentError = snapshotErrors[activeId] ?? null;
-  const allExpenses = snapshot && data ? expenseRows(snapshot, data.user.id) : [];
+  const allExpenses = snapshot && data ? expenseRows(withOlderExpenses(snapshot, older), data.user.id) : [];
   const expenses = allExpenses.filter((row) => !row.voidedAt);
   const voidedExpenses = allExpenses.filter((row) => row.voidedAt);
   const selectedExpense = selectedExpenseId ? allExpenses.find((row) => row.id === selectedExpenseId) ?? null : expenses[0] ?? null;
   const lastExpense = selectedExpense
     ? { name: selectedExpense.name, amount: selectedExpense.amount, paidBy: selectedExpense.paidBy }
     : null;
-  // A commune whose only expenses are voided still has a ledger to show.
-  const empty = !!session?.hasHubs && allExpenses.length === 0;
+  // A commune whose only expenses are voided, or older than the snapshot
+  // holds, still has a ledger to show.
+  const empty = !!session?.hasHubs && allExpenses.length === 0 && !snapshot?.expenseHistory?.olderCount;
+  const selectedLoaded = !selectedExpenseId || allExpenses.some((row) => row.id === selectedExpenseId);
+  const recordKey = `${data?.user.id ?? ""}:${activeId}:${selectedExpenseId}`;
+  const recordResult = recordResults[recordKey];
+  // Until it is fetched, a linked expense older than what is loaded is on its way.
+  const expenseRead = (windowId === "expense" || windowId === "expense-paid") && !selectedLoaded &&
+    snapshot?.expenseHistory && recordResult !== "missing" ? recordResult ?? "loading" : null;
   const notes: Record<string, LiveNote> = Object.fromEntries(
     (snapshot?.notes ?? []).map((note) => [note.id, note]),
   );
@@ -970,6 +1053,112 @@ export function AppProvider({ children }: { children: ReactNode }) {
       // only the following read failed; expose Retry without losing the data.
     }
   }, [activeId, publishData]);
+
+  // Older expenses of one commune, a page at a time: whole months (UTC) going
+  // back from where the loaded ones start, or all of them when months is left
+  // out. One read per commune at a time; a second caller waits for the first.
+  const readOlder = useCallback((communeId: string, months?: number): Promise<void> => {
+    const current = dataRef.current;
+    const held = current?.snapshots[communeId];
+    const since = held?.expenseHistory?.since;
+    if (!current || !held || held.detail === "summary" || !since) return Promise.resolve();
+    const key = `${current.user.id}:${communeId}`;
+    const pending = olderReads.current.get(key);
+    if (pending) return pending;
+    const state = historyState(held, current.older[communeId]);
+    if (state.complete) return Promise.resolve();
+    const request = loadExpensePage(communeId, state.loadedFrom, months).then((page) => {
+      const latest = dataRef.current;
+      const now = latest?.snapshots[communeId];
+      // A new month moves the snapshot's window on; pages for the old one no longer join up.
+      if (!latest || latest.user.id !== current.user.id || !now || now.expenseHistory?.since !== since) return;
+      const kept = olderFor(now, latest.older[communeId]);
+      publishData({ ...latest, older: { ...latest.older, [communeId]: { since, from: page.from, olderCount: page.olderCount,
+        olderVoidedCount: page.olderVoidedCount,
+        expenses: { ...kept?.expenses, ...Object.fromEntries(page.expenses.map((expense) => [expense.id, expense])) } } } });
+    }).finally(() => olderReads.current.delete(key));
+    olderReads.current.set(key, request);
+    return request;
+  }, [publishData]);
+
+  const loadEarlierExpenses = useCallback(async (before: string, voided = false): Promise<string | null> => {
+    const communeId = activeId;
+    const limit = Date.parse(`${before}T00:00:00Z`);
+    // Each page reaches back at least a month, so this ends; the bound is a backstop.
+    for (let page = 0; page < 600; page += 1) {
+      const current = dataRef.current;
+      const held = current?.snapshots[communeId];
+      if (!current || !held || held.detail === "summary") return null;
+      const older = current.older[communeId];
+      const state = historyState(held, older);
+      // Open expenses always show, so only settled ones (or voided ones) count.
+      const newest = Math.max(...withOlderExpenses(held, older).expenses
+        .filter((expense) => voided ? !!expense.voidedAt
+          : !expense.voidedAt && expense.shares.every((share) => share.settledMinor >= share.amountMinor))
+        .map((expense) => Date.parse(expense.createdAt ?? "")).filter((time) => time < limit));
+      // Everything between that month and `before` must be loaded too.
+      const loadedFrom = state.loadedFrom ? Date.parse(`${state.loadedFrom}T00:00:00Z`) : -Infinity;
+      if (Number.isFinite(newest) && (state.complete || newest >= loadedFrom)) {
+        const month = new Date(newest);
+        return new Date(Date.UTC(month.getUTCFullYear(), month.getUTCMonth(), 1)).toISOString().slice(0, 10);
+      }
+      if (state.complete) return null;
+      await readOlder(communeId, 1);
+    }
+    return null;
+  }, [activeId, readOlder]);
+
+  const loadFullHistory = useCallback(async (): Promise<Snapshot | null> => {
+    const communeId = activeId;
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const current = dataRef.current;
+      const held = current?.snapshots[communeId];
+      if (!current || !held || held.detail === "summary") return null;
+      const older = current.older[communeId];
+      if (historyState(held, older).complete) {
+        // Every expense is in it now, so it says nothing about older ones.
+        const { expenseHistory: _history, changeMark: _mark, ...ledger } = withOlderExpenses(held, older);
+        return ledger;
+      }
+      await readOlder(communeId);
+    }
+    throw new Error("Earlier expenses couldn’t be loaded. Try again.");
+  }, [activeId, readOlder]);
+
+  // A link to an expense older than what is loaded (from search, a notice,
+  // activity or a recurring bill's history) fetches that one expense. If it
+  // is refused or gone, the window says it isn't in this commune.
+  useEffect(() => {
+    const current = dataRef.current;
+    const key = recordKey;
+    if (!current || expenseRead !== "loading" || recordReads.current.has(key)) return;
+    recordReads.current.add(key);
+    const finish = (result?: "missing" | "failed") => {
+      recordReads.current.delete(key);
+      if (result) setRecordResults((results) => ({ ...results, [key]: result }));
+    };
+    loadExpenseRecords(activeId, [selectedExpenseId]).then(({ expenses: found }) => {
+      const latest = dataRef.current;
+      const now = latest?.snapshots[activeId];
+      if (!latest || latest.user.id !== current.user.id || !now?.expenseHistory) return finish();
+      if (!found.length) return finish("missing");
+      // The snapshot holds every expense changed since its window began, and
+      // its copy wins, so an expense fetched here is never out of date.
+      const kept = olderFor(now, latest.older[activeId]) ?? { since: now.expenseHistory.since, from: now.expenseHistory.since,
+        olderCount: now.expenseHistory.olderCount, olderVoidedCount: now.expenseHistory.olderVoidedCount, expenses: {} };
+      publishData({ ...latest, older: { ...latest.older, [activeId]: { ...kept,
+        expenses: { ...kept.expenses, ...Object.fromEntries(found.map((expense) => [expense.id, expense])) } } } });
+      finish();
+    }, (error: unknown) => {
+      // A refusal stands; a failed connection can be tried again.
+      finish(error instanceof ApiError && error.status >= 400 && error.status < 500 ? "missing" : "failed");
+    });
+  }, [activeId, expenseRead, publishData, recordKey, selectedExpenseId]);
+  const retryExpenseRead = useCallback(() => setRecordResults((results) => {
+    const next = { ...results };
+    delete next[recordKey];
+    return next;
+  }), [recordKey]);
 
   const workflow = useCallback(async <T,>(path: string, body: unknown, method = "POST"): Promise<T> => mutate(async () => {
     const result = await api<T>(path,{method,body:JSON.stringify(body)});
@@ -1454,6 +1643,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     dark: prefs.dark, noticesOn: prefs.noticesOn, currency: prefs.currency,
     searchQuery, searchScope, searchTarget, noteSearchQuery, invites: data?.invites[activeId] ?? [], payMethods: prefs.payMethods, native, you,
     lastExpense, expenses, selectedExpense, createdExpenses: expenses, voidedExpenses,
+    expenseRead, retryExpenseRead, expenseHistory, loadEarlierExpenses, loadFullHistory,
     funds, recurringBills, splitTemplates, expenseTemplateId, reminderTargets, reminderUsage, sentReminders, notifications,
     signOut, signOutUnconfirmed, retrySignOut: confirmSignOut, sessionNotice, go,
     changePassword, signOutOtherDevices,

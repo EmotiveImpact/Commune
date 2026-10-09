@@ -1,15 +1,20 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { Router } from "wouter";
 import { memoryLocation } from "wouter/memory-location";
 import { App } from "../src/App";
 import { AppProvider, useApp, type AppState } from "../src/state";
-import { api, post, loadCommunes, loadSnapshot, ApiError } from "../src/live/api";
-import type { Commune, Expense, Snapshot } from "../src/live/model";
+import { api, post, loadCommunes, loadExpensePage, loadExpenseRecords, loadSnapshot, ApiError } from "../src/live/api";
+import { downloadText } from "../src/data/export";
+import type { Commune, Expense, ExpensePage, Snapshot } from "../src/live/model";
 
 vi.mock("../src/live/api", async (importOriginal) => ({
   ...await importOriginal<typeof import("../src/live/api")>(),
-  api: vi.fn(), post: vi.fn(), loadCommunes: vi.fn(), loadSnapshot: vi.fn(),
+  api: vi.fn(), post: vi.fn(), loadCommunes: vi.fn(), loadSnapshot: vi.fn(), loadExpensePage: vi.fn(), loadExpenseRecords: vi.fn(),
+}));
+vi.mock("../src/data/export", async (importOriginal) => ({
+  ...await importOriginal<typeof import("../src/data/export")>(),
+  downloadText: vi.fn(),
 }));
 
 const user = { id: "user-1", name: "Test Person", email: "test@example.test", emailVerified: true };
@@ -21,6 +26,11 @@ const trip: Commune = { id: "trip-1", name: "Lisbon trip", kind: "trip", currenc
 const today = new Date();
 function monthStart(back: number) {
   return new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() - back, 1)).toISOString().slice(0, 10);
+}
+function monthLabel(back: number) {
+  const start = new Date(`${monthStart(back)}T00:00:00Z`);
+  return new Intl.DateTimeFormat("en-GB", { month: "long", timeZone: "UTC",
+    ...(start.getUTCFullYear() === today.getUTCFullYear() ? {} : { year: "numeric" }) }).format(start);
 }
 /** The snapshot holds every expense created from the start of last month, and every open one. */
 const since = monthStart(1);
@@ -229,3 +239,230 @@ describe("checking for changes", () => {
   });
 });
 
+describe("older expenses", () => {
+  const groceries = expense("expense-groceries", "Groceries", 0);
+  const internet = expense("expense-internet", "Internet", 1);
+  const boiler = expense("expense-boiler", "Boiler repair", 5, "open");
+  const garden = expense("expense-garden", "Garden tools", 3);
+  const duplicate = expense("expense-duplicate", "Duplicate rent", 4, "voided");
+  const sofa = expense("expense-sofa", "Sofa", 7);
+  const older = [garden, duplicate, sofa];
+  // Pages as commune_expense_page returns them: whole months back from
+  // `before`, reaching back to the newest older expense past empty months.
+  function page(_communeId: string, before: string | null, months?: number): Promise<ExpensePage> {
+    const end = before ?? since;
+    const earlier = older.filter((item) => item.createdAt! < end);
+    let from: string | null = null;
+    if (months && earlier.length) {
+      const [year, month] = end.split("-").map(Number);
+      const back = new Date(Date.UTC(year, month - 1 - months, 1)).toISOString().slice(0, 10);
+      const newest = `${earlier[0].createdAt!.slice(0, 7)}-01`;
+      from = back < newest ? back : newest;
+    }
+    const rest = earlier.filter((item) => from !== null && item.createdAt! < from);
+    return Promise.resolve({ expenses: earlier.filter((item) => !rest.includes(item)), before: end, from,
+      olderCount: rest.length, olderVoidedCount: rest.filter((item) => item.voidedAt).length });
+  }
+  const shownNames = () => within(screen.getByRole("region", { name: "Shared expenses" })).queryAllByRole("button")
+    .map((button) => button.querySelector("strong")?.textContent);
+  beforeEach(() => {
+    records[home.id] = record(home, [groceries, internet, boiler], { olderCount: 3, olderVoidedCount: 1 });
+    vi.mocked(loadExpensePage).mockImplementation(page);
+  });
+
+  it("shows open expenses and this month's settled ones, and earlier months on request", async () => {
+    mount("/expenses");
+    await screen.findByRole("button", { name: /Groceries/ });
+    expect(shownNames()).toEqual(["Boiler repair", "Groceries"]);
+    expect(screen.getByText(`Settled expenses before ${monthLabel(0)} aren’t shown yet.`)).toBeTruthy();
+
+    // Last month is in the snapshot already.
+    fireEvent.click(screen.getByRole("button", { name: "Show earlier" }));
+    await screen.findByText(`Settled expenses before ${monthLabel(1)} aren’t shown yet.`);
+    expect(shownNames()).toEqual(["Boiler repair", "Groceries", "Internet"]);
+    expect(loadExpensePage).not.toHaveBeenCalled();
+
+    // Two months back holds nothing, so the next month shown is three months back.
+    fireEvent.click(screen.getByRole("button", { name: "Show earlier" }));
+    await screen.findByText(`Settled expenses before ${monthLabel(3)} aren’t shown yet.`);
+    expect(shownNames()).toEqual(["Boiler repair", "Groceries", "Internet", "Garden tools"]);
+    expect(loadExpensePage).toHaveBeenCalledExactlyOnceWith(home.id, since, 1);
+
+    // Voided ones page the same way, and filters apply to what is shown.
+    fireEvent.click(screen.getByRole("button", { name: "Voided" }));
+    expect(screen.getByText("0 voided expenses · kept for history, not counted in any balance")).toBeTruthy();
+    expect(screen.getByText(`Voided expenses before ${monthLabel(3)} aren’t shown yet.`)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Show earlier" }));
+    await screen.findByRole("button", { name: /Duplicate rent/ });
+    expect(loadExpensePage).toHaveBeenLastCalledWith(home.id, monthStart(3), 1);
+    expect(screen.queryByRole("button", { name: "Show earlier" })).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "All" }));
+    expect(shownNames()).toEqual(["Boiler repair", "Groceries", "Internet", "Garden tools"]);
+    fireEvent.click(screen.getByRole("button", { name: "Show earlier" }));
+    await screen.findByRole("button", { name: /Sofa/ });
+    expect(loadExpensePage).toHaveBeenCalledTimes(3);
+    // Everything is loaded now.
+    expect(screen.queryByRole("button", { name: "Show earlier" })).toBeNull();
+    fireEvent.change(screen.getByLabelText("Filter expenses in this commune"), { target: { value: "sofa" } });
+    expect(shownNames()).toEqual(["Sofa"]);
+  });
+
+  it("starts from last month while nothing has been settled this month", async () => {
+    records[home.id] = record(home, [internet, boiler], { olderCount: 3, olderVoidedCount: 1 });
+    mount("/expenses");
+    await screen.findByRole("button", { name: /Internet/ });
+    expect(shownNames()).toEqual(["Boiler repair", "Internet"]);
+    expect(screen.getByText(`Settled expenses before ${monthLabel(1)} aren’t shown yet.`)).toBeTruthy();
+  });
+
+  it("pages voided expenses on their own, passing over settled ones", async () => {
+    mount("/expenses");
+    await screen.findByRole("button", { name: /Groceries/ });
+    fireEvent.click(screen.getByRole("button", { name: "Voided" }));
+    expect(screen.getByText(`Voided expenses before ${monthLabel(0)} aren’t shown yet.`)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Show earlier" }));
+    await screen.findByRole("button", { name: /Duplicate rent/ });
+    expect(shownNames()).toEqual(["Duplicate rent"]);
+    expect(vi.mocked(loadExpensePage).mock.calls).toEqual([[home.id, since, 1], [home.id, monthStart(3), 1]]);
+    expect(screen.queryByRole("button", { name: "Show earlier" })).toBeNull();
+  });
+
+  it("says when earlier expenses couldn’t be loaded, and tries again", async () => {
+    vi.mocked(loadExpensePage).mockRejectedValueOnce(new TypeError("Failed to fetch"));
+    mount("/expenses");
+    await screen.findByRole("button", { name: /Groceries/ });
+    fireEvent.click(screen.getByRole("button", { name: "Show earlier" }));
+    await screen.findByRole("button", { name: /Internet/ });
+    fireEvent.click(screen.getByRole("button", { name: "Show earlier" }));
+    expect((await screen.findByRole("alert")).textContent).toBe("Earlier expenses couldn’t be loaded. Try again.");
+    fireEvent.click(screen.getByRole("button", { name: "Show earlier" }));
+    await screen.findByRole("button", { name: /Garden tools/ });
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("keeps older expenses when the snapshot is read again, and the snapshot’s copy wins", async () => {
+    mount("/expenses");
+    await screen.findByRole("button", { name: /Groceries/ });
+    fireEvent.click(screen.getByRole("button", { name: "Show earlier" }));
+    await screen.findByRole("button", { name: /Internet/ });
+    fireEvent.click(screen.getByRole("button", { name: "Show earlier" }));
+    await screen.findByRole("button", { name: /Garden tools/ });
+    // Someone corrects the older expense, so the snapshot carries it now.
+    const corrected = { ...garden, title: "Garden tools and seeds", version: 2, updatedAt: new Date().toISOString() };
+    listed = [{ ...home, changeMark: "2026-10-09:4:31" }];
+    records[home.id] = record(listed[0], [groceries, internet, corrected, boiler], { olderCount: 2, olderVoidedCount: 1 });
+    await act(async () => app.refresh());
+    await screen.findByRole("button", { name: /Garden tools and seeds/ });
+    expect(shownNames()).toEqual(["Boiler repair", "Groceries", "Internet", "Garden tools and seeds"]);
+    expect(loadExpensePage).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not call a commune empty when its expenses are older than the snapshot", async () => {
+    records[home.id] = record(home, [], { olderCount: 3, olderVoidedCount: 1 });
+    mount("/expenses");
+    await screen.findByText(`Settled expenses before ${monthLabel(0)} aren’t shown yet.`);
+    expect(screen.queryByText("No expenses yet.")).toBeNull();
+    expect(app.emptyHub).toBe(false);
+  });
+
+  it("fetches a linked expense that is older than what is loaded", async () => {
+    const pending = deferred<{ expenses: Expense[] }>();
+    vi.mocked(loadExpenseRecords).mockReturnValueOnce(pending.promise);
+    mount("/hub");
+    await screen.findByRole("heading", { name: home.name });
+    act(() => app.go("expense", { expense: sofa.id }));
+    const loading = await screen.findByRole("dialog", { name: "Expense" });
+    expect(within(loading).getByRole("status", { name: "Loading selected record" })).toBeTruthy();
+    expect(within(loading).queryByText("That expense isn’t in this hub.")).toBeNull();
+    expect(loadExpenseRecords).toHaveBeenCalledExactlyOnceWith(home.id, [sofa.id]);
+    await act(async () => pending.resolve({ expenses: [sofa] }));
+    const shown = await screen.findByRole("dialog", { name: "Sofa" });
+    expect(within(shown).getByText(/All shares are settled/)).toBeTruthy();
+    // Kept with the other older expenses, so it opens again without a request.
+    act(() => app.closeWindow());
+    act(() => app.go("expense", { expense: sofa.id }));
+    await screen.findByRole("dialog", { name: "Sofa" });
+    expect(loadExpenseRecords).toHaveBeenCalledTimes(1);
+  });
+
+  it("says a linked expense isn’t in the commune when it is refused or gone, and offers to try again when the connection fails", async () => {
+    mount("/hub");
+    await screen.findByRole("heading", { name: home.name });
+    vi.mocked(loadExpenseRecords).mockRejectedValueOnce(new ApiError("Not a commune member", 403));
+    act(() => app.go("expense", { expense: "expense-elsewhere" }));
+    expect(await screen.findByText("That expense isn’t in this hub.")).toBeTruthy();
+    act(() => app.closeWindow());
+    vi.mocked(loadExpenseRecords).mockResolvedValueOnce({ expenses: [] });
+    act(() => app.go("expense", { expense: "expense-gone" }));
+    expect(await screen.findByText("That expense isn’t in this hub.")).toBeTruthy();
+    act(() => app.closeWindow());
+
+    vi.mocked(loadExpenseRecords).mockRejectedValueOnce(new TypeError("Failed to fetch"));
+    act(() => app.go("expense", { expense: sofa.id }));
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain("That expense couldn’t be loaded. Try again.");
+    vi.mocked(loadExpenseRecords).mockResolvedValueOnce({ expenses: [sofa] });
+    fireEvent.click(within(alert).getByRole("button", { name: "Try again" }));
+    await screen.findByRole("dialog", { name: "Sofa" });
+    expect(loadExpenseRecords).toHaveBeenCalledTimes(4);
+  });
+
+  it("loads every older expense before showing a statement", async () => {
+    const pending = deferred<ExpensePage>();
+    vi.mocked(loadExpensePage).mockReturnValueOnce(pending.promise);
+    mount("/settle");
+    fireEvent.click(await screen.findByRole("button", { name: "View breakdown" }));
+    const dialog = await screen.findByRole("dialog", { name: "Breakdown" });
+    expect(within(dialog).getByText("Loading earlier expenses for the statement…")).toBeTruthy();
+    expect(within(dialog).queryByRole("region", { name: "Statement" })).toBeNull();
+    expect(loadExpensePage).toHaveBeenCalledExactlyOnceWith(home.id, since, undefined);
+    await act(async () => pending.resolve({ expenses: older, before: since, from: null, olderCount: 0, olderVoidedCount: 0 }));
+    const statement = await within(dialog).findByRole("region", { name: "Statement" });
+    for (const title of ["Sofa", "Duplicate rent", "Garden tools", "Internet"]) expect(statement.textContent).toContain(title);
+    expect(within(dialog).queryByText("Loading earlier expenses for the statement…")).toBeNull();
+  });
+
+  it("says when a statement can’t be shown because earlier expenses didn’t load", async () => {
+    vi.mocked(loadExpensePage).mockRejectedValueOnce(new TypeError("Failed to fetch"));
+    mount("/settle");
+    fireEvent.click(await screen.findByRole("button", { name: "View breakdown" }));
+    const dialog = await screen.findByRole("dialog", { name: "Breakdown" });
+    expect((await within(dialog).findByRole("alert")).textContent).toContain("Earlier expenses couldn’t be loaded, so the statement isn’t shown.");
+    expect(within(dialog).queryByRole("region", { name: "Statement" })).toBeNull();
+    fireEvent.click(within(dialog).getByRole("button", { name: "Try again" }));
+    expect((await within(dialog).findByRole("region", { name: "Statement" })).textContent).toContain("Sofa");
+  });
+
+  it("loads every older expense before making an export file", async () => {
+    const pending = deferred<ExpensePage>();
+    vi.mocked(loadExpensePage).mockReturnValueOnce(pending.promise);
+    mount("/commune-settings");
+    fireEvent.click(await screen.findByRole("button", { name: /Download expenses/ }));
+    expect(await screen.findByText("Loading earlier expenses for the file…")).toBeTruthy();
+    expect((screen.getByRole("button", { name: /Download all records/ }) as HTMLButtonElement).disabled).toBe(true);
+    expect(downloadText).not.toHaveBeenCalled();
+    await act(async () => pending.resolve({ expenses: older, before: since, from: null, olderCount: 0, olderVoidedCount: 0 }));
+    await waitFor(() => expect(downloadText).toHaveBeenCalledTimes(1));
+    const csv = vi.mocked(downloadText).mock.calls[0][1];
+    for (const title of ["Sofa", "Duplicate rent", "Garden tools", "Groceries", "Boiler repair"]) expect(csv).toContain(title);
+    expect(screen.queryByText("Loading earlier expenses for the file…")).toBeNull();
+
+    // The next file needs nothing more, and says nothing about a window.
+    fireEvent.click(screen.getByRole("button", { name: /Download all records/ }));
+    await waitFor(() => expect(downloadText).toHaveBeenCalledTimes(2));
+    const file = JSON.parse(vi.mocked(downloadText).mock.calls[1][1]) as Snapshot;
+    expect(file.expenses.map((item) => item.title)).toEqual(["Groceries", "Internet", "Garden tools", "Duplicate rent", "Boiler repair", "Sofa"]);
+    expect(file.expenseHistory).toBeUndefined();
+    expect(file.changeMark).toBeUndefined();
+    expect(loadExpensePage).toHaveBeenCalledTimes(1);
+  });
+
+  it("makes no file when earlier expenses couldn’t be loaded", async () => {
+    vi.mocked(loadExpensePage).mockRejectedValueOnce(new TypeError("Failed to fetch"));
+    mount("/commune-settings");
+    fireEvent.click(await screen.findByRole("button", { name: /Download expenses/ }));
+    expect((await screen.findByRole("alert")).textContent).toBe("Earlier expenses couldn’t be loaded, so no file was made. Try again.");
+    expect(downloadText).not.toHaveBeenCalled();
+  });
+});

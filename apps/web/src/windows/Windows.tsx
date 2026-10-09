@@ -56,6 +56,8 @@ export function Windows() {
     mutationPending,
     contentLoading,
     contentError,
+    expenseRead,
+    retryExpenseRead,
     refresh,
   } = useApp();
   const frameRef = useRef<HTMLDivElement>(null);
@@ -98,7 +100,8 @@ export function Windows() {
   }, [isOpen]);
   useEffect(() => { if (window) frameRef.current?.focus(); }, [window]);
   if (!window || inlineNote) return null;
-  const waitingForRecord = contentLoading && ["expense", "expense-paid", "note", "note-edit", "operation", "operation-edit"].includes(window);
+  const waitingForRecord = (contentLoading && ["expense", "expense-paid", "note", "note-edit", "operation", "operation-edit"].includes(window)) || !!expenseRead;
+  const recordError = contentLoading ? contentError : expenseRead === "failed" ? "That expense couldn’t be loaded. Try again." : null;
   const title =
     window === "expense" || window === "expense-paid"
       ? selectedExpense?.name ?? "Expense"
@@ -119,8 +122,8 @@ export function Windows() {
           </button>
         </header>
         <div className="a-window-body">
-          {waitingForRecord ? contentError ? <div role="alert"><p>{contentError}</p>
-            <button className="a-btn" type="button" onClick={() => void refresh()}>Try again</button></div> :
+          {waitingForRecord ? recordError ? <div role="alert"><p>{recordError}</p>
+            <button className="a-btn" type="button" onClick={() => contentLoading ? void refresh() : retryExpenseRead()}>Try again</button></div> :
             <div className="c-window-record-loading" role="status" aria-label="Loading selected record"><span /><span /><span /></div> : <>
           {window === "notices" && <Notices />}
           {window === "reminder-preview" && <ReminderPreview />}
@@ -764,7 +767,16 @@ function Profile() {
 }
 
 function Breakdown() {
-  const { go, closeWindow, hub, expenses, voidedExpenses, session, snapshots } = useApp();
+  const { go, closeWindow, hub, expenses, voidedExpenses, session, snapshots, expenseHistory, loadFullHistory } = useApp();
+  // A statement covers everything shared with that person, so it waits for every older expense.
+  const [historyFailed, setHistoryFailed] = useState(false);
+  useEffect(() => {
+    if (expenseHistory.complete || historyFailed) return;
+    let open = true;
+    loadFullHistory().catch(() => { if (open) setHistoryFailed(true); });
+    return () => { open = false; };
+  }, [expenseHistory.complete, historyFailed, loadFullHistory]);
+  const history = expenseHistory.complete ? "ready" : historyFailed ? "error" : "loading";
   const others = hub.members.filter((member) => member.userId !== session?.userId);
   const ledger = [...expenses, ...voidedExpenses];
   // People who have left keep their statements, listed under their own
@@ -828,7 +840,10 @@ function Breakdown() {
         );})}
         {!moves.length ? <p className="a-window-note">No outstanding shares for you in this commune.</p> : null}
       </div>
-      {other && statement ? (
+      {other && history === "loading" ? <p className="a-window-note" role="status">Loading earlier expenses for the statement…</p> : null}
+      {other && history === "error" ? <div role="alert"><p className="a-window-note">Earlier expenses couldn’t be loaded, so the statement isn’t shown.</p>
+        <button className="a-btn ghost" type="button" onClick={() => setHistoryFailed(false)}>Try again</button></div> : null}
+      {other && statement && history === "ready" ? (
         <section className="c-statement" aria-label="Statement">
           <div className="a-field">
             <label htmlFor="statement-member">Statement with</label>

@@ -13,6 +13,7 @@ import { SignInSettings } from "../ui/SignInSettings";
 import { communeExportJson, downloadText, expensesCsv } from "../data/export";
 import { todayIso } from "../data/operations";
 import { currencyHint, currencyLockedBy } from "../data/currency";
+import type { Snapshot } from "../live/model";
 
 export function SettingsScreen() {
   const {
@@ -226,7 +227,7 @@ export function SettingsScreen() {
 
 export function CommuneSettingsScreen() {
   const {
-    hub, session, go, setHubPhoto, updateCommune, snapshots,
+    hub, session, go, setHubPhoto, updateCommune, snapshots, loadFullHistory,
   } = useApp();
   const [name, setName] = useState(hub.name);
   const [type, setType] = useState(hub.type);
@@ -240,6 +241,7 @@ export function CommuneSettingsScreen() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
+  const [exporting, setExporting] = useState<"" | "loading" | "error">("");
   // The database's rule, as its snapshot reports it.
   const currencyLocks = currencyLockedBy(snapshots[hub.id]);
   const canEdit = hub.role === "admin";
@@ -267,6 +269,18 @@ export function CommuneSettingsScreen() {
       setError(cause instanceof Error ? cause.message : "Could not save commune settings.");
     } finally {
       setBusy(false);
+    }
+  }
+
+  // A file holds every expense, so the older ones are loaded first.
+  async function download(save: (ledger: Snapshot) => void) {
+    setExporting("loading");
+    try {
+      const ledger = await loadFullHistory();
+      if (ledger) save(ledger);
+      setExporting("");
+    } catch {
+      setExporting("error");
     }
   }
 
@@ -326,21 +340,19 @@ export function CommuneSettingsScreen() {
         <div className="a-set-group">
           <h3>Records</h3>
           <div className="a-set-list">
-            <button className="a-set-row" type="button" disabled={!snapshots[hub.id]} onClick={() => {
-              const snapshot = snapshots[hub.id];
-              if (snapshot) downloadText(`${hub.name} expenses ${todayIso()}.csv`, expensesCsv(snapshot), "text/csv;charset=utf-8");
-            }}>
+            <button className="a-set-row" type="button" disabled={!snapshots[hub.id] || exporting === "loading"} onClick={() => void download((ledger) =>
+              downloadText(`${hub.name} expenses ${todayIso()}.csv`, expensesCsv(ledger), "text/csv;charset=utf-8"))}>
               <span className="a-set-row-ic" aria-hidden="true"><Icon name="expenses" /></span>
               <span className="a-set-row-copy"><strong>Download expenses</strong><span>A spreadsheet with one row per share: amounts, payments received and what is outstanding.</span></span>
             </button>
-            <button className="a-set-row" type="button" disabled={!snapshots[hub.id]} onClick={() => {
-              const snapshot = snapshots[hub.id];
-              if (snapshot) downloadText(`${hub.name} records ${todayIso()}.json`, communeExportJson(snapshot), "application/json");
-            }}>
+            <button className="a-set-row" type="button" disabled={!snapshots[hub.id] || exporting === "loading"} onClick={() => void download((ledger) =>
+              downloadText(`${hub.name} records ${todayIso()}.json`, communeExportJson(ledger), "application/json"))}>
               <span className="a-set-row-ic" aria-hidden="true"><Icon name="notes" /></span>
               <span className="a-set-row-copy"><strong>Download all records</strong><span>Everything you can see in this commune, as a file. Passwords and door codes in notes are left out.</span></span>
             </button>
           </div>
+          {exporting === "loading" ? <p className="a-commune-setting-note" role="status">Loading earlier expenses for the file…</p> : null}
+          {exporting === "error" ? <p className="a-form-error" role="alert">Earlier expenses couldn’t be loaded, so no file was made. Try again.</p> : null}
           <p className="a-commune-setting-note">Files are made on this device from what you can already see. Nothing is sent anywhere.</p>
         </div>
         <div className="a-set-group">
