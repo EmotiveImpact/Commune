@@ -65,15 +65,6 @@
 .l-footer__photo{object-position:center 20%}
 
 /* Everyday photographs with room to breathe between product sections. */
-.l-real-life{background:#fff}
-.l-real-life__grid{display:grid;grid-template-columns:1.08fr .92fr;gap:24px;align-items:start}
-.l-real-life figure{min-width:0}
-.l-real-life img{height:390px;border-radius:26px;object-fit:cover}
-.l-real-life figure:first-child img{object-position:center 46%}
-.l-real-life figure:last-child img{object-position:center 48%}
-.l-real-life figcaption{padding:22px 4px 0}
-.l-real-life h3{font-size:28px;font-weight:500;line-height:1.15;letter-spacing:-.9px}
-.l-real-life figcaption p{color:#65717c;font-size:16px;line-height:1.5;margin-top:10px}
 
 /* One Meta-inspired photographic chapter, adapted to Commune's message. */
 .l-moment{height:auto;display:block;padding:82px 0;background:#fff;color:#fff}
@@ -85,8 +76,8 @@
 .l-moment .l-eyebrow{font-size:12px;margin-bottom:14px;color:#fff}
 .l-moment h2{font-size:clamp(40px,4.8vw,62px);line-height:1.05;letter-spacing:-2.7px}
 .l-moment p{font-size:17px;font-weight:500;line-height:1.42;margin:0;text-shadow:0 1px 8px #11203499}
-@media(max-width:800px){.l-real-life img{height:325px}.l-real-life__grid{gap:17px}.l-moment{padding:64px 0}.l-moment__frame{height:440px}.l-moment__content{padding-top:52px}}
-@media(max-width:600px){.l-real-life__grid{grid-template-columns:1fr;gap:35px}.l-real-life img{height:285px;border-radius:21px}.l-real-life figcaption{padding-top:17px}.l-real-life h3{font-size:25px}.l-real-life figcaption p{font-size:15px}.l-moment{height:auto;padding:52px 0;align-items:initial}.l-moment__frame{height:470px;border-radius:23px}.l-moment__frame>img{object-position:52% center}.l-moment__content{padding:37px 21px 31px}.l-moment .l-eyebrow{font-size:12px}.l-moment h2{font-size:39px;letter-spacing:-1.6px}.l-moment p{font-size:14px}.l-moment p br{display:none}}
+@media(max-width:800px){.l-moment{padding:64px 0}.l-moment__frame{height:440px}.l-moment__content{padding-top:52px}}
+@media(max-width:600px){.l-moment{height:auto;padding:52px 0;align-items:initial}.l-moment__frame{height:470px;border-radius:23px}.l-moment__frame>img{object-position:52% center}.l-moment__content{padding:37px 21px 31px}.l-moment .l-eyebrow{font-size:12px}.l-moment h2{font-size:39px;letter-spacing:-1.6px}.l-moment p{font-size:14px}.l-moment p br{display:none}}
 
 /* A photographic sequence, with controls that remain useful when motion is off. */
 .l-hero__scenes{position:absolute;inset:0;z-index:-2;overflow:hidden}

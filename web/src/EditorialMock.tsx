@@ -100,23 +100,13 @@ export default function EditorialMock() {
     <main>
       <section className="l-features l-section" id="features" aria-labelledby="features-title">
         <div className="l-container">
-          <div className="l-section-heading"><div><span className="l-eyebrow">Meet your shared headspace</span><h2 id="features-title">All the shared stuff.<br />In <mark>one clear place.</mark></h2></div><p>Less working it out.<br />More getting on with living.</p></div>
+          <div className="l-section-heading"><div><span className="l-eyebrow">Your shared space</span><h2 id="features-title">All the shared stuff.<br />In <mark>one clear place.</mark></h2></div><p>Less working it out.<br />More getting on with living.</p></div>
           <div className="l-feature-grid l-feature-grid--pillars">
             <article className="l-feature"><span className="l-card-number">01 / SHARED MONEY</span><h3>Know where you stand.</h3><div className="l-pillar-preview l-money-glance"><span className="l-mini-label">MAPLE HOUSE · THIS MONTH</span><div className="l-money-glance__total"><span>Your share</span><strong>£300.00</strong></div><div className="l-money-glance__person"><Avatar index={0} /><span>Alex <small>(you)</small></span><span className="l-status l-status--paid">Paid</span></div><div className="l-mini-progress"><span>2 of 4 shares paid</span><Avatars /></div><div className="l-progress"><span /></div></div><p>Split fairly. See what’s due and what’s paid.</p></article>
             <article className="l-feature"><span className="l-card-number">02 / SHARED RESPONSIBILITY</span><h3>Everyone has their part.</h3><div className="l-pillar-preview"><div className="l-pillar-preview__heading"><span className="l-mini-label">THIS WEEK AT HOME</span><span className="l-status">3 jobs</span></div>{[{ task: 'Take the recycling out', when: 'Today', member: 1 }, { task: 'Water the plants', when: 'Tomorrow', member: 2 }, { task: 'Clean the kitchen', when: 'Friday', member: 3 }].map(job => <div className="l-task-row" key={job.task}><span className="l-task-ring" aria-hidden="true" /><div><strong>{job.task}</strong><small>{people[job.member]} · {job.when}</small></div><Avatar index={job.member} /></div>)}</div><p>Give the everyday jobs a name and a next turn.</p></article>
             <article className="l-feature"><span className="l-card-number">03 / SHARED DETAILS</span><h3>Find it without asking.</h3><div className="l-pillar-preview"><span className="l-mini-label">OUR HOUSE ESSENTIALS</span><div className="l-essential-row"><span>Wi-Fi network</span><strong>Maple House</strong></div><div className="l-essential-row"><span>Recycling collection</span><strong>Friday morning</strong></div><div className="l-pinned-note"><Avatar index={0} /><div><span>Pinned by Alex</span><p>Spare keys are with Jordan if you need them.</p></div></div></div><p>Keep useful information and group updates close.</p></article>
           </div>
           <p className="l-preview-note">A little look inside Commune. Illustrative group, tasks and expenses.</p>
-        </div>
-      </section>
-
-      <section className="l-real-life l-section" aria-labelledby="real-life-title">
-        <div className="l-container">
-          <div className="l-section-heading"><div><span className="l-eyebrow">For the everyday and the unexpected</span><h2 id="real-life-title">More of the moments<br />you share.</h2></div><p>From the usual Tuesday dinner<br />to plans somewhere new.</p></div>
-          <div className="l-real-life__grid">
-            <figure><img src="/scene-warm-table.jpg" alt="Two friends making dinner together at home" loading="lazy" /><figcaption><h3>At the table.</h3><p>Who’s cooking, what’s needed, how you share the shop.</p></figcaption></figure>
-            <figure><img src="/work-together.png" alt="People working together around a table" loading="lazy" /><figcaption><h3>Making things happen.</h3><p>The space, the supplies and everyone doing their part.</p></figcaption></figure>
-          </div>
         </div>
       </section>
 
@@ -167,7 +157,7 @@ export default function EditorialMock() {
         </div>
       </div></section>
 
-      <section className="l-moment" aria-labelledby="moment-title"><div className="l-moment__frame l-container"><img src="/scene-blue-day.jpg" alt="Friends enjoying a clear day in the park with their dog" loading="lazy" /><div className="l-moment__content"><div><span className="l-eyebrow">All the ways you share a life.</span><h2 id="moment-title">The best bits are shared.</h2></div><p>When everyone knows their part, there’s more room for this.<br />The everyday. The unexpected. The time together.</p></div></div></section>
+      <section className="l-moment" aria-labelledby="moment-title"><div className="l-moment__frame l-container"><img src="/scene-blue-day.jpg" alt="Friends enjoying a clear day in the park with their dog" loading="lazy" /><div className="l-moment__content"><div><span className="l-eyebrow">All the ways you share a life.</span><h2 id="moment-title">The best bits are shared.</h2></div><p>When everyone knows their part, there’s more room for this. <br />The everyday. The unexpected. The time together.</p></div></div></section>
 
       <section className="l-pricing l-section" id="plans" aria-labelledby="plans-title"><div className="l-container">
         <div className="l-section-heading"><div><span className="l-eyebrow">A plan for your people</span><h2 id="plans-title">A little clarity.<br />For every <mark>group.</mark></h2></div><div className="l-billing" aria-label="Billing period"><button aria-pressed={!yearly} onClick={() => setYearly(false)}>Monthly</button><button aria-pressed={yearly} onClick={() => setYearly(true)}>Yearly</button></div></div>
@@ -185,7 +175,7 @@ export default function EditorialMock() {
     </main>
 
     <div className="l-ending"><img className="l-ending__photo" src="/unique-footer.jpg" alt="" loading="lazy" />
-      <section className="l-final-cta" aria-labelledby="closing-title"><div className="l-container"><span className="l-eyebrow">Less admin. More living.</span><h2 id="closing-title">Make space for the good stuff.</h2><p>The costs, the jobs, the little details. A shared place for it all.<br />Start with 7 days on Standard.</p><LinkButton variant="white">Start your 7-day free trial</LinkButton></div></section>
+      <section className="l-final-cta" aria-labelledby="closing-title"><div className="l-container"><span className="l-eyebrow">Less admin. More living.</span><h2 id="closing-title">Make space for the good stuff.</h2><p>The costs, the jobs, the little details. A shared place for it all. <br />Start with 7 days on Standard.</p><LinkButton variant="white">Start your 7-day free trial</LinkButton></div></section>
       <footer className="l-footer"><div className="l-container l-footer__inner"><div className="l-footer__links"><div><BrandWordmark /><p>For people who do life together.</p></div><nav aria-label="Explore"><h3>Explore</h3><a href="/how-it-works.html">How it works</a><a href="/life-together.html">Life together</a><a href="/pricing.html">Pricing</a><a href="/journal.html">Journal</a><a href="/about.html">About</a></nav><nav aria-label="Get in touch"><h3>Your Commune</h3><a href="https://app.ourcommune.io/login">Log in</a><a href={signup}>Get started</a><a href="mailto:support@ourcommune.io">Contact us</a></nav></div><div className="l-footer__bottom"><span>© {new Date().getFullYear()} Commune</span><div><a href="https://app.ourcommune.io/privacy">Privacy policy</a><a href="https://app.ourcommune.io/terms">Terms of service</a></div></div></div></footer>
     </div>
   </div>;
