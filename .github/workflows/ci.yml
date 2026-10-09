@@ -169,8 +169,8 @@ jobs:
       # Every commit behind this checkout, so a secret added and removed again
       # is caught however the change was pushed. These are gitleaks' own
       # history options, limited to this checkout rather than every branch.
-      # .gitleaksignore lists the two old commits that hold the Google API key
-      # from app review finding 1, by fingerprint (commit, file, rule and line;
-      # no secret). Revoking that key is still needed.
+      # .gitleaksignore lists the old commits that hold the Google API key from
+      # app review finding 1 and the earlier app's web push key, by fingerprint
+      # (commit, file, rule and line; no secret). Revoking both is still needed.
       - name: Scan the history
         run: gitleaks git --log-opts="--full-history --diff-filter=tuxdb HEAD" --redact --no-banner --verbose .
