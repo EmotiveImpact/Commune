@@ -1,7 +1,7 @@
 import { CircleAlert, FileText, House, ReceiptText, Repeat2, ShoppingBag, SquareCheck, UsersRound, Files } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { formatMoney } from "@commune/core";
-import { SEARCH_KINDS, SEARCH_LABELS, type SearchKind, type SearchResponse, type SearchResult } from "../live/search";
+import { SEARCH_KINDS, SEARCH_LABELS, searchMeta, type SearchKind, type SearchResponse, type SearchResult } from "../live/search";
 import { Button } from "./components";
 const ICONS: Record<SearchKind, LucideIcon> = {
   commune: House, expense: ReceiptText, note: FileText, operation: SquareCheck,
@@ -48,7 +48,7 @@ export function SearchResults({ result, pending, error, query, retry, onOpen, li
             onMouseEnter={() => onActive?.(position)}>
             <span className="c-search-result-icon"><Glyph size={18} strokeWidth={1.5} aria-hidden="true" /></span>
             <span className="c-search-result-copy"><strong>{item.title}</strong><small>{item.kind === "commune" ? item.subtitle : `${item.communeName} · ${item.subtitle}`}</small></span>
-            <span className="c-search-result-meta">{amount && <strong>{amount}</strong>}<small>{item.meta}</small></span>
+            <span className="c-search-result-meta">{amount && <strong>{amount}</strong>}<small>{searchMeta(item)}</small></span>
           </button>;
         })}
       </div>;
