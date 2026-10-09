@@ -353,6 +353,19 @@ export type Need = {
   operationId?: string;
   fundId?: string;
 };
+/**
+ * The name of anyone a snapshot knows, former members included (0031). With
+ * left, someone who is no longer a member is named "(left)", where a screen
+ * needs to make that clear. Only someone the snapshot does not know gets the
+ * fallback words, such as "a former member".
+ */
+export function personName(members: Member[] | undefined, userId: string | null | undefined, fallback: string,
+  options: { left?: boolean } = {}): string {
+  const member = userId ? members?.find((item) => item.userId === userId) : undefined;
+  if (!member?.name.trim()) return fallback;
+  return options.left && member.active === false ? `${member.name} (left)` : member.name;
+}
+
 const NEED_ORDER: Need["kind"][] = ["confirm", "pay", "task", "pledge", "owed", "reported"];
 /** Actions in their order, then the earliest date first; anything undated after the dated ones. */
 export function compareNeeds(a: Need, b: Need): number {
@@ -373,8 +386,7 @@ function namesList(names: string[]): string {
  */
 export function needsYou(snapshot: Snapshot, viewerId: string, today = todayIso()): { actions: Need[]; waiting: Need[] } {
   const currency = snapshot.commune.currency;
-  const names = new Map(snapshot.members.map((member) => [member.userId, member.name]));
-  const nameOf = (userId: string) => names.get(userId) ?? "a former member";
+  const nameOf = (userId: string) => personName(snapshot.members, userId, "a former member", { left: true });
   const actions: Need[] = [];
   const waiting: Need[] = [];
   for (const expense of snapshot.expenses) {

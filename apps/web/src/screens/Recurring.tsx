@@ -44,12 +44,8 @@ import "./Money.css";
 
 /** A name for anyone a bill mentions, including people who have left. */
 function useMemberName() {
-  const { hub, snapshots } = useApp();
-  const everyone = snapshots[hub.id]?.members ?? [];
-  return (userId: string) =>
-    hub.members.find((member) => member.userId === userId)?.name ??
-    everyone.find((member) => member.userId === userId)?.name ??
-    "A former member";
+  const { personName } = useApp();
+  return (userId: string) => personName(userId, "A former member");
 }
 
 /** Record one period as paid: the usual amount, or what was actually paid. */
@@ -57,13 +53,13 @@ function RecordPeriodDialog({ bill, pending, error, onRecord, onClose }: {
   bill: RecurringBill; pending: boolean; error: string;
   onRecord: (amountMinor: number) => void; onClose: () => void;
 }) {
-  const { hub } = useApp();
+  const { hub, personName } = useApp();
   const [amount, setAmount] = useState((bill.amountMinor / 100).toFixed(2));
   const [validation, setValidation] = useState("");
   const minor = parseMoneyInput(amount, hub.currency);
   const different = minor !== null && minor !== bill.amountMinor;
   const preview = different && minor ? scaleRecurringShares(bill.allocations, minor) : [];
-  const name = (userId: string) => hub.members.find((member) => member.userId === userId)?.name ?? "Former member";
+  const name = (userId: string) => personName(userId, "Former member", { left: true });
   return (
     <Dialog title={`Record ${bill.title} as paid?`} pending={pending} onClose={onClose}>
       <form onSubmit={(event) => {
@@ -125,10 +121,10 @@ function SkipPeriodDialog({ bill, pending, error, onSkip, onClose }: {
 
 /** The latest periods of one bill, newest first. */
 function PeriodHistory({ bill }: { bill: RecurringBill }) {
-  const { hub, go } = useApp();
+  const { hub, go, personName } = useApp();
   const history = bill.history ?? [];
   if (!history.length) return null;
-  const name = (userId: string | null) => hub.members.find((member) => member.userId === userId)?.name ?? "a former member";
+  const name = (userId: string | null) => personName(userId, "a former member");
   return (
     <details className="c-contribution-history c-period-history">
       <summary>{history.length === 1 ? "1 period" : `${history.length} recent periods`}</summary>
@@ -399,6 +395,7 @@ export function RecurringScreen() {
     clearApiError,
     session,
     go,
+    personName,
   } = useApp();
   const name = useMemberName();
   const [editor, setEditor] = useState<{ id: string | null; resuming: boolean } | null>(null);
@@ -560,9 +557,7 @@ export function RecurringScreen() {
                 <Repeat2 size={14} aria-hidden="true" />{" "}
                 {bill.frequency === "monthly" ? "Monthly" : "Weekly"} · next{" "}
                 {dateLabel(bill.nextDueOn)} · paid by{" "}
-                {hub.members.find(
-                  (member) => member.userId === bill.paidByUserId,
-                )?.name ?? "Former member"}
+                {personName(bill.paidByUserId, "Former member", { left: true })}
                 </p>
               </div>
               <div className="a-field-row">

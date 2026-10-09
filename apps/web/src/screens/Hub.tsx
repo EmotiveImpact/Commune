@@ -113,12 +113,12 @@ const announcementDate = new Intl.DateTimeFormat("en-GB", { day: "numeric", mont
 
 /** Notices from an admin. Important ones ask each member to confirm they have seen them. */
 function Announcements() {
-  const { announcements, hub, you, acknowledgeAnnouncement, archiveAnnouncement, go } = useApp();
+  const { announcements, hub, you, acknowledgeAnnouncement, archiveAnnouncement, go, personName } = useApp();
   const [pending, setPending] = useState<string | null>(null);
   const [confirmDown, setConfirmDown] = useState<string | null>(null);
   const [error, setError] = useState("");
   if (!announcements.length) return null;
-  const nameOf = (userId: string) => hub.members.find(member => member.userId === userId)?.name ?? "A former member";
+  const nameOf = (userId: string) => personName(userId, "A former member");
   async function run(id: string, action: () => Promise<unknown>) {
     setPending(id); setError("");
     try { await action(); setConfirmDown(null); }

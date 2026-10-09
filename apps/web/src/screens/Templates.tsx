@@ -142,7 +142,7 @@ function TemplateEditor({
 }
 
 export function TemplatesScreen() {
-  const { hub, splitTemplates, saveSplitTemplate, session, go } = useApp();
+  const { hub, splitTemplates, saveSplitTemplate, session, go, personName } = useApp();
   const [editor, setEditor] = useState<SplitTemplate | "new" | null>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
@@ -244,12 +244,7 @@ export function TemplatesScreen() {
               <p className="c-form-help">
                 {template.method} ·{" "}
                 {template.participants
-                  .map(
-                    (item) =>
-                      hub.members.find(
-                        (member) => member.userId === item.userId,
-                      )?.name ?? "Former member",
-                  )
+                  .map((item) => personName(item.userId, "Former member", { left: true }))
                   .join(", ")}
               </p>
               {missing && (

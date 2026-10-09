@@ -55,6 +55,7 @@ import {
   expenseRows,
   hubFromSnapshot,
   money,
+  personName,
   type Commune,
   type CurrencyCode,
   type Expense,
@@ -311,6 +312,12 @@ export type AppState = {
   acknowledgeAnnouncement: (id: string) => Promise<AnnouncementResult>;
   archiveAnnouncement: (id: string) => Promise<AnnouncementResult>;
   notifications: Notification[];
+  /**
+   * The name of anyone the open commune's records know, former members
+   * included. left: name someone who has left as "Name (left)". fallback:
+   * the words for someone the records do not know.
+   */
+  personName: (userId: string | null | undefined, fallback: string, options?: { left?: boolean }) => string;
   /**
    * Unread notices in each of the reader's communes, by commune id. Each
    * comes with the commune list, so the bell counts every commune.
@@ -1795,7 +1802,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     lastExpense, expenses, selectedExpense, createdExpenses: expenses, voidedExpenses,
     expenseRead, retryExpenseRead, expenseHistory, loadEarlierExpenses, loadFullHistory,
     funds, recurringBills, splitTemplates, expenseTemplateId, reminderTargets, reminderUsage, sentReminders, notifications,
-    noticeCounts, loadUnreadNotices, signOut, signOutUnconfirmed, retrySignOut: confirmSignOut, sessionNotice, go,
+    noticeCounts, loadUnreadNotices, personName: (userId, fallback, options) => personName(data?.snapshots[activeId]?.members, userId, fallback, options),
+    signOut, signOutUnconfirmed, retrySignOut: confirmSignOut, sessionNotice, go,
     changePassword, signOutOtherDevices,
     closeWindow: () => { if (!mutationCount) leaveRecord(); }, watchTypedText, leaveAsked, answerLeave, setMoreOpen,
     setNavMode: (navMode) => saveDevice({ navMode }),
