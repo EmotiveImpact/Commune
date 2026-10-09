@@ -116,6 +116,24 @@ for a handoff, not a production release.
   search text live in their screens. `apps/web/tests/render-counts.test.tsx`
   guards how much re-renders; time a year's snapshot with
   `cd apps/web && node node_modules/vitest/vitest.mjs bench --run tests/derive-snapshot.bench.ts`.
+- Also from 9 October, for review: styles and loading on demand, from the
+  same review. Every stylesheet sits in a cascade layer, declared once in
+  `apps/web/src/styles/index.css`, which `src/main.tsx` imports before
+  anything else: `base` (tokens and the shared app, sign-in and legal
+  styles), then `screens` (each screen's and window's own stylesheet, which
+  wraps itself in `@layer screens {}`), then `overrides` (the dark theme and
+  the design-language primitives). A screen rule that must beat those goes in
+  an `@layer overrides {}` block in its own file.
+  `apps/web/tests/stylesheets.test.ts` checks that every stylesheet is layered
+  and that fixed palette colours are written as their tokens. The sign-in
+  page loads only the entry and the Neon client. The signed-in app
+  (`shell/ProductShell.tsx`) is fetched while the session is checked; other
+  screens and windows load when first opened, or once the browser is idle
+  unless it asks to save data (`shell/lazyComponent.tsx`). A failed code load
+  reloads the page once (`commune.codeReloadedAt` in session storage, 30
+  seconds). Tests that draw the signed-in app call `preloadAll()` first.
+  `?native=1` shows the phone layout at any width; the `.is-native` rules
+  serve it.
 - The website is `web/` (the editorial homepage); the earlier v2 site is in
   `web-backup/`. Launch names `website` (3004) and `website-backup` (3003).
 - No push, deployment, hosted migration or provider change has been made. Do
