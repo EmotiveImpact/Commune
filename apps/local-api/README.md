@@ -35,7 +35,9 @@ browser code sends same-origin `/api` requests. Non-2xx errors are
 | PATCH | `/api/commitments/:id` | `{amountMinor,dueOn}` or `{cancel:true}`; own pledge or admin | `{ok:true}` |
 | POST | `/api/commitments/:id/contributions` | `{amountMinor}` | `{id}` |
 | POST | `/api/contributions/:id/void` | `{reason}` admin; preserves original entry and correction reason | `{ok:true}` |
-| POST | `/api/communes/:id/recurring` | `{id?,title,amountMinor,paidByUserId,allocations:[{userId,amountMinor}],frequency:"weekly"\|"monthly",nextDueOn,paused}` | `{id}` |
+| POST | `/api/communes/:id/recurring` | add: `{title,amountMinor,paidByUserId,allocations:[{userId,amountMinor}],frequency:"weekly"\|"monthly",nextDueOn,paused?,requestId}`, a repeated `requestId` returns the same bill; edit: the same fields with `{id,expectedVersion}` and no `paused`, admin or the member who added the bill and pays it | `{id}`; a stale `expectedVersion` is 409 |
+| POST | `/api/recurring/:id/pause` | `{paused:boolean}` the member who added it, its payer or an admin; resuming is refused while the payer or anyone in the split has left | `{id,paused,archivedAt,version,duplicate}` |
+| POST | `/api/recurring/:id/archive` | `{archived:boolean}` the member who added it, its payer or an admin; archiving pauses, restoring keeps it paused | `{id,paused,archivedAt,version,duplicate}` |
 | POST | `/api/recurring/:id/record` | `{expectedDueOn}` payer/admin; advances the due period once | `{id}` of the created expense |
 | POST | `/api/communes/:id/templates` | `{id?,name,method,participants:[{userId,value}],archived?}`; methods Equal/Exact/Percentage/Shares | `{id}` |
 | POST | `/api/communes/:id/members/:userId` | `{action:"admin"\|"member"\|"remove"\|"leave"}`; admin changes roles/removes, member can leave | `{ok:true}` |

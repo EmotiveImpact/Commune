@@ -587,12 +587,31 @@ route("POST", /^\/api\/communes\/([0-9a-f-]{36})\/members\/([0-9a-f-]{36})$/, as
   await userAction(req,client=>client.query("SELECT public.manage_commune_member($1,$2,$3)",[uuid(match[1]),uuid(match[2]),input.action]));
   send(res,{ok:true});
 });
+// Add a bill (requestId makes a retry return the same bill), or edit one from
+// the version the editor loaded: a stale expectedVersion is a 409. An edit
+// never pauses or resumes; that is /recurring/:id/pause.
 route("POST", /^\/api\/communes\/([0-9a-f-]{36})\/recurring$/, async (req,res,match) => {
   const input=await body(req);
-  if (!Array.isArray(input.allocations) || input.allocations.length>100 || !["weekly","monthly"].includes(String(input.frequency)) || typeof input.paused !== "boolean") throw new ApiError(400,"Invalid recurring bill");
+  if (!Array.isArray(input.allocations) || input.allocations.length>100 || !["weekly","monthly"].includes(String(input.frequency)) || (input.paused != null && typeof input.paused !== "boolean")) throw new ApiError(400,"Invalid recurring bill");
   const shares=input.allocations.map(value=>{const share=value as Record<string,unknown>; return {user_id:uuid(share?.userId),amount_minor:amount(share?.amountMinor)};});
-  const result=await userAction(req,client=>client.query("SELECT public.save_recurring_bill($1,$2,$3,$4,$5::jsonb,$6,$7::date,$8,$9) AS id",[uuid(match[1]),text(input.title,"title",80),amount(input.amountMinor),uuid(input.paidByUserId),JSON.stringify(shares),input.frequency,isoDate(input.nextDueOn),input.paused,input.id == null ? null : uuid(input.id)]));
+  const editing=input.id != null;
+  const result=await userAction(req,client=>client.query("SELECT public.save_recurring_bill($1,$2,$3,$4,$5::jsonb,$6,$7::date,$8,$9,$10,$11) AS id",[uuid(match[1]),text(input.title,"title",80),amount(input.amountMinor),uuid(input.paidByUserId),JSON.stringify(shares),input.frequency,isoDate(input.nextDueOn),
+    editing ? uuid(input.id) : null,editing ? expectedVersion(input.expectedVersion) : null,editing ? null : uuid(input.requestId,"requestId"),input.paused ?? null]));
   send(res,{id:result.rows[0].id},201);
+});
+// Pause or resume, and archive or restore: each changes only that state and
+// is safe to repeat (duplicate: true when the bill was already that way).
+route("POST", /^\/api\/recurring\/([0-9a-f-]{36})\/pause$/, async (req,res,match) => {
+  const input=await body(req);
+  if (typeof input.paused !== "boolean") throw new ApiError(400,"Invalid paused state");
+  const result=await userAction(req,client=>client.query("SELECT public.set_recurring_bill_paused($1,$2) AS result",[uuid(match[1]),input.paused]));
+  send(res,result.rows[0].result);
+});
+route("POST", /^\/api\/recurring\/([0-9a-f-]{36})\/archive$/, async (req,res,match) => {
+  const input=await body(req);
+  if (typeof input.archived !== "boolean") throw new ApiError(400,"Invalid archived state");
+  const result=await userAction(req,client=>client.query("SELECT public.set_recurring_bill_archived($1,$2) AS result",[uuid(match[1]),input.archived]));
+  send(res,result.rows[0].result);
 });
 route("POST", /^\/api\/recurring\/([0-9a-f-]{36})\/record$/, async (req,res,match) => {
   const input=await body(req);

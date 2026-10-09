@@ -104,6 +104,7 @@ await owner("POST", `/communes/${commune.id}/recurring`, {
   frequency: "monthly",
   nextDueOn: today,
   paused: false,
+  requestId: randomUUID(),
   allocations: [
     { userId: account.user.id, amountMinor: 1200 },
     { userId: guest.user.id, amountMinor: 1200 },
