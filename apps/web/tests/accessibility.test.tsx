@@ -625,6 +625,7 @@ describe("structure and smaller fixes", () => {
     mount("/settings");
     expect(await screen.findByRole("heading", { level: 2, name: "Preferences" })).toBeTruthy();
     expect(screen.getByRole("heading", { level: 2, name: "Support & legal" })).toBeTruthy();
+    expect(screen.getByRole("heading", { level: 2, name: "Password and sign-in" })).toBeTruthy();
     expect(skipsALevel()).toBe(false);
     cleanup();
     mount("/places");
