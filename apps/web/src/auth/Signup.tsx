@@ -175,6 +175,6 @@ export function VerifyEmailPage() {
         {busy ? "Verifying…" : "Verify email"}
       </button>
     </form> : null}
-    <p className="commune-auth-foot"><Link href={keepSearch("/login")} className="commune-auth-link">Back to sign in</Link></p>
+    <p className="commune-auth-foot commune-auth-solo"><Link href={keepSearch("/login")} className="commune-auth-link">Back to sign in</Link></p>
   </div></AuthLayout>;
 }

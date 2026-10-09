@@ -80,7 +80,7 @@ export function LoginPage() {
             <label htmlFor="login-password">Password</label>
             <input id="login-password" type="password" autoComplete="current-password" required maxLength={128} value={password} onChange={(event) => setPassword(event.target.value)} {...invalid("login-password")} />
           </div>
-          <p className="commune-auth-foot"><Link href={keepSearch("/forgot-password")} className="commune-auth-link">Forgot your password?</Link></p>
+          <p className="commune-auth-foot commune-auth-solo"><Link href={keepSearch("/forgot-password")} className="commune-auth-link">Forgot your password?</Link></p>
           <button className="commune-auth-btn" type="submit" disabled={busy}>
             {busy ? "Signing in…" : "Sign in"}
           </button>

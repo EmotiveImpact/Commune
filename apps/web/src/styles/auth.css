@@ -108,7 +108,7 @@
   text-align: center;
   font-size: 0.875rem;
   line-height: 1.45;
-  color: #667085;
+  color: #5f6878;
 }
 
 .commune-auth-alert {
@@ -163,7 +163,7 @@
   margin: 0;
   font-size: 0.8125rem;
   line-height: 1.4;
-  color: #667085;
+  color: #5f6878;
 }
 
 .commune-auth-error {
@@ -197,6 +197,16 @@
   font-size: inherit;
   color: inherit;
   text-decoration: underline;
+}
+
+/* A link on a line of its own gets a 24px target without moving the form. */
+.commune-auth-solo {
+  margin: 18px 0 -4px;
+}
+
+.commune-auth-solo .commune-auth-link {
+  display: inline-block;
+  padding: 5px 0;
 }
 
 .commune-auth-btn {
@@ -251,7 +261,7 @@ a.commune-auth-btn {
   font-size: 0.7rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #667085;
+  color: #5f6878;
 }
 
 .commune-auth-or::before,
@@ -265,7 +275,7 @@ a.commune-auth-btn {
   margin: 22px 0 0;
   text-align: center;
   font-size: 0.875rem;
-  color: #667085;
+  color: #5f6878;
 }
 
 .commune-auth-legal {
@@ -294,7 +304,7 @@ a.commune-auth-btn {
   display: flex;
   gap: 16px;
   font-size: 0.75rem;
-  color: #667085;
+  color: #5f6878;
 }
 
 .commune-auth-desktop-footer a {
@@ -367,7 +377,7 @@ a.commune-auth-btn {
     padding: 16px 24px;
     margin-top: auto;
     font-size: 0.75rem;
-    color: #667085;
+    color: #5f6878;
   }
 
   .commune-auth-mobile-footer a {

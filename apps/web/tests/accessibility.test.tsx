@@ -504,6 +504,9 @@ describe("form errors", () => {
     const message = screen.getByRole("alert");
     expect(message.textContent).toBe("Invalid email or password");
     await waitFor(() => expect(document.activeElement).toBe(message));
+    // A sign-in page keeps one h1 at every width, and its main landmark.
+    expect(screen.getAllByRole("heading", { level: 1 }).length).toBeGreaterThan(0);
+    expect(screen.getByRole("main").contains(message)).toBe(true);
   });
 });
 
