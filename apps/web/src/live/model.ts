@@ -159,8 +159,16 @@ export type RecurringBill = {
   id: string; title: string; amountMinor: number; paidByUserId: string;
   allocations: Array<{ userId: string; amountMinor: number }>;
   frequency: "weekly" | "monthly"; nextDueOn: string; paused: boolean; createdBy: string;
+  /** Every change makes a new version; an edit sends the one it was based on. */
+  version: number;
+  /** An archived bill is paused and out of the due list until restored. */
+  archivedAt?: string | null;
   /** The latest periods, newest first. */
   history?: RecurringPeriod[];
+};
+/** What pausing, resuming, archiving or restoring left the bill as. */
+export type RecurringBillState = {
+  id: string; paused: boolean; archivedAt: string | null; version: number; duplicate: boolean;
 };
 export type RecurringPeriod = {
   dueOn: string; status: "recorded" | "skipped"; amountMinor: number | null; expenseId: string | null;

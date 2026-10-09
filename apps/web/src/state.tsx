@@ -58,6 +58,7 @@ import {
   type Snapshot,
   type User,
   type RecurringBill,
+  type RecurringBillState,
   type SplitTemplate,
   type Announcement,
   type AnnouncementResult,
@@ -116,7 +117,11 @@ export type CorrectExpenseInput = {
   reason: string;
   requestId: string;
 };
-export type RecurringBillInput = Omit<RecurringBill, "id" | "createdBy"> & { id?: string };
+/** An add carries one request id per open form, so a retry cannot add it
+ * twice. An edit names the version the editor loaded and never pauses or
+ * resumes the bill. */
+export type RecurringBillInput = Pick<RecurringBill, "title" | "amountMinor" | "paidByUserId" | "allocations" | "frequency" | "nextDueOn"> &
+  ({ requestId: string; paused?: boolean } | { id: string; expectedVersion: number });
 export type SplitTemplateInput = Omit<SplitTemplate, "id" | "createdBy" | "archivedAt"> & { id?: string; archived?: boolean };
 
 function locationForKind(input: {
@@ -307,6 +312,10 @@ export type AppState = {
   updatePledge: (commitmentId: string, input: { amountMinor?: number; dueOn?: string; cancel?: boolean }) => Promise<void>;
   voidContribution: (contributionId: string, reason: string) => Promise<void>;
   saveRecurringBill: (input: RecurringBillInput) => Promise<string>;
+  /** Pause or resume only; a repeat reports duplicate: true. */
+  pauseRecurringBill: (id: string, paused: boolean) => Promise<RecurringBillState>;
+  /** Archive (which also pauses) or restore, still paused. */
+  archiveRecurringBill: (id: string, archived: boolean) => Promise<RecurringBillState>;
   recordRecurringBill: (id: string, expectedDueOn: string) => Promise<string>;
   /** Record one period as paid, optionally at a different amount. */
   recordRecurringPeriod: (id: string, expectedDueOn: string, amountMinor?: number) => Promise<RecurringPeriodResult>;
@@ -1022,12 +1031,30 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const archiveFund = async (id: string, archived: boolean) => { await workflow(`/funds/${encodeURIComponent(id)}/archive`,{archived}); };
   const updatePledge = async (id: string, input: { amountMinor?: number; dueOn?: string; cancel?: boolean }) => { await workflow(`/commitments/${encodeURIComponent(id)}`,input,"PATCH"); };
   const voidContribution = async (id: string, reason: string) => { await workflow(`/contributions/${encodeURIComponent(id)}/void`,{reason}); };
-  const saveRecurringBill = async (input: RecurringBillInput) => (await workflow<{id:string}>(`/communes/${encodeURIComponent(activeId)}/recurring`,input)).id;
+  // A conflict means the bill changed after this screen loaded it (someone
+  // edited, recorded, paused or archived it). Load the latest before the
+  // error reaches the screen, as an expense correction does.
+  const recurringChange = useCallback(async <T,>(path: string, body: unknown): Promise<T> => mutate(async () => {
+    let result: T;
+    try {
+      result = await api<T>(path, { method: "POST", body: JSON.stringify(body) });
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 409) await refreshRecords();
+      throw error;
+    }
+    await refreshRecords();
+    return result;
+  }), [mutate, refreshRecords]);
+  const saveRecurringBill = async (input: RecurringBillInput) => (await recurringChange<{id:string}>(`/communes/${encodeURIComponent(activeId)}/recurring`,input)).id;
+  const pauseRecurringBill = (id: string, paused: boolean) =>
+    recurringChange<RecurringBillState>(`/recurring/${encodeURIComponent(id)}/pause`, { paused });
+  const archiveRecurringBill = (id: string, archived: boolean) =>
+    recurringChange<RecurringBillState>(`/recurring/${encodeURIComponent(id)}/archive`, { archived });
   const recordRecurringBill = async (id: string, expectedDueOn: string) => (await workflow<{id:string}>(`/recurring/${encodeURIComponent(id)}/record`,{expectedDueOn})).id;
   const recordRecurringPeriod = (id: string, expectedDueOn: string, amountMinor?: number) =>
-    workflow<RecurringPeriodResult>(`/recurring/${encodeURIComponent(id)}/periods`, { expectedDueOn, amountMinor: amountMinor ?? null });
+    recurringChange<RecurringPeriodResult>(`/recurring/${encodeURIComponent(id)}/periods`, { expectedDueOn, amountMinor: amountMinor ?? null });
   const skipRecurringPeriod = (id: string, expectedDueOn: string, reason: string) =>
-    workflow<RecurringPeriodResult>(`/recurring/${encodeURIComponent(id)}/skip`, { expectedDueOn, reason: reason.trim() });
+    recurringChange<RecurringPeriodResult>(`/recurring/${encodeURIComponent(id)}/skip`, { expectedDueOn, reason: reason.trim() });
   const saveSplitTemplate = async (input: SplitTemplateInput) => (await workflow<{id:string}>(`/communes/${encodeURIComponent(activeId)}/templates`,input)).id;
   const manageMember = async (userId: string, action: "admin" | "member" | "leave" | "remove") => mutate(async () => {
     await post(`/communes/${encodeURIComponent(activeId)}/members/${encodeURIComponent(userId)}`,{action});
@@ -1247,7 +1274,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     announcements, postAnnouncement, acknowledgeAnnouncement, archiveAnnouncement,
     markExpensePaid, createInvite, sendInviteEmail, revokeInvite, previewInvite, acceptInvite, createFund,
     pledgeFund, recordFundContribution, sendReminder, markNotificationRead,
-    updateFund, archiveFund, updatePledge, voidContribution, saveRecurringBill, recordRecurringBill, recordRecurringPeriod, skipRecurringPeriod, saveSplitTemplate, manageMember,
+    updateFund, archiveFund, updatePledge, voidContribution, saveRecurringBill, pauseRecurringBill, archiveRecurringBill, recordRecurringBill, recordRecurringPeriod, skipRecurringPeriod, saveSplitTemplate, manageMember,
     pageTitle, pageLede,
   }}>{children}</Ctx.Provider>;
 }

@@ -425,9 +425,15 @@ export async function neonApi<T>(path: string, init: RequestInit = {}): Promise<
   } else if (method === "POST" && pathId(path, /^\/communes\/([^/]+)\/members\/[^/]+$/)) {
     response = await rpcVoid("manage_commune_member", { p_commune_id:pathId(path,/^\/communes\/([^/]+)\/members\//),p_user_id:pathId(path,/^\/communes\/[^/]+\/members\/([^/]+)$/),p_action:body.action });
   } else if (method === "POST" && pathId(path, /^\/communes\/([^/]+)\/recurring$/)) {
+    // An add carries a request id; an edit carries the version it was based on.
     response = await rpcId("save_recurring_bill", {p_commune_id:pathId(path,/^\/communes\/([^/]+)\/recurring$/),p_title:body.title,p_amount_minor:body.amountMinor,p_paid_by:body.paidByUserId,
       p_shares:Array.isArray(body.allocations) ? body.allocations.map(value => { const item=asObject(value); return {user_id:item.userId,amount_minor:item.amountMinor}; }) : [],
-      p_frequency:body.frequency,p_next_due_on:body.nextDueOn,p_paused:body.paused,p_id:body.id ?? null});
+      p_frequency:body.frequency,p_next_due_on:body.nextDueOn,p_id:body.id ?? null,p_expected_version:body.expectedVersion ?? null,
+      p_request_id:body.requestId ?? null,p_paused:body.paused ?? null});
+  } else if (method === "POST" && pathId(path, /^\/recurring\/([^/]+)\/pause$/)) {
+    response = asObject(unwrap(await db().rpc("set_recurring_bill_paused", {p_id:pathId(path,/^\/recurring\/([^/]+)\/pause$/),p_paused:body.paused})));
+  } else if (method === "POST" && pathId(path, /^\/recurring\/([^/]+)\/archive$/)) {
+    response = asObject(unwrap(await db().rpc("set_recurring_bill_archived", {p_id:pathId(path,/^\/recurring\/([^/]+)\/archive$/),p_archived:body.archived})));
   } else if (method === "POST" && pathId(path, /^\/recurring\/([^/]+)\/record$/)) {
     response = await rpcId("record_recurring_bill", {p_id:pathId(path,/^\/recurring\/([^/]+)\/record$/),p_expected_due_on:body.expectedDueOn});
   } else if (method === "POST" && pathId(path, /^\/recurring\/([^/]+)\/periods$/)) {

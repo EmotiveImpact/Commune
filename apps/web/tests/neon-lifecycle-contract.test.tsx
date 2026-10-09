@@ -96,6 +96,24 @@ describe("hosted money lifecycle and task commands", () => {
     expect(mocks.from).not.toHaveBeenCalled();
   });
 
+  it("adds a recurring bill once, edits it from the version the editor loaded, and pauses or archives it by command", async () => {
+    mocks.rpc.mockResolvedValue({ data: "bill-1", error: null });
+    const bill = { title: "Broadband", amountMinor: 9000, paidByUserId: "viewer", allocations: [{ userId: "viewer", amountMinor: 9000 }],
+      frequency: "monthly", nextDueOn: "2026-10-31" };
+    const saved = { p_commune_id: "home-1", p_title: "Broadband", p_amount_minor: 9000, p_paid_by: "viewer",
+      p_shares: [{ user_id: "viewer", amount_minor: 9000 }], p_frequency: "monthly", p_next_due_on: "2026-10-31" };
+    expect(await send("/communes/home-1/recurring", { ...bill, paused: false, requestId })).toEqual({ id: "bill-1" });
+    expect(mocks.rpc).toHaveBeenLastCalledWith("save_recurring_bill", { ...saved, p_id: null, p_expected_version: null, p_request_id: requestId, p_paused: false });
+    await send("/communes/home-1/recurring", { ...bill, id: "bill-1", expectedVersion: 4 });
+    expect(mocks.rpc).toHaveBeenLastCalledWith("save_recurring_bill", { ...saved, p_id: "bill-1", p_expected_version: 4, p_request_id: null, p_paused: null });
+    mocks.rpc.mockResolvedValue({ data: { id: "bill-1", paused: true, archivedAt: null, version: 5, duplicate: false }, error: null });
+    expect(await send("/recurring/bill-1/pause", { paused: true })).toEqual({ id: "bill-1", paused: true, archivedAt: null, version: 5, duplicate: false });
+    expect(mocks.rpc).toHaveBeenLastCalledWith("set_recurring_bill_paused", { p_id: "bill-1", p_paused: true });
+    await send("/recurring/bill-1/archive", { archived: true });
+    expect(mocks.rpc).toHaveBeenLastCalledWith("set_recurring_bill_archived", { p_id: "bill-1", p_archived: true });
+    expect(mocks.from).not.toHaveBeenCalled();
+  });
+
   it.each([
     ["P0001", 409, "This expense was changed by someone else."],
     ["42501", 403, "Only the bill payer can record a repayment for this share"],
