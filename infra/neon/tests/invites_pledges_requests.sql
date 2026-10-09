@@ -383,6 +383,120 @@ BEGIN
   END IF;
 END;
 $$;
+
+-- 4. A pledge cancelled and made again keeps each request apart: a late
+-- retry never brings back a cancelled pledge, and never reads as a second one.
+DO $$
+DECLARE
+  v_money uuid := current_setting('test.money')::uuid;
+  a text := '00000000-0000-4000-8000-0000000000a1';
+  c text := '00000000-0000-4000-8000-0000000000c3';
+  v_fund uuid; v_pledge uuid; v_result jsonb; v_case text;
+  v_first uuid := gen_random_uuid(); v_second uuid := gen_random_uuid(); v_third uuid := gen_random_uuid();
+BEGIN
+  PERFORM set_config('request.jwt.claims', json_build_object('sub', a, 'role', 'authenticated')::text, true);
+  v_fund := (public.create_fund_command(v_money, 'Garden fund', NULL, gen_random_uuid())->>'id')::uuid;
+  PERFORM set_config('request.jwt.claims', json_build_object('sub', c, 'role', 'authenticated')::text, true);
+  v_pledge := (public.pledge_fund_command(v_fund, 2000, current_date + 30, v_first)->>'id')::uuid;
+  PERFORM public.update_fund_pledge(v_pledge, NULL, NULL, true);
+  IF (public.pledge_fund_command(v_fund, 2500, current_date + 40, v_second)->>'id')::uuid <> v_pledge THEN
+    RAISE EXCEPTION 'A pledge made again was not the same pledge';
+  END IF;
+  -- The first request saved, so its retry is not "you already have a pledge".
+  BEGIN
+    PERFORM public.pledge_fund_command(v_fund, 2000, current_date + 30, v_first);
+    RAISE EXCEPTION 'A retry of an earlier pledge request was accepted';
+  EXCEPTION WHEN invalid_parameter_value THEN
+    IF SQLERRM <> 'This request was already used for a different change' THEN RAISE; END IF;
+  END;
+  v_result := public.pledge_fund_command(v_fund, 2500, current_date + 40, v_second);
+  IF (v_result->>'id')::uuid <> v_pledge OR NOT (v_result->>'duplicate')::boolean THEN
+    RAISE EXCEPTION 'The standing pledge request did not replay: %', v_result;
+  END IF;
+  -- Cancelled again: no earlier request brings it back.
+  PERFORM public.update_fund_pledge(v_pledge, NULL, NULL, true);
+  FOREACH v_case IN ARRAY ARRAY['first', 'second'] LOOP
+    BEGIN
+      IF v_case = 'first' THEN PERFORM public.pledge_fund_command(v_fund, 2000, current_date + 30, v_first);
+      ELSE PERFORM public.pledge_fund_command(v_fund, 2500, current_date + 40, v_second); END IF;
+      RAISE EXCEPTION 'A retry brought back a cancelled pledge: %', v_case;
+    EXCEPTION WHEN invalid_parameter_value THEN
+      IF SQLERRM <> 'This request was already used for a different change' THEN RAISE; END IF;
+    END;
+  END LOOP;
+  IF (SELECT cancelled_at FROM public.fund_commitments WHERE id = v_pledge) IS NULL THEN
+    RAISE EXCEPTION 'A retry brought back a cancelled pledge';
+  END IF;
+  -- Made again with the first request's figures: the first request is still
+  -- not the one that made it, and an edit since a request stops its replay too.
+  PERFORM public.pledge_fund_command(v_fund, 2000, current_date + 30, v_third);
+  BEGIN
+    PERFORM public.pledge_fund_command(v_fund, 2000, current_date + 30, v_first);
+    RAISE EXCEPTION 'An earlier request replayed a pledge a later one made';
+  EXCEPTION WHEN invalid_parameter_value THEN NULL;
+  END;
+  PERFORM public.update_fund_pledge(v_pledge, 2200, current_date + 30);
+  BEGIN
+    PERFORM public.pledge_fund_command(v_fund, 2000, current_date + 30, v_third);
+    RAISE EXCEPTION 'A request replayed a pledge changed since';
+  EXCEPTION WHEN invalid_parameter_value THEN NULL;
+  END;
+  IF (SELECT count(*) FROM public.fund_commitments WHERE fund_id = v_fund) <> 1 THEN
+    RAISE EXCEPTION 'A pledge retry created a second pledge';
+  END IF;
+  PERFORM set_config('test.garden_pledge', v_pledge::text, true);
+END;
+$$;
+
+-- 5. A change names the pledge it was based on, so it cannot undo a change
+-- made in the meantime. This holds for the pledger as much as for an admin.
+DO $$
+DECLARE
+  v_money uuid := current_setting('test.money')::uuid;
+  a text := '00000000-0000-4000-8000-0000000000a1';
+  c text := '00000000-0000-4000-8000-0000000000c3';
+  v_fund uuid; v_pledge uuid; v_case text;
+BEGIN
+  PERFORM set_config('request.jwt.claims', json_build_object('sub', a, 'role', 'authenticated')::text, true);
+  v_fund := (public.create_fund_command(v_money, 'Roof fund', NULL, gen_random_uuid())->>'id')::uuid;
+  PERFORM set_config('request.jwt.claims', json_build_object('sub', c, 'role', 'authenticated')::text, true);
+  v_pledge := (public.pledge_fund_command(v_fund, 10000, current_date + 30, gen_random_uuid())->>'id')::uuid;
+  -- Casey raises it while Avery's editor still shows 100.00.
+  PERFORM public.update_fund_pledge(v_pledge, 15000, current_date + 30, false, 10000, current_date + 30);
+  PERFORM set_config('request.jwt.claims', json_build_object('sub', a, 'role', 'authenticated')::text, true);
+  FOREACH v_case IN ARRAY ARRAY['amount', 'date', 'cancel'] LOOP
+    BEGIN
+      IF v_case = 'amount' THEN PERFORM public.update_fund_pledge(v_pledge, 9000, current_date + 30, false, 10000, current_date + 30);
+      ELSIF v_case = 'date' THEN PERFORM public.update_fund_pledge(v_pledge, 15000, current_date + 40, false, 15000, current_date + 20);
+      ELSE PERFORM public.update_fund_pledge(v_pledge, NULL, NULL, true, 10000, current_date + 30); END IF;
+      RAISE EXCEPTION 'A change based on an older pledge was saved: %', v_case;
+    EXCEPTION WHEN raise_exception THEN
+      IF SQLERRM <> 'This pledge changed while you were editing. Nothing was saved. Check it again.' THEN RAISE; END IF;
+    END;
+  END LOOP;
+  PERFORM set_config('request.jwt.claims', json_build_object('sub', c, 'role', 'authenticated')::text, true);
+  BEGIN
+    PERFORM public.update_fund_pledge(v_pledge, 16000, current_date + 30, false, 10000, current_date + 30);
+    RAISE EXCEPTION 'The pledger saved over a change they had not seen';
+  EXCEPTION WHEN raise_exception THEN
+    IF SQLERRM <> 'This pledge changed while you were editing. Nothing was saved. Check it again.' THEN RAISE; END IF;
+  END;
+  IF (SELECT row(amount_minor, due_on, cancelled_at IS NULL) FROM public.fund_commitments WHERE id = v_pledge)
+     IS DISTINCT FROM row(15000::bigint, current_date + 30, true) THEN
+    RAISE EXCEPTION 'A refused pledge change was saved';
+  END IF;
+  IF EXISTS (SELECT 1 FROM public.notifications WHERE commitment_id = v_pledge) THEN
+    RAISE EXCEPTION 'Casey was told about a change that was not saved';
+  END IF;
+  -- Based on what is saved now, the admin's change goes through and Casey is told.
+  PERFORM set_config('request.jwt.claims', json_build_object('sub', a, 'role', 'authenticated')::text, true);
+  PERFORM public.update_fund_pledge(v_pledge, 9000, current_date + 30, false, 15000, current_date + 30);
+  PERFORM set_config('request.jwt.claims', json_build_object('sub', c, 'role', 'authenticated')::text, true);
+  IF (SELECT array_agg(detail) FROM public.notifications WHERE commitment_id = v_pledge) IS DISTINCT FROM ARRAY['Lowered from £150.00 to £90.00.'] THEN
+    RAISE EXCEPTION 'Casey should be told about the change that was saved';
+  END IF;
+END;
+$$;
 RESET ROLE;
 
 -- Members run the commands; the helpers are private.
@@ -409,6 +523,30 @@ BEGIN
       RAISE EXCEPTION 'Private helper is callable by a client: %', v_name;
     END IF;
   END LOOP;
+  -- Pledge requests are kept one row per request, out of clients' reach, and
+  -- the pledge itself carries no request id.
+  IF (SELECT count(*) FROM public.fund_pledge_requests WHERE commitment_id = current_setting('test.garden_pledge')::uuid) <> 3 THEN
+    RAISE EXCEPTION 'Pledge requests were not kept one per request';
+  END IF;
+  FOREACH v_name IN ARRAY ARRAY['authenticated', 'anonymous'] LOOP
+    IF has_table_privilege(v_name, 'public.fund_pledge_requests', 'SELECT')
+       OR has_table_privilege(v_name, 'public.fund_pledge_requests', 'INSERT')
+       OR has_table_privilege(v_name, 'public.fund_pledge_requests', 'UPDATE')
+       OR has_table_privilege(v_name, 'public.fund_pledge_requests', 'DELETE') THEN
+      RAISE EXCEPTION 'Pledge requests are reachable by %', v_name;
+    END IF;
+  END LOOP;
+  IF NOT (SELECT relrowsecurity FROM pg_class WHERE oid = 'public.fund_pledge_requests'::regclass)
+     OR EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public'
+       AND table_name = 'fund_commitments' AND column_name = 'request_id') THEN
+    RAISE EXCEPTION 'Unexpected pledge request storage';
+  END IF;
+  -- The pledge change keeps its grants after gaining the version it was based on.
+  IF has_function_privilege('anonymous', 'public.update_fund_pledge(uuid,bigint,date,boolean,bigint,date)', 'EXECUTE')
+     OR has_function_privilege('public', 'public.update_fund_pledge(uuid,bigint,date,boolean,bigint,date)', 'EXECUTE')
+     OR NOT has_function_privilege('authenticated', 'public.update_fund_pledge(uuid,bigint,date,boolean,bigint,date)', 'EXECUTE') THEN
+    RAISE EXCEPTION 'Unexpected execution grant on update_fund_pledge';
+  END IF;
 END;
 $$;
 ROLLBACK;

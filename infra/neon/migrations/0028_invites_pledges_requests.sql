@@ -12,7 +12,8 @@
 -- 3. Someone other than the pledger (an admin) can lower a pledge, never below
 --    what is already recorded, move its due date later, or cancel it. Only the
 --    pledger can raise it or bring the date forward. The pledger is told about
---    a change someone else makes.
+--    a change someone else makes. A change can name the amount and date it
+--    was based on, and is refused if the pledge has changed since.
 -- Apply after 0027 (it depends on nothing after 0025). Release with the
 -- matching web client.
 BEGIN;
@@ -144,12 +145,25 @@ CREATE UNIQUE INDEX expenses_recorder_request_idx
 ALTER TABLE public.funds ADD COLUMN request_id uuid;
 CREATE UNIQUE INDEX funds_creator_request_idx
   ON public.funds (created_by, request_id) WHERE request_id IS NOT NULL;
-ALTER TABLE public.fund_commitments ADD COLUMN request_id uuid;
-CREATE UNIQUE INDEX fund_commitments_pledger_request_idx
-  ON public.fund_commitments (user_id, request_id) WHERE request_id IS NOT NULL;
 ALTER TABLE public.fund_contributions ADD COLUMN request_id uuid;
 CREATE UNIQUE INDEX fund_contributions_recorder_request_idx
   ON public.fund_contributions (recorded_by, request_id) WHERE request_id IS NOT NULL;
+-- A pledge can be cancelled and made again, so one row cannot hold its
+-- requests. Each request keeps its own row: what it asked for and which pledge
+-- it made. Only the pledge commands read or write it.
+CREATE TABLE public.fund_pledge_requests (
+  user_id text NOT NULL,
+  request_id uuid NOT NULL,
+  commitment_id uuid NOT NULL REFERENCES public.fund_commitments(id) ON DELETE CASCADE,
+  amount_minor bigint NOT NULL,
+  due_on date NOT NULL,
+  seq bigint GENERATED ALWAYS AS IDENTITY,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (user_id, request_id)
+);
+CREATE INDEX fund_pledge_requests_commitment_idx ON public.fund_pledge_requests (commitment_id, seq);
+ALTER TABLE public.fund_pledge_requests ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.fund_pledge_requests FROM PUBLIC, authenticated;
 
 -- Each command takes a lock on its request id first, so a retry waits for the
 -- attempt it repeats. A repeat returns the record only while it still stands
@@ -241,6 +255,7 @@ CREATE FUNCTION public.pledge_fund_command(p_fund_id uuid, p_amount_minor bigint
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
 DECLARE
   v_actor text := commune_private.data_api_user_id();
+  v_request public.fund_pledge_requests%ROWTYPE;
   v_existing public.fund_commitments%ROWTYPE;
   v_commune uuid; v_archived timestamptz; v_id uuid; v_cancelled timestamptz;
 BEGIN
@@ -252,10 +267,17 @@ BEGIN
   PERFORM commune_private.lock_fund_membership(p_fund_id);
   SELECT commune_id, archived_at INTO v_commune, v_archived FROM public.funds WHERE id = p_fund_id FOR UPDATE;
   IF NOT public.is_commune_member(v_commune) THEN RAISE EXCEPTION 'Not a commune member' USING ERRCODE = '42501'; END IF;
-  SELECT * INTO v_existing FROM public.fund_commitments WHERE user_id = v_actor AND request_id = p_request_id;
+  -- A repeat returns the pledge only while it stands as this request left it:
+  -- same fund and figures, not cancelled, unchanged, and not made again since
+  -- by a later request.
+  SELECT * INTO v_request FROM public.fund_pledge_requests WHERE user_id = v_actor AND request_id = p_request_id;
   IF FOUND THEN
-    IF v_existing.fund_id <> p_fund_id OR v_existing.cancelled_at IS NOT NULL OR v_archived IS NOT NULL
-       OR v_existing.amount_minor IS DISTINCT FROM p_amount_minor OR v_existing.due_on IS DISTINCT FROM p_due_on THEN
+    SELECT * INTO v_existing FROM public.fund_commitments WHERE id = v_request.commitment_id;
+    IF v_existing.fund_id IS DISTINCT FROM p_fund_id OR v_archived IS NOT NULL OR v_existing.cancelled_at IS NOT NULL
+       OR v_request.amount_minor IS DISTINCT FROM p_amount_minor OR v_request.due_on IS DISTINCT FROM p_due_on
+       OR v_existing.amount_minor IS DISTINCT FROM v_request.amount_minor OR v_existing.due_on IS DISTINCT FROM v_request.due_on
+       OR EXISTS (SELECT 1 FROM public.fund_pledge_requests r
+         WHERE r.commitment_id = v_request.commitment_id AND r.seq > v_request.seq) THEN
       RAISE EXCEPTION 'This request was already used for a different change' USING ERRCODE = '22023';
     END IF;
     RETURN jsonb_build_object('id', v_existing.id, 'duplicate', true);
@@ -265,12 +287,13 @@ BEGIN
   SELECT id, cancelled_at INTO v_id, v_cancelled FROM public.fund_commitments WHERE fund_id = p_fund_id AND user_id = v_actor FOR UPDATE;
   IF FOUND THEN
     IF v_cancelled IS NULL THEN RAISE EXCEPTION 'You already have a pledge; edit it instead' USING ERRCODE = 'P0001'; END IF;
-    UPDATE public.fund_commitments SET amount_minor = p_amount_minor, due_on = p_due_on, cancelled_at = NULL, request_id = p_request_id
-      WHERE id = v_id;
+    UPDATE public.fund_commitments SET amount_minor = p_amount_minor, due_on = p_due_on, cancelled_at = NULL WHERE id = v_id;
   ELSE
-    INSERT INTO public.fund_commitments (fund_id, user_id, amount_minor, due_on, request_id)
-      VALUES (p_fund_id, v_actor, p_amount_minor, p_due_on, p_request_id) RETURNING id INTO v_id;
+    INSERT INTO public.fund_commitments (fund_id, user_id, amount_minor, due_on)
+      VALUES (p_fund_id, v_actor, p_amount_minor, p_due_on) RETURNING id INTO v_id;
   END IF;
+  INSERT INTO public.fund_pledge_requests (user_id, request_id, commitment_id, amount_minor, due_on)
+    VALUES (v_actor, p_request_id, v_id, p_amount_minor, p_due_on);
   RETURN jsonb_build_object('id', v_id, 'duplicate', false);
 END;
 $$;
@@ -380,8 +403,13 @@ END;
 $$;
 
 -- Only the pledger can raise a pledge or bring its date forward, so nobody
--- can enlarge someone's promise and chase them for it straight away.
-CREATE OR REPLACE FUNCTION public.update_fund_pledge(p_commitment_id uuid, p_amount_minor bigint, p_due_on date, p_cancel boolean DEFAULT false)
+-- can enlarge someone's promise and chase them for it straight away. A change
+-- can name the amount and date it was based on; if the pledge no longer has
+-- them, someone changed it meanwhile and nothing is saved, so an edit made
+-- from an older screen cannot undo theirs.
+DROP FUNCTION public.update_fund_pledge(uuid, bigint, date, boolean);
+CREATE FUNCTION public.update_fund_pledge(p_commitment_id uuid, p_amount_minor bigint, p_due_on date,
+  p_cancel boolean DEFAULT false, p_expected_amount_minor bigint DEFAULT NULL, p_expected_due_on date DEFAULT NULL)
 RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
 DECLARE
   v_actor text := commune_private.data_api_user_id();
@@ -396,6 +424,12 @@ BEGIN
   IF v_row.id IS NULL OR NOT public.is_commune_member(v_commune) OR
     (v_row.user_id <> v_actor AND NOT public.is_commune_admin(v_commune)) THEN
     RAISE EXCEPTION 'Only the pledger or an admin can change this pledge' USING ERRCODE = '42501'; END IF;
+  IF (p_expected_amount_minor IS NOT NULL AND p_expected_amount_minor IS DISTINCT FROM v_row.amount_minor)
+     OR (p_expected_due_on IS NOT NULL AND p_expected_due_on IS DISTINCT FROM v_row.due_on)
+     OR (p_cancel IS NOT TRUE AND v_row.cancelled_at IS NOT NULL
+       AND (p_expected_amount_minor IS NOT NULL OR p_expected_due_on IS NOT NULL)) THEN
+    RAISE EXCEPTION 'This pledge changed while you were editing. Nothing was saved. Check it again.' USING ERRCODE = 'P0001';
+  END IF;
   SELECT coalesce(sum(amount_minor),0) INTO v_paid FROM public.fund_contributions WHERE commitment_id = p_commitment_id AND voided_at IS NULL;
   IF p_cancel IS TRUE THEN
     IF v_paid > 0 THEN RAISE EXCEPTION 'A contributed pledge cannot be cancelled; change its total or correct the contribution first' USING ERRCODE = 'P0001'; END IF;
@@ -427,6 +461,8 @@ BEGIN
   END IF;
 END;
 $$;
+REVOKE ALL ON FUNCTION public.update_fund_pledge(uuid, bigint, date, boolean, bigint, date) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.update_fund_pledge(uuid, bigint, date, boolean, bigint, date) TO authenticated;
 
 NOTIFY pgrst, 'reload schema';
 COMMIT;
