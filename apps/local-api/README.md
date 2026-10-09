@@ -17,11 +17,13 @@ browser code sends same-origin `/api` requests. Non-2xx errors are
 | POST | `/api/auth/login` | `{email,password}` | `{user}` + cookie |
 | POST | `/api/auth/logout` | `{}` | `{ok:true}` + cleared cookie |
 | GET | `/api/auth/me` | public | `{user}` or `{user:null}` |
-| GET | `/api/communes` | | `{communes:[...]}` |
+| GET | `/api/communes` | | `{communes:[{id,name,kind,currency,role,memberCount,address,destination,stayName,stayAddress,changeMark}]}`; a commune's `changeMark` moves whenever anything in it changes |
 | GET | `/api/search?q=...&commune=...&limit=8` | session required; optional commune UUID; 2–80 chars, 1–25 results per type | `{query,items,total,hasMore}`; only active memberships, safe note excerpts |
-| POST | `/api/communes` | `{name,kind,currency,address?,destination?,stayName?,stayAddress?}` | `{id}` |
+| POST | `/api/communes` | `{name,kind,currency,address?,destination?,stayName?,stayAddress?}`; one account creates at most 10 communes an hour, 30 a day and 100 in all (409) | `{id}` |
 | PATCH | `/api/communes/:id` | `{name,kind,currency,address?,destination?,stayName?,stayAddress?}` admin; the currency is fixed (400) once the commune has an expense, fund, recurring bill or exact split template, voided or archived ones included | `{ok:true}` |
-| GET | `/api/communes/:id/snapshot` | membership checked; outsiders get 404 | `{commune,members,expenses,funds,notes,operations,notifications,reminderTargets,recurringBills,splitTemplates,activityEvents}` |
+| GET | `/api/communes/:id/snapshot` | membership checked; outsiders get 404; `?detail=summary` leaves out what only the commune's own screens show | `{commune,members,expenses,funds,notes,operations,notifications,reminderTargets,recurringBills,splitTemplates,activityEvents,expenseHistory,changeMark}`; `expenses` are the open ones and those created or changed since the start of last month (UTC); `expenseHistory` is `{since,olderCount,olderVoidedCount}` |
+| GET | `/api/communes/:id/expenses/history?before=&months=` | member; `before` (a date) defaults to the snapshot's `since`; `months` 1 to 12, or left out for every older expense | `{expenses,before,from,olderCount,olderVoidedCount}`: whole months (UTC) before `before`, reaching back past months with none; `from` is null once nothing older remains |
+| GET | `/api/communes/:id/expenses/records?ids=` | member; 1 to 50 comma-separated expense ids; ids from another commune are left out | `{expenses}` in the snapshot's shape |
 | POST | `/api/communes/:id/expenses` | `{title,amountMinor,paidByUserId?,category?,shares:[{userId,amountMinor}],dueOn?,requestId?}`; recording for another payer requires admin; a repeated `requestId` returns the same expense, and reusing it for different details is 400 | `{id,duplicate}` (201, or 200 for a repeat) |
 | POST | `/api/shares/:id/confirm` | `{}` payer only; records one receipt for everything outstanding | `{ok:true}` |
 | POST | `/api/shares/:id/receipts` | `{amountMinor,receivedOn,reference?,requestId}` payer only; amount up to the outstanding share; a repeated `requestId` returns the same entry | `{id,duplicate,settledMinor,outstandingMinor}` (201, or 200 for a repeat) |
@@ -99,6 +101,7 @@ API_BASE=http://127.0.0.1:3006 node apps/local-api/tests/money-lifecycle.mjs
 API_BASE=http://127.0.0.1:3006 node apps/local-api/tests/operations-history.mjs
 API_BASE=http://127.0.0.1:3006 node apps/local-api/tests/invites-pledges-requests.mjs
 API_BASE=http://127.0.0.1:3006 node apps/local-api/tests/session-viewer.mjs
+API_BASE=http://127.0.0.1:3006 node apps/local-api/tests/lighter-loading.mjs
 ```
 
 `money-lifecycle.mjs` needs migrations 0015 to 0017 and covers reminder
@@ -123,6 +126,10 @@ the signed-in account and requests without the header are still served.
 `sign-in-lockout.mjs` takes about 40 seconds (1,000 failed sign-ins).
 `invitation-email-opt-in.mjs` needs no API:
 `node --test apps/local-api/tests/invitation-email-opt-in.mjs`.
+
+`lighter-loading.mjs` needs 0036 and covers change marks in the list and the
+snapshot, the overview summary, pages of older expenses, named expense records
+and the limit on creating communes. It refuses port 3002.
 
 Search integration requires migration 0014. It covers all eight result types,
 active membership, selected/all-commune scopes, removed-member denial, literal

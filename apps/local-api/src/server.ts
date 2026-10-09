@@ -210,30 +210,20 @@ function failed(key: string): void {
   });
 }
 
+// The same list the hosted app reads, with each commune's change mark.
 async function listCommunes(user: User) {
   return withActor(user.id, async (client) => {
-    const { rows } = await client.query(`
-      SELECT c.id, c.name, c.kind, c.currency, c.address,
-        c.destination, c.stay_name, c.stay_address, m.role,
-        (SELECT count(*)::integer FROM public.commune_members mm
-         WHERE mm.commune_id = c.id AND mm.active) AS member_count
-      FROM public.communes c
-      JOIN public.commune_members m ON m.commune_id = c.id
-      WHERE m.user_id = auth.user_id() AND m.active
-      ORDER BY c.created_at DESC
-    `);
-    return { communes: rows.map((row) => ({
-      id: row.id, name: row.name, kind: row.kind, currency: row.currency,
-      address: row.address, destination: row.destination,
-      stayName: row.stay_name, stayAddress: row.stay_address,
-      role: row.role, memberCount: row.member_count,
-    })) };
+    const { rows } = await client.query("SELECT public.my_communes() AS communes");
+    return { communes: rows[0].communes };
   });
 }
 
-async function snapshot(user: User, communeId: string) {
+// A summary is what the overview screens show of a commune that is not open.
+async function snapshot(user: User, communeId: string, summary = false) {
   return withActor(user.id, async client => {
-    const result = await client.query("SELECT CASE WHEN public.is_commune_member($1) THEN public.commune_snapshot($1) ELSE NULL END AS snapshot", [communeId]);
+    const result = await client.query(summary
+      ? "SELECT CASE WHEN public.is_commune_member($1) THEN public.commune_summary($1) ELSE NULL END AS snapshot"
+      : "SELECT CASE WHEN public.is_commune_member($1) THEN public.commune_snapshot($1) ELSE NULL END AS snapshot", [communeId]);
     if (!result.rows[0].snapshot) throw new ApiError(404,"Commune not found");
     return result.rows[0].snapshot;
   });
@@ -404,7 +394,34 @@ route("PATCH", /^\/api\/communes\/([0-9a-f-]{36})$/, async (req, res, match) => 
 });
 
 route("GET", /^\/api\/communes\/([0-9a-f-]{36})\/snapshot$/, async (req, res, match) => {
-  send(res, await snapshot(await actor(req), uuid(match[1])));
+  const detail = new URL(req.url ?? "", "http://127.0.0.1").searchParams.get("detail");
+  if (detail !== null && detail !== "summary") throw new ApiError(400, "Invalid detail");
+  send(res, await snapshot(await actor(req), uuid(match[1]), detail === "summary"));
+});
+
+// Expenses older than the snapshot holds: the given number of months before
+// `before` (the snapshot's own start when absent), or all of them when months
+// is absent, as a statement or an export needs.
+route("GET", /^\/api\/communes\/([0-9a-f-]{36})\/expenses\/history$/, async (req, res, match) => {
+  const params = new URL(req.url ?? "", "http://127.0.0.1").searchParams;
+  const before = isoDate(params.get("before"), true, "before");
+  const months = params.has("months") ? Number(params.get("months")) : null;
+  if (months !== null && (!Number.isInteger(months) || months < 1 || months > 12)) {
+    throw new ApiError(400, "Ask for 1 to 12 months of expenses at a time");
+  }
+  const result = await userAction(req, async client => (await client.query(
+    "SELECT public.commune_expense_page($1, $2::date, $3) AS result", [uuid(match[1]), before, months])).rows[0].result);
+  send(res, result);
+});
+
+// Named expenses, for a link to one that is not loaded.
+route("GET", /^\/api\/communes\/([0-9a-f-]{36})\/expenses\/records$/, async (req, res, match) => {
+  const ids = (new URL(req.url ?? "", "http://127.0.0.1").searchParams.get("ids") ?? "").split(",").filter(Boolean);
+  if (ids.length < 1 || ids.length > 50) throw new ApiError(400, "Ask for 1 to 50 expenses at a time");
+  const result = await userAction(req, async client => (await client.query(
+    "SELECT public.commune_expense_records($1, $2::uuid[]) AS result",
+    [uuid(match[1]), ids.map((id) => uuid(id, "ids"))])).rows[0].result);
+  send(res, result);
 });
 
 route("GET", /^\/api\/reminders\/usage$/, async (req, res) => {
