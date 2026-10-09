@@ -164,7 +164,11 @@ export function Dialog({
       aria-labelledby={titleId}
       onCancel={(event) => {
         event.preventDefault();
-        dismiss();
+        // After repeated Escapes with nothing in between, Chrome closes the
+        // dialog whatever the page asks. Follow it: a question opened now would
+        // sit unseen inside the closed dialog and block the page.
+        if (!event.cancelable) onClose();
+        else dismiss();
       }}
       onInput={typed.onInput}
     >

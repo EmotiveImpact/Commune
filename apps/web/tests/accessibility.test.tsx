@@ -579,6 +579,17 @@ describe("asking before typed text is thrown away", () => {
     fireEvent.click(screen.getByRole("button", { name: "Discard" }));
     expect(onClose).toHaveBeenCalledTimes(2);
   });
+
+  it("follows the browser when it closes a dialog without letting the page ask", () => {
+    const onClose = vi.fn();
+    render(<Dialog title="Record a repayment" onClose={onClose}><label>Note<input /></label></Dialog>);
+    const dialog = screen.getByRole("dialog", { name: "Record a repayment" });
+    fireEvent.input(screen.getByLabelText("Note"), { target: { value: "Paid by bank transfer" } });
+    // Chrome sends a cancel that cannot be stopped after repeated Escapes.
+    fireEvent(dialog, new Event("cancel", { cancelable: false }));
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("dialog", { name: "Discard your changes?" })).toBeNull();
+  });
 });
 
 describe("structure and smaller fixes", () => {
