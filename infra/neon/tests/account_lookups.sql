@@ -79,6 +79,16 @@ BEGIN
   IF commune_private.member_by_name(v_home, 'Bea') <> '0b000000-0000-4000-8000-000000000002' THEN
     RAISE EXCEPTION 'A member was not found by name';
   END IF;
+  PERFORM public.create_commune_invite(v_home, 'dee@lookup.test', 'member');
+  IF (SELECT string_agg(i.invited_by_name, ',') FROM public.list_commune_invites(v_home) i) IS DISTINCT FROM 'Alice' THEN
+    RAISE EXCEPTION 'An invitation did not name its sender';
+  END IF;
+  -- Cal left, and the other person never had an account.
+  IF commune_private.recurring_departed_names(v_home, '0c000000-0000-4000-8000-000000000003',
+      '[{"user_id":"0e000000-0000-4000-8000-000000000005"},{"user_id":"0b000000-0000-4000-8000-000000000002"}]'::jsonb)
+      IS DISTINCT FROM ARRAY['Cal', 'A former member'] THEN
+    RAISE EXCEPTION 'A recurring bill did not name the people who left';
+  END IF;
 
   IF (SELECT seq_scan FROM pg_stat_xact_user_tables WHERE relid = 'neon_auth."user"'::regclass) <> v_seq THEN
     RAISE EXCEPTION 'A lookup read every account';

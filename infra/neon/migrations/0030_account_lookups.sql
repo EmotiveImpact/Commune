@@ -72,7 +72,13 @@ BEGIN
      'WHERE u."emailVerified" IS TRUE'),
     ('public.accept_commune_invite(text)',
      'FROM neon_auth."user" WHERE id::text=v_actor AND "emailVerified" IS TRUE',
-     'FROM commune_private.accounts(ARRAY[v_actor]) WHERE "emailVerified" IS TRUE')
+     'FROM commune_private.accounts(ARRAY[v_actor]) WHERE "emailVerified" IS TRUE'),
+    ('public.list_commune_invites(uuid)',
+     'LEFT JOIN neon_auth."user" u ON u.id::text = i.invited_by',
+     'LEFT JOIN commune_private.accounts(ARRAY(SELECT DISTINCT x.invited_by FROM public.commune_invites x WHERE x.commune_id = p_commune_id)) u ON u.id = i.invited_by'),
+    ('commune_private.recurring_departed_names(uuid,text,jsonb)',
+     'LEFT JOIN neon_auth."user" u ON u.id::text = p.user_id',
+     'LEFT JOIN commune_private.accounts(ARRAY(SELECT p_paid_by UNION SELECT e->>''user_id'' FROM jsonb_array_elements(p_shares) e)) u ON u.id = p.user_id')
   ) AS p(fn, old_text, new_text) LOOP
     v_original := pg_get_functiondef(v_patch.fn::regprocedure);
     v_source := replace(v_original, v_patch.old_text, v_patch.new_text);
