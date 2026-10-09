@@ -314,11 +314,17 @@ CREATE FUNCTION public.update_operation(p_operation_id uuid, p_expected_version 
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
 DECLARE
   v_actor text := commune_private.data_api_user_id();
+  v_commune_id uuid;
   v_op public.commune_operations%ROWTYPE;
   v_item jsonb;
   v_new public.commune_operations%ROWTYPE;
   v_version integer;
 BEGIN
+  -- The commune first, then the task: the order a member leaving takes them
+  -- in (manage_commune_member, then reassign_departed_member). The other
+  -- order lets the two wait on each other until one fails as a deadlock.
+  SELECT commune_id INTO v_commune_id FROM public.commune_operations WHERE id = p_operation_id;
+  PERFORM 1 FROM public.communes WHERE id = v_commune_id FOR UPDATE;
   SELECT * INTO v_op FROM public.commune_operations WHERE id = p_operation_id FOR UPDATE;
   IF v_op.id IS NULL OR NOT public.is_commune_member(v_op.commune_id) THEN
     RAISE EXCEPTION 'Not a commune member' USING ERRCODE = '42501';
@@ -365,9 +371,13 @@ CREATE FUNCTION public.remove_operation(p_operation_id uuid)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
 DECLARE
   v_actor text := commune_private.data_api_user_id();
+  v_commune_id uuid;
   v_op public.commune_operations%ROWTYPE;
   v_version integer;
 BEGIN
+  -- The commune first, then the task, as in update_operation.
+  SELECT commune_id INTO v_commune_id FROM public.commune_operations WHERE id = p_operation_id;
+  PERFORM 1 FROM public.communes WHERE id = v_commune_id FOR UPDATE;
   SELECT * INTO v_op FROM public.commune_operations WHERE id = p_operation_id FOR UPDATE;
   IF v_op.id IS NULL OR NOT public.is_commune_member(v_op.commune_id) THEN
     RAISE EXCEPTION 'Not a commune member' USING ERRCODE = '42501';
