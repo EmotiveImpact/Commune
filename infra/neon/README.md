@@ -174,6 +174,12 @@ treat them as applied production configuration until its release is verified:
    an additional exact preview origin must call it. The scheduler invokes `/`
    using Neon's attested `X-Neon-Trigger-Invocation-Id` header; it is the retry
    safety net, not the primary path for newly clicked reminders.
+   For one-click unsubscribe (migration 0029 onwards), also set
+   `UNSUBSCRIBE_SECRET` (at least 32 random characters, server-only) and
+   `WORKER_PUBLIC_URL` (the Function's public HTTPS base URL). Reminder
+   emails then carry a signed `/unsubscribe` link and `List-Unsubscribe`
+   headers; without both settings they point to Settings only. Changing the
+   secret invalidates links in emails already sent.
    Never put those secrets in a `VITE_` variable or the repository.
 6. Use Vercel's Neon integration for preview branch isolation, then test the
    deployed preview with two real accounts. Open/review the current release

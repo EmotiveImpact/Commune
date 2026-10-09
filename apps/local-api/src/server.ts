@@ -861,12 +861,9 @@ route("PUT", /^\/api\/preferences$/, async (req, res) => {
   if (typeof input.emailReminders !== "boolean") {
     throw new ApiError(400, "Invalid emailReminders");
   }
-  await userAction(req, async (client) => client.query(`
-    INSERT INTO public.notification_preferences (user_id, email_reminders)
-    VALUES (auth.user_id(), $1)
-    ON CONFLICT (user_id) DO UPDATE SET email_reminders = EXCLUDED.email_reminders
-  `, [input.emailReminders]));
-  send(res, { emailReminders: input.emailReminders });
+  const result = await userAction(req, async (client) => client.query(
+    "SELECT public.set_email_reminders($1) AS email_reminders", [input.emailReminders]));
+  send(res, { emailReminders: result.rows[0].email_reminders });
 });
 
 function normalizedError(error: unknown): ApiError {

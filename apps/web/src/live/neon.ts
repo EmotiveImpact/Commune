@@ -348,6 +348,14 @@ export async function neonApi<T>(path: string, init: RequestInit = {}): Promise<
     });
   } else if (path === "/reminders/usage" && method === "GET") {
     response = await reminderUsage();
+  } else if (path === "/preferences" && method === "GET") {
+    // No row yet means the default: reminder emails on.
+    const viewer = await requireUser();
+    const rows = unwrap(await db().from("notification_preferences").select("email_reminders").eq("user_id", viewer.id)) as Array<{ email_reminders: boolean }> | null;
+    response = { emailReminders: rows?.[0]?.email_reminders ?? true };
+  } else if (path === "/preferences" && method === "PUT") {
+    if (typeof body.emailReminders !== "boolean") throw new ApiError("Choose whether to get reminder emails", 400);
+    response = { emailReminders: unwrap(await db().rpc("set_email_reminders", { p_enabled: body.emailReminders })) === true };
   } else if (method === "GET" && pathId(path, /^\/communes\/([^/]+)\/snapshot$/)) {
     response = await snapshot(pathId(path, /^\/communes\/([^/]+)\/snapshot$/)!);
   } else if (method === "POST" && pathId(path, /^\/communes\/([^/]+)\/expenses$/)) {

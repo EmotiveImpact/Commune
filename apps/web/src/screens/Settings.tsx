@@ -8,6 +8,7 @@ import { cx } from "../ui/cx";
 import { LIMITS } from "../data/limits";
 import { CommuneLocationFields, type CommuneLocation } from "../ui/CommuneLocationFields";
 import { ReminderUsageMeter } from "../ui/ReminderUsage";
+import { useEmailReminders } from "../ui/useEmailReminders";
 import { communeExportJson, downloadText, expensesCsv } from "../data/export";
 import { todayIso } from "../data/operations";
 
@@ -28,7 +29,9 @@ export function SettingsScreen() {
     hub,
     places,
     reminderUsage,
+    session,
   } = useApp();
+  const emailReminders = useEmailReminders(session?.userId);
   return (
     <div className="a-set">
       <aside className="a-set-left">
@@ -139,6 +142,22 @@ export function SettingsScreen() {
                 <span>Show in-app reminders on this device.</span>
               </span>
               <Switch checked={noticesOn} onChange={setNoticesOn} label="Notices" />
+            </div>
+            <div className="a-set-row">
+              <span className="a-set-row-copy">
+                <strong>Email reminders</strong>
+                <span aria-live="polite">
+                  {emailReminders.error || (emailReminders.enabled === null
+                    ? "Checking your email setting…"
+                    : "Email me when someone in a commune sends me a reminder.")}
+                </span>
+              </span>
+              <Switch
+                checked={emailReminders.enabled === true}
+                onChange={(next) => void emailReminders.save(next)}
+                label="Email reminders"
+                disabled={emailReminders.enabled === null || emailReminders.saving}
+              />
             </div>
             <div className="a-set-row">
               <span className="a-set-row-copy">
