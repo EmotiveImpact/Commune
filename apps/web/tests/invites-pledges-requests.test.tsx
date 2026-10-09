@@ -479,3 +479,36 @@ describe("who sent each invitation", () => {
     expect(post).not.toHaveBeenCalled();
   });
 });
+
+describe("an admin's own pledge", () => {
+  const withPledges = () => {
+    current.funds = [{ id: "fund-1", name: "Boiler fund", targetMinor: 50000, contributedMinor: 0, commitments: [
+      { id: "pledge-1", userId: user.id, amountMinor: 4000, contributedMinor: 0, dueOn: "2026-11-01" },
+      { id: "pledge-2", userId: "user-2", amountMinor: 3000, contributedMinor: 0, dueOn: "2026-11-01" },
+    ] }];
+  };
+  const rows = async () => {
+    fireEvent.click(await screen.findByRole("button", { name: "View fund" }));
+    const dialog = screen.getByRole("dialog", { name: "Boiler fund" });
+    return Array.from(dialog.querySelectorAll<HTMLElement>(".c-pledge-row"));
+  };
+
+  it("is left to another admin to confirm when there is one", async () => {
+    current.members.push({ userId: "user-3", name: "Co-admin", role: "admin", active: true });
+    withPledges();
+    mount("/funds");
+    const [mine, theirs] = await rows();
+    expect(within(mine).queryByRole("button", { name: "Record contribution" })).toBeNull();
+    expect(mine.textContent).toContain("Another admin records what you contribute to your own pledge.");
+    expect(within(theirs).getByRole("button", { name: "Record contribution" })).toBeTruthy();
+  });
+
+  it("can be confirmed by its admin when they are the only one", async () => {
+    current.members.push({ userId: "user-3", name: "Former admin", role: "admin", active: false });
+    withPledges();
+    mount("/funds");
+    const [mine] = await rows();
+    expect(within(mine).getByRole("button", { name: "Record contribution" })).toBeTruthy();
+    expect(mine.textContent).not.toContain("Another admin");
+  });
+});
