@@ -40,6 +40,7 @@ date ranges and user-written content. Keep the wording plain and concise.
 | Focus and green text | `--focus-ring` and `--text-green`: today's sage in light mode, the Hub's #649578 in dark mode and on navy surfaces |
 | Error text | `--danger` and `--danger-soft`, one error colour in both themes |
 | Touch areas | On phones (560px and under) small controls reach 44px through an invisible `::before` area; on desktop small links reach 24px through padding with a matching negative margin. Nothing moves visually |
+| Text over cover photos | Small text keeps 4.5:1, and large text and buttons 3:1, over a white stand-in (`apps/web/tests/cover-contrast.test.ts`). The shade is darkest behind the text and anchored in pixels from the bottom; type labels and hero buttons have their own dark translucent backdrop. The owner approved the darker shade on 9 October |
 
 Use semantic tokens with explicit dark-mode counterparts when consolidating CSS. Do not flatten dark mode with hard-coded light overrides. Normal text must reach 4.5:1 contrast; control boundaries/focus must remain discernible. Small metadata must not rely on very low opacity.
 
@@ -61,6 +62,8 @@ These are system responsibilities, not a demand to rename every existing compone
 | SummaryAmount | Label, real amount, concise meaning, optional primary action. Money hierarchy through size rather than excessive boldness |
 | ListRow | Leading identity/icon if informative, primary text, secondary metadata, trailing value/status. No nested conflicting click targets |
 | StatusBadge | Compact labelled state. Green for settled/complete, amber for pending/attention, red for failure/overdue where appropriate; colour never the sole signal |
+| ActivityRow | A type chip leads: slate for money, sage for plans, cream for shared things. The type word comes first in the small line and the time sits at the end, under day headings in the search-results heading style |
+| FilterChips | Active/Archived and similar filters use `.a-chip` with `is-on` and `aria-pressed`, side by side, as on Funds and Saved splits |
 | DateBadge | Shared `CalendarDate`: Operations' weekday strip, white face, date and Today/Tomorrow; add the month for dates beyond the week. 60px face / 52px below 1000px. Operations date column stays 72px / 56px below 1000px, no shadow or coloured edge |
 | NoteCard / NoteReader | Existing board and reader. Type-specific fields without changing the basic interaction. Contacts keep editable roles; confidential values stay masked |
 | FundCard | Purpose, contributed/target, progress, outstanding pledges and relevant next action. Explicitly records contributions; never implies Commune holds money |

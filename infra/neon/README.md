@@ -14,8 +14,8 @@ this is not a replacement of Neon Auth or a switch back to Supabase.
 - [Current design language and preserved layouts](../../docs/DESIGN-LANGUAGE.md)
 - [Local build-out from 5 October: migrations 0020 onwards](../../docs/LOCAL-BUILDOUT-2026-10-05.md)
 
-Migrations **0015 to 0038 are local only**. They have not been applied to any
-Neon branch. Release order when they are: apply 0013 to 0038 in numeric order
+Migrations **0015 to 0039 are local only**. They have not been applied to any
+Neon branch. Release order when they are: apply 0013 to 0039 in numeric order
 to the preview branch, refresh that branch's Data API schema cache, then
 deploy the matching web client. The new client calls `send_reminder_command`,
 `record_share_receipt`, `reverse_share_receipt`, `correct_expense`,
@@ -108,6 +108,14 @@ calls them; with an older database that client only loses the hint and the
 reports. A report names its release from Vercel's commit SHA, so expose
 Vercel's system environment variables to the build; otherwise reports say
 "local".
+
+0039 adds `unreadNotices` to `my_communes()`, `commune_summary()` and the
+snapshot's commune; `public.my_unread_notices()` for Notices across
+communes; a `recordType` on each snapshot activity event; and keeps a share's
+pending payment reports in `commune_summary()`. All of it is additive, so the
+previous client keeps working. The new client calls `my_unread_notices` only
+when another commune has unread notices: deploy it after 0039 and the schema
+cache refresh.
 
 ## Last recorded production evidence — 27 September 2026
 
@@ -272,7 +280,7 @@ rate limits) are recorded in [`docs/AUTH-SETTINGS.md`](../../docs/AUTH-SETTINGS.
    Broad grants would let direct writes bypass ledger invariants. Keep preview
    branches separate from production.
 3. Apply `migrations/0001_commune_core.sql` through
-   `migrations/0038_invite_hint_and_client_reports.sql` in numeric order to the
+   `migrations/0039_notices_and_activity.sql` in numeric order to the
    development branch via an **unpooled** connection. Run `tests/grants.sql`,
    review RLS, and run two-account signed-JWT tests before applying the same
    reviewed migrations to production. After a migration adds or changes a
