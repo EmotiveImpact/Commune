@@ -1,8 +1,9 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { Router } from "wouter";
 import { memoryLocation } from "wouter/memory-location";
 import { App } from "../src/App";
+import { preloadAll } from "../src/shell/lazyComponent";
 import { AppProvider } from "../src/state";
 import { api, loadCommunes, loadSnapshot } from "../src/live/api";
 import type { Commune, Snapshot } from "../src/live/model";
@@ -22,6 +23,9 @@ const widths = (srcSet = "") => srcSet.split(", ").map((candidate) => {
 const PLACEMENTS: CoverPlacement[] = ["featured", "card", "hero", "preview"];
 const CUSTOM = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQ";
 
+// The screens and windows a browser loads on first use are loaded up front,
+// so each test sees them drawn at once.
+beforeAll(preloadAll);
 describe("cover sources", () => {
   it.each([
     ["Household", HUBS.park.photo],

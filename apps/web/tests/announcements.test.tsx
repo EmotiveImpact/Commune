@@ -3,6 +3,7 @@ import { act, cleanup, fireEvent, render, screen, within } from "@testing-librar
 import { Router } from "wouter";
 import { memoryLocation } from "wouter/memory-location";
 import { App } from "../src/App";
+import { preloadAll } from "../src/shell/lazyComponent";
 import { AppProvider, useApp, type AppState } from "../src/state";
 import { api, post, loadCommunes, loadSnapshot } from "../src/live/api";
 import type { Announcement, Commune, Snapshot } from "../src/live/model";
@@ -38,6 +39,9 @@ function mount(role: "admin" | "member") {
 }
 const modalDescriptor = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, "showModal");
 const originalScroll = Element.prototype.scrollIntoView;
+// The screens and windows a browser loads on first use are loaded up front,
+// so each test sees them drawn at once.
+beforeAll(preloadAll);
 beforeAll(() => {
   Element.prototype.scrollIntoView = vi.fn();
   Object.defineProperty(HTMLDialogElement.prototype, "showModal", { configurable: true, value: function (this: HTMLDialogElement) { this.setAttribute("open", ""); } });

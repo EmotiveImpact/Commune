@@ -3,6 +3,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testi
 import { Router } from "wouter";
 import { memoryLocation } from "wouter/memory-location";
 import { App } from "../src/App";
+import { preloadAll } from "../src/shell/lazyComponent";
 import { AppProvider, useApp, type AppState } from "../src/state";
 import { api, loadCommunes, loadSnapshot } from "../src/live/api";
 import type { Commune, ReminderTarget, ReminderUsage, Snapshot } from "../src/live/model";
@@ -51,6 +52,9 @@ function mount(path: string) {
 }
 const modalDescriptor = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, "showModal");
 const closeDescriptor = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, "close");
+// The screens and windows a browser loads on first use are loaded up front,
+// so each test sees them drawn at once.
+beforeAll(preloadAll);
 beforeAll(() => {
   Object.defineProperty(HTMLDialogElement.prototype, "showModal", { configurable: true, value: function (this: HTMLDialogElement) { this.setAttribute("open", ""); } });
   Object.defineProperty(HTMLDialogElement.prototype, "close", { configurable: true, value: function (this: HTMLDialogElement) { this.removeAttribute("open"); } });

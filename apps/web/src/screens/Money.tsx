@@ -289,6 +289,3 @@ export function SettleEvenScreen() {
     <SettleScreen />
   );
 }
-
-export { RecurringScreen } from "./Recurring";
-export { FundsScreen } from "./Funds";

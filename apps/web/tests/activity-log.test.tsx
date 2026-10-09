@@ -3,6 +3,7 @@ import { cleanup, render, screen, within } from "@testing-library/react";
 import { Router } from "wouter";
 import { memoryLocation } from "wouter/memory-location";
 import { App } from "../src/App";
+import { preloadAll } from "../src/shell/lazyComponent";
 import { AppProvider } from "../src/state";
 import { api, loadCommunes, loadSnapshot } from "../src/live/api";
 import { hubFromSnapshot, type Commune, type Snapshot } from "../src/live/model";
@@ -56,6 +57,9 @@ function mount(path: string) {
   return location;
 }
 const modalDescriptor = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, "showModal");
+// The screens and windows a browser loads on first use are loaded up front,
+// so each test sees them drawn at once.
+beforeAll(preloadAll);
 beforeAll(() => {
   Object.defineProperty(HTMLDialogElement.prototype, "showModal", { configurable: true, value: function (this: HTMLDialogElement) { this.setAttribute("open", ""); } });
 });

@@ -1,8 +1,5 @@
 import { useApp } from "../state";
 import { ActivityLog } from "../ui/ActivityLog";
-export { NotesScreen } from "./Notes";
-
-export { MembersScreen } from "./Members";
 
 export function ActivityScreen() {
   const { hub, go } = useApp();
@@ -15,5 +12,3 @@ export function ActivityScreen() {
     }))} />
   );
 }
-
-export { TemplatesScreen } from "./Templates";

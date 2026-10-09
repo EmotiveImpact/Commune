@@ -3,6 +3,7 @@ import { cleanup, render, screen, within } from "@testing-library/react";
 import { Router } from "wouter";
 import { memoryLocation } from "wouter/memory-location";
 import { App } from "../src/App";
+import { preloadAll } from "../src/shell/lazyComponent";
 import { AppProvider } from "../src/state";
 import { api, loadCommunes, loadSnapshot } from "../src/live/api";
 import { needsYou, type Commune, type PaymentReport, type Snapshot } from "../src/live/model";
@@ -77,6 +78,9 @@ const tripSummary = () => ({ ...snapshotOf(trip, {
 
 const rows = (need: { title: string; kind: string; when: string; amount?: string }[]) => need.map((item) => [item.kind, item.title, item.when, item.amount]);
 
+// The screens and windows a browser loads on first use are loaded up front,
+// so each test sees them drawn at once.
+beforeAll(preloadAll);
 describe("the Needs you rule", () => {
   it("puts payments to confirm first, then shares to pay, late and today's tasks, then pledges due", () => {
     const { actions } = needsYou(homeSnapshot(), "me", today);

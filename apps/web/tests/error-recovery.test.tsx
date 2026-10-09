@@ -1,6 +1,7 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { App } from "../src/App";
+import { preloadAll } from "../src/shell/lazyComponent";
 import { AppProvider } from "../src/state";
 import { api, ApiError, loadCommunes, loadSnapshot, post } from "../src/live/api";
 import type { Commune, Snapshot } from "../src/live/model";
@@ -18,8 +19,8 @@ vi.mock("../src/live/api", async (importOriginal) => ({
 // Finding 21: a drawing error shows a way on in place of the part that broke,
 // and errors and sampled speed figures are reported.
 const broken = vi.hoisted(() => ({ screen: false, window: false }));
-vi.mock("../src/screens/Money", async (importOriginal) => {
-  const original = await importOriginal<typeof import("../src/screens/Money")>();
+vi.mock("../src/screens/Funds", async (importOriginal) => {
+  const original = await importOriginal<typeof import("../src/screens/Funds")>();
   return { ...original, FundsScreen: () => {
     if (broken.screen) throw new Error("Funds could not draw fund 0f8fe1a5-1234-4abc-9def-0123456789ab");
     return <p>Funds drawn</p>;
@@ -51,6 +52,9 @@ function start(path: string) {
   render(<AppProvider><App /></AppProvider>);
 }
 
+// The screens and windows a browser loads on first use are loaded up front,
+// so each test sees them drawn at once.
+beforeAll(preloadAll);
 beforeAll(() => { Element.prototype.scrollIntoView = vi.fn(); });
 beforeEach(() => {
   vi.resetAllMocks();

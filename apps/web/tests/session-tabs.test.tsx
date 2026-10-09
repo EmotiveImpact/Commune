@@ -28,6 +28,9 @@ async function openTab(path: string) {
   const live = await import("../src/live/api");
   const { AppProvider } = await import("../src/state");
   const { App } = await import("../src/App");
+  // The code a browser loads later comes with each tab's copy now, before
+  // the next tab replaces the modules it would load.
+  await (await import("../src/shell/lazyComponent")).preloadAll();
   vi.mocked(live.api).mockImplementation(async (request) => {
     if (request === "/auth/me") { checks += 1; return { user: signedIn }; }
     if (request === "/reminders/usage") return { totalUsed: 0, totalLimit: 60, recipientLimit: 6, recipientUsage: {}, nextSlotAt: null };
