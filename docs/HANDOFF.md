@@ -69,6 +69,15 @@ lifecycle pack. Work is paused for a handoff, not a production release.
   undoing a task now lock the commune first (migration 0037), and the
   invitation email sender does the same, so either meeting a member leaving
   waits for it instead of failing as a deadlock.
+- Also from 9 October, for review: accessibility fixes from the same review.
+  The content area is `<main id="main-content">` behind a Skip to content
+  link, and moving to another page puts focus on its heading; windows, the
+  note reader and search results keep the focus they take. Errors are tied to
+  their fields (`useFormError`), and Escape, the backdrop or a close button ask
+  before throwing away typed text (`useTypedText`, `DiscardQuestion`). The
+  alert strip shows only failures nothing on screen caught. Operations' Week,
+  People and Month are pressed buttons, and its Undo message takes focus.
+  Signed-out pages have header, main and footer landmarks.
 - The website is `web/` (the editorial homepage); the earlier v2 site is in
   `web-backup/`. Launch names `website` (3004) and `website-backup` (3003).
 - No push, deployment, hosted migration or provider change has been made. Do
