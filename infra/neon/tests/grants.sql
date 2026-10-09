@@ -102,7 +102,7 @@ BEGIN
     'commune_private.next_operation_version()',
     'commune_private.note_content(text,text,text,text,text,jsonb)',
     'commune_private.operation_content(text,text,text,date,time,boolean,text,jsonb,text,text)',
-    'commune_private.is_money_correction(text,text,jsonb)',
+    'commune_private.money_correction_reserve(text,text,jsonb)',
     'commune_private.prune_delivery_records()'
   ] LOOP
     IF has_function_privilege('authenticated', table_name, 'EXECUTE')

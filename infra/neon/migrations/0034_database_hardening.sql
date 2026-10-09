@@ -11,7 +11,9 @@
 --    commune has another admin, that admin confirms them instead.
 -- 3. The snapshot's activity was the latest 100 events, so a burst of edits
 --    could push a void or correction out of sight. It now also carries the
---    money corrections of the last 90 days (at most 50).
+--    last 90 days' voids and corrections (at most 50) and, separately, their
+--    receipt reversals (at most 50), so reversing receipts again and again
+--    cannot push a void out either.
 -- 4. Email delivery records kept addresses and message bodies for ever. The
 --    worker's scheduled run now trims those older than 30 days. A reminder is
 --    never retried after 23 hours, an invitation expires after 7 days and the
@@ -52,16 +54,22 @@ BEGIN
 END;
 $$;
 
--- What counts as a money correction in the activity log. The index and the
--- snapshot use the same test, so the index serves the snapshot.
-CREATE FUNCTION commune_private.is_money_correction(p_kind text, p_description text, p_details jsonb)
-RETURNS boolean LANGUAGE sql IMMUTABLE SET search_path = pg_catalog AS $$
-  SELECT p_description IN ('Expense voided', 'Expense corrected', 'Contribution corrected')
-    OR (p_kind = 'expenses' AND p_details ->> 'reversed' = 'true');
+-- Which reserve of the activity log a money correction is kept in, or NULL
+-- for any other event. Voids and corrections have one reserve and receipt
+-- reversals the other: anyone owed money can record and reverse a receipt as
+-- often as they like, so reversals must not use up the room a void needs. The
+-- index and the snapshot use the same test, so the index serves the snapshot.
+CREATE FUNCTION commune_private.money_correction_reserve(p_kind text, p_description text, p_details jsonb)
+RETURNS text LANGUAGE sql IMMUTABLE SET search_path = pg_catalog AS $$
+  SELECT CASE
+    WHEN p_description IN ('Expense voided', 'Expense corrected', 'Contribution corrected') THEN 'correction'
+    WHEN p_kind = 'expenses' AND p_details ->> 'reversed' = 'true' THEN 'reversal'
+  END;
 $$;
-REVOKE ALL ON FUNCTION commune_private.is_money_correction(text, text, jsonb) FROM PUBLIC;
-CREATE INDEX commune_events_corrections_idx ON public.commune_events (commune_id, created_at DESC)
-  WHERE commune_private.is_money_correction(kind, description, details);
+REVOKE ALL ON FUNCTION commune_private.money_correction_reserve(text, text, jsonb) FROM PUBLIC;
+CREATE INDEX commune_events_corrections_idx ON public.commune_events
+  (commune_id, (commune_private.money_correction_reserve(kind, description, details)), created_at DESC)
+  WHERE commune_private.money_correction_reserve(kind, description, details) IS NOT NULL;
 
 DO $$
 DECLARE v_original text; v_source text;
@@ -72,7 +80,12 @@ BEGIN
     'FROM ((SELECT ev.id, ev.actor_id, ev.kind, ev.entity_id, ev.title, ev.description, ev.created_at
         FROM public.commune_events ev WHERE ev.commune_id=co.id ORDER BY ev.created_at DESC LIMIT 100)
       UNION (SELECT ev.id, ev.actor_id, ev.kind, ev.entity_id, ev.title, ev.description, ev.created_at
-        FROM public.commune_events ev WHERE ev.commune_id=co.id AND commune_private.is_money_correction(ev.kind, ev.description, ev.details)
+        FROM public.commune_events ev WHERE ev.commune_id=co.id
+          AND commune_private.money_correction_reserve(ev.kind, ev.description, ev.details) = ''correction''
+          AND ev.created_at > now() - interval ''90 days'' ORDER BY ev.created_at DESC LIMIT 50)
+      UNION (SELECT ev.id, ev.actor_id, ev.kind, ev.entity_id, ev.title, ev.description, ev.created_at
+        FROM public.commune_events ev WHERE ev.commune_id=co.id
+          AND commune_private.money_correction_reserve(ev.kind, ev.description, ev.details) = ''reversal''
           AND ev.created_at > now() - interval ''90 days'' ORDER BY ev.created_at DESC LIMIT 50)) a');
   IF v_source = v_original THEN RAISE EXCEPTION 'Unsupported snapshot activity definition'; END IF;
   EXECUTE v_source;

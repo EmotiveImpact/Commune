@@ -7,6 +7,7 @@ DO $$
 DECLARE
   v_home uuid; v_solo uuid; v_fund uuid; v_pledge uuid; v_solo_pledge uuid; v_expense uuid; v_share uuid;
   v_activity jsonb; v_reminder_old uuid; v_reminder_new uuid; v_pruned jsonb; v_failed boolean := false;
+  v_gas uuid; v_gas_share uuid; v_receipt jsonb;
 BEGIN
   PERFORM set_config('request.jwt.claims', json_build_object('sub', 'hard-alice', 'role', 'authenticated')::text, true);
   v_home := public.create_commune('Hardening home', 'household', 'GBP');
@@ -53,11 +54,36 @@ BEGIN
      OR jsonb_array_length(v_activity) <> 101 THEN
     RAISE EXCEPTION 'The activity should keep the void among the latest 100 events, got %', jsonb_array_length(v_activity);
   END IF;
-  IF NOT commune_private.is_money_correction('funds', 'Contribution corrected', '{}')
-     OR NOT commune_private.is_money_correction('expenses', 'Repayment of £5.00 reversed', '{"reversed": true}')
-     OR commune_private.is_money_correction('expenses', 'Repayment of £5.00 recorded', '{"reversed": false}')
-     OR commune_private.is_money_correction('notes', 'Updated', '{"reversed": true}') THEN
+  IF commune_private.money_correction_reserve('funds', 'Contribution corrected', '{}') IS DISTINCT FROM 'correction'
+     OR commune_private.money_correction_reserve('expenses', 'Expense voided', '{}') IS DISTINCT FROM 'correction'
+     OR commune_private.money_correction_reserve('expenses', 'Repayment of £5.00 reversed', '{"reversed": true}') IS DISTINCT FROM 'reversal'
+     OR commune_private.money_correction_reserve('expenses', 'Repayment of £5.00 recorded', '{"reversed": false}') IS NOT NULL
+     OR commune_private.money_correction_reserve('notes', 'Updated', '{"reversed": true}') IS NOT NULL THEN
     RAISE EXCEPTION 'Money corrections were not told apart';
+  END IF;
+
+  -- Nor can recording and reversing a receipt again and again push the void
+  -- out: reversals have a reserve of their own. Each round below happens
+  -- after the void and the notes (in this one transaction now() stands
+  -- still, so their times are set apart afterwards).
+  v_gas := public.create_expense(v_home, 'Gas', 3000,
+    '[{"user_id":"hard-alice","amount_minor":1500},{"user_id":"hard-cal","amount_minor":1500}]'::jsonb, current_date);
+  SELECT id INTO v_gas_share FROM public.expense_shares WHERE expense_id = v_gas AND user_id = 'hard-cal';
+  FOR i IN 1..60 LOOP
+    v_receipt := public.record_share_receipt(v_gas_share, 100, current_date, NULL, gen_random_uuid());
+    PERFORM public.reverse_share_receipt((v_receipt->>'id')::uuid, 'Recorded by mistake');
+  END LOOP;
+  UPDATE public.commune_events e SET created_at = now() + make_interval(secs => 200 + r.n)
+    FROM (SELECT id, row_number() OVER (ORDER BY id) AS n FROM public.commune_events
+      WHERE commune_id = v_home AND entity_id = v_gas AND details ? 'reversed') r
+    WHERE e.id = r.id;
+  IF (SELECT count(*) FROM public.commune_events WHERE commune_id = v_home AND entity_id = v_gas
+      AND commune_private.money_correction_reserve(kind, description, details) = 'reversal') <> 60 THEN
+    RAISE EXCEPTION 'Expected 60 receipt reversals';
+  END IF;
+  v_activity := public.commune_snapshot(v_home)->'activityEvents';
+  IF NOT EXISTS (SELECT 1 FROM jsonb_array_elements(v_activity) e WHERE e->>'description' = 'Expense voided' AND e->>'title' = 'Broadband') THEN
+    RAISE EXCEPTION 'Receipt reversals pushed the void out of the activity';
   END IF;
 
   -- Email records older than 30 days lose their addresses and bodies.
