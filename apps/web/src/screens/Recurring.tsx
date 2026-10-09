@@ -146,6 +146,10 @@ function PeriodHistory({ bill }: { bill: RecurringBill }) {
   );
 }
 
+/** How a save ended: refused outright, refused because the bill had moved
+ * on (409), or with no reply, so it may have gone through. */
+type SaveOutcome = "saved" | "refused" | "conflict" | "unknown";
+
 /**
  * Add a bill, or edit one from the version it was opened at. People who have
  * left are taken out of the split when it opens, and the editor says so. If
@@ -167,7 +171,7 @@ function RecurringEditor({
   pending: boolean;
   error: string;
   onClearError: () => void;
-  onSave: (input: RecurringBillInput) => void;
+  onSave: (input: RecurringBillInput) => Promise<SaveOutcome>;
   onSaved: () => void;
   onClose: () => void;
 }) {
@@ -195,6 +199,10 @@ function RecurringEditor({
   // One add per open form: a retry sends the same request id.
   const requestId = useRef(newRequestId());
   const sent = useRef<RecurringBillInput | null>(null);
+  // A save from this form that got no reply may have gone through. A later
+  // outright refusal settles that; a conflict does not, as that earlier save
+  // may be what moved the bill on.
+  const [unconfirmed, setUnconfirmed] = useState(false);
   const conflict = !!bill && !!base && bill.version !== base.version;
   // A newer version that is exactly what this form sent is this person's own
   // save whose reply was lost.
@@ -211,6 +219,7 @@ function RecurringEditor({
     load(discard ? latest : mergeRecurringEdits(mine, recurringEditorFields(base.bill, activeIds), latest));
     setBase({ version: bill.version, bill });
     sent.current = null;
+    setUnconfirmed(false);
     setValidation("");
     onClearError();
   }
@@ -241,7 +250,10 @@ function RecurringEditor({
         ? { ...fields, id: bill.id, expectedVersion: base.version }
         : { ...fields, paused: false, requestId: requestId.current };
       sent.current = input;
-      onSave(input);
+      void onSave(input).then((outcome) => {
+        if (outcome === "unknown") setUnconfirmed(true);
+        else if (outcome === "refused") setUnconfirmed(false);
+      });
     } catch (cause) {
       setValidation(cause instanceof Error ? cause.message : "Check the bill.");
     }
@@ -273,7 +285,9 @@ function RecurringEditor({
       {conflict && (
         <div className="c-change-conflict" role="alert">
           <strong>This bill changed while you were editing.</strong>
-          <p>Nothing of yours was saved. Check the bill again before saving.</p>
+          <p>{unconfirmed
+            ? "Your earlier save may have gone through. Check the bill below before saving again."
+            : "Nothing of yours was saved. Check the bill again before saving."}</p>
           {changes.length > 0 && <ul>{changes.map((line) => <li key={line}>{line}</li>)}</ul>}
           <div className="a-field-row">
             <Button onClick={() => adoptLatest(false)}>Keep my edits and check again</Button>
@@ -396,7 +410,11 @@ export function RecurringScreen() {
     id => setShowArchived(Boolean(recurringBills.find(item => item.id === id)?.archivedAt)));
   function report(cause: unknown) {
     const failure = commandFailure(cause, "Could not save the bill.");
-    setError(failure.rejected ? failure.message : UNCERTAIN_RETRY_SAFE);
+    setError(!failure.rejected ? UNCERTAIN_RETRY_SAFE
+      : /already used for a different/i.test(failure.message)
+        ? "An earlier attempt may already have been saved. Close this and check Recurring before adding it again."
+        : failure.message);
+    return failure;
   }
   async function run<T>(action: () => Promise<T>, success: string | ((result: T) => string)) {
     setPending(true);
@@ -415,18 +433,19 @@ export function RecurringScreen() {
     }
   }
   // Resuming from the editor saves first, then resumes the saved bill.
-  async function save(input: RecurringBillInput, resuming: boolean) {
+  async function save(input: RecurringBillInput, resuming: boolean): Promise<SaveOutcome> {
     setPending(true);
     setError("");
     setMessage("");
     try {
       await saveRecurringBill(input);
     } catch (cause) {
-      report(cause);
+      const failure = report(cause);
       setPending(false);
-      return;
+      return !failure.rejected ? "unknown" : failure.conflict ? "conflict" : "refused";
     }
     await saved(resuming && "id" in input ? input.id : null);
+    return "saved";
   }
   // Also reached from the editor when a save's reply was lost but it landed.
   async function saved(resumeId: string | null) {
@@ -661,7 +680,7 @@ export function RecurringScreen() {
             void saved(editor.resuming ? editor.id : null);
           }}
           onClose={() => setEditor(null)}
-          onSave={(input) => void save(input, editor.resuming)}
+          onSave={(input) => save(input, editor.resuming)}
         />
       )}
       {confirm && (
