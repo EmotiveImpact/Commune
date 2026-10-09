@@ -14,11 +14,12 @@
 --    communes and commune_members row checks look the caller's communes up
 --    once per query. create_commune refuses an 11th commune in an hour, a 31st
 --    in a day and a 101st in all.
--- 3. The snapshot carries the expenses still open and those created or
---    changed since the start of last month (UTC), plus expenseHistory, which
---    says from when and how many older ones were left out. Older ones come a
---    month or more at a time from public.commune_expense_page, and named ones
---    from public.commune_expense_records, in the same shape.
+-- 3. The snapshot carries the expenses still open, those created or changed
+--    since the start of last month (UTC) and the five newest that are not
+--    voided, plus expenseHistory, which says from when and how many older
+--    ones were left out. Older ones come a month or more at a time from
+--    public.commune_expense_page, and named ones from
+--    public.commune_expense_records, in the same shape.
 -- The web app released with this needs it applied first. Apply after 0035.
 BEGIN;
 
@@ -230,19 +231,24 @@ $$;
 REVOKE ALL ON FUNCTION commune_private.expense_window_start() FROM PUBLIC;
 
 -- The expenses a snapshot carries: every open one (not voided, a share still
--- owed), and every one created, corrected or voided since the window start or
--- with a share settled since then. A repayment, its reversal and a payment
--- report either leave a share owed or settle it, and a correction or void sets
--- updated_at, so these cover them all. The commune's expenses are read through
--- expenses_commune_idx and each one's shares through their (expense_id,
--- user_id) key.
+-- owed), every one created, corrected or voided since the window start or
+-- with a share settled since then, and the five newest that are not voided,
+-- so a commune that has gone quiet still shows its latest. A repayment, its
+-- reversal and a payment report either leave a share owed or settle it, and
+-- a correction or void sets updated_at, so these cover them all. Ties on
+-- created_at go by id, so every caller leaves out the same ones. The
+-- commune's expenses are read through expenses_commune_idx and each one's
+-- shares through their (expense_id, user_id) key.
 CREATE FUNCTION commune_private.snapshot_expense_ids(p_commune_id uuid, p_since timestamptz)
 RETURNS SETOF uuid LANGUAGE sql STABLE SET search_path = public, pg_temp AS $$
   SELECT e.id FROM public.expenses e
     WHERE e.commune_id = p_commune_id
       AND (e.created_at >= p_since OR e.updated_at >= p_since
         OR EXISTS (SELECT 1 FROM public.expense_shares s WHERE s.expense_id = e.id
-          AND ((e.voided_at IS NULL AND s.settled_minor < s.amount_minor) OR s.settled_at >= p_since)));
+          AND ((e.voided_at IS NULL AND s.settled_minor < s.amount_minor) OR s.settled_at >= p_since)))
+  UNION
+  (SELECT e.id FROM public.expenses e WHERE e.commune_id = p_commune_id AND e.voided_at IS NULL
+    ORDER BY e.created_at DESC, e.id DESC LIMIT 5);
 $$;
 REVOKE ALL ON FUNCTION commune_private.snapshot_expense_ids(uuid, timestamptz) FROM PUBLIC;
 

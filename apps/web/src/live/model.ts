@@ -285,7 +285,10 @@ export type Snapshot = {
   splitTemplates?: SplitTemplate[];
   announcements?: Announcement[];
   activityEvents?: Array<{id:string;actorId:string;kind:"funds"|"members"|"recurring"|"templates"|"notes"|"operations"|"expenses"|"announcements";entityId:string;title:string;description:string;createdAt:string}>;
-  /** The snapshot holds every expense created since `since`, and every open one. */
+  /**
+   * The snapshot holds every expense created since `since`, every open one
+   * and the five newest that are not voided.
+   */
   expenseHistory?: ExpenseHistory;
   changeMark?: string;
   /** An overview summary leaves out what only the commune's own screens show. */

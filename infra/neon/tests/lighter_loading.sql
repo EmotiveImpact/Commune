@@ -394,7 +394,7 @@ DECLARE
   v_old timestamptz := commune_private.expense_window_start() - interval '3 months';
   v_recent timestamptz := now() - interval '1 hour';
   v_open uuid; v_quiet uuid; v_new uuid; v_settled uuid; v_voided uuid; v_quiet_void uuid; v_edited uuid; v_edge_in uuid; v_edge_out uuid;
-  v_snapshot jsonb; v_ids uuid[]; v_history jsonb;
+  v_today uuid[]; v_snapshot jsonb; v_ids uuid[]; v_history jsonb;
 BEGIN
   PERFORM pg_temp.act('ll-ann');
   v_home := public.create_commune('History home', 'household', 'GBP');
@@ -413,6 +413,10 @@ BEGIN
     'll-ann', 'Utilities', 'Right category', gen_random_uuid());
   v_edge_in := pg_temp.expense(v_home, 'First moment of the window', true);
   v_edge_out := pg_temp.expense(v_home, 'Last moment before it', true);
+  -- Three from today keep the five newest inside the window, so the window
+  -- alone decides here. Section 9 has a commune that has gone quiet.
+  v_today := ARRAY[pg_temp.expense(v_home, 'Today one', true), pg_temp.expense(v_home, 'Today two', true),
+    pg_temp.expense(v_home, 'Today three', true)];
   PERFORM pg_temp.age(v_open, v_old, v_old);
   PERFORM pg_temp.age(v_quiet, v_old, v_old);
   PERFORM pg_temp.age(v_new, v_recent, v_recent);
@@ -426,8 +430,8 @@ BEGIN
 
   v_snapshot := public.commune_snapshot(v_home);
   SELECT array_agg((e->>'id')::uuid) INTO v_ids FROM jsonb_array_elements(v_snapshot->'expenses') e;
-  IF NOT v_ids @> ARRAY[v_open, v_new, v_settled, v_voided, v_edited, v_edge_in] OR v_ids && ARRAY[v_quiet, v_quiet_void, v_edge_out]
-     OR cardinality(v_ids) <> 6 THEN
+  IF NOT v_ids @> (ARRAY[v_open, v_new, v_settled, v_voided, v_edited, v_edge_in] || v_today)
+     OR v_ids && ARRAY[v_quiet, v_quiet_void, v_edge_out] OR cardinality(v_ids) <> 9 THEN
     RAISE EXCEPTION 'The snapshot carried the wrong expenses: %', v_snapshot->'expenses';
   END IF;
   v_history := v_snapshot->'expenseHistory';
@@ -514,7 +518,108 @@ BEGIN
 END;
 $$;
 
--- 9. The overview summary: the same parts, less the detail of the commune's
+-- 9. A commune that has gone quiet keeps its five newest expenses that are
+-- not voided, however old, and its counts and pages leave out the same ones.
+DO $$
+DECLARE
+  v_home uuid; v_window timestamptz := commune_private.expense_window_start();
+  v_m1 timestamptz; v_m2 timestamptz; v_m3 timestamptz;
+  v_void uuid; v_first uuid; v_second uuid; v_third uuid; v_fourth uuid; v_a uuid; v_b uuid; v_tie_in uuid; v_tie_out uuid;
+  v_lunch uuid; v_deposit uuid; v_back uuid; v_snapshot jsonb; v_ids uuid[]; v_page jsonb; v_paged uuid[];
+BEGIN
+  PERFORM pg_temp.act('ll-ann');
+  v_home := public.create_commune('Quiet home', 'household', 'GBP');
+  INSERT INTO public.commune_members (commune_id, user_id, role) VALUES (v_home, 'll-ben', 'member');
+  v_void := pg_temp.expense(v_home, 'Voided after the rest', false);
+  PERFORM public.void_expense(v_void, 1, 'Entered twice', gen_random_uuid());
+  v_first := pg_temp.expense(v_home, 'Farewell dinner', true);
+  v_second := pg_temp.expense(v_home, 'Airport taxi', true);
+  v_third := pg_temp.expense(v_home, 'Museum', true);
+  v_fourth := pg_temp.expense(v_home, 'Ferry', true);
+  v_a := pg_temp.expense(v_home, 'Tram', true);
+  v_b := pg_temp.expense(v_home, 'Bus', true);
+  v_lunch := pg_temp.expense(v_home, 'Lunch', true);
+  v_deposit := pg_temp.expense(v_home, 'Deposit', false);
+  -- Two share the fifth place; the higher id takes it.
+  v_tie_in := greatest(v_a, v_b);
+  v_tie_out := least(v_a, v_b);
+  -- The starts of the three months before the window, in UTC.
+  v_m1 := ((v_window AT TIME ZONE 'UTC') - interval '1 month') AT TIME ZONE 'UTC';
+  v_m2 := ((v_window AT TIME ZONE 'UTC') - interval '2 months') AT TIME ZONE 'UTC';
+  v_m3 := ((v_window AT TIME ZONE 'UTC') - interval '3 months') AT TIME ZONE 'UTC';
+  PERFORM pg_temp.age(v_void, v_m1 + interval '20 days', v_m1 + interval '20 days');
+  PERFORM pg_temp.age(v_first, v_m1 + interval '15 days', v_m1 + interval '15 days');
+  PERFORM pg_temp.age(v_second, v_m1 + interval '10 days', v_m1 + interval '10 days');
+  PERFORM pg_temp.age(v_third, v_m2 + interval '15 days', v_m2 + interval '15 days');
+  PERFORM pg_temp.age(v_fourth, v_m2 + interval '10 days', v_m2 + interval '10 days');
+  -- Aged in this order, the row that loses the tie is stored first, so a rule
+  -- that left ties to storage order would keep it.
+  PERFORM pg_temp.age(v_tie_out, v_m2 + interval '5 days', v_m2 + interval '5 days');
+  PERFORM pg_temp.age(v_tie_in, v_m2 + interval '5 days', v_m2 + interval '5 days');
+  PERFORM pg_temp.age(v_lunch, v_m3 + interval '5 days', v_m3 + interval '5 days');
+  PERFORM pg_temp.age(v_deposit, v_m3 - interval '3 months', v_m3 - interval '3 months');
+
+  -- The five newest that are not voided, newest first, and the old open one.
+  v_snapshot := public.commune_snapshot(v_home);
+  SELECT array_agg((x.item->>'id')::uuid ORDER BY x.ord) INTO v_ids
+    FROM jsonb_array_elements(v_snapshot->'expenses') WITH ORDINALITY x(item, ord);
+  IF v_ids IS DISTINCT FROM ARRAY[v_first, v_second, v_third, v_fourth, v_tie_in, v_deposit] THEN
+    RAISE EXCEPTION 'A quiet commune''s snapshot should keep its five newest that are not voided: %', v_snapshot->'expenses';
+  END IF;
+  IF v_snapshot->'expenseHistory' <> jsonb_build_object('since', to_char(v_window AT TIME ZONE 'UTC', 'YYYY-MM-DD'),
+      'olderCount', 3, 'olderVoidedCount', 1) THEN
+    RAISE EXCEPTION 'expenseHistory should count the voided one, the one that lost the tie and the oldest: %', v_snapshot->'expenseHistory';
+  END IF;
+  IF (SELECT array_agg(e->>'id') FROM jsonb_array_elements(public.commune_summary(v_home)->'expenses') e)
+     IS DISTINCT FROM (SELECT array_agg(e->>'id') FROM jsonb_array_elements(v_snapshot->'expenses') e) THEN
+    RAISE EXCEPTION 'The summary should carry the snapshot''s expenses';
+  END IF;
+
+  -- Pages go back a month at a time from the window and never repeat one the
+  -- snapshot holds.
+  PERFORM pg_temp.act('ll-ben');
+  v_page := public.commune_expense_page(v_home, NULL, 1);
+  IF v_page->'expenses'->0->>'id' IS DISTINCT FROM v_void::text OR jsonb_array_length(v_page->'expenses') <> 1
+     OR v_page->>'from' <> to_char(v_m1 AT TIME ZONE 'UTC', 'YYYY-MM-DD')
+     OR (v_page->>'olderCount')::int <> 2 OR (v_page->>'olderVoidedCount')::int <> 0 THEN
+    RAISE EXCEPTION 'A quiet commune''s first page: %', v_page;
+  END IF;
+  v_page := public.commune_expense_page(v_home, (v_page->>'from')::date, 1);
+  IF v_page->'expenses'->0->>'id' IS DISTINCT FROM v_tie_out::text OR jsonb_array_length(v_page->'expenses') <> 1
+     OR v_page->>'from' <> to_char(v_m2 AT TIME ZONE 'UTC', 'YYYY-MM-DD') OR (v_page->>'olderCount')::int <> 1 THEN
+    RAISE EXCEPTION 'The month of the tie should hold only the one that lost it: %', v_page;
+  END IF;
+  v_page := public.commune_expense_page(v_home, (v_page->>'from')::date, 1);
+  IF v_page->'expenses'->0->>'id' IS DISTINCT FROM v_lunch::text OR jsonb_array_length(v_page->'expenses') <> 1
+     OR v_page->>'from' <> to_char(v_m3 AT TIME ZONE 'UTC', 'YYYY-MM-DD') OR (v_page->>'olderCount')::int <> 0 THEN
+    RAISE EXCEPTION 'A quiet commune''s last page: %', v_page;
+  END IF;
+  -- Everything older at once holds exactly what the snapshot left out.
+  v_page := public.commune_expense_page(v_home, NULL, NULL);
+  SELECT array_agg((e->>'id')::uuid) INTO v_paged FROM jsonb_array_elements(v_page->'expenses') e;
+  IF cardinality(v_paged) <> 3 OR NOT v_paged @> ARRAY[v_void, v_tie_out, v_lunch] OR v_paged && v_ids THEN
+    RAISE EXCEPTION 'All of a quiet commune''s older expenses: %', v_page;
+  END IF;
+
+  -- A new expense takes one of the five places, and the one it pushes out
+  -- joins the older ones.
+  PERFORM pg_temp.act('ll-ann');
+  v_back := pg_temp.expense(v_home, 'Back again', true);
+  v_snapshot := public.commune_snapshot(v_home);
+  SELECT array_agg((x.item->>'id')::uuid ORDER BY x.ord) INTO v_ids
+    FROM jsonb_array_elements(v_snapshot->'expenses') WITH ORDINALITY x(item, ord);
+  IF v_ids IS DISTINCT FROM ARRAY[v_back, v_first, v_second, v_third, v_fourth, v_deposit]
+     OR (v_snapshot->'expenseHistory'->>'olderCount')::int <> 4 THEN
+    RAISE EXCEPTION 'A new expense should push the fifth newest out: %', v_snapshot;
+  END IF;
+  SELECT array_agg((e->>'id')::uuid) INTO v_paged FROM jsonb_array_elements(public.commune_expense_page(v_home, NULL, NULL)->'expenses') e;
+  IF cardinality(v_paged) <> 4 OR NOT v_paged @> ARRAY[v_void, v_tie_in, v_tie_out, v_lunch] THEN
+    RAISE EXCEPTION 'The one pushed out should be among the older expenses: %', v_paged;
+  END IF;
+END;
+$$;
+
+-- 10. The overview summary: the same parts, less the detail of the commune's
 -- own screens, and marked as a summary.
 DO $$
 DECLARE
@@ -550,7 +655,7 @@ BEGIN
 END;
 $$;
 
--- 10. Someone outside a commune, or who left it, gets none of it.
+-- 11. Someone outside a commune, or who left it, gets none of it.
 DO $$
 DECLARE v_home uuid := current_setting('test.history_home')::uuid; v_user text; v_call text; v_error text;
 BEGIN

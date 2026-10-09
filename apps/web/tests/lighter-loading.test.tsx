@@ -32,10 +32,13 @@ function monthLabel(back: number) {
   return new Intl.DateTimeFormat("en-GB", { month: "long", timeZone: "UTC",
     ...(start.getUTCFullYear() === today.getUTCFullYear() ? {} : { year: "numeric" }) }).format(start);
 }
-/** The snapshot holds every expense created from the start of last month, and every open one. */
+/**
+ * The snapshot holds every expense created from the start of last month,
+ * every open one and the five newest that are not voided.
+ */
 const since = monthStart(1);
-function expense(id: string, title: string, back: number, kind: "settled" | "open" | "voided" = "settled"): Expense {
-  const at = `${monthStart(back)}T12:00:00.000Z`;
+function expense(id: string, title: string, back: number, kind: "settled" | "open" | "voided" = "settled", day = 1): Expense {
+  const at = `${monthStart(back).slice(0, 8)}${String(day).padStart(2, "0")}T12:00:00.000Z`;
   return {
     id, title, category: "Other", amountMinor: 2000, paidByUserId: user.id, dueOn: null, createdAt: at, version: 1,
     voidedAt: kind === "voided" ? at : null, voidReason: kind === "voided" ? "Entered twice" : null,
@@ -246,12 +249,16 @@ describe("older expenses", () => {
   const garden = expense("expense-garden", "Garden tools", 3);
   const duplicate = expense("expense-duplicate", "Duplicate rent", 4, "voided");
   const sofa = expense("expense-sofa", "Sofa", 7);
+  // The database would also send Garden tools and Sofa, as two of the five
+  // newest; these tests leave them out to page from the window's own start.
+  // The tests for a commune that has gone quiet, below, use what it sends.
   const older = [garden, duplicate, sofa];
-  // Pages as commune_expense_page returns them: whole months back from
-  // `before`, reaching back to the newest older expense past empty months.
-  function page(_communeId: string, before: string | null, months?: number): Promise<ExpensePage> {
+  // Pages as commune_expense_page returns them from what the snapshot left
+  // out (newest first): whole months back from `before`, reaching back to
+  // the newest older expense past empty months.
+  const pagesOf = (leftOut: Expense[]) => (_communeId: string, before: string | null, months?: number): Promise<ExpensePage> => {
     const end = before ?? since;
-    const earlier = older.filter((item) => item.createdAt! < end);
+    const earlier = leftOut.filter((item) => item.createdAt! < end);
     let from: string | null = null;
     if (months && earlier.length) {
       const [year, month] = end.split("-").map(Number);
@@ -262,12 +269,12 @@ describe("older expenses", () => {
     const rest = earlier.filter((item) => from !== null && item.createdAt! < from);
     return Promise.resolve({ expenses: earlier.filter((item) => !rest.includes(item)), before: end, from,
       olderCount: rest.length, olderVoidedCount: rest.filter((item) => item.voidedAt).length });
-  }
+  };
   const shownNames = () => within(screen.getByRole("region", { name: "Shared expenses" })).queryAllByRole("button")
     .map((button) => button.querySelector("strong")?.textContent);
   beforeEach(() => {
     records[home.id] = record(home, [groceries, internet, boiler], { olderCount: 3, olderVoidedCount: 1 });
-    vi.mocked(loadExpensePage).mockImplementation(page);
+    vi.mocked(loadExpensePage).mockImplementation(pagesOf(older));
   });
 
   it("shows open expenses and this month's settled ones, and earlier months on request", async () => {
@@ -358,12 +365,70 @@ describe("older expenses", () => {
     expect(loadExpensePage).toHaveBeenCalledTimes(1);
   });
 
-  it("does not call a commune empty when its expenses are older than the snapshot", async () => {
-    records[home.id] = record(home, [], { olderCount: 3, olderVoidedCount: 1 });
+  it("does not call a commune empty when its only expenses are voided ones older than the snapshot", async () => {
+    records[home.id] = record(home, [], { olderCount: 1, olderVoidedCount: 1 });
     mount("/expenses");
-    await screen.findByText(`Settled expenses before ${monthLabel(0)} aren’t shown yet.`);
+    fireEvent.click(await screen.findByRole("button", { name: "Voided" }));
+    expect(screen.getByText(`Voided expenses before ${monthLabel(0)} aren’t shown yet.`)).toBeTruthy();
     expect(screen.queryByText("No expenses yet.")).toBeNull();
     expect(app.emptyHub).toBe(false);
+  });
+
+  describe("a commune that has gone quiet", () => {
+    // Nothing since the window's start: the snapshot holds the five newest
+    // that are not voided (Hotel is still open too), and the rest are left out.
+    const farewell = expense("expense-farewell", "Farewell dinner", 3, "settled", 20);
+    const taxi = expense("expense-taxi", "Airport taxi", 3, "settled", 12);
+    const museum = expense("expense-museum", "Museum tickets", 4, "settled", 18);
+    const hotel = expense("expense-hotel", "Hotel", 4, "open", 10);
+    const ferry = expense("expense-ferry", "Ferry", 4, "settled", 6);
+    const repeated = expense("expense-repeated", "Taxi entered twice", 3, "voided", 25);
+    const tram = expense("expense-tram", "Tram passes", 4, "settled", 2);
+    const lunch = expense("expense-lunch", "Harbour lunch", 6, "settled", 15);
+    beforeEach(() => {
+      records[home.id] = record(home, [farewell, taxi, museum, hotel, ferry], { olderCount: 3, olderVoidedCount: 1 });
+      vi.mocked(loadExpensePage).mockImplementation(pagesOf([repeated, tram, lunch]));
+    });
+
+    it("starts at its newest settled month and pages back past the snapshot’s start", async () => {
+      mount("/expenses");
+      await screen.findByRole("button", { name: /Farewell dinner/ });
+      expect(shownNames()).toEqual(["Hotel", "Farewell dinner", "Airport taxi"]);
+      expect(screen.getByText(`Settled expenses before ${monthLabel(3)} aren’t shown yet.`)).toBeTruthy();
+      expect(loadExpensePage).not.toHaveBeenCalled();
+
+      // Four months back is partly in the snapshot; the rest of it is fetched first.
+      fireEvent.click(screen.getByRole("button", { name: "Show earlier" }));
+      await screen.findByText(`Settled expenses before ${monthLabel(4)} aren’t shown yet.`);
+      expect(shownNames()).toEqual(["Hotel", "Farewell dinner", "Airport taxi", "Museum tickets", "Ferry", "Tram passes"]);
+      expect(vi.mocked(loadExpensePage).mock.calls).toEqual([[home.id, since, 1], [home.id, monthStart(3), 1]]);
+
+      fireEvent.click(screen.getByRole("button", { name: "Show earlier" }));
+      await screen.findByRole("button", { name: /Harbour lunch/ });
+      expect(loadExpensePage).toHaveBeenLastCalledWith(home.id, monthStart(4), 1);
+      expect(screen.queryByRole("button", { name: "Show earlier" })).toBeNull();
+    });
+
+    it("offers the earlier months its snapshot holds when nothing older is left", async () => {
+      records[home.id] = record(home, [farewell, museum]);
+      mount("/expenses");
+      await screen.findByRole("button", { name: /Farewell dinner/ });
+      expect(shownNames()).toEqual(["Farewell dinner"]);
+      expect(screen.getByText(`Settled expenses before ${monthLabel(3)} aren’t shown yet.`)).toBeTruthy();
+      fireEvent.click(screen.getByRole("button", { name: "Show earlier" }));
+      await screen.findByRole("button", { name: /Museum tickets/ });
+      expect(shownNames()).toEqual(["Farewell dinner", "Museum tickets"]);
+      expect(screen.queryByRole("button", { name: "Show earlier" })).toBeNull();
+      expect(loadExpensePage).not.toHaveBeenCalled();
+    });
+
+    it("lists its latest expenses on the hub and in its activity", async () => {
+      mount("/hub");
+      const recent = await screen.findByRole("region", { name: "Recent expenses" });
+      expect(within(recent).getAllByRole("button").filter((button) => button.textContent !== "All expenses")
+        .map((button) => button.querySelector("strong")?.textContent)).toEqual(["Farewell dinner", "Airport taxi", "Museum tickets"]);
+      expect(app.hub.activity.map((row) => row.title)).toEqual(["Farewell dinner", "Airport taxi", "Museum tickets", "Hotel", "Ferry"]);
+    });
   });
 
   it("fetches a linked expense that is older than what is loaded", async () => {
