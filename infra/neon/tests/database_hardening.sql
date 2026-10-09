@@ -102,7 +102,8 @@ BEGIN
       CASE i.email WHEN 'dee@hardening.test' THEN now() - interval '31 days' ELSE now() END
     FROM public.commune_invites i WHERE i.commune_id = v_home;
   v_pruned := commune_private.prune_delivery_records();
-  IF v_pruned <> '{"reminderPayloads": 1, "invitationEmails": 1}'::jsonb
+  -- Change marks are pruned in the same run (0036, lighter_loading.sql).
+  IF v_pruned - 'changeMarks' <> '{"reminderPayloads": 1, "invitationEmails": 1}'::jsonb
      OR (SELECT payload FROM public.reminder_email_outbox WHERE reminder_id = v_reminder_old) IS NOT NULL
      OR (SELECT payload_amount_minor FROM public.reminder_email_outbox WHERE reminder_id = v_reminder_old) IS NOT NULL
      OR (SELECT status FROM public.reminder_email_outbox WHERE reminder_id = v_reminder_old) <> 'sent'
@@ -112,7 +113,7 @@ BEGIN
      OR NOT EXISTS (SELECT 1 FROM public.commune_invites WHERE email = 'dee@hardening.test') THEN
     RAISE EXCEPTION 'Old email records were not trimmed as expected: %', v_pruned;
   END IF;
-  IF commune_private.prune_delivery_records() <> '{"reminderPayloads": 0, "invitationEmails": 0}'::jsonb THEN
+  IF commune_private.prune_delivery_records() - 'changeMarks' <> '{"reminderPayloads": 0, "invitationEmails": 0}'::jsonb THEN
     RAISE EXCEPTION 'A second run should find nothing to trim';
   END IF;
 END;
