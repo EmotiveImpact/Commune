@@ -8,8 +8,8 @@
 .c-expense-footer-copy { flex: 1; }
 .c-expense-card-foot small { display: block; margin-top: 3px; }
 .c-expense-card-foot svg { flex: none; }
-.c-expense-entry:hover .c-expense-copy strong { color: var(--sage); }
-.c-expense-entry:focus-visible { outline: 2px solid var(--sage); outline-offset: 3px; }
+.c-expense-entry:hover .c-expense-copy strong { color: var(--text-green); }
+.c-expense-entry:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 3px; }
 .c-money-icon { width: 37px; height: 37px; flex: none; border-radius: 10px; background: #edf0f3; color: #637689; display: grid; place-items: center; }
 .c-expense-copy { flex: 1; min-width: 0; }
 .c-expense-copy strong, .c-expense-amount strong { display: block; font-size: 14px; font-weight: 500; overflow-wrap: anywhere; }
