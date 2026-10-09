@@ -61,6 +61,11 @@ export default defineConfig(({ mode }) => ({
     listenIpv6Too(),
     exactConnectPolicy(loadEnv(mode, fileURLToPath(new URL(".", import.meta.url)), "VITE_")),
   ],
+  build: {
+    // The hosted policy allows fonts only from the app's own origin
+    // (font-src 'self'), so a small font must never become a data: URL.
+    assetsInlineLimit: (file: string) => (file.endsWith(".woff2") ? false : undefined),
+  },
   server: {
     host: "127.0.0.1",
     port: PORT,

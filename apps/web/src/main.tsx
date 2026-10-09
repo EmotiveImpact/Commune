@@ -8,7 +8,7 @@ import "./styles/auth.css";
 import "./styles/legal.css";
 import "./styles/overrides.css";
 import "./styles/design-system.css";
-import "@fontsource-variable/dm-sans/standard.css";
+import "./styles/fonts.css";
 
 const root = document.getElementById("root");
 if (!root) throw new Error("Missing #root");
