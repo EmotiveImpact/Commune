@@ -59,6 +59,57 @@ describe("hosted money lifecycle and task commands", () => {
     expect(mocks.rpc).toHaveBeenLastCalledWith("void_expense", { p_expense_id: "expense-1", p_expected_version: 3, p_reason: "Entered twice", p_request_id: requestId });
   });
 
+  it("creates expenses, funds, pledges and contributions through request-id commands and reports a repeat", async () => {
+    mocks.rpc.mockResolvedValue({ data: { id: "record-1", duplicate: true }, error: null });
+    const expense = await send("/communes/home-1/expenses", { title: "Groceries", amountMinor: 9300, category: "Groceries", dueOn: null,
+      paidByUserId: "viewer", shares: [{ userId: "viewer", amountMinor: 4650 }, { userId: "other", amountMinor: 4650 }], requestId });
+    expect(mocks.rpc).toHaveBeenLastCalledWith("create_expense_command", {
+      p_commune_id: "home-1", p_title: "Groceries", p_amount_minor: 9300,
+      p_shares: [{ user_id: "viewer", amount_minor: 4650 }, { user_id: "other", amount_minor: 4650 }],
+      p_due_on: null, p_paid_by: "viewer", p_category: "Groceries", p_request_id: requestId });
+    expect(expense).toEqual({ id: "record-1", duplicate: true });
+    expect(await send("/communes/home-1/funds", { name: "Boiler", targetMinor: 50000, requestId })).toEqual({ id: "record-1", duplicate: true });
+    expect(mocks.rpc).toHaveBeenLastCalledWith("create_fund_command", { p_commune_id: "home-1", p_name: "Boiler", p_target_minor: 50000, p_request_id: requestId });
+    await send("/funds/fund-1/pledges", { amountMinor: 12000, dueOn: "2026-10-30", requestId });
+    expect(mocks.rpc).toHaveBeenLastCalledWith("pledge_fund_command", { p_fund_id: "fund-1", p_amount_minor: 12000, p_due_on: "2026-10-30", p_request_id: requestId });
+    mocks.rpc.mockResolvedValue({ data: { id: "contribution-1" }, error: null });
+    expect(await send("/commitments/pledge-1/contributions", { amountMinor: 3000, requestId })).toEqual({ id: "contribution-1", duplicate: false });
+    expect(mocks.rpc).toHaveBeenLastCalledWith("record_fund_contribution_command", { p_commitment_id: "pledge-1", p_amount_minor: 3000, p_request_id: requestId });
+    expect(mocks.from).not.toHaveBeenCalled();
+  });
+
+  it("keeps a reused request id a rejection, never an unknown outcome", async () => {
+    mocks.rpc.mockResolvedValue({ data: null, error: { code: "22023", message: "This request was already used for a different change" } });
+    await expect(send("/communes/home-1/funds", { name: "Boiler", targetMinor: null, requestId }))
+      .rejects.toMatchObject({ status: 400, message: "This request was already used for a different change" });
+  });
+
+  it("leaves pledge limits to the database and keeps its refusal a 403", async () => {
+    mocks.rpc.mockResolvedValue({ data: null, error: null });
+    await send("/commitments/pledge-1", { amountMinor: 9000, dueOn: "2026-11-01" }, "PATCH");
+    expect(mocks.rpc).toHaveBeenLastCalledWith("update_fund_pledge", { p_commitment_id: "pledge-1", p_amount_minor: 9000, p_due_on: "2026-11-01", p_cancel: false });
+    const refusal = "Only the person who made this pledge can raise it or bring its due date forward";
+    mocks.rpc.mockResolvedValue({ data: null, error: { code: "42501", message: refusal } });
+    await expect(send("/commitments/pledge-1", { amountMinor: 15000, dueOn: "2026-11-01" }, "PATCH")).rejects.toMatchObject({ status: 403, message: refusal });
+  });
+
+  it("lists invitations with who sent each one", async () => {
+    mocks.rpc.mockResolvedValue({ data: [
+      { id: "invite-1", email: "new@example.test", role: "admin", created_at: "2026-10-01T10:00:00Z", expires_at: "2026-10-08T10:00:00Z",
+        accepted_at: null, revoked_at: null, invited_by: "admin-1", invited_by_name: "Priya Shah" },
+      { id: "invite-2", email: "old@example.test", role: "member", created_at: "2026-09-01T10:00:00Z", expires_at: "2026-09-08T10:00:00Z",
+        accepted_at: null, revoked_at: "2026-09-03T10:00:00Z", invited_by: "gone-1", invited_by_name: null },
+    ], error: null });
+    const result = await send("/communes/home-1/invites", undefined, "GET");
+    expect(mocks.rpc).toHaveBeenCalledWith("list_commune_invites", { p_commune_id: "home-1" });
+    expect(result.invites).toEqual([
+      { id: "invite-1", email: "new@example.test", role: "admin", createdAt: "2026-10-01T10:00:00Z", expiresAt: "2026-10-08T10:00:00Z",
+        acceptedAt: null, revokedAt: null, invitedBy: "admin-1", invitedByName: "Priya Shah" },
+      { id: "invite-2", email: "old@example.test", role: "member", createdAt: "2026-09-01T10:00:00Z", expiresAt: "2026-09-08T10:00:00Z",
+        acceptedAt: null, revokedAt: "2026-09-03T10:00:00Z", invitedBy: "gone-1", invitedByName: null },
+    ]);
+  });
+
   it("completes and undoes a task through occurrence functions, not a row overwrite", async () => {
     mocks.rpc.mockResolvedValue({ data: { id: "occurrence-1", duplicate: false, date: "2026-10-09", assignee: "Blake", status: "open" }, error: null });
     const done = await send("/operations/task-1/occurrences", { action: "completed", expectedDate: "2026-10-02", today: "2026-10-02", requestId });

@@ -257,6 +257,11 @@ async function rpcVoid(name: string, arguments_: Row): Promise<{ ok: true }> {
   unwrap(await db().rpc(name, arguments_));
   return { ok: true };
 }
+/** A create command's answer: the record, and whether this was a repeat. */
+function createdResult(value: unknown) {
+  const item = asObject(value);
+  return { ...idResult(item.id), duplicate: item.duplicate === true };
+}
 function expenseChangeResult(value: unknown) {
   const item = asObject(value);
   return { version: minor(item.version), duplicate: item.duplicate === true };
@@ -355,11 +360,11 @@ export async function neonApi<T>(path: string, init: RequestInit = {}): Promise<
       const item = asObject(share);
       return { user_id: item.userId, amount_minor: item.amountMinor };
     }) : [];
-    response = await rpcId("create_expense_for", {
+    response = createdResult(unwrap(await db().rpc("create_expense_command", {
       p_commune_id: pathId(path, /^\/communes\/([^/]+)\/expenses$/),
       p_title: body.title, p_amount_minor: body.amountMinor, p_shares: shares, p_due_on: body.dueOn ?? null,
-      p_paid_by: body.paidByUserId ?? null, p_category: body.category ?? "Other",
-    });
+      p_paid_by: body.paidByUserId ?? null, p_category: body.category ?? "Other", p_request_id: body.requestId,
+    })));
   } else if (method === "POST" && pathId(path, /^\/shares\/([^/]+)\/confirm$/)) {
     response = await rpcVoid("confirm_expense_share", { p_share_id: pathId(path, /^\/shares\/([^/]+)\/confirm$/) });
   } else if (method === "PUT" && pathId(path, /^\/expenses\/([^/]+)$/)) {
@@ -401,19 +406,20 @@ export async function neonApi<T>(path: string, init: RequestInit = {}): Promise<
       p_receipt_id: pathId(path, /^\/receipts\/([^/]+)\/reverse$/), p_reason: body.reason,
     })));
   } else if (method === "POST" && pathId(path, /^\/communes\/([^/]+)\/funds$/)) {
-    response = await rpcId("create_fund", {
+    response = createdResult(unwrap(await db().rpc("create_fund_command", {
       p_commune_id: pathId(path, /^\/communes\/([^/]+)\/funds$/),
-      p_name: body.name, p_target_minor: body.targetMinor ?? null,
-    });
+      p_name: body.name, p_target_minor: body.targetMinor ?? null, p_request_id: body.requestId,
+    })));
   } else if (method === "POST" && pathId(path, /^\/funds\/([^/]+)\/pledges$/)) {
-    response = await rpcId("pledge_fund", {
+    response = createdResult(unwrap(await db().rpc("pledge_fund_command", {
       p_fund_id: pathId(path, /^\/funds\/([^/]+)\/pledges$/),
-      p_amount_minor: body.amountMinor, p_due_on: body.dueOn,
-    });
+      p_amount_minor: body.amountMinor, p_due_on: body.dueOn, p_request_id: body.requestId,
+    })));
   } else if (method === "POST" && pathId(path, /^\/commitments\/([^/]+)\/contributions$/)) {
-    response = await rpcId("record_fund_contribution", {
+    response = createdResult(unwrap(await db().rpc("record_fund_contribution_command", {
       p_commitment_id: pathId(path, /^\/commitments\/([^/]+)\/contributions$/), p_amount_minor: body.amountMinor,
-    });
+      p_request_id: body.requestId,
+    })));
   } else if (method === "PATCH" && pathId(path, /^\/funds\/([^/]+)$/)) {
     response = await rpcVoid("update_fund", { p_fund_id:pathId(path,/^\/funds\/([^/]+)$/),p_name:body.name,p_target_minor:body.targetMinor ?? null });
   } else if (method === "POST" && pathId(path, /^\/funds\/([^/]+)\/archive$/)) {
@@ -475,6 +481,8 @@ export async function neonApi<T>(path: string, init: RequestInit = {}): Promise<
       createdAt: str(invite.created_at), expiresAt: str(invite.expires_at),
       acceptedAt: invite.accepted_at == null ? null : str(invite.accepted_at),
       revokedAt: invite.revoked_at == null ? null : str(invite.revoked_at),
+      invitedBy: invite.invited_by == null ? null : str(invite.invited_by),
+      invitedByName: invite.invited_by_name == null ? null : str(invite.invited_by_name),
     })) };
   } else if (method === "POST" && pathId(path, /^\/invites\/([^/]+)\/revoke$/)) {
     response = await rpcVoid("revoke_commune_invite", {
