@@ -52,7 +52,7 @@ export async function sendInvitationEmail(pool: Pool, actor: string, token: stri
       WHERE i.token_hash=digest($1, 'sha256') AND i.accepted_at IS NULL
         AND i.revoked_at IS NULL AND i.expires_at > now()
         AND EXISTS (SELECT 1 FROM public.commune_members m
-          JOIN neon_auth."user" u ON u.id::text=m.user_id
+          JOIN commune_private.accounts(ARRAY[$2::text]) u ON u.id=m.user_id
           WHERE m.commune_id=i.commune_id AND m.user_id=$2
             AND m.role='admin' AND m.active AND u."emailVerified" IS TRUE)
       FOR UPDATE OF i`, [token, actor]);
