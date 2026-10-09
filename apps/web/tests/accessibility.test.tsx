@@ -163,3 +163,38 @@ describe("page structure and focus after moving", () => {
     }
   });
 });
+
+describe("commune switcher", () => {
+  it("is a plain show-and-hide list: Escape closes it and returns focus to its button", async () => {
+    vi.mocked(loadCommunes).mockResolvedValue({ communes: [commune, otherCommune] });
+    vi.mocked(loadSnapshot).mockImplementation(async (row) => (row.id === otherCommune.id ? { ...current, commune: otherCommune } : current));
+    mount("/hub");
+    await screen.findByRole("heading", { name: "This Hub", level: 1 });
+    const toggle = await screen.findByRole("button", { name: /^Our home.*Switch commune$/ });
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    expect(toggle.hasAttribute("aria-haspopup")).toBe(false);
+
+    toggle.focus();
+    fireEvent.click(toggle);
+    const list = screen.getByRole("group", { name: "Communes" });
+    expect(toggle.getAttribute("aria-expanded")).toBe("true");
+    expect(toggle.getAttribute("aria-controls")).toBe(list.id);
+    expect(within(list).queryAllByRole("menuitem")).toHaveLength(0);
+    expect(within(list).getByRole("button", { name: /^Our home/ }).getAttribute("aria-current")).toBe("true");
+    const studio = within(list).getByRole("button", { name: /^Studio/ });
+    expect(studio.hasAttribute("aria-current")).toBe(false);
+    expect(within(list).getByRole("button", { name: "Create a commune" })).toBeTruthy();
+
+    studio.focus();
+    fireEvent.keyDown(studio, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("group", { name: "Communes" })).toBeNull());
+    expect(document.activeElement).toBe(toggle);
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+
+    // Moving focus out of the list closes it as well.
+    fireEvent.click(toggle);
+    expect(screen.getByRole("group", { name: "Communes" })).toBeTruthy();
+    act(() => screen.getByRole("link", { name: "Skip to content" }).focus());
+    await waitFor(() => expect(screen.queryByRole("group", { name: "Communes" })).toBeNull());
+  });
+});
