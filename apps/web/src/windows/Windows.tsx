@@ -339,8 +339,9 @@ function AddExpense() {
     } catch (cause) {
       const failure = commandFailure(cause, "Could not save the expense.");
       if (!failure.rejected) setUncertain(true);
+      // Once an attempt may have saved, a later refusal does not mean nothing was.
       setError(!failure.rejected ? UNCERTAIN_RETRY_SAFE
-        : /already used for a different/i.test(failure.message)
+        : uncertain || /already used for a different/i.test(failure.message)
           ? "An earlier attempt may already have been saved. Close this and check Expenses before adding it again."
           : `${failure.message.replace(/\.$/, "")}. Nothing was saved.`);
     } finally {

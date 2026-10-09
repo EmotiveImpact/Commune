@@ -425,7 +425,8 @@ export async function neonApi<T>(path: string, init: RequestInit = {}): Promise<
   } else if (method === "POST" && pathId(path, /^\/funds\/([^/]+)\/archive$/)) {
     response = await rpcVoid("set_fund_archived", { p_fund_id:pathId(path,/^\/funds\/([^/]+)\/archive$/),p_archived:body.archived });
   } else if (method === "PATCH" && pathId(path, /^\/commitments\/([^/]+)$/)) {
-    response = await rpcVoid("update_fund_pledge", { p_commitment_id:pathId(path,/^\/commitments\/([^/]+)$/),p_amount_minor:body.amountMinor ?? null,p_due_on:body.dueOn ?? null,p_cancel:body.cancel ?? false });
+    response = await rpcVoid("update_fund_pledge", { p_commitment_id:pathId(path,/^\/commitments\/([^/]+)$/),p_amount_minor:body.amountMinor ?? null,p_due_on:body.dueOn ?? null,p_cancel:body.cancel ?? false,
+      p_expected_amount_minor:body.expectedAmountMinor ?? null,p_expected_due_on:body.expectedDueOn ?? null });
   } else if (method === "POST" && pathId(path, /^\/contributions\/([^/]+)\/void$/)) {
     response = await rpcVoid("void_fund_contribution", { p_contribution_id:pathId(path,/^\/contributions\/([^/]+)\/void$/),p_reason:body.reason });
   } else if (method === "POST" && pathId(path, /^\/communes\/([^/]+)\/members\/[^/]+$/)) {
