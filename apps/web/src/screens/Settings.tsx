@@ -4,7 +4,7 @@ import { Icon } from "../ui/Icon";
 import { Avatar, Switch } from "../ui/widgets";
 import { ImagePick } from "../ui/photos";
 import { CoverImage, coverToneClass } from "../ui/CoverImage";
-import { useApp } from "../state";
+import { useApp, type Theme } from "../state";
 import { cx } from "../ui/cx";
 import { LIMITS } from "../data/limits";
 import { CommuneLocationFields, type CommuneLocation } from "../ui/CommuneLocationFields";
@@ -21,8 +21,8 @@ export function SettingsScreen() {
     go,
     navMode,
     setNavMode,
-    dark,
-    setDark,
+    theme,
+    setTheme,
     noticesOn,
     setNoticesOn,
     signOut,
@@ -133,10 +133,14 @@ export function SettingsScreen() {
             </div>
             <div className="a-set-row">
               <span className="a-set-row-copy">
-                <strong>Dark mode</strong>
-                <span>Ink canvas. Off keeps the cream paper.</span>
+                <strong>Theme</strong>
+                <span>Cream paper or ink canvas. Match this device follows its light or dark setting.</span>
               </span>
-              <Switch checked={dark} onChange={setDark} label="Dark mode" />
+              <select aria-label="Theme" value={theme} onChange={(event) => setTheme(event.target.value as Theme)}>
+                <option value="system">Match this device</option>
+                <option value="light">Light</option>
+                <option value="dark">Dark</option>
+              </select>
             </div>
             <div className="a-set-row">
               <span className="a-set-row-copy">
@@ -288,7 +292,7 @@ export function CommuneSettingsScreen() {
             onPhoto={(dataUrl) => setHubPhoto(hub.id, dataUrl)}
             onClear={() => setHubPhoto(hub.id, null)}
           />
-          <p className="a-commune-setting-note">This photo is kept in this browser session for now. It is not shared with other members.</p>
+          <p className="a-commune-setting-note">This photo is kept in this browser for now. It is not shared with other members.</p>
         </div>
         <button className="a-btn ghost" type="button" onClick={() => go("hub")}>Back to this commune</button>
       </div>

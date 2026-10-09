@@ -764,7 +764,7 @@ function Profile() {
         <Pill tone="sage">You</Pill>
       </div>
       <p className="a-window-note">
-        Your photo is saved in this browser session. Expense shares and balances are shared with your commune.
+        Your photo is saved in this browser. Expense shares and balances are shared with your commune.
       </p>
       <div className="a-settle-row">
         <div>
@@ -775,7 +775,7 @@ function Profile() {
       <div className="a-settle-row">
         <div>
           <strong>Settings</strong>
-          <div className="when">Dark mode, notices, sidebar</div>
+          <div className="when">Theme, notices, sidebar</div>
         </div>
         <button className="a-btn ghost" type="button" onClick={() => go("settings")}>
           Open

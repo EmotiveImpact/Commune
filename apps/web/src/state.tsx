@@ -31,12 +31,27 @@ import {
   type OperationItem,
   type OperationStore,
 } from "./data/operations";
-import { isStoredImage, readHubPhotos } from "./data/images";
 import { newRequestId } from "./data/requestId";
 import { isNativeNow, keepSearch, pathOnly } from "./nav";
 import { api, post, loadCommunes, loadExpensePage, loadExpenseRecords, loadSnapshot, ApiError } from "./live/api";
 import { announceSession, currentViewer, onOtherTabSession, setViewer } from "./live/session";
-import { readStored, removeStored, writeStored } from "./live/storage";
+import {
+  DEFAULT_ACCOUNT,
+  DEFAULT_DEVICE,
+  DEVICE_KEY,
+  accountKey,
+  adoptTabPrefs,
+  forgetAccountPrefs,
+  readAccountPrefs,
+  readDevicePrefs,
+  saveAccountPrefs,
+  saveDevicePrefs,
+  type AccountPrefs,
+  type DevicePrefs,
+  type NavMode,
+  type PayMethod,
+  type Theme,
+} from "./live/preferences";
 import {
   expenseRows,
   hubFromSnapshot,
@@ -67,9 +82,8 @@ import {
   type AnnouncementResult,
 } from "./live/model";
 
-const LOCAL_PREFIX = "commune.local.";
 export type Seed = "new";
-export type NavMode = "basic" | "advanced";
+export type { NavMode, PayMethod, Theme };
 /** An invitation and where it is in its life. Admins see them all. */
 export type PendingInvite = {
   /** Null once the person who accepted it has left: their address is theirs. */
@@ -88,10 +102,6 @@ export function inviteStatus(invite: Pick<InviteRecord, "acceptedAt" | "revokedA
   if (invite.revokedAt) return "revoked";
   return Date.parse(invite.expiresAt) > now ? "pending" : "expired";
 }
-export type PayMethod = {
-  provider: "Revolut" | "PayPal" | "Monzo" | "Bank transfer";
-  value: string;
-};
 export type Session = {
   userId: string;
   name: string;
@@ -186,15 +196,6 @@ type GoOpts = {
   record?: { kind: "fund" | "recurring" | "member" | "template"; id: string };
 };
 export type SearchTarget = NonNullable<GoOpts["record"]> & { communeId: string };
-type LocalPrefs = {
-  activeHubId?: string;
-  navMode: NavMode;
-  dark: boolean;
-  noticesOn: boolean;
-  payMethods: PayMethod[];
-  hubPhotos: Partial<Record<HubId, string>>;
-  avatar?: string;
-};
 type LiveData = {
   user: User;
   communes: Commune[];
@@ -258,7 +259,9 @@ export type AppState = {
   operationsByHub: OperationStore;
   operations: OperationItem[];
   selectedOperation: OperationItem | null;
+  /** Whether the app is dark now: chosen, or following the device. */
   dark: boolean;
+  theme: Theme;
   noticesOn: boolean;
   searchQuery: string;
   searchScope: string | null;
@@ -317,7 +320,7 @@ export type AppState = {
   closeWindow: () => void;
   setMoreOpen: (open: boolean) => void;
   setNavMode: (mode: NavMode) => void;
-  setDark: (on: boolean) => void;
+  setTheme: (theme: Theme) => void;
   setNoticesOn: (on: boolean) => void;
   setSearchQuery: (query: string) => void;
   setSearchScope: (id: string | null) => void;
@@ -405,14 +408,6 @@ export type AppState = {
 
 const Ctx = createContext<AppState | null>(null);
 
-const DEFAULT_PREFS: LocalPrefs = {
-  navMode: "basic",
-  dark: false,
-  noticesOn: true,
-  payMethods: [],
-  hubPhotos: {},
-};
-
 function endedNotice(unsaved: boolean): string {
   return unsaved
     ? "You were signed out, so your last change wasn’t saved. Sign in to try again."
@@ -423,27 +418,19 @@ function endedNotice(unsaved: boolean): string {
 // itself; only one that nothing caught reaches the alert strip.
 const commandFailures = new WeakSet<object>();
 
-function readPrefs(userId: string): LocalPrefs {
-  try {
-    const raw = readStored(`${LOCAL_PREFIX}${userId}`);
-    if (!raw) return { ...DEFAULT_PREFS };
-    const parsed = JSON.parse(raw) as Partial<LocalPrefs>;
-    const photos = readHubPhotos(parsed.hubPhotos);
-    return {
-      activeHubId: typeof parsed.activeHubId === "string" ? parsed.activeHubId : undefined,
-      navMode: parsed.navMode === "advanced" ? "advanced" : "basic",
-      dark: parsed.dark === true,
-      noticesOn: parsed.noticesOn !== false,
-      payMethods: Array.isArray(parsed.payMethods) ? parsed.payMethods.filter(
-        (method): method is PayMethod => !!method && typeof method.value === "string" &&
-          ["Revolut", "PayPal", "Monzo", "Bank transfer"].includes(method.provider),
-      ) : [],
-      hubPhotos: photos ?? {},
-      avatar: isStoredImage(parsed.avatar) ? parsed.avatar : undefined,
-    };
-  } catch {
-    return { ...DEFAULT_PREFS };
-  }
+// Whether the device is set to dark, followed while the theme is "system".
+function usePrefersDark(): boolean {
+  const query = () => typeof window.matchMedia === "function" ? window.matchMedia("(prefers-color-scheme: dark)") : null;
+  const [dark, setDark] = useState(() => query()?.matches === true);
+  useEffect(() => {
+    const media = query();
+    if (!media) return;
+    const update = () => setDark(media.matches);
+    update();
+    media.addEventListener?.("change", update);
+    return () => media.removeEventListener?.("change", update);
+  }, []);
+  return dark;
 }
 
 function emptyHub(): LiveHub {
@@ -558,7 +545,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     dataRef.current = next;
     setData(next);
   }, []);
-  const [prefs, setPrefs] = useState<LocalPrefs>({ ...DEFAULT_PREFS });
+  const [prefs, setPrefs] = useState<AccountPrefs>(DEFAULT_ACCOUNT);
+  const [device, setDevice] = useState<DevicePrefs>(() => readDevicePrefs() ?? DEFAULT_DEVICE);
+  const prefersDark = usePrefersDark();
   const [hubId, setHubId] = useState<HubId>("");
   const [snapshotErrors, setSnapshotErrors] = useState<Record<string, string>>({});
   const [windowId, setWindowId] = useState<WindowId | null>(null);
@@ -640,7 +629,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const current = dataRef.current;
     if (!current || sequence !== refreshSequence.current) return;
     const active = current.communes.find((item) => item.id === viewRef.current.hubId)
-      ?? current.communes.find((item) => item.id === readPrefs(current.user.id).activeHubId)
+      ?? current.communes.find((item) => item.id === readAccountPrefs(current.user.id)?.activeHubId)
       ?? current.communes[0];
     if (!active) return;
     await readSnapshot(active, sequence, force);
@@ -666,8 +655,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     snapshotRevisions.current.clear();
     setHubId("");
     setWindowId(null);
-    setPrefs({ ...DEFAULT_PREFS });
-    if (userId) removeStored(`${LOCAL_PREFIX}${userId}`);
+    // Device preferences stay; the account's go with it.
+    setPrefs(DEFAULT_ACCOUNT);
+    if (userId) forgetAccountPrefs(userId);
     setSessionNotice(notice);
     setAuthStatus("guest");
     loadedRef.current = true;
@@ -722,6 +712,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         user = result.user;
       }
       const viewer = user;
+      adoptTabPrefs(viewer.id);
       const { communes } = await startupRead(() => loadCommunes(viewer));
       if (sequence !== refreshSequence.current) return;
       const previous = dataRef.current?.user.id === viewer.id ? dataRef.current : null;
@@ -748,8 +739,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       });
       setAuthStatus("authenticated");
       setHubId((current) => communes.some((commune) => commune.id === current)
-        ? current : communes.find((commune) => commune.id === readPrefs(viewer.id).activeHubId)?.id ?? communes[0]?.id ?? "");
-      if (!previous) setPrefs(readPrefs(viewer.id));
+        ? current : communes.find((commune) => commune.id === readAccountPrefs(viewer.id)?.activeHubId)?.id ?? communes[0]?.id ?? "");
+      if (!previous) {
+        setPrefs(readAccountPrefs(viewer.id) ?? DEFAULT_ACCOUNT);
+        setDevice((shown) => readDevicePrefs() ?? shown);
+      }
       loadedRef.current = true;
       // Counts and invitations must not delay the commune itself. A check
       // reads the counts when something changed or a reminder slot has opened.
@@ -896,15 +890,31 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener("unhandledrejection", onUnhandled);
   }, []);
 
-  const savePrefs = useCallback((patch: Partial<LocalPrefs>) => {
+  // Each change starts from what the browser keeps, which another tab may
+  // have changed since. A full or blocked store keeps it for this visit only.
+  const savePrefs = useCallback((patch: Partial<AccountPrefs>) => {
     if (!data) return;
-    const next = { ...prefs, ...patch };
-    // A full or blocked store keeps the change for this visit only.
-    if (!writeStored(`${LOCAL_PREFIX}${data.user.id}`, JSON.stringify(next))) {
+    const next = { ...(readAccountPrefs(data.user.id) ?? prefs), ...patch };
+    if (!saveAccountPrefs(data.user.id, next)) {
       console.warn("This browser could not keep a Commune preference");
     }
     setPrefs(next);
   }, [data, prefs]);
+  const saveDevice = useCallback((patch: Partial<DevicePrefs>) => {
+    const next = { ...(readDevicePrefs() ?? device), ...patch };
+    if (!saveDevicePrefs(next)) console.warn("This browser could not keep a Commune preference");
+    setDevice(next);
+  }, [device]);
+  // A change made in another tab shows here too.
+  const viewerId = data?.user.id;
+  useEffect(() => {
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === null || event.key === DEVICE_KEY) setDevice(readDevicePrefs() ?? DEFAULT_DEVICE);
+      if (viewerId && (event.key === null || event.key === accountKey(viewerId))) setPrefs(readAccountPrefs(viewerId) ?? DEFAULT_ACCOUNT);
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, [viewerId]);
 
   // A sign-in ends in a refresh, which tells the other tabs. For Google it is
   // the one that runs when the page comes back from Google.
@@ -1647,9 +1657,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     authStatus, apiError, mutationPending: mutationCount > 0, clearApiError: () => setApiError(null), refresh: fullRefresh,
     signInWithPassword, signInWithGoogle, signUpWithPassword, verifyEmailCode, session, screen, hubId: activeId,
     hub, places, snapshots: data?.snapshots ?? {}, contentLoading, contentError, emptyHub: empty, window: windowId, moreOpen,
-    navMode: prefs.navMode, noteKey, notes, operationKey, operationDate,
+    navMode: device.navMode, noteKey, notes, operationKey, operationDate,
     operationTime, operationsByHub, operations, selectedOperation,
-    dark: prefs.dark, noticesOn: prefs.noticesOn,
+    dark: device.theme === "dark" || (device.theme === "system" && prefersDark), theme: device.theme, noticesOn: device.noticesOn,
     searchQuery, searchScope, searchTarget, noteSearchQuery, invites: data?.invites[activeId] ?? [], payMethods: prefs.payMethods, native, you,
     lastExpense, expenses, selectedExpense, createdExpenses: expenses, voidedExpenses,
     expenseRead, retryExpenseRead, expenseHistory, loadEarlierExpenses, loadFullHistory,
@@ -1657,9 +1667,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     signOut, signOutUnconfirmed, retrySignOut: confirmSignOut, sessionNotice, go,
     changePassword, signOutOtherDevices,
     closeWindow: () => { if (!mutationCount) setWindowId(null); }, setMoreOpen,
-    setNavMode: (navMode) => savePrefs({ navMode }),
-    setDark: (dark) => savePrefs({ dark }),
-    setNoticesOn: (noticesOn) => savePrefs({ noticesOn }),
+    setNavMode: (navMode) => saveDevice({ navMode }),
+    setTheme: (theme) => saveDevice({ theme }),
+    setNoticesOn: (noticesOn) => saveDevice({ noticesOn }),
     setSearchQuery, setSearchScope, clearSearchTarget, setNoteSearchQuery, savePayMethod, setHubPhoto, setAvatar, addNote, updateNote, loadNoteRevision,
     addOperation, updateOperation, toggleOperation, skipOperation, handOverOperation, undoOperation,
     removeOperation, createHub, updateCommune, recordExpense, confirmExpenseShare, correctExpense, voidExpense, recordShareReceipt, reverseShareReceipt,
