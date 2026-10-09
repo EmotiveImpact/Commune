@@ -25,7 +25,7 @@ working after them. 0016 backfills one receipt per previously confirmed share
 and adds a commit-time check that `settled_minor` matches its receipts; check
 the backfill count on the branch before promoting.
 
-Three of the 9 October migrations change that rule:
+Four of the 9 October migrations change that rule:
 
 - **0027** removes the client's write grants on `commune_notes` and
   `commune_operations`; notes and tasks change only through `create_note`,
@@ -40,6 +40,10 @@ Three of the 9 October migrations change that rule:
   branch.
 - **0030** changes how the invitation email sender in `apps/reminder-worker`
   looks accounts up, so deploy the worker after 0030.
+- **0033** adds `public.email_suppressions`, which the worker reads before
+  every invitation and reminder email, so deploy the worker after 0033. It
+  also refuses a new commune name, or a rename, that includes a link, an
+  email address or a phone number; existing names are not changed.
 
 0026 replaces `save_recurring_bill` and adds `set_recurring_bill_paused` and
 `set_recurring_bill_archived`; production has no recurring bills yet, so only
@@ -235,6 +239,14 @@ rate limits) are recorded in [`docs/AUTH-SETTINGS.md`](../../docs/AUTH-SETTINGS.
    emails then carry a signed `/unsubscribe` link and `List-Unsubscribe`
    headers; without both settings they point to Settings only. Changing the
    secret invalidates links in emails already sent.
+   For bounces and spam complaints (migration 0033 onwards), add a webhook
+   in Resend for the events `email.bounced` and `email.complained`, with the
+   URL `{WORKER_PUBLIC_URL}/webhooks/resend`, and set its signing secret
+   (`whsec_` followed by base64) as the server-only `RESEND_WEBHOOK_SECRET`.
+   The worker checks each event's signature and records the address in
+   `public.email_suppressions`; Commune then refuses invitations to it and
+   skips reminder emails to it as if its owner had turned them off. Without
+   the secret the route answers 503 and records nothing.
    Never put those secrets in a `VITE_` variable or the repository.
 6. Use Vercel's Neon integration for preview branch isolation, then test the
    deployed preview with two real accounts. Open/review the current release

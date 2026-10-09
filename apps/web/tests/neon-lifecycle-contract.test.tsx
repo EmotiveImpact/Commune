@@ -253,3 +253,22 @@ describe("hosted money lifecycle and task commands", () => {
     await expect(send("/expenses/expense-1/void", { expectedVersion: 1, reason: "Entered twice", requestId })).rejects.toMatchObject({ status, message });
   });
 });
+
+describe("hosted invitation email", () => {
+  it.each([
+    [422, "This invitation can't be emailed because a name in it looks like a link or phone number. Copy the link and share it yourself."],
+    [409, "This address can't receive Commune emails. Share the link another way."],
+    [429, "New accounts can email up to 5 invitations a day. Copy the link and share it yourself."],
+  ])("shows the email sender's %i refusal in its own words", async (status, refusal) => {
+    vi.stubEnv("VITE_REMINDER_FUNCTION_URL", "https://worker.example.test");
+    mocks.getSession.mockResolvedValue({ data: { session: { token: "session-jwt" }, user: { id: "viewer", emailVerified: true } }, error: null });
+    const worker = vi.fn(async (..._request: unknown[]) => Response.json({ error: refusal }, { status }));
+    vi.stubGlobal("fetch", worker);
+    try {
+      await expect(send("/invitation-email", { token: "a".repeat(64) })).rejects.toThrow(refusal);
+      expect(String(worker.mock.calls[0][0])).toBe("https://worker.example.test/invite");
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+});

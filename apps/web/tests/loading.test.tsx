@@ -266,6 +266,23 @@ describe("commune loading", () => {
     expect(vi.mocked(post).mock.calls.filter(([path]) => path.endsWith("/invites"))).toHaveLength(1);
   });
 
+  it("shows the email sender's refusal of a contact-like name and keeps the link to share", async () => {
+    const inviteToken = "d".repeat(64);
+    const refusal = "This invitation can't be emailed because a name in it looks like a link or phone number. Copy the link and share it yourself.";
+    vi.mocked(post).mockImplementation(async (path) => {
+      if (path === "/invitation-email") throw new ApiError(refusal, 422);
+      return { token: inviteToken, url: `http://localhost:3000/invite?token=${inviteToken}` };
+    });
+    mount("/members");
+    fireEvent.click(await screen.findByRole("button", { name: "Invite", exact: true }));
+    const dialog = await screen.findByRole("dialog", { name: "Invite" });
+    fireEvent.change(within(dialog).getByLabelText("Email", { exact: true }), { target: { value: "friend@example.com" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Send invitation" }));
+    expect((await within(dialog).findByRole("alert")).textContent).toBe(refusal);
+    expect((within(dialog).getByLabelText("Invitation link") as HTMLInputElement).value).toContain(inviteToken);
+    expect(within(dialog).queryByText(/Invitation email sent to/)).toBeNull();
+  });
+
   it("keeps link-only invitations as an explicit alternative without sending email", async () => {
     const inviteToken = "c".repeat(64);
     vi.mocked(post).mockResolvedValue({ token: inviteToken, url: `http://localhost:3000/invite?token=${inviteToken}` });
