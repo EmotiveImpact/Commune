@@ -4,6 +4,7 @@ import type { PoolClient } from "pg";
 import { changePassword, createAccount, getUser, login, logout, logoutOthers, setSessionCookie, type User } from "./auth.js";
 import { pool, withActor } from "./db.js";
 import { InvitationEmailError, invitationMailConfig, sendInvitationEmail } from "../../reminder-worker/src/invitations.js";
+import { invitationEmailSetting } from "./invitation-email.js";
 
 const host = "127.0.0.1";
 const port = Number(process.env.API_PORT ?? "3002");
@@ -839,11 +840,17 @@ route("GET", /^\/api\/invites\/([0-9a-f]{64})$/, async (req, res, match) => {
   } : null });
 });
 
+// Real email needs LOCAL_API_SEND_EMAIL=yes as well as the Resend settings.
+// Without both, the sender is told email isn't set up here (503).
+const invitationEmail = invitationEmailSetting(process.env);
+console.log(invitationEmail.notice);
+
 route("POST", /^\/api\/invitation-email$/, async (req, res) => {
   const user = await actor(req);
   const input = await body(req);
   try {
-    send(res, await sendInvitationEmail(pool, user.id, text(input.token, "token", 64), invitationMailConfig()));
+    send(res, await sendInvitationEmail(pool, user.id, text(input.token, "token", 64),
+      invitationEmail.send ? invitationMailConfig() : null));
   } catch (error) {
     if (error instanceof InvitationEmailError) throw new ApiError(error.status, error.message);
     throw error;
