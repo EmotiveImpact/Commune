@@ -242,12 +242,14 @@
   background: #2e3646;
   color: #b5bdca;
 }
-/* Activity, a day at a time; Notices, a commune at a time. Both headed like search results. */
+/* Activity, a day at a time; Notices, a commune at a time; Home's Waiting on
+   others after what needs you. Each headed like search results. */
 .c-log-day + .c-log-day,
-.c-notice-group + .c-notice-group {
+.c-notice-group + .c-notice-group,
+.c-needs-waiting {
   margin-top: 22px;
 }
-:is(.c-log-day, .c-notice-group) > h3 {
+:is(.c-log-day, .c-notice-group, .c-needs-waiting) > h3 {
   margin: 0 0 8px;
   color: var(--ink-soft);
   font-size: 11px;

@@ -614,7 +614,7 @@ describe("commune loading", () => {
     mount("/");
     await screen.findByRole("heading", { name: "Our home" });
     expect(screen.getByRole("heading", { name: "Second home" })).toBeTruthy();
-    expect(screen.queryByText("Nothing waiting right now.")).toBeNull();
+    expect(screen.queryByText("Nothing for you to do right now.")).toBeNull();
     await act(async () => pending.reject(new Error("Not a commune member")));
     expect(screen.getByRole("heading", { name: "Our home" })).toBeTruthy();
     expect(screen.queryByRole("heading", { name: "Could not load Our home" })).toBeNull();

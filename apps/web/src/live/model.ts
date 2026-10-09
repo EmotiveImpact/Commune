@@ -319,14 +319,112 @@ export type LiveExpenseRow = Omit<ExpenseRow, "amountMinor" | "paidByUserId" | "
   voidReason: string | null;
   revisions: ExpenseRevision[];
 };
-export type LiveHub = Omit<Hub, "members" | "activity"> & {
+export type LiveHub = Omit<Hub, "members" | "activity" | "now"> & {
   currency: CurrencyCode;
   role: MemberRole;
   activityState?: "loading" | "error" | "ready";
   memberCount?: number;
   members: Array<Hub["members"][number] & { userId: string }>;
   activity: Array<Hub["activity"][number] & { type: ActivityType }>;
+  /** Needs you: what the viewer has to do here, in order (see needsYou). */
+  now: Need[];
+  /** What the viewer is waiting on others for, with nothing to do. */
+  waiting: Need[];
 };
+
+/**
+ * One row of "Needs you". confirm: someone says they have sent a payment
+ * only the viewer, the bill payer, can confirm. pay: the viewer's unpaid
+ * share. task: the viewer's task, late or due today. pledge: the viewer's
+ * pledge that is due. owed and reported wait on others: what people owe the
+ * viewer, and a payment the viewer said they sent.
+ */
+export type Need = {
+  kind: "confirm" | "pay" | "task" | "pledge" | "owed" | "reported";
+  go: "expense" | "operation" | "funds";
+  title: string;
+  /** Who and what, without the amount. */
+  when: string;
+  amount?: string;
+  dueOn?: string;
+  /** Past its date. */
+  late: boolean;
+  expenseId?: string;
+  operationId?: string;
+  fundId?: string;
+};
+const NEED_ORDER: Need["kind"][] = ["confirm", "pay", "task", "pledge", "owed", "reported"];
+/** Actions in their order, then the earliest date first; anything undated after the dated ones. */
+export function compareNeeds(a: Need, b: Need): number {
+  return NEED_ORDER.indexOf(a.kind) - NEED_ORDER.indexOf(b.kind) || (a.dueOn ?? "9999").localeCompare(b.dueOn ?? "9999");
+}
+function namesList(names: string[]): string {
+  return names.length < 3 ? names.join(" and ") : `${names.length} people`;
+}
+
+/**
+ * "Needs you", one rule for Home and This Hub. Actions first, in this order:
+ * payments someone says they have sent, which only the bill payer can
+ * confirm; the viewer's unpaid shares; their tasks that are late or due
+ * today; then their pledges that are due. "Waiting on others" holds what
+ * people owe the viewer, and payments the viewer said they sent, while
+ * there is nothing for the viewer to do. A summary snapshot keeps pending
+ * payment reports (0039), so Home sees them for every commune.
+ */
+export function needsYou(snapshot: Snapshot, viewerId: string, today = todayIso()): { actions: Need[]; waiting: Need[] } {
+  const currency = snapshot.commune.currency;
+  const names = new Map(snapshot.members.map((member) => [member.userId, member.name]));
+  const nameOf = (userId: string) => names.get(userId) ?? "a former member";
+  const actions: Need[] = [];
+  const waiting: Need[] = [];
+  for (const expense of snapshot.expenses) {
+    if (expense.voidedAt) continue;
+    const dueOn = expense.dueOn ?? undefined;
+    const late = !!dueOn && dueOn < today;
+    const base = { go: "expense" as const, title: expense.title, expenseId: expense.id, dueOn, late };
+    const owing: Array<{ userId: string; minor: number }> = [];
+    for (const share of expense.shares) {
+      const outstanding = share.amountMinor - share.settledMinor;
+      if (share.userId === expense.paidByUserId || outstanding <= 0) continue;
+      const report = share.paymentReports?.find((item) => item.status === "pending");
+      if (expense.paidByUserId === viewerId) {
+        if (report) {
+          actions.push({ ...base, kind: "confirm", when: `${nameOf(share.userId)} says they sent it`, amount: money(report.amountMinor, currency) });
+        } else {
+          owing.push({ userId: share.userId, minor: outstanding });
+        }
+      } else if (share.userId === viewerId) {
+        const payer = nameOf(expense.paidByUserId);
+        if (report) {
+          waiting.push({ ...base, kind: "reported", when: `You said you sent it · waiting for ${payer}`, amount: money(report.amountMinor, currency) });
+        } else {
+          actions.push({ ...base, kind: "pay", when: `You owe ${payer}${late ? " · overdue" : ""}`, amount: money(outstanding, currency) });
+        }
+      }
+    }
+    if (owing.length) {
+      const who = namesList(owing.map((item) => nameOf(item.userId)));
+      waiting.push({ ...base, kind: "owed", when: `${who.charAt(0).toUpperCase()}${who.slice(1)} ${owing.length === 1 ? "owes" : "owe"} you`,
+        amount: money(owing.reduce((total, item) => total + item.minor, 0), currency) });
+    }
+  }
+  for (const item of snapshot.operations ?? []) {
+    if (item.kind !== "task" || item.status !== "open" || item.assigneeId !== viewerId || item.date > today) continue;
+    const late = item.date < today;
+    actions.push({ kind: "task", go: "operation", title: item.title, when: late ? "Overdue · your turn" : "Your turn today",
+      operationId: item.id, dueOn: item.date, late });
+  }
+  for (const fund of snapshot.funds) {
+    if (fund.archivedAt) continue;
+    for (const pledge of fund.commitments) {
+      if (pledge.cancelledAt || pledge.userId !== viewerId || pledge.amountMinor <= pledge.contributedMinor || pledge.dueOn > today) continue;
+      const late = pledge.dueOn < today;
+      actions.push({ kind: "pledge", go: "funds", title: fund.name, when: `Remaining on your pledge${late ? " · overdue" : ""}`,
+        amount: money(pledge.amountMinor - pledge.contributedMinor, currency), fundId: fund.id, dueOn: pledge.dueOn, late });
+    }
+  }
+  return { actions: actions.sort(compareNeeds), waiting: waiting.sort(compareNeeds) };
+}
 export type ActivityEventKind = "funds" | "members" | "recurring" | "templates" | "notes" | "operations" | "expenses" | "announcements";
 /** The record type an event's area suggests, while the database does not name one (before 0039). */
 const EVENT_TYPES: Record<ActivityEventKind, ActivityType> = {
@@ -490,9 +588,10 @@ export function hubFromSnapshot(
   });
   const fundTotal = snapshot.funds.reduce((sum, fund) => sum +
     fund.commitments.reduce((subtotal, commitment) => subtotal + commitment.contributedMinor, 0), 0);
+  const today = todayIso();
   // This month where the member is: an expense entered late on the last
   // evening of a month belongs to that month.
-  const month = todayIso().slice(0, 7);
+  const month = today.slice(0, 7);
   const monthExpenses = snapshot.expenses.filter((expense) => timestampDay(expense.createdAt).startsWith(month));
   const monthTotal = monthExpenses
     .reduce((sum, expense) => sum + expense.amountMinor, 0);
@@ -509,21 +608,7 @@ export function hubFromSnapshot(
     title: note.title,
     when: notePreview(note),
   }));
-  const today = todayIso();
-  const personalNeeds: Hub["now"] = [
-    ...openRows.filter(row => row.paidByUserId === viewer.id || row.shares.some(share => share.userId === viewer.id && share.settledMinor < share.amountMinor)).map(row => ({
-      go: "expense" as const, pill: row.status, tag: row.due, title: row.name,
-      when: `${row.amount} · ${row.paidBy} paid`, expenseId: row.id, dueOn: row.dueOn ?? undefined,
-    })),
-    ...(snapshot.operations ?? []).filter(item => item.kind === "task" && item.status === "open" && item.assigneeId === viewer.id && item.date <= today).map(item => ({
-      go: "operation" as const, pill: item.date < today ? "warn" : "open", tag: item.date < today ? "Overdue" : "Today",
-      title: item.title, when: item.date < today ? "Overdue · your turn" : "Your turn today", operationId: item.id, dueOn: item.date,
-    })),
-    ...snapshot.funds.filter(fund => !fund.archivedAt).flatMap(fund => fund.commitments.filter(pledge => !pledge.cancelledAt && pledge.userId === viewer.id && pledge.amountMinor > pledge.contributedMinor && pledge.dueOn <= today).map(pledge => ({
-      go: "funds" as const, pill: pledge.dueOn < today ? "warn" : "open", tag: dateLabel(pledge.dueOn), title: fund.name,
-      when: `${money(pledge.amountMinor - pledge.contributedMinor, currency)} remaining on your pledge`, dueOn: pledge.dueOn,
-    }))),
-  ];
+  const needs = needsYou(source, viewer.id);
   return {
     id: commune.id,
     currency,
@@ -557,7 +642,8 @@ export function hubFromSnapshot(
       // A date that has passed says so rather than reading as still to come.
       { go: "expenses", tone: "ink", kicker: "Next due", num: nextDue?.dueOn ? nextDue.dueOn < today ? `Overdue since ${dateLabel(nextDue.dueOn)}` : dateLabel(nextDue.dueOn) : "-", hint: nextDue?.name ?? "No dated open bills" },
     ],
-    now: personalNeeds.sort((a, b) => (a.dueOn ?? "9999").localeCompare(b.dueOn ?? "9999")),
+    now: needs.actions,
+    waiting: needs.waiting,
     moves,
     members,
     activity: [...snapshot.expenses.map((expense) => ({

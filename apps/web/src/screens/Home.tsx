@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { useApp } from "../state";
 import { Avatar, Pill } from "../ui/widgets";
 import { CalendarDate } from "../ui/CalendarDate";
-import type { LiveHub } from "../live/model";
+import { compareNeeds, type LiveHub, type Need } from "../live/model";
 import { cx } from "../ui/cx";
 import { CoverImage, coverToneClass } from "../ui/CoverImage";
 import { ActivityTypeChip, activityStamp, activityWord } from "../ui/ActivityLog";
@@ -46,13 +46,29 @@ function PlaceCard({ hub, focus = false, level = 3 }: { hub: LiveHub; focus?: bo
   );
 }
 
+/** One row of Needs you or Waiting on others, opening the record it is about in its commune. */
+function NeedRow({ hub, item, quiet = false }: { hub: LiveHub; item: Need; quiet?: boolean }) {
+  const { go } = useApp();
+  return (
+    <button className="hub-feed-row" type="button" onClick={() => item.go === "funds"
+      ? go("funds", { hub: hub.id, record: item.fundId ? { kind: "fund", id: item.fundId } : undefined })
+      : go(item.go, { hub: hub.id, expense: item.expenseId, operation: item.operationId })}>
+      <Pill tone={quiet ? undefined : item.late ? "warn" : "open"}>{hub.name}</Pill>
+      {item.dueOn && <CalendarDate date={item.dueOn} label="Due" />}
+      <div><strong>{item.title}</strong><div className="when">{[item.when, item.amount].filter(Boolean).join(" · ")}</div></div>
+      <span className="hub-feed-go">Open</span>
+    </button>
+  );
+}
+
 export function HomeScreen() {
   const { go, places, hubId } = useApp();
   if (!places.length) return <HomeEmptyScreen />;
   const first = places.find(place => place.id === hubId) ?? places[0];
   const others = places.filter(place => place.id !== first.id);
-  const needs = places.flatMap((hub) => hub.now.map((item) => ({ hub, item })))
-    .sort((a, b) => (a.item.dueOn ?? "9999").localeCompare(b.item.dueOn ?? "9999")).slice(0, 6);
+  // The same rule as This Hub, across every commune: actions in their order, then what others owe.
+  const needs = places.flatMap((hub) => hub.now.map((item) => ({ hub, item }))).sort((a, b) => compareNeeds(a.item, b.item));
+  const waiting = places.flatMap((hub) => hub.waiting.map((item) => ({ hub, item }))).sort((a, b) => compareNeeds(a.item, b.item));
   const activity = places.flatMap((hub) => hub.activity.map((item) => ({ hub, item })))
     .sort((a, b) => (Date.parse(b.item.createdAt ?? "") || 0) - (Date.parse(a.item.createdAt ?? "") || 0)).slice(0, 6);
   const incomplete = places.some((hub) => hub.activityState !== "ready");
@@ -65,19 +81,22 @@ export function HomeScreen() {
       <div className="a-week">
         <div className="a-card">
           <h2>Needs you</h2>
-          <p className="sub">Open items across your communes.</p>
+          <p className="sub">What you need to do, across your communes.</p>
           {needs.length ? (
             <div className="hub-feed">
-              {needs.map(({ hub, item }, index) => (
-                <button key={`${hub.id}-${item.title}-${index}`} className="hub-feed-row" type="button" onClick={() => go(item.go, { hub: hub.id, expense: item.expenseId, operation: item.operationId })}>
-                  <Pill tone={item.pill === "warn" ? "warn" : "open"}>{hub.name}</Pill>
-                  {item.dueOn && <CalendarDate date={item.dueOn} label="Due" />}
-                  <div><strong>{item.title}</strong><div className="when">{item.when}</div></div>
-                  <span className="hub-feed-go">Open</span>
-                </button>
-              ))}
+              {needs.slice(0, 6).map(({ hub, item }, index) => <NeedRow key={`${hub.id}-${item.kind}-${item.title}-${index}`} hub={hub} item={item} />)}
             </div>
-          ) : !incomplete ? <p className="sub">Nothing waiting right now.</p> : null}
+          ) : !incomplete ? <p className="sub">Nothing for you to do right now.</p> : null}
+          {needs.length > 6 ? <p className="sub">And {needs.length - 6} more.</p> : null}
+          {waiting.length ? (
+            <section className="c-needs-waiting" aria-labelledby="home-waiting">
+              <h3 id="home-waiting">Waiting on others</h3>
+              <div className="hub-feed">
+                {waiting.slice(0, 4).map(({ hub, item }, index) => <NeedRow key={`${hub.id}-${item.kind}-${item.title}-${index}`} hub={hub} item={item} quiet />)}
+              </div>
+              {waiting.length > 4 ? <p className="sub">And {waiting.length - 4} more.</p> : null}
+            </section>
+          ) : null}
           {incomplete ? <p className="sub">{partialMessage}</p> : null}
         </div>
         <div className="a-card">

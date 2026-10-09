@@ -478,6 +478,7 @@ function emptyHub(): LiveHub {
     credit: false,
     kpis: [],
     now: [],
+    waiting: [],
     moves: [],
     members: [],
     activity: [],
