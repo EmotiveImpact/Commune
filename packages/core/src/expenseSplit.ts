@@ -7,7 +7,13 @@ export function validateExpenseAllocation(total: number, shares: ExpenseAllocati
   if (shares.reduce((sum, s) => sum + BigInt(s.amountMinor), 0n) !== BigInt(total)) throw new Error("Shares must add up to the total.");
   return shares;
 }
-/** Stable largest-remainder allocation, using integer arithmetic throughout. */
+/**
+ * Largest-remainder allocation, using integer arithmetic throughout. Spare
+ * pennies go to the largest remainders, and ties go by user id, so the same
+ * people always get the same amounts whatever order they are listed in: a
+ * preview and the save it leads to always agree. The result keeps the order
+ * of ids.
+ */
 export function allocateExpense(total: number, ids: string[], method: SplitMethod, values: Record<string, string> = {}): ExpenseAllocation[] {
   if (!Number.isSafeInteger(total) || total <= 0 || !ids.length) throw new Error("Enter a positive total and choose who is included.");
   const units = ids.map(id => {
@@ -24,6 +30,7 @@ export function allocateExpense(total: number, ids: string[], method: SplitMetho
   const raw = units.map(n => BigInt(total) * n);
   const allocated = raw.map(n => n / sum);
   const pennies = Number(BigInt(total) - allocated.reduce((a, b) => a + b, 0n));
-  raw.map((n, i) => ({ i, remainder: n % sum })).sort((a, b) => a.remainder === b.remainder ? a.i - b.i : a.remainder > b.remainder ? -1 : 1).slice(0, pennies).forEach(({ i }) => allocated[i] += 1n);
+  const byId = (a: number, b: number) => ids[a] < ids[b] ? -1 : ids[a] > ids[b] ? 1 : a - b;
+  raw.map((n, i) => ({ i, remainder: n % sum })).sort((a, b) => a.remainder === b.remainder ? byId(a.i, b.i) : a.remainder > b.remainder ? -1 : 1).slice(0, pennies).forEach(({ i }) => allocated[i] += 1n);
   return validateExpenseAllocation(total, ids.map((userId, i) => ({ userId, amountMinor: Number(allocated[i]) })));
 }
