@@ -433,6 +433,9 @@
 .c-member-row .c-member-actions {
   margin-left: auto;
 }
+.c-member-actions .c-action-hint {
+  text-align: right;
+}
 .ops-card h2 {
   font-weight: 550;
 }
