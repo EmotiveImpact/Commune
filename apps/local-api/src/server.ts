@@ -557,7 +557,10 @@ route("POST", /^\/api\/funds\/([0-9a-f-]{36})\/archive$/, async (req, res, match
 route("PATCH", /^\/api\/commitments\/([0-9a-f-]{36})$/, async (req,res,match) => {
   const input=await body(req);
   if (input.cancel != null && typeof input.cancel !== "boolean") throw new ApiError(400,"Invalid cancellation");
-  await userAction(req,client=>client.query("SELECT public.update_fund_pledge($1,$2,$3::date,$4)",[uuid(match[1]),input.cancel === true ? null : amount(input.amountMinor),input.cancel === true ? null : isoDate(input.dueOn),input.cancel === true]));
+  // The amount and date the editor opened with. If the pledge has changed since, nothing is saved (409).
+  const expectedAmount = input.expectedAmountMinor == null ? null : amount(input.expectedAmountMinor, "expectedAmountMinor");
+  const expectedDueOn = isoDate(input.expectedDueOn, true, "expectedDueOn");
+  await userAction(req,client=>client.query("SELECT public.update_fund_pledge($1,$2,$3::date,$4,$5,$6::date)",[uuid(match[1]),input.cancel === true ? null : amount(input.amountMinor),input.cancel === true ? null : isoDate(input.dueOn),input.cancel === true,expectedAmount,expectedDueOn]));
   send(res,{ok:true});
 });
 route("POST", /^\/api\/contributions\/([0-9a-f-]{36})\/void$/, async (req,res,match) => {

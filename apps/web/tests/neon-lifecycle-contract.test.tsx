@@ -87,10 +87,24 @@ describe("hosted money lifecycle and task commands", () => {
   it("leaves pledge limits to the database and keeps its refusal a 403", async () => {
     mocks.rpc.mockResolvedValue({ data: null, error: null });
     await send("/commitments/pledge-1", { amountMinor: 9000, dueOn: "2026-11-01" }, "PATCH");
-    expect(mocks.rpc).toHaveBeenLastCalledWith("update_fund_pledge", { p_commitment_id: "pledge-1", p_amount_minor: 9000, p_due_on: "2026-11-01", p_cancel: false });
+    expect(mocks.rpc).toHaveBeenLastCalledWith("update_fund_pledge", { p_commitment_id: "pledge-1", p_amount_minor: 9000, p_due_on: "2026-11-01", p_cancel: false,
+      p_expected_amount_minor: null, p_expected_due_on: null });
     const refusal = "Only the person who made this pledge can raise it or bring its due date forward";
     mocks.rpc.mockResolvedValue({ data: null, error: { code: "42501", message: refusal } });
     await expect(send("/commitments/pledge-1", { amountMinor: 15000, dueOn: "2026-11-01" }, "PATCH")).rejects.toMatchObject({ status: 403, message: refusal });
+  });
+
+  it("sends the pledge a change was based on and keeps a changed pledge a conflict", async () => {
+    mocks.rpc.mockResolvedValue({ data: null, error: null });
+    await send("/commitments/pledge-1", { cancel: true, expectedAmountMinor: 12000, expectedDueOn: "2026-11-01" }, "PATCH");
+    expect(mocks.rpc).toHaveBeenLastCalledWith("update_fund_pledge", { p_commitment_id: "pledge-1", p_amount_minor: null, p_due_on: null, p_cancel: true,
+      p_expected_amount_minor: 12000, p_expected_due_on: "2026-11-01" });
+    const changed = "This pledge changed while you were editing. Nothing was saved. Check it again.";
+    mocks.rpc.mockResolvedValue({ data: null, error: { code: "P0001", message: changed } });
+    await expect(send("/commitments/pledge-1", { amountMinor: 9000, dueOn: "2026-11-01", expectedAmountMinor: 10000, expectedDueOn: "2026-11-01" }, "PATCH"))
+      .rejects.toMatchObject({ status: 409, message: changed });
+    expect(mocks.rpc).toHaveBeenLastCalledWith("update_fund_pledge", { p_commitment_id: "pledge-1", p_amount_minor: 9000, p_due_on: "2026-11-01", p_cancel: false,
+      p_expected_amount_minor: 10000, p_expected_due_on: "2026-11-01" });
   });
 
   it("lists invitations with who sent each one", async () => {

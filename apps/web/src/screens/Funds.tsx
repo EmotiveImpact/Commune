@@ -1,4 +1,4 @@
-import { useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { fundFigures } from "../data/funds";
 import { HandCoins, Plus } from "lucide-react";
 import { useApp } from "../state";
@@ -83,6 +83,10 @@ export function FundsScreen() {
   // attempt the fields lock, so a retry is the same request.
   const requestId = useRef(newRequestId());
   const [uncertain, setUncertain] = useState(false);
+  // The pledge as the edit or cancel dialog opened it. The change is refused
+  // if the pledge no longer looks like this, so it cannot undo someone else's.
+  const [base, setBase] = useState<{ amountMinor: number; dueOn: string } | null>(null);
+  const [rebase, setRebase] = useState(false);
   const chase = useReminderFlow(sendReminder);
   const isAdmin = hub.role === "admin";
   const searchRecord = useSearchRecord("fund", funds.filter(item => !item.archivedAt).map(item => item.id),
@@ -112,12 +116,25 @@ export function FundsScreen() {
   const pledgeAmountHint = !commitment ? undefined
     : othersPledge ? `Up to ${money(commitment.amountMinor, hub.currency)}${recorded ? `, and not below the ${recorded} already recorded` : ""}.`
       : recorded ? `Not below the ${recorded} already recorded.` : undefined;
+  // After a conflict the fund has been reloaded: start the dialog again from
+  // the pledge as it is now, so the next change is based on it.
+  useEffect(() => {
+    if (!rebase) return;
+    setRebase(false);
+    if (!commitment) return;
+    setBase({ amountMinor: commitment.amountMinor, dueOn: commitment.dueOn });
+    if (mode?.kind === "pledge") {
+      setAmount((commitment.amountMinor / 100).toFixed(2));
+      setDate(commitment.dueOn);
+    }
+  }, [rebase, commitment, mode]);
 
   function open(next: Mode) {
     setError("");
     setMessage("");
     setUncertain(false);
     requestId.current = newRequestId();
+    setBase(null);
     setMode(next);
     setName("");
     setAmount("");
@@ -140,7 +157,12 @@ export function FundsScreen() {
       if (pledge) {
         setAmount((pledge.amountMinor / 100).toFixed(2));
         setDate(pledge.dueOn);
+        setBase({ amountMinor: pledge.amountMinor, dueOn: pledge.dueOn });
       }
+    }
+    if (next.kind === "cancel" && target) {
+      const pledge = target.commitments.find((item) => item.id === next.commitmentId);
+      if (pledge) setBase({ amountMinor: pledge.amountMinor, dueOn: pledge.dueOn });
     }
     if (next.kind === "contribute" && target) {
       const pledge = target.commitments.find(
@@ -152,7 +174,13 @@ export function FundsScreen() {
         );
     }
   }
-  async function run(action: () => Promise<unknown>, success: string, retrySafe = false) {
+  /**
+   * retryCheck: a create carries this dialog's request id, so trying again is
+   * safe; it names where to look if an earlier attempt may have saved.
+   * rebaseOnConflict: a pledge that changed meanwhile restarts the dialog.
+   */
+  async function run(action: () => Promise<unknown>, success: string,
+    options: { retryCheck?: string; rebaseOnConflict?: boolean } = {}) {
     setPending(true);
     setError("");
     setMessage("");
@@ -161,18 +189,19 @@ export function FundsScreen() {
       setMode(null);
       setMessage(success);
     } catch (cause) {
-      if (!retrySafe) {
+      const failure = commandFailure(cause, "Could not save the change.");
+      if (!options.retryCheck) {
+        if (options.rebaseOnConflict && failure.conflict) setRebase(true);
         setError(
           cause instanceof Error ? cause.message : "Could not save the change.",
         );
         return;
       }
-      // A create carries this dialog's request id, so trying again is safe.
-      const failure = commandFailure(cause, "Could not save the change.");
       if (!failure.rejected) setUncertain(true);
+      // Once an attempt may have saved, a later refusal does not mean nothing was.
       setError(!failure.rejected ? UNCERTAIN_RETRY_SAFE
-        : /already used for a different/i.test(failure.message)
-          ? "An earlier attempt may already have been saved. Close this and check the fund before trying again."
+        : uncertain || /already used for a different/i.test(failure.message)
+          ? `An earlier attempt may already have been saved. Close this and check ${options.retryCheck} before adding it again.`
           : `${failure.message.replace(/\.$/, "")}. Nothing was saved.`);
     } finally {
       setPending(false);
@@ -194,7 +223,7 @@ export function FundsScreen() {
             ? createFund(name.trim(), minor, requestId.current)
             : updateFund(mode.fundId, name.trim(), minor),
         "Fund saved.",
-        mode.kind === "create",
+        { retryCheck: mode.kind === "create" ? "Funds" : undefined },
       );
     } else if (mode.kind === "pledge") {
       if (!minor || !date) {
@@ -219,10 +248,12 @@ export function FundsScreen() {
             ? updatePledge(mode.commitmentId, {
                 amountMinor: minor,
                 dueOn: date,
+                expectedAmountMinor: base?.amountMinor,
+                expectedDueOn: base?.dueOn,
               })
             : pledgeFund(mode.fundId, minor, date, requestId.current),
         othersPledge ? "Pledge saved." : "Your pledge was saved.",
-        !mode.commitmentId,
+        mode.commitmentId ? { rebaseOnConflict: true } : { retryCheck: "the fund" },
       );
     } else if (mode.kind === "contribute" && commitment) {
       if (
@@ -235,7 +266,7 @@ export function FundsScreen() {
       void run(
         () => recordFundContribution(mode.commitmentId, minor, requestId.current),
         "Contribution recorded. No payment was taken by Commune.",
-        true,
+        { retryCheck: "the fund" },
       );
     } else if (mode.kind === "void") {
       if (reason.trim().length < 3) {
@@ -679,8 +710,13 @@ export function FundsScreen() {
                   disabled={pending}
                   onClick={() =>
                     void run(
-                      () => updatePledge(commitment.id, { cancel: true }),
+                      () => updatePledge(commitment.id, {
+                        cancel: true,
+                        expectedAmountMinor: base?.amountMinor,
+                        expectedDueOn: base?.dueOn,
+                      }),
                       "Pledge cancelled.",
+                      { rebaseOnConflict: true },
                     )
                   }
                 >

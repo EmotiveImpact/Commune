@@ -111,6 +111,11 @@ export type CreateExpenseInput = {
   /** One id per open form, kept across retries, so a retry cannot record it twice. */
   requestId: string;
 };
+/** A pledge edit or cancellation, with the amount and date it was based on. */
+export type PledgeChange = {
+  amountMinor?: number; dueOn?: string; cancel?: boolean;
+  expectedAmountMinor?: number; expectedDueOn?: string;
+};
 export type CorrectExpenseInput = {
   expectedVersion: number;
   name: string;
@@ -322,7 +327,11 @@ export type AppState = {
   recordFundContribution: (commitmentId: string, amountMinor: number, requestId: string) => Promise<string>;
   updateFund: (fundId: string, name: string, targetMinor: number | null) => Promise<void>;
   archiveFund: (fundId: string, archived: boolean) => Promise<void>;
-  updatePledge: (commitmentId: string, input: { amountMinor?: number; dueOn?: string; cancel?: boolean }) => Promise<void>;
+  /**
+   * expectedAmountMinor and expectedDueOn are what the editor opened with. If
+   * the pledge has changed since, nothing is saved: a 409, after the fund reloads.
+   */
+  updatePledge: (commitmentId: string, input: PledgeChange) => Promise<void>;
   voidContribution: (contributionId: string, reason: string) => Promise<void>;
   saveRecurringBill: (input: RecurringBillInput) => Promise<string>;
   /** Pause or resume only; a repeat reports duplicate: true. */
@@ -1044,7 +1053,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }), [mutate, refreshRecords]);
   const updateFund = async (id: string, name: string, targetMinor: number | null) => { await workflow(`/funds/${encodeURIComponent(id)}`,{name,targetMinor},"PATCH"); };
   const archiveFund = async (id: string, archived: boolean) => { await workflow(`/funds/${encodeURIComponent(id)}/archive`,{archived}); };
-  const updatePledge = async (id: string, input: { amountMinor?: number; dueOn?: string; cancel?: boolean }) => { await workflow(`/commitments/${encodeURIComponent(id)}`,input,"PATCH"); };
+  // A pledge changed since the editor opened is a conflict. Load it before the
+  // error reaches the form, so the editor can start again from what is saved.
+  const updatePledge = (id: string, input: PledgeChange) => mutate(async () => {
+    try {
+      await api(`/commitments/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify(input) });
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 409) await refreshRecords();
+      throw error;
+    }
+    await refreshRecords();
+  });
   const voidContribution = async (id: string, reason: string) => { await workflow(`/contributions/${encodeURIComponent(id)}/void`,{reason}); };
   // A conflict means the bill changed after this screen loaded it (someone
   // edited, recorded, paused or archived it). Load the latest before the

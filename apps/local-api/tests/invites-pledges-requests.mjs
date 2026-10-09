@@ -159,4 +159,63 @@ let fund, pledge;
     [["pledge-cancelled", drewPledge.id, 3000, averyUser.id]]);
   assert.equal((await snapshot()).notifications.filter(item => item.kind.startsWith("pledge-")).length, 0);
 }
+// ------------------------------------------------- a change based on an older pledge
+{
+  // Casey's pledge is now £120.00 due day(5). A change made from a screen that
+  // still showed £100.00 due day(20) would undo Casey's raise, so it saves nothing.
+  const change = (call, input) => call("PATCH", `/commitments/${pledge.id}`, input);
+  const changed = "This pledge changed while you were editing. Nothing was saved. Check it again.";
+  const notices = async () => (await snapshot(casey)).notifications.filter(item => item.kind.startsWith("pledge-"));
+  const before = (await notices()).length;
+  for (const [call, input] of [
+    [avery, { amountMinor: 9000, dueOn: day(20), expectedAmountMinor: 10000, expectedDueOn: day(20) }],
+    [avery, { amountMinor: 9000, dueOn: day(5), expectedAmountMinor: 12000, expectedDueOn: day(20) }],
+    [casey, { amountMinor: 15000, dueOn: day(5), expectedAmountMinor: 10000, expectedDueOn: day(5) }],
+  ]) {
+    const stale = await change(call, input);
+    assert.deepEqual([stale.status, stale.error], [409, changed]);
+  }
+  assert.equal((await change(avery, { amountMinor: 9000, dueOn: day(5), expectedAmountMinor: "120.00" })).status, 400);
+  let stored = (await snapshot()).funds.find(item => item.id === fund.id).commitments.find(item => item.id === pledge.id);
+  assert.deepEqual([stored.amountMinor, stored.dueOn], [12000, day(5)]);
+  assert.equal((await notices()).length, before);
+
+  // Based on the pledge as it is, the same change is saved and Casey is told.
+  ok(await change(avery, { amountMinor: 9000, dueOn: day(5), expectedAmountMinor: 12000, expectedDueOn: day(5) }));
+  stored = (await snapshot()).funds.find(item => item.id === fund.id).commitments.find(item => item.id === pledge.id);
+  assert.deepEqual([stored.amountMinor, stored.dueOn], [9000, day(5)]);
+  assert.ok((await notices()).some(item => item.detail === "Lowered from £120.00 to £90.00."));
+}
+
+// ------------------------------------------------- a pledge made again
+{
+  const garden = ok(await avery("POST", `/communes/${id}/funds`, { name: "Garden fund", targetMinor: null, requestId: randomUUID() }), 201);
+  const path = `/funds/${garden.id}/pledges`;
+  const reused = "This request was already used for a different change";
+  const first = { amountMinor: 2000, dueOn: day(30), requestId: randomUUID() };
+  const second = { amountMinor: 2500, dueOn: day(40), requestId: randomUUID() };
+  const made = ok(await casey("POST", path, first), 201);
+  ok(await casey("PATCH", `/commitments/${made.id}`, { cancel: true }));
+  assert.equal(ok(await casey("POST", path, second), 201).id, made.id);
+
+  // The first request no longer describes the pledge: repeating it is refused
+  // as a reused request, not reported as saved or as a second pledge.
+  let retry = await casey("POST", path, first);
+  assert.deepEqual([retry.status, retry.error], [400, reused]);
+  assert.deepEqual(ok(await casey("POST", path, second)), { status: 200, id: made.id, duplicate: true });
+  // A cancellation based on the first pledge is refused too.
+  retry = await avery("PATCH", `/commitments/${made.id}`, { cancel: true, expectedAmountMinor: 2000, expectedDueOn: day(30) });
+  assert.deepEqual([retry.status, retry.error], [409, "This pledge changed while you were editing. Nothing was saved. Check it again."]);
+
+  // Once cancelled again, neither request brings the pledge back.
+  ok(await casey("PATCH", `/commitments/${made.id}`, { cancel: true, expectedAmountMinor: 2500, expectedDueOn: day(40) }));
+  for (const input of [first, second]) {
+    retry = await casey("POST", path, input);
+    assert.deepEqual([retry.status, retry.error], [400, reused]);
+  }
+  const stored = (await snapshot()).funds.find(item => item.id === garden.id).commitments;
+  assert.equal(stored.length, 1);
+  assert.ok(stored[0].cancelledAt);
+  assert.deepEqual([stored[0].amountMinor, stored[0].dueOn], [2500, day(40)]);
+}
 console.log(`invite, pledge and request integration passed (${base})`);

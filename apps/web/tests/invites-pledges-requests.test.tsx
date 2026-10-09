@@ -143,6 +143,19 @@ describe("one request id per open form", () => {
       .toBe("An earlier attempt may already have been saved. Close this and check Expenses before adding it again.");
   });
 
+  it("does not call a later refusal nothing saved once an expense attempt may have saved", async () => {
+    // The first attempt may have saved; the retry is then refused (the person was made a member meanwhile).
+    lostOnce("/communes/home-1/expenses", () => { throw new ApiError("Only admins can add expenses", 403); });
+    mount("/expenses");
+    const dialog = await openExpenseForm();
+    await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Save expense" })); });
+    expect(within(dialog).getByRole("alert").textContent).toBe(UNCERTAIN_RETRY_SAFE);
+    await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Save expense" })); });
+    expect(within(dialog).getByRole("alert").textContent)
+      .toBe("An earlier attempt may already have been saved. Close this and check Expenses before adding it again.");
+    expect(sent("/communes/home-1/expenses")).toHaveLength(2);
+  });
+
   it("retries a new fund with the same request id and gives the next fund a new one", async () => {
     lostOnce("/communes/home-1/funds", (attempt) => ({ id: `fund-${attempt}`, duplicate: attempt === 2 }));
     mount("/funds");
@@ -199,6 +212,48 @@ describe("one request id per open form", () => {
     expect(contributions[1]).toEqual(contributions[0]);
     expect(contributions[0].requestId).not.toBe(pledges[0].requestId);
   });
+
+  it("does not call a later refusal nothing saved once a fund, pledge or contribution attempt may have saved", async () => {
+    current.funds = [{ id: "fund-1", name: "Boiler fund", targetMinor: 50000, contributedMinor: 0, commitments: [
+      { id: "pledge-2", userId: "user-2", amountMinor: 3000, contributedMinor: 0, dueOn: "2026-11-01" },
+    ] }];
+    /** The first attempt may have saved; the retry is then refused. Returns what the dialog says. */
+    async function refusedAfterLoss(path: string, title: string, button: string, refusal: ApiError) {
+      lostOnce(path, () => { throw refusal; });
+      const dialog = screen.getByRole("dialog", { name: title });
+      await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: button })); });
+      expect(within(dialog).getByRole("alert").textContent).toBe(UNCERTAIN_RETRY_SAFE);
+      await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: button })); });
+      expect(sent(path)).toHaveLength(2);
+      const said = within(dialog).getByRole("alert").textContent;
+      fireEvent.click(within(dialog).getByRole("button", { name: "Close dialog" }));
+      return said;
+    }
+    mount("/funds");
+    fireEvent.click(await screen.findByRole("button", { name: "Create fund" }));
+    fireEvent.change(within(screen.getByRole("dialog", { name: "Create a fund" })).getByLabelText("Fund name"), { target: { value: "Garden" } });
+    expect(await refusedAfterLoss("/communes/home-1/funds", "Create a fund", "Save", new ApiError("Not a commune member", 403)))
+      .toBe("An earlier attempt may already have been saved. Close this and check Funds before adding it again.");
+
+    fireEvent.click(screen.getByRole("button", { name: "Make a pledge" }));
+    fireEvent.change(within(screen.getByRole("dialog", { name: "Make a pledge" })).getByLabelText("Pledge amount (GBP)"), { target: { value: "50.00" } });
+    expect(await refusedAfterLoss("/funds/fund-1/pledges", "Make a pledge", "Save", new ApiError("Not a commune member", 403)))
+      .toBe("An earlier attempt may already have been saved. Close this and check the fund before adding it again.");
+
+    fireEvent.click(screen.getByRole("button", { name: "View fund" }));
+    fireEvent.click(within(screen.getByRole("dialog", { name: "Boiler fund" })).getByRole("button", { name: "Record contribution" }));
+    expect(await refusedAfterLoss("/commitments/pledge-2/contributions", "Record contribution", "Confirm contribution",
+      new ApiError("Sign in again to continue", 401)))
+      .toBe("An earlier attempt may already have been saved. Close this and check the fund before adding it again.");
+
+    // A dialog opened afterwards has had no attempt, so its refusal still means nothing was saved.
+    vi.mocked(post).mockImplementation(async () => { throw new ApiError("Not a commune member", 403); });
+    fireEvent.click(screen.getByRole("button", { name: "Create fund" }));
+    const dialog = screen.getByRole("dialog", { name: "Create a fund" });
+    fireEvent.change(within(dialog).getByLabelText("Fund name"), { target: { value: "Bikes" } });
+    await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Save" })); });
+    expect(within(dialog).getByRole("alert").textContent).toBe("Not a commune member. Nothing was saved.");
+  });
 });
 
 describe("changing someone else's pledge", () => {
@@ -208,7 +263,9 @@ describe("changing someone else's pledge", () => {
       contributions: contributedMinor ? [{ id: "contribution-1", amountMinor: contributedMinor, contributedAt: "2026-10-01T12:00:00Z", voidedAt: null, voidReason: null }] : [],
     }] };
   }
-  const changes = () => vi.mocked(api).mock.calls.filter(([path]) => path === "/commitments/pledge-1");
+  /** Each change sent for the pledge: its method and parsed body. */
+  const changes = () => vi.mocked(api).mock.calls.filter(([path]) => path === "/commitments/pledge-1")
+    .map(([, init]) => ({ method: init?.method, body: JSON.parse(String(init?.body)) as Record<string, unknown> }));
   async function openFund() {
     mount("/funds");
     fireEvent.click(await screen.findByRole("button", { name: "View fund" }));
@@ -246,7 +303,9 @@ describe("changing someone else's pledge", () => {
 
     fireEvent.change(amount, { target: { value: "100.00" } });
     await act(async () => { fireEvent.submit(form); });
-    expect(changes()).toEqual([["/commitments/pledge-1", { method: "PATCH", body: JSON.stringify({ amountMinor: 10000, dueOn: "2026-11-15" }) }]]);
+    // The change names the pledge it was based on, so it cannot undo a later one.
+    expect(changes()).toEqual([{ method: "PATCH",
+      body: { amountMinor: 10000, dueOn: "2026-11-15", expectedAmountMinor: 12000, expectedDueOn: "2026-11-01" } }]);
     expect(await screen.findByText("Pledge saved.")).toBeTruthy();
   });
 
@@ -260,7 +319,8 @@ describe("changing someone else's pledge", () => {
     fireEvent.change(within(dialog).getByLabelText("Pledge amount (GBP)"), { target: { value: "150.00" } });
     fireEvent.change(due, { target: { value: "2026-10-20" } });
     await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Save" })); });
-    expect(changes()).toEqual([["/commitments/pledge-1", { method: "PATCH", body: JSON.stringify({ amountMinor: 15000, dueOn: "2026-10-20" }) }]]);
+    expect(changes()).toEqual([{ method: "PATCH",
+      body: { amountMinor: 15000, dueOn: "2026-10-20", expectedAmountMinor: 12000, expectedDueOn: "2026-11-01" } }]);
     expect(await screen.findByText("Your pledge was saved.")).toBeTruthy();
   });
 
@@ -278,13 +338,68 @@ describe("changing someone else's pledge", () => {
     expect(dialog.querySelector("fieldset")!.disabled).toBe(false);
   });
 
+  const changedMeanwhile = "This pledge changed while you were editing. Nothing was saved. Check it again.";
+  /** The first change is refused because Housemate raised the pledge to £150.00 meanwhile. */
+  function raisedMeanwhile(contributedMinor: number) {
+    const base = vi.mocked(api).getMockImplementation()!;
+    let refused = false;
+    vi.mocked(api).mockImplementation(async (path, options) => {
+      if (path === "/commitments/pledge-1" && !refused) {
+        refused = true;
+        const fund = boilerFund("user-2", contributedMinor);
+        current = { ...current, funds: [{ ...fund, commitments: [{ ...fund.commitments[0], amountMinor: 15000 }] }] };
+        throw new ApiError(changedMeanwhile, 409);
+      }
+      return base(path, options);
+    });
+  }
+
+  it("reloads the fund and starts the editor again when the pledge changed meanwhile", async () => {
+    current.funds = [boilerFund("user-2")];
+    raisedMeanwhile(2000);
+    const dialog = await openEditor();
+    const amount = within(dialog).getByLabelText("Pledge amount (GBP)") as HTMLInputElement;
+    fireEvent.change(amount, { target: { value: "90.00" } });
+    const loads = vi.mocked(loadSnapshot).mock.calls.length;
+    await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Save" })); });
+    await waitFor(() => expect(within(dialog).getByRole("alert").textContent).toBe(changedMeanwhile));
+    // The fund was reloaded, and the editor now starts from the pledge as it is.
+    expect(vi.mocked(loadSnapshot).mock.calls.length).toBeGreaterThan(loads);
+    await waitFor(() => expect(amount.value).toBe("150.00"));
+    expect(dialog.textContent).toContain("Up to £150.00, and not below the £20.00 already recorded.");
+    fireEvent.change(amount, { target: { value: "90.00" } });
+    await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Save" })); });
+    expect(changes().map((change) => change.body)).toEqual([
+      { amountMinor: 9000, dueOn: "2026-11-01", expectedAmountMinor: 12000, expectedDueOn: "2026-11-01" },
+      { amountMinor: 9000, dueOn: "2026-11-01", expectedAmountMinor: 15000, expectedDueOn: "2026-11-01" },
+    ]);
+    expect(await screen.findByText("Pledge saved.")).toBeTruthy();
+  });
+
+  it("reloads the fund when the pledge changed before it was cancelled", async () => {
+    current.funds = [boilerFund("user-2", 0)];
+    raisedMeanwhile(0);
+    fireEvent.click(within(await openFund()).getByRole("button", { name: "Cancel pledge" }));
+    const dialog = screen.getByRole("dialog", { name: "Cancel this pledge?" });
+    expect(dialog.textContent).toContain("Cancel the £120.00 pledge?");
+    await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Cancel pledge" })); });
+    await waitFor(() => expect(within(dialog).getByRole("alert").textContent).toBe(changedMeanwhile));
+    await waitFor(() => expect(dialog.textContent).toContain("Cancel the £150.00 pledge?"));
+    await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Cancel pledge" })); });
+    expect(changes().map((change) => change.body)).toEqual([
+      { cancel: true, expectedAmountMinor: 12000, expectedDueOn: "2026-11-01" },
+      { cancel: true, expectedAmountMinor: 15000, expectedDueOn: "2026-11-01" },
+    ]);
+    expect(await screen.findByText("Pledge cancelled.")).toBeTruthy();
+  });
+
   it("tells an admin that the pledger will hear about a cancellation", async () => {
     current.funds = [boilerFund("user-2", 0)];
     fireEvent.click(within(await openFund()).getByRole("button", { name: "Cancel pledge" }));
     const dialog = screen.getByRole("dialog", { name: "Cancel this pledge?" });
     expect(dialog.textContent).toContain("Housemate will be told that you cancelled it.");
     await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Cancel pledge" })); });
-    expect(changes()).toEqual([["/commitments/pledge-1", { method: "PATCH", body: JSON.stringify({ cancel: true }) }]]);
+    expect(changes()).toEqual([{ method: "PATCH", body: { cancel: true, expectedAmountMinor: 12000, expectedDueOn: "2026-11-01" } }]);
   });
 
   it("does not mention a notice when the pledger cancels their own pledge", async () => {
