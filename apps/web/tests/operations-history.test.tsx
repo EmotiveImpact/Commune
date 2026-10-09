@@ -311,6 +311,69 @@ describe("handing over a turn and skip reasons", () => {
   });
 });
 
+describe("late tasks in the week", () => {
+  const lateTask = (id: string, title: string, days: number, extra: Partial<OperationItem> = {}): OperationItem => ({
+    ...rota, id, title, date: addDays(today, -days), repeat: "none", rotation: undefined, rotationIds: null, ...extra });
+  const lateCards = () => [...document.querySelectorAll<HTMLElement>(".ops-late")];
+
+  it("lists every late task, yours first and then the oldest, and counts yours under Yours", async () => {
+    current.operations = [
+      lateTask("task-a", "Water the plants", 5, { assignee: "Housemate Two", assigneeId: "user-2" }),
+      lateTask("task-b", "Put the bins out", 1, { assignee: user.name, assigneeId: user.id }),
+      lateTask("task-c", "Clear the gutters", 3, { assignee: undefined, assigneeId: null }),
+      { ...rota, id: "task-d", title: "Hoover the stairs", date: addDays(today, 2), repeat: "none", rotation: undefined, assignee: "Housemate Two", assigneeId: "user-2" },
+    ];
+    mount("/operations");
+    await screen.findByRole("tablist", { name: "Operations view" });
+    expect(lateCards().map((card) => card.querySelector("h2")?.textContent)).toEqual(["Put the bins out", "Water the plants", "Clear the gutters"]);
+    expect(lateCards().map((card) => card.querySelector(".ops-kicker")?.textContent)).toEqual(["1 day late · Test", "5 days late · Housemate", "3 days late · Unassigned"]);
+    expect(lateCards().map((card) => [...card.querySelectorAll(".ops-note")].at(-1)?.textContent))
+      .toEqual(["Test still has this.", "Housemate still has this.", "Nobody has this yet."]);
+    // Yours never says you are clear while one of yours is late.
+    const yours = document.querySelector<HTMLElement>(".ops-yours")!;
+    expect(yours.textContent).not.toContain("You’re clear today.");
+    expect(within(yours).getByText("1 day late · All day · Test")).toBeTruthy();
+    // The week list carries on from today without repeating them.
+    expect([...document.querySelectorAll(".ops-week-row strong")].map((title) => title.textContent)).toEqual(["Hoover the stairs"]);
+  });
+
+  it("says you are clear today when only other people's tasks are late", async () => {
+    current.operations = [lateTask("task-a", "Water the plants", 2, { assignee: "Housemate Two", assigneeId: "user-2" })];
+    mount("/operations");
+    await screen.findByRole("tablist", { name: "Operations view" });
+    expect(lateCards()).toHaveLength(1);
+    expect(document.querySelector(".ops-yours")?.textContent).toContain("You’re clear today.");
+  });
+
+  it("holds every late card's actions while a change is saving", async () => {
+    current.operations = [
+      lateTask("task-a", "Water the plants", 5, { assignee: "Housemate Two", assigneeId: "user-2" }),
+      lateTask("task-b", "Put the bins out", 1, { assignee: user.name, assigneeId: user.id }),
+    ];
+    let finish!: (value: unknown) => void;
+    vi.mocked(post).mockImplementation(() => new Promise((resolve) => { finish = resolve; }));
+    mount("/operations");
+    await screen.findByRole("tablist", { name: "Operations view" });
+    const [first, second] = lateCards();
+    await act(async () => { fireEvent.click(within(first).getByRole("button", { name: "Mark done" })); });
+    const button = (card: HTMLElement, name: string) => within(card).getByRole("button", { name }) as HTMLButtonElement;
+    for (const card of [first, second]) {
+      expect([button(card, "Mark done").disabled, button(card, "Skip a week").disabled, button(card, "Open").disabled]).toEqual([true, true, false]);
+    }
+    fireEvent.click(button(second, "Mark done"));
+    expect(post).toHaveBeenCalledTimes(1);
+    await act(async () => { finish({ id: "occurrence-1", duplicate: false, date: today, assignee: user.name, status: "done" }); });
+    expect(button(second, "Mark done").disabled).toBe(false);
+  });
+
+  it("says how late a task is in the People view", async () => {
+    mount("/operations");
+    const tabs = await screen.findByRole("tablist", { name: "Operations view" });
+    await act(async () => { fireEvent.click(within(tabs).getByText("People")); });
+    expect([...document.querySelectorAll(".ops-person-task small")].map((line) => line.textContent)).toEqual(["2 days late · then Housemate"]);
+  });
+});
+
 describe("adding, editing and removing tasks as commands", () => {
   async function openEdit() {
     mount("/operations");
