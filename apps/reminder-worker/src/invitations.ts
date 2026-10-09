@@ -20,13 +20,17 @@ const html = (value: string) => value.replace(/[&<>"']/g, (char) => ({ "&": "&am
 
 // The same rule as commune_private.looks_like_contact (migration 0033): "://"
 // or "www.", an email-like x@y, a domain-like token ending in a common
-// top-level domain, or 9 or more digits joined only by spaces, dots, dashes or
-// brackets. Compared after NFKC normalisation, without invisible characters.
+// top-level domain, or 9 or more digits with nothing but spaces, punctuation
+// or symbols between them (commas, semicolons and ampersands still part two
+// numbers). The joining characters are the database's, code point for code
+// point. Compared after NFKC normalisation, without invisible characters.
 const INVISIBLE = /[\u00ad\u034f\u061c\u180e\u200b-\u200f\u202a-\u202e\u2060-\u206f\ufe00-\ufe0f\ufeff]/gu;
+const DIGIT_JOINERS = "\\t\\n\\v\\f\\r\\u0020-\\u0025\\u0027-\\u002B\\u002D-\\u002F\\u003A\\u003C-\\u0040\\u005B-\\u0060\\u007B-\\u007E"
+  + "\\u0080-\\u00BF\\u00D7\\u00F7\\u1680\\u2000-\\u2BFF\\u3000-\\u303F\\u{1F000}-\\u{1FAFF}";
 const CONTACT_PATTERNS = [
   /:\/\/|www\.|[^\s@]@[^\s@]/iu,
   /[^\s.]\.(?:com|net|org|io|co|uk|me|app|info|biz|xyz|link|ly|ru|top|site|online|shop)(?![a-z0-9])/iu,
-  /[0-9](?:[\s.()\u2010-\u2015\u2212-]*[0-9]){8}/u,
+  new RegExp(`[0-9](?:[${DIGIT_JOINERS}]*[0-9]){8}`, "u"),
 ];
 
 /** Whether text holds a link, an email address or a phone number. */

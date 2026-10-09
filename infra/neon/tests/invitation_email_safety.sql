@@ -11,15 +11,18 @@ BEGIN
   -- Ordinary names are allowed.
   FOREACH v_name IN ARRAY ARRAY['12 Park Street', 'Flat 3B, 2026', 'St. Mary''s House', 'No.5 Studio',
     'Smith & Co.', 'Flat 2, 14-16 Park Road', 'Tom @ Home', 'Apt. 4B', 'Café Olé', '123456', 'example.company',
-    'Ski trip 2025-2026', 'Flat 12345678'] LOOP
+    'Ski trip 2025-2026', 'Flat 12345678', 'Ski trip 2025/2026', 'Ski trip 2025_2026', 'Flat 4/12 Smith Street',
+    'Unit 2/45-47 High St', 'Flat 12, 2024-2025', 'Flat 1; 2024-2025', 'Summers 2024, 2025, 2026', 'Rooms 10 & 11, 2025/26', '12 é 3456789'] LOOP
     IF commune_private.looks_like_contact(v_name) THEN
       RAISE EXCEPTION 'An ordinary name was taken for contact details: %', v_name;
     END IF;
   END LOOP;
   -- Links, email addresses and phone numbers are caught, also in full-width
-  -- characters or split by zero-width spaces.
+  -- characters, split by zero-width spaces, or by other punctuation or symbols.
   FOREACH v_name IN ARRAY ARRAY['Bank: card locked, call 020 7946 0000', '+44 (0)20 7946 0000',
     'Call 07700-900-123', '020–7946–0000', '０２０ ７９４６ ００００', '020' || chr(8203) || '7946' || chr(8203) || '0000',
+    'Bank: card locked, call 020/7946/0000', '020_7946_0000', '020 / 7946 / 0000', '020|7946|0000', '020•7946•0000',
+    '020🔸7946🔸0000', '020 -- 7946 -- 0000',
     'example.com', 'Visit EXAMPLE.CO.UK', 'paypal-help.net/login', 'bit.ly/abc', 'www.example', 'https://x',
     'help@bank', 'help＠bank', 'ｗｗｗ．example'] LOOP
     IF NOT commune_private.looks_like_contact(v_name) THEN

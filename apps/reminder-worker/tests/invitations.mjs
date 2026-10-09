@@ -66,9 +66,11 @@ try {
 
   // The worker's name rule matches the database's, case by case.
   const ordinary = ["12 Park Street", "Flat 3B, 2026", "St. Mary's House", "No.5 Studio", "Smith & Co.", "Tom @ Home", "Flat 2, 14-16 Park Road", "123456", "example.company",
-    "Ski trip 2025-2026", "Flat 12345678"];
+    "Ski trip 2025-2026", "Flat 12345678", "Ski trip 2025/2026", "Ski trip 2025_2026", "Flat 4/12 Smith Street",
+    "Unit 2/45-47 High St", "Flat 12, 2024-2025", "Flat 1; 2024-2025", "Summers 2024, 2025, 2026", "Rooms 10 & 11, 2025/26", "12 é 3456789"];
   const contact = ["Bank: card locked, call 020 7946 0000", "+44 (0)20 7946 0000", "Call 07700-900-123", "020–7946–0000", "０２０ ７９４６ ００００",
-    "020\u200b7946\u200b0000", "example.com", "Visit EXAMPLE.CO.UK", "paypal-help.net/login", "bit.ly/abc", "www.example", "https://x", "help@bank", "help＠bank", "ｗｗｗ．example"];
+    "020\u200b7946\u200b0000", "Bank: card locked, call 020/7946/0000", "020_7946_0000", "020 / 7946 / 0000", "020|7946|0000",
+    "020•7946•0000", "020🔸7946🔸0000", "020 -- 7946 -- 0000", "example.com", "Visit EXAMPLE.CO.UK", "paypal-help.net/login", "bit.ly/abc", "www.example", "https://x", "help@bank", "help＠bank", "ｗｗｗ．example"];
   for (const name of ordinary) assert.equal(looksLikeContact(name), false, name);
   for (const name of contact) assert.equal(looksLikeContact(name), true, name);
   const database = (await pool.query("SELECT n, commune_private.looks_like_contact(n) AS hit FROM unnest($1::text[]) n", [[...ordinary, ...contact]])).rows;
