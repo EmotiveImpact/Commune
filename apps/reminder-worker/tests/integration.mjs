@@ -256,7 +256,7 @@ try {
   "A different website cannot call the browser route");
   const immediate = await dispatchReminder(third.reminderId, await signedToken(alice));
   assert.equal(immediate.status, 200);
-  assert.equal((await immediate.json()).processed, true);
+  assert.deepEqual(await immediate.json(), { accepted: true });
   assert.equal((await outbox(third.reminderId)).status, "sent");
   const sentCount = providerCalls.length;
   assert.equal((await dispatchReminder(third.reminderId, await signedToken(alice))).status, 200);
@@ -431,6 +431,23 @@ try {
   await runWorker();
   assert.equal((await outbox(afterReminder)).status, "suppressed");
   assert.equal(providerCalls.length, callsBefore);
+  // The sender gets the same answer as when an email went, so it never
+  // tells them the recipient turned email off.
+  const heldBack = await dispatchReminder(afterReminder, await signedToken(alice));
+  assert.equal(heldBack.status, 200);
+  assert.deepEqual(await heldBack.json(), { accepted: true });
+  assert.equal(providerCalls.length, callsBefore);
+
+  // The scheduled run drops the frozen email of a reminder after 30 days.
+  await db.query(`
+    UPDATE public.reminder_email_outbox SET created_at = now() - interval '31 days'
+    WHERE reminder_id = $1
+  `, [third.reminderId]);
+  assert.notEqual((await outbox(third.reminderId)).payload, null);
+  await runWorker();
+  assert.equal((await outbox(third.reminderId)).payload, null);
+  assert.equal((await outbox(third.reminderId)).payload_amount_minor, null);
+  assert.notEqual((await outbox(batchIds[0])).payload, null, "A recent email is kept");
 
   console.log("Reminder worker integration checks passed");
 } catch (error) {

@@ -135,7 +135,8 @@ treat them as applied production configuration until its release is verified:
   it. “Delivered” requires a provider delivery webhook, not just a 2xx send.
 - The bill payer confirms an expense share as settled; a debtor cannot erase
   what they owe. Fund contributions are confirmations recorded by an admin,
-  not money collected by Commune.
+  not money collected by Commune. Since 0034 another admin confirms
+  contributions to an admin's own pledge, unless the commune has only one.
 - The worker rechecks whether the recipient is verified, still a member,
   opted in, and still owes that amount before each send attempt. A changed
   balance suppresses a frozen retry rather than sending stale figures.
@@ -144,7 +145,12 @@ treat them as applied production configuration until its release is verified:
   short-lived Neon Auth JWT and confirms the caller created that reminder.
   If the browser closes or delivery fails, the outbox and scheduled sweep
   still carry the job; a successful in-app notice must not be misrepresented
-  as an email delivered to an inbox.
+  as an email delivered to an inbox. The route gives the same answer whether
+  or not an email went, so it never tells the sender that the recipient
+  turned email off.
+- Each scheduled sweep also trims email records older than 30 days (0034):
+  a reminder's frozen email body is cleared and invitation email rows are
+  deleted. Notices, activity, reminders and invitations are kept.
 - The five-minute scheduled trigger is one branch-wide retry sweep, **not one
   worker per user**. The current sweep processes at most 100 queued jobs with
   four concurrent senders and a 30-second budget. This is a small-scale
@@ -153,6 +159,34 @@ treat them as applied production configuration until its release is verified:
   limits, bounce handling, and provider spend; increase or replace the drain
   mechanism based on those measurements rather than assuming a paid plan
   automatically scales application throughput.
+
+## Request identity
+
+Every database function finds its caller with
+`commune_private.data_api_user_id()` (0011), which reads the `sub` claim of
+the `request.jwt.claims` setting. Neon's Data API sets that setting for each
+request from a token it has verified. Any session that can run SQL can also
+set it, with `set_config`, so the identity holds only while these stay true:
+
+- Clients reach the database only through the Data API, which runs functions
+  in the exposed schema (`public`) that their role was granted, never SQL of
+  their own. No function sets `request.jwt.claims` or runs SQL built at run
+  time, and every definer function fixes its `search_path`.
+  `tests/grants.sql` checks all three across every function, so a new one is
+  covered without being listed.
+- Hosted database credentials stay with the migration run and the email
+  worker, never in a browser build. Whoever holds them can act as any
+  account.
+- The local API (`apps/local-api/src/db.ts`) sets the claim itself for the
+  account its own session names, then switches to the `authenticated` role.
+  It accepts only a loopback database and is never deployed.
+- `commune.occurrence_event` is the only other setting functions trust: it
+  stops a task or recurring bill change being logged twice by a function that
+  records its own event. Only those functions set it, inside their own
+  transaction.
+
+The settings that live in the Neon Auth console (password length, sessions,
+rate limits) are recorded in [`docs/AUTH-SETTINGS.md`](../../docs/AUTH-SETTINGS.md).
 
 ## Production cutover order
 

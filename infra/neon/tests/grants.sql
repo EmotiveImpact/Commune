@@ -101,7 +101,9 @@ BEGIN
     'commune_private.start_note_version()',
     'commune_private.next_operation_version()',
     'commune_private.note_content(text,text,text,text,text,jsonb)',
-    'commune_private.operation_content(text,text,text,date,time,boolean,text,jsonb,text,text)'
+    'commune_private.operation_content(text,text,text,date,time,boolean,text,jsonb,text,text)',
+    'commune_private.is_money_correction(text,text,jsonb)',
+    'commune_private.prune_delivery_records()'
   ] LOOP
     IF has_function_privilege('authenticated', table_name, 'EXECUTE')
       OR has_function_privilege('anonymous', table_name, 'EXECUTE') THEN
@@ -121,6 +123,48 @@ BEGIN
       RAISE EXCEPTION 'A write policy remains on public.%', table_name;
     END IF;
   END LOOP;
+END;
+$$;
+
+-- Rules for every function (0034), so a new one is checked without being
+-- listed here.
+DO $$
+DECLARE v_found text;
+BEGIN
+  -- A definer function runs as the owner: it fixes its search_path, and only
+  -- the roles it was granted to can call it.
+  SELECT string_agg(p.oid::regprocedure::text, ', ') INTO v_found
+    FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname IN ('public', 'commune_private') AND p.prosecdef
+      AND (NOT EXISTS (SELECT 1 FROM unnest(coalesce(p.proconfig, '{}')) c WHERE c LIKE 'search_path=%')
+        OR has_function_privilege('public', p.oid, 'EXECUTE') OR has_function_privilege('anonymous', p.oid, 'EXECUTE'));
+  IF v_found IS NOT NULL THEN
+    RAISE EXCEPTION 'Definer functions without a search_path, or callable by everyone: %', v_found;
+  END IF;
+
+  -- The Data API offers every function in public that a role can call.
+  -- Extension functions there (pgcrypto, pg_trgm) are for Commune's own.
+  SELECT string_agg(p.oid::regprocedure::text, ', ') INTO v_found
+    FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+    JOIN pg_depend d ON d.classid = 'pg_proc'::regclass AND d.objid = p.oid AND d.deptype = 'e'
+    WHERE n.nspname = 'public' AND (has_function_privilege('public', p.oid, 'EXECUTE')
+      OR has_function_privilege('authenticated', p.oid, 'EXECUTE') OR has_function_privilege('anonymous', p.oid, 'EXECUTE'));
+  IF v_found IS NOT NULL THEN
+    RAISE EXCEPTION 'Extension functions a client can call: %', v_found;
+  END IF;
+
+  -- The caller is whoever request.jwt.claims names, which the Data API sets
+  -- from a verified token. No function sets it, or runs SQL built at run time
+  -- that could (see Request identity in infra/neon/README.md).
+  SELECT string_agg(p.oid::regprocedure::text, ', ') INTO v_found
+    FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname IN ('public', 'commune_private')
+      AND NOT EXISTS (SELECT 1 FROM pg_depend d WHERE d.classid = 'pg_proc'::regclass AND d.objid = p.oid AND d.deptype = 'e')
+      AND (p.prosrc ~* 'set_config\s*\(\s*''request\.' OR (p.prolang = (SELECT oid FROM pg_language WHERE lanname = 'plpgsql')
+        AND p.prosrc ~* '\mEXECUTE\M'));
+  IF v_found IS NOT NULL THEN
+    RAISE EXCEPTION 'Functions that set the request identity or run dynamic SQL: %', v_found;
+  END IF;
 END;
 $$;
 

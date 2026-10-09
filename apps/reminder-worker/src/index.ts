@@ -343,8 +343,10 @@ async function dispatch(request: Request, config: MailConfig): Promise<Response>
   if (sender.rows[0]?.sender_user_id !== senderId) {
     return new Response("Reminder not found", { status: 404, headers });
   }
-  const processed = await sendOne(config, reminderId);
-  return Response.json({ processed }, { headers });
+  await sendOne(config, reminderId);
+  // The same answer whether an email went or the recipient turned email off:
+  // that choice is theirs to keep private (the snapshot hides it too).
+  return Response.json({ accepted: true }, { headers });
 }
 
 async function unsubscribe(request: Request, config: MailConfig): Promise<Response> {
@@ -420,6 +422,13 @@ export default {
     }
     await expireUnsendable();
     const processed = await drainScheduled(config);
-    return Response.json({ processed });
+    // Addresses and message bodies are kept only while a send may need them.
+    // Tidying up never holds up the emails themselves.
+    const pruned = await pool.query<{ pruned: unknown }>("SELECT commune_private.prune_delivery_records() AS pruned")
+      .then((result) => result.rows[0]?.pruned ?? null, (error: unknown) => {
+        console.error("Pruning old email records failed", error);
+        return null;
+      });
+    return Response.json({ processed, pruned });
   },
 };
