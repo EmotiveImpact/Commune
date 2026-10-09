@@ -78,6 +78,20 @@ lifecycle pack. Work is paused for a handoff, not a production release.
   alert strip shows only failures nothing on screen caught. Operations' Week,
   People and Month are pressed buttons, and its Undo message takes focus.
   Signed-out pages have header, main and footer landmarks.
+- Also from 9 October, for review: getting around, from the same review.
+  Windows, records and the open commune have addresses (`apps/web/src/nav.ts`),
+  so Back, links and reload work, and a signed-out visit returns to the page
+  asked for after sign-in. Preferences stay in this browser: theme, sidebar
+  and notices under `commune.device`, and the last commune, payment usernames
+  and photos under `commune.local.<userId>`, removed at sign-out. Each screen
+  and window has its own error boundary, and signed-in browsers send short,
+  scrubbed error reports (migration 0038). Read them with an owner
+  connection: `SELECT kind, release, route, browser, message, created_at FROM
+  commune_private.client_reports ORDER BY created_at DESC`. An invitation
+  opened by another account names the address it was sent to, masked (0038).
+  Billing and Analytics are hidden, the unused Currency preference is gone,
+  and the app has a home-screen name and icon (redraw them with
+  `CHROMIUM=/path/to/chrome node apps/web/scripts/render-icons.mjs`).
 - The website is `web/` (the editorial homepage); the earlier v2 site is in
   `web-backup/`. Launch names `website` (3004) and `website-backup` (3003).
 - No push, deployment, hosted migration or provider change has been made. Do
