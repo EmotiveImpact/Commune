@@ -1016,7 +1016,7 @@
   line-height: 1.5;
 }
 
-:is(.a-cover h1, .a-place-hero h3, .a-focus-hero h2,
+:is(.a-cover h1, .a-place-hero :is(h2, h3), .a-focus-hero h2,
     .a-set-row-copy strong, .a-commune-set h2, .a-item strong,
     .a-member-row .who strong, .a-name-btn, .a-home-greet h1) {
   overflow-wrap: anywhere;
@@ -1135,7 +1135,7 @@
   margin: 0 0 22px;
 }
 
-.a-set-group > h3 {
+.a-set-group > :is(h2, h3) {
   margin: 0 0 8px;
   padding: 0 4px;
   font-size: 13px;
@@ -3248,7 +3248,7 @@ button.a-item {
   text-transform: uppercase;
 }
 
-.a-place-hero h3 {
+.a-place-hero :is(h2, h3) {
   margin: 10px 0 4px;
   font-size: 1.25rem;
   font-weight: 800;

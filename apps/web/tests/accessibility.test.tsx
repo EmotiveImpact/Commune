@@ -597,6 +597,16 @@ describe("structure and smaller fixes", () => {
     expect(screen.getByText("Only reveal when you need it.").closest("dd")).not.toBeNull();
   });
 
+  it("does not skip a heading level on Settings or Places", async () => {
+    mount("/settings");
+    expect(await screen.findByRole("heading", { level: 2, name: "Preferences" })).toBeTruthy();
+    expect(screen.getByRole("heading", { level: 2, name: "Support & legal" })).toBeTruthy();
+    expect(screen.queryAllByRole("heading", { level: 3 })).toHaveLength(0);
+    cleanup();
+    mount("/places");
+    expect(await screen.findByRole("heading", { level: 2, name: "Our home" })).toBeTruthy();
+  });
+
   it("keeps the Hub's task box in a label, so the larger touch area works", async () => {
     current.operations = [{ id: "task-1", hubId: commune.id, kind: "task", category: "chore", title: "Bins", date: todayIso(), allDay: true, assignee: user.name, assigneeId: user.id, repeat: "none", status: "open", notes: "" }];
     mount("/hub");

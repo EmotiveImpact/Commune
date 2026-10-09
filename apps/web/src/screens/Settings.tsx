@@ -63,7 +63,7 @@ export function SettingsScreen() {
         </div>
         <div className="a-set-card">
           <p className="a-set-plan-k">Early access</p>
-          <h3 className="a-set-plan-name">No subscription yet</h3>
+          <h2 className="a-set-plan-name">No subscription yet</h2>
           <p className="a-set-plan-lede">Billing and payments are not connected.</p>
           <div className="a-set-meter-meta">
             <span>{hub.members.length} {hub.members.length === 1 ? "member" : "members"}</span>
@@ -74,7 +74,7 @@ export function SettingsScreen() {
       </aside>
       <div className="a-set-main">
         <div className="a-set-group">
-          <h3>Get more out of Commune</h3>
+          <h2>Get more out of Commune</h2>
           <div className="a-set-list">
             <button className="a-set-row" type="button" onClick={() => go("commune-settings")}>
               <span className="a-set-row-ic" aria-hidden="true"><Icon name="settings" /></span>
@@ -107,7 +107,7 @@ export function SettingsScreen() {
           </div>
         </div>
         <div className="a-set-group">
-          <h3>Preferences</h3>
+          <h2>Preferences</h2>
           <div className="a-set-list">
             <div className="a-set-row">
               <span className="a-set-row-copy">
@@ -191,7 +191,7 @@ export function SettingsScreen() {
         </div>
         <SignInSettings />
         <div className="a-set-group">
-          <h3>Support &amp; legal</h3>
+          <h2>Support &amp; legal</h2>
           <div className="a-set-list">
             <a className="a-set-row" href="https://ourcommune.io" target="_blank" rel="noreferrer">
               <span className="a-set-row-copy">
