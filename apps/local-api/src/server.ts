@@ -804,7 +804,7 @@ route("GET", /^\/api\/communes\/([0-9a-f-]{36})\/invites$/, async (req, res, mat
     id: row.id, email: row.email, role: row.role,
     createdAt: row.created_at, expiresAt: row.expires_at,
     acceptedAt: row.accepted_at, revokedAt: row.revoked_at,
-    invitedBy: row.invited_by, invitedByName: row.invited_by_name,
+    invitedBy: row.invited_by, invitedByName: row.invited_by_name, acceptedBy: row.accepted_by,
   })) });
 });
 

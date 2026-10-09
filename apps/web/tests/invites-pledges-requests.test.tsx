@@ -437,6 +437,33 @@ describe("pledge notices", () => {
   });
 });
 
+describe("past invitations", () => {
+  it("name someone who accepted and has since left, without their address", async () => {
+    // The database leaves out the address once the person who accepted has
+    // left (0031); the snapshot still has their name.
+    current.members.push({ userId: "user-3", name: "Bea", role: "member", active: false });
+    const day = 24 * 60 * 60 * 1000;
+    const at = (offset: number) => new Date(Date.now() + offset * day).toISOString();
+    const records = [
+      { id: "inv-5", email: null, role: "member", createdAt: at(-30), expiresAt: at(-23), acceptedAt: at(-29), revokedAt: null,
+        invitedBy: user.id, invitedByName: user.name, acceptedBy: "user-3" },
+      { id: "inv-6", email: null, role: "admin", createdAt: at(-40), expiresAt: at(-33), acceptedAt: at(-39), revokedAt: null,
+        invitedBy: user.id, invitedByName: user.name, acceptedBy: "user-9" },
+      { id: "inv-7", email: "housemate@example.test", role: "member", createdAt: at(-50), expiresAt: at(-43), acceptedAt: at(-49), revokedAt: null,
+        invitedBy: user.id, invitedByName: user.name, acceptedBy: "user-2" },
+    ];
+    const base = vi.mocked(api).getMockImplementation()!;
+    vi.mocked(api).mockImplementation(async (path, options) => path.endsWith("/invites") ? { invites: records } : base(path, options));
+    mount("/members");
+    const history = (await screen.findByText("3 past invitations")).closest("details")!;
+    const items = within(history).getAllByRole("listitem").map((item) => item.textContent);
+    expect(items[0]).toMatch(/^Bea · member · accepted /);
+    expect(items[1]).toMatch(/^Former member · admin · accepted /);
+    expect(items[2]).toMatch(/^housemate@example\.test · member · accepted /);
+    expect(history.textContent).not.toContain("null");
+  });
+});
+
 describe("who sent each invitation", () => {
   it("names the sender and says when a membership change withdraws their invitations", async () => {
     current.members[1].role = "admin";

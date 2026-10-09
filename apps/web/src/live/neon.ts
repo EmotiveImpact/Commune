@@ -593,12 +593,13 @@ async function route<T>(path: string, init: RequestInit): Promise<T> {
       p_commune_id: pathId(path, /^\/communes\/([^/]+)\/invites$/),
     })));
     response = { invites: invites.map((invite) => ({
-      id: str(invite.id), email: str(invite.email), role: str(invite.role),
+      id: str(invite.id), email: invite.email == null ? null : str(invite.email), role: str(invite.role),
       createdAt: str(invite.created_at), expiresAt: str(invite.expires_at),
       acceptedAt: invite.accepted_at == null ? null : str(invite.accepted_at),
       revokedAt: invite.revoked_at == null ? null : str(invite.revoked_at),
       invitedBy: invite.invited_by == null ? null : str(invite.invited_by),
       invitedByName: invite.invited_by_name == null ? null : str(invite.invited_by_name),
+      acceptedBy: invite.accepted_by == null ? null : str(invite.accepted_by),
     })) };
   } else if (method === "POST" && pathId(path, /^\/invites\/([^/]+)\/revoke$/)) {
     response = await rpcVoid("revoke_commune_invite", {

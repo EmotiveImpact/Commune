@@ -25,7 +25,7 @@ working after them. 0016 backfills one receipt per previously confirmed share
 and adds a commit-time check that `settled_minor` matches its receipts; check
 the backfill count on the branch before promoting.
 
-Five of the 9 October migrations change that rule:
+Six of the 9 October migrations change that rule:
 
 - **0027** removes the client's write grants on `commune_notes` and
   `commune_operations`; notes and tasks change only through `create_note`,
@@ -40,6 +40,10 @@ Five of the 9 October migrations change that rule:
   branch.
 - **0030** changes how the invitation email sender in `apps/reminder-worker`
   looks accounts up, so deploy the worker after 0030.
+- **0031** leaves the address out of an accepted invitation in
+  `list_commune_invites` once the person who accepted it has left, and adds
+  an `accepted_by` column so Members can name them instead. A client from
+  before 0031 lists such an invitation with no name until it is replaced.
 - **0033** adds `public.email_suppressions`, which the worker reads before
   every invitation and reminder email, so deploy the worker after 0033. It
   also refuses a new commune name, or a rename, that includes a link, an
