@@ -761,12 +761,18 @@ function Profile() {
 }
 
 function Breakdown() {
-  const { go, closeWindow, hub, expenses, voidedExpenses, session } = useApp();
+  const { go, closeWindow, hub, expenses, voidedExpenses, session, snapshots } = useApp();
   const others = hub.members.filter((member) => member.userId !== session?.userId);
-  const [statementWith, setStatementWith] = useState(others[0]?.userId ?? "");
-  const other = others.find((member) => member.userId === statementWith) ?? others[0];
+  const ledger = [...expenses, ...voidedExpenses];
+  // People who have left keep their statements, listed under their own
+  // heading when there is anything between you.
+  const former = session ? (snapshots[hub.id]?.members ?? []).filter((member) => member.active === false &&
+    member.userId !== session.userId && buildStatement(ledger, session.userId, member.userId, member.name).entries.length > 0) : [];
+  const people = [...others, ...former];
+  const [statementWith, setStatementWith] = useState(people[0]?.userId ?? "");
+  const other = people.find((member) => member.userId === statementWith) ?? people[0];
   const statement = other && session
-    ? buildStatement([...expenses, ...voidedExpenses], session.userId, other.userId, other.name)
+    ? buildStatement(ledger, session.userId, other.userId, other.name)
     : null;
   // The same figure Members shows for this person.
   const net = other && session ? netBalances(expenses, session.userId).get(other.userId) ?? 0 : 0;
@@ -825,6 +831,9 @@ function Breakdown() {
             <label htmlFor="statement-member">Statement with</label>
             <select id="statement-member" value={other.userId} onChange={(event) => setStatementWith(event.target.value)}>
               {others.map((member) => <option key={member.userId} value={member.userId}>{member.name}</option>)}
+              {former.length ? <optgroup label="Former members">
+                {former.map((member) => <option key={member.userId} value={member.userId}>{member.name}</option>)}
+              </optgroup> : null}
             </select>
           </div>
           <p className="c-statement-net" role="status">

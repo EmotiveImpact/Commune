@@ -253,3 +253,37 @@ describe("the currency stays as it is once the commune has amounts", () => {
     expect(vi.mocked(api).mock.calls.some(([path, init]) => path === "/communes/home-1" && JSON.parse(String(init?.body)).currency === "EUR")).toBe(true);
   });
 });
+
+describe("statements with people who have left", () => {
+  it("lists former members under their own heading, with their statement", async () => {
+    current.members.push(
+      { userId: "user-3", name: "Former Housemate", role: "member", active: false },
+      { userId: "user-4", name: "Brief Visitor", role: "member", active: false },
+    );
+    current.expenses = [{
+      id: "expense-1", title: "Gas bill", category: "Bills", amountMinor: 6000, paidByUserId: user.id, dueOn: null,
+      createdAt: "2026-09-01T10:00:00Z",
+      shares: [
+        { id: "share-own", userId: user.id, amountMinor: 3000, settledMinor: 3000 },
+        { id: "share-3", userId: "user-3", amountMinor: 3000, settledMinor: 3000, receipts: [{
+          id: "receipt-1", amountMinor: 3000, receivedOn: "2026-09-03", reference: null, recordedBy: user.id,
+          recordedAt: "2026-09-03T10:00:00Z", origin: "recorded", reversedAt: null, reversedBy: null, reversalReason: null,
+        }] },
+      ],
+    }];
+    mount("/settle");
+    fireEvent.click(await screen.findByRole("button", { name: "View breakdown" }));
+    const select = await screen.findByLabelText("Statement with") as HTMLSelectElement;
+    // Current members first; then, under their own heading, people who left
+    // and have something with you.
+    expect(Array.from(select.children).map((item) => item instanceof HTMLOptGroupElement
+      ? [item.label, Array.from(item.children).map((option) => option.textContent)]
+      : item.textContent)).toEqual(["Housemate", ["Former members", ["Former Housemate"]]]);
+    fireEvent.change(select, { target: { value: "user-3" } });
+    const statement = screen.getByRole("region", { name: "Statement" });
+    expect(within(statement).getByRole("status").textContent).toBe("You and Former Housemate are square.");
+    expect(within(statement).getByText("Former Housemate’s share of Gas bill")).toBeTruthy();
+    expect(within(statement).getByText("Former Housemate repaid · Gas bill")).toBeTruthy();
+    expect(within(statement).getByRole("button", { name: "Download CSV" })).toBeTruthy();
+  });
+});
