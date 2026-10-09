@@ -185,14 +185,15 @@ export function TemplatesScreen() {
       <div className="a-toolbar">
         <div className="a-filters">
           {[false, true].map((value) => (
-            <Button
+            <button
               key={String(value)}
-              variant="secondary"
+              className={`a-chip${archived === value ? " is-on" : ""}`}
+              type="button"
               aria-pressed={archived === value}
               onClick={() => setArchived(value)}
             >
               {value ? "Archived" : "Active"}
-            </Button>
+            </button>
           ))}
         </div>
         <Button

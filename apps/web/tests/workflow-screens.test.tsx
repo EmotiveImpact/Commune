@@ -462,6 +462,28 @@ describe("complete shared workflows", () => {
     expect(screen.getByRole("heading", { name: "Old split" })).toBeTruthy();
   });
 
+  it("filters templates with the same side-by-side chips as Funds, marking the selected one", async () => {
+    // Each screen's filters: the chips, the one marked as selected, and any other control among them.
+    const filters = () => {
+      const group = document.querySelector(".a-toolbar .a-filters")!;
+      return {
+        chips: [...group.querySelectorAll(".a-chip")].map((chip) => chip.textContent),
+        on: [...group.querySelectorAll(".a-chip.is-on[aria-pressed=true]")].map((chip) => chip.textContent),
+        others: group.querySelectorAll(":scope > :not(.a-chip)").length,
+      };
+    };
+    mount("/funds");
+    await screen.findByRole("button", { name: "Archived", exact: true });
+    const funds = filters();
+    expect(funds).toEqual({ chips: ["Active", "Archived"], on: ["Active"], others: 0 });
+    await act(async () => app.go("templates"));
+    await screen.findByRole("button", { name: "Save template" });
+    expect(filters()).toEqual(funds);
+    fireEvent.click(screen.getByRole("button", { name: "Archived", exact: true }));
+    expect(filters()).toEqual({ chips: ["Active", "Archived"], on: ["Archived"], others: 0 });
+    expect(screen.getByRole("button", { name: "Active", exact: true }).getAttribute("aria-pressed")).toBe("false");
+  });
+
   it("saves an actual recurring schedule and its exact penny allocations", async () => {
     const base = vi.mocked(api).getMockImplementation()!;
     vi.mocked(api).mockImplementation(async (path, options) => {
