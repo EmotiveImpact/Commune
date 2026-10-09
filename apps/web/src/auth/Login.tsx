@@ -6,6 +6,7 @@ import { LIMITS } from "../data/limits";
 import { keepSearch } from "../nav";
 import { GoogleMark } from "../ui/Icon";
 import { readStored, removeStored } from "../live/storage";
+import { useFormError } from "../ui/components";
 
 export function LoginPage() {
   const { signInWithPassword, signInWithGoogle, signOutUnconfirmed, retrySignOut, sessionNotice } = useApp();
@@ -13,7 +14,7 @@ export function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
+  const { error, setError, invalid, messageProps } = useFormError();
   const [signOutRetry, setSignOutRetry] = useState<"idle" | "busy" | "failed">("idle");
 
   async function onRetrySignOut() {
@@ -25,7 +26,7 @@ export function LoginPage() {
     event.preventDefault();
     setError("");
     if (!email.includes("@") || !password) {
-      setError("Enter your email and password.");
+      setError("Enter your email and password.", email.includes("@") ? "login-password" : "login-email");
       return;
     }
     setBusy(true);
@@ -68,16 +69,16 @@ export function LoginPage() {
           </div>
         ) : sessionNotice && !error ? <div className="commune-auth-alert" role="status">{sessionNotice}</div> : null}
         {error || new URLSearchParams(window.location.search).has("oauth")
-          ? <div className="commune-auth-alert" role="alert">{error || "Google sign-in did not complete. Please try again."}</div>
+          ? <div className="commune-auth-alert" role="alert" {...messageProps}>{error || "Google sign-in did not complete. Please try again."}</div>
           : null}
         <form onSubmit={onSubmit}>
           <div className="commune-auth-field">
             <label htmlFor="login-email">Email</label>
-            <input id="login-email" type="email" autoComplete="email" required maxLength={LIMITS.email} value={email} onChange={(event) => setEmail(event.target.value)} />
+            <input id="login-email" type="email" autoComplete="email" required maxLength={LIMITS.email} value={email} onChange={(event) => setEmail(event.target.value)} {...invalid("login-email")} />
           </div>
           <div className="commune-auth-field">
             <label htmlFor="login-password">Password</label>
-            <input id="login-password" type="password" autoComplete="current-password" required maxLength={128} value={password} onChange={(event) => setPassword(event.target.value)} />
+            <input id="login-password" type="password" autoComplete="current-password" required maxLength={128} value={password} onChange={(event) => setPassword(event.target.value)} {...invalid("login-password")} />
           </div>
           <p className="commune-auth-foot"><Link href={keepSearch("/forgot-password")} className="commune-auth-link">Forgot your password?</Link></p>
           <button className="commune-auth-btn" type="submit" disabled={busy}>

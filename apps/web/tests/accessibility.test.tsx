@@ -7,6 +7,7 @@ import { AppProvider, useApp, type AppState } from "../src/state";
 import { api, post, loadCommunes, loadSnapshot, ApiError } from "../src/live/api";
 import type { Commune, Notification, Snapshot } from "../src/live/model";
 import { addDays, dateFromIso, todayIso, type OperationItem } from "../src/data/operations";
+import { Dialog } from "../src/ui/components";
 
 vi.mock("../src/live/api", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../src/live/api")>()),
@@ -402,5 +403,177 @@ describe("error display", () => {
     const strip = screen.getByRole("alert");
     expect(strip.classList.contains("a-api-error")).toBe(true);
     expect(strip.textContent).toContain("You can no longer change this.");
+  });
+});
+
+describe("form errors", () => {
+  function signedOut() {
+    vi.mocked(api).mockImplementation(async (path) => (path === "/auth/me" ? { user: null } : { ok: true }));
+  }
+
+  it("marks the field an error is about, points it at the message and moves focus to it", async () => {
+    mount("/expenses");
+    await screen.findByRole("heading", { name: "Expenses", level: 1 });
+    act(() => app.go("add-expense"));
+    const dialog = await screen.findByRole("dialog", { name: "Add expense" });
+    const name = within(dialog).getByLabelText("What was it for?");
+    const amount = within(dialog).getByLabelText(/^Amount/);
+
+    fireEvent.click(within(dialog).getByRole("button", { name: "Save expense" }));
+    const message = await within(dialog).findByRole("alert");
+    expect(message.textContent).toBe("Name the expense before saving it.");
+    await waitFor(() => expect(document.activeElement).toBe(name));
+    expect(name.getAttribute("aria-invalid")).toBe("true");
+    expect(name.getAttribute("aria-describedby")).toBe(message.id);
+    // Shown under the field it is about.
+    expect(name.closest(".a-field")?.contains(message)).toBe(true);
+    expect(amount.hasAttribute("aria-invalid")).toBe(false);
+
+    fireEvent.change(name, { target: { value: "Groceries" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Save expense" }));
+    await waitFor(() => expect(document.activeElement).toBe(amount));
+    expect(amount.getAttribute("aria-invalid")).toBe("true");
+    expect(amount.getAttribute("aria-describedby")).toBe(within(dialog).getByRole("alert").id);
+    expect(name.hasAttribute("aria-invalid")).toBe(false);
+    expect(name.hasAttribute("aria-describedby")).toBe(false);
+
+    // The split has no single field, so its message takes focus.
+    fireEvent.change(amount, { target: { value: "12.00" } });
+    for (const box of within(dialog).getAllByRole("checkbox", { name: /^Include / })) fireEvent.click(box);
+    fireEvent.click(within(dialog).getByRole("button", { name: "Save expense" }));
+    const split = within(dialog).getByRole("alert");
+    expect(split.textContent).toBe("Choose at least one person in the split.");
+    expect(split.previousElementSibling?.matches("fieldset.c-split-editor")).toBe(true);
+    await waitFor(() => expect(document.activeElement).toBe(split));
+    expect(vi.mocked(post)).not.toHaveBeenCalled();
+  });
+
+  it("links the task form's missing title and date and focuses the first one", async () => {
+    mount("/operations");
+    await screen.findByRole("group", { name: "Operations view" });
+    act(() => app.go("operation-new"));
+    const dialog = await screen.findByRole("dialog", { name: "Add to calendar" });
+    const date = within(dialog).getByLabelText(/^Date/);
+    fireEvent.change(date, { target: { value: "" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Add to calendar" }));
+    const title = within(dialog).getByLabelText(/^Title/);
+    expect(document.activeElement).toBe(title);
+    expect(title.getAttribute("aria-invalid")).toBe("true");
+    expect(document.getElementById(title.getAttribute("aria-describedby")!)?.textContent).toBe("Add a title.");
+    expect(document.getElementById(date.getAttribute("aria-describedby")!)?.textContent).toBe("Choose a date.");
+
+    fireEvent.change(title, { target: { value: "Descale the kettle" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Add to calendar" }));
+    expect(document.activeElement).toBe(date);
+    expect(vi.mocked(post)).not.toHaveBeenCalled();
+  });
+
+  it("shows the password rule under the field and names the first field to fix", async () => {
+    signedOut();
+    mount("/signup");
+    const password = await screen.findByLabelText("Password");
+    const rule = screen.getByText("At least 12 characters.");
+    expect(password.getAttribute("aria-describedby")).toBe(rule.id);
+
+    const form = password.closest("form")!;
+    fireEvent.submit(form);
+    expect((await screen.findByRole("alert")).textContent).toBe("Enter your name.");
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText("Name")));
+
+    fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Sam" } });
+    fireEvent.change(screen.getByLabelText("Email"), { target: { value: "sam@example.test" } });
+    fireEvent.change(password, { target: { value: "too short" } });
+    fireEvent.submit(form);
+    const message = screen.getByRole("alert");
+    expect(message.textContent).toBe("Use at least 12 characters for your password.");
+    await waitFor(() => expect(document.activeElement).toBe(password));
+    expect(password.getAttribute("aria-invalid")).toBe("true");
+    expect(password.getAttribute("aria-describedby")).toBe(`${rule.id} ${message.id}`);
+    expect(screen.getByLabelText("Name").hasAttribute("aria-invalid")).toBe(false);
+    expect(vi.mocked(post)).not.toHaveBeenCalled();
+  });
+
+  it("moves focus to a refused sign-in's message rather than losing it", async () => {
+    signedOut();
+    vi.mocked(post).mockRejectedValue(new ApiError("Invalid email or password", 401));
+    mount("/login");
+    fireEvent.change(await screen.findByLabelText("Email"), { target: { value: "sam@example.test" } });
+    fireEvent.change(screen.getByLabelText("Password"), { target: { value: "not the password" } });
+    expect(document.activeElement).toBe(document.body);
+    await act(async () => { fireEvent.submit(screen.getByLabelText("Password").closest("form")!); });
+    const message = screen.getByRole("alert");
+    expect(message.textContent).toBe("Invalid email or password");
+    await waitFor(() => expect(document.activeElement).toBe(message));
+  });
+});
+
+describe("asking before typed text is thrown away", () => {
+  async function openAddExpense() {
+    mount("/expenses");
+    await screen.findByRole("heading", { name: "Expenses", level: 1 });
+    act(() => app.go("add-expense"));
+    return screen.findByRole("dialog", { name: "Add expense" });
+  }
+
+  it("asks before Escape closes a window over typed text, and Keep editing goes back to it", async () => {
+    const dialog = await openAddExpense();
+    const name = within(dialog).getByLabelText("What was it for?");
+    name.focus();
+    fireEvent.input(name, { target: { value: "Window cleaner" } });
+    fireEvent.keyDown(name, { key: "Escape" });
+    const question = screen.getByRole("dialog", { name: "Discard your changes?" });
+    expect(within(question).getByText("What you typed here hasn’t been saved.")).toBeTruthy();
+    expect(document.activeElement).toBe(within(question).getByRole("button", { name: "Keep editing" }));
+    expect(screen.getByRole("dialog", { name: "Add expense" })).toBe(dialog);
+
+    fireEvent.click(within(question).getByRole("button", { name: "Keep editing" }));
+    expect(screen.queryByRole("dialog", { name: "Discard your changes?" })).toBeNull();
+    expect(document.activeElement).toBe(name);
+    expect((name as HTMLInputElement).value).toBe("Window cleaner");
+
+    // The close button asks too; Discard closes the window.
+    fireEvent.click(within(dialog).getByRole("button", { name: "Close" }));
+    fireEvent.click(within(screen.getByRole("dialog", { name: "Discard your changes?" })).getByRole("button", { name: "Discard" }));
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Add expense" })).toBeNull());
+    expect(screen.queryByRole("dialog", { name: "Discard your changes?" })).toBeNull();
+  });
+
+  it("closes at once when nothing was typed, or the text was cleared again", async () => {
+    let dialog = await openAddExpense();
+    fireEvent.keyDown(document.body, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Add expense" })).toBeNull());
+    expect(screen.queryByRole("dialog", { name: "Discard your changes?" })).toBeNull();
+
+    act(() => app.go("add-expense"));
+    dialog = await screen.findByRole("dialog", { name: "Add expense" });
+    const name = within(dialog).getByLabelText("What was it for?");
+    fireEvent.input(name, { target: { value: "Bins" } });
+    fireEvent.input(name, { target: { value: "" } });
+    fireEvent.keyDown(name, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Add expense" })).toBeNull());
+    expect(screen.queryByRole("dialog", { name: "Discard your changes?" })).toBeNull();
+  });
+
+  it("asks before a dialog closes over typed text", () => {
+    const onClose = vi.fn();
+    render(<Dialog title="Record a repayment" onClose={onClose}><label>Note<input /></label><label>Search<input type="search" /></label></Dialog>);
+    const dialog = screen.getByRole("dialog", { name: "Record a repayment" });
+    // A search field is not work to lose.
+    fireEvent.input(screen.getByLabelText("Search"), { target: { value: "rent" } });
+    fireEvent(dialog, new Event("cancel", { cancelable: true }));
+    expect(onClose).toHaveBeenCalledTimes(1);
+
+    fireEvent.input(screen.getByLabelText("Note"), { target: { value: "Paid by bank transfer" } });
+    fireEvent(dialog, new Event("cancel", { cancelable: true }));
+    const question = screen.getByRole("dialog", { name: "Discard your changes?" });
+    expect(onClose).toHaveBeenCalledTimes(1);
+    // Escape on the question keeps editing and does not reach the dialog behind.
+    fireEvent(question, new Event("cancel", { cancelable: true }));
+    expect(screen.queryByRole("dialog", { name: "Discard your changes?" })).toBeNull();
+    expect(onClose).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByRole("button", { name: "Close dialog" }));
+    fireEvent.click(screen.getByRole("button", { name: "Discard" }));
+    expect(onClose).toHaveBeenCalledTimes(2);
   });
 });

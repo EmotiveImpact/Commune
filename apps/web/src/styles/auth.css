@@ -120,6 +120,11 @@
   font-size: 0.875rem;
 }
 
+/* An error that takes focus is read, not operated, so it shows no ring. */
+.commune-auth-alert:focus {
+  outline: none;
+}
+
 .commune-auth-field {
   display: flex;
   flex-direction: column;
@@ -148,6 +153,17 @@
   outline: 2px solid rgba(45, 106, 79, 0.35);
   outline-offset: 1px;
   border-color: #2d6a4f;
+}
+
+.commune-auth-field input[aria-invalid="true"] {
+  border-color: #b42318;
+}
+
+.commune-auth-hint {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: #667085;
 }
 
 .commune-auth-error {

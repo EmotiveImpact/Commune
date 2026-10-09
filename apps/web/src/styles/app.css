@@ -1002,6 +1002,17 @@
   }
 }
 
+.c-product-dialog.c-discard-dialog {
+  width: min(420px, calc(100vw - 32px));
+}
+
+.c-discard-dialog p {
+  margin: 0 0 20px;
+  color: var(--ink-soft);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
 :is(.a-cover h1, .a-place-hero h3, .a-focus-hero h2,
     .a-set-row-copy strong, .a-commune-set h2, .a-item strong,
     .a-member-row .who strong, .a-name-btn, .a-home-greet h1) {
@@ -5202,9 +5213,18 @@ button.a-item {
   font-weight: 650;
 }
 
-.a-window input[aria-invalid="true"] {
+.a-body.is-dark .field-error {
+  color: var(--danger);
+}
+
+.a-window :is(input, textarea)[aria-invalid="true"] {
   border-color: #b76a52;
   box-shadow: 0 0 0 3px rgba(183, 106, 82, 0.1);
+}
+
+/* A message that takes focus is read, not operated, so it shows no ring. */
+.a-form-error:focus {
+  outline: none;
 }
 
 @media (max-width: 1000px) {

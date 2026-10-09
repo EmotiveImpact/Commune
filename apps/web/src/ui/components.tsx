@@ -1,7 +1,9 @@
 import {
+  useCallback,
   useEffect,
   useId,
   useRef,
+  useState,
   type ButtonHTMLAttributes,
   type ReactNode,
 } from "react";
@@ -137,6 +139,14 @@ export function Dialog({
 }) {
   const titleId = useId();
   const ref = useRef<HTMLDialogElement>(null);
+  const typed = useTypedText();
+  const [asking, setAsking] = useState(false);
+  // Escape and the close button ask first when typed text would be lost.
+  function dismiss() {
+    if (pending) return;
+    if (typed.hasTyped()) setAsking(true);
+    else onClose();
+  }
   useEffect(() => {
     const opener = document.activeElement as HTMLElement | null;
     const scopes = focusScopes(opener);
@@ -154,20 +164,22 @@ export function Dialog({
       aria-labelledby={titleId}
       onCancel={(event) => {
         event.preventDefault();
-        if (!pending) onClose();
+        dismiss();
       }}
+      onInput={typed.onInput}
     >
       <button
         className="c-dialog-close"
         type="button"
         aria-label="Close dialog"
         disabled={pending}
-        onClick={onClose}
+        onClick={dismiss}
       >
         <X size={18} />
       </button>
       <h2 id={titleId}>{title}</h2>
       {children}
+      {asking ? <DiscardQuestion onDiscard={() => { setAsking(false); onClose(); }} onKeep={() => setAsking(false)} /> : null}
     </dialog>
   );
 }
@@ -192,4 +204,99 @@ export function Feedback({
       )}
     </>
   );
+}
+
+const TEXT_FIELD = 'input:not([type="search"], [type="checkbox"], [type="radio"], [type="file"], [type="hidden"], [type="button"], [type="submit"], [type="reset"], [type="range"], [type="color"]), textarea';
+
+/**
+ * The text fields someone typed in, so a window or dialog can ask before it
+ * closes over text that would be lost. A field that has gone, is locked or
+ * has been emptied again does not count.
+ */
+export function useTypedText() {
+  const fields = useRef(new Set<HTMLInputElement | HTMLTextAreaElement>());
+  const onInput = useCallback((event: { target: EventTarget }) => {
+    const field = event.target;
+    if ((field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement) && field.matches(TEXT_FIELD)) fields.current.add(field);
+  }, []);
+  const hasTyped = useCallback(() => [...fields.current].some((field) =>
+    field.isConnected && !field.disabled && !field.readOnly && field.value.trim() !== ""), []);
+  return { onInput, hasTyped };
+}
+
+/** Asked before a window or dialog closes over typed text. */
+export function DiscardQuestion({ onDiscard, onKeep }: { onDiscard: () => void; onKeep: () => void }) {
+  const titleId = useId();
+  const textId = useId();
+  const ref = useRef<HTMLDialogElement>(null);
+  const keepRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const dialog = ref.current;
+    dialog?.showModal();
+    // The safe choice is the one Enter takes.
+    keepRef.current?.focus();
+    return () => {
+      dialog?.close();
+      if (opener?.isConnected) opener.focus();
+    };
+  }, []);
+  return (
+    <dialog
+      ref={ref}
+      className="c-product-dialog c-discard-dialog"
+      aria-labelledby={titleId}
+      aria-describedby={textId}
+      onCancel={(event) => {
+        // Escape keeps editing, and stays with this question.
+        event.preventDefault();
+        event.stopPropagation();
+        onKeep();
+      }}
+    >
+      <h2 id={titleId}>Discard your changes?</h2>
+      <p id={textId}>What you typed here hasn’t been saved.</p>
+      <div className="a-field-row">
+        <button className="a-btn danger" type="button" onClick={onDiscard}>Discard</button>
+        <button ref={keepRef} className="a-btn ghost" type="button" onClick={onKeep}>Keep editing</button>
+      </div>
+    </dialog>
+  );
+}
+
+/**
+ * A form's error and the field it is about. That field is marked invalid,
+ * points at the message and takes focus, so a keyboard or screen reader user
+ * lands where the fix is needed. A field id with no element names a place,
+ * like an expense's split: the message shown there takes focus. An error about
+ * no field takes focus itself only if focus would otherwise be lost.
+ */
+export function useFormError() {
+  const messageId = useId();
+  const [error, setState] = useState<{ message: string; field?: string }>({ message: "" });
+  const moveFocus = useRef(false);
+  useEffect(() => {
+    if (!moveFocus.current || !error.message) return;
+    moveFocus.current = false;
+    const field = error.field ? document.getElementById(error.field) : null;
+    if (field) { field.focus(); return; }
+    const active = document.activeElement;
+    if (error.field || !active || active === document.body || active.matches(":disabled")) document.getElementById(messageId)?.focus();
+  }, [error, messageId]);
+  const setError = useCallback((message: string, field?: string) => {
+    moveFocus.current = Boolean(message);
+    setState({ message, field });
+  }, []);
+  /** For a field: invalid and described by the message while it is about it. */
+  const invalid = (field: string, describedBy?: string) => {
+    const about = Boolean(error.message) && error.field === field;
+    const ids = [describedBy, about ? messageId : ""].filter(Boolean).join(" ");
+    return { "aria-invalid": about || undefined, "aria-describedby": ids || undefined };
+  };
+  const messageProps = { id: messageId, tabIndex: -1 };
+  /** The message where it belongs: under its field, or, with no field, in the form's own place. */
+  const message = (field?: string) => error.message && error.field === field
+    ? <p className="a-form-error" role="alert" {...messageProps}>{error.message}</p>
+    : null;
+  return { error: error.message, setError, invalid, message, messageProps };
 }
