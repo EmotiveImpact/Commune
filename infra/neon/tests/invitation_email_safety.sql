@@ -10,7 +10,8 @@ DECLARE
 BEGIN
   -- Ordinary names are allowed.
   FOREACH v_name IN ARRAY ARRAY['12 Park Street', 'Flat 3B, 2026', 'St. Mary''s House', 'No.5 Studio',
-    'Smith & Co.', 'Flat 2, 14-16 Park Road', 'Tom @ Home', 'Apt. 4B', 'Café Olé', '123456', 'example.company'] LOOP
+    'Smith & Co.', 'Flat 2, 14-16 Park Road', 'Tom @ Home', 'Apt. 4B', 'Café Olé', '123456', 'example.company',
+    'Ski trip 2025-2026', 'Flat 12345678'] LOOP
     IF commune_private.looks_like_contact(v_name) THEN
       RAISE EXCEPTION 'An ordinary name was taken for contact details: %', v_name;
     END IF;

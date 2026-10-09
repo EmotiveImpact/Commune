@@ -12,8 +12,9 @@ BEGIN;
 
 -- True when the text holds something a reader could follow or contact: "://"
 -- or "www.", an email-like x@y, a domain-like token ending in a common
--- top-level domain, or a phone-like run of 7 or more digits joined only by
--- spaces, dots, dashes or brackets. The text is compared after NFKC
+-- top-level domain, or a phone-like run of 9 or more digits joined only by
+-- spaces, dots, dashes or brackets (UK numbers have 10 or 11 digits, while a
+-- year range such as 2025-2026 has 8). The text is compared after NFKC
 -- normalisation and without invisible format characters, so full-width forms
 -- and zero-width spaces do not hide one. apps/reminder-worker/src/invitations.ts
 -- applies the same rule to the names in an invitation email.
@@ -21,7 +22,7 @@ CREATE FUNCTION commune_private.looks_like_contact(p_text text)
 RETURNS boolean LANGUAGE sql IMMUTABLE PARALLEL SAFE SET search_path = public, pg_temp AS $$
   SELECT coalesce(n.v ~* '://|www\.|[^[:space:]@]@[^[:space:]@]'
     OR n.v ~* '[^[:space:].]\.(com|net|org|io|co|uk|me|app|info|biz|xyz|link|ly|ru|top|site|online|shop)([^a-z0-9]|$)'
-    OR n.v ~ '[0-9]([[:space:].()\u2010-\u2015\u2212-]*[0-9]){6}', false)
+    OR n.v ~ '[0-9]([[:space:].()\u2010-\u2015\u2212-]*[0-9]){8}', false)
   FROM (SELECT regexp_replace(normalize(p_text, NFKC),
     '[\u00ad\u034f\u061c\u180e\u200b-\u200f\u202a-\u202e\u2060-\u206f\ufe00-\ufe0f\ufeff]', '', 'g') AS v) n;
 $$;

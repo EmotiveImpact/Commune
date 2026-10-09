@@ -20,13 +20,13 @@ const html = (value: string) => value.replace(/[&<>"']/g, (char) => ({ "&": "&am
 
 // The same rule as commune_private.looks_like_contact (migration 0033): "://"
 // or "www.", an email-like x@y, a domain-like token ending in a common
-// top-level domain, or 7 or more digits joined only by spaces, dots, dashes or
+// top-level domain, or 9 or more digits joined only by spaces, dots, dashes or
 // brackets. Compared after NFKC normalisation, without invisible characters.
 const INVISIBLE = /[\u00ad\u034f\u061c\u180e\u200b-\u200f\u202a-\u202e\u2060-\u206f\ufe00-\ufe0f\ufeff]/gu;
 const CONTACT_PATTERNS = [
   /:\/\/|www\.|[^\s@]@[^\s@]/iu,
   /[^\s.]\.(?:com|net|org|io|co|uk|me|app|info|biz|xyz|link|ly|ru|top|site|online|shop)(?![a-z0-9])/iu,
-  /[0-9](?:[\s.()\u2010-\u2015\u2212-]*[0-9]){6}/u,
+  /[0-9](?:[\s.()\u2010-\u2015\u2212-]*[0-9]){8}/u,
 ];
 
 /** Whether text holds a link, an email address or a phone number. */
