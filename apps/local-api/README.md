@@ -32,7 +32,7 @@ browser code sends same-origin `/api` requests. Non-2xx errors are
 | PATCH | `/api/funds/:id` | `{name,targetMinor?}` admin | `{ok:true}` |
 | POST | `/api/funds/:id/archive` | `{archived:boolean}` admin; outstanding pledges block archive | `{ok:true}` |
 | POST | `/api/funds/:id/pledges` | `{amountMinor,dueOn,requestId?}`; one active pledge per member; a repeated `requestId` returns the same pledge | `{id,duplicate}` (201, or 200 for a repeat) |
-| PATCH | `/api/commitments/:id` | `{amountMinor,dueOn}` or `{cancel:true}`; own pledge or admin; only the pledger can raise it or bring its date forward (403); the pledger is notified when someone else changes or cancels it | `{ok:true}` |
+| PATCH | `/api/commitments/:id` | `{amountMinor,dueOn}` or `{cancel:true}`, each with optional `expectedAmountMinor,expectedDueOn` (the pledge the change was based on; 409 if it has changed since); own pledge or admin; only the pledger can raise it or bring its date forward (403); the pledger is notified when someone else changes or cancels it | `{ok:true}` |
 | POST | `/api/commitments/:id/contributions` | `{amountMinor,requestId?}` admin; a repeated `requestId` returns the same entry | `{id,duplicate}` (201, or 200 for a repeat) |
 | POST | `/api/contributions/:id/void` | `{reason}` admin; preserves original entry and correction reason | `{ok:true}` |
 | POST | `/api/communes/:id/recurring` | `{id?,title,amountMinor,paidByUserId,allocations:[{userId,amountMinor}],frequency:"weekly"\|"monthly",nextDueOn,paused}` | `{id}` |
