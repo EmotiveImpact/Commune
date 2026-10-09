@@ -180,7 +180,12 @@ async function actor(req: IncomingMessage): Promise<User> {
   return user;
 }
 
-// A bounded local throttle protects password verification from quick guessing.
+// A local throttle protects password verification from quick guessing: ten
+// failures for one email from one client lock that pair out until 15 minutes
+// after the latest. Entries stay in order of their latest failure, so expired
+// ones are always first and each failure drops them. A lockout still running
+// is never dropped, however many other failures arrive; each one costs a
+// password hash, which bounds how many can build up in 15 minutes.
 const failures = new Map<string, { count: number; until: number }>();
 function checkThrottle(req: IncomingMessage, address: string): string {
   const key = `${req.socket.remoteAddress ?? "?"}:${address}`;
@@ -191,11 +196,16 @@ function checkThrottle(req: IncomingMessage, address: string): string {
   return key;
 }
 function failed(key: string): void {
-  if (failures.size > 1000) failures.clear();
+  const now = Date.now();
+  for (const [stale, item] of failures) {
+    if (item.until > now) break;
+    failures.delete(stale);
+  }
   const existing = failures.get(key);
+  failures.delete(key);
   failures.set(key, {
-    count: existing && existing.until > Date.now() ? existing.count + 1 : 1,
-    until: Date.now() + 15 * 60 * 1000,
+    count: existing && existing.until > now ? existing.count + 1 : 1,
+    until: now + 15 * 60 * 1000,
   });
 }
 
