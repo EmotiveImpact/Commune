@@ -14,9 +14,11 @@ import { isConnectionFailure } from "../live/connection";
 import { lazyComponent, preloadWhenIdle } from "./lazyComponent";
 import { usePageTitle } from "./pageTitle";
 
-// The signed-in app: App loads this module only once someone is signed in.
-// Home, Hub, Expenses and Settle (the phone's four tabs) come with it;
-// the other screens load when first opened, or earlier once the browser is idle.
+// The signed-in app. App draws it only for someone signed in, and starts
+// fetching it while the session is checked on one of its addresses (never on
+// the sign-in pages). Home, Hub, Expenses and Settle (the phone's four tabs)
+// come with it; the other screens load when first opened, or earlier once the
+// browser is idle.
 const FundsScreen = lazyComponent(() => import("../screens/Funds").then((m) => m.FundsScreen));
 const RecurringScreen = lazyComponent(() => import("../screens/Recurring").then((m) => m.RecurringScreen));
 const TemplatesScreen = lazyComponent(() => import("../screens/Templates").then((m) => m.TemplatesScreen));
