@@ -204,7 +204,7 @@ export function SettleScreen() {
                 <div className="names">{receiving ? `${personName(share.userId, "A former member", { left: true })} owes you` : `You owe ${personName(expense.paidByUserId, "the bill payer", { left: true })}`}</div>
                 <div className="why">{expense.name}{expense.dueOn ? ` · due ${expense.due}` : ""}</div>
                 {share.settledMinor > 0 ? <div className="why">{formatMoney(share.settledMinor, hub.currency)} of {formatMoney(share.amountMinor, hub.currency)} received</div> : null}
-                {report ? <div className="why c-report-line">{receiving
+                {report ? <div className="why">{receiving
                   ? `${reportSummary(report, hub.currency, personName(share.userId, "A member"))}. Not yet confirmed.`
                   : `You said you sent ${formatMoney(report.amountMinor, hub.currency)} on ${formatReminderDay(report.sentOn)}. Waiting for ${payerName}.`}</div> : null}
                 {!receiving ? <LatestReportAnswer share={share} currency={hub.currency} viewerId={me} names={(userId) => personName(userId, "The bill payer")} /> : null}
