@@ -329,6 +329,8 @@ describe("late tasks in the week", () => {
     expect(lateCards().map((card) => card.querySelector(".ops-kicker")?.textContent)).toEqual(["1 day late · Test", "5 days late · Housemate", "3 days late · Unassigned"]);
     expect(lateCards().map((card) => [...card.querySelectorAll(".ops-note")].at(-1)?.textContent))
       .toEqual(["Test still has this.", "Housemate still has this.", "Nobody has this yet."]);
+    // A one-off task cannot be skipped, so its card does not offer it.
+    expect(lateCards().every((card) => !within(card).queryByRole("button", { name: "Skip a week" }))).toBe(true);
     // Yours never says you are clear while one of yours is late.
     const yours = document.querySelector<HTMLElement>(".ops-yours")!;
     expect(yours.textContent).not.toContain("You’re clear today.");
@@ -347,8 +349,8 @@ describe("late tasks in the week", () => {
 
   it("holds every late card's actions while a change is saving", async () => {
     current.operations = [
-      lateTask("task-a", "Water the plants", 5, { assignee: "Housemate Two", assigneeId: "user-2" }),
-      lateTask("task-b", "Put the bins out", 1, { assignee: user.name, assigneeId: user.id }),
+      lateTask("task-a", "Water the plants", 5, { assignee: "Housemate Two", assigneeId: "user-2", repeat: "weekly" }),
+      lateTask("task-b", "Put the bins out", 1, { assignee: user.name, assigneeId: user.id, repeat: "weekly" }),
     ];
     let finish!: (value: unknown) => void;
     vi.mocked(post).mockImplementation(() => new Promise((resolve) => { finish = resolve; }));

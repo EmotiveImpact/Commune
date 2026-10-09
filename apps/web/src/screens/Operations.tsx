@@ -518,9 +518,12 @@ function LateCard({
         <button className="a-btn ghost" type="button" onClick={onOpen}>
           Open
         </button>
-        <button className="a-btn ghost" type="button" disabled={pending} onClick={onSkip}>
-          Skip a week
-        </button>
+        {/* As in the task window, only a repeating task can be skipped. */}
+        {item.repeat !== "none" ? (
+          <button className="a-btn ghost" type="button" disabled={pending} onClick={onSkip}>
+            Skip a week
+          </button>
+        ) : null}
         <button className="a-btn" type="button" disabled={pending} onClick={onDone}>
           {next ? `Done · ${next}` : "Mark done"}
         </button>
