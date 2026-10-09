@@ -535,6 +535,7 @@ export const WINDOW_PAGE: Partial<Record<WindowId, ScreenId>> = {
   "operation-new": "operations",
   "operation-edit": "operations",
   "announcement-new": "hub",
+  profile: "settings",
 };
 
 export const SCREEN_PATH: Record<ScreenId, string> = {

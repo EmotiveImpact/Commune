@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent, type ReactNode } from "react";
 import { diagnosticsEnabled } from "./live/diagnostics";
-import { Redirect, Route, Switch } from "wouter";
+import { Link, Redirect, Route, Switch, useLocation, useSearch } from "wouter";
 import { LoginPage } from "./auth/Login";
 import { SignupPage, VerifyEmailPage } from "./auth/Signup";
 import { ForgotPasswordPage, ResetPasswordPage } from "./auth/ForgotPassword";
@@ -28,8 +28,9 @@ import { OperationsScreen } from "./screens/Operations";
 import { CommuneSettingsScreen, SettingsScreen } from "./screens/Settings";
 import { Windows } from "./windows/Windows";
 import { cx } from "./ui/cx";
-import type { ScreenId } from "./data/household";
-import { keepSearch } from "./nav";
+import { PAGE_TITLES, type ScreenId } from "./data/household";
+import { COMMUNE_SCREENS, forgetReturn, keepSearch, readAddress, readReturn, rememberReturn } from "./nav";
+import { AuthLayout } from "./auth/AuthLayout";
 import { PendingShell } from "./shell/PendingShell";
 import { AllActivityScreen, SearchScreen } from "./screens/Search";
 import { ConnectionRecovery } from "./shell/ConnectionRecovery";
@@ -46,30 +47,45 @@ export function App() {
       <Route path="/billing"><Redirect to={keepSearch("/")} replace /></Route>
       <Route path="/analytics"><Redirect to={keepSearch("/")} replace /></Route>
       <Route path="/login">
+        <PageTitle title="Sign in" />
         <GuestOnly>
           <LoginPage />
         </GuestOnly>
       </Route>
       <Route path="/signup">
+        <PageTitle title="Create your account" />
         <GuestOnly>
           <SignupPage />
         </GuestOnly>
       </Route>
       <Route path="/verify-email">
+        <PageTitle title="Verify your email" />
         <VerifyEmailPage />
       </Route>
       <Route path="/forgot-password">
+        <PageTitle title="Reset your password" />
         <GuestOnly>
           <ForgotPasswordPage />
         </GuestOnly>
       </Route>
       <Route path="/reset-password">
+        <PageTitle title="Choose a new password" />
         <ResetPasswordPage />
       </Route>
-      <Route path="/invite" component={InvitePage} />
-      <Route path="/privacy" component={PrivacyPage} />
-      <Route path="/terms" component={TermsPage} />
+      <Route path="/invite">
+        <PageTitle title="Invitation" />
+        <InvitePage />
+      </Route>
+      <Route path="/privacy">
+        <PageTitle title="Privacy" />
+        <PrivacyPage />
+      </Route>
+      <Route path="/terms">
+        <PageTitle title="Terms of use" />
+        <TermsPage />
+      </Route>
       <Route path="/onboard">
+        <PageTitle title="Name your commune" />
         <AuthenticatedOnly>
           <OnboardPage />
         </AuthenticatedOnly>
@@ -81,25 +97,69 @@ export function App() {
   );
 }
 
+// "Expenses · Flat 4 · Commune": short, most specific first.
+function usePageTitle(...parts: Array<string | undefined>) {
+  const title = [...parts.filter(Boolean), "Commune"].join(" · ");
+  useEffect(() => { document.title = title; }, [title]);
+}
+
+function PageTitle({ title }: { title: string }) {
+  usePageTitle(title);
+  return null;
+}
+
 function GuestOnly({ children }: { children: ReactNode }) {
   const { session, authStatus } = useApp();
   if (authStatus === "loading") return <AppLoading />;
   if (authStatus === "error") return <AppUnavailable />;
-  if (session?.hasHubs) return <Redirect to={keepSearch("/")} />;
-  if (session) return <Redirect to={keepSearch("/onboard")} />;
+  if (session) return <SignedIn hasHubs={session.hasHubs} />;
   return children;
 }
 
+// Signed in: on to the page that asked for a sign-in, or Home, or naming a
+// first commune. Replaced, so Back does not return to the sign-in form.
+function SignedIn({ hasHubs }: { hasHubs: boolean }) {
+  const [target] = useState(() => readReturn() ?? (hasHubs ? "/" : "/onboard"));
+  useEffect(() => forgetReturn(), []);
+  return <Redirect to={keepSearch(target)} replace />;
+}
+
 function ProtectedApp() {
+  const [path] = useLocation();
+  // An address Commune does not have needs no sign-in to say so.
+  if (!readAddress(path).screen) return <><PageTitle title="Page not found" /><NotFoundPage /></>;
   return <AuthenticatedOnly><ProductShell /></AuthenticatedOnly>;
 }
 
 function AuthenticatedOnly({ children }: { children: ReactNode }) {
-  const { session, authStatus } = useApp();
+  const { session, authStatus, sessionNotice } = useApp();
+  const [path] = useLocation();
+  const search = useSearch();
   if (authStatus === "loading") return <AppLoading />;
   if (authStatus === "error") return <AppUnavailable />;
-  if (!session) return <Redirect to={keepSearch("/login")} />;
+  // A link opened signed out (a reminder email's link to Settings, a shared
+  // expense) opens after signing in. A session that ended keeps what is saved.
+  if (!session) return <SignInFirst requested={sessionNotice ? null : search ? `${path}?${search}` : path} />;
   return children;
+}
+
+function SignInFirst({ requested }: { requested: string | null }) {
+  useLayoutEffect(() => { if (requested !== null) rememberReturn(requested); }, [requested]);
+  return <Redirect to={keepSearch("/login")} replace />;
+}
+
+function NotFoundPage() {
+  return (
+    <AuthLayout>
+      <div className="commune-auth-panel">
+        <h2>This page isn’t here.</h2>
+        <p className="commune-auth-lede">The link may be mistyped, or the page may have moved.</p>
+        <div className="a-field-row">
+          <Link href={keepSearch("/")} className="a-btn">Go to Home</Link>
+        </div>
+      </div>
+    </AuthLayout>
+  );
 }
 
 function AppLoading() {
@@ -112,10 +172,12 @@ function AppUnavailable() {
 }
 
 function ProductShell() {
-  const { screen, navMode, moreOpen, native, dark, window: win, notes, noteKey, apiError, clearApiError, contentError, hub, refresh, searchTarget } = useApp();
+  const { screen, navMode, moreOpen, native, dark, window: win, notes, noteKey, apiError, clearApiError, contentError, hub, refresh, searchTarget, unknownCommune } = useApp();
   const noteReader = screen === "notes" && win === "note" && Boolean(notes[noteKey]);
   const modalOpen = Boolean(win) && !noteReader;
   usePageFocus(screen, hub.id, Boolean(win) || Boolean(searchTarget));
+  usePageTitle(unknownCommune ? "Commune not found" : (win && PAGE_TITLES[win]) || PAGE_TITLES[screen],
+    COMMUNE_SCREENS.has(screen) && !unknownCommune ? hub.name : undefined);
   return (
     <div
       className={cx(
@@ -222,9 +284,14 @@ function Screen({ screen }: { screen: ScreenId }) {
 }
 
 function ScreenBody({ screen }: { screen: ScreenId }) {
-  const { session, emptyHub, hub, contentLoading, contentError, refresh } = useApp();
+  const { session, emptyHub, hub, contentLoading, contentError, refresh, unknownCommune, go } = useApp();
   const hasHubs = Boolean(session?.hasHubs);
   const hasSettlement = hub.moves.some((move) => !move.even);
+
+  // Never another commune's records in its place.
+  if (unknownCommune) {
+    return <div className="a-empty"><h2>This commune isn’t available to you.</h2><p>You may have left it, or the link is for a different account.</p><button className="a-btn" type="button" onClick={() => go("home")}>Go to Home</button></div>;
+  }
 
   if (contentLoading && screen !== "settings" && screen !== "search") {
     if (contentError) return <div className="a-content-loading" role="alert"><h2>Could not load {hub.name}</h2><p>{contentError}</p><button className="a-btn" type="button" onClick={() => void refresh()}>Try again</button></div>;

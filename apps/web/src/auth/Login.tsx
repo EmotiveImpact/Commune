@@ -1,16 +1,14 @@
 import { useState, type FormEvent } from "react";
-import { Link, useLocation } from "wouter";
+import { Link } from "wouter";
 import { AuthLayout } from "./AuthLayout";
 import { useApp } from "../state";
 import { LIMITS } from "../data/limits";
 import { keepSearch } from "../nav";
 import { GoogleMark } from "../ui/Icon";
-import { readStored, removeStored } from "../live/storage";
 import { useFormError } from "../ui/components";
 
 export function LoginPage() {
   const { signInWithPassword, signInWithGoogle, signOutUnconfirmed, retrySignOut, sessionNotice } = useApp();
-  const [, setLocation] = useLocation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
@@ -31,10 +29,8 @@ export function LoginPage() {
     }
     setBusy(true);
     try {
+      // Signed in, the page moves on by itself (see GuestOnly in App.tsx).
       await signInWithPassword(email.trim(), password);
-      const returnTo = readStored("commune.return-to");
-      removeStored("commune.return-to");
-      setLocation(returnTo || keepSearch("/"));
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not sign in.");
     } finally {
