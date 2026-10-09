@@ -511,9 +511,6 @@
 .c-product-dialog .a-field-row {
   flex-wrap: wrap;
 }
-.c-product-dialog .a-field-label {
-  font-weight: 500;
-}
 @media (max-width: 760px) {
   .c-workflow-grid {
     grid-template-columns: 1fr;

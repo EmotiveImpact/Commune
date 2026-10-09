@@ -165,8 +165,6 @@ body,
 /* Home keeps one featured commune with smaller places beneath it. */
 .a-home-featured { margin-bottom: 16px; }
 .a-home-places { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-bottom: 22px; }
-#home .a-home-greet h1 { font-size: 24px; font-weight: 550; }
-#home .a-home-greet p { font-size: 13px; color: var(--ink-soft); }
 #home .a-place { box-shadow: none; border-radius: var(--radius-surface); }
 #home .a-place-hero { min-height: 208px; padding: 18px; }
 #home .a-place-hero h3 { font-size: 21px; font-weight: 500; letter-spacing: -.6px; }
@@ -217,9 +215,6 @@ body,
 }
 .a-body.is-dark .ops-kicker.is-late {
   color: #f2b9a2;
-}
-.a-body.is-dark .ops-kicker.is-sage {
-  color: #9fd3b8;
 }
 .a-body.is-dark :is(.ops-person, .ops-month-shell, .ops-tile, .ops-month-selected-list button) {
   background: #242b39;

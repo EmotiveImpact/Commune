@@ -26,21 +26,10 @@
 @media(max-width:760px) { .c-expense-list { grid-template-columns: 1fr; } }
 .c-money-empty { padding: 28px 0; color: var(--ink-soft); }
 #expenses .a-btn, #expenses-empty .a-btn, #notes .a-btn, #funds .a-btn, #settle .a-btn { border-radius: var(--radius-control); font-weight: 500; gap: 7px; }
-#settle .a-settle-card { border-radius: var(--radius-surface); box-shadow: none; }
-#settle .a-settle-card > span { font-size: 18px; font-weight: 550; text-transform: none; letter-spacing: -.4px; }
-#settle .a-settle-card > strong { font-size: 41px; font-weight: 450; letter-spacing: -1.7px; }
 #settle .a-card { box-shadow: none; border-radius: var(--radius-surface); }
 #settle .a-move { gap: 16px; }
 #settle .a-move .names { font-weight: 500; }
 #settle .a-move > .avatar { flex: none; }
-.c-fund-card { margin-bottom: 22px; box-shadow: none; border-radius: var(--radius-surface); }
-.c-fund-create { max-width: 600px; margin-bottom: 22px; padding: 23px; background: var(--white); border-radius: var(--radius-surface); box-shadow: none; }
-.a-panel.c-fund-create h2 { font-size: 18px; font-weight: 550; }
-.c-fund-create > p { color: var(--ink-soft); font-size: 13px; line-height: 1.6; margin: 8px 0 20px; }
-.c-fund-create .a-field label { text-transform: none; letter-spacing: normal; font-weight: 500; }
-.c-fund-title { display: flex; align-items: center; gap: 9px; font-weight: 550; }
-.c-fund-title svg { color: #6c8277; flex: none; }
-.c-fund-card .a-fund-hero strong { font-size: 36px; font-weight: 450; letter-spacing: -1px; }
 .c-fund-progress { display: flex; align-items: center; gap: 16px; margin: 18px 0 24px; }
 .c-fund-progress > div { flex: 1; height: 6px; background: var(--border); border-radius: 4px; overflow: hidden; }
 .c-fund-progress > div > span { display: block; height: 100%; background: var(--sage); border-radius: inherit; }
@@ -114,7 +103,7 @@
 .c-pending-report .a-row-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 .c-pending-report .a-btn { padding: 0 12px; font-size: 12px; }
 .c-report-answer { margin: 0 0 14px 44px; font-size: 12px; line-height: 1.6; color: var(--ink-soft); overflow-wrap: anywhere; }
-.c-move-answer .c-report-answer, .a-move .c-report-answer { margin: 3px 0 0; }
+.a-move .c-report-answer { margin: 3px 0 0; }
 .a-panel.c-settle-recent { margin-top: 22px; background: var(--white); box-shadow: none; border-radius: var(--radius-surface); padding: 23px; }
 .a-panel.c-settle-recent h2 { font-size: 18px; font-weight: 550; margin-bottom: 4px; }
 .c-settle-receipt { display: flex; align-items: center; gap: 12px; width: 100%; padding: 14px 0; border: 0; border-top: 1px solid var(--border); background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }

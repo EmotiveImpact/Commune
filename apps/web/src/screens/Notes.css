@@ -373,8 +373,7 @@
   .has-note-reader .a-header,
   /* The phone app's layout keeps its tabs under a note (app.css). */
   .has-note-reader .a-bottom:where(:not(.is-native *)),
-  .has-note-reader .notes-board,
-  .has-note-reader .a-more-sheet {
+  .has-note-reader .notes-board {
     display: none;
   }
   .note-reader {
