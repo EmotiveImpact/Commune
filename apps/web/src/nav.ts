@@ -20,10 +20,6 @@ export function keepSearch(path: string): string {
   return `${pathname}?${params.toString()}`;
 }
 
-export function pathOnly(location: string): string {
-  return location.split("?")[0];
-}
-
 export function isNativeNow(): boolean {
   if (typeof window === "undefined") return false;
   const params = new URLSearchParams(window.location.search);
@@ -66,7 +62,7 @@ export const FORM_WINDOWS: ReadonlySet<WindowId> = new Set<WindowId>([
   "commune-new", "member-invite", "announcement-new",
 ]);
 
-// Record ids are UUIDs; the sample data uses short names. "new" is the add form.
+// Record ids are UUIDs; test data uses short names. "new" is the add form.
 const RECORD_ID = /^(?!new$)[A-Za-z0-9_-]{1,128}$/;
 
 export type Address = {

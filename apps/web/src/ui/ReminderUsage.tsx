@@ -1,12 +1,5 @@
 import type { ReminderUsage as Usage } from "../live/model";
 
-export function reminderLimitReached(usage: Usage | null, recipientId: string): boolean {
-  return !!usage && (
-    usage.totalUsed >= usage.totalLimit ||
-    (usage.recipientUsage[recipientId] ?? 0) >= usage.recipientLimit
-  );
-}
-
 // When the oldest reminder in the last 30 days stops counting.
 function nextSlotLabel(usage: Usage): string | null {
   const next = usage.nextSlotAt ? new Date(usage.nextSlotAt) : null;
