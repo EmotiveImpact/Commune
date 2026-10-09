@@ -117,6 +117,31 @@ previous client keeps working. The new client calls `my_unread_notices` only
 when another commune has unread notices: deploy it after 0039 and the schema
 cache refresh.
 
+## Writing a migration
+
+[`schema.sql`](schema.sql) is the schema the migrations produce, with every
+function, policy and grant in full. Read the current version of a function
+there instead of piecing it together from the migrations that changed it.
+
+- A new migration writes the complete body of every function it adds or
+  changes: copy the current definition from `schema.sql` into a
+  `CREATE OR REPLACE FUNCTION` statement and edit that. Do not patch a
+  function by running `replace()` over `pg_get_functiondef()`, as many
+  earlier migrations do; the result can then only be read from a database.
+- `CREATE OR REPLACE` keeps a function's grants. A change to its parameters
+  or return type needs `DROP FUNCTION` first, and its grants again after. The
+  rules under [Request identity](#request-identity) apply to every new body,
+  and `tests/grants.sql` checks them across all functions.
+- Then run `infra/neon/dump-schema.sh` and commit the `schema.sql` it writes
+  in the same commit as the migration. It builds a disposable database from
+  the migrations on your loopback PostgreSQL 16 server (the PG* variables,
+  as for `tests/run-local.sh`), dumps it with PostgreSQL 16's `pg_dump` (set
+  `PG_DUMP` if yours is another version) and drops it again. CI runs
+  `infra/neon/dump-schema.sh --check`, which fails while the file is out of
+  date.
+- Never apply `schema.sql` anywhere. Every database, Neon branches included,
+  is built from the migrations in numeric order.
+
 ## Last recorded production evidence — 27 September 2026
 
 The app is served at `https://app.ourcommune.io` from `main`. The latest
