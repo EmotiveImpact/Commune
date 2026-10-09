@@ -142,6 +142,25 @@ export function addressOf(screen: ScreenId, options: {
   return query ? `${path}?${query}` : path;
 }
 
+// Pages outside the signed-in app. None of them names a record in its path.
+const OTHER_PAGES = new Set(["/login", "/signup", "/verify-email", "/forgot-password", "/reset-password",
+  "/invite", "/privacy", "/terms", "/onboard"]);
+
+/**
+ * The page at an address as a pattern that names no record, commune or
+ * query, for error reports: /expenses/:id, /settle/pay/:id, /hub.
+ */
+export function routePattern(path: string): string {
+  const pathname = path.split(/[?#]/)[0];
+  if (OTHER_PAGES.has(pathname)) return pathname;
+  const { screen, window, record } = readAddress(pathname);
+  if (!screen) return "/:unknown";
+  const base = SCREEN_PATH[screen] === "/" ? "" : SCREEN_PATH[screen];
+  const tail = window ? WINDOW_TAILS[window] : undefined;
+  if (tail) return `${base}/${tail}`;
+  return record ? `${base}/:id` : SCREEN_PATH[screen];
+}
+
 /** The same address naming a commune, keeping everything else in it. */
 export function withCommune(path: string, search: string, commune: string): string {
   const params = new URLSearchParams(search);

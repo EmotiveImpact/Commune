@@ -34,6 +34,7 @@ import { AuthLayout } from "./auth/AuthLayout";
 import { PendingShell } from "./shell/PendingShell";
 import { AllActivityScreen, SearchScreen } from "./screens/Search";
 import { ConnectionRecovery } from "./shell/ConnectionRecovery";
+import { RecoveryBoundary, ScreenRecovery } from "./shell/Recovery";
 import { isConnectionFailure } from "./live/connection";
 
 export function App() {
@@ -200,7 +201,9 @@ function ProductShell() {
           {apiError ? <div className="a-api-error" role="alert">{isConnectionFailure(apiError) ? <>Connection interrupted. Your last loaded view is still available.<button type="button" onClick={() => void refresh()}>Try again</button></> : apiError}<button type="button" onClick={clearApiError} aria-label="Dismiss error">×</button></div> : null}
           {contentError && hub.activityState === "ready" ? <div className="a-api-error" role="alert">Could not refresh this commune. Showing its last loaded activity.<button type="button" onClick={() => void refresh()}>Try again</button></div> : null}
           <main className="a-content" id="main-content">
-            <Screen screen={screen} />
+            <RecoveryBoundary resetKey={`${screen} ${hub.id}`} fallback={(retry) => <ScreenRecovery retry={retry} />}>
+              <Screen screen={screen} />
+            </RecoveryBoundary>
           </main>
         </div>
       </div>

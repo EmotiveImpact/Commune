@@ -86,6 +86,15 @@ export function preloadDataClient(): Plugin {
   };
 }
 
+/**
+ * Which build sent an error report (src/live/reports.ts): the commit Vercel
+ * built, else "local".
+ */
+export function releaseId(env: Record<string, string | undefined>): string {
+  const commit = env.VERCEL_GIT_COMMIT_SHA?.trim().toLowerCase() ?? "";
+  return /^[0-9a-f]{7,40}$/.test(commit) ? commit.slice(0, 12) : "local";
+}
+
 export default defineConfig(({ mode }) => ({
   plugins: [
     react(),
@@ -93,6 +102,9 @@ export default defineConfig(({ mode }) => ({
     exactConnectPolicy(loadEnv(mode, fileURLToPath(new URL(".", import.meta.url)), "VITE_")),
     preloadDataClient(),
   ],
+  define: {
+    __COMMUNE_RELEASE__: JSON.stringify(releaseId(process.env)),
+  },
   build: {
     // The hosted policy allows fonts only from the app's own origin
     // (font-src 'self'), so a small font must never become a data: URL.

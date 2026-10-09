@@ -479,6 +479,14 @@ async function route<T>(path: string, init: RequestInit): Promise<T> {
   } else if (path === "/preferences" && method === "PUT") {
     if (typeof body.emailReminders !== "boolean") throw new ApiError("Choose whether to get reminder emails", 400);
     response = { emailReminders: unwrap(await db().rpc("set_email_reminders", { p_enabled: body.emailReminders })) === true };
+  } else if (path === "/client-reports" && method === "POST") {
+    // An error report or one page load's speed figures. The database checks
+    // each field, and drops a report over the account's limit.
+    response = { stored: unwrap(await db().rpc("report_client_event", {
+      p_kind: body.kind ?? null, p_release: body.release ?? null, p_route: body.route ?? null, p_browser: body.browser ?? null,
+      p_message: body.message ?? null, p_stack: body.stack ?? null,
+      p_lcp_ms: body.lcpMs ?? null, p_inp_ms: body.inpMs ?? null, p_cls: body.cls ?? null,
+    })) === true };
   } else if (method === "GET" && pathId(path, /^\/communes\/([^/]+)\/snapshot(?:\?detail=summary)?$/)) {
     response = await snapshot(pathId(path, /^\/communes\/([^/]+)\/snapshot/)!, undefined, path.endsWith("?detail=summary") ? "summary" : undefined);
   } else if (method === "GET" && pathId(path, /^\/communes\/([^/]+)\/expenses\/history(?:\?|$)/)) {

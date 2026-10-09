@@ -21,6 +21,7 @@ import { isNotePinned } from "../data/notePresentation";
 import { buildStatement, statementCsv } from "../data/statement";
 import { NoteHistory } from "../ui/NoteHistory";
 import { DiscardQuestion, useFormError, useTypedText } from "../ui/components";
+import { RecoveryBoundary, WindowRecovery } from "../shell/Recovery";
 import "./NoteEditor.css";
 import { allocateExpense, type SplitMethod } from "../../../../packages/core/src/expenseSplit";
 import { netBalances } from "../../../../packages/core/src/balances";
@@ -140,7 +141,9 @@ export function Windows() {
         <div className="a-window-body">
           {waitingForRecord ? recordError ? <div role="alert"><p>{recordError}</p>
             <button className="a-btn" type="button" onClick={() => contentLoading ? void refresh() : retryExpenseRead()}>Try again</button></div> :
-            <div className="c-window-record-loading" role="status" aria-label="Loading selected record"><span /><span /><span /></div> : <>
+            <div className="c-window-record-loading" role="status" aria-label="Loading selected record"><span /><span /><span /></div> :
+          <RecoveryBoundary resetKey={`${window} ${selectedExpense?.id ?? ""} ${noteKey} ${selectedOperation?.id ?? ""}`}
+            fallback={(retry) => <WindowRecovery retry={retry} />}>
           {window === "notices" && <Notices />}
           {window === "reminder-preview" && <ReminderPreview />}
           {window === "add-expense" && <AddExpense />}
@@ -161,7 +164,7 @@ export function Windows() {
           {window === "operation-new" && <OperationNew />}
           {window === "operation-edit" && <OperationEdit />}
           {window === "announcement-new" && <AnnouncementNew />}
-          </>}
+          </RecoveryBoundary>}
         </div>
       </div>
       {asking ? <DiscardQuestion onDiscard={() => { setAsking(false); closeWindow(); }} onKeep={() => setAsking(false)} />

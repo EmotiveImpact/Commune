@@ -913,6 +913,26 @@ route("PUT", /^\/api\/preferences$/, async (req, res) => {
   send(res, { emailReminders: result.rows[0].email_reminders });
 });
 
+// An error report or one page load's speed figures from the web app. The
+// database checks each field, and drops a report over the account's limit
+// (stored: false).
+route("POST", /^\/api\/client-reports$/, async (req, res) => {
+  const input = await body(req);
+  const words = (value: unknown) => typeof value === "string" ? value : null;
+  const figure = (value: unknown, field: string) => {
+    if (value === undefined || value === null) return null;
+    if (typeof value !== "number" || !Number.isFinite(value) || value < 0 || value > 600_000) {
+      throw new ApiError(400, `Invalid ${field}`);
+    }
+    return value;
+  };
+  const result = await userAction(req, async (client) => client.query(
+    "SELECT public.report_client_event($1, $2, $3, $4, $5, $6, $7, $8, $9) AS stored",
+    [words(input.kind), words(input.release), words(input.route), words(input.browser), words(input.message),
+      words(input.stack), figure(input.lcpMs, "lcpMs"), figure(input.inpMs, "inpMs"), figure(input.cls, "cls")]));
+  send(res, { stored: result.rows[0].stored });
+});
+
 function normalizedError(error: unknown): ApiError {
   if (error instanceof ApiError) return error;
   const postgres = error as { code?: string; message?: string };
