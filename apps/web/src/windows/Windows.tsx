@@ -20,6 +20,7 @@ import { buildStatement, statementCsv } from "../data/statement";
 import { NoteHistory } from "../ui/NoteHistory";
 import "./NoteEditor.css";
 import { allocateExpense, type SplitMethod } from "../../../../packages/core/src/expenseSplit";
+import { netBalances } from "../../../../packages/core/src/balances";
 import "./ExpenseEditor.css";
 import { SplitEditor } from "../ui/SplitEditor";
 
@@ -750,6 +751,8 @@ function Breakdown() {
   const statement = other && session
     ? buildStatement([...expenses, ...voidedExpenses], session.userId, other.userId, other.name)
     : null;
+  // The same figure Members shows for this person.
+  const net = other && session ? netBalances(expenses, session.userId).get(other.userId) ?? 0 : 0;
   function downloadStatement() {
     if (!statement || !other) return;
     const blob = new Blob([statementCsv(statement, hub.currency)], { type: "text/csv;charset=utf-8" });
@@ -808,8 +811,8 @@ function Breakdown() {
             </select>
           </div>
           <p className="c-statement-net" role="status">
-            {statement.netMinor > 0 ? `${other.name} owes you ${formatMoney(statement.netMinor, hub.currency)}.`
-              : statement.netMinor < 0 ? `You owe ${other.name} ${formatMoney(-statement.netMinor, hub.currency)}.`
+            {net > 0 ? `${other.name} owes you ${formatMoney(net, hub.currency)}.`
+              : net < 0 ? `You owe ${other.name} ${formatMoney(-net, hub.currency)}.`
                 : `You and ${other.name} are square.`}
           </p>
           {statement.entries.length ? (
