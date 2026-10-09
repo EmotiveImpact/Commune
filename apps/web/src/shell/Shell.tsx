@@ -298,20 +298,19 @@ export function PhoneTabs({ screen }: { screen: ScreenId }) {
     { id: "expenses", label: "Expenses", icon: "expenses" },
     { id: "settle", label: "Settle", icon: "settle" },
   ];
+  const current = (id: ScreenId) =>
+    (id === "home" && (screen === "home" || screen === "home-empty" || screen === "home-inbox")) ||
+    (id === "hub" && (screen === "hub" || screen === "hub-empty" || screen === "commune-settings")) ||
+    (id === "expenses" && (screen === "expenses" || screen === "expenses-empty")) ||
+    (id === "settle" && (screen === "settle" || screen === "settle-even"));
   return (
     <nav className="a-bottom" aria-label="Phone">
       {tabs.map((tab) => (
         <button
           key={tab.id}
           type="button"
-          className={cx(
-            (tab.id === "home" && (screen === "home" || screen === "home-empty" || screen === "home-inbox")) ||
-              (tab.id === "hub" && (screen === "hub" || screen === "hub-empty" || screen === "commune-settings")) ||
-              (tab.id === "expenses" && (screen === "expenses" || screen === "expenses-empty")) ||
-              (tab.id === "settle" && (screen === "settle" || screen === "settle-even"))
-              ? "is-active"
-              : undefined,
-          )}
+          className={cx(current(tab.id) && "is-active")}
+          aria-current={current(tab.id) ? "page" : undefined}
           onClick={() => go(tab.id)}
         >
           <Icon name={tab.icon} />

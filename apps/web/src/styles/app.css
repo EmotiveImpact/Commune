@@ -4122,6 +4122,23 @@ button.a-item {
   color: #f5f1ea;
 }
 
+/* The current tab also carries a bar, so it doesn't rely on colour alone. */
+.a-bottom button.is-active {
+  position: relative;
+}
+
+.a-bottom button.is-active::before {
+  content: "";
+  position: absolute;
+  top: -6px;
+  left: 50%;
+  width: 24px;
+  height: 3px;
+  border-radius: 0 0 3px 3px;
+  background: currentColor;
+  transform: translateX(-50%);
+}
+
 .a-body.is-native .a-native-status {
   display: flex;
   position: fixed;

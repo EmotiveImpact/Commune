@@ -49,6 +49,35 @@
 @media (max-width: 560px) {
   .a-header { --focus-ring: #649578; }
 }
+/* First stop on every page; shows only while it has keyboard focus. */
+.a-skip-link {
+  --focus-ring: #649578;
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 60;
+  padding: 10px 14px;
+  border-radius: var(--radius-control);
+  background: #f5f1ea;
+  color: #1a1e2b;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.a-skip-link:not(:focus) {
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+/* Focus lands on the page heading and the content area after a move; they
+   are not controls, so they show no ring. */
+.a-header-title h1:focus,
+#main-content:focus {
+  outline: none;
+}
 .a-body .a-btn:disabled {
   cursor: not-allowed;
   opacity: 0.48;
