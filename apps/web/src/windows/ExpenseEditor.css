@@ -11,7 +11,7 @@
 .c-expense-form .a-field { align-content: start; }
 .c-expense-actions { grid-column: 1 / -1; position: sticky; bottom: -24px; z-index: 1; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 -24px -24px; padding: 16px 24px 24px; background: #f8f5f0; border-top: 1px solid rgba(23, 27, 36, 0.06); }
 .c-expense-actions .a-btn { height: 38px; min-width: 118px; justify-content: center; }
-.is-dark .c-expense-actions { background: #242b39; border-top-color: var(--border); }
+.is-dark .c-expense-actions { background: var(--white); border-top-color: var(--border); }
 .c-expense-form #exp-amt { font-size: 28px; font-weight: 450; letter-spacing: -.8px; }
 .c-expense-form .a-field small { display: block; color: var(--ink-soft); font-size: 11px; margin-top: 6px; }
 .c-expense-summary { align-self: start; border-radius: var(--radius-surface); padding: 22px; background: #edf1e7; color: var(--ink); }
@@ -21,7 +21,7 @@
 .c-expense-summary p { margin-top: 18px; color: var(--ink-soft); font-size: 12px; line-height: 1.7; }
 .c-split-methods { display: flex; gap: 3px; padding: 3px; background: var(--paper-2); border-radius: var(--radius-control); margin: 12px 0; }
 .c-split-methods button { flex: 1; border: 0; padding: 9px 5px; border-radius: 7px; background: transparent; color: var(--ink); font: inherit; font-size: 12px; cursor: pointer; }
-.c-split-methods button[aria-pressed=true] { background: #1a1e2b; color: white; }
+.c-split-methods button[aria-pressed=true] { background: var(--navy); color: white; }
 .c-split-person { gap: 10px; }
 .c-split-person input[type=checkbox] { width: 16px; flex: none; }
 .c-split-name { flex: 1; min-width: 0; overflow-wrap: anywhere; font-size: 13px; }

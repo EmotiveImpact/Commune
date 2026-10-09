@@ -34,7 +34,7 @@
 .c-fund-progress > div { flex: 1; height: 6px; background: var(--border); border-radius: 4px; overflow: hidden; }
 .c-fund-progress > div > span { display: block; height: 100%; background: var(--sage); border-radius: inherit; }
 .c-fund-progress small { color: var(--ink-soft); font-size: 12px; }
-.c-reminder-dialog { padding: 28px; width: min(470px,calc(100% - 32px)); max-height: calc(100dvh - 32px); overflow: auto; border: 1px solid var(--border); border-radius: var(--radius-surface); background: var(--white,#fffefa); color: var(--ink); }
+.c-reminder-dialog { padding: 28px; width: min(470px,calc(100% - 32px)); max-height: calc(100dvh - 32px); overflow: auto; border: 1px solid var(--border); border-radius: var(--radius-surface); background: var(--white); color: var(--ink); }
 .c-reminder-dialog::backdrop { background: #111b2866; }
 .c-reminder-dialog h2 { font-size: 21px; font-weight: 550; line-height: 1.4; padding-right: 20px; }
 .c-reminder-message { padding: 18px 0 14px; font-size: 14px; line-height: 1.7; }

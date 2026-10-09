@@ -9,7 +9,7 @@
 }
 
 .commune-auth-brand {
-  background: linear-gradient(180deg, #1a1e2b 0%, #21262f 100%);
+  background: linear-gradient(180deg, var(--navy) 0%, var(--navy-3) 100%);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -152,7 +152,7 @@
 .commune-auth-field input:focus {
   outline: 2px solid rgba(45, 106, 79, 0.35);
   outline-offset: 1px;
-  border-color: #2d6a4f;
+  border-color: var(--sage);
 }
 
 .commune-auth-field input[aria-invalid="true"] {
@@ -173,13 +173,13 @@
   font: inherit;
   font-size: 0.75rem;
   font-weight: 600;
-  color: #2d6a4f;
+  color: var(--sage);
   cursor: pointer;
   text-decoration: none;
 }
 
 .commune-auth-link:hover {
-  color: #1b4332;
+  color: var(--sage-strong);
 }
 
 .commune-auth-alert .commune-auth-link {
@@ -211,7 +211,7 @@
   padding: 0 18px;
   border-radius: var(--radius-control);
   border: 0;
-  background: #1a1e2b;
+  background: var(--navy);
   color: #fff;
   font: inherit;
   font-size: 0.95rem;
@@ -326,7 +326,7 @@ a.commune-auth-btn {
     justify-content: center;
     gap: 10px;
     padding: 16px 24px;
-    background: linear-gradient(135deg, #1a1e2b 0%, #21262f 100%);
+    background: linear-gradient(135deg, var(--navy) 0%, var(--navy-3) 100%);
   }
 
   .commune-auth-mobile-header img {
