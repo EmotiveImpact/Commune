@@ -44,7 +44,8 @@ async function note(title, pill, body, facts = [], communeId = commune.id) {
 saved.note = await note("Garden guide", "Other", "Remember the plants");
 saved.operation = (await owner("POST", `/communes/${commune.id}/operations`, { kind: "task", category: "chore", title: "Garden reset", date: "2026-10-02", allDay: true, repeat: "none", status: "open", notes: "", assignee: null })).id;
 saved.recurring = (await owner("POST", `/communes/${commune.id}/recurring`, { title: "Garden maintenance", amountMinor: 1000,
-  paidByUserId: alice.id, allocations: [{ userId: alice.id, amountMinor: 1000 }], frequency: "monthly", nextDueOn: "2026-10-02", paused: false })).id;
+  paidByUserId: alice.id, allocations: [{ userId: alice.id, amountMinor: 1000 }], frequency: "monthly", nextDueOn: new Date().toISOString().slice(0, 10), paused: false,
+  requestId: randomUUID() })).id;
 saved.template = (await owner("POST", `/communes/${commune.id}/templates`, { name: "Garden halves", method: "Equal",
   participants: [{ userId: alice.id, value: "" }, { userId: bob.id, value: "" }] })).id;
 assert.ok(Object.values(saved).every(Boolean), JSON.stringify(saved));
