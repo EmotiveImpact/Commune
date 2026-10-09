@@ -14,8 +14,8 @@ this is not a replacement of Neon Auth or a switch back to Supabase.
 - [Current design language and preserved layouts](../../docs/DESIGN-LANGUAGE.md)
 - [Local build-out from 5 October: migrations 0020 onwards](../../docs/LOCAL-BUILDOUT-2026-10-05.md)
 
-Migrations **0015 to 0025 are local only**. They have not been applied to any
-Neon branch. Release order when they are: apply 0013 to 0025 in numeric order
+Migrations **0015 to 0030 are local only**. They have not been applied to any
+Neon branch. Release order when they are: apply 0013 to 0030 in numeric order
 to the preview branch, refresh that branch's Data API schema cache, then
 deploy the matching web client. The new client calls `send_reminder_command`,
 `record_share_receipt`, `reverse_share_receipt`, `correct_expense`,
@@ -24,6 +24,26 @@ so it must not be deployed ahead of the migrations. The previous client keeps
 working after them. 0016 backfills one receipt per previously confirmed share
 and adds a commit-time check that `settled_minor` matches its receipts; check
 the backfill count on the branch before promoting.
+
+Three of the 9 October migrations change that rule:
+
+- **0027** removes the client's write grants on `commune_notes` and
+  `commune_operations`; notes and tasks change only through `create_note`,
+  `update_note`, `remove_note`, `create_operation`, `update_operation` and
+  `remove_operation`. A client from before 0027, including a tab left open,
+  can still read them but cannot add, edit or remove them until it reloads.
+  Apply 0027, refresh the schema cache and deploy the matching client together.
+- **0028** adds `create_expense_command`, `create_fund_command`,
+  `pledge_fund_command` and `record_fund_contribution_command`, which the new
+  client calls; the previous client keeps working. It also revokes open
+  invitations whose sender is no longer an admin, so check that count on the
+  branch.
+- **0030** changes how the invitation email sender in `apps/reminder-worker`
+  looks accounts up, so deploy the worker after 0030.
+
+0026 replaces `save_recurring_bill` and adds `set_recurring_bill_paused` and
+`set_recurring_bill_archived`; production has no recurring bills yet, so only
+the new client uses them.
 
 ## Last recorded production evidence — 27 September 2026
 
@@ -143,11 +163,12 @@ treat them as applied production configuration until its release is verified:
 2. Enable Managed Better Auth and the Data API on a development branch. The
    Data API must provide `auth.user_id()` and the `authenticated` role before
    these migrations run. Keep **Grant public schema access off**: the migrations
-   grant only specific reads, column-limited note/operation writes, and RPCs.
+   grant only specific reads and RPCs (since 0027 notes and tasks have no
+   client write grant).
    Broad grants would let direct writes bypass ledger invariants. Keep preview
    branches separate from production.
 3. Apply `migrations/0001_commune_core.sql` through
-   `migrations/0025_announcements.sql` in numeric order to the
+   `migrations/0030_account_lookups.sql` in numeric order to the
    development branch via an **unpooled** connection. Run `tests/grants.sql`,
    review RLS, and run two-account signed-JWT tests before applying the same
    reviewed migrations to production. After a migration adds or changes a
