@@ -986,7 +986,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Each change starts from what the browser keeps, which another tab may
   // have changed since. A full or blocked store keeps it for this visit only.
   const savePrefs = useCallback((patch: Partial<AccountPrefs>) => {
-    if (!data) return;
+    // An effect or handler still holding the account can run after it signed
+    // out, or after someone else signed in here: it keeps nothing.
+    if (!data || dataRef.current?.user.id !== data.user.id) return;
     const next = { ...(readAccountPrefs(data.user.id) ?? prefs), ...patch };
     if (!saveAccountPrefs(data.user.id, next)) {
       console.warn("This browser could not keep a Commune preference");

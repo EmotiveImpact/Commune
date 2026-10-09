@@ -216,4 +216,16 @@ describe("signing out", () => {
     expect(kept("commune.device")).toMatchObject({ theme: "dark" });
     await waitFor(() => expect(app.payMethods).toEqual([]));
   });
+
+  it("keeps nothing saved afterwards by something still holding the account", async () => {
+    mount("/hub");
+    await screen.findByRole("heading", { name: trip.name });
+    // As the remembered commune's effect, or a form, can after sign-out.
+    const { savePayMethod } = app;
+    await act(async () => { await app.signOut(); });
+    await screen.findByRole("heading", { name: "Welcome back" });
+    act(() => { savePayMethod({ provider: "Monzo", value: "@late" }); });
+    expect(localStorage.getItem(ACCOUNT)).toBeNull();
+    expect(app.payMethods).toEqual([]);
+  });
 });
