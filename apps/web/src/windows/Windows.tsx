@@ -18,6 +18,8 @@ import { formatReminderDay, formatTimestampDay } from "../data/reminders";
 import { isNotePinned } from "../data/notePresentation";
 import { buildStatement, statementCsv } from "../data/statement";
 import { NoteHistory } from "../ui/NoteHistory";
+import { commandFailure, UNCERTAIN_RETRY_SAFE } from "../data/commands";
+import { newRequestId } from "../data/requestId";
 import "./NoteEditor.css";
 import { allocateExpense, type SplitMethod } from "../../../../packages/core/src/expenseSplit";
 import "./ExpenseEditor.css";
@@ -919,12 +921,15 @@ function NoteCardView() {
 }
 
 function NoteNew({ onSave, initial }: {
-  onSave: (card: NoteCard & { id: string; expectedVersion?: number }) => Promise<string>;
+  onSave: (card: NoteCard & { id: string; expectedVersion?: number }, requestId: string) => Promise<string>;
   initial?: NoteCard & { id: string; version?: number };
 }) {
   const { go, closeWindow, notes, hub } = useApp();
   // The version this edit started from. A save replaces only that version.
   const baseVersion = useRef(initial?.version);
+  // One id for this form: an add retried after an unconfirmed save returns
+  // the note it already added rather than a second copy.
+  const requestId = useRef(newRequestId());
   const [conflict, setConflict] = useState(false);
   const latest = initial ? notes[initial.id] : undefined;
   const editorName = (userId: string | null | undefined) => hub.members.find((member) => member.userId === userId)?.name ?? "Someone";
@@ -1004,11 +1009,16 @@ function NoteNew({ onSave, initial }: {
         lede: body.trim().slice(0, 200),
         body: body.trim(),
         facts: facts.map(([key, value]) => [key, value.trim()] as [string, string]).filter(([, value]) => value),
-      });
+      }, requestId.current);
       go("note", { note: id });
     } catch (cause) {
-      if (cause instanceof Error && /Someone else saved this note/.test(cause.message)) setConflict(true);
-      setError(cause instanceof Error ? cause.message : "Could not save the note.");
+      const failure = commandFailure(cause, "Could not save the note.");
+      // A 409 on an edit means someone saved first; their version is loaded.
+      setConflict(failure.conflict);
+      setError(!failure.rejected ? UNCERTAIN_RETRY_SAFE
+        : /already used for a different/i.test(failure.message)
+          ? "An earlier attempt may already have been saved. Close this and check the notes before trying again."
+          : failure.message);
     } finally {
       setSaving(false);
     }

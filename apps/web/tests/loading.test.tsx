@@ -9,6 +9,7 @@ import type { Commune, Snapshot } from "../src/live/model";
 import { hubFromSnapshot } from "../src/live/model";
 import { todayIso, type OperationItem } from "../src/data/operations";
 import { HUBS } from "../src/data/household";
+import { UNCERTAIN_RETRY_SAFE } from "../src/data/commands";
 
 vi.mock("../src/live/api", async (importOriginal) => ({
   ...await importOriginal<typeof import("../src/live/api")>(),
@@ -308,8 +309,9 @@ describe("commune loading", () => {
     vi.mocked(loadSnapshot).mockImplementation(async () => ({ ...snapshot, notes: saved ? [saved] : [] }));
     vi.mocked(post).mockImplementation(async (path, payload) => {
       expect(path).toBe("/communes/home-1/notes");
+      expect((payload as { requestId: string }).requestId).toMatch(/^[0-9a-f-]{36}$/);
       saved = { ...(payload as typeof wifiNote), id: "contact-1" };
-      return { id: "contact-1" };
+      return { id: "contact-1", version: 1, duplicate: false };
     });
     mount("/notes");
     fireEvent.click(await screen.findByRole("button", { name: "Add note" }));
@@ -358,7 +360,7 @@ describe("commune loading", () => {
       if (path === "/notes/note-1" && options?.method === "PUT") {
         const body = JSON.parse(String(options.body));
         puts.push(body);
-        if (body.expectedVersion !== current.version) throw new ApiError("Someone else saved this note while you were editing. Your text is still here; check their version before saving again.", 409);
+        if (body.expectedVersion !== current.version) throw new ApiError("This note was changed by someone else. Review the latest version before saving your changes.", 409);
         current = { ...current, ...body, version: current.version + 1 };
         return { ok: true, version: current.version };
       }
@@ -409,8 +411,8 @@ describe("commune loading", () => {
     expect(within(history).getByRole("status").textContent).toBe("Version 2 restored as the newest version. Nothing was deleted.");
   });
 
-  it("does not save an empty note or lose a draft after a failed save", async () => {
-    vi.mocked(post).mockRejectedValue(new Error("Could not save. Try again."));
+  it("does not save an empty note or lose a draft after a failed save, and retries as the same add", async () => {
+    vi.mocked(post).mockRejectedValue(new TypeError("Failed to fetch"));
     mount("/notes");
     fireEvent.click(await screen.findByRole("button", { name: "Add note" }));
     const dialog = await screen.findByRole("dialog", { name: "Add note" });
@@ -420,8 +422,26 @@ describe("commune loading", () => {
     expect(post).not.toHaveBeenCalled();
     fireEvent.change(within(dialog).getByLabelText(/^Note \(/), { target: { value: "Keep this draft" } });
     fireEvent.click(within(dialog).getByRole("button", { name: "Save", exact: true }));
-    await within(dialog).findByText("Could not save. Try again.");
+    // The outcome is unknown, so the retry must be recognisable as the same add.
+    await within(dialog).findByText(UNCERTAIN_RETRY_SAFE);
     expect((within(dialog).getByLabelText(/^Note \(/) as HTMLTextAreaElement).value).toBe("Keep this draft");
+    await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Save", exact: true })); });
+    const ids = vi.mocked(post).mock.calls.map(([, body]) => (body as { requestId: string }).requestId);
+    expect(ids).toHaveLength(2);
+    expect(ids[0]).toMatch(/^[0-9a-f-]{36}$/);
+    expect(ids[1]).toBe(ids[0]);
+  });
+
+  it("shows why a new note was refused instead of offering to overwrite anything", async () => {
+    vi.mocked(post).mockRejectedValue(new ApiError("This commune already has 500 notes. Remove one you no longer need first.", 409));
+    mount("/notes");
+    fireEvent.click(await screen.findByRole("button", { name: "Add note" }));
+    const dialog = await screen.findByRole("dialog", { name: "Add note" });
+    fireEvent.change(within(dialog).getByLabelText(/^Title/), { target: { value: "Spare key" } });
+    fireEvent.change(within(dialog).getByLabelText(/^Note \(/), { target: { value: "Under the plant pot" } });
+    await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Save", exact: true })); });
+    expect(within(dialog).getByRole("alert").textContent).toBe("This commune already has 500 notes. Remove one you no longer need first.");
+    expect(within(dialog).queryByRole("button", { name: "Save mine over theirs" })).toBeNull();
   });
 
   it("keeps sensitive note previews off the Hub as well as the notes board", () => {

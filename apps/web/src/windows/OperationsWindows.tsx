@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   dateFromIso,
   firstNameOf,
@@ -16,6 +16,8 @@ import { useApp } from "../state";
 import { Avatar, Pill } from "../ui/widgets";
 import { cx } from "../ui/cx";
 import { LIMITS } from "../data/limits";
+import { commandFailure, UNCERTAIN_RETRY_SAFE } from "../data/commands";
+import { newRequestId } from "../data/requestId";
 
 const OPERATION_CATEGORIES: Array<[OperationCategory, string]> = [
   ["delivery", "Delivery"],
@@ -97,6 +99,8 @@ export function OperationView() {
   const handoverLead = turnTaking
     ? `Someone else does this turn. Afterwards it carries on from ${firstNameOf(item.turnOwner ?? item.assignee) || "the rotation"}.`
     : "Someone else takes this task on.";
+  // The database lets the person who added it, or an admin, remove it.
+  const canRemove = hub.role === "admin" || (Boolean(item.createdBy) && item.createdBy === you.id);
 
   return (
     <section className="a-window operation-detail">
@@ -256,8 +260,12 @@ export function OperationView() {
             <button
               className="a-btn danger"
               type="button"
-              onClick={() => void removeOperation(item.id).catch((failure) =>
-                setError(failure instanceof Error ? failure.message : "Could not remove item"))}
+              disabled={mutationPending}
+              onClick={() => void removeOperation(item.id).catch((failure) => {
+                const result = commandFailure(failure, "Could not remove item");
+                // Removing twice is harmless, so trying again is safe.
+                setError(result.rejected ? result.message : "We could not confirm whether this was removed. Check your connection and try again.");
+              })}
             >
               Remove
             </button>
@@ -313,13 +321,15 @@ export function OperationView() {
           >
             Edit
           </button>
-          <button
-            className="operation-remove"
-            type="button"
-            onClick={() => setConfirmDelete(true)}
-          >
-            Remove
-          </button>
+          {canRemove ? (
+            <button
+              className="operation-remove"
+              type="button"
+              onClick={() => setConfirmDelete(true)}
+            >
+              Remove
+            </button>
+          ) : null}
         </div>
       )}
     </section>
@@ -365,12 +375,15 @@ function OccurrenceHistory({ history, undoId, nameOf, disabled, onUndo }: {
 
 export function OperationNew() {
   const { addOperation, closeWindow, go } = useApp();
+  // One id for this form: an add retried after an unconfirmed save returns
+  // what it already added rather than a second copy.
+  const requestId = useRef(newRequestId());
   return (
     <OperationForm
       submitLabel="Add to calendar"
       onCancel={closeWindow}
       onSave={async (item) => {
-        const id = await addOperation(item);
+        const id = await addOperation(item, requestId.current);
         go("operation", { operation: id });
       }}
     />
@@ -379,6 +392,9 @@ export function OperationNew() {
 
 export function OperationEdit() {
   const { closeWindow, go, selectedOperation, updateOperation } = useApp();
+  // The version this edit started from. A completion, skip or handover since
+  // makes it stale, so it cannot put back an older date or person.
+  const [baseVersion, setBaseVersion] = useState(selectedOperation?.version);
   if (!selectedOperation) {
     return (
       <section className="a-window">
@@ -393,11 +409,15 @@ export function OperationEdit() {
   }
   return (
     <OperationForm
+      // Loading the latest starts the form again from what is saved now.
+      key={baseVersion}
       item={selectedOperation}
       submitLabel="Save changes"
+      stale={baseVersion !== undefined && selectedOperation.version !== baseVersion}
+      onReload={() => setBaseVersion(selectedOperation.version)}
       onCancel={() => go("operation", { operation: selectedOperation.id })}
       onSave={async (next) => {
-        await updateOperation(selectedOperation.id, next);
+        await updateOperation(selectedOperation.id, next, baseVersion);
         go("operation", { operation: selectedOperation.id });
       }}
     />
@@ -407,11 +427,16 @@ export function OperationEdit() {
 function OperationForm({
   item,
   submitLabel,
+  stale = false,
+  onReload,
   onCancel,
   onSave,
 }: {
   item?: OperationItem;
   submitLabel: string;
+  /** Changed since this form opened. */
+  stale?: boolean;
+  onReload?: () => void;
   onCancel: () => void;
   onSave: (item: NewOperation) => Promise<void>;
 }) {
@@ -466,7 +491,7 @@ function OperationForm({
 
   async function save() {
     setAttempted(true);
-    if (!title.trim() || !date) return;
+    if (!title.trim() || !date || stale) return;
     setBusy(true);
     setError("");
     try {
@@ -486,7 +511,11 @@ function OperationForm({
         notes: notes.trim(),
       });
     } catch (failure) {
-      setError(failure instanceof Error ? failure.message : "Could not save item");
+      const result = commandFailure(failure, "Could not save item");
+      setError(!result.rejected ? UNCERTAIN_RETRY_SAFE
+        : /already used for a different/i.test(result.message)
+          ? "An earlier attempt may already have been saved. Close this and check the calendar before trying again."
+          : result.message);
     } finally {
       setBusy(false);
     }
@@ -689,9 +718,21 @@ function OperationForm({
         <span className="a-field-limit">{notes.length}/{LIMITS.operationNotes}</span>
       </div>
 
-      {error ? <p className="a-form-error" role="alert">{error}</p> : null}
+      {stale && !busy ? (
+        <div className="operation-delete operation-panel" role="alert">
+          <p>
+            This {item?.kind === "event" ? "event" : "task"} changed while you were editing, and nothing here has been saved.
+            Load the latest details, then make your change again.
+          </p>
+          <div className="a-field-row">
+            <button className="a-btn" type="button" onClick={onReload}>
+              Load the latest details
+            </button>
+          </div>
+        </div>
+      ) : error ? <p className="a-form-error" role="alert">{error}</p> : null}
       <div className="a-field-row">
-        <button className="a-btn" type="button" onClick={() => void save()} disabled={busy}>
+        <button className="a-btn" type="button" onClick={() => void save()} disabled={busy || stale}>
           {busy ? "Saving…" : submitLabel}
         </button>
         <button className="a-btn ghost" type="button" onClick={onCancel}>

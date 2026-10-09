@@ -70,12 +70,21 @@ export type OperationItem = {
   /** Latest action that can still be undone, if the task has not moved since. */
   undoOccurrenceId?: string | null;
   history?: OperationOccurrence[];
+  /**
+   * Goes up with every change, including completions and handovers. An edit
+   * names the version it started from, so a stale one is refused.
+   */
+  version?: number;
+  /** Who added it. They, or an admin, can remove it. */
+  createdBy?: string | null;
 };
 
 /** Legacy fixture date, never the live app clock. */
 export const HOUSE_TODAY = "2026-09-01";
 
-export type NewOperation = Omit<OperationItem, "id" | "hubId" | "status" | "undoOccurrenceId" | "history" | "anchorDay" | "turnOwnerId" | "turnOwner">;
+/** What an add or an edit sends. Status and completion change only through task actions. */
+export type NewOperation = Omit<OperationItem, "id" | "hubId" | "status" | "lastDone" | "undoOccurrenceId" | "history" | "anchorDay"
+  | "turnOwnerId" | "turnOwner" | "version" | "createdBy">;
 export type OperationStore = Record<HubId, OperationItem[]>;
 
 export const OPERATIONS_SEED: OperationStore = {
