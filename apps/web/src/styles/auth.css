@@ -199,14 +199,17 @@
   text-decoration: underline;
 }
 
-/* A link on a line of its own gets a 24px target without moving the form. */
-.commune-auth-solo {
-  margin: 18px 0 -4px;
+/* A link on a line of its own reaches 24px tall into the space above it, so
+   the form does not move. */
+.commune-auth-foot.commune-auth-solo {
+  display: flex;
+  justify-content: center;
+  margin-top: 15px;
 }
 
 .commune-auth-solo .commune-auth-link {
-  display: inline-block;
-  padding: 5px 0;
+  min-height: 24px;
+  padding-top: 9px;
 }
 
 .commune-auth-btn {
