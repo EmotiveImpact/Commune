@@ -14,8 +14,8 @@ this is not a replacement of Neon Auth or a switch back to Supabase.
 - [Current design language and preserved layouts](../../docs/DESIGN-LANGUAGE.md)
 - [Local build-out from 5 October: migrations 0020 onwards](../../docs/LOCAL-BUILDOUT-2026-10-05.md)
 
-Migrations **0015 to 0036 are local only**. They have not been applied to any
-Neon branch. Release order when they are: apply 0013 to 0036 in numeric order
+Migrations **0015 to 0037 are local only**. They have not been applied to any
+Neon branch. Release order when they are: apply 0013 to 0037 in numeric order
 to the preview branch, refresh that branch's Data API schema cache, then
 deploy the matching web client. The new client calls `send_reminder_command`,
 `record_share_receipt`, `reverse_share_receipt`, `correct_expense`,
@@ -88,6 +88,16 @@ Six of the 9 October migrations change that rule:
 0026 replaces `save_recurring_bill` and adds `set_recurring_bill_paused` and
 `set_recurring_bill_archived`; production has no recurring bills yet, so only
 the new client uses them.
+
+0037 makes completing, skipping, reopening, handing over and undoing a task
+lock the commune before the task, as edits and removals have since 0027, so
+one of them meeting a member's departure waits for it instead of failing as a
+deadlock. It needs no client or worker change. Separately, the invitation
+email sender in `apps/reminder-worker` now locks the invitation's commune
+before the invitation, so emailing an invitation while its admin leaves, is
+removed or is made a member waits and is then refused as unavailable instead
+of failing as a deadlock. That is a worker change only, released with the
+worker deploys above.
 
 ## Last recorded production evidence — 27 September 2026
 
@@ -252,7 +262,7 @@ rate limits) are recorded in [`docs/AUTH-SETTINGS.md`](../../docs/AUTH-SETTINGS.
    Broad grants would let direct writes bypass ledger invariants. Keep preview
    branches separate from production.
 3. Apply `migrations/0001_commune_core.sql` through
-   `migrations/0036_lighter_loading.sql` in numeric order to the
+   `migrations/0037_task_command_lock_order.sql` in numeric order to the
    development branch via an **unpooled** connection. Run `tests/grants.sql`,
    review RLS, and run two-account signed-JWT tests before applying the same
    reviewed migrations to production. After a migration adds or changes a

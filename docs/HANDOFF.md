@@ -65,6 +65,10 @@ lifecycle pack. Work is paused for a handoff, not a production release.
   (`apps/web/src/data/covers.ts`), on a calm tone for the commune type while
   they load or if they fail; bundling them needs the three original files from
   Edem. Production builds preload the data client chunk (`vite.config.ts`).
+- Also from 9 October, for review: completing, skipping, handing over and
+  undoing a task now lock the commune first (migration 0037), and the
+  invitation email sender does the same, so either meeting a member leaving
+  waits for it instead of failing as a deadlock.
 - The website is `web/` (the editorial homepage); the earlier v2 site is in
   `web-backup/`. Launch names `website` (3004) and `website-backup` (3003).
 - No push, deployment, hosted migration or provider change has been made. Do
@@ -178,7 +182,7 @@ no further copy-cleanup pass is needed for the handoff.
 Read [the product-depth roadmap](PRODUCT-DEPTH-ROADMAP-2026-10-02.md) and the
 Remaining section of [money lifecycle](MONEY-LIFECYCLE-2026-10-02.md).
 
-1. **Hosted parity.** Migrations 0013 to 0036, schema-cache refresh, the
+1. **Hosted parity.** Migrations 0013 to 0037, schema-cache refresh, the
    matching web client and sender, auth, invitations and real email delivery
    are all unverified on Neon. Apply migrations before deploying the client.
    Measure cold/warm/idle loading with separate accounts. Do not declare
