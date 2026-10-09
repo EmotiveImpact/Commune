@@ -57,6 +57,14 @@ lifecycle pack. Work is paused for a handoff, not a production release.
   account can create at most 10 communes an hour, 30 a day and 100 in all.
   Deploy the client straight after 0036: see
   [infra/neon/README.md](../infra/neon/README.md).
+- Also from 9 October, for review: fonts, cover photos and start-up loading
+  from the same review. Inter and the wordmark font are served from the app
+  (`apps/web/src/styles/fonts`, the OFL licence beside them), so the hosted
+  policy allows fonts and styles only from the app's own origin. Default cover
+  photos still come from Unsplash, at the width each placement needs
+  (`apps/web/src/data/covers.ts`), on a calm tone for the commune type while
+  they load or if they fail; bundling them needs the three original files from
+  Edem. Production builds preload the data client chunk (`vite.config.ts`).
 - The website is `web/` (the editorial homepage); the earlier v2 site is in
   `web-backup/`. Launch names `website` (3004) and `website-backup` (3003).
 - No push, deployment, hosted migration or provider change has been made. Do

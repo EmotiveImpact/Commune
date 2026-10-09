@@ -50,7 +50,10 @@ occurrence command as before).
    rotation; a member leaving with tasks assigned.
 7. **Preview deploy** of the web client against the branch. Walk Settle,
    Recurring, Notes, Operations, Members and commune settings in light and
-   dark, at phone and desktop widths.
+   dark, at phone and desktop widths. The policy in `apps/web/vercel.json` no
+   longer allows fonts.googleapis.com or fonts.gstatic.com, because the app
+   serves its own fonts; `img-src` keeps images.unsplash.com until the default
+   covers are bundled. Check the console for refused fonts or images.
 8. **Production.** Repeat 2 to 5 on production in a quiet window, then deploy
    the web client. Keep the step 1 backup until the release has run cleanly
    for a week.
