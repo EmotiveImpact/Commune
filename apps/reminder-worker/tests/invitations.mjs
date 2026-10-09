@@ -11,7 +11,7 @@ const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const senderPool = new Pool({ connectionString: process.env.DATABASE_URL, options: "-c search_path=pg_catalog" });
 const send = (actorId, token, mail = config) => sendInvitationEmail(senderPool, actorId, token, mail);
 const tokenHash = (token) => createHash("sha256").update(token).digest();
-const actor = randomUUID(), outsider = randomUUID(), bulkSender = randomUUID();
+const actor = randomUUID(), outsider = randomUUID(), bulkSender = randomUUID(), otherAdmin = randomUUID(), removedAdmin = randomUUID();
 const config = { apiKey: "test-only", from: "Commune <test@example.test>", appUrl: "https://example.test" };
 const calls = [];
 let providerStatus = 200;
@@ -27,12 +27,23 @@ async function asUser(userId, fn) {
 }
 const asActor = (fn) => asUser(actor, fn);
 const refusal = (status, message) => (e) => e.status === status && (!message || e.message === message);
+const settle = (promise) => promise.then((result) => ({ result }), (error) => ({ error }));
+// Polls until the query's row says ok, so a race can wait for a session to
+// be stuck behind a lock.
+async function waitUntil(sql, values) {
+  for (let attempt = 0; attempt < 400; attempt += 1) {
+    if ((await pool.query(sql, values)).rows[0]?.ok) return;
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+  throw new Error(`Gave up waiting for: ${sql}`);
+}
+const UNAVAILABLE = "Invitation is unavailable or you are no longer a commune admin.";
 const NAME_REFUSAL = "This invitation can't be emailed because a name in it looks like a link or phone number. Copy the link and share it yourself.";
 const SUPPRESSED = "This address can't receive Commune emails. Share the link another way.";
 const NEW_ACCOUNT = "New accounts can email up to 5 invitations a day. Copy the link and share it yourself.";
 const PAUSED = "Invitation emails are paused for today. Copy the link and share it yourself.";
 const deliveries = async () => +(await pool.query("SELECT count(*) FROM public.invitation_email_deliveries WHERE sender_id=$1", [actor])).rows[0].count;
-let commune, bulkCommune;
+let commune, bulkCommune, removalCommune;
 try {
   // The email names its inviter, quotes the commune and offers a report link
   // that names the invitation by id, never by token.
@@ -197,11 +208,45 @@ try {
   assert.equal(calls.length, before + 1, "simultaneous sends dispatch only once");
   await asActor(c => c.query("UPDATE public.commune_members SET role='member' WHERE commune_id=$1 AND user_id=$2", [commune, actor]));
   await assert.rejects(send(actor, parallelToken), refusal(404), "former admins cannot send");
-  console.log("Invitation email: authorization, inviter and commune naming, report link, contact-like names, suppressed addresses, new-account and Commune-wide limits, index use, provider failure/retry, deduplication, rate limit, expiry, token privacy and HTML escaping passed. No real email sent.");
+
+  // An admin removed while their invitation is being emailed. The removal
+  // locks the commune and then withdraws the admin's invitations, so the
+  // sender takes the commune first, waits for the removal and then finds the
+  // invitation gone. Holding the admin's membership row stops the removal
+  // between its two locks, so this interleaving happens every time.
+  await pool.query('INSERT INTO neon_auth."user" (id,name,email,"emailVerified") VALUES ($1,\'Other admin\',$2,true), ($3,\'Removed admin\',$4,true)',
+    [otherAdmin, `${otherAdmin}@example.test`, removedAdmin, `${removedAdmin}@example.test`]);
+  removalCommune = (await asUser(otherAdmin, c => c.query("SELECT public.create_commune('Removal test','household','GBP') AS id"))).rows[0].id;
+  await asUser(otherAdmin, c => c.query("INSERT INTO public.commune_members (commune_id,user_id,role) VALUES ($1,$2,'admin')", [removalCommune, removedAdmin]));
+  const removedToken = (await asUser(removedAdmin, c => c.query("SELECT public.create_commune_invite($1,'removal@example.test','member') AS token", [removalCommune]))).rows[0].token;
+  const holder = await pool.connect(), remover = await pool.connect();
+  try {
+    await holder.query("BEGIN");
+    await holder.query("SELECT 1 FROM public.commune_members WHERE commune_id=$1 AND user_id=$2 FOR UPDATE", [removalCommune, removedAdmin]);
+    await remover.query("BEGIN");
+    await remover.query("SELECT set_config('request.jwt.claims',json_build_object('sub',$1::text)::text,true)", [otherAdmin]);
+    const { pid } = (await remover.query("SELECT pg_backend_pid() AS pid")).rows[0];
+    const removal = settle(remover.query("SELECT public.manage_commune_member($1,$2,'remove')", [removalCommune, removedAdmin]));
+    await waitUntil("SELECT wait_event_type='Lock' AS ok FROM pg_stat_activity WHERE pid=$1", [pid]);
+    before = calls.length;
+    const sending = settle(send(removedAdmin, removedToken));
+    await waitUntil("SELECT count(*)>0 AS ok FROM pg_stat_activity WHERE $1=ANY(pg_blocking_pids(pid))", [pid]);
+    await holder.query("COMMIT");
+    const [removed, sent] = await Promise.all([
+      removal.then(async (outcome) => { await remover.query(outcome.error ? "ROLLBACK" : "COMMIT"); return outcome; }), sending]);
+    for (const outcome of [removed, sent]) assert.notEqual(outcome.error?.code, "40P01", `the removal and the sender deadlocked: ${outcome.error?.message}`);
+    assert.equal(removed.error, undefined, removed.error?.message);
+    assert.equal(sent.error?.status, 404, sent.error?.message ?? "the invitation was emailed");
+    assert.equal(sent.error.message, UNAVAILABLE);
+  } finally { holder.release(true); remover.release(true); }
+  assert.equal((await pool.query("SELECT active FROM public.commune_members WHERE commune_id=$1 AND user_id=$2", [removalCommune, removedAdmin])).rows[0].active, false);
+  assert.equal(+(await pool.query("SELECT count(*) FROM public.invitation_email_deliveries WHERE commune_id=$1", [removalCommune])).rows[0].count, 0, "no delivery is left");
+  assert.equal(calls.length, before, "the provider is never called");
+  console.log("Invitation email: authorization, inviter and commune naming, report link, contact-like names, suppressed addresses, new-account and Commune-wide limits, index use, provider failure/retry, deduplication, rate limit, expiry, token privacy, HTML escaping and an admin removed while sending passed. No real email sent.");
 } finally {
-  await pool.query("DELETE FROM public.communes WHERE id = ANY($1::uuid[])", [[commune, bulkCommune].filter(Boolean)]);
+  await pool.query("DELETE FROM public.communes WHERE id = ANY($1::uuid[])", [[commune, bulkCommune, removalCommune].filter(Boolean)]);
   await pool.query("DELETE FROM public.email_suppressions WHERE provider_event_id LIKE 'msg_test_%'");
-  await pool.query('DELETE FROM neon_auth."user" WHERE id = ANY($1::text[])', [[actor, bulkSender]]);
+  await pool.query('DELETE FROM neon_auth."user" WHERE id = ANY($1::text[])', [[actor, bulkSender, otherAdmin, removedAdmin]]);
   await pool.end();
   await senderPool.end();
 }
