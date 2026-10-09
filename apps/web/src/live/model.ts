@@ -8,7 +8,7 @@ import {
 } from "../data/household";
 import type { OperationItem } from "../data/operations";
 import { notePreview } from "../data/notePresentation";
-import { todayIso } from "../data/operations";
+import { timestampDay, todayIso } from "../data/operations";
 import { netBalances, overallNet } from "../../../../packages/core/src/balances";
 
 export type CurrencyCode = "GBP" | "USD" | "EUR";
@@ -454,8 +454,10 @@ export function hubFromSnapshot(
   });
   const fundTotal = snapshot.funds.reduce((sum, fund) => sum +
     fund.commitments.reduce((subtotal, commitment) => subtotal + commitment.contributedMinor, 0), 0);
+  // This month where the member is: an expense entered late on the last
+  // evening of a month belongs to that month.
   const month = todayIso().slice(0, 7);
-  const monthExpenses = snapshot.expenses.filter((expense) => expense.createdAt?.startsWith(month));
+  const monthExpenses = snapshot.expenses.filter((expense) => timestampDay(expense.createdAt).startsWith(month));
   const monthTotal = monthExpenses
     .reduce((sum, expense) => sum + expense.amountMinor, 0);
   const nextDue = openRows
@@ -527,14 +529,14 @@ export function hubFromSnapshot(
       ini: initialsOf(names.get(expense.paidByUserId) ?? "Member"),
       title: expense.title,
       when: `${names.get(expense.paidByUserId) ?? "Member"} paid`,
-      time: expense.createdAt ? dateLabel(expense.createdAt.slice(0, 10)) : "Recently",
+      time: expense.createdAt ? dateLabel(timestampDay(expense.createdAt)) : "Recently",
       createdAt: expense.createdAt,
       expenseId: expense.id,
     })), ...(snapshot.activityEvents ?? []).map(event => ({
       // Announcements live on This Hub.
       go:event.kind === "announcements" ? "hub" as const : event.kind,cls:members.find(member=>member.userId===event.actorId)?.cls ?? "jordan" as const,
       ini:initialsOf(names.get(event.actorId) ?? "Member"), title:event.title,
-      when:`${event.description} · ${names.get(event.actorId) ?? "Member"}`, time:dateLabel(event.createdAt),createdAt:event.createdAt,
+      when:`${event.description} · ${names.get(event.actorId) ?? "Member"}`, time:dateLabel(timestampDay(event.createdAt)),createdAt:event.createdAt,
       expenseId:event.kind==="expenses" ? event.entityId : undefined,
     }))].sort((a,b)=>(Date.parse(b.createdAt ?? "")||0)-(Date.parse(a.createdAt ?? "")||0)),
     notes,

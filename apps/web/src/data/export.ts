@@ -1,5 +1,6 @@
 import type { Snapshot } from "../live/model";
 import { isSecretFact } from "./notePresentation";
+import { timestampDay } from "./operations";
 import { csvCell } from "./statement";
 
 const SECRET = "(left out of exports)";
@@ -25,7 +26,10 @@ export function communeExportJson(snapshot: Snapshot, exportedAt = new Date()): 
   }, null, 2)}\n`;
 }
 
-/** One row per share of every expense, voided ones included and marked. */
+/**
+ * One row per share of every expense, voided ones included and marked. Each
+ * is dated by the day it was entered where the member is.
+ */
 export function expensesCsv(snapshot: Snapshot): string {
   const currency = snapshot.commune.currency;
   const names = new Map(snapshot.members.map((member) => [member.userId, member.name]));
@@ -42,7 +46,7 @@ export function expensesCsv(snapshot: Snapshot): string {
       const outstanding = voided || own ? 0 : Math.max(0, share.amountMinor - share.settledMinor);
       const status = voided ? "Voided" : own ? "Paid the bill" : outstanding ? (share.settledMinor ? "Part paid" : "Open") : "Settled";
       lines.push([
-        csvCell((expense.createdAt ?? "").slice(0, 10)), csvCell(expense.title), csvCell(expense.category ?? ""),
+        csvCell(timestampDay(expense.createdAt)), csvCell(expense.title), csvCell(expense.category ?? ""),
         csvCell(amount(expense.amountMinor), false), csvCell(name(expense.paidByUserId)), csvCell(name(share.userId)),
         csvCell(amount(share.amountMinor), false), csvCell(amount(own ? share.amountMinor : share.settledMinor), false),
         csvCell(amount(outstanding), false), csvCell(status),

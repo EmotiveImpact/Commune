@@ -1,4 +1,5 @@
 import type { Share } from "../live/model";
+import { timestampDay } from "./operations";
 
 /** The expense fields a statement needs. */
 export type StatementExpense = {
@@ -14,7 +15,7 @@ export type StatementExpense = {
 export type StatementEntry = {
   key: string;
   expenseId: string;
-  /** Calendar day the entry happened (YYYY-MM-DD). */
+  /** Calendar day the entry happened where the member is (YYYY-MM-DD). */
   on: string;
   kind: "share" | "repayment" | "reversal" | "voided";
   description: string;
@@ -30,16 +31,23 @@ export type Statement = {
   netMinor: number;
 };
 
-const day = (value: string | null | undefined) => (value ?? "").slice(0, 10);
+/** Where a row sorts: by day, then by when it was recorded, then share, repayment, reversal. */
+type Placed = Omit<StatementEntry, "balanceMinor"> & { sortOn: string; at: number; step: number };
+
+const recordedAt = (timestamp: string | null | undefined) => Date.parse(timestamp ?? "") || 0;
+const later = (a: string, b: string) => (a > b ? a : b);
 
 /**
  * Everything between the viewer and one other member, oldest first: each share
  * one owes the other, each repayment recorded against it, each reversal, and
- * voided bills (shown, but never counted). The closing balance equals the sum
- * of the open shares between the two, so it matches Settle.
+ * voided bills (shown, but never counted). Entries are dated by the member's
+ * own calendar day. A repayment is never listed before the share it pays, nor
+ * a reversal before its repayment, even when the money arrived before the bill
+ * was entered; it keeps its own date. The closing balance equals the sum of
+ * the open shares between the two, so it matches Settle.
  */
 export function buildStatement(expenses: StatementExpense[], viewerId: string, otherId: string, otherName: string): Statement {
-  const rows: Array<Omit<StatementEntry, "balanceMinor"> & { order: string }> = [];
+  const rows: Placed[] = [];
   for (const expense of expenses) {
     const youPaid = expense.paidByUserId === viewerId;
     const theyPaid = expense.paidByUserId === otherId;
@@ -48,30 +56,36 @@ export function buildStatement(expenses: StatementExpense[], viewerId: string, o
     if (!share || share.amountMinor <= 0) continue;
     // Seen from the viewer: a share they owe you counts up, one you owe counts down.
     const sign = youPaid ? 1 : -1;
-    const created = expense.createdAt ?? "";
     const whose = youPaid ? `${otherName}’s share` : "Your share";
     if (expense.voidedAt) {
-      rows.push({ key: `${expense.id}-void`, expenseId: expense.id, on: day(expense.voidedAt), order: expense.voidedAt,
+      const on = timestampDay(expense.voidedAt);
+      rows.push({ key: `${expense.id}-void`, expenseId: expense.id, on, sortOn: on, at: recordedAt(expense.voidedAt), step: 0,
         kind: "voided", description: `${expense.name} · voided${expense.voidReason ? `: ${expense.voidReason}` : ""}`, amountMinor: 0 });
       continue;
     }
-    rows.push({ key: `${share.id}-share`, expenseId: expense.id, on: day(created), order: created,
+    const shareOn = timestampDay(expense.createdAt);
+    const shareAt = recordedAt(expense.createdAt);
+    rows.push({ key: `${share.id}-share`, expenseId: expense.id, on: shareOn, sortOn: shareOn, at: shareAt, step: 0,
       kind: "share", description: `${whose} of ${expense.name}`, amountMinor: sign * share.amountMinor });
     for (const receipt of share.receipts ?? []) {
       const payer = youPaid ? otherName : "You";
-      rows.push({ key: `${receipt.id}-paid`, expenseId: expense.id, on: receipt.receivedOn, order: receipt.recordedAt,
+      const paidOn = later(receipt.receivedOn, shareOn);
+      const paidAt = Math.max(recordedAt(receipt.recordedAt), shareAt);
+      rows.push({ key: `${receipt.id}-paid`, expenseId: expense.id, on: receipt.receivedOn, sortOn: paidOn, at: paidAt, step: 1,
         kind: "repayment", description: `${payer} repaid · ${expense.name}${receipt.reference ? ` · ${receipt.reference}` : ""}`,
         amountMinor: -sign * receipt.amountMinor });
       if (receipt.reversedAt) {
-        rows.push({ key: `${receipt.id}-reversed`, expenseId: expense.id, on: day(receipt.reversedAt), order: receipt.reversedAt,
+        const on = timestampDay(receipt.reversedAt);
+        rows.push({ key: `${receipt.id}-reversed`, expenseId: expense.id, on, sortOn: later(on, paidOn),
+          at: Math.max(recordedAt(receipt.reversedAt), paidAt), step: 2,
           kind: "reversal", description: `Repayment reversed · ${expense.name}${receipt.reversalReason ? `: ${receipt.reversalReason}` : ""}`,
           amountMinor: sign * receipt.amountMinor });
       }
     }
   }
-  rows.sort((a, b) => a.on.localeCompare(b.on) || a.order.localeCompare(b.order) || a.key.localeCompare(b.key));
+  rows.sort((a, b) => a.sortOn.localeCompare(b.sortOn) || a.at - b.at || a.step - b.step || a.key.localeCompare(b.key));
   let balance = 0;
-  const entries = rows.map(({ order: _order, ...row }) => {
+  const entries = rows.map(({ sortOn: _sortOn, at: _at, step: _step, ...row }) => {
     balance += row.amountMinor;
     return { ...row, balanceMinor: balance };
   });
