@@ -1,5 +1,6 @@
 import { CircleAlert, FileText, House, ReceiptText, Repeat2, ShoppingBag, SquareCheck, UsersRound, Files } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { formatMoney } from "@commune/core";
 import { SEARCH_KINDS, SEARCH_LABELS, type SearchKind, type SearchResponse, type SearchResult } from "../live/search";
 import { Button } from "./components";
 const ICONS: Record<SearchKind, LucideIcon> = {
@@ -39,7 +40,7 @@ export function SearchResults({ result, pending, error, query, retry, onOpen, li
         <h3 aria-hidden={quick || undefined}>{SEARCH_LABELS[kind]}</h3>
         {items.map((item, index) => {
           const position = start + index;
-          const amount = item.amountMinor === null ? null : new Intl.NumberFormat("en-GB", { style: "currency", currency: item.currency }).format(item.amountMinor / 100);
+          const amount = item.amountMinor === null ? null : formatMoney(item.amountMinor, item.currency);
           return <button className={`c-search-result${position === activeIndex ? " is-active" : ""}`} type="button"
             id={`${listId}-${position}`} role={quick ? "option" : undefined}
             aria-selected={quick ? position === activeIndex : undefined} tabIndex={quick ? -1 : undefined}

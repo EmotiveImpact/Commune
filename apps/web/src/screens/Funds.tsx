@@ -18,7 +18,7 @@ import {
 import { Pill } from "../ui/widgets";
 import { ReminderFlowDialog, useReminderFlow } from "../ui/ReminderConfirm";
 import { RecipientReminderCount, ReminderAllowanceNotice } from "../ui/ReminderUsage";
-import { formatReminderDay, reminderEligibility } from "../data/reminders";
+import { formatReminderDay, formatTimestampDay, reminderEligibility } from "../data/reminders";
 import { newRequestId } from "../data/requestId";
 import { commandFailure, UNCERTAIN_RETRY_SAFE } from "../data/commands";
 
@@ -349,7 +349,7 @@ export function FundsScreen() {
             </strong>
             <small>
               Pledged {money(pledge.amountMinor, hub.currency)} · due{" "}
-              {pledge.dueOn}
+              {formatReminderDay(pledge.dueOn)}
             </small>
           </div>
           <Pill
@@ -457,7 +457,7 @@ export function FundsScreen() {
               <div key={entry.id}>
                 <span>
                   {money(entry.amountMinor, hub.currency)} ·{" "}
-                  {new Date(entry.contributedAt).toLocaleDateString("en-GB")}
+                  {formatTimestampDay(entry.contributedAt)}
                   {entry.voidedAt ? ` · corrected: ${entry.voidReason}` : ""}
                 </span>
                 {isAdmin && !entry.voidedAt && !fund?.archivedAt && (

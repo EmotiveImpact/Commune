@@ -1,3 +1,4 @@
+import { formatDay } from "@commune/core";
 import { commandFailure } from "./commands";
 import { timestampDay } from "./operations";
 import type { ReminderEmailStatus, ReminderResult, ReminderTarget, ReminderUsage, SentReminder } from "../live/model";
@@ -15,23 +16,20 @@ export type ReminderEligibility = {
 };
 
 const whenFormat = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
-const dayFormat = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric" });
 
 export function reminderWord(kind: ReminderKind): "Nudge" | "Chase" {
   return kind === "chase" ? "Chase" : "Nudge";
 }
 
-/** A timestamp shown as the member's local calendar day. */
+/** A timestamp shown as the member's local calendar day: "9 Oct", or "9 Oct 2025" in another year. */
 export function formatTimestampDay(timestamp: string | null | undefined): string {
   const day = timestampDay(timestamp);
   return day ? formatReminderDay(day) : timestamp ?? "";
 }
 
-/** A date-only value (due, received). Never shifted by time zone. */
+/** A date-only value (due, received) as "9 Oct", with the year when it is not this year. Never shifted by time zone. */
 export function formatReminderDay(iso: string | null | undefined): string {
-  if (!iso) return "";
-  const date = new Date(`${iso.slice(0, 10)}T12:00:00`);
-  return Number.isNaN(date.getTime()) ? iso : dayFormat.format(date);
+  return iso ? formatDay(iso) : "";
 }
 
 /**

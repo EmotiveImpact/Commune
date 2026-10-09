@@ -647,8 +647,8 @@ describe("complete shared workflows", () => {
     // Not due yet, so it cannot be recorded, but it can be skipped ahead of time.
     expect(screen.queryByRole("button", { name: /^Record paid bill/ })).toBeNull();
     const history = (await screen.findByText("2 recent periods")).closest("details")!;
-    expect(history.textContent).toContain("28 Feb 2026 · skipped by Test Person: Away");
-    expect(history.textContent).toContain("31 Jan 2026 · £100.01 recorded (usually £90.00) by Test Person");
+    expect(history.textContent).toContain(`${formatReminderDay("2026-02-28")} · skipped by Test Person: Away`);
+    expect(history.textContent).toContain(`${formatReminderDay("2026-01-31")} · £100.01 recorded (usually £90.00) by Test Person`);
     fireEvent.click(screen.getByRole("button", { name: "Skip this period for Electricity" }));
     const dialog = screen.getByRole("dialog", { name: /Skip Electricity for/ });
     await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Skip this period" })); });

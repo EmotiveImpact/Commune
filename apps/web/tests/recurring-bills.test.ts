@@ -16,6 +16,7 @@ import {
   skippedMessage,
 } from "../src/data/recurring";
 import type { RecurringBill } from "../src/live/model";
+import { formatReminderDay } from "../src/data/reminders";
 
 const bill: RecurringBill = {
   id: "bill-1", title: "Broadband", amountMinor: 9000, paidByUserId: "blake", createdBy: "blake", version: 4, archivedAt: null,
@@ -118,7 +119,7 @@ describe("a bill that changed while it was being edited", () => {
 
   it("lists what changed in plain lines", () => {
     expect(recurringChanges(bill, { ...bill, amountMinor: 9600, nextDueOn: "2026-11-30", paused: false }, name, "GBP"))
-      .toEqual(["Amount: £90.00 to £96.00", "Next due: 31 Oct 2026 to 30 Nov 2026", "Resumed"]);
+      .toEqual(["Amount: £90.00 to £96.00", `Next due: ${formatReminderDay("2026-10-31")} to ${formatReminderDay("2026-11-30")}`, "Resumed"]);
     expect(recurringChanges(bill, { ...bill, paidByUserId: "casey", allocations: bill.allocations.slice(1) }, name, "GBP"))
       .toEqual(["Paid by: Blake Payer to Casey Member", "The split changed"]);
   });

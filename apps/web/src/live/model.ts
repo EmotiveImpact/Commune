@@ -10,7 +10,7 @@ import {
 import type { OperationItem } from "../data/operations";
 import { notePreview } from "../data/notePresentation";
 import { timestampDay, todayIso } from "../data/operations";
-import { netBalances, overallNet } from "@commune/core";
+import { formatDay, formatMoney, netBalances, overallNet } from "@commune/core";
 
 export type CurrencyCode = "GBP" | "USD" | "EUR";
 /** Records that keep a commune's currency as it is, voided or archived ones too. */
@@ -446,19 +446,14 @@ const EVENT_TYPES: Record<ActivityEventKind, ActivityType> = {
 
 const TONES: AvatarTone[] = ["jordan", "alex", "priya", "sam", "ness"];
 
+/** An amount in the commune's currency: "£12.50", "$32.10". The shared, cached formatter. */
 export function money(minor: number, currency: CurrencyCode): string {
-  return new Intl.NumberFormat("en-GB", {
-    style: "currency",
-    currency,
-  }).format(minor / 100);
+  return formatMoney(minor, currency);
 }
 
-export function dateLabel(iso: string | null | undefined): string {
-  if (!iso) return "No due date";
-  const date = new Date(`${iso.slice(0, 10)}T12:00:00`);
-  return Number.isNaN(date.getTime())
-    ? iso
-    : new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short" }).format(date);
+/** A due date as "9 Oct" (with the year when it is not this year), or "No due date". */
+export function dateLabel(iso: string | null | undefined, today?: string): string {
+  return iso ? formatDay(iso, today) : "No due date";
 }
 
 export function equalShares(
@@ -502,7 +497,7 @@ export function expenseRows(snapshot: Snapshot, viewerId: string): LiveExpenseRo
       paidByUserId: expense.paidByUserId,
       amount: money(expense.amountMinor, currency),
       amountMinor: expense.amountMinor,
-      due: dateLabel(expense.dueOn),
+      due: dateLabel(expense.dueOn, today),
       dueOn: expense.dueOn,
       createdAt: expense.createdAt,
       status: outstanding ? (overdue ? "warn" : "open") : "settled",
@@ -652,7 +647,7 @@ export function hubFromSnapshot(
       { go: "expenses", tone: "lilac", kicker: "This month", num: money(monthTotal, currency), hint: `${monthExpenses.length} ${monthExpenses.length === 1 ? "expense" : "expenses"} logged` },
       { go: "expenses", tone: "sage", kicker: "Open bills", num: String(openRows.length), hint: openRows[0]?.name ?? "Nothing waiting" },
       // A date that has passed says so rather than reading as still to come.
-      { go: "expenses", tone: "ink", kicker: "Next due", num: nextDue?.dueOn ? nextDue.dueOn < today ? `Overdue since ${dateLabel(nextDue.dueOn)}` : dateLabel(nextDue.dueOn) : "-", hint: nextDue?.name ?? "No dated open bills" },
+      { go: "expenses", tone: "ink", kicker: "Next due", num: nextDue?.dueOn ? nextDue.dueOn < today ? `Overdue since ${dateLabel(nextDue.dueOn, today)}` : dateLabel(nextDue.dueOn, today) : "-", hint: nextDue?.name ?? "No dated open bills" },
     ],
     now: needs.actions,
     waiting: needs.waiting,
@@ -664,7 +659,7 @@ export function hubFromSnapshot(
       ini: initialsOf(names.get(expense.paidByUserId) ?? "Member"),
       title: expense.title,
       when: `${names.get(expense.paidByUserId) ?? "Member"} paid`,
-      time: expense.createdAt ? dateLabel(timestampDay(expense.createdAt)) : "Recently",
+      time: expense.createdAt ? dateLabel(timestampDay(expense.createdAt), today) : "Recently",
       createdAt: expense.createdAt,
       expenseId: expense.id,
       type: "expense" as const,
@@ -672,7 +667,7 @@ export function hubFromSnapshot(
       // Announcements live on This Hub.
       go:event.kind === "announcements" ? "hub" as const : event.kind,cls:members.find(member=>member.userId===event.actorId)?.cls ?? "jordan" as const,
       ini:initialsOf(names.get(event.actorId) ?? "Member"), title:event.title,
-      when:`${event.description} · ${names.get(event.actorId) ?? "Member"}`, time:dateLabel(timestampDay(event.createdAt)),createdAt:event.createdAt,
+      when:`${event.description} · ${names.get(event.actorId) ?? "Member"}`, time:dateLabel(timestampDay(event.createdAt), today),createdAt:event.createdAt,
       expenseId:event.kind==="expenses" ? event.entityId : undefined,
       type:event.recordType ?? EVENT_TYPES[event.kind],
     }))].sort((a,b)=>(Date.parse(b.createdAt ?? "")||0)-(Date.parse(a.createdAt ?? "")||0)),

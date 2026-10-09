@@ -3,6 +3,7 @@ import { createRemoteJWKSet, jwtVerify } from "jose";
 import { Pool } from "pg";
 import { renderReminderEmail } from "./email.ts";
 import { InvitationEmailError, sendInvitationEmail } from "./invitations.ts";
+import { formatMoney } from "./money.ts";
 import { type UnsubscribeConfig, unsubscribeConfig, unsubscribePage, unsubscribeRecipient, unsubscribeUrl } from "./unsubscribe.ts";
 import { resendWebhook } from "./webhooks.ts";
 
@@ -197,9 +198,7 @@ async function buildPayload(
   },
   config: MailConfig,
 ) {
-  const amount = new Intl.NumberFormat("en-GB", {
-    style: "currency", currency: detail.currency,
-  }).format(Number(detail.outstanding_minor) / 100);
+  const amount = formatMoney(Number(detail.outstanding_minor), detail.currency);
   const unsubscribe = config.unsubscribe ? unsubscribeUrl(config.unsubscribe, detail.recipient_user_id) : undefined;
   const content = renderReminderEmail({
     kind: detail.kind,

@@ -1,4 +1,5 @@
 import { useId } from "react";
+import { formatDay } from "@commune/core";
 import {
   ArrowRightLeft, CalendarDays, Clock3, FileText, Files, HandCoins, Handshake, Megaphone, ReceiptText, Repeat2,
   ShoppingBag, SquareCheck, UsersRound, type LucideIcon,
@@ -54,9 +55,10 @@ function relativeDay(day: string, today: string): string {
 }
 
 // A calendar day (YYYY-MM-DD) in words, with the year only when it is not this one.
+// The short form is the date every screen uses ("5 Oct").
 function dayWords(day: string, today: string, style: "long" | "short"): string {
-  const options: Intl.DateTimeFormatOptions = style === "long"
-    ? { weekday: "long", day: "numeric", month: "long" } : { day: "numeric", month: "short" };
+  if (style === "short") return formatDay(day, today);
+  const options: Intl.DateTimeFormatOptions = { weekday: "long", day: "numeric", month: "long" };
   if (day.slice(0, 4) !== today.slice(0, 4)) options.year = "numeric";
   return new Intl.DateTimeFormat("en-GB", options).format(dateFromIso(day));
 }

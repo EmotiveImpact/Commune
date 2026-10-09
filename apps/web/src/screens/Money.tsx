@@ -10,14 +10,8 @@ import { formatReminderDay, reminderEligibility } from "../data/reminders";
 import { LatestReportAnswer, pendingReport, reportSummary, useReceiptActions } from "../ui/Receipts";
 import { CalendarDate } from "../ui/CalendarDate";
 import { initialsOf } from "../data/household";
+import { formatMoney } from "@commune/core";
 import "./Money.css";
-
-function formatMoney(minor: number, currency: string): string {
-  return new Intl.NumberFormat("en-GB", {
-    style: "currency",
-    currency,
-  }).format(minor / 100);
-}
 
 // Months start at midnight UTC, as the shared records count them.
 function monthName(month: string): string {
@@ -199,7 +193,7 @@ export function SettleScreen() {
               <Avatar tone={receiving ? debtor?.cls ?? "house" : payer?.cls ?? "house"} initials={receiving ? debtor?.ini ?? initialsOf(personName(share.userId, "")) : payer?.ini ?? initialsOf(personName(expense.paidByUserId, ""))} />
               <div>
                 <div className="names">{receiving ? `${personName(share.userId, "A former member", { left: true })} owes you` : `You owe ${personName(expense.paidByUserId, "the bill payer", { left: true })}`}</div>
-                <div className="why">{expense.name}{expense.dueOn ? ` · due ${expense.dueOn}` : ""}</div>
+                <div className="why">{expense.name}{expense.dueOn ? ` · due ${expense.due}` : ""}</div>
                 {share.settledMinor > 0 ? <div className="why">{formatMoney(share.settledMinor, hub.currency)} of {formatMoney(share.amountMinor, hub.currency)} received</div> : null}
                 {report ? <div className="why c-report-line">{receiving
                   ? `${reportSummary(report, hub.currency, personName(share.userId, "A member"))}. Not yet confirmed.`

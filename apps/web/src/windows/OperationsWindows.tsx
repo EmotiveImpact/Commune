@@ -13,6 +13,7 @@ import {
   type OperationItem,
   type OperationKind,
 } from "../data/operations";
+import { formatDay } from "@commune/core";
 import { useApp } from "../state";
 import { Avatar, Pill } from "../ui/widgets";
 import { cx } from "../ui/cx";
@@ -339,7 +340,6 @@ export function OperationView() {
   );
 }
 
-const occurrenceDay = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short" });
 const OCCURRENCE_VERB: Record<OperationOccurrence["action"], string> = {
   completed: "Completed", skipped: "Skipped", reopened: "Reopened", handed_over: "Handed over",
 };
@@ -358,11 +358,11 @@ function OccurrenceHistory({ history, undoId, nameOf, disabled, onUndo }: {
       {history.map((entry) => (
         <div key={entry.id} className={entry.undoneAt ? "is-undone" : undefined}>
           <span>
-            <strong>{OCCURRENCE_VERB[entry.action]}</strong> by {nameOf(entry.actorId)} on {occurrenceDay.format(dateFromIso(entry.actedOn))}
-            {entry.action === "completed" || entry.action === "skipped" ? ` · was due ${occurrenceDay.format(dateFromIso(entry.dueOn))}${entry.assignee ? ` with ${firstNameOf(entry.assignee)}` : ""}` : ""}
+            <strong>{OCCURRENCE_VERB[entry.action]}</strong> by {nameOf(entry.actorId)} on {formatDay(entry.actedOn)}
+            {entry.action === "completed" || entry.action === "skipped" ? ` · was due ${formatDay(entry.dueOn)}${entry.assignee ? ` with ${firstNameOf(entry.assignee)}` : ""}` : ""}
             {entry.action === "completed" && entry.nextDate !== entry.dueOn
-              ? ` · next ${occurrenceDay.format(dateFromIso(entry.nextDate))}${entry.nextAssignee ? ` with ${firstNameOf(entry.nextAssignee)}` : ""}` : ""}
-            {entry.action === "skipped" ? ` · moved to ${occurrenceDay.format(dateFromIso(entry.nextDate))}` : ""}
+              ? ` · next ${formatDay(entry.nextDate)}${entry.nextAssignee ? ` with ${firstNameOf(entry.nextAssignee)}` : ""}` : ""}
+            {entry.action === "skipped" ? ` · moved to ${formatDay(entry.nextDate)}` : ""}
             {entry.action === "handed_over" && entry.nextAssignee ? ` · to ${firstNameOf(entry.nextAssignee)}` : ""}
             {entry.reason ? ` · “${entry.reason}”` : ""}
             {entry.undoneAt ? <em> · Undone by {nameOf(entry.undoneBy ?? "")}</em> : null}
