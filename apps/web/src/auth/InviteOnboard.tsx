@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
+import { useSearch } from "wouter";
 import { AuthLayout } from "./AuthLayout";
 import { useApp } from "../state";
 import type { Hub } from "../data/household";
@@ -7,10 +8,12 @@ import { CommuneLocationFields, EMPTY_COMMUNE_LOCATION } from "../ui/CommuneLoca
 import { rememberReturn } from "../nav";
 
 export function InvitePage() {
-  const { go, session, authStatus, previewInvite, acceptInvite } = useApp();
+  const { go, session, authStatus, previewInvite, inviteAddressHint, acceptInvite, signOut } = useApp();
   const signedInUserId = session?.userId;
-  const token = new URLSearchParams(window.location.search).get("token") ?? "";
+  const token = new URLSearchParams(useSearch()).get("token") ?? "";
   const [invite, setInvite] = useState<{ communeName: string; role: string; expiresAt: string } | null>(null);
+  // The invited address, masked, when this account has another one.
+  const [hint, setHint] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -26,16 +29,31 @@ export function InvitePage() {
       return;
     }
     setLoading(true);
+    setHint(null);
     void previewInvite(token)
-      .then((result) => { if (active) setInvite(result); })
+      .then(async (result) => {
+        if (!active) return;
+        setInvite(result);
+        // Without the hint the page still says the invitation is unavailable.
+        if (!result) {
+          const masked = await inviteAddressHint(token).catch(() => null);
+          if (active) setHint(masked);
+        }
+      })
       .catch((cause) => { if (active) setError(cause instanceof Error ? cause.message : "Could not load invitation."); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, [authStatus, previewInvite, signedInUserId, token]);
+  }, [authStatus, inviteAddressHint, previewInvite, signedInUserId, token]);
 
   function signInFirst(target: "login" | "signup") {
     rememberReturn(`/invite?token=${encodeURIComponent(token)}`);
     go(target);
+  }
+
+  // Signing in again, with the other account, comes back here.
+  function switchAccount() {
+    rememberReturn(`/invite?token=${encodeURIComponent(token)}`);
+    void signOut();
   }
 
   async function join() {
@@ -54,15 +72,24 @@ export function InvitePage() {
     }
   }
 
+  const elsewhere = !loading && !invite && session && hint ? hint : null;
+
   return (
     <AuthLayout>
       <div className="commune-auth-panel">
-        <h2>{loading ? "Loading invitation…" : invite ? `Join ${invite.communeName}` : token && !session ? "You have a Commune invitation" : "Invitation unavailable"}</h2>
+        <h2>{loading ? "Loading invitation…" : invite ? `Join ${invite.communeName}` : token && !session ? "You have a Commune invitation" : elsewhere ? "This invitation is for another address" : "Invitation unavailable"}</h2>
         <p className="commune-auth-lede">
-          {invite ? `You’ve been invited as a ${invite.role.toLowerCase()}.` : token && !session ? "Sign in or create an account using the invited email address to see and accept this invitation." : "This link may be invalid, expired, already used, or addressed to a different account."}
+          {invite ? `You’ve been invited as a ${invite.role.toLowerCase()}.` : token && !session ? "Sign in or create an account using the invited email address to see and accept this invitation."
+            : elsewhere && session ? `It was sent to ${elsewhere}, and you’re signed in as ${session.email}. To join, sign in with the address it was sent to.`
+              : "This link may be invalid, expired, already used, or addressed to a different account."}
         </p>
         {error ? <div className="commune-auth-alert" role="alert">{error}</div> : null}
-        {token && authStatus !== "loading" && (invite || !session) ? (
+        {session && !invite && !loading ? (
+          <div className="a-field-row">
+            {elsewhere ? <button className="a-btn" type="button" onClick={switchAccount}>Sign out and use another account</button> : null}
+            <button className={elsewhere ? "a-btn ghost" : "a-btn"} type="button" onClick={() => go("home")}>Continue to Commune</button>
+          </div>
+        ) : token && authStatus !== "loading" && (invite || !session) ? (
           <div className="a-field-row">
             {session ? (
               <button className="a-btn" type="button" onClick={() => void join()} disabled={busy}>

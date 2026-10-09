@@ -629,6 +629,9 @@ async function route<T>(path: string, init: RequestInit): Promise<T> {
   } else if (method === "GET" && pathId(path, /^\/invites\/([0-9a-f]{64})$/)) {
     const result = rows(unwrap(await db().rpc("preview_commune_invite", { p_token: pathId(path, /^\/invites\/([0-9a-f]{64})$/) })))[0];
     response = { invite: result ? { communeName: str(result.commune_name), role: str(result.role), expiresAt: str(result.expires_at) } : null };
+  } else if (method === "GET" && pathId(path, /^\/invites\/([0-9a-f]{64})\/hint$/)) {
+    const hint = unwrap(await db().rpc("invite_address_hint", { p_token: pathId(path, /^\/invites\/([0-9a-f]{64})\/hint$/) }));
+    response = { hint: typeof hint === "string" && hint ? hint : null };
   } else if (method === "POST" && pathId(path, /^\/invites\/([0-9a-f]{64})\/accept$/)) {
     const communeId = unwrap(await db().rpc("accept_commune_invite", { p_token: pathId(path, /^\/invites\/([0-9a-f]{64})\/accept$/) }));
     response = { communeId };

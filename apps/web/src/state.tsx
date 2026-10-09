@@ -387,6 +387,8 @@ export type AppState = {
   sendInviteEmail: (token: string) => Promise<void>;
   revokeInvite: (id: string) => Promise<void>;
   previewInvite: (token: string) => Promise<InvitePreview | null>;
+  /** The address an invitation this account cannot see was sent to, masked, when it is another one. */
+  inviteAddressHint: (token: string) => Promise<string | null>;
   acceptInvite: (token: string) => Promise<string>;
   /** requestId stays the same across retries of one open form. */
   createFund: (name: string, targetMinor: number | null, requestId: string) => Promise<string>;
@@ -1488,6 +1490,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const result = await api<{ invite: InvitePreview | null }>(`/invites/${encodeURIComponent(token)}`);
     return result.invite;
   }, []);
+  const inviteAddressHint = useCallback(async (token: string) => {
+    const result = await api<{ hint: string | null }>(`/invites/${encodeURIComponent(token)}/hint`);
+    return result.hint;
+  }, []);
   const acceptInvite = useCallback((token: string) => mutate(async () => {
     const result = await post<{ communeId: string }>(`/invites/${encodeURIComponent(token)}/accept`, {});
     await refresh();
@@ -1779,7 +1785,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     removeOperation, createHub, updateCommune, recordExpense, confirmExpenseShare, correctExpense, voidExpense, recordShareReceipt, reverseShareReceipt,
     reportSharePayment, withdrawPaymentReport, resolvePaymentReport,
     announcements, postAnnouncement, acknowledgeAnnouncement, archiveAnnouncement,
-    markExpensePaid, createInvite, sendInviteEmail, revokeInvite, previewInvite, acceptInvite, createFund,
+    markExpensePaid, createInvite, sendInviteEmail, revokeInvite, previewInvite, inviteAddressHint, acceptInvite, createFund,
     pledgeFund, recordFundContribution, sendReminder, markNotificationRead,
     updateFund, archiveFund, updatePledge, voidContribution, saveRecurringBill, pauseRecurringBill, archiveRecurringBill, recordRecurringBill, recordRecurringPeriod, skipRecurringPeriod, saveSplitTemplate, manageMember,
     pageTitle, pageLede,

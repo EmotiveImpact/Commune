@@ -134,6 +134,15 @@ describe("hosted money lifecycle and task commands", () => {
     ]);
   });
 
+  it("asks for the address an invitation was sent to by its token, masked by the database", async () => {
+    const token = "ab".repeat(32);
+    mocks.rpc.mockResolvedValue({ data: "e•••@g•••.com", error: null });
+    expect(await send(`/invites/${token}/hint`, undefined, "GET")).toEqual({ hint: "e•••@g•••.com" });
+    expect(mocks.rpc).toHaveBeenCalledWith("invite_address_hint", { p_token: token });
+    mocks.rpc.mockResolvedValue({ data: null, error: null });
+    expect(await send(`/invites/${token}/hint`, undefined, "GET")).toEqual({ hint: null });
+  });
+
   it("pages older expenses and fetches named ones in the snapshot's shape", async () => {
     const expense = { id: "expense-old", title: "Gas", amountMinor: 2000, paidByUserId: "viewer", dueOn: null, shares: [] };
     const page = { expenses: [expense], before: "2026-09-01", from: "2026-08-01", olderCount: 4, olderVoidedCount: 1 };

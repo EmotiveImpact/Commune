@@ -857,6 +857,13 @@ route("GET", /^\/api\/invites\/([0-9a-f]{64})$/, async (req, res, match) => {
   } : null });
 });
 
+// For an invitation sent to another address than this account's.
+route("GET", /^\/api\/invites\/([0-9a-f]{64})\/hint$/, async (req, res, match) => {
+  const result = await userAction(req, async (client) => client.query(
+    "SELECT public.invite_address_hint($1) AS hint", [match[1]]));
+  send(res, { hint: result.rows[0].hint });
+});
+
 // Real email needs LOCAL_API_SEND_EMAIL=yes as well as the Resend settings.
 // Without both, the sender is told email isn't set up here (503).
 const invitationEmail = invitationEmailSetting(process.env);
