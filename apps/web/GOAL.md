@@ -20,7 +20,7 @@ Sage `#2d6a4f`. Cream `#f5f1ea` / `#f8f5f0` / `#faf9f7`. Navy `#1a1e2b`. Inter. 
 
 **Logo.** Sidebar: mark 18×18 like nav icons; “Commune” 13.5px / 600, no tracking, not uppercase, same as nav labels. Phone header: mark 38×38 like the icon buttons.
 
-**Login.** Keep the OLD split login from `.migration-backup/apps/web` (`_auth.lazy.tsx`, `_auth/login.lazy.tsx`): navy left (44px logo, COMMUNE, “for people who do life, together.”, “Effortlessly manage your shared expenses.”), form on the right. Form side cream `#f5f1ea`, not white. Welcome Back, email, password, Forgot, navy Log In, Google, Register Now. Same shell for signup, forgot, invite, onboard. Pill buttons.
+**Login.** Keep the OLD split login from the old app's `apps/web` (`_auth.lazy.tsx`, `_auth/login.lazy.tsx`; it was kept in `.migration-backup/` until October 2026 and is still in git history): navy left (44px logo, COMMUNE, “for people who do life, together.”, “Effortlessly manage your shared expenses.”), form on the right. Form side cream `#f5f1ea`, not white. Welcome Back, email, password, Forgot, navy Log In, Google, Register Now. Same shell for signup, forgot, invite, onboard. Pill buttons.
 
 Do not ship A’s navy gate login. Do not delete those mockups — leave `a-refined/?screen=login` etc for later.
 
