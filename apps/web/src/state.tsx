@@ -191,7 +191,6 @@ type LocalPrefs = {
   navMode: NavMode;
   dark: boolean;
   noticesOn: boolean;
-  currency: "£ GBP" | "$ USD" | "€ EUR";
   payMethods: PayMethod[];
   hubPhotos: Partial<Record<HubId, string>>;
   avatar?: string;
@@ -261,7 +260,6 @@ export type AppState = {
   selectedOperation: OperationItem | null;
   dark: boolean;
   noticesOn: boolean;
-  currency: "£ GBP" | "$ USD" | "€ EUR";
   searchQuery: string;
   searchScope: string | null;
   searchTarget: SearchTarget | null;
@@ -321,7 +319,6 @@ export type AppState = {
   setNavMode: (mode: NavMode) => void;
   setDark: (on: boolean) => void;
   setNoticesOn: (on: boolean) => void;
-  setCurrency: (currency: "£ GBP" | "$ USD" | "€ EUR") => void;
   setSearchQuery: (query: string) => void;
   setSearchScope: (id: string | null) => void;
   clearSearchTarget: () => void;
@@ -412,7 +409,6 @@ const DEFAULT_PREFS: LocalPrefs = {
   navMode: "basic",
   dark: false,
   noticesOn: true,
-  currency: "£ GBP",
   payMethods: [],
   hubPhotos: {},
 };
@@ -438,7 +434,6 @@ function readPrefs(userId: string): LocalPrefs {
       navMode: parsed.navMode === "advanced" ? "advanced" : "basic",
       dark: parsed.dark === true,
       noticesOn: parsed.noticesOn !== false,
-      currency: parsed.currency === "$ USD" || parsed.currency === "€ EUR" ? parsed.currency : "£ GBP",
       payMethods: Array.isArray(parsed.payMethods) ? parsed.payMethods.filter(
         (method): method is PayMethod => !!method && typeof method.value === "string" &&
           ["Revolut", "PayPal", "Monzo", "Bank transfer"].includes(method.provider),
@@ -1654,7 +1649,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     hub, places, snapshots: data?.snapshots ?? {}, contentLoading, contentError, emptyHub: empty, window: windowId, moreOpen,
     navMode: prefs.navMode, noteKey, notes, operationKey, operationDate,
     operationTime, operationsByHub, operations, selectedOperation,
-    dark: prefs.dark, noticesOn: prefs.noticesOn, currency: prefs.currency,
+    dark: prefs.dark, noticesOn: prefs.noticesOn,
     searchQuery, searchScope, searchTarget, noteSearchQuery, invites: data?.invites[activeId] ?? [], payMethods: prefs.payMethods, native, you,
     lastExpense, expenses, selectedExpense, createdExpenses: expenses, voidedExpenses,
     expenseRead, retryExpenseRead, expenseHistory, loadEarlierExpenses, loadFullHistory,
@@ -1665,7 +1660,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setNavMode: (navMode) => savePrefs({ navMode }),
     setDark: (dark) => savePrefs({ dark }),
     setNoticesOn: (noticesOn) => savePrefs({ noticesOn }),
-    setCurrency: (currency) => savePrefs({ currency }),
     setSearchQuery, setSearchScope, clearSearchTarget, setNoteSearchQuery, savePayMethod, setHubPhoto, setAvatar, addNote, updateNote, loadNoteRevision,
     addOperation, updateOperation, toggleOperation, skipOperation, handOverOperation, undoOperation,
     removeOperation, createHub, updateCommune, recordExpense, confirmExpenseShare, correctExpense, voidExpense, recordShareReceipt, reverseShareReceipt,

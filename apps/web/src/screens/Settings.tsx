@@ -25,8 +25,6 @@ export function SettingsScreen() {
     setDark,
     noticesOn,
     setNoticesOn,
-    currency,
-    setCurrency,
     signOut,
     you,
     setAvatar,
@@ -162,23 +160,6 @@ export function SettingsScreen() {
                 label="Email reminders"
                 disabled={emailReminders.enabled === null || emailReminders.saving}
               />
-            </div>
-            <div className="a-set-row">
-              <span className="a-set-row-copy">
-                <strong>Currency</strong>
-                <span>Your display preference; each commune keeps its own currency.</span>
-              </span>
-              <select
-                aria-label="Currency"
-                value={currency}
-                onChange={(event) =>
-                  setCurrency(event.target.value as "£ GBP" | "$ USD" | "€ EUR")
-                }
-              >
-                <option>£ GBP</option>
-                <option>$ USD</option>
-                <option>€ EUR</option>
-              </select>
             </div>
             <div className="a-set-row">
               <span className="a-set-row-copy">

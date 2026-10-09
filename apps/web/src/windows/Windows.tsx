@@ -775,7 +775,7 @@ function Profile() {
       <div className="a-settle-row">
         <div>
           <strong>Settings</strong>
-          <div className="when">Currency, notices, sidebar</div>
+          <div className="when">Dark mode, notices, sidebar</div>
         </div>
         <button className="a-btn ghost" type="button" onClick={() => go("settings")}>
           Open
