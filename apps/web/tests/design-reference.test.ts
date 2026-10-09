@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 import { JSDOM } from "jsdom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const html = readFileSync(resolve(process.cwd(), "public/design-language/index.html"), "utf8");
+const html = readFileSync(resolve(process.cwd(), "reference/design-language/index.html"), "utf8");
 let dom: JSDOM;
 const find = (selector: string) => dom.window.document.querySelector(selector) as HTMLElement;
 const click = (selector: string) => find(selector).click();
@@ -14,7 +14,7 @@ const mode = (value: string) => {
 beforeEach(() => {
   vi.useFakeTimers();
   dom = new JSDOM(html, {
-    url: "http://localhost:3000/design-language/index.html#states",
+    url: "http://localhost:3000/reference/design-language/index.html#states",
     runScripts: "dangerously",
     beforeParse(window) {
       window.setTimeout = setTimeout as unknown as typeof window.setTimeout;

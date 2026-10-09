@@ -33,7 +33,7 @@ describe("shared Operations calendar", () => {
   it("has a single stylesheet shared by the app and document, with protected Operations columns", () => {
     const read = (path: string) => readFileSync(resolve(process.cwd(), path), "utf8");
     expect(read("index.html")).toContain('href="/styles/calendar-date.css"');
-    expect(read("public/design-language/index.html")).toContain('href="/styles/calendar-date.css"');
+    expect(read("reference/design-language/index.html")).toContain('href="/styles/calendar-date.css"');
     const css = read("public/styles/calendar-date.css");
     expect(css).toContain("width: 60px;");
     expect(css).toContain("width: 52px;");

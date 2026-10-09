@@ -120,7 +120,8 @@ install was run.
 ## Preserve the design and real functions
 
 Use [the design brief](DESIGN-LANGUAGE.md) and the illustrative
-`/design-language/index.html` with In context, Components and States.
+`/reference/design-language/index.html` (dev server only) with In context,
+Components and States.
 Keep the approved typography, wordmark, original switcher/avatar, compact rail,
 large selected Home card, Hub photo and hierarchy, expense boxes, adjacent
 settlement panels, Notes board and shared Operations calendar-date badges.
