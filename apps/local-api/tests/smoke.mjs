@@ -233,38 +233,41 @@ assert.equal(snap.funds[0].commitments[0].contributedMinor, 400);
 const note = await b("POST", `/communes/${id}/notes`, {
   title: "Wi-Fi", pill: "Info", kicker: "Everyone",
   lede: "Network", body: "Shared password in person",
-  facts: [["Network", "Commune"]],
+  facts: [["Network", "Commune"]], requestId: randomUUID(),
 });
 assert.equal(note.status, 201, JSON.stringify(note));
 assert.equal((await b("POST", `/communes/${id}/notes`, {
   title: "Too long", pill: "Info", kicker: "Everyone", lede: "Long",
-  body: "X".repeat(2001), facts: [],
+  body: "X".repeat(2001), facts: [], requestId: randomUUID(),
 })).status, 400, "long note bodies should be rejected at the API");
 assert.equal((await a("GET", `/communes/${id}/snapshot`)).notes[0].title, "Wi-Fi");
 assert.equal((await outsider("PUT", `/notes/${note.id}`, {
-  title: "Altered", pill: "", kicker: "", lede: "", body: "", facts: [],
-})).status, 404);
+  title: "Altered", pill: "", kicker: "", lede: "", body: "", facts: [], expectedVersion: 1,
+})).status, 403);
 
 const operationDate = "2026-09-23";
 const operation = await b("POST", `/communes/${id}/operations`, {
   kind: "task", category: "chore", title: "Bins", date: operationDate,
-  time: "20:00", allDay: false, assignee: "API Bob",
-  rotation: ["API Bob", "API Alice"], repeat: "weekly",
-  status: "open", notes: "Take outside",
+  time: "20:00", allDay: false, assigneeId: userB.user.id,
+  rotationIds: [userB.user.id, userA.user.id], repeat: "weekly",
+  notes: "Take outside", requestId: randomUUID(),
 });
 assert.equal(operation.status, 201, JSON.stringify(operation));
 const operationSnapshot = await a("GET", `/communes/${id}/snapshot`);
 assert.equal(operationSnapshot.operations[0].title, "Bins");
 assert.equal(operationSnapshot.operations[0].date, operationDate,
   "Postgres DATE must survive API serialization without a timezone shift");
+// An edit changes what, when and who. Only the occurrence commands mark a
+// task done, so a status or completion sent with an edit changes nothing.
 assert.equal((await b("PUT", `/operations/${operation.id}`, {
   kind: "task", category: "chore", title: "Bins", date: operationDate,
-  time: "20:00", allDay: false, assignee: "API Alice",
-  rotation: ["API Bob", "API Alice"], repeat: "weekly",
+  time: "20:00", allDay: false, assigneeId: userA.user.id,
+  rotationIds: [userB.user.id, userA.user.id], repeat: "weekly",
   status: "done", notes: "Done",
-  lastDone: { by: "API Bob", date: dueOn },
+  lastDone: { by: "API Bob", date: dueOn }, expectedVersion: 1,
 })).status, 200);
-assert.equal((await a("GET", `/communes/${id}/snapshot`)).operations[0].status, "done");
+const edited = (await a("GET", `/communes/${id}/snapshot`)).operations[0];
+assert.deepEqual([edited.assignee, edited.notes, edited.status, edited.lastDone], ["API Alice", "Done", "open", null]);
 assert.equal((await b("DELETE", `/operations/${operation.id}`)).status, 200);
 assert.equal((await b("DELETE", `/notes/${note.id}`)).status, 200);
 

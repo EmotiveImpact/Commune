@@ -38,11 +38,11 @@ saved.expense = (await owner("POST", `/communes/${commune.id}/expenses`, { title
   amountMinor: 4000, shares: [{ userId: alice.id, amountMinor: 4000 }] })).id;
 saved.fund = (await owner("POST", `/communes/${commune.id}/funds`, { name: "Garden fund", targetMinor: 10000 })).id;
 async function note(title, pill, body, facts = [], communeId = commune.id) {
-  const result = await owner("POST", `/communes/${communeId}/notes`, { title, pill, kicker: "Everyone", lede: "", body, facts });
+  const result = await owner("POST", `/communes/${communeId}/notes`, { title, pill, kicker: "Everyone", lede: "", body, facts, requestId: randomUUID() });
   assert.equal(result.status, 201, JSON.stringify(result)); return result.id;
 }
 saved.note = await note("Garden guide", "Other", "Remember the plants");
-saved.operation = (await owner("POST", `/communes/${commune.id}/operations`, { kind: "task", category: "chore", title: "Garden reset", date: "2026-10-02", allDay: true, repeat: "none", status: "open", notes: "", assignee: null })).id;
+saved.operation = (await owner("POST", `/communes/${commune.id}/operations`, { kind: "task", category: "chore", title: "Garden reset", date: "2026-10-02", allDay: true, repeat: "none", notes: "", requestId: randomUUID() })).id;
 saved.recurring = (await owner("POST", `/communes/${commune.id}/recurring`, { title: "Garden maintenance", amountMinor: 1000,
   paidByUserId: alice.id, allocations: [{ userId: alice.id, amountMinor: 1000 }], frequency: "monthly", nextDueOn: "2026-10-02", paused: false })).id;
 saved.template = (await owner("POST", `/communes/${commune.id}/templates`, { name: "Garden halves", method: "Equal",
@@ -84,7 +84,11 @@ assert.ok(limited.hasMore); assert.ok(limited.items.length < limited.total);
 assert.ok(limited.items.filter(item => item.kind === "member").length === 1);
 assert.equal((await owner("POST", `/funds/${saved.fund}/archive`, { archived: true })).status, 200);
 assert.ok(!(await search(owner, "garden")).items.some(item => item.id === saved.fund));
+// A removed note or task is kept for its history but no longer found.
+assert.equal((await owner("DELETE", `/notes/${saved.note}`)).status, 200);
+assert.equal((await owner("DELETE", `/operations/${saved.operation}`)).status, 200);
+assert.ok(!(await search(owner, "garden")).items.some(item => item.id === saved.note || item.id === saved.operation));
 assert.equal((await owner("POST", `/communes/${commune.id}/members/${bob.id}`, { action: "remove" })).status, 200);
 assert.equal((await search(member, "garden", commune.id)).status, 403);
 assert.equal((await search(member, "garden")).total, 0);
-console.log("Search integration passed: 8 record types, exact IDs, scope/limits, literal wildcards, private-note masking, active-membership isolation, authentication and archived records.");
+console.log("Search integration passed: 8 record types, exact IDs, scope/limits, literal wildcards, private-note masking, active-membership isolation, authentication, and archived or removed records.");
