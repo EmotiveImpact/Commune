@@ -300,7 +300,28 @@ function operationArguments(body: Row): Row {
     p_rotation_ids: body.rotationIds ?? null, p_repeat: body.repeat, p_notes: body.notes ?? "" };
 }
 
+// The auth SDK tells other tabs about each sign-in and token refresh by
+// writing the whole session, with its token, email and IP address, to
+// localStorage, where it would outlive the browser session. Other tabs have
+// heard it by the time a request settles, and the SDK never reads it back.
+const AUTH_BROADCAST_KEY = "better-auth.message";
+function forgetAuthBroadcast(): void {
+  try {
+    localStorage.removeItem(AUTH_BROADCAST_KEY);
+  } catch {
+    // Storage is blocked, so nothing was written either.
+  }
+}
+
 export async function neonApi<T>(path: string, init: RequestInit = {}): Promise<T> {
+  try {
+    return await route<T>(path, init);
+  } finally {
+    forgetAuthBroadcast();
+  }
+}
+
+async function route<T>(path: string, init: RequestInit): Promise<T> {
   const method = (init.method ?? "GET").toUpperCase();
   const body = payload(init);
   let response: unknown;

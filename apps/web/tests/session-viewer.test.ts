@@ -25,6 +25,25 @@ describe("the account on screen", () => {
     expect(await neonApi("/auth/me")).toMatchObject({ user: { id: "someone-else" } });
   });
 
+  it("leaves no copy of the session in local storage", async () => {
+    // What the auth SDK writes for other tabs on a sign-in or token refresh.
+    const broadcast = () => localStorage.setItem("better-auth.message",
+      JSON.stringify({ event: "session", data: { trigger: "SIGNED_IN", sessionData: { session: { token: "a-token", ipAddress: "192.0.2.1" } } } }));
+    mocks.getSession.mockImplementation(async () => {
+      broadcast();
+      return { data: { user: { id: "someone-else", emailVerified: true } } };
+    });
+    const { setViewer } = await import("../src/live/session");
+    const { neonApi } = await import("../src/live/neon");
+    await neonApi("/auth/me");
+    expect(localStorage.getItem("better-auth.message")).toBeNull();
+    // Also when the request is refused.
+    setViewer("viewer");
+    await expect(neonApi("/communes")).rejects.toMatchObject({ status: 401 });
+    expect(localStorage.getItem("better-auth.message")).toBeNull();
+    setViewer(null);
+  });
+
   it("is named on every request to the local API", async () => {
     const fetchMock = vi.fn(async () => new Response(JSON.stringify({ communes: [] }), { headers: { "content-type": "application/json" } }));
     vi.stubGlobal("fetch", fetchMock);
