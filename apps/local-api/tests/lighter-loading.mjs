@@ -48,7 +48,7 @@ async function listed(call) {
 }
 const first = await listed(owner);
 assert.deepEqual(Object.keys(first).sort(), ["address", "changeMark", "currency", "destination", "id", "kind",
-  "memberCount", "name", "role", "stayAddress", "stayName"]);
+  "memberCount", "name", "role", "stayAddress", "stayName", "unreadNotices"]);
 assert.deepEqual([first.name, first.role, first.memberCount], [`Loading ${suffix}`, "admin", 2]);
 assert.match(first.changeMark, /^\d{4}-\d{2}-\d{2}:\d+:\d+$/);
 assert.equal((await listed(owner)).changeMark, first.changeMark, "Reading moved the mark");

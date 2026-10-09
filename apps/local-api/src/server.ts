@@ -435,6 +435,14 @@ route("GET", /^\/api\/reminders\/usage$/, async (req, res) => {
   });
 });
 
+// Unread notices from every commune the caller belongs to (0039), read when
+// Notices opens. The commune list carries each commune's count.
+route("GET", /^\/api\/notices\/unread$/, async (req, res) => {
+  const notices = await userAction(req, async (client) => (await client.query(
+    "SELECT public.my_unread_notices() AS notices")).rows[0].notices);
+  send(res, { notices });
+});
+
 route("POST", /^\/api\/communes\/([0-9a-f-]{36})\/expenses$/, async (req, res, match) => {
   const input = await body(req);
   const communeId = uuid(match[1]);

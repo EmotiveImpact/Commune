@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useId, useRef, useState, type CSSProperties } from "react";
 import { NOTE_BODY_HINT, type NoteCard } from "../data/household";
 import { LIMITS } from "../data/limits";
 import { useApp } from "../state";
@@ -28,6 +28,7 @@ import { netBalances } from "../../../../packages/core/src/balances";
 import "./ExpenseEditor.css";
 import { SplitEditor } from "../ui/SplitEditor";
 import { moneyInputError, parseMoneyInput } from "../data/moneyInput";
+import type { Notification, UnreadNotice } from "../live/model";
 
 const NOTE_TYPES = [
   ["wifi", "Wi-Fi"],
@@ -238,51 +239,95 @@ function ledgerNoticeLine(kind: string, amount: string, actor: string): string {
   return `Corrected by ${actor}${amount ? ` · your share is now ${amount}` : ""}`;
 }
 
+/** One notice: what changed, by whom, for the reader, and when. */
+function NoticeRow({ notice, currency, actor, onOpen }: {
+  notice: Notification; currency: string; actor: string; onOpen: () => void;
+}) {
+  const copy = NOTICE_COPY[notice.kind] ?? { pill: "Notice", title: "Update" };
+  const ledger = notice.kind !== "nudge" && notice.kind !== "chase";
+  const amount = notice.amountMinor != null ? formatMoney(notice.amountMinor, currency) : "";
+  const date = new Date(notice.createdAt).toLocaleDateString("en-GB");
+  return (
+    <button className="a-notice" type="button" onClick={onOpen}>
+      <Pill tone={notice.readAt ? undefined : "open"}>{copy.pill}</Pill>
+      <div className="grow">
+        <strong>{notice.readAt ? null : <span className="c-notice-new">New<span className="sr-only">:</span> </span>}{ledger ? notice.title ?? copy.title : copy.title}</strong>
+        <div className="when">
+          {ledger
+            ? `${ledgerNoticeLine(notice.kind, amount, actor)} · ${date}${notice.detail ? ` · ${notice.detail}` : ""}`
+            : `${amount ? `${amount} · ` : ""}${date}`}
+        </div>
+      </div>
+    </button>
+  );
+}
+
+/**
+ * The bell: this commune's notices first, then the unread ones from the
+ * reader's other communes, each under its commune's name. Opening a notice
+ * from another commune switches to that commune.
+ */
 function Notices() {
-  const { go, hub, funds, notifications, markNotificationRead } = useApp();
+  const { go, hub, places, funds, notifications, noticeCounts, markNotificationRead, loadUnreadNotices } = useApp();
   const [error, setError] = useState("");
-  if (!notifications.length) {
-    return (
-      <section className="a-window">
-        <p className="a-window-kicker">Bell</p>
-        <p className="a-window-note">No notices for you in this commune.</p>
-      </section>
-    );
-  }
+  const others = places.filter((place) => place.id !== hub.id && (noticeCounts[place.id] ?? 0) > 0);
+  // Read again whenever another commune's count changes while this is open.
+  const othersKey = others.map((place) => `${place.id}:${noticeCounts[place.id]}`).join(",");
+  const [elsewhere, setElsewhere] = useState<UnreadNotice[] | null>(null);
+  const [elsewhereError, setElsewhereError] = useState("");
+  const [attempt, setAttempt] = useState(0);
+  useEffect(() => {
+    if (!othersKey) return;
+    let live = true;
+    setElsewhereError("");
+    loadUnreadNotices()
+      .then((notices) => { if (live) setElsewhere(notices); })
+      .catch((cause: unknown) => {
+        if (live) setElsewhereError(cause instanceof Error ? cause.message : "Could not load notices from your other communes.");
+      });
+    return () => { live = false; };
+  }, [othersKey, attempt, loadUnreadNotices]);
+  const headingId = useId();
+  const read = (notice: Notification, communeId: string | undefined, open: () => void) => () => void markNotificationRead(notice.id, communeId)
+    .then(open)
+    .catch((cause) => setError(cause instanceof Error ? cause.message : "Could not mark the notice read."));
   return (
     <section className="a-window">
       <p className="a-window-kicker">Bell</p>
       {error ? <p className="a-form-error" role="alert">{error}</p> : null}
-      {notifications.map((notice) => {
-        const copy = NOTICE_COPY[notice.kind] ?? { pill: "Notice", title: "Update" };
-        const actor = hub.members.find((member) => member.userId === notice.senderUserId)?.name ?? "a former member";
-        const ledger = notice.kind !== "nudge" && notice.kind !== "chase";
-        const amount = notice.amountMinor != null ? formatMoney(notice.amountMinor, hub.currency) : "";
-        const date = new Date(notice.createdAt).toLocaleDateString("en-GB");
-        // A pledge notice opens the fund that holds the pledge.
-        const pledge = notice.kind === "pledge-changed" || notice.kind === "pledge-cancelled";
-        const fund = pledge ? funds.find((item) => !item.archivedAt && item.commitments.some((entry) => entry.id === notice.sourceId)) : undefined;
+      <section className="c-notice-group" aria-labelledby={`${headingId}-here`}>
+        <h3 id={`${headingId}-here`}>{hub.name}</h3>
+        {notifications.length ? notifications.map((notice) => {
+          const actor = hub.members.find((member) => member.userId === notice.senderUserId)?.name ?? "a former member";
+          const ledger = notice.kind !== "nudge" && notice.kind !== "chase";
+          // A pledge notice opens the fund that holds the pledge.
+          const pledge = notice.kind === "pledge-changed" || notice.kind === "pledge-cancelled";
+          const fund = pledge ? funds.find((item) => !item.archivedAt && item.commitments.some((entry) => entry.id === notice.sourceId)) : undefined;
+          return <NoticeRow key={notice.id} notice={notice} currency={hub.currency} actor={actor} onOpen={read(notice, undefined, () =>
+            ledger && notice.expenseId ? go("expense", { expense: notice.expenseId })
+              : pledge ? go("funds", fund ? { record: { kind: "fund", id: fund.id } } : undefined)
+                : go(notice.kind === "chase" ? "funds" : "settle"))} />;
+        }) : <p className="a-window-note">No notices for you in this commune.</p>}
+      </section>
+      {others.map((place, index) => {
+        const notices = elsewhere?.filter((notice) => notice.communeId === place.id) ?? [];
         return (
-          <button
-            className="a-notice"
-            type="button"
-            key={notice.id}
-            onClick={() => void markNotificationRead(notice.id)
-              .then(() => ledger && notice.expenseId ? go("expense", { expense: notice.expenseId })
-                : pledge ? go("funds", fund ? { record: { kind: "fund", id: fund.id } } : undefined)
-                  : go(notice.kind === "chase" ? "funds" : "settle"))
-              .catch((cause) => setError(cause instanceof Error ? cause.message : "Could not mark the notice read."))}
-          >
-            <Pill tone={notice.readAt ? undefined : "open"}>{copy.pill}</Pill>
-            <div className="grow">
-              <strong>{notice.readAt ? null : <span className="c-notice-new">New<span className="sr-only">:</span> </span>}{ledger ? notice.title ?? copy.title : copy.title}</strong>
-              <div className="when">
-                {ledger
-                  ? `${ledgerNoticeLine(notice.kind, amount, actor)} · ${date}${notice.detail ? ` · ${notice.detail}` : ""}`
-                  : `${amount ? `${amount} · ` : ""}${date}`}
-              </div>
-            </div>
-          </button>
+          <section className="c-notice-group" aria-labelledby={`${headingId}-${index}`} key={place.id}>
+            <h3 id={`${headingId}-${index}`}>{place.name}</h3>
+            {notices.length ? notices.map((notice) => {
+              const ledger = notice.kind !== "nudge" && notice.kind !== "chase";
+              const pledge = notice.kind === "pledge-changed" || notice.kind === "pledge-cancelled";
+              return <NoticeRow key={notice.id} notice={notice} currency={place.currency} actor={notice.senderName ?? "a former member"}
+                onOpen={read(notice, place.id, () =>
+                  ledger && notice.expenseId ? go("expense", { hub: place.id, expense: notice.expenseId })
+                    : pledge && notice.fundId ? go("funds", { hub: place.id, record: { kind: "fund", id: notice.fundId } })
+                      : go(pledge || notice.kind === "chase" ? "funds" : "settle", { hub: place.id }))} />;
+            }) : elsewhereError ? (
+              <div role="alert"><p className="a-window-note">{elsewhereError}</p>
+                <button className="a-btn ghost" type="button" onClick={() => setAttempt((count) => count + 1)}>Try again</button></div>
+            ) : !elsewhere ? <p className="a-window-note" role="status">Loading notices…</p>
+              : <p className="a-window-note">No unread notices here now.</p>}
+          </section>
         );
       })}
     </section>

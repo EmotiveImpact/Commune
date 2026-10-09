@@ -171,6 +171,7 @@ function communal(row: Row): Commune {
     currency: row.currency as CurrencyCode, role: row.role as Commune["role"], memberCount: minor(row.memberCount),
     address: str(row.address), destination: str(row.destination),
     stayName: str(row.stayName), stayAddress: str(row.stayAddress), changeMark: str(row.changeMark),
+    ...(row.unreadNotices == null ? {} : { unreadNotices: minor(row.unreadNotices) }),
   };
 }
 
@@ -471,6 +472,11 @@ async function route<T>(path: string, init: RequestInit): Promise<T> {
     });
   } else if (path === "/reminders/usage" && method === "GET") {
     response = await reminderUsage();
+  } else if (path === "/notices/unread" && method === "GET") {
+    // Unread notices from every commune the reader belongs to, for Notices.
+    const notices = unwrap(await db().rpc("my_unread_notices"));
+    if (!Array.isArray(notices)) throw new ApiError("Notices could not be verified. Please try again.", 502);
+    response = { notices };
   } else if (path === "/preferences" && method === "GET") {
     // No row yet means the default: reminder emails on.
     const viewer = await requireUser();

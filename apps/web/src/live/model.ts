@@ -34,6 +34,8 @@ export type Commune = {
   stayAddress?: string;
   /** Moves whenever anything in the commune changes; compared with a snapshot's own. */
   changeMark?: string;
+  /** The reader's unread notices in this commune (0039), for the bell across communes. */
+  unreadNotices?: number;
   /** In a snapshot: what the database says keeps the currency as it is (0035). */
   currencyLockedBy?: CurrencyLock[];
 };
@@ -248,6 +250,12 @@ export type Notification = {
   createdAt: string;
   readAt: string | null;
 };
+/**
+ * An unread notice from any of the reader's communes (0039), with what the
+ * reader may not have loaded: the sender's name, and for a pledge notice the
+ * fund that holds the pledge while it is open.
+ */
+export type UnreadNotice = Notification & { senderName?: string | null; fundId?: string | null };
 /** A note's earlier content, as a summary; the content is read on demand. */
 export type NoteRevisionSummary = {
   id: string; version: number; title: string;

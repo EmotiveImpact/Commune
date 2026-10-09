@@ -79,6 +79,7 @@ import {
   type SplitTemplate,
   type Announcement,
   type AnnouncementResult,
+  type UnreadNotice,
 } from "./live/model";
 
 export type Seed = "new";
@@ -310,6 +311,13 @@ export type AppState = {
   acknowledgeAnnouncement: (id: string) => Promise<AnnouncementResult>;
   archiveAnnouncement: (id: string) => Promise<AnnouncementResult>;
   notifications: Notification[];
+  /**
+   * Unread notices in each of the reader's communes, by commune id. Each
+   * comes with the commune list, so the bell counts every commune.
+   */
+  noticeCounts: Record<string, number>;
+  /** Unread notices from every commune the reader belongs to, for Notices. */
+  loadUnreadNotices: () => Promise<UnreadNotice[]>;
   /** Clears this tab, then signs out. Never throws: see signOutUnconfirmed. */
   signOut: () => Promise<void>;
   /** The last sign-out cleared this tab but the server did not confirm it. */
@@ -416,7 +424,8 @@ export type AppState = {
   manageMember: (userId: string, action: "admin" | "member" | "leave" | "remove") => Promise<void>;
   /** requestId stays the same across retries so one decision sends once. */
   sendReminder: (kind: "nudge" | "chase", sourceId: string, requestId: string) => Promise<ReminderResult>;
-  markNotificationRead: (id: string) => Promise<void>;
+  /** communeId: the notice's commune, when it is not the open one. */
+  markNotificationRead: (id: string, communeId?: string) => Promise<void>;
   pageTitle: string;
   pageLede: string;
 };
@@ -1140,6 +1149,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const sentReminders = snapshot?.sentReminders ?? [];
   const announcements = snapshot?.announcements ?? [];
   const notifications = snapshot?.notifications ?? [];
+  // The open commune's count is the snapshot's own until the database sends
+  // counts (0039); every refresh of a commune brings its count up to date.
+  const noticeCounts: Record<string, number> = Object.fromEntries((data?.communes ?? []).map((commune) => [commune.id,
+    commune.unreadNotices ?? (commune.id === activeId ? notifications.filter((notice) => !notice.readAt).length : 0)]));
   const you = {
     id: data?.user.id ?? "",
     name: data?.user.name ?? "",
@@ -1150,11 +1163,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // A normal mutation does not need another sign-in/list/invitations waterfall.
   // Refresh just its commune, and keep confirmed content visible throughout.
-  const refreshRecords = useCallback(async () => {
+  // Usually the open one; reading a notice from another commune refreshes that.
+  const refreshCommune = useCallback(async (communeId: string) => {
     const current = dataRef.current;
-    const commune = current?.communes.find(item => item.id === activeId);
+    const commune = current?.communes.find(item => item.id === communeId);
     if (!current || !commune) return;
-    const cacheKey = `${current.user.id}:${activeId}`;
+    const cacheKey = `${current.user.id}:${communeId}`;
     const revision = (snapshotRevisions.current.get(cacheKey) ?? 0) + 1;
     snapshotRevisions.current.set(cacheKey, revision);
     const sequence = refreshSequence.current;
@@ -1163,23 +1177,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
     try {
       const snapshot = await loadSnapshot(commune);
       const latest = dataRef.current;
-      if (!stillCurrent() || !latest || !latest.communes.some(item => item.id === activeId)) return;
-      if (snapshot.commune.id !== activeId) throw new ApiError("Commune response did not match the request", 502);
-      publishData({ ...latest, communes: latest.communes.map(item => item.id === activeId ? { ...item, ...snapshot.commune } : item), snapshots: { ...latest.snapshots, [activeId]: snapshot } });
-      setSnapshotErrors(errors => { const next = { ...errors }; delete next[activeId]; return next; });
+      if (!stillCurrent() || !latest || !latest.communes.some(item => item.id === communeId)) return;
+      if (snapshot.commune.id !== communeId) throw new ApiError("Commune response did not match the request", 502);
+      publishData({ ...latest, communes: latest.communes.map(item => item.id === communeId ? { ...item, ...snapshot.commune } : item), snapshots: { ...latest.snapshots, [communeId]: snapshot } });
+      setSnapshotErrors(errors => { const next = { ...errors }; delete next[communeId]; return next; });
     } catch (error) {
       const latest = dataRef.current;
       if (!stillCurrent() || !latest) return;
-      setSnapshotErrors(errors => ({ ...errors, [activeId]: error instanceof Error ? error.message : "Could not refresh saved activity" }));
+      setSnapshotErrors(errors => ({ ...errors, [communeId]: error instanceof Error ? error.message : "Could not refresh saved activity" }));
       if (error instanceof ApiError && [401, 403, 404].includes(error.status)) {
         const snapshots = { ...latest.snapshots };
-        delete snapshots[activeId];
+        delete snapshots[communeId];
         publishData({ ...latest, snapshots });
       }
       // The write already committed. Do not invite a duplicate submission when
       // only the following read failed; expose Retry without losing the data.
     }
-  }, [activeId, publishData]);
+  }, [publishData]);
+  const refreshRecords = useCallback(() => refreshCommune(activeId), [activeId, refreshCommune]);
 
   // Older expenses of one commune, a page at a time: whole months (UTC) going
   // back from where the loaded ones start, or all of them when months is left
@@ -1584,10 +1599,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     })]);
     return result;
   }), [mutate, refreshRecords, publishData]);
-  const markNotificationRead = useCallback((id: string) => mutate(async () => {
+  // A notice from another commune changes that commune's notices and count.
+  const markNotificationRead = useCallback((id: string, communeId?: string) => mutate(async () => {
     await post(`/notifications/${encodeURIComponent(id)}/read`, {});
-    await refreshRecords();
-  }), [mutate, refreshRecords]);
+    await refreshCommune(communeId ?? activeId);
+  }), [activeId, mutate, refreshCommune]);
+  const loadUnreadNotices = useCallback(async () =>
+    (await api<{ notices: UnreadNotice[] }>("/notices/unread")).notices, []);
 
   const addNote = useCallback((card: NoteCard & { id: string }, requestId: string) => mutate(async () => {
     if (!activeId) throw new Error("Choose a commune first");
@@ -1776,7 +1794,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     lastExpense, expenses, selectedExpense, createdExpenses: expenses, voidedExpenses,
     expenseRead, retryExpenseRead, expenseHistory, loadEarlierExpenses, loadFullHistory,
     funds, recurringBills, splitTemplates, expenseTemplateId, reminderTargets, reminderUsage, sentReminders, notifications,
-    signOut, signOutUnconfirmed, retrySignOut: confirmSignOut, sessionNotice, go,
+    noticeCounts, loadUnreadNotices, signOut, signOutUnconfirmed, retrySignOut: confirmSignOut, sessionNotice, go,
     changePassword, signOutOtherDevices,
     closeWindow: () => { if (!mutationCount) leaveRecord(); }, watchTypedText, leaveAsked, answerLeave, setMoreOpen,
     setNavMode: (navMode) => saveDevice({ navMode }),
