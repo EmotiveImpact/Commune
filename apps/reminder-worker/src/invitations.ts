@@ -105,6 +105,11 @@ export async function sendInvitationEmail(pool: Pool, actor: string, token: stri
   let payload: Payload;
   try {
     await client.query("BEGIN");
+    // An admin leaving, removed or made a member locks the commune and then
+    // withdraws their invitations, so the sender takes the commune first and
+    // the two wait in turn.
+    await client.query(`SELECT 1 FROM public.communes c JOIN public.commune_invites i ON c.id=i.commune_id
+      WHERE i.token_hash=$1 FOR KEY SHARE OF c`, [tokenHash]);
     const { rows } = await client.query(`
       SELECT i.*, c.name AS commune_name, u.name AS inviter_name FROM public.commune_invites i
       JOIN public.communes c ON c.id=i.commune_id
