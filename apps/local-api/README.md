@@ -18,7 +18,7 @@ browser code sends same-origin `/api` requests. Non-2xx errors are
 | POST | `/api/auth/logout` | `{}` | `{ok:true}` + cleared cookie |
 | GET | `/api/auth/me` | public | `{user}` or `{user:null}` |
 | GET | `/api/communes` | | `{communes:[{id,name,kind,currency,role,memberCount,address,destination,stayName,stayAddress,changeMark,unreadNotices}]}`; a commune's `changeMark` moves whenever anything in it changes; `unreadNotices` is the reader's unread notices there (0039) |
-| GET | `/api/search?q=...&commune=...&limit=8` | session required; optional commune UUID; 2–80 chars, 1–25 results per type | `{query,items,total,hasMore}`; only active memberships, safe note excerpts |
+| GET | `/api/search?q=...&commune=...&limit=8` | session required; optional commune UUID; 2–80 chars, 1–25 results per type | `{query,items,total,hasMore}`; only active memberships, safe note excerpts; since 0040 each item also carries `label` and `date` (YYYY-MM-DD or null), and `meta` is the older text |
 | POST | `/api/communes` | `{name,kind,currency,address?,destination?,stayName?,stayAddress?}`; one account creates at most 10 communes an hour, 30 a day and 100 in all (409) | `{id}` |
 | PATCH | `/api/communes/:id` | `{name,kind,currency,address?,destination?,stayName?,stayAddress?}` admin; the currency is fixed (400) once the commune has an expense, fund, recurring bill or exact split template, voided or archived ones included | `{ok:true}` |
 | GET | `/api/communes/:id/snapshot` | membership checked; outsiders get 404; `?detail=summary` leaves out what only the commune's own screens show, keeping a share's pending payment reports (0039) | `{commune,members,expenses,funds,notes,operations,notifications,reminderTargets,recurringBills,splitTemplates,activityEvents,expenseHistory,changeMark}`; `expenses` are the open ones, those created or changed since the start of last month (UTC) and the five newest that are not voided; `expenseHistory` is `{since,olderCount,olderVoidedCount}` |
@@ -134,6 +134,9 @@ the signed-in account and requests without the header are still served.
 `lighter-loading.mjs` needs 0036 and covers change marks in the list and the
 snapshot, the overview summary, pages of older expenses, named expense records
 and the limit on creating communes. It refuses port 3002.
+
+`search-dates.mjs` needs 0040 and covers the `label` and `date` of recurring
+bills, paused bills and tasks beside the older `meta`. It refuses port 3002.
 
 `notices-and-activity.mjs` needs 0039 and covers each commune's unread count in
 the list and the snapshot, the unread notices of every commune, the record type

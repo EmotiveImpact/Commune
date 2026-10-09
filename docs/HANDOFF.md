@@ -103,6 +103,19 @@ for a handoff, not a production release.
   confirmation, and as a notice once a fifth or less is left; it is no longer
   in the sidebar. Text over commune photos has a darker shade, measured by
   `apps/web/tests/cover-contrast.test.ts` against a white stand-in.
+- Also from 9 October, for review: one way to write money and dates, and a
+  lighter app state, from the same review. `formatMoney` and `formatDay` in
+  `packages/core/src/format.ts` write every amount ("$32.10", "£12.50") and
+  date ("9 Oct", "9 Oct 2025" in another year); the reminder worker keeps a
+  copy in `apps/reminder-worker/src/money.ts`, checked against it by
+  `apps/web/tests/formatting.test.ts`. `packages/core` is imported as
+  `@commune/core` and its tests run with the web tests. The quick finder's
+  dates come from `label` and `date` (migration 0040). App state is a store:
+  `useApp()` re-renders a component only when a field it read changes, each
+  commune's view is built once per snapshot (`readyPlace`), and filter and
+  search text live in their screens. `apps/web/tests/render-counts.test.tsx`
+  guards how much re-renders; time a year's snapshot with
+  `cd apps/web && node node_modules/vitest/vitest.mjs bench --run tests/derive-snapshot.bench.ts`.
 - The website is `web/` (the editorial homepage); the earlier v2 site is in
   `web-backup/`. Launch names `website` (3004) and `website-backup` (3003).
 - No push, deployment, hosted migration or provider change has been made. Do
@@ -169,7 +182,7 @@ snapshot loads for all six active memberships. No account was created in it
 and no record of the existing households was changed. To go back:
 `pg_restore --clean` that dump into the same database. Nothing here records
 0024 or later being applied to it: back it up, rehearse on a clone and apply
-0024 to 0039 in order before running the current API against it.
+0024 to 0040 in order before running the current API against it.
 
 ### Dependencies
 
@@ -227,7 +240,7 @@ no further copy-cleanup pass is needed for the handoff.
 Read [the product-depth roadmap](PRODUCT-DEPTH-ROADMAP-2026-10-02.md) and the
 Remaining section of [money lifecycle](MONEY-LIFECYCLE-2026-10-02.md).
 
-1. **Hosted parity.** Migrations 0013 to 0039, schema-cache refresh, the
+1. **Hosted parity.** Migrations 0013 to 0040, schema-cache refresh, the
    matching web client and sender, auth, invitations and real email delivery
    are all unverified on Neon. Apply migrations before deploying the client.
    Measure cold/warm/idle loading with separate accounts. Do not declare

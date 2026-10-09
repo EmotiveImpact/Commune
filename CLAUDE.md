@@ -16,10 +16,10 @@ Commune is a shared communal expense management and group management platform.
 The application was migrated. The stack below is what runs today.
 
 - **Web (active app):** `apps/web`. React 19 + Vite 7 + TypeScript + wouter, plain CSS with shared tokens, tested with Vitest. pnpm. Vercel serves the production build (`apps/web/vercel.json`).
-- **Hosted data and auth:** Neon (Managed Auth, Postgres, Data API). Schema and functions live in `infra/neon/migrations`: 39 migrations, 0001 to 0039, applied in numeric order. `infra/neon/schema.sql` is the schema they produce, with every function in full. Production builds use `apps/web/src/live/neon.ts`.
+- **Hosted data and auth:** Neon (Managed Auth, Postgres, Data API). Schema and functions live in `infra/neon/migrations`: 40 migrations, 0001 to 0040, applied in numeric order. `infra/neon/schema.sql` is the schema they produce, with every function in full. Production builds use `apps/web/src/live/neon.ts`.
 - **Local development backend:** `apps/local-api`, a loopback-only PostgreSQL API on port 3002 that calls the same database functions. Vite proxies `/api` to it. Its database is set up as `infra/local/README.md` describes. It is never deployed.
 - **Email:** `apps/reminder-worker`, a Neon Function that sends reminder and invitation emails from the outbox through Resend, with one-click unsubscribe and a bounce webhook.
-- **Shared logic:** `packages/core` (split arithmetic, balances and money input), imported by relative path.
+- **Shared logic:** `packages/core` (split arithmetic, balances, reading typed amounts, and writing money and dates), imported as `@commune/core` through a path in `apps/web/tsconfig.json` and an alias in `apps/web/vite.config.ts`. It has no `package.json`. Amounts and day-and-month dates are written by its `formatMoney` and `formatDay`; `apps/web/tests/formatting.test.ts` fails if app code uses `Intl.NumberFormat`, `toLocaleString` or `toLocaleDateString`.
 - **Mobile:** `apps/mobile-v2` (Expo). Separate work. It does not use Commune's database or share code with `apps/web`.
 - **Website:** `web/` is the marketing website: the editorial homepage and its company pages (moved from `apps/landing-monzo-study` on 5 October 2026). The previous v2 site is kept in `web-backup/`. Neither is in the pnpm workspace. Separate work from the app.
 
@@ -61,7 +61,7 @@ Earlier versions used Mantine 9, TanStack Router/Query, Zustand, Zod, Turborepo 
 ## Tests and CI
 `.github/workflows/ci.yml` runs on every pull request and every push to main. Nothing in it deploys or reaches Neon, Vercel or Resend, and each step is a command you can run locally:
 
-- **Web:** in `apps/web`, `pnpm run typecheck`, `pnpm test` and `pnpm run build`, or the tools directly (`node node_modules/vitest/vitest.mjs run`). Tests run in jsdom by default. A test file that needs no browser (nothing rendered, no `localStorage`) starts with `// @vitest-environment node` and runs in Node, which is faster. `pnpm run typecheck` in `apps/local-api` and `apps/reminder-worker` checks those two.
+- **Web:** in `apps/web`, `pnpm run typecheck`, `pnpm test` and `pnpm run build`, or the tools directly (`node node_modules/vitest/vitest.mjs run`). Tests run in jsdom by default. A test file that needs no browser (nothing rendered, no `localStorage`) starts with `// @vitest-environment node` and runs in Node, which is faster. `packages/core/tests` run in the same command. `pnpm run typecheck` in `apps/local-api` and `apps/reminder-worker` checks those two.
 - **Database:** `infra/neon/tests/run-local.sh` builds databases from the migrations on a loopback PostgreSQL 16 server (PG* variables; its header explains) and runs each test in `infra/neon/tests` on its own copy. `infra/neon/dump-schema.sh --check` fails while `infra/neon/schema.sql` differs from what the migrations produce; without `--check` it rewrites the file.
 - **Local API:** the HTTP tests in `apps/local-api/tests` run against an API started on another port with a fresh database (`run-local.sh --create <name> local`); they refuse port 3002.
 - **Worker:** `node --test tests/email.mjs tests/unsubscribe.mjs` in `apps/reminder-worker`, then its database tests on stub databases, as the CI step shows.

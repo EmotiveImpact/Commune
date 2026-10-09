@@ -44,7 +44,8 @@ files in order using a database owner connection:
 38. `infra/neon/migrations/0037_task_command_lock_order.sql`
 39. `infra/neon/migrations/0038_invite_hint_and_client_reports.sql`
 40. `infra/neon/migrations/0039_notices_and_activity.sql`
-41. `infra/local/after-core.sql`
+41. `infra/neon/migrations/0040_search_dates.sql`
+42. `infra/local/after-core.sql`
 
 `after-core.sql` is idempotent. Re-run it after applying a newer migration to
 an existing local database so the local-only reminder helpers stay current.
