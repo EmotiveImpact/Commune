@@ -637,10 +637,14 @@ BEGIN
   IF (SELECT array_agg(e->>'id') FROM jsonb_array_elements(v_summary->'expenses') e)
        <> (SELECT array_agg(e->>'id') FROM jsonb_array_elements(v_full->'expenses') e)
      OR EXISTS (SELECT 1 FROM jsonb_array_elements(v_summary->'expenses') e, jsonb_array_elements(e->'shares') s
-       WHERE e->'revisions' <> '[]'::jsonb OR s->'receipts' <> '[]'::jsonb OR s->'paymentReports' <> '[]'::jsonb)
+       WHERE e->'revisions' <> '[]'::jsonb OR s->'receipts' <> '[]'::jsonb
+         OR EXISTS (SELECT 1 FROM jsonb_array_elements(s->'paymentReports') r WHERE r->>'status' <> 'pending'))
      OR NOT EXISTS (SELECT 1 FROM jsonb_array_elements(v_full->'expenses') e, jsonb_array_elements(e->'shares') s
-       WHERE s->'receipts' <> '[]'::jsonb) THEN
-    RAISE EXCEPTION 'Summary expenses should keep their shares without repayment, report or correction history';
+       WHERE s->'receipts' <> '[]'::jsonb)
+     -- A pending report is for the bill payer to answer, so Home lists it (0039).
+     OR NOT EXISTS (SELECT 1 FROM jsonb_array_elements(v_summary->'expenses') e, jsonb_array_elements(e->'shares') s
+       WHERE s->>'id' = current_setting('test.report_share') AND s->'paymentReports'->0->>'status' = 'pending') THEN
+    RAISE EXCEPTION 'Summary expenses should keep their shares and pending reports without repayment, answered report or correction history';
   END IF;
   IF v_summary->'notes'->0->>'body' <> '' OR v_summary->'notes'->0->>'title' <> 'Wifi'
      OR v_summary->'operations'->0->'history' <> '[]'::jsonb OR v_summary->'operations'->0->>'title' <> 'Bins'

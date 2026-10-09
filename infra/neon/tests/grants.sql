@@ -40,9 +40,9 @@ BEGIN
     RAISE EXCEPTION 'Anonymous workflow execution grant';
   END IF;
 
-  -- Money-lifecycle, occurrence, announcement, note and task commands (0015-0027) and the
-  -- loading reads (0036): members only, never anonymous, and the private helpers are not
-  -- callable by any client role.
+  -- Money-lifecycle, occurrence, announcement, note and task commands (0015-0027), the
+  -- loading reads (0036) and the notices across communes (0039): members only, never
+  -- anonymous, and the private helpers are not callable by any client role.
   FOREACH table_name IN ARRAY ARRAY[
     'public.send_reminder_command(text,uuid,uuid)',
     'public.record_share_receipt(uuid,bigint,date,text,uuid)',
@@ -69,7 +69,8 @@ BEGIN
     'public.my_communes()',
     'public.commune_summary(uuid)',
     'public.commune_expense_page(uuid,date,integer)',
-    'public.commune_expense_records(uuid,uuid[])'
+    'public.commune_expense_records(uuid,uuid[])',
+    'public.my_unread_notices()'
   ] LOOP
     IF has_function_privilege('anonymous', table_name, 'EXECUTE')
       OR has_function_privilege('public', table_name, 'EXECUTE')
@@ -115,7 +116,9 @@ BEGIN
     'commune_private.expense_window_start()',
     'commune_private.snapshot_expense_ids(uuid,timestamptz)',
     'commune_private.expense_records(uuid[])',
-    'commune_private.expense_history(uuid)'
+    'commune_private.expense_history(uuid)',
+    'commune_private.unread_notice_count(uuid,text)',
+    'commune_private.activity_record_type(uuid)'
   ] LOOP
     IF has_function_privilege('authenticated', table_name, 'EXECUTE')
       OR has_function_privilege('anonymous', table_name, 'EXECUTE') THEN
