@@ -2250,6 +2250,12 @@ button.a-kpi {
     padding-block: 6px;
     margin-block: -6px;
   }
+
+  /* If the chips run under the filter field or the main button on a narrow
+     screen, those stay on top, as before. */
+  .a-toolbar:has(> .c-record-filter) > :is(.c-record-filter, .a-btn) {
+    position: relative;
+  }
 }
 
 .a-page-head {
