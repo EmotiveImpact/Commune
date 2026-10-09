@@ -121,6 +121,10 @@ install was run.
 - Avoid `pnpm run` and `pnpm install` here for now. pnpm 11 checks the whole
   workspace first, the untracked apps are not in the lockfile, and the last
   attempt ran out of disk.
+- CI: `.github/workflows/ci.yml` (web, database, secrets) runs on pull
+  requests and pushes to main. pnpm is pinned to 10.34.6 through
+  `packageManager`; pnpm 11 hands over to it here. vite is 7.3.7; reinstall
+  `.deps-web` to pick it up.
 - A proper `pnpm install` needs a decision about the untracked workspace apps
   and several GB free. **Free disk fell to about 1.6 GB during this session**
   (from 4.4 GB); this work accounts for under 200 MB of that.

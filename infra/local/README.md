@@ -61,12 +61,14 @@ suppressed locally, so no email is claimed or sent. Contributions and settled
 shares are confirmations recorded by the relevant admin/payer, not payment
 transfers; Stripe is not yet connected.
 
-Invitation emails now have a separate explicit send action. The local server
-returns an honest unavailable message unless server-only `RESEND_API_KEY`,
-`RESEND_FROM`, and `APP_URL` are configured. It still creates a real copyable
-invite link. Never point `APP_URL` at production while testing local invites:
-the email's HTTPS origin must serve this same database. Default local setup
-sends no email. Delivery service tests use a mocked provider and isolated DB.
+Invitation emails now have a separate explicit send action. The local API
+emails invitations only when `LOCAL_API_SEND_EMAIL=yes` is set as well as
+server-only `RESEND_API_KEY`, `RESEND_FROM` and `APP_URL`, and says at start-up
+which way it is set. Otherwise it returns an honest unavailable message and
+still creates a real invite link to copy and share. Never point `APP_URL` at
+production while testing local invites: the email's HTTPS origin must serve
+this same database. Default local setup sends no email. Delivery service tests
+use a mocked provider and isolated DB.
 
 ## 2 October local workflow verification
 
