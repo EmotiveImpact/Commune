@@ -81,8 +81,9 @@ export function RecordReceiptDialog({ target, onClose, onRecorded }: {
     } catch (cause) {
       const failure = commandFailure(cause, "Could not record the repayment.");
       if (!failure.rejected) setUncertain(true);
+      // Once an attempt may have saved, a later refusal does not mean nothing was.
       setError(!failure.rejected ? UNCERTAIN_RETRY_SAFE
-        : /already used for a different/i.test(failure.message)
+        : uncertain || /already used for a different/i.test(failure.message)
           ? "An earlier attempt may already have been recorded. Close this and check the repayment history before trying again."
           : `${failure.message.replace(/\.$/, "")}. Nothing was recorded.`);
     } finally {
@@ -153,7 +154,11 @@ export function ReportPaymentDialog({ target, onClose, onReported }: {
     } catch (cause) {
       const failure = commandFailure(cause, "Could not report the payment.");
       if (!failure.rejected) setUncertain(true);
-      setError(!failure.rejected ? UNCERTAIN_RETRY_SAFE : `${failure.message.replace(/\.$/, "")}. Nothing was reported.`);
+      // Once an attempt may have saved, a later refusal does not mean nothing was.
+      setError(!failure.rejected ? UNCERTAIN_RETRY_SAFE
+        : uncertain || /already used for a different/i.test(failure.message)
+          ? "An earlier attempt may already have been reported. Close this and check the expense before trying again."
+          : `${failure.message.replace(/\.$/, "")}. Nothing was reported.`);
     } finally {
       setPending(false);
     }

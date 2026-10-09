@@ -297,6 +297,20 @@ describe("partial repayment receipts and reversals", () => {
     expect(within(dialog).getByRole("alert").textContent).toBe("Only £3.00 is still outstanding on this share. Nothing was recorded.");
   });
 
+  it("never says nothing was recorded once an earlier attempt may have been", async () => {
+    vi.mocked(post).mockImplementationOnce(async () => { throw new TypeError("Failed to fetch"); })
+      .mockImplementation(async () => { throw new ApiError("Only £3.00 is still outstanding on this share", 409); });
+    mount("/settle");
+    fireEvent.click(await screen.findByRole("button", { name: "Confirm received" }));
+    const dialog = screen.getByRole("dialog", { name: "Record a repayment from Housemate" });
+    await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Record £12.00 received" })); });
+    expect(within(dialog).getByRole("alert").textContent).toContain("Trying again will not record it twice.");
+    // The retry is refused: perhaps because the first attempt went through.
+    await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Record £12.00 received" })); });
+    expect(within(dialog).getByRole("alert").textContent)
+      .toBe("An earlier attempt may already have been recorded. Close this and check the repayment history before trying again.");
+  });
+
   it("shows the same part-paid balance in the expense, Settle and Hub", async () => {
     current.expenses = [partPaid()];
     mount("/settle");
@@ -419,6 +433,21 @@ describe("I’ve sent it: a claim the bill payer answers", () => {
     expect(within(owe).queryByRole("button", { name: "I’ve sent it" })).toBeNull();
     await act(async () => { fireEvent.click(within(owe).getByRole("button", { name: "Withdraw" })); });
     expect(reportPosts().at(-1)?.[0]).toBe("/payment-reports/report-1/withdraw");
+  });
+
+  it("never says nothing was reported once an earlier attempt may have been", async () => {
+    current.expenses = [debt()];
+    vi.mocked(post).mockImplementationOnce(async () => { throw new TypeError("Failed to fetch"); })
+      .mockImplementation(async () => { throw new ApiError("Housemate has already been told about this payment", 409); });
+    mount("/settle");
+    fireEvent.click(await screen.findByRole("button", { name: "I’ve sent it" }));
+    const dialog = screen.getByRole("dialog", { name: "Tell Housemate you’ve paid" });
+    await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Tell Housemate" })); });
+    expect(within(dialog).getByRole("alert").textContent).toContain("Trying again will not record it twice.");
+    await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Tell Housemate" })); });
+    expect(reportPosts()).toHaveLength(2);
+    expect(within(dialog).getByRole("alert").textContent)
+      .toBe("An earlier attempt may already have been reported. Close this and check the expense before trying again.");
   });
 
   it("refuses card numbers in the reference before sending", async () => {
