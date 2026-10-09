@@ -582,6 +582,21 @@ describe("asking before typed text is thrown away", () => {
 });
 
 describe("structure and smaller fixes", () => {
+  it("keeps the note reader's details a valid description list", async () => {
+    current.notes = [{ id: "note-1", title: "Wi-Fi", pill: "Wi-Fi", kicker: "Everyone", lede: "", body: "", facts: [["Network", "Commune5G"], ["Password", "kept-in-a-drawer"]] }];
+    mount("/notes");
+    fireEvent.click(await screen.findByRole("button", { name: /^Wi-Fi/ }));
+    const list = document.querySelector("dl.note-details");
+    expect(list?.children.length).toBe(2);
+    for (const group of [...(list?.children ?? [])]) {
+      expect(group.tagName).toBe("DIV");
+      expect([...group.children].map((child) => child.tagName).every((tag) => tag === "DT" || tag === "DD")).toBe(true);
+    }
+    // The buttons and the note under a secret belong to its description.
+    expect(screen.getByRole("button", { name: "Reveal password" }).closest("dd")).not.toBeNull();
+    expect(screen.getByText("Only reveal when you need it.").closest("dd")).not.toBeNull();
+  });
+
   it("keeps the Hub's task box in a label, so the larger touch area works", async () => {
     current.operations = [{ id: "task-1", hubId: commune.id, kind: "task", category: "chore", title: "Bins", date: todayIso(), allDay: true, assignee: user.name, assigneeId: user.id, repeat: "none", status: "open", notes: "" }];
     mount("/hub");

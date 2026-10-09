@@ -365,13 +365,13 @@ function NoteFact({ label, value }: { label: string; value: string }) {
       setError("Could not copy. Select and copy the text instead.");
     }
   }
+  // A list group holds only its term and descriptions, so the buttons and
+  // the notes under them sit in descriptions of their own.
   return (
     <div className="note-fact">
-      <div className="note-fact-text">
-        <dt>{label}</dt>
-        <dd>{secret && !revealed ? "••••••••••" : value}</dd>
-      </div>
-      <div className="note-fact-actions">
+      <dt>{label}</dt>
+      <dd className="note-fact-value">{secret && !revealed ? "••••••••••" : value}</dd>
+      <dd className="note-fact-actions">
         {secret ? (
           <button
             className="note-icon-button"
@@ -389,10 +389,14 @@ function NoteFact({ label, value }: { label: string; value: string }) {
         >
           <Copy size={19} />
         </button>
-      </div>
-      {secret ? <small>Only reveal when you need it.</small> : null}
-      {copied ? <small role="status">{label} copied.</small> : null}
-      {error ? <small role="alert">{error}</small> : null}
+      </dd>
+      {secret || copied || error ? (
+        <dd className="note-fact-note">
+          {secret ? <small>Only reveal when you need it.</small> : null}
+          {copied ? <small role="status">{label} copied.</small> : null}
+          {error ? <small role="alert">{error}</small> : null}
+        </dd>
+      ) : null}
     </div>
   );
 }
