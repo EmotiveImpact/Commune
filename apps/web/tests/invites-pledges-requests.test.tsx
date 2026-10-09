@@ -350,19 +350,17 @@ describe("who sent each invitation", () => {
     expect(history.textContent).toContain("older@example.test · member · accepted");
     expect(history.textContent).toContain("sent by a former member");
 
-    const housemate = document.getElementById("search-record-member-user-2")!;
-    const ask = (button: string, title: string) => {
-      fireEvent.click(within(housemate).getByRole("button", { name: button }));
+    const ask = (userId: string, button: string, title: string) => {
+      fireEvent.click(within(document.getElementById(`search-record-member-${userId}`)!).getByRole("button", { name: button }));
       const dialog = screen.getByRole("dialog", { name: title });
       const text = dialog.textContent;
       fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
       return text;
     };
-    expect(ask("Make member", "Make Housemate a member?")).toContain("Their open invitation will be withdrawn.");
-    expect(ask("Remove", "Remove Housemate?")).toContain("Their open invitation will be withdrawn.");
-    fireEvent.click(screen.getByRole("button", { name: "Leave" }));
-    const leave = screen.getByRole("dialog", { name: "Leave Our home?" });
-    expect(leave.textContent).toContain("Your open invitation will be withdrawn.");
+    expect(ask("user-2", "Make member", "Make Housemate a member?")).toContain("Their open invitation will be withdrawn.");
+    expect(ask("user-2", "Remove", "Remove Housemate?")).toContain("Their open invitation will be withdrawn.");
+    expect(ask(user.id, "Make member", "Make Test Person a member?")).toContain("Your open invitation will be withdrawn.");
+    expect(ask(user.id, "Leave", "Leave Our home?")).toContain("Your open invitation will be withdrawn.");
     expect(post).not.toHaveBeenCalled();
   });
 });

@@ -339,8 +339,8 @@ export function MembersScreen() {
           {action.action !== "admin" && pendingSentBy(action.userId) > 0 && (
             <p className="c-form-help">
               {pendingSentBy(action.userId) === 1
-                ? `${action.action === "leave" ? "Your" : "Their"} open invitation will be withdrawn.`
-                : `${action.action === "leave" ? "Your" : "Their"} ${pendingSentBy(action.userId)} open invitations will be withdrawn.`}
+                ? `${action.userId === session?.userId ? "Your" : "Their"} open invitation will be withdrawn.`
+                : `${action.userId === session?.userId ? "Your" : "Their"} ${pendingSentBy(action.userId)} open invitations will be withdrawn.`}
             </p>
           )}
           <Feedback error={error} />
