@@ -3,6 +3,7 @@ import { Link } from "wouter";
 import { Icon } from "../ui/Icon";
 import { Avatar, Switch } from "../ui/widgets";
 import { ImagePick } from "../ui/photos";
+import { CoverImage, coverToneClass } from "../ui/CoverImage";
 import { useApp } from "../state";
 import { cx } from "../ui/cx";
 import { LIMITS } from "../data/limits";
@@ -292,7 +293,9 @@ export function CommuneSettingsScreen() {
     <div className="a-set a-commune-set">
       <aside className="a-set-left">
         <div className="a-set-card">
-          <div className="a-commune-photo-preview" style={{ backgroundImage: `url("${hub.photo}")` }} role="img" aria-label={`${hub.name} cover photo`} />
+          <div className={cx("a-commune-photo-preview", coverToneClass(hub))} role="img" aria-label={`${hub.name} cover photo`}>
+            <CoverImage hub={hub} placement="preview" />
+          </div>
           <h2>{hub.name}</h2>
           <p className="a-set-plan-lede">{hub.type} · {hub.members.length} {hub.members.length === 1 ? "person" : "people"}</p>
           <ImagePick

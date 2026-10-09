@@ -4,6 +4,7 @@ import { useApp } from "../state";
 import { Avatar } from "../ui/widgets";
 import { Icon } from "../ui/Icon";
 import { CalendarDate } from "../ui/CalendarDate";
+import { CoverImage, coverToneClass } from "../ui/CoverImage";
 import { isNotePinned, noteCategory, notePreview } from "../data/notePresentation";
 import { addDays, dateFromIso, todayIso } from "../data/operations";
 import type { Hub, RouteId } from "../data/household";
@@ -175,8 +176,8 @@ export function HubScreen() {
   const attentionCount = outstanding.length + yours.length + yourPledges.length + toConfirm.length;
   const canInvite = hub.role === "admin";
   return <div className="c-hub">
-    <section className={`c-hub-identity${hub.photo ? " has-photo" : ""}`} aria-label="Commune identity">
-      {hub.photo && <img className="c-hub-cover" src={hub.photo} alt="" />}
+    <section className={`c-hub-identity${hub.photo ? ` has-photo ${coverToneClass(hub)}` : ""}`} aria-label="Commune identity">
+      {hub.photo && <CoverImage className="c-hub-cover" hub={hub} placement="hero" />}
       <div className="c-hub-identity-copy"><span className="c-hub-type">{hub.type}</span>
         <h2>{hub.name}</h2>
         <HubLocation hub={hub} />

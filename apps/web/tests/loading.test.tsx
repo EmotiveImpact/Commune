@@ -9,6 +9,7 @@ import type { Commune, Snapshot } from "../src/live/model";
 import { hubFromSnapshot } from "../src/live/model";
 import { todayIso, type OperationItem } from "../src/data/operations";
 import { HUBS } from "../src/data/household";
+import { coverSource } from "../src/data/covers";
 import { UNCERTAIN_RETRY_SAFE } from "../src/data/commands";
 
 vi.mock("../src/live/api", async (importOriginal) => ({
@@ -127,7 +128,7 @@ describe("commune loading", () => {
     await screen.findByRole("heading", { name: commune.name });
     expect(screen.getByRole("region", { name: "Pinned notes" }).textContent).toContain(note.title);
     expect(screen.getByRole("checkbox", { name: "Mark Take recycling out done" })).toBeTruthy();
-    expect(document.querySelector(".c-hub-cover")?.getAttribute("src")).toBe(HUBS.park.photo);
+    expect(document.querySelector(".c-hub-cover")?.getAttribute("src")).toBe(coverSource({ type: "Household", photo: HUBS.park.photo }, "hero").src);
     expect(document.querySelector(".c-hub")?.textContent).not.toContain("↗");
     expect(within(screen.getByRole("region", { name: "Your balance" })).getByRole("button", { name: "Add expense" })).toBeTruthy();
     expect(within(screen.getByRole("region", { name: "Your balance" })).getByRole("button", { name: "View settlement" })).toBeTruthy();

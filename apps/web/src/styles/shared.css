@@ -18,6 +18,10 @@
   --lilac: #e8e1ef;
   --gold: #f1e5bf;
   --coral: #eaa681;
+  /* Each commune type's tone behind its cover photo (see .c-cover-* below). */
+  --cover-household: #3d5a4c;
+  --cover-workspace: #3f4b5a;
+  --cover-trip: #6a4b3c;
   --border: rgba(23, 27, 36, 0.08);
   --border-strong: rgba(23, 27, 36, 0.14);
   --shadow-sm: 0 1px 3px rgba(23, 27, 36, 0.06), 0 1px 2px rgba(23, 27, 36, 0.04);
@@ -125,6 +129,20 @@ img {
   max-width: none;
   object-fit: cover;
   border-radius: inherit;
+}
+
+/* Commune covers (ui/CoverImage.tsx). The container takes its type's tone,
+   which shows while the photo loads and stays if the photo cannot load. */
+.c-cover-household { --cover-tone: var(--cover-household); }
+.c-cover-workspace { --cover-tone: var(--cover-workspace); }
+.c-cover-trip { --cover-tone: var(--cover-trip); }
+
+.c-cover-photo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .avatar-stack {

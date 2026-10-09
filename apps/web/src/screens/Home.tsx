@@ -2,16 +2,14 @@ import type { ReactNode } from "react";
 import { useApp } from "../state";
 import { Avatar, Pill } from "../ui/widgets";
 import { CalendarDate } from "../ui/CalendarDate";
-import { heroClass } from "../data/household";
 import type { LiveHub } from "../live/model";
 import { cx } from "../ui/cx";
+import { CoverImage, coverToneClass } from "../ui/CoverImage";
 
-function PhotoFace({ photo, focus, className, children }: { photo: string; focus?: boolean; className?: string; children: ReactNode }) {
+function PhotoFace({ hub, focus, children }: { hub: LiveHub; focus?: boolean; children: ReactNode }) {
   return (
-    <div
-      className={cx(focus ? "a-focus-hero" : "a-place-hero", photo && "has-photo", className)}
-      style={photo ? { ["--place-photo" as string]: `url("${photo}")` } : undefined}
-    >
+    <div className={cx(focus ? "a-focus-hero" : "a-place-hero", coverToneClass(hub))}>
+      <CoverImage hub={hub} placement={focus ? "featured" : "card"} />
       {children}
     </div>
   );
@@ -25,7 +23,7 @@ function PlaceCard({ hub, focus = false }: { hub: LiveHub; focus?: boolean }) {
   const memberCount = ready ? hub.members.length : hub.memberCount;
   return (
     <button className={cx("a-place", focus && "a-focus-lead")} type="button" onClick={() => go("hub", { hub: hub.id })}>
-      <PhotoFace photo={hub.photo} focus={focus} className={heroClass(hub)}>
+      <PhotoFace hub={hub} focus={focus}>
         <span className="type">{hub.type}{memberCount == null ? "" : ` · ${memberCount} ${memberCount === 1 ? "person" : "people"}`}</span>
         {focus ? <h2>{hub.name}</h2> : <h3>{hub.name}</h3>}
         {(hub.type === "Trip" ? hub.destination : hub.address) ? <p className="a-place-location">{hub.type === "Trip" ? hub.destination : hub.address}</p> : null}

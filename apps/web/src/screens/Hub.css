@@ -43,7 +43,8 @@
 .c-hub :is(button,summary) { -webkit-tap-highlight-color: transparent; }
 
 .c-hub-identity { position: relative; isolation: isolate; min-height: 300px; padding: 80px 29px 27px; display: flex; align-items: flex-end; border-radius: var(--radius-surface); overflow: hidden; background: var(--hub-sage); }
-.c-hub-identity.has-photo { color: #fff; background: #1a1e2b; }
+/* The commune type's tone shows until the cover arrives, or if it cannot. */
+.c-hub-identity.has-photo { color: #fff; background: var(--cover-tone, #1a1e2b); }
 .c-hub-cover { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center 60%; z-index: -2; }
 .c-hub-identity.has-photo::after { content: ''; position: absolute; inset: 0; background: linear-gradient(0deg,#14251acc,transparent 90%); z-index: -1; }
 .c-hub-identity-copy { min-width: 0; width: 100%; text-shadow: 0 1px 5px #0004; }
