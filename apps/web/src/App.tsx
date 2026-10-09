@@ -155,9 +155,7 @@ function NotFoundPage() {
       <div className="commune-auth-panel">
         <h2>This page isn’t here.</h2>
         <p className="commune-auth-lede">The link may be mistyped, or the page may have moved.</p>
-        <div className="a-field-row">
-          <Link href={keepSearch("/")} className="a-btn">Go to Home</Link>
-        </div>
+        <Link href={keepSearch("/")} className="commune-auth-btn">Go to Home</Link>
       </div>
     </AuthLayout>
   );
