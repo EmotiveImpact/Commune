@@ -263,7 +263,7 @@ export function TemplatesScreen() {
                     disabled={missing || pending}
                     onClick={() => go("add-expense", { template: template.id })}
                   >
-                    Use split
+                    Use split{" "}<span className="c-visually-hidden">{template.name}</span>
                   </Button>
                 )}
                 {allowed && (
@@ -276,7 +276,7 @@ export function TemplatesScreen() {
                         setEditor(template);
                       }}
                     >
-                      {archived ? "Edit & restore" : "Edit"}
+                      {archived ? "Edit & restore" : "Edit"}{" "}<span className="c-visually-hidden">{template.name}</span>
                     </Button>
                     <Button
                       variant="secondary"
@@ -285,7 +285,7 @@ export function TemplatesScreen() {
                         void save({ ...template, archived: !archived })
                       }
                     >
-                      {archived ? "Restore" : "Archive"}
+                      {archived ? "Restore" : "Archive"}{" "}<span className="c-visually-hidden">{template.name}</span>
                     </Button>
                   </>
                 )}

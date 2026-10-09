@@ -206,32 +206,32 @@ export function SettleScreen() {
               {receiving && report ? (
                 <div className="a-row-actions">
                   <button className="a-btn" type="button" disabled={receipts.busy} onClick={() => { setMessage(""); receipts.answer({ report, debtorName: debtor?.name ?? "this member", expenseName: expense.name, currency: hub.currency, decision: "confirm" }); }}>
-                    Confirm {formatMoney(report.amountMinor, hub.currency)}
+                    Confirm {formatMoney(report.amountMinor, hub.currency)}{" "}<span className="c-visually-hidden">from {debtor?.name ?? "this member"} for {expense.name}</span>
                   </button>
                   <button className="a-btn ghost" type="button" disabled={receipts.busy} onClick={() => { setMessage(""); receipts.answer({ report, debtorName: debtor?.name ?? "this member", expenseName: expense.name, currency: hub.currency, decision: "decline" }); }}>
-                    Not received
+                    Not received{" "}<span className="c-visually-hidden">from {debtor?.name ?? "this member"} for {expense.name}</span>
                   </button>
                 </div>
               ) : receiving ? (
                 <div className="a-row-actions">
                     <button className="a-btn nudge" type="button" disabled={!eligibility.canSend} title={reminderReason || undefined} onClick={() => { setMessage(""); reminder.open({ kind: "nudge", sourceId: share.id, recipientId: share.userId, name: debtor?.name ?? "your housemate", subject: expense.name, amount: formatMoney(outstanding, hub.currency), dueOn: expense.dueOn }); }}>
-                      Nudge
+                      Nudge{" "}<span className="c-visually-hidden">{debtor?.name ?? "this member"} about {expense.name}</span>
                     </button>
                   <button className="a-btn ghost" type="button" onClick={() => { setMessage(""); receipts.record({ shareId: share.id, debtorName: debtor?.name ?? "this member", expenseName: expense.name, shareMinor: share.amountMinor, outstandingMinor: outstanding, currency: hub.currency }); }}>
-                    Confirm received
+                    Confirm received{" "}<span className="c-visually-hidden">from {debtor?.name ?? "this member"} for {expense.name}</span>
                   </button>
                   {reminderReason && <p className="c-action-hint">{reminderReason}</p>}
                 </div>
               ) : report ? (
                 <div className="a-row-actions">
                   <button className="a-btn ghost" type="button" disabled={receipts.busy} onClick={() => { setMessage(""); void receipts.withdraw(report); }}>
-                    Withdraw
+                    Withdraw{" "}<span className="c-visually-hidden">your report for {expense.name}</span>
                   </button>
                 </div>
               ) : (
                 <div className="a-row-actions">
                   <button className="a-btn ghost" type="button" onClick={() => { setMessage(""); receipts.report({ shareId: share.id, payerName: payer?.name ?? "the bill payer", expenseName: expense.name, outstandingMinor: outstanding, currency: hub.currency }); }}>
-                    I’ve sent it
+                    I’ve sent it{" "}<span className="c-visually-hidden">to {payer?.name ?? "the bill payer"} for {expense.name}</span>
                   </button>
                 </div>
               )}

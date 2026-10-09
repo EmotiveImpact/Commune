@@ -571,13 +571,13 @@ export function FundsScreen() {
                   variant="secondary"
                   onClick={() => open({ kind: "view", fundId: item.id })}
                 >
-                  View fund
+                  View fund{" "}<span className="c-visually-hidden">{item.name}</span>
                 </Button>
                 {!my && !item.archivedAt && (
                   <Button
                     onClick={() => open({ kind: "pledge", fundId: item.id })}
                   >
-                    Make a pledge
+                    Make a pledge{" "}<span className="c-visually-hidden">to {item.name}</span>
                   </Button>
                 )}
                 {item.archivedAt && isAdmin && (
@@ -590,7 +590,7 @@ export function FundsScreen() {
                       )
                     }
                   >
-                    Restore
+                    Restore{" "}<span className="c-visually-hidden">{item.name}</span>
                   </Button>
                 )}
               </div>

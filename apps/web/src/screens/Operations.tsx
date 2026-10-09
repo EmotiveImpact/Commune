@@ -396,6 +396,8 @@ export function OperationsScreen() {
                     className="ops-tile-num"
                     type="button"
                     aria-label={dayFormatter.format(dateFromIso(date))}
+                    aria-current={date === today ? "date" : undefined}
+                    aria-pressed={date === selectedDate}
                     onClick={() => showDate(date)}
                   >
                     {Number(date.slice(-2))}
@@ -414,7 +416,10 @@ export function OperationsScreen() {
                         go("operation", { operation: item.id });
                       }}
                     >
-                      {item.title}
+                      {item.title}{" "}
+                      <span className="c-visually-hidden">
+                        {item.kind === "task" ? item.date < today ? "(late task)" : "(task)" : "(event)"}
+                      </span>
                     </button>
                   ))}
                 </div>
@@ -516,16 +521,16 @@ function LateCard({
       </p>
       <div className="ops-late-actions">
         <button className="a-btn ghost" type="button" onClick={onOpen}>
-          Open
+          Open{" "}<span className="c-visually-hidden">{item.title}</span>
         </button>
         {/* As in the task window, only a repeating task can be skipped. */}
         {item.repeat !== "none" ? (
           <button className="a-btn ghost" type="button" disabled={pending} onClick={onSkip}>
-            Skip a week
+            Skip a week{" "}<span className="c-visually-hidden">for {item.title}</span>
           </button>
         ) : null}
         <button className="a-btn" type="button" disabled={pending} onClick={onDone}>
-          {next ? `Done · ${next}` : "Mark done"}
+          {next ? `Done · ${next}` : "Mark done"}{" "}<span className="c-visually-hidden">({item.title})</span>
         </button>
       </div>
     </section>

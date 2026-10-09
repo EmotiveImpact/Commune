@@ -5,7 +5,8 @@ import { memoryLocation } from "wouter/memory-location";
 import { App } from "../src/App";
 import { AppProvider, useApp, type AppState } from "../src/state";
 import { api, post, loadCommunes, loadSnapshot } from "../src/live/api";
-import type { Commune, Snapshot } from "../src/live/model";
+import type { Commune, Notification, Snapshot } from "../src/live/model";
+import { addDays, dateFromIso, todayIso } from "../src/data/operations";
 
 vi.mock("../src/live/api", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../src/live/api")>()),
@@ -93,7 +94,10 @@ beforeEach(() => {
   vi.mocked(loadCommunes).mockResolvedValue({ communes: [commune] });
   vi.mocked(loadSnapshot).mockImplementation(async () => current);
 });
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.useRealTimers();
+});
 
 describe("page structure and focus after moving", () => {
   it("starts every page with a skip link to the main landmark", async () => {
@@ -196,5 +200,93 @@ describe("commune switcher", () => {
     expect(screen.getByRole("group", { name: "Communes" })).toBeTruthy();
     act(() => screen.getByRole("link", { name: "Skip to content" }).focus());
     await waitFor(() => expect(screen.queryByRole("group", { name: "Communes" })).toBeNull());
+  });
+});
+
+describe("states and names", () => {
+  const notice = (id: string, readAt: string | null): Notification => ({
+    id, kind: "nudge", sourceId: "share-1", amountMinor: 1200, communeId: commune.id, senderUserId: "user-2",
+    expenseId: "expense-1", title: "House supplies", detail: null, createdAt: "2026-01-06T09:00:00Z", readAt,
+  });
+
+  it("says how many notices are unread in the bell's name", async () => {
+    current.notifications = [notice("n-1", null), notice("n-2", null), notice("n-3", "2026-01-07T09:00:00Z")];
+    mount("/hub");
+    const bell = await screen.findByRole("button", { name: "Notifications, 2 unread" });
+    expect(bell.classList.contains("has-unread")).toBe(true);
+    cleanup();
+    current.notifications = [notice("n-3", "2026-01-07T09:00:00Z")];
+    mount("/hub");
+    expect(await screen.findByRole("button", { name: "Notifications" })).toBeTruthy();
+  });
+
+  it("names header buttons from what they show", async () => {
+    mount("/hub");
+    const search = await screen.findByRole("button", { name: "Search Commune" });
+    expect(search.textContent).toContain("Search Commune");
+    expect(search.querySelector("kbd")?.getAttribute("aria-hidden")).toBe("true");
+    const you = screen.getByRole("button", { name: "You" });
+    expect(you.querySelector(".avatar")?.getAttribute("aria-hidden")).toBe("true");
+    expect(screen.getByRole("button", { name: "2 people in this commune, view members" })).toBeTruthy();
+  });
+
+  it("marks today and the selected day in the month view and says what each item is", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(2026, 9, 15, 12));
+    const today = todayIso();
+    const base = { hubId: commune.id, allDay: true, repeat: "none", status: "open", notes: "" } as const;
+    current.operations = [
+      { ...base, id: "task-late", kind: "task", category: "chore", title: "Bins", date: addDays(today, -2), assignee: user.name, assigneeId: user.id },
+      { ...base, id: "task-today", kind: "task", category: "chore", title: "Hoover", date: today, assignee: user.name, assigneeId: user.id },
+      { ...base, id: "event-today", kind: "event", category: "visit", title: "Plumber", date: today, assignee: "" },
+    ];
+    mount("/operations");
+    fireEvent.click(await screen.findByText("Month"));
+    const dayName = (date: string) => new Intl.DateTimeFormat("en-GB", { weekday: "long", day: "numeric", month: "long" }).format(dateFromIso(date));
+    const todayButton = screen.getByRole("button", { name: dayName(today) });
+    expect(todayButton.getAttribute("aria-current")).toBe("date");
+    expect(todayButton.getAttribute("aria-pressed")).toBe("true");
+    expect(document.querySelectorAll('.ops-tile-num[aria-current="date"]')).toHaveLength(1);
+
+    const later = screen.getByRole("button", { name: dayName(addDays(today, 5)) });
+    expect(later.getAttribute("aria-pressed")).toBe("false");
+    fireEvent.click(later);
+    expect(later.getAttribute("aria-pressed")).toBe("true");
+    expect(todayButton.getAttribute("aria-pressed")).toBe("false");
+    expect(todayButton.getAttribute("aria-current")).toBe("date");
+
+    // Each item says whether it is a task, an event or a late task, not only by tint.
+    expect(screen.getByRole("button", { name: "Bins (late task)" }).classList.contains("is-warn")).toBe(true);
+    expect(screen.getByRole("button", { name: "Hoover (task)" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Plumber (event)" })).toBeTruthy();
+  });
+
+  it("gives repeated actions the person and expense they are for", async () => {
+    current.members = [...initial.members, { userId: "user-3", name: "Lodger", role: "member", active: true }];
+    current.expenses = [{
+      id: "expense-1", title: "Cleaner", amountMinor: 3000, paidByUserId: user.id, dueOn: null,
+      shares: [
+        { id: "share-1", userId: user.id, amountMinor: 1000, settledMinor: 1000 },
+        { id: "share-2", userId: "user-2", amountMinor: 1000, settledMinor: 0 },
+        { id: "share-3", userId: "user-3", amountMinor: 1000, settledMinor: 0 },
+      ],
+    }];
+    mount("/settle");
+    const owed = await screen.findByRole("region", { name: "You’re owed" });
+    expect(within(owed).getAllByRole("button", { name: /^Nudge / }).map((button) => button.textContent))
+      .toEqual(["Nudge Housemate about Cleaner", "Nudge Lodger about Cleaner"]);
+    expect(within(owed).getByRole("button", { name: "Confirm received from Lodger for Cleaner" })).toBeTruthy();
+    // The added words are for screen readers; the button still shows "Nudge".
+    const hidden = within(owed).getAllByRole("button", { name: /^Nudge / })[0].querySelector(".c-visually-hidden");
+    expect(hidden?.textContent).toBe("Housemate about Cleaner");
+  });
+
+  it("names note tiles from their content rather than a shorter label", async () => {
+    current.notes = [{ id: "note-1", title: "Bins", pill: "Bins", kicker: "Everyone", lede: "", body: "Black bags on Tuesday", facts: [] }];
+    mount("/notes");
+    const tile = await screen.findByRole("button", { name: /^Bins/ });
+    expect(tile.classList.contains("note-tile")).toBe(true);
+    expect(tile.hasAttribute("aria-label")).toBe(false);
+    expect(tile.textContent).toContain("Black bags on Tuesday");
   });
 });

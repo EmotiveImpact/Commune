@@ -574,7 +574,7 @@ export function RecurringScreen() {
                       setConfirm(bill);
                     }}
                   >
-                    Record paid bill
+                    Record paid bill{" "}<span className="c-visually-hidden">for {bill.title}</span>
                   </Button>
                 )}
                 {!bill.paused && actions.record && canSkipNextPeriod(bill) && (
@@ -586,7 +586,7 @@ export function RecurringScreen() {
                       setSkipping(bill);
                     }}
                   >
-                    Skip this period
+                    Skip this period{" "}<span className="c-visually-hidden">for {bill.title}</span>
                   </Button>
                 )}
                 {actions.edit && (
@@ -598,7 +598,7 @@ export function RecurringScreen() {
                       setEditor({ id: bill.id, resuming: false });
                     }}
                   >
-                    Edit
+                    Edit{" "}<span className="c-visually-hidden">{bill.title}</span>
                   </Button>
                 )}
                 {actions.pause && (!bill.paused || canResume) && (
@@ -617,7 +617,7 @@ export function RecurringScreen() {
                       );
                     }}
                   >
-                    {bill.paused ? "Resume" : "Pause"}
+                    {bill.paused ? "Resume" : "Pause"}{" "}<span className="c-visually-hidden">{bill.title}</span>
                   </Button>
                 )}
                 {actions.archive && bill.paused && (
@@ -631,7 +631,7 @@ export function RecurringScreen() {
                       )
                     }
                   >
-                    Archive
+                    Archive{" "}<span className="c-visually-hidden">{bill.title}</span>
                   </Button>
                 )}
                 {actions.restore && (
@@ -649,7 +649,7 @@ export function RecurringScreen() {
                       )
                     }
                   >
-                    Restore
+                    Restore{" "}<span className="c-visually-hidden">{bill.title}</span>
                   </Button>
                 )}
               </div>

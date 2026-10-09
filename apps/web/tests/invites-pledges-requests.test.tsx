@@ -185,7 +185,7 @@ describe("one request id per open form", () => {
     ] }];
     lostOnce("/funds/fund-1/pledges", () => ({ id: "pledge-1", duplicate: true }));
     mount("/funds");
-    fireEvent.click(await screen.findByRole("button", { name: "Make a pledge" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Make a pledge to Boiler fund" }));
     let dialog = screen.getByRole("dialog", { name: "Make a pledge" });
     fireEvent.change(within(dialog).getByLabelText("Pledge amount (GBP)"), { target: { value: "50.00" } });
     await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Save" })); });
@@ -198,7 +198,7 @@ describe("one request id per open form", () => {
     expect(pledges[1]).toEqual(pledges[0]);
 
     lostOnce("/commitments/pledge-2/contributions", () => ({ id: "contribution-1", duplicate: true }));
-    fireEvent.click(screen.getByRole("button", { name: "View fund" }));
+    fireEvent.click(screen.getByRole("button", { name: "View fund Boiler fund" }));
     fireEvent.click(within(screen.getByRole("dialog", { name: "Boiler fund" })).getByRole("button", { name: "Record contribution" }));
     dialog = screen.getByRole("dialog", { name: "Record contribution" });
     await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Confirm contribution" })); });
@@ -235,12 +235,12 @@ describe("one request id per open form", () => {
     expect(await refusedAfterLoss("/communes/home-1/funds", "Create a fund", "Save", new ApiError("Not a commune member", 403)))
       .toBe("An earlier attempt may already have been saved. Close this and check Funds before adding it again.");
 
-    fireEvent.click(screen.getByRole("button", { name: "Make a pledge" }));
+    fireEvent.click(screen.getByRole("button", { name: "Make a pledge to Boiler fund" }));
     fireEvent.change(within(screen.getByRole("dialog", { name: "Make a pledge" })).getByLabelText("Pledge amount (GBP)"), { target: { value: "50.00" } });
     expect(await refusedAfterLoss("/funds/fund-1/pledges", "Make a pledge", "Save", new ApiError("Not a commune member", 403)))
       .toBe("An earlier attempt may already have been saved. Close this and check the fund before adding it again.");
 
-    fireEvent.click(screen.getByRole("button", { name: "View fund" }));
+    fireEvent.click(screen.getByRole("button", { name: "View fund Boiler fund" }));
     fireEvent.click(within(screen.getByRole("dialog", { name: "Boiler fund" })).getByRole("button", { name: "Record contribution" }));
     expect(await refusedAfterLoss("/commitments/pledge-2/contributions", "Record contribution", "Confirm contribution",
       new ApiError("Sign in again to continue", 401)))
@@ -268,7 +268,7 @@ describe("changing someone else's pledge", () => {
     .map(([, init]) => ({ method: init?.method, body: JSON.parse(String(init?.body)) as Record<string, unknown> }));
   async function openFund() {
     mount("/funds");
-    fireEvent.click(await screen.findByRole("button", { name: "View fund" }));
+    fireEvent.click(await screen.findByRole("button", { name: "View fund Boiler fund" }));
     return screen.getByRole("dialog", { name: "Boiler fund" });
   }
   async function openEditor() {
@@ -499,9 +499,9 @@ describe("who sent each invitation", () => {
       fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
       return text;
     };
-    expect(ask("user-2", "Make member", "Make Housemate a member?")).toContain("Their open invitation will be withdrawn.");
-    expect(ask("user-2", "Remove", "Remove Housemate?")).toContain("Their open invitation will be withdrawn.");
-    expect(ask(user.id, "Make member", "Make Test Person a member?")).toContain("Your open invitation will be withdrawn.");
+    expect(ask("user-2", "Make member Housemate", "Make Housemate a member?")).toContain("Their open invitation will be withdrawn.");
+    expect(ask("user-2", "Remove Housemate", "Remove Housemate?")).toContain("Their open invitation will be withdrawn.");
+    expect(ask(user.id, "Make member Test Person", "Make Test Person a member?")).toContain("Your open invitation will be withdrawn.");
     expect(ask(user.id, "Leave", "Leave Our home?")).toContain("Your open invitation will be withdrawn.");
     expect(post).not.toHaveBeenCalled();
   });
@@ -515,7 +515,7 @@ describe("an admin's own pledge", () => {
     ] }];
   };
   const rows = async () => {
-    fireEvent.click(await screen.findByRole("button", { name: "View fund" }));
+    fireEvent.click(await screen.findByRole("button", { name: "View fund Boiler fund" }));
     const dialog = screen.getByRole("dialog", { name: "Boiler fund" });
     return Array.from(dialog.querySelectorAll<HTMLElement>(".c-pledge-row"));
   };

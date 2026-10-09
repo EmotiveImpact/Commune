@@ -203,7 +203,7 @@ describe("every money field reads amounts the same way", () => {
     }];
     vi.mocked(post).mockImplementation(async () => ({ id: "receipt-1", duplicate: false, settledMinor: 120000, outstandingMinor: 30000 }));
     mount("/settle");
-    fireEvent.click(await screen.findByRole("button", { name: "Confirm received" }));
+    fireEvent.click(await screen.findByRole("button", { name: /^Confirm received / }));
     const dialog = screen.getByRole("dialog", { name: "Record a repayment from Housemate" });
     fireEvent.change(within(dialog).getByLabelText(/Amount received/), { target: { value: "1,200" } });
     await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Record £1,200.00 received" })); });

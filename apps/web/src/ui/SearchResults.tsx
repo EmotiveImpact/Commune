@@ -34,7 +34,9 @@ export function SearchResults({ result, pending, error, query, retry, onOpen, li
       const start = offset; offset += items.length;
       const Glyph = ICONS[kind];
       return <div className="c-search-group" key={kind} role={quick ? "group" : undefined} aria-label={SEARCH_LABELS[kind]}>
-        <h3>{SEARCH_LABELS[kind]}</h3>
+        {/* In the quick finder the group's label names it; a heading inside the
+            options list would break the list for screen readers. */}
+        <h3 aria-hidden={quick || undefined}>{SEARCH_LABELS[kind]}</h3>
         {items.map((item, index) => {
           const position = start + index;
           const amount = item.amountMinor === null ? null : new Intl.NumberFormat("en-GB", { style: "currency", currency: item.currency }).format(item.amountMinor / 100);

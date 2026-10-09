@@ -82,7 +82,7 @@ describe("task completion, undo and occurrence history", () => {
   it("sends a completion command and reports the rotation the server saved", async () => {
     vi.mocked(post).mockImplementation(async () => serverCompletes());
     mount("/operations");
-    const trigger = await screen.findByRole("button", { name: "Done · Housemate" });
+    const trigger = await screen.findByRole("button", { name: /^Done · Housemate \(/ });
     await act(async () => { fireEvent.click(trigger); });
     expect(vi.mocked(post)).toHaveBeenCalledTimes(1);
     const [path, body] = vi.mocked(post).mock.calls[0];
@@ -105,13 +105,13 @@ describe("task completion, undo and occurrence history", () => {
       return serverCompletes();
     });
     mount("/operations");
-    const trigger = await screen.findByRole("button", { name: "Done · Housemate" });
+    const trigger = await screen.findByRole("button", { name: /^Done · Housemate \(/ });
     await act(async () => { fireEvent.click(trigger); });
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Undo" })); });
     expect(vi.mocked(post).mock.calls.map(([path]) => path)).toEqual(["/operations/task-1/occurrences", "/occurrences/occurrence-1/undo"]);
     expect(screen.getByRole("status").textContent).toContain("Undone · back with Test");
     expect(app.operations[0]).toMatchObject({ date: rota.date, assignee: user.name, undoOccurrenceId: null });
-    expect(await screen.findByRole("button", { name: "Done · Housemate" })).toBeTruthy();
+    expect(await screen.findByRole("button", { name: /^Done · Housemate \(/ })).toBeTruthy();
   });
 
   it("shows the other person's result when a completion arrives too late", async () => {
@@ -120,14 +120,14 @@ describe("task completion, undo and occurrence history", () => {
       throw new ApiError("This task has already moved on. Refresh to see who has it now.", 409);
     });
     mount("/operations");
-    const trigger = await screen.findByRole("button", { name: "Done · Housemate" });
+    const trigger = await screen.findByRole("button", { name: /^Done · Housemate \(/ });
     await act(async () => { fireEvent.click(trigger); });
     expect(screen.getByRole("status").textContent).toBe("This task has already moved on. Refresh to see who has it now.");
     expect(screen.getByRole("alert").textContent).toContain("This task has already moved on.");
     expect(screen.queryByRole("button", { name: "Undo" })).toBeNull();
     // The stale late card is replaced by what was actually saved.
     expect(app.operations[0]).toMatchObject({ assignee: "Housemate Two", date: addDays(today, 5) });
-    expect(screen.queryByRole("button", { name: "Done · Housemate" })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Done · Housemate \(/ })).toBeNull();
   });
 
   it("lists occurrence history in the task window and undoes only the latest action", async () => {
@@ -173,7 +173,7 @@ describe("task completion, undo and occurrence history", () => {
   it("skips a repeating task as a recorded, undoable action", async () => {
     vi.mocked(post).mockImplementation(async () => ({ id: "occurrence-2", duplicate: false, date: addDays(today, 7), assignee: user.name, status: "open" }));
     mount("/operations");
-    const trigger = await screen.findByRole("button", { name: "Skip a week" });
+    const trigger = await screen.findByRole("button", { name: /^Skip a week for / });
     await act(async () => { fireEvent.click(trigger); });
     expect(vi.mocked(post).mock.calls[0][1]).toMatchObject({ action: "skipped", expectedDate: rota.date });
     const toast = screen.getByRole("status");
@@ -330,7 +330,7 @@ describe("late tasks in the week", () => {
     expect(lateCards().map((card) => [...card.querySelectorAll(".ops-note")].at(-1)?.textContent))
       .toEqual(["Test still has this.", "Housemate still has this.", "Nobody has this yet."]);
     // A one-off task cannot be skipped, so its card does not offer it.
-    expect(lateCards().every((card) => !within(card).queryByRole("button", { name: "Skip a week" }))).toBe(true);
+    expect(lateCards().every((card) => !within(card).queryByRole("button", { name: /^Skip a week/ }))).toBe(true);
     // Yours never says you are clear while one of yours is late.
     const yours = document.querySelector<HTMLElement>(".ops-yours")!;
     expect(yours.textContent).not.toContain("You’re clear today.");
@@ -357,8 +357,9 @@ describe("late tasks in the week", () => {
     mount("/operations");
     await screen.findByRole("tablist", { name: "Operations view" });
     const [first, second] = lateCards();
-    await act(async () => { fireEvent.click(within(first).getByRole("button", { name: "Mark done" })); });
-    const button = (card: HTMLElement, name: string) => within(card).getByRole("button", { name }) as HTMLButtonElement;
+    await act(async () => { fireEvent.click(within(first).getByRole("button", { name: /^Mark done \(/ })); });
+    // Each card's actions name its task after the visible words.
+    const button = (card: HTMLElement, name: string) => within(card).getByRole("button", { name: new RegExp(`^${name}\\b`) }) as HTMLButtonElement;
     for (const card of [first, second]) {
       expect([button(card, "Mark done").disabled, button(card, "Skip a week").disabled, button(card, "Open").disabled]).toEqual([true, true, false]);
     }

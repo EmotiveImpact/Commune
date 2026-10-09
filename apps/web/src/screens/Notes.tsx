@@ -83,7 +83,6 @@ export function NotesScreen() {
               type="button"
               className={`note-tile${selected && noteKey === id ? " is-selected" : ""}`}
               data-note-id={id}
-              aria-label={`Open ${note.title}`}
               aria-pressed={Boolean(selected && noteKey === id)}
               onClick={() => go("note", { note: id })}
             >

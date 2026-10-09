@@ -2204,9 +2204,9 @@ button.a-kpi {
 }
 
 .a-reminder-usage summary::-webkit-details-marker { display: none; }
-.a-reminder-usage summary::after { content: "⌄"; }
+.a-reminder-usage summary::after { content: "⌄"; content: "⌄" / ""; }
 .a-reminder-usage summary strong { color: var(--ink); }
-.a-reminder-usage summary:focus-visible { outline: 2px solid var(--sage); outline-offset: 3px; }
+.a-reminder-usage summary:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 3px; }
 .a-reminder-usage-details {
   position: absolute;
   right: 0;
@@ -5882,7 +5882,7 @@ button.a-item {
 
 .ops-tile.is-on {
   background: #f4faf6;
-  box-shadow: inset 0 0 0 1.5px rgba(45, 106, 79, 0.28);
+  box-shadow: inset 0 0 0 2px var(--text-green);
 }
 
 .ops-tile-num {
@@ -5933,6 +5933,33 @@ button.a-item {
 .ops-tile-item.is-warn {
   background: #fbede6;
   color: #7f3b2c;
+}
+
+/* Tasks, events and late tasks also differ by shape: a square, a circle and
+   a triangle before the title. */
+.ops-tile-item::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin: 0 5px 1px 0;
+  background: currentColor;
+  vertical-align: middle;
+}
+
+.ops-tile-item.is-task::before {
+  border-radius: 1px;
+}
+
+.ops-tile-item.is-event::before {
+  border-radius: 50%;
+}
+
+.ops-tile-item.is-warn::before {
+  width: 8px;
+  height: 7px;
+  border-radius: 0;
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
 }
 
 .ops-month-selected {

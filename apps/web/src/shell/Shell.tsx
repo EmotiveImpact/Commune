@@ -113,7 +113,7 @@ function CommuneSwitch() {
           <strong>{hub.name}</strong>
           <span>{hub.switchMeta}</span>
         </div>
-        <span className="c-visually-hidden"> Switch commune</span>
+        {" "}<span className="c-visually-hidden">Switch commune</span>
         <span className={cx("a-hub-chev", open && "is-open")} aria-hidden="true">
           <Icon name="chevronDown" size={14} />
         </span>
@@ -253,6 +253,7 @@ export function Header({ screen }: { screen: ScreenId }) {
   } = useApp();
   const [searchOpen, setSearchOpen] = useState(false);
   const searchingAll = ["home", "home-empty", "communes", "home-activity"].includes(screen);
+  const unread = noticesOn ? notifications.filter((notice) => !notice.readAt).length : 0;
   useEffect(() => {
     function shortcut(event: KeyboardEvent) {
       if (event.isComposing || event.repeat) return;
@@ -278,16 +279,16 @@ export function Header({ screen }: { screen: ScreenId }) {
         <h1>{pageTitle}</h1>
         {pageLede ? <p>{pageLede}</p> : null}
       </div>
-      <button className="a-search c-search-trigger" type="button" aria-label="Open search"
+      <button className="a-search c-search-trigger" type="button" aria-label="Search Commune"
         aria-haspopup="dialog" aria-keyshortcuts="Meta+K Control+K" onClick={() => setSearchOpen(true)}>
           <Icon name="search" size={16} />
-          {!native && <><span>Search Commune</span><kbd>⌘ K</kbd></>}
+          {!native && <><span>Search Commune</span><kbd aria-hidden="true">⌘ K</kbd></>}
       </button>
       <div className="a-header-actions">
         <button className="a-icon-btn a-you-btn" type="button" aria-label="You" onClick={() => go("settings")}>
-          <Avatar tone="maya" initials={you.initials} />
+          <Avatar tone="maya" initials={you.initials} decorative />
         </button>
-        <button className={cx("a-icon-btn", noticesOn && notifications.some((notice) => !notice.readAt) && "has-unread")} type="button" aria-label="Notifications" onClick={() => go("notices")}>
+        <button className={cx("a-icon-btn", unread > 0 && "has-unread")} type="button" aria-label={unread ? `Notifications, ${unread} unread` : "Notifications"} onClick={() => go("notices")}>
           <Icon name="bell" size={16} />
         </button>
       </div>

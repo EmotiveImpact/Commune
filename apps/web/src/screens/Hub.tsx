@@ -149,9 +149,9 @@ function Announcements() {
         </div>}
         {canTakeDown && (confirmDown === item.id
           ? <div className="c-hub-announcement-actions"><span>Take it down? It stays in the activity history.</span>
-            <button className="c-hub-link" type="button" disabled={pending !== null} onClick={() => void run(item.id, () => archiveAnnouncement(item.id))}>Take down</button>
+            <button className="c-hub-link" type="button" disabled={pending !== null} onClick={() => void run(item.id, () => archiveAnnouncement(item.id))}>Take down{" "}<span className="c-visually-hidden">{item.title}</span></button>
             <button className="c-hub-link" type="button" onClick={() => setConfirmDown(null)}>Keep it</button></div>
-          : <div className="c-hub-announcement-actions"><button className="c-hub-link" type="button" onClick={() => setConfirmDown(item.id)}>Take down</button></div>)}
+          : <div className="c-hub-announcement-actions"><button className="c-hub-link" type="button" onClick={() => setConfirmDown(item.id)}>Take down{" "}<span className="c-visually-hidden">{item.title}</span></button></div>)}
       </article>;
     })}
     {error && <p role="alert" className="a-form-error">{error}</p>}
@@ -181,9 +181,9 @@ export function HubScreen() {
       <div className="c-hub-identity-copy"><span className="c-hub-type">{hub.type}</span>
         <h2>{hub.name}</h2>
         <HubLocation hub={hub} />
-        <button type="button" className="c-hub-people-link" aria-label="View commune members" onClick={() => go("members")}>
-          <span className="avatar-stack">{hub.members.slice(0, 5).map(member => <Avatar key={member.userId ?? member.name} tone={member.cls} initials={member.ini} />)}</span>
-          <span>{hub.members.length} {hub.members.length === 1 ? "person" : "people"}</span>
+        <button type="button" className="c-hub-people-link" onClick={() => go("members")}>
+          <span className="avatar-stack" aria-hidden="true">{hub.members.slice(0, 5).map(member => <Avatar key={member.userId ?? member.name} tone={member.cls} initials={member.ini} />)}</span>
+          <span>{hub.members.length} {hub.members.length === 1 ? "person" : "people"}</span>{" "}<span className="c-visually-hidden">in this commune, view members</span>
         </button>
       </div>
       <div className="c-hub-hero-actions">
@@ -201,7 +201,7 @@ export function HubScreen() {
       <HubSection title="Needs you" icon={CircleAlert} count={`${attentionCount} ${attentionCount === 1 ? "item" : "items"}`}>
         {outstanding.slice(0, 3).map((move, index) => <div key={`${move.names}-${move.expenseId ?? index}`} className="c-hub-attention-row">
           <span className="c-hub-attention-copy"><span className="c-hub-icon-chip"><ReceiptText size={18} strokeWidth={1.5} /></span><span><strong>{move.why}</strong><small>{move.names}</small></span></span>
-          <span className="c-hub-attention-end"><strong>{move.amt}</strong><button type="button" onClick={() => move.expenseId ? go("expense", { expense: move.expenseId }) : go("settle")}>View</button></span>
+          <span className="c-hub-attention-end"><strong>{move.amt}</strong><button type="button" onClick={() => move.expenseId ? go("expense", { expense: move.expenseId }) : go("settle")}>View{" "}<span className="c-visually-hidden">{move.why}, {move.names.replace(" → ", " to ")}</span></button></span>
         </div>)}
         {toConfirm.slice(0, 2).map(item => <div key={item.id} className="c-hub-attention-row">
           <span className="c-hub-attention-copy"><span className="c-hub-icon-chip"><Megaphone size={18} strokeWidth={1.5} /></span><span><strong>{item.title}</strong><small>Announcement · please confirm you have seen it</small></span></span>

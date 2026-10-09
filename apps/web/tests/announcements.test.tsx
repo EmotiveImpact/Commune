@@ -75,7 +75,7 @@ describe("announcements on This Hub", () => {
     const needs = screen.getByRole("region", { name: "Needs you" });
     expect(within(needs).getByText("1 item")).toBeTruthy();
     // A member cannot take down an admin's notice or post one.
-    expect(within(section).queryByRole("button", { name: "Take down" })).toBeNull();
+    expect(within(section).queryByRole("button", { name: /^Take down/ })).toBeNull();
     expect(screen.queryByRole("button", { name: "Announce" })).toBeNull();
     await act(async () => { fireEvent.click(within(section).getByRole("button", { name: "I’ve seen this" })); });
     expect(vi.mocked(post)).toHaveBeenCalledWith("/announcements/notice-1/acknowledge", {});
@@ -92,10 +92,10 @@ describe("announcements on This Hub", () => {
     mount("admin");
     const section = await screen.findByRole("region", { name: "Announcements" });
     expect(within(section).getByText("Seen by 0 of 2. Waiting for Test, Lodger")).toBeTruthy();
-    await act(async () => { fireEvent.click(within(section).getByRole("button", { name: "Take down" })); });
+    await act(async () => { fireEvent.click(within(section).getByRole("button", { name: "Take down Boiler service Thursday" })); });
     expect(vi.mocked(post)).not.toHaveBeenCalled();
     expect(within(section).getByText("Take it down? It stays in the activity history.")).toBeTruthy();
-    await act(async () => { fireEvent.click(within(section).getByRole("button", { name: "Take down" })); });
+    await act(async () => { fireEvent.click(within(section).getByRole("button", { name: "Take down Boiler service Thursday" })); });
     expect(vi.mocked(post)).toHaveBeenCalledWith("/announcements/notice-1/archive", {});
     expect(screen.queryByRole("region", { name: "Announcements" })).toBeNull();
   });

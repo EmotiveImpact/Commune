@@ -194,7 +194,7 @@ export function MembersScreen() {
                         });
                       }}
                     >
-                      {profile?.role === "admin" ? "Make member" : "Make admin"}
+                      {profile?.role === "admin" ? "Make member" : "Make admin"}{" "}<span className="c-visually-hidden">{member.name}</span>
                     </Button>
                     {!me && (
                       <Button
@@ -209,7 +209,7 @@ export function MembersScreen() {
                           });
                         }}
                       >
-                        Remove
+                        Remove{" "}<span className="c-visually-hidden">{member.name}</span>
                       </Button>
                     )}
                   </>
