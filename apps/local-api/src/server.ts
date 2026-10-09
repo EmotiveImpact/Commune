@@ -659,7 +659,8 @@ route("GET", /^\/api\/notes\/([0-9a-f-]{36})\/revisions\/([0-9a-f-]{36})$/, asyn
 });
 
 // The person who added it or an admin removes a note or task. The record and
-// its history are kept; it leaves every list.
+// its history are kept, and both leave every view: a removed note's earlier
+// versions answer 404 like an unknown one.
 route("DELETE", /^\/api\/notes\/([0-9a-f-]{36})$/, async (req, res, match) => {
   const result = await userAction(req, async (client) => client.query(
     "SELECT public.remove_note($1) AS result", [uuid(match[1])]));

@@ -9,8 +9,9 @@
 --   before a completion, skip or handover cannot quietly undo it. An edit
 --   changes what a task is, when it happens and who does it; never its
 --   status, its completion or its timestamps.
--- * Removing hides the row and keeps it and its history. Only the person who
---   added it or an admin can remove it, and the activity history says so.
+-- * Removing hides the row and its history (a note's earlier versions, a
+--   task's occurrences) and keeps both. Only the person who added it or an
+--   admin can remove it, and the activity history says so.
 -- * A commune holds up to 500 notes and 1,000 tasks and events.
 --
 -- The client write grants and policies are dropped. A client that writes the
@@ -52,6 +53,15 @@ ALTER POLICY commune_notes_read ON public.commune_notes
   USING (public.is_commune_member(commune_id) AND deleted_at IS NULL);
 ALTER POLICY commune_operations_read ON public.commune_operations
   USING (public.is_commune_member(commune_id) AND deleted_at IS NULL);
+-- Removed means not shown anywhere: a removed note's earlier versions (an old
+-- door code, say) and a removed task's history are hidden too, from members
+-- who joined later as much as from those who were there. The rows stay.
+ALTER POLICY note_revision_read ON public.note_revisions
+  USING (public.is_commune_member(commune_id)
+    AND EXISTS (SELECT 1 FROM public.commune_notes n WHERE n.id = note_id AND n.deleted_at IS NULL));
+ALTER POLICY operation_occurrence_read ON public.operation_occurrences
+  USING (public.is_commune_member(commune_id)
+    AND EXISTS (SELECT 1 FROM public.commune_operations o WHERE o.id = operation_id AND o.deleted_at IS NULL));
 
 -- Each command writes its own activity line. The generic one (0013) would
 -- add a second line for the same change.
