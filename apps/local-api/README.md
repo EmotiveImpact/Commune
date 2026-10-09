@@ -20,7 +20,7 @@ browser code sends same-origin `/api` requests. Non-2xx errors are
 | GET | `/api/communes` | | `{communes:[...]}` |
 | GET | `/api/search?q=...&commune=...&limit=8` | session required; optional commune UUID; 2–80 chars, 1–25 results per type | `{query,items,total,hasMore}`; only active memberships, safe note excerpts |
 | POST | `/api/communes` | `{name,kind,currency,address?,destination?,stayName?,stayAddress?}` | `{id}` |
-| PATCH | `/api/communes/:id` | `{name,kind,currency,address?,destination?,stayName?,stayAddress?}` admin; currency locks once money exists | `{ok:true}` |
+| PATCH | `/api/communes/:id` | `{name,kind,currency,address?,destination?,stayName?,stayAddress?}` admin; the currency is fixed (400) once the commune has an expense, fund, recurring bill or exact split template, voided or archived ones included | `{ok:true}` |
 | GET | `/api/communes/:id/snapshot` | membership checked; outsiders get 404 | `{commune,members,expenses,funds,notes,operations,notifications,reminderTargets,recurringBills,splitTemplates,activityEvents}` |
 | POST | `/api/communes/:id/expenses` | `{title,amountMinor,paidByUserId?,category?,shares:[{userId,amountMinor}],dueOn?,requestId?}`; recording for another payer requires admin; a repeated `requestId` returns the same expense, and reusing it for different details is 400 | `{id,duplicate}` (201, or 200 for a repeat) |
 | POST | `/api/shares/:id/confirm` | `{}` payer only; records one receipt for everything outstanding | `{ok:true}` |
@@ -74,6 +74,10 @@ signed-in sender's own recent reminders with their email state. Funds contain co
 with `contributedMinor`, cancellation and contribution-correction history.
 Notifications and reminder targets include the IDs
 needed to confirm and send a reminder.
+
+`snapshot.commune.currencyLockedBy` lists what fixes the currency, in this
+order: `expenses`, `funds`, `recurringBills`, `exactSplitTemplates` (empty
+while it can still change).
 
 Location fields also appear in `communes` and `snapshot.commune`. `address`
 (max 160 characters) is for a household/workspace; a trip uses `destination`

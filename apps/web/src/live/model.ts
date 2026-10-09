@@ -12,6 +12,8 @@ import { timestampDay, todayIso } from "../data/operations";
 import { netBalances, overallNet } from "../../../../packages/core/src/balances";
 
 export type CurrencyCode = "GBP" | "USD" | "EUR";
+/** Records that keep a commune's currency as it is, voided or archived ones too. */
+export type CurrencyLock = "expenses" | "funds" | "recurringBills" | "exactSplitTemplates";
 export type MemberRole = "admin" | "member";
 export type User = {
   id: string;
@@ -30,6 +32,8 @@ export type Commune = {
   destination?: string;
   stayName?: string;
   stayAddress?: string;
+  /** In a snapshot: what the database says keeps the currency as it is (0035). */
+  currencyLockedBy?: CurrencyLock[];
 };
 export type Member = {
   userId: string;

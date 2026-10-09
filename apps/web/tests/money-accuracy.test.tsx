@@ -192,3 +192,64 @@ describe("every money field reads amounts the same way", () => {
     expect(sent("/shares/share-1/receipts")[0]).toMatchObject({ amountMinor: 120000 });
   });
 });
+
+describe("the currency stays as it is once the commune has amounts", () => {
+  const hint = (select: HTMLElement) => select.parentElement!.querySelector(".hint")!.textContent;
+  const taxi: Snapshot["expenses"][number] = {
+    id: "expense-1", title: "Taxi", category: "Travel", amountMinor: 900, paidByUserId: user.id, dueOn: null,
+    createdAt: "2026-10-01T10:00:00Z", voidedAt: "2026-10-02T10:00:00Z", voidedBy: user.id, voidReason: "Entered twice",
+    shares: [
+      { id: "share-own", userId: user.id, amountMinor: 450, settledMinor: 450 },
+      { id: "share-1", userId: "user-2", amountMinor: 450, settledMinor: 0 },
+    ],
+  };
+  const bill: NonNullable<Snapshot["recurringBills"]>[number] = {
+    id: "bill-1", title: "Broadband", amountMinor: 3000, paidByUserId: user.id,
+    allocations: [{ userId: user.id, amountMinor: 1500 }, { userId: "user-2", amountMinor: 1500 }],
+    frequency: "monthly", nextDueOn: "2026-11-01", paused: false, createdBy: user.id, version: 1, archivedAt: null,
+  };
+  const template = (method: "Exact" | "Percentage", archivedAt: string | null = null): NonNullable<Snapshot["splitTemplates"]>[number] => ({
+    id: `template-${method}`, name: method, method, createdBy: user.id, archivedAt,
+    participants: [{ userId: user.id, value: method === "Exact" ? "600.00" : "50" }, { userId: "user-2", value: method === "Exact" ? "400.00" : "50" }],
+  });
+
+  it("keeps it locked when every expense is voided, and says why", async () => {
+    current.expenses = [taxi];
+    current.commune = { ...current.commune, currencyLockedBy: ["expenses"] };
+    mount("/commune-settings");
+    const select = await screen.findByLabelText("Currency") as HTMLSelectElement;
+    expect(select.disabled).toBe(true);
+    expect(hint(select)).toBe("Locked because this commune already has an expense, counting voided and archived ones. Changing it would relabel their amounts.");
+  });
+
+  it("locks it for a recurring bill or an exact split template, as the database does", async () => {
+    current.recurringBills = [bill];
+    current.splitTemplates = [template("Exact", "2026-10-03T10:00:00Z")];
+    current.commune = { ...current.commune, currencyLockedBy: ["recurringBills", "exactSplitTemplates"] };
+    mount("/commune-settings");
+    const select = await screen.findByLabelText("Currency") as HTMLSelectElement;
+    expect(select.disabled).toBe(true);
+    expect(hint(select)).toBe("Locked because this commune already has a recurring bill and an exact split template, counting voided and archived ones. Changing it would relabel their amounts.");
+  });
+
+  it("works the same rule out from the records when the database does not report it", async () => {
+    current.funds = [];
+    current.splitTemplates = [template("Exact", "2026-10-03T10:00:00Z")];
+    mount("/commune-settings");
+    const select = await screen.findByLabelText("Currency") as HTMLSelectElement;
+    expect(select.disabled).toBe(true);
+    expect(hint(select)).toBe("Locked because this commune already has an exact split template, counting voided and archived ones. Changing it would relabel their amounts.");
+  });
+
+  it("can still change while there are no amounts, such as a percentage split", async () => {
+    current.splitTemplates = [template("Percentage")];
+    current.commune = { ...current.commune, currencyLockedBy: [] };
+    mount("/commune-settings");
+    const select = await screen.findByLabelText("Currency") as HTMLSelectElement;
+    expect(select.disabled).toBe(false);
+    expect(hint(select)).toBe("You can change this until the first expense, fund, recurring bill or exact split template is saved.");
+    fireEvent.change(select, { target: { value: "EUR" } });
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Save changes" })); });
+    expect(vi.mocked(api).mock.calls.some(([path, init]) => path === "/communes/home-1" && JSON.parse(String(init?.body)).currency === "EUR")).toBe(true);
+  });
+});

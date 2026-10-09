@@ -126,6 +126,12 @@ treat them as applied production configuration until its release is verified:
   does not charge a card or silently insert an expense.
 - Saved splits are shared, with creator/admin edit/archive permissions.
   Archiving and restoring do not bypass active-member and financial validation.
+- A commune's currency is fixed once it has an expense, fund, recurring bill
+  or exact split template, voided or archived ones included, since they keep
+  their amounts (0035). `update_commune_details` enforces this and the
+  snapshot reports what fixes it as `commune.currencyLockedBy`, which the
+  settings screen shows. Clients from before 0035 keep working, and the new
+  client works the same rule out itself from a database without 0035.
 - Fund/pledge edits respect contributions already recorded. Contributions are
   corrected with a retained original entry/reason, not deleted or refunded.
   Archiving preserves history and is blocked by outstanding active pledges.
