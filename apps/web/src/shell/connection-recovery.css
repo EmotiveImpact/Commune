@@ -17,11 +17,11 @@
   padding: 32px; background: var(--white); border: 1px solid var(--border);
   border-radius: var(--radius-surface);
 }
-.c-connection-icon { color: var(--soft); margin-bottom: 20px; }
+.c-connection-icon { color: var(--ink-soft); margin-bottom: 20px; }
 .c-connection-card h1 { font-size: 21px; line-height: 1.3; font-weight: 550; letter-spacing: -.4px; margin: 0 0 12px; }
-.c-connection-card p { font-size: 14px; line-height: 1.6; color: var(--soft); margin: 0 0 24px; }
+.c-connection-card p { font-size: 14px; line-height: 1.6; color: var(--ink-soft); margin: 0 0 24px; }
 .c-connection-card .a-btn { border-radius: var(--radius-control); min-height: 40px; }
 .c-connection-actions { display: flex; flex-wrap: wrap; gap: 10px; }
-.c-connection-feedback { min-height: 36px; padding-top: 16px; font-size: 12px; line-height: 1.5; color: var(--soft); }
+.c-connection-feedback { min-height: 36px; padding-top: 16px; font-size: 12px; line-height: 1.5; color: var(--ink-soft); }
 @media (max-width: 480px) { .c-connection-card { padding: 24px; } }
 }
