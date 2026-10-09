@@ -127,7 +127,8 @@ if [ -n "$(run_databases "$candidate")" ]; then
 fi
 run="$candidate"
 
-echo "Building the local and stub databases from $(ls "$root"/infra/neon/migrations/*.sql | wc -l | tr -d ' ') migrations"
+migrations=("$root"/infra/neon/migrations/*.sql)
+echo "Building the local and stub databases from ${#migrations[@]} migrations"
 # Local first: on a fresh server the local database then sees only the roles
 # bootstrap.sql makes, as the local API does.
 for mode in local stub; do
