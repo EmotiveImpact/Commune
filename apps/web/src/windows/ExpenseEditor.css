@@ -1,5 +1,9 @@
-/* Qualified with the frame class: the shared 600px window width otherwise wins. */
-.a-window-frame.c-expense-frame { width: min(930px,100%); }
+/* In the screens layer, above the shared base styles and below the dark
+   theme and the design-language primitives (see styles/index.css). */
+@layer screens {
+/* Qualified with the frame class: the shared 600px window width otherwise wins.
+   The phone app's layout keeps its full-width window (app.css). */
+.a-window-frame.c-expense-frame:where(:not(.is-native *)) { width: min(930px,100%); }
 .c-expense-frame .a-window-body { container-type: inline-size; }
 .c-expense-editor { display: grid; grid-template-columns: minmax(0,1.65fr) minmax(240px,1fr); gap: 24px; }
 .c-expense-form { padding: 0; }
@@ -32,3 +36,4 @@
 /* Two columns only when the dialog itself has room for them. */
 @container (max-width: 640px) { .c-expense-editor { grid-template-columns: 1fr; } }
 @media(max-width:700px) { .c-expense-editor { grid-template-columns: 1fr; } .c-split-person .avatar { display: none; } .c-split-value-slot { flex-basis: 64px; } }
+}

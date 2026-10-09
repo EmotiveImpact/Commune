@@ -971,10 +971,6 @@
   }
 }
 
-.c-product-dialog.c-discard-dialog {
-  width: min(420px, calc(100vw - 32px));
-}
-
 .c-discard-dialog p {
   margin: 0 0 20px;
   color: var(--ink-soft);

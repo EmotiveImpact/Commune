@@ -38,8 +38,10 @@ describe("self-hosted fonts", () => {
   it("draws the wordmark with the subset made for it", () => {
     const app = readFileSync(new URL("app.css", styles), "utf8");
     expect(/\.a-wordmark\s*{[^}]*font-family:\s*"DM Sans Wordmark"/.exec(app)).not.toBeNull();
+    const index = readFileSync(new URL("index.css", styles), "utf8");
+    expect(index).toContain('@import "./fonts.css";');
     const main = readFileSync(new URL("../main.tsx", styles), "utf8");
-    expect(main).toContain('import "./styles/fonts.css";');
+    expect(main).toContain('import "./styles/index.css";');
     expect(main).not.toContain("@fontsource");
   });
 });

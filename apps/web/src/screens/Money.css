@@ -1,3 +1,6 @@
+/* In the screens layer, above the shared base styles and below the dark
+   theme and the design-language primitives (see styles/index.css). */
+@layer screens {
 /* Approved mockup language, retaining the application's page gutters and forms. */
 .c-expense-list { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 22px; }
 .c-expense-entry { width: 100%; min-width: 0; display: flex; flex-direction: column; align-items: stretch; gap: 20px; padding: 22px; border: 1px solid var(--border); border-radius: var(--radius-surface); background: var(--white); text-align: left; color: var(--ink); font: inherit; cursor: pointer; }
@@ -6,7 +9,8 @@
 .c-expense-card-foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; border-top: 1px solid var(--border); padding-top: 14px; font-size: 12px; color: var(--ink-soft); }
 .c-expense-card-foot > span { min-width: 0; overflow-wrap: anywhere; }
 .c-expense-footer-copy { flex: 1; }
-.c-expense-card-foot small { display: block; margin-top: 3px; }
+/* Not the calendar date's weekday, which keeps calendar-date.css's display and spacing. */
+.c-expense-card-foot small:where(:not(.c-calendar-weekday)) { display: block; margin-top: 3px; }
 .c-expense-card-foot svg { flex: none; }
 .c-expense-entry:hover .c-expense-copy strong { color: var(--text-green); }
 .c-expense-entry:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 3px; }
@@ -84,9 +88,9 @@
   #settle .c-settle-column .a-move > .amt { grid-column: 3; justify-self: end; }
 }
 
-/* Repayment receipts: one form, one history pattern, everywhere. */
-/* Qualified: .c-product-dialog is bundled later and would otherwise win. */
-.c-product-dialog.c-receipt-dialog { width: min(480px, calc(100vw - 32px)); }
+/* Repayment receipts: one form, one history pattern, everywhere. The
+   receipt dialog's width and the history's spacing are in the overrides
+   layer at the end of this file. */
 .c-receipt-context { font-size: 13px; line-height: 1.6; color: var(--ink-soft); margin: -8px 0 18px; overflow-wrap: anywhere; }
 .c-receipt-outcome { font-size: 13px; font-weight: 500; line-height: 1.6; margin: 4px 0 16px; font-variant-numeric: tabular-nums; }
 .c-receipt-note { font-size: 12px; line-height: 1.6; color: var(--ink-soft); margin: 14px 0 0; }
@@ -99,7 +103,6 @@
 .c-share-block .a-split-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 6px 12px; border-bottom: 0; }
 .c-share-block .a-row-actions { grid-column: 2 / -1; display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 8px; }
 .c-share-block .c-action-hint { text-align: right; }
-.c-share-block .c-receipt-history { margin: 0 0 14px 44px; }
 .c-receipt-history strong { font-weight: 500; color: var(--ink); font-variant-numeric: tabular-nums; }
 .c-receipt-history .is-reversed > span { text-decoration: none; }
 .c-receipt-history .is-reversed strong { text-decoration: line-through; color: var(--ink-soft); }
@@ -112,9 +115,6 @@
 .c-pending-report .a-btn { padding: 0 12px; font-size: 12px; }
 .c-report-answer { margin: 0 0 14px 44px; font-size: 12px; line-height: 1.6; color: var(--ink-soft); overflow-wrap: anywhere; }
 .c-move-answer .c-report-answer, .a-move .c-report-answer { margin: 3px 0 0; }
-.a-move .c-report-line { color: var(--ink); }
-/* Compact beside the history line on desktop; phones keep the 44px target. */
-@media (min-width: 561px) { .a-windows .c-receipt-history .a-btn { min-height: 32px; } }
 .a-panel.c-settle-recent { margin-top: 22px; background: var(--white); box-shadow: none; border-radius: var(--radius-surface); padding: 23px; }
 .a-panel.c-settle-recent h2 { font-size: 18px; font-weight: 550; margin-bottom: 4px; }
 .c-settle-receipt { display: flex; align-items: center; gap: 12px; width: 100%; padding: 14px 0; border: 0; border-top: 1px solid var(--border); background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
@@ -127,12 +127,11 @@
 @media(max-width:560px) {
   .c-settle-receipt { flex-wrap: wrap; }
   .c-settle-receipt .grow { flex-basis: calc(100% - 100px); }
-  .c-share-block .c-receipt-history { margin-left: 0; }
   .c-share-block .a-row-actions { grid-column: 1 / -1; }
 }
 
-/* Expense correction, void and version history. */
-.c-product-dialog.c-expense-change { width: min(600px, calc(100vw - 32px)); }
+/* Expense correction, void and version history (the dialog's width is in
+   the overrides layer at the end of this file). */
 .c-change-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 16px; }
 .c-change-lock { font-size: 13px; line-height: 1.6; padding: 12px 14px; border: 1px solid var(--border-strong); border-radius: var(--radius-control); margin: 4px 0 16px; }
 .c-change-review { margin: 0 0 16px; }
@@ -158,8 +157,6 @@
 .a-window .c-product-dialog .a-field label { font-size: 11px; color: var(--ink-soft); }
 .a-window .c-product-dialog .a-field { padding: 14px 0; border-bottom: 1px solid rgba(23, 27, 36, 0.05); }
 .a-window .c-product-dialog .a-field:last-of-type { border-bottom: 0; }
-.a-window :is(.c-product-dialog, .c-reminder-dialog) .a-field-row,
-.a-body.is-dark .a-window :is(.c-product-dialog, .c-reminder-dialog) .a-field-row { position: static; margin: 16px 0 0; padding: 0; background: transparent; border-top: 0; }
 .a-window :is(.c-product-dialog, .c-reminder-dialog) .a-field-row .a-btn { height: auto; min-width: 0; }
 
 /* A failure in a money dialog must not read like body copy. Same tone as the
@@ -190,7 +187,6 @@
 
 /* Recurring: the usual split scaled to this period's amount. */
 .c-period-split { margin: 0 0 12px; padding: 10px 14px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--paper-2); }
-.c-period-split .c-form-help { margin: 0 0 6px; }
 .c-period-split ul { list-style: none; margin: 0; padding: 0; }
 .c-period-split li { display: flex; justify-content: space-between; gap: 12px; padding: 3px 0; font-size: 13px; }
 .c-period-split li span:last-child { font-variant-numeric: tabular-nums; }
@@ -201,3 +197,22 @@
 .c-fund-figures div { min-width: 0; }
 .c-fund-figures dt { font-size: 11px; color: var(--ink-soft); }
 .c-fund-figures dd { margin: 2px 0 0; font-size: 14px; font-weight: 550; color: var(--ink); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+}
+
+/* These outrank the shared dialog, window and history rules
+   (design-system.css) and the dark theme (overrides.css), so they sit in the
+   same layer. */
+@layer overrides {
+/* Qualified: the shared .c-product-dialog would otherwise win. */
+.c-product-dialog.c-receipt-dialog { width: min(480px, calc(100vw - 32px)); }
+.c-share-block .c-receipt-history { margin: 0 0 14px 44px; }
+/* Compact beside the history line on desktop; phones keep the 44px target. */
+@media (min-width: 561px) { .a-windows .c-receipt-history .a-btn { min-height: 32px; } }
+@media(max-width:560px) { .c-share-block .c-receipt-history { margin-left: 0; } }
+.c-product-dialog.c-expense-change { width: min(600px, calc(100vw - 32px)); }
+/* A native dialog opened from inside a window keeps the shared dialog form,
+   not the window's sticky footer. */
+.a-window :is(.c-product-dialog, .c-reminder-dialog) .a-field-row,
+.a-body.is-dark .a-window :is(.c-product-dialog, .c-reminder-dialog) .a-field-row { position: static; margin: 16px 0 0; padding: 0; background: transparent; border-top: 0; }
+.c-period-split .c-form-help { margin: 0 0 6px; }
+}

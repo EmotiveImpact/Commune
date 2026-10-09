@@ -98,7 +98,8 @@ body,
   border-color: transparent;
 }
 /* The sticky action row of a window kept its cream face in dark mode. */
-.a-body.is-dark .a-window .a-field-row {
+/* Not a delete question in a task window, which keeps its plain row (app.css). */
+.a-body.is-dark .a-window .a-field-row:where(:not(.operation-delete *)) {
   background: #242b39;
   border-top-color: var(--border);
 }

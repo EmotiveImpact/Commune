@@ -1,3 +1,6 @@
+/* In the screens layer, above the shared base styles and below the dark
+   theme and the design-language primitives (see styles/index.css). */
+@layer screens {
 .c-connection-recovery {
   min-height: 100dvh;
   box-sizing: border-box;
@@ -21,3 +24,4 @@
 .c-connection-actions { display: flex; flex-wrap: wrap; gap: 10px; }
 .c-connection-feedback { min-height: 36px; padding-top: 16px; font-size: 12px; line-height: 1.5; color: var(--soft); }
 @media (max-width: 480px) { .c-connection-card { padding: 24px; } }
+}

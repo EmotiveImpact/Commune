@@ -49,7 +49,7 @@ describe("shared Operations calendar", () => {
     const read = (path: string) => readFileSync(resolve(process.cwd(), path), "utf8");
     // Bundled with the app's styles, so it no longer holds up the first paint.
     expect(read("index.html")).not.toContain("calendar-date.css");
-    expect(read("src/main.tsx")).toContain('import "./styles/calendar-date.css";');
+    expect(read("src/styles/index.css")).toContain('@import "./calendar-date.css" layer(base);');
     expect(read("reference/design-language/index.html")).toContain('href="/src/styles/calendar-date.css"');
     const css = read("src/styles/calendar-date.css");
     expect(css).toContain("width: 60px;");

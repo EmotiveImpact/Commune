@@ -1,3 +1,6 @@
+/* In the screens layer, above the shared base styles and below the dark
+   theme and the design-language primitives (see styles/index.css). */
+@layer screens {
 /* The live Hub follows the selected desktop prototype. Other screens keep their own layout. */
 .a-body.hub-editorial {
   --hub-ink: #1a1e2b;
@@ -31,9 +34,11 @@
   --hub-warning: #f4ba94;
   --hub-heading-icon: #b5c6bb;
 }
-.a-body.hub-editorial :is(.a-app, .a-main, .a-content) { background: var(--hub-paper); }
+/* The phone app's layout (app.css) keeps its own frame background and page padding. */
+.a-body.hub-editorial .a-app:where(:not(.is-native *)),
+.a-body.hub-editorial :is(.a-main, .a-content) { background: var(--hub-paper); }
 /* Header geometry, typography and responsive behaviour belong to the shared shell. */
-.hub-editorial .a-content { padding: 22px 22px 32px; }
+.hub-editorial .a-content:where(:not(.is-native *)) { padding: 22px 22px 32px; }
 
 .c-hub { max-width: 1208px; margin-inline: auto; display: grid; gap: 22px; color: var(--hub-ink); font-family: var(--font); font-size: 14px; line-height: 1.5; }
 .c-hub :is(h1,h2,h3,p) { margin: 0; }
@@ -167,7 +172,7 @@
   .c-hub-lower .c-hub-panel { min-height: 0; }
 }
 @media(max-width:560px) {
-  .hub-editorial .a-content { padding: 16px 16px 30px; }
+  .hub-editorial .a-content:where(:not(.is-native *)) { padding: 16px 16px 30px; }
   .c-hub { gap: 16px; }
   .c-hub-identity { min-height: 280px; padding: 22px; }
   .c-hub .c-hub-identity h2 { font-size: 29px; }
@@ -204,4 +209,5 @@
   .c-hub-attention-end button::before { inset: -8px 0; }
   .c-hub-task-feedback .c-hub-link::before { content: none; }
   .c-hub-check { align-items: center; width: 44px; height: 44px; margin: -13.5px -15px -13.5px -12px; padding-left: 12px; }
+}
 }

@@ -149,6 +149,10 @@
   border-radius: var(--radius-surface);
   padding: 26px;
 }
+/* Narrower for the question about discarding changes. */
+.c-product-dialog.c-discard-dialog {
+  width: min(420px, calc(100vw - 32px));
+}
 .c-product-dialog::backdrop {
   background: rgba(26, 30, 43, 0.45);
 }

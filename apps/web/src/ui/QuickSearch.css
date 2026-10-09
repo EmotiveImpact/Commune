@@ -1,6 +1,8 @@
+/* In the screens layer, above the shared base styles and below the dark
+   theme and the design-language primitives (see styles/index.css). */
+@layer screens {
 /* One interaction, Commune's existing control/surface radius and restrained type. */
 .a-header .c-search-trigger {
-  display: flex;
   width: 238px;
   min-height: 36px;
   gap: 9px;
@@ -13,24 +15,13 @@
   font-size: 12px;
   cursor: pointer;
 }
+/* The phone app's layout hides the trigger (app.css). */
+.a-header .c-search-trigger:where(:not(.is-native *)) { display: flex; }
 .c-search-trigger span { flex: 1; text-align: left; }
 .c-search-trigger kbd, .c-search-key-hint kbd {
   padding: 1px 4px; border: 1px solid var(--border); border-radius: 3px;
   font: inherit; font-size: 10px; color: var(--ink-soft);
 }
-.c-product-dialog.c-quick-search {
-  width: min(640px, calc(100vw - 32px));
-  max-width: 640px;
-  max-height: calc(100dvh - 56px);
-  padding: 0;
-  margin: max(28px, 12dvh) auto auto;
-  overflow: hidden;
-  border-radius: var(--radius-surface);
-  color: var(--ink);
-  background: var(--white);
-}
-.c-product-dialog.c-quick-search > h2 { margin: 0; padding: 18px 22px 0; font-size: 17px; font-weight: 550; }
-.c-quick-search .c-dialog-close { top: 11px; right: 12px; }
 .c-quick-search-input { display: flex; align-items: center; gap: 12px; padding: 18px 22px; color: var(--ink-soft); }
 .c-quick-search-input input {
   flex: 1; min-width: 0; border: 0; background: transparent; color: var(--ink);
@@ -88,10 +79,31 @@
 @media (max-width: 700px) {
   .a-header .c-search-trigger { width: 44px; min-height: 44px; flex-shrink: 0; padding: 12px; }
   .c-search-trigger span, .c-search-trigger kbd { display: none; }
-  .c-product-dialog.c-quick-search { margin-top: 20px; }
   .c-quick-search-input input { font-size: 16px; }
   .c-search-key-hint { display: none; }
   .c-search-result-meta { max-width: 100px; }
   .c-search-scope > span { max-width: 180px; }
   .c-record-filter { flex: 1; min-width: 150px; }
+}
+}
+
+/* The quick search window's own size, spacing and close button outrank the
+   shared dialog's (design-system.css), so they sit in the same layer. */
+@layer overrides {
+.c-product-dialog.c-quick-search {
+  width: min(640px, calc(100vw - 32px));
+  max-width: 640px;
+  max-height: calc(100dvh - 56px);
+  padding: 0;
+  margin: max(28px, 12dvh) auto auto;
+  overflow: hidden;
+  border-radius: var(--radius-surface);
+  color: var(--ink);
+  background: var(--white);
+}
+.c-product-dialog.c-quick-search > h2 { margin: 0; padding: 18px 22px 0; font-size: 17px; font-weight: 550; }
+.c-quick-search .c-dialog-close { top: 11px; right: 12px; }
+@media (max-width: 700px) {
+  .c-product-dialog.c-quick-search { margin-top: 20px; }
+}
 }
