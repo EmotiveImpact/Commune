@@ -10,6 +10,7 @@ const jwt = () => `e30.${btoa(JSON.stringify({ sub: user.id, exp: Math.floor(Dat
 const refusal = (status: number, code: string, message: string) => () => Response.json({ code, message }, { status });
 let calls: Array<{ path: string; body: unknown }>;
 let answer: () => Response;
+let sessionReads = 0;
 
 beforeEach(() => {
   vi.resetModules();
@@ -19,6 +20,7 @@ beforeEach(() => {
   vi.stubGlobal("fetch", vi.fn<typeof fetch>(async (input, init) => {
     const url = new URL(typeof input === "string" ? input : input instanceof URL ? input : input.url);
     if (url.pathname.endsWith("/get-session")) {
+      sessionReads++;
       return Response.json({
         session: { id: "session-1", userId: user.id, token: "opaque-cookie-token", expiresAt: "2030-01-01T00:00:00Z" }, user,
       }, { headers: { "Set-Auth-Jwt": jwt() } });
@@ -40,6 +42,12 @@ describe("hosted password change", () => {
     answer = () => Response.json({ token: "new-session-token", user });
     expect(await send("/auth/change-password", change)).toEqual({ ok: true });
     expect(calls).toEqual([{ path: "/change-password", body: { ...change, revokeOtherSessions: true } }]);
+    // This tab carries on as the same account with the token it already has,
+    // so the account checks in session.ts see no change.
+    const reads = sessionReads;
+    const { neonApi } = await import("../src/live/neon");
+    expect(await neonApi("/auth/me")).toEqual({ user });
+    expect(sessionReads).toBe(reads);
   });
 
   it("keeps a wrong current password a refusal, apart from an ended sign-in", async () => {
