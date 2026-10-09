@@ -4,7 +4,8 @@ import { HandCoins, Plus } from "lucide-react";
 import { useApp } from "../state";
 import { useSearchRecord } from "../ui/useSearchRecord";
 import { money, type Fund, type Commitment } from "../live/model";
-import { parseMoneyInput } from "../data/moneyInput";
+import { moneyInputError, parseMoneyInput } from "../data/moneyInput";
+import { LIMITS } from "../data/limits";
 import { todayIso } from "../data/operations";
 import {
   Button,
@@ -216,10 +217,10 @@ export function FundsScreen() {
     event.preventDefault();
     setError("");
     if (!mode) return;
-    const minor = parseMoneyInput(amount);
+    const minor = parseMoneyInput(amount, hub.currency);
     if (mode.kind === "create" || mode.kind === "edit") {
       if (!name.trim() || (amount.trim() && !minor)) {
-        setError("Enter a name and a valid optional target.");
+        setError(moneyInputError(amount, hub.currency, "Enter a name and a valid optional target."));
         return;
       }
       void run(
@@ -232,7 +233,7 @@ export function FundsScreen() {
       );
     } else if (mode.kind === "pledge") {
       if (!minor || !date) {
-        setError("Enter a valid amount and due date.");
+        setError(moneyInputError(amount, hub.currency, "Enter a valid amount and due date."));
         return;
       }
       if (commitment && minor < commitment.contributedMinor) {
@@ -265,7 +266,7 @@ export function FundsScreen() {
         !minor ||
         minor > commitment.amountMinor - commitment.contributedMinor
       ) {
-        setError("Enter an amount no greater than the outstanding pledge.");
+        setError(moneyInputError(amount, hub.currency, "Enter an amount no greater than the outstanding pledge."));
         return;
       }
       void run(
@@ -768,7 +769,7 @@ export function FundsScreen() {
                       value={amount}
                       onChange={(event) => setAmount(event.target.value)}
                       inputMode="decimal"
-                      maxLength={14}
+                      maxLength={LIMITS.money}
                       required={mode.kind !== "create" && mode.kind !== "edit"}
                     />
                   </Field>

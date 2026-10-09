@@ -7,7 +7,8 @@ import {
   allocateExpense,
   type SplitMethod,
 } from "../../../../packages/core/src/expenseSplit";
-import { parseMoneyInput } from "../data/moneyInput";
+import { moneyInputError, parseMoneyInput } from "../data/moneyInput";
+import { plainAmount } from "../../../../packages/core/src/money";
 import {
   Button,
   Dialog,
@@ -54,25 +55,36 @@ function TemplateEditor({
     setValidation("");
     try {
       if (!name.trim()) throw new Error("Name this split template.");
-      const total =
+      const exact =
         method === "Exact"
-          ? included.reduce((sum, id) => {
-              const value = parseMoneyInput(values[id] ?? "");
+          ? included.map((id) => {
+              const value = parseMoneyInput(values[id] ?? "", hub.currency);
               if (!value)
                 throw new Error(
-                  "Enter a positive exact amount for everyone included.",
+                  moneyInputError(values[id] ?? "", hub.currency, "Enter a positive exact amount for everyone included."),
                 );
-              return sum + value;
-            }, 0)
+              return value;
+            })
+          : [];
+      const total =
+        method === "Exact"
+          ? exact.reduce((sum, value) => sum + value, 0)
           : 1000000;
-      allocateExpense(total, included, method, values);
+      allocateExpense(total, included, method, values, hub.currency);
       onSave({
         id: template?.id,
         name: name.trim(),
         method,
-        participants: included.map((userId) => ({
+        participants: included.map((userId, index) => ({
           userId,
-          value: method === "Equal" ? "" : (values[userId] ?? ""),
+          // Exact amounts are stored as plain figures, like 1200.50,
+          // however they were typed.
+          value:
+            method === "Equal"
+              ? ""
+              : method === "Exact"
+                ? plainAmount(exact[index])
+                : (values[userId] ?? ""),
         })),
       });
     } catch (cause) {

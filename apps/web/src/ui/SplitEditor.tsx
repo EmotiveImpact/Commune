@@ -34,7 +34,7 @@ export function SplitEditor({
   let error = "";
   if (amountMinor) {
     try {
-      allocations = allocateExpense(amountMinor, includedIds, method, values);
+      allocations = allocateExpense(amountMinor, includedIds, method, values, currency);
     } catch (cause) {
       error = cause instanceof Error ? cause.message : "Check the split.";
     }

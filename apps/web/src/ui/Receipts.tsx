@@ -1,7 +1,7 @@
 import { useRef, useState, type FormEvent } from "react";
 import { useApp } from "../state";
 import { money, type CurrencyCode, type PaymentReport, type Receipt, type Share } from "../live/model";
-import { parseMoneyInput } from "../data/moneyInput";
+import { moneyInputError, parseMoneyInput } from "../data/moneyInput";
 import { todayIso } from "../data/operations";
 import { newRequestId } from "../data/requestId";
 import { commandFailure, UNCERTAIN_RETRY_SAFE } from "../data/commands";
@@ -60,13 +60,13 @@ export function RecordReceiptDialog({ target, onClose, onRecorded }: {
   const [uncertain, setUncertain] = useState(false);
   // One id for this decision: every retry of this dialog reuses it.
   const requestId = useRef(newRequestId());
-  const minor = parseMoneyInput(amount);
+  const minor = parseMoneyInput(amount, target.currency);
   const after = minor !== null && minor <= target.outstandingMinor ? target.outstandingMinor - minor : null;
 
   async function save(event: FormEvent) {
     event.preventDefault();
     if (pending) return;
-    if (minor === null) { setError("Enter the amount received, for example 25.00."); return; }
+    if (minor === null) { setError(moneyInputError(amount, target.currency, "Enter the amount received, for example 25.00.")); return; }
     if (minor > target.outstandingMinor) { setError(`Only ${money(target.outstandingMinor, target.currency)} is still outstanding on this share.`); return; }
     if (!receivedOn || receivedOn > todayIso()) { setError("Enter the date the money was received, not a future date."); return; }
     if (unsafeReference(reference)) { setError("Leave out card or account numbers. A short note such as “bank transfer” is enough."); return; }
@@ -135,12 +135,12 @@ export function ReportPaymentDialog({ target, onClose, onReported }: {
   const [error, setError] = useState("");
   const [uncertain, setUncertain] = useState(false);
   const requestId = useRef(newRequestId());
-  const minor = parseMoneyInput(amount);
+  const minor = parseMoneyInput(amount, target.currency);
 
   async function save(event: FormEvent) {
     event.preventDefault();
     if (pending) return;
-    if (minor === null) { setError("Enter the amount you sent, for example 25.00."); return; }
+    if (minor === null) { setError(moneyInputError(amount, target.currency, "Enter the amount you sent, for example 25.00.")); return; }
     if (minor > target.outstandingMinor) { setError(`Only ${money(target.outstandingMinor, target.currency)} is still outstanding on this share.`); return; }
     if (!sentOn || sentOn > todayIso()) { setError("Enter the date you sent the money, not a future date."); return; }
     if (unsafeReference(reference)) { setError("Leave out card or account numbers. A short note such as “bank transfer” is enough."); return; }

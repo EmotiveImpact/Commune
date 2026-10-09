@@ -25,6 +25,7 @@ import { allocateExpense, type SplitMethod } from "../../../../packages/core/src
 import { netBalances } from "../../../../packages/core/src/balances";
 import "./ExpenseEditor.css";
 import { SplitEditor } from "../ui/SplitEditor";
+import { moneyInputError, parseMoneyInput } from "../data/moneyInput";
 
 const NOTE_TYPES = [
   ["wifi", "Wi-Fi"],
@@ -38,14 +39,6 @@ const NOTE_TYPES = [
 
 function formatMoney(minor: number, currency: string): string {
   return new Intl.NumberFormat("en-GB", { style: "currency", currency }).format(minor / 100);
-}
-
-function parseMoney(value: string): number | null {
-  const clean = value.trim();
-  if (!/^\d+(?:\.\d{1,2})?$/.test(clean)) return null;
-  const [major, decimals = ""] = clean.split(".");
-  const minor = Number(major) * 100 + Number(decimals.padEnd(2, "0"));
-  return Number.isSafeInteger(minor) && minor > 0 ? minor : null;
 }
 
 export function Windows() {
@@ -286,7 +279,7 @@ function AddExpense() {
   const members = hub.members.flatMap((member) => member.userId ? [{ ...member, userId: member.userId }] : []);
   const initialTemplate = splitTemplates.find(template => template.id === expenseTemplateId && !template.archivedAt && template.participants.every(item => members.some(member => member.userId === item.userId)));
   const [what, setWhat] = useState("");
-  const [amount, setAmount] = useState(() => initialTemplate?.method === "Exact" ? (initialTemplate.participants.reduce((total, item) => total + (parseMoney(item.value) ?? 0), 0) / 100).toFixed(2) : "");
+  const [amount, setAmount] = useState(() => initialTemplate?.method === "Exact" ? (initialTemplate.participants.reduce((total, item) => total + (parseMoneyInput(item.value) ?? 0), 0) / 100).toFixed(2) : "");
   const [due, setDue] = useState("");
   const [payer, setPayer] = useState(session?.userId ?? "");
   const [category, setCategory] = useState("Other");
@@ -301,11 +294,11 @@ function AddExpense() {
   // the same expense.
   const requestId = useRef(newRequestId());
   const [uncertain, setUncertain] = useState(false);
-  const amountMinor = parseMoney(amount);
+  const amountMinor = parseMoneyInput(amount, hub.currency);
   const included = members.filter((member) => includedIds.includes(member.userId));
   let allocations: ReturnType<typeof allocateExpense> = [];
   let splitError = "";
-  try { allocations = allocateExpense(amountMinor ?? 0, included.map(member => member.userId), method, values); }
+  try { allocations = allocateExpense(amountMinor ?? 0, included.map(member => member.userId), method, values, hub.currency); }
   catch (cause) { splitError = cause instanceof Error ? cause.message : "Check the split."; }
 
   async function save() {
@@ -315,7 +308,7 @@ function AddExpense() {
       return;
     }
     if (amountMinor === null || amountMinor < included.length) {
-      setError("Enter a valid amount of at least one penny per selected person.");
+      setError(moneyInputError(amount, hub.currency, "Enter a valid amount of at least one penny per selected person."));
       return;
     }
     if (!included.length) {
@@ -390,7 +383,7 @@ function AddExpense() {
         if(!template) {setIncludedIds(members.map(member=>member.userId));setMethod("Equal");setValues({});return;}
         if(template.participants.some(item=>!members.some(member=>member.userId===item.userId))) {setError("This template includes a former member. Update it in Templates first.");setTemplateId("");return;}
         setIncludedIds(template.participants.map(item=>item.userId));setMethod(template.method);setValues(Object.fromEntries(template.participants.map(item=>[item.userId,item.value])));setError("");
-        if(template.method==="Exact" && !amount.trim()) {const sum=template.participants.reduce((total,item)=>total+(parseMoney(item.value) ?? 0),0);setAmount((sum/100).toFixed(2));}
+        if(template.method==="Exact" && !amount.trim()) {const sum=template.participants.reduce((total,item)=>total+(parseMoneyInput(item.value) ?? 0),0);setAmount((sum/100).toFixed(2));}
       }}><option value="">Custom split</option>{splitTemplates.filter(template=>!template.archivedAt).map(template=><option key={template.id} value={template.id}>{template.name} · {template.method}</option>)}</select></div>}
       <div className="a-field">
         <label htmlFor="exp-due">Due date (optional)</label>
