@@ -186,13 +186,14 @@ DECLARE
   d text := '00000000-0000-4000-8000-0000000000d4';
   e text := '00000000-0000-4000-8000-0000000000e5';
   v_zebra_note uuid; v_zebra_task uuid; v_dana_task uuid; v_result jsonb; v_case text; v_snapshot jsonb;
+  v_note_request uuid := gen_random_uuid(); v_event_request uuid := gen_random_uuid(); v_task_request uuid := gen_random_uuid();
   v_occurrence uuid;
 BEGIN
   -- Blake, a plain member, adds a note, an event and a task for Dana.
   PERFORM set_config('request.jwt.claims', json_build_object('sub', b, 'role', 'authenticated')::text, true);
-  v_zebra_note := (public.create_note(v_home, 'Zebra crossing', 'Other', 'Everyone', '', 'By the school', '[]', gen_random_uuid())->>'id')::uuid;
-  v_zebra_task := (public.create_operation(v_home, 'event', 'visit', 'Zebra visit', current_date, NULL, true, NULL, NULL, 'none', '', gen_random_uuid())->>'id')::uuid;
-  v_dana_task := (public.create_operation(v_home, 'task', 'chore', 'Zebra mural', current_date, NULL, true, d, NULL, 'none', '', gen_random_uuid())->>'id')::uuid;
+  v_zebra_note := (public.create_note(v_home, 'Zebra crossing', 'Other', 'Everyone', '', 'By the school', '[]', v_note_request)->>'id')::uuid;
+  v_zebra_task := (public.create_operation(v_home, 'event', 'visit', 'Zebra visit', current_date, NULL, true, NULL, NULL, 'none', '', v_event_request)->>'id')::uuid;
+  v_dana_task := (public.create_operation(v_home, 'task', 'chore', 'Zebra mural', current_date, NULL, true, d, NULL, 'none', '', v_task_request)->>'id')::uuid;
   IF (public.search_commune_records('Zebra', v_home, 8)->>'total')::int <> 3 THEN RAISE EXCEPTION 'Search did not find the new records'; END IF;
 
   -- Dana, a plain member who did not add them, cannot remove Blake's.
@@ -290,8 +291,21 @@ BEGIN
     END;
   END LOOP;
 
-  -- Nor does Blake, a plain member, see the removed history.
+  -- Blake retries his adds after they were removed: each is refused rather
+  -- than handing back the hidden record. The history stays out of his sight.
   PERFORM set_config('request.jwt.claims', json_build_object('sub', b, 'role', 'authenticated')::text, true);
+  FOREACH v_case IN ARRAY ARRAY['note', 'event', 'task'] LOOP
+    BEGIN
+      CASE v_case
+        WHEN 'note' THEN v_result := public.create_note(v_home, 'Zebra crossing', 'Other', 'Everyone', '', 'By the school', '[]', v_note_request);
+        WHEN 'event' THEN v_result := public.create_operation(v_home, 'event', 'visit', 'Zebra visit', current_date, NULL, true, NULL, NULL, 'none', '', v_event_request);
+        ELSE v_result := public.create_operation(v_home, 'task', 'chore', 'Zebra mural', current_date, NULL, true, d, NULL, 'none', '', v_task_request);
+      END CASE;
+      RAISE EXCEPTION 'A retried add returned a removed %: %', v_case, v_result;
+    EXCEPTION WHEN raise_exception THEN
+      IF SQLERRM <> format('This %s has been removed', v_case) THEN RAISE; END IF;
+    END;
+  END LOOP;
   IF EXISTS (SELECT 1 FROM public.note_revisions WHERE note_id = v_note)
      OR EXISTS (SELECT 1 FROM public.operation_occurrences WHERE operation_id = v_task) THEN
     RAISE EXCEPTION 'A member can still read a removed record''s history';

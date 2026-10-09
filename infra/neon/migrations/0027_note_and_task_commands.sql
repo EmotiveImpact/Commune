@@ -3,7 +3,8 @@
 -- task's status, completion and timestamps, delete a note or task outright,
 -- and save over an edit someone made in the meantime.
 --
--- * Adding carries a request id, so a retry returns what it already added.
+-- * Adding carries a request id, so a retry returns what it already added,
+--   or says it has since been removed.
 -- * Editing names the version it was based on, and a stale edit is refused.
 --   Every change to a task moves it to its next version, so an edit opened
 --   before a completion, skip or handover cannot quietly undo it. An edit
@@ -141,7 +142,8 @@ END;
 $$;
 REVOKE ALL ON FUNCTION commune_private.operation_content(text, text, text, date, time, boolean, text, jsonb, text, text) FROM PUBLIC;
 
--- Any member adds a note. A retry with the same request id returns it.
+-- Any member adds a note. A retry with the same request id returns it, unless
+-- it has since been removed.
 CREATE FUNCTION public.create_note(p_commune_id uuid, p_title text, p_pill text, p_kicker text,
   p_lede text, p_body text, p_facts jsonb, p_request_id uuid)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
@@ -165,6 +167,10 @@ BEGIN
   IF FOUND THEN
     IF v_existing.commune_id <> p_commune_id OR v_existing.request_digest IS DISTINCT FROM md5(v_card::text) THEN
       RAISE EXCEPTION 'This request was already used for a different change' USING ERRCODE = '22023';
+    END IF;
+    -- A late retry must not hand back a note that has since been removed.
+    IF v_existing.deleted_at IS NOT NULL THEN
+      RAISE EXCEPTION 'This note has been removed' USING ERRCODE = 'P0001';
     END IF;
     RETURN jsonb_build_object('id', v_existing.id, 'version', v_existing.version, 'duplicate', true);
   END IF;
@@ -276,6 +282,10 @@ BEGIN
   IF FOUND THEN
     IF v_existing.commune_id <> p_commune_id OR v_existing.request_digest IS DISTINCT FROM md5(v_item::text) THEN
       RAISE EXCEPTION 'This request was already used for a different change' USING ERRCODE = '22023';
+    END IF;
+    -- A late retry must not hand back a task or event that has since been removed.
+    IF v_existing.deleted_at IS NOT NULL THEN
+      RAISE EXCEPTION 'This % has been removed', v_existing.kind USING ERRCODE = 'P0001';
     END IF;
     RETURN jsonb_build_object('id', v_existing.id, 'version', v_existing.version, 'duplicate', true);
   END IF;
