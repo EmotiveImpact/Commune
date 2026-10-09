@@ -71,8 +71,11 @@ export type PendingInvite = {
   id: string; email: string; role: "Member" | "Admin";
   status: "pending" | "expired" | "accepted" | "revoked";
   createdAt: string; expiresAt: string; acceptedAt: string | null; revokedAt: string | null;
+  /** Who sent it. Their open invitations end when they stop being an admin. */
+  invitedBy: string | null; invitedByName: string | null;
 };
-type InviteRecord = { id: string; email: string; role: "member" | "admin"; createdAt: string; expiresAt: string; acceptedAt: string | null; revokedAt: string | null };
+type InviteRecord = { id: string; email: string; role: "member" | "admin"; createdAt: string; expiresAt: string; acceptedAt: string | null; revokedAt: string | null;
+  invitedBy?: string | null; invitedByName?: string | null };
 export function inviteStatus(invite: Pick<InviteRecord, "acceptedAt" | "revokedAt" | "expiresAt">, now = Date.now()): PendingInvite["status"] {
   if (invite.acceptedAt) return "accepted";
   if (invite.revokedAt) return "revoked";
@@ -104,6 +107,8 @@ export type CreateExpenseInput = {
   shareUserIds: string[];
   allocations?: ExpenseAllocation[];
   paidByUserId?: string;
+  /** One id per open form, kept across retries, so a retry cannot record it twice. */
+  requestId: string;
 };
 export type CorrectExpenseInput = {
   expectedVersion: number;
@@ -299,9 +304,10 @@ export type AppState = {
   revokeInvite: (id: string) => Promise<void>;
   previewInvite: (token: string) => Promise<InvitePreview | null>;
   acceptInvite: (token: string) => Promise<string>;
-  createFund: (name: string, targetMinor?: number | null) => Promise<string>;
-  pledgeFund: (fundId: string, amountMinor: number, dueOn: string) => Promise<string>;
-  recordFundContribution: (commitmentId: string, amountMinor: number) => Promise<string>;
+  /** requestId stays the same across retries of one open form. */
+  createFund: (name: string, targetMinor: number | null, requestId: string) => Promise<string>;
+  pledgeFund: (fundId: string, amountMinor: number, dueOn: string, requestId: string) => Promise<string>;
+  recordFundContribution: (commitmentId: string, amountMinor: number, requestId: string) => Promise<string>;
   updateFund: (fundId: string, name: string, targetMinor: number | null) => Promise<void>;
   archiveFund: (fundId: string, archived: boolean) => Promise<void>;
   updatePledge: (commitmentId: string, input: { amountMinor?: number; dueOn?: string; cancel?: boolean }) => Promise<void>;
@@ -593,6 +599,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 role: invite.role === "admin" ? "Admin" as const : "Member" as const,
                 status: inviteStatus(invite), createdAt: invite.createdAt, expiresAt: invite.expiresAt,
                 acceptedAt: invite.acceptedAt, revokedAt: invite.revokedAt,
+                invitedBy: invite.invitedBy ?? null, invitedByName: invite.invitedByName ?? null,
               }))] as const;
           })).then((inviteEntries) => {
         if (sequence !== refreshSequence.current || !dataRef.current) return;
@@ -871,13 +878,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!data) throw new Error("Sign in first");
     const shares = input.allocations ? validateExpenseAllocation(input.amountMinor, input.allocations) : allocateExpense(input.amountMinor, input.shareUserIds, "Equal");
     if (shares.length !== input.shareUserIds.length || shares.some(share => !input.shareUserIds.includes(share.userId))) throw new Error("The split must match the selected people.");
-    const result = await post<{ id: string }>(`/communes/${encodeURIComponent(activeId)}/expenses`, {
+    const result = await post<{ id: string; duplicate?: boolean }>(`/communes/${encodeURIComponent(activeId)}/expenses`, {
       title: input.name.trim(),
       amountMinor: input.amountMinor,
       shares,
       dueOn: input.dueOn ?? null,
       paidByUserId: input.paidByUserId ?? data.user.id,
       ...(input.category ? { category: input.category } : {}),
+      requestId: input.requestId,
     });
     await refreshRecords();
     setSelectedExpenseId(result.id);
@@ -1002,19 +1010,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return result.communeId;
   }), [mutate, refresh, savePrefs, setLocation]);
 
-  const createFund = useCallback((name: string, targetMinor?: number | null) => mutate(async () => {
+  // A repeat of the same requestId returns the record the first attempt made.
+  const createFund = useCallback((name: string, targetMinor: number | null, requestId: string) => mutate(async () => {
     if (!activeId) throw new Error("Choose a commune first");
-    const result = await post<{ id: string }>(`/communes/${encodeURIComponent(activeId)}/funds`, { name, targetMinor: targetMinor ?? null });
+    const result = await post<{ id: string; duplicate?: boolean }>(`/communes/${encodeURIComponent(activeId)}/funds`, { name, targetMinor, requestId });
     await refreshRecords();
     return result.id;
   }), [activeId, mutate, refreshRecords]);
-  const pledgeFund = useCallback((fundId: string, amountMinor: number, dueOn: string) => mutate(async () => {
-    const result = await post<{ id: string }>(`/funds/${encodeURIComponent(fundId)}/pledges`, { amountMinor, dueOn });
+  const pledgeFund = useCallback((fundId: string, amountMinor: number, dueOn: string, requestId: string) => mutate(async () => {
+    const result = await post<{ id: string; duplicate?: boolean }>(`/funds/${encodeURIComponent(fundId)}/pledges`, { amountMinor, dueOn, requestId });
     await refreshRecords();
     return result.id;
   }), [mutate, refreshRecords]);
-  const recordFundContribution = useCallback((commitmentId: string, amountMinor: number) => mutate(async () => {
-    const result = await post<{ id: string }>(`/commitments/${encodeURIComponent(commitmentId)}/contributions`, { amountMinor });
+  const recordFundContribution = useCallback((commitmentId: string, amountMinor: number, requestId: string) => mutate(async () => {
+    const result = await post<{ id: string; duplicate?: boolean }>(`/commitments/${encodeURIComponent(commitmentId)}/contributions`, { amountMinor, requestId });
     await refreshRecords();
     return result.id;
   }), [mutate, refreshRecords]);

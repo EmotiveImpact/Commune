@@ -14,6 +14,8 @@ import { ReminderFlowDialog, useReminderFlow } from "../ui/ReminderConfirm";
 import { reminderEligibility } from "../data/reminders";
 import { LatestReportAnswer, PendingReport, ReceiptHistory, pendingReport, useReceiptActions } from "../ui/Receipts";
 import { ExpenseHistory, useExpenseChange } from "../ui/ExpenseChange";
+import { newRequestId } from "../data/requestId";
+import { commandFailure, UNCERTAIN_RETRY_SAFE } from "../data/commands";
 import { formatReminderDay, formatTimestampDay } from "../data/reminders";
 import { isNotePinned } from "../data/notePresentation";
 import { buildStatement, statementCsv } from "../data/statement";
@@ -201,6 +203,8 @@ const NOTICE_COPY: Record<string, { pill: string; title: string }> = {
   "payment-reported": { pill: "Sent", title: "Payment reported" },
   "payment-confirmed": { pill: "Confirmed", title: "Payment confirmed" },
   "payment-declined": { pill: "Not received", title: "Payment not received" },
+  "pledge-changed": { pill: "Changed", title: "Pledge changed" },
+  "pledge-cancelled": { pill: "Cancelled", title: "Pledge cancelled" },
 };
 
 /** One plain sentence for a ledger notice: what changed, by whom, for you. */
@@ -210,11 +214,14 @@ function ledgerNoticeLine(kind: string, amount: string, actor: string): string {
   if (kind === "payment-confirmed") return `${actor} confirmed ${amount || "your payment"} received`;
   if (kind === "payment-declined") return `${actor} has not received ${amount || "your payment"}`;
   if (kind === "expense-voided") return `Voided by ${actor}${amount ? ` · your ${amount} share no longer counts` : ""}`;
+  // The notice's detail says what changed, from and to.
+  if (kind === "pledge-changed") return `Your pledge was changed by ${actor}`;
+  if (kind === "pledge-cancelled") return `Your ${amount ? `${amount} ` : ""}pledge was cancelled by ${actor}`;
   return `Corrected by ${actor}${amount ? ` · your share is now ${amount}` : ""}`;
 }
 
 function Notices() {
-  const { go, hub, notifications, markNotificationRead } = useApp();
+  const { go, hub, funds, notifications, markNotificationRead } = useApp();
   const [error, setError] = useState("");
   if (!notifications.length) {
     return (
@@ -234,13 +241,18 @@ function Notices() {
         const ledger = notice.kind !== "nudge" && notice.kind !== "chase";
         const amount = notice.amountMinor != null ? formatMoney(notice.amountMinor, hub.currency) : "";
         const date = new Date(notice.createdAt).toLocaleDateString("en-GB");
+        // A pledge notice opens the fund that holds the pledge.
+        const pledge = notice.kind === "pledge-changed" || notice.kind === "pledge-cancelled";
+        const fund = pledge ? funds.find((item) => !item.archivedAt && item.commitments.some((entry) => entry.id === notice.sourceId)) : undefined;
         return (
           <button
             className="a-notice"
             type="button"
             key={notice.id}
             onClick={() => void markNotificationRead(notice.id)
-              .then(() => ledger && notice.expenseId ? go("expense", { expense: notice.expenseId }) : go(notice.kind === "chase" ? "funds" : "settle"))
+              .then(() => ledger && notice.expenseId ? go("expense", { expense: notice.expenseId })
+                : pledge ? go("funds", fund ? { record: { kind: "fund", id: fund.id } } : undefined)
+                  : go(notice.kind === "chase" ? "funds" : "settle"))
               .catch((cause) => setError(cause instanceof Error ? cause.message : "Could not mark the notice read."))}
           >
             <Pill tone={notice.readAt ? undefined : "open"}>{copy.pill}</Pill>
@@ -283,6 +295,11 @@ function AddExpense() {
   const [values, setValues] = useState<Record<string, string>>(() => Object.fromEntries(initialTemplate?.participants.map(item => [item.userId, item.value]) ?? []));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  // One id for this form: every retry reuses it, so the server records the
+  // expense once. After an unconfirmed attempt the fields lock, so a retry is
+  // the same expense.
+  const requestId = useRef(newRequestId());
+  const [uncertain, setUncertain] = useState(false);
   const amountMinor = parseMoney(amount);
   const included = members.filter((member) => includedIds.includes(member.userId));
   let allocations: ReturnType<typeof allocateExpense> = [];
@@ -316,10 +333,16 @@ function AddExpense() {
         allocations,
         paidByUserId:payer,
         category,
+        requestId: requestId.current,
       });
       go("expense", { expense: id });
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not save the expense.");
+      const failure = commandFailure(cause, "Could not save the expense.");
+      if (!failure.rejected) setUncertain(true);
+      setError(!failure.rejected ? UNCERTAIN_RETRY_SAFE
+        : /already used for a different/i.test(failure.message)
+          ? "An earlier attempt may already have been saved. Close this and check Expenses before adding it again."
+          : `${failure.message.replace(/\.$/, "")}. Nothing was saved.`);
     } finally {
       setSaving(false);
     }
@@ -344,7 +367,7 @@ function AddExpense() {
           type="text"
           value={what}
           maxLength={LIMITS.expenseTitle}
-          disabled={saving}
+          disabled={saving || uncertain}
           onChange={(e) => setWhat(e.target.value)}
           placeholder="e.g. Rent"
         />
@@ -352,15 +375,15 @@ function AddExpense() {
       </div>
       <div className="a-field half">
         <label htmlFor="exp-amt">Amount ({hub.currency})</label>
-        <input id="exp-amt" type="text" inputMode="decimal" maxLength={LIMITS.money} value={amount} disabled={saving} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" />
+        <input id="exp-amt" type="text" inputMode="decimal" maxLength={LIMITS.money} value={amount} disabled={saving || uncertain} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" />
       </div>
       <div className="a-field half">
         <label htmlFor="exp-who">Paid by</label>
-        <select id="exp-who" value={payer} onChange={event=>setPayer(event.target.value)} disabled={saving || hub.role!=="admin"}>{members.map(member=><option key={member.userId} value={member.userId}>{member.name}</option>)}</select>
+        <select id="exp-who" value={payer} onChange={event=>setPayer(event.target.value)} disabled={saving || uncertain || hub.role!=="admin"}>{members.map(member=><option key={member.userId} value={member.userId}>{member.name}</option>)}</select>
         <small>{hub.role==="admin" ? "Admins can record on someone’s behalf; the actual payer confirms receipt." : "You’re recording an expense you paid."}</small>
       </div>
-      <div className="a-field"><label htmlFor="exp-category">Category</label><select id="exp-category" value={category} disabled={saving} onChange={event=>setCategory(event.target.value)}>{["Other","Rent","Bills","Groceries","Travel"].map(choice=><option key={choice}>{choice}</option>)}</select></div>
-      {splitTemplates.some(template=>!template.archivedAt) && <div className="a-field"><label htmlFor="exp-template">Saved split (optional)</label><select id="exp-template" value={templateId} disabled={saving} onChange={event=>{
+      <div className="a-field"><label htmlFor="exp-category">Category</label><select id="exp-category" value={category} disabled={saving || uncertain} onChange={event=>setCategory(event.target.value)}>{["Other","Rent","Bills","Groceries","Travel"].map(choice=><option key={choice}>{choice}</option>)}</select></div>
+      {splitTemplates.some(template=>!template.archivedAt) && <div className="a-field"><label htmlFor="exp-template">Saved split (optional)</label><select id="exp-template" value={templateId} disabled={saving || uncertain} onChange={event=>{
         const id=event.target.value;setTemplateId(id);const template=splitTemplates.find(item=>item.id===id);
         if(!template) {setIncludedIds(members.map(member=>member.userId));setMethod("Equal");setValues({});return;}
         if(template.participants.some(item=>!members.some(member=>member.userId===item.userId))) {setError("This template includes a former member. Update it in Templates first.");setTemplateId("");return;}
@@ -369,10 +392,10 @@ function AddExpense() {
       }}><option value="">Custom split</option>{splitTemplates.filter(template=>!template.archivedAt).map(template=><option key={template.id} value={template.id}>{template.name} · {template.method}</option>)}</select></div>}
       <div className="a-field">
         <label htmlFor="exp-due">Due date (optional)</label>
-        <input id="exp-due" type="date" value={due} disabled={saving} onChange={(e) => setDue(e.target.value)} />
+        <input id="exp-due" type="date" value={due} disabled={saving || uncertain} onChange={(e) => setDue(e.target.value)} />
         <p className="a-window-note">Nudge becomes available to the payer once this date arrives.</p>
       </div>
-      <SplitEditor members={members} includedIds={includedIds} onIncludedIds={setIncludedIds} method={method} onMethod={setMethod} values={values} onValues={setValues} amountMinor={amountMinor} currency={hub.currency} disabled={saving} />
+      <SplitEditor members={members} includedIds={includedIds} onIncludedIds={setIncludedIds} method={method} onMethod={setMethod} values={values} onValues={setValues} amountMinor={amountMinor} currency={hub.currency} disabled={saving || uncertain} />
       {error ? <p className="a-form-error" role="alert">{error}</p> : null}
     </section><aside className="c-expense-summary" aria-label="Split summary"><h3>The split, at a glance</h3><div><span>Total</span><strong>{formatMoney(amountMinor ?? 0, hub.currency)}</strong></div><div><span>Your share</span><strong>{formatMoney(allocations.find(share => share.userId === session?.userId)?.amountMinor ?? 0, hub.currency)}</strong></div><p>Paid by {members.find(member=>member.userId===payer)?.name ?? you.name}. Each person will see their exact share.</p><p>Commune records who paid and who owes what. It doesn’t move money.</p></aside>
       {/* One footer under both columns, so it never cuts across the split list. */}
