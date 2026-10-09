@@ -12,8 +12,9 @@
 #
 # The connection comes from the usual PG* variables. PGHOST defaults to
 # 127.0.0.1 and must be a loopback address: the auth stand-ins below create
-# the authenticated and anonymous roles, which must never reach Neon. The role
-# needs to create databases and roles (a local superuser, as in CI).
+# the authenticated and anonymous roles, which must never reach Neon. PGHOSTADDR,
+# PGSERVICE and PGSERVICEFILE must be unset, as libpq would follow them instead.
+# The role needs to create databases and roles (a local superuser, as in CI).
 #
 # Each test runs on a copy of one of two databases built from the migrations,
 # one per local auth mode:
@@ -42,6 +43,11 @@ case "$PGHOST" in
   127.0.0.1|localhost) ;;
   *) echo "run-local.sh: PGHOST must be 127.0.0.1 or localhost, not $PGHOST" >&2; exit 2 ;;
 esac
+for setting in PGHOSTADDR PGSERVICE PGSERVICEFILE; do
+  if [ -n "${!setting:-}" ]; then
+    echo "run-local.sh: unset $setting; it would take the connection somewhere other than PGHOST" >&2; exit 2
+  fi
+done
 
 valid_name() {
   [[ "$1" =~ ^[a-z_][a-z0-9_]*$ ]] && [ "${#1}" -le 63 ]

@@ -1,0 +1,6 @@
+# Findings the secret scan (.github/workflows/ci.yml) leaves out, by
+# fingerprint: commit:file:rule:line. Both are the Google API key from app
+# review finding 1, in two old commits. It is no longer in the files, but it
+# stays in history, so it must be revoked in Google Cloud.
+23b3eeb5a19ccc38fb74b2755ce754496111e06b:.migration-backup/docs/COMMUNE-BUILD-BIBLE.md:gcp-api-key:619
+da953a1499af8b6c0d3bd8df2f6d2ea8ec4040e3:docs/COMMUNE-BUILD-BIBLE.md:gcp-api-key:619

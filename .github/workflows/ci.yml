@@ -5,7 +5,7 @@
 #   database  builds disposable databases from the migrations on PostgreSQL 16
 #             and runs the database tests, the local API's HTTP tests and the
 #             reminder worker's tests on them
-#   secrets   scans the files, and the commits this change adds, for secrets
+#   secrets   scans the files and every commit behind them for secrets
 #
 # Nothing here deploys, uses a secret or reaches Neon, Vercel or Resend. Each
 # step is a command you can also run locally.
@@ -166,18 +166,11 @@ jobs:
       # A finding shows the file, line and rule, with the secret redacted.
       - name: Scan the files
         run: gitleaks dir . --redact --no-banner --verbose
-      # Only the commits this pull request or push adds. Older history still
-      # holds the Google API key from app review finding 1, so scanning all of
-      # it would fail every run.
-      - name: Scan the new commits
-        env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.event.after }}
-        run: |
-          if git cat-file -e "$BASE_SHA^{commit}" 2>/dev/null; then
-            range="$BASE_SHA..$HEAD_SHA"
-          else
-            # A new branch, or a force push whose old commit is gone.
-            range="-1 $HEAD_SHA"
-          fi
-          gitleaks git --log-opts="$range" --redact --no-banner --verbose .
+      # Every commit behind this checkout, so a secret added and removed again
+      # is caught however the change was pushed. These are gitleaks' own
+      # history options, limited to this checkout rather than every branch.
+      # .gitleaksignore lists the two old commits that hold the Google API key
+      # from app review finding 1, by fingerprint (commit, file, rule and line;
+      # no secret). Revoking that key is still needed.
+      - name: Scan the history
+        run: gitleaks git --log-opts="--full-history --diff-filter=tuxdb HEAD" --redact --no-banner --verbose .
