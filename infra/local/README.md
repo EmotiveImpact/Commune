@@ -40,7 +40,8 @@ files in order using a database owner connection:
 34. `infra/neon/migrations/0033_invitation_email_safety.sql`
 35. `infra/neon/migrations/0034_database_hardening.sql`
 36. `infra/neon/migrations/0035_currency_rule.sql`
-37. `infra/local/after-core.sql`
+37. `infra/neon/migrations/0036_lighter_loading.sql`
+38. `infra/local/after-core.sql`
 
 `after-core.sql` is idempotent. Re-run it after applying a newer migration to
 an existing local database so the local-only reminder helpers stay current.

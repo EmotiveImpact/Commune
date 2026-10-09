@@ -14,8 +14,8 @@ this is not a replacement of Neon Auth or a switch back to Supabase.
 - [Current design language and preserved layouts](../../docs/DESIGN-LANGUAGE.md)
 - [Local build-out from 5 October: migrations 0020 onwards](../../docs/LOCAL-BUILDOUT-2026-10-05.md)
 
-Migrations **0015 to 0035 are local only**. They have not been applied to any
-Neon branch. Release order when they are: apply 0013 to 0035 in numeric order
+Migrations **0015 to 0036 are local only**. They have not been applied to any
+Neon branch. Release order when they are: apply 0013 to 0036 in numeric order
 to the preview branch, refresh that branch's Data API schema cache, then
 deploy the matching web client. The new client calls `send_reminder_command`,
 `record_share_receipt`, `reverse_share_receipt`, `correct_expense`,
@@ -70,6 +70,20 @@ Six of the 9 October migrations change that rule:
     1.3, pg_trgm 1.6). None of them reads Commune's data; `crypt`,
     `gen_random_bytes`, `set_limit` and the rest take parameters such an API
     cannot pass.
+- **0036** adds `my_communes`, `commune_summary`, `commune_expense_page` and
+  `commune_expense_records`, which the new client calls, and a change mark
+  per commune, so the client reads a commune again only when something in it
+  changed. The snapshot now carries open expenses, those created or changed
+  since the start of last month (UTC) and the five newest that are not
+  voided. A client from before 0036, including a tab left open, keeps
+  working but sees only those, so its statements and exports leave older
+  expenses out: deploy the new client straight after 0036 and the schema
+  cache refresh. 0036 also limits each account to creating 10 communes an
+  hour, 30 a day and 100 in all (communes it has since left still count),
+  and makes the `communes` and `commune_members` read policies set-based
+  (the same rows stay visible). It replaces `prune_delivery_records()` in
+  place, so the worker needs no redeploy; each run also deletes change rows
+  older than two days.
 
 0026 replaces `save_recurring_bill` and adds `set_recurring_bill_paused` and
 `set_recurring_bill_archived`; production has no recurring bills yet, so only
@@ -238,7 +252,7 @@ rate limits) are recorded in [`docs/AUTH-SETTINGS.md`](../../docs/AUTH-SETTINGS.
    Broad grants would let direct writes bypass ledger invariants. Keep preview
    branches separate from production.
 3. Apply `migrations/0001_commune_core.sql` through
-   `migrations/0035_currency_rule.sql` in numeric order to the
+   `migrations/0036_lighter_loading.sql` in numeric order to the
    development branch via an **unpooled** connection. Run `tests/grants.sql`,
    review RLS, and run two-account signed-JWT tests before applying the same
    reviewed migrations to production. After a migration adds or changes a
