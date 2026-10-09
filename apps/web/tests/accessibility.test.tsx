@@ -607,13 +607,18 @@ describe("structure and smaller fixes", () => {
   });
 
   it("does not skip a heading level on Settings or Places", async () => {
+    // Each heading is at most one level below the one before it.
+    const skipsALevel = () => screen.getAllByRole("heading")
+      .map((heading) => Number(heading.getAttribute("aria-level") ?? heading.tagName.slice(1)))
+      .some((level, index, levels) => index > 0 && level > levels[index - 1] + 1);
     mount("/settings");
     expect(await screen.findByRole("heading", { level: 2, name: "Preferences" })).toBeTruthy();
     expect(screen.getByRole("heading", { level: 2, name: "Support & legal" })).toBeTruthy();
-    expect(screen.queryAllByRole("heading", { level: 3 })).toHaveLength(0);
+    expect(skipsALevel()).toBe(false);
     cleanup();
     mount("/places");
     expect(await screen.findByRole("heading", { level: 2, name: "Our home" })).toBeTruthy();
+    expect(skipsALevel()).toBe(false);
   });
 
   it("keeps the Hub's task box in a label, so the larger touch area works", async () => {
