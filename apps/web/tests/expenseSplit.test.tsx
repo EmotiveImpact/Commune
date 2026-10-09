@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from "vitest";
 import { allocateExpense } from "../../../packages/core/src/expenseSplit";
 describe("expense allocation in integer minor units", () => {
