@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react";
+import { Link } from "wouter";
 import { Icon } from "../ui/Icon";
 import { Avatar, Switch } from "../ui/widgets";
 import { ImagePick } from "../ui/photos";
@@ -175,18 +176,18 @@ export function SettingsScreen() {
               </span>
               <Icon name="external" size={16} />
             </a>
-            <a className="a-set-row" href="https://ourcommune.io/privacy" target="_blank" rel="noreferrer">
+            <Link className="a-set-row" href="/privacy">
               <span className="a-set-row-copy">
-                <strong>Privacy policy</strong>
+                <strong>Privacy</strong>
               </span>
-              <Icon name="external" size={16} />
-            </a>
-            <a className="a-set-row" href="https://ourcommune.io/terms" target="_blank" rel="noreferrer">
+              <Icon name="chevron" size={16} />
+            </Link>
+            <Link className="a-set-row" href="/terms">
               <span className="a-set-row-copy">
-                <strong>Terms of service</strong>
+                <strong>Terms of use</strong>
               </span>
-              <Icon name="external" size={16} />
-            </a>
+              <Icon name="chevron" size={16} />
+            </Link>
             <button className="a-set-row" type="button" onClick={signOut}>
               <span className="a-set-row-copy">
                 <strong>Log out</strong>

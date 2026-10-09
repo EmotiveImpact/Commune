@@ -26,15 +26,15 @@ export function AuthLayout({ children }: { children: ReactNode }) {
         </div>
         <div className="commune-auth-form-wrap">{children}</div>
         <div className="commune-auth-desktop-footer">
-          <a href="https://ourcommune.io/privacy" target="_blank" rel="noreferrer">
-            Privacy Policy
-          </a>
+          <Link href="/privacy">Privacy</Link>
+          <Link href="/terms">Terms</Link>
         </div>
         <div className="commune-auth-mobile-footer">
           <span>© {year} Commune</span>
-          <a href="https://ourcommune.io/privacy" target="_blank" rel="noreferrer">
-            Privacy Policy
-          </a>
+          <span className="commune-auth-legal-links">
+            <Link href="/privacy">Privacy</Link>
+            <Link href="/terms">Terms</Link>
+          </span>
         </div>
       </div>
     </div>

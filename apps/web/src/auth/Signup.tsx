@@ -102,6 +102,9 @@ export function SignupPage() {
           <button className="commune-auth-btn" type="submit" disabled={busy}>
             {busy ? "Creating account…" : "Create account"}
           </button>
+          <p className="commune-auth-legal">
+            Read how Commune uses your information in our <Link href="/privacy" className="commune-auth-link">privacy notice</Link>.
+          </p>
         </form>}
         {!verificationPending && import.meta.env.VITE_GOOGLE_OAUTH_ENABLED === "true" ? <>
           <div className="commune-auth-or">or</div>
