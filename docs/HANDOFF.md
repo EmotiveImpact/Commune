@@ -34,7 +34,12 @@ lifecycle pack. Work is paused for a handoff, not a production release.
   (0033); extension functions closed to clients, an admin's own pledge
   confirmed by another admin, and old email records trimmed (0034). Sign-out
   now clears every tab, and the Neon Auth console settings Commune expects are
-  in [AUTH-SETTINGS.md](AUTH-SETTINGS.md).
+  in [AUTH-SETTINGS.md](AUTH-SETTINGS.md). Settings has Change password and
+  Sign out everywhere else; both keep this device signed in and end the
+  account's other sessions, though a device that already has Commune open
+  keeps working until its access token expires (up to 15 minutes on Neon, at
+  once on the local API). The reset page takes the token out of the address
+  bar. Hosted behaviour is unverified.
 - The website is `web/` (the editorial homepage); the earlier v2 site is in
   `web-backup/`. Launch names `website` (3004) and `website-backup` (3003).
 - No push, deployment, hosted migration or provider change has been made. Do
