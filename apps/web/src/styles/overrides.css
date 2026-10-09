@@ -46,7 +46,7 @@ body,
 .a-body.is-dark .a-app,
 .a-body.is-dark .a-main,
 .a-body.is-dark .a-content {
-  background: linear-gradient(180deg, var(--paper-2) 0%, var(--paper) 100%);
+  background: linear-gradient(180deg, var(--paper-2), var(--paper));
 }
 
 .a-body.is-dark .a-header {

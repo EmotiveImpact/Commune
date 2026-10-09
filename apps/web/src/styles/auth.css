@@ -9,7 +9,7 @@
 }
 
 .commune-auth-brand {
-  background: linear-gradient(180deg, var(--navy) 0%, var(--navy-3) 100%);
+  background: linear-gradient(180deg, var(--navy), var(--navy-3));
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -326,7 +326,7 @@ a.commune-auth-btn {
     justify-content: center;
     gap: 10px;
     padding: 16px 24px;
-    background: linear-gradient(135deg, var(--navy) 0%, var(--navy-3) 100%);
+    background: linear-gradient(135deg, var(--navy), var(--navy-3));
   }
 
   .commune-auth-mobile-header img {
