@@ -27,6 +27,14 @@ lifecycle pack. Work is paused for a handoff, not a production release.
   pledge rules (0028); the email reminders setting and one-click unsubscribe
   (0029); account lookups by uuid (0030). 0027 and 0028 change the release
   order: see [infra/neon/README.md](../infra/neon/README.md).
+- Also from 9 October, for review: security and privacy fixes from the same
+  review. Former members' email addresses hidden (migration 0031); limits on
+  notices and payment reports (0032); invitation emails that name their
+  sender, refuse names carrying contact details, and stop at bounced addresses
+  (0033); extension functions closed to clients, an admin's own pledge
+  confirmed by another admin, and old email records trimmed (0034). Sign-out
+  now clears every tab, and the Neon Auth console settings Commune expects are
+  in [AUTH-SETTINGS.md](AUTH-SETTINGS.md).
 - The website is `web/` (the editorial homepage); the earlier v2 site is in
   `web-backup/`. Launch names `website` (3004) and `website-backup` (3003).
 - No push, deployment, hosted migration or provider change has been made. Do
@@ -136,7 +144,7 @@ no further copy-cleanup pass is needed for the handoff.
 Read [the product-depth roadmap](PRODUCT-DEPTH-ROADMAP-2026-10-02.md) and the
 Remaining section of [money lifecycle](MONEY-LIFECYCLE-2026-10-02.md).
 
-1. **Hosted parity.** Migrations 0013 to 0030, schema-cache refresh, the
+1. **Hosted parity.** Migrations 0013 to 0034, schema-cache refresh, the
    matching web client and sender, auth, invitations and real email delivery
    are all unverified on Neon. Apply migrations before deploying the client.
    Measure cold/warm/idle loading with separate accounts. Do not declare

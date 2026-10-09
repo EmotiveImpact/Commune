@@ -14,8 +14,8 @@ this is not a replacement of Neon Auth or a switch back to Supabase.
 - [Current design language and preserved layouts](../../docs/DESIGN-LANGUAGE.md)
 - [Local build-out from 5 October: migrations 0020 onwards](../../docs/LOCAL-BUILDOUT-2026-10-05.md)
 
-Migrations **0015 to 0030 are local only**. They have not been applied to any
-Neon branch. Release order when they are: apply 0013 to 0030 in numeric order
+Migrations **0015 to 0034 are local only**. They have not been applied to any
+Neon branch. Release order when they are: apply 0013 to 0034 in numeric order
 to the preview branch, refresh that branch's Data API schema cache, then
 deploy the matching web client. The new client calls `send_reminder_command`,
 `record_share_receipt`, `reverse_share_receipt`, `correct_expense`,
@@ -25,7 +25,7 @@ working after them. 0016 backfills one receipt per previously confirmed share
 and adds a commit-time check that `settled_minor` matches its receipts; check
 the backfill count on the branch before promoting.
 
-Four of the 9 October migrations change that rule:
+Five of the 9 October migrations change that rule:
 
 - **0027** removes the client's write grants on `commune_notes` and
   `commune_operations`; notes and tasks change only through `create_note`,
@@ -44,6 +44,11 @@ Four of the 9 October migrations change that rule:
   every invitation and reminder email, so deploy the worker after 0033. It
   also refuses a new commune name, or a rename, that includes a link, an
   email address or a phone number; existing names are not changed.
+- **0034** adds `commune_private.prune_delivery_records()`, which the
+  worker's scheduled run calls, so deploy the worker after 0034. It also
+  refuses an admin's contributions to their own pledge when another admin
+  can confirm them; a client from before 0034 still offers the button and
+  shows that refusal.
 
 0026 replaces `save_recurring_bill` and adds `set_recurring_bill_paused` and
 `set_recurring_bill_archived`; production has no recurring bills yet, so only
@@ -206,7 +211,7 @@ rate limits) are recorded in [`docs/AUTH-SETTINGS.md`](../../docs/AUTH-SETTINGS.
    Broad grants would let direct writes bypass ledger invariants. Keep preview
    branches separate from production.
 3. Apply `migrations/0001_commune_core.sql` through
-   `migrations/0030_account_lookups.sql` in numeric order to the
+   `migrations/0034_database_hardening.sql` in numeric order to the
    development branch via an **unpooled** connection. Run `tests/grants.sql`,
    review RLS, and run two-account signed-JWT tests before applying the same
    reviewed migrations to production. After a migration adds or changes a
