@@ -705,18 +705,19 @@ describe("commune loading", () => {
     expect(loadSnapshot).toHaveBeenCalledTimes(2);
   });
 
-  it("clears prior account data when the signed-in account changes", async () => {
+  it("clears prior account data and asks for a sign-in when the signed-in account changes", async () => {
     mount();
     await screen.findByRole("heading", { name: "Our home" });
     vi.mocked(api).mockImplementation(async (path) => path === "/auth/me"
       ? { user: { ...user, id: "different-user" } } : path.endsWith("/invites") ? { invites: [] } : null);
-    const pending = deferred<Snapshot>();
-    vi.mocked(loadSnapshot).mockReturnValue(pending.promise);
-    let refresh!: Promise<void>;
-    await act(async () => { refresh = app.refresh(); });
+    vi.mocked(loadSnapshot).mockClear();
+    await act(async () => { await app.refresh(); });
     expect(app.hub.members).toHaveLength(0);
-    expect(app.contentLoading).toBe(true);
-    await act(async () => { pending.resolve({ ...snapshot, members: [] }); await refresh; });
+    expect(app.session).toBeNull();
+    expect(app.sessionNotice).toBe("You were signed out. Sign in to carry on.");
+    // Nothing of the other account loads without a sign-in in this tab.
+    expect(loadSnapshot).not.toHaveBeenCalled();
+    await screen.findByRole("heading", { name: "Welcome back" });
   });
 
   it("ignores an older refresh that finishes after a commune is created", async () => {

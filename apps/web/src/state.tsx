@@ -35,6 +35,8 @@ import { isStoredImage, readHubPhotos } from "./data/images";
 import { newRequestId } from "./data/requestId";
 import { isNativeNow, keepSearch, pathOnly } from "./nav";
 import { api, post, loadCommunes, loadSnapshot, ApiError } from "./live/api";
+import { announceSession, currentViewer, onOtherTabSession, setViewer } from "./live/session";
+import { readStored, removeStored, writeStored } from "./live/storage";
 import {
   expenseRows,
   hubFromSnapshot,
@@ -260,7 +262,13 @@ export type AppState = {
   acknowledgeAnnouncement: (id: string) => Promise<AnnouncementResult>;
   archiveAnnouncement: (id: string) => Promise<AnnouncementResult>;
   notifications: Notification[];
+  /** Clears this tab, then signs out. Never throws: see signOutUnconfirmed. */
   signOut: () => Promise<void>;
+  /** The last sign-out cleared this tab but the server did not confirm it. */
+  signOutUnconfirmed: boolean;
+  retrySignOut: () => Promise<boolean>;
+  /** Why this tab was sent back to sign-in, when it was not the person's choice. */
+  sessionNotice: string | null;
   go: (target: GoTarget, opts?: GoOpts) => void;
   closeWindow: () => void;
   setMoreOpen: (open: boolean) => void;
@@ -363,9 +371,15 @@ const DEFAULT_PREFS: LocalPrefs = {
   hubPhotos: {},
 };
 
+function endedNotice(unsaved: boolean): string {
+  return unsaved
+    ? "You were signed out, so your last change wasn’t saved. Sign in to try again."
+    : "You were signed out. Sign in to carry on.";
+}
+
 function readPrefs(userId: string): LocalPrefs {
   try {
-    const raw = sessionStorage.getItem(`${LOCAL_PREFIX}${userId}`);
+    const raw = readStored(`${LOCAL_PREFIX}${userId}`);
     if (!raw) return { ...DEFAULT_PREFS };
     const parsed = JSON.parse(raw) as Partial<LocalPrefs>;
     const photos = readHubPhotos(parsed.hubPhotos);
@@ -463,6 +477,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const screen: ScreenId = PATH_SCREEN[pathOnly(location)] ?? "home";
   const [authStatus, setAuthStatus] = useState<AuthStatus>("loading");
   const [apiError, setApiError] = useState<string | null>(null);
+  const [signOutUnconfirmed, setSignOutUnconfirmed] = useState(false);
+  const [sessionNotice, setSessionNotice] = useState<string | null>(null);
   const [mutationCount, setMutationCount] = useState(0);
   const [data, setData] = useState<LiveData | null>(null);
   const dataRef = useRef<LiveData | null>(null);
@@ -489,6 +505,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const loadedRef = useRef(false);
   const refreshSequence = useRef(0);
   const refreshing = useRef(false);
+  // An action was refused for want of a session; the check that follows says
+  // it was not saved if the tab is then signed out.
+  const refusedAction = useRef(false);
   const lastRefreshAt = useRef(0);
   const snapshotReads = useRef(new Map<string, Promise<void>>());
   const snapshotTimes = useRef(new Map<string, number>());
@@ -552,8 +571,30 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [readSnapshot]);
 
+  // Show nothing of the account this tab was showing, and forget what this
+  // browser kept for it. Used for sign-out, an expired or refused session,
+  // and a sign-in as someone else in another tab.
+  const forgetSession = useCallback((notice: string | null = null) => {
+    const userId = dataRef.current?.user.id;
+    ++refreshSequence.current;
+    refreshing.current = false;
+    publishData(null);
+    setViewer(null);
+    setSnapshotErrors({});
+    snapshotTimes.current.clear();
+    snapshotRevisions.current.clear();
+    setHubId("");
+    setWindowId(null);
+    setPrefs({ ...DEFAULT_PREFS });
+    if (userId) removeStored(`${LOCAL_PREFIX}${userId}`);
+    setSessionNotice(notice);
+    setAuthStatus("guest");
+    loadedRef.current = true;
+  }, [publishData]);
+
   const refresh = useCallback(async () => {
     const sequence = ++refreshSequence.current;
+    const shownBefore = currentViewer();
     refreshing.current = true;
     setApiError(null);
     // One retry budget for startup reads only, never for commands or access errors.
@@ -571,17 +612,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
     try {
       const result = await startupRead(() => api<{ user: User | null }>("/auth/me"));
       if (sequence !== refreshSequence.current) return;
-      if (!result.user) {
-        publishData(null);
-        setSnapshotErrors({});
-        snapshotTimes.current.clear();
-        snapshotRevisions.current.clear();
-        setHubId("");
-        setAuthStatus("guest");
+      const shown = currentViewer();
+      if (!result.user || (shown && shown !== result.user.id)) {
+        // Signed out, or signed in as someone else in another tab: never
+        // switch this screen to another person's data without a sign-in.
+        forgetSession(shown ? endedNotice(refusedAction.current) : null);
+        refusedAction.current = false;
         setApiError(null);
-        loadedRef.current = true;
         return;
       }
+      refusedAction.current = false;
+      setViewer(result.user.id);
+      setSignOutUnconfirmed(false);
+      setSessionNotice(null);
       const { communes } = await startupRead(() => loadCommunes(result.user!));
       if (sequence !== refreshSequence.current) return;
       const previous = dataRef.current?.user.id === result.user.id ? dataRef.current : null;
@@ -636,12 +679,31 @@ export function AppProvider({ children }: { children: ReactNode }) {
       lastRefreshAt.current = Date.now();
     } catch (error) {
       if (sequence !== refreshSequence.current) return;
+      if (error instanceof ApiError && error.status === 401) {
+        // The server refused the session. That is being signed out, not a
+        // connection problem.
+        forgetSession(shownBefore ? endedNotice(refusedAction.current)
+          : "Commune couldn’t confirm your sign-in. Please sign in again.");
+        refusedAction.current = false;
+        setApiError(null);
+        return;
+      }
       setApiError(error instanceof Error ? error.message : "Could not connect to Commune");
       if (!loadedRef.current) setAuthStatus("error");
     } finally {
       if (sequence === refreshSequence.current) refreshing.current = false;
     }
-  }, [loadVisibleSnapshots, publishData]);
+  }, [forgetSession, loadVisibleSnapshots, publishData]);
+
+  // Another tab signed in or out. A tab showing an account that is no longer
+  // the signed-in one forgets it (its screens then ask for a sign-in); a
+  // signed-out tab picks up a new sign-in.
+  useEffect(() => onOtherTabSession((userId) => {
+    const shown = dataRef.current?.user.id ?? null;
+    if (userId === shown) return;
+    if (shown) forgetSession("You signed out or changed account in another tab.");
+    else if (userId) void refresh();
+  }), [forgetSession, refresh]);
 
   useEffect(() => {
     void refresh();
@@ -675,23 +737,36 @@ export function AppProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       const message = error instanceof Error ? error.message : "The action could not be saved";
       setApiError(message);
+      // Signed out or changed account elsewhere: check which, and clear this
+      // tab if it no longer matches.
+      if (error instanceof ApiError && error.status === 401 && dataRef.current) {
+        refusedAction.current = true;
+        void refresh();
+      }
       throw error;
     } finally {
       setMutationCount(count => Math.max(0, count - 1));
     }
-  }, []);
+  }, [refresh]);
 
   const savePrefs = useCallback((patch: Partial<LocalPrefs>) => {
     if (!data) return;
     const next = { ...prefs, ...patch };
-    sessionStorage.setItem(`${LOCAL_PREFIX}${data.user.id}`, JSON.stringify(next));
+    // A full or blocked store keeps the change for this visit only.
+    if (!writeStored(`${LOCAL_PREFIX}${data.user.id}`, JSON.stringify(next))) {
+      console.warn("This browser could not keep a Commune preference");
+    }
     setPrefs(next);
   }, [data, prefs]);
 
+  const announceSignIn = useCallback(() => {
+    if (dataRef.current) announceSession(dataRef.current.user.id);
+  }, []);
   const signInWithPassword = useCallback((email: string, password: string) => mutate(async () => {
     await post("/auth/login", { email, password });
     await refresh();
-  }), [mutate, refresh]);
+    announceSignIn();
+  }), [announceSignIn, mutate, refresh]);
   const signInWithGoogle = useCallback(() => mutate(async () => {
     await post("/auth/google", {});
   }), [mutate]);
@@ -699,24 +774,34 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const result = await post<{ verificationRequired?: boolean }>("/auth/signup", { name, email, password });
     if (result.verificationRequired) return "verify" as const;
     await refresh();
+    announceSignIn();
     return "ready" as const;
-  }), [mutate, refresh]);
+  }), [announceSignIn, mutate, refresh]);
   const verifyEmailCode = useCallback((email: string, code: string) => mutate(async () => {
     await post("/auth/verify-email", { email, code });
     await refresh();
-  }), [mutate, refresh]);
-  const signOut = useCallback(() => mutate(async () => {
-    await post("/auth/logout", {});
-    ++refreshSequence.current;
-    publishData(null);
-    setSnapshotErrors({});
-    snapshotTimes.current.clear();
-    snapshotRevisions.current.clear();
-    setHubId("");
-    setWindowId(null);
-    setAuthStatus("guest");
+    announceSignIn();
+  }), [announceSignIn, mutate, refresh]);
+  const confirmSignOut = useCallback(async () => {
+    try {
+      await post("/auth/logout", {});
+      setSignOutUnconfirmed(false);
+      return true;
+    } catch {
+      setSignOutUnconfirmed(true);
+      return false;
+    }
+  }, []);
+  // This tab and the other tabs forget the account first, whatever the
+  // server says. If it does not confirm, the sign-in page says so and offers
+  // to try again, so no one leaves a shared device thinking they are out.
+  const signOut = useCallback(async () => {
+    forgetSession();
+    setApiError(null);
+    announceSession(null);
     setLocation(keepSearch("/login"));
-  }), [mutate, publishData, setLocation]);
+    await confirmSignOut();
+  }, [confirmSignOut, forgetSession, setLocation]);
 
   const session: Session | null = data ? {
     userId: data.user.id,
@@ -1302,7 +1387,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     dark: prefs.dark, noticesOn: prefs.noticesOn, currency: prefs.currency,
     searchQuery, searchScope, searchTarget, noteSearchQuery, invites: data?.invites[activeId] ?? [], payMethods: prefs.payMethods, native, you,
     lastExpense, expenses, selectedExpense, createdExpenses: expenses, voidedExpenses,
-    funds, recurringBills, splitTemplates, expenseTemplateId, reminderTargets, reminderUsage, sentReminders, notifications, signOut, go,
+    funds, recurringBills, splitTemplates, expenseTemplateId, reminderTargets, reminderUsage, sentReminders, notifications,
+    signOut, signOutUnconfirmed, retrySignOut: confirmSignOut, sessionNotice, go,
     closeWindow: () => { if (!mutationCount) setWindowId(null); }, setMoreOpen,
     setNavMode: (navMode) => savePrefs({ navMode }),
     setDark: (dark) => savePrefs({ dark }),

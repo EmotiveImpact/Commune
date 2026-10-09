@@ -177,6 +177,12 @@
   color: #1b4332;
 }
 
+.commune-auth-alert .commune-auth-link {
+  font-size: inherit;
+  color: inherit;
+  text-decoration: underline;
+}
+
 .commune-auth-btn {
   display: inline-flex;
   align-items: center;

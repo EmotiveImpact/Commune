@@ -4,6 +4,7 @@ import { useApp } from "../state";
 import type { Hub } from "../data/household";
 import { LIMITS } from "../data/limits";
 import { CommuneLocationFields, EMPTY_COMMUNE_LOCATION } from "../ui/CommuneLocationFields";
+import { writeStored } from "../live/storage";
 
 export function InvitePage() {
   const { go, session, authStatus, previewInvite, acceptInvite } = useApp();
@@ -33,7 +34,7 @@ export function InvitePage() {
   }, [authStatus, previewInvite, signedInUserId, token]);
 
   function signInFirst(target: "login" | "signup") {
-    sessionStorage.setItem("commune.return-to", `/invite?token=${encodeURIComponent(token)}`);
+    writeStored("commune.return-to", `/invite?token=${encodeURIComponent(token)}`);
     go(target);
   }
 

@@ -171,6 +171,12 @@ async function body(req: IncomingMessage): Promise<Record<string, unknown>> {
 async function actor(req: IncomingMessage): Promise<User> {
   const user = await getUser(req);
   if (!user) throw new ApiError(401, "Sign in required");
+  // Every tab shares one sign-in. A tab names the account it is showing, and
+  // nothing is done for anyone else (apps/web/src/live/session.ts).
+  const viewer = req.headers["x-commune-viewer"];
+  if (typeof viewer === "string" && viewer && viewer !== user.id) {
+    throw new ApiError(401, "You signed out or changed account in another tab, so this wasn’t saved.");
+  }
   return user;
 }
 

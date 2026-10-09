@@ -2,6 +2,8 @@ import { createClient } from "@neondatabase/neon-js";
 import { ApiError } from "./api";
 import { observedDataFetch, reportRead } from "./diagnostics";
 import { parseSearchResponse } from "./search";
+import { ACCOUNT_CHANGED, currentViewer } from "./session";
+import { readStored, removeStored } from "./storage";
 import type {
   Commune, CurrencyCode, ReminderUsage, Snapshot, User,
 } from "./model";
@@ -188,6 +190,10 @@ async function currentUser(): Promise<User | null> {
 async function requireUser(): Promise<User> {
   const user = await currentUser();
   if (!user) throw new ApiError("Sign in required", 401);
+  // The session is shared by every tab. Never act for an account other than
+  // the one this tab is showing (see session.ts).
+  const viewer = currentViewer();
+  if (viewer && viewer !== user.id) throw new ApiError(ACCOUNT_CHANGED, 401);
   return user;
 }
 
@@ -306,7 +312,7 @@ export async function neonApi<T>(path: string, init: RequestInit = {}): Promise<
     response = { user: await currentUser() };
   } else if (path === "/auth/google" && method === "POST") {
     if (import.meta.env.VITE_GOOGLE_OAUTH_ENABLED !== "true") throw new ApiError("Google sign-in is not configured", 503);
-    const requested = sessionStorage.getItem("commune.return-to");
+    const requested = readStored("commune.return-to");
     const requestedUrl = new URL(requested ?? "/", window.location.origin);
     const callbackURL = requestedUrl.origin === window.location.origin
       ? requestedUrl.href : new URL("/", window.location.origin).href;
@@ -316,7 +322,7 @@ export async function neonApi<T>(path: string, init: RequestInit = {}): Promise<
       errorCallbackURL: new URL("/login?oauth=error", window.location.origin).href,
     });
     if (result.error) message(result.error);
-    sessionStorage.removeItem("commune.return-to");
+    removeStored("commune.return-to");
     response = { ok: true };
   } else if (path === "/auth/signup" && method === "POST") {
     const result = await db().auth.signUp.email({ name: inputString(body.name, "name"), email: inputString(body.email, "email"), password: inputString(body.password, "password") });
