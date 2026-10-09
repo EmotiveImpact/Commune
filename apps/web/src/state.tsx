@@ -10,7 +10,7 @@ import {
 import { useLocation, useRouter, useSearch } from "wouter";
 import { useBrowserLocation } from "wouter/use-browser-location";
 import { isConnectionFailure } from "./live/connection";
-import { allocateExpense, validateExpenseAllocation, type ExpenseAllocation } from "../../../packages/core/src/expenseSplit";
+import { allocateExpense, validateExpenseAllocation, type ExpenseAllocation } from "@commune/core";
 import {
   PAGE_LEDES,
   PAGE_TITLES,

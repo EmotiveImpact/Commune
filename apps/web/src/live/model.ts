@@ -10,7 +10,7 @@ import {
 import type { OperationItem } from "../data/operations";
 import { notePreview } from "../data/notePresentation";
 import { timestampDay, todayIso } from "../data/operations";
-import { netBalances, overallNet } from "../../../../packages/core/src/balances";
+import { netBalances, overallNet } from "@commune/core";
 
 export type CurrencyCode = "GBP" | "USD" | "EUR";
 /** Records that keep a commune's currency as it is, voided or archived ones too. */

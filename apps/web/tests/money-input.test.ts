@@ -2,7 +2,7 @@
 import { describe, expect, it } from "vitest";
 import { moneyInputError, parseMoneyInput } from "../src/data/moneyInput";
 import { LIMITS } from "../src/data/limits";
-import { allocateExpense } from "../../../packages/core/src/expenseSplit";
+import { allocateExpense } from "@commune/core";
 
 const fallback = "Enter the amount, for example 25.00.";
 

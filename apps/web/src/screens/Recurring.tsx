@@ -5,7 +5,7 @@ import { useSearchRecord } from "../ui/useSearchRecord";
 import {
   allocateExpense,
   type SplitMethod,
-} from "../../../../packages/core/src/expenseSplit";
+} from "@commune/core";
 import { type RecurringBill, money, dateLabel } from "../live/model";
 import {
   Button,

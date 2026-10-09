@@ -1,4 +1,4 @@
-import { moneyProblemMessage, readMoneyInput } from "../../../../packages/core/src/money";
+import { moneyProblemMessage, readMoneyInput } from "@commune/core";
 
 /**
  * An amount typed in the commune's currency, in minor units, or null when it

@@ -1,7 +1,7 @@
 import {
   allocateExpense,
   type SplitMethod,
-} from "../../../../packages/core/src/expenseSplit";
+} from "@commune/core";
 import type { LiveHub } from "../live/model";
 import { Avatar } from "./widgets";
 import { LIMITS } from "../data/limits";

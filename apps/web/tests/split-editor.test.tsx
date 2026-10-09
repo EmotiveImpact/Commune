@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import type { SplitMethod } from "../../../../packages/core/src/expenseSplit";
+import type { SplitMethod } from "@commune/core";
 import type { LiveHub } from "../src/live/model";
 import { SplitEditor } from "../src/ui/SplitEditor";
 

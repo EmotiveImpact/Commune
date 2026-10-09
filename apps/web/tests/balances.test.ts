@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
-import { netBalances, overallNet, type BalanceExpense } from "../../../packages/core/src/balances";
+import { netBalances, overallNet, type BalanceExpense } from "@commune/core";
 import { buildStatement } from "../src/data/statement";
 import { hubFromSnapshot, type Commune, type Snapshot } from "../src/live/model";
 
