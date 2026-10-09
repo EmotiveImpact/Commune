@@ -139,7 +139,7 @@ describe("task completion, undo and occurrence history", () => {
       return { id: "occurrence-1", duplicate: false, date: rota.date, assignee: user.name, status: "open" };
     });
     mount("/operations");
-    await screen.findByRole("tablist", { name: "Operations view" });
+    await screen.findByRole("group", { name: "Operations view" });
     act(() => app.go("operation", { operation: "task-1" }));
     const windowFrame = await screen.findByRole("dialog", { name: "Put the bins out" });
     expect(within(windowFrame).getByText("History · 2 entries")).toBeTruthy();
@@ -156,7 +156,7 @@ describe("task completion, undo and occurrence history", () => {
     current.operations = [done];
     vi.mocked(post).mockImplementation(async () => ({ id: "occurrence-9", duplicate: false, date: today, assignee: user.name, status: "open" }));
     mount("/operations");
-    await screen.findByRole("tablist", { name: "Operations view" });
+    await screen.findByRole("group", { name: "Operations view" });
     act(() => app.go("operation", { operation: "task-1" }));
     const windowFrame = await screen.findByRole("dialog", { name: "Put the bins out" });
     await act(async () => { fireEvent.click(within(windowFrame).getByRole("button", { name: "Mark open" })); });
@@ -195,7 +195,7 @@ describe("people by member id", () => {
   it("saves the person and the turns as member ids, never names", async () => {
     current.operations = [{ ...rota, assigneeId: user.id, rotation: [user.name], rotationIds: null }];
     mount("/operations");
-    await screen.findByRole("tablist", { name: "Operations view" });
+    await screen.findByRole("group", { name: "Operations view" });
     act(() => app.go("operation-edit", { operation: "task-1" }));
     const form = await screen.findByRole("group", { name: "Takes turns" });
     const holder = within(form).getByRole("checkbox", { name: /Test Person · You/ }) as HTMLInputElement;
@@ -214,7 +214,7 @@ describe("people by member id", () => {
   it("drops the turns when the task stops repeating, and can leave a task unassigned", async () => {
     current.operations = [{ ...rota, assigneeId: user.id, rotationIds: [user.id, "user-2"] }];
     mount("/operations");
-    await screen.findByRole("tablist", { name: "Operations view" });
+    await screen.findByRole("group", { name: "Operations view" });
     act(() => app.go("operation-edit", { operation: "task-1" }));
     await screen.findByRole("group", { name: "Takes turns" });
     fireEvent.change(screen.getByLabelText("Repeats"), { target: { value: "none" } });
@@ -231,7 +231,7 @@ describe("people by member id", () => {
       { ...rota, id: "task-2", title: "Return the keys", date: today, repeat: "none", assignee: undefined, assigneeId: null, rotation: undefined },
     ];
     mount("/operations");
-    const tabs = await screen.findByRole("tablist", { name: "Operations view" });
+    const tabs = await screen.findByRole("group", { name: "Operations view" });
     await act(async () => { fireEvent.click(within(tabs).getByText("People")); });
     const buckets = [...document.querySelectorAll(".ops-person")].map((section) => [
       section.querySelector("h3")?.textContent, [...section.querySelectorAll(".ops-person-task strong")].map((title) => title.textContent)]);
@@ -243,7 +243,7 @@ describe("people by member id", () => {
 describe("handing over a turn and skip reasons", () => {
   async function openTask() {
     mount("/operations");
-    await screen.findByRole("tablist", { name: "Operations view" });
+    await screen.findByRole("group", { name: "Operations view" });
     act(() => app.go("operation", { operation: "task-1" }));
     return screen.findByRole("dialog", { name: "Put the bins out" });
   }
@@ -300,7 +300,7 @@ describe("handing over a turn and skip reasons", () => {
     current.operations = [{ ...rota, assignee: "Guest Three", assigneeId: "user-3", rotation: [user.name, "Housemate Two"],
       rotationIds: [user.id, "user-2"], turnOwnerId: user.id, turnOwner: user.name }];
     mount("/operations");
-    await screen.findByRole("tablist", { name: "Operations view" });
+    await screen.findByRole("group", { name: "Operations view" });
     act(() => app.go("operation-edit", { operation: "task-1" }));
     const form = await screen.findByRole("group", { name: "Takes turns" });
     expect(within(form).getByText("Their turn now, covered")).toBeTruthy();
@@ -324,7 +324,7 @@ describe("late tasks in the week", () => {
       { ...rota, id: "task-d", title: "Hoover the stairs", date: addDays(today, 2), repeat: "none", rotation: undefined, assignee: "Housemate Two", assigneeId: "user-2" },
     ];
     mount("/operations");
-    await screen.findByRole("tablist", { name: "Operations view" });
+    await screen.findByRole("group", { name: "Operations view" });
     expect(lateCards().map((card) => card.querySelector("h2")?.textContent)).toEqual(["Put the bins out", "Water the plants", "Clear the gutters"]);
     expect(lateCards().map((card) => card.querySelector(".ops-kicker")?.textContent)).toEqual(["1 day late · Test", "5 days late · Housemate", "3 days late · Unassigned"]);
     expect(lateCards().map((card) => [...card.querySelectorAll(".ops-note")].at(-1)?.textContent))
@@ -342,7 +342,7 @@ describe("late tasks in the week", () => {
   it("says you are clear today when only other people's tasks are late", async () => {
     current.operations = [lateTask("task-a", "Water the plants", 2, { assignee: "Housemate Two", assigneeId: "user-2" })];
     mount("/operations");
-    await screen.findByRole("tablist", { name: "Operations view" });
+    await screen.findByRole("group", { name: "Operations view" });
     expect(lateCards()).toHaveLength(1);
     expect(document.querySelector(".ops-yours")?.textContent).toContain("You’re clear today.");
   });
@@ -355,7 +355,7 @@ describe("late tasks in the week", () => {
     let finish!: (value: unknown) => void;
     vi.mocked(post).mockImplementation(() => new Promise((resolve) => { finish = resolve; }));
     mount("/operations");
-    await screen.findByRole("tablist", { name: "Operations view" });
+    await screen.findByRole("group", { name: "Operations view" });
     const [first, second] = lateCards();
     await act(async () => { fireEvent.click(within(first).getByRole("button", { name: /^Mark done \(/ })); });
     // Each card's actions name its task after the visible words.
@@ -371,7 +371,7 @@ describe("late tasks in the week", () => {
 
   it("says how late a task is in the People view", async () => {
     mount("/operations");
-    const tabs = await screen.findByRole("tablist", { name: "Operations view" });
+    const tabs = await screen.findByRole("group", { name: "Operations view" });
     await act(async () => { fireEvent.click(within(tabs).getByText("People")); });
     expect([...document.querySelectorAll(".ops-person-task small")].map((line) => line.textContent)).toEqual(["2 days late · then Housemate"]);
   });
@@ -380,7 +380,7 @@ describe("late tasks in the week", () => {
 describe("adding, editing and removing tasks as commands", () => {
   async function openEdit() {
     mount("/operations");
-    await screen.findByRole("tablist", { name: "Operations view" });
+    await screen.findByRole("group", { name: "Operations view" });
     act(() => app.go("operation-edit", { operation: "task-1" }));
     return screen.findByRole("dialog", { name: "Put the bins out" });
   }
@@ -388,7 +388,7 @@ describe("adding, editing and removing tasks as commands", () => {
   it("adds with one request id per form, so a retry after an unconfirmed save is the same add", async () => {
     vi.mocked(post).mockRejectedValueOnce(new TypeError("Failed to fetch")).mockResolvedValueOnce({ id: "task-9", version: 1, duplicate: true });
     mount("/operations");
-    await screen.findByRole("tablist", { name: "Operations view" });
+    await screen.findByRole("group", { name: "Operations view" });
     act(() => app.go("operation-new"));
     const dialog = await screen.findByRole("dialog", { name: "Add to calendar" });
     fireEvent.change(within(dialog).getByLabelText(/^Title/), { target: { value: "Descale the kettle" } });
@@ -494,7 +494,7 @@ describe("adding, editing and removing tasks as commands", () => {
     current.commune = member;
     current.operations = [{ ...rota, createdBy: "user-2" }, { ...rota, id: "task-2", title: "Return the keys", createdBy: user.id }];
     mount("/operations");
-    await screen.findByRole("tablist", { name: "Operations view" });
+    await screen.findByRole("group", { name: "Operations view" });
     act(() => app.go("operation", { operation: "task-1" }));
     expect(within(await screen.findByRole("dialog", { name: "Put the bins out" })).queryByRole("button", { name: "Remove" })).toBeNull();
     act(() => app.go("operation", { operation: "task-2" }));

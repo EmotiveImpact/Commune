@@ -6,7 +6,7 @@ import { App } from "../src/App";
 import { AppProvider, useApp, type AppState } from "../src/state";
 import { api, post, loadCommunes, loadSnapshot } from "../src/live/api";
 import type { Commune, Notification, Snapshot } from "../src/live/model";
-import { addDays, dateFromIso, todayIso } from "../src/data/operations";
+import { addDays, dateFromIso, todayIso, type OperationItem } from "../src/data/operations";
 
 vi.mock("../src/live/api", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../src/live/api")>()),
@@ -288,5 +288,72 @@ describe("states and names", () => {
     expect(tile.classList.contains("note-tile")).toBe(true);
     expect(tile.hasAttribute("aria-label")).toBe(false);
     expect(tile.textContent).toContain("Black bags on Tuesday");
+  });
+});
+
+describe("Operations view switch and its Undo message", () => {
+  const late = (): OperationItem => ({
+    id: "task-1", hubId: commune.id, kind: "task", category: "chore", title: "Put the bins out", date: addDays(todayIso(), -2), allDay: true,
+    assignee: user.name, assigneeId: user.id, rotation: [user.name, "Housemate"], repeat: "weekly", status: "open", notes: "",
+    undoOccurrenceId: null, history: [], version: 1,
+  });
+
+  it("switches views with pressed buttons, not tabs", async () => {
+    mount("/operations");
+    const views = await screen.findByRole("group", { name: "Operations view" });
+    const pressed = () => within(views).getAllByRole("button").map((button) => [button.textContent, button.getAttribute("aria-pressed")]);
+    expect(pressed()).toEqual([["Week", "true"], ["People", "false"], ["Month", "false"]]);
+    expect(screen.queryByRole("tablist")).toBeNull();
+    expect(screen.queryAllByRole("tab")).toHaveLength(0);
+    fireEvent.click(within(views).getByRole("button", { name: "People" }));
+    expect(pressed()).toEqual([["Week", "false"], ["People", "true"], ["Month", "false"]]);
+  });
+
+  it("moves focus to Undo when a late card goes, keeps the message while focus is on it, and Undo returns focus", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"], shouldAdvanceTime: true });
+    current.operations = [late()];
+    const moved = addDays(todayIso(), 5);
+    vi.mocked(post).mockImplementation(async (path) => {
+      if (path === "/occurrences/occurrence-1/undo") {
+        current.operations = [late()];
+        return { id: "occurrence-1", duplicate: false, date: late().date, assignee: user.name, status: "open" };
+      }
+      current.operations = [{ ...late(), date: moved, assignee: "Housemate", assigneeId: "user-2", undoOccurrenceId: "occurrence-1" }];
+      return { id: "occurrence-1", duplicate: false, date: moved, assignee: "Housemate", status: "open" };
+    });
+    mount("/operations");
+    const done = await screen.findByRole("button", { name: "Done · Housemate (Put the bins out)" });
+    done.focus();
+    await act(async () => { fireEvent.click(done); });
+    expect(screen.queryByRole("button", { name: /^Done · / })).toBeNull();
+    const undo = within(screen.getByRole("status")).getByRole("button", { name: "Undo" });
+    expect(document.activeElement).toBe(undo);
+
+    // Well past the nine seconds: the message stays while focus is on it.
+    act(() => { vi.advanceTimersByTime(15_000); });
+    expect(screen.getByRole("status").contains(undo)).toBe(true);
+
+    await act(async () => { fireEvent.click(undo); });
+    expect(screen.getByRole("status").textContent).toContain("Undone · back with Test");
+    const restored = screen.getByRole("button", { name: "Done · Housemate (Put the bins out)" });
+    expect(document.activeElement).toBe(restored);
+  });
+
+  it("closes the message after nine seconds once focus has moved on", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"], shouldAdvanceTime: true });
+    current.operations = [late()];
+    vi.mocked(post).mockImplementation(async () => {
+      current.operations = [{ ...late(), date: addDays(todayIso(), 5), undoOccurrenceId: "occurrence-1" }];
+      return { id: "occurrence-1", duplicate: false, date: addDays(todayIso(), 5), assignee: "Housemate", status: "open" };
+    });
+    mount("/operations");
+    const done = await screen.findByRole("button", { name: "Done · Housemate (Put the bins out)" });
+    await act(async () => { fireEvent.click(done); });
+    const undo = within(screen.getByRole("status")).getByRole("button", { name: "Undo" });
+    expect(document.activeElement).toBe(undo);
+    act(() => { fireEvent.blur(undo); screen.getByRole("button", { name: "Add item" }).focus(); });
+    act(() => { vi.advanceTimersByTime(9_500); });
+    expect(screen.getByRole("status").textContent).toBe("");
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Add item" }));
   });
 });

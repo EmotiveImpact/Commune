@@ -18,6 +18,8 @@ import { CalendarDate } from "../ui/CalendarDate";
 import { cx } from "../ui/cx";
 
 type Cut = "week" | "people" | "month";
+/** The late card, and which of its buttons, an Undo puts focus back on. */
+type LateAction = { id: string; action: "skip" | "done" };
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const CATEGORY_LABEL: Record<OperationItem["category"], string> = {
@@ -58,11 +60,12 @@ export function OperationsScreen() {
   const [cut, setCut] = useState<Cut>("week");
   const [month, setMonth] = useState(today.slice(0, 7));
   const [selectedDate, setSelectedDate] = useState(today);
-  const [toast, setToast] = useState<{ text: string; undoId?: string; error?: boolean } | null>(null);
+  const [toast, setToast] = useState<{ text: string; undoId?: string; from?: LateAction; error?: boolean } | null>(null);
   const [undoing, setUndoing] = useState(false);
   const toastTimer = useRef<number | undefined>(undefined);
   const toastRef = useRef<HTMLDivElement>(null);
   const toastHeld = useRef(false);
+  const refocus = useRef<LateAction | null>(null);
 
   const ordered = useMemo(
     () =>
@@ -110,6 +113,27 @@ export function OperationsScreen() {
 
   useEffect(() => () => window.clearTimeout(toastTimer.current), []);
 
+  // A late card's buttons go once its task moves on, so a message with an
+  // Undo takes focus, where the keyboard can reach it in time. Undo puts focus
+  // back on the button that was used. The message stays while focus or the
+  // pointer is on it.
+  useEffect(() => {
+    const box = toastRef.current;
+    if (!toast || !box) return;
+    const active = document.activeElement;
+    const lost = !active || active === document.body || box.contains(active);
+    const back = refocus.current;
+    refocus.current = null;
+    if (back && lost) {
+      const card = [...document.querySelectorAll<HTMLElement>(".ops-late")].find((item) => item.dataset.late === back.id);
+      (card?.querySelector<HTMLElement>(`[data-late-action="${back.action}"]`)
+        ?? document.querySelector<HTMLElement>(".ops-cuts [aria-pressed=\"true\"]"))?.focus();
+    } else if (toast.undoId && (lost || active?.closest(".ops-late"))) {
+      box.querySelector<HTMLElement>(".ops-toast-undo")?.focus();
+    }
+    toastHeld.current = box.contains(document.activeElement) || box.matches(":hover");
+  }, [toast]);
+
   // Messages with an Undo, and errors, stay long enough to read and use. The
   // timer pauses while the pointer or keyboard focus is on the toast.
   function scheduleToastClose(ms: number) {
@@ -121,8 +145,8 @@ export function OperationsScreen() {
       if (hadFocus) document.querySelector<HTMLElement>(".ops-prod-head button")?.focus();
     }, ms);
   }
-  function flash(text: string, undoId?: string) {
-    setToast({ text, undoId });
+  function flash(text: string, undoId?: string, from?: LateAction) {
+    setToast({ text, undoId, from });
     scheduleToastClose(undoId ? 9000 : 2600);
   }
   function flashError(text: string) {
@@ -134,11 +158,12 @@ export function OperationsScreen() {
     if (!held && toast) scheduleToastClose(4000);
   }
 
-  async function undo(occurrenceId: string) {
+  async function undo(occurrenceId: string, from?: LateAction) {
     if (undoing) return;
     setUndoing(true);
     try {
       const result = await undoOperation(occurrenceId);
+      refocus.current = from ?? null;
       flash(`Undone · back with ${firstNameOf(result.assignee ?? undefined) || "the commune"} for ${shortDateFormatter.format(dateFromIso(result.date))}`);
     } catch (error) {
       flashError(error instanceof Error ? error.message : "Could not undo that");
@@ -170,6 +195,7 @@ export function OperationsScreen() {
             ? `Done · next ${shortDateFormatter.format(dateFromIso(result.date))}`
             : `Done · ${item.title}`,
         result.occurrenceId,
+        { id: item.id, action: "done" },
       );
     } catch (error) {
       flashError(error instanceof Error ? error.message : "Could not update task");
@@ -179,7 +205,7 @@ export function OperationsScreen() {
   async function skipTask(item: OperationItem) {
     try {
       const result = await skipOperation(item.id);
-      flash(`Moved to ${shortDateFormatter.format(dateFromIso(result.date))}`, result.occurrenceId);
+      flash(`Moved to ${shortDateFormatter.format(dateFromIso(result.date))}`, result.occurrenceId, { id: item.id, action: "skip" });
     } catch (error) {
       flashError(error instanceof Error ? error.message : "Could not move task");
     }
@@ -220,13 +246,12 @@ export function OperationsScreen() {
   return (
     <div className="ops ops-prod">
       <div className="ops-prod-head">
-        <div className="ops-cuts" role="tablist" aria-label="Operations view">
+        <div className="ops-cuts" role="group" aria-label="Operations view">
           {(["week", "people", "month"] as const).map((id) => (
             <button
               key={id}
               type="button"
-              role="tab"
-              aria-selected={cut === id}
+              aria-pressed={cut === id}
               className={cx(cut === id && "is-on")}
               onClick={() => setCut(id)}
             >
@@ -468,7 +493,7 @@ export function OperationsScreen() {
       >
         {toast ? <span>{toast.text}</span> : null}
         {toast?.undoId ? (
-          <button type="button" className="ops-toast-undo" disabled={undoing} onClick={() => void undo(toast.undoId!)}>
+          <button type="button" className="ops-toast-undo" disabled={undoing} onClick={() => void undo(toast.undoId!, toast.from)}>
             {undoing ? "Undoing…" : "Undo"}
           </button>
         ) : null}
@@ -498,7 +523,7 @@ function LateCard({
     : "";
   const who = firstNameOf(item.assignee);
   return (
-    <section className="ops-card ops-late">
+    <section className="ops-card ops-late" data-late={item.id}>
       <p className="ops-kicker is-late">
         {lateLabel(item.date, today)} · {who || "Unassigned"}
       </p>
@@ -525,11 +550,11 @@ function LateCard({
         </button>
         {/* As in the task window, only a repeating task can be skipped. */}
         {item.repeat !== "none" ? (
-          <button className="a-btn ghost" type="button" disabled={pending} onClick={onSkip}>
+          <button className="a-btn ghost" type="button" data-late-action="skip" disabled={pending} onClick={onSkip}>
             Skip a week{" "}<span className="c-visually-hidden">for {item.title}</span>
           </button>
         ) : null}
-        <button className="a-btn" type="button" disabled={pending} onClick={onDone}>
+        <button className="a-btn" type="button" data-late-action="done" disabled={pending} onClick={onDone}>
           {next ? `Done · ${next}` : "Mark done"}{" "}<span className="c-visually-hidden">({item.title})</span>
         </button>
       </div>
