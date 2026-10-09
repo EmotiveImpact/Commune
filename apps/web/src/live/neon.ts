@@ -5,7 +5,7 @@ import { parseSearchResponse } from "./search";
 import { ACCOUNT_CHANGED, currentViewer } from "./session";
 import { readStored, removeStored } from "./storage";
 import type {
-  Commune, CurrencyCode, ReminderUsage, Snapshot, User,
+  Commune, CurrencyCode, Expense, ExpensePage, ReminderUsage, Snapshot, User,
 } from "./model";
 
 // This module is used only by production builds. The browser sees endpoint
@@ -165,12 +165,12 @@ function idResult(value: unknown): { id: string } {
   if (typeof value !== "string" || !value) throw new ApiError("Database did not return an ID", 502);
   return { id: value };
 }
-function communal(row: Row, role: string, memberCount: number): Commune {
+function communal(row: Row): Commune {
   return {
     id: str(row.id), name: str(row.name), kind: row.kind as Commune["kind"],
-    currency: row.currency as CurrencyCode, role: role as Commune["role"], memberCount,
+    currency: row.currency as CurrencyCode, role: row.role as Commune["role"], memberCount: minor(row.memberCount),
     address: str(row.address), destination: str(row.destination),
-    stayName: str(row.stay_name), stayAddress: str(row.stay_address),
+    stayName: str(row.stayName), stayAddress: str(row.stayAddress), changeMark: str(row.changeMark),
   };
 }
 
@@ -197,43 +197,62 @@ async function requireUser(): Promise<User> {
   return user;
 }
 
+// One call returns the caller's communes, their role and member count in
+// each, and each commune's change mark, read together by the database.
 export async function listCommunes(knownViewer?: User): Promise<Commune[]> {
   const viewer = await requireUser();
   if (knownViewer && knownViewer.id !== viewer.id) throw new ApiError("Your account changed. Reload Commune.", 401);
-  const [communeResult, memberResult] = await Promise.all([
-    db().from("communes").select("id,name,kind,currency,address,destination,stay_name,stay_address,created_at").order("created_at", { ascending: false }),
-    db().from("commune_members").select("commune_id,user_id,role").eq("active", true),
-  ]);
-  const communeData = unwrap(communeResult);
-  const memberData = unwrap(memberResult);
-  if (!Array.isArray(communeData) || !Array.isArray(memberData)) {
-    throw new ApiError("Could not verify your commune list. Please try again.", 502);
-  }
-  const communeRows = rows(communeData);
-  const memberRows = rows(memberData);
-  if (memberRows.some((member) => member.user_id === viewer.id && !communeRows.some((row) => row.id === member.commune_id))) {
-    throw new ApiError("Your commune membership changed while loading. Please try again.", 409);
-  }
-  return communeRows.map((row) => {
-    const group = memberRows.filter((member) => member.commune_id === row.id);
-    const membership = group.find((member) => member.user_id === viewer.id);
-    if (!membership || (membership.role !== "admin" && membership.role !== "member")) {
+  const data = unwrap(await db().rpc("my_communes"));
+  if (!Array.isArray(data)) throw new ApiError("Could not verify your commune list. Please try again.", 502);
+  return rows(data).map((row) => {
+    if (typeof row.id !== "string" || !row.id || (row.role !== "admin" && row.role !== "member") ||
+        typeof row.changeMark !== "string") {
       throw new ApiError("Could not verify your commune membership. Please try again.", 409);
     }
-    return communal(row, str(membership.role), group.length);
+    return communal(row);
   });
 }
 
-export async function snapshot(communeId: string, knownCommune?: Commune): Promise<Snapshot> {
+export async function snapshot(communeId: string, knownCommune?: Commune, detail?: "summary"): Promise<Snapshot> {
   await requireUser();
   if (knownCommune && knownCommune.id !== communeId) throw new ApiError("Commune mismatch", 400);
   // The RPC re-checks membership against the verified JWT and reads one
   // consistent database snapshot. No browser-stored identity is authority.
-  const data = unwrap(await db().rpc("commune_snapshot", { p_commune_id: communeId })) as Snapshot;
-  if (!data || data.commune?.id !== communeId || !Array.isArray(data.members) || !Array.isArray(data.expenses) || !Array.isArray(data.funds)) {
+  const data = unwrap(await db().rpc(detail === "summary" ? "commune_summary" : "commune_snapshot", { p_commune_id: communeId })) as Snapshot;
+  if (!data || data.commune?.id !== communeId || !Array.isArray(data.members) || !Array.isArray(data.expenses) || !Array.isArray(data.funds) ||
+      data.detail !== detail) {
     throw new ApiError("Shared records could not be verified. Please try again.", 502);
   }
   return data;
+}
+
+// Older expenses and named ones come in the snapshot's shape, so they are
+// checked the same way.
+function expenseList(value: unknown): { expenses: Expense[] } {
+  const item = asObject(value);
+  if (!Array.isArray(item.expenses) || item.expenses.some((expense) => typeof asObject(expense).id !== "string" ||
+      !Array.isArray(asObject(expense).shares))) {
+    throw new ApiError("Shared records could not be verified. Please try again.", 502);
+  }
+  return item as { expenses: Expense[] };
+}
+async function expensePage(communeId: string, params: URLSearchParams): Promise<ExpensePage> {
+  await requireUser();
+  const months = params.has("months") ? Number(params.get("months")) : null;
+  if (months !== null && (!Number.isInteger(months) || months < 1 || months > 12)) {
+    throw new ApiError("Ask for 1 to 12 months of expenses at a time", 400);
+  }
+  const page = unwrap(await db().rpc("commune_expense_page", { p_commune_id: communeId,
+    p_before: params.get("before") || null, p_months: months }));
+  const item = asObject(page);
+  return { ...expenseList(item), before: str(item.before), from: typeof item.from === "string" ? item.from : null,
+    olderCount: minor(item.olderCount), olderVoidedCount: minor(item.olderVoidedCount) };
+}
+async function expenseRecords(communeId: string, params: URLSearchParams): Promise<{ expenses: Expense[] }> {
+  await requireUser();
+  const ids = (params.get("ids") ?? "").split(",").filter(Boolean);
+  if (ids.length < 1 || ids.length > 50) throw new ApiError("Ask for 1 to 50 expenses at a time", 400);
+  return expenseList(unwrap(await db().rpc("commune_expense_records", { p_commune_id: communeId, p_ids: ids })));
 }
 async function reminderUsage(): Promise<ReminderUsage> {
   await requireUser();
@@ -462,8 +481,12 @@ async function route<T>(path: string, init: RequestInit): Promise<T> {
   } else if (path === "/preferences" && method === "PUT") {
     if (typeof body.emailReminders !== "boolean") throw new ApiError("Choose whether to get reminder emails", 400);
     response = { emailReminders: unwrap(await db().rpc("set_email_reminders", { p_enabled: body.emailReminders })) === true };
-  } else if (method === "GET" && pathId(path, /^\/communes\/([^/]+)\/snapshot$/)) {
-    response = await snapshot(pathId(path, /^\/communes\/([^/]+)\/snapshot$/)!);
+  } else if (method === "GET" && pathId(path, /^\/communes\/([^/]+)\/snapshot(?:\?detail=summary)?$/)) {
+    response = await snapshot(pathId(path, /^\/communes\/([^/]+)\/snapshot/)!, undefined, path.endsWith("?detail=summary") ? "summary" : undefined);
+  } else if (method === "GET" && pathId(path, /^\/communes\/([^/]+)\/expenses\/history(?:\?|$)/)) {
+    response = await expensePage(pathId(path, /^\/communes\/([^/]+)\/expenses\/history/)!, new URL(path, "https://commune.invalid").searchParams);
+  } else if (method === "GET" && pathId(path, /^\/communes\/([^/]+)\/expenses\/records\?/)) {
+    response = await expenseRecords(pathId(path, /^\/communes\/([^/]+)\/expenses\/records/)!, new URL(path, "https://commune.invalid").searchParams);
   } else if (method === "POST" && pathId(path, /^\/communes\/([^/]+)\/expenses$/)) {
     const shares = Array.isArray(body.shares) ? body.shares.map((share) => {
       const item = asObject(share);

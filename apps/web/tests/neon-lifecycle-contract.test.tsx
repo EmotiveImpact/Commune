@@ -134,6 +134,32 @@ describe("hosted money lifecycle and task commands", () => {
     ]);
   });
 
+  it("pages older expenses and fetches named ones in the snapshot's shape", async () => {
+    const expense = { id: "expense-old", title: "Gas", amountMinor: 2000, paidByUserId: "viewer", dueOn: null, shares: [] };
+    const page = { expenses: [expense], before: "2026-09-01", from: "2026-08-01", olderCount: 4, olderVoidedCount: 1 };
+    mocks.rpc.mockResolvedValue({ data: page, error: null });
+    expect(await send("/communes/home-1/expenses/history?before=2026-09-01&months=1", undefined, "GET")).toEqual(page);
+    expect(mocks.rpc).toHaveBeenLastCalledWith("commune_expense_page", { p_commune_id: "home-1", p_before: "2026-09-01", p_months: 1 });
+    // Everything older, from where the snapshot's expenses start, for a statement or an export.
+    mocks.rpc.mockResolvedValue({ data: { ...page, expenses: [], from: null, olderCount: 0, olderVoidedCount: 0 }, error: null });
+    expect((await send("/communes/home-1/expenses/history", undefined, "GET")).from).toBeNull();
+    expect(mocks.rpc).toHaveBeenLastCalledWith("commune_expense_page", { p_commune_id: "home-1", p_before: null, p_months: null });
+    mocks.rpc.mockResolvedValue({ data: { expenses: [expense] }, error: null });
+    expect(await send("/communes/home-1/expenses/records?ids=expense-old,expense-gone", undefined, "GET")).toEqual({ expenses: [expense] });
+    expect(mocks.rpc).toHaveBeenLastCalledWith("commune_expense_records", { p_commune_id: "home-1", p_ids: ["expense-old", "expense-gone"] });
+    // A refusal stays a refusal, and an expense in another shape is not shown.
+    mocks.rpc.mockResolvedValue({ data: null, error: { code: "42501", message: "Not a commune member" } });
+    await expect(send("/communes/home-1/expenses/records?ids=expense-old", undefined, "GET")).rejects.toMatchObject({ status: 403 });
+    mocks.rpc.mockResolvedValue({ data: { ...page, expenses: [{ id: "expense-old" }] }, error: null });
+    await expect(send("/communes/home-1/expenses/history?months=1", undefined, "GET")).rejects.toMatchObject({ status: 502 });
+    const calls = mocks.rpc.mock.calls.length;
+    await expect(send("/communes/home-1/expenses/history?months=13", undefined, "GET")).rejects.toMatchObject({ status: 400 });
+    await expect(send(`/communes/home-1/expenses/records?ids=${Array.from({ length: 51 }, (_, index) => `e${index}`).join(",")}`, undefined, "GET"))
+      .rejects.toMatchObject({ status: 400 });
+    expect(mocks.rpc).toHaveBeenCalledTimes(calls);
+    expect(mocks.from).not.toHaveBeenCalled();
+  });
+
   it("completes and undoes a task through occurrence functions, not a row overwrite", async () => {
     mocks.rpc.mockResolvedValue({ data: { id: "occurrence-1", duplicate: false, date: "2026-10-09", assignee: "Blake", status: "open" }, error: null });
     const done = await send("/operations/task-1/occurrences", { action: "completed", expectedDate: "2026-10-02", today: "2026-10-02", requestId });

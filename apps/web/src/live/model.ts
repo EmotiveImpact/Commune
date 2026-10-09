@@ -32,6 +32,8 @@ export type Commune = {
   destination?: string;
   stayName?: string;
   stayAddress?: string;
+  /** Moves whenever anything in the commune changes; compared with a snapshot's own. */
+  changeMark?: string;
   /** In a snapshot: what the database says keeps the currency as it is (0035). */
   currencyLockedBy?: CurrencyLock[];
 };
@@ -283,7 +285,15 @@ export type Snapshot = {
   splitTemplates?: SplitTemplate[];
   announcements?: Announcement[];
   activityEvents?: Array<{id:string;actorId:string;kind:"funds"|"members"|"recurring"|"templates"|"notes"|"operations"|"expenses"|"announcements";entityId:string;title:string;description:string;createdAt:string}>;
+  /** The snapshot holds every expense created since `since`, and every open one. */
+  expenseHistory?: ExpenseHistory;
+  changeMark?: string;
+  /** An overview summary leaves out what only the commune's own screens show. */
+  detail?: "summary";
 };
+export type ExpenseHistory = { since: string; olderCount: number; olderVoidedCount: number };
+/** Older expenses: those created from `from` up to `before`, and how many are older still. */
+export type ExpensePage = { expenses: Expense[]; before: string; from: string | null; olderCount: number; olderVoidedCount: number };
 export type LiveExpenseRow = Omit<ExpenseRow, "amountMinor" | "paidByUserId" | "dueOn" | "shares"> & {
   amountMinor: number;
   paidByUserId: string;
