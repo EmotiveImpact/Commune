@@ -97,8 +97,8 @@ function Responsibilities() {
         <button className="c-hub-task-copy" type="button" onClick={() => go("operation", { operation: item.id })}>
           <strong>{item.title}</strong><span>{item.assignee || "Unassigned"} · <span className={late ? "c-hub-late" : undefined}>{late ? "Overdue · " : ""}{due}</span>{item.time ? ` · ${item.time}` : ""}</span>
         </button>
-        {item.kind === "task" && <input type="checkbox" aria-label={`Mark ${item.title} ${item.status === "done" ? "open" : "done"}`}
-          checked={item.status === "done"} disabled={pending !== null} onChange={() => void complete(item.id, item.title)} />}
+        {item.kind === "task" && <label className="c-hub-check"><input type="checkbox" aria-label={`Mark ${item.title} ${item.status === "done" ? "open" : "done"}`}
+          checked={item.status === "done"} disabled={pending !== null} onChange={() => void complete(item.id, item.title)} /></label>}
       </div>;
     })}
     </div>

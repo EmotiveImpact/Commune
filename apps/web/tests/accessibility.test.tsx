@@ -580,3 +580,13 @@ describe("asking before typed text is thrown away", () => {
     expect(onClose).toHaveBeenCalledTimes(2);
   });
 });
+
+describe("structure and smaller fixes", () => {
+  it("keeps the Hub's task box in a label, so the larger touch area works", async () => {
+    current.operations = [{ id: "task-1", hubId: commune.id, kind: "task", category: "chore", title: "Bins", date: todayIso(), allDay: true, assignee: user.name, assigneeId: user.id, repeat: "none", status: "open", notes: "" }];
+    mount("/hub");
+    const box = await screen.findByRole("checkbox", { name: "Mark Bins done" });
+    expect(box.parentElement?.tagName).toBe("LABEL");
+    expect((box.parentElement as HTMLLabelElement).control).toBe(box);
+  });
+});

@@ -1277,6 +1277,15 @@ div.a-set-row {
   opacity: 0.55;
 }
 
+/* Phones: a 44px touch area around the switch, without changing its look. */
+@media (max-width: 560px) {
+  .a-switch::before {
+    content: "";
+    position: absolute;
+    inset: -9px 0;
+  }
+}
+
 .a-sheet-scrim {
   display: none;
   position: fixed;
@@ -2222,6 +2231,25 @@ button.a-kpi {
   background: var(--sage-soft);
   color: var(--sage-strong);
   border-color: transparent;
+}
+
+/* Phones: a 44px touch area around each chip, without changing its look. */
+@media (max-width: 560px) {
+  .a-chip {
+    position: relative;
+  }
+
+  .a-chip::before {
+    content: "";
+    position: absolute;
+    inset: -7px -2px;
+  }
+
+  /* Room for that area if the chip row scrolls sideways. */
+  .a-toolbar .a-filters {
+    padding-block: 6px;
+    margin-block: -6px;
+  }
 }
 
 .a-page-head {

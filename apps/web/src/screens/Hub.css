@@ -187,3 +187,15 @@
 .c-hub-announcement-seen { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-top: 4px; color: var(--hub-muted); font-size: 12px; }
 .c-hub-announcement-done { color: var(--hub-action); font-weight: 500; }
 .c-hub-announcement-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; color: var(--hub-muted); font-size: 12px; }
+
+/* The task box sits in a label, which phones widen to a 44px touch area. */
+.c-hub-check { display: flex; flex: none; }
+/* Phones: links, View buttons and task boxes reach 44px through an invisible
+   touch area, so the cards keep their look. */
+@media (max-width: 560px) {
+  .c-hub-link, .c-hub-attention-end button { position: relative; }
+  .c-hub-link::before, .c-hub-attention-end button::before { content: ""; position: absolute; inset: -9px 0; }
+  .c-hub-attention-end button::before { inset: -8px 0; }
+  .c-hub-task-feedback .c-hub-link::before { content: none; }
+  .c-hub-check { align-items: center; width: 44px; height: 44px; margin: -13.5px -15px -13.5px -12px; padding-left: 12px; }
+}
