@@ -3,7 +3,7 @@ import { act, cleanup, fireEvent, render, screen, within } from "@testing-librar
 import { Router } from "wouter";
 import { memoryLocation } from "wouter/memory-location";
 import { App } from "../src/App";
-import { AppProvider } from "../src/state";
+import { AppProvider, useApp, type AppState } from "../src/state";
 import { api, post, loadCommunes, loadSnapshot } from "../src/live/api";
 import { money, type Commune, type Snapshot } from "../src/live/model";
 import { LIMITS } from "../src/data/limits";
@@ -26,9 +26,11 @@ const initial: Snapshot = {
 };
 const usage = { totalUsed: 0, totalLimit: 60, recipientLimit: 8, recipientUsage: {}, nextSlotAt: null };
 let current: Snapshot;
+let app: AppState;
+function Capture() { app = useApp(); return null; }
 function mount(path: string) {
   const location = memoryLocation({ path, record: true });
-  render(<Router hook={location.hook}><AppProvider><App /></AppProvider></Router>);
+  render(<Router hook={location.hook}><AppProvider><App /><Capture /></AppProvider></Router>);
   return location;
 }
 const modalDescriptor = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, "showModal");
@@ -92,6 +94,22 @@ describe("Add expense saves the split it previews", () => {
     expect(Object.values(saved).sort()).toEqual(["£3.33", "£3.33", "£3.34"]);
     expect(saved).toEqual(preview);
     expect(yourShare).toBe(saved["Test Person"]);
+  });
+
+  it("splits between the same people in the preview and the save when someone leaves while the form is open", async () => {
+    current.members.push({ userId: "user-3", name: "Third Housemate", role: "member", active: true });
+    mount("/expenses");
+    const dialog = await openExpenseForm("Shopping", "9.00");
+    current = { ...current, members: current.members.map((member) => member.userId === "user-3" ? { ...member, active: false } : member) };
+    await act(async () => app.refresh());
+    expect(within(dialog).queryByRole("checkbox", { name: "Include Third Housemate" })).toBeNull();
+    const preview = Array.from(dialog.querySelectorAll(".c-split-person .c-split-amount > span")).map((cell) => cell.textContent);
+    expect(preview).toEqual(["£4.50", "£4.50"]);
+    expect(within(dialog).getByText("Your share").nextElementSibling!.textContent).toBe("£4.50");
+    await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Save expense" })); });
+    const [body] = sent("/communes/home-1/expenses");
+    expect((body.shares as Array<{ userId: string; amountMinor: number }>).map((share) => [share.userId, share.amountMinor]))
+      .toEqual([["user-1", 450], ["user-2", 450]]);
   });
 });
 

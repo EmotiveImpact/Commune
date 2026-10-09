@@ -34,6 +34,19 @@ describe("one parser for every amount people type", () => {
     expect(moneyInputError("25.00", "GBP", fallback)).toBe(fallback);
   });
 
+  it("never reads a first group of thousands that starts with 0", () => {
+    // "0,500" might mean 0.50: refused rather than read as 500.
+    for (const currency of ["GBP", "USD", "EUR"] as const) {
+      for (const value of ["0,500", "0,050", "0,001", "01,500", "00,500.00", "0.500,00", "01.500,00"]) {
+        expect(parseMoneyInput(value, currency)).toBeNull();
+      }
+    }
+    expect(moneyInputError("0,500", "GBP", fallback)).toBe(fallback);
+    expect(parseMoneyInput("0,50", "EUR")).toBe(50);
+    expect(parseMoneyInput("0.50", "GBP")).toBe(50);
+    expect(parseMoneyInput("1,500", "EUR")).toBe(150000);
+  });
+
   it("keeps the database's limit in every field, and says what it is", () => {
     expect(parseMoneyInput("10,000,000,000.00", "GBP")).toBe(1_000_000_000_000);
     expect(parseMoneyInput("10000000000.01", "GBP")).toBeNull();

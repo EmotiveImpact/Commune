@@ -295,10 +295,13 @@ function AddExpense() {
   const requestId = useRef(newRequestId());
   const [uncertain, setUncertain] = useState(false);
   const amountMinor = parseMoneyInput(amount, hub.currency);
+  // Someone who leaves while the form is open drops out of the preview as well
+  // as the save, so the two always split between the same people.
   const included = members.filter((member) => includedIds.includes(member.userId));
+  const includedUserIds = included.map(member => member.userId);
   let allocations: ReturnType<typeof allocateExpense> = [];
   let splitError = "";
-  try { allocations = allocateExpense(amountMinor ?? 0, included.map(member => member.userId), method, values, hub.currency); }
+  try { allocations = allocateExpense(amountMinor ?? 0, includedUserIds, method, values, hub.currency); }
   catch (cause) { splitError = cause instanceof Error ? cause.message : "Check the split."; }
 
   async function save() {
@@ -390,7 +393,7 @@ function AddExpense() {
         <input id="exp-due" type="date" value={due} disabled={saving || uncertain} onChange={(e) => setDue(e.target.value)} />
         <p className="a-window-note">Nudge becomes available to the payer once this date arrives.</p>
       </div>
-      <SplitEditor members={members} includedIds={includedIds} onIncludedIds={setIncludedIds} method={method} onMethod={setMethod} values={values} onValues={setValues} amountMinor={amountMinor} currency={hub.currency} disabled={saving || uncertain} />
+      <SplitEditor members={members} includedIds={includedUserIds} onIncludedIds={setIncludedIds} method={method} onMethod={setMethod} values={values} onValues={setValues} amountMinor={amountMinor} currency={hub.currency} disabled={saving || uncertain} />
       {error ? <p className="a-form-error" role="alert">{error}</p> : null}
     </section><aside className="c-expense-summary" aria-label="Split summary"><h3>The split, at a glance</h3><div><span>Total</span><strong>{formatMoney(amountMinor ?? 0, hub.currency)}</strong></div><div><span>Your share</span><strong>{formatMoney(allocations.find(share => share.userId === session?.userId)?.amountMinor ?? 0, hub.currency)}</strong></div><p>Paid by {members.find(member=>member.userId===payer)?.name ?? you.name}. Each person will see their exact share.</p><p>Commune records who paid and who owes what. It doesn’t move money.</p></aside>
       {/* One footer under both columns, so it never cuts across the split list. */}

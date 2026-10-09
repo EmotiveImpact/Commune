@@ -16,9 +16,11 @@ export function acceptsDecimalComma(currency?: string | null): boolean {
 }
 
 // "1200", "1,200" or "12,345,678", with up to two decimals after a full stop.
-const FULL_STOP = /^(\d+|\d{1,3}(?:,\d{3})+)(?:\.(\d{1,2}))?$/;
+// A first group of thousands never starts with 0, so "0,500" is refused
+// rather than read as 500.
+const FULL_STOP = /^(\d+|[1-9]\d{0,2}(?:,\d{3})+)(?:\.(\d{1,2}))?$/;
 // "12,50", "1200,5" or "1.200,50": a decimal comma, with full stops between thousands.
-const DECIMAL_COMMA = /^(\d+|\d{1,3}(?:\.\d{3})+),(\d{1,2})$/;
+const DECIMAL_COMMA = /^(\d+|[1-9]\d{0,2}(?:\.\d{3})+),(\d{1,2})$/;
 
 /**
  * The amount typed, in minor units, or the reason it cannot be used. A comma
