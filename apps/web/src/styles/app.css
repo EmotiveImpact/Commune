@@ -481,9 +481,10 @@
   display: flex;
 }
 
+/* The name reaches 24px tall into the space above it, so the text stays put. */
 .a-side-foot {
-  padding: 0;
-  margin: 0;
+  padding: 8px 0 0;
+  margin: -8px 0 0;
   border: 0;
   border-radius: 0;
   display: block;
@@ -564,10 +565,12 @@
   color: rgba(255, 255, 255, 0.65);
 }
 
+/* 24px tall, reaching into the space below, so the line keeps its place. */
 .a-side-account .a-reminder-usage--sidebar summary {
-  min-height: 18px;
+  min-height: 24px;
   gap: 3px;
-  padding: 0;
+  padding: 0 0 6px;
+  margin-bottom: -6px;
   border: 0;
   border-radius: 4px;
 }
