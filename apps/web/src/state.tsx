@@ -515,23 +515,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // it was not saved if the tab is then signed out.
   const refusedAction = useRef(false);
   const lastRefreshAt = useRef(0);
+  // Someone used this tab (pointer, keys, touch). The minute check stops
+  // after ten quiet minutes and starts again with the next use.
+  const lastActivityAt = useRef(Date.now());
   const snapshotReads = useRef(new Map<string, Promise<void>>());
-  const snapshotTimes = useRef(new Map<string, number>());
   const snapshotRevisions = useRef(new Map<string, number>());
   const overview = screen === "home" || screen === "home-empty" || screen === "home-inbox" || screen === "communes" || screen === "home-activity";
   const viewRef = useRef({ hubId, overview });
   viewRef.current = { hubId, overview };
   const native = isNativeNow();
 
-  const readSnapshot = useCallback((commune: Commune, sequence: number, force = false): Promise<void> => {
+  const readSnapshot = useCallback((commune: Commune, sequence: number, force = false, detail?: "summary"): Promise<void> => {
     const current = dataRef.current;
     if (!current || sequence !== refreshSequence.current) return Promise.resolve();
     const cacheKey = `${current.user.id}:${commune.id}`;
     const revision = snapshotRevisions.current.get(cacheKey) ?? 0;
-    const key = `${sequence}:${commune.id}:${revision}`;
+    const key = `${sequence}:${commune.id}:${revision}:${detail ?? "full"}`;
     const pending = snapshotReads.current.get(key);
     if (pending) return pending;
-    if (!force && current.snapshots[commune.id] && Date.now() - (snapshotTimes.current.get(cacheKey) ?? 0) < 15_000) {
+    // The list's change mark says whether anything changed since the copy held
+    // here was read. A summary will do only where one was asked for.
+    const held = current.snapshots[commune.id];
+    if (!force && held && held.changeMark === commune.changeMark && (detail === "summary" || held.detail !== "summary")) {
       return Promise.resolve();
     }
     setSnapshotErrors((errors) => {
@@ -539,10 +544,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       delete next[commune.id];
       return next;
     });
-    const request = loadSnapshot(commune).then((snapshot) => {
+    const request = (detail ? loadSnapshot(commune, detail) : loadSnapshot(commune)).then((snapshot) => {
       if (sequence !== refreshSequence.current || dataRef.current?.user.id !== current.user.id || revision !== (snapshotRevisions.current.get(cacheKey) ?? 0)) return;
       if (snapshot.commune.id !== commune.id) throw new ApiError("Commune response did not match the request", 502);
-      snapshotTimes.current.set(cacheKey, Date.now());
+      // A summary never replaces the open commune's record; its full read is under way.
+      if (snapshot.detail === "summary" && viewRef.current.hubId === commune.id && dataRef.current.snapshots[commune.id]) return;
       publishData({ ...dataRef.current, snapshots: { ...dataRef.current.snapshots, [commune.id]: snapshot } });
     }).catch((error: unknown) => {
       if (sequence !== refreshSequence.current || dataRef.current?.user.id !== current.user.id || revision !== (snapshotRevisions.current.get(cacheKey) ?? 0)) return;
@@ -552,7 +558,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (error instanceof ApiError && [401, 403, 404].includes(error.status)) {
         const snapshots = { ...dataRef.current.snapshots };
         delete snapshots[commune.id];
-        snapshotTimes.current.delete(cacheKey);
         publishData({ ...dataRef.current, snapshots });
       }
     }).finally(() => snapshotReads.current.delete(key));
@@ -569,11 +574,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!active) return;
     await readSnapshot(active, sequence, force);
     // Overview cards appear immediately from verified membership metadata.
-    // Fill the remaining cards progressively instead of bursting N full
-    // commune reads into the selected page's critical path.
+    // Fill the remaining cards progressively, from summaries, instead of
+    // bursting N full commune reads into the selected page's critical path.
     for (const commune of current.communes) {
       if (sequence !== refreshSequence.current || !viewRef.current.overview) return;
-      if (commune.id !== active.id) await readSnapshot(commune, sequence, force);
+      if (commune.id !== active.id) await readSnapshot(commune, sequence, force, "summary");
     }
   }, [readSnapshot]);
 
@@ -587,7 +592,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     publishData(null);
     setViewer(null);
     setSnapshotErrors({});
-    snapshotTimes.current.clear();
     snapshotRevisions.current.clear();
     setHubId("");
     setWindowId(null);
@@ -598,9 +602,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     loadedRef.current = true;
   }, [publishData]);
 
+  // A full refresh (start-up, a sign-in, Try again, a membership change made
+  // here) asks who is signed in and reads everything on screen again. A check
+  // reads the commune list, whose change marks say which communes changed, and
+  // reads only those again, with their invitations and the reminder counts.
+  // Coming back to the tab, a check also asks who is signed in.
   // announce: whether a sign-in this finds may be told to the other tabs.
   // Only a load this tab started itself may tell them (see the listener).
-  const load = useCallback(async (announce: boolean) => {
+  const load = useCallback(async (announce: boolean, check?: { session: boolean }) => {
     const sequence = ++refreshSequence.current;
     const shownBefore = currentViewer();
     refreshing.current = true;
@@ -618,76 +627,95 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
     }
     try {
-      const result = await startupRead(() => api<{ user: User | null }>("/auth/me"));
-      if (sequence !== refreshSequence.current) return;
-      const shown = currentViewer();
-      if (!result.user || (shown && shown !== result.user.id)) {
-        // Signed out, or signed in as someone else in another tab: never
-        // switch this screen to another person's data without a sign-in.
-        forgetSession(shown ? endedNotice(refusedAction.current) : null);
+      let user = check && !check.session ? dataRef.current?.user ?? null : null;
+      if (!user) {
+        const result = await startupRead(() => api<{ user: User | null }>("/auth/me"));
+        if (sequence !== refreshSequence.current) return;
+        const shown = currentViewer();
+        if (!result.user || (shown && shown !== result.user.id)) {
+          // Signed out, or signed in as someone else in another tab: never
+          // switch this screen to another person's data without a sign-in.
+          forgetSession(shown ? endedNotice(refusedAction.current) : null);
+          refusedAction.current = false;
+          setApiError(null);
+          return;
+        }
         refusedAction.current = false;
-        setApiError(null);
-        return;
+        setViewer(result.user.id);
+        // A tab that showed no one now shows this account: a sign-in, however
+        // it happened (password, code, or the return from Google), or a new
+        // tab opening. Tell the other tabs.
+        if (announce && !shown) announceSession(result.user.id);
+        setSignOutUnconfirmed(false);
+        setSessionNotice(null);
+        user = result.user;
       }
-      refusedAction.current = false;
-      setViewer(result.user.id);
-      // A tab that showed no one now shows this account: a sign-in, however
-      // it happened (password, code, or the return from Google), or a new
-      // tab opening. Tell the other tabs.
-      if (announce && !shown) announceSession(result.user.id);
-      setSignOutUnconfirmed(false);
-      setSessionNotice(null);
-      const { communes } = await startupRead(() => loadCommunes(result.user!));
+      const viewer = user;
+      const { communes } = await startupRead(() => loadCommunes(viewer));
       if (sequence !== refreshSequence.current) return;
-      const previous = dataRef.current?.user.id === result.user.id ? dataRef.current : null;
+      const previous = dataRef.current?.user.id === viewer.id ? dataRef.current : null;
       if (!previous) {
         setSnapshotErrors({});
-        snapshotTimes.current.clear();
         snapshotRevisions.current.clear();
       }
+      // A commune changed if its mark moved, your role in it changed or you just joined it.
+      const seen = new Map((previous?.communes ?? []).map((commune) => [commune.id, commune]));
+      const changed = communes.filter((commune) => seen.get(commune.id)?.changeMark !== commune.changeMark ||
+        seen.get(commune.id)?.role !== commune.role);
+      const admins = communes.filter((commune) => commune.role === "admin");
+      const invites = Object.fromEntries(Object.entries(previous?.invites ?? {})
+        .filter(([id]) => admins.some((commune) => commune.id === id)));
       // Identity and membership are ready. Keep existing content on refresh;
       // missing snapshots render a loading state, never a false empty ledger.
       publishData({
-        user: result.user, communes,
+        user: viewer, communes,
         snapshots: Object.fromEntries(communes.filter((commune) => previous?.snapshots[commune.id])
           .map((commune) => [commune.id, previous!.snapshots[commune.id]])),
-        invites: previous?.invites ?? {}, reminderUsage: previous?.reminderUsage ?? null,
+        invites, reminderUsage: previous?.reminderUsage ?? null,
       });
       setAuthStatus("authenticated");
       setHubId((current) => communes.some((commune) => commune.id === current)
-        ? current : communes.find((commune) => commune.id === readPrefs(result.user!.id).activeHubId)?.id ?? communes[0]?.id ?? "");
-      if (!previous) setPrefs(readPrefs(result.user.id));
+        ? current : communes.find((commune) => commune.id === readPrefs(viewer.id).activeHubId)?.id ?? communes[0]?.id ?? "");
+      if (!previous) setPrefs(readPrefs(viewer.id));
       loadedRef.current = true;
-      // Counts and invitations must not delay the commune itself.
-      void (
-        // A pending database rollout must not make the rest of the app unusable.
-        // The send RPC still enforces limits even if this display is unavailable.
-        api<ReminderUsage>("/reminders/usage").catch((error: unknown) => {
-          console.warn("Reminder usage could not be loaded", error instanceof Error ? error.message : "unknown error");
-          return null;
-        })
-      ).then((reminderUsage) => {
-        if (sequence !== refreshSequence.current || !dataRef.current) return;
-        publishData({ ...dataRef.current, reminderUsage });
-      });
-      void Promise.all(communes.filter((commune) => commune.role === "admin")
-          .map(async (commune) => {
-            const result = await api<{ invites: InviteRecord[] }>(`/communes/${encodeURIComponent(commune.id)}/invites`);
-            return [commune.id, result.invites.map((invite) => ({
-                id: invite.id, email: invite.email ?? null,
-                role: invite.role === "admin" ? "Admin" as const : "Member" as const,
-                status: inviteStatus(invite), createdAt: invite.createdAt, expiresAt: invite.expiresAt,
-                acceptedAt: invite.acceptedAt, revokedAt: invite.revokedAt,
-                invitedBy: invite.invitedBy ?? null, invitedByName: invite.invitedByName ?? null,
-                acceptedBy: invite.acceptedBy ?? null,
-              }))] as const;
-          })).then((inviteEntries) => {
-        if (sequence !== refreshSequence.current || !dataRef.current) return;
-        publishData({ ...dataRef.current, invites: Object.fromEntries(inviteEntries) });
-      }).catch((error: unknown) => {
-        if (sequence === refreshSequence.current) setApiError(error instanceof Error ? error.message : "Could not refresh invitations");
-      });
-      await loadVisibleSnapshots(sequence, true);
+      // Counts and invitations must not delay the commune itself. A check
+      // reads the counts when something changed or a reminder slot has opened.
+      const usage = previous?.reminderUsage;
+      if (!check || changed.length || communes.length !== seen.size || !usage ||
+          (usage.nextSlotAt && Date.parse(usage.nextSlotAt) <= Date.now())) {
+        void (
+          // A pending database rollout must not make the rest of the app unusable.
+          // The send RPC still enforces limits even if this display is unavailable.
+          api<ReminderUsage>("/reminders/usage").catch((error: unknown) => {
+            console.warn("Reminder usage could not be loaded", error instanceof Error ? error.message : "unknown error");
+            return null;
+          })
+        ).then((reminderUsage) => {
+          if (sequence !== refreshSequence.current || !dataRef.current) return;
+          publishData({ ...dataRef.current, reminderUsage });
+        });
+      }
+      // An invitation sent, accepted or withdrawn moves its commune's mark.
+      const inviteReads = admins.filter((commune) => !check || changed.includes(commune) || !invites[commune.id]);
+      if (inviteReads.length) {
+        void Promise.all(inviteReads.map(async (commune) => {
+          const result = await api<{ invites: InviteRecord[] }>(`/communes/${encodeURIComponent(commune.id)}/invites`);
+          return [commune.id, result.invites.map((invite) => ({
+              id: invite.id, email: invite.email ?? null,
+              role: invite.role === "admin" ? "Admin" as const : "Member" as const,
+              status: inviteStatus(invite), createdAt: invite.createdAt, expiresAt: invite.expiresAt,
+              acceptedAt: invite.acceptedAt, revokedAt: invite.revokedAt,
+              invitedBy: invite.invitedBy ?? null, invitedByName: invite.invitedByName ?? null,
+              acceptedBy: invite.acceptedBy ?? null,
+            }))] as const;
+        })).then((inviteEntries) => {
+          if (sequence !== refreshSequence.current || !dataRef.current) return;
+          publishData({ ...dataRef.current, invites: { ...dataRef.current.invites, ...Object.fromEntries(inviteEntries) } });
+        }).catch((error: unknown) => {
+          if (sequence === refreshSequence.current) setApiError(error instanceof Error ? error.message : "Could not refresh invitations");
+        });
+      }
+      await loadVisibleSnapshots(sequence, !check);
       if (sequence !== refreshSequence.current) return;
       lastRefreshAt.current = Date.now();
     } catch (error) {
@@ -707,7 +735,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (sequence === refreshSequence.current) refreshing.current = false;
     }
   }, [forgetSession, loadVisibleSnapshots, publishData]);
-  const refresh = useCallback(() => load(true), [load]);
+  const refresh = useCallback((check?: { session: boolean }) => load(true, check), [load]);
 
   // Another tab signed in or out. A tab showing an account that is no longer
   // the signed-in one forgets it (its screens then ask for a sign-in); a
@@ -729,21 +757,41 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (authStatus === "authenticated") void loadVisibleSnapshots(refreshSequence.current);
   }, [authStatus, hubId, overview, loadVisibleSnapshots]);
 
+  // Once a minute, while the tab is visible and someone has used it in the
+  // last ten minutes, check the commune list for changes. Coming back to the
+  // tab checks at once and asks who is signed in; using it again after a
+  // quiet spell checks at once.
   useEffect(() => {
     if (authStatus !== "authenticated") return;
+    const quiet = () => Date.now() - lastActivityAt.current >= 10 * 60_000;
+    const due = (gap: number) => !refreshing.current && Date.now() - lastRefreshAt.current > gap;
     const onFocus = () => {
-      if (document.visibilityState === "visible" && !refreshing.current && Date.now() - lastRefreshAt.current > 15_000) void refresh();
+      if (document.visibilityState !== "visible") return;
+      lastActivityAt.current = Date.now();
+      if (due(15_000)) void refresh({ session: true });
     };
-    const onVisible = onFocus;
+    const onActivity = () => {
+      const returning = quiet();
+      lastActivityAt.current = Date.now();
+      if (returning && document.visibilityState === "visible" && due(60_000)) void refresh({ session: false });
+    };
+    const onMinute = () => {
+      if (document.visibilityState === "visible" && !quiet() && due(15_000)) void refresh({ session: false });
+    };
+    const activity = ["pointerdown", "pointermove", "keydown", "touchstart", "wheel"];
     window.addEventListener("focus", onFocus);
-    document.addEventListener("visibilitychange", onVisible);
-    const timer = window.setInterval(onFocus, 60_000);
+    document.addEventListener("visibilitychange", onFocus);
+    for (const name of activity) window.addEventListener(name, onActivity, { capture: true, passive: true });
+    const timer = window.setInterval(onMinute, 60_000);
     return () => {
       window.removeEventListener("focus", onFocus);
-      document.removeEventListener("visibilitychange", onVisible);
+      document.removeEventListener("visibilitychange", onFocus);
+      for (const name of activity) window.removeEventListener(name, onActivity, { capture: true });
       window.clearInterval(timer);
     };
   }, [authStatus, refresh]);
+  // Screens only ever ask for a full refresh, even when they pass refresh as a handler.
+  const fullRefresh = useCallback(() => refresh(), [refresh]);
 
   const mutate = useCallback(async <T,>(action: () => Promise<T>): Promise<T> => {
     setMutationCount(count => count + 1);
@@ -848,7 +896,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }) : [];
   const hub = places.find((place) => place.id === hubId) ?? places[0] ?? emptyHub();
   const activeId = hub.id;
-  const snapshot = data?.snapshots[activeId];
+  const held = data?.snapshots[activeId];
+  // The open commune's own screens never show a summary; they wait for its record.
+  const snapshot = held?.detail === "summary" ? undefined : held;
   const contentLoading = !!data?.communes.length && !overview && !snapshot;
   const contentError = snapshotErrors[activeId] ?? null;
   const allExpenses = snapshot && data ? expenseRows(snapshot, data.user.id) : [];
@@ -905,7 +955,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const latest = dataRef.current;
       if (!stillCurrent() || !latest || !latest.communes.some(item => item.id === activeId)) return;
       if (snapshot.commune.id !== activeId) throw new ApiError("Commune response did not match the request", 502);
-      snapshotTimes.current.set(cacheKey, Date.now());
       publishData({ ...latest, communes: latest.communes.map(item => item.id === activeId ? { ...item, ...snapshot.commune } : item), snapshots: { ...latest.snapshots, [activeId]: snapshot } });
       setSnapshotErrors(errors => { const next = { ...errors }; delete next[activeId]; return next; });
     } catch (error) {
@@ -915,7 +964,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (error instanceof ApiError && [401, 403, 404].includes(error.status)) {
         const snapshots = { ...latest.snapshots };
         delete snapshots[activeId];
-        snapshotTimes.current.delete(cacheKey);
         publishData({ ...latest, snapshots });
       }
       // The write already committed. Do not invite a duplicate submission when
@@ -968,7 +1016,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
     const latest = dataRef.current;
     if (!latest || latest.user.id !== current.user.id) return result.id;
-    snapshotTimes.current.set(`${current.user.id}:${result.id}`, Date.now());
+    // Neither this nor its list entry has a change mark, so it is not read
+    // again until the next check lists the commune with one.
     publishData({ ...latest, communes: [commune, ...latest.communes],
       snapshots: { ...latest.snapshots, [result.id]: {
         commune, members: [{ userId: current.user.id, name: current.user.name, email: current.user.email, role: "admin" }],
@@ -1397,7 +1446,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             : PAGE_LEDES[screen] ?? "";
 
   return <Ctx.Provider value={{
-    authStatus, apiError, mutationPending: mutationCount > 0, clearApiError: () => setApiError(null), refresh,
+    authStatus, apiError, mutationPending: mutationCount > 0, clearApiError: () => setApiError(null), refresh: fullRefresh,
     signInWithPassword, signInWithGoogle, signUpWithPassword, verifyEmailCode, session, screen, hubId: activeId,
     hub, places, snapshots: data?.snapshots ?? {}, contentLoading, contentError, emptyHub: empty, window: windowId, moreOpen,
     navMode: prefs.navMode, noteKey, notes, operationKey, operationDate,
