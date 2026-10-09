@@ -55,10 +55,14 @@ export function PrivacyPage() {
         <p>Everyone in a commune can see what is shared in it. Admins can also see invitations and manage who is a member.</p>
       </Section>
       <Section title="What stays in your browser">
-        <p>Photos you add, the payment details you keep for Pay me, and display settings such as dark mode are kept in your browser. They are not sent to Commune’s database or shown to other members.</p>
+        <p>Photos you add, the payment details you keep for Pay me, and the commune you last opened are kept in this browser for your account until you sign out here. Display settings (theme, sidebar and notices) are kept in this browser for whoever uses it. None of this is sent to Commune’s database or shown to other members.</p>
       </Section>
       <Section title="Who helps run Commune">
         <p>Neon stores Commune’s data and runs sign-in. Vercel hosts the app. Resend delivers invitation and reminder emails. If you choose Google sign-in, Google handles it. Unsplash supplies the default cover photos. When your browser loads a cover photo, Unsplash receives your IP address, as with any website.</p>
+      </Section>
+      <Section title="Error reports">
+        <p>If something goes wrong while you’re signed in, your browser sends Commune a short report: the kind of page (never which record), the error message and technical details, with record ids and email addresses removed and web addresses cut down to the page, the version of Commune and your browser’s family. On about one visit in ten it also sends three measures of how quickly the page loaded and responded.</p>
+        <p>Reports are linked to your account only to limit how many can be sent. They are stored in Commune’s database at Neon, are not shown to other members, and are deleted after 30 days. Commune uses no third-party analytics.</p>
       </Section>
       <Section title="Money">
         <p>Commune records what people pay each other outside the app. It does not take payments, hold money or store card details.</p>
