@@ -1,5 +1,6 @@
 -- Run only in an empty disposable local DB after local_auth_stub.sql and
--- migrations 0001 through 0006. Real Neon verification must use signed JWTs.
+-- every migration. Real Neon verification must use signed JWTs. Notes and
+-- tasks are written only through their commands (0027).
 BEGIN;
 
 DO $$
@@ -33,6 +34,7 @@ DECLARE
   v_count integer;
   v_many_facts jsonb;
   v_many_rotation jsonb;
+  v_case text;
 BEGIN
   SELECT count(*) INTO v_count FROM public.member_profiles(v_home);
   IF v_count <> 2 THEN
@@ -44,177 +46,58 @@ BEGIN
     RAISE EXCEPTION 'Member profile omitted expected fields';
   END IF;
 
-  INSERT INTO public.commune_notes
-    (commune_id, title, facts, created_by)
-    VALUES (v_home, 'Home note', '[["Key", "Value"]]'::jsonb,
-      auth.user_id()) RETURNING id INTO v_note;
-  INSERT INTO public.commune_operations
-    (commune_id, kind, category, title, date, rotation, last_done, created_by)
-    VALUES (v_home, 'task', 'chore', 'Take bins out', current_date,
-      '["Alice", "Bob"]'::jsonb,
-      '{"by":"Alice","date":"2024-02-29"}'::jsonb,
-      auth.user_id()) RETURNING id INTO v_operation;
+  v_note := (public.create_note(v_home, 'Home note', '', '', '', '',
+    '[["Key", "Value"]]'::jsonb, gen_random_uuid())->>'id')::uuid;
+  v_operation := (public.create_operation(v_home, 'task', 'chore', 'Take bins out',
+    current_date, NULL, true, 'content-alice', '["content-alice", "content-bob"]'::jsonb,
+    'weekly', '', gen_random_uuid())->>'id')::uuid;
   PERFORM set_config('test.content_note', v_note::text, true);
   PERFORM set_config('test.content_operation', v_operation::text, true);
 
-  BEGIN
-    INSERT INTO public.commune_notes
-      (commune_id, title, facts, created_by)
-      VALUES (v_home, 'Bad facts', '{}'::jsonb, auth.user_id());
-    RAISE EXCEPTION 'Non-array facts were accepted';
-  EXCEPTION WHEN SQLSTATE '23514' THEN NULL;
-  END;
-  BEGIN
-    INSERT INTO public.commune_notes (commune_id, title, pill, created_by)
-      VALUES (v_home, 'Long pill', repeat('p', 81), auth.user_id());
-    RAISE EXCEPTION 'Overlong note pill was accepted';
-  EXCEPTION WHEN SQLSTATE '23514' THEN NULL;
-  END;
-  BEGIN
-    INSERT INTO public.commune_notes (commune_id, title, created_by)
-      VALUES (v_home, repeat('t', 81), auth.user_id());
-    RAISE EXCEPTION 'Overlong note title was accepted';
-  EXCEPTION WHEN SQLSTATE '23514' THEN NULL;
-  END;
-  BEGIN
-    INSERT INTO public.commune_notes (commune_id, title, kicker, created_by)
-      VALUES (v_home, 'Long kicker', repeat('k', 121), auth.user_id());
-    RAISE EXCEPTION 'Overlong note kicker was accepted';
-  EXCEPTION WHEN SQLSTATE '23514' THEN NULL;
-  END;
-  BEGIN
-    INSERT INTO public.commune_notes (commune_id, title, lede, created_by)
-      VALUES (v_home, 'Long lede', repeat('l', 201), auth.user_id());
-    RAISE EXCEPTION 'Overlong note lede was accepted';
-  EXCEPTION WHEN SQLSTATE '23514' THEN NULL;
-  END;
-  BEGIN
-    INSERT INTO public.commune_notes (commune_id, title, body, created_by)
-      VALUES (v_home, 'Long body', repeat('b', 2001), auth.user_id());
-    RAISE EXCEPTION 'Overlong note body was accepted';
-  EXCEPTION WHEN SQLSTATE '23514' THEN NULL;
-  END;
+  -- The commands keep the table's limits and say what is wrong.
   SELECT jsonb_agg(jsonb_build_array('key', 'value'))
     INTO v_many_facts FROM generate_series(1, 31);
-  BEGIN
-    INSERT INTO public.commune_notes (commune_id, title, facts, created_by)
-      VALUES (v_home, 'Many facts', v_many_facts, auth.user_id());
-    RAISE EXCEPTION 'Too many note facts were accepted';
-  EXCEPTION WHEN SQLSTATE '23514' THEN NULL;
-  END;
-  BEGIN
-    INSERT INTO public.commune_notes (commune_id, title, facts, created_by)
-      VALUES (v_home, 'Bad fact pair', '[["one"]]'::jsonb, auth.user_id());
-    RAISE EXCEPTION 'One-part note fact was accepted';
-  EXCEPTION WHEN SQLSTATE '23514' THEN NULL;
-  END;
-  BEGIN
-    INSERT INTO public.commune_notes (commune_id, title, facts, created_by)
-      VALUES (v_home, 'Bad fact type', '[["key", 5]]'::jsonb, auth.user_id());
-    RAISE EXCEPTION 'Non-string note fact was accepted';
-  EXCEPTION WHEN SQLSTATE '23514' THEN NULL;
-  END;
-  BEGIN
-    INSERT INTO public.commune_notes (commune_id, title, facts, created_by)
-      VALUES (v_home, 'Long fact',
-        jsonb_build_array(jsonb_build_array('key', repeat('v', 121))),
-        auth.user_id());
-    RAISE EXCEPTION 'Overlong note fact was accepted';
-  EXCEPTION WHEN SQLSTATE '23514' THEN NULL;
-  END;
+  FOREACH v_case IN ARRAY ARRAY['facts object', 'pill', 'title', 'blank title', 'kicker',
+      'lede', 'body', 'many facts', 'one-part fact', 'number fact', 'long fact'] LOOP
+    BEGIN
+      PERFORM public.create_note(v_home,
+        CASE v_case WHEN 'title' THEN repeat('t', 81) WHEN 'blank title' THEN '   ' ELSE 'Bad note' END,
+        CASE WHEN v_case = 'pill' THEN repeat('p', 81) ELSE '' END,
+        CASE WHEN v_case = 'kicker' THEN repeat('k', 121) ELSE '' END,
+        CASE WHEN v_case = 'lede' THEN repeat('l', 201) ELSE '' END,
+        CASE WHEN v_case = 'body' THEN repeat('b', 2001) ELSE '' END,
+        CASE v_case WHEN 'facts object' THEN '{}'::jsonb WHEN 'many facts' THEN v_many_facts
+          WHEN 'one-part fact' THEN '[["one"]]'::jsonb WHEN 'number fact' THEN '[["key", 5]]'::jsonb
+          WHEN 'long fact' THEN jsonb_build_array(jsonb_build_array('key', repeat('v', 121)))
+          ELSE '[]'::jsonb END,
+        gen_random_uuid());
+      RAISE EXCEPTION 'Invalid note was accepted: %', v_case;
+    EXCEPTION WHEN invalid_parameter_value THEN NULL;
+    END;
+  END LOOP;
 
-  BEGIN
-    INSERT INTO public.commune_operations
-      (commune_id, kind, category, title, date, assignee, created_by)
-      VALUES (v_home, 'task', 'chore', 'Long assignee', current_date,
-        repeat('a', 81), auth.user_id());
-    RAISE EXCEPTION 'Overlong operation assignee was accepted';
-  EXCEPTION WHEN SQLSTATE '23514' THEN NULL;
-  END;
-  BEGIN
-    INSERT INTO public.commune_operations
-      (commune_id, kind, category, title, date, created_by)
-      VALUES (v_home, 'task', 'chore', repeat('t', 81), current_date,
-        auth.user_id());
-    RAISE EXCEPTION 'Overlong operation title was accepted';
-  EXCEPTION WHEN SQLSTATE '23514' THEN NULL;
-  END;
-  BEGIN
-    INSERT INTO public.commune_operations
-      (commune_id, kind, category, title, date, notes, created_by)
-      VALUES (v_home, 'task', 'chore', 'Long notes', current_date,
-        repeat('n', 1001), auth.user_id());
-    RAISE EXCEPTION 'Overlong operation notes were accepted';
-  EXCEPTION WHEN SQLSTATE '23514' THEN NULL;
-  END;
-  SELECT jsonb_agg('Alice'::text) INTO v_many_rotation
+  -- People are current members of this commune, by id, and only tasks have them.
+  SELECT jsonb_agg('content-alice'::text) INTO v_many_rotation
     FROM generate_series(1, 51);
-  BEGIN
-    INSERT INTO public.commune_operations
-      (commune_id, kind, category, title, date, rotation, created_by)
-      VALUES (v_home, 'task', 'chore', 'Many rotators', current_date,
-        v_many_rotation, auth.user_id());
-    RAISE EXCEPTION 'Oversized operation rotation was accepted';
-  EXCEPTION WHEN SQLSTATE '23514' THEN NULL;
-  END;
-  BEGIN
-    INSERT INTO public.commune_operations
-      (commune_id, kind, category, title, date, rotation, created_by)
-      VALUES (v_home, 'task', 'chore', 'Bad rotator', current_date,
-        '[3]'::jsonb, auth.user_id());
-    RAISE EXCEPTION 'Non-string operation rotation was accepted';
-  EXCEPTION WHEN SQLSTATE '23514' THEN NULL;
-  END;
-  BEGIN
-    INSERT INTO public.commune_operations
-      (commune_id, kind, category, title, date, rotation, created_by)
-      VALUES (v_home, 'task', 'chore', 'Long rotator', current_date,
-        jsonb_build_array(repeat('r', 81)), auth.user_id());
-    RAISE EXCEPTION 'Overlong operation rotator was accepted';
-  EXCEPTION WHEN SQLSTATE '23514' THEN NULL;
-  END;
-  BEGIN
-    INSERT INTO public.commune_operations
-      (commune_id, kind, category, title, date, last_done, created_by)
-      VALUES (v_home, 'task', 'chore', 'Missing done data', current_date,
-        '{}'::jsonb, auth.user_id());
-    RAISE EXCEPTION 'Incomplete operation last_done was accepted';
-  EXCEPTION WHEN SQLSTATE '23514' THEN NULL;
-  END;
-  BEGIN
-    INSERT INTO public.commune_operations
-      (commune_id, kind, category, title, date, last_done, created_by)
-      VALUES (v_home, 'task', 'chore', 'Empty done actor', current_date,
-        '{"by":"   ","date":"2024-02-29"}'::jsonb, auth.user_id());
-    RAISE EXCEPTION 'Blank operation last_done.by was accepted';
-  EXCEPTION WHEN SQLSTATE '23514' THEN NULL;
-  END;
-  BEGIN
-    INSERT INTO public.commune_operations
-      (commune_id, kind, category, title, date, last_done, created_by)
-      VALUES (v_home, 'task', 'chore', 'Long done actor', current_date,
-        jsonb_build_object('by', repeat('a', 81), 'date', '2024-02-29'),
-        auth.user_id());
-    RAISE EXCEPTION 'Overlong operation last_done.by was accepted';
-  EXCEPTION WHEN SQLSTATE '23514' THEN NULL;
-  END;
-  BEGIN
-    INSERT INTO public.commune_operations
-      (commune_id, kind, category, title, date, last_done, created_by)
-      VALUES (v_home, 'task', 'chore', 'Bad done date', current_date,
-        '{"by":"Alice","date":"2025-02-29"}'::jsonb, auth.user_id());
-    RAISE EXCEPTION 'Impossible operation last_done date was accepted';
-  EXCEPTION WHEN SQLSTATE '23514' THEN NULL;
-  END;
-  BEGIN
-    INSERT INTO public.commune_operations
-      (commune_id, kind, category, title, date, last_done, created_by)
-      VALUES (v_home, 'task', 'chore', 'Extra done data', current_date,
-        '{"by":"Alice","date":"2024-02-29","payload":"unexpected"}'::jsonb,
-        auth.user_id());
-    RAISE EXCEPTION 'Extra operation last_done fields were accepted';
-  EXCEPTION WHEN SQLSTATE '23514' THEN NULL;
-  END;
+  FOREACH v_case IN ARRAY ARRAY['title', 'notes', 'kind', 'category', 'repeat', 'many rotators',
+      'rotator type', 'outsider', 'unknown', 'event people', 'outside rotation'] LOOP
+    BEGIN
+      PERFORM public.create_operation(v_home,
+        CASE v_case WHEN 'kind' THEN 'chore' WHEN 'event people' THEN 'event' ELSE 'task' END,
+        CASE v_case WHEN 'category' THEN 'party' WHEN 'event people' THEN 'visit' ELSE 'chore' END,
+        CASE WHEN v_case = 'title' THEN repeat('t', 81) ELSE 'Bad task' END,
+        current_date, NULL, true,
+        CASE v_case WHEN 'outsider' THEN 'content-carol' WHEN 'unknown' THEN 'nobody'
+          WHEN 'outside rotation' THEN 'content-alice' ELSE 'content-bob' END,
+        CASE v_case WHEN 'many rotators' THEN v_many_rotation WHEN 'rotator type' THEN '[3]'::jsonb
+          WHEN 'outside rotation' THEN '["content-bob"]'::jsonb ELSE NULL END,
+        CASE WHEN v_case = 'repeat' THEN 'daily' ELSE 'weekly' END,
+        CASE WHEN v_case = 'notes' THEN repeat('n', 1001) ELSE '' END,
+        gen_random_uuid());
+      RAISE EXCEPTION 'Invalid task was accepted: %', v_case;
+    EXCEPTION WHEN invalid_parameter_value THEN NULL;
+    END;
+  END LOOP;
 END;
 $$;
 
@@ -233,12 +116,17 @@ BEGIN
   SELECT count(*) INTO v_count FROM public.commune_operations WHERE commune_id = v_home;
   IF v_count <> 1 THEN RAISE EXCEPTION 'Member cannot read shared operation'; END IF;
 
-  UPDATE public.commune_notes SET title = 'Edited by Bob' WHERE id = v_note;
-  IF NOT FOUND THEN RAISE EXCEPTION 'Member cannot edit shared note'; END IF;
-  UPDATE public.commune_operations SET status = 'done' WHERE id = v_operation;
-  IF NOT FOUND THEN RAISE EXCEPTION 'Member cannot edit shared operation'; END IF;
+  -- Any member edits shared content; status is not something an edit sets.
+  PERFORM public.update_note(v_note, 1, 'Edited by Bob', '', '', '', '', '[["Key", "Value"]]'::jsonb);
+  PERFORM public.update_operation(v_operation, 1, 'task', 'chore', 'Take bins out on Tuesday',
+    current_date, NULL, true, 'content-alice', '["content-alice", "content-bob"]'::jsonb, 'weekly', '');
+  IF (SELECT title FROM public.commune_notes WHERE id = v_note) <> 'Edited by Bob'
+     OR (SELECT status FROM public.commune_operations WHERE id = v_operation) <> 'open' THEN
+    RAISE EXCEPTION 'Member cannot edit shared content';
+  END IF;
 
-  -- Identity and commune ownership cannot be rewritten by a client.
+  -- Identity and commune ownership cannot be rewritten by a client, and
+  -- nothing is written to the tables directly.
   BEGIN
     UPDATE public.commune_notes SET created_by = 'content-bob' WHERE id = v_note;
     RAISE EXCEPTION 'Client changed note author';
@@ -256,17 +144,25 @@ BEGIN
     RAISE EXCEPTION 'Client impersonated note author';
   EXCEPTION WHEN SQLSTATE '42501' THEN NULL;
   END;
+  BEGIN
+    PERFORM public.remove_note(v_note);
+    RAISE EXCEPTION 'Member removed a note someone else added';
+  EXCEPTION WHEN SQLSTATE '42501' THEN NULL;
+  END;
 
-  INSERT INTO public.commune_notes (commune_id, title, created_by)
-    VALUES (v_home, 'Bob note', auth.user_id()) RETURNING id INTO v_bob_note;
-  INSERT INTO public.commune_operations
-    (commune_id, kind, category, title, date, created_by)
-    VALUES (v_home, 'event', 'visit', 'Bob visit', current_date,
-      auth.user_id()) RETURNING id INTO v_bob_operation;
-  DELETE FROM public.commune_notes WHERE id = v_bob_note;
-  IF NOT FOUND THEN RAISE EXCEPTION 'Member cannot delete shared note'; END IF;
-  DELETE FROM public.commune_operations WHERE id = v_bob_operation;
-  IF NOT FOUND THEN RAISE EXCEPTION 'Member cannot delete shared operation'; END IF;
+  v_bob_note := (public.create_note(v_home, 'Bob note', '', '', '', '', '[]'::jsonb,
+    gen_random_uuid())->>'id')::uuid;
+  v_bob_operation := (public.create_operation(v_home, 'event', 'visit', 'Bob visit',
+    current_date, NULL, true, NULL, NULL, 'none', '', gen_random_uuid())->>'id')::uuid;
+  IF (SELECT created_by FROM public.commune_notes WHERE id = v_bob_note) <> 'content-bob' THEN
+    RAISE EXCEPTION 'Note author is not the caller';
+  END IF;
+  PERFORM public.remove_note(v_bob_note);
+  PERFORM public.remove_operation(v_bob_operation);
+  SELECT count(*) INTO v_count FROM public.commune_notes WHERE id = v_bob_note;
+  IF v_count <> 0 THEN RAISE EXCEPTION 'Member cannot remove their own note'; END IF;
+  SELECT count(*) INTO v_count FROM public.commune_operations WHERE id = v_bob_operation;
+  IF v_count <> 0 THEN RAISE EXCEPTION 'Member cannot remove their own operation'; END IF;
 END;
 $$;
 
@@ -277,6 +173,7 @@ DECLARE
   v_note uuid := current_setting('test.content_note')::uuid;
   v_operation uuid := current_setting('test.content_operation')::uuid;
   v_count integer;
+  v_case text;
 BEGIN
   SELECT count(*) INTO v_count FROM public.commune_notes WHERE commune_id = v_home;
   IF v_count <> 0 THEN RAISE EXCEPTION 'Outsider read a note'; END IF;
@@ -287,24 +184,24 @@ BEGIN
     RAISE EXCEPTION 'Outsider read member profiles';
   EXCEPTION WHEN SQLSTATE '42501' THEN NULL;
   END;
-  BEGIN
-    INSERT INTO public.commune_notes (commune_id, title, created_by)
-      VALUES (v_home, 'Intrusion', auth.user_id());
-    RAISE EXCEPTION 'Outsider wrote a note';
-  EXCEPTION WHEN SQLSTATE '42501' THEN NULL;
-  END;
-  BEGIN
-    INSERT INTO public.commune_operations
-      (commune_id, kind, category, title, date, created_by)
-      VALUES (v_home, 'task', 'chore', 'Intrusion', current_date,
-        auth.user_id());
-    RAISE EXCEPTION 'Outsider wrote an operation';
-  EXCEPTION WHEN SQLSTATE '42501' THEN NULL;
-  END;
-  UPDATE public.commune_notes SET title = 'Intrusion' WHERE id = v_note;
-  IF FOUND THEN RAISE EXCEPTION 'Outsider edited a note'; END IF;
-  DELETE FROM public.commune_operations WHERE id = v_operation;
-  IF FOUND THEN RAISE EXCEPTION 'Outsider deleted an operation'; END IF;
+  FOREACH v_case IN ARRAY ARRAY['add note', 'add operation', 'edit note', 'edit operation',
+      'remove note', 'remove operation', 'insert note'] LOOP
+    BEGIN
+      CASE v_case
+        WHEN 'add note' THEN PERFORM public.create_note(v_home, 'Intrusion', '', '', '', '', '[]'::jsonb, gen_random_uuid());
+        WHEN 'add operation' THEN PERFORM public.create_operation(v_home, 'task', 'chore', 'Intrusion',
+          current_date, NULL, true, NULL, NULL, 'none', '', gen_random_uuid());
+        WHEN 'edit note' THEN PERFORM public.update_note(v_note, 2, 'Intrusion', '', '', '', '', '[]'::jsonb);
+        WHEN 'edit operation' THEN PERFORM public.update_operation(v_operation, 2, 'task', 'chore', 'Intrusion',
+          current_date, NULL, true, NULL, NULL, 'none', '');
+        WHEN 'remove note' THEN PERFORM public.remove_note(v_note);
+        WHEN 'remove operation' THEN PERFORM public.remove_operation(v_operation);
+        ELSE INSERT INTO public.commune_notes (commune_id, title, created_by) VALUES (v_home, 'Intrusion', auth.user_id());
+      END CASE;
+      RAISE EXCEPTION 'Outsider could %', v_case;
+    EXCEPTION WHEN SQLSTATE '42501' THEN NULL;
+    END;
+  END LOOP;
 END;
 $$;
 
