@@ -456,25 +456,6 @@ export function dateLabel(iso: string | null | undefined, today?: string): strin
   return iso ? formatDay(iso, today) : "No due date";
 }
 
-export function equalShares(
-  amountMinor: number,
-  userIds: string[],
-): Array<{ userId: string; amountMinor: number }> {
-  const ids = [...userIds];
-  if (new Set(ids).size !== ids.length) {
-    throw new Error("Each person may appear only once in a split.");
-  }
-  if (!Number.isSafeInteger(amountMinor) || amountMinor <= 0 || !ids.length || amountMinor < ids.length) {
-    throw new Error("The amount must have at least one penny for each person in the split.");
-  }
-  const base = Math.floor(amountMinor / ids.length);
-  const remainder = amountMinor % ids.length;
-  return ids.map((userId, index) => ({
-    userId,
-    amountMinor: base + (index < remainder ? 1 : 0),
-  }));
-}
-
 /** today: the member's own calendar date, as tasks and pledges use. */
 export function expenseRows(snapshot: Snapshot, viewerId: string, today = todayIso()): LiveExpenseRow[] {
   const currency = snapshot.commune.currency;
