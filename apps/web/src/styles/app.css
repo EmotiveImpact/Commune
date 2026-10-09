@@ -3493,6 +3493,8 @@ button.a-item {
 .a-window-body {
   overflow: auto;
   padding: 20px 24px 24px;
+  /* Keep a control that takes focus clear of the sticky action row. */
+  scroll-padding-bottom: 96px;
 }
 
 .a-window {
