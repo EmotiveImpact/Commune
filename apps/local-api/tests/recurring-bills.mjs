@@ -62,12 +62,20 @@ assert.equal(ok(await b("POST", `/communes/${id}/recurring`, { ...broadband, pau
 let saved = await bill(broadbandId);
 assert.deepEqual([saved.version, saved.archivedAt, saved.paused], [1, null, false]);
 assert.equal(ok(await a("GET", `/communes/${id}/snapshot`)).recurringBills.length, 1, "a retried add made one bill");
+// A retry that differs from the first attempt is refused and changes nothing.
+refused(await b("POST", `/communes/${id}/recurring`, { ...broadband, amountMinor: 9500, paused: false, requestId,
+  allocations: [{ userId: blake.id, amountMinor: 4750 }, { userId: casey.id, amountMinor: 4750 }] }), 400,
+  /^This request was already used for a different bill/);
+assert.equal((await bill(broadbandId)).amountMinor, 9000);
 
 // ------------------------- a screen opened earlier cannot undo a newer change
 // Blake's editor loaded version 1. Avery raises the amount and records the period.
 const raised = { ...broadband, id: broadbandId, amountMinor: 9600,
   allocations: [{ userId: blake.id, amountMinor: 4800 }, { userId: casey.id, amountMinor: 4800 }] };
 ok(await a("POST", `/communes/${id}/recurring`, { ...raised, expectedVersion: 1 }), 201);
+// Blake's add, retried now, no longer stands for the bill.
+refused(await b("POST", `/communes/${id}/recurring`, { ...broadband, paused: false, requestId }), 400,
+  /^This request was already used for a different bill/);
 const recorded = ok(await a("POST", `/recurring/${broadbandId}/periods`, { expectedDueOn: broadband.nextDueOn }), 201);
 refused(await b("POST", `/communes/${id}/recurring`, { ...broadband, id: broadbandId, expectedVersion: 1 }), 409,
   /^This recurring bill was changed by someone else\./);
@@ -147,4 +155,15 @@ refused(await a("POST", `/communes/${id}/recurring`, { ...paper, requestId: rand
   /^Choose a next due date between /);
 refused(await a("POST", `/communes/${id}/recurring`, { ...paper, requestId: randomUUID(), nextDueOn: daysFrom(800) }), 400,
   /^Choose a next due date between /);
+
+// ------------------------------- one request sent at once to two communes
+// The second waits for the first, then finds its bill elsewhere and is refused.
+const elsewhere = ok(await a("POST", "/communes", { name: `Bills elsewhere ${suffix}`, kind: "household", currency: "GBP" }), 201).id;
+for (let round = 0; round < 5; round += 1) {
+  const racing = { title: `Water ${round}`, amountMinor: 1000, paidByUserId: avery.id, frequency: "monthly", nextDueOn: today,
+    allocations: only(avery, 1000), paused: false, requestId: randomUUID() };
+  const results = await Promise.all([id, elsewhere].map((commune) => a("POST", `/communes/${commune}/recurring`, racing)));
+  assert.deepEqual(results.map((result) => result.status).sort(), [201, 400], JSON.stringify(results));
+  assert.match(results.find((result) => result.status === 400).error, /^This request was already used for a different bill/);
+}
 console.log(`recurring bill commands integration passed (${base})`);

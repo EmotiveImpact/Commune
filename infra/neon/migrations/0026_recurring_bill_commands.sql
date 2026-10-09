@@ -16,7 +16,7 @@ ALTER TABLE public.recurring_bills
   ADD COLUMN request_id uuid,
   -- An archived bill is never due; restoring it brings it back paused.
   ADD CONSTRAINT recurring_archived_paused CHECK (archived_at IS NULL OR paused);
--- A retried "add" returns the bill it already added.
+-- A retried "add" finds the bill it already added.
 CREATE UNIQUE INDEX recurring_bills_request_idx ON public.recurring_bills (created_by, request_id)
   WHERE request_id IS NOT NULL;
 -- The snapshot asks, for every expense, whether a recurring period produced
@@ -84,9 +84,19 @@ BEGIN
     IF p_request_id IS NULL THEN
       RAISE EXCEPTION 'A request id is required to add a recurring bill' USING ERRCODE = '22023';
     END IF;
+    -- The same request sent at once (even to another commune) waits here for
+    -- the first attempt, then finds its bill.
+    PERFORM pg_advisory_xact_lock(hashtextextended(
+      'commune-recurring-request:' || v_actor || ':' || p_request_id::text, 0));
     SELECT * INTO v_existing FROM public.recurring_bills WHERE created_by = v_actor AND request_id = p_request_id;
     IF FOUND THEN
-      IF v_existing.commune_id <> p_commune_id THEN
+      -- A retry gets the bill back only while it still stands exactly as this
+      -- request made it. A changed request, or a bill changed since, is refused.
+      IF v_existing.commune_id <> p_commune_id OR v_existing.version <> 1
+         OR v_existing.title IS DISTINCT FROM btrim(p_title) OR v_existing.amount_minor IS DISTINCT FROM p_amount_minor
+         OR v_existing.paid_by_user_id IS DISTINCT FROM p_paid_by OR v_existing.shares IS DISTINCT FROM p_shares
+         OR v_existing.frequency IS DISTINCT FROM p_frequency OR v_existing.next_due_on IS DISTINCT FROM p_next_due_on
+         OR v_existing.paused IS DISTINCT FROM coalesce(p_paused, false) THEN
         RAISE EXCEPTION 'This request was already used for a different bill' USING ERRCODE = '22023';
       END IF;
       RETURN v_existing.id;
@@ -100,6 +110,9 @@ BEGIN
     END IF;
     IF p_paused IS NOT NULL THEN
       RAISE EXCEPTION 'An edit cannot pause or resume a bill. Use Pause or Resume.' USING ERRCODE = '22023';
+    END IF;
+    IF p_expected_version IS NULL THEN
+      RAISE EXCEPTION 'Say which version of this bill the change is based on' USING ERRCODE = '22023';
     END IF;
     IF v_existing.archived_at IS NOT NULL THEN
       RAISE EXCEPTION 'This bill is archived. Restore it before editing it.' USING ERRCODE = 'P0001';
