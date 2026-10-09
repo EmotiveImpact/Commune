@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState } from "react";
-import { ArrowRightLeft, ChartColumn, Clock3, CreditCard, FileText, Files, House, LayoutGrid, ReceiptText, Repeat2, ShoppingBag, SquareCheck, UsersRound, type LucideIcon } from "lucide-react";
+import { ArrowRightLeft, Clock3, FileText, Files, House, LayoutGrid, ReceiptText, Repeat2, ShoppingBag, SquareCheck, UsersRound, type LucideIcon } from "lucide-react";
 import type { IconName } from "../ui/Icon";
 import { Icon } from "../ui/Icon";
 import { Avatar } from "../ui/widgets";
@@ -14,7 +14,7 @@ type NavItem = { id: ScreenId; label: string; icon: IconName };
 const NAV_ICONS: Partial<Record<IconName, LucideIcon>> = {
   home: LayoutGrid, hub: House, expenses: ReceiptText, settle: ArrowRightLeft,
   recurring: Repeat2, funds: ShoppingBag, notes: FileText, operations: SquareCheck,
-  templates: Files, billing: CreditCard, analytics: ChartColumn,
+  templates: Files,
   activity: Clock3, members: UsersRound,
 };
 
@@ -33,11 +33,10 @@ const MONEY: NavItem[] = [
   { id: "recurring", label: "Recurring", icon: "recurring" },
   { id: "funds", label: "Funds", icon: "funds" },
   { id: "templates", label: "Templates", icon: "templates" },
-  { id: "billing", label: "Billing", icon: "billing" },
 ];
 
+// Billing and Analytics stay out of the navigation until they do something.
 const INSIGHTS: NavItem[] = [
-  { id: "analytics", label: "Analytics", icon: "analytics" },
   { id: "activity", label: "Activity", icon: "activity" },
 ];
 

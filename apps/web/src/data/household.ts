@@ -19,8 +19,6 @@ export type ScreenId =
   | "recurring"
   | "funds"
   | "templates"
-  | "billing"
-  | "analytics"
   | "members"
   | "operations"
   | "notes"
@@ -134,7 +132,7 @@ export const HUBS: Record<SampleHubId, Hub> = {
     credit: false,
     kpis: [
       { go: "funds", tone: "peach", kicker: "House fund", num: "£420", hint: "£180 still from Alex" },
-      { go: "analytics", tone: "lilac", kicker: "This month", num: "£2,140", hint: "of £2,400 · on track" },
+      { go: "expenses", tone: "lilac", kicker: "This month", num: "£2,140", hint: "of £2,400 · on track" },
       { go: "recurring", tone: "sage", kicker: "Open bills", num: "2", hint: "Gas + Virgin Media" },
       { go: "expenses", tone: "ink", kicker: "Next due", num: "Fri", hint: "British Gas · 29 Aug" },
     ],
@@ -195,7 +193,7 @@ export const HUBS: Record<SampleHubId, Hub> = {
     credit: false,
     kpis: [
       { go: "funds", tone: "peach", kicker: "Studio pot", num: "£90", hint: "Ink run not yet logged" },
-      { go: "analytics", tone: "lilac", kicker: "This month", num: "£240", hint: "Wifi + paper + coffee" },
+      { go: "expenses", tone: "lilac", kicker: "This month", num: "£240", hint: "Wifi + paper + coffee" },
       { go: "recurring", tone: "sage", kicker: "Open bills", num: "1", hint: "Printer ink · Monday" },
       { go: "expenses", tone: "ink", kicker: "Next due", num: "Mon", hint: "Ink · Sam’s run" },
     ],
@@ -254,7 +252,7 @@ export const HUBS: Record<SampleHubId, Hub> = {
     credit: true,
     kpis: [
       { go: "funds", tone: "peach", kicker: "Trip pot", num: "£380", hint: "Hold already paid by you" },
-      { go: "analytics", tone: "lilac", kicker: "Spent", num: "£210", hint: "Dinners + metro" },
+      { go: "expenses", tone: "lilac", kicker: "Spent", num: "£210", hint: "Dinners + metro" },
       { go: "recurring", tone: "sage", kicker: "Open", num: "1", hint: "Airbnb hold Thursday" },
       { go: "expenses", tone: "ink", kicker: "Next", num: "Thu", hint: "Hold expires in 4 days" },
     ],
@@ -437,8 +435,6 @@ export const PAGE_TITLES: Record<string, string> = {
   recurring: "Recurring",
   funds: "Funds",
   templates: "Templates",
-  billing: "Billing",
-  analytics: "Analytics",
   breakdown: "Breakdown",
   members: "Members",
   operations: "Operations",
@@ -479,8 +475,6 @@ export const PAGE_LEDES: Record<string, string> = {
   recurring: "Repeat a bill, check it, then record what was paid.",
   funds: "Pledges and recorded contributions.",
   templates: "Shared split preferences.",
-  billing: "Plan and billing details.",
-  analytics: "Activity from your shared ledger.",
   breakdown: "The ledger view of who owes whom.",
   members: "Balances for this cycle, not personalities.",
   operations: "What’s late, what’s yours, then the week.",
@@ -557,8 +551,6 @@ export const SCREEN_PATH: Record<ScreenId, string> = {
   recurring: "/recurring",
   funds: "/funds",
   templates: "/templates",
-  billing: "/billing",
-  analytics: "/analytics",
   members: "/members",
   operations: "/operations",
   notes: "/notes",
@@ -806,7 +798,7 @@ export function buildCreatedHub(opts: {
     kpis: [
       { go: "funds", tone: "peach", kicker: "Fund", num: `${currency}0`, hint: "Nothing in yet" },
       {
-        go: "analytics",
+        go: "expenses",
         tone: "lilac",
         kicker: "This month",
         num: totalLabel,

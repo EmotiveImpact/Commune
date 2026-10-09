@@ -20,8 +20,6 @@ import {
 } from "./screens/Money";
 import {
   ActivityScreen,
-  AnalyticsScreen,
-  BillingScreen,
   MembersScreen,
   NotesScreen,
   TemplatesScreen,
@@ -44,6 +42,9 @@ export function App() {
       <Route path="/expenses-empty"><Redirect to={keepSearch("/expenses")} replace /></Route>
       <Route path="/settle-even"><Redirect to={keepSearch("/settle")} replace /></Route>
       <Route path="/home-empty"><Redirect to={keepSearch("/")} replace /></Route>
+      {/* Billing and Analytics come back when they do something. */}
+      <Route path="/billing"><Redirect to={keepSearch("/")} replace /></Route>
+      <Route path="/analytics"><Redirect to={keepSearch("/")} replace /></Route>
       <Route path="/login">
         <GuestOnly>
           <LoginPage />
@@ -271,10 +272,6 @@ function ScreenBody({ screen }: { screen: ScreenId }) {
       return <FundsScreen key={hub.id} />;
     case "templates":
       return <TemplatesScreen key={hub.id} />;
-    case "billing":
-      return <BillingScreen />;
-    case "analytics":
-      return <AnalyticsScreen />;
     case "members":
       return <MembersScreen key={hub.id} />;
     case "operations":
