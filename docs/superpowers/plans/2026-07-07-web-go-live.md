@@ -1,3 +1,8 @@
+> **Historical. Do not carry out this plan.** It was written for the earlier
+> Supabase, Mantine and TanStack app, which has since been replaced; the files,
+> commands and migrations it names no longer exist. It is kept for the record;
+> see [CLAUDE.md](../../../CLAUDE.md) for what runs today.
+
 # Commune Web Go-Live Implementation Plan (Waves A–F)
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.

@@ -1,7 +1,7 @@
 # Commune local handoff
 
-Prepared 2 October 2026 and updated later the same day after the money
-lifecycle pack. Work is paused for a handoff, not a production release.
+Prepared 2 October 2026 and updated through 9 October 2026. Work is paused
+for a handoff, not a production release.
 
 ## Start here
 
@@ -107,14 +107,17 @@ lifecycle pack. Work is paused for a handoff, not a production release.
   `web-backup/`. Launch names `website` (3004) and `website-backup` (3003).
 - No push, deployment, hosted migration or provider change has been made. Do
   not infer hosted parity from local work.
-- Preserve the modified `.claude/launch.json` and all untracked landing, mobile
-  and artifact work. Do not reset or clean the checkout.
+- `.claude/launch.json` lists only servers that exist: `commune-web`,
+  `commune-web-qa`, `commune-api`, `website`, `website-backup` and
+  `mobile-v2`. Merge any local additions into it rather than overwriting
+  them. Preserve all untracked landing, mobile and artifact work. Do not reset
+  or clean the checkout.
 
 The active app is `apps/web`: React 19, Vite, TypeScript and wouter, using pnpm.
 Hosted data/auth use Neon. Local development uses the loopback PostgreSQL API
 in `apps/local-api`; it must not be deployed as production authentication.
-Root `AGENTS.md` and `CLAUDE.md` now describe this migrated architecture and
-mark the Supabase/Mantine stack as historical.
+Root `CLAUDE.md` describes this architecture, its ports, the tests and CI, and
+marks the Supabase/Mantine stack as historical; `AGENTS.md` points to it.
 
 ## Running application
 
@@ -124,8 +127,8 @@ longer running and are not needed.
 - UI: `http://localhost:3000/` (and `http://127.0.0.1:3000/`), Vite, started
   from `apps/web`. Launch name `commune-web`.
 - API: `127.0.0.1:3002`, started from `apps/local-api` against the everyday
-  local database `commune_loading_test_20260927`. Log:
-  `.local/logs/local-api-3002.log`.
+  local database `commune_loading_test_20260927`. Launch name `commune-api`.
+  Log: `.local/logs/local-api-3002.log`.
 
 To restart them by hand:
 
@@ -139,6 +142,10 @@ records, point the one UI at an isolated API instead: `COMMUNE_API_PORT=3005`
 (launch name `commune-web-qa`) with a test API on port 3005 and a disposable
 database. `commune_depth_test_a` holds a synthetic household for that purpose
 (`apps/local-api/tests/lifecycle-fixture.mjs`); it can be dropped at any time.
+
+Ports: 3000 the UI (one at a time), 3002 the everyday API, 3005 the QA API,
+3004 the website, 3003 the website backup and 8082 the Expo app. CI starts its
+local API on 3102, and the local API's HTTP tests refuse 3002.
 
 The Claude desktop session folder is `/Users/augustusedem/Commune ` (with a
 trailing space). It is a set of symlinks into this repository with its own
@@ -160,7 +167,9 @@ reminder and event counts, and the money totals, were identical before and
 after. Two previously confirmed shares became two `migrated` receipts. The new
 snapshot loads for all six active memberships. No account was created in it
 and no record of the existing households was changed. To go back:
-`pg_restore --clean` that dump into the same database.
+`pg_restore --clean` that dump into the same database. Nothing here records
+0024 or later being applied to it: back it up, rehearse on a clone and apply
+0024 to 0039 in order before running the current API against it.
 
 ### Dependencies
 
@@ -186,11 +195,13 @@ install was run.
 
 ## Verified baseline
 
-- 222 web tests across 17 files pass. Web TypeScript and the Vite production
-  build pass. Local API and reminder worker type-check.
-- On a fresh isolated database: smoke, workflow, search, money-lifecycle and
-  operations-history HTTP suites pass; `grants.sql` passes; the reminder
-  worker integration test (simulated provider) passes.
+- 9 October, on the tidying branch (from `a3db9b2`): 602 web tests in 56 files
+  (23 of them run in Node, the rest in jsdom); the web, local API and reminder
+  worker typechecks and the web production build; 27 database tests through
+  `infra/neon/tests/run-local.sh` (two more need a Neon branch and are
+  skipped) and the schema dump check; 21 local API test suites, 20 of them
+  over HTTP against an API on a fresh database; the worker's 6 unit tests and
+  its 4 database suites. CI runs the same commands (see `CLAUDE.md`).
 - Browser journeys with synthetic accounts on an isolated database are listed
   in [money lifecycle](MONEY-LIFECYCLE-2026-10-02.md), with what was not
   checked. Earlier evidence is in
@@ -216,7 +227,7 @@ no further copy-cleanup pass is needed for the handoff.
 Read [the product-depth roadmap](PRODUCT-DEPTH-ROADMAP-2026-10-02.md) and the
 Remaining section of [money lifecycle](MONEY-LIFECYCLE-2026-10-02.md).
 
-1. **Hosted parity.** Migrations 0013 to 0037, schema-cache refresh, the
+1. **Hosted parity.** Migrations 0013 to 0039, schema-cache refresh, the
    matching web client and sender, auth, invitations and real email delivery
    are all unverified on Neon. Apply migrations before deploying the client.
    Measure cold/warm/idle loading with separate accounts. Do not declare
