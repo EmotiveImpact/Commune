@@ -46,20 +46,23 @@
 /* The commune type's tone shows until the cover arrives, or if it cannot. */
 .c-hub-identity.has-photo { color: #fff; background: var(--cover-tone, #1a1e2b); }
 .c-hub-cover { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center 60%; z-index: -2; }
-.c-hub-identity.has-photo::after { content: ''; position: absolute; inset: 0; background: linear-gradient(0deg,#14251acc,transparent 90%); z-index: -1; }
+.c-hub-identity.has-photo::after { content: ''; position: absolute; inset: 0; background: linear-gradient(0deg, rgba(20, 37, 26, 0.8) 0, rgba(20, 37, 26, 0.7) 116px, rgba(20, 37, 26, 0.5) 166px, transparent 90%); z-index: -1; }
 .c-hub-identity-copy { min-width: 0; width: 100%; text-shadow: 0 1px 5px #0004; }
 .c-hub-type { display: block; font-size: 12px; font-weight: 400; }
+/* Over a photo, the shade behind the text is darkest at the bottom; the type
+   and the buttons above it carry their own (tests/cover-contrast.test.ts). */
+.c-hub-identity.has-photo .c-hub-type { width: fit-content; padding: 2px 9px; border-radius: var(--radius-pill); background: rgba(20, 37, 26, 0.64); }
 .c-hub .c-hub-identity h2 { margin: 3px 0 6px; font-size: 35px; font-weight: 500; letter-spacing: -1.2px; line-height: 1.2; overflow-wrap: anywhere; }
 .c-hub-people-count { font-size: 14px; }
 .c-hub-location { font-size: 14px; }
 .c-hub-location p { overflow-wrap: anywhere; }
-.c-hub-location span { margin-right: 8px; opacity: .75; }
+.c-hub-location span { margin-right: 8px; opacity: .85; }
 .c-hub-people-link { display: flex; align-items: center; gap: 12px; width: fit-content; margin-top: 17px; padding: 0; border: 0; background: none; color: inherit; text-shadow: none; font-size: 12px !important; }
 .c-hub-people-link .avatar-stack { display: flex; align-items: center; }
 .c-hub-people-link .avatar { width: 28px; height: 28px; margin-right: -5px; border: 2px solid #fff; font-size: 9px; }
 .c-hub-people-link .avatar:last-child { margin-right: 0; }
 .c-hub-hero-actions { position: absolute; right: 22px; top: 20px; display: flex; gap: 7px; }
-.c-hub-settings { display: flex; align-items: center; gap: 6px; padding: 9px 12px; min-height: 38px; border: 1px solid #ffffff55; border-radius: var(--radius-control); background: #15221c66; color: #fff; font-size: 12px !important; }
+.c-hub-settings { display: flex; align-items: center; gap: 6px; padding: 9px 12px; min-height: 38px; border: 1px solid #ffffff55; border-radius: var(--radius-control); background: rgba(21, 34, 28, 0.65); color: #fff; font-size: 12px !important; }
 
 .c-hub-overview { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 20px; }
 /* The balance card keeps the prototype's pale sage so it reads first. */
