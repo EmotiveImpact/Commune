@@ -12,7 +12,8 @@ DECLARE
     'commune_invites', 'recurring_bills', 'recurring_bill_occurrences',
     'split_templates', 'commune_events',
     'expense_share_receipts', 'expense_revisions', 'operation_occurrences', 'expense_share_payment_reports', 'note_revisions',
-    'commune_announcements', 'announcement_acknowledgements'
+    'commune_announcements', 'announcement_acknowledgements',
+    'commune_notes', 'commune_operations'
   ];
 BEGIN
   FOREACH table_name IN ARRAY denied_tables LOOP
@@ -39,8 +40,8 @@ BEGIN
     RAISE EXCEPTION 'Anonymous workflow execution grant';
   END IF;
 
-  -- Money-lifecycle and occurrence and announcement commands (0015-0025): members only, never
-  -- anonymous, and the private helpers are not callable by any client role.
+  -- Money-lifecycle, occurrence, announcement, note and task commands (0015-0027): members only,
+  -- never anonymous, and the private helpers are not callable by any client role.
   FOREACH table_name IN ARRAY ARRAY[
     'public.send_reminder_command(text,uuid,uuid)',
     'public.record_share_receipt(uuid,bigint,date,text,uuid)',
@@ -57,7 +58,13 @@ BEGIN
     'public.withdraw_share_payment_report(uuid)',
     'public.resolve_share_payment_report(uuid,text,text,uuid)',
     'public.record_recurring_period(uuid,date,bigint)',
-    'public.skip_recurring_period(uuid,date,text)'
+    'public.skip_recurring_period(uuid,date,text)',
+    'public.create_note(uuid,text,text,text,text,text,jsonb,uuid)',
+    'public.update_note(uuid,integer,text,text,text,text,text,jsonb)',
+    'public.remove_note(uuid)',
+    'public.create_operation(uuid,text,text,text,date,time,boolean,text,jsonb,text,text,uuid)',
+    'public.update_operation(uuid,integer,text,text,text,date,time,boolean,text,jsonb,text,text)',
+    'public.remove_operation(uuid)'
   ] LOOP
     IF has_function_privilege('anonymous', table_name, 'EXECUTE')
       OR has_function_privilege('public', table_name, 'EXECUTE')
@@ -91,7 +98,10 @@ BEGIN
     'commune_private.recurring_next_due(text,date,integer)',
     'commune_private.recurring_period_result(uuid,date,boolean)',
     'commune_private.record_note_revision()',
-    'commune_private.start_note_version()'
+    'commune_private.start_note_version()',
+    'commune_private.next_operation_version()',
+    'commune_private.note_content(text,text,text,text,text,jsonb)',
+    'commune_private.operation_content(text,text,text,date,time,boolean,text,jsonb,text,text)'
   ] LOOP
     IF has_function_privilege('authenticated', table_name, 'EXECUTE')
       OR has_function_privilege('anonymous', table_name, 'EXECUTE') THEN
@@ -99,40 +109,16 @@ BEGIN
     END IF;
   END LOOP;
 
+  -- Notes and tasks change only through their commands (0027): no write
+  -- grant on any column, including those granted by 0006 and 0020.
   FOREACH table_name IN ARRAY ARRAY['commune_notes', 'commune_operations'] LOOP
-    IF NOT (SELECT relrowsecurity FROM pg_class
-      WHERE oid = format('public.%I', table_name)::regclass) THEN
-      RAISE EXCEPTION 'RLS is disabled on public.%', table_name;
-    END IF;
-    IF has_table_privilege('authenticated',
-        format('public.%I', table_name), 'INSERT')
-      OR has_table_privilege('authenticated',
-        format('public.%I', table_name), 'UPDATE') THEN
-      RAISE EXCEPTION 'Broad authenticated write grant on public.%', table_name;
-    END IF;
-    IF NOT has_column_privilege('authenticated',
-        format('public.%I', table_name), 'title', 'INSERT')
-      OR NOT has_column_privilege('authenticated',
-        format('public.%I', table_name), 'title', 'UPDATE')
-      OR has_column_privilege('authenticated',
-        format('public.%I', table_name), 'commune_id', 'UPDATE')
-      OR has_column_privilege('authenticated',
-        format('public.%I', table_name), 'created_by', 'UPDATE') THEN
+    IF has_any_column_privilege('authenticated', format('public.%I', table_name), 'INSERT')
+      OR has_any_column_privilege('authenticated', format('public.%I', table_name), 'UPDATE')
+      OR NOT has_table_privilege('authenticated', format('public.%I', table_name), 'SELECT') THEN
       RAISE EXCEPTION 'Unexpected column grants on public.%', table_name;
     END IF;
-    -- A note's version is the database's to set (0023).
-    IF table_name = 'commune_notes' AND has_column_privilege('authenticated', 'public.commune_notes', 'version', 'UPDATE') THEN
-      RAISE EXCEPTION 'Clients can set a note version';
-    END IF;
-    -- Operations people are written by id (0020); the trigger checks them.
-    IF table_name = 'commune_operations' AND NOT (
-        has_column_privilege('authenticated', 'public.commune_operations', 'assignee_id', 'UPDATE')
-        AND has_column_privilege('authenticated', 'public.commune_operations', 'rotation_ids', 'INSERT')
-        AND NOT has_column_privilege('authenticated', 'public.commune_operations', 'anchor_day', 'UPDATE')
-        -- Who is covering whose turn is set only by the handover command (0024).
-        AND NOT has_column_privilege('authenticated', 'public.commune_operations', 'turn_owner_id', 'INSERT')
-        AND NOT has_column_privilege('authenticated', 'public.commune_operations', 'turn_owner_id', 'UPDATE')) THEN
-      RAISE EXCEPTION 'Unexpected column grants on public.%', table_name;
+    IF EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = table_name AND cmd <> 'SELECT') THEN
+      RAISE EXCEPTION 'A write policy remains on public.%', table_name;
     END IF;
   END LOOP;
 END;

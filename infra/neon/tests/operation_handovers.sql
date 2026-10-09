@@ -36,8 +36,8 @@ DECLARE
   v_op uuid; v_once uuid; v_result jsonb; v_row public.commune_operations%ROWTYPE; v_snapshot jsonb;
   v_request uuid := gen_random_uuid(); v_failed text; v_handover jsonb;
 BEGIN
-  INSERT INTO public.commune_operations (commune_id, kind, category, title, date, repeat, assignee_id, rotation_ids, created_by)
-    VALUES (v_home, 'task', 'chore', 'Bins', current_date, 'weekly', a, jsonb_build_array(a, b, c), a) RETURNING id INTO v_op;
+  v_op := (public.create_operation(v_home, 'task', 'chore', 'Bins', current_date, NULL, true, a, jsonb_build_array(a, b, c),
+    'weekly', '', gen_random_uuid())->>'id')::uuid;
 
   -- Refusals: unknown or outside members, the current holder, a stale screen,
   -- an overlong reason, no request id.
@@ -84,7 +84,9 @@ BEGIN
 
   -- A member's edit of other fields keeps the cover, although Dana is not in
   -- the rotation; editing the people ends it.
-  UPDATE public.commune_operations SET title = 'Bins out' WHERE id = v_op;
+  SELECT * INTO v_row FROM public.commune_operations WHERE id = v_op;
+  PERFORM public.update_operation(v_op, v_row.version, 'task', 'chore', 'Bins out', v_row.date, v_row.time, v_row.all_day,
+    v_row.assignee_id, v_row.rotation_ids, v_row.repeat, v_row.notes);
   SELECT * INTO v_row FROM public.commune_operations WHERE id = v_op;
   IF v_row.turn_owner_id IS DISTINCT FROM a OR v_row.assignee_id <> d THEN
     RAISE EXCEPTION 'A title edit dropped the cover';
@@ -134,13 +136,16 @@ BEGIN
   -- Editing who has it replaces a cover; someone outside the rotation is
   -- then refused as before.
   PERFORM public.hand_over_operation(v_op, d, current_date, a, current_date, NULL, gen_random_uuid());
-  UPDATE public.commune_operations SET assignee_id = b WHERE id = v_op;
+  SELECT * INTO v_row FROM public.commune_operations WHERE id = v_op;
+  PERFORM public.update_operation(v_op, v_row.version, 'task', 'chore', v_row.title, v_row.date, v_row.time, v_row.all_day,
+    b, v_row.rotation_ids, v_row.repeat, v_row.notes);
   SELECT * INTO v_row FROM public.commune_operations WHERE id = v_op;
   IF v_row.assignee_id <> b OR v_row.turn_owner_id IS NOT NULL THEN
     RAISE EXCEPTION 'Editing the holder did not end the cover: %', row_to_json(v_row);
   END IF;
   BEGIN
-    UPDATE public.commune_operations SET assignee_id = d WHERE id = v_op;
+    PERFORM public.update_operation(v_op, v_row.version, 'task', 'chore', v_row.title, v_row.date, v_row.time, v_row.all_day,
+      d, v_row.rotation_ids, v_row.repeat, v_row.notes);
     RAISE EXCEPTION 'Someone outside the rotation was made holder by an edit';
   EXCEPTION WHEN invalid_parameter_value THEN NULL;
   END;
@@ -157,8 +162,8 @@ BEGIN
   END;
 
   -- A task without turns is simply handed over, with no turn owner.
-  INSERT INTO public.commune_operations (commune_id, kind, category, title, date, repeat, assignee_id, created_by)
-    VALUES (v_home, 'task', 'chore', 'Return the key', current_date, 'none', a, a) RETURNING id INTO v_once;
+  v_once := (public.create_operation(v_home, 'task', 'chore', 'Return the key', current_date, NULL, true, a, NULL,
+    'none', '', gen_random_uuid())->>'id')::uuid;
   PERFORM public.hand_over_operation(v_once, c, current_date, a, current_date, NULL, gen_random_uuid());
   SELECT * INTO v_row FROM public.commune_operations WHERE id = v_once;
   IF v_row.assignee_id <> c OR v_row.turn_owner_id IS NOT NULL THEN

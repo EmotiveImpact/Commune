@@ -265,12 +265,19 @@ export type AppState = {
   savePayMethod: (method: PayMethod) => boolean;
   setHubPhoto: (id: HubId, dataUrl: string | null) => void;
   setAvatar: (dataUrl: string | null) => void;
-  addNote: (card: NoteCard & { id: string }) => Promise<string>;
+  /** requestId: one per open form, so a retried add returns the note it already added. */
+  addNote: (card: NoteCard & { id: string }, requestId: string) => Promise<string>;
   /** expectedVersion: the version the edit started from. Defaults to the version on screen now. */
   updateNote: (card: NoteCard & { id: string; expectedVersion?: number }) => Promise<string>;
   loadNoteRevision: (noteId: string, revisionId: string) => Promise<NoteRevision>;
-  addOperation: (item: NewOperation) => Promise<string>;
-  updateOperation: (id: string, item: NewOperation) => Promise<void>;
+  /** requestId: one per open form, so a retried add returns what it already added. */
+  addOperation: (item: NewOperation, requestId: string) => Promise<string>;
+  /**
+   * expectedVersion: the version the edit started from. Any change since, a
+   * completion or handover included, makes the edit stale: it is refused and
+   * the latest is loaded.
+   */
+  updateOperation: (id: string, item: NewOperation, expectedVersion?: number) => Promise<void>;
   /** Completes an open task, or reopens a done one. The server advances repeats and rotation. */
   toggleOperation: (id: string) => Promise<OperationChange>;
   skipOperation: (id: string, reason?: string) => Promise<OperationChange>;
@@ -430,9 +437,8 @@ function operationPayload(item: NewOperation | OperationItem) {
     // People are sent by member id; the server copies the names.
     assigneeId: item.kind === "task" ? item.assigneeId ?? null : null,
     rotationIds: item.kind === "task" && item.rotationIds?.length ? item.rotationIds : null,
-    lastDone: "lastDone" in item ? item.lastDone ?? null : null,
+    // No status or completion: only task actions change those.
     repeat: item.repeat,
-    status: "status" in item ? item.status : "open",
     notes: item.notes,
   };
 }
@@ -1084,10 +1090,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await refreshRecords();
   }), [mutate, refreshRecords]);
 
-  const addNote = useCallback((card: NoteCard & { id: string }) => mutate(async () => {
+  const addNote = useCallback((card: NoteCard & { id: string }, requestId: string) => mutate(async () => {
     if (!activeId) throw new Error("Choose a commune first");
     const { id: _draftId, ...payload } = card;
-    const result = await post<{ id: string }>(`/communes/${encodeURIComponent(activeId)}/notes`, payload);
+    const result = await post<{ id: string }>(`/communes/${encodeURIComponent(activeId)}/notes`, { ...payload, requestId });
     await refreshRecords();
     setNoteKey(result.id);
     return result.id;
@@ -1110,21 +1116,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }), [activeId, data, mutate, refreshRecords]);
   const loadNoteRevision = useCallback(async (noteId: string, revisionId: string) =>
     (await api<{ revision: NoteRevision }>(`/notes/${encodeURIComponent(noteId)}/revisions/${encodeURIComponent(revisionId)}`)).revision, []);
-  const addOperation = useCallback((item: NewOperation) => mutate(async () => {
+  const addOperation = useCallback((item: NewOperation, requestId: string) => mutate(async () => {
     if (!activeId) throw new Error("Choose a commune first");
-    const result = await post<{ id: string }>(`/communes/${encodeURIComponent(activeId)}/operations`, operationPayload(item));
+    const result = await post<{ id: string }>(`/communes/${encodeURIComponent(activeId)}/operations`, { ...operationPayload(item), requestId });
     await refreshRecords();
     setOperationKey(result.id);
     setOperationDate(item.date);
     return result.id;
   }), [activeId, mutate, refreshRecords]);
-  const updateOperation = useCallback((id: string, item: NewOperation) => mutate(async () => {
+  const updateOperation = useCallback((id: string, item: NewOperation, expectedVersion?: number) => mutate(async () => {
     const existing = operations.find((row) => row.id === id);
     if (!existing) throw new Error("Schedule item not found");
-    await api(`/operations/${encodeURIComponent(id)}`, {
-      method: "PUT",
-      body: JSON.stringify(operationPayload({ ...existing, ...item })),
-    });
+    try {
+      await api(`/operations/${encodeURIComponent(id)}`, {
+        method: "PUT",
+        body: JSON.stringify({ ...operationPayload({ ...existing, ...item }), expectedVersion: expectedVersion ?? existing.version ?? null }),
+      });
+    } catch (error) {
+      // It changed since the edit began: load what is saved now, so the form
+      // can show it rather than put back an older date or person.
+      if (error instanceof ApiError && error.status === 409) await refreshRecords();
+      throw error;
+    }
     await refreshRecords();
     setOperationDate(item.date);
     if (item.time) setOperationTime(item.time);

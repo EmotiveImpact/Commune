@@ -7,6 +7,7 @@ import { AppProvider, useApp, type AppState } from "../src/state";
 import { api, post, loadCommunes, loadSnapshot, ApiError } from "../src/live/api";
 import type { Commune, Snapshot } from "../src/live/model";
 import { addDays, holdsTurn, nextPerson, todayIso, type OperationItem } from "../src/data/operations";
+import { UNCERTAIN_RETRY_SAFE } from "../src/data/commands";
 
 vi.mock("../src/live/api", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../src/live/api")>()),
@@ -27,7 +28,7 @@ const initial: Snapshot = {
 const today = todayIso();
 const rota: OperationItem = {
   id: "task-1", hubId: commune.id, kind: "task", category: "chore", title: "Put the bins out", date: addDays(today, -2), allDay: true,
-  assignee: user.name, rotation: [user.name, "Housemate Two"], repeat: "weekly", status: "open", notes: "", undoOccurrenceId: null, history: [],
+  assignee: user.name, rotation: [user.name, "Housemate Two"], repeat: "weekly", status: "open", notes: "", undoOccurrenceId: null, history: [], version: 1,
 };
 let current: Snapshot;
 let app: AppState;
@@ -205,7 +206,7 @@ describe("people by member id", () => {
     const put = vi.mocked(api).mock.calls.find(([path, init]) => path === "/operations/task-1" && init?.method === "PUT");
     expect(put).toBeTruthy();
     const body = JSON.parse(String(put![1]!.body));
-    expect(body).toMatchObject({ assigneeId: user.id, rotationIds: [user.id, "user-2"] });
+    expect(body).toMatchObject({ assigneeId: user.id, rotationIds: [user.id, "user-2"], expectedVersion: 1 });
     expect(body).not.toHaveProperty("assignee");
     expect(body).not.toHaveProperty("rotation");
   });
@@ -307,5 +308,159 @@ describe("handing over a turn and skip reasons", () => {
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Save changes" })); });
     const put = vi.mocked(api).mock.calls.find(([path, init]) => path === "/operations/task-1" && init?.method === "PUT");
     expect(JSON.parse(String(put![1]!.body))).toMatchObject({ assigneeId: "user-3", rotationIds: [user.id, "user-2"] });
+  });
+});
+
+describe("late tasks in the week", () => {
+  const lateTask = (id: string, title: string, days: number, extra: Partial<OperationItem> = {}): OperationItem => ({
+    ...rota, id, title, date: addDays(today, -days), repeat: "none", rotation: undefined, rotationIds: null, ...extra });
+  const lateCards = () => [...document.querySelectorAll<HTMLElement>(".ops-late")];
+
+  it("lists every late task, yours first and then the oldest, and counts yours under Yours", async () => {
+    current.operations = [
+      lateTask("task-a", "Water the plants", 5, { assignee: "Housemate Two", assigneeId: "user-2" }),
+      lateTask("task-b", "Put the bins out", 1, { assignee: user.name, assigneeId: user.id }),
+      lateTask("task-c", "Clear the gutters", 3, { assignee: undefined, assigneeId: null }),
+      { ...rota, id: "task-d", title: "Hoover the stairs", date: addDays(today, 2), repeat: "none", rotation: undefined, assignee: "Housemate Two", assigneeId: "user-2" },
+    ];
+    mount("/operations");
+    await screen.findByRole("tablist", { name: "Operations view" });
+    expect(lateCards().map((card) => card.querySelector("h2")?.textContent)).toEqual(["Put the bins out", "Water the plants", "Clear the gutters"]);
+    expect(lateCards().map((card) => card.querySelector(".ops-kicker")?.textContent)).toEqual(["1 day late · Test", "5 days late · Housemate", "3 days late · Unassigned"]);
+    expect(lateCards().map((card) => [...card.querySelectorAll(".ops-note")].at(-1)?.textContent))
+      .toEqual(["Test still has this.", "Housemate still has this.", "Nobody has this yet."]);
+    // A one-off task cannot be skipped, so its card does not offer it.
+    expect(lateCards().every((card) => !within(card).queryByRole("button", { name: "Skip a week" }))).toBe(true);
+    // Yours never says you are clear while one of yours is late.
+    const yours = document.querySelector<HTMLElement>(".ops-yours")!;
+    expect(yours.textContent).not.toContain("You’re clear today.");
+    expect(within(yours).getByText("1 day late · All day · Test")).toBeTruthy();
+    // The week list carries on from today without repeating them.
+    expect([...document.querySelectorAll(".ops-week-row strong")].map((title) => title.textContent)).toEqual(["Hoover the stairs"]);
+  });
+
+  it("says you are clear today when only other people's tasks are late", async () => {
+    current.operations = [lateTask("task-a", "Water the plants", 2, { assignee: "Housemate Two", assigneeId: "user-2" })];
+    mount("/operations");
+    await screen.findByRole("tablist", { name: "Operations view" });
+    expect(lateCards()).toHaveLength(1);
+    expect(document.querySelector(".ops-yours")?.textContent).toContain("You’re clear today.");
+  });
+
+  it("holds every late card's actions while a change is saving", async () => {
+    current.operations = [
+      lateTask("task-a", "Water the plants", 5, { assignee: "Housemate Two", assigneeId: "user-2", repeat: "weekly" }),
+      lateTask("task-b", "Put the bins out", 1, { assignee: user.name, assigneeId: user.id, repeat: "weekly" }),
+    ];
+    let finish!: (value: unknown) => void;
+    vi.mocked(post).mockImplementation(() => new Promise((resolve) => { finish = resolve; }));
+    mount("/operations");
+    await screen.findByRole("tablist", { name: "Operations view" });
+    const [first, second] = lateCards();
+    await act(async () => { fireEvent.click(within(first).getByRole("button", { name: "Mark done" })); });
+    const button = (card: HTMLElement, name: string) => within(card).getByRole("button", { name }) as HTMLButtonElement;
+    for (const card of [first, second]) {
+      expect([button(card, "Mark done").disabled, button(card, "Skip a week").disabled, button(card, "Open").disabled]).toEqual([true, true, false]);
+    }
+    fireEvent.click(button(second, "Mark done"));
+    expect(post).toHaveBeenCalledTimes(1);
+    await act(async () => { finish({ id: "occurrence-1", duplicate: false, date: today, assignee: user.name, status: "done" }); });
+    expect(button(second, "Mark done").disabled).toBe(false);
+  });
+
+  it("says how late a task is in the People view", async () => {
+    mount("/operations");
+    const tabs = await screen.findByRole("tablist", { name: "Operations view" });
+    await act(async () => { fireEvent.click(within(tabs).getByText("People")); });
+    expect([...document.querySelectorAll(".ops-person-task small")].map((line) => line.textContent)).toEqual(["2 days late · then Housemate"]);
+  });
+});
+
+describe("adding, editing and removing tasks as commands", () => {
+  async function openEdit() {
+    mount("/operations");
+    await screen.findByRole("tablist", { name: "Operations view" });
+    act(() => app.go("operation-edit", { operation: "task-1" }));
+    return screen.findByRole("dialog", { name: "Put the bins out" });
+  }
+
+  it("adds with one request id per form, so a retry after an unconfirmed save is the same add", async () => {
+    vi.mocked(post).mockRejectedValueOnce(new TypeError("Failed to fetch")).mockResolvedValueOnce({ id: "task-9", version: 1, duplicate: true });
+    mount("/operations");
+    await screen.findByRole("tablist", { name: "Operations view" });
+    act(() => app.go("operation-new"));
+    const dialog = await screen.findByRole("dialog", { name: "Add to calendar" });
+    fireEvent.change(within(dialog).getByLabelText(/^Title/), { target: { value: "Descale the kettle" } });
+    await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Add to calendar" })); });
+    expect(within(dialog).getByRole("alert").textContent).toBe(UNCERTAIN_RETRY_SAFE);
+    await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Add to calendar" })); });
+    const bodies = vi.mocked(post).mock.calls.map(([, body]) => body as Record<string, unknown>);
+    expect(bodies).toHaveLength(2);
+    expect(bodies[0].requestId).toMatch(/^[0-9a-f-]{36}$/);
+    expect(bodies[1].requestId).toBe(bodies[0].requestId);
+    // Status and completion are never part of an add.
+    expect(bodies[0]).not.toHaveProperty("status");
+    expect(bodies[0]).not.toHaveProperty("lastDone");
+  });
+
+  it("refuses a stale edit after someone marks the task done, and starts again from the latest", async () => {
+    current.operations = [{ ...rota, assigneeId: user.id, rotationIds: [user.id, "user-2"], version: 3 }];
+    const puts: Array<Record<string, unknown>> = [];
+    vi.mocked(api).mockImplementation(async (path, init) => {
+      if (path === "/auth/me") return { user };
+      if (path === "/reminders/usage") return { totalUsed: 0, totalLimit: 60, recipientLimit: 8, recipientUsage: {}, nextSlotAt: null };
+      if (path.endsWith("/invites")) return { invites: [] };
+      if (path === "/operations/task-1" && init?.method === "PUT") {
+        const body = JSON.parse(String(init.body));
+        puts.push(body);
+        if (body.expectedVersion !== current.operations![0].version) {
+          throw new ApiError("This task was changed by someone else. Review the latest version before saving your changes.", 409);
+        }
+        return { id: "task-1", version: body.expectedVersion + 1, duplicate: false };
+      }
+      return { ok: true };
+    });
+    const dialog = await openEdit();
+    fireEvent.change(within(dialog).getByLabelText(/^Title/), { target: { value: "Put the bins and recycling out" } });
+    // Housemate Two marks it done while this is open: a new date, person and version.
+    current.operations = [{ ...current.operations![0], date: addDays(today, 5), assignee: "Housemate Two", assigneeId: "user-2", version: 4 }];
+    await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Save changes" })); });
+    expect(puts[0]).toMatchObject({ expectedVersion: 3, title: "Put the bins and recycling out", assigneeId: user.id });
+    expect(puts[0]).not.toHaveProperty("status");
+    expect(puts[0]).not.toHaveProperty("lastDone");
+    expect(within(dialog).getByRole("alert").textContent).toContain("This task changed while you were editing, and nothing here has been saved.");
+    expect((within(dialog).getByRole("button", { name: "Save changes" }) as HTMLButtonElement).disabled).toBe(true);
+    await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Load the latest details" })); });
+    expect((within(dialog).getByLabelText(/^Title/) as HTMLInputElement).value).toBe("Put the bins out");
+    expect((within(dialog).getByLabelText("Assigned to") as HTMLSelectElement).value).toBe("user-2");
+    fireEvent.change(within(dialog).getByLabelText(/^Title/), { target: { value: "Put the bins and recycling out" } });
+    await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Save changes" })); });
+    expect(puts).toHaveLength(2);
+    expect(puts[1]).toMatchObject({ expectedVersion: 4, title: "Put the bins and recycling out", assigneeId: "user-2", date: addDays(today, 5) });
+  });
+
+  it("notices a change that arrives while the edit is open, before anything is saved", async () => {
+    const dialog = await openEdit();
+    current.operations = [{ ...rota, date: addDays(today, 5), assignee: "Housemate Two", version: 2 }];
+    await act(async () => { await app.refresh(); });
+    expect(within(dialog).getByRole("alert").textContent).toContain("This task changed while you were editing");
+    expect((within(dialog).getByRole("button", { name: "Save changes" }) as HTMLButtonElement).disabled).toBe(true);
+    expect(vi.mocked(api).mock.calls.some(([path, init]) => path === "/operations/task-1" && init?.method === "PUT")).toBe(false);
+  });
+
+  it("offers Remove only to the person who added it or an admin", async () => {
+    const member: Commune = { ...commune, role: "member" };
+    vi.mocked(loadCommunes).mockResolvedValue({ communes: [member] });
+    current.commune = member;
+    current.operations = [{ ...rota, createdBy: "user-2" }, { ...rota, id: "task-2", title: "Return the keys", createdBy: user.id }];
+    mount("/operations");
+    await screen.findByRole("tablist", { name: "Operations view" });
+    act(() => app.go("operation", { operation: "task-1" }));
+    expect(within(await screen.findByRole("dialog", { name: "Put the bins out" })).queryByRole("button", { name: "Remove" })).toBeNull();
+    act(() => app.go("operation", { operation: "task-2" }));
+    const own = await screen.findByRole("dialog", { name: "Return the keys" });
+    await act(async () => { fireEvent.click(within(own).getByRole("button", { name: "Remove" })); });
+    await act(async () => { fireEvent.click(within(own).getByRole("button", { name: "Remove" })); });
+    expect(vi.mocked(api)).toHaveBeenCalledWith("/operations/task-2", { method: "DELETE" });
   });
 });

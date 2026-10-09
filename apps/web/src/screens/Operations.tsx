@@ -52,6 +52,7 @@ export function OperationsScreen() {
     toggleOperation,
     skipOperation,
     undoOperation,
+    mutationPending,
   } = useApp();
   const today = todayIso();
   const [cut, setCut] = useState<Cut>("week");
@@ -73,19 +74,28 @@ export function OperationsScreen() {
     [operations],
   );
   const open = ordered.filter((item) => item.status === "open");
+  // Every late task is listed: yours first, then the oldest first.
   const late = open
     .filter((item) => item.kind === "task" && item.date < today)
-    .sort((a, b) => a.date.localeCompare(b.date))[0];
+    .sort((a, b) =>
+      Number(b.assigneeId === you.id) - Number(a.assigneeId === you.id) ||
+      a.date.localeCompare(b.date));
+  const lateIds = new Set(late.map((item) => item.id));
   const weekEnd = addDays(today, 6);
   const weekItems = open.filter(
     (item) =>
-      item.id !== late?.id &&
+      !lateIds.has(item.id) &&
       ((item.date >= today && item.date <= weekEnd) ||
         item.lastDone?.date === today),
   );
-  const yoursToday = open.filter(
-    (item) => item.kind === "task" && item.assigneeId === you.id && item.date === today,
-  );
+  // Yours includes your late tasks, so it never says you are clear while
+  // one of them is waiting.
+  const yours = [
+    ...late.filter((item) => item.assigneeId === you.id),
+    ...open.filter(
+      (item) => item.kind === "task" && item.assigneeId === you.id && item.date === today,
+    ),
+  ];
   const yoursNext = open.find(
     (item) =>
       item.kind === "task" &&
@@ -236,20 +246,22 @@ export function OperationsScreen() {
 
       {cut === "week" ? (
         <div className="ops-stack">
-          {late ? (
+          {late.map((item) => (
             <LateCard
-              item={late}
+              key={item.id}
+              item={item}
               today={today}
-              onOpen={() => go("operation", { operation: late.id })}
-              onSkip={() => skipTask(late)}
-              onDone={() => completeTask(late)}
+              pending={mutationPending}
+              onOpen={() => go("operation", { operation: item.id })}
+              onSkip={() => skipTask(item)}
+              onDone={() => completeTask(item)}
             />
-          ) : null}
+          ))}
 
           <section className="ops-card ops-yours">
             <p className="ops-kicker">Yours</p>
-            {yoursToday.length ? (
-              yoursToday.map((item) => (
+            {yours.length ? (
+              yours.map((item) => (
                 <button
                   key={item.id}
                   className="ops-yours-row"
@@ -257,7 +269,7 @@ export function OperationsScreen() {
                   onClick={() => go("operation", { operation: item.id })}
                 >
                   <h2>{item.title}</h2>
-                  <p>{metaLine(item)}</p>
+                  <p>{lateIds.has(item.id) ? `${lateLabel(item.date, today)} · ` : ""}{metaLine(item)}</p>
                 </button>
               ))
             ) : (
@@ -326,7 +338,7 @@ export function OperationsScreen() {
                     <strong>{item.title}</strong>
                     <small>
                       {item.date < today
-                        ? `Late · ${item.rotation?.length ? `then ${firstNameOf(nextPerson(item))}` : "open"}`
+                        ? `${lateLabel(item.date, today)}${item.rotation?.length ? ` · then ${firstNameOf(nextPerson(item))}` : ""}`
                         : `${shortDateFormatter.format(dateFromIso(item.date))} · ${item.allDay ? "All day" : formatTimeLabel(item.time)}${
                             item.rotation?.length
                               ? ` · then ${firstNameOf(nextPerson(item))}`
@@ -463,12 +475,15 @@ export function OperationsScreen() {
 function LateCard({
   item,
   today,
+  pending,
   onOpen,
   onSkip,
   onDone,
 }: {
   item: OperationItem;
   today: string;
+  /** A change is saving: the actions wait so one click is not sent twice. */
+  pending: boolean;
   onOpen: () => void;
   onSkip: () => void;
   onDone: () => void;
@@ -476,11 +491,11 @@ function LateCard({
   const next = item.rotation?.length
     ? firstNameOf(nextPerson(item))
     : "";
-  const who = firstNameOf(item.assignee) || "Unassigned";
+  const who = firstNameOf(item.assignee);
   return (
     <section className="ops-card ops-late">
       <p className="ops-kicker is-late">
-        Late · {overdueDays(item.date, today)} days · {who}
+        {lateLabel(item.date, today)} · {who || "Unassigned"}
       </p>
       <h2>{item.title}</h2>
       {item.notes ? <p className="ops-note">{item.notes}</p> : null}
@@ -497,21 +512,30 @@ function LateCard({
         </div>
       ) : null}
       <p className="ops-note">
-        {who} still has this.{next ? ` Next is ${next}.` : ""}
+        {who ? `${who} still has this.` : "Nobody has this yet."}{next ? ` Next is ${next}.` : ""}
       </p>
       <div className="ops-late-actions">
         <button className="a-btn ghost" type="button" onClick={onOpen}>
           Open
         </button>
-        <button className="a-btn ghost" type="button" onClick={onSkip}>
-          Skip a week
-        </button>
-        <button className="a-btn" type="button" onClick={onDone}>
+        {/* As in the task window, only a repeating task can be skipped. */}
+        {item.repeat !== "none" ? (
+          <button className="a-btn ghost" type="button" disabled={pending} onClick={onSkip}>
+            Skip a week
+          </button>
+        ) : null}
+        <button className="a-btn" type="button" disabled={pending} onClick={onDone}>
           {next ? `Done · ${next}` : "Mark done"}
         </button>
       </div>
     </section>
   );
+}
+
+/** "1 day late", "3 days late". */
+function lateLabel(date: string, today: string): string {
+  const days = overdueDays(date, today);
+  return `${days} ${days === 1 ? "day" : "days"} late`;
 }
 
 function metaLine(item: OperationItem): string {
