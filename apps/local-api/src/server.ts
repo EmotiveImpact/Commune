@@ -228,6 +228,12 @@ function route(method: string, pattern: RegExp, handle: Handler): void {
   routes.push({ method, pattern, handle });
 }
 const send = (res: ServerResponse, result: unknown, status = 200) => json(res, status, result);
+// Create commands take a client request id, so a retry returns the record it
+// already created. Older callers without one still work, without retry protection.
+const requestIdOf = (input: Record<string, unknown>) =>
+  input.requestId == null ? randomUUID() : uuid(input.requestId, "requestId");
+const sendCreated = (res: ServerResponse, result: { id: string; duplicate: boolean }) =>
+  send(res, { id: result.id, duplicate: result.duplicate }, result.duplicate ? 200 : 201);
 const userAction = async <T>(req: IncomingMessage,
   work: (client: PoolClient, user: User) => Promise<T>): Promise<T> => {
   const user = await actor(req);
@@ -383,9 +389,10 @@ route("POST", /^\/api\/communes\/([0-9a-f-]{36})\/expenses$/, async (req, res, m
   });
   const dueOn = isoDate(input.dueOn, true);
   const result = await userAction(req, async (client) => client.query(
-    "SELECT public.create_expense_for($1, $2, $3, $4::jsonb, $5::date, $6, $7) AS id",
-    [communeId, title, amountMinor, JSON.stringify(shares), dueOn, input.paidByUserId == null ? null : uuid(input.paidByUserId), input.category == null ? "Other" : text(input.category,"category",40)]));
-  send(res, { id: result.rows[0].id }, 201);
+    "SELECT public.create_expense_command($1, $2, $3, $4::jsonb, $5::date, $6, $7, $8) AS result",
+    [communeId, title, amountMinor, JSON.stringify(shares), dueOn, input.paidByUserId == null ? null : uuid(input.paidByUserId), input.category == null ? "Other" : text(input.category,"category",40),
+      requestIdOf(input)]));
+  sendCreated(res, result.rows[0].result);
 });
 
 route("POST", /^\/api\/shares\/([0-9a-f-]{36})\/confirm$/, async (req, res, match) => {
@@ -515,25 +522,25 @@ route("POST", /^\/api\/communes\/([0-9a-f-]{36})\/funds$/, async (req, res, matc
   const target = input.targetMinor === undefined || input.targetMinor === null
     ? null : amount(input.targetMinor, "targetMinor");
   const result = await userAction(req, async (client) => client.query(
-    "SELECT public.create_fund($1, $2, $3) AS id",
-    [uuid(match[1]), name, target]));
-  send(res, { id: result.rows[0].id }, 201);
+    "SELECT public.create_fund_command($1, $2, $3, $4) AS result",
+    [uuid(match[1]), name, target, requestIdOf(input)]));
+  sendCreated(res, result.rows[0].result);
 });
 
 route("POST", /^\/api\/funds\/([0-9a-f-]{36})\/pledges$/, async (req, res, match) => {
   const input = await body(req);
   const result = await userAction(req, async (client) => client.query(
-    "SELECT public.pledge_fund($1, $2, $3::date) AS id",
-    [uuid(match[1]), amount(input.amountMinor), isoDate(input.dueOn)]));
-  send(res, { id: result.rows[0].id }, 201);
+    "SELECT public.pledge_fund_command($1, $2, $3::date, $4) AS result",
+    [uuid(match[1]), amount(input.amountMinor), isoDate(input.dueOn), requestIdOf(input)]));
+  sendCreated(res, result.rows[0].result);
 });
 
 route("POST", /^\/api\/commitments\/([0-9a-f-]{36})\/contributions$/, async (req, res, match) => {
   const input = await body(req);
   const result = await userAction(req, async (client) => client.query(
-    "SELECT public.record_fund_contribution($1, $2) AS id",
-    [uuid(match[1]), amount(input.amountMinor)]));
-  send(res, { id: result.rows[0].id }, 201);
+    "SELECT public.record_fund_contribution_command($1, $2, $3) AS result",
+    [uuid(match[1]), amount(input.amountMinor), requestIdOf(input)]));
+  sendCreated(res, result.rows[0].result);
 });
 
 route("PATCH", /^\/api\/funds\/([0-9a-f-]{36})$/, async (req, res, match) => {
@@ -759,6 +766,7 @@ route("GET", /^\/api\/communes\/([0-9a-f-]{36})\/invites$/, async (req, res, mat
     id: row.id, email: row.email, role: row.role,
     createdAt: row.created_at, expiresAt: row.expires_at,
     acceptedAt: row.accepted_at, revokedAt: row.revoked_at,
+    invitedBy: row.invited_by, invitedByName: row.invited_by_name,
   })) });
 });
 

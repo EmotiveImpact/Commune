@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { fundFigures } from "../data/funds";
 import { HandCoins, Plus } from "lucide-react";
 import { useApp } from "../state";
@@ -18,7 +18,9 @@ import {
 import { Pill } from "../ui/widgets";
 import { ReminderFlowDialog, useReminderFlow } from "../ui/ReminderConfirm";
 import { RecipientReminderCount } from "../ui/ReminderUsage";
-import { reminderEligibility } from "../data/reminders";
+import { formatReminderDay, reminderEligibility } from "../data/reminders";
+import { newRequestId } from "../data/requestId";
+import { commandFailure, UNCERTAIN_RETRY_SAFE } from "../data/commands";
 
 type Mode =
   | { kind: "create" }
@@ -76,6 +78,11 @@ export function FundsScreen() {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  // One id per opened dialog: every retry of a create reuses it, so the server
+  // records the fund, pledge or contribution once. After an unconfirmed
+  // attempt the fields lock, so a retry is the same request.
+  const requestId = useRef(newRequestId());
+  const [uncertain, setUncertain] = useState(false);
   const chase = useReminderFlow(sendReminder);
   const isAdmin = hub.role === "admin";
   const searchRecord = useSearchRecord("fund", funds.filter(item => !item.archivedAt).map(item => item.id),
@@ -94,10 +101,23 @@ export function FundsScreen() {
           .flatMap((item) => item.contributions ?? [])
           .find((item) => item.id === mode.contributionId)
       : undefined;
+  // On someone else's pledge an admin may only lower it, move it later or
+  // cancel it; only the pledger can raise it or bring it forward.
+  const othersPledge = !!commitment && commitment.userId !== session?.userId;
+  const pledgerMember = commitment
+    ? hub.members.find((item) => item.userId === commitment.userId)
+    : undefined;
+  const pledger = pledgerMember?.name ?? "the person who made it";
+  const recorded = commitment?.contributedMinor ? money(commitment.contributedMinor, hub.currency) : "";
+  const pledgeAmountHint = !commitment ? undefined
+    : othersPledge ? `Up to ${money(commitment.amountMinor, hub.currency)}${recorded ? `, and not below the ${recorded} already recorded` : ""}.`
+      : recorded ? `Not below the ${recorded} already recorded.` : undefined;
 
   function open(next: Mode) {
     setError("");
     setMessage("");
+    setUncertain(false);
+    requestId.current = newRequestId();
     setMode(next);
     setName("");
     setAmount("");
@@ -132,7 +152,7 @@ export function FundsScreen() {
         );
     }
   }
-  async function run(action: () => Promise<unknown>, success: string) {
+  async function run(action: () => Promise<unknown>, success: string, retrySafe = false) {
     setPending(true);
     setError("");
     setMessage("");
@@ -141,9 +161,19 @@ export function FundsScreen() {
       setMode(null);
       setMessage(success);
     } catch (cause) {
-      setError(
-        cause instanceof Error ? cause.message : "Could not save the change.",
-      );
+      if (!retrySafe) {
+        setError(
+          cause instanceof Error ? cause.message : "Could not save the change.",
+        );
+        return;
+      }
+      // A create carries this dialog's request id, so trying again is safe.
+      const failure = commandFailure(cause, "Could not save the change.");
+      if (!failure.rejected) setUncertain(true);
+      setError(!failure.rejected ? UNCERTAIN_RETRY_SAFE
+        : /already used for a different/i.test(failure.message)
+          ? "An earlier attempt may already have been saved. Close this and check the fund before trying again."
+          : `${failure.message.replace(/\.$/, "")}. Nothing was saved.`);
     } finally {
       setPending(false);
     }
@@ -161,13 +191,26 @@ export function FundsScreen() {
       void run(
         () =>
           mode.kind === "create"
-            ? createFund(name.trim(), minor)
+            ? createFund(name.trim(), minor, requestId.current)
             : updateFund(mode.fundId, name.trim(), minor),
         "Fund saved.",
+        mode.kind === "create",
       );
     } else if (mode.kind === "pledge") {
       if (!minor || !date) {
         setError("Enter a valid amount and due date.");
+        return;
+      }
+      if (commitment && minor < commitment.contributedMinor) {
+        setError(`${money(commitment.contributedMinor, hub.currency)} is already recorded, so the pledge cannot be lower than that.`);
+        return;
+      }
+      if (othersPledge && commitment && minor > commitment.amountMinor) {
+        setError(`Only ${pledger} can raise this pledge. Enter ${money(commitment.amountMinor, hub.currency)} or less.`);
+        return;
+      }
+      if (othersPledge && commitment && date < commitment.dueOn) {
+        setError(`Only ${pledger} can bring the due date forward. Choose ${formatReminderDay(commitment.dueOn)} or later.`);
         return;
       }
       void run(
@@ -177,8 +220,9 @@ export function FundsScreen() {
                 amountMinor: minor,
                 dueOn: date,
               })
-            : pledgeFund(mode.fundId, minor, date),
-        "Your pledge was saved.",
+            : pledgeFund(mode.fundId, minor, date, requestId.current),
+        othersPledge ? "Pledge saved." : "Your pledge was saved.",
+        !mode.commitmentId,
       );
     } else if (mode.kind === "contribute" && commitment) {
       if (
@@ -189,8 +233,9 @@ export function FundsScreen() {
         return;
       }
       void run(
-        () => recordFundContribution(mode.commitmentId, minor),
+        () => recordFundContribution(mode.commitmentId, minor, requestId.current),
         "Contribution recorded. No payment was taken by Commune.",
+        true,
       );
     } else if (mode.kind === "void") {
       if (reason.trim().length < 3) {
@@ -623,6 +668,11 @@ export function FundsScreen() {
                 It will no longer be due or eligible for Chase. Its record stays
                 in the fund’s history.
               </p>
+              {othersPledge && pledgerMember && (
+                <p className="c-form-help">
+                  {pledger} will be told that you cancelled it.
+                </p>
+              )}
               <Feedback error={error} />
               <div className="a-field-row">
                 <Button
@@ -647,7 +697,14 @@ export function FundsScreen() {
             </>
           ) : (
             <form onSubmit={save}>
-              <fieldset className="c-form-fields" disabled={pending}>
+              <fieldset className="c-form-fields" disabled={pending || uncertain}>
+                {mode.kind === "pledge" && othersPledge && (
+                  <p className="c-form-help">
+                    You can lower this pledge or move its due date later. Only{" "}
+                    {pledger} can raise it or bring the date forward.
+                    {pledgerMember ? " They will be told what you changed." : ""}
+                  </p>
+                )}
                 {(mode.kind === "create" || mode.kind === "edit") && (
                   <Field label="Fund name">
                     <input
@@ -661,6 +718,7 @@ export function FundsScreen() {
                 {mode.kind !== "void" && (
                   <Field
                     label={`${mode.kind === "create" || mode.kind === "edit" ? "Target (optional)" : mode.kind === "contribute" ? "Contribution received" : "Pledge amount"} (${hub.currency})`}
+                    hint={mode.kind === "pledge" ? pledgeAmountHint : undefined}
                   >
                     <input
                       value={amount}
@@ -672,10 +730,14 @@ export function FundsScreen() {
                   </Field>
                 )}
                 {mode.kind === "pledge" && (
-                  <Field label="Due date">
+                  <Field
+                    label="Due date"
+                    hint={othersPledge && commitment ? `${formatReminderDay(commitment.dueOn)} or later.` : undefined}
+                  >
                     <input
                       type="date"
                       value={date}
+                      min={othersPledge && commitment ? commitment.dueOn : undefined}
                       onChange={(event) => setDate(event.target.value)}
                       required
                     />

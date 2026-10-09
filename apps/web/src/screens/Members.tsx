@@ -91,6 +91,11 @@ export function MembersScreen() {
   const [reissue, setReissue] = useState<PendingInvite | null>(null);
   const openInvites = invites.filter((invite) => invite.status === "pending" || invite.status === "expired");
   const pastInvites = invites.filter((invite) => invite.status === "accepted" || invite.status === "revoked").slice(0, 12);
+  // Who sent an invitation. It stays open only while they are an admin.
+  const sender = (invite: PendingInvite) => invite.invitedBy === session?.userId ? "you"
+    : invite.invitedByName ?? (invite.invitedBy ? "a former member" : "");
+  const pendingSentBy = (userId: string) =>
+    openInvites.filter((invite) => invite.status === "pending" && invite.invitedBy === userId).length;
   const [action, setAction] = useState<{
     userId: string;
     name: string;
@@ -239,8 +244,8 @@ export function MembersScreen() {
                 <span>
                   {invite.role} invitation ·{" "}
                   {invite.status === "expired"
-                    ? `expired ${formatTimestampDay(invite.expiresAt)}`
-                    : `sent ${formatTimestampDay(invite.createdAt)}, expires ${formatTimestampDay(invite.expiresAt)}`}
+                    ? `${sender(invite) ? `sent by ${sender(invite)} · ` : ""}expired ${formatTimestampDay(invite.expiresAt)}`
+                    : `sent ${sender(invite) ? `by ${sender(invite)} on ` : ""}${formatTimestampDay(invite.createdAt)}, expires ${formatTimestampDay(invite.expiresAt)}`}
                 </span>
               </div>
               <Pill tone={invite.status === "expired" ? undefined : "open"}>
@@ -286,6 +291,7 @@ export function MembersScreen() {
                 {invite.status === "accepted"
                   ? `accepted ${formatTimestampDay(invite.acceptedAt)}`
                   : `revoked ${formatTimestampDay(invite.revokedAt)}`}
+                {sender(invite) ? ` · sent by ${sender(invite)}` : ""}
               </li>
             ))}
           </ul>
@@ -330,6 +336,13 @@ export function MembersScreen() {
                 ? "They keep their shared records and everyday tools, but lose commune-management permissions."
                 : "This ends access to the commune, not its recorded history. Unresolved balances and active recurring bills are checked on the server before anything changes."}
           </p>
+          {action.action !== "admin" && pendingSentBy(action.userId) > 0 && (
+            <p className="c-form-help">
+              {pendingSentBy(action.userId) === 1
+                ? `${action.userId === session?.userId ? "Your" : "Their"} open invitation will be withdrawn.`
+                : `${action.userId === session?.userId ? "Your" : "Their"} ${pendingSentBy(action.userId)} open invitations will be withdrawn.`}
+            </p>
+          )}
           <Feedback error={error} />
           <div className="a-field-row">
             <Button

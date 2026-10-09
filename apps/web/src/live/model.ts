@@ -226,9 +226,12 @@ export type SentReminder = {
 };
 export type Notification = {
   id: string;
-  /** Reminders, plus ledger notices about an expense the reader is part of. */
+  /**
+   * Reminders, ledger notices about an expense the reader is part of, and
+   * changes someone else made to the reader's own pledge (sourceId is the pledge).
+   */
   kind: "nudge" | "chase" | "receipt-reversed" | "expense-corrected" | "expense-voided"
-    | "payment-reported" | "payment-confirmed" | "payment-declined";
+    | "payment-reported" | "payment-confirmed" | "payment-declined" | "pledge-changed" | "pledge-cancelled";
   sourceId: string;
   amountMinor: number | null;
   communeId: string;
