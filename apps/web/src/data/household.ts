@@ -60,6 +60,11 @@ export type SettlementMove = {
   expenseId?: string;
 };
 
+/** The kinds of record an activity row can be about (0039 names one for each event). */
+export type ActivityType =
+  | "expense" | "repayment" | "fund" | "pledge" | "contribution" | "recurring" | "template"
+  | "task" | "event" | "note" | "member" | "announcement";
+
 export type Hub = {
   id: HubId;
   currency?: "GBP" | "USD" | "EUR";
@@ -104,6 +109,8 @@ export type Hub = {
     time: string;
     createdAt?: string;
     expenseId?: string;
+    /** The kind of record the row is about. */
+    type?: ActivityType;
   }>;
   notes: Array<{ go: "note"; note: string; title: string; when: string }>;
   jumps: Array<{ go: ScreenId | WindowId; kicker: string; title: string; hint: string }>;

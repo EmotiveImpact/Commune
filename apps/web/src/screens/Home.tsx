@@ -5,6 +5,7 @@ import { CalendarDate } from "../ui/CalendarDate";
 import type { LiveHub } from "../live/model";
 import { cx } from "../ui/cx";
 import { CoverImage, coverToneClass } from "../ui/CoverImage";
+import { ActivityTypeChip, activityStamp, activityWord } from "../ui/ActivityLog";
 
 function PhotoFace({ hub, focus, children }: { hub: LiveHub; focus?: boolean; children: ReactNode }) {
   return (
@@ -86,9 +87,9 @@ export function HomeScreen() {
           </div>
           {activity.length ? activity.map(({ hub, item }, index) => (
             <button className="a-item" type="button" key={`${hub.id}-${item.title}-${index}`} onClick={() => go(item.expenseId ? "expense" : item.go, { hub: hub.id, expense: item.expenseId })}>
-              <Avatar tone={item.cls} initials={item.ini} />
-              <div><strong>{item.title}</strong><div className="when">{hub.name} · {item.when}</div></div>
-              <span className="when">{item.time}</span>
+              <ActivityTypeChip type={item.type} />
+              <div><strong>{item.title}</strong><div className="when">{[hub.name, activityWord(item.type), item.when].filter(Boolean).join(" · ")}</div></div>
+              <span className="when">{activityStamp(item)}</span>
             </button>
           )) : !incomplete ? <p className="sub">Activity will appear after something is shared.</p> : null}
           {incomplete ? <p className="sub">{partialMessage}</p> : null}

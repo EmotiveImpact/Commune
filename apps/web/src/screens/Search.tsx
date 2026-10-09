@@ -1,6 +1,6 @@
 import { useApp } from "../state";
-import { Button, EmptyState, Panel } from "../ui/components";
-import { Avatar } from "../ui/widgets";
+import { Button, EmptyState } from "../ui/components";
+import { ActivityLog } from "../ui/ActivityLog";
 import { SEARCH_MAX_QUERY } from "../live/search";
 import { SearchResults } from "../ui/SearchResults";
 import { useRecordSearch } from "../ui/useRecordSearch";
@@ -20,30 +20,18 @@ export function AllActivityScreen() {
     <>
       <p className="c-scope-label">All your communes</p>
       {rows.length ? (
-        <Panel>
-          {rows.map(({ hub, item }, index) => (
-            <button
-              className="c-result-row"
-              type="button"
-              key={`${hub.id}-${index}`}
-              onClick={() =>
-                go(item.expenseId ? "expense" : item.go, {
-                  hub: hub.id,
-                  expense: item.expenseId,
-                })
-              }
-            >
-              <Avatar tone={item.cls} initials={item.ini} />
-              <span>
-                <strong>{item.title}</strong>
-                <small>
-                  {hub.name} · {item.when}
-                </small>
-              </span>
-              <time dateTime={item.createdAt}>{item.time}</time>
-            </button>
-          ))}
-        </Panel>
+        <ActivityLog
+          rows={rows.map(({ hub, item }, index) => ({
+            key: `${hub.id}-${index}`,
+            item,
+            commune: hub.name,
+            onOpen: () =>
+              go(item.expenseId ? "expense" : item.go, {
+                hub: hub.id,
+                expense: item.expenseId,
+              }),
+          }))}
+        />
       ) : (
         !incomplete && (
           <EmptyState

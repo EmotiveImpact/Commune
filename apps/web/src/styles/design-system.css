@@ -186,7 +186,7 @@
 .c-result-row:last-child {
   border-bottom: 0;
 }
-.c-result-row > span:not(.avatar) {
+.c-result-row > span:not(.avatar, .c-type-chip) {
   flex: 1;
   min-width: 0;
 }
@@ -207,6 +207,53 @@
 }
 .c-result-row:hover {
   background: var(--paper);
+}
+/* The kind of record behind an activity row, as a coloured icon chip:
+   money in slate, plans in sage, what everyone shares in cream. */
+.c-type-chip {
+  width: 36px;
+  height: 36px;
+  flex: none;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+}
+.c-type-chip.is-money {
+  background: #edf0f3;
+  color: #637689;
+}
+.c-type-chip.is-plan {
+  background: #edf3eb;
+  color: #2d6a4f;
+}
+.c-type-chip.is-shared {
+  background: #f5f1ea;
+  color: #60706b;
+}
+.a-body.is-dark .c-type-chip.is-money {
+  background: #2a3440;
+  color: #b5c6bb;
+}
+.a-body.is-dark .c-type-chip.is-plan {
+  background: #253b34;
+  color: #a8cbb5;
+}
+.a-body.is-dark .c-type-chip.is-shared {
+  background: #2e3646;
+  color: #b5bdca;
+}
+/* Activity, a day at a time; Notices, a commune at a time. Both headed like search results. */
+.c-log-day + .c-log-day,
+.c-notice-group + .c-notice-group {
+  margin-top: 22px;
+}
+:is(.c-log-day, .c-notice-group) > h3 {
+  margin: 0 0 8px;
+  color: var(--ink-soft);
+  font-size: 11px;
+  font-weight: 550;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
 }
 .c-scope-label {
   font-size: 12px;

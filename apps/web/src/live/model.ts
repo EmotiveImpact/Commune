@@ -1,6 +1,7 @@
 import {
   HUBS,
   initialsOf,
+  type ActivityType,
   type AvatarTone,
   type ExpenseRow,
   type Hub,
@@ -292,7 +293,8 @@ export type Snapshot = {
   recurringBills?: RecurringBill[];
   splitTemplates?: SplitTemplate[];
   announcements?: Announcement[];
-  activityEvents?: Array<{id:string;actorId:string;kind:"funds"|"members"|"recurring"|"templates"|"notes"|"operations"|"expenses"|"announcements";entityId:string;title:string;description:string;createdAt:string}>;
+  /** recordType: the kind of record the event is about (0039). */
+  activityEvents?: Array<{id:string;actorId:string;kind:ActivityEventKind;entityId:string;title:string;description:string;createdAt:string;recordType?:ActivityType}>;
   /**
    * The snapshot holds every expense created since `since`, every open one
    * and the five newest that are not voided.
@@ -317,12 +319,19 @@ export type LiveExpenseRow = Omit<ExpenseRow, "amountMinor" | "paidByUserId" | "
   voidReason: string | null;
   revisions: ExpenseRevision[];
 };
-export type LiveHub = Omit<Hub, "members"> & {
+export type LiveHub = Omit<Hub, "members" | "activity"> & {
   currency: CurrencyCode;
   role: MemberRole;
   activityState?: "loading" | "error" | "ready";
   memberCount?: number;
   members: Array<Hub["members"][number] & { userId: string }>;
+  activity: Array<Hub["activity"][number] & { type: ActivityType }>;
+};
+export type ActivityEventKind = "funds" | "members" | "recurring" | "templates" | "notes" | "operations" | "expenses" | "announcements";
+/** The record type an event's area suggests, while the database does not name one (before 0039). */
+const EVENT_TYPES: Record<ActivityEventKind, ActivityType> = {
+  funds: "fund", members: "member", recurring: "recurring", templates: "template", notes: "note",
+  operations: "task", expenses: "expense", announcements: "announcement",
 };
 
 const TONES: AvatarTone[] = ["jordan", "alex", "priya", "sam", "ness"];
@@ -560,12 +569,14 @@ export function hubFromSnapshot(
       time: expense.createdAt ? dateLabel(timestampDay(expense.createdAt)) : "Recently",
       createdAt: expense.createdAt,
       expenseId: expense.id,
+      type: "expense" as const,
     })), ...(snapshot.activityEvents ?? []).map(event => ({
       // Announcements live on This Hub.
       go:event.kind === "announcements" ? "hub" as const : event.kind,cls:members.find(member=>member.userId===event.actorId)?.cls ?? "jordan" as const,
       ini:initialsOf(names.get(event.actorId) ?? "Member"), title:event.title,
       when:`${event.description} · ${names.get(event.actorId) ?? "Member"}`, time:dateLabel(timestampDay(event.createdAt)),createdAt:event.createdAt,
       expenseId:event.kind==="expenses" ? event.entityId : undefined,
+      type:event.recordType ?? EVENT_TYPES[event.kind],
     }))].sort((a,b)=>(Date.parse(b.createdAt ?? "")||0)-(Date.parse(a.createdAt ?? "")||0)),
     notes,
     jumps: [
