@@ -582,6 +582,15 @@ describe("asking before typed text is thrown away", () => {
 });
 
 describe("structure and smaller fixes", () => {
+  it("says in text, not a hover tooltip, why the last admin's actions are unavailable", async () => {
+    mount("/members");
+    const leave = await screen.findByRole("button", { name: "Leave" });
+    expect((leave as HTMLButtonElement).disabled).toBe(true);
+    expect(leave.hasAttribute("title")).toBe(false);
+    const hint = document.getElementById(leave.getAttribute("aria-describedby") ?? "");
+    expect(hint?.textContent).toBe("A commune must keep an admin. Promote someone else first.");
+  });
+
   it("keeps the note reader's details a valid description list", async () => {
     current.notes = [{ id: "note-1", title: "Wi-Fi", pill: "Wi-Fi", kicker: "Everyone", lede: "", body: "", facts: [["Network", "Commune5G"], ["Password", "kept-in-a-drawer"]] }];
     mount("/notes");
