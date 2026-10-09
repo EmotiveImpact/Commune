@@ -475,11 +475,10 @@ export function equalShares(
   }));
 }
 
-export function expenseRows(snapshot: Snapshot, viewerId: string): LiveExpenseRow[] {
+/** today: the member's own calendar date, as tasks and pledges use. */
+export function expenseRows(snapshot: Snapshot, viewerId: string, today = todayIso()): LiveExpenseRow[] {
   const currency = snapshot.commune.currency;
   const names = new Map(snapshot.members.map((member) => [member.userId, member.name]));
-  // The member's own calendar date, as tasks and pledges use.
-  const today = todayIso();
   return snapshot.expenses.map((expense) => {
     const voided = !!expense.voidedAt;
     // A voided expense keeps its shares for history but is never outstanding.
@@ -522,6 +521,7 @@ export function hubFromSnapshot(
   source: Snapshot,
   viewer: User,
   photo?: string,
+  today = todayIso(),
 ): LiveHub {
   // Voided expenses stay in the ledger as history but never count towards a
   // balance, a total or an outstanding share anywhere on the hub.
@@ -531,7 +531,7 @@ export function hubFromSnapshot(
   const { commune } = snapshot;
   const currency = commune.currency;
   const names = new Map(snapshot.members.map((member) => [member.userId, member.name]));
-  const rows = expenseRows(snapshot, viewer.id);
+  const rows = expenseRows(snapshot, viewer.id, today);
   const openRows = rows.filter((row) => row.open);
   const moves: Hub["moves"] = [];
   let youOwe = 0;
@@ -595,7 +595,6 @@ export function hubFromSnapshot(
   });
   const fundTotal = snapshot.funds.reduce((sum, fund) => sum +
     fund.commitments.reduce((subtotal, commitment) => subtotal + commitment.contributedMinor, 0), 0);
-  const today = todayIso();
   // This month where the member is: an expense entered late on the last
   // evening of a month belongs to that month.
   const month = today.slice(0, 7);
@@ -615,7 +614,7 @@ export function hubFromSnapshot(
     title: note.title,
     when: notePreview(note),
   }));
-  const needs = needsYou(source, viewer.id);
+  const needs = needsYou(source, viewer.id, today);
   return {
     id: commune.id,
     currency,
@@ -680,4 +679,21 @@ export function hubFromSnapshot(
       { go: "operations", kicker: "Operations", title: `${snapshot.operations?.length ?? 0} items`, hint: "The week ahead" },
     ],
   };
+}
+
+/** A commune whose snapshot is loaded, as the app shows it. */
+export type ReadyPlace = LiveHub & { activityState: "ready" };
+const readyPlaces = new WeakMap<Snapshot, { viewerId: string; photo: string | undefined; today: string; place: ReadyPlace }>();
+/**
+ * hubFromSnapshot, kept with the snapshot it was built from. A commune's
+ * views are built again only when the commune is read again (a new
+ * snapshot), its photo changes or the date does, and never for a change
+ * anywhere else in the app.
+ */
+export function readyPlace(snapshot: Snapshot, viewer: User, photo?: string, today = todayIso()): ReadyPlace {
+  const held = readyPlaces.get(snapshot);
+  if (held && held.viewerId === viewer.id && held.photo === photo && held.today === today) return held.place;
+  const place: ReadyPlace = { ...hubFromSnapshot(snapshot, viewer, photo, today), activityState: "ready" };
+  readyPlaces.set(snapshot, { viewerId: viewer.id, photo, today, place });
+  return place;
 }

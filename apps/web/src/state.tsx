@@ -3,8 +3,11 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
+  useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
   type ReactNode,
 } from "react";
 import { useLocation, useRouter, useSearch } from "wouter";
@@ -53,9 +56,9 @@ import {
 } from "./live/preferences";
 import {
   expenseRows,
-  hubFromSnapshot,
   money,
   personName,
+  readyPlace,
   type Commune,
   type CurrencyCode,
   type Expense,
@@ -198,6 +201,8 @@ type GoOpts = {
   record?: { kind: "fund" | "recurring" | "member" | "template"; id: string };
 };
 export type SearchTarget = NonNullable<GoOpts["record"]> & { communeId: string };
+/** Search's words and the commune it searches (null: all of them). */
+export type SearchMemory = { query: string; scope: string | null };
 type LiveData = {
   user: User;
   communes: Commune[];
@@ -269,10 +274,9 @@ export type AppState = {
   dark: boolean;
   theme: Theme;
   noticesOn: boolean;
-  searchQuery: string;
-  searchScope: string | null;
   searchTarget: SearchTarget | null;
-  noteSearchQuery: string;
+  /** Counts the times the finder has opened Search, so Search starts from what it was given. */
+  searchOpened: number;
   invites: PendingInvite[];
   payMethods: PayMethod[];
   native: boolean;
@@ -350,10 +354,16 @@ export type AppState = {
   setNavMode: (mode: NavMode) => void;
   setTheme: (theme: Theme) => void;
   setNoticesOn: (on: boolean) => void;
-  setSearchQuery: (query: string) => void;
-  setSearchScope: (id: string | null) => void;
   clearSearchTarget: () => void;
-  setNoteSearchQuery: (query: string) => void;
+  /** Opens Search with these words and scope, as the finder's full search does. */
+  openFullSearch: (query: string, scope: string | null) => void;
+  /**
+   * What Search showed last in this tab, so going Back to it finds the same
+   * search. Search keeps its text itself while it is open and passes it on
+   * with rememberSearch, so typing re-renders nothing else.
+   */
+  recallSearch: () => SearchMemory;
+  rememberSearch: (search: SearchMemory) => void;
   savePayMethod: (method: PayMethod) => boolean;
   setHubPhoto: (id: HubId, dataUrl: string | null) => void;
   setAvatar: (dataUrl: string | null) => void;
@@ -437,7 +447,103 @@ export type AppState = {
   pageLede: string;
 };
 
-const Ctx = createContext<AppState | null>(null);
+// The app's state lives in one store that each component subscribes to by
+// the fields it reads (see useApp), so a change re-renders only what shows it.
+type AppStore = { state: AppState | null; listeners: Set<() => void> };
+const StoreCtx = createContext<AppStore | null>(null);
+
+// Shared empty values, so "nothing yet" is the same object from one render
+// to the next.
+const NONE: never[] = [];
+const NO_SNAPSHOTS: Record<string, Snapshot> = {};
+
+/** Arrays with the same items, in the same order. */
+function sameItems<T>(a: readonly T[], b: readonly T[]): boolean {
+  return a === b || (a.length === b.length && a.every((item, index) => Object.is(item, b[index])));
+}
+/** Objects with the same keys and values, one level deep (arrays by their items). */
+function sameFields<T extends object>(a: T, b: T): boolean {
+  if (a === b) return true;
+  const keys = Object.keys(a) as Array<keyof T>;
+  return keys.length === Object.keys(b).length && keys.every((key) => {
+    const x = a[key];
+    const y = b[key];
+    return Object.is(x, y) || (Array.isArray(x) && Array.isArray(y) && sameItems(x, y));
+  });
+}
+function sameOrBothNull<T extends object>(a: T | null, b: T | null): boolean {
+  return a === b || (a !== null && b !== null && sameFields(a, b));
+}
+/**
+ * The value this hook returned last time while the new one is the same, so
+ * a component that reads it keeps the same object and does not re-render.
+ */
+function useSettled<T>(value: T, same: (a: T, b: T) => boolean): T {
+  const held = useRef(value);
+  if (held.current !== value && !same(held.current, value)) held.current = value;
+  return held.current;
+}
+
+/**
+ * The account's data after a read, keeping every part that did not change
+ * from what is held, so a check that finds nothing new changes nothing.
+ */
+function settledData(held: LiveData | null, next: LiveData | null): LiveData | null {
+  if (!held || !next || held === next || held.user.id !== next.user.id) return next;
+  const user = sameFields(held.user, next.user) ? held.user : next.user;
+  const listed = new Map(held.communes.map((commune) => [commune.id, commune]));
+  const each = next.communes.map((commune) => {
+    const before = listed.get(commune.id);
+    return before && sameFields(before, commune) ? before : commune;
+  });
+  const communes = sameItems(held.communes, each) ? held.communes : each;
+  const sameRecord = <T,>(a: Record<string, T>, b: Record<string, T>, same: (x: T, y: T) => boolean) =>
+    a === b || (Object.keys(a).length === Object.keys(b).length &&
+      Object.keys(b).every((key) => key in a && same(a[key], b[key])));
+  const snapshots = sameRecord(held.snapshots, next.snapshots, Object.is) ? held.snapshots : next.snapshots;
+  const invites = sameRecord(held.invites, next.invites, (a, b) => a === b ||
+    (a.length === b.length && a.every((invite, index) => sameFields(invite, b[index])))) ? held.invites : next.invites;
+  const reminderUsage = held.reminderUsage === next.reminderUsage ||
+    JSON.stringify(held.reminderUsage) === JSON.stringify(next.reminderUsage) ? held.reminderUsage : next.reminderUsage;
+  const older = sameRecord(held.older, next.older, Object.is) ? held.older : next.older;
+  const settled: LiveData = { ...next, user, communes, snapshots, invites, reminderUsage, older };
+  return sameFields(held, settled) ? held : settled;
+}
+
+// A commune shown before its snapshot arrives: what the commune list says.
+// The list's change mark and notice count are left out, so a new count
+// changes the bell, not the commune's card.
+function loadingPlace(commune: Commune, photo: string | undefined, error: string | undefined): LiveHub {
+  const { changeMark: _mark, unreadNotices: _count, ...identity } = commune;
+  const type = commune.kind === "trip" ? "Trip" : commune.kind === "workspace" ? "Workspace" : "Household";
+  return { ...emptyHub(), ...identity,
+    type,
+    photo: photo ?? "",
+    activityState: error ? "error" : "loading",
+    status: error ? "Activity unavailable · Open to retry" : "Loading shared activity…",
+    switchMeta: `${type}${commune.memberCount == null ? "" : ` · ${commune.memberCount} ${commune.memberCount === 1 ? "person" : "people"}`}`,
+    youMeta: `${commune.role === "admin" ? "Admin" : "Member"} · ${commune.name}`,
+  };
+}
+
+// Everything built from a commune's record is kept with the record it was
+// built from, until a read replaces it. A read always replaces it, even one
+// that hands back an object it handed out before (as a test's fixture can).
+function freshRead(snapshot: Snapshot): Snapshot {
+  return { ...snapshot };
+}
+
+// A commune's schedule as the app keeps it, built once per snapshot.
+const operationLists = new WeakMap<Snapshot, OperationItem[]>();
+function operationsOf(communeId: string, snapshot: Snapshot | undefined): OperationItem[] {
+  if (!snapshot?.operations) return NONE;
+  let list = operationLists.get(snapshot);
+  if (!list) {
+    list = snapshot.operations.map((item) => operationFromApi(item, communeId));
+    operationLists.set(snapshot, list);
+  }
+  return list;
+}
 
 function endedNotice(unsaved: boolean): string {
   return unsaved
@@ -493,6 +599,7 @@ function emptyHub(): LiveHub {
     jumps: [],
   };
 }
+const EMPTY_HUB = emptyHub();
 
 function addressAt(url: string) {
   const at = url.indexOf("?");
@@ -581,9 +688,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [mutationCount, setMutationCount] = useState(0);
   const [data, setData] = useState<LiveData | null>(null);
   const dataRef = useRef<LiveData | null>(null);
+  // What did not change keeps its objects, so only what shows a change re-renders.
   const publishData = useCallback((next: LiveData | null) => {
-    dataRef.current = next;
-    setData(next);
+    const settled = settledData(dataRef.current, next);
+    dataRef.current = settled;
+    setData(settled);
   }, []);
   const [prefs, setPrefs] = useState<AccountPrefs>(DEFAULT_ACCOUNT);
   const [device, setDevice] = useState<DevicePrefs>(() => readDevicePrefs() ?? DEFAULT_DEVICE);
@@ -591,11 +700,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [hubId, setHubId] = useState<HubId>("");
   const [snapshotErrors, setSnapshotErrors] = useState<Record<string, string>>({});
   const [moreOpen, setMoreOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchScope, setSearchScope] = useState<string | null>(null);
   const [searchTarget, setSearchTarget] = useState<SearchTarget | null>(null);
   const clearSearchTarget = useCallback(() => setSearchTarget(null), []);
-  const [noteSearchQuery, setNoteSearchQuery] = useState("");
+  // Search's last words and scope. Search keeps its own text while it is
+  // open, so typing in it re-renders nothing else; this is what it starts
+  // from when it opens again.
+  const searchMemory = useRef<SearchMemory>({ query: "", scope: null });
+  const [searchOpened, setSearchOpened] = useState(0);
+  // The member's calendar date. Views that say what is overdue or happened
+  // this month are built for it, and again when it changes.
+  const [today, setToday] = useState(todayIso);
   const loadedRef = useRef(false);
   const refreshSequence = useRef(0);
   const refreshing = useRef(false);
@@ -720,7 +834,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (snapshot.commune.id !== commune.id) throw new ApiError("Commune response did not match the request", 502);
       // A summary never replaces the open commune's record; its full read is under way.
       if (snapshot.detail === "summary" && viewRef.current.hubId === commune.id && dataRef.current.snapshots[commune.id]) return;
-      publishData({ ...dataRef.current, snapshots: { ...dataRef.current.snapshots, [commune.id]: snapshot } });
+      publishData({ ...dataRef.current, snapshots: { ...dataRef.current.snapshots, [commune.id]: freshRead(snapshot) } });
     }).catch((error: unknown) => {
       if (sequence !== refreshSequence.current || dataRef.current?.user.id !== current.user.id || revision !== (snapshotRevisions.current.get(cacheKey) ?? 0)) return;
       setSnapshotErrors((errors) => ({ ...errors, [commune.id]: error instanceof Error ? error.message : "Activity unavailable" }));
@@ -765,6 +879,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setSnapshotErrors({});
     snapshotRevisions.current.clear();
     setHubId("");
+    searchMemory.current = { query: "", scope: null };
     // Device preferences stay; the account's go with it.
     setPrefs(DEFAULT_ACCOUNT);
     if (userId) forgetAccountPrefs(userId);
@@ -937,13 +1052,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Once a minute, while the tab is visible and someone has used it in the
   // last ten minutes, check the commune list for changes. Coming back to the
   // tab checks at once and asks who is signed in; using it again after a
-  // quiet spell checks at once.
+  // quiet spell checks at once. The date is looked at every minute, so
+  // "Overdue" and "This month" move on at midnight.
   useEffect(() => {
     if (authStatus !== "authenticated") return;
     const quiet = () => Date.now() - lastActivityAt.current >= 10 * 60_000;
     const due = (gap: number) => !refreshing.current && Date.now() - lastRefreshAt.current > gap;
     const onFocus = () => {
       if (document.visibilityState !== "visible") return;
+      setToday(todayIso());
       lastActivityAt.current = Date.now();
       if (due(15_000)) void refresh({ session: true });
     };
@@ -953,6 +1070,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (returning && document.visibilityState === "visible" && due(60_000)) void refresh({ session: false });
     };
     const onMinute = () => {
+      setToday(todayIso());
       if (document.visibilityState === "visible" && !quiet() && due(15_000)) void refresh({ session: false });
     };
     const activity = ["pointerdown", "pointermove", "keydown", "touchstart", "wheel"];
@@ -1002,23 +1120,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // Each change starts from what the browser keeps, which another tab may
   // have changed since. A full or blocked store keeps it for this visit only.
+  const accountId = data?.user.id;
   const savePrefs = useCallback((patch: Partial<AccountPrefs>) => {
     // An effect or handler still holding the account can run after it signed
     // out, or after someone else signed in here: it keeps nothing.
-    if (!data || dataRef.current?.user.id !== data.user.id) return;
-    const next = { ...(readAccountPrefs(data.user.id) ?? prefs), ...patch };
-    if (!saveAccountPrefs(data.user.id, next)) {
+    if (!accountId || dataRef.current?.user.id !== accountId) return;
+    const next = { ...(readAccountPrefs(accountId) ?? prefs), ...patch };
+    if (!saveAccountPrefs(accountId, next)) {
       console.warn("This browser could not keep a Commune preference");
     }
     setPrefs(next);
-  }, [data, prefs]);
+  }, [accountId, prefs]);
   const saveDevice = useCallback((patch: Partial<DevicePrefs>) => {
     const next = { ...(readDevicePrefs() ?? device), ...patch };
     if (!saveDevicePrefs(next)) console.warn("This browser could not keep a Commune preference");
     setDevice(next);
   }, [device]);
   // A change made in another tab shows here too.
-  const viewerId = data?.user.id;
+  const viewerId = accountId;
   useEffect(() => {
     const onStorage = (event: StorageEvent) => {
       if (event.key === null || event.key === DEVICE_KEY) setDevice(readDevicePrefs() ?? DEFAULT_DEVICE);
@@ -1074,7 +1193,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await post("/auth/logout-others", {});
   }), [mutate]);
 
-  const session: Session | null = data ? {
+  // Everything below is derived from the data, and keeps its object while
+  // what it is built from stays the same, so a component that reads it
+  // re-renders only when it changes.
+  const session = useSettled<Session | null>(data ? {
     userId: data.user.id,
     name: data.user.name,
     email: data.user.email,
@@ -1085,21 +1207,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
     seed: "new",
     hubPhotos: prefs.hubPhotos,
     avatar: prefs.avatar,
-  } : null;
-  const places: LiveHub[] = data ? data.communes.map((commune) => {
-    const snapshot = data.snapshots[commune.id];
-    if (snapshot) return { ...hubFromSnapshot(snapshot, data.user, prefs.hubPhotos[commune.id]), activityState: "ready" as const };
-    // Render the known identity in the switcher while its content is loading.
-    return { ...emptyHub(), ...commune,
-      type: commune.kind === "trip" ? "Trip" : commune.kind === "workspace" ? "Workspace" : "Household",
-      photo: prefs.hubPhotos[commune.id] ?? "",
-      activityState: snapshotErrors[commune.id] ? "error" : "loading",
-      status: snapshotErrors[commune.id] ? "Activity unavailable · Open to retry" : "Loading shared activity…",
-      switchMeta: `${commune.kind === "trip" ? "Trip" : commune.kind === "workspace" ? "Workspace" : "Household"}${commune.memberCount == null ? "" : ` · ${commune.memberCount} ${commune.memberCount === 1 ? "person" : "people"}`}`,
-      youMeta: `${commune.role === "admin" ? "Admin" : "Member"} · ${commune.name}`,
-    };
-  }) : [];
-  const hub = places.find((place) => place.id === chosenId) ?? places[0] ?? emptyHub();
+  } : null, sameOrBothNull);
+  // A commune's views are built from its snapshot once (see readyPlace).
+  const placesHeld = useRef<LiveHub[]>(NONE);
+  const places = useMemo<LiveHub[]>(() => {
+    if (!data) return NONE;
+    const before = new Map(placesHeld.current.map((place) => [place.id, place]));
+    const next = data.communes.map((commune) => {
+      const snapshot = data.snapshots[commune.id];
+      const photo = prefs.hubPhotos[commune.id];
+      // Render the known identity in the switcher while its content is loading.
+      const place = snapshot ? readyPlace(snapshot, data.user, photo, today) : loadingPlace(commune, photo, snapshotErrors[commune.id]);
+      const previous = before.get(commune.id);
+      return previous && previous !== place && !snapshot && sameFields(previous, place) ? previous : place;
+    });
+    return sameItems(placesHeld.current, next) ? placesHeld.current : next;
+  }, [data, prefs.hubPhotos, snapshotErrors, today]);
+  placesHeld.current = places;
+  const hub = places.find((place) => place.id === chosenId) ?? places[0] ?? EMPTY_HUB;
   const activeId = hub.id;
   activeRef.current = activeId;
   // The open window and the record it shows come from the address.
@@ -1118,16 +1243,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // The open commune's own screens never show a summary; they wait for its record.
   const snapshot = held?.detail === "summary" ? undefined : held;
   const older = data?.older[activeId];
-  const expenseHistory = historyState(snapshot, older);
+  const expenseHistory = useSettled(historyState(snapshot, older), sameFields);
   const contentLoading = !!data?.communes.length && !overview && !snapshot;
   const contentError = snapshotErrors[activeId] ?? null;
-  const allExpenses = snapshot && data ? expenseRows(withOlderExpenses(snapshot, older), data.user.id) : [];
-  const expenses = allExpenses.filter((row) => !row.voidedAt);
-  const voidedExpenses = allExpenses.filter((row) => row.voidedAt);
+  const allExpenses = useMemo(() => snapshot && viewerId ? expenseRows(withOlderExpenses(snapshot, older), viewerId, today) : NONE,
+    [snapshot, older, viewerId, today]);
+  const expenses = useMemo(() => allExpenses.filter((row) => !row.voidedAt), [allExpenses]);
+  const voidedExpenses = useMemo(() => allExpenses.filter((row) => row.voidedAt), [allExpenses]);
   const selectedExpense = selectedExpenseId ? allExpenses.find((row) => row.id === selectedExpenseId) ?? null : expenses[0] ?? null;
-  const lastExpense = selectedExpense
+  const lastExpense = useSettled(selectedExpense
     ? { name: selectedExpense.name, amount: selectedExpense.amount, paidBy: selectedExpense.paidBy }
-    : null;
+    : null, sameOrBothNull);
   // A commune whose only expenses are voided, or older than the snapshot
   // holds, still has a ledger to show.
   const empty = !!session?.hasHubs && allExpenses.length === 0 && !snapshot?.expenseHistory?.olderCount;
@@ -1137,37 +1263,44 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Until it is fetched, a linked expense older than what is loaded is on its way.
   const expenseRead = (windowId === "expense" || windowId === "expense-paid") && !selectedLoaded &&
     snapshot?.expenseHistory && recordResult !== "missing" ? recordResult ?? "loading" : null;
-  const notes: Record<string, LiveNote> = Object.fromEntries(
+  const notes = useMemo<Record<string, LiveNote>>(() => Object.fromEntries(
     (snapshot?.notes ?? []).map((note) => [note.id, note]),
-  );
-  const operationsByHub: OperationStore = Object.fromEntries((data?.communes ?? []).map((commune) => [
-    commune.id,
-    (data?.snapshots[commune.id]?.operations ?? []).map((item) => operationFromApi(item, commune.id)),
-  ]));
-  const operations = operationsByHub[activeId] ?? [];
+  ), [snapshot]);
+  const operationsByHub = useSettled<OperationStore>(useMemo(() => Object.fromEntries((data?.communes ?? []).map((commune) => [
+    commune.id, operationsOf(commune.id, data?.snapshots[commune.id]),
+  ])), [data?.communes, data?.snapshots]), sameFields);
+  const operations = operationsByHub[activeId] ?? NONE;
   const selectedOperation = operations.find((item) => item.id === operationKey) ?? null;
-  const funds: Fund[] = (snapshot?.funds ?? []).map((fund) => ({
+  // Commands read the records on screen when they run, so they stay the same
+  // functions from one render to the next.
+  const expensesRef = useRef(expenses);
+  expensesRef.current = expenses;
+  const operationsRef = useRef(operations);
+  operationsRef.current = operations;
+  const mutationCountRef = useRef(mutationCount);
+  mutationCountRef.current = mutationCount;
+  const funds = useMemo<Fund[]>(() => (snapshot?.funds ?? NONE).map((fund) => ({
     ...fund,
     contributedMinor: fund.commitments.reduce((sum, commitment) => sum + commitment.contributedMinor, 0),
-  }));
-  const recurringBills = snapshot?.recurringBills ?? [];
-  const splitTemplates = snapshot?.splitTemplates ?? [];
-  const reminderTargets = snapshot?.reminderTargets ?? [];
+  })), [snapshot]);
+  const recurringBills = snapshot?.recurringBills ?? NONE;
+  const splitTemplates = snapshot?.splitTemplates ?? NONE;
+  const reminderTargets = snapshot?.reminderTargets ?? NONE;
   const reminderUsage = data?.reminderUsage ?? null;
-  const sentReminders = snapshot?.sentReminders ?? [];
-  const announcements = snapshot?.announcements ?? [];
-  const notifications = snapshot?.notifications ?? [];
+  const sentReminders = snapshot?.sentReminders ?? NONE;
+  const announcements = snapshot?.announcements ?? NONE;
+  const notifications = snapshot?.notifications ?? NONE;
   // The open commune's count is the snapshot's own until the database sends
   // counts (0039); every refresh of a commune brings its count up to date.
-  const noticeCounts: Record<string, number> = Object.fromEntries((data?.communes ?? []).map((commune) => [commune.id,
-    commune.unreadNotices ?? (commune.id === activeId ? notifications.filter((notice) => !notice.readAt).length : 0)]));
-  const you = {
+  const noticeCounts = useSettled<Record<string, number>>(Object.fromEntries((data?.communes ?? []).map((commune) => [commune.id,
+    commune.unreadNotices ?? (commune.id === activeId ? notifications.filter((notice) => !notice.readAt).length : 0)])), sameFields);
+  const you = useSettled({
     id: data?.user.id ?? "",
     name: data?.user.name ?? "",
     email: data?.user.email ?? "",
     initials: data ? initialsOf(data.user.name) : "",
     photo: prefs.avatar,
-  };
+  }, sameFields);
 
   // A normal mutation does not need another sign-in/list/invitations waterfall.
   // Refresh just its commune, and keep confirmed content visible throughout.
@@ -1187,7 +1320,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const latest = dataRef.current;
       if (!stillCurrent() || !latest || !latest.communes.some(item => item.id === communeId)) return;
       if (snapshot.commune.id !== communeId) throw new ApiError("Commune response did not match the request", 502);
-      publishData({ ...latest, communes: latest.communes.map(item => item.id === communeId ? { ...item, ...snapshot.commune } : item), snapshots: { ...latest.snapshots, [communeId]: snapshot } });
+      publishData({ ...latest, communes: latest.communes.map(item => item.id === communeId ? { ...item, ...snapshot.commune } : item), snapshots: { ...latest.snapshots, [communeId]: freshRead(snapshot) } });
       setSnapshotErrors(errors => { const next = { ...errors }; delete next[communeId]; return next; });
     } catch (error) {
       const latest = dataRef.current;
@@ -1389,6 +1522,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }), [activeId, mutate, refreshRecords]);
 
   const recordExpense = useCallback((input: CreateExpenseInput) => mutate(async () => {
+    const data = dataRef.current;
     if (!activeId) throw new Error("Create or join a commune first");
     if (!data) throw new Error("Sign in first");
     const shares = input.allocations ? validateExpenseAllocation(input.amountMinor, input.allocations) : allocateExpense(input.amountMinor, input.shareUserIds, "Equal");
@@ -1404,7 +1538,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
     await refreshRecords();
     return result.id;
-  }), [activeId, data, mutate, refreshRecords]);
+  }), [activeId, mutate, refreshRecords]);
 
   const confirmExpenseShare = useCallback((shareId: string) => mutate(async () => {
     await post(`/shares/${encodeURIComponent(shareId)}/confirm`, {});
@@ -1483,18 +1617,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return result;
   }), [mutate, refreshRecords]);
   const markExpensePaid = useCallback((expenseId: string) => mutate(async () => {
-    const expense = expenses.find((row) => row.id === expenseId);
-    if (!expense || expense.paidByUserId !== data?.user.id) {
+    const expense = expensesRef.current.find((row) => row.id === expenseId);
+    const viewer = dataRef.current?.user.id;
+    if (!expense || !viewer || expense.paidByUserId !== viewer) {
       throw new Error("Only the person who paid can confirm a share");
     }
     const outstanding = expense.shares.filter((share) =>
-      share.userId !== data.user.id && share.settledMinor < share.amountMinor);
+      share.userId !== viewer && share.settledMinor < share.amountMinor);
     if (outstanding.length !== 1) {
       throw new Error("Choose the member’s outstanding share to confirm");
     }
     await post(`/shares/${encodeURIComponent(outstanding[0].id)}/confirm`, {});
     await refreshRecords();
-  }), [data?.user.id, expenses, mutate, refreshRecords]);
+  }), [mutate, refreshRecords]);
 
   const createInvite = useCallback((email: string, role: "admin" | "member") => mutate(async () => {
     if (!activeId) throw new Error("Choose a commune first");
@@ -1544,11 +1679,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await refreshRecords();
     return result.id;
   }), [mutate, refreshRecords]);
-  const updateFund = async (id: string, name: string, targetMinor: number | null) => { await workflow(`/funds/${encodeURIComponent(id)}`,{name,targetMinor},"PATCH"); };
-  const archiveFund = async (id: string, archived: boolean) => { await workflow(`/funds/${encodeURIComponent(id)}/archive`,{archived}); };
+  const updateFund = useCallback(async (id: string, name: string, targetMinor: number | null) => { await workflow(`/funds/${encodeURIComponent(id)}`,{name,targetMinor},"PATCH"); }, [workflow]);
+  const archiveFund = useCallback(async (id: string, archived: boolean) => { await workflow(`/funds/${encodeURIComponent(id)}/archive`,{archived}); }, [workflow]);
   // A pledge changed since the editor opened is a conflict. Load it before the
   // error reaches the form, so the editor can start again from what is saved.
-  const updatePledge = (id: string, input: PledgeChange) => mutate(async () => {
+  const updatePledge = useCallback((id: string, input: PledgeChange) => mutate(async () => {
     try {
       await api(`/commitments/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify(input) });
     } catch (error) {
@@ -1556,8 +1691,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       throw error;
     }
     await refreshRecords();
-  });
-  const voidContribution = async (id: string, reason: string) => { await workflow(`/contributions/${encodeURIComponent(id)}/void`,{reason}); };
+  }), [mutate, refreshRecords]);
+  const voidContribution = useCallback(async (id: string, reason: string) => { await workflow(`/contributions/${encodeURIComponent(id)}/void`,{reason}); }, [workflow]);
   // A conflict means the bill changed after this screen loaded it (someone
   // edited, recorded, paused or archived it). Load the latest before the
   // error reaches the screen, as an expense correction does.
@@ -1572,23 +1707,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await refreshRecords();
     return result;
   }), [mutate, refreshRecords]);
-  const saveRecurringBill = async (input: RecurringBillInput) => (await recurringChange<{id:string}>(`/communes/${encodeURIComponent(activeId)}/recurring`,input)).id;
-  const pauseRecurringBill = (id: string, paused: boolean) =>
-    recurringChange<RecurringBillState>(`/recurring/${encodeURIComponent(id)}/pause`, { paused });
-  const archiveRecurringBill = (id: string, archived: boolean) =>
-    recurringChange<RecurringBillState>(`/recurring/${encodeURIComponent(id)}/archive`, { archived });
-  const recordRecurringBill = async (id: string, expectedDueOn: string) => (await workflow<{id:string}>(`/recurring/${encodeURIComponent(id)}/record`,{expectedDueOn})).id;
-  const recordRecurringPeriod = (id: string, expectedDueOn: string, amountMinor?: number) =>
-    recurringChange<RecurringPeriodResult>(`/recurring/${encodeURIComponent(id)}/periods`, { expectedDueOn, amountMinor: amountMinor ?? null });
-  const skipRecurringPeriod = (id: string, expectedDueOn: string, reason: string) =>
-    recurringChange<RecurringPeriodResult>(`/recurring/${encodeURIComponent(id)}/skip`, { expectedDueOn, reason: reason.trim() });
-  const saveSplitTemplate = async (input: SplitTemplateInput) => (await workflow<{id:string}>(`/communes/${encodeURIComponent(activeId)}/templates`,input)).id;
-  const manageMember = async (userId: string, action: "admin" | "member" | "leave" | "remove") => mutate(async () => {
+  const saveRecurringBill = useCallback(async (input: RecurringBillInput) =>
+    (await recurringChange<{id:string}>(`/communes/${encodeURIComponent(activeId)}/recurring`,input)).id, [activeId, recurringChange]);
+  const pauseRecurringBill = useCallback((id: string, paused: boolean) =>
+    recurringChange<RecurringBillState>(`/recurring/${encodeURIComponent(id)}/pause`, { paused }), [recurringChange]);
+  const archiveRecurringBill = useCallback((id: string, archived: boolean) =>
+    recurringChange<RecurringBillState>(`/recurring/${encodeURIComponent(id)}/archive`, { archived }), [recurringChange]);
+  const recordRecurringBill = useCallback(async (id: string, expectedDueOn: string) =>
+    (await workflow<{id:string}>(`/recurring/${encodeURIComponent(id)}/record`,{expectedDueOn})).id, [workflow]);
+  const recordRecurringPeriod = useCallback((id: string, expectedDueOn: string, amountMinor?: number) =>
+    recurringChange<RecurringPeriodResult>(`/recurring/${encodeURIComponent(id)}/periods`, { expectedDueOn, amountMinor: amountMinor ?? null }), [recurringChange]);
+  const skipRecurringPeriod = useCallback((id: string, expectedDueOn: string, reason: string) =>
+    recurringChange<RecurringPeriodResult>(`/recurring/${encodeURIComponent(id)}/skip`, { expectedDueOn, reason: reason.trim() }), [recurringChange]);
+  const saveSplitTemplate = useCallback(async (input: SplitTemplateInput) =>
+    (await workflow<{id:string}>(`/communes/${encodeURIComponent(activeId)}/templates`,input)).id, [activeId, workflow]);
+  const manageMember = useCallback(async (userId: string, action: "admin" | "member" | "leave" | "remove") => mutate(async () => {
     await post(`/communes/${encodeURIComponent(activeId)}/members/${encodeURIComponent(userId)}`,{action});
     // Its addresses are no longer yours: go Home before the list drops it.
     if (action === "leave") navigate(addressOf("home"));
     await refresh();
-  });
+  }), [activeId, mutate, navigate, refresh]);
   const sendReminder = useCallback((kind: "nudge" | "chase", sourceId: string, requestId: string) => mutate(async () => {
     const actorId = dataRef.current?.user.id;
     const raw = await post<Partial<ReminderResult>>("/reminders", { kind, sourceId, requestId });
@@ -1623,7 +1761,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return result.id;
   }), [activeId, mutate, refreshRecords]);
   const updateNote = useCallback((card: NoteCard & { id: string; expectedVersion?: number }) => mutate(async () => {
-    const current = data?.snapshots[activeId]?.notes?.find((note) => note.id === card.id);
+    const current = dataRef.current?.snapshots[activeId]?.notes?.find((note) => note.id === card.id);
     if (!current) throw new Error("Note not found in this commune");
     const { id, expectedVersion, ...payload } = card;
     try {
@@ -1636,7 +1774,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
     await refreshRecords();
     return id;
-  }), [activeId, data, mutate, refreshRecords]);
+  }), [activeId, mutate, refreshRecords]);
   const loadNoteRevision = useCallback(async (noteId: string, revisionId: string) =>
     (await api<{ revision: NoteRevision }>(`/notes/${encodeURIComponent(noteId)}/revisions/${encodeURIComponent(revisionId)}`)).revision, []);
   const addOperation = useCallback((item: NewOperation, requestId: string) => mutate(async () => {
@@ -1646,7 +1784,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return result.id;
   }), [activeId, mutate, refreshRecords]);
   const updateOperation = useCallback((id: string, item: NewOperation, expectedVersion?: number) => mutate(async () => {
-    const existing = operations.find((row) => row.id === id);
+    const existing = operationsRef.current.find((row) => row.id === id);
     if (!existing) throw new Error("Schedule item not found");
     try {
       await api(`/operations/${encodeURIComponent(id)}`, {
@@ -1660,7 +1798,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       throw error;
     }
     await refreshRecords();
-  }), [mutate, operations, refreshRecords]);
+  }), [mutate, refreshRecords]);
   // Task actions are commands: the database advances the date and rotation
   // and rejects a stale click, so two people cannot complete one occurrence.
   const occurrenceCommand = useCallback((path: string, body: unknown) => mutate(async () => {
@@ -1682,31 +1820,31 @@ export function AppProvider({ children }: { children: ReactNode }) {
     } satisfies OperationChange;
   }), [mutate, refreshRecords]);
   const taskAction = useCallback((id: string, action: "completed" | "skipped" | "reopened", reason?: string) => {
-    const item = operations.find((row) => row.id === id);
+    const item = operationsRef.current.find((row) => row.id === id);
     if (!item) return Promise.reject(new Error("Schedule item not found"));
     return occurrenceCommand(`/operations/${encodeURIComponent(id)}/occurrences`, {
       action, expectedDate: item.date, today: todayIso(), requestId: newRequestId(),
       ...(reason?.trim() ? { reason: reason.trim() } : {}),
     });
-  }, [occurrenceCommand, operations]);
+  }, [occurrenceCommand]);
   // The expected date and holder reject a handover made from a stale screen.
   const handOverOperation = useCallback((id: string, toMemberId: string, reason?: string) => {
-    const item = operations.find((row) => row.id === id);
+    const item = operationsRef.current.find((row) => row.id === id);
     if (!item) return Promise.reject(new Error("Schedule item not found"));
     return occurrenceCommand(`/operations/${encodeURIComponent(id)}/handovers`, {
       toMemberId, expectedDate: item.date, expectedAssigneeId: item.assigneeId ?? null, today: todayIso(),
       reason: reason?.trim() || null, requestId: newRequestId(),
     });
-  }, [occurrenceCommand, operations]);
+  }, [occurrenceCommand]);
   const undoOperation = useCallback((occurrenceId: string) =>
     occurrenceCommand(`/occurrences/${encodeURIComponent(occurrenceId)}/undo`, {}), [occurrenceCommand]);
   const toggleOperation = useCallback((id: string) => {
-    const item = operations.find((row) => row.id === id);
+    const item = operationsRef.current.find((row) => row.id === id);
     if (item?.status !== "done") return taskAction(id, "completed");
     // Undo the completion when it is still the latest state; a task finished
     // before occurrences existed is reopened as a new recorded action.
     return item.undoOccurrenceId ? undoOperation(item.undoOccurrenceId) : taskAction(id, "reopened");
-  }, [operations, taskAction, undoOperation]);
+  }, [taskAction, undoOperation]);
   const skipOperation = useCallback((id: string, reason?: string) => taskAction(id, "skipped", reason), [taskAction]);
   const removeOperation = useCallback((id: string) => mutate(async () => {
     await api(`/operations/${encodeURIComponent(id)}`, { method: "DELETE" });
@@ -1743,7 +1881,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       navigate(authPath(target));
       return;
     }
-    const commune = opts?.hub && places.some((place) => place.id === opts.hub) ? opts.hub : activeId;
+    const commune = opts?.hub && dataRef.current?.communes.some((item) => item.id === opts.hub) ? opts.hub : activeId;
     // Screens that do not name a commune still show this one.
     if (commune !== hubId) setHubId(commune);
     const here = shownRef.current;
@@ -1766,7 +1904,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
       returning: Boolean(here.window || here.record),
       fallback: here.window && FORM_WINDOWS.has(here.window) ? "replace" : "push",
     });
-  }, [activeId, hubId, navigate, places]);
+  }, [activeId, hubId, navigate]);
+  // The finder hands its words to Search, which starts from them even when
+  // it is already open.
+  const openFullSearch = useCallback((query: string, scope: string | null) => {
+    searchMemory.current = { query, scope };
+    setSearchOpened((count) => count + 1);
+    go("search");
+  }, [go]);
+  const recallSearch = useCallback(() => searchMemory.current, []);
+  const rememberSearch = useCallback((search: SearchMemory) => { searchMemory.current = search; }, []);
+  const clearApiError = useCallback(() => setApiError(null), []);
+  const closeWindow = useCallback(() => { if (!mutationCountRef.current) leaveRecord(); }, [leaveRecord]);
+  const setNavMode = useCallback((navMode: NavMode) => saveDevice({ navMode }), [saveDevice]);
+  const setTheme = useCallback((theme: Theme) => saveDevice({ theme }), [saveDevice]);
+  const setNoticesOn = useCallback((noticesOn: boolean) => saveDevice({ noticesOn }), [saveDevice]);
+  const members = data?.snapshots[activeId]?.members;
+  const nameOf = useCallback((userId: string | null | undefined, fallback: string, options?: { left?: boolean }) =>
+    personName(members, userId, fallback, options), [members]);
 
   // Dialogs have their own heading; the page behind them remains the page.
   const isHome = screen === "home" || screen === "home-empty";
@@ -1791,25 +1946,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
             ? hub.status
             : PAGE_LEDES[screen] ?? "";
 
-  return <Ctx.Provider value={{
-    authStatus, apiError, mutationPending: mutationCount > 0, clearApiError: () => setApiError(null), refresh: fullRefresh,
+  const state: AppState = {
+    authStatus, apiError, mutationPending: mutationCount > 0, clearApiError, refresh: fullRefresh,
     signInWithPassword, signInWithGoogle, signUpWithPassword, verifyEmailCode, session, screen, hubId: activeId,
-    hub, places, snapshots: data?.snapshots ?? {}, contentLoading, contentError, emptyHub: empty, unknownCommune, window: windowId, moreOpen,
+    hub, places, snapshots: data?.snapshots ?? NO_SNAPSHOTS, contentLoading, contentError, emptyHub: empty, unknownCommune, window: windowId, moreOpen,
     navMode: device.navMode, noteKey, notes, operationKey, operationDate,
     operationTime, operationsByHub, operations, selectedOperation, fundKey,
     dark: device.theme === "dark" || (device.theme === "system" && prefersDark), theme: device.theme, noticesOn: device.noticesOn,
-    searchQuery, searchScope, searchTarget, noteSearchQuery, invites: data?.invites[activeId] ?? [], payMethods: prefs.payMethods, native, you,
+    searchTarget, searchOpened, invites: data?.invites[activeId] ?? NONE, payMethods: prefs.payMethods, native, you,
     lastExpense, expenses, selectedExpense, createdExpenses: expenses, voidedExpenses,
     expenseRead, retryExpenseRead, expenseHistory, loadEarlierExpenses, loadFullHistory,
     funds, recurringBills, splitTemplates, expenseTemplateId, reminderTargets, reminderUsage, sentReminders, notifications,
-    noticeCounts, loadUnreadNotices, personName: (userId, fallback, options) => personName(data?.snapshots[activeId]?.members, userId, fallback, options),
+    noticeCounts, loadUnreadNotices, personName: nameOf,
     signOut, signOutUnconfirmed, retrySignOut: confirmSignOut, sessionNotice, go,
     changePassword, signOutOtherDevices,
-    closeWindow: () => { if (!mutationCount) leaveRecord(); }, watchTypedText, leaveAsked, answerLeave, setMoreOpen,
-    setNavMode: (navMode) => saveDevice({ navMode }),
-    setTheme: (theme) => saveDevice({ theme }),
-    setNoticesOn: (noticesOn) => saveDevice({ noticesOn }),
-    setSearchQuery, setSearchScope, clearSearchTarget, setNoteSearchQuery, savePayMethod, setHubPhoto, setAvatar, addNote, updateNote, loadNoteRevision,
+    closeWindow, watchTypedText, leaveAsked, answerLeave, setMoreOpen,
+    setNavMode, setTheme, setNoticesOn,
+    clearSearchTarget, openFullSearch, recallSearch, rememberSearch, savePayMethod, setHubPhoto, setAvatar, addNote, updateNote, loadNoteRevision,
     addOperation, updateOperation, toggleOperation, skipOperation, handOverOperation, undoOperation,
     removeOperation, createHub, updateCommune, recordExpense, confirmExpenseShare, correctExpense, voidExpense, recordShareReceipt, reverseShareReceipt,
     reportSharePayment, withdrawPaymentReport, resolvePaymentReport,
@@ -1818,13 +1971,80 @@ export function AppProvider({ children }: { children: ReactNode }) {
     pledgeFund, recordFundContribution, sendReminder, markNotificationRead,
     updateFund, archiveFund, updatePledge, voidContribution, saveRecurringBill, pauseRecurringBill, archiveRecurringBill, recordRecurringBill, recordRecurringPeriod, skipRecurringPeriod, saveSplitTemplate, manageMember,
     pageTitle, pageLede,
-  }}>{children}</Ctx.Provider>;
+  };
+  // Components under this one read the state from the store as they render
+  // (this render runs first), and are told of it once it is on screen: each
+  // re-renders only if something it read has changed.
+  const [store] = useState<AppStore>(() => ({ state: null, listeners: new Set() }));
+  store.state = state;
+  useLayoutEffect(() => {
+    store.state = state;
+    for (const listener of [...store.listeners]) listener();
+  });
+  return <StoreCtx.Provider value={store}>{children}</StoreCtx.Provider>;
 }
 
+// What one component read of the state in its last render on screen.
+type Reading = { keys: Set<string>; all: boolean };
+type Tracker = { seen: AppState; reading: Reading; version: number };
+
+function readingChanged(reading: Reading, before: AppState, after: AppState): boolean {
+  const keys = reading.all ? Object.keys(after) : reading.keys;
+  for (const key of keys) {
+    if (!Object.is(before[key as keyof AppState], after[key as keyof AppState])) return true;
+  }
+  return false;
+}
+
+/**
+ * The app's state. A component re-renders when something it reads from it
+ * changes, and for nothing else: one that reads `hub` and `go` follows only
+ * those two, so typing in a filter, the minute check or a notice count in
+ * another commune leaves the rest of the app alone. A read in a handler or
+ * an effect sees the latest state.
+ */
 export function useApp(): AppState {
-  const context = useContext(Ctx);
-  if (!context) throw new Error("useApp must be used inside AppProvider");
-  return context;
+  const store = useContext(StoreCtx);
+  if (!store?.state) throw new Error("useApp must be used inside AppProvider");
+  const tracker = useRef<Tracker | null>(null);
+  tracker.current ??= { seen: store.state, reading: { keys: new Set(), all: false }, version: 0 };
+  const followed = tracker.current;
+  const subscribe = useCallback((onChange: () => void) => {
+    store.listeners.add(onChange);
+    return () => { store.listeners.delete(onChange); };
+  }, [store]);
+  // A new version only when something this component read has changed.
+  const version = useCallback(() => {
+    const latest = store.state!;
+    if (latest !== followed.seen) {
+      if (readingChanged(followed.reading, followed.seen, latest)) followed.version += 1;
+      followed.seen = latest;
+    }
+    return followed.version;
+  }, [store, followed]);
+  useSyncExternalStore(subscribe, version, version);
+  // What this render reads becomes what the component follows once it is on screen.
+  const reading: Reading = { keys: new Set(), all: false };
+  useLayoutEffect(() => { followed.reading = reading; });
+  return new Proxy(store.state, {
+    get(_shown, key) {
+      if (typeof key === "string") reading.keys.add(key);
+      return Reflect.get(store.state!, key);
+    },
+    has(_shown, key) {
+      if (typeof key === "string") reading.keys.add(key);
+      return Reflect.has(store.state!, key);
+    },
+    ownKeys() {
+      reading.all = true;
+      return Reflect.ownKeys(store.state!);
+    },
+    getOwnPropertyDescriptor(_shown, key) {
+      if (typeof key === "string") reading.keys.add(key);
+      const descriptor = Reflect.getOwnPropertyDescriptor(store.state!, key);
+      return descriptor && { ...descriptor, configurable: true };
+    },
+  });
 }
 
 export type { CurrencyCode, LiveExpenseRow, LiveHub, ReminderTarget, ReminderResult, ReceiptResult, SentReminder, Notification, Fund };

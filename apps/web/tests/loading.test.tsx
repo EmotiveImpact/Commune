@@ -468,7 +468,7 @@ describe("commune loading", () => {
     await screen.findByRole("button", { name: /^Wi-Fi & internet/ });
     fireEvent.change(screen.getByRole("searchbox", { name: "Search notes in this commune", exact: true }), { target: { value: "private-secret" } });
     expect(screen.getByRole("heading", { name: "No matching notes." })).toBeTruthy();
-    expect(app.searchQuery).toBe("");
+    expect(app.recallSearch().query).toBe("");
     fireEvent.click(screen.getByRole("button", { name: "Show all notes" }));
     expect(screen.getAllByRole("button", { name: /^Wi-Fi & internet/ })).toHaveLength(1);
   });

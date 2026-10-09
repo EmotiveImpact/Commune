@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useApp } from "../state";
+import { memo, useState } from "react";
+import { useApp, type AppState, type CurrencyCode, type LiveExpenseRow } from "../state";
 import { Avatar, Pill } from "../ui/widgets";
 import { cx } from "../ui/cx";
 import { RecipientReminderCount, ReminderAllowanceNotice } from "../ui/ReminderUsage";
@@ -92,11 +92,7 @@ export function ExpensesScreen() {
         ? `${rows.length} voided ${rows.length === 1 ? "expense" : "expenses"} · kept for history, not counted in any balance`
         : `${rows.length} ${rows.length === 1 ? "expense" : "expenses"} · ${formatMoney(rows.reduce((sum, row) => sum + row.amountMinor, 0), hub.currency)} total recorded in this view`}</p>
       <section className="c-expense-list" aria-label="Shared expenses">
-        {rows.map(row => <button className="c-expense-entry" type="button" key={row.id} onClick={() => go("expense", { expense: row.id })}>
-          <span className="c-expense-card-head"><span className="c-money-icon"><ReceiptText size={19} strokeWidth={1.5} aria-hidden="true" /></span><span className="c-expense-copy"><strong>{row.name}</strong></span><Pill tone={row.voidedAt ? undefined : row.status}>{row.statusLabel}</Pill></span>
-          <span className="c-expense-amount"><span><small>Total paid</small><strong>{row.amount}</strong></span><span className="c-expense-personal"><small>Your share</small><span>{row.shares.some(share => share.userId === session?.userId) ? formatMoney(row.shares.find(share => share.userId === session?.userId)!.amountMinor, hub.currency) : "Not included"}</span></span></span>
-          <span className="c-expense-card-foot">{row.dueOn && <CalendarDate date={row.dueOn} label="Due" />}<span className="c-expense-footer-copy"><span>Paid by {row.paidBy}</span><small>{row.category}{row.dueOn ? ` · due ${row.due}` : ""}</small></span><ChevronRight size={16} aria-hidden="true" /></span>
-        </button>)}
+        {rows.map(row => <ExpenseCard key={row.id} row={row} viewerId={session?.userId} currency={hub.currency} go={go} />)}
         {!rows.length && <p className="c-money-empty">No expenses match this view. Try another filter or search.</p>}
       </section>
       {more ? <div className="c-settle-footer">
@@ -109,6 +105,19 @@ export function ExpensesScreen() {
     </>
   );
 }
+
+// One expense in the list. It re-renders when its row does, not when the
+// filter around it changes.
+const ExpenseCard = memo(function ExpenseCard({ row, viewerId, currency, go }: {
+  row: LiveExpenseRow; viewerId: string | undefined; currency: CurrencyCode; go: AppState["go"];
+}) {
+  const yours = row.shares.find(share => share.userId === viewerId);
+  return <button className="c-expense-entry" type="button" onClick={() => go("expense", { expense: row.id })}>
+    <span className="c-expense-card-head"><span className="c-money-icon"><ReceiptText size={19} strokeWidth={1.5} aria-hidden="true" /></span><span className="c-expense-copy"><strong>{row.name}</strong></span><Pill tone={row.voidedAt ? undefined : row.status}>{row.statusLabel}</Pill></span>
+    <span className="c-expense-amount"><span><small>Total paid</small><strong>{row.amount}</strong></span><span className="c-expense-personal"><small>Your share</small><span>{yours ? formatMoney(yours.amountMinor, currency) : "Not included"}</span></span></span>
+    <span className="c-expense-card-foot">{row.dueOn && <CalendarDate date={row.dueOn} label="Due" />}<span className="c-expense-footer-copy"><span>Paid by {row.paidBy}</span><small>{row.category}{row.dueOn ? ` · due ${row.due}` : ""}</small></span><ChevronRight size={16} aria-hidden="true" /></span>
+  </button>;
+});
 
 export function ExpensesEmptyScreen() {
   const { go, session } = useApp();
