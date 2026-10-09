@@ -321,6 +321,40 @@ export async function neonApi<T>(path: string, init: RequestInit = {}): Promise<
   }
 }
 
+// The auth SDK rejects with its own error for any refusal. It reports an
+// ended session and a wrong current password alike, as a 401 with code
+// invalid_credentials; only the message differs, and for a wrong password
+// the SDK writes its own. The app reads a 401 as being signed out (state.tsx),
+// so a wrong password becomes a 400 here, as it is on the local API.
+function signInEnded(error: unknown): never {
+  if ((error as { status?: unknown } | null)?.status === 401) {
+    throw new ApiError("Your sign-in has ended. Sign in again to carry on.", 401);
+  }
+  message(error);
+}
+function passwordChangeFailure(error: unknown): never {
+  const item = error as { code?: unknown; message?: unknown } | null;
+  if (item?.code === "invalid_credentials" && item.message === "Invalid email or password") {
+    throw new ApiError("Your current password isn’t right. Nothing was changed.", 400);
+  }
+  // An account that only signs in with Google has no password to check.
+  if (item?.code === "identity_not_found") {
+    throw new ApiError("This account signs in with Google, so it has no password to change.", 400);
+  }
+  // The server failed after the change, while starting this device's new
+  // session. The SDK calls that a missing session; the outcome is unknown.
+  if (item?.code === "session_not_found") throw new ApiError("Commune couldn’t confirm the change.", 502);
+  signInEnded(error);
+}
+// A used or expired reset link comes back as "Invalid or expired session
+// token", which reads like a sign-in problem.
+function resetFailure(error: unknown): never {
+  if ((error as { code?: unknown } | null)?.code === "bad_jwt") {
+    throw new ApiError("This reset link has expired or was already used. Request a new one.", 400);
+  }
+  message(error);
+}
+
 async function route<T>(path: string, init: RequestInit): Promise<T> {
   const method = (init.method ?? "GET").toUpperCase();
   const body = payload(init);
@@ -365,12 +399,32 @@ async function route<T>(path: string, init: RequestInit): Promise<T> {
   } else if (path === "/auth/reset-password" && method === "POST") {
     const result = await db().auth.resetPassword({
       newPassword: inputString(body.password, "password"), token: inputString(body.token, "token"),
-    });
-    if (result.error) message(result.error);
+    }).catch(resetFailure);
+    if (result.error) resetFailure(result.error);
     response = { ok: true };
   } else if (path === "/auth/logout" && method === "POST") {
     const result = await db().auth.signOut();
     if (result.error) message(result.error);
+    response = { ok: true };
+  } else if (path === "/auth/change-password" && method === "POST") {
+    await requireUser();
+    const currentPassword = inputString(body.currentPassword, "currentPassword");
+    const newPassword = inputString(body.newPassword, "newPassword");
+    if (newPassword.length < 12 || newPassword.length > 128) throw new ApiError("Password must contain 12–128 characters", 400);
+    // Ends every session of the account, this one too, and starts a new one
+    // whose cookie comes back with the reply. This tab keeps its cached token,
+    // still valid until it expires, and then renews it from the new cookie as
+    // the same account, so nothing here signs it out.
+    const result = await db().auth.changePassword({ currentPassword, newPassword, revokeOtherSessions: true })
+      .catch(passwordChangeFailure);
+    if (result.error) passwordChangeFailure(result.error);
+    response = { ok: true };
+  } else if (path === "/auth/logout-others" && method === "POST") {
+    await requireUser();
+    // Keeps this session and ends the account's others. Another device's
+    // token stays valid until it expires (see SignInSettings.tsx).
+    const result = await db().auth.revokeOtherSessions().catch(signInEnded);
+    if (result.error) signInEnded(result.error);
     response = { ok: true };
   } else if (method === "GET" && path.startsWith("/search?")) {
     await requireUser();

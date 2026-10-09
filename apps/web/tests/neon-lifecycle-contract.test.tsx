@@ -4,9 +4,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 // different path. These tests pin the function names, argument names and
 // result/error mapping. They do not contact Neon: hosted behaviour still
 // needs verification on a real branch after the migrations are applied.
-const mocks = vi.hoisted(() => ({ getSession: vi.fn(), from: vi.fn(), rpc: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  getSession: vi.fn(), changePassword: vi.fn(), revokeOtherSessions: vi.fn(), from: vi.fn(), rpc: vi.fn(),
+}));
 vi.mock("@neondatabase/neon-js", () => ({
-  createClient: () => ({ auth: { getSession: mocks.getSession }, from: mocks.from, rpc: mocks.rpc }),
+  createClient: () => ({
+    auth: { getSession: mocks.getSession, changePassword: mocks.changePassword, revokeOtherSessions: mocks.revokeOtherSessions },
+    from: mocks.from, rpc: mocks.rpc,
+  }),
 }));
 const requestId = "11111111-2222-4333-8444-555555555555";
 const send = async (path: string, body: unknown, method = "POST") => {
@@ -270,5 +275,40 @@ describe("hosted invitation email", () => {
     } finally {
       vi.unstubAllGlobals();
     }
+  });
+});
+
+// The auth SDK's own requests and error shapes are pinned against the real SDK
+// in neon-password-contract.test.tsx.
+describe("hosted password change and sign out everywhere else", () => {
+  const change = { currentPassword: "Current-password-1", newPassword: "A-new-password-22" };
+
+  it("changes the password and ends the account's other sessions in one call", async () => {
+    mocks.changePassword.mockResolvedValue({ data: { token: "new-session-token", user: { id: "viewer" } }, error: null });
+    expect(await send("/auth/change-password", change)).toEqual({ ok: true });
+    expect(mocks.changePassword).toHaveBeenCalledExactlyOnceWith({ ...change, revokeOtherSessions: true });
+    mocks.revokeOtherSessions.mockResolvedValue({ data: { status: true }, error: null });
+    expect(await send("/auth/logout-others", {})).toEqual({ ok: true });
+    expect(mocks.revokeOtherSessions).toHaveBeenCalledOnce();
+  });
+
+  it("does nothing without a verified sign-in, or for an account this tab isn't showing", async () => {
+    mocks.getSession.mockResolvedValue({ data: null, error: null });
+    await expect(send("/auth/change-password", change)).rejects.toMatchObject({ status: 401 });
+    await expect(send("/auth/logout-others", {})).rejects.toMatchObject({ status: 401 });
+    mocks.getSession.mockResolvedValue({ data: { user: { id: "viewer", emailVerified: false } }, error: null });
+    await expect(send("/auth/logout-others", {})).rejects.toMatchObject({ status: 401 });
+    // Another tab signed in as someone else; this tab still shows "viewer".
+    mocks.getSession.mockResolvedValue({ data: { user: { id: "someone-else", emailVerified: true } }, error: null });
+    const { ACCOUNT_CHANGED, setViewer } = await import("../src/live/session");
+    setViewer("viewer");
+    try {
+      await expect(send("/auth/change-password", change)).rejects.toMatchObject({ status: 401, message: ACCOUNT_CHANGED });
+      await expect(send("/auth/logout-others", {})).rejects.toMatchObject({ status: 401, message: ACCOUNT_CHANGED });
+    } finally {
+      setViewer(null);
+    }
+    expect(mocks.changePassword).not.toHaveBeenCalled();
+    expect(mocks.revokeOtherSessions).not.toHaveBeenCalled();
   });
 });
