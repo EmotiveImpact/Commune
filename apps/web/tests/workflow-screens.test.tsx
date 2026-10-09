@@ -1014,6 +1014,7 @@ describe("recurring bill commands", () => {
     await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Save recurring bill" })); });
     const conflict = await within(dialog).findByRole("alert");
     expect(conflict.textContent).toContain("This bill changed while you were editing.");
+    expect(conflict.textContent).toContain("Nothing of yours was saved.");
     expect(conflict.textContent).toContain(`Next due: ${formatReminderDay(due)} to ${formatReminderDay(later)}`);
     expect((within(dialog).getByRole("button", { name: "Save recurring bill" }) as HTMLButtonElement).disabled).toBe(true);
     fireEvent.click(within(dialog).getByRole("button", { name: "Keep my edits and check again" }));
@@ -1049,6 +1050,88 @@ describe("recurring bill commands", () => {
     fireEvent.click(screen.getByRole("button", { name: "Done" }));
     expect(await screen.findByText("Recurring bill saved.")).toBeTruthy();
     expect(screen.queryByText(/changed by someone else/)).toBeNull();
+  });
+
+  it("says an earlier save may have gone through when its reply was lost and the bill then changed again", async () => {
+    const due = addDays(todayIso(), 3);
+    const later = addDays(due, 31);
+    current.recurringBills = [recurring("bill-1", "Broadband", { version: 2, nextDueOn: due })];
+    let calls = 0;
+    const base = vi.mocked(api).getMockImplementation()!;
+    vi.mocked(api).mockImplementation(async (path, options) => {
+      if (path !== "/communes/home-1/recurring") return base(path, options);
+      calls += 1;
+      if (calls === 1) {
+        // The save lands but its reply is lost, then someone records the period.
+        current = { ...current, recurringBills: [{ ...current.recurringBills![0], title: "Fibre", version: 4, nextDueOn: later }] };
+        throw new TypeError("Failed to fetch");
+      }
+      throw new ApiError("This recurring bill was changed by someone else. Review the latest version before saving your changes.", 409);
+    });
+    mount("/recurring");
+    fireEvent.click(await screen.findByRole("button", { name: "Edit" }));
+    const dialog = screen.getByRole("dialog", { name: "Edit recurring bill" });
+    fireEvent.change(within(dialog).getByLabelText("Bill name"), { target: { value: "Fibre" } });
+    await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Save recurring bill" })); });
+    expect(await within(dialog).findByText(UNCERTAIN_RETRY_SAFE)).toBeTruthy();
+    await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Save recurring bill" })); });
+    const conflict = await within(dialog).findByRole("alert");
+    expect(conflict.textContent).toContain("Your earlier save may have gone through. Check the bill below before saving again.");
+    expect(conflict.textContent).not.toContain("Nothing of yours was saved.");
+    // Once the person has taken the latest version, a new conflict is about new edits only.
+    fireEvent.click(within(dialog).getByRole("button", { name: "Use the latest version" }));
+    expect(within(dialog).queryByRole("alert")).toBeNull();
+  });
+
+  it("keeps saying nothing was saved when a later attempt was refused outright", async () => {
+    const due = addDays(todayIso(), 3);
+    current.recurringBills = [recurring("bill-1", "Broadband", { version: 2, nextDueOn: due })];
+    let calls = 0;
+    const base = vi.mocked(api).getMockImplementation()!;
+    vi.mocked(api).mockImplementation(async (path, options) => {
+      if (path !== "/communes/home-1/recurring") return base(path, options);
+      calls += 1;
+      if (calls === 1) throw new TypeError("Failed to fetch");
+      if (calls === 2) throw new ApiError("Choose a next due date between 9 Oct 2025 and 9 Oct 2028", 400);
+      current = { ...current, recurringBills: [{ ...current.recurringBills![0], amountMinor: 1200, version: 3 }] };
+      throw new ApiError("This recurring bill was changed by someone else. Review the latest version before saving your changes.", 409);
+    });
+    mount("/recurring");
+    fireEvent.click(await screen.findByRole("button", { name: "Edit" }));
+    const dialog = screen.getByRole("dialog", { name: "Edit recurring bill" });
+    fireEvent.change(within(dialog).getByLabelText("Bill name"), { target: { value: "Fibre" } });
+    for (let attempt = 1; attempt <= 3; attempt += 1) {
+      await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Save recurring bill" })); });
+    }
+    const conflict = await within(dialog).findByRole("alert");
+    expect(conflict.textContent).toContain("Nothing of yours was saved.");
+    expect(saves()).toHaveLength(3);
+  });
+
+  it("asks the person to check Recurring when an earlier attempt may already have added the bill", async () => {
+    current.recurringBills = [];
+    let calls = 0;
+    const base = vi.mocked(api).getMockImplementation()!;
+    vi.mocked(api).mockImplementation(async (path, options) => {
+      if (path !== "/communes/home-1/recurring") return base(path, options);
+      calls += 1;
+      if (calls === 1) throw new TypeError("Failed to fetch");
+      throw new ApiError("This request was already used for a different bill", 400);
+    });
+    mount("/recurring");
+    fireEvent.click(await screen.findByRole("button", { name: "Add recurring bill" }));
+    const dialog = screen.getByRole("dialog", { name: "Add recurring bill" });
+    fireEvent.change(within(dialog).getByLabelText("Bill name"), { target: { value: "Water" } });
+    fireEvent.change(within(dialog).getByLabelText("Amount (GBP)"), { target: { value: "30.00" } });
+    await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Save recurring bill" })); });
+    expect(await within(dialog).findByText(UNCERTAIN_RETRY_SAFE)).toBeTruthy();
+    fireEvent.change(within(dialog).getByLabelText("Amount (GBP)"), { target: { value: "32.00" } });
+    await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Save recurring bill" })); });
+    expect(await within(dialog).findByText(
+      "An earlier attempt may already have been saved. Close this and check Recurring before adding it again.")).toBeTruthy();
+    const [first, second] = saves();
+    expect(second.requestId).toBe(first.requestId);
+    expect([first.amountMinor, second.amountMinor]).toEqual([3000, 3200]);
   });
 
   it("still resumes after a lost reply when the person chose Save and resume", async () => {

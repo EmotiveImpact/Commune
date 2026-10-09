@@ -86,15 +86,43 @@ BEGIN
   v_bill := public.save_recurring_bill(v_home, ' Broadband ', 9000, b, pg_temp.split(b, '4500', c, '4500'), 'monthly',
     current_date - 3, p_request_id => v_request);
   IF (pg_temp.bill(v_bill)).version <> 1 OR (pg_temp.bill(v_bill)).title <> 'Broadband' THEN RAISE EXCEPTION 'New bill is wrong'; END IF;
+  -- The add locked Blake's request id, so the same request sent at once to
+  -- another commune waits for it instead of reaching the unique index.
+  IF NOT EXISTS (SELECT 1 FROM pg_locks l WHERE l.locktype = 'advisory' AND l.pid = pg_backend_pid() AND l.objsubid = 1
+      AND ((l.classid::bigint << 32) | l.objid::bigint) = hashtextextended('commune-recurring-request:' || b || ':' || v_request::text, 0)) THEN
+    RAISE EXCEPTION 'An add did not lock its request id';
+  END IF;
   -- A retried add returns the same bill; the request cannot add a bill elsewhere; an add needs a request id.
   IF public.save_recurring_bill(v_home, 'Broadband', 9000, b, pg_temp.split(b, '4500', c, '4500'), 'monthly',
        current_date - 3, p_request_id => v_request) <> v_bill
+     OR public.save_recurring_bill(v_home, 'Broadband', 9000, b, pg_temp.split(b, '4500', c, '4500'), 'monthly',
+       current_date - 3, p_request_id => v_request, p_paused => false) <> v_bill
      OR (SELECT count(*) FROM public.recurring_bills WHERE commune_id = v_home) <> 1 THEN
     RAISE EXCEPTION 'A retried add made a second bill';
+  END IF;
+  -- A retry returns it only while it matches the request in every detail.
+  PERFORM pg_temp.expect(pg_temp.try_save(v_home, 'Fibre', 9000, b, pg_temp.split(b, '4500', c, '4500'), 'monthly',
+    current_date - 3, p_request => v_request), '22023 This request was already used for a different bill', 'Retry with another name');
+  PERFORM pg_temp.expect(pg_temp.try_save(v_home, 'Broadband', 9500, b, pg_temp.split(b, '4750', c, '4750'), 'monthly',
+    current_date - 3, p_request => v_request), '22023 This request was already used for a different bill', 'Retry with another amount');
+  PERFORM pg_temp.expect(pg_temp.try_save(v_home, 'Broadband', 9000, b, pg_temp.split(b, '3000', c, '6000'), 'monthly',
+    current_date - 3, p_request => v_request), '22023 This request was already used for a different bill', 'Retry with another split');
+  PERFORM pg_temp.expect(pg_temp.try_save(v_home, 'Broadband', 9000, b, pg_temp.split(b, '4500', c, '4500'), 'weekly',
+    current_date - 3, p_request => v_request), '22023 This request was already used for a different bill', 'Retry with another frequency');
+  PERFORM pg_temp.expect(pg_temp.try_save(v_home, 'Broadband', 9000, b, pg_temp.split(b, '4500', c, '4500'), 'monthly',
+    current_date - 2, p_request => v_request), '22023 This request was already used for a different bill', 'Retry with another due date');
+  PERFORM pg_temp.expect(pg_temp.try_save(v_home, 'Broadband', 9000, b, pg_temp.split(b, '4500', c, '4500'), 'monthly',
+    current_date - 3, p_request => v_request, p_paused => true), '22023 This request was already used for a different bill', 'Retry that pauses');
+  IF (SELECT count(*) FROM public.recurring_bills WHERE commune_id = v_home) <> 1 OR (pg_temp.bill(v_bill)).amount_minor <> 9000 THEN
+    RAISE EXCEPTION 'A refused retry changed or added a bill';
   END IF;
   PERFORM pg_temp.act_as(a);
   PERFORM pg_temp.expect(pg_temp.try_save(v_other, 'Broadband', 9000, a, pg_temp.split(a, '9000'), 'monthly', current_date,
     p_request => v_request), 'ok', 'Another person may use the same request id');
+  PERFORM pg_temp.expect(pg_temp.try_save(v_other, 'Broadband', 9000, c, pg_temp.split(a, '9000'), 'monthly', current_date,
+    p_request => v_request), '22023 This request was already used for a different bill', 'Retry with another payer');
+  PERFORM pg_temp.expect(pg_temp.try_save(v_home, 'Broadband', 9000, a, pg_temp.split(a, '9000'), 'monthly', current_date,
+    p_request => v_request), '22023 This request was already used for a different bill', 'Retry in another commune');
   PERFORM pg_temp.act_as(b);
   PERFORM pg_temp.expect(pg_temp.try_save(v_home, 'Broadband', 9000, b, pg_temp.split(b, '9000'), 'monthly', current_date,
     p_request => NULL), '22023 A request id is required%', 'Add without a request id');
@@ -107,8 +135,11 @@ BEGIN
   v_next := (v_result->>'nextDueOn')::date;
   IF (pg_temp.bill(v_bill)).version <> 3 OR v_next <= current_date THEN RAISE EXCEPTION 'Edit and record did not each make a version'; END IF;
 
-  -- Blake's stale Pause changes only the flag: not the amount, not the due date.
+  -- Blake's original add, retried now, is refused: the bill has changed since.
   PERFORM pg_temp.act_as(b);
+  PERFORM pg_temp.expect(pg_temp.try_save(v_home, 'Broadband', 9000, b, pg_temp.split(b, '4500', c, '4500'), 'monthly',
+    current_date - 3, p_request => v_request), '22023 This request was already used for a different bill', 'Retry after the bill changed');
+  -- His stale Pause changes only the flag: not the amount, not the due date.
   v_result := public.set_recurring_bill_paused(v_bill, true);
   v_row := pg_temp.bill(v_bill);
   IF v_row.amount_minor <> 9600 OR v_row.next_due_on <> v_next OR NOT v_row.paused OR v_row.version <> 4
@@ -119,6 +150,9 @@ BEGIN
   PERFORM pg_temp.expect(pg_temp.try_save(v_home, 'Broadband', 9000, b, pg_temp.split(b, '4500', c, '4500'), 'monthly',
     current_date - 3, v_bill, 1), 'P0001 This recurring bill was changed by someone else.%', 'Stale edit');
   IF (pg_temp.bill(v_bill)).amount_minor <> 9600 OR (pg_temp.bill(v_bill)).version <> 4 THEN RAISE EXCEPTION 'A stale edit changed the bill'; END IF;
+  -- An edit that names no version is a mistake in the request, not a conflict.
+  PERFORM pg_temp.expect(pg_temp.try_save(v_home, 'Broadband', 9600, b, pg_temp.split(b, '4800', c, '4800'), 'monthly',
+    v_next, v_bill, NULL), '22023 Say which version of this bill the change is based on', 'Edit without a version');
   IF NOT (public.record_recurring_period(v_bill, current_date - 3)->>'duplicate')::boolean THEN
     RAISE EXCEPTION 'A repeated record was not reported as already recorded';
   END IF;
