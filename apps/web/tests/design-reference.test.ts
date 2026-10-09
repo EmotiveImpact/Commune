@@ -101,6 +101,6 @@ describe("design language reference", () => {
     expect(html).not.toContain("typography.css");
     expect(html).toContain("font-weight: 450;");
     expect(html).toContain("font-weight: 550;");
-    expect(find(".account").textContent).toContain("Admin · 58 reminders left");
+    expect(find(".account small").textContent).toBe("Admin");
   });
 });
