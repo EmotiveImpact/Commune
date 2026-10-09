@@ -951,6 +951,57 @@
   font-weight: 650;
 }
 
+/* A form's own error line, and the alert strip under the top bar for a
+   failure that no screen showed. */
+.a-form-error {
+  margin: 8px 0 0;
+  color: var(--danger);
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.5;
+}
+
+.a-api-error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  margin: 16px 28px 0;
+  padding: 10px 8px 10px 14px;
+  border-radius: var(--radius-control);
+  background: var(--danger-soft);
+  color: var(--danger);
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.5;
+}
+
+.a-api-error button {
+  min-height: 24px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.a-api-error button[aria-label="Dismiss error"] {
+  margin-left: auto;
+  font-size: 18px;
+  line-height: 1;
+  text-decoration: none;
+}
+
+@media (max-width: 560px) {
+  .a-api-error {
+    margin: 12px 16px 0;
+  }
+}
+
 :is(.a-cover h1, .a-place-hero h3, .a-focus-hero h2,
     .a-set-row-copy strong, .a-commune-set h2, .a-item strong,
     .a-member-row .who strong, .a-name-btn, .a-home-greet h1) {
@@ -5495,6 +5546,10 @@ button.a-item {
 .ops-prod {
   display: grid;
   gap: 16px;
+}
+
+.ops-prod > .a-form-error {
+  margin: 0;
 }
 
 .ops-prod-head {

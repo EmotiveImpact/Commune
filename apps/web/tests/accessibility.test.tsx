@@ -4,7 +4,7 @@ import { Router } from "wouter";
 import { memoryLocation } from "wouter/memory-location";
 import { App } from "../src/App";
 import { AppProvider, useApp, type AppState } from "../src/state";
-import { api, post, loadCommunes, loadSnapshot } from "../src/live/api";
+import { api, post, loadCommunes, loadSnapshot, ApiError } from "../src/live/api";
 import type { Commune, Notification, Snapshot } from "../src/live/model";
 import { addDays, dateFromIso, todayIso, type OperationItem } from "../src/data/operations";
 
@@ -355,5 +355,52 @@ describe("Operations view switch and its Undo message", () => {
     act(() => { vi.advanceTimersByTime(9_500); });
     expect(screen.getByRole("status").textContent).toBe("");
     expect(document.activeElement).toBe(screen.getByRole("button", { name: "Add item" }));
+  });
+});
+
+describe("error display", () => {
+  const changed = "This commune changed while you were editing. Reload and try again.";
+
+  it("shows a refused commune settings save once, in the form", async () => {
+    vi.mocked(api).mockImplementation(async (path, init) => {
+      if (path === "/auth/me") return { user };
+      if (path === "/reminders/usage") return { totalUsed: 0, totalLimit: 60, recipientLimit: 8, recipientUsage: {}, nextSlotAt: null };
+      if (path.endsWith("/invites")) return { invites: [] };
+      if (path === `/communes/${commune.id}` && init?.method === "PATCH") throw new ApiError(changed, 409);
+      return { ok: true };
+    });
+    mount("/commune-settings");
+    const name = await screen.findByLabelText("Commune name");
+    fireEvent.change(name, { target: { value: "Park Road house" } });
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Save changes" })); });
+    const shown = await screen.findAllByText(changed);
+    expect(shown).toHaveLength(1);
+    expect(shown[0].classList.contains("a-form-error")).toBe(true);
+    expect(shown[0].closest("form")).toBe(name.closest("form"));
+    expect(screen.getAllByRole("alert")).toEqual([shown[0]]);
+    expect(document.querySelector(".a-api-error")).toBeNull();
+  });
+
+  it("still raises the alert strip for a failed command that nothing on screen caught", async () => {
+    mount("/hub");
+    await screen.findByRole("heading", { name: "This Hub", level: 1 });
+    vi.mocked(post).mockRejectedValueOnce(new ApiError("You can no longer change this.", 403));
+    let failure: unknown;
+    await act(async () => { await app.markNotificationRead("n-1").catch((error: unknown) => { failure = error; }); });
+    expect(document.querySelector(".a-api-error")).toBeNull();
+
+    // A rejection that is not a failed command is left to the browser.
+    const other = Object.assign(new Event("unhandledrejection", { cancelable: true }), { reason: new Error("Something else") });
+    act(() => { window.dispatchEvent(other); });
+    expect(other.defaultPrevented).toBe(false);
+    expect(document.querySelector(".a-api-error")).toBeNull();
+
+    // What the browser sends when no handler caught the failed command.
+    const unhandled = Object.assign(new Event("unhandledrejection", { cancelable: true }), { reason: failure });
+    act(() => { window.dispatchEvent(unhandled); });
+    expect(unhandled.defaultPrevented).toBe(true);
+    const strip = screen.getByRole("alert");
+    expect(strip.classList.contains("a-api-error")).toBe(true);
+    expect(strip.textContent).toContain("You can no longer change this.");
   });
 });

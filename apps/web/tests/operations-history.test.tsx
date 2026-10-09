@@ -122,8 +122,9 @@ describe("task completion, undo and occurrence history", () => {
     mount("/operations");
     const trigger = await screen.findByRole("button", { name: /^Done · Housemate \(/ });
     await act(async () => { fireEvent.click(trigger); });
-    expect(screen.getByRole("status").textContent).toBe("This task has already moved on. Refresh to see who has it now.");
-    expect(screen.getByRole("alert").textContent).toContain("This task has already moved on.");
+    // Shown once, on the screen, until the next action; not in a passing toast.
+    expect(screen.getByRole("alert").textContent).toBe("This task has already moved on. Refresh to see who has it now.");
+    expect(screen.getByRole("status").textContent).toBe("");
     expect(screen.queryByRole("button", { name: "Undo" })).toBeNull();
     // The stale late card is replaced by what was actually saved.
     expect(app.operations[0]).toMatchObject({ assignee: "Housemate Two", date: addDays(today, 5) });

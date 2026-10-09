@@ -60,7 +60,8 @@ export function OperationsScreen() {
   const [cut, setCut] = useState<Cut>("week");
   const [month, setMonth] = useState(today.slice(0, 7));
   const [selectedDate, setSelectedDate] = useState(today);
-  const [toast, setToast] = useState<{ text: string; undoId?: string; from?: LateAction; error?: boolean } | null>(null);
+  const [toast, setToast] = useState<{ text: string; undoId?: string; from?: LateAction } | null>(null);
+  const [error, setError] = useState("");
   const [undoing, setUndoing] = useState(false);
   const toastTimer = useRef<number | undefined>(undefined);
   const toastRef = useRef<HTMLDivElement>(null);
@@ -134,8 +135,8 @@ export function OperationsScreen() {
     toastHeld.current = box.contains(document.activeElement) || box.matches(":hover");
   }, [toast]);
 
-  // Messages with an Undo, and errors, stay long enough to read and use. The
-  // timer pauses while the pointer or keyboard focus is on the toast.
+  // Messages with an Undo stay long enough to read and use. The timer pauses
+  // while the pointer or keyboard focus is on the toast.
   function scheduleToastClose(ms: number) {
     window.clearTimeout(toastTimer.current);
     toastTimer.current = window.setTimeout(() => {
@@ -146,12 +147,15 @@ export function OperationsScreen() {
     }, ms);
   }
   function flash(text: string, undoId?: string, from?: LateAction) {
+    setError("");
     setToast({ text, undoId, from });
     scheduleToastClose(undoId ? 9000 : 2600);
   }
-  function flashError(text: string) {
-    setToast({ text, error: true });
-    scheduleToastClose(8000);
+  // An error stays on the screen, as a form's does, until the next action.
+  function fail(text: string) {
+    window.clearTimeout(toastTimer.current);
+    setToast(null);
+    setError(text);
   }
   function holdToast(held: boolean) {
     toastHeld.current = held;
@@ -166,7 +170,7 @@ export function OperationsScreen() {
       refocus.current = from ?? null;
       flash(`Undone · back with ${firstNameOf(result.assignee ?? undefined) || "the commune"} for ${shortDateFormatter.format(dateFromIso(result.date))}`);
     } catch (error) {
-      flashError(error instanceof Error ? error.message : "Could not undo that");
+      fail(error instanceof Error ? error.message : "Could not undo that");
     } finally {
       setUndoing(false);
     }
@@ -198,7 +202,7 @@ export function OperationsScreen() {
         { id: item.id, action: "done" },
       );
     } catch (error) {
-      flashError(error instanceof Error ? error.message : "Could not update task");
+      fail(error instanceof Error ? error.message : "Could not update task");
     }
   }
 
@@ -207,7 +211,7 @@ export function OperationsScreen() {
       const result = await skipOperation(item.id);
       flash(`Moved to ${shortDateFormatter.format(dateFromIso(result.date))}`, result.occurrenceId, { id: item.id, action: "skip" });
     } catch (error) {
-      flashError(error instanceof Error ? error.message : "Could not move task");
+      fail(error instanceof Error ? error.message : "Could not move task");
     }
   }
 
@@ -268,6 +272,7 @@ export function OperationsScreen() {
           Add item
         </button>
       </div>
+      {error ? <p className="a-form-error" role="alert">{error}</p> : null}
 
       {cut === "week" ? (
         <div className="ops-stack">
@@ -484,7 +489,6 @@ export function OperationsScreen() {
       <div
         ref={toastRef}
         className={toast ? "ops-toast" : "sr-only"}
-        // Errors are also raised in the app's alert banner; one alert is enough.
         role="status"
         onMouseEnter={() => holdToast(true)}
         onMouseLeave={() => holdToast(false)}

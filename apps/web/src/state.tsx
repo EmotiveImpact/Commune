@@ -423,6 +423,10 @@ function endedNotice(unsaved: boolean): string {
     : "You were signed out. Sign in to carry on.";
 }
 
+// Commands that failed. A screen or form that catches one shows the error
+// itself; only one that nothing caught reaches the alert strip.
+const commandFailures = new WeakSet<object>();
+
 function readPrefs(userId: string): LocalPrefs {
   try {
     const raw = readStored(`${LOCAL_PREFIX}${userId}`);
@@ -873,8 +877,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setApiError(null);
       return await action();
     } catch (error) {
-      const message = error instanceof Error ? error.message : "The action could not be saved";
-      setApiError(message);
+      if (typeof error === "object" && error !== null) commandFailures.add(error);
       // Signed out or changed account elsewhere: check which, and clear this
       // tab if it no longer matches.
       if (error instanceof ApiError && error.status === 401 && dataRef.current) {
@@ -886,6 +889,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setMutationCount(count => Math.max(0, count - 1));
     }
   }, [refresh]);
+  // A failed command that no screen caught still shows, in the alert strip.
+  useEffect(() => {
+    const onUnhandled = (event: PromiseRejectionEvent) => {
+      const reason: unknown = event.reason;
+      if (typeof reason !== "object" || reason === null || !commandFailures.has(reason)) return;
+      event.preventDefault();
+      setApiError(reason instanceof Error ? reason.message : "The action could not be saved");
+    };
+    window.addEventListener("unhandledrejection", onUnhandled);
+    return () => window.removeEventListener("unhandledrejection", onUnhandled);
+  }, []);
 
   const savePrefs = useCallback((patch: Partial<LocalPrefs>) => {
     if (!data) return;
