@@ -99,7 +99,7 @@ BEGIN
       RAISE EXCEPTION 'Only an admin, or the member who added this bill and pays it, can edit it' USING ERRCODE = '42501';
     END IF;
     IF p_paused IS NOT NULL THEN
-      RAISE EXCEPTION 'Pause or resume a bill with its own command, not an edit' USING ERRCODE = '22023';
+      RAISE EXCEPTION 'An edit cannot pause or resume a bill. Use Pause or Resume.' USING ERRCODE = '22023';
     END IF;
     IF v_existing.archived_at IS NOT NULL THEN
       RAISE EXCEPTION 'This bill is archived. Restore it before editing it.' USING ERRCODE = 'P0001';

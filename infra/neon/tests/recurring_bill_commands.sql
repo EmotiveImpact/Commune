@@ -138,7 +138,7 @@ BEGIN
   END IF;
   -- An edit never pauses or resumes.
   PERFORM pg_temp.expect(pg_temp.try_save(v_home, 'Broadband', 9600, b, pg_temp.split(b, '4800', c, '4800'), 'monthly',
-    v_next, v_bill, 5, p_paused => true), '22023 Pause or resume a bill with its own command%', 'Pause through an edit');
+    v_next, v_bill, 5, p_paused => true), '22023 An edit cannot pause or resume a bill.%', 'Pause through an edit');
 
   -- Avery makes Casey the payer. Blake added the bill but no longer pays it,
   -- so he cannot edit it either way, but he can still pause and resume it.

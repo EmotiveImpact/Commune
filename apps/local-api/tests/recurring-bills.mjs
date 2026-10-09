@@ -82,7 +82,7 @@ assert.equal((await bill(broadbandId)).version, paused.version);
 refused(await b("POST", `/recurring/${broadbandId}/pause`, {}), 400, /paused/);
 // An edit cannot resume, nor put the due date back on a recorded period.
 refused(await a("POST", `/communes/${id}/recurring`, { ...raised, expectedVersion: saved.version, nextDueOn: saved.nextDueOn, paused: false }),
-  400, /own command/);
+  400, /^An edit cannot pause or resume a bill\./);
 refused(await a("POST", `/communes/${id}/recurring`, { ...raised, expectedVersion: saved.version }), 409, /already recorded/);
 // Casey is in the split but neither added nor pays the bill.
 refused(await c("POST", `/recurring/${broadbandId}/pause`, { paused: false }), 403, /pause or resume/);
