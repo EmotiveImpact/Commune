@@ -48,6 +48,9 @@
 }
 @media (max-width: 560px) {
   .a-header { --focus-ring: #649578; }
+  /* Search opens from the top bar in a light window, which keeps the usual ring. */
+  .a-header dialog { --focus-ring: var(--sage); }
+  .a-body.is-dark .a-header dialog { --focus-ring: #649578; }
 }
 /* First stop on every page; shows only while it has keyboard focus. */
 .a-skip-link {
