@@ -653,59 +653,6 @@
   color: #f5f1ea;
 }
 
-.a-choose {
-  position: relative;
-  flex-shrink: 0;
-}
-
-.a-choose .a-btn {
-  gap: 6px;
-}
-
-.a-choose .a-btn svg {
-  width: 14px;
-  height: 14px;
-  flex-shrink: 0;
-}
-
-.a-choose-menu {
-  position: absolute;
-  right: 0;
-  top: calc(100% + 6px);
-  z-index: 24;
-  display: grid;
-  min-width: 200px;
-  padding: 6px;
-  background: #fff;
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  box-shadow: 0 12px 32px rgba(26, 30, 46, 0.18);
-}
-
-.a-choose-menu[hidden] {
-  display: none;
-}
-
-.a-choose-menu button {
-  width: 100%;
-  margin: 0;
-  padding: 10px 12px;
-  border: 0;
-  border-radius: 10px;
-  background: transparent;
-  font: inherit;
-  font-size: 14px;
-  font-weight: 650;
-  color: var(--ink);
-  text-align: left;
-  cursor: pointer;
-}
-
-.a-choose-menu button:hover {
-  background: var(--sage-soft);
-  color: var(--sage-strong);
-}
-
 .a-header .a-icon-btn.a-you-btn {
   display: none;
   padding: 0;
@@ -2314,8 +2261,7 @@ button.a-item {
   border-top: 1px solid rgba(23, 27, 36, 0.06);
 }
 
-.a-window .a-field-row .a-btn,
-.a-window .a-field-row .a-choose .a-btn {
+.a-window .a-field-row .a-btn {
   height: 38px;
   min-width: 118px;
   justify-content: center;
@@ -2495,19 +2441,9 @@ button.a-item {
   .a-move {
     grid-template-columns: auto minmax(0, 1fr);
   }
-  .a-move .amt,
-  .a-move .a-choose {
+  .a-move .amt {
     grid-column: 2;
     justify-self: start;
-  }
-  .a-choose.is-open .a-choose-menu {
-    position: fixed;
-    left: 12px;
-    right: 12px;
-    top: auto;
-    bottom: calc(72px + env(safe-area-inset-bottom));
-    min-width: 0;
-    z-index: 45;
   }
   .a-bottom {
     display: flex;
@@ -2876,15 +2812,6 @@ button.a-item {
   width: 100%;
   max-height: 92vh;
   border-radius: var(--radius-surface) var(--radius-surface) 0 0;
-}
-
-.a-body.is-native .a-choose.is-open .a-choose-menu {
-  position: fixed;
-  left: 12px;
-  right: 12px;
-  top: auto;
-  bottom: 90px;
-  min-width: 0;
 }
 
 /* Operations calendar */
