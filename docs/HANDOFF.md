@@ -31,7 +31,8 @@ lifecycle pack. Work is paused for a handoff, not a production release.
   review. Former members' email addresses hidden (migration 0031); limits on
   notices and payment reports (0032); invitation emails that name their
   sender, refuse names carrying contact details, and stop at bounced addresses
-  (0033); extension functions closed to clients, an admin's own pledge
+  (0033); extension functions closed to clients where the migration role owns
+  them (0034 warns otherwise; see infra/neon/README.md), an admin's own pledge
   confirmed by another admin, and old email records trimmed (0034). Sign-out
   now clears every tab, and the Neon Auth console settings Commune expects are
   in [AUTH-SETTINGS.md](AUTH-SETTINGS.md). Settings has Change password and

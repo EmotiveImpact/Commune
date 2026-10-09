@@ -49,6 +49,23 @@ Five of the 9 October migrations change that rule:
   refuses an admin's contributions to their own pledge when another admin
   can confirm them; a client from before 0034 still offers the button and
   shows that refusal.
+  - If applying **0034** prints `WARNING: Clients can still run these extension
+    functions in public: ...`, the role that applied it does not own the
+    pgcrypto and pg_trgm functions (when a role that is not a superuser
+    installs a trusted extension, PostgreSQL makes the bootstrap superuser
+    their owner), so it could not take EXECUTE away from clients. The rest of
+    0034 is applied, but `tests/grants.sql` fails on its extension check until
+    this is fixed. Only the functions' owner can fix it, and moving the
+    extensions out of `public` needs the same ownership, so ask Neon support to
+    run `REVOKE ALL ON FUNCTION ... FROM PUBLIC` for each function the warning
+    names, then run `tests/grants.sql` again. Until then, a PostgREST-style
+    Data API can call only the eight that take no parameter or a single
+    unnamed text or bytea one: `gen_random_uuid()`, `gen_salt(text)`,
+    `armor(bytea)`, `dearmor(text)`, `pgp_key_id(bytea)`,
+    `pgp_armor_headers(text)`, `show_limit()` and `show_trgm(text)` (pgcrypto
+    1.3, pg_trgm 1.6). None of them reads Commune's data; `crypt`,
+    `gen_random_bytes`, `set_limit` and the rest take parameters such an API
+    cannot pass.
 
 0026 replaces `save_recurring_bill` and adds `set_recurring_bill_paused` and
 `set_recurring_bill_archived`; production has no recurring bills yet, so only

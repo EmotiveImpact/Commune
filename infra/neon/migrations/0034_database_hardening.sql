@@ -1,9 +1,12 @@
 -- Smaller hardening, each low risk today:
--- 1. pgcrypto and pg_trgm put their functions in public, where anyone could
---    run them and the Data API offered them as RPCs (bcrypt at any cost, for
---    one). Only Commune's own definer functions use them (invitation tokens),
---    and those run as the owner, so no one else may call them. Search indexes
---    keep working: an index never checks who may call its functions.
+-- 1. pgcrypto and pg_trgm put their functions in public, where any role could
+--    run them and the Data API offered those it can call as RPCs (eight, such
+--    as gen_salt and show_trgm). Only Commune's own definer functions use
+--    them (invitation tokens), and those run as the owner, so no one else may
+--    call them. Only the functions' owner can take that away, so when the
+--    role applying this is not their owner it warns and names them instead
+--    (see infra/neon/README.md). Search indexes keep working: an index never
+--    checks who may call its functions.
 -- 2. An admin could confirm contributions to their own pledge. When the
 --    commune has another admin, that admin confirms them instead.
 -- 3. The snapshot's activity was the latest 100 events, so a burst of edits
@@ -18,9 +21,11 @@
 BEGIN;
 
 DO $$
-DECLARE v_function regprocedure; v_roles text := 'PUBLIC, authenticated';
+DECLARE
+  v_function regprocedure; v_roles text := 'PUBLIC, authenticated'; v_open text;
+  v_anonymous boolean := EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anonymous');
 BEGIN
-  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anonymous') THEN v_roles := v_roles || ', anonymous'; END IF;
+  IF v_anonymous THEN v_roles := v_roles || ', anonymous'; END IF;
   FOR v_function IN
     SELECT p.oid::regprocedure FROM pg_proc p
       JOIN pg_depend d ON d.classid = 'pg_proc'::regclass AND d.objid = p.oid AND d.deptype = 'e'
@@ -29,6 +34,21 @@ BEGIN
   LOOP
     EXECUTE format('REVOKE ALL ON FUNCTION %s FROM %s', v_function, v_roles);
   END LOOP;
+  -- Only a function's owner (or a superuser) can take EXECUTE away from it;
+  -- anyone else gets a warning per function and nothing changes. When a role
+  -- that is not a superuser installs a trusted extension such as these, the
+  -- bootstrap superuser owns its functions, so say at once which ones clients
+  -- can still run. tests/grants.sql fails on them too.
+  SELECT string_agg(p.oid::regprocedure::text, ', ' ORDER BY p.oid::regprocedure::text) INTO v_open
+    FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+    JOIN pg_depend d ON d.classid = 'pg_proc'::regclass AND d.objid = p.oid AND d.deptype = 'e'
+    WHERE n.nspname = 'public' AND (has_function_privilege('public', p.oid, 'EXECUTE')
+      OR has_function_privilege('authenticated', p.oid, 'EXECUTE')
+      OR CASE WHEN v_anonymous THEN has_function_privilege('anonymous', p.oid, 'EXECUTE') ELSE false END);
+  IF v_open IS NOT NULL THEN
+    RAISE WARNING 'Clients can still run these extension functions in public: %', v_open
+      USING HINT = 'The role running this migration does not own them, so it could not revoke EXECUTE. See 0034 in infra/neon/README.md before releasing.';
+  END IF;
 END;
 $$;
 
