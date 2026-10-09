@@ -175,7 +175,7 @@ END;
 $$;
 
 -- Removing: the person who added it or an admin, nobody else. The row and
--- its history stay, with one activity line, and it leaves every view.
+-- its history stay, with one activity line, and both leave every view.
 DO $$
 DECLARE
   v_home uuid := current_setting('test.home')::uuid;
@@ -186,12 +186,14 @@ DECLARE
   d text := '00000000-0000-4000-8000-0000000000d4';
   e text := '00000000-0000-4000-8000-0000000000e5';
   v_zebra_note uuid; v_zebra_task uuid; v_dana_task uuid; v_result jsonb; v_case text; v_snapshot jsonb;
+  v_note_request uuid := gen_random_uuid(); v_event_request uuid := gen_random_uuid(); v_task_request uuid := gen_random_uuid();
+  v_occurrence uuid;
 BEGIN
   -- Blake, a plain member, adds a note, an event and a task for Dana.
   PERFORM set_config('request.jwt.claims', json_build_object('sub', b, 'role', 'authenticated')::text, true);
-  v_zebra_note := (public.create_note(v_home, 'Zebra crossing', 'Other', 'Everyone', '', 'By the school', '[]', gen_random_uuid())->>'id')::uuid;
-  v_zebra_task := (public.create_operation(v_home, 'event', 'visit', 'Zebra visit', current_date, NULL, true, NULL, NULL, 'none', '', gen_random_uuid())->>'id')::uuid;
-  v_dana_task := (public.create_operation(v_home, 'task', 'chore', 'Zebra mural', current_date, NULL, true, d, NULL, 'none', '', gen_random_uuid())->>'id')::uuid;
+  v_zebra_note := (public.create_note(v_home, 'Zebra crossing', 'Other', 'Everyone', '', 'By the school', '[]', v_note_request)->>'id')::uuid;
+  v_zebra_task := (public.create_operation(v_home, 'event', 'visit', 'Zebra visit', current_date, NULL, true, NULL, NULL, 'none', '', v_event_request)->>'id')::uuid;
+  v_dana_task := (public.create_operation(v_home, 'task', 'chore', 'Zebra mural', current_date, NULL, true, d, NULL, 'none', '', v_task_request)->>'id')::uuid;
   IF (public.search_commune_records('Zebra', v_home, 8)->>'total')::int <> 3 THEN RAISE EXCEPTION 'Search did not find the new records'; END IF;
 
   -- Dana, a plain member who did not add them, cannot remove Blake's.
@@ -225,8 +227,15 @@ BEGIN
     END;
   END LOOP;
 
-  -- Blake removes his own; Casey, an admin, removes anyone's.
+  -- Until then, members read the note's earlier versions and the task's history.
   PERFORM set_config('request.jwt.claims', json_build_object('sub', b, 'role', 'authenticated')::text, true);
+  IF (SELECT count(*) FROM public.note_revisions WHERE note_id = v_note) <> 2
+     OR (SELECT count(*) FROM public.operation_occurrences WHERE operation_id = v_task) <> 3 THEN
+    RAISE EXCEPTION 'A member cannot read the history before removal';
+  END IF;
+  v_occurrence := (SELECT id FROM public.operation_occurrences WHERE operation_id = v_task AND undone_at IS NULL ORDER BY acted_at DESC LIMIT 1);
+
+  -- Blake removes his own; Casey, an admin, removes anyone's.
   v_result := public.remove_note(v_zebra_note);
   IF (v_result->>'duplicate')::boolean THEN RAISE EXCEPTION 'First removal reported as a repeat'; END IF;
   IF NOT (public.remove_note(v_zebra_note)->>'duplicate')::boolean THEN RAISE EXCEPTION 'Second removal was not a no-op'; END IF;
@@ -237,7 +246,7 @@ BEGIN
   PERFORM public.remove_operation(v_task);
   IF NOT (public.remove_operation(v_task)->>'duplicate')::boolean THEN RAISE EXCEPTION 'Second task removal was not a no-op'; END IF;
 
-  -- Gone from the snapshot, search and a direct read; history stays.
+  -- Gone from the snapshot, search and a direct read, history included.
   v_snapshot := public.commune_snapshot(v_home);
   IF EXISTS (SELECT 1 FROM jsonb_array_elements(v_snapshot->'notes') x WHERE (x->>'id')::uuid IN (v_note, v_zebra_note))
      OR EXISTS (SELECT 1 FROM jsonb_array_elements(v_snapshot->'operations') x WHERE (x->>'id')::uuid IN (v_task, v_zebra_task, v_dana_task)) THEN
@@ -254,9 +263,11 @@ BEGIN
      OR EXISTS (SELECT 1 FROM public.commune_operations WHERE id IN (v_task, v_zebra_task, v_dana_task)) THEN
     RAISE EXCEPTION 'A member can still read a removed record';
   END IF;
-  IF (SELECT count(*) FROM public.note_revisions WHERE note_id = v_note) <> 2
-     OR (SELECT count(*) FROM public.operation_occurrences WHERE operation_id = v_task) <> 3 THEN
-    RAISE EXCEPTION 'Removing lost the history';
+  -- A removed note's earlier versions (an old door code, say) and a removed
+  -- task's history are not shown to anyone, the admin who removed them included.
+  IF EXISTS (SELECT 1 FROM public.note_revisions WHERE note_id = v_note)
+     OR EXISTS (SELECT 1 FROM public.operation_occurrences WHERE operation_id = v_task) THEN
+    RAISE EXCEPTION 'A removed record''s history can still be read';
   END IF;
   IF (SELECT count(*) FROM public.commune_events WHERE entity_id IN (v_note, v_zebra_note, v_task, v_zebra_task, v_dana_task) AND description = 'Removed') <> 5
      OR NOT EXISTS (SELECT 1 FROM public.commune_events WHERE entity_id = v_task AND description = 'Removed' AND actor_id = c AND title = 'Water the plants and herbs') THEN
@@ -272,19 +283,40 @@ BEGIN
         WHEN 'complete' THEN PERFORM public.record_operation_occurrence(v_task, 'completed', current_date + 14, current_date, gen_random_uuid());
         WHEN 'skip' THEN PERFORM public.record_operation_occurrence(v_task, 'skipped', current_date + 14, current_date, gen_random_uuid());
         WHEN 'hand over' THEN PERFORM public.hand_over_operation(v_task, b, current_date + 14, d, current_date, NULL, gen_random_uuid());
-        ELSE PERFORM public.undo_operation_occurrence((SELECT id FROM public.operation_occurrences WHERE operation_id = v_task AND undone_at IS NULL ORDER BY acted_at DESC LIMIT 1));
+        ELSE PERFORM public.undo_operation_occurrence(v_occurrence);
       END CASE;
       RAISE EXCEPTION 'A removed record accepted: %', v_case;
     EXCEPTION WHEN raise_exception THEN
       IF SQLERRM NOT IN ('This note has been removed', 'This task has been removed') THEN RAISE; END IF;
     END;
   END LOOP;
+
+  -- Blake retries his adds after they were removed: each is refused rather
+  -- than handing back the hidden record. The history stays out of his sight.
+  PERFORM set_config('request.jwt.claims', json_build_object('sub', b, 'role', 'authenticated')::text, true);
+  FOREACH v_case IN ARRAY ARRAY['note', 'event', 'task'] LOOP
+    BEGIN
+      CASE v_case
+        WHEN 'note' THEN v_result := public.create_note(v_home, 'Zebra crossing', 'Other', 'Everyone', '', 'By the school', '[]', v_note_request);
+        WHEN 'event' THEN v_result := public.create_operation(v_home, 'event', 'visit', 'Zebra visit', current_date, NULL, true, NULL, NULL, 'none', '', v_event_request);
+        ELSE v_result := public.create_operation(v_home, 'task', 'chore', 'Zebra mural', current_date, NULL, true, d, NULL, 'none', '', v_task_request);
+      END CASE;
+      RAISE EXCEPTION 'A retried add returned a removed %: %', v_case, v_result;
+    EXCEPTION WHEN raise_exception THEN
+      IF SQLERRM <> format('This %s has been removed', v_case) THEN RAISE; END IF;
+    END;
+  END LOOP;
+  IF EXISTS (SELECT 1 FROM public.note_revisions WHERE note_id = v_note)
+     OR EXISTS (SELECT 1 FROM public.operation_occurrences WHERE operation_id = v_task) THEN
+    RAISE EXCEPTION 'A member can still read a removed record''s history';
+  END IF;
   PERFORM set_config('test.dana_task', v_dana_task::text, true);
 END;
 $$;
 
--- As the owner: removed rows are kept, with who removed them. When Dana
--- leaves, a removed task of hers is left alone and adds no history line.
+-- As the owner: removed rows and their history are kept, with who removed
+-- them. When Dana leaves, a removed task of hers is left alone and adds no
+-- history line.
 RESET ROLE;
 DO $$
 DECLARE
@@ -294,6 +326,10 @@ BEGIN
   IF (SELECT count(*) FROM public.commune_notes WHERE commune_id = v_home AND deleted_at IS NOT NULL AND deleted_by IS NOT NULL) <> 2
      OR (SELECT count(*) FROM public.commune_operations WHERE commune_id = v_home AND deleted_at IS NOT NULL AND deleted_by IS NOT NULL) <> 3 THEN
     RAISE EXCEPTION 'Removed rows were not kept';
+  END IF;
+  IF (SELECT count(*) FROM public.note_revisions WHERE note_id = current_setting('test.note')::uuid) <> 2
+     OR (SELECT count(*) FROM public.operation_occurrences WHERE operation_id = current_setting('test.task')::uuid) <> 3 THEN
+    RAISE EXCEPTION 'Removing lost the history';
   END IF;
   PERFORM set_config('request.jwt.claims', json_build_object('sub', '00000000-0000-4000-8000-0000000000a1', 'role', 'authenticated')::text, true);
   UPDATE public.commune_members SET active = false WHERE commune_id = v_home AND user_id = '00000000-0000-4000-8000-0000000000d4';

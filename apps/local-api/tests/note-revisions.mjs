@@ -91,8 +91,14 @@ assert.deepEqual([saved.version, saved.body, saved.revisions.length], [4, "Route
   assert.deepEqual(saved.revisions.map(item => item.version), [4, 3, 2, 1]);
 }
 
-// Removing a note takes it out of the commune and keeps its history.
+// Removing a note takes it and its earlier versions out of the commune. The
+// database keeps them, but nobody reads them afterwards: not its members,
+// and not someone who joins later.
 ok(await a("DELETE", `/notes/${wifi}`));
 assert.equal(await note(wifi), undefined);
-assert.equal(ok(await b("GET", `/notes/${wifi}/revisions/${first.id}`)).revision.body, "Router in the hall");
+const joining = ok(await a("POST", `/communes/${id}/invites`, { email: users[2].email, role: "member" }), 201);
+ok(await outsider("POST", `/invites/${joining.token}/accept`, {}));
+for (const call of [a, b, outsider]) {
+  assert.deepEqual(await call("GET", `/notes/${wifi}/revisions/${first.id}`), { status: 404, error: "Revision not found" });
+}
 console.log(`note revision integration passed (${base})`);

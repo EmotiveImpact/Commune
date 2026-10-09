@@ -193,6 +193,22 @@ describe("hosted money lifecycle and task commands", () => {
     expect(mocks.from).not.toHaveBeenCalled();
   });
 
+  it("answers not found for an earlier version the members' view leaves out, as for a removed note", async () => {
+    // Row security returns no row for a removed note's revisions, the same
+    // empty answer as for an id that never existed.
+    const filters: Array<[string, string]> = [];
+    const query = {
+      select: vi.fn(() => query),
+      eq: vi.fn((column: string, value: string) => { filters.push([column, value]); return query; }),
+      then: (resolve: (value: unknown) => unknown) => resolve({ data: [], error: null }),
+    };
+    mocks.from.mockReturnValue(query);
+    await expect(send("/notes/note-1/revisions/rev-1", undefined, "GET")).rejects.toMatchObject({ status: 404, message: "Revision not found" });
+    expect(mocks.from).toHaveBeenCalledWith("note_revisions");
+    expect(filters).toEqual([["note_id", "note-1"], ["id", "rev-1"]]);
+    expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+
   it("adds, edits and removes tasks through commands, without status or completion", async () => {
     const item = { kind: "task", category: "chore", title: "Bins", date: "2026-10-09", time: null, allDay: true,
       assigneeId: "avery", rotationIds: ["avery", "blake"], repeat: "weekly", notes: "" };

@@ -3,14 +3,16 @@
 -- task's status, completion and timestamps, delete a note or task outright,
 -- and save over an edit someone made in the meantime.
 --
--- * Adding carries a request id, so a retry returns what it already added.
+-- * Adding carries a request id, so a retry returns what it already added,
+--   or says it has since been removed.
 -- * Editing names the version it was based on, and a stale edit is refused.
 --   Every change to a task moves it to its next version, so an edit opened
 --   before a completion, skip or handover cannot quietly undo it. An edit
 --   changes what a task is, when it happens and who does it; never its
 --   status, its completion or its timestamps.
--- * Removing hides the row and keeps it and its history. Only the person who
---   added it or an admin can remove it, and the activity history says so.
+-- * Removing hides the row and its history (a note's earlier versions, a
+--   task's occurrences) and keeps both. Only the person who added it or an
+--   admin can remove it, and the activity history says so.
 -- * A commune holds up to 500 notes and 1,000 tasks and events.
 --
 -- The client write grants and policies are dropped. A client that writes the
@@ -52,6 +54,15 @@ ALTER POLICY commune_notes_read ON public.commune_notes
   USING (public.is_commune_member(commune_id) AND deleted_at IS NULL);
 ALTER POLICY commune_operations_read ON public.commune_operations
   USING (public.is_commune_member(commune_id) AND deleted_at IS NULL);
+-- Removed means not shown anywhere: a removed note's earlier versions (an old
+-- door code, say) and a removed task's history are hidden too, from members
+-- who joined later as much as from those who were there. The rows stay.
+ALTER POLICY note_revision_read ON public.note_revisions
+  USING (public.is_commune_member(commune_id)
+    AND EXISTS (SELECT 1 FROM public.commune_notes n WHERE n.id = note_id AND n.deleted_at IS NULL));
+ALTER POLICY operation_occurrence_read ON public.operation_occurrences
+  USING (public.is_commune_member(commune_id)
+    AND EXISTS (SELECT 1 FROM public.commune_operations o WHERE o.id = operation_id AND o.deleted_at IS NULL));
 
 -- Each command writes its own activity line. The generic one (0013) would
 -- add a second line for the same change.
@@ -131,7 +142,8 @@ END;
 $$;
 REVOKE ALL ON FUNCTION commune_private.operation_content(text, text, text, date, time, boolean, text, jsonb, text, text) FROM PUBLIC;
 
--- Any member adds a note. A retry with the same request id returns it.
+-- Any member adds a note. A retry with the same request id returns it, unless
+-- it has since been removed.
 CREATE FUNCTION public.create_note(p_commune_id uuid, p_title text, p_pill text, p_kicker text,
   p_lede text, p_body text, p_facts jsonb, p_request_id uuid)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
@@ -155,6 +167,10 @@ BEGIN
   IF FOUND THEN
     IF v_existing.commune_id <> p_commune_id OR v_existing.request_digest IS DISTINCT FROM md5(v_card::text) THEN
       RAISE EXCEPTION 'This request was already used for a different change' USING ERRCODE = '22023';
+    END IF;
+    -- A late retry must not hand back a note that has since been removed.
+    IF v_existing.deleted_at IS NOT NULL THEN
+      RAISE EXCEPTION 'This note has been removed' USING ERRCODE = 'P0001';
     END IF;
     RETURN jsonb_build_object('id', v_existing.id, 'version', v_existing.version, 'duplicate', true);
   END IF;
@@ -267,6 +283,10 @@ BEGIN
     IF v_existing.commune_id <> p_commune_id OR v_existing.request_digest IS DISTINCT FROM md5(v_item::text) THEN
       RAISE EXCEPTION 'This request was already used for a different change' USING ERRCODE = '22023';
     END IF;
+    -- A late retry must not hand back a task or event that has since been removed.
+    IF v_existing.deleted_at IS NOT NULL THEN
+      RAISE EXCEPTION 'This % has been removed', v_existing.kind USING ERRCODE = 'P0001';
+    END IF;
     RETURN jsonb_build_object('id', v_existing.id, 'version', v_existing.version, 'duplicate', true);
   END IF;
   IF (SELECT count(*) FROM public.commune_operations WHERE commune_id = p_commune_id AND deleted_at IS NULL) >= 1000 THEN
@@ -294,11 +314,17 @@ CREATE FUNCTION public.update_operation(p_operation_id uuid, p_expected_version 
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
 DECLARE
   v_actor text := commune_private.data_api_user_id();
+  v_commune_id uuid;
   v_op public.commune_operations%ROWTYPE;
   v_item jsonb;
   v_new public.commune_operations%ROWTYPE;
   v_version integer;
 BEGIN
+  -- The commune first, then the task: the order a member leaving takes them
+  -- in (manage_commune_member, then reassign_departed_member). The other
+  -- order lets the two wait on each other until one fails as a deadlock.
+  SELECT commune_id INTO v_commune_id FROM public.commune_operations WHERE id = p_operation_id;
+  PERFORM 1 FROM public.communes WHERE id = v_commune_id FOR UPDATE;
   SELECT * INTO v_op FROM public.commune_operations WHERE id = p_operation_id FOR UPDATE;
   IF v_op.id IS NULL OR NOT public.is_commune_member(v_op.commune_id) THEN
     RAISE EXCEPTION 'Not a commune member' USING ERRCODE = '42501';
@@ -345,9 +371,13 @@ CREATE FUNCTION public.remove_operation(p_operation_id uuid)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
 DECLARE
   v_actor text := commune_private.data_api_user_id();
+  v_commune_id uuid;
   v_op public.commune_operations%ROWTYPE;
   v_version integer;
 BEGIN
+  -- The commune first, then the task, as in update_operation.
+  SELECT commune_id INTO v_commune_id FROM public.commune_operations WHERE id = p_operation_id;
+  PERFORM 1 FROM public.communes WHERE id = v_commune_id FOR UPDATE;
   SELECT * INTO v_op FROM public.commune_operations WHERE id = p_operation_id FOR UPDATE;
   IF v_op.id IS NULL OR NOT public.is_commune_member(v_op.commune_id) THEN
     RAISE EXCEPTION 'Not a commune member' USING ERRCODE = '42501';

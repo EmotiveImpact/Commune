@@ -49,12 +49,12 @@ browser code sends same-origin `/api` requests. Non-2xx errors are
 | POST | `/api/invites/:token/accept` | `{}` matching signed-in email | `{communeId}` |
 | POST | `/api/invites/:id/revoke` | `{}` admin | `{ok:true}` |
 | GET/PUT | `/api/preferences` | PUT `{emailReminders:boolean}` | `{emailReminders}` |
-| POST | `/api/communes/:id/notes` | `{title,pill,kicker,lede,body,facts,requestId}`; any member; at most 500 notes per commune; a repeated `requestId` returns the same note | `{id,version,duplicate}` (201, or 200 for a repeat) |
+| POST | `/api/communes/:id/notes` | `{title,pill,kicker,lede,body,facts,requestId}`; any member; at most 500 notes per commune; a repeated `requestId` returns the same note, or 409 once it has been removed | `{id,version,duplicate}` (201, or 200 for a repeat) |
 | PUT | `/api/notes/:id` | the same fields with `expectedVersion`; a stale version is 409 and saves nothing; an unchanged save is `duplicate` | `{id,version,duplicate}` |
-| DELETE | `/api/notes/:id` | the person who added it or an admin; it leaves every list and keeps its revisions; repeating is harmless | `{id,version,duplicate}` |
-| POST | `/api/communes/:id/operations` | `{kind,category,title,date,time,allDay,assigneeId,rotationIds,repeat,notes,requestId}`; any member; at most 1,000 tasks and events per commune; a new task is open; a repeated `requestId` returns the same one | `{id,version,duplicate}` (201, or 200 for a repeat) |
+| DELETE | `/api/notes/:id` | the person who added it or an admin; it and its earlier versions leave every view and are kept; repeating is harmless | `{id,version,duplicate}` |
+| POST | `/api/communes/:id/operations` | `{kind,category,title,date,time,allDay,assigneeId,rotationIds,repeat,notes,requestId}`; any member; at most 1,000 tasks and events per commune; a new task is open; a repeated `requestId` returns the same one, or 409 once it has been removed | `{id,version,duplicate}` (201, or 200 for a repeat) |
 | PUT | `/api/operations/:id` | the same fields with `expectedVersion`; changes what, when and who only, never status or completion; any occurrence or handover since makes the edit stale (409) | `{id,version,duplicate}` |
-| DELETE | `/api/operations/:id` | the person who added it or an admin; occurrences and activity are kept; repeating is harmless | `{id,version,duplicate}` |
+| DELETE | `/api/operations/:id` | the person who added it or an admin; it and its occurrences leave every view and are kept, as is the activity; repeating is harmless | `{id,version,duplicate}` |
 | POST | `/api/operations/:id/occurrences` | `{action:"completed"\|"skipped"\|"reopened",expectedDate,today,requestId,reason?}`; the database advances the date and rotation; a stale `expectedDate` is 409; only a skip takes a `reason` (up to 200 characters) | `{id,duplicate,date,assignee,assigneeId,turnOwnerId,status}` |
 | POST | `/api/operations/:id/handovers` | `{toMemberId,expectedDate,expectedAssigneeId,today,reason?,requestId}`; any member hands the current occurrence to another active member; on a task that takes turns the rotation then carries on from the person whose turn it was; a stale date or holder is 409 | `{id,duplicate,date,assignee,assigneeId,turnOwnerId,status}` |
 | POST | `/api/communes/:id/announcements` | `{title,body?,needsAcknowledgement,requestId}` admin only; title up to 80, body up to 1000 characters; at most 20 up at once; a repeated `requestId` returns the same notice | `{id,duplicate,archived}` (201, or 200 for a repeat) |
@@ -103,8 +103,8 @@ former-member protection, including retries and parallel requests.
 rotation, concurrent completion, handovers and skip reasons. Both refuse port 3002.
 
 `note-and-task-commands.mjs` needs 0027 and covers retried and reused adds, stale
-note and task edits (a completion makes an open task edit stale), and who may
-remove a note or task.
+note and task edits (a completion makes an open task edit stale), who may
+remove a note or task, and retries after removal.
 
 `invites-pledges-requests.mjs` needs 0028 and covers invitation senders,
 invitations withdrawn when their sender is removed or demoted, retried and

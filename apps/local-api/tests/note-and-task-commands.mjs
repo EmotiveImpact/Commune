@@ -79,6 +79,9 @@ assert.equal((await outsider("DELETE", `/notes/${note.id}`)).status, 403);
 assert.equal(ok(await b("DELETE", `/notes/${note.id}`)).duplicate, false);
 assert.equal(ok(await b("DELETE", `/notes/${note.id}`)).duplicate, true);
 assert.equal((await snapshot()).notes.length, 0);
+// A late retry of the add is refused, rather than handing back the removed note.
+const lateNote = await b("POST", `/communes/${id}/notes`, { ...card, requestId: noteRequest });
+assert.deepEqual([lateNote.status, lateNote.error], [409, "This note has been removed"]);
 assert.equal((await c("PUT", `/notes/${note.id}`, { ...card, expectedVersion: 2 })).status, 409);
 assert.deepEqual(await events(note.id), ["Created", "Removed", "Updated"]);
 // An admin removes a note someone else added.
@@ -113,7 +116,8 @@ row = (await snapshot()).operations.find(item => item.id === task.id);
 assert.deepEqual([row.title, row.status, row.lastDone], ["Hoover the stairs and hall", "open", { by: blake.name, date: today }]);
 
 // Casey cannot remove a task Blake added; Avery, an admin, can. It leaves
-// the calendar, keeps its history and takes no further actions.
+// the calendar, keeps its history and takes no further actions; a late retry
+// of its add is refused.
 const refusedTask = await c("DELETE", `/operations/${task.id}`);
 assert.equal(refusedTask.status, 403);
 assert.match(refusedTask.error, /Only the person who added this or an admin can remove it/);
@@ -122,6 +126,8 @@ assert.equal((await snapshot()).operations.some(item => item.id === task.id), fa
 const late = await c("POST", `/operations/${task.id}/occurrences`, { action: "completed", expectedDate: row.date, today, requestId: randomUUID() });
 assert.equal(late.status, 409);
 assert.match(late.error, /This task has been removed/);
+const lateAdd = await b("POST", `/communes/${id}/operations`, { ...chore, requestId: taskRequest });
+assert.deepEqual([lateAdd.status, lateAdd.error], [409, "This task has been removed"]);
 assert.deepEqual(await events(task.id), ["Completed. Next: Casey Commands", "Created", "Removed", "Updated"]);
 // The person who added a task can remove it too.
 const visit = ok(await c("POST", `/communes/${id}/operations`, { kind: "event", category: "visit", title: "Gas safety check", date: today,

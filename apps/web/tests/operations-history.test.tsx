@@ -439,6 +439,45 @@ describe("adding, editing and removing tasks as commands", () => {
     expect(puts[1]).toMatchObject({ expectedVersion: 4, title: "Put the bins and recycling out", assigneeId: "user-2", date: addDays(today, 5) });
   });
 
+  it("knows its own save when the reply was lost, and builds the next save on it", async () => {
+    current.operations = [{ ...rota, assigneeId: user.id, rotationIds: [user.id, "user-2"], version: 3 }];
+    const puts: Array<Record<string, unknown>> = [];
+    vi.mocked(api).mockImplementation(async (path, init) => {
+      if (path === "/auth/me") return { user };
+      if (path === "/reminders/usage") return { totalUsed: 0, totalLimit: 60, recipientLimit: 8, recipientUsage: {}, nextSlotAt: null };
+      if (path.endsWith("/invites")) return { invites: [] };
+      if (path === "/operations/task-1" && init?.method === "PUT") {
+        const body = JSON.parse(String(init.body));
+        puts.push(body);
+        const saved = current.operations![0];
+        if (body.expectedVersion !== saved.version) {
+          throw new ApiError("This task was changed by someone else. Review the latest version before saving your changes.", 409);
+        }
+        // A new snapshot object, so the page sees it only when it next loads.
+        current = { ...current, operations: [{ ...saved, title: body.title, notes: body.notes, version: saved.version! + 1 }] };
+        // The first save goes through, but its reply never arrives.
+        if (puts.length === 1) throw new TypeError("Failed to fetch");
+        return { id: "task-1", version: saved.version! + 1, duplicate: false };
+      }
+      return { ok: true };
+    });
+    const dialog = await openEdit();
+    fireEvent.change(within(dialog).getByLabelText(/^Title/), { target: { value: "Put the bins and recycling out" } });
+    await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Save changes" })); });
+    expect(within(dialog).getByRole("alert").textContent).toBe(UNCERTAIN_RETRY_SAFE);
+    // A refresh brings in version 4, which is exactly what this form sent:
+    // this person's own change, not someone else's.
+    await act(async () => { await app.refresh(); });
+    expect(within(dialog).queryByText(/changed while you were editing/)).toBeNull();
+    expect(within(dialog).getByRole("status").textContent).toBe("Your last save went through.");
+    const save = within(dialog).getByRole("button", { name: "Save changes" }) as HTMLButtonElement;
+    expect(save.disabled).toBe(false);
+    fireEvent.change(within(dialog).getByLabelText("Details"), { target: { value: "Green bin too" } });
+    await act(async () => { fireEvent.click(save); });
+    expect(puts.map((body) => body.expectedVersion)).toEqual([3, 4]);
+    expect(current.operations![0]).toMatchObject({ title: "Put the bins and recycling out", notes: "Green bin too", version: 5 });
+  });
+
   it("notices a change that arrives while the edit is open, before anything is saved", async () => {
     const dialog = await openEdit();
     current.operations = [{ ...rota, date: addDays(today, 5), assignee: "Housemate Two", version: 2 }];
