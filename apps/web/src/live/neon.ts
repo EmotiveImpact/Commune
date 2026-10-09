@@ -358,6 +358,10 @@ function resetFailure(error: unknown): never {
 async function route<T>(path: string, init: RequestInit): Promise<T> {
   const method = (init.method ?? "GET").toUpperCase();
   const body = payload(init);
+  // Everything but signing in and out reads or changes records, and does it
+  // only for the account this tab shows. The Data API token belongs to
+  // whoever holds the shared session now, which may be someone else.
+  if (!path.startsWith("/auth/")) await requireUser();
   let response: unknown;
   if (path === "/auth/me" && method === "GET") response = { user: await currentUser() };
   else if (path === "/auth/login" && method === "POST") {

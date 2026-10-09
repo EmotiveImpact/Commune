@@ -595,7 +595,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     loadedRef.current = true;
   }, [publishData]);
 
-  const refresh = useCallback(async () => {
+  // announce: whether a sign-in this finds may be told to the other tabs.
+  // Only a load this tab started itself may tell them (see the listener).
+  const load = useCallback(async (announce: boolean) => {
     const sequence = ++refreshSequence.current;
     const shownBefore = currentViewer();
     refreshing.current = true;
@@ -626,6 +628,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
       refusedAction.current = false;
       setViewer(result.user.id);
+      // A tab that showed no one now shows this account: a sign-in, however
+      // it happened (password, code, or the return from Google), or a new
+      // tab opening. Tell the other tabs.
+      if (announce && !shown) announceSession(result.user.id);
       setSignOutUnconfirmed(false);
       setSessionNotice(null);
       const { communes } = await startupRead(() => loadCommunes(result.user!));
@@ -697,16 +703,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (sequence === refreshSequence.current) refreshing.current = false;
     }
   }, [forgetSession, loadVisibleSnapshots, publishData]);
+  const refresh = useCallback(() => load(true), [load]);
 
   // Another tab signed in or out. A tab showing an account that is no longer
   // the signed-in one forgets it (its screens then ask for a sign-in); a
-  // signed-out tab picks up a new sign-in.
+  // signed-out tab picks up a new sign-in. Neither tells anyone: a load
+  // started here never announces, so one message can never lead to another,
+  // even when the session is refused and every tab goes back to signed out.
   useEffect(() => onOtherTabSession((userId) => {
     const shown = dataRef.current?.user.id ?? null;
     if (userId === shown) return;
     if (shown) forgetSession("You signed out or changed account in another tab.");
-    else if (userId) void refresh();
-  }), [forgetSession, refresh]);
+    else if (userId) void load(false);
+  }), [forgetSession, load]);
 
   useEffect(() => {
     void refresh();
@@ -762,14 +771,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setPrefs(next);
   }, [data, prefs]);
 
-  const announceSignIn = useCallback(() => {
-    if (dataRef.current) announceSession(dataRef.current.user.id);
-  }, []);
+  // A sign-in ends in a refresh, which tells the other tabs. For Google it is
+  // the one that runs when the page comes back from Google.
   const signInWithPassword = useCallback((email: string, password: string) => mutate(async () => {
     await post("/auth/login", { email, password });
     await refresh();
-    announceSignIn();
-  }), [announceSignIn, mutate, refresh]);
+  }), [mutate, refresh]);
   const signInWithGoogle = useCallback(() => mutate(async () => {
     await post("/auth/google", {});
   }), [mutate]);
@@ -777,14 +784,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const result = await post<{ verificationRequired?: boolean }>("/auth/signup", { name, email, password });
     if (result.verificationRequired) return "verify" as const;
     await refresh();
-    announceSignIn();
     return "ready" as const;
-  }), [announceSignIn, mutate, refresh]);
+  }), [mutate, refresh]);
   const verifyEmailCode = useCallback((email: string, code: string) => mutate(async () => {
     await post("/auth/verify-email", { email, code });
     await refresh();
-    announceSignIn();
-  }), [announceSignIn, mutate, refresh]);
+  }), [mutate, refresh]);
   const confirmSignOut = useCallback(async () => {
     try {
       await post("/auth/logout", {});
