@@ -193,7 +193,10 @@ export function CorrectExpenseDialog({ expense, names, onClose, onSaved }: {
     } catch (cause) {
       const failure = commandFailure(cause, "Could not save the correction.");
       if (!failure.rejected) setUncertain(true);
-      setError(failure.rejected ? `${failure.message.replace(/\.$/, "")}. Nothing was changed.` : UNCERTAIN_RETRY_SAFE);
+      // Once an attempt may have saved, a later refusal does not mean nothing was.
+      setError(!failure.rejected ? UNCERTAIN_RETRY_SAFE
+        : uncertain ? "An earlier attempt may already have saved this correction. Close this and check the expense’s history before trying again."
+          : `${failure.message.replace(/\.$/, "")}. Nothing was changed.`);
     } finally {
       setPending(false);
     }
@@ -309,7 +312,10 @@ export function VoidExpenseDialog({ expense, onClose, onSaved }: {
     } catch (cause) {
       const failure = commandFailure(cause, "Could not void the expense.");
       if (!failure.rejected) setUncertain(true);
-      setError(failure.rejected ? `${failure.message.replace(/\.$/, "")}. Nothing was changed.` : UNCERTAIN_RETRY_SAFE);
+      // Once an attempt may have saved, a later refusal does not mean nothing was.
+      setError(!failure.rejected ? UNCERTAIN_RETRY_SAFE
+        : uncertain ? "An earlier attempt may already have voided this expense. Close this and check the expense before trying again."
+          : `${failure.message.replace(/\.$/, "")}. Nothing was changed.`);
     } finally {
       setPending(false);
     }

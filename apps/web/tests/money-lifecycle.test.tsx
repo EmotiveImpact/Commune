@@ -636,6 +636,42 @@ describe("safe expense correction and void", () => {
     expect(within(windowFrame).getByRole("status").textContent).toContain("Expense voided.");
   });
 
+  it("never says nothing was changed once an earlier correction may have saved", async () => {
+    let lost = true;
+    mockChange(() => {
+      if (lost) { lost = false; throw new TypeError("Failed to fetch"); }
+      throw new ApiError("This expense was changed by someone else. Review the latest version.", 409);
+    });
+    const { dialog } = await openCorrection();
+    fireEvent.change(within(dialog).getByLabelText("Total (GBP)"), { target: { value: "30.00" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Review changes" }));
+    fireEvent.change(within(dialog).getByLabelText("Reason for the correction"), { target: { value: "Receipt total was wrong" } });
+    await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Save correction" })); });
+    expect(within(dialog).getByRole("alert").textContent).toContain("Trying again will not record it twice.");
+    // The retry is refused: perhaps because the first attempt went through.
+    await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Save correction" })); });
+    expect(within(dialog).getByRole("alert").textContent)
+      .toBe("An earlier attempt may already have saved this correction. Close this and check the expense’s history before trying again.");
+  });
+
+  it("never says nothing was changed once an earlier void may have saved", async () => {
+    let lost = true;
+    mockChange(() => {
+      if (lost) { lost = false; throw new TypeError("Failed to fetch"); }
+      throw new ApiError("This expense was changed by someone else. Review the latest version.", 409);
+    });
+    mount("/expenses");
+    fireEvent.click(await screen.findByRole("button", { name: /House supplies/ }));
+    fireEvent.click(within(await screen.findByRole("dialog", { name: "House supplies" })).getByRole("button", { name: "Void" }));
+    const dialog = screen.getByRole("dialog", { name: "Void this expense?" });
+    fireEvent.change(within(dialog).getByLabelText("Reason for voiding"), { target: { value: "Entered twice" } });
+    await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Void expense" })); });
+    expect(within(dialog).getByRole("alert").textContent).toContain("Trying again will not record it twice.");
+    await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Void expense" })); });
+    expect(within(dialog).getByRole("alert").textContent)
+      .toBe("An earlier attempt may already have voided this expense. Close this and check the expense before trying again.");
+  });
+
   it("keeps a voided expense as history that never counts towards a balance", async () => {
     current.expenses = [{ ...owedExpense(), version: 2, voidedAt: "2026-01-08T09:00:00Z", voidedBy: user.id, voidReason: "Entered twice",
       revisions: [{ id: "rev-1", version: 2, action: "voided", actorId: user.id, reason: "Entered twice", createdAt: "2026-01-08T09:00:00Z",
