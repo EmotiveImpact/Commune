@@ -59,4 +59,43 @@ BEGIN
 END;
 $$;
 
+-- An admin moving a member's pledge date 200 times leaves the member one
+-- notice, saying what the latest change was.
+DO $$
+DECLARE v_home uuid; v_fund uuid; v_pledge uuid; v_due date := current_date + 1; v_count integer;
+BEGIN
+  PERFORM set_config('request.jwt.claims', json_build_object('sub', 'pledge-alice', 'role', 'authenticated')::text, true);
+  v_home := public.create_commune('Pledge notices', 'household', 'GBP');
+  INSERT INTO public.commune_members (commune_id, user_id, role) VALUES (v_home, 'pledge-bea', 'member');
+  v_fund := public.create_fund(v_home, 'Boiler', 50000);
+  PERFORM set_config('request.jwt.claims', json_build_object('sub', 'pledge-bea', 'role', 'authenticated')::text, true);
+  v_pledge := public.pledge_fund(v_fund, 10000, v_due);
+  PERFORM set_config('request.jwt.claims', json_build_object('sub', 'pledge-alice', 'role', 'authenticated')::text, true);
+  FOR i IN 1..200 LOOP
+    PERFORM public.update_fund_pledge(v_pledge, 10000, v_due + i, false, NULL, NULL);
+  END LOOP;
+  SELECT count(*) INTO v_count FROM public.notifications WHERE recipient_user_id = 'pledge-bea';
+  IF v_count <> 1 OR (SELECT detail FROM public.notifications WHERE recipient_user_id = 'pledge-bea')
+      IS DISTINCT FROM format('Due date moved from %s to %s.', to_char(v_due + 199, 'FMDD Mon YYYY'), to_char(v_due + 200, 'FMDD Mon YYYY')) THEN
+    RAISE EXCEPTION 'Moving a pledge 200 times should leave one up-to-date notice, found %', v_count;
+  END IF;
+
+  -- Once Bea has read it, the next change is new news.
+  UPDATE public.notifications SET read_at = now() WHERE recipient_user_id = 'pledge-bea';
+  PERFORM public.update_fund_pledge(v_pledge, 9000, v_due + 200, false, NULL, NULL);
+  IF (SELECT count(*) FROM public.notifications WHERE recipient_user_id = 'pledge-bea' AND read_at IS NULL) <> 1
+     OR (SELECT count(*) FROM public.notifications WHERE recipient_user_id = 'pledge-bea') <> 2 THEN
+    RAISE EXCEPTION 'A change after the notice was read should add a new notice';
+  END IF;
+
+  -- Once she is no longer a member, a change leaves her unread notice as it was.
+  UPDATE public.commune_members SET active = false WHERE commune_id = v_home AND user_id = 'pledge-bea';
+  PERFORM public.update_fund_pledge(v_pledge, 9000, v_due + 201, false, NULL, NULL);
+  IF (SELECT detail FROM public.notifications WHERE recipient_user_id = 'pledge-bea' AND read_at IS NULL)
+      IS DISTINCT FROM 'Lowered from £100.00 to £90.00.' THEN
+    RAISE EXCEPTION 'A former member''s notice was changed';
+  END IF;
+END;
+$$;
+
 ROLLBACK;

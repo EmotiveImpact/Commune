@@ -1,8 +1,9 @@
 -- A member could fill another's notices by repeating an action: reporting and
 -- withdrawing a payment 2,000 times left the payer 2,000 notices, all sent on
--- every load. A repeat now brings the person's unread notice up to date
--- instead of adding another, the bell carries the latest 100 notices (unread
--- first), and a share can be reported at most 10 times a day. Apply after 0031.
+-- every load, and an admin moving someone's pledge date did the same. A repeat
+-- now brings the person's unread notice up to date instead of adding another,
+-- the bell carries the latest 100 notices (unread first), and a share can be
+-- reported at most 10 times a day. Apply after 0031.
 BEGIN;
 
 -- One unread notice per expense, kind and person who acted.
@@ -45,6 +46,29 @@ BEGIN
   END IF;
   INSERT INTO public.expense_share_payment_reports (share_id, reported_by, amount_minor, sent_on, reference, request_id)');
   IF v_source = v_original THEN RAISE EXCEPTION 'Unsupported payment report definition'; END IF;
+  EXECUTE v_source;
+
+  -- One unread notice per pledge, kind and person who acted, as for expenses,
+  -- and only for someone who is still a member. Changes to one pledge queue
+  -- on its row lock, so two cannot both add one.
+  v_original := pg_get_functiondef('commune_private.notify_pledge(uuid,text,text,uuid,text,bigint,text)'::regprocedure);
+  v_source := replace(v_original,
+    '    WHERE m.commune_id = p_commune_id AND m.user_id = p_recipient AND m.active);',
+    '    WHERE m.commune_id = p_commune_id AND m.user_id = p_recipient AND m.active)
+    AND NOT EXISTS (SELECT 1 FROM public.notifications n WHERE n.recipient_user_id = p_recipient
+      AND n.commune_id = p_commune_id AND n.commitment_id = p_commitment_id AND n.notice_kind = p_kind
+      AND n.actor_user_id = p_actor AND n.read_at IS NULL);');
+  IF v_source = v_original THEN RAISE EXCEPTION 'Unsupported pledge notice definition'; END IF;
+  v_original := v_source;
+  v_source := replace(v_original,
+    '  INSERT INTO public.notifications (commune_id, recipient_user_id, notice_kind, commitment_id, actor_user_id, amount_minor, detail)',
+    '  UPDATE public.notifications SET amount_minor = p_amount_minor, detail = left(p_detail, 240), created_at = now()
+    WHERE recipient_user_id = p_recipient AND commune_id = p_commune_id AND commitment_id = p_commitment_id
+      AND notice_kind = p_kind AND actor_user_id = p_actor AND read_at IS NULL
+      AND p_recipient <> p_actor AND EXISTS (SELECT 1 FROM public.commune_members m
+        WHERE m.commune_id = p_commune_id AND m.user_id = p_recipient AND m.active);
+  INSERT INTO public.notifications (commune_id, recipient_user_id, notice_kind, commitment_id, actor_user_id, amount_minor, detail)');
+  IF v_source = v_original THEN RAISE EXCEPTION 'Unsupported pledge notice definition'; END IF;
   EXECUTE v_source;
 END;
 $$;

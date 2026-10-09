@@ -336,7 +336,8 @@ BEGIN
     RAISE EXCEPTION 'A pledge went below its recorded contributions';
   EXCEPTION WHEN invalid_parameter_value THEN NULL;
   END;
-  -- Lowering and moving later are allowed, and each is reported to Blake.
+  -- Lowering and moving later are allowed, and reported to Blake: while the
+  -- notice is unread, a further change by Avery brings it up to date (0032).
   PERFORM public.update_fund_pledge(v_pledge, 11000, current_date + 10);
   PERFORM public.update_fund_pledge(v_pledge, 11000, current_date + 20);
   -- Saving it unchanged tells nobody anything.
@@ -365,11 +366,11 @@ BEGIN
   v_snapshot := public.commune_snapshot(v_money);
   SELECT coalesce(jsonb_agg(n ORDER BY n->>'detail'), '[]'::jsonb) INTO v_notices
     FROM jsonb_array_elements(v_snapshot->'notifications') n WHERE n->>'kind' LIKE 'pledge-%';
-  IF jsonb_array_length(v_notices) <> 2 THEN RAISE EXCEPTION 'Blake should have two pledge notices: %', v_notices; END IF;
+  IF jsonb_array_length(v_notices) <> 1 THEN RAISE EXCEPTION 'Blake should have one pledge notice: %', v_notices; END IF;
   IF v_notices->0->>'kind' <> 'pledge-changed' OR v_notices->0->>'sourceId' <> v_pledge::text
      OR v_notices->0->>'title' <> 'Boiler fund' OR v_notices->0->>'senderUserId' <> a
      OR v_notices->0->>'detail' <> format('Due date moved from %s to %s.', to_char(current_date + 10, 'FMDD Mon YYYY'), to_char(current_date + 20, 'FMDD Mon YYYY'))
-     OR v_notices->1->>'detail' <> 'Lowered from £120.00 to £110.00.' OR (v_notices->1->>'amountMinor')::bigint <> 11000 THEN
+     OR (v_notices->0->>'amountMinor')::bigint <> 11000 THEN
     RAISE EXCEPTION 'Pledge notices do not say who changed what: %', v_notices;
   END IF;
 
