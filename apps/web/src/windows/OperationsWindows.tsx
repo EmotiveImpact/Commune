@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import {
   dateFromIso,
   firstNameOf,
+  holdsEdit,
   holdsTurn,
   nextPerson,
   nextOccurrence,
@@ -392,9 +393,14 @@ export function OperationNew() {
 
 export function OperationEdit() {
   const { closeWindow, go, selectedOperation, updateOperation } = useApp();
-  // The version this edit started from. A completion, skip or handover since
+  // The version this edit builds on. A completion, skip or handover since
   // makes it stale, so it cannot put back an older date or person.
   const [baseVersion, setBaseVersion] = useState(selectedOperation?.version);
+  // What this form last sent. A save whose reply was lost still arrives with
+  // a later refresh as the next version, and that is this person's own change.
+  const [submitted, setSubmitted] = useState<NewOperation | null>(null);
+  // Loading the latest starts the form again from what is saved now.
+  const [reloads, setReloads] = useState(0);
   if (!selectedOperation) {
     return (
       <section className="a-window">
@@ -407,17 +413,27 @@ export function OperationEdit() {
       </section>
     );
   }
+  const changed = baseVersion !== undefined && selectedOperation.version !== baseVersion;
+  const ownSave = changed && submitted !== null && holdsEdit(selectedOperation, submitted);
   return (
     <OperationForm
-      // Loading the latest starts the form again from what is saved now.
-      key={baseVersion}
+      key={reloads}
       item={selectedOperation}
       submitLabel="Save changes"
-      stale={baseVersion !== undefined && selectedOperation.version !== baseVersion}
-      onReload={() => setBaseVersion(selectedOperation.version)}
+      stale={changed && !ownSave}
+      saved={ownSave}
+      onReload={() => {
+        setBaseVersion(selectedOperation.version);
+        setSubmitted(null);
+        setReloads((count) => count + 1);
+      }}
       onCancel={() => go("operation", { operation: selectedOperation.id })}
       onSave={async (next) => {
-        await updateOperation(selectedOperation.id, next, baseVersion);
+        // After this person's own save went through, the next one builds on it.
+        const expected = ownSave ? selectedOperation.version : baseVersion;
+        setBaseVersion(expected);
+        setSubmitted(next);
+        await updateOperation(selectedOperation.id, next, expected);
         go("operation", { operation: selectedOperation.id });
       }}
     />
@@ -428,14 +444,17 @@ function OperationForm({
   item,
   submitLabel,
   stale = false,
+  saved = false,
   onReload,
   onCancel,
   onSave,
 }: {
   item?: OperationItem;
   submitLabel: string;
-  /** Changed since this form opened. */
+  /** Changed since this form opened, by someone else. */
   stale?: boolean;
+  /** The latest saved version is this form's own last save. */
+  saved?: boolean;
   onReload?: () => void;
   onCancel: () => void;
   onSave: (item: NewOperation) => Promise<void>;
@@ -730,6 +749,9 @@ function OperationForm({
             </button>
           </div>
         </div>
+      ) : saved && !busy ? (
+        // It settles the doubt an unconfirmed save left behind.
+        <p className="a-window-note" role="status">Your last save went through.</p>
       ) : error ? <p className="a-form-error" role="alert">{error}</p> : null}
       <div className="a-field-row">
         <button className="a-btn" type="button" onClick={() => void save()} disabled={busy || stale}>

@@ -87,6 +87,20 @@ export type NewOperation = Omit<OperationItem, "id" | "hubId" | "status" | "last
   | "turnOwnerId" | "turnOwner" | "version" | "createdBy">;
 export type OperationStore = Record<HubId, OperationItem[]>;
 
+/**
+ * Whether a saved task holds exactly what an edit sent, compared as the
+ * database stores it. An edit whose reply was lost arrives this way.
+ */
+export function holdsEdit(item: OperationItem, edit: NewOperation): boolean {
+  const stored = (value: NewOperation) => JSON.stringify([
+    value.kind, value.category, value.title.trim(), value.date, value.allDay ? null : value.time ?? null, value.allDay,
+    value.kind === "task" ? value.assigneeId ?? null : null,
+    value.kind === "task" && value.rotationIds?.length ? value.rotationIds : null,
+    value.repeat, value.notes.trim(),
+  ]);
+  return stored(item) === stored(edit);
+}
+
 export const OPERATIONS_SEED: OperationStore = {
   park: [
     {
