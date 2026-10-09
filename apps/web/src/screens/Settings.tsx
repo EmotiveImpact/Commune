@@ -196,7 +196,7 @@ export function SettingsScreen() {
             <a className="a-set-row" href="https://ourcommune.io" target="_blank" rel="noreferrer">
               <span className="a-set-row-copy">
                 <strong>Contact us</strong>
-                <span>ourcommune.io</span>
+                <span>ourcommune.io<span className="c-visually-hidden"> (opens in a new tab)</span></span>
               </span>
               <Icon name="external" size={16} />
             </a>
