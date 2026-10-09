@@ -257,6 +257,16 @@
   letter-spacing: 0.6px;
   text-transform: uppercase;
 }
+/* The reminder allowance, said where reminders are sent once it runs low. */
+.c-allowance-note {
+  margin: 12px 0;
+  padding: 8px 12px;
+  border-radius: var(--radius-control);
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 12px;
+  line-height: 1.6;
+}
 .c-scope-label {
   font-size: 12px;
   color: var(--ink-soft);

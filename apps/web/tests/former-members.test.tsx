@@ -5,7 +5,8 @@ import { memoryLocation } from "wouter/memory-location";
 import { App } from "../src/App";
 import { AppProvider, useApp, type AppState } from "../src/state";
 import { api, loadCommunes, loadSnapshot } from "../src/live/api";
-import { personName, type Commune, type Snapshot } from "../src/live/model";
+import { hubFromSnapshot, personName, type Commune, type Snapshot } from "../src/live/model";
+import { initialsOf } from "../src/data/household";
 
 vi.mock("../src/live/api", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../src/live/api")>()),
@@ -95,6 +96,14 @@ describe("naming people", () => {
     expect(personName(members, "user-9", "a former member", { left: true })).toBe("a former member");
     expect(personName(members, null, "Someone")).toBe("Someone");
     expect(personName([{ userId: "user-4", name: "  ", role: "member" }], "user-4", "Someone")).toBe("Someone");
+  });
+
+  it("gives someone without a name a neutral mark, not letters from nowhere", () => {
+    expect(initialsOf("Lee Lane")).toBe("LL");
+    expect(initialsOf("")).toBe("?");
+    expect(initialsOf("   ")).toBe("?");
+    const hub = hubFromSnapshot({ ...current, members: [...members, { userId: "user-4", name: " ", role: "member", active: true }] }, user);
+    expect(hub.members.find((member) => member.userId === "user-4")?.ini).toBe("?");
   });
 
   it("names someone who has left on Settle, in what they owe and what they paid back", async () => {

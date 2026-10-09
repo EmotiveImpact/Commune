@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useApp } from "../state";
 import { Avatar, Pill } from "../ui/widgets";
 import { cx } from "../ui/cx";
-import { RecipientReminderCount } from "../ui/ReminderUsage";
+import { RecipientReminderCount, ReminderAllowanceNotice } from "../ui/ReminderUsage";
 import { Plus, ReceiptText, ChevronRight, Search } from "lucide-react";
 import { LIMITS } from "../data/limits";
 import { ReminderFlowDialog, useReminderFlow } from "../ui/ReminderConfirm";
@@ -160,6 +160,8 @@ export function SettleScreen() {
   const youAreOwed = moves
     .filter(({ expense }) => expense.paidByUserId === me)
     .reduce((total, { outstanding }) => total + outstanding, 0);
+  // Nudges are offered on what you are owed, unless they say they have sent it.
+  const nudgeable = moves.some(({ expense, share }) => expense.paidByUserId === me && !pendingReport(share));
   // The receipt ledger is the confirmation history: every entry the viewer
   // recorded or had recorded against their own share, newest first.
   const recent = expenses.flatMap((expense) => expense.shares
@@ -175,6 +177,7 @@ export function SettleScreen() {
         <h2>{receivingGroup ? "You’re owed" : "You owe"}</h2>
         <strong className="c-settle-total">{formatMoney(receivingGroup ? youAreOwed : youOwe, hub.currency)}</strong>
         <p className="c-settle-explainer">{receivingGroup ? "Record each repayment after you receive it, in full or in part." : "Pay outside Commune, then tell the bill payer. They confirm receipt."}</p>
+        {receivingGroup && nudgeable ? <ReminderAllowanceNotice usage={reminderUsage} /> : null}
         {moves.filter(({ expense }) => (expense.paidByUserId === me) === receivingGroup).map(({ expense, share, outstanding }) => {
           const payer = hub.members.find((member) => member.userId === expense.paidByUserId);
           const debtor = hub.members.find((member) => member.userId === share.userId);

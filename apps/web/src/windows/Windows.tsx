@@ -9,7 +9,7 @@ import { cx } from "../ui/cx";
 import { OperationEdit, OperationNew, OperationView } from "./OperationsWindows";
 import { AnnouncementNew } from "./AnnouncementWindows";
 import { CommuneLocationFields, EMPTY_COMMUNE_LOCATION } from "../ui/CommuneLocationFields";
-import { RecipientReminderCount, ReminderUsageMeter } from "../ui/ReminderUsage";
+import { RecipientReminderCount, ReminderAllowanceNotice, ReminderUsageMeter } from "../ui/ReminderUsage";
 import { ReminderFlowDialog, useReminderFlow } from "../ui/ReminderConfirm";
 import { reminderEligibility } from "../data/reminders";
 import { LatestReportAnswer, PendingReport, ReceiptHistory, pendingReport, useReceiptActions } from "../ui/Receipts";
@@ -522,6 +522,8 @@ function Expense() {
       </div>
       {voided ? <p className="c-expense-voided" role="note">Voided by {fullName(selectedExpense.voidedBy ?? "")} on {formatTimestampDay(selectedExpense.voidedAt)}: {selectedExpense.voidReason}</p> : null}
       {isPayer && !voided ? <ReminderUsageMeter usage={reminderUsage} /> : null}
+      {isPayer && !voided && selectedExpense.shares.some((share) => share.userId !== selectedExpense.paidByUserId &&
+        share.amountMinor > share.settledMinor && !pendingReport(share)) ? <ReminderAllowanceNotice usage={reminderUsage} /> : null}
       <div className="a-split">
         {selectedExpense.shares.map((share) => {
           const member = hub.members.find((item) => item.userId === share.userId);

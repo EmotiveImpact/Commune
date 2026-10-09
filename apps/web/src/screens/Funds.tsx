@@ -17,7 +17,7 @@ import {
 } from "../ui/components";
 import { Pill } from "../ui/widgets";
 import { ReminderFlowDialog, useReminderFlow } from "../ui/ReminderConfirm";
-import { RecipientReminderCount } from "../ui/ReminderUsage";
+import { RecipientReminderCount, ReminderAllowanceNotice } from "../ui/ReminderUsage";
 import { formatReminderDay, reminderEligibility } from "../data/reminders";
 import { newRequestId } from "../data/requestId";
 import { commandFailure, UNCERTAIN_RETRY_SAFE } from "../data/commands";
@@ -673,6 +673,12 @@ export function FundsScreen() {
                 . These are confirmations, not money held by Commune.
               </p>
               <FundFigures fund={fund} />
+              {/* An admin chases others' pledges from here. */}
+              {isAdmin && !fund.archivedAt && fund.commitments.some((pledge) =>
+                pledge.userId !== session?.userId && !pledge.cancelledAt &&
+                reminderTargets.some((item) => item.kind === "chase" && item.sourceId === pledge.id)) ? (
+                <ReminderAllowanceNotice usage={reminderUsage} />
+              ) : null}
               {fund.commitments.map(renderPledge)}
               {!fund.commitments.length && (
                 <p className="c-form-help">No pledges yet.</p>

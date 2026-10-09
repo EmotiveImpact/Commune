@@ -186,39 +186,6 @@ describe("commune loading", () => {
     expect(check.disabled).toBe(false);
   });
 
-  it.each(["/funds", "/settle"])("keeps the overall reminder allowance in the sidebar instead of the %s toolbar", async (path) => {
-    mount(path);
-    // Named from what it shows, then the allowance in words.
-    const summary = (await screen.findByText("60 reminders left")).closest("summary")!;
-    expect(summary.closest(".a-side-account")).not.toBeNull();
-    expect(summary.hasAttribute("aria-label")).toBe(false);
-    expect(summary.textContent).toBe("60 reminders left (0 of 60 used in the last 30 days)");
-    const metadata = summary.closest(".a-side-account-meta")!;
-    expect(metadata.querySelector(".a-side-account-role")?.textContent).toBe("Admin");
-    expect(metadata.querySelector(".a-side-account-separator")?.getAttribute("aria-hidden")).toBe("true");
-    expect(metadata.textContent).toContain("Admin·60 reminders left");
-    expect(summary.closest("details")?.parentElement).toBe(metadata);
-    expect(summary.closest("button")).toBeNull();
-    expect(summary.closest(".a-side-account")?.textContent).not.toContain(commune.name);
-    expect(document.querySelector(`${path.replace("/", "#")} .a-reminder-usage`)).toBeNull();
-    expect(document.querySelectorAll(".a-reminder-usage")).toHaveLength(1);
-  });
-
-  it("does not show a separator or an invented count while the reminder allowance is pending", async () => {
-    const usage = deferred<{ totalUsed: number; totalLimit: number; recipientLimit: number; recipientUsage: Record<string, number>; nextSlotAt: null }>();
-    const baseApi = vi.mocked(api).getMockImplementation()!;
-    vi.mocked(api).mockImplementation(async (path, options) => path === "/reminders/usage" ? usage.promise : baseApi(path, options));
-    mount();
-    await screen.findByRole("heading", { name: commune.name });
-    const metadata = document.querySelector(".a-side-account-meta")!;
-    expect(metadata.textContent).toBe("Admin");
-    expect(metadata.querySelector(".a-side-account-separator")).toBeNull();
-    await act(async () => usage.resolve({ totalUsed: 12, totalLimit: 60, recipientLimit: 6, recipientUsage: {}, nextSlotAt: null }));
-    expect((await screen.findByText("48 reminders left")).closest("summary")?.textContent).toContain("12 of 60 used in the last 30 days");
-    expect(metadata.textContent).toContain("Admin·48 reminders left");
-    expect(metadata.querySelectorAll(".a-side-account-separator")).toHaveLength(1);
-  });
-
   it("offers the same allowance in account settings and closes its details with Escape", async () => {
     mount("/settings");
     await screen.findByRole("heading", { name: "Settings", exact: true });

@@ -527,8 +527,7 @@
   font-size: 13px;
 }
 
-.a-side-account-role,
-.a-side-account-separator {
+.a-side-account-role {
   font-size: 11px;
   color: rgba(255, 255, 255, 0.6);
 }
@@ -541,8 +540,7 @@
   white-space: nowrap;
 }
 
-.a-side-account-role,
-.a-side-account-separator {
+.a-side-account-role {
   flex-shrink: 0;
 }
 
@@ -555,38 +553,6 @@
   border-top: 1px solid rgba(255, 255, 255, 0.08);
   flex-shrink: 0;
   position: relative;
-}
-
-.a-side-account .a-reminder-usage--sidebar {
-  position: static;
-  margin: 0;
-  width: auto;
-  font-size: 10px;
-  color: rgba(255, 255, 255, 0.65);
-}
-
-/* 24px tall, reaching into the space below, so the line keeps its place. */
-.a-side-account .a-reminder-usage--sidebar summary {
-  min-height: 24px;
-  gap: 3px;
-  padding: 0 0 6px;
-  margin-bottom: -6px;
-  border: 0;
-  border-radius: 4px;
-}
-
-.a-side-account .a-reminder-usage--sidebar summary strong { color: inherit; }
-.a-side-account .a-reminder-usage--sidebar summary:hover { color: #fff; }
-.a-side-account .a-reminder-usage--sidebar .a-reminder-usage-details {
-  top: auto;
-  bottom: calc(100% + 8px);
-  right: auto;
-  left: 0;
-  width: 100%;
-  max-width: calc(100vw - 24px);
-  max-height: calc(100vh - 160px);
-  overflow-y: auto;
-  color: var(--ink);
 }
 
 .a-main {
