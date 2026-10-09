@@ -96,6 +96,54 @@ describe("hosted money lifecycle and task commands", () => {
     expect(mocks.from).not.toHaveBeenCalled();
   });
 
+  it("adds, edits and removes notes through commands, never the table", async () => {
+    const card = { title: "Wi-Fi", pill: "Wi-Fi", kicker: "Everyone", lede: "Router", body: "Router in the hall", facts: [["Network", "Home"]] };
+    const fields = { p_title: "Wi-Fi", p_pill: "Wi-Fi", p_kicker: "Everyone", p_lede: "Router", p_body: "Router in the hall", p_facts: [["Network", "Home"]] };
+    mocks.rpc.mockResolvedValue({ data: { id: "note-1", version: 1, duplicate: false }, error: null });
+    expect(await send("/communes/home-1/notes", { ...card, requestId })).toEqual({ id: "note-1", version: 1, duplicate: false });
+    expect(mocks.rpc).toHaveBeenLastCalledWith("create_note", { p_commune_id: "home-1", ...fields, p_request_id: requestId });
+    mocks.rpc.mockResolvedValue({ data: { id: "note-1", version: 3, duplicate: false }, error: null });
+    expect(await send("/notes/note-1", { ...card, expectedVersion: 2 }, "PUT")).toEqual({ id: "note-1", version: 3, duplicate: false });
+    expect(mocks.rpc).toHaveBeenLastCalledWith("update_note", { p_note_id: "note-1", p_expected_version: 2, ...fields });
+    await send("/notes/note-1", undefined, "DELETE");
+    expect(mocks.rpc).toHaveBeenLastCalledWith("remove_note", { p_note_id: "note-1" });
+    expect(mocks.from).not.toHaveBeenCalled();
+  });
+
+  it("adds, edits and removes tasks through commands, without status or completion", async () => {
+    const item = { kind: "task", category: "chore", title: "Bins", date: "2026-10-09", time: null, allDay: true,
+      assigneeId: "avery", rotationIds: ["avery", "blake"], repeat: "weekly", notes: "" };
+    const fields = { p_kind: "task", p_category: "chore", p_title: "Bins", p_date: "2026-10-09", p_time: null, p_all_day: true,
+      p_assignee_id: "avery", p_rotation_ids: ["avery", "blake"], p_repeat: "weekly", p_notes: "" };
+    mocks.rpc.mockResolvedValue({ data: { id: "task-1", version: 1, duplicate: true }, error: null });
+    expect(await send("/communes/home-1/operations", { ...item, requestId })).toEqual({ id: "task-1", version: 1, duplicate: true });
+    expect(mocks.rpc).toHaveBeenLastCalledWith("create_operation", { p_commune_id: "home-1", ...fields, p_request_id: requestId });
+    // A status or completion sent by an older client goes nowhere.
+    await send("/operations/task-1", { ...item, status: "done", lastDone: { by: "Avery", date: "2026-10-09" }, expectedVersion: 4 }, "PUT");
+    expect(mocks.rpc).toHaveBeenLastCalledWith("update_operation", { p_operation_id: "task-1", p_expected_version: 4, ...fields });
+    await send("/operations/task-1", undefined, "DELETE");
+    expect(mocks.rpc).toHaveBeenLastCalledWith("remove_operation", { p_operation_id: "task-1" });
+    expect(mocks.from).not.toHaveBeenCalled();
+  });
+
+  it("passes a missing version or request id to the database as null, which refuses it", async () => {
+    mocks.rpc.mockResolvedValue({ data: null, error: { code: "22023", message: "Say which version of the note this change is based on" } });
+    await expect(send("/notes/note-1", { title: "Wi-Fi", facts: [] }, "PUT")).rejects.toMatchObject({ status: 400 });
+    expect(mocks.rpc).toHaveBeenLastCalledWith("update_note", expect.objectContaining({ p_expected_version: null }));
+    mocks.rpc.mockResolvedValue({ data: null, error: { code: "22023", message: "A request id is required to add a task or event" } });
+    await expect(send("/communes/home-1/operations", { kind: "task", title: "Bins" })).rejects.toMatchObject({ status: 400 });
+    expect(mocks.rpc).toHaveBeenLastCalledWith("create_operation", expect.objectContaining({ p_request_id: null }));
+  });
+
+  it("keeps a stale task edit a conflict and a refused removal a rejection", async () => {
+    const stale = "This task was changed by someone else. Review the latest version before saving your changes.";
+    mocks.rpc.mockResolvedValue({ data: null, error: { code: "P0001", message: stale } });
+    await expect(send("/operations/task-1", { kind: "task", expectedVersion: 1 }, "PUT")).rejects.toMatchObject({ status: 409, message: stale });
+    const refused = "Only the person who added this or an admin can remove it";
+    mocks.rpc.mockResolvedValue({ data: null, error: { code: "42501", message: refused } });
+    await expect(send("/operations/task-1", undefined, "DELETE")).rejects.toMatchObject({ status: 403, message: refused });
+  });
+
   it.each([
     ["P0001", 409, "This expense was changed by someone else."],
     ["42501", 403, "Only the bill payer can record a repayment for this share"],
