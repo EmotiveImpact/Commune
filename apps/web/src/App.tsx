@@ -1,5 +1,6 @@
 import { Suspense, useEffect, useLayoutEffect, useState, type ReactNode } from "react";
 import { Link, Redirect, Route, Switch, useLocation, useSearch } from "wouter";
+import { Signpost } from "lucide-react";
 import { LoginPage } from "./auth/Login";
 import { SignupPage, VerifyEmailPage } from "./auth/Signup";
 import { ForgotPasswordPage, ResetPasswordPage } from "./auth/ForgotPassword";
@@ -7,9 +8,9 @@ import { InvitePage, OnboardPage } from "./auth/InviteOnboard";
 import { PrivacyPage, TermsPage } from "./legal/LegalPages";
 import { useApp } from "./state";
 import { forgetReturn, keepSearch, readAddress, readReturn, rememberReturn } from "./nav";
-import { AuthLayout } from "./auth/AuthLayout";
 import { PendingShell } from "./shell/PendingShell";
 import { ConnectionRecovery } from "./shell/ConnectionRecovery";
+import { StreetScene } from "./shell/StreetScene";
 import { lazyComponent } from "./shell/lazyComponent";
 import { usePageTitle } from "./shell/pageTitle";
 
@@ -128,13 +129,12 @@ function SignInFirst({ requested }: { requested: string | null }) {
 
 function NotFoundPage() {
   return (
-    <AuthLayout>
-      <div className="commune-auth-panel">
-        <h2>This page isn’t here.</h2>
-        <p className="commune-auth-lede">The link may be mistyped, or the page may have moved.</p>
-        <Link href={keepSearch("/")} className="commune-auth-btn">Go to Home</Link>
-      </div>
-    </AuthLayout>
+    <StreetScene label="Street runner, a game to play on a missing page">
+      <Signpost className="c-street-icon" size={24} strokeWidth={1.5} aria-hidden="true" />
+      <h1>This page isn’t here.</h1>
+      <p>The link may be mistyped, or the page may have moved.</p>
+      <div className="c-street-actions"><Link href={keepSearch("/")} className="a-btn">Go to Home</Link></div>
+    </StreetScene>
   );
 }
 

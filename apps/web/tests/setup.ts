@@ -6,3 +6,9 @@ import { beforeEach } from "vitest";
 beforeEach(() => {
   if (typeof localStorage !== "undefined") localStorage.clear();
 });
+
+// jsdom has no canvas. Scenes that draw (the street runner) draw nothing in
+// tests, without jsdom's "not implemented" message on every render.
+if (typeof HTMLCanvasElement !== "undefined") {
+  HTMLCanvasElement.prototype.getContext = (() => null) as typeof HTMLCanvasElement.prototype.getContext;
+}

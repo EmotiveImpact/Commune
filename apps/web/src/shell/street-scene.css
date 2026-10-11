@@ -1,0 +1,97 @@
+/* The connection and missing-page screens: a street scene edge to edge
+   across the top, its message in the sky (see StreetScene.tsx). In the
+   screens layer, like the other recovery screens. */
+@layer screens {
+.c-street {
+  min-height: 100dvh;
+  background: var(--paper);
+  color: var(--ink);
+  /* The scene's colours, read by the canvas. */
+  --street-sky: #c6e3f2;
+  --street-cloud: #f5fbff;
+  --street-sun: #e4c477;
+  --street-house: #faf5e9;
+  --street-house-alt: #efe3cf;
+  --street-roof: #687c6e;
+  --street-window: #c8d9d8;
+  --street-frame: var(--street-house);
+  --street-door: var(--sage);
+  --street-wood: #bb9768;
+  --street-leaf: #6d9877;
+  --street-pave: #ddd6c8;
+  --street-kerb: #b8b0a0;
+  --street-joint: #cfc7b7;
+  --street-bin: #4a5560;
+  --street-bin-lid: #323a44;
+  --street-puddle: #9fc1d3;
+  --street-skin: var(--street-wood);
+  --street-hair: var(--navy);
+  --street-top: var(--sage);
+  --street-legs: var(--navy);
+  --street-bird: var(--ink-soft);
+  --street-brick: #c68055;
+  --street-lamp: #5a6660;
+  --street-light: #f4e3a1;
+  --street-box: #4f7a63;
+  --street-glass: var(--sage-soft);
+  /* Text on the sky: the secondary grey is darkened to stay readable there. */
+  --street-ink-soft: #3f4c5e;
+  --street-chip: rgba(250, 245, 233, 0.92);
+}
+.c-street-scene {
+  position: relative;
+  overflow: hidden;
+  height: clamp(440px, 58dvh, 700px);
+  background: var(--street-sky);
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.c-street-canvas { position: absolute; left: 0; bottom: 0; display: block; image-rendering: pixelated; }
+.c-street-top {
+  position: absolute; inset: 0 0 auto 0;
+  display: flex; justify-content: space-between; align-items: center; gap: 16px;
+  padding: 22px clamp(16px, 5vw, 56px);
+}
+.c-street-top .a-wordmark { color: var(--navy); font-size: 30px; }
+.c-street-score { display: flex; align-items: center; gap: 14px; font-size: 13px; color: var(--street-ink-soft); font-variant-numeric: tabular-nums; }
+.c-street-score b { color: var(--ink); font-weight: 550; }
+.c-street-pause {
+  height: 32px; padding: 0 10px; border-radius: var(--radius-control);
+  border: 1px solid var(--border-strong); background: var(--street-chip); color: var(--ink);
+  font: inherit; font-size: 12.5px; font-weight: 550; cursor: pointer;
+}
+.c-street-message {
+  position: absolute;
+  left: clamp(16px, 5vw, 56px);
+  top: clamp(80px, 13dvh, 128px);
+  width: min(420px, calc(100% - 32px));
+  cursor: auto;
+  user-select: text;
+  -webkit-user-select: text;
+}
+.c-street-icon { color: var(--street-ink-soft); display: block; margin-bottom: 14px; }
+.c-street-message h1 { font-size: clamp(22px, 2.4vw, 28px); line-height: 1.2; font-weight: 550; letter-spacing: -.5px; margin: 0 0 10px; color: var(--ink); text-wrap: balance; }
+.c-street-message p { font-size: 14px; line-height: 1.6; color: var(--street-ink-soft); margin: 0 0 20px; max-width: 38ch; }
+.c-street-message .a-btn { border-radius: var(--radius-control); min-height: 40px; text-decoration: none; }
+.c-street-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.c-street-feedback { min-height: 22px; padding-top: 10px; font-size: 12px; line-height: 1.5; color: var(--street-ink-soft); }
+.c-street-hint {
+  position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+  width: max-content; max-width: calc(100% - 32px); margin: 0;
+  padding: 7px 12px; border-radius: var(--radius-control);
+  background: var(--street-chip); color: var(--ink);
+  font-size: 13px; line-height: 1.4; text-align: center; pointer-events: none;
+}
+.c-street-help { max-width: 640px; margin: 0 auto; padding: 28px 16px; display: grid; gap: 6px; text-align: center; font-size: 13px; color: var(--ink-soft); }
+.c-street-help p { margin: 0; }
+@media (max-width: 600px) {
+  .c-street-scene { height: clamp(480px, 64dvh, 640px); }
+  .c-street-top { padding-top: 18px; }
+  .c-street-top .a-wordmark { font-size: 26px; }
+  .c-street-message { top: 66px; }
+  .c-street-icon { display: none; }
+}
+}
