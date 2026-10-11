@@ -304,6 +304,8 @@ export function Header({ screen }: { screen: ScreenId }) {
         onClick={() => setMoreOpen(true)}>
         <Icon name="menu" size={16} />
       </button>
+      {/* A phone's Home names the app beside the menu; other pages name themselves. */}
+      {screen === "home" || screen === "home-empty" ? <span className="a-wordmark a-header-wordmark" aria-hidden="true">commune.</span> : null}
       <div className="a-header-title">
         <h1>{pageTitle}</h1>
         {pageLede ? <p>{pageLede}</p> : null}
