@@ -13,7 +13,7 @@ DECLARE
     'split_templates', 'commune_events',
     'expense_share_receipts', 'expense_revisions', 'operation_occurrences', 'expense_share_payment_reports', 'note_revisions',
     'commune_announcements', 'announcement_acknowledgements',
-    'commune_notes', 'commune_operations'
+    'commune_notes', 'commune_operations', 'member_pay_links'
   ];
 BEGIN
   FOREACH table_name IN ARRAY denied_tables LOOP
@@ -31,6 +31,14 @@ BEGIN
     END IF;
   END LOOP;
 
+  IF has_table_privilege('authenticated', 'public.member_pay_links', 'SELECT') THEN
+    RAISE EXCEPTION 'Pay links must be read only through my_pay_links and the snapshot';
+  END IF;
+  IF has_function_privilege('anonymous', 'public.set_pay_link(text,text,text,text,text)', 'EXECUTE')
+    OR has_function_privilege('anonymous', 'public.my_pay_links()', 'EXECUTE')
+    OR has_function_privilege('anonymous', 'public.remove_pay_link(text)', 'EXECUTE') THEN
+    RAISE EXCEPTION 'Anonymous pay link execution grant';
+  END IF;
   IF has_function_privilege('anonymous', 'public.commune_snapshot(uuid)', 'EXECUTE')
     OR NOT has_function_privilege('authenticated', 'public.commune_snapshot(uuid)', 'EXECUTE') THEN
     RAISE EXCEPTION 'Unexpected snapshot execution grant';

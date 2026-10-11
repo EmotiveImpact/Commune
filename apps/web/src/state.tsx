@@ -35,6 +35,7 @@ import {
   type OperationStore,
 } from "./data/operations";
 import { newRequestId } from "./data/requestId";
+import { parsePayLinks, type PayLink, type PayLinkInput, type PayProvider } from "./data/payLinks";
 import { COMMUNE_SCREENS, FORM_WINDOWS, addressOf, isNativeNow, keepSearch, readAddress, withCommune } from "./nav";
 import { api, post, loadCommunes, loadExpensePage, loadExpenseRecords, loadSnapshot, ApiError } from "./live/api";
 import { announceSession, currentViewer, onOtherTabSession, setViewer } from "./live/session";
@@ -279,7 +280,18 @@ export type AppState = {
   /** Counts the times the finder has opened Search, so Search starts from what it was given. */
   searchOpened: number;
   invites: PendingInvite[];
+  /** Browser-only notes from before pay links; nothing shows them now. Kept until preferences drop them. */
   payMethods: PayMethod[];
+  /**
+   * How a member likes to be paid, from the snapshot of their commune (the
+   * open one unless given). Null while only that commune's summary is held.
+   */
+  payLinksFor: (userId: string | null | undefined, communeId?: string) => PayLink[] | null;
+  /** Your own pay links, loaded on demand. Null until loaded. */
+  myPayLinks: PayLink[] | null;
+  loadMyPayLinks: () => Promise<PayLink[]>;
+  savePayLink: (provider: PayProvider, input: PayLinkInput) => Promise<PayLink[]>;
+  removePayLink: (provider: PayProvider) => Promise<PayLink[]>;
   native: boolean;
   you: { id: string; name: string; email: string; initials: string; photo?: string };
   lastExpense: { name: string; amount: string; paidBy: string } | null;
@@ -1617,6 +1629,35 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await refreshRecords();
     return result;
   }), [mutate, refreshRecords]);
+  const [myPayLinks, setMyPayLinks] = useState<PayLink[] | null>(null);
+  // Never show one account's links to the next person who signs in here.
+  useEffect(() => { setMyPayLinks(null); }, [session?.userId]);
+  const loadMyPayLinks = useCallback(async () => {
+    const links = parsePayLinks((await api<{ links: unknown }>("/pay-links")).links);
+    setMyPayLinks(links);
+    return links;
+  }, []);
+  // Saving refreshes the commune too, so the links you see when paying match.
+  const savePayLink = useCallback((provider: PayProvider, input: PayLinkInput) => mutate(async () => {
+    const result = await api<{ links: unknown }>(`/pay-links/${provider}`, { method: "PUT", body: JSON.stringify(input) });
+    const links = parsePayLinks(result.links);
+    setMyPayLinks(links);
+    await refreshRecords();
+    return links;
+  }), [mutate, refreshRecords]);
+  const removePayLink = useCallback((provider: PayProvider) => mutate(async () => {
+    const result = await api<{ links: unknown }>(`/pay-links/${provider}`, { method: "DELETE" });
+    const links = parsePayLinks(result.links);
+    setMyPayLinks(links);
+    await refreshRecords();
+    return links;
+  }), [mutate, refreshRecords]);
+  const heldSnapshots = data?.snapshots;
+  const payLinksFor = useCallback((userId: string | null | undefined, communeId?: string) => {
+    const record = heldSnapshots?.[communeId ?? activeId];
+    if (!record || record.detail === "summary") return null;
+    return userId ? parsePayLinks(record.payLinks?.[userId]) : [];
+  }, [heldSnapshots, activeId]);
   const withdrawPaymentReport = useCallback((reportId: string) => mutate(async () => {
     const result = await post<PaymentReportResult>(`/payment-reports/${encodeURIComponent(reportId)}/withdraw`, {});
     await refreshRecords();
@@ -1971,7 +2012,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     navMode: device.navMode, noteKey, notes, operationKey, operationDate,
     operationTime, operationsByHub, operations, selectedOperation, fundKey,
     dark: device.theme === "dark" || (device.theme === "system" && prefersDark), theme: device.theme, noticesOn: device.noticesOn,
-    searchTarget, searchOpened, invites: data?.invites[activeId] ?? NONE, payMethods: prefs.payMethods, native, you,
+    searchTarget, searchOpened, invites: data?.invites[activeId] ?? NONE, payMethods: prefs.payMethods,
+    payLinksFor, myPayLinks, loadMyPayLinks, savePayLink, removePayLink, native, you,
     lastExpense, expenses, selectedExpense, createdExpenses: expenses, voidedExpenses,
     expenseRead, retryExpenseRead, expenseHistory, loadEarlierExpenses, loadFullHistory,
     funds, recurringBills, splitTemplates, expenseTemplateId, reminderTargets, reminderUsage, sentReminders, notifications,

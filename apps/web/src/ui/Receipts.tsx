@@ -8,6 +8,7 @@ import { commandFailure, UNCERTAIN_RETRY_SAFE } from "../data/commands";
 import { formatReminderDay, formatTimestampDay } from "../data/reminders";
 import { LIMITS } from "../data/limits";
 import { Button, Dialog, Feedback, Field } from "./components";
+import { PayeeLinks } from "./PayLinks";
 
 export const RECEIPT_REFERENCE_MAX = 80;
 // communeId names the commune the share is in, when that may not be the open
@@ -22,6 +23,8 @@ export type ReversalTarget = {
 export type PaymentReportTarget = {
   shareId: string; payerName: string; expenseName: string;
   outstandingMinor: number; currency: CurrencyCode; communeId?: string;
+  /** The bill payer, so their pay links can be shown. */
+  payerId?: string;
 };
 export type ReportAnswerTarget = {
   report: PaymentReport; debtorName: string; expenseName: string; currency: CurrencyCode;
@@ -169,6 +172,8 @@ export function ReportPaymentDialog({ target, onClose, onReported }: {
   return <Dialog title={`Tell ${target.payerName} you’ve paid`} pending={pending} onClose={onClose} className="c-receipt-dialog">
     <form onSubmit={event => void save(event)}>
       <p className="c-receipt-context">{target.expenseName} · {money(target.outstandingMinor, target.currency)} outstanding</p>
+      {target.payerId ? <PayeeLinks userId={target.payerId} communeId={target.communeId} name={target.payerName}
+        amountMinor={target.outstandingMinor} currency={target.currency} note={target.expenseName} /> : null}
       <Field label={`Amount sent (${target.currency})`} hint="Change this if you paid part of it.">
         <input type="text" inputMode="decimal" maxLength={LIMITS.money} value={amount} disabled={pending || uncertain} required
           onChange={event => setAmount(event.target.value)} />

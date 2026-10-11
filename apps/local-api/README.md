@@ -28,6 +28,9 @@ browser code sends same-origin `/api` requests. Non-2xx errors are
 | POST | `/api/shares/:id/confirm` | `{}` payer only; records one receipt for everything outstanding | `{ok:true}` |
 | POST | `/api/shares/:id/receipts` | `{amountMinor,receivedOn,reference?,requestId}` payer only; amount up to the outstanding share; a repeated `requestId` returns the same entry | `{id,duplicate,settledMinor,outstandingMinor}` (201, or 200 for a repeat) |
 | POST | `/api/receipts/:id/reverse` | `{reason}` payer only; keeps the original entry; refused for a former member's share | `{id,duplicate,settledMinor,outstandingMinor}` |
+| GET | `/api/pay-links` | | `{links:[...]}`, your own Monzo, PayPal, Revolut or bank details |
+| PUT | `/api/pay-links/:provider` | provider `monzo`, `paypal`, `revolut` or `bank`; `{handle}` or `{accountName,sortCode,accountNumber}`; a pasted link keeps only the username | `{links:[...]}` |
+| DELETE | `/api/pay-links/:provider` | removing one that is not there is harmless | `{links:[...]}` |
 | PUT | `/api/expenses/:id` | `{expectedVersion,title,amountMinor,category,dueOn?,paidByUserId,shares:[{userId,amountMinor}],reason,requestId}` payer or admin; only an admin changes the payer; money fields are locked while repayments exist | `{version,duplicate}`; a stale `expectedVersion` is 409 |
 | POST | `/api/expenses/:id/void` | `{expectedVersion,reason,requestId}` payer or admin; refused while repayments exist; nothing is deleted | `{version,duplicate}` |
 | POST | `/api/communes/:id/funds` | `{name,targetMinor?,requestId?}` admin; a repeated `requestId` returns the same fund | `{id,duplicate}` (201, or 200 for a repeat) |

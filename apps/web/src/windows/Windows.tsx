@@ -27,6 +27,7 @@ import { SplitEditor } from "../ui/SplitEditor";
 import { moneyInputError, parseMoneyInput } from "../data/moneyInput";
 import type { Notification, UnreadNotice } from "../live/model";
 import { lazyComponent } from "../shell/lazyComponent";
+import { PayeeLinks, PayLinksEditor } from "../ui/PayLinks";
 
 // Schedule items and announcements open less often: their windows load when
 // first opened (or once the browser is idle), behind the record skeleton.
@@ -188,7 +189,7 @@ function titleFor(id: string): string {
     profile: "Profile",
     breakdown: "Breakdown",
     pay: "Settle a share",
-    "pay-method": "Pay me",
+    "pay-method": "How people pay you",
     "note-new": "Add note",
     "note-edit": "Edit note",
     "operation-new": "Add to calendar",
@@ -560,7 +561,7 @@ function Expense() {
                 </div>
               ) : ownDebt && !report ? (
                 <div className="a-row-actions">
-                  <button className="a-btn ghost" type="button" onClick={() => { setMessage(""); receipts.report({ shareId: share.id, payerName: personName(selectedExpense.paidByUserId, "the bill payer"), expenseName: selectedExpense.name, outstandingMinor: outstanding, currency: hub.currency }); }}>I’ve sent it</button>
+                  <button className="a-btn ghost" type="button" onClick={() => { setMessage(""); receipts.report({ shareId: share.id, payerName: personName(selectedExpense.paidByUserId, "the bill payer"), payerId: selectedExpense.paidByUserId, expenseName: selectedExpense.name, outstandingMinor: outstanding, currency: hub.currency }); }}>I’ve sent it</button>
                 </div>
               ) : null}
             </div>
@@ -825,6 +826,15 @@ function Profile() {
       </div>
       <div className="a-settle-row">
         <div>
+          <strong>How people pay you</strong>
+          <div className="when">Monzo, PayPal, Revolut or bank details</div>
+        </div>
+        <button className="a-btn ghost" type="button" onClick={() => go("pay-method")}>
+          Open
+        </button>
+      </div>
+      <div className="a-settle-row">
+        <div>
           <strong>Settings</strong>
           <div className="when">Theme, notices, sidebar</div>
         </div>
@@ -954,10 +964,12 @@ function Pay() {
         <span className="a-hero-kicker">{selectedExpense ? `You → ${personName(selectedExpense.paidByUserId, "bill payer", { left: true })}` : "Payment"}</span>
         <strong>{formatMoney(outstanding, hub.currency)}</strong>
         <p>
-          Commune does not move money or hold payment details yet. Arrange a transfer directly with the bill payer;
-          they can confirm your individual share here after receiving it.
+          Commune does not move money. Pay the bill payer in your own app, then tell them in Commune;
+          they confirm your share after receiving it.
         </p>
       </div>
+      {selectedExpense && outstanding > 0 ? <PayeeLinks userId={selectedExpense.paidByUserId} name={personName(selectedExpense.paidByUserId, "The bill payer")}
+        amountMinor={outstanding} currency={hub.currency} note={selectedExpense.name} /> : null}
       <div className="a-field-row">
         {selectedExpense ? <button className="a-btn" type="button" onClick={() => go("expense", { expense: selectedExpense.id })}>View share</button> : null}
         <button className="a-btn ghost" type="button" onClick={closeWindow}>
@@ -973,9 +985,10 @@ function PayMethod() {
   return (
     <section className="a-window">
       <p className="a-window-kicker">You</p>
-      <h3>Payment links are not connected yet.</h3>
-      <p className="a-window-note">For now, arrange transfers directly with your housemates. Commune records each share after the bill payer confirms receipt; it does not store or publish payment details.</p>
-      <button className="a-btn" type="button" onClick={closeWindow}>Close</button>
+      <p className="a-window-note">When someone owes you, they see these with the amount filled in where the app allows it. Only people in your communes can see them, and leaving a commune stops sharing them there.</p>
+      <PayLinksEditor />
+      <p className="a-window-note">Commune never moves money and never sees your bank login. These are only the details you choose to share.</p>
+      <button className="a-btn" type="button" onClick={closeWindow}>Done</button>
     </section>
   );
 }

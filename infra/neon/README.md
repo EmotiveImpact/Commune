@@ -14,6 +14,11 @@ this is not a replacement of Neon Auth or a switch back to Supabase.
 - [Current design language and preserved layouts](../../docs/DESIGN-LANGUAGE.md)
 - [Local build-out from 5 October: migrations 0020 onwards](../../docs/LOCAL-BUILDOUT-2026-10-05.md)
 
+Pay links, **0042** (local only), add `my_pay_links`, `set_pay_link`,
+`remove_pay_link` and `payLinks` in the full snapshot (not the summary).
+Apply it after 0041, then deploy the client that calls them. The previous
+client ignores the new snapshot field. Test: `tests/pay_links.sql`.
+
 Migrations **0015 to 0041 are local only**. They have not been applied to any
 Neon branch. Release order when they are: apply 0013 to 0041 in numeric order
 to the preview branch, refresh that branch's Data API schema cache, then

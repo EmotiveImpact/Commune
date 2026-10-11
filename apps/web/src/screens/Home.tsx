@@ -526,7 +526,7 @@ export function HomeScreen() {
     setMessage("");
     if (item.kind === "pay" && item.shareId && item.minor) {
       receipts.report({ shareId: item.shareId, payerName: nameOf(hub, item.person, "the bill payer"), expenseName: item.title,
-        outstandingMinor: item.minor, currency: hub.currency, communeId: hub.id });
+        outstandingMinor: item.minor, currency: hub.currency, communeId: hub.id, payerId: item.person });
     } else if (item.kind === "confirm" && item.report) {
       receipts.answer({ report: item.report, debtorName: nameOf(hub, item.person, "a former member"), expenseName: item.title,
         currency: hub.currency, decision: decline ? "decline" : "confirm", communeId: hub.id });

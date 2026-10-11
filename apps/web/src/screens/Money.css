@@ -205,3 +205,28 @@
 .a-body.is-dark .a-window :is(.c-product-dialog, .c-reminder-dialog) .a-field-row { position: static; margin: 16px 0 0; padding: 0; background: transparent; border-top: 0; }
 .c-period-split .c-form-help { margin: 0 0 6px; }
 }
+
+@layer screens {
+/* Pay links: how the bill payer likes to be paid, and your own in Profile. */
+.c-pay-links, .c-pay-editor { display: grid; gap: 0; margin: 0 0 18px; border: 1px solid var(--border); border-radius: var(--radius-control); background: #fff; }
+.c-pay-link { display: flex; align-items: center; gap: 10px; padding: 10px 12px; min-height: 56px; }
+.c-pay-link + .c-pay-link, .c-pay-form + .c-pay-link, .c-pay-link + .c-pay-form { border-top: 1px solid var(--border); }
+.c-pay-copy { display: grid; min-width: 0; flex: 1; font-size: 13.5px; line-height: 1.4; }
+.c-pay-copy span { color: var(--ink-soft); overflow-wrap: anywhere; }
+.c-pay-copy small { color: var(--ink-soft); font-size: 12px; }
+.c-pay-link .a-btn { flex-shrink: 0; display: inline-flex; align-items: center; text-decoration: none; }
+.c-pay-mark { width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; flex: none; font-weight: 700; font-size: 14px; color: #fff; background: #3c4a46; }
+.c-pay-mark.is-monzo { background: #14233c; }
+.c-pay-mark.is-paypal { background: #1d4f91; }
+.c-pay-mark.is-revolut { background: #191c1f; }
+.c-pay-form { display: grid; gap: 4px; padding: 12px; }
+.c-pay-form > strong { font-size: 13.5px; margin-bottom: 6px; }
+.c-pay-none { font-size: 13px; line-height: 1.6; color: var(--ink-soft); margin: 0 0 18px; }
+.is-dark :is(.c-pay-links, .c-pay-editor) { background: transparent; }
+.is-dark .c-pay-mark { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18); }
+@media (max-width: 520px) {
+  .c-pay-link { flex-wrap: wrap; row-gap: 8px; }
+  .c-pay-copy { flex: 1 1 calc(100% - 40px); }
+  .c-pay-link .a-btn:first-of-type { margin-left: 40px; }
+}
+}

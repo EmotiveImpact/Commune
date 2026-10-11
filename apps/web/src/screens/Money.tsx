@@ -240,7 +240,7 @@ export function SettleScreen() {
                 </div>
               ) : (
                 <div className="a-row-actions">
-                  <button className="a-btn ghost" type="button" onClick={() => { setMessage(""); receipts.report({ shareId: share.id, payerName, expenseName: expense.name, outstandingMinor: outstanding, currency: hub.currency }); }}>
+                  <button className="a-btn ghost" type="button" onClick={() => { setMessage(""); receipts.report({ shareId: share.id, payerName, payerId: expense.paidByUserId, expenseName: expense.name, outstandingMinor: outstanding, currency: hub.currency }); }}>
                     I’ve sent it{" "}<span className="c-visually-hidden">to {payerName} for {expense.name}</span>
                   </button>
                 </div>
