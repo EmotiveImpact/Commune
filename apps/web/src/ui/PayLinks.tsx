@@ -18,11 +18,15 @@ import "../screens/Money.css";
 export function PayeeLinks({ userId, communeId, name, amountMinor, currency, note }: {
   userId: string | null | undefined; communeId?: string; name: string; amountMinor: number; currency: CurrencyCode; note?: string;
 }) {
-  const { payLinksFor } = useApp();
+  const { payLinksFor, loadPayLinksFor } = useApp();
   const links = payLinksFor(userId, communeId);
   const [copied, setCopied] = useState(false);
   const amount = money(amountMinor, currency);
-  // Not loaded yet (only a commune's summary is held): say nothing rather than "none".
+  const unread = links === null;
+  useEffect(() => {
+    if (unread) void loadPayLinksFor(communeId).catch(() => undefined);
+  }, [unread, communeId, loadPayLinksFor]);
+  // Only a summary of this commune is held: say nothing rather than "none" until its record arrives.
   if (links === null) return null;
   if (!links.length) {
     return <p className="c-pay-none">{name} hasn’t added how they like to be paid. Pay them however you usually do.</p>;

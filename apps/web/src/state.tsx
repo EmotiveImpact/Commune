@@ -287,6 +287,7 @@ export type AppState = {
    * open one unless given). Null while only that commune's summary is held.
    */
   payLinksFor: (userId: string | null | undefined, communeId?: string) => PayLink[] | null;
+  loadPayLinksFor: (communeId?: string) => Promise<void>;
   /** Your own pay links, loaded on demand. Null until loaded. */
   myPayLinks: PayLink[] | null;
   loadMyPayLinks: () => Promise<PayLink[]>;
@@ -1658,6 +1659,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!record || record.detail === "summary") return null;
     return userId ? parsePayLinks(record.payLinks?.[userId]) : [];
   }, [heldSnapshots, activeId]);
+  // A commune that isn't open is held only as a summary, without pay links.
+  // Asking to pay someone there reads its full record.
+  const loadPayLinksFor = useCallback((communeId?: string) => {
+    const commune = dataRef.current?.communes.find((item) => item.id === (communeId ?? activeId));
+    return commune ? readSnapshot(commune, refreshSequence.current) : Promise.resolve();
+  }, [readSnapshot, activeId]);
   const withdrawPaymentReport = useCallback((reportId: string) => mutate(async () => {
     const result = await post<PaymentReportResult>(`/payment-reports/${encodeURIComponent(reportId)}/withdraw`, {});
     await refreshRecords();
@@ -2013,7 +2020,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     operationTime, operationsByHub, operations, selectedOperation, fundKey,
     dark: device.theme === "dark" || (device.theme === "system" && prefersDark), theme: device.theme, noticesOn: device.noticesOn,
     searchTarget, searchOpened, invites: data?.invites[activeId] ?? NONE, payMethods: prefs.payMethods,
-    payLinksFor, myPayLinks, loadMyPayLinks, savePayLink, removePayLink, native, you,
+    payLinksFor, loadPayLinksFor, myPayLinks, loadMyPayLinks, savePayLink, removePayLink, native, you,
     lastExpense, expenses, selectedExpense, createdExpenses: expenses, voidedExpenses,
     expenseRead, retryExpenseRead, expenseHistory, loadEarlierExpenses, loadFullHistory,
     funds, recurringBills, splitTemplates, expenseTemplateId, reminderTargets, reminderUsage, sentReminders, notifications,
