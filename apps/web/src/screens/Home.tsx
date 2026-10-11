@@ -4,7 +4,7 @@ import { formatDay } from "@commune/core";
 import { useApp } from "../state";
 import { Avatar } from "../ui/widgets";
 import { CalendarDate } from "../ui/CalendarDate";
-import { compareNeeds, money, type CurrencyCode, type LiveHub, type Need } from "../live/model";
+import { compareNeeds, money, type CurrencyCode, type LiveHub, type Need, type Upcoming } from "../live/model";
 import { cx } from "../ui/cx";
 import { CoverImage, coverToneClass } from "../ui/CoverImage";
 import { activityStamp, activityWord } from "../ui/ActivityLog";
@@ -17,6 +17,7 @@ import "./Home.css";
 // approved direction is "B" in the design panel of 11 October 2026.
 
 type Entry = { hub: LiveHub; item: Need };
+type Coming = { hub: LiveHub; item: Upcoming };
 type Tone = "late" | "attention" | "plain";
 
 const WORDS = ["no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"];
@@ -335,6 +336,7 @@ const PHONE_SHOWN = 2;
 const PHONE_COLLAPSE_OVER = 3;
 
 function NeedsList({ needs, today, onAct, busy }: { needs: Entry[]; today: string; onAct: (entry: Entry) => void; busy: boolean }) {
+  const { go } = useApp();
   const [all, setAll] = useState(false);
   const collapsible = needs.length > COLLAPSE_OVER;
   const phoneCollapsible = needs.length > PHONE_COLLAPSE_OVER;
@@ -351,7 +353,10 @@ function NeedsList({ needs, today, onAct, busy }: { needs: Entry[]; today: strin
   const extra = (index: number) => cx(index >= limit && "is-extra", index >= phoneLimit && "is-extra-phone");
   return (
     <section className={cx("c-home-panel", "c-home-needs", all && "is-all")} aria-labelledby="home-needs">
-      <div className="c-home-head"><h2 id="home-needs">Needs you</h2><span className="c-home-count">{needs.length}</span></div>
+      <div className="c-home-head">
+        <h2 id="home-needs">Needs you</h2><span className="c-home-count">{needs.length}</span>
+        <button className="c-home-link is-wide" type="button" onClick={() => go("home-activity")}>History</button>
+      </div>
       {groups.map((group) => (
         <div key={group.name} className={cx("c-home-group", extra(group.first))}>
           <h3 className={cx(group.name === "Overdue" && "is-late")}>{group.name} <span>{group.rows.length}</span></h3>
@@ -417,6 +422,45 @@ function Activity({ places }: { places: LiveHub[] }) {
   );
 }
 
+// Five is enough to see the fortnight; Operations has the rest.
+const COMING_SHOWN = 5;
+
+/** Turns and regular bills in the next fortnight, across communes. A task nobody holds can be taken here. */
+function ComingUp({ coming, today, onTake, busy }: { coming: Coming[]; today: string; onTake: (entry: Coming) => void; busy: boolean }) {
+  const { go } = useApp();
+  return (
+    <section className="c-home-panel" aria-labelledby="home-coming">
+      <div className="c-home-head">
+        <h2 id="home-coming">Coming up</h2><span className="c-home-count">{coming.length}</span>
+        <button className="c-home-link is-wide" type="button" onClick={() => go("operations")}>Operations</button>
+      </div>
+      <ul>
+        {coming.slice(0, COMING_SHOWN).map((entry) => {
+          const { hub, item } = entry;
+          return (
+            <li key={`${hub.id}-${item.kind}-${item.operationId ?? item.billId}`} className="c-home-row is-coming">
+              <span className="c-home-row-lead"><CalendarDate date={item.dueOn} today={today} label={item.kind === "bill" ? "Due" : "On"} /></span>
+              <span className="c-home-row-main">
+                <button className="c-home-row-title" type="button" onClick={() => item.kind === "task"
+                  ? go("operation", { hub: hub.id, operation: item.operationId })
+                  : go("recurring", { hub: hub.id, record: item.billId ? { kind: "recurring", id: item.billId } : undefined })}>{item.title}</button>
+                <span className="c-home-row-meta"><Place hub={hub} /><span aria-hidden="true">·</span><span>{item.when}</span></span>
+              </span>
+              {item.open ? (
+                <span className="c-home-row-act">
+                  <button className="c-home-btn is-secondary is-small" type="button" disabled={busy} onClick={() => onTake(entry)}>
+                    I’ll do it <span className="c-visually-hidden">{item.title}</span>
+                  </button>
+                </span>
+              ) : null}
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+}
+
 /** All square and nothing to do: the current commune's photo, as a reward. */
 function SquareBand({ hub, places, name, today }: { hub: LiveHub; places: LiveHub[]; name: string; today: string }) {
   const { you } = useApp();
@@ -429,7 +473,7 @@ function SquareBand({ hub, places, name, today }: { hub: LiveHub; places: LiveHu
     <section className={cx("c-home-square", coverToneClass(hub))} aria-labelledby="home-square">
       <CoverImage hub={hub} placement="hero" />
       <div className="c-home-square-copy">
-        <p className="c-home-over">{longDate.format(dateFromIso(today))}</p>
+        <p className="c-home-over">{longDate.format(dateFromIso(today))}<span className="c-home-over-place"> · {hub.name}</span></p>
         <h2 id="home-square" className="c-home-display">You’re all square{name ? `, ${name}` : ""}.</h2>
         <p className="c-home-sub">Nothing owed and nothing waiting in {communes}.</p>
         <p className="c-home-square-people">
@@ -444,8 +488,9 @@ function SquareBand({ hub, places, name, today }: { hub: LiveHub; places: LiveHu
 }
 
 export function HomeScreen() {
-  const { places, hubId, you } = useApp();
+  const { places, hubId, you, go, handOverOperation } = useApp();
   const [message, setMessage] = useState("");
+  const [taking, setTaking] = useState(false);
   const receipts = useReceiptActions(setMessage);
   const open = useOpen();
   if (!places.length) return <HomeEmptyScreen />;
@@ -454,11 +499,27 @@ export function HomeScreen() {
   // The same rule as This Hub, across every commune: actions in their order, then what others owe.
   const needs = places.flatMap((hub) => hub.now.map((item) => ({ hub, item }))).sort((a, b) => compareNeeds(a.item, b.item));
   const waiting = places.flatMap((hub) => hub.waiting.map((item) => ({ hub, item }))).sort((a, b) => compareNeeds(a.item, b.item));
+  const coming = places.flatMap((hub) => hub.coming.map((item) => ({ hub, item }))).sort((a, b) => a.item.dueOn.localeCompare(b.item.dueOn));
   const [next, ...rest] = needs;
   const current = places.find((place) => place.id === hubId) ?? places[0];
   const communes = places.map((hub, index) => ({ hub, index })).sort((a, b) => needRank(a.hub) - needRank(b.hub) || a.index - b.index).map(({ hub }) => hub);
   const ready = places.every((hub) => hub.activityState === "ready");
   const square = ready && !needs.length && !waiting.length && places.every((hub) => !hub.youOweMinor && !hub.owedToYouMinor);
+
+  // Taking a task nobody holds is a handover to yourself, checked against the task as Home saw it.
+  async function take({ hub, item }: Coming) {
+    if (!item.operationId) return;
+    setMessage("");
+    setTaking(true);
+    try {
+      await handOverOperation(item.operationId, you.id, undefined, { communeId: hub.id, date: item.dueOn, assigneeId: null });
+      setMessage(`${item.title} is yours now. Open the task to undo this.`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Could not take this task. Try again.");
+    } finally {
+      setTaking(false);
+    }
+  }
 
   function act(entry: Entry, decline = false) {
     const { hub, item } = entry;
@@ -478,6 +539,7 @@ export function HomeScreen() {
     <section className="c-home-communes" aria-labelledby="home-communes">
       <div className="c-home-head">
         <h2 id="home-communes">Your communes</h2><span className="c-home-count">{places.length}</span>
+        {square ? null : <button className="c-home-link is-wide" type="button" onClick={() => go("communes")}>All communes</button>}
       </div>
       <ul className={cx("c-home-commune-list", places.length > 1 && "is-tiles")} style={{ "--home-tiles": Math.min(places.length, 3) } as CSSProperties}>
         {communes.map((hub) => <CommuneCard key={hub.id} hub={hub} current={places.length > 1 && hub.id === current.id} />)}
@@ -485,6 +547,8 @@ export function HomeScreen() {
     </section>
   );
   const status = message ? <p className="c-home-message" role="status">{message}</p> : null;
+  // Coming up fills the quiet states, where nothing needs you beyond the next step.
+  const comingUp = coming.length ? <ComingUp coming={coming} today={today} onTake={(entry) => void take(entry)} busy={taking} /> : null;
 
   if (square) {
     return (
@@ -492,7 +556,7 @@ export function HomeScreen() {
         <SquareBand hub={current} places={places} name={name} today={today} />
         {status}
         <div className="c-home-split">
-          <div className="c-home-col"><Activity places={places} /></div>
+          <div className="c-home-col">{comingUp}<Activity places={places} /></div>
           <div className="c-home-col">{communeList}</div>
         </div>
       </div>
@@ -509,15 +573,20 @@ export function HomeScreen() {
         <div className="c-home-col">{communeList}</div>
       </div>
       <div className="c-home-split">
-        <div className="c-home-col">
-          {rest.length ? <NeedsList needs={rest} today={today} onAct={act} busy={receipts.busy} /> : null}
-          {!rest.length && waiting.length ? <WaitingList waiting={waiting} today={today} /> : null}
-          {!rest.length && !waiting.length ? <Activity places={places} /> : null}
-        </div>
-        <div className="c-home-col">
-          {rest.length && waiting.length ? <WaitingList waiting={waiting} today={today} /> : null}
-          {rest.length || waiting.length ? <Activity places={places} /> : null}
-        </div>
+        {rest.length ? (
+          <>
+            <div className="c-home-col"><NeedsList needs={rest} today={today} onAct={act} busy={receipts.busy} /></div>
+            <div className="c-home-col">
+              {waiting.length ? <WaitingList waiting={waiting} today={today} /> : null}
+              <Activity places={places} />
+            </div>
+          </>
+        ) : waiting.length || comingUp ? (
+          <>
+            <div className="c-home-col">{waiting.length ? <WaitingList waiting={waiting} today={today} /> : null}{comingUp}</div>
+            <div className="c-home-col"><Activity places={places} /></div>
+          </>
+        ) : <div className="c-home-col"><Activity places={places} /></div>}
       </div>
       {receipts.dialogs}
     </div>

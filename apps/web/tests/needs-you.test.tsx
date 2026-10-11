@@ -6,7 +6,7 @@ import { App } from "../src/App";
 import { preloadAll } from "../src/shell/lazyComponent";
 import { AppProvider } from "../src/state";
 import { api, loadCommunes, loadSnapshot, post } from "../src/live/api";
-import { needsYou, type Commune, type PaymentReport, type Snapshot } from "../src/live/model";
+import { comingUp, needsYou, type Commune, type PaymentReport, type Snapshot } from "../src/live/model";
 
 vi.mock("../src/live/api", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../src/live/api")>()),
@@ -106,6 +106,40 @@ describe("the Needs you rule", () => {
   });
 });
 
+type Bill = NonNullable<Snapshot["recurringBills"]>[number];
+const bill = (id: string, title: string, paidByUserId: string, nextDueOn: string, allocations: Bill["allocations"], extra: Partial<Bill> = {}): Bill => ({
+  id, title, amountMinor: allocations.reduce((total, share) => total + share.amountMinor, 0), paidByUserId, allocations,
+  frequency: "monthly", nextDueOn, paused: false, createdBy: paidByUserId, version: 1, archivedAt: null, ...extra,
+});
+const nobody = (id: string, title: string, date: string) => ({ ...task(id, title, date, ""), assigneeId: null }) as unknown as Operation;
+
+describe("the Coming up rule", () => {
+  it("lists the next fortnight's turns and regular bills, soonest first, leaving today's own task to Needs you", () => {
+    const snapshot = snapshotOf(home, {
+      operations: [
+        task("hoover", "Hoover", today, "me"), task("mop", "Mop", "2026-10-10", "me"), task("dust", "Dust", "2026-10-12", "ben"),
+        nobody("gutters", "Clear the gutters", "2026-10-14"), task("party", "Party", "2026-10-11", "me", "event"),
+        task("bins", "Bins", "2026-10-07", "me"), task("windows", "Windows", "2026-10-23", "cat"),
+        { ...task("oven", "Oven", "2026-10-11", "cat"), status: "done" } as unknown as Operation,
+      ],
+      recurringBills: [
+        bill("netflix", "Netflix", "me", "2026-10-11", [{ userId: "me", amountMinor: 1000 }, { userId: "ben", amountMinor: 1000 }, { userId: "cat", amountMinor: 1000 }]),
+        bill("energy", "Energy", "ben", "2026-10-22", [{ userId: "me", amountMinor: 1500 }, { userId: "ben", amountMinor: 2500 }]),
+        bill("gym", "Gym", "me", "2026-10-10", [{ userId: "me", amountMinor: 3000 }], { paused: true }),
+        bill("paper", "Paper", "me", "2026-10-10", [{ userId: "me", amountMinor: 500 }], { archivedAt: "2026-10-01T00:00:00Z" }),
+        bill("water", "Water", "cat", "2026-10-24", [{ userId: "me", amountMinor: 900 }]),
+      ],
+    });
+    expect(comingUp(snapshot, "me", today).map((item) => [item.dueOn, item.title, item.when, item.open ?? false])).toEqual([
+      ["2026-10-10", "Mop", "your turn", false],
+      ["2026-10-11", "Netflix", "£30.00, you pay · £10.00 each", false],
+      ["2026-10-12", "Dust", "Ben Baker’s turn", false],
+      ["2026-10-14", "Clear the gutters", "nobody yet", true],
+      ["2026-10-22", "Energy", "£40.00, Ben Baker pays · your share £15.00", false],
+    ]);
+  });
+});
+
 function mount(path: string) {
   const location = memoryLocation({ path, record: true });
   render(<Router hook={location.hook}><AppProvider><App /></AppProvider></Router>);
@@ -142,6 +176,8 @@ afterEach(() => {
   cleanup();
   vi.useRealTimers();
 });
+
+const readAgain = () => vi.mocked(loadSnapshot).mock.calls.map(([commune]) => commune.id);
 
 // A Home row: its title, commune, who and what, amount and when.
 const row = (item: HTMLElement) => [item.querySelector(".c-home-row-title")?.textContent, item.querySelector(".c-home-place")?.textContent,
@@ -208,9 +244,10 @@ describe("Needs you on Home", () => {
       .toBe("You’re owed £70.00 and €25.00. Three things are overdue, the oldest eight days.");
     // The bar names the page; the sentence is Home's own heading.
     expect(screen.getByRole("heading", { level: 1, name: "Home" })).toBeTruthy();
+    // Home's top bar adds an expense, as drawn (a phone adds from the Hub).
+    fireEvent.click(within(screen.getByRole("banner")).getByRole("button", { name: "Add expense" }));
+    expect(await screen.findByRole("dialog", { name: "Add expense" })).toBeTruthy();
   });
-
-  const readAgain = () => vi.mocked(loadSnapshot).mock.calls.map(([commune]) => commune.id);
 
   it("tells the bill payer from Home, then reads the share's own commune again", async () => {
     vi.mocked(post).mockResolvedValue({ duplicate: false });
@@ -237,6 +274,40 @@ describe("Needs you on Home", () => {
     fireEvent.click(within(dialog).getByRole("button", { name: "Confirm €25.00 received" }));
     expect(await screen.findByText("€25.00 recorded as received from Ben Baker. Their share is settled.")).toBeTruthy();
     expect(post).toHaveBeenCalledWith("/payment-reports/report-ben-2500/resolve", expect.objectContaining({ decision: "confirm" }));
+    expect(readAgain()).toEqual(["trip-1"]);
+  });
+});
+
+describe("Coming up on Home", () => {
+  // Nothing needs Maya: Ben owes her for the bins bags, and the trip's gutters need someone.
+  const calm = () => snapshotOf(home, {
+    expenses: [expense("bags", "Bin bags", "me", "2026-10-20", [share("me", 400, 400), share("ben", 400)])],
+    operations: [task("dust", "Dust", "2026-10-12", "ben")],
+    recurringBills: [bill("netflix", "Netflix", "me", "2026-10-11", [{ userId: "me", amountMinor: 1000 }, { userId: "ben", amountMinor: 1000 }])],
+  });
+  const tripWithGutters = () => ({ ...tripSummary(), expenses: [], operations: [nobody("gutters", "Clear the gutters", "2026-10-14")] });
+
+  it("shows turns and bills ahead in every commune, and takes a task nobody holds, reading its own commune again", async () => {
+    vi.mocked(loadSnapshot).mockImplementation(async (commune) => commune.id === home.id ? calm() : tripWithGutters());
+    vi.mocked(post).mockResolvedValue({ id: "occurrence-1", date: "2026-10-14", assigneeId: "me", turnOwnerId: "me", status: "open" });
+    mount("/");
+    const coming = await screen.findByRole("region", { name: "Coming up" });
+    await within(coming).findByRole("button", { name: "Clear the gutters" });
+    expect([...coming.querySelectorAll<HTMLElement>(".c-home-row")].map(row)).toEqual([
+      ["Netflix", "Our home", "£20.00, you pay · £10.00 each", null, null],
+      ["Dust", "Our home", "Ben Baker’s turn", null, null],
+      ["Clear the gutters", "Lisbon trip", "nobody yet", null, null],
+    ]);
+    expect(within(coming).getByRole("button", { name: "Operations" })).toBeTruthy();
+    // Only the task nobody holds can be taken from here.
+    expect(within(coming).getAllByRole("button", { name: /I’ll do it/ })).toHaveLength(1);
+    vi.mocked(loadSnapshot).mockClear();
+    fireEvent.click(within(coming).getByRole("button", { name: "I’ll do it Clear the gutters" }));
+    expect(await screen.findByText("Clear the gutters is yours now. Open the task to undo this.")).toBeTruthy();
+    // A handover to Maya, checked against the task as Home saw it.
+    expect(post).toHaveBeenCalledWith("/operations/gutters/handovers", expect.objectContaining({
+      toMemberId: "me", expectedDate: "2026-10-14", expectedAssigneeId: null, today,
+    }));
     expect(readAgain()).toEqual(["trip-1"]);
   });
 });

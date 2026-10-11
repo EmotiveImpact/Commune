@@ -317,6 +317,12 @@ export function Header({ screen }: { screen: ScreenId }) {
         <button className={cx("a-icon-btn", unread > 0 && "has-unread")} type="button" aria-label={unread ? `Notifications, ${unread} unread` : "Notifications"} onClick={() => go("notices")}>
           <Icon name="bell" size={16} />
         </button>
+        {/* Home's everyday action, beside the bell as drawn; a phone has it on the Hub. */}
+        {screen === "home" && places.length ? (
+          <button className="a-btn ghost a-header-add" type="button" onClick={() => go("add-expense")}>
+            <Icon name="plus" size={16} /><span className="a-header-add-label">Add expense</span>
+          </button>
+        ) : null}
         <button className="a-icon-btn a-you-btn" type="button" aria-label="You" onClick={() => go("settings")}>
           <Avatar tone="maya" initials={you.initials} decorative />
         </button>

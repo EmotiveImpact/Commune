@@ -385,7 +385,12 @@ export type AppState = {
   /** Marking someone else's task done says who did it (needsDoneBy). */
   toggleOperation: (id: string, doneBy?: DoneBy) => Promise<OperationChange>;
   skipOperation: (id: string, reason?: string) => Promise<OperationChange>;
-  handOverOperation: (id: string, toMemberId: string, reason?: string) => Promise<OperationChange>;
+  /**
+   * from: the task as another screen saw it, in a commune that may not be the
+   * open one (Home taking a task nobody holds); that commune is read again.
+   */
+  handOverOperation: (id: string, toMemberId: string, reason?: string,
+    from?: { communeId: string; date: string; assigneeId: string | null }) => Promise<OperationChange>;
   /** Restores the task to exactly how it was before that action. */
   undoOperation: (occurrenceId: string) => Promise<OperationChange>;
   removeOperation: (id: string) => Promise<void>;
@@ -598,6 +603,7 @@ function emptyHub(): LiveHub {
     youOweMinor: 0,
     owedToYouMinor: 0,
     owingYou: [],
+    coming: [],
     moves: [],
     members: [],
     activity: [],
@@ -1807,16 +1813,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }), [mutate, refreshRecords]);
   // Task actions are commands: the database advances the date and rotation
   // and rejects a stale click, so two people cannot complete one occurrence.
-  const occurrenceCommand = useCallback((path: string, body: unknown) => mutate(async () => {
+  const occurrenceCommand = useCallback((path: string, body: unknown, communeId?: string) => mutate(async () => {
     let raw: { id?: unknown; duplicate?: unknown; date?: unknown; assignee?: unknown; assigneeId?: unknown; turnOwnerId?: unknown; status?: unknown };
+    const reread = () => communeId ? refreshCommune(communeId) : refreshRecords();
     try {
       raw = await post(path, body);
     } catch (error) {
       // Someone else acted first. Show their result rather than a stale card.
-      if (error instanceof ApiError && error.status === 409) await refreshRecords();
+      if (error instanceof ApiError && error.status === 409) await reread();
       throw error;
     }
-    await refreshRecords();
+    await reread();
     if (typeof raw?.id !== "string" || typeof raw.date !== "string") throw new ApiError("The task service returned an unexpected response", 502);
     return {
       occurrenceId: raw.id, duplicate: raw.duplicate === true, date: raw.date,
@@ -1824,7 +1831,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       assigneeId: typeof raw.assigneeId === "string" ? raw.assigneeId : null,
       turnOwnerId: typeof raw.turnOwnerId === "string" ? raw.turnOwnerId : null, status: raw.status === "done" ? "done" : "open",
     } satisfies OperationChange;
-  }), [mutate, refreshRecords]);
+  }), [mutate, refreshCommune, refreshRecords]);
   const taskAction = useCallback((id: string, action: "completed" | "skipped" | "reopened", reason?: string, doneBy?: DoneBy) => {
     const item = operationsRef.current.find((row) => row.id === id);
     if (!item) return Promise.reject(new Error("Schedule item not found"));
@@ -1835,13 +1842,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
   }, [occurrenceCommand]);
   // The expected date and holder reject a handover made from a stale screen.
-  const handOverOperation = useCallback((id: string, toMemberId: string, reason?: string) => {
-    const item = operationsRef.current.find((row) => row.id === id);
+  const handOverOperation = useCallback((id: string, toMemberId: string, reason?: string,
+    from?: { communeId: string; date: string; assigneeId: string | null }) => {
+    const item = from ?? operationsRef.current.find((row) => row.id === id);
     if (!item) return Promise.reject(new Error("Schedule item not found"));
     return occurrenceCommand(`/operations/${encodeURIComponent(id)}/handovers`, {
       toMemberId, expectedDate: item.date, expectedAssigneeId: item.assigneeId ?? null, today: todayIso(),
       reason: reason?.trim() || null, requestId: newRequestId(),
-    });
+    }, from?.communeId);
   }, [occurrenceCommand]);
   const undoOperation = useCallback((occurrenceId: string) =>
     occurrenceCommand(`/occurrences/${encodeURIComponent(occurrenceId)}/undo`, {}), [occurrenceCommand]);

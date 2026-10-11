@@ -9,7 +9,7 @@ import {
 } from "../data/household";
 import type { OperationItem } from "../data/operations";
 import { notePreview } from "../data/notePresentation";
-import { timestampDay, todayIso } from "../data/operations";
+import { addDays, timestampDay, todayIso } from "../data/operations";
 import { formatDay, formatMoney, netBalances, overallNet } from "@commune/core";
 
 export type CurrencyCode = "GBP" | "USD" | "EUR";
@@ -335,6 +335,24 @@ export type LiveHub = Omit<Hub, "members" | "activity" | "now"> & {
   owedToYouMinor: number;
   /** Who has an outstanding share of a bill the viewer paid. */
   owingYou: string[];
+  /** Coming up: turns and regular bills in the next fortnight (see comingUp). */
+  coming: Upcoming[];
+};
+
+/**
+ * One row of "Coming up": a task's next turn or a regular bill's next date in
+ * the next fortnight, with nothing to do yet. A task nobody holds can be taken.
+ */
+export type Upcoming = {
+  kind: "task" | "bill";
+  title: string;
+  dueOn: string;
+  /** Whose turn, or what the bill comes to and who pays it. */
+  when: string;
+  operationId?: string;
+  billId?: string;
+  /** A task nobody holds yet, which any member can take. */
+  open?: boolean;
 };
 
 /**
@@ -379,6 +397,30 @@ export function personName(members: Member[] | undefined, userId: string | null 
   const member = userId ? members?.find((item) => item.userId === userId) : undefined;
   if (!member?.name.trim()) return fallback;
   return options.left && member.active === false ? `${member.name} (left)` : member.name;
+}
+
+/** Turns and regular bills from today to 13 days on, soonest first. The viewer's own task due today is in Needs you. */
+export function comingUp(snapshot: Snapshot, viewerId: string, today = todayIso()): Upcoming[] {
+  const currency = snapshot.commune.currency;
+  const last = addDays(today, 13);
+  const nameOf = (userId: string) => personName(snapshot.members, userId, "a former member", { left: true });
+  const rows: Upcoming[] = [];
+  for (const item of snapshot.operations ?? []) {
+    if (item.kind !== "task" || item.status !== "open" || item.date < today || item.date > last) continue;
+    if (item.assigneeId === viewerId && item.date === today) continue;
+    rows.push({ kind: "task", title: item.title, dueOn: item.date, operationId: item.id, open: !item.assigneeId,
+      when: !item.assigneeId ? "nobody yet" : item.assigneeId === viewerId ? "your turn" : `${nameOf(item.assigneeId)}’s turn` });
+  }
+  for (const bill of snapshot.recurringBills ?? []) {
+    if (bill.paused || bill.archivedAt || bill.nextDueOn < today || bill.nextDueOn > last) continue;
+    const shares = bill.allocations.filter((share) => share.amountMinor > 0);
+    const even = shares.length > 1 && shares.every((share) => share.amountMinor === shares[0].amountMinor);
+    const yours = shares.find((share) => share.userId === viewerId)?.amountMinor;
+    const split = even ? ` · ${money(shares[0].amountMinor, currency)} each` : yours ? ` · your share ${money(yours, currency)}` : "";
+    rows.push({ kind: "bill", title: bill.title, dueOn: bill.nextDueOn, billId: bill.id,
+      when: `${money(bill.amountMinor, currency)}, ${bill.paidByUserId === viewerId ? "you pay" : `${nameOf(bill.paidByUserId)} pays`}${split}` });
+  }
+  return rows.sort((a, b) => a.dueOn.localeCompare(b.dueOn));
 }
 
 const NEED_ORDER: Need["kind"][] = ["confirm", "pay", "task", "pledge", "owed", "reported"];
@@ -657,6 +699,7 @@ export function hubFromSnapshot(
     youOweMinor: youOwe,
     owedToYouMinor: youAreOwed,
     owingYou: [...owingYou],
+    coming: comingUp(source, viewer.id, today),
     moves,
     members,
     activity: [...snapshot.expenses.map((expense) => ({

@@ -601,3 +601,27 @@
   .a-toolbar > .c-record-filter { flex: 1 1 0; min-width: 0; }
 }
 .c-expense-amount strong { white-space: nowrap; }
+
+/* Add expense in Home's top bar, beside the bell. Phones add from the Hub. */
+.a-header .a-header-add {
+  height: 38px;
+  font-weight: 500;
+  gap: 7px;
+  white-space: nowrap;
+}
+/* Beside the tablet sidebar the title needs the room: the plus alone, still named. */
+@media (max-width: 700px) {
+  .a-header .a-header-add { width: 38px; padding: 0; justify-content: center; }
+  .a-header-add-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+@media (max-width: 560px) {
+  .a-header .a-header-add { display: none; }
+}
+.a-body.is-native .a-header .a-header-add { display: none; }
