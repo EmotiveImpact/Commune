@@ -167,7 +167,7 @@ describe("an address for every window", () => {
     expect(app.window).toBeNull();
     await waitFor(() => expect(document.title).toBe("Commune not found · Commune"));
     fireEvent.click(screen.getByRole("button", { name: "Go to Home" }));
-    await screen.findByRole("heading", { name: "Your communes, Test." });
+    await screen.findByRole("heading", { name: "Home", level: 1 });
   });
 
   it("shows the window's own not-found state for a record outside the commune", async () => {
@@ -276,7 +276,7 @@ describe("the page asked for before signing in", () => {
     sessionStorage.setItem("commune.return-to", "https://evil.example/steal");
     const location = mount("/login");
     await signIn();
-    await screen.findByRole("heading", { name: "Your communes, Test." });
+    await screen.findByRole("heading", { name: "Home", level: 1 });
     expect(location.history?.at(-1)).toBe("/");
   });
 

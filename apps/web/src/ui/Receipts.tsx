@@ -10,20 +10,22 @@ import { LIMITS } from "../data/limits";
 import { Button, Dialog, Feedback, Field } from "./components";
 
 export const RECEIPT_REFERENCE_MAX = 80;
+// communeId names the commune the share is in, when that may not be the open
+// one (Home acts on every commune's payments); it is read again afterwards.
 export type ReceiptTarget = {
   shareId: string; debtorName: string; expenseName: string;
-  shareMinor: number; outstandingMinor: number; currency: CurrencyCode;
+  shareMinor: number; outstandingMinor: number; currency: CurrencyCode; communeId?: string;
 };
 export type ReversalTarget = {
   receipt: Receipt; debtorName: string; expenseName: string; currency: CurrencyCode;
 };
 export type PaymentReportTarget = {
   shareId: string; payerName: string; expenseName: string;
-  outstandingMinor: number; currency: CurrencyCode;
+  outstandingMinor: number; currency: CurrencyCode; communeId?: string;
 };
 export type ReportAnswerTarget = {
   report: PaymentReport; debtorName: string; expenseName: string; currency: CurrencyCode;
-  decision: "confirm" | "decline";
+  decision: "confirm" | "decline"; communeId?: string;
 };
 
 /** The share's open "I've sent it" report, if any. */
@@ -72,7 +74,7 @@ export function RecordReceiptDialog({ target, onClose, onRecorded }: {
     if (unsafeReference(reference)) { setError("Leave out card or account numbers. A short note such as “bank transfer” is enough."); return; }
     setPending(true); setError("");
     try {
-      const result = await recordShareReceipt(target.shareId, { amountMinor: minor, receivedOn, reference, requestId: requestId.current });
+      const result = await recordShareReceipt(target.shareId, { amountMinor: minor, receivedOn, reference, requestId: requestId.current }, target.communeId);
       onRecorded(result.duplicate
         ? `This repayment was already recorded. ${money(result.outstandingMinor, target.currency)} is outstanding from ${target.debtorName}.`
         : result.outstandingMinor > 0
@@ -147,7 +149,7 @@ export function ReportPaymentDialog({ target, onClose, onReported }: {
     if (unsafeReference(reference)) { setError("Leave out card or account numbers. A short note such as “bank transfer” is enough."); return; }
     setPending(true); setError("");
     try {
-      const result = await reportSharePayment(target.shareId, { amountMinor: minor, sentOn, reference, requestId: requestId.current });
+      const result = await reportSharePayment(target.shareId, { amountMinor: minor, sentOn, reference, requestId: requestId.current }, target.communeId);
       onReported(result.duplicate
         ? `This payment was already reported. ${target.payerName} has been told.`
         : `${target.payerName} has been told you sent ${money(minor, target.currency)}. Your balance changes when they confirm it.`);
@@ -208,7 +210,7 @@ export function AnswerReportDialog({ target, onClose, onAnswered }: {
     setPending(true); setError("");
     try {
       const result = await resolvePaymentReport(target.report.id, confirming
-        ? { decision: "confirm", requestId: requestId.current } : { decision: "decline", note });
+        ? { decision: "confirm", requestId: requestId.current } : { decision: "decline", note }, target.communeId);
       onAnswered(confirming
         ? result.outstandingMinor > 0
           ? `${amount} recorded as received from ${target.debtorName}. ${money(result.outstandingMinor, target.currency)} still outstanding.`

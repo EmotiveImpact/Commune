@@ -148,10 +148,10 @@ describe("the activity log", () => {
 
   it("gives Home's recent records their type, day and time", async () => {
     mount("/");
-    const recent = (await screen.findByRole("heading", { name: "Recent activity" })).closest(".a-card") as HTMLElement;
+    const recent = (await screen.findByRole("heading", { name: "Recent activity" })).closest("section") as HTMLElement;
     await within(recent).findByText("Ferry");
-    const rows = within(recent).getAllByRole("button").filter((button) => button.classList.contains("a-item"));
-    expect(rows.map((row) => [row.querySelector("strong")?.textContent, ...[...row.querySelectorAll(".when")].map((node) => node.textContent)]))
+    const rows = within(recent).getAllByRole("listitem");
+    expect(rows.map((row) => [row.querySelector("b")?.textContent, row.querySelector("b + span")?.textContent, row.querySelector("time")?.textContent]))
       .toEqual([
         ["Inspection", "Our home · Event · Created · Housemate Two", "Today, 14:05"],
         ["Ferry", "Lisbon trip · Repayment · Repayment of €20.00 recorded · Housemate Two", "Today, 10:10"],

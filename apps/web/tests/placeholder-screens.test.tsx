@@ -69,7 +69,7 @@ describe("Billing and Analytics", () => {
 
   it.each(["/billing", "/analytics"])("%s goes to Home", async (path) => {
     const location = mount(path);
-    await screen.findByRole("heading", { name: "Your communes, Test." });
+    await screen.findByRole("heading", { name: "Home", level: 1 });
     await waitFor(() => expect(location.history?.at(-1)).toBe("/"));
   });
 });

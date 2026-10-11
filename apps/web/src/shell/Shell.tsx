@@ -245,6 +245,7 @@ export function Header({ screen }: { screen: ScreenId }) {
     noticeCounts,
     hubId,
     session,
+    places,
     window: currentWindow,
   } = useApp();
   const [searchOpen, setSearchOpen] = useState(false);
@@ -267,7 +268,7 @@ export function Header({ screen }: { screen: ScreenId }) {
     return () => document.removeEventListener("keydown", shortcut);
   }, [searchOpen, currentWindow]);
   return (
-    <header className={cx("a-header", (screen === "home" || screen === "home-empty") && "a-header-home")}>
+    <header className={cx("a-header", (screen === "home" || screen === "home-empty") && !places.length && "a-header-home")}>
       <button className="a-icon-btn a-more-btn" type="button" aria-label="More" onClick={() => setMoreOpen(true)}>
         <Icon name="menu" size={16} />
       </button>

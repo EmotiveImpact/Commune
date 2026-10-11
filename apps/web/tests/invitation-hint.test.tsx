@@ -90,7 +90,7 @@ describe("an invitation sent to another address", () => {
   it("carries on to Commune", async () => {
     const location = mount();
     fireEvent.click(await screen.findByRole("button", { name: "Continue to Commune" }));
-    await screen.findByRole("heading", { name: "Your communes, Test." });
+    await screen.findByRole("heading", { name: "Home", level: 1 });
     expect(location.history?.at(-1)).toBe("/");
   });
 

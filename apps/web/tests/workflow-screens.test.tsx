@@ -168,21 +168,34 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("complete shared workflows", () => {
-  it.each([0, 1, 2])("puts the personal Home greeting and %i-space count in the top bar only", async count => {
-    const communes = Array.from({ length: count }, (_, index) => ({ ...commune, id: `home-${index + 1}`, name: `Home ${index + 1}` }));
-    vi.mocked(loadCommunes).mockResolvedValue({ communes });
-    vi.mocked(loadSnapshot).mockImplementation(async id => ({ ...current, commune: communes.find(item => item.id === id)! }));
+  it("greets a member with no communes yet in the top bar only", async () => {
+    vi.mocked(loadCommunes).mockResolvedValue({ communes: [] });
     mount("/");
     const greeting = await screen.findByRole("heading", { name: "Your communes, Test.", level: 1 });
     const banner = screen.getByRole("banner");
-    const summary = `${count} ${count === 1 ? "space" : "spaces"} · shared details that stay in sync for everyone.`;
+    const summary = "0 spaces · shared details that stay in sync for everyone.";
     expect(banner.contains(greeting)).toBe(true);
     await within(banner).findByText(summary);
     expect(screen.getAllByText(summary)).toHaveLength(1);
     expect(screen.getAllByText("Your communes, Test.")).toHaveLength(1);
-    expect(document.querySelector("#home .a-home-greet")).toBeNull();
-    expect(document.querySelectorAll("#home .a-place")).toHaveLength(count);
-    expect(document.querySelectorAll("#home .a-focus-lead")).toHaveLength(count ? 1 : 0);
+    expect(within(banner).getByRole("button", { name: "Search Commune" })).toBeTruthy();
+    expect(within(banner).getByRole("button", { name: "Notifications" })).toBeTruthy();
+  });
+
+  it.each([1, 2])("names the page Home in the top bar and lists %i communes on it", async count => {
+    const communes = Array.from({ length: count }, (_, index) => ({ ...commune, id: `home-${index + 1}`, name: `Home ${index + 1}` }));
+    vi.mocked(loadCommunes).mockResolvedValue({ communes });
+    vi.mocked(loadSnapshot).mockImplementation(async id => ({ ...current, commune: communes.find(item => item.id === id)! }));
+    mount("/");
+    const title = await screen.findByRole("heading", { name: "Home", level: 1 });
+    const banner = screen.getByRole("banner");
+    // Home opens on its own sentence, so the bar carries no greeting or count.
+    expect(banner.contains(title)).toBe(true);
+    expect(screen.queryByText("Your communes, Test.")).toBeNull();
+    expect(screen.queryByText(/shared details that stay in sync/)).toBeNull();
+    const list = await screen.findByRole("region", { name: "Your communes" });
+    expect(within(list).getAllByRole("heading", { level: 3 }).map(heading => heading.textContent)).toEqual(communes.map(item => item.name));
+    expect(list.querySelectorAll(".c-home-tag")).toHaveLength(count > 1 ? 1 : 0);
     expect(within(banner).getByRole("button", { name: "Search Commune" })).toBeTruthy();
     expect(within(banner).getByRole("button", { name: "Notifications" })).toBeTruthy();
   });
@@ -190,7 +203,9 @@ describe("complete shared workflows", () => {
   it.each(["/hub", "/operations", "/", "/expenses", "/recurring"])("uses the shared calendar for real dated records on %s", async path => {
     const date = todayIso();
     current.operations = [{ id: "dated-task", hubId: commune.id, kind: "task", category: "chore", title: "Kitchen reset", date, allDay: true, assignee: user.name, repeat: "none", status: "open", notes: "" }];
-    current.expenses = [{ id: "dated-expense", title: "House supplies", category: "Other", amountMinor: 1000, paidByUserId: "user-2", dueOn: date, shares: [{ id: "dated-share", userId: user.id, amountMinor: 1000, settledMinor: 0 }] }];
+    // Two, so Home has a dated row as well as its next step.
+    current.expenses = [{ id: "dated-expense", title: "House supplies", category: "Other", amountMinor: 1000, paidByUserId: "user-2", dueOn: date, shares: [{ id: "dated-share", userId: user.id, amountMinor: 1000, settledMinor: 0 }] },
+      { id: "dated-expense-2", title: "Bin bags", category: "Other", amountMinor: 600, paidByUserId: "user-2", dueOn: date, shares: [{ id: "dated-share-2", userId: user.id, amountMinor: 600, settledMinor: 0 }] }];
     current.recurringBills = [{ id: "dated-bill", title: "Internet", amountMinor: 4800, paidByUserId: user.id, allocations: [{ userId: user.id, amountMinor: 4800 }], frequency: "monthly", nextDueOn: date, paused: false, createdBy: user.id }];
     mount(path);
     await waitFor(() => expect(document.querySelector(".c-calendar-date.is-today")).not.toBeNull());

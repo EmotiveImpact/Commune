@@ -20,7 +20,7 @@ const widths = (srcSet = "") => srcSet.split(", ").map((candidate) => {
   const [url, width] = candidate.split(" ");
   return { photo: new URL(url).pathname, w: new URL(url).searchParams.get("w"), width };
 });
-const PLACEMENTS: CoverPlacement[] = ["featured", "card", "hero", "preview"];
+const PLACEMENTS: CoverPlacement[] = ["card", "hero", "preview", "commune", "thumb"];
 const CUSTOM = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQ";
 
 // The screens and windows a browser loads on first use are loaded up front,
@@ -109,16 +109,17 @@ describe("covers across the app", () => {
   });
   afterEach(cleanup);
 
-  it("sizes Home's covers for their cards and falls back to each type's tone", async () => {
+  it("sizes Home's covers for where they sit and falls back to each type's tone", async () => {
     mount("/");
     await screen.findByRole("heading", { name: "Our home" });
-    const featured = document.querySelector(".a-focus-hero")!;
-    const cards = [...document.querySelectorAll(".a-home-places .a-place-hero")];
-    expect(featured.classList.contains("c-cover-household")).toBe(true);
-    expect(cards.map((card) => [...card.classList].find((name) => name.startsWith("c-cover-")))).toEqual(["c-cover-workspace", "c-cover-trip"]);
-    expect(featured.querySelector("img")?.getAttribute("sizes")).toBe(coverSource({ type: "Household", photo: "" }, "featured").sizes);
-    for (const card of cards) expect(card.querySelector("img")?.getAttribute("sizes")).toBe(coverSource({ type: "Trip", photo: "" }, "card").sizes);
-    expect(cards[1].querySelector("img")?.getAttribute("src")).toBe(coverSource({ type: "Trip", photo: "" }, "card").src);
+    // Nothing is owed in any of them, so the current commune's photo leads.
+    const band = document.querySelector(".c-home-square")!;
+    const photos = [...document.querySelectorAll(".c-home-commune-photo")];
+    expect(band.classList.contains("c-cover-household")).toBe(true);
+    expect(photos.map((photo) => [...photo.classList].find((name) => name.startsWith("c-cover-")))).toEqual(["c-cover-household", "c-cover-workspace", "c-cover-trip"]);
+    expect(band.querySelector("img")?.getAttribute("sizes")).toBe(coverSource({ type: "Household", photo: "" }, "hero").sizes);
+    for (const photo of photos) expect(photo.querySelector("img")?.getAttribute("sizes")).toBe(coverSource({ type: "Trip", photo: "" }, "commune").sizes);
+    expect(photos[2].querySelector("img")?.getAttribute("src")).toBe(coverSource({ type: "Trip", photo: "" }, "commune").src);
     failAll();
     expect(document.querySelector("img.c-cover-photo")).toBeNull();
     expect(screen.getByRole("heading", { name: "Our home" })).toBeTruthy();

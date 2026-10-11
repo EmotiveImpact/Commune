@@ -330,6 +330,11 @@ export type LiveHub = Omit<Hub, "members" | "activity" | "now"> & {
   now: Need[];
   /** What the viewer is waiting on others for, with nothing to do. */
   waiting: Need[];
+  /** The viewer's outstanding shares here, and everyone's outstanding shares of bills the viewer paid, in minor units. */
+  youOweMinor: number;
+  owedToYouMinor: number;
+  /** Who has an outstanding share of a bill the viewer paid. */
+  owingYou: string[];
 };
 
 /**
@@ -346,12 +351,22 @@ export type Need = {
   /** Who and what, without the amount. */
   when: string;
   amount?: string;
+  /** The amount in minor units, where there is one. */
+  minor?: number;
   dueOn?: string;
   /** Past its date. */
   late: boolean;
   expenseId?: string;
   operationId?: string;
   fundId?: string;
+  /** The share it is about: the viewer's own (pay, reported) or one the viewer can confirm. */
+  shareId?: string;
+  /** The other person: who paid the bill (pay, reported) or who says they sent it (confirm). */
+  person?: string;
+  /** Everyone who still owes the viewer for this bill (owed). */
+  people?: string[];
+  /** The payment to confirm. */
+  report?: PaymentReport;
 };
 /**
  * The name of anyone a snapshot knows, former members included (0031). With
@@ -401,23 +416,28 @@ export function needsYou(snapshot: Snapshot, viewerId: string, today = todayIso(
       const report = share.paymentReports?.find((item) => item.status === "pending");
       if (expense.paidByUserId === viewerId) {
         if (report) {
-          actions.push({ ...base, kind: "confirm", when: `${nameOf(share.userId)} says they sent it`, amount: money(report.amountMinor, currency) });
+          actions.push({ ...base, kind: "confirm", when: `${nameOf(share.userId)} says they sent it`, amount: money(report.amountMinor, currency),
+            minor: report.amountMinor, shareId: share.id, person: share.userId, report });
         } else {
           owing.push({ userId: share.userId, minor: outstanding });
         }
       } else if (share.userId === viewerId) {
         const payer = nameOf(expense.paidByUserId);
+        const yours = { shareId: share.id, person: expense.paidByUserId };
         if (report) {
-          waiting.push({ ...base, kind: "reported", when: `You said you sent it · waiting for ${payer}`, amount: money(report.amountMinor, currency) });
+          waiting.push({ ...base, ...yours, kind: "reported", when: `You said you sent it · waiting for ${payer}`, amount: money(report.amountMinor, currency),
+            minor: report.amountMinor });
         } else {
-          actions.push({ ...base, kind: "pay", when: `You owe ${payer}${late ? " · overdue" : ""}`, amount: money(outstanding, currency) });
+          actions.push({ ...base, ...yours, kind: "pay", when: `You owe ${payer}${late ? " · overdue" : ""}`, amount: money(outstanding, currency),
+            minor: outstanding });
         }
       }
     }
     if (owing.length) {
       const who = namesList(owing.map((item) => nameOf(item.userId)));
+      const minor = owing.reduce((total, item) => total + item.minor, 0);
       waiting.push({ ...base, kind: "owed", when: `${who.charAt(0).toUpperCase()}${who.slice(1)} ${owing.length === 1 ? "owes" : "owe"} you`,
-        amount: money(owing.reduce((total, item) => total + item.minor, 0), currency) });
+        amount: money(minor, currency), minor, people: owing.map((item) => item.userId) });
     }
   }
   for (const item of snapshot.operations ?? []) {
@@ -431,8 +451,9 @@ export function needsYou(snapshot: Snapshot, viewerId: string, today = todayIso(
     for (const pledge of fund.commitments) {
       if (pledge.cancelledAt || pledge.userId !== viewerId || pledge.amountMinor <= pledge.contributedMinor || pledge.dueOn > today) continue;
       const late = pledge.dueOn < today;
+      const remaining = pledge.amountMinor - pledge.contributedMinor;
       actions.push({ kind: "pledge", go: "funds", title: fund.name, when: `Remaining on your pledge${late ? " · overdue" : ""}`,
-        amount: money(pledge.amountMinor - pledge.contributedMinor, currency), fundId: fund.id, dueOn: pledge.dueOn, late });
+        amount: money(remaining, currency), minor: remaining, fundId: fund.id, dueOn: pledge.dueOn, late });
     }
   }
   return { actions: actions.sort(compareNeeds), waiting: waiting.sort(compareNeeds) };
@@ -517,6 +538,7 @@ export function hubFromSnapshot(
   const moves: Hub["moves"] = [];
   let youOwe = 0;
   let youAreOwed = 0;
+  const owingYou = new Set<string>();
   for (const expense of snapshot.expenses) {
     for (const share of expense.shares) {
       if (share.userId === expense.paidByUserId) continue;
@@ -534,6 +556,7 @@ export function hubFromSnapshot(
         });
       } else if (expense.paidByUserId === viewer.id) {
         youAreOwed += due;
+        owingYou.add(share.userId);
         moves.push({
           go: "settle",
           arrow: "→",
@@ -631,6 +654,9 @@ export function hubFromSnapshot(
     ],
     now: needs.actions,
     waiting: needs.waiting,
+    youOweMinor: youOwe,
+    owedToYouMinor: youAreOwed,
+    owingYou: [...owingYou],
     moves,
     members,
     activity: [...snapshot.expenses.map((expense) => ({

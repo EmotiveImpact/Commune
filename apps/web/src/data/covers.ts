@@ -9,7 +9,7 @@ import { HUBS, type Hub } from "./household";
  * --cover-* tokens in shared.css), which shows while the photo loads and
  * stays if it cannot load.
  */
-export type CoverPlacement = "featured" | "card" | "hero" | "preview";
+export type CoverPlacement = "card" | "hero" | "preview" | "commune" | "thumb";
 export type CoverTone = "household" | "workspace" | "trip";
 export type CoverHub = Pick<Hub, "type" | "photo">;
 export type CoverSource = { src: string; srcSet?: string; sizes?: string };
@@ -17,15 +17,18 @@ export type CoverSource = { src: string; srcSet?: string; sizes?: string };
 const WIDTHS = [480, 800, 1200, 1600];
 
 // How wide each placement is drawn, in CSS pixels. The sidebar (248px) goes
-// away at 560px. featured: the first card on Home. card: the smaller cards on
-// Home and Places (three, then two, then one column). hero: the photo at the
-// top of This Hub (at most 1208px). preview: the commune settings preview
+// away at 560px. card: the cards on Places (three, then two, then one
+// column). hero: the photo at the top of This Hub (at most 1208px), and Home's
+// photo when everything is square. preview: the commune settings preview
 // (240px beside the form, full width once the form drops below it at 1000px).
+// commune: Home's commune cards (132px, or a third of a phone as tiles).
+// thumb: the small marks beside a record's name on Home (44px at most).
 const PLACEMENTS: Record<CoverPlacement, { sizes: string; fallback: number }> = {
-  featured: { sizes: "(max-width: 560px) 100vw, calc(100vw - 248px)", fallback: 1200 },
   card: { sizes: "(max-width: 560px) 100vw, (max-width: 850px) 50vw, 33vw", fallback: 800 },
   hero: { sizes: "(max-width: 560px) 100vw, (max-width: 1500px) calc(100vw - 292px), 1208px", fallback: 1200 },
   preview: { sizes: "(max-width: 560px) 100vw, (max-width: 1000px) 560px, 240px", fallback: 480 },
+  commune: { sizes: "(max-width: 560px) 33vw, 132px", fallback: 480 },
+  thumb: { sizes: "44px", fallback: 480 },
 };
 
 export function coverTone(hub: Pick<Hub, "type">): CoverTone {
