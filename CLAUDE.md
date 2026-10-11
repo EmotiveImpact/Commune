@@ -20,6 +20,7 @@ The application was migrated. The stack below is what runs today.
 - **Local development backend:** `apps/local-api`, a loopback-only PostgreSQL API on port 3002 that calls the same database functions. Vite proxies `/api` to it. Its database is set up as `infra/local/README.md` describes. It is never deployed.
 - **Email:** `apps/reminder-worker`, a Neon Function that sends reminder and invitation emails from the outbox through Resend, with one-click unsubscribe and a bounce webhook.
 - **Shared logic:** `packages/core` (split arithmetic, balances, reading typed amounts, and writing money and dates), imported as `@commune/core` through a path in `apps/web/tsconfig.json` and an alias in `apps/web/vite.config.ts`. It has no `package.json`. Amounts and day-and-month dates are written by its `formatMoney` and `formatDay`; `apps/web/tests/formatting.test.ts` fails if app code uses `Intl.NumberFormat`, `toLocaleString` or `toLocaleDateString`.
+- **Phone app:** `apps/native` (Expo, expo-router), built from the approved phone design. It runs on demo data or the local API, not yet on hosted Neon, and keeps its own lockfile outside the workspace. See `apps/native/README.md`.
 - **Mobile:** `apps/mobile-v2` (Expo). Separate work. It does not use Commune's database or share code with `apps/web`.
 - **Website:** `web/` is the marketing website: the editorial homepage and its company pages (moved from `apps/landing-monzo-study` on 5 October 2026). The previous v2 site is kept in `web-backup/`. Neither is in the pnpm workspace. Separate work from the app.
 
@@ -28,6 +29,7 @@ commune/
 ├── apps/web/              # The product: React 19 + Vite + wouter
 ├── apps/local-api/        # Local loopback API over PostgreSQL (dev only)
 ├── apps/reminder-worker/  # Reminder and invitation email sender
+├── apps/native/           # Expo phone app (own lockfile)
 ├── apps/mobile-v2/        # Expo app (separate work)
 ├── web/                   # Marketing website (separate work)
 ├── web-backup/            # Previous v2 website, kept for reference

@@ -1,0 +1,28 @@
+{
+  "expo": {
+    "name": "Commune",
+    "slug": "commune",
+    "scheme": "commune",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "backgroundColor": "#1a1e2b",
+    "newArchEnabled": true,
+    "ios": {
+      "bundleIdentifier": "io.ourcommune.app",
+      "supportsTablet": false,
+      "config": { "usesNonExemptEncryption": false }
+    },
+    "android": {
+      "package": "io.ourcommune.app",
+      "edgeToEdgeEnabled": true
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single",
+      "name": "Commune"
+    },
+    "plugins": ["expo-router"],
+    "experiments": { "typedRoutes": false }
+  }
+}
