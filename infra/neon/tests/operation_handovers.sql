@@ -105,7 +105,7 @@ BEGIN
     RAISE EXCEPTION 'Undo did not restore the holder: %', row_to_json(v_row);
   END IF;
   PERFORM public.hand_over_operation(v_op, d, current_date, a, current_date, NULL, gen_random_uuid());
-  v_result := public.record_operation_occurrence(v_op, 'completed', current_date, current_date, gen_random_uuid());
+  v_result := public.record_operation_occurrence(v_op, 'completed', current_date, current_date, gen_random_uuid(), NULL, 'assignee');
   SELECT * INTO v_row FROM public.commune_operations WHERE id = v_op;
   IF v_row.assignee_id <> b OR v_row.turn_owner_id IS NOT NULL OR v_row.last_done->>'by' <> 'Dana' OR v_row.date <> current_date + 7 THEN
     RAISE EXCEPTION 'Completion after a cover went wrong: %', row_to_json(v_row);

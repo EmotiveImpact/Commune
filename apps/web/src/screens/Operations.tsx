@@ -6,9 +6,11 @@ import {
   formatTimeLabel,
   isoFromDate,
   holdsTurn,
+  needsDoneBy,
   nextPerson,
   overdueDays,
   todayIso,
+  type DoneBy,
   type OperationItem,
 } from "../data/operations";
 import { useApp } from "../state";
@@ -16,6 +18,7 @@ import { Icon } from "../ui/Icon";
 import { Avatar } from "../ui/widgets";
 import { CalendarDate } from "../ui/CalendarDate";
 import { cx } from "../ui/cx";
+import { DoneByChoice } from "../ui/DoneByChoice";
 
 type Cut = "week" | "people" | "month";
 /** The late card, and which of its buttons, an Undo puts focus back on. */
@@ -63,6 +66,8 @@ export function OperationsScreen() {
   const [toast, setToast] = useState<{ text: string; undoId?: string; from?: LateAction } | null>(null);
   const [error, setError] = useState("");
   const [undoing, setUndoing] = useState(false);
+  // The late task whose card is asking who did it.
+  const [asking, setAsking] = useState<string | null>(null);
   const toastTimer = useRef<number | undefined>(undefined);
   const toastRef = useRef<HTMLDivElement>(null);
   const toastHeld = useRef(false);
@@ -187,17 +192,26 @@ export function OperationsScreen() {
     showDate(isoFromDate(date));
   }
 
-  async function completeTask(item: OperationItem) {
+  async function completeTask(item: OperationItem, doneBy?: DoneBy) {
+    // Someone else's task first asks who did it.
+    if (!doneBy && needsDoneBy(item, you.id)) {
+      setAsking(item.id);
+      return;
+    }
+    setAsking(null);
     try {
       // The server decides the next date and person; report what it saved.
-      const result = await toggleOperation(item.id);
+      const result = await toggleOperation(item.id, doneBy);
       const handed = item.repeat !== "none" && item.rotation?.length ? firstNameOf(result.assignee ?? undefined) : "";
+      const holder = firstNameOf(item.assignee);
+      const lead = doneBy === "assignee" ? `Marked done for ${holder}` : doneBy === "me" ? `Done, covering ${holder}` : "Done";
+      const next = shortDateFormatter.format(dateFromIso(result.date));
       flash(
         handed
-          ? `Handed to ${handed} · ${shortDateFormatter.format(dateFromIso(result.date))}`
+          ? doneBy ? `${lead} · next ${handed}, ${next}` : `Handed to ${handed} · ${next}`
           : item.repeat !== "none"
-            ? `Done · next ${shortDateFormatter.format(dateFromIso(result.date))}`
-            : `Done · ${item.title}`,
+            ? `${lead} · next ${next}`
+            : `${lead} · ${item.title}`,
         result.occurrenceId,
         { id: item.id, action: "done" },
       );
@@ -282,9 +296,11 @@ export function OperationsScreen() {
               item={item}
               today={today}
               pending={mutationPending}
+              asking={asking === item.id}
               onOpen={() => go("operation", { operation: item.id })}
               onSkip={() => skipTask(item)}
-              onDone={() => completeTask(item)}
+              onDone={(doneBy) => completeTask(item, doneBy)}
+              onCancel={() => setAsking(null)}
             />
           ))}
 
@@ -510,24 +526,30 @@ function LateCard({
   item,
   today,
   pending,
+  asking,
   onOpen,
   onSkip,
   onDone,
+  onCancel,
 }: {
   item: OperationItem;
   today: string;
   /** A change is saving: the actions wait so one click is not sent twice. */
   pending: boolean;
+  /** Done was pressed on someone else's task: the card asks who did it. */
+  asking: boolean;
   onOpen: () => void;
   onSkip: () => void;
-  onDone: () => void;
+  onDone: (doneBy?: DoneBy) => void;
+  onCancel: () => void;
 }) {
+  const card = useRef<HTMLElement>(null);
   const next = item.rotation?.length
     ? firstNameOf(nextPerson(item))
     : "";
   const who = firstNameOf(item.assignee);
   return (
-    <section className="ops-card ops-late" data-late={item.id}>
+    <section ref={card} className="ops-card ops-late" data-late={item.id}>
       <p className="ops-kicker is-late">
         {lateLabel(item.date, today)} · {who || "Unassigned"}
       </p>
@@ -548,7 +570,19 @@ function LateCard({
       <p className="ops-note">
         {who ? `${who} still has this.` : "Nobody has this yet."}{next ? ` Next is ${next}.` : ""}
       </p>
-      <div className="ops-late-actions">
+      {asking ? (
+        <DoneByChoice
+          holder={item.assignee ?? ""}
+          title={item.title}
+          disabled={pending}
+          onChoose={onDone}
+          onCancel={() => {
+            onCancel();
+            // Back to the Done button the question replaced.
+            requestAnimationFrame(() => card.current?.querySelector<HTMLElement>('[data-late-action="done"]')?.focus());
+          }}
+        />
+      ) : <div className="ops-late-actions">
         <button className="a-btn ghost" type="button" onClick={onOpen}>
           Open{" "}<span className="c-visually-hidden">{item.title}</span>
         </button>
@@ -558,10 +592,10 @@ function LateCard({
             Skip a week{" "}<span className="c-visually-hidden">for {item.title}</span>
           </button>
         ) : null}
-        <button className="a-btn" type="button" data-late-action="done" disabled={pending} onClick={onDone}>
+        <button className="a-btn" type="button" data-late-action="done" disabled={pending} onClick={() => onDone()}>
           {next ? `Done · ${next}` : "Mark done"}{" "}<span className="c-visually-hidden">({item.title})</span>
         </button>
-      </div>
+      </div>}
     </section>
   );
 }

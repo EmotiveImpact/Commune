@@ -190,6 +190,10 @@ describe("hosted money lifecycle and task commands", () => {
     expect(mocks.rpc).toHaveBeenCalledWith("record_operation_occurrence", {
       p_operation_id: "task-1", p_action: "completed", p_expected_date: "2026-10-02", p_today: "2026-10-02", p_request_id: requestId });
     expect(done).toMatchObject({ id: "occurrence-1", date: "2026-10-09", assignee: "Blake" });
+    await send("/operations/task-1/occurrences", { action: "completed", expectedDate: "2026-10-02", today: "2026-10-02", requestId, doneBy: "assignee" });
+    expect(mocks.rpc).toHaveBeenLastCalledWith("record_operation_occurrence", {
+      p_operation_id: "task-1", p_action: "completed", p_expected_date: "2026-10-02", p_today: "2026-10-02", p_request_id: requestId,
+      p_done_by: "assignee" });
     await send("/occurrences/occurrence-1/undo", {});
     expect(mocks.rpc).toHaveBeenLastCalledWith("undo_operation_occurrence", { p_occurrence_id: "occurrence-1" });
     expect(mocks.from).not.toHaveBeenCalled();

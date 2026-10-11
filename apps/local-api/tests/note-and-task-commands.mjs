@@ -100,21 +100,21 @@ assert.equal(ok(await b("POST", `/communes/${id}/operations`, { ...chore, reques
 let row = (await snapshot()).operations.find(item => item.id === task.id);
 assert.deepEqual([row.version, row.status, row.lastDone, row.createdBy], [1, "open", null, blake.id]);
 
-// Blake opens the task to edit it; meanwhile Casey marks it done. Blake's
+// Blake opens the task to edit it; meanwhile Casey marks it done for him. Blake's
 // save would put the task back, so it is refused and the completion stays.
-ok(await c("POST", `/operations/${task.id}/occurrences`, { action: "completed", expectedDate: today, today, requestId: randomUUID() }), 201);
+ok(await c("POST", `/operations/${task.id}/occurrences`, { action: "completed", expectedDate: today, today, requestId: randomUUID(), doneBy: "assignee" }), 201);
 const staleTask = await b("PUT", `/operations/${task.id}`, { ...chore, title: "Hoover the stairs and hall", expectedVersion: 1 });
 assert.equal(staleTask.status, 409);
 assert.match(staleTask.error, /This task was changed by someone else/);
 row = (await snapshot()).operations.find(item => item.id === task.id);
-assert.deepEqual([row.version, row.title, row.assigneeId, row.lastDone], [2, "Hoover the stairs", casey.id, { by: blake.name, date: today }]);
+assert.deepEqual([row.version, row.title, row.assigneeId, row.lastDone], [2, "Hoover the stairs", casey.id, { by: blake.name, date: today, markedBy: casey.name }]);
 // Saved on top of the latest version, an edit changes what, when and who,
 // and leaves the completion as it is.
 const edited = ok(await b("PUT", `/operations/${task.id}`, { ...chore, title: "Hoover the stairs and hall", date: row.date,
   assigneeId: row.assigneeId, status: "done", lastDone: null, expectedVersion: row.version }));
 assert.deepEqual([edited.version, edited.duplicate], [3, false]);
 row = (await snapshot()).operations.find(item => item.id === task.id);
-assert.deepEqual([row.title, row.status, row.lastDone], ["Hoover the stairs and hall", "open", { by: blake.name, date: today }]);
+assert.deepEqual([row.title, row.status, row.lastDone], ["Hoover the stairs and hall", "open", { by: blake.name, date: today, markedBy: casey.name }]);
 
 // Casey cannot remove a task Blake added; Avery, an admin, can. It leaves
 // the calendar, keeps its history and takes no further actions; a late retry
@@ -129,7 +129,7 @@ assert.equal(late.status, 409);
 assert.match(late.error, /This task has been removed/);
 const lateAdd = await b("POST", `/communes/${id}/operations`, { ...chore, requestId: taskRequest });
 assert.deepEqual([lateAdd.status, lateAdd.error], [409, "This task has been removed"]);
-assert.deepEqual(await events(task.id), ["Completed. Next: Casey Commands", "Created", "Removed", "Updated"]);
+assert.deepEqual(await events(task.id), ["Created", "Marked done for Blake Commands. Next: Casey Commands", "Removed", "Updated"]);
 // The person who added a task can remove it too.
 const visit = ok(await c("POST", `/communes/${id}/operations`, { kind: "event", category: "visit", title: "Gas safety check", date: today,
   allDay: true, repeat: "none", notes: "", requestId: randomUUID() }), 201);

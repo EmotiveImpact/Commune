@@ -110,6 +110,7 @@
 .c-hub-task.is-done .c-hub-task-copy strong { color: var(--hub-muted); text-decoration: line-through; }
 .c-hub-task input { width: 17px; height: 17px; flex: none; margin: 0; accent-color: #426d50; cursor: pointer; }
 .c-hub-late { color: var(--hub-warning); }
+.c-hub-doneby { margin: 0 0 16px; }
 .c-hub-pinned { margin-top: 18px; padding: 0 15px; border-radius: 9px; background: var(--hub-sage); }
 .c-hub-pinned .c-hub-note-row { border: 0; }
 .c-hub-recent { padding: 6px 2px; }

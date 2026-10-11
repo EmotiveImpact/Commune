@@ -40,8 +40,9 @@ BEGIN
     RAISE EXCEPTION 'Names were not copied from ids: % %', v_row.assignee, v_row.rotation;
   END IF;
 
-  -- Completing passes it to the next id, not the first "Sam".
-  v_result := public.record_operation_occurrence(v_op, 'completed', current_date, current_date, gen_random_uuid());
+  -- Completing passes it to the next id, not the first "Sam". Alice did
+  -- Sam's turn herself.
+  v_result := public.record_operation_occurrence(v_op, 'completed', current_date, current_date, gen_random_uuid(), NULL, 'me');
   IF v_result->>'assigneeId' <> '00000000-0000-4000-8000-0000000000b2' THEN
     RAISE EXCEPTION 'Rotation did not advance by id: %', v_result;
   END IF;
