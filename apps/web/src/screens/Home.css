@@ -358,6 +358,9 @@
   cursor: pointer;
 }
 .c-home-more svg.is-open { transform: rotate(180deg); }
+.c-home-needs:not(.is-all) .is-extra,
+.c-home-more.is-phone,
+.c-home-more-phone { display: none; }
 
 /* Figures under the title: waiting rows in the narrow column, and every row on a phone. */
 /* ---------- Recent activity ---------- */
@@ -510,7 +513,20 @@
   .is-tiles :is(.c-home-commune-extra, .c-home-faces, .c-home-commune-go) { display: none; }
   .is-tiles .c-home-badge { height: 20px; padding: 0 7px; font-size: 11px; }
 
+  /* The phone shows two of what needs you, as drawn. */
+  .c-home-needs:not(.is-all) .is-extra-phone { display: none; }
+  .c-home-more.is-phone { display: flex; }
+  .c-home-more-phone { display: inline; }
+  .c-home-more-wide { display: none; }
+
+  .c-home.is-square .c-home-col:has(> .c-home-communes) { order: -1; }
   .c-home-square { min-height: 470px; margin: -16px -16px 0; border-radius: 0; }
+  /* The top bar sits over the photo here; a shade at the top keeps its icons clear. */
+  .c-home-square::after {
+    background:
+      linear-gradient(180deg, rgba(14, 16, 24, 0.5) 0, rgba(14, 16, 24, 0) 140px),
+      linear-gradient(90deg, rgba(14, 16, 24, 0.4) 0%, rgba(14, 16, 24, 0) 60%);
+  }
   .c-home-square-copy { gap: 10px; padding: 0 20px 26px; }
   .c-home-square .c-home-display { font-size: 36px; line-height: 39px; }
   .c-home-square .c-home-sub { font-size: 14.5px; line-height: 21px; }

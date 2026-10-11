@@ -62,7 +62,6 @@ body,
   .a-window-frame,
   .a-window-bar,
   .a-note-fact,
-  .a-more,
   .a-owe-card.a-card
 ) {
   background: var(--white);
@@ -76,7 +75,7 @@ body,
   border-color: var(--border-strong);
 }
 
-.a-body.is-dark :is(.a-table tbody tr:hover td, .a-more > button:hover) {
+.a-body.is-dark .a-table tbody tr:hover td {
   background: rgba(217, 235, 229, 0.07);
 }
 
@@ -163,7 +162,9 @@ body,
 .a-pending-card { min-height: 160px; border-radius: var(--radius-surface); padding: 24px; background: rgba(255, 255, 255, 0.45); }
 .a-pending-card .a-pending-line + .a-pending-line { margin-top: 20px; width: 210px; }
 .a-search:focus-within { outline: 2px solid var(--sage); outline-offset: 2px; }
-@media (max-width: 850px) {
+/* A full-width search row only where the trigger still shows its label;
+   narrower screens use the icon button from QuickSearch.css. */
+@media (min-width: 701px) and (max-width: 850px) {
   .a-body:not(.is-native) .a-header { flex-wrap: wrap; height: auto; min-height: 60px; }
   .a-body:not(.is-native) .a-search { display: flex; order: 3; flex: 1 0 100%; width: 100%; max-width: none; margin-top: 8px; background: var(--white); color: var(--ink-soft); }
 }

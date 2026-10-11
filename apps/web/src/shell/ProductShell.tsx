@@ -54,7 +54,7 @@ export function ProductShell() {
         noteReader && "has-note-reader",
       )}
     >
-      <div className="a-app" inert={modalOpen}>
+      <div className="a-app" inert={modalOpen || moreOpen}>
         <a className="a-skip-link" href="#main-content" onClick={skipToContent}>Skip to content</a>
         <Sidebar screen={screen} />
         <div className="a-main">

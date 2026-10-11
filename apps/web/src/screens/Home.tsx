@@ -291,8 +291,8 @@ function CommuneCard({ hub, current }: { hub: LiveHub; current: boolean }) {
 }
 
 /** A row in Needs you or Waiting on others. The title opens the record; the button acts on it. */
-function Row({ entry, today, waiting = false, onAct, busy }: {
-  entry: Entry; today: string; waiting?: boolean; onAct?: (entry: Entry) => void; busy?: boolean;
+function Row({ entry, today, waiting = false, onAct, busy, className }: {
+  entry: Entry; today: string; waiting?: boolean; onAct?: (entry: Entry) => void; busy?: boolean; className?: string;
 }) {
   const open = useOpen();
   const { hub, item } = entry;
@@ -301,7 +301,7 @@ function Row({ entry, today, waiting = false, onAct, busy }: {
   const verb = item.kind === "pay" ? "I’ve paid" : item.kind === "confirm" ? "Confirm" : "Open";
   const context = item.kind === "pay" ? `${nameOf(hub, item.person)} for ${item.title}` : item.kind === "confirm" ? `${item.amount} from ${nameOf(hub, item.person)}` : item.title;
   return (
-    <li className={cx("c-home-row", waiting && "is-waiting")}>
+    <li className={cx("c-home-row", waiting && "is-waiting", className)}>
       <span className="c-home-row-lead">
         {(waiting || item.kind === "confirm") && who.length
           ? <Faces hub={hub} ids={who} max={3} />
@@ -327,28 +327,47 @@ function Row({ entry, today, waiting = false, onAct, busy }: {
   );
 }
 
-// A long list shows its first five; a short one shows everything.
+// A long list shows its first five, and a phone its first two; a short one
+// shows everything. Every row is drawn, so the limit is the screen's.
 const SHOWN = 5;
 const COLLAPSE_OVER = 7;
+const PHONE_SHOWN = 2;
+const PHONE_COLLAPSE_OVER = 3;
 
 function NeedsList({ needs, today, onAct, busy }: { needs: Entry[]; today: string; onAct: (entry: Entry) => void; busy: boolean }) {
   const [all, setAll] = useState(false);
   const collapsible = needs.length > COLLAPSE_OVER;
-  const shown = all || !collapsible ? needs : needs.slice(0, SHOWN);
-  const groups = GROUPS.map((name) => ({ name, rows: shown.filter(({ item }) => groupOf(item, today) === name) })).filter((group) => group.rows.length);
-  const totals = new Map(GROUPS.map((name) => [name, needs.filter(({ item }) => groupOf(item, today) === name).length]));
+  const phoneCollapsible = needs.length > PHONE_COLLAPSE_OVER;
+  const limit = collapsible ? SHOWN : Infinity;
+  const phoneLimit = phoneCollapsible ? PHONE_SHOWN : Infinity;
+  let shown = 0;
+  const groups = GROUPS.map((name) => {
+    const first = shown;
+    const rows = needs.filter(({ item }) => groupOf(item, today) === name);
+    shown += rows.length;
+    return { name, first, rows };
+  }).filter((group) => group.rows.length);
+  // Past the limit on every screen, past it on a phone, or never.
+  const extra = (index: number) => cx(index >= limit && "is-extra", index >= phoneLimit && "is-extra-phone");
   return (
-    <section className="c-home-panel" aria-labelledby="home-needs">
+    <section className={cx("c-home-panel", "c-home-needs", all && "is-all")} aria-labelledby="home-needs">
       <div className="c-home-head"><h2 id="home-needs">Needs you</h2><span className="c-home-count">{needs.length}</span></div>
       {groups.map((group) => (
-        <div key={group.name} className="c-home-group">
-          <h3 className={cx(group.name === "Overdue" && "is-late")}>{group.name} <span>{totals.get(group.name)}</span></h3>
-          <ul>{group.rows.map((entry, index) => <Row key={`${entry.hub.id}-${entry.item.kind}-${entry.item.title}-${index}`} entry={entry} today={today} onAct={onAct} busy={busy} />)}</ul>
+        <div key={group.name} className={cx("c-home-group", extra(group.first))}>
+          <h3 className={cx(group.name === "Overdue" && "is-late")}>{group.name} <span>{group.rows.length}</span></h3>
+          <ul>{group.rows.map((entry, index) => (
+            <Row key={`${entry.hub.id}-${entry.item.kind}-${entry.item.title}-${index}`} entry={entry} today={today} onAct={onAct} busy={busy}
+              className={extra(group.first + index) || undefined} />
+          ))}</ul>
         </div>
       ))}
-      {collapsible ? (
-        <button className="c-home-more" type="button" aria-expanded={all} onClick={() => setAll((value) => !value)}>
-          {all ? "Show fewer" : `Show ${needs.length - SHOWN} more`}<ChevronDown size={15} strokeWidth={1.6} aria-hidden="true" className={cx(all && "is-open")} />
+      {phoneCollapsible ? (
+        <button className={cx("c-home-more", !collapsible && "is-phone")} type="button" aria-expanded={all} onClick={() => setAll((value) => !value)}>
+          {all ? "Show fewer" : <>
+            {collapsible ? <span className="c-home-more-wide">Show {needs.length - SHOWN} more</span> : null}
+            <span className="c-home-more-phone">Show {needs.length - PHONE_SHOWN} more</span>
+          </>}
+          <ChevronDown size={15} strokeWidth={1.6} aria-hidden="true" className={cx(all && "is-open")} />
         </button>
       ) : null}
     </section>

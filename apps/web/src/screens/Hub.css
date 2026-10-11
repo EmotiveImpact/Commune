@@ -63,8 +63,7 @@
 .c-hub-location span { margin-right: 8px; opacity: .85; }
 .c-hub-people-link { display: flex; align-items: center; gap: 12px; width: fit-content; margin-top: 17px; padding: 0; border: 0; background: none; color: inherit; text-shadow: none; font-size: 12px !important; }
 .c-hub-people-link .avatar-stack { display: flex; align-items: center; }
-.c-hub-people-link .avatar { width: 28px; height: 28px; margin-right: -5px; border: 2px solid #fff; font-size: 9px; }
-.c-hub-people-link .avatar:last-child { margin-right: 0; }
+.c-hub-people-link .avatar { width: 28px; height: 28px; border: 2px solid #fff; font-size: 9px; }
 .c-hub-hero-actions { position: absolute; right: 22px; top: 20px; display: flex; gap: 7px; }
 .c-hub-settings { display: flex; align-items: center; gap: 6px; padding: 9px 12px; min-height: 38px; border: 1px solid #ffffff55; border-radius: var(--radius-control); background: rgba(21, 34, 28, 0.65); color: #fff; font-size: 12px !important; }
 
@@ -87,7 +86,8 @@
 .c-hub-count { flex: none; color: var(--hub-muted); font-size: 11px; white-space: nowrap; }
 .c-hub-link { padding: 4px 0; border: 0; background: none; color: var(--hub-action); font-size: 12px !important; font-weight: 500 !important; text-decoration: none; }
 .c-hub-link:hover { text-decoration-color: currentColor; }
-.c-hub-more { margin-top: 14px; }
+.c-hub-more { display: block; margin-top: 14px; }
+.c-hub-more + .c-hub-more { margin-top: 10px; }
 .c-hub-invite { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border: 1px solid #6f9b87; border-radius: var(--radius-control); background: var(--hub-panel); color: var(--hub-ink); font-size: 12px !important; }
 .c-hub-invite:hover { background: var(--hub-quiet); }
 .c-hub-empty { padding: 14px 0; border-top: 1px solid var(--hub-line); color: var(--hub-muted); font-size: 13px; }

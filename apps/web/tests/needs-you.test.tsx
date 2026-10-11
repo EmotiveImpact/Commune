@@ -176,6 +176,17 @@ describe("Needs you on Home", () => {
     expect(within(needs).getAllByRole("button").filter((button) => button.classList.contains("c-home-btn")).map((button) => button.textContent)).toEqual([
       "Confirm €25.00 from Ben Baker", "I’ve paid Ben Baker for Internet", "Open Bins", "Open Boiler", "Open Hoover", "I’ve paid Cat Cole for Water",
     ]);
+    // A phone shows the first two in the order drawn and offers the rest; a wider screen shows all six.
+    const extra = [...needs.querySelectorAll<HTMLElement>(".c-home-row")].map((item) => item.classList.contains("is-extra-phone"));
+    expect(extra).toEqual([false, false, true, true, true, true]);
+    expect(needs.querySelectorAll(".is-extra")).toHaveLength(0);
+    expect([...needs.querySelectorAll(".c-home-group.is-extra-phone h3")].map((h) => h.firstChild?.textContent?.trim())).toEqual(["Today", "No due date"]);
+    const more = within(needs).getByRole("button", { name: "Show 4 more" });
+    expect(more.classList.contains("is-phone")).toBe(true);
+    expect(more.getAttribute("aria-expanded")).toBe("false");
+    fireEvent.click(more);
+    expect(within(needs).getByRole("button", { name: "Show fewer" }).getAttribute("aria-expanded")).toBe("true");
+    expect(needs.classList.contains("is-all")).toBe(true);
 
     const waiting = screen.getByRole("region", { name: "Waiting on others" });
     expect(within(waiting).getByText("£50.00")).toBeTruthy();
