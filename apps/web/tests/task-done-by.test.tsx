@@ -105,7 +105,7 @@ describe("marking someone else's task done", () => {
     await hold();
     expect(vi.mocked(post)).toHaveBeenCalledTimes(1);
     expect(vi.mocked(post).mock.calls[0][1]).toMatchObject({ action: "completed", expectedDate: rota.date, doneBy: "assignee" });
-    expect(document.querySelector(".ops-toast")?.textContent).toContain("Marked done for Housemate");
+    expect(document.querySelector(".c-toast")?.textContent).toContain("marked done by Housemate");
   });
 
   it("takes a keyboard hold for I did it, and Cancel puts the Done button back", async () => {
@@ -121,7 +121,7 @@ describe("marking someone else's task done", () => {
     await hold();
     fireEvent.keyUp(mine, { key: " " });
     expect(vi.mocked(post).mock.calls[0][1]).toMatchObject({ action: "completed", doneBy: "me" });
-    expect(document.querySelector(".ops-toast")?.textContent).toContain("Done, covering Housemate");
+    expect(document.querySelector(".c-toast")?.textContent).toContain("marked done, covering Housemate");
   });
 
   it("marks your own task done at once, with no question", async () => {

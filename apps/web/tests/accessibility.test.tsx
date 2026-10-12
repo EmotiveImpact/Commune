@@ -9,6 +9,7 @@ import { api, post, loadCommunes, loadSnapshot, ApiError } from "../src/live/api
 import type { Commune, Notification, Snapshot } from "../src/live/model";
 import { addDays, dateFromIso, todayIso, type OperationItem } from "../src/data/operations";
 import { Dialog } from "../src/ui/components";
+import { toastRegion } from "./toast";
 
 vi.mock("../src/live/api", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../src/live/api")>()),
@@ -362,15 +363,15 @@ describe("Operations view switch and its Undo message", () => {
     done.focus();
     await act(async () => { fireEvent.click(done); });
     expect(screen.queryByRole("button", { name: /^Done · / })).toBeNull();
-    const undo = within(screen.getByRole("status")).getByRole("button", { name: "Undo" });
+    const undo = within(toastRegion()).getByRole("button", { name: "Undo" });
     expect(document.activeElement).toBe(undo);
 
     // Well past the nine seconds: the message stays while focus is on it.
     act(() => { vi.advanceTimersByTime(15_000); });
-    expect(screen.getByRole("status").contains(undo)).toBe(true);
+    expect(toastRegion().contains(undo)).toBe(true);
 
     await act(async () => { fireEvent.click(undo); });
-    expect(screen.getByRole("status").textContent).toContain("Undone · back with Test");
+    expect(toastRegion().textContent).toContain("Undone. Back with Test");
     const restored = screen.getByRole("button", { name: "Done · Housemate (Put the bins out)" });
     expect(document.activeElement).toBe(restored);
   });
@@ -385,11 +386,11 @@ describe("Operations view switch and its Undo message", () => {
     mount("/operations");
     const done = await screen.findByRole("button", { name: "Done · Housemate (Put the bins out)" });
     await act(async () => { fireEvent.click(done); });
-    const undo = within(screen.getByRole("status")).getByRole("button", { name: "Undo" });
+    const undo = within(toastRegion()).getByRole("button", { name: "Undo" });
     expect(document.activeElement).toBe(undo);
     act(() => { fireEvent.blur(undo); screen.getByRole("button", { name: "Add item" }).focus(); });
     act(() => { vi.advanceTimersByTime(9_500); });
-    expect(screen.getByRole("status").textContent).toBe("");
+    expect(toastRegion().textContent).toBe("");
     expect(document.activeElement).toBe(screen.getByRole("button", { name: "Add item" }));
   });
 });

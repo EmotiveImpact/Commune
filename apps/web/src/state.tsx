@@ -356,6 +356,8 @@ export type AppState = {
   go: (target: GoTarget, opts?: GoOpts) => void;
   /** Back to the window's screen: the entry before it when that is where it opened. */
   closeWindow: () => void;
+  /** Closes a window whose own save has just finished, while the count of saving changes catches up. */
+  closeSavedWindow: () => void;
   /**
    * An open window reports whether it holds typed text, so Back can ask
    * before discarding it. Returns a function that stops the reporting.
@@ -1979,6 +1981,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const rememberSearch = useCallback((search: SearchMemory) => { searchMemory.current = search; }, []);
   const clearApiError = useCallback(() => setApiError(null), []);
   const closeWindow = useCallback(() => { if (!mutationCountRef.current) leaveRecord(); }, [leaveRecord]);
+  const closeSavedWindow = leaveRecord;
   const setNavMode = useCallback((navMode: NavMode) => saveDevice({ navMode }), [saveDevice]);
   const setTheme = useCallback((theme: Theme) => saveDevice({ theme }), [saveDevice]);
   const setNoticesOn = useCallback((noticesOn: boolean) => saveDevice({ noticesOn }), [saveDevice]);
@@ -2027,7 +2030,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     noticeCounts, loadUnreadNotices, personName: nameOf,
     signOut, signOutUnconfirmed, retrySignOut: confirmSignOut, sessionNotice, go,
     changePassword, signOutOtherDevices,
-    closeWindow, watchTypedText, leaveAsked, answerLeave, setMoreOpen,
+    closeWindow, closeSavedWindow, watchTypedText, leaveAsked, answerLeave, setMoreOpen,
     setNavMode, setTheme, setNoticesOn,
     clearSearchTarget, openFullSearch, recallSearch, rememberSearch, savePayMethod, setHubPhoto, setAvatar, addNote, updateNote, loadNoteRevision,
     addOperation, updateOperation, toggleOperation, skipOperation, handOverOperation, undoOperation,

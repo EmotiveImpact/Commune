@@ -6,7 +6,8 @@ import { Icon } from "../ui/Icon";
 import { CalendarDate } from "../ui/CalendarDate";
 import { CoverImage, coverToneClass } from "../ui/CoverImage";
 import { isNotePinned, noteCategory, notePreview } from "../data/notePresentation";
-import { addDays, dateFromIso, firstNameOf, needsDoneBy, todayIso, type DoneBy, type OperationItem } from "../data/operations";
+import { addDays, dateFromIso, needsDoneBy, taskDoneCopy, todayIso, type DoneBy, type OperationItem } from "../data/operations";
+import { hideToast, showToast } from "../ui/Toast";
 import { DoneByChoice } from "../ui/DoneByChoice";
 import { formatTimestampDay } from "../data/reminders";
 import type { Hub, RouteId } from "../data/household";
@@ -49,49 +50,37 @@ function Responsibilities() {
   // Someone else's task, ticked: it asks who did it before it is marked done.
   const [asking, setAsking] = useState<string | null>(null);
   const [error, setError] = useState("");
-  const [feedback, setFeedback] = useState<{ text: string; undoId?: string } | null>(null);
-  // A completed task leaves the list (and its checkbox with it). Move focus to
-  // the result once the controls are enabled again, so it is not lost.
-  const [focusTarget, setFocusTarget] = useState<{ kind: "undo" | "feedback" } | { kind: "task"; id: string } | null>(null);
-  const feedbackRef = useRef<HTMLParagraphElement>(null);
-  const undoRef = useRef<HTMLButtonElement>(null);
+  // Undo puts focus back on the task's checkbox once the controls are enabled again.
+  const [focusTask, setFocusTask] = useState<string | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    if (pending !== null || !focusTarget) return;
-    if (focusTarget.kind === "task") {
-      (listRef.current?.querySelector<HTMLElement>(`[data-task="${focusTarget.id}"] input`) ?? feedbackRef.current)?.focus();
-    } else if (focusTarget.kind === "undo" && undoRef.current) {
-      undoRef.current.focus();
-    } else {
-      feedbackRef.current?.focus();
-    }
-    setFocusTarget(null);
-  }, [pending, focusTarget]);
+    if (pending !== null || focusTask === null) return;
+    listRef.current?.querySelector<HTMLElement>(`[data-task="${focusTask}"] input`)?.focus();
+    setFocusTask(null);
+  }, [pending, focusTask]);
   const today = todayIso();
   const end = addDays(today, 6);
   const items = operations.filter(item => item.status === "open" && item.date <= end && (item.date >= today || item.kind === "task"))
     .sort((a, b) => a.date.localeCompare(b.date)).slice(0, 5);
+  // What was recorded is said in the shared toast, with Undo; the completed
+  // task leaves the list, so Undo takes focus there. Errors stay here.
   async function complete(item: OperationItem, doneBy?: DoneBy) {
-    const { id, title } = item;
-    if (!doneBy && needsDoneBy(item, you.id)) { setAsking(id); setError(""); setFeedback(null); return; }
-    setAsking(null); setPending(id); setError(""); setFeedback(null);
+    const { id } = item;
+    if (!doneBy && needsDoneBy(item, you.id)) { setAsking(id); setError(""); hideToast(); return; }
+    setAsking(null); setPending(id); setError(""); hideToast();
     try {
       const result = await toggleOperation(id, doneBy);
-      const holder = firstNameOf(item.assignee);
-      const said = doneBy === "assignee" ? `${title} marked done for ${holder}.` : doneBy === "me" ? `${title} done, covering ${holder}.`
-        : result.status === "done" ? `${title} marked done.` : `${title} done.`;
-      setFeedback({ text: result.status === "done" ? said : `${said} Next: ${result.assignee ?? "unassigned"}.`, undoId: result.occurrenceId });
-      setFocusTarget({ kind: "undo" });
+      showToast({ text: taskDoneCopy(item, doneBy, result), action: { label: "Undo", busyLabel: "Undoing…", undo: true, run: () => undo(result.occurrenceId, id) } });
     }
     catch (cause) { setError(cause instanceof Error ? cause.message : "Could not update the task. Please try again."); }
     finally { setPending(null); }
   }
-  async function undo(occurrenceId: string) {
+  async function undo(occurrenceId: string, taskId: string) {
     setPending(occurrenceId); setError("");
     try {
-      const result = await undoOperation(occurrenceId);
-      setFeedback({ text: "Undone. The task is back as it was." });
-      setFocusTarget({ kind: "task", id: operations.find(item => item.history?.some(entry => entry.id === result.occurrenceId))?.id ?? "" });
+      await undoOperation(occurrenceId);
+      setFocusTask(taskId);
+      showToast({ text: "Undone. The task is back as it was." });
     }
     catch (cause) { setError(cause instanceof Error ? cause.message : "Could not undo that. Please try again."); }
     finally { setPending(null); }
@@ -101,10 +90,10 @@ function Responsibilities() {
     {items.map(item => {
       const choice = asking === item.id && <DoneByChoice key={`${item.id}-who`} className="c-hub-doneby" holder={item.assignee ?? ""} title={item.title}
         disabled={pending !== null} onChoose={(doneBy) => void complete(item, doneBy)}
-        onCancel={() => { setAsking(null); setFocusTarget({ kind: "task", id: item.id }); }} />;
+        onCancel={() => { setAsking(null); setFocusTask(item.id); }} />;
       const due = item.date === today ? "Today" : new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "numeric", month: "short" }).format(dateFromIso(item.date));
       const late = item.status === "open" && item.date < today;
-      return [<div className={`c-hub-task${item.status === "done" ? " is-done" : ""}`} key={item.id} data-task={item.id}>
+      return [<div className={`c-hub-task${item.status === "done" ? " is-done" : ""}`} key={item.id} data-task={item.id} data-row="" data-flip="">
         <CalendarDate date={item.date} today={today} showMonth={false} />
         <button className="c-hub-task-copy" type="button" onClick={() => go("operation", { operation: item.id })}>
           <strong>{item.title}</strong><span>{item.assignee || "Unassigned"} · <span className={late ? "c-hub-late" : undefined}>{late ? "Overdue · " : ""}{due}</span>{item.time ? ` · ${item.time}` : ""}</span>
@@ -116,8 +105,6 @@ function Responsibilities() {
     </div>
     {!items.length && <div className="c-hub-empty"><p>Nothing planned for this week.</p><button className="c-hub-link" type="button" onClick={() => go("operation-new")}>Add a task or event</button></div>}
     {error && <p role="alert" className="a-form-error">{error}</p>}
-    <p ref={feedbackRef} tabIndex={-1} className={feedback ? "c-hub-task-feedback" : "sr-only"} role="status">{feedback?.text}{feedback?.undoId
-      ? <button ref={undoRef} className="c-hub-link" type="button" disabled={pending !== null} onClick={() => void undo(feedback.undoId!)}>Undo</button> : null}</p>
   </HubSection>;
 }
 

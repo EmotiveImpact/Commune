@@ -9,6 +9,7 @@ import { api, post, loadCommunes, loadSnapshot, ApiError } from "../src/live/api
 import type { Commune, Snapshot } from "../src/live/model";
 import { UNCERTAIN_RETRY_SAFE } from "../src/data/commands";
 import { formatReminderDay, formatTimestampDay } from "../src/data/reminders";
+import { toastRegion, toastText } from "./toast";
 
 vi.mock("../src/live/api", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../src/live/api")>()),
@@ -114,6 +115,10 @@ describe("one request id per open form", () => {
     expect(attempts).toHaveLength(2);
     expect(attempts[0].requestId).toMatch(uuid);
     expect(attempts[1]).toEqual(attempts[0]);
+    // The form closes on save; the line says who can see it, and View opens what the first attempt saved.
+    await waitFor(() => expect(app.window).toBeNull());
+    expect(toastText()).toMatch(/^Tickets added\. .+ can see their share\.$/);
+    await act(async () => { fireEvent.click(within(toastRegion()).getByRole("button", { name: "View" })); });
     await waitFor(() => expect(app.window).toBe("expense"));
     expect(app.selectedExpense?.id).toBe("expense-9");
   });
@@ -123,7 +128,7 @@ describe("one request id per open form", () => {
     mount("/expenses");
     let dialog = await openExpenseForm();
     await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Save expense" })); });
-    await waitFor(() => expect(app.window).toBe("expense"));
+    await waitFor(() => expect(app.window).toBeNull());
     act(() => app.go("add-expense"));
     dialog = await openExpenseForm();
     await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Save expense" })); });

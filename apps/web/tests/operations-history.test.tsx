@@ -9,6 +9,7 @@ import { api, post, loadCommunes, loadSnapshot, ApiError } from "../src/live/api
 import type { Commune, Snapshot } from "../src/live/model";
 import { addDays, holdsTurn, nextPerson, todayIso, type OperationItem } from "../src/data/operations";
 import { UNCERTAIN_RETRY_SAFE } from "../src/data/commands";
+import { toastRegion } from "./toast";
 
 vi.mock("../src/live/api", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../src/live/api")>()),
@@ -95,8 +96,8 @@ describe("task completion, undo and occurrence history", () => {
     expect((body as { requestId: string }).requestId).toMatch(/^[0-9a-f-]{36}$/);
     // No client-computed row overwrite any more.
     expect(vi.mocked(api).mock.calls.some(([requestPath]) => requestPath === "/operations/task-1")).toBe(false);
-    const toast = screen.getByRole("status");
-    expect(toast.textContent).toContain("Handed to Housemate");
+    const toast = toastRegion();
+    expect(toast.textContent).toContain("marked done. Next: Housemate,");
     expect(within(toast).getByRole("button", { name: "Undo" })).toBeTruthy();
   });
 
@@ -113,7 +114,7 @@ describe("task completion, undo and occurrence history", () => {
     await act(async () => { fireEvent.click(trigger); });
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Undo" })); });
     expect(vi.mocked(post).mock.calls.map(([path]) => path)).toEqual(["/operations/task-1/occurrences", "/occurrences/occurrence-1/undo"]);
-    expect(screen.getByRole("status").textContent).toContain("Undone · back with Test");
+    expect(toastRegion().textContent).toContain("Undone. Back with Test");
     expect(app.operations[0]).toMatchObject({ date: rota.date, assignee: user.name, undoOccurrenceId: null });
     expect(await screen.findByRole("button", { name: /^Done · Housemate \(/ })).toBeTruthy();
   });
@@ -128,7 +129,7 @@ describe("task completion, undo and occurrence history", () => {
     await act(async () => { fireEvent.click(trigger); });
     // Shown once, on the screen, until the next action; not in a passing toast.
     expect(screen.getByRole("alert").textContent).toBe("This task has already moved on. Refresh to see who has it now.");
-    expect(screen.getByRole("status").textContent).toBe("");
+    expect(toastRegion().textContent).toBe("");
     expect(screen.queryByRole("button", { name: "Undo" })).toBeNull();
     // The stale late card is replaced by what was actually saved.
     expect(app.operations[0]).toMatchObject({ assignee: "Housemate Two", date: addDays(today, 5) });
@@ -181,8 +182,8 @@ describe("task completion, undo and occurrence history", () => {
     const trigger = await screen.findByRole("button", { name: /^Skip a week for / });
     await act(async () => { fireEvent.click(trigger); });
     expect(vi.mocked(post).mock.calls[0][1]).toMatchObject({ action: "skipped", expectedDate: rota.date });
-    const toast = screen.getByRole("status");
-    expect(toast.textContent).toContain("Moved to");
+    const toast = toastRegion();
+    expect(toast.textContent).toContain("moved to");
     expect(within(toast).getByRole("button", { name: "Undo" })).toBeTruthy();
   });
 });
@@ -365,9 +366,11 @@ describe("late tasks in the week", () => {
     await act(async () => { fireEvent.click(within(first).getByRole("button", { name: /^Mark done \(/ })); });
     // Each card's actions name its task after the visible words.
     const button = (card: HTMLElement, name: string) => within(card).getByRole("button", { name: new RegExp(`^${name}\\b`) }) as HTMLButtonElement;
-    for (const card of [first, second]) {
-      expect([button(card, "Mark done").disabled, button(card, "Skip a week").disabled, button(card, "Open").disabled]).toEqual([true, true, false]);
-    }
+    // The pressed one says what it is doing, at full colour; a second press does nothing.
+    const recording = within(first).getByRole("button", { name: /^Recording…/ }) as HTMLButtonElement;
+    expect([recording.disabled, recording.getAttribute("aria-busy")]).toEqual([true, "true"]);
+    expect([button(first, "Skip a week").disabled, button(first, "Open").disabled]).toEqual([true, false]);
+    expect([button(second, "Mark done").disabled, button(second, "Skip a week").disabled, button(second, "Open").disabled]).toEqual([true, true, false]);
     fireEvent.click(button(second, "Mark done"));
     expect(post).toHaveBeenCalledTimes(1);
     await act(async () => { finish({ id: "occurrence-1", duplicate: false, date: today, assignee: user.name, status: "done" }); });

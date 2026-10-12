@@ -9,6 +9,8 @@ import {
   needsDoneBy,
   nextPerson,
   overdueDays,
+  shortDay,
+  taskDoneCopy,
   todayIso,
   type DoneBy,
   type OperationItem,
@@ -19,6 +21,7 @@ import { Avatar } from "../ui/widgets";
 import { CalendarDate } from "../ui/CalendarDate";
 import { cx } from "../ui/cx";
 import { DoneByChoice } from "../ui/DoneByChoice";
+import { hideToast, showToast } from "../ui/Toast";
 
 type Cut = "week" | "people" | "month";
 /** The late card, and which of its buttons, an Undo puts focus back on. */
@@ -63,15 +66,13 @@ export function OperationsScreen() {
   const [cut, setCut] = useState<Cut>("week");
   const [month, setMonth] = useState(today.slice(0, 7));
   const [selectedDate, setSelectedDate] = useState(today);
-  const [toast, setToast] = useState<{ text: string; undoId?: string; from?: LateAction } | null>(null);
   const [error, setError] = useState("");
-  const [undoing, setUndoing] = useState(false);
+  // Which late card's action is being recorded, so its button can say so.
+  const [working, setWorking] = useState<LateAction | null>(null);
+  // After Undo, the button that was used, once its card is back.
+  const [refocus, setRefocus] = useState<LateAction | null>(null);
   // The late task whose card is asking who did it.
   const [asking, setAsking] = useState<string | null>(null);
-  const toastTimer = useRef<number | undefined>(undefined);
-  const toastRef = useRef<HTMLDivElement>(null);
-  const toastHeld = useRef(false);
-  const refocus = useRef<LateAction | null>(null);
 
   const ordered = useMemo(
     () =>
@@ -117,67 +118,34 @@ export function OperationsScreen() {
     (item) => item.date <= weekEnd || item.lastDone?.date === today,
   );
 
-  useEffect(() => () => window.clearTimeout(toastTimer.current), []);
-
-  // A late card's buttons go once its task moves on, so a message with an
-  // Undo takes focus, where the keyboard can reach it in time. Undo puts focus
-  // back on the button that was used. The message stays while focus or the
-  // pointer is on it.
   useEffect(() => {
-    const box = toastRef.current;
-    if (!toast || !box) return;
-    const active = document.activeElement;
-    const lost = !active || active === document.body || box.contains(active);
-    const back = refocus.current;
-    refocus.current = null;
-    if (back && lost) {
-      const card = [...document.querySelectorAll<HTMLElement>(".ops-late")].find((item) => item.dataset.late === back.id);
-      (card?.querySelector<HTMLElement>(`[data-late-action="${back.action}"]`)
-        ?? document.querySelector<HTMLElement>(".ops-cuts [aria-pressed=\"true\"]"))?.focus();
-    } else if (toast.undoId && (lost || active?.closest(".ops-late"))) {
-      box.querySelector<HTMLElement>(".ops-toast-undo")?.focus();
-    }
-    toastHeld.current = box.contains(document.activeElement) || box.matches(":hover");
-  }, [toast]);
+    if (!refocus) return;
+    setRefocus(null);
+    const card = [...document.querySelectorAll<HTMLElement>(".ops-late")].find((item) => item.dataset.late === refocus.id);
+    (card?.querySelector<HTMLElement>(`[data-late-action="${refocus.action}"]`)
+      ?? document.querySelector<HTMLElement>(".ops-cuts [aria-pressed=\"true\"]"))?.focus();
+  }, [refocus, operations]);
 
-  // Messages with an Undo stay long enough to read and use. The timer pauses
-  // while the pointer or keyboard focus is on the toast.
-  function scheduleToastClose(ms: number) {
-    window.clearTimeout(toastTimer.current);
-    toastTimer.current = window.setTimeout(() => {
-      if (toastHeld.current) return;
-      const hadFocus = toastRef.current?.contains(document.activeElement);
-      setToast(null);
-      if (hadFocus) document.querySelector<HTMLElement>(".ops-prod-head button")?.focus();
-    }, ms);
-  }
+  // What was recorded is said in the shared toast, with Undo. A late card's
+  // buttons go once its task moves on, so Undo takes focus then (the toast
+  // does that when focus is lost); Undo puts focus back on the button used.
   function flash(text: string, undoId?: string, from?: LateAction) {
     setError("");
-    setToast({ text, undoId, from });
-    scheduleToastClose(undoId ? 9000 : 2600);
+    showToast({ text, action: undoId ? { label: "Undo", busyLabel: "Undoing…", undo: true, run: () => undo(undoId, from) } : undefined });
   }
   // An error stays on the screen, as a form's does, until the next action.
   function fail(text: string) {
-    window.clearTimeout(toastTimer.current);
-    setToast(null);
+    hideToast();
     setError(text);
-  }
-  function holdToast(held: boolean) {
-    toastHeld.current = held;
-    if (!held && toast) scheduleToastClose(4000);
   }
 
   async function undo(occurrenceId: string, from?: LateAction) {
-    if (undoing) return;
-    setUndoing(true);
     try {
       const result = await undoOperation(occurrenceId);
-      refocus.current = from ?? null;
-      flash(`Undone · back with ${firstNameOf(result.assignee ?? undefined) || "the commune"} for ${shortDateFormatter.format(dateFromIso(result.date))}`);
+      if (from) setRefocus(from);
+      flash(`Undone. Back with ${firstNameOf(result.assignee ?? undefined) || "the commune"} for ${shortDay(result.date)}.`);
     } catch (error) {
       fail(error instanceof Error ? error.message : "Could not undo that");
-    } finally {
-      setUndoing(false);
     }
   }
 
@@ -199,33 +167,27 @@ export function OperationsScreen() {
       return;
     }
     setAsking(null);
+    setWorking({ id: item.id, action: "done" });
     try {
       // The server decides the next date and person; report what it saved.
       const result = await toggleOperation(item.id, doneBy);
-      const handed = item.repeat !== "none" && item.rotation?.length ? firstNameOf(result.assignee ?? undefined) : "";
-      const holder = firstNameOf(item.assignee);
-      const lead = doneBy === "assignee" ? `Marked done for ${holder}` : doneBy === "me" ? `Done, covering ${holder}` : "Done";
-      const next = shortDateFormatter.format(dateFromIso(result.date));
-      flash(
-        handed
-          ? doneBy ? `${lead} · next ${handed}, ${next}` : `Handed to ${handed} · ${next}`
-          : item.repeat !== "none"
-            ? `${lead} · next ${next}`
-            : `${lead} · ${item.title}`,
-        result.occurrenceId,
-        { id: item.id, action: "done" },
-      );
+      flash(taskDoneCopy(item, doneBy, result), result.occurrenceId, { id: item.id, action: "done" });
     } catch (error) {
       fail(error instanceof Error ? error.message : "Could not update task");
+    } finally {
+      setWorking(null);
     }
   }
 
   async function skipTask(item: OperationItem) {
+    setWorking({ id: item.id, action: "skip" });
     try {
       const result = await skipOperation(item.id);
-      flash(`Moved to ${shortDateFormatter.format(dateFromIso(result.date))}`, result.occurrenceId, { id: item.id, action: "skip" });
+      flash(`${item.title} moved to ${shortDay(result.date)}.`, result.occurrenceId, { id: item.id, action: "skip" });
     } catch (error) {
       fail(error instanceof Error ? error.message : "Could not move task");
+    } finally {
+      setWorking(null);
     }
   }
 
@@ -296,6 +258,7 @@ export function OperationsScreen() {
               item={item}
               today={today}
               pending={mutationPending}
+              working={working?.id === item.id ? working.action : null}
               asking={asking === item.id}
               onOpen={() => go("operation", { operation: item.id })}
               onSkip={() => skipTask(item)}
@@ -304,7 +267,7 @@ export function OperationsScreen() {
             />
           ))}
 
-          <section className="ops-card ops-yours">
+          <section className="ops-card ops-yours" data-flip-box="" data-answer="fade">
             <p className="ops-kicker">Yours</p>
             {yours.length ? (
               yours.map((item) => (
@@ -501,23 +464,6 @@ export function OperationsScreen() {
         </section>
       ) : null}
 
-      {/* Always present so screen readers announce each new message. */}
-      <div
-        ref={toastRef}
-        className={toast ? "ops-toast" : "sr-only"}
-        role="status"
-        onMouseEnter={() => holdToast(true)}
-        onMouseLeave={() => holdToast(false)}
-        onFocus={() => holdToast(true)}
-        onBlur={() => holdToast(false)}
-      >
-        {toast ? <span>{toast.text}</span> : null}
-        {toast?.undoId ? (
-          <button type="button" className="ops-toast-undo" disabled={undoing} onClick={() => void undo(toast.undoId!, toast.from)}>
-            {undoing ? "Undoing…" : "Undo"}
-          </button>
-        ) : null}
-      </div>
     </div>
   );
 }
@@ -526,6 +472,7 @@ function LateCard({
   item,
   today,
   pending,
+  working = null,
   asking,
   onOpen,
   onSkip,
@@ -536,6 +483,8 @@ function LateCard({
   today: string;
   /** A change is saving: the actions wait so one click is not sent twice. */
   pending: boolean;
+  /** This card's own action is being recorded. */
+  working?: LateAction["action"] | null;
   /** Done was pressed on someone else's task: the card asks who did it. */
   asking: boolean;
   onOpen: () => void;
@@ -549,7 +498,7 @@ function LateCard({
     : "";
   const who = firstNameOf(item.assignee);
   return (
-    <section ref={card} className="ops-card ops-late" data-late={item.id}>
+    <section ref={card} className="ops-card ops-late" data-late={item.id} data-row="" data-flip="">
       <p className="ops-kicker is-late">
         {lateLabel(item.date, today)} · {who || "Unassigned"}
       </p>
@@ -588,12 +537,12 @@ function LateCard({
         </button>
         {/* As in the task window, only a repeating task can be skipped. */}
         {item.repeat !== "none" ? (
-          <button className="a-btn ghost" type="button" data-late-action="skip" disabled={pending} onClick={onSkip}>
-            Skip a week{" "}<span className="c-visually-hidden">for {item.title}</span>
+          <button className="a-btn ghost" type="button" data-late-action="skip" disabled={pending} aria-busy={working === "skip" || undefined} onClick={onSkip}>
+            {working === "skip" ? "Recording…" : "Skip a week"}{" "}<span className="c-visually-hidden">for {item.title}</span>
           </button>
         ) : null}
-        <button className="a-btn" type="button" data-late-action="done" disabled={pending} onClick={() => onDone()}>
-          {next ? `Done · ${next}` : "Mark done"}{" "}<span className="c-visually-hidden">({item.title})</span>
+        <button className="a-btn" type="button" data-late-action="done" disabled={pending} aria-busy={working === "done" || undefined} onClick={() => onDone()}>
+          {working === "done" ? "Recording…" : next ? `Done · ${next}` : "Mark done"}{" "}<span className="c-visually-hidden">({item.title})</span>
         </button>
       </div>}
     </section>

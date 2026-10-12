@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { X } from "lucide-react";
 import type { ReminderResult, ReminderUsage } from "../live/model";
-import { formatReminderDay, reminderFailureCopy, reminderResultCopy, reminderWord, type ReminderKind } from "../data/reminders";
+import { formatReminderDay, reminderFailureCopy, reminderToastCopy, reminderWord, type ReminderKind } from "../data/reminders";
 import { newRequestId } from "../data/requestId";
 // Dialog styles stay with the other money surfaces in screens/Money.css.
-import { focusScopes, returnFocus } from "./components";
+import { Button, useModalDialog } from "./components";
+import { showToast } from "./Toast";
 import "../screens/Money.css";
 
 export type ReminderRequest = {
@@ -17,37 +18,26 @@ export type ReminderRequest = {
   amount: string;
   dueOn?: string | null;
 };
-type Phase = "ready" | "sending" | "sent" | "error";
+type Phase = "ready" | "sending" | "error";
 
 /**
- * The single Nudge/Chase interaction: preview, explicit confirmation, then the
- * result the server reported. Nothing is sent until Send is pressed.
+ * The single Nudge/Chase interaction: preview, then explicit confirmation.
+ * Nothing is sent until Send is pressed. Once the server has recorded it the
+ * dialog goes, and the toast says what was recorded (no Undo: a reminder
+ * someone may already have seen cannot be taken back).
  */
-export function ReminderConfirm({ request, usage, phase, result, error, onClose, onSend }: {
+export function ReminderConfirm({ request, usage, phase, error, onClose, onSend }: {
   request: ReminderRequest; usage: ReminderUsage | null; phase: Phase;
-  result: ReminderResult | null; error: string; onClose: () => void; onSend: () => void;
+  error: string; onClose: () => void; onSend: () => void;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
-  const doneRef = useRef<HTMLButtonElement>(null);
-  useEffect(() => {
-    const opener = document.activeElement as HTMLElement | null;
-    // A sent reminder disables its own trigger (cooldown). Fall back to the
-    // next action in the same row or panel so keyboard focus is not lost.
-    const scopes = focusScopes(opener);
-    const dialog = ref.current;
-    dialog?.showModal();
-    return () => {
-      dialog?.close();
-      returnFocus(opener, scopes);
-    };
-  }, []);
-  useEffect(() => { if (phase === "sent") doneRef.current?.focus(); }, [phase]);
+  useModalDialog(ref);
   const pending = phase === "sending";
   const word = reminderWord(request.kind);
   const remaining = usage ? Math.max(0, usage.totalLimit - usage.totalUsed) : null;
   const toRecipient = usage ? usage.recipientUsage[request.recipientId] ?? 0 : null;
   const blocked = remaining === 0 || (usage !== null && toRecipient !== null && toRecipient >= usage.recipientLimit);
-  return <dialog ref={ref} className="c-reminder-dialog" aria-labelledby="reminder-title" aria-busy={pending}
+  return <dialog ref={ref} data-leave="surface" className="c-reminder-dialog" aria-labelledby="reminder-title" aria-busy={pending}
     onCancel={event => { event.preventDefault(); if (!pending) onClose(); }}>
     <button className="c-reminder-close" type="button" aria-label="Close reminder" disabled={pending} onClick={onClose}><X size={18} /></button>
     <h2 id="reminder-title">A gentle reminder for {request.name}</h2>
@@ -58,16 +48,12 @@ export function ReminderConfirm({ request, usage, phase, result, error, onClose,
       {usage && <div><dt>To {request.name}</dt><dd>{toRecipient} of {usage.recipientLimit} in 30 days</dd></div>}
       {usage && <div><dt>Your allowance</dt><dd>{remaining} of {usage.totalLimit} left</dd></div>}
     </dl>
-    {phase === "sent" && result
-      ? <p className="c-reminder-result" role="status">{reminderResultCopy(request.kind, request.name, result)}</p>
-      : <p className="c-reminder-help">This records one notification in Commune. Email depends on their preferences and the connected service. This {request.kind === "chase" ? "pledge" : "share"} then has a 72-hour cooldown.</p>}
-    {phase !== "sent" && blocked && <p className="c-reminder-help" role="status">Your reminder allowance for this {remaining === 0 ? "period" : "person"} is used up, so this cannot be sent.</p>}
+    <p className="c-reminder-help">This records one notification in Commune. Email depends on their preferences and the connected service. This {request.kind === "chase" ? "pledge" : "share"} then has a 72-hour cooldown.</p>
+    {blocked && <p className="c-reminder-help" role="status">Your reminder allowance for this {remaining === 0 ? "period" : "person"} is used up, so this cannot be sent.</p>}
     {error && phase === "error" && <p className="a-form-error" role="alert">{error}</p>}
     <div className="a-field-row">
-      {phase === "sent"
-        ? <button ref={doneRef} className="a-btn" type="button" onClick={onClose}>Done</button>
-        : <><button className="a-btn" type="button" disabled={pending || blocked} onClick={onSend}>{pending ? "Sending…" : phase === "error" ? "Try again" : "Send reminder"}</button>
-          <button className="a-btn ghost" type="button" disabled={pending} onClick={onClose}>Cancel</button></>}
+      <Button busy={pending} disabled={blocked} onClick={onSend}>{pending ? "Reminding…" : phase === "error" ? "Try again" : "Send reminder"}</Button>
+      <button className="a-btn ghost" type="button" disabled={pending} onClick={onClose}>Cancel</button>
     </div>
   </dialog>;
 }
@@ -79,22 +65,25 @@ export function ReminderConfirm({ request, usage, phase, result, error, onClose,
 export function useReminderFlow(send: (kind: ReminderKind, sourceId: string, requestId: string) => Promise<ReminderResult>) {
   const [request, setRequest] = useState<ReminderRequest | null>(null);
   const [phase, setPhase] = useState<Phase>("ready");
-  const [result, setResult] = useState<ReminderResult | null>(null);
   const [error, setError] = useState("");
   const requestId = useRef("");
   const busy = useRef(false);
   const open = useCallback((next: ReminderRequest) => {
     requestId.current = newRequestId();
-    setError(""); setResult(null); setPhase("ready"); setRequest(next);
+    setError(""); setPhase("ready"); setRequest(next);
   }, []);
   const close = useCallback(() => { if (!busy.current) setRequest(null); }, []);
-  const confirm = useCallback(async () => {
+  /** Sends once; usage is the allowance as the preview showed it, before this one. */
+  const confirm = useCallback(async (usage: ReminderUsage | null = null) => {
     if (!request || busy.current) return;
     busy.current = true;
     setPhase("sending"); setError("");
     try {
-      setResult(await send(request.kind, request.sourceId, requestId.current));
-      setPhase("sent");
+      const result = await send(request.kind, request.sourceId, requestId.current);
+      busy.current = false;
+      setPhase("ready");
+      setRequest(null);
+      showToast({ text: reminderToastCopy(request.kind, request.name, result, usage) });
     } catch (cause) {
       setError(reminderFailureCopy(cause).message);
       setPhase("error");
@@ -102,12 +91,12 @@ export function useReminderFlow(send: (kind: ReminderKind, sourceId: string, req
       busy.current = false;
     }
   }, [request, send]);
-  return { request, phase, result, error, pending: phase === "sending", open, close, confirm };
+  return { request, phase, error, pending: phase === "sending", open, close, confirm };
 }
 
 /** Renders the dialog for a flow, wired to the shared allowance display. */
 export function ReminderFlowDialog({ flow, usage }: { flow: ReturnType<typeof useReminderFlow>; usage: ReminderUsage | null }) {
   if (!flow.request) return null;
-  return <ReminderConfirm request={flow.request} usage={usage} phase={flow.phase} result={flow.result}
-    error={flow.error} onClose={flow.close} onSend={() => void flow.confirm()} />;
+  return <ReminderConfirm request={flow.request} usage={usage} phase={flow.phase}
+    error={flow.error} onClose={flow.close} onSend={() => void flow.confirm(usage)} />;
 }

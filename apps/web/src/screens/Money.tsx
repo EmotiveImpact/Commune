@@ -88,14 +88,14 @@ export function ExpensesScreen() {
           <Plus size={16} aria-hidden="true" /> Add expense
         </button>
       </div>
-      <p className="c-scope-label">{showVoided
+      <p className="c-scope-label" data-answer="fade">{showVoided
         ? `${rows.length} voided ${rows.length === 1 ? "expense" : "expenses"} · kept for history, not counted in any balance`
         : `${rows.length} ${rows.length === 1 ? "expense" : "expenses"} · ${formatMoney(rows.reduce((sum, row) => sum + row.amountMinor, 0), hub.currency)} total recorded in this view`}</p>
       <section className="c-expense-list" aria-label="Shared expenses">
         {rows.map(row => <ExpenseCard key={row.id} row={row} viewerId={session?.userId} currency={hub.currency} go={go} />)}
         {!rows.length && <p className="c-money-empty">No expenses match this view. Try another filter or search.</p>}
       </section>
-      {more ? <div className="c-settle-footer">
+      {more ? <div data-flip="" className="c-settle-footer">
         {earlier === "error" ? <p role="alert">Earlier expenses couldn’t be loaded. Try again.</p>
           : <p role="status">{earlier === "loading" ? "Loading earlier expenses…"
             : `${showVoided ? "Voided" : "Settled"} expenses before ${monthName(shownFrom)} aren’t shown yet.`}</p>}
@@ -112,7 +112,7 @@ const ExpenseCard = memo(function ExpenseCard({ row, viewerId, currency, go }: {
   row: LiveExpenseRow; viewerId: string | undefined; currency: CurrencyCode; go: AppState["go"];
 }) {
   const yours = row.shares.find(share => share.userId === viewerId);
-  return <button className="c-expense-entry" type="button" onClick={() => go("expense", { expense: row.id })}>
+  return <button className="c-expense-entry" type="button" data-flip="" onClick={() => go("expense", { expense: row.id })}>
     <span className="c-expense-card-head"><span className="c-money-icon"><ReceiptText size={19} strokeWidth={1.5} aria-hidden="true" /></span><span className="c-expense-copy"><strong>{row.name}</strong></span><Pill tone={row.voidedAt ? undefined : row.status}>{row.statusLabel}</Pill></span>
     <span className="c-expense-amount"><span><small>Total paid</small><strong>{row.amount}</strong></span><span className="c-expense-personal"><small>Your share</small><span>{yours ? formatMoney(yours.amountMinor, currency) : "Not included"}</span></span></span>
     <span className="c-expense-card-foot">{row.dueOn && <CalendarDate date={row.dueOn} label="Due" />}<span className="c-expense-footer-copy"><span>Paid by {row.paidBy}</span><small>{row.category}{row.dueOn ? ` · due ${row.due}` : ""}</small></span><ChevronRight size={16} aria-hidden="true" /></span>
@@ -175,8 +175,9 @@ export function SettleScreen() {
 
   return (
     <>
-        {message ? <p className="a-window-note" role="status">{message}</p> : null}
-      <div className="c-settle-columns">{[false, true].map(receivingGroup => <section className="a-panel c-settle-column" aria-label={receivingGroup ? "You’re owed" : "You owe"} key={String(receivingGroup)}>
+      {/* What was recorded is said in the toast; only what could not be done stays here. */}
+      {message ? <p className="a-form-error" role="alert">{message}</p> : null}
+      <div className="c-settle-columns">{[false, true].map(receivingGroup => <section data-flip-box="" className="a-panel c-settle-column" aria-label={receivingGroup ? "You’re owed" : "You owe"} key={String(receivingGroup)}>
         <h2>{receivingGroup ? "You’re owed" : "You owe"}</h2>
         <strong className="c-settle-total">{formatMoney(receivingGroup ? youAreOwed : youOwe, hub.currency)}</strong>
         <p className="c-settle-explainer">{receivingGroup ? "Record each repayment after you receive it, in full or in part." : "Pay outside Commune, then tell the bill payer. They confirm receipt."}</p>
@@ -198,6 +199,9 @@ export function SettleScreen() {
             <div
               className="a-move"
               key={share.id}
+              data-row=""
+              data-flip=""
+              data-answer="wash"
             >
               <Avatar tone={receiving ? debtor?.cls ?? "house" : payer?.cls ?? "house"} initials={receiving ? debtor?.ini ?? initialsOf(personName(share.userId, "")) : payer?.ini ?? initialsOf(personName(expense.paidByUserId, ""))} />
               <div>
@@ -215,7 +219,7 @@ export function SettleScreen() {
               <div className="amt">{formatMoney(outstanding, hub.currency)}</div>
               {receiving && report ? (
                 <div className="a-row-actions">
-                  <button className="a-btn" type="button" disabled={receipts.busy} onClick={() => { setMessage(""); receipts.answer({ report, debtorName, expenseName: expense.name, currency: hub.currency, decision: "confirm" }); }}>
+                  <button className="a-btn" type="button" disabled={receipts.busy} onClick={() => { setMessage(""); receipts.answer({ report, debtorName, expenseName: expense.name, currency: hub.currency, decision: "confirm", expenseId: expense.id }); }}>
                     Confirm {formatMoney(report.amountMinor, hub.currency)}{" "}<span className="c-visually-hidden">from {debtorName} for {expense.name}</span>
                   </button>
                   <button className="a-btn ghost" type="button" disabled={receipts.busy} onClick={() => { setMessage(""); receipts.answer({ report, debtorName, expenseName: expense.name, currency: hub.currency, decision: "decline" }); }}>
@@ -227,7 +231,7 @@ export function SettleScreen() {
                     <button className="a-btn nudge" type="button" disabled={!eligibility.canSend} title={reminderReason || undefined} onClick={() => { setMessage(""); reminder.open({ kind: "nudge", sourceId: share.id, recipientId: share.userId, name: personName(share.userId, "your housemate"), subject: expense.name, amount: formatMoney(outstanding, hub.currency), dueOn: expense.dueOn }); }}>
                       Nudge{" "}<span className="c-visually-hidden">{debtorName} about {expense.name}</span>
                     </button>
-                  <button className="a-btn ghost" type="button" onClick={() => { setMessage(""); receipts.record({ shareId: share.id, debtorName, expenseName: expense.name, shareMinor: share.amountMinor, outstandingMinor: outstanding, currency: hub.currency }); }}>
+                  <button className="a-btn ghost" type="button" onClick={() => { setMessage(""); receipts.record({ shareId: share.id, debtorName, expenseName: expense.name, shareMinor: share.amountMinor, outstandingMinor: outstanding, currency: hub.currency, expenseId: expense.id }); }}>
                     Confirm received{" "}<span className="c-visually-hidden">from {debtorName} for {expense.name}</span>
                   </button>
                   {reminderReason && <p className="c-action-hint">{reminderReason}</p>}
@@ -248,16 +252,16 @@ export function SettleScreen() {
             </div>
           );
         })}
-        {!(receivingGroup ? youAreOwed : youOwe) && <p className="c-money-empty">{receivingGroup ? "Nothing waiting to collect." : "Nothing to pay."}</p>}
+        {!(receivingGroup ? youAreOwed : youOwe) && <p data-flip="" className="c-money-empty">{receivingGroup ? "Nothing waiting to collect." : "Nothing to pay."}</p>}
       </section>)}</div>
-      {recent.length > 0 && <section className="a-panel c-settle-recent" aria-label="Recent repayments">
+      {recent.length > 0 && <section data-flip="" className="a-panel c-settle-recent" aria-label="Recent repayments">
         <h2>Recent repayments</h2>
         {recent.map(({ expense, share, receipt }) => {
           const debtor = hub.members.find((member) => member.userId === share.userId);
           const payer = hub.members.find((member) => member.userId === expense.paidByUserId);
           const mine = share.userId === me;
           const other = mine ? personName(expense.paidByUserId, "the bill payer", { left: true }) : personName(share.userId, "A former member", { left: true });
-          return <button className="c-settle-receipt" type="button" key={receipt.id} onClick={() => go("expense", { expense: expense.id })}>
+          return <button data-flip="" className="c-settle-receipt" type="button" key={receipt.id} onClick={() => go("expense", { expense: expense.id })}>
             <Avatar tone={mine ? payer?.cls ?? "house" : debtor?.cls ?? "house"} initials={mine ? payer?.ini ?? initialsOf(personName(expense.paidByUserId, "")) : debtor?.ini ?? initialsOf(personName(share.userId, ""))} />
             <span className="grow"><strong>{mine ? `You to ${other}` : `${other} to you`}</strong>
               <small>{expense.name} · received {formatReminderDay(receipt.receivedOn)}{receipt.reference ? ` · ${receipt.reference}` : ""}{receipt.reversedAt ? ` · reversed: ${receipt.reversalReason}` : ""}</small></span>
@@ -267,7 +271,7 @@ export function SettleScreen() {
         })}
         <p className="c-settle-explainer">A receipt record in Commune, not bank verification. Open an expense to see its full history.</p>
       </section>}
-      <div className="c-settle-footer"><p>Each share is tracked separately. Commune does not move money.</p><button className="a-btn ghost" type="button" onClick={() => go("breakdown")}>View breakdown</button></div>
+      <div data-flip="" className="c-settle-footer"><p>Each share is tracked separately. Commune does not move money.</p><button className="a-btn ghost" type="button" onClick={() => go("breakdown")}>View breakdown</button></div>
       <ReminderFlowDialog flow={reminder} usage={reminderUsage} />
       {receipts.dialogs}
     </>

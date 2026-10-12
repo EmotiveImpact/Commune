@@ -1,7 +1,8 @@
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ReminderConfirm, ReminderFlowDialog, useReminderFlow, type ReminderRequest } from "../src/ui/ReminderConfirm";
-import { formatReminderDay, reminderEligibility, reminderFailureCopy, reminderResultCopy } from "../src/data/reminders";
+import { formatReminderDay, reminderEligibility, reminderFailureCopy, reminderResultCopy, reminderToastCopy } from "../src/data/reminders";
+import { currentToast, hideToast } from "../src/ui/Toast";
 import { ApiError } from "../src/live/api";
 import type { ReminderResult, ReminderTarget, ReminderUsage } from "../src/live/model";
 
@@ -9,11 +10,11 @@ beforeEach(() => {
   Object.defineProperty(HTMLDialogElement.prototype, "showModal", { configurable: true, value: function (this: HTMLDialogElement) { this.setAttribute("open", ""); } });
   Object.defineProperty(HTMLDialogElement.prototype, "close", { configurable: true, value: function (this: HTMLDialogElement) { this.removeAttribute("open"); } });
 });
-afterEach(cleanup);
+afterEach(() => { cleanup(); hideToast(); });
 
 const request: ReminderRequest = { kind: "nudge", sourceId: "share-1", recipientId: "user-2", name: "Alex", subject: "House supplies", amount: "£12.00", dueOn: "2026-01-05" };
 const usage: ReminderUsage = { totalUsed: 2, totalLimit: 60, recipientLimit: 8, recipientUsage: { "user-2": 1 }, nextSlotAt: null };
-const base = { request, usage, phase: "ready" as const, result: null, error: "" };
+const base = { request, usage, phase: "ready" as const, error: "" };
 
 describe("shared reminder preview", () => {
   it("shows recipient, purpose, due date and allowance without sending until confirmed", () => {
@@ -39,7 +40,9 @@ describe("shared reminder preview", () => {
   it("blocks duplicate sends and dismissal while sending", () => {
     const onSend = vi.fn(); const onClose = vi.fn();
     const { container } = render(<ReminderConfirm {...base} phase="sending" onSend={onSend} onClose={onClose} />);
-    expect((screen.getByRole("button", { name: "Sending…" }) as HTMLButtonElement).disabled).toBe(true);
+    const reminding = screen.getByRole("button", { name: "Reminding…" }) as HTMLButtonElement;
+    expect(reminding.disabled).toBe(true);
+    expect(reminding.getAttribute("aria-busy")).toBe("true");
     expect((screen.getByRole("button", { name: "Close reminder" }) as HTMLButtonElement).disabled).toBe(true);
     fireEvent(container.querySelector("dialog")!, new Event("cancel", { cancelable: true }));
     expect(onClose).not.toHaveBeenCalled();
@@ -62,13 +65,17 @@ describe("shared reminder preview", () => {
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     expect(onSend).toHaveBeenCalledOnce();
   });
+});
 
-  it("reports the recorded result truthfully and replaces Send with Done", () => {
-    const result: ReminderResult = { id: "r1", duplicate: false, emailStatus: "possible" };
-    render(<ReminderConfirm {...base} phase="sent" result={result} onSend={vi.fn()} onClose={vi.fn()} />);
-    expect(screen.getByRole("status").textContent).toBe("Nudge recorded. Alex will see it in Commune. Whether they also get an email depends on their own preferences, so it is not confirmed here.");
-    expect(screen.queryByRole("button", { name: "Send reminder" })).toBeNull();
-    expect(screen.getByRole("button", { name: "Done" })).toBeTruthy();
+describe("the line once a reminder is recorded", () => {
+  it("names who it is for and the allowance used, and says no email was sent only when that is true", () => {
+    expect(reminderToastCopy("nudge", "Alex Rivera", { id: "r", duplicate: false, emailStatus: "none" }, { ...usage, totalUsed: 0, totalLimit: 8 }))
+      .toBe("Nudge recorded for Alex. 1 of 8 in 30 days. No email was sent this time.");
+    const possible = reminderToastCopy("chase", "Sam", { id: "r", duplicate: false, emailStatus: "possible" }, usage);
+    expect(possible).toBe("Chase recorded for Sam. 3 of 60 in 30 days.");
+    expect(possible).not.toMatch(/email/i);
+    expect(reminderToastCopy("nudge", "Sam", { id: "r", duplicate: true, emailStatus: "none" }, usage))
+      .toBe("This nudge for Sam was already recorded. Nothing was sent twice.");
   });
 });
 
@@ -134,7 +141,10 @@ describe("one reminder decision, one command", () => {
     expect(send).toHaveBeenCalledTimes(2);
     expect(send.mock.calls[0][2]).toMatch(/^[0-9a-f-]{36}$/);
     expect(send.mock.calls[1][2]).toBe(send.mock.calls[0][2]);
-    expect(screen.getByRole("status").textContent).toContain("Nudge recorded.");
+    // Recorded: the dialog goes and the toast says so, with no Undo.
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(currentToast()?.text).toBe("Nudge recorded for Alex. 3 of 60 in 30 days. No email was sent this time.");
+    expect(currentToast()?.action).toBeUndefined();
   });
   it("sends one command for repeated clicks and nothing when cancelled", async () => {
     let resolve!: (value: ReminderResult) => void;
@@ -145,7 +155,6 @@ describe("one reminder decision, one command", () => {
     fireEvent.click(button); fireEvent.click(button);
     expect(send).toHaveBeenCalledTimes(1);
     await act(async () => resolve({ id: "r1", duplicate: false, emailStatus: "none" }));
-    fireEvent.click(screen.getByRole("button", { name: "Done" }));
     expect(screen.queryByRole("dialog")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Open" }));
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));

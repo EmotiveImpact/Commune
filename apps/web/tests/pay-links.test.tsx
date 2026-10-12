@@ -148,9 +148,14 @@ describe("your own pay links", () => {
     const put = vi.mocked(api).mock.calls.find(([path, init]) => path === "/pay-links/monzo" && init?.method === "PUT");
     expect(JSON.parse(String(put?.[1]?.body))).toEqual({ handle: "testperson" });
     expect(await screen.findByText("monzo.me/testperson")).toBeTruthy();
-    expect(screen.getByRole("status").textContent).toContain("People in your communes see it when they owe you");
+    expect(statusLines().some((line) => line.includes("People in your communes see it when they owe you"))).toBe(true);
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Remove" })); });
     expect(vi.mocked(api).mock.calls.some(([path, init]) => path === "/pay-links/monzo" && init?.method === "DELETE")).toBe(true);
-    expect(screen.getByRole("status").textContent).toBe("Monzo removed.");
+    expect(statusLines()).toContain("Monzo removed.");
   });
 });
+
+/** Every live status line's words; the toast region is one of them, and empty here. */
+function statusLines(): string[] {
+  return screen.getAllByRole("status").map((element) => element.textContent ?? "");
+}

@@ -93,6 +93,19 @@ export function reminderResultCopy(kind: ReminderKind, name: string, result: Rem
 }
 
 /**
+ * The line shown once a reminder is recorded: who it is for and how much of
+ * the allowance is now used. "No email was sent this time." only when the
+ * server says so; a possible email is not claimed either way.
+ */
+export function reminderToastCopy(kind: ReminderKind, name: string, result: ReminderResult, usage: ReminderUsage | null): string {
+  const first = name.trim().split(/\s+/)[0] || name;
+  if (result.duplicate) return `This ${reminderWord(kind).toLowerCase()} for ${first} was already recorded. Nothing was sent twice.`;
+  const count = usage ? ` ${Math.min(usage.totalLimit, usage.totalUsed + 1)} of ${usage.totalLimit} in 30 days.` : "";
+  const email = result.emailStatus === "none" ? " No email was sent this time." : "";
+  return `${reminderWord(kind)} recorded for ${first}.${count}${email}`;
+}
+
+/**
  * A 4xx is a decision by the server: nothing was created. Anything else
  * (offline, timeout, 5xx) leaves the outcome unknown, and retrying with the
  * same request id is safe.
