@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { ArrowRightLeft, ChartColumn, Clock3, CreditCard, FileText, Files, House, LayoutGrid, ReceiptText, Repeat2, ShoppingBag, SquareCheck, UsersRound, type LucideIcon } from "lucide-react";
 import type { IconName } from "../ui/Icon";
 import { Icon } from "../ui/Icon";
@@ -47,9 +47,9 @@ const PEOPLE: NavItem[] = [
   { id: "notes", label: "Notes", icon: "notes" },
 ];
 
-function CreateCommune({ onClick, menu }: { onClick: () => void; menu?: boolean }) {
+function CreateCommune({ onClick }: { onClick: () => void }) {
   return (
-    <button className="a-create-space" type="button" role={menu ? "menuitem" : undefined} onClick={onClick}>
+    <button className="a-create-space" type="button" onClick={onClick}>
       <span className="a-create-mark" aria-hidden="true">
         <Icon name="plus" size={14} />
       </span>
@@ -62,20 +62,28 @@ function CommuneSwitch() {
   const { go, hub, places, session } = useApp();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const listId = useId();
   const hasCommunes = Boolean(session?.hasHubs && places.length);
 
+  // A plain show-and-hide list: a click or focus elsewhere closes it, and
+  // Escape closes it and returns focus to the button.
   useEffect(() => {
     if (!open) return;
-    const onDoc = (event: MouseEvent) => {
+    const onOutside = (event: Event) => {
       if (!ref.current?.contains(event.target as Node)) setOpen(false);
     };
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setOpen(false);
+      if (event.key !== "Escape") return;
+      setOpen(false);
+      buttonRef.current?.focus();
     };
-    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("mousedown", onOutside);
+    document.addEventListener("focusin", onOutside);
     document.addEventListener("keydown", onKey);
     return () => {
-      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("mousedown", onOutside);
+      document.removeEventListener("focusin", onOutside);
       document.removeEventListener("keydown", onKey);
     };
   }, [open]);
@@ -91,11 +99,11 @@ function CommuneSwitch() {
   return (
     <div className="a-switch-section" ref={ref}>
       <button
+        ref={buttonRef}
         className={cx("a-hub-switch", open && "is-active")}
         type="button"
         aria-expanded={open}
-        aria-haspopup="menu"
-        aria-label="Switch commune"
+        aria-controls={open ? listId : undefined}
         onClick={() => setOpen((value) => !value)}
       >
         <div className="hub-ico" aria-hidden="true">
@@ -105,18 +113,18 @@ function CommuneSwitch() {
           <strong>{hub.name}</strong>
           <span>{hub.switchMeta}</span>
         </div>
+        {" "}<span className="c-visually-hidden">Switch commune</span>
         <span className={cx("a-hub-chev", open && "is-open")} aria-hidden="true">
           <Icon name="chevronDown" size={14} />
         </span>
       </button>
       {open ? (
-        <div className="a-hub-menu" role="menu" aria-label="Communes">
+        <div className="a-hub-menu" id={listId} role="group" aria-label="Communes">
           {places.map((place) => (
             <button
               key={place.id}
               className={cx("a-hub-option", place.id === hub.id && "is-current")}
               type="button"
-              role="menuitem"
               aria-current={place.id === hub.id ? "true" : undefined}
               onClick={() => {
                 setOpen(false);
@@ -133,7 +141,6 @@ function CommuneSwitch() {
             </button>
           ))}
           <CreateCommune
-            menu
             onClick={() => {
               setOpen(false);
               go("commune-new");
@@ -246,6 +253,7 @@ export function Header({ screen }: { screen: ScreenId }) {
   } = useApp();
   const [searchOpen, setSearchOpen] = useState(false);
   const searchingAll = ["home", "home-empty", "communes", "home-activity"].includes(screen);
+  const unread = noticesOn ? notifications.filter((notice) => !notice.readAt).length : 0;
   useEffect(() => {
     function shortcut(event: KeyboardEvent) {
       if (event.isComposing || event.repeat) return;
@@ -271,16 +279,16 @@ export function Header({ screen }: { screen: ScreenId }) {
         <h1>{pageTitle}</h1>
         {pageLede ? <p>{pageLede}</p> : null}
       </div>
-      <button className="a-search c-search-trigger" type="button" aria-label="Open search"
+      <button className="a-search c-search-trigger" type="button" aria-label="Search Commune"
         aria-haspopup="dialog" aria-keyshortcuts="Meta+K Control+K" onClick={() => setSearchOpen(true)}>
           <Icon name="search" size={16} />
-          {!native && <><span>Search Commune</span><kbd>⌘ K</kbd></>}
+          {!native && <><span>Search Commune</span><kbd aria-hidden="true">⌘ K</kbd></>}
       </button>
       <div className="a-header-actions">
         <button className="a-icon-btn a-you-btn" type="button" aria-label="You" onClick={() => go("settings")}>
-          <Avatar tone="maya" initials={you.initials} />
+          <Avatar tone="maya" initials={you.initials} decorative />
         </button>
-        <button className={cx("a-icon-btn", noticesOn && notifications.some((notice) => !notice.readAt) && "has-unread")} type="button" aria-label="Notifications" onClick={() => go("notices")}>
+        <button className={cx("a-icon-btn", unread > 0 && "has-unread")} type="button" aria-label={unread ? `Notifications, ${unread} unread` : "Notifications"} onClick={() => go("notices")}>
           <Icon name="bell" size={16} />
         </button>
       </div>
@@ -298,20 +306,19 @@ export function PhoneTabs({ screen }: { screen: ScreenId }) {
     { id: "expenses", label: "Expenses", icon: "expenses" },
     { id: "settle", label: "Settle", icon: "settle" },
   ];
+  const current = (id: ScreenId) =>
+    (id === "home" && (screen === "home" || screen === "home-empty" || screen === "home-inbox")) ||
+    (id === "hub" && (screen === "hub" || screen === "hub-empty" || screen === "commune-settings")) ||
+    (id === "expenses" && (screen === "expenses" || screen === "expenses-empty")) ||
+    (id === "settle" && (screen === "settle" || screen === "settle-even"));
   return (
     <nav className="a-bottom" aria-label="Phone">
       {tabs.map((tab) => (
         <button
           key={tab.id}
           type="button"
-          className={cx(
-            (tab.id === "home" && (screen === "home" || screen === "home-empty" || screen === "home-inbox")) ||
-              (tab.id === "hub" && (screen === "hub" || screen === "hub-empty" || screen === "commune-settings")) ||
-              (tab.id === "expenses" && (screen === "expenses" || screen === "expenses-empty")) ||
-              (tab.id === "settle" && (screen === "settle" || screen === "settle-even"))
-              ? "is-active"
-              : undefined,
-          )}
+          className={cx(current(tab.id) && "is-active")}
+          aria-current={current(tab.id) ? "page" : undefined}
           onClick={() => go(tab.id)}
         >
           <Icon name={tab.icon} />

@@ -133,7 +133,7 @@ describe("commune loading", () => {
     expect(within(screen.getByRole("region", { name: "Your balance" })).getByRole("button", { name: "Add expense" })).toBeTruthy();
     expect(within(screen.getByRole("region", { name: "Your balance" })).getByRole("button", { name: "View settlement" })).toBeTruthy();
     expect(within(screen.getByRole("region", { name: "Shared essentials" })).getByText(note.title)).toBeTruthy();
-    expect(within(screen.getByRole("region", { name: "Commune identity" })).getByRole("button", { name: "View commune members" })).toBeTruthy();
+    expect(within(screen.getByRole("region", { name: "Commune identity" })).getByRole("button", { name: /^\d+ (people|person) in this commune, view members$/ })).toBeTruthy();
     fireEvent.click(within(screen.getByRole("region", { name: "Pinned notes" })).getByRole("button", { name: /House essentials/ }));
     await screen.findByRole("complementary", { name: "House essentials" });
   });
@@ -188,9 +188,11 @@ describe("commune loading", () => {
 
   it.each(["/funds", "/settle"])("keeps the overall reminder allowance in the sidebar instead of the %s toolbar", async (path) => {
     mount(path);
-    const summary = await screen.findByLabelText("Reminder allowance: 0 of 60 used in the last 30 days");
+    // Named from what it shows, then the allowance in words.
+    const summary = (await screen.findByText("60 reminders left")).closest("summary")!;
     expect(summary.closest(".a-side-account")).not.toBeNull();
-    expect(summary.textContent).toContain("60 reminders left");
+    expect(summary.hasAttribute("aria-label")).toBe(false);
+    expect(summary.textContent).toBe("60 reminders left (0 of 60 used in the last 30 days)");
     const metadata = summary.closest(".a-side-account-meta")!;
     expect(metadata.querySelector(".a-side-account-role")?.textContent).toBe("Admin");
     expect(metadata.querySelector(".a-side-account-separator")?.getAttribute("aria-hidden")).toBe("true");
@@ -212,7 +214,7 @@ describe("commune loading", () => {
     expect(metadata.textContent).toBe("Admin");
     expect(metadata.querySelector(".a-side-account-separator")).toBeNull();
     await act(async () => usage.resolve({ totalUsed: 12, totalLimit: 60, recipientLimit: 6, recipientUsage: {}, nextSlotAt: null }));
-    await screen.findByLabelText("Reminder allowance: 12 of 60 used in the last 30 days");
+    expect((await screen.findByText("48 reminders left")).closest("summary")?.textContent).toContain("12 of 60 used in the last 30 days");
     expect(metadata.textContent).toContain("Admin·48 reminders left");
     expect(metadata.querySelectorAll(".a-side-account-separator")).toHaveLength(1);
   });
@@ -356,9 +358,9 @@ describe("commune loading", () => {
       return { invites: [] };
     });
     mount("/notes");
-    await screen.findByRole("button", { name: "Open House contacts" });
+    await screen.findByRole("button", { name: /^House contacts/ });
     fireEvent.change(screen.getByRole("combobox", { name: "Filter notes" }), { target: { value: "Contacts" } });
-    fireEvent.click(screen.getByRole("button", { name: "Open House contacts" }));
+    fireEvent.click(screen.getByRole("button", { name: /^House contacts/ }));
     fireEvent.click(screen.getByRole("button", { name: "Edit note" }));
     const dialog = await screen.findByRole("dialog", { name: "Edit note" });
     expect((within(dialog).getByLabelText("Role or service") as HTMLInputElement).value).toBe("Landlord");
@@ -385,7 +387,7 @@ describe("commune loading", () => {
       return { invites: [] };
     });
     mount("/notes");
-    fireEvent.click(await screen.findByRole("button", { name: "Open House rules" }));
+    fireEvent.click(await screen.findByRole("button", { name: /^House rules/ }));
     fireEvent.click(screen.getByRole("button", { name: "Edit note" }));
     const dialog = await screen.findByRole("dialog", { name: "Edit note" });
     // Blake saves while this edit is open.
@@ -416,7 +418,7 @@ describe("commune loading", () => {
       return { invites: [] };
     });
     mount("/notes");
-    fireEvent.click(await screen.findByRole("button", { name: "Open House rules" }));
+    fireEvent.click(await screen.findByRole("button", { name: /^House rules/ }));
     const history = (await screen.findByText(/Version 3 · saved by Test Person · 1 earlier version/)).closest("details")!;
     await act(async () => { fireEvent.click(within(history).getByRole("button", { name: "View" })); });
     const opened = within(history).getByLabelText("Version 2");
@@ -473,7 +475,7 @@ describe("commune loading", () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
     mount("/notes");
-    const opener = await screen.findByRole("button", { name: "Open Wi-Fi & internet" });
+    const opener = await screen.findByRole("button", { name: /^Wi-Fi & internet/ });
     expect(document.body.textContent).not.toContain("private-secret");
     opener.focus(); fireEvent.click(opener);
     const reader = screen.getByRole("complementary", { name: "Wi-Fi & internet" });
@@ -496,12 +498,12 @@ describe("commune loading", () => {
   it("filters notes without searching private content or changing expense search", async () => {
     vi.mocked(loadSnapshot).mockResolvedValue({ ...snapshot, notes: [wifiNote] });
     mount("/notes");
-    await screen.findByRole("button", { name: "Open Wi-Fi & internet" });
+    await screen.findByRole("button", { name: /^Wi-Fi & internet/ });
     fireEvent.change(screen.getByRole("searchbox", { name: "Search notes in this commune", exact: true }), { target: { value: "private-secret" } });
     expect(screen.getByRole("heading", { name: "No matching notes." })).toBeTruthy();
     expect(app.searchQuery).toBe("");
     fireEvent.click(screen.getByRole("button", { name: "Show all notes" }));
-    expect(screen.getAllByRole("button", { name: "Open Wi-Fi & internet" })).toHaveLength(1);
+    expect(screen.getAllByRole("button", { name: /^Wi-Fi & internet/ })).toHaveLength(1);
   });
 
   it("shows a dismissible error rather than a blank mobile reader when a note disappears", async () => {
@@ -524,7 +526,7 @@ describe("commune loading", () => {
       return originalApi(path, options);
     });
     mount("/notes");
-    fireEvent.click(await screen.findByRole("button", { name: "Open Wi-Fi & internet" }));
+    fireEvent.click(await screen.findByRole("button", { name: /^Wi-Fi & internet/ }));
     fireEvent.click(screen.getByRole("button", { name: "Unpin", exact: true }));
     await screen.findByText("Note unpinned.");
     expect(saved.facts.some(([key]) => key === "This Hub")).toBe(false);
@@ -545,7 +547,7 @@ describe("commune loading", () => {
     vi.mocked(loadSnapshot).mockResolvedValue({ ...snapshot, notes: [wifiNote] });
     Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText: vi.fn().mockRejectedValue(new Error("Denied")) } });
     mount("/notes");
-    fireEvent.click(await screen.findByRole("button", { name: "Open Wi-Fi & internet" }));
+    fireEvent.click(await screen.findByRole("button", { name: /^Wi-Fi & internet/ }));
     fireEvent.click(screen.getByRole("button", { name: "Copy network" }));
     await screen.findByText("Could not copy. Select and copy the text instead.");
     fireEvent.click(screen.getByRole("button", { name: "Unpin", exact: true }));

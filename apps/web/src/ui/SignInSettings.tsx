@@ -33,7 +33,7 @@ export function SignInSettings() {
   }
   return (
     <div className="a-set-group">
-      <h3>Password and sign-in</h3>
+      <h2>Password and sign-in</h2>
       <div className="a-set-list">
         <button className="a-set-row" type="button" onClick={() => show("password")}>
           <span className="a-set-row-copy">

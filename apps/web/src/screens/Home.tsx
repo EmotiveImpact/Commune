@@ -15,7 +15,7 @@ function PhotoFace({ hub, focus, children }: { hub: LiveHub; focus?: boolean; ch
   );
 }
 
-function PlaceCard({ hub, focus = false }: { hub: LiveHub; focus?: boolean }) {
+function PlaceCard({ hub, focus = false, level = 3 }: { hub: LiveHub; focus?: boolean; level?: 2 | 3 }) {
   const { go } = useApp();
   const balance = hub.oweAmount.replace(/\.00\b/, "");
   const hasBalance = hub.moves.some((move) => !move.even);
@@ -25,7 +25,7 @@ function PlaceCard({ hub, focus = false }: { hub: LiveHub; focus?: boolean }) {
     <button className={cx("a-place", focus && "a-focus-lead")} type="button" onClick={() => go("hub", { hub: hub.id })}>
       <PhotoFace hub={hub} focus={focus}>
         <span className="type">{hub.type}{memberCount == null ? "" : ` · ${memberCount} ${memberCount === 1 ? "person" : "people"}`}</span>
-        {focus ? <h2>{hub.name}</h2> : <h3>{hub.name}</h3>}
+        {focus || level === 2 ? <h2>{hub.name}</h2> : <h3>{hub.name}</h3>}
         {(hub.type === "Trip" ? hub.destination : hub.address) ? <p className="a-place-location">{hub.type === "Trip" ? hub.destination : hub.address}</p> : null}
         <p>{hub.status}</p>
         {focus ? (
@@ -104,7 +104,8 @@ export function PlacesScreen() {
   return (
     <>
       <div className="a-toolbar"><button className="a-btn" type="button" onClick={() => go("commune-new")}>New commune</button></div>
-      <div className="a-place-grid">{places.map((hub) => <PlaceCard key={hub.id} hub={hub} />)}</div>
+      {/* The cards sit straight under the page title, so each name is an h2. */}
+      <div className="a-place-grid">{places.map((hub) => <PlaceCard key={hub.id} hub={hub} level={2} />)}</div>
     </>
   );
 }

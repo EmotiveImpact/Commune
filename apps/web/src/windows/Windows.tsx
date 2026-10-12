@@ -20,6 +20,7 @@ import { formatReminderDay, formatTimestampDay } from "../data/reminders";
 import { isNotePinned } from "../data/notePresentation";
 import { buildStatement, statementCsv } from "../data/statement";
 import { NoteHistory } from "../ui/NoteHistory";
+import { DiscardQuestion, useFormError, useTypedText } from "../ui/components";
 import "./NoteEditor.css";
 import { allocateExpense, type SplitMethod } from "../../../../packages/core/src/expenseSplit";
 import { netBalances } from "../../../../packages/core/src/balances";
@@ -61,10 +62,20 @@ export function Windows() {
     refresh,
   } = useApp();
   const frameRef = useRef<HTMLDivElement>(null);
-  const closeRef = useRef(closeWindow);
   const inlineNote = window === "note" && screen === "notes" && Boolean(notes[noteKey]);
   const isOpen = Boolean(window) && !inlineNote;
-  useEffect(() => { closeRef.current = closeWindow; }, [closeWindow]);
+  // Escape, the backdrop and the close button ask first when typed text
+  // would be lost. Cancel in a form is a choice already made.
+  const typed = useTypedText();
+  const [asking, setAsking] = useState(false);
+  const dismiss = () => {
+    if (mutationPending) return;
+    if (typed.hasTyped()) setAsking(true);
+    else closeWindow();
+  };
+  const dismissRef = useRef(dismiss);
+  useEffect(() => { dismissRef.current = dismiss; });
+  useEffect(() => { if (!isOpen) setAsking(false); }, [isOpen]);
   useEffect(() => {
     if (!isOpen) return;
     const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -77,7 +88,7 @@ export function Windows() {
       if (document.querySelector("dialog[open]")) return;
       if (event.key === "Escape") {
         event.preventDefault();
-        closeRef.current();
+        dismissRef.current();
       }
       if (event.key !== "Tab") return;
       const controls = Array.from(frame.querySelectorAll<HTMLElement>(
@@ -113,11 +124,11 @@ export function Windows() {
 
   return (
     <div className="a-windows">
-      <button className="a-window-back" type="button" tabIndex={-1} aria-hidden="true" onClick={closeWindow} />
-      <div ref={frameRef} tabIndex={-1} className={cx("a-window-frame", window === "add-expense" && "c-expense-frame")} role="dialog" aria-modal="true" aria-labelledby="commune-window-title">
+      <button className="a-window-back" type="button" tabIndex={-1} aria-hidden="true" onClick={() => { frameRef.current?.focus(); dismiss(); }} />
+      <div ref={frameRef} tabIndex={-1} className={cx("a-window-frame", window === "add-expense" && "c-expense-frame")} role="dialog" aria-modal="true" aria-labelledby="commune-window-title" onInput={typed.onInput}>
         <header className="a-window-bar">
           <h2 id="commune-window-title">{title}</h2>
-          <button className="a-window-x" type="button" aria-label="Close" disabled={mutationPending} onClick={closeWindow}>
+          <button className="a-window-x" type="button" aria-label="Close" disabled={mutationPending} onClick={dismiss}>
             <Icon name="close" size={16} />
           </button>
         </header>
@@ -148,6 +159,7 @@ export function Windows() {
           </>}
         </div>
       </div>
+      {asking ? <DiscardQuestion onDiscard={() => { setAsking(false); closeWindow(); }} onKeep={() => setAsking(false)} /> : null}
     </div>
   );
 }
@@ -291,7 +303,7 @@ function AddExpense() {
   const [method, setMethod] = useState<SplitMethod>(initialTemplate?.method ?? "Equal");
   const [values, setValues] = useState<Record<string, string>>(() => Object.fromEntries(initialTemplate?.participants.map(item => [item.userId, item.value]) ?? []));
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
+  const { setError, invalid, message } = useFormError();
   // One id for this form: every retry reuses it, so the server records the
   // expense once. After an unconfirmed attempt the fields lock, so a retry is
   // the same expense.
@@ -310,18 +322,19 @@ function AddExpense() {
   async function save() {
     const name = what.trim();
     if (!name) {
-      setError("Name the expense before saving it.");
+      setError("Name the expense before saving it.", "exp-what");
       return;
     }
     if (amountMinor === null || amountMinor < included.length) {
-      setError(moneyInputError(amount, hub.currency, "Enter a valid amount of at least one penny per selected person."));
+      setError(moneyInputError(amount, hub.currency, "Enter a valid amount of at least one penny per selected person."), "exp-amt");
       return;
     }
+    // The split has no single field: its message, just after it, takes focus.
     if (!included.length) {
-      setError("Choose at least one person in the split.");
+      setError("Choose at least one person in the split.", "exp-split");
       return;
     }
-    if (splitError) { setError(splitError); return; }
+    if (splitError) { setError(splitError, "exp-split"); return; }
     setSaving(true);
     setError("");
     try {
@@ -371,12 +384,15 @@ function AddExpense() {
           disabled={saving || uncertain}
           onChange={(e) => setWhat(e.target.value)}
           placeholder="e.g. Rent"
+          {...invalid("exp-what")}
         />
         <span className="a-field-limit">{what.length}/{LIMITS.expenseTitle}</span>
+        {message("exp-what")}
       </div>
       <div className="a-field half">
         <label htmlFor="exp-amt">Amount ({hub.currency})</label>
-        <input id="exp-amt" type="text" inputMode="decimal" maxLength={LIMITS.money} value={amount} disabled={saving || uncertain} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" />
+        <input id="exp-amt" type="text" inputMode="decimal" maxLength={LIMITS.money} value={amount} disabled={saving || uncertain} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" {...invalid("exp-amt")} />
+        {message("exp-amt")}
       </div>
       <div className="a-field half">
         <label htmlFor="exp-who">Paid by</label>
@@ -397,7 +413,8 @@ function AddExpense() {
         <p className="a-window-note">Nudge becomes available to the payer once this date arrives.</p>
       </div>
       <SplitEditor members={members} includedIds={includedUserIds} onIncludedIds={setIncludedIds} method={method} onMethod={setMethod} values={values} onValues={setValues} amountMinor={amountMinor} currency={hub.currency} disabled={saving || uncertain} />
-      {error ? <p className="a-form-error" role="alert">{error}</p> : null}
+      {message("exp-split")}
+      {message()}
     </section><aside className="c-expense-summary" aria-label="Split summary"><h3>The split, at a glance</h3><div><span>Total</span><strong>{formatMoney(amountMinor ?? 0, hub.currency)}</strong></div><div><span>Your share</span><strong>{formatMoney(allocations.find(share => share.userId === session?.userId)?.amountMinor ?? 0, hub.currency)}</strong></div><p>Paid by {members.find(member=>member.userId===payer)?.name ?? you.name}. Each person will see their exact share.</p><p>Commune records who paid and who owes what. It doesn’t move money.</p></aside>
       {/* One footer under both columns, so it never cuts across the split list. */}
       <div className="c-expense-actions">
@@ -479,8 +496,8 @@ function Expense() {
               {isPayer && !isOwnPayerShare && outstanding && !report ? (
                 <div className="a-row-actions">
                   <button className="a-btn nudge" type="button" disabled={!eligibility.canSend} title={eligibility.reason || undefined}
-                    onClick={() => { setMessage(""); reminder.open({ kind: "nudge", sourceId: share.id, recipientId: share.userId, name: member?.name ?? "your housemate", subject: selectedExpense.name, amount: formatMoney(outstanding, hub.currency), dueOn: selectedExpense.dueOn }); }}>Nudge</button>
-                  <button className="a-btn ghost" type="button" onClick={() => { setMessage(""); receipts.record({ shareId: share.id, debtorName: member?.name ?? "this member", expenseName: selectedExpense.name, shareMinor: share.amountMinor, outstandingMinor: outstanding, currency: hub.currency }); }}>Confirm received</button>
+                    onClick={() => { setMessage(""); reminder.open({ kind: "nudge", sourceId: share.id, recipientId: share.userId, name: member?.name ?? "your housemate", subject: selectedExpense.name, amount: formatMoney(outstanding, hub.currency), dueOn: selectedExpense.dueOn }); }}>Nudge{" "}<span className="c-visually-hidden">{member?.name ?? "this member"}</span></button>
+                  <button className="a-btn ghost" type="button" onClick={() => { setMessage(""); receipts.record({ shareId: share.id, debtorName: member?.name ?? "this member", expenseName: selectedExpense.name, shareMinor: share.amountMinor, outstandingMinor: outstanding, currency: hub.currency }); }}>Confirm received{" "}<span className="c-visually-hidden">from {member?.name ?? "this member"}</span></button>
                   {eligibility.reason && <p className="c-action-hint">{eligibility.reason}</p>}
                 </div>
               ) : ownDebt && !report ? (
@@ -568,11 +585,11 @@ function CommuneNew() {
   const [currency, setCurrency] = useState("GBP");
   const [location, setLocation] = useState(EMPTY_COMMUNE_LOCATION);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
+  const { setError, invalid, message } = useFormError();
 
   async function create() {
     if (!name.trim()) {
-      setError("Name the commune before creating it.");
+      setError("Name the commune before creating it.", "new-name");
       return;
     }
     setError("");
@@ -591,8 +608,9 @@ function CommuneNew() {
       <p className="a-window-kicker">Places</p>
       <div className="a-field">
         <label htmlFor="new-name">Name</label>
-        <input id="new-name" type="text" maxLength={LIMITS.communeName} value={name} onChange={(e) => setName(e.target.value)} />
+        <input id="new-name" type="text" maxLength={LIMITS.communeName} value={name} onChange={(e) => setName(e.target.value)} {...invalid("new-name")} />
         <span className="a-field-limit">{name.length}/{LIMITS.communeName}</span>
+        {message("new-name")}
       </div>
       <div className="a-field half">
         <label htmlFor="new-type">Type</label>
@@ -628,7 +646,7 @@ function CommuneNew() {
           Cancel
         </button>
       </div>
-      {error ? <p className="a-form-error" role="alert">{error}</p> : null}
+      {message()}
     </section>
   );
 }
@@ -643,12 +661,12 @@ function MemberInvite() {
   const [sendingEmail, setSendingEmail] = useState(false);
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [error, setError] = useState("");
+  const { error, setError, invalid, message } = useFormError();
 
   async function create(emailDelivery: boolean) {
     if (saving) return;
     if (!/^\S+@\S+\.\S+$/.test(email.trim())) {
-      setError("Enter a valid email address.");
+      setError("Enter a valid email address.", "inv-email");
       return;
     }
     setSaving(true);
@@ -687,7 +705,8 @@ function MemberInvite() {
       <p className="a-window-note">Invite someone to {hub.name}. Send an email invitation or create a link to share yourself.</p>
       <div className="a-field">
         <label htmlFor="inv-email">Email</label>
-        <input id="inv-email" type="email" required placeholder="name@example.com" maxLength={LIMITS.email} value={email} disabled={Boolean(url) || saving} onChange={(event) => setEmail(event.target.value)} />
+        <input id="inv-email" type="email" required placeholder="name@example.com" maxLength={LIMITS.email} value={email} disabled={Boolean(url) || saving} onChange={(event) => setEmail(event.target.value)} {...invalid("inv-email")} />
+        {message("inv-email")}
       </div>
       <div className="a-field">
         <label htmlFor="inv-role">Role</label>
@@ -705,7 +724,7 @@ function MemberInvite() {
           <p className="a-window-note">{sent ? "You can also share this link directly." : "The invitation link is ready. Email sending has not been confirmed."} Only {email.trim()} can accept it after verifying their email. The link expires in seven days.</p>
         </div>
       ) : null}
-      {error ? <p className="a-form-error" role="alert">{error}</p> : null}
+      {message()}
       <div className="a-field-row">
         <button className="a-btn" type="submit" disabled={saving || sent || hub.role !== "admin"}>
           {saving && sendingEmail ? "Sending…" : sent ? "Email sent" : error && token ? "Retry email" : "Send invitation"}
@@ -995,7 +1014,7 @@ function NoteNew({ onSave, initial }: {
   const [contactRole, setContactRole] = useState(fact("Role") || (initial?.pill === "Landlord" ? "Landlord" : ""));
   const [detail, setDetail] = useState(fact("Detail"));
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
+  const { setError, invalid, message } = useFormError();
 
   function extra(kind: string): CSSProperties {
     const show =
@@ -1011,7 +1030,7 @@ function NoteNew({ onSave, initial }: {
 
   async function save() {
     if (!title.trim()) {
-      setError("Add a title before saving.");
+      setError("Add a title before saving.", "note-title");
       return;
     }
     const typeLabel = NOTE_TYPES.find((t) => t[0] === type)?.[1] ?? "Note";
@@ -1037,7 +1056,7 @@ function NoteNew({ onSave, initial }: {
     if (type === "emergency" && contact) facts.push(["Who to call", contact]);
     if ((type === "other" || type === "rules") && detail) facts.push(["Detail", detail]);
     if (!body.trim() && !facts.some(([, value]) => value.trim())) {
-      setError("Add some details or a note before saving.");
+      setError("Add some details or a note before saving.", "note-body");
       return;
     }
     facts.push(["Who can see", "Everyone in this commune"]);
@@ -1082,8 +1101,9 @@ function NoteNew({ onSave, initial }: {
         <label htmlFor="note-title">
           Title <span className="need">Required</span>
         </label>
-        <input id="note-title" type="text" required maxLength={LIMITS.noteTitle} value={title} onChange={(e) => setTitle(e.target.value)} placeholder={type === "contacts" ? "e.g. Repairs & maintenance" : "Give this note a clear name"} />
+        <input id="note-title" type="text" required maxLength={LIMITS.noteTitle} value={title} onChange={(e) => setTitle(e.target.value)} placeholder={type === "contacts" ? "e.g. Repairs & maintenance" : "Give this note a clear name"} {...invalid("note-title")} />
         <span className="a-field-limit">{title.length}/{LIMITS.noteTitle}</span>
+        {message("note-title")}
       </div>
       <div className="note-editor-details">
       <div className="a-field" style={extra("contacts")}>
@@ -1142,8 +1162,10 @@ function NoteNew({ onSave, initial }: {
           maxLength={LIMITS.noteBody}
           onChange={(e) => setBody(e.target.value)}
           placeholder={NOTE_BODY_HINT[type]}
+          {...invalid("note-body")}
         />
         <span className="a-field-limit">{body.length}/{LIMITS.noteBody}</span>
+        {message("note-body")}
       </div>
       <label className="note-editor-pin">
         <input type="checkbox" checked={pin} onChange={(event) => setPin(event.target.checked)} />
@@ -1167,7 +1189,7 @@ function NoteNew({ onSave, initial }: {
             <button className="a-btn ghost" type="button" disabled={saving} onClick={() => go("note", { note: latest.id })}>Discard mine, see theirs</button>
           </div>
         </div>
-      ) : error ? <p className="a-form-error" role="alert">{error}</p> : null}
+      ) : message()}
       <div className="a-field-row note-editor-actions">
         <button className="a-btn ghost" type="button" disabled={saving} onClick={() => initial ? go("note", { note: initial.id }) : closeWindow()}>
           Cancel

@@ -34,6 +34,10 @@ body,
   --border-strong: rgba(245, 241, 234, 0.16);
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.18);
   --shadow: 0 8px 24px rgba(0, 0, 0, 0.24);
+  --text-green: #9fd3b8;
+  --focus-ring: #649578;
+  --danger: #f2b9a2;
+  --danger-soft: rgba(242, 185, 162, 0.12);
   color: var(--ink);
   background: #151923;
   color-scheme: dark;
@@ -188,7 +192,7 @@ body,
   background: #242b39;
   border-color: var(--border);
 }
-.a-body.is-dark :is(.ops-note, .ops-board-head small, .ops-cuts button:not(.is-on)) {
+.a-body.is-dark :is(.ops-note, .ops-board-head small, .ops-cuts button:not(.is-on), .ops-week-row span) {
   color: var(--ink-soft);
 }
 .a-body.is-dark :is(.ops-board-head, .ops-week-day + .ops-week-day) {
@@ -229,7 +233,7 @@ body,
 }
 .a-body.is-dark .ops-tile.is-out {
   background: transparent;
-  color: rgba(245, 241, 234, 0.32);
+  color: rgba(245, 241, 234, 0.55);
 }
 .a-body.is-dark .ops-tile.is-on {
   background: #23352f;
@@ -275,4 +279,30 @@ body,
 }
 .a-body.is-dark .a-reminder-usage-track {
   background: rgba(245, 241, 234, 0.14);
+}
+
+/* Settings switches: on and off looked alike on the dark card. Off is a dark
+   track with a grey knob; on is a cream track with a navy knob. */
+.a-body.is-dark .a-switch {
+  background: #1d2330;
+  box-shadow: inset 0 0 0 1px rgba(245, 241, 234, 0.28);
+}
+.a-body.is-dark .a-switch::after {
+  background: #b5bdca;
+  box-shadow: none;
+}
+.a-body.is-dark .a-switch[aria-checked="true"] {
+  background: var(--ink);
+  box-shadow: none;
+}
+.a-body.is-dark .a-switch[aria-checked="true"]::after {
+  background: #1a1e2b;
+}
+.a-body.is-dark ::placeholder {
+  color: #9aa3b2;
+  opacity: 1;
+}
+/* The search field's own outline follows the focus colour of its surface. */
+.a-search:focus-within {
+  outline-color: var(--focus-ring);
 }

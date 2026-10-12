@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { Header } from "../src/shell/Shell";
 import { QuickSearch } from "../src/ui/QuickSearch";
@@ -62,6 +62,14 @@ describe("Commune quick search", () => {
     expect(close).toHaveBeenCalledOnce();
     expect(mocks.go).toHaveBeenCalledWith("note", { hub: "home-2", note: "note-2" });
   });
+  it("keeps group headings out of the options list, where the group's label names it", async () => {
+    mocks.api.mockResolvedValue(response([item("note", "note-2", "Garden guide"), item("expense", "expense-2", "Garden supplies")]));
+    mount(); await query();
+    const list = await screen.findByRole("listbox", { name: "Search results" });
+    expect(within(list).queryAllByRole("heading")).toHaveLength(0);
+    expect([...list.querySelectorAll("h3")].every((heading) => heading.getAttribute("aria-hidden") === "true")).toBe(true);
+    expect(within(list).getByRole("group", { name: "Notes" })).toBeTruthy();
+  });
   it("changes scope without reloading commune snapshots", async () => {
     mount(); await query();
     fireEvent.click(screen.getByRole("button", { name: "All communes", exact: true }));
@@ -95,7 +103,7 @@ describe("Commune quick search", () => {
   });
   it("opens with Ctrl-K and slash, closes with the shortcut, and restores focus", async () => {
     render(<Header screen="expenses" />);
-    const opener = screen.getByRole("button", { name: "Open search" }); opener.focus();
+    const opener = screen.getByRole("button", { name: "Search Commune" }); opener.focus();
     fireEvent.keyDown(document, { key: "k", ctrlKey: true });
     expect(screen.getByRole("dialog", { name: "Search Commune" })).toBeTruthy();
     fireEvent.keyDown(document, { key: "k", ctrlKey: true });
@@ -116,7 +124,7 @@ describe("Commune quick search", () => {
   });
   it("closes a populated native search field with one Escape and restores the opener", async () => {
     render(<Header screen="expenses" />);
-    const opener = screen.getByRole("button", { name: "Open search" });
+    const opener = screen.getByRole("button", { name: "Search Commune" });
     opener.focus(); fireEvent.click(opener); await query();
     await screen.findByRole("option", { name: /Garden supplies/ });
     const input = screen.getByRole("combobox", { name: "Search Commune" });

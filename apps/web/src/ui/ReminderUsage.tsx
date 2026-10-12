@@ -24,10 +24,12 @@ export function ReminderUsageMeter({ usage, placement = "default" }: { usage: Us
         event.currentTarget.querySelector("summary")?.focus();
       }
     }}>
-      <summary aria-label={`Reminder allowance: ${usage.totalUsed} of ${usage.totalLimit} used in the last 30 days`}>
+      {/* Named from what it shows, with the allowance in words after it. */}
+      <summary>
         {placement === "sidebar"
           ? <span>{Math.max(0, usage.totalLimit - usage.totalUsed)} reminders left</span>
-          : <><span>Reminders</span><strong>{usage.totalUsed}/{usage.totalLimit}</strong></>}
+          : <><span>Reminders</span><strong aria-hidden="true">{usage.totalUsed}/{usage.totalLimit}</strong></>}
+        {" "}<span className="c-visually-hidden">({usage.totalUsed} of {usage.totalLimit} used in the last 30 days)</span>
       </summary>
       <div className="a-reminder-usage-details">
       <div className="a-reminder-usage-copy">

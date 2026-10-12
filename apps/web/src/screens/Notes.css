@@ -73,7 +73,7 @@
   background: #fcfcf8;
 }
 .note-tile.is-selected {
-  border-color: var(--sage, #2d6a4f);
+  border-color: var(--text-green, #2d6a4f);
   background: #f0f6f0;
 }
 .note-tile-icon {
@@ -121,7 +121,7 @@
   position: absolute;
   right: 16px;
   top: 20px;
-  color: var(--sage, #2d6a4f);
+  color: var(--text-green, #2d6a4f);
 }
 .notes-pinned .note-tile {
   flex-direction: row;
@@ -173,7 +173,7 @@
   display: flex;
   align-items: center;
   gap: 9px;
-  color: var(--sage, #2d6a4f);
+  color: var(--text-green, #2d6a4f);
   font-size: 12px;
   font-weight: 500;
 }
@@ -194,22 +194,23 @@
   margin: 0 0 28px;
 }
 .note-pin-status svg {
-  color: var(--sage, #2d6a4f);
+  color: var(--text-green, #2d6a4f);
 }
 .note-details {
   margin: 28px 0 0;
 }
+/* Term and value on the left, the buttons beside both, notes underneath. */
 .note-fact {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 12px;
+  column-gap: 12px;
   padding: 22px 0;
   border-top: 1px solid var(--border);
 }
-.note-fact-text {
-  flex: 1;
-  min-width: 0;
+.note-fact dt {
+  grid-column: 1;
+  align-self: end;
 }
 .note-fact dt,
 .note-body h3 {
@@ -221,14 +222,26 @@
 }
 .note-fact dd {
   margin: 0;
+}
+.note-fact-value {
+  grid-column: 1;
+  align-self: start;
   font-size: 18px;
   line-height: 1.4;
   overflow-wrap: anywhere;
   white-space: pre-wrap;
 }
 .note-fact-actions {
+  grid-column: 2;
+  grid-row: 1 / span 2;
   display: flex;
   gap: 8px;
+}
+.note-fact-note {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 12px;
+  padding-top: 12px;
 }
 .note-icon-button {
   display: inline-flex;
@@ -250,7 +263,6 @@
   border-color: transparent;
 }
 .note-fact small {
-  flex-basis: 100%;
   font-size: 12px;
   line-height: 1.5;
   color: var(--ink-soft);
@@ -286,7 +298,7 @@
   font-size: 14px;
   background: transparent;
   border: 0;
-  color: var(--sage, #2d6a4f);
+  color: var(--text-green, #2d6a4f);
   min-height: 44px;
   padding: 0 8px;
   cursor: pointer;
@@ -297,7 +309,7 @@
 }
 .note-feedback {
   font-size: 12px;
-  color: var(--sage, #2d6a4f);
+  color: var(--text-green, #2d6a4f);
   min-height: 18px;
   margin: 12px 0;
 }
@@ -321,7 +333,7 @@
 .notes-layout button:focus-visible,
 .notes-layout select:focus-visible,
 .notes-layout input:focus-visible {
-  outline: 2px solid var(--sage, #2d6a4f);
+  outline: 2px solid var(--focus-ring, #2d6a4f);
   outline-offset: 4px;
 }
 .is-reading .notes-grid {

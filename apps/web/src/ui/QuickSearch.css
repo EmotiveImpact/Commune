@@ -42,7 +42,7 @@
   border-radius: var(--radius-control); background: transparent; color: var(--ink-soft);
   font: inherit; font-size: 12px; cursor: pointer;
 }
-.c-search-scope button[aria-pressed="true"] { background: var(--paper); border-color: var(--sage); color: var(--sage); }
+.c-search-scope button[aria-pressed="true"] { background: var(--paper); border-color: var(--text-green); color: var(--text-green); }
 .c-search-scope > span { margin-left: 5px; max-width: 230px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; color: var(--ink-soft); }
 .c-quick-search-body { overflow-y: auto; max-height: min(440px, calc(100dvh - 300px)); min-height: 142px; }
 .c-search-group { padding: 12px 8px 0; }
@@ -65,7 +65,7 @@
 .c-search-state span { display: block; line-height: 1.6; }
 .c-search-state .a-btn { margin-top: 16px; }
 .c-quick-search-footer { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; padding: 14px 22px; border-top: 1px solid var(--border); color: var(--ink-soft); font-size: 11px; }
-.c-quick-search-footer button { border: 0; padding: 3px 0; background: transparent; color: var(--sage); font: inherit; cursor: pointer; }
+.c-quick-search-footer button { border: 0; padding: 3px 0; background: transparent; color: var(--text-green); font: inherit; cursor: pointer; }
 .c-search-key-hint { display: flex; gap: 5px; align-items: center; }
 .c-search-announcement { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 .c-record-filter, .notes-mobile-search.c-record-filter {
@@ -78,7 +78,7 @@
 .c-search-full .c-search-scope { padding: 0 0 18px; margin-bottom: 18px; }
 .c-search-full .c-search-results { border: 1px solid var(--border); border-radius: var(--radius-surface); background: var(--white); }
 .c-search-full .c-search-count { color: var(--ink-soft); font-size: 12px; margin-bottom: 16px; }
-.c-search-record-highlight { outline: 2px solid var(--sage); outline-offset: 3px; scroll-margin-top: 90px; }
+.c-search-record-highlight { outline: 2px solid var(--focus-ring); outline-offset: 3px; scroll-margin-top: 90px; }
 .c-window-record-loading { display: grid; gap: 14px; padding: 12px 0; }
 .c-window-record-loading span { display: block; height: 18px; width: 85%; border-radius: var(--radius-control); background: var(--paper); }
 .c-window-record-loading span:nth-child(2) { width: 60%; }

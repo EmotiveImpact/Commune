@@ -258,7 +258,7 @@
 .a-hub-switch span {
   display: block;
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.45);
+  color: rgba(255, 255, 255, 0.6);
 }
 
 .a-hub-switch .grow span,
@@ -330,7 +330,7 @@
 .a-hub-option .grow span {
   display: block;
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.45);
+  color: rgba(255, 255, 255, 0.6);
 }
 
 .a-hub-option .grow {
@@ -449,7 +449,7 @@
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.32);
+  color: rgba(255, 255, 255, 0.6);
 }
 
 .a-sub {
@@ -481,9 +481,10 @@
   display: flex;
 }
 
+/* The name reaches 24px tall into the space above it, so the text stays put. */
 .a-side-foot {
-  padding: 0;
-  margin: 0;
+  padding: 8px 0 0;
+  margin: -8px 0 0;
   border: 0;
   border-radius: 0;
   display: block;
@@ -529,7 +530,7 @@
 .a-side-account-role,
 .a-side-account-separator {
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.45);
+  color: rgba(255, 255, 255, 0.6);
 }
 
 .a-side-account-meta {
@@ -564,10 +565,12 @@
   color: rgba(255, 255, 255, 0.65);
 }
 
+/* 24px tall, reaching into the space below, so the line keeps its place. */
 .a-side-account .a-reminder-usage--sidebar summary {
-  min-height: 18px;
+  min-height: 24px;
   gap: 3px;
-  padding: 0;
+  padding: 0 0 6px;
+  margin-bottom: -6px;
   border: 0;
   border-radius: 4px;
 }
@@ -951,7 +954,69 @@
   font-weight: 650;
 }
 
-:is(.a-cover h1, .a-place-hero h3, .a-focus-hero h2,
+/* A form's own error line, and the alert strip under the top bar for a
+   failure that no screen showed. */
+.a-form-error {
+  margin: 8px 0 0;
+  color: var(--danger);
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.5;
+}
+
+.a-api-error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  margin: 16px 28px 0;
+  padding: 10px 8px 10px 14px;
+  border-radius: var(--radius-control);
+  background: var(--danger-soft);
+  color: var(--danger);
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.5;
+}
+
+.a-api-error button {
+  min-height: 24px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.a-api-error button[aria-label="Dismiss error"] {
+  margin-left: auto;
+  font-size: 18px;
+  line-height: 1;
+  text-decoration: none;
+}
+
+@media (max-width: 560px) {
+  .a-api-error {
+    margin: 12px 16px 0;
+  }
+}
+
+.c-product-dialog.c-discard-dialog {
+  width: min(420px, calc(100vw - 32px));
+}
+
+.c-discard-dialog p {
+  margin: 0 0 20px;
+  color: var(--ink-soft);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+:is(.a-cover h1, .a-place-hero :is(h2, h3), .a-focus-hero h2,
     .a-set-row-copy strong, .a-commune-set h2, .a-item strong,
     .a-member-row .who strong, .a-name-btn, .a-home-greet h1) {
   overflow-wrap: anywhere;
@@ -1070,7 +1135,7 @@
   margin: 0 0 22px;
 }
 
-.a-set-group > h3 {
+.a-set-group > :is(h2, h3) {
   margin: 0 0 8px;
   padding: 0 4px;
   font-size: 13px;
@@ -1210,6 +1275,15 @@ div.a-set-row {
 .a-switch:disabled {
   cursor: default;
   opacity: 0.55;
+}
+
+/* Phones: a 44px touch area around the switch, without changing its look. */
+@media (max-width: 560px) {
+  .a-switch::before {
+    content: "";
+    position: absolute;
+    inset: -9px 0;
+  }
 }
 
 .a-sheet-scrim {
@@ -2159,6 +2233,31 @@ button.a-kpi {
   border-color: transparent;
 }
 
+/* Phones: a 44px touch area around each chip, without changing its look. */
+@media (max-width: 560px) {
+  .a-chip {
+    position: relative;
+  }
+
+  .a-chip::before {
+    content: "";
+    position: absolute;
+    inset: -7px -2px;
+  }
+
+  /* Room for that area if the chip row scrolls sideways. */
+  .a-toolbar .a-filters {
+    padding-block: 6px;
+    margin-block: -6px;
+  }
+
+  /* If the chips run under the filter field or the main button on a narrow
+     screen, those stay on top, as before. */
+  .a-toolbar:has(> .c-record-filter) > :is(.c-record-filter, .a-btn) {
+    position: relative;
+  }
+}
+
 .a-page-head {
   display: flex;
   justify-content: space-between;
@@ -2204,9 +2303,9 @@ button.a-kpi {
 }
 
 .a-reminder-usage summary::-webkit-details-marker { display: none; }
-.a-reminder-usage summary::after { content: "⌄"; }
+.a-reminder-usage summary::after { content: "⌄"; content: "⌄" / ""; }
 .a-reminder-usage summary strong { color: var(--ink); }
-.a-reminder-usage summary:focus-visible { outline: 2px solid var(--sage); outline-offset: 3px; }
+.a-reminder-usage summary:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 3px; }
 .a-reminder-usage-details {
   position: absolute;
   right: 0;
@@ -3155,7 +3254,7 @@ button.a-item {
   text-transform: uppercase;
 }
 
-.a-place-hero h3 {
+.a-place-hero :is(h2, h3) {
   margin: 10px 0 4px;
   font-size: 1.25rem;
   font-weight: 800;
@@ -3493,6 +3592,8 @@ button.a-item {
 .a-window-body {
   overflow: auto;
   padding: 20px 24px 24px;
+  /* Keep a control that takes focus clear of the sticky action row. */
+  scroll-padding-bottom: 96px;
 }
 
 .a-window {
@@ -4120,6 +4221,23 @@ button.a-item {
 
 .a-body.is-native .a-bottom button.is-active {
   color: #f5f1ea;
+}
+
+/* The current tab also carries a bar, so it doesn't rely on colour alone. */
+.a-bottom button.is-active {
+  position: relative;
+}
+
+.a-bottom button.is-active::before {
+  content: "";
+  position: absolute;
+  top: -6px;
+  left: 50%;
+  width: 24px;
+  height: 3px;
+  border-radius: 0 0 3px 3px;
+  background: currentColor;
+  transform: translateX(-50%);
 }
 
 .a-body.is-native .a-native-status {
@@ -5132,9 +5250,18 @@ button.a-item {
   font-weight: 650;
 }
 
-.a-window input[aria-invalid="true"] {
+.a-body.is-dark .field-error {
+  color: var(--danger);
+}
+
+.a-window :is(input, textarea)[aria-invalid="true"] {
   border-color: #b76a52;
   box-shadow: 0 0 0 3px rgba(183, 106, 82, 0.1);
+}
+
+/* A message that takes focus is read, not operated, so it shows no ring. */
+.a-form-error:focus {
+  outline: none;
 }
 
 @media (max-width: 1000px) {
@@ -5476,6 +5603,10 @@ button.a-item {
 .ops-prod {
   display: grid;
   gap: 16px;
+}
+
+.ops-prod > .a-form-error {
+  margin: 0;
 }
 
 .ops-prod-head {
@@ -5863,7 +5994,7 @@ button.a-item {
 
 .ops-tile.is-on {
   background: #f4faf6;
-  box-shadow: inset 0 0 0 1.5px rgba(45, 106, 79, 0.28);
+  box-shadow: inset 0 0 0 2px var(--text-green);
 }
 
 .ops-tile-num {
@@ -5914,6 +6045,33 @@ button.a-item {
 .ops-tile-item.is-warn {
   background: #fbede6;
   color: #7f3b2c;
+}
+
+/* Tasks, events and late tasks also differ by shape: a square, a circle and
+   a triangle before the title. */
+.ops-tile-item::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin: 0 5px 1px 0;
+  background: currentColor;
+  vertical-align: middle;
+}
+
+.ops-tile-item.is-task::before {
+  border-radius: 1px;
+}
+
+.ops-tile-item.is-event::before {
+  border-radius: 50%;
+}
+
+.ops-tile-item.is-warn::before {
+  width: 8px;
+  height: 7px;
+  border-radius: 0;
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
 }
 
 .ops-month-selected {

@@ -35,8 +35,51 @@
   font-weight: 500;
 }
 .a-body :is(button, a, input, select, textarea, summary):focus-visible {
-  outline: 2px solid var(--sage);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 3px;
+}
+/* The green ring is too faint on navy: the sidebar and its commune list, the
+   phone tab bar and top bar, and the Operations toast take the lighter one. */
+.a-side,
+.a-hub-menu,
+.a-bottom,
+.ops-toast {
+  --focus-ring: #649578;
+}
+@media (max-width: 560px) {
+  .a-header { --focus-ring: #649578; }
+  /* Search opens from the top bar in a light window, which keeps the usual ring. */
+  .a-header dialog { --focus-ring: var(--sage); }
+  .a-body.is-dark .a-header dialog { --focus-ring: #649578; }
+}
+/* First stop on every page; shows only while it has keyboard focus. */
+.a-skip-link {
+  --focus-ring: #649578;
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 60;
+  padding: 10px 14px;
+  border-radius: var(--radius-control);
+  background: #f5f1ea;
+  color: #1a1e2b;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.a-skip-link:not(:focus) {
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+/* Focus lands on the page heading and the content area after a move; they
+   are not controls, so they show no ring. */
+.a-header-title h1:focus,
+#main-content:focus {
+  outline: none;
 }
 .a-body .a-btn:disabled {
   cursor: not-allowed;
@@ -392,6 +435,9 @@
 }
 .c-member-row .c-member-actions {
   margin-left: auto;
+}
+.c-member-actions .c-action-hint {
+  text-align: right;
 }
 .ops-card h2 {
   font-weight: 550;

@@ -19,6 +19,7 @@ import { cx } from "../ui/cx";
 import { LIMITS } from "../data/limits";
 import { commandFailure, UNCERTAIN_RETRY_SAFE } from "../data/commands";
 import { newRequestId } from "../data/requestId";
+import { useFormError } from "../ui/components";
 
 const OPERATION_CATEGORIES: Array<[OperationCategory, string]> = [
   ["delivery", "Delivery"],
@@ -499,7 +500,9 @@ function OperationForm({
   const [notes, setNotes] = useState(item?.notes ?? "");
   const [attempted, setAttempted] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
+  const { setError, message } = useFormError();
+  const titleMissing = attempted && !title.trim();
+  const dateMissing = attempted && !date;
 
   function chooseKind(next: OperationKind) {
     setKind(next);
@@ -510,7 +513,12 @@ function OperationForm({
 
   async function save() {
     setAttempted(true);
-    if (!title.trim() || !date || stale) return;
+    if (!title.trim() || !date) {
+      // The first field to fix takes focus.
+      document.getElementById(!title.trim() ? "operation-title" : "operation-date")?.focus();
+      return;
+    }
+    if (stale) return;
     setBusy(true);
     setError("");
     try {
@@ -577,15 +585,16 @@ function OperationForm({
           type="text"
           value={title}
           maxLength={LIMITS.operationTitle}
-          aria-invalid={attempted && !title.trim()}
+          aria-invalid={titleMissing}
+          aria-describedby={titleMissing ? "operation-title-error" : undefined}
           onChange={(event) => setTitle(event.target.value)}
           placeholder={
             kind === "task" ? "e.g. Put the bins out" : "e.g. Plumber appointment"
           }
         />
         <span className="a-field-limit">{title.length}/{LIMITS.operationTitle}</span>
-        {attempted && !title.trim() ? (
-          <p className="field-error">Add a title.</p>
+        {titleMissing ? (
+          <p className="field-error" id="operation-title-error">Add a title.</p>
         ) : null}
       </div>
 
@@ -615,9 +624,11 @@ function OperationForm({
           id="operation-date"
           type="date"
           value={date}
-          aria-invalid={attempted && !date}
+          aria-invalid={dateMissing}
+          aria-describedby={dateMissing ? "operation-date-error" : undefined}
           onChange={(event) => setDate(event.target.value)}
         />
+        {dateMissing ? <p className="field-error" id="operation-date-error">Choose a date.</p> : null}
       </div>
       <div className="a-field half">
         <label>Time</label>
@@ -752,7 +763,7 @@ function OperationForm({
       ) : saved && !busy ? (
         // It settles the doubt an unconfirmed save left behind.
         <p className="a-window-note" role="status">Your last save went through.</p>
-      ) : error ? <p className="a-form-error" role="alert">{error}</p> : null}
+      ) : message()}
       <div className="a-field-row">
         <button className="a-btn" type="button" onClick={() => void save()} disabled={busy || stale}>
           {busy ? "Saving…" : submitLabel}

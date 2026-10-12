@@ -159,6 +159,8 @@ export function MembersScreen() {
           );
           const me = member.userId === session?.userId;
           const lastAdmin = profile?.role === "admin" && admins.length <= 1;
+          // Why an action is unavailable is shown, not left to a hover tooltip.
+          const hintId = `member-hint-${member.userId}`;
           return (
             <div key={member.userId} id={`search-record-member-${member.userId}`} tabIndex={-1}
               className={`a-member-row c-member-row${searchRecord.highlightedId === member.userId ? " c-search-record-highlight" : ""}`}>
@@ -179,11 +181,7 @@ export function MembersScreen() {
                     <Button
                       variant="secondary"
                       disabled={pending || lastAdmin}
-                      title={
-                        lastAdmin
-                          ? "Promote another member before changing the last admin"
-                          : undefined
-                      }
+                      aria-describedby={lastAdmin ? hintId : undefined}
                       onClick={() => {
                         setError("");
                         setAction({
@@ -194,12 +192,13 @@ export function MembersScreen() {
                         });
                       }}
                     >
-                      {profile?.role === "admin" ? "Make member" : "Make admin"}
+                      {profile?.role === "admin" ? "Make member" : "Make admin"}{" "}<span className="c-visually-hidden">{member.name}</span>
                     </Button>
                     {!me && (
                       <Button
                         variant="secondary"
                         disabled={pending || lastAdmin}
+                        aria-describedby={lastAdmin ? hintId : undefined}
                         onClick={() => {
                           setError("");
                           setAction({
@@ -209,7 +208,7 @@ export function MembersScreen() {
                           });
                         }}
                       >
-                        Remove
+                        Remove{" "}<span className="c-visually-hidden">{member.name}</span>
                       </Button>
                     )}
                   </>
@@ -218,11 +217,7 @@ export function MembersScreen() {
                   <Button
                     variant="secondary"
                     disabled={pending || lastAdmin}
-                    title={
-                      lastAdmin
-                        ? "A commune must keep an admin. Promote someone else first."
-                        : undefined
-                    }
+                    aria-describedby={lastAdmin ? hintId : undefined}
                     onClick={() => {
                       setError("");
                       setAction({
@@ -235,6 +230,11 @@ export function MembersScreen() {
                     Leave
                   </Button>
                 )}
+                {lastAdmin && (isAdmin || me) ? (
+                  <p className="c-action-hint" id={hintId}>
+                    A commune must keep an admin. Promote someone else first.
+                  </p>
+                ) : null}
               </div>
             </div>
           );

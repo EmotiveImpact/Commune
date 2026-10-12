@@ -326,8 +326,8 @@ export function PendingReport({ share, currency, viewerId, payerId, names, onAns
       : `${reportSummary(report, currency, names(report.reportedBy))}. Not yet confirmed.`}</p>
     <div className="a-row-actions">
       {viewerId === payerId && <>
-        <Button disabled={disabled} onClick={() => onAnswer(report, "confirm")}>Confirm {money(report.amountMinor, currency)} received</Button>
-        <Button variant="secondary" disabled={disabled} onClick={() => onAnswer(report, "decline")}>Not received</Button>
+        <Button disabled={disabled} onClick={() => onAnswer(report, "confirm")}>Confirm {money(report.amountMinor, currency)} received{" "}<span className="c-visually-hidden">from {names(report.reportedBy)}</span></Button>
+        <Button variant="secondary" disabled={disabled} onClick={() => onAnswer(report, "decline")}>Not received{" "}<span className="c-visually-hidden">from {names(report.reportedBy)}</span></Button>
       </>}
       {mine && <Button variant="secondary" disabled={disabled} onClick={() => onWithdraw(report)}>Withdraw</Button>}
     </div>

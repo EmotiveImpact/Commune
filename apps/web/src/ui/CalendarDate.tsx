@@ -17,8 +17,11 @@ export function CalendarDate({ date, today = todayIso(), showMonth = true, label
   if (!Number.isFinite(value.getTime()) || isoFromDate(value) !== date) return null;
   const relative = date === today ? "Today" : date === addDays(today, 1) ? "Tomorrow" : "";
   const description = `${label ? `${label}: ` : ""}${fullDate.format(value)}${relative ? ` (${relative})` : ""}`;
+  // The full date is real (visually hidden) text: some screen readers skip
+  // an aria-label on <time>, which left the date silent.
   return <time className={cx("c-calendar-date", date === today && "is-today", className)}
-    dateTime={date} title={description} aria-label={description}>
+    dateTime={date} title={description}>
+    <span className="c-visually-hidden">{description}</span>
     <small className="c-calendar-weekday" aria-hidden="true">{weekday.format(value)}</small>
     <strong className="c-calendar-number" aria-hidden="true">{value.getDate()}</strong>
     {(relative || showMonth) && <em className="c-calendar-caption" aria-hidden="true">{relative || month.format(value)}</em>}

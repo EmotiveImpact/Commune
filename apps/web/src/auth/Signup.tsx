@@ -6,6 +6,7 @@ import { LIMITS } from "../data/limits";
 import { keepSearch } from "../nav";
 import { GoogleMark } from "../ui/Icon";
 import { readStored, removeStored } from "../live/storage";
+import { useFormError } from "../ui/components";
 
 export function SignupPage() {
   const { signUpWithPassword, verifyEmailCode, signInWithPassword, signInWithGoogle } = useApp();
@@ -14,15 +15,24 @@ export function SignupPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
+  const { error, setError, invalid, messageProps } = useFormError();
   const [verificationPending, setVerificationPending] = useState(false);
   const [code, setCode] = useState("");
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
     setError("");
-    if (!name.trim() || !email.includes("@") || password.length < 12) {
-      setError("Enter your name, a valid email and a password of at least 12 characters.");
+    // The first field to fix is named, marked and focused.
+    if (!name.trim()) {
+      setError("Enter your name.", "su-name");
+      return;
+    }
+    if (!email.includes("@")) {
+      setError("Enter a valid email address.", "su-email");
+      return;
+    }
+    if (password.length < 12) {
+      setError("Use at least 12 characters for your password.", "su-password");
       return;
     }
     setBusy(true);
@@ -77,7 +87,7 @@ export function SignupPage() {
         <p className="commune-auth-lede">{verificationPending
           ? `Enter the code sent to ${email}. If your message has a verification link, open it and then sign in.`
           : "Your expenses and membership will be shared securely with the people you invite."}</p>
-        {error ? <div className="commune-auth-alert" role="alert">{error}</div> : null}
+        {error ? <div className="commune-auth-alert" role="alert" {...messageProps}>{error}</div> : null}
         {verificationPending ? <form onSubmit={onVerify}>
           <div className="commune-auth-field">
             <label htmlFor="su-code">Verification code</label>
@@ -90,15 +100,16 @@ export function SignupPage() {
         </form> : <form onSubmit={onSubmit}>
           <div className="commune-auth-field">
             <label htmlFor="su-name">Name</label>
-            <input id="su-name" autoComplete="name" required maxLength={LIMITS.userName} value={name} onChange={(event) => setName(event.target.value)} />
+            <input id="su-name" autoComplete="name" required maxLength={LIMITS.userName} value={name} onChange={(event) => setName(event.target.value)} {...invalid("su-name")} />
           </div>
           <div className="commune-auth-field">
             <label htmlFor="su-email">Email</label>
-            <input id="su-email" type="email" autoComplete="email" required maxLength={LIMITS.email} value={email} onChange={(event) => setEmail(event.target.value)} />
+            <input id="su-email" type="email" autoComplete="email" required maxLength={LIMITS.email} value={email} onChange={(event) => setEmail(event.target.value)} {...invalid("su-email")} />
           </div>
           <div className="commune-auth-field">
             <label htmlFor="su-password">Password</label>
-            <input id="su-password" type="password" autoComplete="new-password" minLength={12} maxLength={128} required value={password} onChange={(event) => setPassword(event.target.value)} />
+            <input id="su-password" type="password" autoComplete="new-password" minLength={12} maxLength={128} required value={password} onChange={(event) => setPassword(event.target.value)} {...invalid("su-password", "su-password-hint")} />
+            <p className="commune-auth-hint" id="su-password-hint">At least 12 characters.</p>
           </div>
           <button className="commune-auth-btn" type="submit" disabled={busy}>
             {busy ? "Creating account…" : "Create account"}
@@ -128,7 +139,7 @@ export function VerifyEmailPage() {
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
-  const [error, setError] = useState("");
+  const { error, setError, messageProps } = useFormError();
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
@@ -148,7 +159,7 @@ export function VerifyEmailPage() {
     <h2>Verify your email</h2>
     <p className="commune-auth-lede">{done ? "Your email is verified. Sign in to continue." :
       "Enter the code from your verification email. If you received a link instead, open that link."}</p>
-    {error ? <div className="commune-auth-alert" role="alert">{error}</div> : null}
+    {error ? <div className="commune-auth-alert" role="alert" {...messageProps}>{error}</div> : null}
     {!done ? <form onSubmit={onSubmit}>
       <div className="commune-auth-field">
         <label htmlFor="verify-email">Email</label>
@@ -164,6 +175,6 @@ export function VerifyEmailPage() {
         {busy ? "Verifying…" : "Verify email"}
       </button>
     </form> : null}
-    <p className="commune-auth-foot"><Link href={keepSearch("/login")} className="commune-auth-link">Back to sign in</Link></p>
+    <p className="commune-auth-foot commune-auth-solo"><Link href={keepSearch("/login")} className="commune-auth-link">Back to sign in</Link></p>
   </div></AuthLayout>;
 }

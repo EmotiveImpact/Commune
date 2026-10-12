@@ -38,7 +38,7 @@ export function SettingsScreen() {
   const emailReminders = useEmailReminders(session?.userId);
   return (
     <div className="a-set">
-      <aside className="a-set-left">
+      <div className="a-set-left">
         <div className="a-set-card">
           <div className="a-set-you">
             <Avatar tone="maya" initials={you.initials} />
@@ -63,7 +63,7 @@ export function SettingsScreen() {
         </div>
         <div className="a-set-card">
           <p className="a-set-plan-k">Early access</p>
-          <h3 className="a-set-plan-name">No subscription yet</h3>
+          <h2 className="a-set-plan-name">No subscription yet</h2>
           <p className="a-set-plan-lede">Billing and payments are not connected.</p>
           <div className="a-set-meter-meta">
             <span>{hub.members.length} {hub.members.length === 1 ? "member" : "members"}</span>
@@ -71,10 +71,10 @@ export function SettingsScreen() {
           </div>
           <p className="a-set-plan-note">No renewal or charge is scheduled for {hub.name}.</p>
         </div>
-      </aside>
+      </div>
       <div className="a-set-main">
         <div className="a-set-group">
-          <h3>Get more out of Commune</h3>
+          <h2>Get more out of Commune</h2>
           <div className="a-set-list">
             <button className="a-set-row" type="button" onClick={() => go("commune-settings")}>
               <span className="a-set-row-ic" aria-hidden="true"><Icon name="settings" /></span>
@@ -107,7 +107,7 @@ export function SettingsScreen() {
           </div>
         </div>
         <div className="a-set-group">
-          <h3>Preferences</h3>
+          <h2>Preferences</h2>
           <div className="a-set-list">
             <div className="a-set-row">
               <span className="a-set-row-copy">
@@ -191,12 +191,12 @@ export function SettingsScreen() {
         </div>
         <SignInSettings />
         <div className="a-set-group">
-          <h3>Support &amp; legal</h3>
+          <h2>Support &amp; legal</h2>
           <div className="a-set-list">
             <a className="a-set-row" href="https://ourcommune.io" target="_blank" rel="noreferrer">
               <span className="a-set-row-copy">
                 <strong>Contact us</strong>
-                <span>ourcommune.io</span>
+                <span>ourcommune.io<span className="c-visually-hidden"> (opens in a new tab)</span></span>
               </span>
               <Icon name="external" size={16} />
             </a>
@@ -291,7 +291,7 @@ export function CommuneSettingsScreen() {
 
   return (
     <div className="a-set a-commune-set">
-      <aside className="a-set-left">
+      <div className="a-set-left">
         <div className="a-set-card">
           <div className={cx("a-commune-photo-preview", coverToneClass(hub))} role="img" aria-label={`${hub.name} cover photo`}>
             <CoverImage hub={hub} placement="preview" />
@@ -310,7 +310,7 @@ export function CommuneSettingsScreen() {
           <p className="a-commune-setting-note">This photo is kept in this browser session for now. It is not shared with other members.</p>
         </div>
         <button className="a-btn ghost" type="button" onClick={() => go("hub")}>Back to this commune</button>
-      </aside>
+      </div>
       <div className="a-set-main">
         <div className="a-set-group">
           <h3>Shared details</h3>

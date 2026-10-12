@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useApp } from "../state";
 import { LIMITS } from "../data/limits";
 import { newRequestId } from "../data/requestId";
+import { useFormError } from "../ui/components";
 
 /** An admin posts a short notice to everyone in the commune. */
 export function AnnouncementNew() {
@@ -11,7 +12,7 @@ export function AnnouncementNew() {
   const [needsAcknowledgement, setNeedsAcknowledgement] = useState(false);
   const [attempted, setAttempted] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
+  const { setError, message } = useFormError();
   // One id for this form, so retrying after a network failure cannot post twice.
   const [requestId] = useState(newRequestId);
 
@@ -26,9 +27,14 @@ export function AnnouncementNew() {
     );
   }
 
+  const titleMissing = attempted && !title.trim();
+
   async function save() {
     setAttempted(true);
-    if (!title.trim()) return;
+    if (!title.trim()) {
+      document.getElementById("announcement-title")?.focus();
+      return;
+    }
     setBusy(true);
     setError("");
     try {
@@ -49,11 +55,12 @@ export function AnnouncementNew() {
           id="announcement-title"
           value={title}
           maxLength={LIMITS.announcementTitle}
-          aria-invalid={attempted && !title.trim()}
+          aria-invalid={titleMissing}
+          aria-describedby={titleMissing ? "announcement-title-error" : undefined}
           onChange={(event) => setTitle(event.target.value)}
           placeholder="Boiler service on Thursday"
         />
-        {attempted && !title.trim() ? <p className="a-form-error" role="alert">Add a title before posting.</p> : null}
+        {titleMissing ? <p className="a-form-error" role="alert" id="announcement-title-error">Add a title before posting.</p> : null}
       </div>
       <div className="a-field">
         <label htmlFor="announcement-body">Details</label>
@@ -75,7 +82,7 @@ export function AnnouncementNew() {
         </span>
       </label>
       <p className="a-window-note">Everyone in {hub.name} sees this on This Hub. It cannot be edited once posted; take it down instead.</p>
-      {error ? <p className="a-form-error" role="alert">{error}</p> : null}
+      {message()}
       <div className="a-field-row">
         <button className="a-btn" type="button" onClick={() => void save()} disabled={busy}>
           {busy ? "Posting…" : "Post announcement"}

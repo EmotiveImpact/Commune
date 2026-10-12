@@ -179,7 +179,7 @@ describe("complete shared workflows", () => {
     expect(document.querySelector("#home .a-home-greet")).toBeNull();
     expect(document.querySelectorAll("#home .a-place")).toHaveLength(count);
     expect(document.querySelectorAll("#home .a-focus-lead")).toHaveLength(count ? 1 : 0);
-    expect(within(banner).getByRole("button", { name: "Open search" })).toBeTruthy();
+    expect(within(banner).getByRole("button", { name: "Search Commune" })).toBeTruthy();
     expect(within(banner).getByRole("button", { name: "Notifications" })).toBeTruthy();
   });
 
@@ -208,7 +208,7 @@ describe("complete shared workflows", () => {
   });
   it("focuses the exact member returned by search without triggering a membership action", async () => {
     mount("/members");
-    await screen.findByRole("button", { name: "Make admin" });
+    await screen.findByRole("button", { name: "Make admin Housemate" });
     act(() => app.go("members", { hub: commune.id, record: { kind: "member", id: "user-2" } }));
     await waitFor(() => expect(document.activeElement?.id).toBe("search-record-member-user-2"));
     expect(app.window).toBeNull();
@@ -316,7 +316,7 @@ describe("complete shared workflows", () => {
       },
     ];
     mount("/funds");
-    fireEvent.click(await screen.findByRole("button", { name: "View fund" }));
+    fireEvent.click(await screen.findByRole("button", { name: "View fund House supplies" }));
     const fund = screen.getByRole("dialog", { name: "House supplies" });
     const chase = within(fund).getByRole("button", {
       name: "Chase",
@@ -385,7 +385,7 @@ describe("complete shared workflows", () => {
       },
     ];
     mount("/templates");
-    fireEvent.click(await screen.findByRole("button", { name: "Use split" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Use split Two to one" }));
     const dialog = screen.getByRole("dialog", { name: "Add expense" });
     expect(
       (
@@ -447,7 +447,7 @@ describe("complete shared workflows", () => {
       await screen.findByRole("button", { name: "Archived", exact: true }),
     );
     fireEvent.click(
-      screen.getByRole("button", { name: "Restore", exact: true }),
+      screen.getByRole("button", { name: "Restore Old split", exact: true }),
     );
     await screen.findByText("Template saved.");
     expect(api).toHaveBeenCalledWith(
@@ -547,7 +547,7 @@ describe("complete shared workflows", () => {
     });
     mount("/recurring");
     fireEvent.click(
-      await screen.findByRole("button", { name: "Record paid bill" }),
+      await screen.findByRole("button", { name: "Record paid bill for Broadband" }),
     );
     const dialog = screen.getByRole("dialog", {
       name: "Record Broadband as paid?",
@@ -595,7 +595,7 @@ describe("complete shared workflows", () => {
       ? { status: "recorded", expenseId: "expense-1", amountMinor: 10001, dueOn: "2026-01-31", nextDueOn: "2026-02-28", duplicate: false }
       : base(path, options));
     mount("/recurring");
-    fireEvent.click(await screen.findByRole("button", { name: "Record paid bill" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Record paid bill for Electricity" }));
     const dialog = screen.getByRole("dialog", { name: "Record Electricity as paid?" });
     fireEvent.change(within(dialog).getByLabelText(/Amount paid this time/), { target: { value: "100.01" } });
     const preview = within(dialog).getByRole("status");
@@ -623,11 +623,11 @@ describe("complete shared workflows", () => {
       : base(path, options));
     mount("/recurring");
     // Not due yet, so it cannot be recorded, but it can be skipped ahead of time.
-    expect(screen.queryByRole("button", { name: "Record paid bill" })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Record paid bill/ })).toBeNull();
     const history = (await screen.findByText("2 recent periods")).closest("details")!;
     expect(history.textContent).toContain("28 Feb 2026 · skipped by Test Person: Away");
     expect(history.textContent).toContain("31 Jan 2026 · £100.01 recorded (usually £90.00) by Test Person");
-    fireEvent.click(screen.getByRole("button", { name: "Skip this period" }));
+    fireEvent.click(screen.getByRole("button", { name: "Skip this period for Electricity" }));
     const dialog = screen.getByRole("dialog", { name: /Skip Electricity for/ });
     await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Skip this period" })); });
     expect(api).not.toHaveBeenCalledWith("/recurring/bill-1/skip", expect.anything());
@@ -655,7 +655,7 @@ describe("complete shared workflows", () => {
       return base(path, options);
     });
     mount("/funds");
-    fireEvent.click(await screen.findByRole("button", { name: "View fund" }));
+    fireEvent.click(await screen.findByRole("button", { name: "View fund House supplies" }));
     fireEvent.click(
       within(screen.getByRole("dialog", { name: "House supplies" })).getByRole(
         "button",
@@ -704,7 +704,7 @@ describe("complete shared workflows", () => {
       },
     ];
     mount("/funds");
-    fireEvent.click(await screen.findByRole("button", { name: "View fund" }));
+    fireEvent.click(await screen.findByRole("button", { name: "View fund House supplies" }));
     const dialog = screen.getByRole("dialog", { name: "House supplies" });
     fireEvent.click(
       within(dialog).getByText(/recorded · contribution history/),
@@ -753,9 +753,9 @@ describe("complete shared workflows", () => {
 
   it("requires confirmation for role changes and keeps the last admin protected", async () => {
     mount("/members");
-    const promote = await screen.findByRole("button", { name: "Make admin" });
+    const promote = await screen.findByRole("button", { name: "Make admin Housemate" });
     expect(
-      (screen.getByRole("button", { name: "Make member" }) as HTMLButtonElement)
+      (screen.getByRole("button", { name: "Make member Test Person" }) as HTMLButtonElement)
         .disabled,
     ).toBe(true);
     fireEvent.click(promote);
@@ -870,8 +870,11 @@ describe("recurring bill commands", () => {
     allocations: [{ userId: user.id, amountMinor: 500 }, { userId: "user-2", amountMinor: 500 }],
     frequency: "monthly", nextDueOn: todayIso(), paused: false, ...overrides,
   });
+  // The visible words of each action; each also names its bill for screen readers.
   const buttons = async (title: string) =>
-    within(await screen.findByRole("region", { name: title })).queryAllByRole("button").map((button) => button.textContent);
+    within(await screen.findByRole("region", { name: title })).queryAllByRole("button").map((button) =>
+      [...button.childNodes].filter((node) => !(node instanceof Element && node.classList.contains("c-visually-hidden")))
+        .map((node) => node.textContent).join("").trim());
   const asMember = () => {
     vi.mocked(loadCommunes).mockResolvedValue({ communes: [{ ...commune, role: "member" }] });
     current.commune = { ...commune, role: "member" };
@@ -917,10 +920,10 @@ describe("recurring bill commands", () => {
       return base(path, options);
     });
     mount("/recurring");
-    fireEvent.click(await screen.findByRole("button", { name: "Pause" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Pause Broadband" }));
     expect(await screen.findByText("Schedule paused.")).toBeTruthy();
     expect(api).toHaveBeenCalledWith("/recurring/bill-1/pause", expect.objectContaining({ body: '{"paused":true}' }));
-    fireEvent.click(screen.getByRole("button", { name: "Archive" }));
+    fireEvent.click(screen.getByRole("button", { name: "Archive Broadband" }));
     expect(await screen.findByText("Bill archived and paused. Find it in Archived to restore it.")).toBeTruthy();
     expect(api).toHaveBeenCalledWith("/recurring/bill-1/archive", expect.objectContaining({ body: '{"archived":true}' }));
     // It leaves the active list, and the Archived filter appears with it.
@@ -928,7 +931,7 @@ describe("recurring bill commands", () => {
     expect(screen.getByText("No active recurring bills.")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Archived" }));
     expect(await buttons("Broadband")).toEqual(["Restore"]);
-    fireEvent.click(screen.getByRole("button", { name: "Restore" }));
+    fireEvent.click(screen.getByRole("button", { name: "Restore Broadband" }));
     expect(await screen.findByText("Bill restored. It stays paused until someone resumes it.")).toBeTruthy();
     expect(api).toHaveBeenCalledWith("/recurring/bill-1/archive", expect.objectContaining({ body: '{"archived":false}' }));
     expect(await buttons("Broadband")).toEqual(["Edit", "Resume", "Archive"]);
@@ -949,7 +952,7 @@ describe("recurring bill commands", () => {
       return base(path, options);
     });
     mount("/recurring");
-    fireEvent.click(await screen.findByRole("button", { name: "Resume" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Resume Cleaner" }));
     expect(api).not.toHaveBeenCalledWith("/recurring/bill-1/pause", expect.anything());
     const dialog = screen.getByRole("dialog", { name: "Edit recurring bill" });
     expect(within(dialog).getByText("Sam Lee has left, so they were taken out of this split. Check the amounts before saving.")).toBeTruthy();
@@ -985,7 +988,7 @@ describe("recurring bill commands", () => {
       ? { status: "recorded", expenseId: "expense-1", amountMinor: 1000, dueOn: todayIso(), nextDueOn: addDays(todayIso(), 30), duplicate: true }
       : base(path, options));
     mount("/recurring");
-    fireEvent.click(await screen.findByRole("button", { name: "Record paid bill" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Record paid bill for Broadband" }));
     const loads = vi.mocked(loadSnapshot).mock.calls.length;
     const dialog = screen.getByRole("dialog", { name: "Record Broadband as paid?" });
     await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Record £10.00 paid" })); });
@@ -1008,7 +1011,7 @@ describe("recurring bill commands", () => {
       throw new ApiError("This recurring bill was changed by someone else. Review the latest version before saving your changes.", 409);
     });
     mount("/recurring");
-    fireEvent.click(await screen.findByRole("button", { name: "Edit" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Edit Broadband" }));
     const dialog = screen.getByRole("dialog", { name: "Edit recurring bill" });
     fireEvent.change(within(dialog).getByLabelText("Bill name"), { target: { value: "Fibre" } });
     await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Save recurring bill" })); });
@@ -1039,7 +1042,7 @@ describe("recurring bill commands", () => {
       throw new ApiError("This recurring bill was changed by someone else. Review the latest version before saving your changes.", 409);
     });
     mount("/recurring");
-    fireEvent.click(await screen.findByRole("button", { name: "Edit" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Edit Broadband" }));
     const dialog = screen.getByRole("dialog", { name: "Edit recurring bill" });
     fireEvent.change(within(dialog).getByLabelText("Bill name"), { target: { value: "Fibre" } });
     await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Save recurring bill" })); });
@@ -1069,7 +1072,7 @@ describe("recurring bill commands", () => {
       throw new ApiError("This recurring bill was changed by someone else. Review the latest version before saving your changes.", 409);
     });
     mount("/recurring");
-    fireEvent.click(await screen.findByRole("button", { name: "Edit" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Edit Broadband" }));
     const dialog = screen.getByRole("dialog", { name: "Edit recurring bill" });
     fireEvent.change(within(dialog).getByLabelText("Bill name"), { target: { value: "Fibre" } });
     await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Save recurring bill" })); });
@@ -1097,7 +1100,7 @@ describe("recurring bill commands", () => {
       throw new ApiError("This recurring bill was changed by someone else. Review the latest version before saving your changes.", 409);
     });
     mount("/recurring");
-    fireEvent.click(await screen.findByRole("button", { name: "Edit" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Edit Broadband" }));
     const dialog = screen.getByRole("dialog", { name: "Edit recurring bill" });
     fireEvent.change(within(dialog).getByLabelText("Bill name"), { target: { value: "Fibre" } });
     for (let attempt = 1; attempt <= 3; attempt += 1) {
@@ -1154,7 +1157,7 @@ describe("recurring bill commands", () => {
       throw new ApiError("This recurring bill was changed by someone else. Review the latest version before saving your changes.", 409);
     });
     mount("/recurring");
-    fireEvent.click(await screen.findByRole("button", { name: "Resume" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Resume Cleaner" }));
     const dialog = screen.getByRole("dialog", { name: "Edit recurring bill" });
     fireEvent.change(within(dialog).getByLabelText("Amount (GBP)"), { target: { value: "5.00" } });
     await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Save and resume" })); });

@@ -9,6 +9,12 @@
   --sage-strong: #1b4332;
   --sage-soft: #d9ebe5;
   --sage-mist: #d7e6dd;
+  /* Green text, focus rings and error text. Dark mode lightens each one
+     (overrides.css); navy surfaces take the lighter ring in both themes. */
+  --text-green: var(--sage);
+  --focus-ring: var(--sage);
+  --danger: #9b2c2c;
+  --danger-soft: #fde8e4;
   --navy: #1a1e2b;
   --navy-2: #1f2330;
   --navy-3: #21262f;

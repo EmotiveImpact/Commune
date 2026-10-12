@@ -37,6 +37,9 @@ date ranges and user-written content. Keep the wording plain and concise.
 | Corners | One shared token family: controls/search/icon actions 9px; cards/hero/dialogs 15px. Pills only for statuses, filter tracks and avatars; inset segments follow their track geometry |
 | Elevation | No default card shadows. Overlay elevation only when it communicates layering |
 | Cover tones | `--cover-household` #3d5a4c, `--cover-workspace` #3f4b5a, `--cover-trip` #6a4b3c: behind a commune's cover photo while it loads, and in its place if it cannot load |
+| Focus and green text | `--focus-ring` and `--text-green`: today's sage in light mode, the Hub's #649578 in dark mode and on navy surfaces |
+| Error text | `--danger` and `--danger-soft`, one error colour in both themes |
+| Touch areas | On phones (560px and under) small controls reach 44px through an invisible `::before` area; on desktop small links reach 24px through padding with a matching negative margin. Nothing moves visually |
 
 Use semantic tokens with explicit dark-mode counterparts when consolidating CSS. Do not flatten dark mode with hard-coded light overrides. Normal text must reach 4.5:1 contrast; control boundaries/focus must remain discernible. Small metadata must not rely on very low opacity.
 

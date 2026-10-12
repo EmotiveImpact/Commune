@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from "react";
 import { diagnosticsEnabled } from "./live/diagnostics";
 import { Redirect, Route, Switch } from "wouter";
 import { LoginPage } from "./auth/Login";
@@ -111,9 +111,10 @@ function AppUnavailable() {
 }
 
 function ProductShell() {
-  const { screen, navMode, moreOpen, native, dark, window: win, notes, noteKey, apiError, clearApiError, contentError, hub, refresh } = useApp();
+  const { screen, navMode, moreOpen, native, dark, window: win, notes, noteKey, apiError, clearApiError, contentError, hub, refresh, searchTarget } = useApp();
   const noteReader = screen === "notes" && win === "note" && Boolean(notes[noteKey]);
   const modalOpen = Boolean(win) && !noteReader;
+  usePageFocus(screen, hub.id, Boolean(win) || Boolean(searchTarget));
   return (
     <div
       className={cx(
@@ -128,15 +129,16 @@ function ProductShell() {
       )}
     >
       <div className="a-app" inert={modalOpen}>
+        <a className="a-skip-link" href="#main-content" onClick={skipToContent}>Skip to content</a>
         <Sidebar screen={screen} />
         <div className="a-main">
           <Header screen={screen} />
           {diagnosticsEnabled() ? <ConnectionCheck /> : null}
           {apiError ? <div className="a-api-error" role="alert">{isConnectionFailure(apiError) ? <>Connection interrupted. Your last loaded view is still available.<button type="button" onClick={() => void refresh()}>Try again</button></> : apiError}<button type="button" onClick={clearApiError} aria-label="Dismiss error">×</button></div> : null}
           {contentError && hub.activityState === "ready" ? <div className="a-api-error" role="alert">Could not refresh this commune. Showing its last loaded activity.<button type="button" onClick={() => void refresh()}>Try again</button></div> : null}
-          <div className="a-content">
+          <main className="a-content" id="main-content">
             <Screen screen={screen} />
-          </div>
+          </main>
         </div>
       </div>
       <div inert={modalOpen} style={{ display: "contents" }}>
@@ -146,6 +148,43 @@ function ProductShell() {
       <Windows key={hub.id} />
     </div>
   );
+}
+
+// Focus moves to an element that only holds it until the next step away.
+function focusOnce(element: HTMLElement) {
+  if (!element.hasAttribute("tabindex")) {
+    element.tabIndex = -1;
+    element.addEventListener("blur", () => element.removeAttribute("tabindex"), { once: true });
+  }
+  element.focus({ preventScroll: true });
+}
+
+function skipToContent(event: MouseEvent<HTMLAnchorElement>) {
+  const main = document.getElementById("main-content");
+  if (!main) return;
+  event.preventDefault();
+  focusOnce(main);
+}
+
+// After moving to another page or commune, start at the new page's heading
+// rather than on a control that has gone. A window, the note reader or a
+// search result places focus itself; if one was opening, wait until it closes
+// and only step in when focus would otherwise be lost.
+function usePageFocus(screen: ScreenId, hubId: string, held: boolean) {
+  const shown = useRef({ screen, hubId });
+  const waiting = useRef(false);
+  useEffect(() => {
+    const previous = shown.current;
+    shown.current = { screen, hubId };
+    const moved = previous.screen !== screen || (Boolean(previous.hubId) && previous.hubId !== hubId);
+    if (moved) waiting.current = true;
+    if (!waiting.current || held) return;
+    waiting.current = false;
+    const active = document.activeElement;
+    if (!moved && active && active !== document.body) return;
+    const heading = document.querySelector<HTMLElement>(".a-header-title h1");
+    if (heading) focusOnce(heading);
+  }, [screen, hubId, held]);
 }
 
 function ConnectionCheck() {
