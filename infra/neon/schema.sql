@@ -699,6 +699,22 @@ $$;
 
 
 --
+-- Name: pay_links_for(text); Type: FUNCTION; Schema: commune_private; Owner: -
+--
+
+CREATE FUNCTION commune_private.pay_links_for(p_user_id text) RETURNS jsonb
+    LANGUAGE sql STABLE
+    SET search_path TO 'public', 'pg_temp'
+    AS $$
+  SELECT coalesce(jsonb_agg(jsonb_build_object('provider', l.provider, 'handle', l.handle,
+      'accountName', l.account_name, 'sortCode', l.sort_code, 'accountNumber', l.account_number,
+      'updatedAt', l.updated_at)
+    ORDER BY array_position(ARRAY['monzo', 'paypal', 'revolut', 'bank'], l.provider)), '[]'::jsonb)
+  FROM public.member_pay_links l WHERE l.user_id = p_user_id;
+$$;
+
+
+--
 -- Name: payment_report_result(uuid, boolean); Type: FUNCTION; Schema: commune_private; Owner: -
 --
 
@@ -1261,6 +1277,21 @@ $$;
 
 
 --
+-- Name: snapshot_pay_links(uuid); Type: FUNCTION; Schema: commune_private; Owner: -
+--
+
+CREATE FUNCTION commune_private.snapshot_pay_links(p_commune_id uuid) RETURNS jsonb
+    LANGUAGE sql STABLE
+    SET search_path TO 'public', 'pg_temp'
+    AS $$
+  SELECT coalesce(jsonb_object_agg(m.user_id, commune_private.pay_links_for(m.user_id)), '{}'::jsonb)
+  FROM public.commune_members m
+  WHERE m.commune_id = p_commune_id AND m.active
+    AND EXISTS (SELECT 1 FROM public.member_pay_links l WHERE l.user_id = m.user_id);
+$$;
+
+
+--
 -- Name: snapshot_sent_reminders(uuid, text); Type: FUNCTION; Schema: commune_private; Owner: -
 --
 
@@ -1512,6 +1543,7 @@ BEGIN
         FROM (SELECT * FROM public.note_revisions x WHERE x.note_id=n.id ORDER BY x.version DESC LIMIT 10) r),'[]'::jsonb)) ORDER BY n.created_at DESC) FROM public.commune_notes n WHERE n.commune_id=co.id AND n.deleted_at IS NULL),'[]'::jsonb),
     'operations',commune_private.snapshot_operations(co.id),
     'announcements',commune_private.snapshot_announcements(co.id),
+    'payLinks',commune_private.snapshot_pay_links(co.id),
     'recurringBills',coalesce((SELECT jsonb_agg(jsonb_build_object('id',b.id,'title',b.title,'amountMinor',b.amount_minor,'paidByUserId',b.paid_by_user_id,'allocations',(SELECT jsonb_agg(jsonb_build_object('userId',s->>'user_id','amountMinor',(s->>'amount_minor')::bigint)) FROM jsonb_array_elements(b.shares) s),'frequency',b.frequency,'nextDueOn',b.next_due_on,'paused',b.paused,'createdBy',b.created_by,'version',b.version,'archivedAt',b.archived_at,
       'history',coalesce((SELECT jsonb_agg(jsonb_build_object('dueOn',h.due_on,'status',h.status,'amountMinor',h.amount_minor,'expenseId',h.expense_id,
         'actorId',h.actor_id,'actedAt',h.acted_at,'note',h.note) ORDER BY h.due_on DESC)
@@ -2395,6 +2427,25 @@ $$;
 
 
 --
+-- Name: my_pay_links(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.my_pay_links() RETURNS jsonb
+    LANGUAGE plpgsql STABLE SECURITY DEFINER
+    SET search_path TO 'public', 'pg_temp'
+    AS $$
+DECLARE
+  v_actor text := commune_private.data_api_user_id();
+BEGIN
+  IF v_actor IS NULL THEN
+    RAISE EXCEPTION 'Sign in to see how people pay you' USING ERRCODE = '42501';
+  END IF;
+  RETURN commune_private.pay_links_for(v_actor);
+END;
+$$;
+
+
+--
 -- Name: my_unread_notices(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -3053,6 +3104,26 @@ BEGIN
   INSERT INTO public.commune_events (commune_id, actor_id, kind, entity_id, title, description)
     VALUES (v_op.commune_id, v_actor, 'operations', v_op.id, v_op.title, 'Removed');
   RETURN jsonb_build_object('id', v_op.id, 'version', v_version, 'duplicate', false);
+END;
+$$;
+
+
+--
+-- Name: remove_pay_link(text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.remove_pay_link(p_provider text) RETURNS jsonb
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO 'public', 'pg_temp'
+    AS $$
+DECLARE
+  v_actor text := commune_private.data_api_user_id();
+BEGIN
+  IF v_actor IS NULL THEN
+    RAISE EXCEPTION 'Sign in to change how people pay you' USING ERRCODE = '42501';
+  END IF;
+  DELETE FROM public.member_pay_links WHERE user_id = v_actor AND provider = lower(btrim(coalesce(p_provider, '')));
+  RETURN commune_private.pay_links_for(v_actor);
 END;
 $$;
 
@@ -3798,6 +3869,57 @@ BEGIN
   UPDATE public.funds SET archived_at = CASE WHEN p_archived THEN now() ELSE NULL END WHERE id = p_fund_id;
 END;
 $$;
+
+
+--
+-- Name: set_pay_link(text, text, text, text, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.set_pay_link(p_provider text, p_handle text, p_account_name text, p_sort_code text, p_account_number text) RETURNS jsonb
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO 'public', 'pg_temp'
+    AS $_$
+DECLARE
+  v_actor text := commune_private.data_api_user_id();
+  v_provider text := lower(btrim(coalesce(p_provider, '')));
+  v_handle text := nullif(btrim(coalesce(p_handle, '')), '');
+  v_name text := nullif(btrim(coalesce(p_account_name, '')), '');
+  v_sort text := nullif(regexp_replace(coalesce(p_sort_code, ''), '[\s-]', '', 'g'), '');
+  v_account text := nullif(regexp_replace(coalesce(p_account_number, ''), '\s', '', 'g'), '');
+BEGIN
+  IF v_actor IS NULL THEN
+    RAISE EXCEPTION 'Sign in to save how people pay you' USING ERRCODE = '42501';
+  END IF;
+  IF v_provider NOT IN ('monzo', 'paypal', 'revolut', 'bank') THEN
+    RAISE EXCEPTION 'Choose Monzo, PayPal, Revolut or bank transfer' USING ERRCODE = '22023';
+  END IF;
+  IF v_provider = 'bank' THEN
+    IF v_name IS NULL OR length(v_name) > 60 THEN
+      RAISE EXCEPTION 'Enter the name on the account, up to 60 characters' USING ERRCODE = '22023';
+    END IF;
+    IF v_sort IS NULL OR v_sort !~ '^[0-9]{6}$' THEN
+      RAISE EXCEPTION 'Enter a six-digit sort code, for example 20-45-77' USING ERRCODE = '22023';
+    END IF;
+    IF v_account IS NULL OR v_account !~ '^[0-9]{8}$' THEN
+      RAISE EXCEPTION 'Enter an eight-digit account number' USING ERRCODE = '22023';
+    END IF;
+    v_handle := NULL;
+  ELSE
+    -- Accept a pasted link or an @name and keep only the username.
+    v_handle := regexp_replace(coalesce(v_handle, ''), '^(https?://)?(www\.)?(monzo\.me|paypal\.me|paypal\.com/paypalme|revolut\.me)/', '', 'i');
+    v_handle := regexp_replace(regexp_replace(v_handle, '^@', ''), '/.*$', '');
+    IF v_handle !~ '^[A-Za-z0-9._-]{1,40}$' THEN
+      RAISE EXCEPTION 'Enter your username: letters, numbers, dots, dashes or underscores, up to 40' USING ERRCODE = '22023';
+    END IF;
+    v_name := NULL; v_sort := NULL; v_account := NULL;
+  END IF;
+  INSERT INTO public.member_pay_links (user_id, provider, handle, account_name, sort_code, account_number)
+    VALUES (v_actor, v_provider, v_handle, v_name, v_sort, v_account)
+    ON CONFLICT (user_id, provider) DO UPDATE SET handle = EXCLUDED.handle, account_name = EXCLUDED.account_name,
+      sort_code = EXCLUDED.sort_code, account_number = EXCLUDED.account_number, updated_at = now();
+  RETURN commune_private.pay_links_for(v_actor);
+END;
+$_$;
 
 
 --
@@ -5095,6 +5217,31 @@ CREATE TABLE public.invitation_email_deliveries (
 
 
 --
+-- Name: member_pay_links; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.member_pay_links (
+    user_id text NOT NULL,
+    provider text NOT NULL,
+    handle text,
+    account_name text,
+    sort_code text,
+    account_number text,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT member_pay_links_account_name_check CHECK (((length(btrim(account_name)) >= 1) AND (length(btrim(account_name)) <= 60))),
+    CONSTRAINT member_pay_links_account_number_check CHECK ((account_number ~ '^[0-9]{8}$'::text)),
+    CONSTRAINT member_pay_links_check CHECK (
+CASE
+    WHEN (provider = 'bank'::text) THEN ((handle IS NULL) AND (account_name IS NOT NULL) AND (sort_code IS NOT NULL) AND (account_number IS NOT NULL))
+    ELSE ((handle IS NOT NULL) AND (account_name IS NULL) AND (sort_code IS NULL) AND (account_number IS NULL))
+END),
+    CONSTRAINT member_pay_links_handle_check CHECK ((handle ~ '^[A-Za-z0-9._-]{1,40}$'::text)),
+    CONSTRAINT member_pay_links_provider_check CHECK ((provider = ANY (ARRAY['monzo'::text, 'paypal'::text, 'revolut'::text, 'bank'::text]))),
+    CONSTRAINT member_pay_links_sort_code_check CHECK ((sort_code ~ '^[0-9]{6}$'::text))
+);
+
+
+--
 -- Name: note_revisions; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -5529,6 +5676,14 @@ ALTER TABLE ONLY public.funds
 
 ALTER TABLE ONLY public.invitation_email_deliveries
     ADD CONSTRAINT invitation_email_deliveries_pkey PRIMARY KEY (invite_id);
+
+
+--
+-- Name: member_pay_links member_pay_links_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.member_pay_links
+    ADD CONSTRAINT member_pay_links_pkey PRIMARY KEY (user_id, provider);
 
 
 --
@@ -6837,6 +6992,12 @@ ALTER TABLE public.funds ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.invitation_email_deliveries ENABLE ROW LEVEL SECURITY;
 
 --
+-- Name: member_pay_links; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.member_pay_links ENABLE ROW LEVEL SECURITY;
+
+--
 -- Name: commune_members member_read; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -7256,6 +7417,13 @@ REVOKE ALL ON FUNCTION commune_private.operation_content(p_kind text, p_category
 
 
 --
+-- Name: FUNCTION pay_links_for(p_user_id text); Type: ACL; Schema: commune_private; Owner: -
+--
+
+REVOKE ALL ON FUNCTION commune_private.pay_links_for(p_user_id text) FROM PUBLIC;
+
+
+--
 -- Name: FUNCTION payment_report_result(p_id uuid, p_duplicate boolean); Type: ACL; Schema: commune_private; Owner: -
 --
 
@@ -7407,6 +7575,13 @@ REVOKE ALL ON FUNCTION commune_private.snapshot_notifications(p_commune_id uuid,
 --
 
 REVOKE ALL ON FUNCTION commune_private.snapshot_operations(p_commune_id uuid) FROM PUBLIC;
+
+
+--
+-- Name: FUNCTION snapshot_pay_links(p_commune_id uuid); Type: ACL; Schema: commune_private; Owner: -
+--
+
+REVOKE ALL ON FUNCTION commune_private.snapshot_pay_links(p_commune_id uuid) FROM PUBLIC;
 
 
 --
@@ -7881,6 +8056,14 @@ GRANT ALL ON FUNCTION public.my_communes() TO authenticated;
 
 
 --
+-- Name: FUNCTION my_pay_links(); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.my_pay_links() FROM PUBLIC;
+GRANT ALL ON FUNCTION public.my_pay_links() TO authenticated;
+
+
+--
 -- Name: FUNCTION my_unread_notices(); Type: ACL; Schema: public; Owner: -
 --
 
@@ -8133,6 +8316,14 @@ GRANT ALL ON FUNCTION public.remove_operation(p_operation_id uuid) TO authentica
 
 
 --
+-- Name: FUNCTION remove_pay_link(p_provider text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.remove_pay_link(p_provider text) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.remove_pay_link(p_provider text) TO authenticated;
+
+
+--
 -- Name: FUNCTION report_client_event(p_kind text, p_release text, p_route text, p_browser text, p_message text, p_stack text, p_lcp_ms integer, p_inp_ms integer, p_cls numeric); Type: ACL; Schema: public; Owner: -
 --
 
@@ -8233,6 +8424,14 @@ GRANT ALL ON FUNCTION public.set_fund_archived(p_fund_id uuid, p_archived boolea
 --
 
 REVOKE ALL ON FUNCTION public.set_limit(real) FROM PUBLIC;
+
+
+--
+-- Name: FUNCTION set_pay_link(p_provider text, p_handle text, p_account_name text, p_sort_code text, p_account_number text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.set_pay_link(p_provider text, p_handle text, p_account_name text, p_sort_code text, p_account_number text) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.set_pay_link(p_provider text, p_handle text, p_account_name text, p_sort_code text, p_account_number text) TO authenticated;
 
 
 --
