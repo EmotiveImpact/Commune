@@ -158,7 +158,7 @@
   place-items: center;
   flex-shrink: 0;
   opacity: 0.45;
-  transition: transform 0.15s ease;
+  transition: transform var(--motion-short) var(--ease-standard);
 }
 
 .a-hub-chev.is-open {
@@ -1004,7 +1004,7 @@ div.a-set-row {
   position: relative;
   cursor: pointer;
   flex-shrink: 0;
-  transition: background 0.15s ease;
+  transition: background var(--motion-short) var(--ease-standard);
 }
 
 .a-switch::after {
@@ -1017,7 +1017,7 @@ div.a-set-row {
   border-radius: 50%;
   background: #fff;
   box-shadow: 0 1px 3px rgba(26, 30, 43, 0.18);
-  transition: transform 0.15s ease;
+  transition: transform var(--motion-short) var(--ease-standard);
 }
 
 .a-switch.is-on,
@@ -1788,7 +1788,7 @@ button.a-item {
   text-align: left;
   cursor: pointer;
   box-shadow: var(--shadow);
-  transition: transform 0.15s ease;
+  transition: transform var(--motion-short) var(--ease-standard);
 }
 
 .a-place:hover {
@@ -2701,8 +2701,11 @@ button.a-item {
   gap: 16px;
 }
 
+/* Clipped to its corners with clip-path, not overflow: Chromium counts a card
+   with overflow clipping as shifted even while a transform holds it in place,
+   so cards that make room (ui/motion.ts) would read as layout shift. */
 .ops-card {
-  overflow: hidden;
+  clip-path: inset(0 round 22px);
   border: 1px solid rgba(26, 30, 43, 0.06);
   border-radius: 22px;
   background: #fffdf9;
@@ -3156,45 +3159,6 @@ button.a-item {
   font-size: 11px;
 }
 
-.ops-toast {
-  position: fixed;
-  left: 50%;
-  bottom: 28px;
-  z-index: 40;
-  transform: translateX(-50%);
-  padding: 12px 16px;
-  border-radius: 999px;
-  background: var(--navy);
-  color: #f8f5f0;
-  font-size: 13px;
-  font-weight: 650;
-  letter-spacing: -0.01em;
-  box-shadow: none;
-}
-
-.ops-toast {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  max-width: calc(100vw - 32px);
-}
-
-.ops-toast-undo {
-  flex: none;
-  min-height: 32px;
-  padding: 0 12px;
-  border: 1px solid rgba(248, 245, 240, 0.45);
-  border-radius: var(--radius-control);
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  cursor: pointer;
-}
-
-.ops-toast-undo:hover {
-  background: rgba(248, 245, 240, 0.12);
-}
-
 @media (max-width: 1000px) {
   .ops-people {
     grid-template-columns: 1fr 1fr;
@@ -3268,11 +3232,6 @@ button.a-item {
 .operation-history em { font-style: normal; }
 .operation-history .is-undone strong { text-decoration: line-through; color: var(--ink-soft); }
 
-/* Clear the phone tab bar so the toast and its Undo never sit on top of it. */
-@media (max-width: 1000px) {
-  .ops-toast { bottom: calc(74px + env(safe-area-inset-bottom)); }
-}
-.a-body.is-native .ops-toast { bottom: calc(90px + env(safe-area-inset-bottom)); }
 
 /* Members: accepted and revoked invitations, kept for the record. */
 .c-invite-history ul { margin: 8px 0 0; padding-left: 18px; }

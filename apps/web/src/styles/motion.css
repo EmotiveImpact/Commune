@@ -1,0 +1,242 @@
+/*
+ * Motion and feedback for the medium direction of the design panel
+ * (11 October 2026): "Recorded, and they know". Three durations and one
+ * curve from shared.css; the reduced-motion rule there sets all three to
+ * 0ms, which stops everything here and in ui/motion.ts. Layouts are the
+ * approved ones: only how things arrive, leave and answer changes.
+ */
+
+/* ---------- Dialogs: centred from 600px, a bottom sheet below ---------- */
+
+/* Entry. The exit is played by a copy (ui/motion.ts), so focus and the page
+   are free the moment a dialog closes. */
+.c-product-dialog,
+.c-reminder-dialog {
+  transition: opacity var(--motion-medium) var(--ease-standard), transform var(--motion-medium) var(--ease-standard);
+}
+.c-product-dialog::backdrop,
+.c-reminder-dialog::backdrop {
+  transition: opacity var(--motion-medium) var(--ease-standard);
+}
+@starting-style {
+  .c-product-dialog[open],
+  .c-reminder-dialog[open] { opacity: 0; transform: translateY(16px); }
+  .c-product-dialog[open]::backdrop,
+  .c-reminder-dialog[open]::backdrop { opacity: 0; }
+}
+
+@media (max-width: 599px) {
+  /* A sheet on the bottom edge, as wide as the screen, rising from below.
+     Search keeps its place near the top, where the keyboard leaves room. */
+  /* Element and body in the selector: a screen's own width rule for its
+     dialog (Money.css) arrives later in this layer. */
+  body dialog.c-product-dialog:not(.c-quick-search),
+  body dialog.c-reminder-dialog {
+    width: 100%;
+    max-width: none;
+    max-height: calc(100dvh - 48px);
+    margin: auto 0 0;
+    border-width: 1px 0 0;
+    border-radius: var(--radius-surface) var(--radius-surface) 0 0;
+    padding-bottom: calc(22px + env(safe-area-inset-bottom, 0px));
+  }
+  @starting-style {
+    .c-product-dialog[open]:not(.c-quick-search),
+    .c-reminder-dialog[open] { opacity: 1; transform: translateY(100%); }
+  }
+}
+
+/* What is leaving, kept for its exit only. */
+.c-leave-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  pointer-events: none;
+}
+.c-leave-layer > dialog { display: block; }
+.c-leave-scrim {
+  position: fixed;
+  inset: 0;
+}
+
+/* ---------- The phone menu: in over the medium time, out the way it came ---------- */
+
+.a-body.more-open .a-sheet-scrim {
+  animation: c-fade-in var(--motion-medium) var(--ease-standard);
+}
+@keyframes c-fade-in { from { opacity: 0; } to { opacity: 1; } }
+
+/* Windows (add expense, an expense) arrive the same way as dialogs. */
+.a-windows:not([hidden]) .a-window-back { animation: c-fade-in var(--motion-medium) var(--ease-standard); }
+.a-windows:not([hidden]) .a-window-frame { animation: c-window-in var(--motion-medium) var(--ease-standard); }
+@keyframes c-window-in { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+@media (max-width: 560px) {
+  .a-windows:not([hidden]) .a-window-frame { animation-name: c-sheet-in; }
+}
+.a-body.is-native .a-windows:not([hidden]) .a-window-frame { animation-name: c-sheet-in; }
+@keyframes c-sheet-in { from { transform: translateY(100%); } to { transform: none; } }
+
+/* ---------- One line for every recording act ---------- */
+
+.c-toast-region {
+  position: fixed;
+  z-index: 1001;
+  /* Beside the sidebar, at the bottom left of the content. */
+  left: calc(248px + 22px);
+  bottom: 24px;
+  max-width: min(560px, calc(100vw - 248px - 44px));
+  pointer-events: none;
+}
+@media (max-width: 560px) {
+  /* 16px above the tab bar. */
+  .c-toast-region {
+    left: 12px;
+    right: 12px;
+    max-width: none;
+    bottom: calc(69px + 16px + env(safe-area-inset-bottom, 0px));
+  }
+}
+.a-body.is-native .c-toast-region {
+  left: max(12px, calc(50% - 183px));
+  right: max(12px, calc(50% - 183px));
+  max-width: none;
+  bottom: calc(78px + 16px);
+}
+.c-toast {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 52px;
+  padding: 4px 4px 4px 16px;
+  border-radius: var(--radius-surface);
+  background: var(--navy);
+  color: #f5f1ea;
+  font-size: 14px;
+  line-height: 19px;
+  box-shadow: 0 12px 32px rgba(26, 30, 43, 0.22);
+  pointer-events: auto;
+  transition: opacity var(--motion-medium) var(--ease-standard), transform var(--motion-medium) var(--ease-standard);
+}
+@starting-style {
+  .c-toast { opacity: 0; transform: translateY(16px); }
+}
+.c-toast.is-leaving {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--motion-short) var(--ease-standard);
+}
+.c-toast-text {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 0;
+  overflow-wrap: anywhere;
+}
+.c-toast-action {
+  flex: none;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: #b9dcc8;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+@media (hover: hover) { .c-toast-action:not(:disabled):hover { background: rgba(245, 241, 234, 0.08); } }
+.c-toast-action:not(:disabled):active { background: rgba(245, 241, 234, 0.12); transition: none; }
+.a-body.is-dark .c-toast {
+  background: #262b3a;
+  box-shadow: inset 0 0 0 1px rgba(242, 237, 228, 0.12), 0 12px 32px rgba(0, 0, 0, 0.4);
+}
+
+/* ---------- Rows answer in place ---------- */
+
+.c-answer-old {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  margin: 0;
+  background: transparent !important;
+  box-shadow: none !important;
+  pointer-events: none;
+}
+.c-answer-wash {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: color-mix(in srgb, var(--text-green) 10%, transparent);
+  pointer-events: none;
+}
+.c-flip-plate {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* ---------- Busy: full colour, one word, a spinner only after 400ms ---------- */
+
+.a-body .a-btn[aria-busy="true"],
+.a-body .c-home-btn[aria-busy="true"],
+.a-body .c-toast-action[aria-busy="true"] {
+  opacity: 1;
+  cursor: progress;
+}
+.a-body .a-btn[aria-busy="true"]::after,
+.a-body .c-home-btn[aria-busy="true"]::after {
+  /* In the button's own padding, so the label never moves or wraps for it. */
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: 3px;
+  width: 9px;
+  height: 9px;
+  margin-top: -5px;
+  border: 1.5px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  opacity: 0;
+  animation: c-spin-show 0s linear 400ms forwards, c-spin 0.8s linear 400ms infinite;
+}
+@keyframes c-spin-show { to { opacity: 1; } }
+@keyframes c-spin { to { transform: rotate(1turn); } }
+@media (prefers-reduced-motion: reduce) {
+  .a-body .a-btn[aria-busy="true"]::after,
+  .a-body .c-home-btn[aria-busy="true"]::after { animation: c-spin-show 0s linear 400ms forwards; }
+}
+
+/* ---------- State layers: hover 8%, pressed 12%, shown at once, released over the short time ---------- */
+
+.a-body .a-btn,
+.a-body .c-home-btn { position: relative; }
+.a-body .a-btn::before,
+.a-body .c-home-btn::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: currentColor;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--motion-short) var(--ease-standard);
+}
+@media (hover: hover) {
+  .a-body :is(.a-btn, .c-home-btn):not(:disabled):hover::before { opacity: 0.08; }
+}
+.a-body :is(.a-btn, .c-home-btn):not(:disabled):active::before { opacity: 0.12; transition: none; }
+
+/* ---------- Photos fade up from their tone once decoded ---------- */
+
+img.c-fade-photo {
+  transition: opacity var(--motion-medium) var(--ease-standard);
+}
+img.c-fade-photo:not(.is-ready) { opacity: 0; }
+
+/* ---------- Switching commune ---------- */
+
+.c-switch-in { animation: c-fade-in var(--motion-medium) var(--ease-standard); }
+.c-arrive { animation: c-fade-in var(--motion-short) var(--ease-standard); }

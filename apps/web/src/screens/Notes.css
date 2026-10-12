@@ -68,8 +68,8 @@
   font: inherit;
   cursor: pointer;
   transition:
-    border-color 140ms,
-    background-color 140ms;
+    border-color var(--motion-short) var(--ease-standard),
+    background-color var(--motion-short) var(--ease-standard);
 }
 .note-tile:hover {
   border-color: #91a99b;

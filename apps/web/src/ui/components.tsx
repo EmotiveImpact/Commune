@@ -2,27 +2,36 @@ import {
   useCallback,
   useEffect,
   useId,
+  useLayoutEffect,
   useRef,
   useState,
   type ButtonHTMLAttributes,
   type ReactNode,
+  type RefObject,
 } from "react";
 import { X } from "lucide-react";
 import { cx } from "./cx";
+import { leaveGhost } from "./motion";
 
 /** Shared product primitives; these keep semantics and spacing in one place. */
 export function Button({
   variant = "primary",
   className,
   type = "button",
+  busy = false,
+  disabled,
   ...props
 }: ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: "primary" | "secondary";
+  /** Its command is running: the label says so at full colour, and a second press does nothing. */
+  busy?: boolean;
 }) {
   return (
     <button
       type={type}
       className={cx("a-btn", variant === "secondary" && "ghost", className)}
+      aria-busy={busy || undefined}
+      disabled={disabled || busy}
       {...props}
     />
   );
@@ -124,6 +133,99 @@ export function returnFocus(opener: HTMLElement | null, scopes: Element[]): void
   }
 }
 
+function focusLost(): boolean {
+  const active = document.activeElement;
+  return !active || active === document.body || !active.isConnected;
+}
+// Focus moves to a heading that holds it only until the next step away.
+function focusHeading(heading: HTMLElement) {
+  if (!heading.hasAttribute("tabindex")) {
+    heading.tabIndex = -1;
+    heading.addEventListener("blur", () => heading.removeAttribute("tabindex"), { once: true });
+  }
+  heading.focus({ preventScroll: true });
+}
+
+/**
+ * Where focus goes when a dialog closes (gate 5): back to the button that
+ * opened it; if that button's row has gone, to the action in the row that
+ * took its place, or the one before; with no rows left, to the list's
+ * heading. Rows are marked data-row. A row can leave a moment after the
+ * dialog does, when the commune's records arrive, so this looks again then.
+ */
+export function focusAfterClose(opener: HTMLElement | null): () => void {
+  const scopes = focusScopes(opener);
+  const row = opener?.closest<HTMLElement>("[data-row]") ?? null;
+  const list = row?.parentElement ?? null;
+  const rowsOf = (parent: Element) => [...parent.children].filter((child) => child.matches("[data-row]") && !child.hasAttribute("data-motion-ghost"));
+  const index = row && list ? rowsOf(list).indexOf(row) : -1;
+  const heading = (row ?? opener)?.closest("section")?.querySelector<HTMLElement>("h2, h3") ?? null;
+  const settle = () => {
+    if (opener?.isConnected && !opener.matches(":disabled")) { opener.focus({ preventScroll: true }); return; }
+    if (row && list?.isConnected) {
+      const rows = rowsOf(list);
+      for (const candidate of [rows[index], rows[index - 1]]) {
+        const action = candidate?.querySelector<HTMLElement>(".a-row-actions button:not(:disabled), button:not(:disabled)");
+        if (action) { action.focus({ preventScroll: true }); return; }
+      }
+      if (heading?.isConnected) { focusHeading(heading); return; }
+    }
+    returnFocus(opener, scopes);
+    if (focusLost() && heading?.isConnected) focusHeading(heading);
+    // The whole view changed under it (all square, say): its first heading.
+    const first = focusLost() ? document.querySelector<HTMLElement>("#main-content h2") ?? document.querySelector<HTMLElement>(".a-header-title h1") : null;
+    if (first) focusHeading(first);
+  };
+  return () => {
+    settle();
+    if (typeof requestAnimationFrame === "function") requestAnimationFrame(() => { if (focusLost()) settle(); });
+    window.setTimeout(() => { if (focusLost()) settle(); }, 400);
+  };
+}
+
+/**
+ * A native modal's life: open at once, with its top edge pinned where it
+ * first sits (so an error grows it downwards instead of re-centring it); on a
+ * phone it is a sheet on the bottom edge and grows upwards. When it closes it
+ * plays its exit as a copy while focus goes back at once.
+ */
+export function useModalDialog(ref: RefObject<HTMLDialogElement | null>) {
+  useLayoutEffect(() => {
+    const dialog = ref.current;
+    const back = focusAfterClose(document.activeElement instanceof HTMLElement ? document.activeElement : null);
+    if (!dialog) return undefined;
+    if (!dialog.open) dialog.showModal();
+    pinTop(dialog);
+    return () => {
+      leaveGhost(dialog, { backdrop: true });
+      dialog.style.marginTop = "";
+      dialog.close();
+      back();
+    };
+  }, [ref]);
+}
+
+/**
+ * Placed inside something that leaves by being removed with its parent (a
+ * window, the phone menu): when it goes, the parent's exit plays as a copy.
+ */
+export function LeaveWithParent({ backdrop = false }: { backdrop?: boolean }) {
+  const ref = useRef<HTMLElement>(null);
+  useLayoutEffect(() => {
+    const parent = ref.current?.parentElement;
+    return () => { if (parent) leaveGhost(parent, { backdrop }); };
+  }, [backdrop]);
+  return <i ref={ref} hidden />;
+}
+
+const SHEET_BELOW = "(max-width: 599px)";
+function pinTop(dialog: HTMLDialogElement) {
+  if (typeof window.matchMedia !== "function" || window.matchMedia(SHEET_BELOW).matches) return;
+  // The margin it is laid out with, without the rise it is entering on.
+  const top = Number.parseFloat(getComputedStyle(dialog).marginTop);
+  if (Number.isFinite(top) && top > 0) dialog.style.marginTop = `${Math.round(top)}px`;
+}
+
 export function Dialog({
   title,
   children,
@@ -147,19 +249,11 @@ export function Dialog({
     if (typed.hasTyped()) setAsking(true);
     else onClose();
   }
-  useEffect(() => {
-    const opener = document.activeElement as HTMLElement | null;
-    const scopes = focusScopes(opener);
-    const dialog = ref.current;
-    dialog?.showModal();
-    return () => {
-      dialog?.close();
-      returnFocus(opener, scopes);
-    };
-  }, []);
+  useModalDialog(ref);
   return (
     <dialog
       ref={ref}
+      data-leave="surface"
       className={cx("c-product-dialog", className)}
       aria-labelledby={titleId}
       onCancel={(event) => {
@@ -234,13 +328,14 @@ export function DiscardQuestion({ onDiscard, onKeep }: { onDiscard: () => void; 
   const textId = useId();
   const ref = useRef<HTMLDialogElement>(null);
   const keepRef = useRef<HTMLButtonElement>(null);
-  useEffect(() => {
+  useLayoutEffect(() => {
     const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const dialog = ref.current;
     dialog?.showModal();
     // The safe choice is the one Enter takes.
     keepRef.current?.focus();
     return () => {
+      if (dialog) leaveGhost(dialog, { backdrop: true });
       dialog?.close();
       if (opener?.isConnected) opener.focus();
     };
@@ -248,6 +343,7 @@ export function DiscardQuestion({ onDiscard, onKeep }: { onDiscard: () => void; 
   return (
     <dialog
       ref={ref}
+      data-leave="surface"
       className="c-product-dialog c-discard-dialog"
       aria-labelledby={titleId}
       aria-describedby={textId}

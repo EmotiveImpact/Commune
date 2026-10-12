@@ -38,6 +38,25 @@
   --radius: var(--radius-surface);
   --radius-sm: var(--radius-control);
   --font: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  /* Motion (design panel, 11 October 2026, medium direction). Every duration
+     and curve in the app is one of these. Things arrive over the medium
+     time and leave over the short one; the long one is for the all-square
+     clearing and the sage layer on a row that has just changed. */
+  --motion-short: 150ms;
+  --motion-medium: 250ms;
+  --motion-long: 400ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* One switch for people who asked for less motion: nothing moves or fades,
+   and positions and sizes change in one paint. ui/motion.ts reads the same
+   tokens, so motion driven from script stops too. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-short: 0ms;
+    --motion-medium: 0ms;
+    --motion-long: 0ms;
+  }
 }
 
 *,

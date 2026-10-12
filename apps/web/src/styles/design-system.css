@@ -39,11 +39,11 @@
   outline-offset: 3px;
 }
 /* The green ring is too faint on navy: the sidebar and its commune list, the
-   phone tab bar and top bar, and the Operations toast take the lighter one. */
+   phone tab bar and top bar, and the toast take the lighter one. */
 .a-side,
 .a-hub-menu,
 .a-bottom,
-.ops-toast {
+.c-toast {
   --focus-ring: #649578;
 }
 @media (max-width: 560px) {
@@ -101,9 +101,9 @@
   /* Phone top bar, as drawn for Home (design panel, direction B): one slim
      row of the menu, the page's name, then search, notifications and you,
      as plain icons on navy. The page description stays on larger screens. */
-  .a-header { min-height: 56px; gap: 2px; padding: 8px 10px 8px 6px; }
+  .a-header { min-height: 56px; gap: 0; padding: 6px 6px 6px 4px; }
   .a-header :is(.a-more-btn, .a-icon-btn, .c-search-trigger) {
-    display: grid; place-items: center; width: 40px; height: 40px; min-height: 40px; padding: 0;
+    display: grid; place-items: center; width: 44px; height: 44px; min-height: 44px; padding: 0;
     border: 0; background: transparent; color: #f5f1ea;
   }
   .a-body.is-dark .a-header :is(.a-more-btn, .a-icon-btn, .c-search-trigger) { background: transparent; color: #f5f1ea; }
@@ -112,7 +112,7 @@
   }
   .a-header :is(.a-more-btn, .a-icon-btn, .c-search-trigger) svg { stroke-width: 1.8; }
   .a-header :is(.a-more-btn, .a-icon-btn, .c-search-trigger) svg { width: 20px; height: 20px; }
-  .a-header .a-icon-btn.has-unread::after { top: 9px; right: 9px; background: #f08a7c; }
+  .a-header .a-icon-btn.has-unread::after { top: 11px; right: 11px; background: #f08a7c; }
   .a-header .a-icon-btn.a-you-btn { margin-left: 2px; }
   .a-header .a-you-btn .avatar { width: 32px; height: 32px; }
   .a-header-actions { gap: 0; margin-left: 0; }
@@ -129,7 +129,7 @@
   .a-header.is-home { border-bottom-color: transparent; }
   .a-body.is-dark .a-header.is-home { background: #1a1f2b; }
   /* All square: the bar sits over the photo until the page scrolls. */
-  .a-main:has(.c-home-square) > .a-header.is-home { transition: background-color 160ms ease; }
+  .a-main:has(.c-home-square) > .a-header.is-home { transition: background-color var(--motion-long) var(--ease-standard); }
   .a-main:has(.c-home-square) > .a-header.is-home:not(.is-scrolled) { background: transparent; backdrop-filter: none; }
   .a-header.is-home + .a-content .c-home-square { margin-top: -72px; }
   .notes-mobile-search.c-record-filter { width: 100%; }
@@ -570,7 +570,7 @@
 .a-side-head { display: flex; align-items: flex-start; }
 .a-side-head .a-brand { flex: 1; min-width: 0; }
 .a-drawer-x {
-  display: grid; place-items: center; flex-shrink: 0; width: 40px; height: 40px; margin-top: -4px;
+  display: grid; place-items: center; flex-shrink: 0; width: 44px; height: 44px; margin: -6px -2px 0 0;
   border: 0; border-radius: var(--radius-control);
   background: transparent; color: #f5f1ea; cursor: pointer;
 }
@@ -586,13 +586,12 @@
   overscroll-behavior: contain;
   padding: calc(18px + env(safe-area-inset-top, 0px)) 14px calc(16px + env(safe-area-inset-bottom, 0px));
   box-shadow: 18px 0 50px rgba(26, 30, 43, 0.28);
-  animation: a-drawer-in 180ms ease-out;
+  animation: a-drawer-in var(--motion-medium) var(--ease-standard);
 }
 .a-body.is-native .a-side.a-drawer { left: max(0px, calc(50% - 195px)); }
 .a-drawer .a-brand { padding-bottom: 24px; }
 .a-drawer .a-wordmark { font-size: 28px; }
 @keyframes a-drawer-in { from { transform: translateX(-100%); } to { transform: none; } }
-@media (prefers-reduced-motion: reduce) { .a-body .a-side.a-drawer { animation: none; } }
 
 /* List toolbars on narrow screens: status chips get their own scrollable
    row, then the filter and the main action share the next one. */
