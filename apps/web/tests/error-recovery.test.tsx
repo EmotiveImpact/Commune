@@ -102,7 +102,7 @@ describe("a part of the app that fails to draw", () => {
     broken.screen = true;
     start("/funds?commune=home-1");
     fireEvent.click(within(await screen.findByRole("alert")).getByRole("button", { name: "Go to Home" }));
-    await screen.findByRole("heading", { name: "Your communes, Test." });
+    await screen.findByRole("heading", { name: "Home", level: 1 });
     expect(window.location.pathname).toBe("/");
   });
 

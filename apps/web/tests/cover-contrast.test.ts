@@ -3,11 +3,11 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
-// Text over commune photos, on Home's cards and the Hub hero, measured over a
-// bright stand-in photo: pure white, the worst a photo can be behind light
-// text. Small text needs 4.5:1; large text (24px, or 19px bold) and buttons 3:1.
+// Text over commune photos, on the communes' cards, Home's all-square photo and
+// the Hub hero, measured over a
+// bright stand-in photo: pure white, the worst a photo can be behind light text. Small text needs 4.5:1; large text (24px, or 19px bold) and buttons 3:1.
 const readStyle = (path: string) => readFileSync(resolve(process.cwd(), "src", path), "utf8");
-const styles = { app: readStyle("styles/app.css"), hub: readStyle("screens/Hub.css") };
+const styles = { app: readStyle("styles/app.css"), home: readStyle("screens/Home.css"), hub: readStyle("screens/Hub.css") };
 
 function declarations(sheet: keyof typeof styles, selector: string) {
   const source = `\n${styles[sheet]}`;
@@ -112,51 +112,56 @@ function stack(padding: number, items: Array<{ name: string; line: number; gap: 
 const light = colour("#f8f5f0");
 const withOpacity = (value: Colour, opacity: number) => ({ ...value, alpha: value.alpha * opacity });
 
-describe("text over Home's commune photos", () => {
+describe("text over the commune cards' photos", () => {
   const status = () => colour(property("app", ".a-place-hero p", "color"));
-  const location = () => colour(property("app", ".a-place-hero .a-place-location,\n.a-focus-hero .a-place-location", "color"));
+  const location = () => colour(property("app", ".a-place-hero .a-place-location", "color"));
 
   it.each([
     ["with an address", true, 1],
     ["with a status that wraps", true, 2],
     ["without an address", false, 1],
   ] as const)("keeps a card's title, address and status readable %s", (_case, address, statusLines) => {
-    // A 208px card with 18px padding (#home .a-place-hero): status 14px, address
-    // 12px 4px above it, title 21px 4px above that. The title is not large text.
-    const lines = stack(18, [
+    // A 208px card with 16px bottom padding (.a-place-hero): status 14px,
+    // address 12px 4px above it, title 20px 4px above that, held to 4.5:1.
+    const lines = stack(16, [
       { name: "status", line: 14 * 1.2, gap: 0, text: status(), target: 4.5, lines: statusLines },
       ...(address ? [{ name: "address", line: 12 * 1.2, gap: 4, text: location(), target: 4.5 }] : []),
-      { name: "title", line: 21 * 1.2, gap: 4, text: light, target: 4.5 },
+      { name: "title", line: 20 * 1.2, gap: 4, text: light, target: 4.5 },
     ]);
     const result = weakest(lines, 208, shade(property("app", ".a-place-hero::after", "background")));
     expect(failures(result), JSON.stringify(result)).toEqual([]);
   });
 
+  it("gives the type label its own backdrop, wherever it sits", () => {
+    // The label can sit high on a card with a long name, so it does not rely on the shade.
+    const backdrop = over(colour(property("app", ".a-place-hero .type", "background")), white);
+    expect(ratio(light.rgb, backdrop)).toBeGreaterThanOrEqual(4.5);
+  });
+});
+
+describe("text over Home's all-square photo", () => {
+  const soft = () => colour(property("home", ".c-home-square .c-home-over,\n.c-home-square .c-home-sub", "color"));
+  const people = () => colour(property("home", ".c-home-square-people", "color"));
+
   it.each([
-    ["with an address", true, 1],
-    ["with a status that wraps", true, 2],
-  ] as const)("keeps the featured card's text readable %s", (_case, address, statusLines) => {
-    // A 292px card with 26px bottom padding (.a-focus-hero): "Open this commune"
-    // (13px) centred on 32px avatars, status 15px 16px above, address 12px,
-    // then the title, 2.1rem and bold, which is large text.
-    const people = colour(property("app", ".a-cover-people", "color"));
-    const featured = colour(property("app", ".a-focus-hero p", "color"));
+    ["on a computer", 420, 40, 58, 1, 24, 1],
+    ["on a tablet, with the sentence on two lines", 420, 32, 48, 2, 24, 2],
+    ["on a phone", 470, 26, 39, 2, 21, 2],
+  ] as const)("keeps the date, sentence and people readable %s", (_case, cover, padding, display, displayLines, sub, subLines) => {
+    // .c-home-square-copy, from the bottom: the names (14px) centred on 32px
+    // avatars, then the line under the sentence, the sentence (large text) and
+    // the date, each the grid's gap apart (12px, 10px on a phone).
+    const gap = cover === 470 ? 10 : 12;
     const lines = [
-      { name: "people", from: 26 + (32 - 13 * 1.2) / 2, to: 26 + (32 + 13 * 1.2) / 2, text: people, target: 4.5 },
-      ...stack(26 + 32, [
-        { name: "status", line: 15 * 1.2, gap: 16, text: featured, target: 4.5, lines: statusLines },
-        ...(address ? [{ name: "address", line: 12 * 1.2, gap: 4, text: location(), target: 4.5 }] : []),
-        { name: "title", line: 33.6 * 1.2, gap: 8, text: light, target: 3 },
+      { name: "people", from: padding + (32 - 14 * 1.2) / 2, to: padding + (32 + 14 * 1.2) / 2, text: people(), target: 4.5 },
+      ...stack(padding + 32, [
+        { name: "sub", line: sub, gap, text: soft(), target: 4.5, lines: subLines },
+        { name: "sentence", line: display, gap, text: colour("#ffffff"), target: 3, lines: displayLines },
+        { name: "date", line: 18, gap, text: soft(), target: 4.5 },
       ]),
     ];
-    const result = weakest(lines, 292, shade(property("app", ".a-focus-hero::after", "background")));
+    const result = weakest(lines, cover, shade(property("home", ".c-home-square::before", "background")));
     expect(failures(result), JSON.stringify(result)).toEqual([]);
-  });
-
-  it.each([".a-place-hero .type", ".a-focus-hero .type"])("gives the %s label its own backdrop, wherever it sits", (selector) => {
-    // The label can sit high on a card with a long name, so it does not rely on the shade.
-    const backdrop = over(colour(property("app", selector, "background")), white);
-    expect(ratio(light.rgb, backdrop)).toBeGreaterThanOrEqual(4.5);
   });
 });
 

@@ -9,7 +9,7 @@ import {
 } from "../data/household";
 import type { OperationItem } from "../data/operations";
 import { notePreview } from "../data/notePresentation";
-import { timestampDay, todayIso } from "../data/operations";
+import { addDays, timestampDay, todayIso } from "../data/operations";
 import { formatDay, formatMoney, netBalances, overallNet } from "@commune/core";
 
 export type CurrencyCode = "GBP" | "USD" | "EUR";
@@ -330,6 +330,29 @@ export type LiveHub = Omit<Hub, "members" | "activity" | "now"> & {
   now: Need[];
   /** What the viewer is waiting on others for, with nothing to do. */
   waiting: Need[];
+  /** The viewer's outstanding shares here, and everyone's outstanding shares of bills the viewer paid, in minor units. */
+  youOweMinor: number;
+  owedToYouMinor: number;
+  /** Who has an outstanding share of a bill the viewer paid. */
+  owingYou: string[];
+  /** Coming up: turns and regular bills in the next fortnight (see comingUp). */
+  coming: Upcoming[];
+};
+
+/**
+ * One row of "Coming up": a task's next turn or a regular bill's next date in
+ * the next fortnight, with nothing to do yet. A task nobody holds can be taken.
+ */
+export type Upcoming = {
+  kind: "task" | "bill";
+  title: string;
+  dueOn: string;
+  /** Whose turn, or what the bill comes to and who pays it. */
+  when: string;
+  operationId?: string;
+  billId?: string;
+  /** A task nobody holds yet, which any member can take. */
+  open?: boolean;
 };
 
 /**
@@ -346,12 +369,22 @@ export type Need = {
   /** Who and what, without the amount. */
   when: string;
   amount?: string;
+  /** The amount in minor units, where there is one. */
+  minor?: number;
   dueOn?: string;
   /** Past its date. */
   late: boolean;
   expenseId?: string;
   operationId?: string;
   fundId?: string;
+  /** The share it is about: the viewer's own (pay, reported) or one the viewer can confirm. */
+  shareId?: string;
+  /** The other person: who paid the bill (pay, reported) or who says they sent it (confirm). */
+  person?: string;
+  /** Everyone who still owes the viewer for this bill (owed). */
+  people?: string[];
+  /** The payment to confirm. */
+  report?: PaymentReport;
 };
 /**
  * The name of anyone a snapshot knows, former members included (0031). With
@@ -364,6 +397,30 @@ export function personName(members: Member[] | undefined, userId: string | null 
   const member = userId ? members?.find((item) => item.userId === userId) : undefined;
   if (!member?.name.trim()) return fallback;
   return options.left && member.active === false ? `${member.name} (left)` : member.name;
+}
+
+/** Turns and regular bills from today to 13 days on, soonest first. The viewer's own task due today is in Needs you. */
+export function comingUp(snapshot: Snapshot, viewerId: string, today = todayIso()): Upcoming[] {
+  const currency = snapshot.commune.currency;
+  const last = addDays(today, 13);
+  const nameOf = (userId: string) => personName(snapshot.members, userId, "a former member", { left: true });
+  const rows: Upcoming[] = [];
+  for (const item of snapshot.operations ?? []) {
+    if (item.kind !== "task" || item.status !== "open" || item.date < today || item.date > last) continue;
+    if (item.assigneeId === viewerId && item.date === today) continue;
+    rows.push({ kind: "task", title: item.title, dueOn: item.date, operationId: item.id, open: !item.assigneeId,
+      when: !item.assigneeId ? "nobody yet" : item.assigneeId === viewerId ? "your turn" : `${nameOf(item.assigneeId)}’s turn` });
+  }
+  for (const bill of snapshot.recurringBills ?? []) {
+    if (bill.paused || bill.archivedAt || bill.nextDueOn < today || bill.nextDueOn > last) continue;
+    const shares = bill.allocations.filter((share) => share.amountMinor > 0);
+    const even = shares.length > 1 && shares.every((share) => share.amountMinor === shares[0].amountMinor);
+    const yours = shares.find((share) => share.userId === viewerId)?.amountMinor;
+    const split = even ? ` · ${money(shares[0].amountMinor, currency)} each` : yours ? ` · your share ${money(yours, currency)}` : "";
+    rows.push({ kind: "bill", title: bill.title, dueOn: bill.nextDueOn, billId: bill.id,
+      when: `${money(bill.amountMinor, currency)}, ${bill.paidByUserId === viewerId ? "you pay" : `${nameOf(bill.paidByUserId)} pays`}${split}` });
+  }
+  return rows.sort((a, b) => a.dueOn.localeCompare(b.dueOn));
 }
 
 const NEED_ORDER: Need["kind"][] = ["confirm", "pay", "task", "pledge", "owed", "reported"];
@@ -401,23 +458,28 @@ export function needsYou(snapshot: Snapshot, viewerId: string, today = todayIso(
       const report = share.paymentReports?.find((item) => item.status === "pending");
       if (expense.paidByUserId === viewerId) {
         if (report) {
-          actions.push({ ...base, kind: "confirm", when: `${nameOf(share.userId)} says they sent it`, amount: money(report.amountMinor, currency) });
+          actions.push({ ...base, kind: "confirm", when: `${nameOf(share.userId)} says they sent it`, amount: money(report.amountMinor, currency),
+            minor: report.amountMinor, shareId: share.id, person: share.userId, report });
         } else {
           owing.push({ userId: share.userId, minor: outstanding });
         }
       } else if (share.userId === viewerId) {
         const payer = nameOf(expense.paidByUserId);
+        const yours = { shareId: share.id, person: expense.paidByUserId };
         if (report) {
-          waiting.push({ ...base, kind: "reported", when: `You said you sent it · waiting for ${payer}`, amount: money(report.amountMinor, currency) });
+          waiting.push({ ...base, ...yours, kind: "reported", when: `You said you sent it · waiting for ${payer}`, amount: money(report.amountMinor, currency),
+            minor: report.amountMinor });
         } else {
-          actions.push({ ...base, kind: "pay", when: `You owe ${payer}${late ? " · overdue" : ""}`, amount: money(outstanding, currency) });
+          actions.push({ ...base, ...yours, kind: "pay", when: `You owe ${payer}${late ? " · overdue" : ""}`, amount: money(outstanding, currency),
+            minor: outstanding });
         }
       }
     }
     if (owing.length) {
       const who = namesList(owing.map((item) => nameOf(item.userId)));
+      const minor = owing.reduce((total, item) => total + item.minor, 0);
       waiting.push({ ...base, kind: "owed", when: `${who.charAt(0).toUpperCase()}${who.slice(1)} ${owing.length === 1 ? "owes" : "owe"} you`,
-        amount: money(owing.reduce((total, item) => total + item.minor, 0), currency) });
+        amount: money(minor, currency), minor, people: owing.map((item) => item.userId) });
     }
   }
   for (const item of snapshot.operations ?? []) {
@@ -431,8 +493,9 @@ export function needsYou(snapshot: Snapshot, viewerId: string, today = todayIso(
     for (const pledge of fund.commitments) {
       if (pledge.cancelledAt || pledge.userId !== viewerId || pledge.amountMinor <= pledge.contributedMinor || pledge.dueOn > today) continue;
       const late = pledge.dueOn < today;
+      const remaining = pledge.amountMinor - pledge.contributedMinor;
       actions.push({ kind: "pledge", go: "funds", title: fund.name, when: `Remaining on your pledge${late ? " · overdue" : ""}`,
-        amount: money(pledge.amountMinor - pledge.contributedMinor, currency), fundId: fund.id, dueOn: pledge.dueOn, late });
+        amount: money(remaining, currency), minor: remaining, fundId: fund.id, dueOn: pledge.dueOn, late });
     }
   }
   return { actions: actions.sort(compareNeeds), waiting: waiting.sort(compareNeeds) };
@@ -517,6 +580,7 @@ export function hubFromSnapshot(
   const moves: Hub["moves"] = [];
   let youOwe = 0;
   let youAreOwed = 0;
+  const owingYou = new Set<string>();
   for (const expense of snapshot.expenses) {
     for (const share of expense.shares) {
       if (share.userId === expense.paidByUserId) continue;
@@ -534,6 +598,7 @@ export function hubFromSnapshot(
         });
       } else if (expense.paidByUserId === viewer.id) {
         youAreOwed += due;
+        owingYou.add(share.userId);
         moves.push({
           go: "settle",
           arrow: "→",
@@ -631,6 +696,10 @@ export function hubFromSnapshot(
     ],
     now: needs.actions,
     waiting: needs.waiting,
+    youOweMinor: youOwe,
+    owedToYouMinor: youAreOwed,
+    owingYou: [...owingYou],
+    coming: comingUp(source, viewer.id, today),
     moves,
     members,
     activity: [...snapshot.expenses.map((expense) => ({

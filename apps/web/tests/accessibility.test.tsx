@@ -171,6 +171,37 @@ describe("page structure and focus after moving", () => {
       expect(within(tabs).getByRole("button", { name }).hasAttribute("aria-current")).toBe(false);
     }
   });
+
+  it("opens the phone menu as the sidebar in a drawer, and gives focus back when it closes", async () => {
+    mount("/hub");
+    await screen.findByRole("heading", { name: "This Hub", level: 1 });
+    const menu = screen.getByRole("button", { name: "Menu" });
+    expect(menu.getAttribute("aria-haspopup")).toBe("dialog");
+    expect(menu.getAttribute("aria-expanded")).toBe("false");
+
+    fireEvent.click(menu);
+    const drawer = screen.getByRole("dialog", { name: "Menu" });
+    expect(drawer.getAttribute("aria-modal")).toBe("true");
+    expect(document.activeElement).toBe(within(drawer).getByRole("button", { name: "Close menu" }));
+    // The page and the tabs behind it are out of reach while it is open.
+    expect(document.querySelector(".a-app")?.hasAttribute("inert")).toBe(true);
+    expect(screen.getByRole("navigation", { name: "Phone", hidden: true }).hasAttribute("inert")).toBe(true);
+    // Members and Templates have no other way in on a phone.
+    const basic = drawer.querySelector<HTMLElement>(".a-nav-basic")!;
+    for (const name of ["Expenses", "Notes", "Operations", "Members", "Templates"]) within(basic).getByRole("button", { name });
+
+    fireEvent.keyDown(document, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Menu" })).toBeNull());
+    await waitFor(() => expect(document.activeElement).toBe(menu));
+    expect(document.querySelector(".a-app")?.hasAttribute("inert")).toBe(false);
+
+    // Choosing a page closes it and moves focus to that page's heading.
+    fireEvent.click(menu);
+    fireEvent.click(within(screen.getByRole("dialog", { name: "Menu" })).getAllByRole("button", { name: "Notes" })[0]);
+    const heading = await screen.findByRole("heading", { name: "Notes", level: 1 });
+    expect(screen.queryByRole("dialog", { name: "Menu" })).toBeNull();
+    await waitFor(() => expect(document.activeElement).toBe(heading));
+  });
 });
 
 describe("commune switcher", () => {

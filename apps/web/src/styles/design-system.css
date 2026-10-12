@@ -98,7 +98,46 @@
   letter-spacing: -0.5px;
 }
 @media (max-width: 560px) {
-  .a-header-home { flex-wrap: wrap; }
+  /* Phone top bar, as drawn for Home (design panel, direction B): one slim
+     row of the menu, the page's name, then search, notifications and you,
+     as plain icons on navy. The page description stays on larger screens. */
+  .a-header { min-height: 56px; gap: 2px; padding: 8px 10px 8px 6px; }
+  .a-header :is(.a-more-btn, .a-icon-btn, .c-search-trigger) {
+    display: grid; place-items: center; width: 40px; height: 40px; min-height: 40px; padding: 0;
+    border: 0; background: transparent; color: #f5f1ea;
+  }
+  .a-body.is-dark .a-header :is(.a-more-btn, .a-icon-btn, .c-search-trigger) { background: transparent; color: #f5f1ea; }
+  @media (hover: hover) {
+    .a-body .a-header :is(.a-more-btn, .a-icon-btn, .c-search-trigger):hover { background: rgba(255, 255, 255, 0.08); }
+  }
+  .a-header :is(.a-more-btn, .a-icon-btn, .c-search-trigger) svg { stroke-width: 1.8; }
+  .a-header :is(.a-more-btn, .a-icon-btn, .c-search-trigger) svg { width: 20px; height: 20px; }
+  .a-header .a-icon-btn.has-unread::after { top: 9px; right: 9px; background: #f08a7c; }
+  .a-header .a-icon-btn.a-you-btn { margin-left: 2px; }
+  .a-header .a-you-btn .avatar { width: 32px; height: 32px; }
+  .a-header-actions { gap: 0; margin-left: 0; }
+  .a-header-title { padding-left: 2px; }
+  .a-header .a-header-wordmark { display: block; padding-left: 4px; font-size: 25px; letter-spacing: -1.4px; color: #f5f1ea; }
+  .a-header:not(.a-header-home) .a-header-title h1 { font-size: 17px; font-weight: 600; letter-spacing: -0.01em; }
+  .a-header:not(.a-header-home) .a-header-title p { display: none; }
+  /* Home opens on its sentence, so the bar carries no name there; the
+     heading stays for screen readers and is where focus lands. */
+  .a-header.is-home .a-header-title h1 {
+    position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+  }
+  /* On Home the bar and the navy band beneath it read as one. */
+  .a-header.is-home { border-bottom-color: transparent; }
+  .a-body.is-dark .a-header.is-home { background: #1a1f2b; }
+  /* All square: the bar sits over the photo until the page scrolls. */
+  .a-main:has(.c-home-square) > .a-header.is-home { transition: background-color 160ms ease; }
+  .a-main:has(.c-home-square) > .a-header.is-home:not(.is-scrolled) { background: transparent; backdrop-filter: none; }
+  .a-header.is-home + .a-content .c-home-square { margin-top: -72px; }
+  .notes-mobile-search.c-record-filter { width: 100%; }
+  /* iOS Safari zooms the whole page into any field under 16px when it gets
+     focus, and stays zoomed. Every text field on a phone is 16px. */
+  :is(input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"]), select, textarea) { font-size: 16px !important; }
+  .a-header-home { flex-wrap: wrap; row-gap: 10px; padding-bottom: 14px; }
+  .a-body.is-native .a-header-home .a-header-actions { margin-left: auto; }
   .a-header-home .a-header-title { order: 1; flex-basis: 100%; }
   .a-header-home .a-header-title h1 { white-space: normal; overflow-wrap: anywhere; }
   .a-header-home .c-search-trigger { margin-left: auto; }
@@ -526,3 +565,68 @@
 @media (max-width: 560px) {
   .c-split-hint { min-height: 4.8em; }
 }
+
+/* The phone menu is the desktop sidebar, opened as a drawer from the left. */
+.a-side-head { display: flex; align-items: flex-start; }
+.a-side-head .a-brand { flex: 1; min-width: 0; }
+.a-drawer-x {
+  display: grid; place-items: center; flex-shrink: 0; width: 40px; height: 40px; margin-top: -4px;
+  border: 0; border-radius: var(--radius-control);
+  background: transparent; color: #f5f1ea; cursor: pointer;
+}
+@media (hover: hover) { .a-drawer-x:hover { background: rgba(255, 255, 255, 0.08); } }
+.a-body .a-side.a-drawer {
+  display: flex;
+  position: fixed;
+  inset: 0 auto 0 0;
+  z-index: 41;
+  width: min(300px, 84vw);
+  height: 100dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: calc(18px + env(safe-area-inset-top, 0px)) 14px calc(16px + env(safe-area-inset-bottom, 0px));
+  box-shadow: 18px 0 50px rgba(26, 30, 43, 0.28);
+  animation: a-drawer-in 180ms ease-out;
+}
+.a-body.is-native .a-side.a-drawer { left: max(0px, calc(50% - 195px)); }
+.a-drawer .a-brand { padding-bottom: 24px; }
+.a-drawer .a-wordmark { font-size: 28px; }
+@keyframes a-drawer-in { from { transform: translateX(-100%); } to { transform: none; } }
+@media (prefers-reduced-motion: reduce) { .a-body .a-side.a-drawer { animation: none; } }
+
+/* List toolbars on narrow screens: status chips get their own scrollable
+   row, then the filter and the main action share the next one. */
+@media (max-width: 850px) {
+  .a-toolbar:has(> .c-record-filter) { flex-wrap: wrap; row-gap: 10px; }
+  .a-toolbar:has(> .c-record-filter) > .a-filters { flex: 1 0 100%; overflow-x: auto; scrollbar-width: none; }
+  .a-toolbar > .c-record-filter { flex: 1 1 0; min-width: 0; }
+}
+.c-expense-amount strong { white-space: nowrap; }
+
+/* The wordmark beside the menu is a phone's; wider screens have it in the sidebar. */
+.a-header-wordmark { display: none; }
+.a-body.is-native .a-header .a-header-wordmark { display: block; padding-left: 4px; font-size: 25px; letter-spacing: -1.4px; color: #f5f1ea; }
+
+/* Add expense in Home's top bar, beside the bell. Phones add from the Hub. */
+.a-header .a-header-add {
+  height: 38px;
+  font-weight: 500;
+  gap: 7px;
+  white-space: nowrap;
+}
+/* Beside the tablet sidebar the title needs the room: the plus alone, still named. */
+@media (max-width: 700px) {
+  .a-header .a-header-add { width: 38px; padding: 0; justify-content: center; }
+  .a-header-add-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+@media (max-width: 560px) {
+  .a-header .a-header-add { display: none; }
+}
+.a-body.is-native .a-header .a-header-add { display: none; }

@@ -263,10 +263,11 @@ Use [the design brief](DESIGN-LANGUAGE.md) and the illustrative
 `/reference/design-language/index.html` (dev server only) with In context,
 Components and States.
 Keep the approved typography, wordmark, original switcher/avatar, compact rail,
-large selected Home card, Hub photo and hierarchy, expense boxes, adjacent
+Home's opening sentence and next step (Direction B), Hub photo and hierarchy, expense boxes, adjacent
 settlement panels, Notes board and shared Operations calendar-date badges.
 Do not change the design direction or remove functioning features for a mockup.
-Latest refinements include the Home greeting in the top bar, right-aligned
+Latest refinements include Home's Direction B layout (the greeting stays in
+the top bar only until there is a commune), right-aligned
 Settle actions and stable split-editor layout across all four split methods.
 Em-dash cleanup already made before the pause is included in the checkpoint;
 no further copy-cleanup pass is needed for the handoff.

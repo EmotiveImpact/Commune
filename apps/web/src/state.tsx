@@ -385,7 +385,12 @@ export type AppState = {
   /** Marking someone else's task done says who did it (needsDoneBy). */
   toggleOperation: (id: string, doneBy?: DoneBy) => Promise<OperationChange>;
   skipOperation: (id: string, reason?: string) => Promise<OperationChange>;
-  handOverOperation: (id: string, toMemberId: string, reason?: string) => Promise<OperationChange>;
+  /**
+   * from: the task as another screen saw it, in a commune that may not be the
+   * open one (Home taking a task nobody holds); that commune is read again.
+   */
+  handOverOperation: (id: string, toMemberId: string, reason?: string,
+    from?: { communeId: string; date: string; assigneeId: string | null }) => Promise<OperationChange>;
   /** Restores the task to exactly how it was before that action. */
   undoOperation: (occurrenceId: string) => Promise<OperationChange>;
   removeOperation: (id: string) => Promise<void>;
@@ -401,14 +406,15 @@ export type AppState = {
   /** Payer or admin voids an expense, keeping it and its history. */
   voidExpense: (expenseId: string, input: { expectedVersion: number; reason: string; requestId: string }) => Promise<ExpenseChangeResult>;
   /** Payer records money received against one share. Retry-safe on requestId. */
-  recordShareReceipt: (shareId: string, input: { amountMinor: number; receivedOn: string; reference?: string; requestId: string }) => Promise<ReceiptResult>;
+  // Payment commands refresh the open commune, or the one named: Home acts on any commune's payments.
+  recordShareReceipt: (shareId: string, input: { amountMinor: number; receivedOn: string; reference?: string; requestId: string }, communeId?: string) => Promise<ReceiptResult>;
   /** Payer reverses one receipt with a reason. The original entry is kept. */
   reverseShareReceipt: (receiptId: string, reason: string) => Promise<ReceiptResult>;
   /** The member who owes says they have paid. A claim, not a receipt. */
-  reportSharePayment: (shareId: string, input: { amountMinor: number; sentOn: string; reference?: string; requestId: string }) => Promise<PaymentReportResult>;
+  reportSharePayment: (shareId: string, input: { amountMinor: number; sentOn: string; reference?: string; requestId: string }, communeId?: string) => Promise<PaymentReportResult>;
   withdrawPaymentReport: (reportId: string) => Promise<PaymentReportResult>;
   /** The bill payer confirms (records a receipt) or declines with a reason. */
-  resolvePaymentReport: (reportId: string, input: { decision: "confirm"; requestId: string } | { decision: "decline"; note: string }) => Promise<PaymentReportResult>;
+  resolvePaymentReport: (reportId: string, input: { decision: "confirm"; requestId: string } | { decision: "decline"; note: string }, communeId?: string) => Promise<PaymentReportResult>;
   markExpensePaid: (expenseId: string) => Promise<void>;
   createInvite: (email: string, role: "admin" | "member") => Promise<{ token: string; url: string }>;
   sendInviteEmail: (token: string) => Promise<void>;
@@ -594,6 +600,10 @@ function emptyHub(): LiveHub {
     kpis: [],
     now: [],
     waiting: [],
+    youOweMinor: 0,
+    owedToYouMinor: 0,
+    owingYou: [],
+    coming: [],
     moves: [],
     members: [],
     activity: [],
@@ -1569,27 +1579,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [expenseChange]);
   const voidExpense = useCallback((expenseId: string, input: { expectedVersion: number; reason: string; requestId: string }) =>
     expenseChange(`/expenses/${encodeURIComponent(expenseId)}/void`, { ...input, reason: input.reason.trim() }, "POST"), [expenseChange]);
-  const recordShareReceipt = useCallback((shareId: string, input: { amountMinor: number; receivedOn: string; reference?: string; requestId: string }) => mutate(async () => {
+  const recordShareReceipt = useCallback((shareId: string, input: { amountMinor: number; receivedOn: string; reference?: string; requestId: string }, communeId?: string) => mutate(async () => {
     const result = await post<ReceiptResult>(`/shares/${encodeURIComponent(shareId)}/receipts`, {
       amountMinor: input.amountMinor, receivedOn: input.receivedOn,
       reference: input.reference?.trim() || null, requestId: input.requestId,
     });
-    await refreshRecords();
+    await (communeId ? refreshCommune(communeId) : refreshRecords());
     return result;
-  }), [mutate, refreshRecords]);
+  }), [mutate, refreshCommune, refreshRecords]);
   const reverseShareReceipt = useCallback((receiptId: string, reason: string) => mutate(async () => {
     const result = await post<ReceiptResult>(`/receipts/${encodeURIComponent(receiptId)}/reverse`, { reason });
     await refreshRecords();
     return result;
   }), [mutate, refreshRecords]);
-  const reportSharePayment = useCallback((shareId: string, input: { amountMinor: number; sentOn: string; reference?: string; requestId: string }) => mutate(async () => {
+  const reportSharePayment = useCallback((shareId: string, input: { amountMinor: number; sentOn: string; reference?: string; requestId: string }, communeId?: string) => mutate(async () => {
     const result = await post<PaymentReportResult>(`/shares/${encodeURIComponent(shareId)}/payment-reports`, {
       amountMinor: input.amountMinor, sentOn: input.sentOn,
       reference: input.reference?.trim() || null, requestId: input.requestId,
     });
-    await refreshRecords();
+    await (communeId ? refreshCommune(communeId) : refreshRecords());
     return result;
-  }), [mutate, refreshRecords]);
+  }), [mutate, refreshCommune, refreshRecords]);
   const postAnnouncement = useCallback((input: { title: string; body: string; needsAcknowledgement: boolean; requestId: string }) => mutate(async () => {
     const result = await post<AnnouncementResult>(`/communes/${encodeURIComponent(activeId)}/announcements`, {
       title: input.title.trim(), body: input.body.trim(), needsAcknowledgement: input.needsAcknowledgement, requestId: input.requestId,
@@ -1612,12 +1622,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await refreshRecords();
     return result;
   }), [mutate, refreshRecords]);
-  const resolvePaymentReport = useCallback((reportId: string, input: { decision: "confirm"; requestId: string } | { decision: "decline"; note: string }) => mutate(async () => {
+  const resolvePaymentReport = useCallback((reportId: string, input: { decision: "confirm"; requestId: string } | { decision: "decline"; note: string }, communeId?: string) => mutate(async () => {
     const result = await post<PaymentReportResult>(`/payment-reports/${encodeURIComponent(reportId)}/resolve`,
       input.decision === "confirm" ? input : { decision: "decline", note: input.note.trim() });
-    await refreshRecords();
+    await (communeId ? refreshCommune(communeId) : refreshRecords());
     return result;
-  }), [mutate, refreshRecords]);
+  }), [mutate, refreshCommune, refreshRecords]);
   const markExpensePaid = useCallback((expenseId: string) => mutate(async () => {
     const expense = expensesRef.current.find((row) => row.id === expenseId);
     const viewer = dataRef.current?.user.id;
@@ -1803,16 +1813,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }), [mutate, refreshRecords]);
   // Task actions are commands: the database advances the date and rotation
   // and rejects a stale click, so two people cannot complete one occurrence.
-  const occurrenceCommand = useCallback((path: string, body: unknown) => mutate(async () => {
+  const occurrenceCommand = useCallback((path: string, body: unknown, communeId?: string) => mutate(async () => {
     let raw: { id?: unknown; duplicate?: unknown; date?: unknown; assignee?: unknown; assigneeId?: unknown; turnOwnerId?: unknown; status?: unknown };
+    const reread = () => communeId ? refreshCommune(communeId) : refreshRecords();
     try {
       raw = await post(path, body);
     } catch (error) {
       // Someone else acted first. Show their result rather than a stale card.
-      if (error instanceof ApiError && error.status === 409) await refreshRecords();
+      if (error instanceof ApiError && error.status === 409) await reread();
       throw error;
     }
-    await refreshRecords();
+    await reread();
     if (typeof raw?.id !== "string" || typeof raw.date !== "string") throw new ApiError("The task service returned an unexpected response", 502);
     return {
       occurrenceId: raw.id, duplicate: raw.duplicate === true, date: raw.date,
@@ -1820,7 +1831,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       assigneeId: typeof raw.assigneeId === "string" ? raw.assigneeId : null,
       turnOwnerId: typeof raw.turnOwnerId === "string" ? raw.turnOwnerId : null, status: raw.status === "done" ? "done" : "open",
     } satisfies OperationChange;
-  }), [mutate, refreshRecords]);
+  }), [mutate, refreshCommune, refreshRecords]);
   const taskAction = useCallback((id: string, action: "completed" | "skipped" | "reopened", reason?: string, doneBy?: DoneBy) => {
     const item = operationsRef.current.find((row) => row.id === id);
     if (!item) return Promise.reject(new Error("Schedule item not found"));
@@ -1831,13 +1842,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
   }, [occurrenceCommand]);
   // The expected date and holder reject a handover made from a stale screen.
-  const handOverOperation = useCallback((id: string, toMemberId: string, reason?: string) => {
-    const item = operationsRef.current.find((row) => row.id === id);
+  const handOverOperation = useCallback((id: string, toMemberId: string, reason?: string,
+    from?: { communeId: string; date: string; assigneeId: string | null }) => {
+    const item = from ?? operationsRef.current.find((row) => row.id === id);
     if (!item) return Promise.reject(new Error("Schedule item not found"));
     return occurrenceCommand(`/operations/${encodeURIComponent(id)}/handovers`, {
       toMemberId, expectedDate: item.date, expectedAssigneeId: item.assigneeId ?? null, today: todayIso(),
       reason: reason?.trim() || null, requestId: newRequestId(),
-    });
+    }, from?.communeId);
   }, [occurrenceCommand]);
   const undoOperation = useCallback((occurrenceId: string) =>
     occurrenceCommand(`/occurrences/${encodeURIComponent(occurrenceId)}/undo`, {}), [occurrenceCommand]);
@@ -1927,14 +1939,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     personName(members, userId, fallback, options), [members]);
 
   // Dialogs have their own heading; the page behind them remains the page.
+  // Home with communes opens on its own sentence, so the bar only names the
+  // page; with none yet, the bar greets the member.
   const isHome = screen === "home" || screen === "home-empty";
+  const greeting = isHome && !places.length;
   const firstName = you.name.trim().split(/\s+/)[0];
-  const pageTitle = unknownCommune ? "Commune not found" : isHome
+  const pageTitle = unknownCommune ? "Commune not found" : greeting
     ? firstName ? `Your communes, ${firstName}.` : "Your communes."
     : PAGE_TITLES[screen] ?? "Home";
   const outstandingShareCount = places.reduce((sum, place) => sum + place.moves.length, 0);
-  const pageLede = unknownCommune ? "" : isHome
-    ? `${places.length} ${places.length === 1 ? "space" : "spaces"} · shared details that stay in sync for everyone.`
+  const pageLede = unknownCommune || (isHome && !greeting) ? "" : greeting
+    ? "0 spaces · shared details that stay in sync for everyone."
     : screen === "communes"
       ? session?.hasHubs
         ? places.some((place) => place.activityState !== "ready")

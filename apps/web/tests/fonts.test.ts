@@ -8,8 +8,8 @@ const faces = css.match(/@font-face\s*{[^}]*}/g) ?? [];
 const family = (face: string) => /font-family:\s*"([^"]+)"/.exec(face)?.[1];
 
 describe("self-hosted fonts", () => {
-  it("serves Inter and the wordmark from files kept with the app", () => {
-    expect(faces.map(family)).toEqual([...Array<string>(7).fill("Inter"), "DM Sans Wordmark"]);
+  it("serves Inter, the wordmark and the display face from files kept with the app", () => {
+    expect(faces.map(family)).toEqual([...Array<string>(7).fill("Inter"), "DM Sans Wordmark", "DM Sans"]);
     for (const face of faces) {
       const file = /src:\s*url\("(\.\/fonts\/[\w-]+\.woff2)"\)\s*format\("woff2"\);/.exec(face)?.[1];
       expect(file).toBeTruthy();

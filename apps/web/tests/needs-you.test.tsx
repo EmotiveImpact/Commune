@@ -1,12 +1,12 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { Router } from "wouter";
 import { memoryLocation } from "wouter/memory-location";
 import { App } from "../src/App";
 import { preloadAll } from "../src/shell/lazyComponent";
 import { AppProvider } from "../src/state";
-import { api, loadCommunes, loadSnapshot } from "../src/live/api";
-import { needsYou, type Commune, type PaymentReport, type Snapshot } from "../src/live/model";
+import { api, loadCommunes, loadSnapshot, post } from "../src/live/api";
+import { comingUp, needsYou, type Commune, type PaymentReport, type Snapshot } from "../src/live/model";
 
 vi.mock("../src/live/api", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../src/live/api")>()),
@@ -106,18 +106,56 @@ describe("the Needs you rule", () => {
   });
 });
 
+type Bill = NonNullable<Snapshot["recurringBills"]>[number];
+const bill = (id: string, title: string, paidByUserId: string, nextDueOn: string, allocations: Bill["allocations"], extra: Partial<Bill> = {}): Bill => ({
+  id, title, amountMinor: allocations.reduce((total, share) => total + share.amountMinor, 0), paidByUserId, allocations,
+  frequency: "monthly", nextDueOn, paused: false, createdBy: paidByUserId, version: 1, archivedAt: null, ...extra,
+});
+const nobody = (id: string, title: string, date: string) => ({ ...task(id, title, date, ""), assigneeId: null }) as unknown as Operation;
+
+describe("the Coming up rule", () => {
+  it("lists the next fortnight's turns and regular bills, soonest first, leaving today's own task to Needs you", () => {
+    const snapshot = snapshotOf(home, {
+      operations: [
+        task("hoover", "Hoover", today, "me"), task("mop", "Mop", "2026-10-10", "me"), task("dust", "Dust", "2026-10-12", "ben"),
+        nobody("gutters", "Clear the gutters", "2026-10-14"), task("party", "Party", "2026-10-11", "me", "event"),
+        task("bins", "Bins", "2026-10-07", "me"), task("windows", "Windows", "2026-10-23", "cat"),
+        { ...task("oven", "Oven", "2026-10-11", "cat"), status: "done" } as unknown as Operation,
+      ],
+      recurringBills: [
+        bill("netflix", "Netflix", "me", "2026-10-11", [{ userId: "me", amountMinor: 1000 }, { userId: "ben", amountMinor: 1000 }, { userId: "cat", amountMinor: 1000 }]),
+        bill("energy", "Energy", "ben", "2026-10-22", [{ userId: "me", amountMinor: 1500 }, { userId: "ben", amountMinor: 2500 }]),
+        bill("gym", "Gym", "me", "2026-10-10", [{ userId: "me", amountMinor: 3000 }], { paused: true }),
+        bill("paper", "Paper", "me", "2026-10-10", [{ userId: "me", amountMinor: 500 }], { archivedAt: "2026-10-01T00:00:00Z" }),
+        bill("water", "Water", "cat", "2026-10-24", [{ userId: "me", amountMinor: 900 }]),
+      ],
+    });
+    expect(comingUp(snapshot, "me", today).map((item) => [item.dueOn, item.title, item.when, item.open ?? false])).toEqual([
+      ["2026-10-10", "Mop", "your turn", false],
+      ["2026-10-11", "Netflix", "£30.00, you pay · £10.00 each", false],
+      ["2026-10-12", "Dust", "Ben Baker’s turn", false],
+      ["2026-10-14", "Clear the gutters", "nobody yet", true],
+      ["2026-10-22", "Energy", "£40.00, Ben Baker pays · your share £15.00", false],
+    ]);
+  });
+});
+
 function mount(path: string) {
   const location = memoryLocation({ path, record: true });
   render(<Router hook={location.hook}><AppProvider><App /></AppProvider></Router>);
   return location;
 }
 const modalDescriptor = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, "showModal");
+const closeDescriptor = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, "close");
 beforeAll(() => {
   Object.defineProperty(HTMLDialogElement.prototype, "showModal", { configurable: true, value: function (this: HTMLDialogElement) { this.setAttribute("open", ""); } });
+  Object.defineProperty(HTMLDialogElement.prototype, "close", { configurable: true, value: function (this: HTMLDialogElement) { this.removeAttribute("open"); } });
 });
 afterAll(() => {
   if (modalDescriptor) Object.defineProperty(HTMLDialogElement.prototype, "showModal", modalDescriptor);
   else delete (HTMLDialogElement.prototype as unknown as Record<string, unknown>).showModal;
+  if (closeDescriptor) Object.defineProperty(HTMLDialogElement.prototype, "close", closeDescriptor);
+  else delete (HTMLDialogElement.prototype as unknown as Record<string, unknown>).close;
 });
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ["Date"] });
@@ -139,31 +177,140 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-const feed = (row: HTMLElement) => [row.querySelector(".pill")?.className, row.querySelector(":scope > div > strong")?.textContent,
-  row.querySelector(".when")?.textContent];
+const readAgain = () => vi.mocked(loadSnapshot).mock.calls.map(([commune]) => commune.id);
+
+// A Home row: its title, commune, who and what, amount and when.
+const row = (item: HTMLElement) => [item.querySelector(".c-home-row-title")?.textContent, item.querySelector(".c-home-place")?.textContent,
+  item.querySelector(".c-home-row-meta > span:last-child")?.textContent, item.querySelector(".c-home-row-fig strong")?.textContent ?? null,
+  item.querySelector(".c-home-state")?.textContent ?? null];
 
 describe("Needs you on Home", () => {
-  it("lists every commune's actions in the same order, then what others owe, more quietly", async () => {
+  it("puts the first thing first, then every commune's actions by when, then what others owe, more quietly", async () => {
     mount("/");
-    const card = (await screen.findByRole("heading", { name: "Needs you" })).closest(".a-card") as HTMLElement;
-    await within(card).findByText("Ferry");
-    const waiting = within(card).getByRole("region", { name: "Waiting on others" });
-    const actions = [...card.querySelectorAll<HTMLElement>(".hub-feed-row")].filter((row) => !waiting.contains(row));
-    expect(actions.map(feed)).toEqual([
-      // Both reports, the trip's too, come before a share that was due earlier.
-      ["pill open", "Electricity", "Ben Baker says they sent it · £20.00"],
-      ["pill open", "Ferry", "Ben Baker says they sent it · €25.00"],
-      ["pill warn", "Internet", "You owe Ben Baker · overdue · £15.00"],
-      ["pill open", "Water", "You owe Cat Cole · £8.00"],
-      ["pill warn", "Bins", "Overdue · your turn"],
-      ["pill open", "Hoover", "Your turn today"],
+    const next = await screen.findByRole("article", { name: "Electricity" });
+    expect(within(next).getByText("1 of 7")).toBeTruthy();
+    expect(within(next).getByText("Our home · Ben Baker says they sent it")).toBeTruthy();
+    expect(within(next).getByRole("button", { name: "Confirm £20.00 received" })).toBeTruthy();
+    expect(within(next).getByRole("button", { name: "Not received" })).toBeTruthy();
+
+    const needs = screen.getByRole("region", { name: "Needs you" });
+    await within(needs).findByText("Ferry");
+    const groups = [...needs.querySelectorAll<HTMLElement>(".c-home-group")].map((group) =>
+      [group.querySelector("h3")?.firstChild?.textContent?.trim(), [...group.querySelectorAll<HTMLElement>(".c-home-row")].map(row)]);
+    expect(groups).toEqual([
+      // The trip's report waits on Maya now, whenever its bill is due.
+      ["To confirm", [["Ferry", "Lisbon trip", "Ben Baker says they sent it", "€25.00", null]]],
+      ["Overdue", [
+        ["Internet", "Our home", "You owe Ben Baker", "£15.00", "8 days overdue"],
+        ["Bins", "Our home", "Your turn", null, "2 days overdue"],
+        ["Boiler", "Our home", "Remaining on your pledge", "£60.00", "4 days overdue"],
+      ]],
+      ["Today", [["Hoover", "Our home", "Your turn today", null, "Due today"]]],
+      ["No due date", [["Water", "Our home", "You owe Cat Cole", "£8.00", null]]],
     ]);
-    expect(within(card).getByText("And 1 more.")).toBeTruthy();
-    expect([...waiting.querySelectorAll<HTMLElement>(".hub-feed-row")].map(feed)).toEqual([
-      ["pill", "Electricity", "Cat Cole owes you · £20.00"],
-      ["pill", "Takeaway", "3 people owe you · £30.00"],
-      ["pill", "Rent", "You said you sent it · waiting for Cat Cole · £500.00"],
+    // Payments act where they are; tasks and pledges open their record.
+    expect(within(needs).getAllByRole("button").filter((button) => button.classList.contains("c-home-btn")).map((button) => button.textContent)).toEqual([
+      "Confirm €25.00 from Ben Baker", "I’ve paid Ben Baker for Internet", "Open Bins", "Open Boiler", "Open Hoover", "I’ve paid Cat Cole for Water",
     ]);
+    // A phone shows the first two in the order drawn and offers the rest; a wider screen shows all six.
+    const extra = [...needs.querySelectorAll<HTMLElement>(".c-home-row")].map((item) => item.classList.contains("is-extra-phone"));
+    expect(extra).toEqual([false, false, true, true, true, true]);
+    expect(needs.querySelectorAll(".is-extra")).toHaveLength(0);
+    expect([...needs.querySelectorAll(".c-home-group.is-extra-phone h3")].map((h) => h.firstChild?.textContent?.trim())).toEqual(["Today", "No due date"]);
+    const more = within(needs).getByRole("button", { name: "Show 4 more" });
+    expect(more.classList.contains("is-phone")).toBe(true);
+    expect(more.getAttribute("aria-expanded")).toBe("false");
+    fireEvent.click(more);
+    expect(within(needs).getByRole("button", { name: "Show fewer" }).getAttribute("aria-expanded")).toBe("true");
+    expect(needs.classList.contains("is-all")).toBe(true);
+
+    const waiting = screen.getByRole("region", { name: "Waiting on others" });
+    expect(within(waiting).getByText("£50.00")).toBeTruthy();
+    expect([...waiting.querySelectorAll<HTMLElement>(".c-home-row")].map(row)).toEqual([
+      ["Electricity", "Our home", "Cat Cole owes you", "£20.00", "Due 20 Oct"],
+      ["Takeaway", "Our home", "3 people owe you", "£30.00", null],
+      ["Rent", "Our home", "You said you sent it · waiting for Cat Cole", "£500.00", "Due Thu"],
+    ]);
+    expect(within(waiting).queryByRole("button", { name: /I’ve paid|Confirm/ })).toBeNull();
+  });
+
+  it("says where Maya stands per currency, never adding pounds to euros", async () => {
+    // Maya also owes Ben for the trip's tram passes.
+    vi.mocked(loadSnapshot).mockImplementation(async (commune) => commune.id === home.id ? homeSnapshot() : { ...tripSummary(),
+      expenses: [...tripSummary().expenses, expense("tram", "Tram passes", "ben", "2026-10-12", [share("ben", 1200, 1200), share("me", 1200)])] });
+    mount("/");
+    const standing = await screen.findByRole("heading", { name: "You owe £523.00 and €12.00 across two communes." });
+    expect(standing.parentElement?.querySelector(".c-home-sub")?.textContent)
+      .toBe("You’re owed £70.00 and €25.00. Three things are overdue, the oldest eight days.");
+    // The bar names the page; the sentence is Home's own heading.
+    expect(screen.getByRole("heading", { level: 1, name: "Home" })).toBeTruthy();
+    // A phone's bar shows the wordmark beside the menu on Home; the h1 names the page.
+    expect(screen.getByRole("banner").querySelector(".a-header-wordmark[aria-hidden='true']")?.textContent).toBe("commune.");
+    // Home's top bar adds an expense, as drawn (a phone adds from the Hub).
+    fireEvent.click(within(screen.getByRole("banner")).getByRole("button", { name: "Add expense" }));
+    expect(await screen.findByRole("dialog", { name: "Add expense" })).toBeTruthy();
+  });
+
+  it("tells the bill payer from Home, then reads the share's own commune again", async () => {
+    vi.mocked(post).mockResolvedValue({ duplicate: false });
+    mount("/");
+    const needs = await screen.findByRole("region", { name: "Needs you" });
+    await within(needs).findByText("Ferry");
+    vi.mocked(loadSnapshot).mockClear();
+    fireEvent.click(within(needs).getByRole("button", { name: "I’ve paid Ben Baker for Internet" }));
+    const dialog = await screen.findByRole("dialog", { name: "Tell Ben Baker you’ve paid" });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Tell Ben Baker" }));
+    expect(await screen.findByText("Ben Baker has been told you sent £15.00. Your balance changes when they confirm it.")).toBeTruthy();
+    expect(post).toHaveBeenCalledWith("/shares/share-me-1500/payment-reports", expect.objectContaining({ amountMinor: 1500, sentOn: today }));
+    expect(readAgain()).toEqual(["home-1"]);
+  });
+
+  it("confirms a payment in another commune where it sits, and reads that commune again", async () => {
+    vi.mocked(post).mockResolvedValue({ outstandingMinor: 0 });
+    mount("/");
+    const needs = await screen.findByRole("region", { name: "Needs you" });
+    await within(needs).findByText("Ferry");
+    vi.mocked(loadSnapshot).mockClear();
+    fireEvent.click(within(needs).getByRole("button", { name: "Confirm €25.00 from Ben Baker" }));
+    const dialog = await screen.findByRole("dialog", { name: "Confirm €25.00 received?" });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Confirm €25.00 received" }));
+    expect(await screen.findByText("€25.00 recorded as received from Ben Baker. Their share is settled.")).toBeTruthy();
+    expect(post).toHaveBeenCalledWith("/payment-reports/report-ben-2500/resolve", expect.objectContaining({ decision: "confirm" }));
+    expect(readAgain()).toEqual(["trip-1"]);
+  });
+});
+
+describe("Coming up on Home", () => {
+  // Nothing needs Maya: Ben owes her for the bins bags, and the trip's gutters need someone.
+  const calm = () => snapshotOf(home, {
+    expenses: [expense("bags", "Bin bags", "me", "2026-10-20", [share("me", 400, 400), share("ben", 400)])],
+    operations: [task("dust", "Dust", "2026-10-12", "ben")],
+    recurringBills: [bill("netflix", "Netflix", "me", "2026-10-11", [{ userId: "me", amountMinor: 1000 }, { userId: "ben", amountMinor: 1000 }])],
+  });
+  const tripWithGutters = () => ({ ...tripSummary(), expenses: [], operations: [nobody("gutters", "Clear the gutters", "2026-10-14")] });
+
+  it("shows turns and bills ahead in every commune, and takes a task nobody holds, reading its own commune again", async () => {
+    vi.mocked(loadSnapshot).mockImplementation(async (commune) => commune.id === home.id ? calm() : tripWithGutters());
+    vi.mocked(post).mockResolvedValue({ id: "occurrence-1", date: "2026-10-14", assigneeId: "me", turnOwnerId: "me", status: "open" });
+    mount("/");
+    const coming = await screen.findByRole("region", { name: "Coming up" });
+    await within(coming).findByRole("button", { name: "Clear the gutters" });
+    expect([...coming.querySelectorAll<HTMLElement>(".c-home-row")].map(row)).toEqual([
+      ["Netflix", "Our home", "£20.00, you pay · £10.00 each", null, null],
+      ["Dust", "Our home", "Ben Baker’s turn", null, null],
+      ["Clear the gutters", "Lisbon trip", "nobody yet", null, null],
+    ]);
+    expect(within(coming).getByRole("button", { name: "Operations" })).toBeTruthy();
+    // Only the task nobody holds can be taken from here.
+    expect(within(coming).getAllByRole("button", { name: /I’ll do it/ })).toHaveLength(1);
+    vi.mocked(loadSnapshot).mockClear();
+    fireEvent.click(within(coming).getByRole("button", { name: "I’ll do it Clear the gutters" }));
+    expect(await screen.findByText("Clear the gutters is yours now. Open the task to undo this.")).toBeTruthy();
+    // A handover to Maya, checked against the task as Home saw it.
+    expect(post).toHaveBeenCalledWith("/operations/gutters/handovers", expect.objectContaining({
+      toMemberId: "me", expectedDate: "2026-10-14", expectedAssigneeId: null, today,
+    }));
+    expect(readAgain()).toEqual(["trip-1"]);
   });
 });
 

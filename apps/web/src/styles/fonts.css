@@ -8,11 +8,15 @@
  * in its unicode-range: the interface needs only Latin, and the others are
  * fetched just for names such as Łukasz, Дмитрий, Νίκος or Nguyễn.
  *
- * DM Sans: only the glyphs of the "commune." wordmark (.a-wordmark), with both
- * variation axes kept so it renders identically at every size it is drawn.
+ * DM Sans Wordmark: only the glyphs of the "commune." wordmark (.a-wordmark),
+ * with both variation axes kept so it renders identically at every size it is drawn.
  * Made from @fontsource-variable/dm-sans 5.3.0 dm-sans-latin-standard-normal.woff2:
  *   pyftsubset dm-sans-latin-standard-normal.woff2 --unicodes=U+002E,U+0063,U+0065,U+006D,U+006E,U+006F,U+0075 --layout-features='*' --flavor=woff2
  * Make it again if the wordmark's letters change.
+ *
+ * DM Sans: the display face, for the sentence Home opens on. It is
+ * @fontsource-variable/dm-sans 5.3.0 dm-sans-latin-wght-normal.woff2 as it
+ * comes (Latin, the weight axis), downloaded only by a page that uses it.
  *
  * Both are under the SIL Open Font License; the licences sit beside the files.
  */
@@ -86,4 +90,13 @@
   font-weight: 100 1000;
   font-display: swap;
   src: url("./fonts/dm-sans-wordmark.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "DM Sans";
+  font-style: normal;
+  font-weight: 100 1000;
+  font-display: swap;
+  src: url("./fonts/dm-sans-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
