@@ -1,25 +1,24 @@
 /*
  * Harmony with the website (12 October 2026). The marketing site leads and
  * the app borrows its signatures: light DM Sans headlines with tight
- * tracking, one navy (#14243b), navy pill buttons, the white highlight
+ * tracking, one navy (#14243b), round sage buttons, the white highlight
  * behind the amount, small uppercase labels and rounder cards. Inter stays
  * for rows, figures and forms. Sage stays for what is settled and good
- * (progress, "settled" tags); navy is what you press.
+ * (Edem kept the green and took the website's round shape, 12 October).
  * Plan: https://claude.ai/artifact/K1Wao31fQRzg4fPFNtFXw2
  * In the overrides layer, after the design-language primitives, so one file
  * holds the whole change.
  */
 
 :root {
-  --action: var(--navy);
-  --action-hover: #0d1a2c;
+  --action: var(--sage);
+  --action-hover: #24583f;
   --on-action: #ffffff;
 }
-/* On a dark page the site's own buttons on navy are light pills. */
 .a-body.is-dark {
-  --action: #f5f1ea;
-  --action-hover: #ffffff;
-  --on-action: var(--navy);
+  --action: #7cc39f;
+  --action-hover: #95d2b2;
+  --on-action: #0c1912;
 }
 
 /* Headlines: the website's light display type. */
@@ -79,7 +78,7 @@
   text-transform: uppercase;
 }
 
-/* Buttons: round, and navy when filled. */
+/* Buttons: the website's round shape, in the app's green. */
 .a-body :is(.a-btn, .c-home-btn, .ops-add, .c-hub-button) {
   border-radius: var(--radius-pill);
 }
@@ -105,7 +104,7 @@
   border-radius: var(--radius-surface);
 }
 
-/* This Hub: the same pills, navy action and display headings. Links that
+/* This Hub: the same green pills and display headings. Links that
    used the green action colour keep green for text, as on the website. */
 .c-hub {
   --hub-action: var(--action);
