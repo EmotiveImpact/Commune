@@ -437,6 +437,33 @@ describe("pledge notices", () => {
   });
 });
 
+describe("past invitations", () => {
+  it("name someone who accepted and has since left, without their address", async () => {
+    // The database leaves out the address once the person who accepted has
+    // left (0031); the snapshot still has their name.
+    current.members.push({ userId: "user-3", name: "Bea", role: "member", active: false });
+    const day = 24 * 60 * 60 * 1000;
+    const at = (offset: number) => new Date(Date.now() + offset * day).toISOString();
+    const records = [
+      { id: "inv-5", email: null, role: "member", createdAt: at(-30), expiresAt: at(-23), acceptedAt: at(-29), revokedAt: null,
+        invitedBy: user.id, invitedByName: user.name, acceptedBy: "user-3" },
+      { id: "inv-6", email: null, role: "admin", createdAt: at(-40), expiresAt: at(-33), acceptedAt: at(-39), revokedAt: null,
+        invitedBy: user.id, invitedByName: user.name, acceptedBy: "user-9" },
+      { id: "inv-7", email: "housemate@example.test", role: "member", createdAt: at(-50), expiresAt: at(-43), acceptedAt: at(-49), revokedAt: null,
+        invitedBy: user.id, invitedByName: user.name, acceptedBy: "user-2" },
+    ];
+    const base = vi.mocked(api).getMockImplementation()!;
+    vi.mocked(api).mockImplementation(async (path, options) => path.endsWith("/invites") ? { invites: records } : base(path, options));
+    mount("/members");
+    const history = (await screen.findByText("3 past invitations")).closest("details")!;
+    const items = within(history).getAllByRole("listitem").map((item) => item.textContent);
+    expect(items[0]).toMatch(/^Bea · member · accepted /);
+    expect(items[1]).toMatch(/^Former member · admin · accepted /);
+    expect(items[2]).toMatch(/^housemate@example\.test · member · accepted /);
+    expect(history.textContent).not.toContain("null");
+  });
+});
+
 describe("who sent each invitation", () => {
   it("names the sender and says when a membership change withdraws their invitations", async () => {
     current.members[1].role = "admin";
@@ -477,5 +504,38 @@ describe("who sent each invitation", () => {
     expect(ask(user.id, "Make member", "Make Test Person a member?")).toContain("Your open invitation will be withdrawn.");
     expect(ask(user.id, "Leave", "Leave Our home?")).toContain("Your open invitation will be withdrawn.");
     expect(post).not.toHaveBeenCalled();
+  });
+});
+
+describe("an admin's own pledge", () => {
+  const withPledges = () => {
+    current.funds = [{ id: "fund-1", name: "Boiler fund", targetMinor: 50000, contributedMinor: 0, commitments: [
+      { id: "pledge-1", userId: user.id, amountMinor: 4000, contributedMinor: 0, dueOn: "2026-11-01" },
+      { id: "pledge-2", userId: "user-2", amountMinor: 3000, contributedMinor: 0, dueOn: "2026-11-01" },
+    ] }];
+  };
+  const rows = async () => {
+    fireEvent.click(await screen.findByRole("button", { name: "View fund" }));
+    const dialog = screen.getByRole("dialog", { name: "Boiler fund" });
+    return Array.from(dialog.querySelectorAll<HTMLElement>(".c-pledge-row"));
+  };
+
+  it("is left to another admin to confirm when there is one", async () => {
+    current.members.push({ userId: "user-3", name: "Co-admin", role: "admin", active: true });
+    withPledges();
+    mount("/funds");
+    const [mine, theirs] = await rows();
+    expect(within(mine).queryByRole("button", { name: "Record contribution" })).toBeNull();
+    expect(mine.textContent).toContain("Another admin records what you contribute to your own pledge.");
+    expect(within(theirs).getByRole("button", { name: "Record contribution" })).toBeTruthy();
+  });
+
+  it("can be confirmed by its admin when they are the only one", async () => {
+    current.members.push({ userId: "user-3", name: "Former admin", role: "admin", active: false });
+    withPledges();
+    mount("/funds");
+    const [mine] = await rows();
+    expect(within(mine).getByRole("button", { name: "Record contribution" })).toBeTruthy();
+    expect(mine.textContent).not.toContain("Another admin");
   });
 });

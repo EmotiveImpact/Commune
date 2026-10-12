@@ -256,7 +256,7 @@ try {
   "A different website cannot call the browser route");
   const immediate = await dispatchReminder(third.reminderId, await signedToken(alice));
   assert.equal(immediate.status, 200);
-  assert.equal((await immediate.json()).processed, true);
+  assert.deepEqual(await immediate.json(), { accepted: true });
   assert.equal((await outbox(third.reminderId)).status, "sent");
   const sentCount = providerCalls.length;
   assert.equal((await dispatchReminder(third.reminderId, await signedToken(alice))).status, 200);
@@ -431,6 +431,50 @@ try {
   await runWorker();
   assert.equal((await outbox(afterReminder)).status, "suppressed");
   assert.equal(providerCalls.length, callsBefore);
+  // The sender gets the same answer as when an email went, so it never
+  // tells them the recipient turned email off.
+  const heldBack = await dispatchReminder(afterReminder, await signedToken(alice));
+  assert.equal(heldBack.status, 200);
+  assert.deepEqual(await heldBack.json(), { accepted: true });
+  assert.equal(providerCalls.length, callsBefore);
+
+  // The scheduled run drops the frozen email of a reminder after 30 days.
+  await db.query(`
+    UPDATE public.reminder_email_outbox SET created_at = now() - interval '31 days'
+    WHERE reminder_id = $1
+  `, [third.reminderId]);
+  assert.notEqual((await outbox(third.reminderId)).payload, null);
+  await runWorker();
+  assert.equal((await outbox(third.reminderId)).payload, null);
+  assert.equal((await outbox(third.reminderId)).payload_amount_minor, null);
+  assert.notEqual((await outbox(batchIds[0])).payload, null, "A recent email is kept");
+
+  // An address the provider reported as bouncing (or as a spam complaint) is
+  // skipped exactly like an opt-out, whatever the case of the account's
+  // address, so the sender cannot tell which happened.
+  await db.query("UPDATE public.notification_preferences SET email_reminders = true WHERE user_id = $1", [bob]);
+  await db.query(`UPDATE neon_auth."user" SET email = $2 WHERE id = $1`, [bob, `Bob+${suffix}@Example.test`]);
+  await db.query(`INSERT INTO public.email_suppressions (email, reason, provider_event_id)
+    VALUES ($1, 'bounce', 'msg_integration')`, [`bob+${suffix}@example.test`]);
+  const bouncedShare = await createShare("After a bounce");
+  const bouncedReminder = (await db.query(`
+    INSERT INTO public.reminders
+      (commune_id, kind, source_id, sender_user_id, recipient_user_id, amount_minor)
+    VALUES ($1, 'nudge', $2, $3, $4, 5000)
+    RETURNING id
+  `, [commune, bouncedShare, alice, bob])).rows[0].id;
+  await db.query("INSERT INTO public.reminder_email_outbox (reminder_id) VALUES ($1)", [bouncedReminder]);
+  await runWorker();
+  assert.equal(providerCalls.length, callsBefore, "No email to a suppressed address");
+  const optedOut = await outbox(afterReminder);
+  const bounced = await outbox(bouncedReminder);
+  assert.deepEqual([bounced.status, bounced.last_error, bounced.payload],
+    [optedOut.status, optedOut.last_error, optedOut.payload]);
+  const emailStates = await db.query(`
+    SELECT commune_private.reminder_email_state($1) AS bounced,
+      commune_private.reminder_email_state($2) AS opted_out
+  `, [bouncedReminder, afterReminder]);
+  assert.equal(emailStates.rows[0].bounced, emailStates.rows[0].opted_out);
 
   console.log("Reminder worker integration checks passed");
 } catch (error) {
@@ -440,6 +484,7 @@ try {
   if (testCommune) {
     await db.query("DELETE FROM public.communes WHERE id = $1", [testCommune]);
   }
+  await db.query("DELETE FROM public.email_suppressions WHERE provider_event_id = 'msg_integration'");
   await db.query("DELETE FROM neon_auth.\"user\" WHERE id IN ($1, $2)",
     [alice, bob]);
   await db.end();

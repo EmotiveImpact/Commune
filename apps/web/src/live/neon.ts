@@ -2,6 +2,8 @@ import { createClient } from "@neondatabase/neon-js";
 import { ApiError } from "./api";
 import { observedDataFetch, reportRead } from "./diagnostics";
 import { parseSearchResponse } from "./search";
+import { ACCOUNT_CHANGED, currentViewer } from "./session";
+import { readStored, removeStored } from "./storage";
 import type {
   Commune, CurrencyCode, ReminderUsage, Snapshot, User,
 } from "./model";
@@ -188,6 +190,10 @@ async function currentUser(): Promise<User | null> {
 async function requireUser(): Promise<User> {
   const user = await currentUser();
   if (!user) throw new ApiError("Sign in required", 401);
+  // The session is shared by every tab. Never act for an account other than
+  // the one this tab is showing (see session.ts).
+  const viewer = currentViewer();
+  if (viewer && viewer !== user.id) throw new ApiError(ACCOUNT_CHANGED, 401);
   return user;
 }
 
@@ -294,9 +300,68 @@ function operationArguments(body: Row): Row {
     p_rotation_ids: body.rotationIds ?? null, p_repeat: body.repeat, p_notes: body.notes ?? "" };
 }
 
+// The auth SDK tells other tabs about each sign-in and token refresh by
+// writing the whole session, with its token, email and IP address, to
+// localStorage, where it would outlive the browser session. Other tabs have
+// heard it by the time a request settles, and the SDK never reads it back.
+const AUTH_BROADCAST_KEY = "better-auth.message";
+function forgetAuthBroadcast(): void {
+  try {
+    localStorage.removeItem(AUTH_BROADCAST_KEY);
+  } catch {
+    // Storage is blocked, so nothing was written either.
+  }
+}
+
 export async function neonApi<T>(path: string, init: RequestInit = {}): Promise<T> {
+  try {
+    return await route<T>(path, init);
+  } finally {
+    forgetAuthBroadcast();
+  }
+}
+
+// The auth SDK rejects with its own error for any refusal. It reports an
+// ended session and a wrong current password alike, as a 401 with code
+// invalid_credentials; only the message differs, and for a wrong password
+// the SDK writes its own. The app reads a 401 as being signed out (state.tsx),
+// so a wrong password becomes a 400 here, as it is on the local API.
+function signInEnded(error: unknown): never {
+  if ((error as { status?: unknown } | null)?.status === 401) {
+    throw new ApiError("Your sign-in has ended. Sign in again to carry on.", 401);
+  }
+  message(error);
+}
+function passwordChangeFailure(error: unknown): never {
+  const item = error as { code?: unknown; message?: unknown } | null;
+  if (item?.code === "invalid_credentials" && item.message === "Invalid email or password") {
+    throw new ApiError("Your current password isn’t right. Nothing was changed.", 400);
+  }
+  // An account that only signs in with Google has no password to check.
+  if (item?.code === "identity_not_found") {
+    throw new ApiError("This account signs in with Google, so it has no password to change.", 400);
+  }
+  // The server failed after the change, while starting this device's new
+  // session. The SDK calls that a missing session; the outcome is unknown.
+  if (item?.code === "session_not_found") throw new ApiError("Commune couldn’t confirm the change.", 502);
+  signInEnded(error);
+}
+// A used or expired reset link comes back as "Invalid or expired session
+// token", which reads like a sign-in problem.
+function resetFailure(error: unknown): never {
+  if ((error as { code?: unknown } | null)?.code === "bad_jwt") {
+    throw new ApiError("This reset link has expired or was already used. Request a new one.", 400);
+  }
+  message(error);
+}
+
+async function route<T>(path: string, init: RequestInit): Promise<T> {
   const method = (init.method ?? "GET").toUpperCase();
   const body = payload(init);
+  // Everything but signing in and out reads or changes records, and does it
+  // only for the account this tab shows. The Data API token belongs to
+  // whoever holds the shared session now, which may be someone else.
+  if (!path.startsWith("/auth/")) await requireUser();
   let response: unknown;
   if (path === "/auth/me" && method === "GET") response = { user: await currentUser() };
   else if (path === "/auth/login" && method === "POST") {
@@ -306,7 +371,7 @@ export async function neonApi<T>(path: string, init: RequestInit = {}): Promise<
     response = { user: await currentUser() };
   } else if (path === "/auth/google" && method === "POST") {
     if (import.meta.env.VITE_GOOGLE_OAUTH_ENABLED !== "true") throw new ApiError("Google sign-in is not configured", 503);
-    const requested = sessionStorage.getItem("commune.return-to");
+    const requested = readStored("commune.return-to");
     const requestedUrl = new URL(requested ?? "/", window.location.origin);
     const callbackURL = requestedUrl.origin === window.location.origin
       ? requestedUrl.href : new URL("/", window.location.origin).href;
@@ -316,7 +381,7 @@ export async function neonApi<T>(path: string, init: RequestInit = {}): Promise<
       errorCallbackURL: new URL("/login?oauth=error", window.location.origin).href,
     });
     if (result.error) message(result.error);
-    sessionStorage.removeItem("commune.return-to");
+    removeStored("commune.return-to");
     response = { ok: true };
   } else if (path === "/auth/signup" && method === "POST") {
     const result = await db().auth.signUp.email({ name: inputString(body.name, "name"), email: inputString(body.email, "email"), password: inputString(body.password, "password") });
@@ -338,12 +403,32 @@ export async function neonApi<T>(path: string, init: RequestInit = {}): Promise<
   } else if (path === "/auth/reset-password" && method === "POST") {
     const result = await db().auth.resetPassword({
       newPassword: inputString(body.password, "password"), token: inputString(body.token, "token"),
-    });
-    if (result.error) message(result.error);
+    }).catch(resetFailure);
+    if (result.error) resetFailure(result.error);
     response = { ok: true };
   } else if (path === "/auth/logout" && method === "POST") {
     const result = await db().auth.signOut();
     if (result.error) message(result.error);
+    response = { ok: true };
+  } else if (path === "/auth/change-password" && method === "POST") {
+    await requireUser();
+    const currentPassword = inputString(body.currentPassword, "currentPassword");
+    const newPassword = inputString(body.newPassword, "newPassword");
+    if (newPassword.length < 12 || newPassword.length > 128) throw new ApiError("Password must contain 12–128 characters", 400);
+    // Ends every session of the account, this one too, and starts a new one
+    // whose cookie comes back with the reply. This tab keeps its cached token,
+    // still valid until it expires, and then renews it from the new cookie as
+    // the same account, so nothing here signs it out.
+    const result = await db().auth.changePassword({ currentPassword, newPassword, revokeOtherSessions: true })
+      .catch(passwordChangeFailure);
+    if (result.error) passwordChangeFailure(result.error);
+    response = { ok: true };
+  } else if (path === "/auth/logout-others" && method === "POST") {
+    await requireUser();
+    // Keeps this session and ends the account's others. Another device's
+    // token stays valid until it expires (see SignInSettings.tsx).
+    const result = await db().auth.revokeOtherSessions().catch(signInEnded);
+    if (result.error) signInEnded(result.error);
     response = { ok: true };
   } else if (method === "GET" && path.startsWith("/search?")) {
     await requireUser();
@@ -508,12 +593,13 @@ export async function neonApi<T>(path: string, init: RequestInit = {}): Promise<
       p_commune_id: pathId(path, /^\/communes\/([^/]+)\/invites$/),
     })));
     response = { invites: invites.map((invite) => ({
-      id: str(invite.id), email: str(invite.email), role: str(invite.role),
+      id: str(invite.id), email: invite.email == null ? null : str(invite.email), role: str(invite.role),
       createdAt: str(invite.created_at), expiresAt: str(invite.expires_at),
       acceptedAt: invite.accepted_at == null ? null : str(invite.accepted_at),
       revokedAt: invite.revoked_at == null ? null : str(invite.revoked_at),
       invitedBy: invite.invited_by == null ? null : str(invite.invited_by),
       invitedByName: invite.invited_by_name == null ? null : str(invite.invited_by_name),
+      acceptedBy: invite.accepted_by == null ? null : str(invite.accepted_by),
     })) };
   } else if (method === "POST" && pathId(path, /^\/invites\/([^/]+)\/revoke$/)) {
     response = await rpcVoid("revoke_commune_invite", {

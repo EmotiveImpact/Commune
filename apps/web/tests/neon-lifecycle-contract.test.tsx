@@ -4,9 +4,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 // different path. These tests pin the function names, argument names and
 // result/error mapping. They do not contact Neon: hosted behaviour still
 // needs verification on a real branch after the migrations are applied.
-const mocks = vi.hoisted(() => ({ getSession: vi.fn(), from: vi.fn(), rpc: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  getSession: vi.fn(), changePassword: vi.fn(), revokeOtherSessions: vi.fn(), from: vi.fn(), rpc: vi.fn(),
+}));
 vi.mock("@neondatabase/neon-js", () => ({
-  createClient: () => ({ auth: { getSession: mocks.getSession }, from: mocks.from, rpc: mocks.rpc }),
+  createClient: () => ({
+    auth: { getSession: mocks.getSession, changePassword: mocks.changePassword, revokeOtherSessions: mocks.revokeOtherSessions },
+    from: mocks.from, rpc: mocks.rpc,
+  }),
 }));
 const requestId = "11111111-2222-4333-8444-555555555555";
 const send = async (path: string, body: unknown, method = "POST") => {
@@ -107,20 +112,25 @@ describe("hosted money lifecycle and task commands", () => {
       p_expected_amount_minor: 10000, p_expected_due_on: "2026-11-01" });
   });
 
-  it("lists invitations with who sent each one", async () => {
+  it("lists invitations with who sent and who accepted each one", async () => {
     mocks.rpc.mockResolvedValue({ data: [
       { id: "invite-1", email: "new@example.test", role: "admin", created_at: "2026-10-01T10:00:00Z", expires_at: "2026-10-08T10:00:00Z",
-        accepted_at: null, revoked_at: null, invited_by: "admin-1", invited_by_name: "Priya Shah" },
+        accepted_at: null, revoked_at: null, invited_by: "admin-1", invited_by_name: "Priya Shah", accepted_by: null },
       { id: "invite-2", email: "old@example.test", role: "member", created_at: "2026-09-01T10:00:00Z", expires_at: "2026-09-08T10:00:00Z",
-        accepted_at: null, revoked_at: "2026-09-03T10:00:00Z", invited_by: "gone-1", invited_by_name: null },
+        accepted_at: null, revoked_at: "2026-09-03T10:00:00Z", invited_by: "gone-1", invited_by_name: null, accepted_by: null },
+      // Accepted by someone who has since left: the database leaves out the address (0031).
+      { id: "invite-3", email: null, role: "member", created_at: "2026-08-01T10:00:00Z", expires_at: "2026-08-08T10:00:00Z",
+        accepted_at: "2026-08-02T10:00:00Z", revoked_at: null, invited_by: "admin-1", invited_by_name: "Priya Shah", accepted_by: "gone-2" },
     ], error: null });
     const result = await send("/communes/home-1/invites", undefined, "GET");
     expect(mocks.rpc).toHaveBeenCalledWith("list_commune_invites", { p_commune_id: "home-1" });
     expect(result.invites).toEqual([
       { id: "invite-1", email: "new@example.test", role: "admin", createdAt: "2026-10-01T10:00:00Z", expiresAt: "2026-10-08T10:00:00Z",
-        acceptedAt: null, revokedAt: null, invitedBy: "admin-1", invitedByName: "Priya Shah" },
+        acceptedAt: null, revokedAt: null, invitedBy: "admin-1", invitedByName: "Priya Shah", acceptedBy: null },
       { id: "invite-2", email: "old@example.test", role: "member", createdAt: "2026-09-01T10:00:00Z", expiresAt: "2026-09-08T10:00:00Z",
-        acceptedAt: null, revokedAt: "2026-09-03T10:00:00Z", invitedBy: "gone-1", invitedByName: null },
+        acceptedAt: null, revokedAt: "2026-09-03T10:00:00Z", invitedBy: "gone-1", invitedByName: null, acceptedBy: null },
+      { id: "invite-3", email: null, role: "member", createdAt: "2026-08-01T10:00:00Z", expiresAt: "2026-08-08T10:00:00Z",
+        acceptedAt: "2026-08-02T10:00:00Z", revokedAt: null, invitedBy: "admin-1", invitedByName: "Priya Shah", acceptedBy: "gone-2" },
     ]);
   });
 
@@ -251,5 +261,59 @@ describe("hosted money lifecycle and task commands", () => {
   ])("maps database error %s to HTTP-style status %i so conflicts and rejections stay distinct", async (code, status, message) => {
     mocks.rpc.mockResolvedValue({ data: null, error: { code, message } });
     await expect(send("/expenses/expense-1/void", { expectedVersion: 1, reason: "Entered twice", requestId })).rejects.toMatchObject({ status, message });
+  });
+});
+
+describe("hosted invitation email", () => {
+  it.each([
+    [422, "This invitation can't be emailed because a name in it looks like a link or phone number. Copy the link and share it yourself."],
+    [409, "This address can't receive Commune emails. Share the link another way."],
+    [429, "New accounts can email up to 5 invitations a day. Copy the link and share it yourself."],
+  ])("shows the email sender's %i refusal in its own words", async (status, refusal) => {
+    vi.stubEnv("VITE_REMINDER_FUNCTION_URL", "https://worker.example.test");
+    mocks.getSession.mockResolvedValue({ data: { session: { token: "session-jwt" }, user: { id: "viewer", emailVerified: true } }, error: null });
+    const worker = vi.fn(async (..._request: unknown[]) => Response.json({ error: refusal }, { status }));
+    vi.stubGlobal("fetch", worker);
+    try {
+      await expect(send("/invitation-email", { token: "a".repeat(64) })).rejects.toThrow(refusal);
+      expect(String(worker.mock.calls[0][0])).toBe("https://worker.example.test/invite");
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+});
+
+// The auth SDK's own requests and error shapes are pinned against the real SDK
+// in neon-password-contract.test.tsx.
+describe("hosted password change and sign out everywhere else", () => {
+  const change = { currentPassword: "Current-password-1", newPassword: "A-new-password-22" };
+
+  it("changes the password and ends the account's other sessions in one call", async () => {
+    mocks.changePassword.mockResolvedValue({ data: { token: "new-session-token", user: { id: "viewer" } }, error: null });
+    expect(await send("/auth/change-password", change)).toEqual({ ok: true });
+    expect(mocks.changePassword).toHaveBeenCalledExactlyOnceWith({ ...change, revokeOtherSessions: true });
+    mocks.revokeOtherSessions.mockResolvedValue({ data: { status: true }, error: null });
+    expect(await send("/auth/logout-others", {})).toEqual({ ok: true });
+    expect(mocks.revokeOtherSessions).toHaveBeenCalledOnce();
+  });
+
+  it("does nothing without a verified sign-in, or for an account this tab isn't showing", async () => {
+    mocks.getSession.mockResolvedValue({ data: null, error: null });
+    await expect(send("/auth/change-password", change)).rejects.toMatchObject({ status: 401 });
+    await expect(send("/auth/logout-others", {})).rejects.toMatchObject({ status: 401 });
+    mocks.getSession.mockResolvedValue({ data: { user: { id: "viewer", emailVerified: false } }, error: null });
+    await expect(send("/auth/logout-others", {})).rejects.toMatchObject({ status: 401 });
+    // Another tab signed in as someone else; this tab still shows "viewer".
+    mocks.getSession.mockResolvedValue({ data: { user: { id: "someone-else", emailVerified: true } }, error: null });
+    const { ACCOUNT_CHANGED, setViewer } = await import("../src/live/session");
+    setViewer("viewer");
+    try {
+      await expect(send("/auth/change-password", change)).rejects.toMatchObject({ status: 401, message: ACCOUNT_CHANGED });
+      await expect(send("/auth/logout-others", {})).rejects.toMatchObject({ status: 401, message: ACCOUNT_CHANGED });
+    } finally {
+      setViewer(null);
+    }
+    expect(mocks.changePassword).not.toHaveBeenCalled();
+    expect(mocks.revokeOtherSessions).not.toHaveBeenCalled();
   });
 });

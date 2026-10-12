@@ -55,6 +55,7 @@ export function FundsScreen() {
   const {
     hub,
     session,
+    snapshots,
     funds,
     reminderTargets,
     reminderUsage,
@@ -89,6 +90,10 @@ export function FundsScreen() {
   const [rebase, setRebase] = useState(false);
   const chase = useReminderFlow(sendReminder);
   const isAdmin = hub.role === "admin";
+  // Money towards an admin's own pledge is confirmed by another admin when the
+  // commune has one; the database refuses it otherwise.
+  const anotherAdmin = (snapshots[hub.id]?.members ?? []).some((member) =>
+    member.active !== false && member.role === "admin" && member.userId !== session?.userId);
   const searchRecord = useSearchRecord("fund", funds.filter(item => !item.archivedAt).map(item => item.id),
     id => { setShowArchived(false); setMode({ kind: "view", fundId: id }); });
   const fund =
@@ -323,7 +328,7 @@ export function FundsScreen() {
         </div>
         {!pledge.cancelledAt && !fund?.archivedAt && (
           <div className="a-field-row">
-            {isAdmin && remaining > 0 && (
+            {isAdmin && remaining > 0 && !(isMine && anotherAdmin) && (
               <Button
                 variant="secondary"
                 disabled={pending}
@@ -400,6 +405,9 @@ export function FundsScreen() {
         )}
         {isAdmin && target && !isMine && eligibility.reason && (
           <p className="c-action-hint">{eligibility.reason}</p>
+        )}
+        {isAdmin && isMine && anotherAdmin && remaining > 0 && !pledge.cancelledAt && !fund?.archivedAt && (
+          <p className="c-action-hint">Another admin records what you contribute to your own pledge.</p>
         )}
         {(pledge.contributions ?? []).length > 0 && (
           <details className="c-contribution-history">

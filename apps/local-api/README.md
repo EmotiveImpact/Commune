@@ -94,6 +94,7 @@ API_BASE=http://127.0.0.1:3006 node apps/local-api/tests/search.mjs
 API_BASE=http://127.0.0.1:3006 node apps/local-api/tests/money-lifecycle.mjs
 API_BASE=http://127.0.0.1:3006 node apps/local-api/tests/operations-history.mjs
 API_BASE=http://127.0.0.1:3006 node apps/local-api/tests/invites-pledges-requests.mjs
+API_BASE=http://127.0.0.1:3006 node apps/local-api/tests/session-viewer.mjs
 ```
 
 `money-lifecycle.mjs` needs migrations 0015 to 0017 and covers reminder
@@ -110,6 +111,10 @@ remove a note or task, and retries after removal.
 invitations withdrawn when their sender is removed or demoted, retried and
 concurrent creates of expenses, funds, pledges and contributions, reused
 request ids, and pledge limits and notices. It also refuses port 3002.
+
+`session-viewer.mjs` checks that a request naming an account other than the
+signed-in one (`X-Commune-Viewer`, sent by each tab) is refused with 401, while
+the signed-in account and requests without the header are still served.
 
 Search integration requires migration 0014. It covers all eight result types,
 active membership, selected/all-commune scopes, removed-member denial, literal

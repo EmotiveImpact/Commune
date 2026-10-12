@@ -27,6 +27,20 @@ lifecycle pack. Work is paused for a handoff, not a production release.
   pledge rules (0028); the email reminders setting and one-click unsubscribe
   (0029); account lookups by uuid (0030). 0027 and 0028 change the release
   order: see [infra/neon/README.md](../infra/neon/README.md).
+- Also from 9 October, for review: security and privacy fixes from the same
+  review. Former members' email addresses hidden (migration 0031); limits on
+  notices and payment reports (0032); invitation emails that name their
+  sender, refuse names carrying contact details, and stop at bounced addresses
+  (0033); extension functions closed to clients where the migration role owns
+  them (0034 warns otherwise; see infra/neon/README.md), an admin's own pledge
+  confirmed by another admin, and old email records trimmed (0034). Sign-out
+  now clears every tab, and the Neon Auth console settings Commune expects are
+  in [AUTH-SETTINGS.md](AUTH-SETTINGS.md). Settings has Change password and
+  Sign out everywhere else; both keep this device signed in and end the
+  account's other sessions, though a device that already has Commune open
+  keeps working until its access token expires (up to 15 minutes on Neon, at
+  once on the local API). The reset page takes the token out of the address
+  bar. Hosted behaviour is unverified.
 - The website is `web/` (the editorial homepage); the earlier v2 site is in
   `web-backup/`. Launch names `website` (3004) and `website-backup` (3003).
 - No push, deployment, hosted migration or provider change has been made. Do
@@ -120,7 +134,8 @@ install was run.
 ## Preserve the design and real functions
 
 Use [the design brief](DESIGN-LANGUAGE.md) and the illustrative
-`/design-language/index.html` with In context, Components and States.
+`/reference/design-language/index.html` (dev server only) with In context,
+Components and States.
 Keep the approved typography, wordmark, original switcher/avatar, compact rail,
 large selected Home card, Hub photo and hierarchy, expense boxes, adjacent
 settlement panels, Notes board and shared Operations calendar-date badges.
@@ -135,7 +150,7 @@ no further copy-cleanup pass is needed for the handoff.
 Read [the product-depth roadmap](PRODUCT-DEPTH-ROADMAP-2026-10-02.md) and the
 Remaining section of [money lifecycle](MONEY-LIFECYCLE-2026-10-02.md).
 
-1. **Hosted parity.** Migrations 0013 to 0030, schema-cache refresh, the
+1. **Hosted parity.** Migrations 0013 to 0034, schema-cache refresh, the
    matching web client and sender, auth, invitations and real email delivery
    are all unverified on Neon. Apply migrations before deploying the client.
    Measure cold/warm/idle loading with separate accounts. Do not declare

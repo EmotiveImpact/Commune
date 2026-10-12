@@ -9,6 +9,7 @@ import { LIMITS } from "../data/limits";
 import { CommuneLocationFields, type CommuneLocation } from "../ui/CommuneLocationFields";
 import { ReminderUsageMeter } from "../ui/ReminderUsage";
 import { useEmailReminders } from "../ui/useEmailReminders";
+import { SignInSettings } from "../ui/SignInSettings";
 import { communeExportJson, downloadText, expensesCsv } from "../data/export";
 import { todayIso } from "../data/operations";
 
@@ -185,6 +186,7 @@ export function SettingsScreen() {
             </div>
           </div>
         </div>
+        <SignInSettings />
         <div className="a-set-group">
           <h3>Support &amp; legal</h3>
           <div className="a-set-list">

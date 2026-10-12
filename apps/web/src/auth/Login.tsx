@@ -5,14 +5,21 @@ import { useApp } from "../state";
 import { LIMITS } from "../data/limits";
 import { keepSearch } from "../nav";
 import { GoogleMark } from "../ui/Icon";
+import { readStored, removeStored } from "../live/storage";
 
 export function LoginPage() {
-  const { signInWithPassword, signInWithGoogle } = useApp();
+  const { signInWithPassword, signInWithGoogle, signOutUnconfirmed, retrySignOut, sessionNotice } = useApp();
   const [, setLocation] = useLocation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [signOutRetry, setSignOutRetry] = useState<"idle" | "busy" | "failed">("idle");
+
+  async function onRetrySignOut() {
+    setSignOutRetry("busy");
+    setSignOutRetry(await retrySignOut() ? "idle" : "failed");
+  }
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
@@ -24,8 +31,8 @@ export function LoginPage() {
     setBusy(true);
     try {
       await signInWithPassword(email.trim(), password);
-      const returnTo = sessionStorage.getItem("commune.return-to");
-      sessionStorage.removeItem("commune.return-to");
+      const returnTo = readStored("commune.return-to");
+      removeStored("commune.return-to");
       setLocation(returnTo || keepSearch("/"));
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not sign in.");
@@ -50,6 +57,16 @@ export function LoginPage() {
       <div className="commune-auth-panel">
         <h2>Welcome back</h2>
         <p className="commune-auth-lede">Sign in to your shared Commune account.</p>
+        {signOutUnconfirmed ? (
+          <div className="commune-auth-alert" role="alert">
+            {signOutRetry === "failed"
+              ? "Sign-out still isn’t confirmed. Check your connection, then try again."
+              : "Commune couldn’t confirm your sign-out, so this device may still be signed in."}{" "}
+            <button className="commune-auth-link" type="button" disabled={signOutRetry === "busy"} onClick={() => void onRetrySignOut()}>
+              {signOutRetry === "busy" ? "Signing out…" : "Try again"}
+            </button>
+          </div>
+        ) : sessionNotice && !error ? <div className="commune-auth-alert" role="status">{sessionNotice}</div> : null}
         {error || new URLSearchParams(window.location.search).has("oauth")
           ? <div className="commune-auth-alert" role="alert">{error || "Google sign-in did not complete. Please try again."}</div>
           : null}

@@ -5,6 +5,7 @@ import { useApp } from "../state";
 import { LIMITS } from "../data/limits";
 import { keepSearch } from "../nav";
 import { GoogleMark } from "../ui/Icon";
+import { readStored, removeStored } from "../live/storage";
 
 export function SignupPage() {
   const { signUpWithPassword, verifyEmailCode, signInWithPassword, signInWithGoogle } = useApp();
@@ -31,8 +32,8 @@ export function SignupPage() {
         setVerificationPending(true);
         return;
       }
-      const returnTo = sessionStorage.getItem("commune.return-to");
-      sessionStorage.removeItem("commune.return-to");
+      const returnTo = readStored("commune.return-to");
+      removeStored("commune.return-to");
       setLocation(returnTo || keepSearch("/onboard"));
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not create your account.");
@@ -48,8 +49,8 @@ export function SignupPage() {
     try {
       await verifyEmailCode(email.trim(), code.trim());
       await signInWithPassword(email.trim(), password);
-      const returnTo = sessionStorage.getItem("commune.return-to");
-      sessionStorage.removeItem("commune.return-to");
+      const returnTo = readStored("commune.return-to");
+      removeStored("commune.return-to");
       setLocation(returnTo || keepSearch("/onboard"));
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not verify your email.");

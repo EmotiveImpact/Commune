@@ -1,8 +1,10 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { Link } from "wouter";
 import { AuthLayout } from "./AuthLayout";
 import { keepSearch } from "../nav";
 import { api, post } from "../live/api";
+import { readStored, removeStored, writeStored } from "../live/storage";
+import { commandFailure } from "../data/commands";
 import { LIMITS } from "../data/limits";
 
 export function ForgotPasswordPage() {
@@ -57,12 +59,34 @@ export function ForgotPasswordPage() {
   );
 }
 
+// The reset link's token leaves the address bar as soon as it is read, so it
+// isn't kept in this tab's history or passed on with a copied address. The tab
+// keeps it until the reset works, for a reload or another try.
+const RESET_TOKEN = "commune.reset-token";
+function readResetLink(): { token: string; expired: boolean } {
+  const params = new URLSearchParams(window.location.search);
+  const token = params.get("token");
+  if (token) return { token, expired: false };
+  // The auth server sends a used or expired link back with an error instead.
+  if (params.has("error")) return { token: "", expired: true };
+  return { token: readStored(RESET_TOKEN) ?? "", expired: false };
+}
+
 export function ResetPasswordPage() {
-  const token = new URLSearchParams(window.location.search).get("token") ?? "";
+  const [{ token, expired }] = useState(readResetLink);
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (token) writeStored(RESET_TOKEN, token);
+    else removeStored(RESET_TOKEN);
+    const url = new URL(window.location.href);
+    if (!url.searchParams.has("token")) return;
+    url.searchParams.delete("token");
+    window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+  }, [token]);
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
@@ -70,9 +94,13 @@ export function ResetPasswordPage() {
     setError("");
     try {
       await api("/auth/reset-password", { method: "POST", body: JSON.stringify({ token, password }) });
+      removeStored(RESET_TOKEN);
       setDone(true);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not reset your password.");
+      // A lost reply can hide a reset that worked, and the link is then used up.
+      const failure = commandFailure(cause, "Could not reset your password.");
+      setError(failure.rejected ? failure.message
+        : "We couldn’t confirm the reset. Check your connection, then try again. If the link then says it was already used, your new password is set and you can sign in with it.");
     } finally {
       setBusy(false);
     }
@@ -94,7 +122,9 @@ export function ResetPasswordPage() {
             {busy ? "Saving…" : "Reset password"}
           </button>
         </form>
-      </> : <p className="commune-auth-lede">This reset link is missing a token. Request a new one.</p>}
+      </> : <p className="commune-auth-lede">{expired
+        ? "This reset link has expired or was already used. Request a new one."
+        : "This reset link is missing a token. Request a new one."}</p>}
     <Link href={keepSearch("/login")} className="commune-auth-btn">Back to sign in</Link>
   </div></AuthLayout>;
 }

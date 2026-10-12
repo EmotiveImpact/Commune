@@ -106,8 +106,8 @@ function AppLoading() {
 }
 
 function AppUnavailable() {
-  const { refresh } = useApp();
-  return <ConnectionRecovery retry={refresh} />;
+  const { refresh, signOut } = useApp();
+  return <ConnectionRecovery retry={refresh} signOut={signOut} />;
 }
 
 function ProductShell() {

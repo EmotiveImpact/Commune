@@ -4,6 +4,7 @@ import { Pool } from "pg";
 import { renderReminderEmail } from "./email.ts";
 import { InvitationEmailError, sendInvitationEmail } from "./invitations.ts";
 import { type UnsubscribeConfig, unsubscribeConfig, unsubscribePage, unsubscribeRecipient, unsubscribeUrl } from "./unsubscribe.ts";
+import { resendWebhook } from "./webhooks.ts";
 
 type Outbox = {
   reminder_id: string;
@@ -34,6 +35,7 @@ type ReminderDetails = {
   member_active: boolean;
   label: string | null;
   email_reminders: boolean | null;
+  recipient_suppressed: boolean;
   still_due: boolean;
 };
 
@@ -128,6 +130,10 @@ async function loadReminderDetails(reminderId: string) {
           AND m.user_id = r.recipient_user_id AND m.active
       ) AS member_active,
       pref.email_reminders,
+      EXISTS (
+        SELECT 1 FROM public.email_suppressions x
+        WHERE x.email = lower(recipient.email)
+      ) AS recipient_suppressed,
       CASE WHEN r.kind = 'nudge'
         -- voided_at arrives with migration 0017. Reading it through to_jsonb
         -- keeps this query valid on a database that has not had it applied.
@@ -165,10 +171,13 @@ function isDeliverable(detail: ReminderDetails | null): detail is ReminderDetail
   recipient_email: string;
   outstanding_minor: string;
 } {
+  // An address the provider reported as bouncing or complaining is skipped
+  // exactly like one whose owner turned reminder emails off, so a sender
+  // cannot tell the two apart.
   return !!detail && detail.still_due &&
     detail.member_active && detail.recipient_verified &&
-    detail.email_reminders !== false && !!detail.recipient_email &&
-    !!detail.outstanding_minor;
+    detail.email_reminders !== false && !detail.recipient_suppressed &&
+    !!detail.recipient_email && !!detail.outstanding_minor;
 }
 
 async function suppress(reminderId: string, attempt: number) {
@@ -343,8 +352,10 @@ async function dispatch(request: Request, config: MailConfig): Promise<Response>
   if (sender.rows[0]?.sender_user_id !== senderId) {
     return new Response("Reminder not found", { status: 404, headers });
   }
-  const processed = await sendOne(config, reminderId);
-  return Response.json({ processed }, { headers });
+  await sendOne(config, reminderId);
+  // The same answer whether an email went or the recipient turned email off:
+  // that choice is theirs to keep private (the snapshot hides it too).
+  return Response.json({ accepted: true }, { headers });
 }
 
 async function unsubscribe(request: Request, config: MailConfig): Promise<Response> {
@@ -403,6 +414,10 @@ async function dispatchInvitation(request: Request, config: MailConfig) {
 
 export default {
   async fetch(request: Request): Promise<Response> {
+    // Provider events need only their own signing secret, not the mail settings.
+    if (new URL(request.url).pathname === "/webhooks/resend") {
+      return resendWebhook(pool, request, process.env.RESEND_WEBHOOK_SECRET);
+    }
     const config = mailConfig();
     if (!config) {
       console.error("Reminder worker is missing RESEND_API_KEY, RESEND_FROM, or APP_URL");
@@ -420,6 +435,13 @@ export default {
     }
     await expireUnsendable();
     const processed = await drainScheduled(config);
-    return Response.json({ processed });
+    // Addresses and message bodies are kept only while a send may need them.
+    // Tidying up never holds up the emails themselves.
+    const pruned = await pool.query<{ pruned: unknown }>("SELECT commune_private.prune_delivery_records() AS pruned")
+      .then((result) => result.rows[0]?.pruned ?? null, (error: unknown) => {
+        console.error("Pruning old email records failed", error);
+        return null;
+      });
+    return Response.json({ processed, pruned });
   },
 };

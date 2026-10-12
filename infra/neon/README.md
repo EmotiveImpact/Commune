@@ -14,8 +14,8 @@ this is not a replacement of Neon Auth or a switch back to Supabase.
 - [Current design language and preserved layouts](../../docs/DESIGN-LANGUAGE.md)
 - [Local build-out from 5 October: migrations 0020 onwards](../../docs/LOCAL-BUILDOUT-2026-10-05.md)
 
-Migrations **0015 to 0030 are local only**. They have not been applied to any
-Neon branch. Release order when they are: apply 0013 to 0030 in numeric order
+Migrations **0015 to 0034 are local only**. They have not been applied to any
+Neon branch. Release order when they are: apply 0013 to 0034 in numeric order
 to the preview branch, refresh that branch's Data API schema cache, then
 deploy the matching web client. The new client calls `send_reminder_command`,
 `record_share_receipt`, `reverse_share_receipt`, `correct_expense`,
@@ -25,7 +25,7 @@ working after them. 0016 backfills one receipt per previously confirmed share
 and adds a commit-time check that `settled_minor` matches its receipts; check
 the backfill count on the branch before promoting.
 
-Three of the 9 October migrations change that rule:
+Six of the 9 October migrations change that rule:
 
 - **0027** removes the client's write grants on `commune_notes` and
   `commune_operations`; notes and tasks change only through `create_note`,
@@ -40,6 +40,36 @@ Three of the 9 October migrations change that rule:
   branch.
 - **0030** changes how the invitation email sender in `apps/reminder-worker`
   looks accounts up, so deploy the worker after 0030.
+- **0031** leaves the address out of an accepted invitation in
+  `list_commune_invites` once the person who accepted it has left, and adds
+  an `accepted_by` column so Members can name them instead. A client from
+  before 0031 lists such an invitation with no name until it is replaced.
+- **0033** adds `public.email_suppressions`, which the worker reads before
+  every invitation and reminder email, so deploy the worker after 0033. It
+  also refuses a new commune name, or a rename, that includes a link, an
+  email address or a phone number; existing names are not changed.
+- **0034** adds `commune_private.prune_delivery_records()`, which the
+  worker's scheduled run calls, so deploy the worker after 0034. It also
+  refuses an admin's contributions to their own pledge when another admin
+  can confirm them; a client from before 0034 still offers the button and
+  shows that refusal.
+  - If applying **0034** prints `WARNING: Clients can still run these extension
+    functions in public: ...`, the role that applied it does not own the
+    pgcrypto and pg_trgm functions (when a role that is not a superuser
+    installs a trusted extension, PostgreSQL makes the bootstrap superuser
+    their owner), so it could not take EXECUTE away from clients. The rest of
+    0034 is applied, but `tests/grants.sql` fails on its extension check until
+    this is fixed. Only the functions' owner can fix it, and moving the
+    extensions out of `public` needs the same ownership, so ask Neon support to
+    run `REVOKE ALL ON FUNCTION ... FROM PUBLIC` for each function the warning
+    names, then run `tests/grants.sql` again. Until then, a PostgREST-style
+    Data API can call only the eight that take no parameter or a single
+    unnamed text or bytea one: `gen_random_uuid()`, `gen_salt(text)`,
+    `armor(bytea)`, `dearmor(text)`, `pgp_key_id(bytea)`,
+    `pgp_armor_headers(text)`, `show_limit()` and `show_trgm(text)` (pgcrypto
+    1.3, pg_trgm 1.6). None of them reads Commune's data; `crypt`,
+    `gen_random_bytes`, `set_limit` and the rest take parameters such an API
+    cannot pass.
 
 0026 replaces `save_recurring_bill` and adds `set_recurring_bill_paused` and
 `set_recurring_bill_archived`; production has no recurring bills yet, so only
@@ -135,7 +165,8 @@ treat them as applied production configuration until its release is verified:
   it. “Delivered” requires a provider delivery webhook, not just a 2xx send.
 - The bill payer confirms an expense share as settled; a debtor cannot erase
   what they owe. Fund contributions are confirmations recorded by an admin,
-  not money collected by Commune.
+  not money collected by Commune. Since 0034 another admin confirms
+  contributions to an admin's own pledge, unless the commune has only one.
 - The worker rechecks whether the recipient is verified, still a member,
   opted in, and still owes that amount before each send attempt. A changed
   balance suppresses a frozen retry rather than sending stale figures.
@@ -144,7 +175,12 @@ treat them as applied production configuration until its release is verified:
   short-lived Neon Auth JWT and confirms the caller created that reminder.
   If the browser closes or delivery fails, the outbox and scheduled sweep
   still carry the job; a successful in-app notice must not be misrepresented
-  as an email delivered to an inbox.
+  as an email delivered to an inbox. The route gives the same answer whether
+  or not an email went, so it never tells the sender that the recipient
+  turned email off.
+- Each scheduled sweep also trims email records older than 30 days (0034):
+  a reminder's frozen email body is cleared and invitation email rows are
+  deleted. Notices, activity, reminders and invitations are kept.
 - The five-minute scheduled trigger is one branch-wide retry sweep, **not one
   worker per user**. The current sweep processes at most 100 queued jobs with
   four concurrent senders and a 30-second budget. This is a small-scale
@@ -153,6 +189,34 @@ treat them as applied production configuration until its release is verified:
   limits, bounce handling, and provider spend; increase or replace the drain
   mechanism based on those measurements rather than assuming a paid plan
   automatically scales application throughput.
+
+## Request identity
+
+Every database function finds its caller with
+`commune_private.data_api_user_id()` (0011), which reads the `sub` claim of
+the `request.jwt.claims` setting. Neon's Data API sets that setting for each
+request from a token it has verified. Any session that can run SQL can also
+set it, with `set_config`, so the identity holds only while these stay true:
+
+- Clients reach the database only through the Data API, which runs functions
+  in the exposed schema (`public`) that their role was granted, never SQL of
+  their own. No function sets `request.jwt.claims` or runs SQL built at run
+  time, and every definer function fixes its `search_path`.
+  `tests/grants.sql` checks all three across every function, so a new one is
+  covered without being listed.
+- Hosted database credentials stay with the migration run and the email
+  worker, never in a browser build. Whoever holds them can act as any
+  account.
+- The local API (`apps/local-api/src/db.ts`) sets the claim itself for the
+  account its own session names, then switches to the `authenticated` role.
+  It accepts only a loopback database and is never deployed.
+- `commune.occurrence_event` is the only other setting functions trust: it
+  stops a task or recurring bill change being logged twice by a function that
+  records its own event. Only those functions set it, inside their own
+  transaction.
+
+The settings that live in the Neon Auth console (password length, sessions,
+rate limits) are recorded in [`docs/AUTH-SETTINGS.md`](../../docs/AUTH-SETTINGS.md).
 
 ## Production cutover order
 
@@ -168,7 +232,7 @@ treat them as applied production configuration until its release is verified:
    Broad grants would let direct writes bypass ledger invariants. Keep preview
    branches separate from production.
 3. Apply `migrations/0001_commune_core.sql` through
-   `migrations/0030_account_lookups.sql` in numeric order to the
+   `migrations/0034_database_hardening.sql` in numeric order to the
    development branch via an **unpooled** connection. Run `tests/grants.sql`,
    review RLS, and run two-account signed-JWT tests before applying the same
    reviewed migrations to production. After a migration adds or changes a
@@ -201,6 +265,14 @@ treat them as applied production configuration until its release is verified:
    emails then carry a signed `/unsubscribe` link and `List-Unsubscribe`
    headers; without both settings they point to Settings only. Changing the
    secret invalidates links in emails already sent.
+   For bounces and spam complaints (migration 0033 onwards), add a webhook
+   in Resend for the events `email.bounced` and `email.complained`, with the
+   URL `{WORKER_PUBLIC_URL}/webhooks/resend`, and set its signing secret
+   (`whsec_` followed by base64) as the server-only `RESEND_WEBHOOK_SECRET`.
+   The worker checks each event's signature and records the address in
+   `public.email_suppressions`; Commune then refuses invitations to it and
+   skips reminder emails to it as if its owner had turned them off. Without
+   the secret the route answers 503 and records nothing.
    Never put those secrets in a `VITE_` variable or the repository.
 6. Use Vercel's Neon integration for preview branch isolation, then test the
    deployed preview with two real accounts. Open/review the current release

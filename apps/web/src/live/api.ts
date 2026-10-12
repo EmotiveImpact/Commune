@@ -1,4 +1,5 @@
 import type { Commune, Snapshot, User } from "./model";
+import { currentViewer } from "./session";
 
 // Pass already-verified identity and commune metadata through one refresh.
 // Every database request still authenticates and enforces RLS on the server.
@@ -35,6 +36,9 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   }
   const headers = new Headers(init.headers);
   if (init.body && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");
+  // The server refuses a request for any account but the one on screen.
+  const viewer = currentViewer();
+  if (viewer) headers.set("X-Commune-Viewer", viewer);
   const response = await fetch(`/api${path}`, {
     credentials: "same-origin",
     ...init,

@@ -125,8 +125,10 @@ Implementation and local evidence: [search review](../artifacts/workflow-qa-2026
 
 ## HTML reference: context, components and states
 
-Open `/design-language/index.html`. The three keyboard-accessible tabs are
-**In context**, **Components** and **States**; `/design-language/index.html#states`
+With the dev server running, open `/reference/design-language/index.html`
+(the file is `apps/web/reference/design-language/index.html`; it is never
+published). The three keyboard-accessible tabs are **In context**,
+**Components** and **States**; `/reference/design-language/index.html#states`
 opens the state reference directly. This is an illustrative document, not a
 second application. Its example forms and reminder controls never call the API,
 create records or send email. The existing reference typography and icon family

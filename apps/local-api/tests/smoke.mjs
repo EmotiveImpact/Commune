@@ -11,7 +11,8 @@ if (baseUrl.protocol !== "http:" ||
     baseUrl.search || baseUrl.hash || baseUrl.username || baseUrl.password) {
   throw new Error("Smoke tests require an isolated loopback API port (not 3002)");
 }
-const suffix = randomUUID().slice(0, 8);
+// Letters only, so a commune name that carries it never holds a phone-like run of digits.
+const suffix = randomUUID().slice(0, 8).replace(/[0-9]/g, (digit) => "ghijklmnop"[digit]);
 const password = "LocalSmokePassword-2026!";
 
 function session() {

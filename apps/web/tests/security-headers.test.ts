@@ -3,7 +3,10 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { exactConnectPolicy } from "../vite.config";
 
-type VercelConfig = { headers: Array<{ source: string; headers: Array<{ key: string; value: string }> }> };
+type VercelConfig = {
+  headers: Array<{ source: string; headers: Array<{ key: string; value: string }> }>;
+  rewrites: Array<{ source: string; destination: string }>;
+};
 const vercel = JSON.parse(readFileSync(new URL("../vercel.json", import.meta.url), "utf8")) as VercelConfig;
 const headers = new Map(vercel.headers.find((rule) => rule.source === "/(.*)")?.headers.map((header) => [header.key, header.value]));
 const policy = new Map((headers.get("Content-Security-Policy") ?? "").split(";").map((part) => {
@@ -27,6 +30,20 @@ describe("hosted security headers", () => {
     expect(headers.get("X-Content-Type-Options")).toBe("nosniff");
     expect(headers.get("Referrer-Policy")).toBe("strict-origin-when-cross-origin");
     expect(headers.get("Permissions-Policy")).toContain("camera=()");
+  });
+});
+
+describe("hosted files", () => {
+  it("answers a missing built file with not found rather than the app page", () => {
+    expect(vercel.rewrites).toEqual([{ source: "/((?!assets/).*)", destination: "/index.html" }]);
+    const fallback = new RegExp(`^${vercel.rewrites[0].source}$`);
+    expect(fallback.test("/assets/index-old.js")).toBe(false);
+    for (const path of ["/", "/settings", "/invite", "/privacy"]) expect(fallback.test(path)).toBe(true);
+  });
+
+  it("lets browsers keep built files, whose names change with their content", () => {
+    expect(vercel.headers.find((rule) => rule.source === "/assets/(.*)")?.headers)
+      .toEqual([{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }]);
   });
 });
 

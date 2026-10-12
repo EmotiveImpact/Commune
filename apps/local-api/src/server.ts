@@ -1,7 +1,7 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { randomUUID } from "node:crypto";
 import type { PoolClient } from "pg";
-import { createAccount, getUser, login, logout, setSessionCookie, type User } from "./auth.js";
+import { changePassword, createAccount, getUser, login, logout, logoutOthers, setSessionCookie, type User } from "./auth.js";
 import { pool, withActor } from "./db.js";
 import { InvitationEmailError, invitationMailConfig, sendInvitationEmail } from "../../reminder-worker/src/invitations.js";
 
@@ -171,6 +171,12 @@ async function body(req: IncomingMessage): Promise<Record<string, unknown>> {
 async function actor(req: IncomingMessage): Promise<User> {
   const user = await getUser(req);
   if (!user) throw new ApiError(401, "Sign in required");
+  // Every tab shares one sign-in. A tab names the account it is showing, and
+  // nothing is done for anyone else (apps/web/src/live/session.ts).
+  const viewer = req.headers["x-commune-viewer"];
+  if (typeof viewer === "string" && viewer && viewer !== user.id) {
+    throw new ApiError(401, "You signed out or changed account in another tab, so this wasn’t saved.");
+  }
   return user;
 }
 
@@ -289,6 +295,34 @@ route("POST", /^\/api\/auth\/login$/, async (req, res) => {
 route("POST", /^\/api\/auth\/logout$/, async (req, res) => {
   await logout(req);
   setSessionCookie(res, null);
+  send(res, { ok: true });
+});
+
+// Both keep this device's session and end the account's others.
+route("POST", /^\/api\/auth\/change-password$/, async (req, res) => {
+  const user = await actor(req);
+  const input = await body(req);
+  if (typeof input.currentPassword !== "string" || input.currentPassword.length > 128) {
+    throw new ApiError(400, "Invalid currentPassword");
+  }
+  const password = input.newPassword;
+  if (typeof password !== "string" || password.length < 12 || password.length > 128) {
+    throw new ApiError(400, "Password must contain 12–128 characters");
+  }
+  // A wrong current password counts towards the same limit as signing in.
+  const key = checkThrottle(req, user.email);
+  if (!await changePassword(req, user.id, input.currentPassword, password)) {
+    failed(key);
+    throw new ApiError(400, "Your current password isn’t right. Nothing was changed.");
+  }
+  failures.delete(key);
+  send(res, { ok: true });
+});
+
+route("POST", /^\/api\/auth\/logout-others$/, async (req, res) => {
+  const user = await actor(req);
+  await body(req);
+  await logoutOthers(req, user.id);
   send(res, { ok: true });
 });
 
@@ -770,7 +804,7 @@ route("GET", /^\/api\/communes\/([0-9a-f-]{36})\/invites$/, async (req, res, mat
     id: row.id, email: row.email, role: row.role,
     createdAt: row.created_at, expiresAt: row.expires_at,
     acceptedAt: row.accepted_at, revokedAt: row.revoked_at,
-    invitedBy: row.invited_by, invitedByName: row.invited_by_name,
+    invitedBy: row.invited_by, invitedByName: row.invited_by_name, acceptedBy: row.accepted_by,
   })) });
 });
 

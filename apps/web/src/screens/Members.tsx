@@ -6,12 +6,15 @@ import { useSearchRecord } from "../ui/useSearchRecord";
 import { Avatar, Pill } from "../ui/widgets";
 import { Button, Dialog, EmptyState, Feedback, Panel } from "../ui/components";
 
+/** An invitation no one has accepted, which always carries its address. */
+type OpenInvite = PendingInvite & { email: string };
+
 /**
  * A fresh link for an invitation that is pending or has expired. Creating it
  * retires the earlier link, so the dialog asks first.
  */
 function NewInviteLinkDialog({ invite, onClose, onDone }: {
-  invite: PendingInvite; onClose: () => void; onDone: (message: string) => void;
+  invite: OpenInvite; onClose: () => void; onDone: (message: string) => void;
 }) {
   const { createInvite, sendInviteEmail } = useApp();
   const [url, setUrl] = useState("");
@@ -88,9 +91,13 @@ export function MembersScreen() {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const searchRecord = useSearchRecord("member", hub.members.map(item => item.userId));
-  const [reissue, setReissue] = useState<PendingInvite | null>(null);
-  const openInvites = invites.filter((invite) => invite.status === "pending" || invite.status === "expired");
+  const [reissue, setReissue] = useState<OpenInvite | null>(null);
+  const openInvites = invites.filter((invite): invite is OpenInvite =>
+    (invite.status === "pending" || invite.status === "expired") && invite.email !== null);
   const pastInvites = invites.filter((invite) => invite.status === "accepted" || invite.status === "revoked").slice(0, 12);
+  // Someone who accepted and has since left keeps their name, not their address.
+  const invitee = (invite: PendingInvite) => invite.email
+    ?? snapshots[hub.id]?.members.find((member) => member.userId === invite.acceptedBy)?.name ?? "Former member";
   // Who sent an invitation. It stays open only while they are an admin.
   const sender = (invite: PendingInvite) => invite.invitedBy === session?.userId ? "you"
     : invite.invitedByName ?? (invite.invitedBy ? "a former member" : "");
@@ -287,7 +294,7 @@ export function MembersScreen() {
           <ul>
             {pastInvites.map((invite) => (
               <li key={invite.id}>
-                {invite.email} · {invite.role.toLowerCase()} ·{" "}
+                {invitee(invite)} · {invite.role.toLowerCase()} ·{" "}
                 {invite.status === "accepted"
                   ? `accepted ${formatTimestampDay(invite.acceptedAt)}`
                   : `revoked ${formatTimestampDay(invite.revokedAt)}`}
