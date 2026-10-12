@@ -26,6 +26,12 @@ describe("hosted security headers", () => {
     expect([...policy.values()].flat()).not.toContain("'unsafe-eval'");
   });
 
+  it("takes fonts and styles only from the app's own files", () => {
+    expect(policy.get("style-src")).toEqual(["'self'"]);
+    expect(policy.get("font-src")).toEqual(["'self'"]);
+    expect(readFileSync(new URL("../index.html", import.meta.url), "utf8")).not.toMatch(/fonts\.(googleapis|gstatic)\.com/);
+  });
+
   it("sends nosniff, a referrer policy and a permissions policy", () => {
     expect(headers.get("X-Content-Type-Options")).toBe("nosniff");
     expect(headers.get("Referrer-Policy")).toBe("strict-origin-when-cross-origin");

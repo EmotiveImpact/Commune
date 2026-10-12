@@ -1,4 +1,4 @@
-import type { Commune, Snapshot, User } from "./model";
+import type { Commune, Expense, ExpensePage, Snapshot, User } from "./model";
 import { currentViewer } from "./session";
 
 // Pass already-verified identity and commune metadata through one refresh.
@@ -11,12 +11,28 @@ export async function loadCommunes(user: User): Promise<{ communes: Commune[] }>
   return api("/communes");
 }
 
-export async function loadSnapshot(commune: Commune): Promise<Snapshot> {
+/** A summary is what the overview screens show of a commune that is not open. */
+export async function loadSnapshot(commune: Commune, detail?: "summary"): Promise<Snapshot> {
   if (import.meta.env.PROD) {
     const { snapshot } = await import("./neon");
-    return snapshot(commune.id, commune);
+    return snapshot(commune.id, commune, detail);
   }
-  return api(`/communes/${encodeURIComponent(commune.id)}/snapshot`);
+  return api(`/communes/${encodeURIComponent(commune.id)}/snapshot${detail ? "?detail=summary" : ""}`);
+}
+
+/**
+ * Expenses older than the snapshot holds, created in the `months` calendar
+ * months (UTC) before `before`, or all of them when months is left out.
+ * Without `before`, the page starts where the snapshot's expenses do.
+ */
+export function loadExpensePage(communeId: string, before: string | null, months?: number): Promise<ExpensePage> {
+  const query = new URLSearchParams({ ...(before ? { before } : {}), ...(months ? { months: String(months) } : {}) }).toString();
+  return api(`/communes/${encodeURIComponent(communeId)}/expenses/history${query ? `?${query}` : ""}`);
+}
+
+/** Named expenses of one commune, at most 50, for links to ones not loaded. */
+export function loadExpenseRecords(communeId: string, ids: string[]): Promise<{ expenses: Expense[] }> {
+  return api(`/communes/${encodeURIComponent(communeId)}/expenses/records?ids=${ids.map(encodeURIComponent).join(",")}`);
 }
 
 export class ApiError extends Error {

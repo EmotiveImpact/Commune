@@ -40,8 +40,9 @@ BEGIN
     RAISE EXCEPTION 'Anonymous workflow execution grant';
   END IF;
 
-  -- Money-lifecycle, occurrence, announcement, note and task commands (0015-0027): members only,
-  -- never anonymous, and the private helpers are not callable by any client role.
+  -- Money-lifecycle, occurrence, announcement, note and task commands (0015-0027) and the
+  -- loading reads (0036): members only, never anonymous, and the private helpers are not
+  -- callable by any client role.
   FOREACH table_name IN ARRAY ARRAY[
     'public.send_reminder_command(text,uuid,uuid)',
     'public.record_share_receipt(uuid,bigint,date,text,uuid)',
@@ -64,7 +65,11 @@ BEGIN
     'public.remove_note(uuid)',
     'public.create_operation(uuid,text,text,text,date,time,boolean,text,jsonb,text,text,uuid)',
     'public.update_operation(uuid,integer,text,text,text,date,time,boolean,text,jsonb,text,text)',
-    'public.remove_operation(uuid)'
+    'public.remove_operation(uuid)',
+    'public.my_communes()',
+    'public.commune_summary(uuid)',
+    'public.commune_expense_page(uuid,date,integer)',
+    'public.commune_expense_records(uuid,uuid[])'
   ] LOOP
     IF has_function_privilege('anonymous', table_name, 'EXECUTE')
       OR has_function_privilege('public', table_name, 'EXECUTE')
@@ -104,7 +109,13 @@ BEGIN
     'commune_private.operation_content(text,text,text,date,time,boolean,text,jsonb,text,text)',
     'commune_private.money_correction_reserve(text,text,jsonb)',
     'commune_private.prune_delivery_records()',
-    'commune_private.currency_locked_by(uuid)'
+    'commune_private.currency_locked_by(uuid)',
+    'commune_private.note_commune_change()',
+    'commune_private.change_mark(uuid)',
+    'commune_private.expense_window_start()',
+    'commune_private.snapshot_expense_ids(uuid,timestamptz)',
+    'commune_private.expense_records(uuid[])',
+    'commune_private.expense_history(uuid)'
   ] LOOP
     IF has_function_privilege('authenticated', table_name, 'EXECUTE')
       OR has_function_privilege('anonymous', table_name, 'EXECUTE') THEN

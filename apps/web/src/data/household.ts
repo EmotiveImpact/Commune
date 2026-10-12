@@ -757,12 +757,6 @@ export function initialsOf(name: string): string {
   return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
 }
 
-export function heroClass(hub: Hub): "park" | "studio" | "lisbon" {
-  if (hub.id === "studio" || hub.type === "Workspace") return "studio";
-  if (hub.id === "lisbon" || hub.type === "Trip") return "lisbon";
-  return "park";
-}
-
 export function buildCreatedHub(opts: {
   name: string;
   type: Hub["type"];

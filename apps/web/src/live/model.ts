@@ -32,6 +32,8 @@ export type Commune = {
   destination?: string;
   stayName?: string;
   stayAddress?: string;
+  /** Moves whenever anything in the commune changes; compared with a snapshot's own. */
+  changeMark?: string;
   /** In a snapshot: what the database says keeps the currency as it is (0035). */
   currencyLockedBy?: CurrencyLock[];
 };
@@ -283,7 +285,18 @@ export type Snapshot = {
   splitTemplates?: SplitTemplate[];
   announcements?: Announcement[];
   activityEvents?: Array<{id:string;actorId:string;kind:"funds"|"members"|"recurring"|"templates"|"notes"|"operations"|"expenses"|"announcements";entityId:string;title:string;description:string;createdAt:string}>;
+  /**
+   * The snapshot holds every expense created since `since`, every open one
+   * and the five newest that are not voided.
+   */
+  expenseHistory?: ExpenseHistory;
+  changeMark?: string;
+  /** An overview summary leaves out what only the commune's own screens show. */
+  detail?: "summary";
 };
+export type ExpenseHistory = { since: string; olderCount: number; olderVoidedCount: number };
+/** Older expenses: those created from `from` up to `before`, and how many are older still. */
+export type ExpensePage = { expenses: Expense[]; before: string; from: string | null; olderCount: number; olderVoidedCount: number };
 export type LiveExpenseRow = Omit<ExpenseRow, "amountMinor" | "paidByUserId" | "dueOn" | "shares"> & {
   amountMinor: number;
   paidByUserId: string;
@@ -391,6 +404,8 @@ export function hubFromSnapshot(
   // Voided expenses stay in the ledger as history but never count towards a
   // balance, a total or an outstanding share anywhere on the hub.
   const snapshot: Snapshot = { ...source, expenses: source.expenses.filter((expense) => !expense.voidedAt) };
+  // Older settled expenses stay on the server until asked for; they still count as logged.
+  const olderLogged = (source.expenseHistory?.olderCount ?? 0) - (source.expenseHistory?.olderVoidedCount ?? 0);
   const { commune } = snapshot;
   const currency = commune.currency;
   const names = new Map(snapshot.members.map((member) => [member.userId, member.name]));
@@ -545,7 +560,7 @@ export function hubFromSnapshot(
     }))].sort((a,b)=>(Date.parse(b.createdAt ?? "")||0)-(Date.parse(a.createdAt ?? "")||0)),
     notes,
     jumps: [
-      { go: "expenses", kicker: "Expenses", title: `${snapshot.expenses.length} logged`, hint: `${openRows.length} open` },
+      { go: "expenses", kicker: "Expenses", title: `${snapshot.expenses.length + olderLogged} logged`, hint: `${openRows.length} open` },
       { go: "settle", kicker: "Settle", title: moves.length ? oweLabel : "You’re even", hint: moves.length ? money(moneyFocus, currency) : "No outstanding shares involving you" },
       { go: "funds", kicker: "Funds", title: `${snapshot.funds.length} funds`, hint: `${money(fundTotal, currency)} recorded in` },
       { go: "notes", kicker: "Notes", title: `${notes.length} notes`, hint: "Shared information" },

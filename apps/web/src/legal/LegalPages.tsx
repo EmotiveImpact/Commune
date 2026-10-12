@@ -58,7 +58,7 @@ export function PrivacyPage() {
         <p>Photos you add, the payment details you keep for Pay me, and display settings such as dark mode are kept in your browser. They are not sent to Commune’s database or shown to other members.</p>
       </Section>
       <Section title="Who helps run Commune">
-        <p>Neon stores Commune’s data and runs sign-in. Vercel hosts the app. Resend delivers invitation and reminder emails. Google provides the app’s Inter font and, if you choose it, Google sign-in. Unsplash supplies the default cover photos. When your browser loads the font or a cover photo, Google or Unsplash receives your IP address, as with any website.</p>
+        <p>Neon stores Commune’s data and runs sign-in. Vercel hosts the app. Resend delivers invitation and reminder emails. If you choose Google sign-in, Google handles it. Unsplash supplies the default cover photos. When your browser loads a cover photo, Unsplash receives your IP address, as with any website.</p>
       </Section>
       <Section title="Money">
         <p>Commune records what people pay each other outside the app. It does not take payments, hold money or store card details.</p>

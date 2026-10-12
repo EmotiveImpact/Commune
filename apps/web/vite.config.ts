@@ -1,6 +1,6 @@
 import net from "node:net";
 import { fileURLToPath } from "node:url";
-import { defineConfig, loadEnv, type Plugin } from "vite";
+import { defineConfig, loadEnv, type Plugin, type Rollup } from "vite";
 import react from "@vitejs/plugin-react";
 
 const PORT = 3000;
@@ -55,12 +55,49 @@ export function exactConnectPolicy(env: Record<string, string | undefined>): Plu
   };
 }
 
+/**
+ * The production data client (src/live/neon.ts and the Neon SDK) is a chunk
+ * of its own that src/live/api.ts imports on first use. Every visit needs it
+ * at once to check the session, so the page starts downloading it alongside
+ * the main bundle rather than after the main bundle has run.
+ */
+export function preloadDataClient(): Plugin {
+  let base = "/";
+  return {
+    name: "preload-data-client",
+    apply: "build",
+    configResolved(config) {
+      base = config.base;
+    },
+    transformIndexHtml: {
+      order: "post",
+      handler(_html, ctx) {
+        const chunks = Object.values(ctx.bundle ?? {}).filter((item): item is Rollup.OutputChunk => item.type === "chunk");
+        const client = chunks.find((chunk) => !chunk.isEntry && chunk.facadeModuleId?.endsWith("/src/live/neon.ts"));
+        if (!client) return [];
+        const entries = new Set(chunks.filter((chunk) => chunk.isEntry).map((chunk) => chunk.fileName));
+        return [client.fileName, ...client.imports.filter((file) => !entries.has(file))].map((file) => ({
+          tag: "link",
+          attrs: { rel: "modulepreload", crossorigin: true, href: `${base}${file}` },
+          injectTo: "head" as const,
+        }));
+      },
+    },
+  };
+}
+
 export default defineConfig(({ mode }) => ({
   plugins: [
     react(),
     listenIpv6Too(),
     exactConnectPolicy(loadEnv(mode, fileURLToPath(new URL(".", import.meta.url)), "VITE_")),
+    preloadDataClient(),
   ],
+  build: {
+    // The hosted policy allows fonts only from the app's own origin
+    // (font-src 'self'), so a small font must never become a data: URL.
+    assetsInlineLimit: (file: string) => (file.endsWith(".woff2") ? false : undefined),
+  },
   server: {
     host: "127.0.0.1",
     port: PORT,

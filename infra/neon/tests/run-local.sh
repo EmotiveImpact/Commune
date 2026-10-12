@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Runs the database tests in this folder against a local PostgreSQL server:
 # every *.sql test on its own fresh database, then every *.mjs test
-# (task_lock_order.mjs) the same way. CI runs it, and so can you before
-# pushing a migration:
+# (task_lock_order.mjs, change_mark_order.mjs) the same way. CI runs it, and
+# so can you before pushing a migration:
 #
 #   PGHOST=127.0.0.1 PGPORT=5432 PGUSER=commune PGPASSWORD=commune \
 #     infra/neon/tests/run-local.sh [test-name ...]

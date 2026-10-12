@@ -26,8 +26,8 @@ date ranges and user-written content. Keep the wording plain and concise.
 | Rules | Thin neutral borders; boundaries rather than decoration |
 | Money icon | Slate #637689 on #edf0f3 when a category chip is useful |
 | Operations icon | Sage on pale green; status must also have a text label |
-| Interface typography | Existing Inter stack; do not swap the entire app to the wordmark font |
-| Wordmark | Existing lowercase DM Sans wordmark, position and treatment retained |
+| Interface typography | Existing Inter stack, served from the app with every subset Google served (`apps/web/src/styles/fonts`); do not swap the entire app to the wordmark font |
+| Wordmark | Existing lowercase DM Sans wordmark, position and treatment retained. Its font file holds only the letters of "commune.", so new wordmark text needs a new subset (see `fonts.css`) |
 | Type weights | Body 400; row names and buttons 500; section headings 550–600; avoid default 700/800 headings |
 | Type sizes | Body 14px, secondary 12–13px, sections 18px, page titles 21px, hero 32–35px, principal money 36–44px |
 | Numbers | Tabular numerals; 450–500 weight on large totals; labels must explain whose money and what state |
@@ -36,6 +36,7 @@ date ranges and user-written content. Keep the wording plain and concise.
 | Header | Existing 60px desktop header; content aligned to the page gutter |
 | Corners | One shared token family: controls/search/icon actions 9px; cards/hero/dialogs 15px. Pills only for statuses, filter tracks and avatars; inset segments follow their track geometry |
 | Elevation | No default card shadows. Overlay elevation only when it communicates layering |
+| Cover tones | `--cover-household` #3d5a4c, `--cover-workspace` #3f4b5a, `--cover-trip` #6a4b3c: behind a commune's cover photo while it loads, and in its place if it cannot load |
 
 Use semantic tokens with explicit dark-mode counterparts when consolidating CSS. Do not flatten dark mode with hard-coded light overrides. Normal text must reach 4.5:1 contrast; control boundaries/focus must remain discernible. Small metadata must not rely on very low opacity.
 

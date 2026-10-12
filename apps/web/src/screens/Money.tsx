@@ -18,14 +18,44 @@ function formatMoney(minor: number, currency: string): string {
   }).format(minor / 100);
 }
 
+// Months start at midnight UTC, as the shared records count them.
+function monthName(month: string): string {
+  const date = new Date(`${month}T00:00:00Z`);
+  return new Intl.DateTimeFormat("en-GB", { month: "long", timeZone: "UTC",
+    ...(date.getUTCFullYear() === new Date().getUTCFullYear() ? {} : { year: "numeric" }) }).format(date);
+}
+
 export function ExpensesScreen() {
-  const { go, expenses, voidedExpenses, session, hub } = useApp();
+  const { go, expenses, voidedExpenses, session, hub, expenseHistory, loadEarlierExpenses } = useApp();
   const [searchQuery, setSearchQuery] = useState("");
   const [filter, setFilter] = useState<"All" | "Open" | "Settled" | "Voided">("All");
+  // Open expenses always show. Settled and voided ones show from the start of
+  // the latest month (UTC) with a settled one loaded, or of this month, and
+  // Show earlier reaches back a month at a time.
+  const [shownFrom, setShownFrom] = useState(() => {
+    const newest = Math.max(...expenses.filter((row) => !row.open).map((row) => Date.parse(row.createdAt ?? "")).filter(Number.isFinite));
+    return `${new Date(Number.isFinite(newest) ? newest : Date.now()).toISOString().slice(0, 7)}-01`;
+  });
+  const [earlier, setEarlier] = useState<"" | "loading" | "error">("");
+  const shown = (row: (typeof expenses)[number]) =>
+    row.open || !row.createdAt || Date.parse(row.createdAt) >= Date.parse(`${shownFrom}T00:00:00Z`);
   const needle = searchQuery.trim().toLocaleLowerCase();
   // Voided expenses are history only: never in All, Open, Settled or a total.
-  const showVoided = filter === "Voided" && voidedExpenses.length > 0;
-  const rows = (showVoided ? voidedExpenses : expenses)
+  const showVoided = filter === "Voided";
+  const pool = showVoided ? voidedExpenses : expenses;
+  const more = filter !== "Open" && (pool.some((row) => !shown(row)) ||
+    (showVoided ? expenseHistory.olderVoidedCount : expenseHistory.olderCount - expenseHistory.olderVoidedCount) > 0);
+  async function showEarlier() {
+    setEarlier("loading");
+    try {
+      const month = await loadEarlierExpenses(shownFrom, showVoided);
+      if (month) setShownFrom(month);
+      setEarlier("");
+    } catch {
+      setEarlier("error");
+    }
+  }
+  const rows = [...pool.filter((row) => row.open), ...pool.filter((row) => !row.open && shown(row))]
     .filter((row) => {
       if (filter === "All") return true;
       if (filter === "Open") return row.open === true;
@@ -44,7 +74,7 @@ export function ExpensesScreen() {
     <>
       <div className="a-toolbar">
         <div className="a-filters">
-          {(voidedExpenses.length ? ["All", "Open", "Settled", "Voided"] as const : ["All", "Open", "Settled"] as const).map((chip) => (
+          {(voidedExpenses.length || expenseHistory.olderVoidedCount ? ["All", "Open", "Settled", "Voided"] as const : ["All", "Open", "Settled"] as const).map((chip) => (
             <button
               key={chip}
               className={cx("a-chip", filter === chip && "is-on")}
@@ -74,6 +104,13 @@ export function ExpensesScreen() {
         </button>)}
         {!rows.length && <p className="c-money-empty">No expenses match this view. Try another filter or search.</p>}
       </section>
+      {more ? <div className="c-settle-footer">
+        {earlier === "error" ? <p role="alert">Earlier expenses couldn’t be loaded. Try again.</p>
+          : <p role="status">{earlier === "loading" ? "Loading earlier expenses…"
+            : `${showVoided ? "Voided" : "Settled"} expenses before ${monthName(shownFrom)} aren’t shown yet.`}</p>}
+        <button className="a-btn ghost" type="button" disabled={earlier === "loading"} aria-busy={earlier === "loading"}
+          onClick={() => void showEarlier()}>Show earlier</button>
+      </div> : null}
     </>
   );
 }

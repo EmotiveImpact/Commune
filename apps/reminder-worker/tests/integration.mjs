@@ -91,6 +91,12 @@ async function runWorker() {
     headers: { "x-neon-trigger-invocation-id": "local-test" },
   }));
   assert.equal(response.status, 200);
+  return response.json();
+}
+
+async function changeMark(communeId) {
+  const { rows } = await db.query("SELECT commune_private.change_mark($1) AS mark", [communeId]);
+  return rows[0].mark;
 }
 
 async function outbox(reminderId) {
@@ -428,8 +434,12 @@ try {
   `, [commune, afterShare, alice, bob])).rows[0].id;
   await db.query("INSERT INTO public.reminder_email_outbox (reminder_id) VALUES ($1)", [afterReminder]);
   const callsBefore = providerCalls.length;
+  // What became of the email shows in the sender's reminders, so the run
+  // moves the commune's change mark (0036) and open apps read it again.
+  const markBefore = await changeMark(commune);
   await runWorker();
   assert.equal((await outbox(afterReminder)).status, "suppressed");
+  assert.notEqual(await changeMark(commune), markBefore, "A delivery outcome must move the commune's mark");
   assert.equal(providerCalls.length, callsBefore);
   // The sender gets the same answer as when an email went, so it never
   // tells them the recipient turned email off.
@@ -448,6 +458,23 @@ try {
   assert.equal((await outbox(third.reminderId)).payload, null);
   assert.equal((await outbox(third.reminderId)).payload_amount_minor, null);
   assert.notEqual((await outbox(batchIds[0])).payload, null, "A recent email is kept");
+
+  // The same run drops change marks older than 2 days. A mark looks back to
+  // the start of yesterday at most, so recent ones stay.
+  const { rows: [oldChange] } = await db.query(`
+    INSERT INTO commune_private.commune_changes (commune_id, changed_at)
+    VALUES ($1, now() - interval '3 days') RETURNING id
+  `, [commune]);
+  const { rows: [recentChange] } = await db.query(`
+    INSERT INTO commune_private.commune_changes (commune_id, changed_at)
+    VALUES ($1, now() - interval '1 day') RETURNING id
+  `, [commune]);
+  const sweep = await runWorker();
+  assert.equal(sweep.pruned.changeMarks, 1);
+  const { rows: kept } = await db.query(
+    "SELECT id FROM commune_private.commune_changes WHERE id IN ($1, $2)", [oldChange.id, recentChange.id],
+  );
+  assert.deepEqual(kept.map((row) => row.id), [recentChange.id]);
 
   // An address the provider reported as bouncing (or as a spam complaint) is
   // skipped exactly like an opt-out, whatever the case of the account's
