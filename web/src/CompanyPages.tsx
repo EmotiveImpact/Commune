@@ -1,25 +1,19 @@
 import { useState, type ReactNode } from 'react';
 import { BrandWordmark } from './BrandWordmark';
+import { SiteMenu, siteNav as nav, useSiteMenu } from './SiteMenu';
 import './editorial.css';
 import './company-pages.css';
 
 type Page = 'how' | 'life' | 'pricing' | 'journal' | 'about';
 const signup = 'https://app.ourcommune.io/signup';
-const nav = [
-  ['How it works', '/how-it-works.html'],
-  ['Life together', '/life-together.html'],
-  ['Pricing', '/pricing.html'],
-  ['Journal', '/journal.html'],
-  ['About', '/about.html'],
-] as const;
 
 function Button({ children = 'Start your free trial', href = signup, light = false }: { children?: string; href?: string; light?: boolean }) {
   return <a className={`l-button ${light ? 'l-button--white' : ''}`} href={href}>{children}</a>;
 }
 function Header({ page }: { page: Page }) {
-  const [open, setOpen] = useState(false);
+  const phoneMenu = useSiteMenu();
   const current = { how: '/how-it-works.html', life: '/life-together.html', pricing: '/pricing.html', journal: '/journal.html', about: '/about.html' }[page];
-  return <header className="p-header"><div className="l-container p-header__inner"><BrandWordmark /><nav id="company-nav" aria-label="Main navigation" className={open ? 'is-open' : ''}>{nav.map(([name, href]) => <a key={href} href={href} aria-current={href === current ? 'page' : undefined} onClick={() => setOpen(false)}>{name}</a>)}<a className="p-header__login" href="https://app.ourcommune.io/login">Log in</a><Button /></nav><button className="p-header__menu" aria-expanded={open} aria-controls="company-nav" onClick={() => setOpen(!open)}>{open ? 'Close' : 'Menu'}</button></div></header>;
+  return <><SiteMenu {...phoneMenu} current={current} /><header className="p-header"><div className="l-container p-header__inner"><BrandWordmark /><nav aria-label="Main navigation">{nav.map(([name, href]) => <a key={href} href={href} aria-current={href === current ? 'page' : undefined}>{name}</a>)}<a className="p-header__login" href="https://app.ourcommune.io/login">Log in</a><Button /></nav></div></header></>;
 }
 function Footer() {
   return <footer className="p-footer"><div className="l-container"><div className="p-footer__top"><div><BrandWordmark /><p>For people who do life together.</p></div><div><span>Explore</span>{nav.map(([name, href]) => <a key={href} href={href}>{name}</a>)}</div><div><span>Your Commune</span><a href={signup}>Start free trial</a><a href="https://app.ourcommune.io/login">Log in</a><a href="mailto:support@ourcommune.io">Contact us</a></div></div><div className="p-footer__bottom"><span>© {new Date().getFullYear()} Commune</span><div><a href="https://app.ourcommune.io/privacy">Privacy</a><a href="https://app.ourcommune.io/terms">Terms</a></div></div></div></footer>;
