@@ -1,3 +1,7 @@
+> **Historical.** This review describes the earlier Supabase and Mantine app,
+> which has since been replaced. It is kept for the record; see
+> [CLAUDE.md](../CLAUDE.md) for what runs today.
+
 # Commune Web — Go-Live Functional Review
 
 _Audited 2026-06 by four parallel passes: stub/fake functionality, failing tests, production config, core-flow wiring (UI → hooks → packages/api → Supabase → edge functions)._

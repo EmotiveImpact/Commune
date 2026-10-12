@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from "vitest";
 import { moneyInputError, parseMoneyInput } from "../src/data/moneyInput";
 import { LIMITS } from "../src/data/limits";

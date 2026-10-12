@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from "vitest";
 import { netBalances, overallNet, type BalanceExpense } from "../../../packages/core/src/balances";
 import { buildStatement } from "../src/data/statement";

@@ -144,7 +144,8 @@ describe("an address for every window", () => {
     let location = mount("/expenses");
     await screen.findByRole("button", { name: /^Rent/ });
     // The address now says which commune it shows, in place of the one without.
-    expect(location.history).toEqual(["/expenses?commune=home-1"]);
+    // The effect that rewrites it can run just after the list appears.
+    await waitFor(() => expect(location.history).toEqual(["/expenses?commune=home-1"]));
     cleanup();
     location = mount("/expenses?commune=flat-4");
     await screen.findByRole("heading", { name: "No expenses yet." });

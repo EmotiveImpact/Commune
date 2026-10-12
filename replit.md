@@ -1,3 +1,7 @@
+> **Historical.** This describes the Replit-era packages in `artifacts/`,
+> `lib/` and `scripts/`, not the Commune app. See [CLAUDE.md](CLAUDE.md) for
+> what runs today.
+
 # Workspace
 
 ## Overview

@@ -6,7 +6,9 @@
     "types": ["vite/client"],
     "noEmit": true,
     "allowJs": false,
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    "strictFunctionTypes": true,
+    "noUnusedLocals": true
   },
   "include": ["src"]
 }

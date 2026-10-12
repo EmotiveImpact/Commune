@@ -1,3 +1,7 @@
+> **Historical.** This palette was drawn up for the earlier Mantine app, which
+> has since been replaced. It is kept for the record; the approved design
+> direction is [docs/DESIGN-LANGUAGE.md](../../docs/DESIGN-LANGUAGE.md).
+
 # Commune — Colour Palette (definitive)
 
 **Direction:** rich and branded, built on a **deep forest green** primary with a

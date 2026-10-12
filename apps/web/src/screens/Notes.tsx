@@ -49,7 +49,6 @@ export function NotesScreen() {
     noteKey,
     window: win,
     hubId,
-    native,
     noteSearchQuery,
     setNoteSearchQuery,
   } = useApp();

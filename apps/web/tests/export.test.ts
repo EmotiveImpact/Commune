@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from "vitest";
 import { communeExportJson, expensesCsv } from "../src/data/export";
 import type { Snapshot } from "../src/live/model";

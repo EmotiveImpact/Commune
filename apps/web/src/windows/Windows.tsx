@@ -49,7 +49,6 @@ export function Windows() {
     window,
     screen,
     closeWindow,
-    go,
     notes,
     noteKey,
     selectedExpense,
