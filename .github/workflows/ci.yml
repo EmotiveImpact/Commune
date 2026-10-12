@@ -1,0 +1,176 @@
+# Checks every pull request and every push to main.
+#
+#   web       typechecks the web app, local API and reminder worker, runs the
+#             web tests and builds the web app
+#   database  builds disposable databases from the migrations on PostgreSQL 16
+#             and runs the database tests, the local API's HTTP tests and the
+#             reminder worker's tests on them
+#   secrets   scans the files and every commit behind them for secrets
+#
+# Nothing here deploys, uses a secret or reaches Neon, Vercel or Resend. Each
+# step is a command you can also run locally.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# A new push to a pull request cancels its older run. Every push to main runs.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  web:
+    name: Web app
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # Installs the pnpm version named by packageManager in package.json.
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install
+        run: pnpm install --frozen-lockfile --filter @commune/web --filter @commune/local-api --filter @commune/reminder-worker
+      - name: Typecheck
+        run: pnpm --filter @commune/web --filter @commune/local-api --filter @commune/reminder-worker run typecheck
+      - name: Web tests
+        run: pnpm --filter @commune/web test
+      - name: Build
+        run: pnpm --filter @commune/web run build
+
+  database:
+    name: Database, local API and worker
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16.15
+        env:
+          POSTGRES_USER: commune
+          POSTGRES_PASSWORD: commune
+          # Sort text as the local servers the tests are written against do
+          # (the image would otherwise use en_US.utf8).
+          POSTGRES_INITDB_ARGS: --locale=C.UTF-8
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: 5432
+      PGUSER: commune
+      PGPASSWORD: commune
+      # Every database this job makes has a name starting with this.
+      SQL_TEST_PREFIX: commune_ci
+      # The local API's tests refuse its everyday port, 3002.
+      API_PORT: 3102
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: pnpm
+      # The same install as the web job, so the two share one pnpm cache.
+      - name: Install
+        run: pnpm install --frozen-lockfile --filter @commune/web --filter @commune/local-api --filter @commune/reminder-worker
+      - name: PostgreSQL client
+        run: |
+          command -v psql >/dev/null || { sudo apt-get update -q && sudo apt-get install -y -q postgresql-client; }
+          psql --version
+      # Every test in infra/neon/tests, the lock order test included, each on
+      # a fresh database. The script's header explains the rest.
+      - name: Database tests
+        run: infra/neon/tests/run-local.sh
+      - name: Local API tests
+        run: |
+          db="${SQL_TEST_PREFIX}_api"
+          infra/neon/tests/run-local.sh --create "$db" local
+          log="$RUNNER_TEMP/local-api.log"
+          (cd apps/local-api && DATABASE_URL="postgres://127.0.0.1:$PGPORT/$db" exec node --import tsx src/server.ts) >"$log" 2>&1 &
+          api=$!
+          trap 'kill "$api" 2>/dev/null || true; wait "$api" 2>/dev/null || true; dropdb --if-exists --force "$db" || true' EXIT
+          for _ in $(seq 1 60); do
+            curl -sf "http://127.0.0.1:$API_PORT/api/health" >/dev/null && break
+            sleep 0.5
+          done
+          if ! curl -sf "http://127.0.0.1:$API_PORT/api/health" >/dev/null; then
+            echo "The local API did not start:"; cat "$log"; exit 1
+          fi
+          status=0
+          for test in apps/local-api/tests/*.mjs; do
+            name=$(basename "$test" .mjs)
+            case "$name" in *fixture*) continue ;; esac
+            echo "::group::$name"
+            if API_BASE="http://127.0.0.1:$API_PORT" timeout 300 node "$test"; then result="PASS $name"; else result="FAIL $name"; status=1; fi
+            echo "::endgroup::"
+            echo "$result"
+          done
+          if [ "$status" -ne 0 ]; then echo "::group::Local API log"; cat "$log"; echo "::endgroup::"; fi
+          exit "$status"
+      - name: Reminder worker tests
+        working-directory: apps/reminder-worker
+        run: |
+          node --test tests/email.mjs tests/unsubscribe.mjs
+          status=0
+          for test in integration invitations webhooks monthly-limits-concurrency; do
+            db="${SQL_TEST_PREFIX}_worker_${test//-/_}"
+            # The invitations test runs only on a database named for it.
+            if [ "$test" = invitations ]; then db="${SQL_TEST_PREFIX}_invite_email_test"; fi
+            ../../infra/neon/tests/run-local.sh --create "$db" stub
+            echo "::group::$test"
+            if DATABASE_URL="postgres://127.0.0.1:$PGPORT/$db" timeout 300 node "tests/$test.mjs"; then result="PASS $test"; else result="FAIL $test"; status=1; fi
+            echo "::endgroup::"
+            echo "$result"
+            dropdb --force "$db"
+          done
+          exit "$status"
+
+  secrets:
+    name: Secret scan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: '1.27.x'
+          cache: false
+      # The gitleaks command line tool, built from its published source, which
+      # Go checks against its checksum database. Unlike the gitleaks GitHub
+      # Action it needs no licence for an organisation's repository.
+      - name: Install gitleaks
+        run: go install github.com/zricethezav/gitleaks/v8@v8.30.1
+      # A finding shows the file, line and rule, with the secret redacted.
+      - name: Scan the files
+        run: gitleaks dir . --redact --no-banner --verbose
+      # Every commit behind this checkout, so a secret added and removed again
+      # is caught however the change was pushed. These are gitleaks' own
+      # history options, limited to this checkout rather than every branch.
+      # .gitleaksignore lists the old commits that hold the Google API key from
+      # app review finding 1 and the earlier app's web push key, by fingerprint
+      # (commit, file, rule and line; no secret). Revoking both is still needed.
+      - name: Scan the history
+        run: gitleaks git --log-opts="--full-history --diff-filter=tuxdb HEAD" --redact --no-banner --verbose .

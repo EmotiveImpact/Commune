@@ -385,6 +385,10 @@ rate limits) are recorded in [`docs/AUTH-SETTINGS.md`](../../docs/AUTH-SETTINGS.
 
 ## Local database verification
 
+Run every database test locally with `infra/neon/tests/run-local.sh` (PG*
+variables, loopback only; its header explains). CI runs it on every pull
+request.
+
 On a disposable local PostgreSQL database, run
 `tests/local_auth_stub.sql`, migrations 0001 through 0011, then
 `tests/reminders.sql`, `tests/reminder_monthly_limits.sql`,

@@ -120,6 +120,10 @@ request ids, and pledge limits and notices. It also refuses port 3002.
 signed-in one (`X-Commune-Viewer`, sent by each tab) is refused with 401, while
 the signed-in account and requests without the header are still served.
 
+`sign-in-lockout.mjs` takes about 40 seconds (1,000 failed sign-ins).
+`invitation-email-opt-in.mjs` needs no API:
+`node --test apps/local-api/tests/invitation-email-opt-in.mjs`.
+
 Search integration requires migration 0014. It covers all eight result types,
 active membership, selected/all-commune scopes, removed-member denial, literal
 wildcards, result caps and private-note masking. Its loopback guard refuses

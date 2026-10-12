@@ -4,6 +4,7 @@ import type { PoolClient } from "pg";
 import { changePassword, createAccount, getUser, login, logout, logoutOthers, setSessionCookie, type User } from "./auth.js";
 import { pool, withActor } from "./db.js";
 import { InvitationEmailError, invitationMailConfig, sendInvitationEmail } from "../../reminder-worker/src/invitations.js";
+import { invitationEmailSetting } from "./invitation-email.js";
 
 const host = "127.0.0.1";
 const port = Number(process.env.API_PORT ?? "3002");
@@ -180,7 +181,12 @@ async function actor(req: IncomingMessage): Promise<User> {
   return user;
 }
 
-// A bounded local throttle protects password verification from quick guessing.
+// A local throttle protects password verification from quick guessing: ten
+// failures for one email from one client lock that pair out until 15 minutes
+// after the latest. Entries stay in order of their latest failure, so expired
+// ones are always first and each failure drops them. A lockout still running
+// is never dropped, however many other failures arrive; each one costs a
+// password hash, which bounds how many can build up in 15 minutes.
 const failures = new Map<string, { count: number; until: number }>();
 function checkThrottle(req: IncomingMessage, address: string): string {
   const key = `${req.socket.remoteAddress ?? "?"}:${address}`;
@@ -191,11 +197,16 @@ function checkThrottle(req: IncomingMessage, address: string): string {
   return key;
 }
 function failed(key: string): void {
-  if (failures.size > 1000) failures.clear();
+  const now = Date.now();
+  for (const [stale, item] of failures) {
+    if (item.until > now) break;
+    failures.delete(stale);
+  }
   const existing = failures.get(key);
+  failures.delete(key);
   failures.set(key, {
-    count: existing && existing.until > Date.now() ? existing.count + 1 : 1,
-    until: Date.now() + 15 * 60 * 1000,
+    count: existing && existing.until > now ? existing.count + 1 : 1,
+    until: now + 15 * 60 * 1000,
   });
 }
 
@@ -829,11 +840,17 @@ route("GET", /^\/api\/invites\/([0-9a-f]{64})$/, async (req, res, match) => {
   } : null });
 });
 
+// Real email needs LOCAL_API_SEND_EMAIL=yes as well as the Resend settings.
+// Without both, the sender is told email isn't set up here (503).
+const invitationEmail = invitationEmailSetting(process.env);
+console.log(invitationEmail.notice);
+
 route("POST", /^\/api\/invitation-email$/, async (req, res) => {
   const user = await actor(req);
   const input = await body(req);
   try {
-    send(res, await sendInvitationEmail(pool, user.id, text(input.token, "token", 64), invitationMailConfig()));
+    send(res, await sendInvitationEmail(pool, user.id, text(input.token, "token", 64),
+      invitationEmail.send ? invitationMailConfig() : null));
   } catch (error) {
     if (error instanceof InvitationEmailError) throw new ApiError(error.status, error.message);
     throw error;
