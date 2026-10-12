@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState, type CSSProperties } from "react";
-import { NOTE_BODY_HINT, type NoteCard } from "../data/household";
+import { useEffect, useId, useRef, useState, type CSSProperties } from "react";
+import { NOTE_BODY_HINT, initialsOf, type NoteCard } from "../data/household";
 import { LIMITS } from "../data/limits";
 import { useApp } from "../state";
 import { Icon } from "../ui/Icon";
@@ -9,7 +9,7 @@ import { cx } from "../ui/cx";
 import { OperationEdit, OperationNew, OperationView } from "./OperationsWindows";
 import { AnnouncementNew } from "./AnnouncementWindows";
 import { CommuneLocationFields, EMPTY_COMMUNE_LOCATION } from "../ui/CommuneLocationFields";
-import { RecipientReminderCount, ReminderUsageMeter } from "../ui/ReminderUsage";
+import { RecipientReminderCount, ReminderAllowanceNotice, ReminderUsageMeter } from "../ui/ReminderUsage";
 import { ReminderFlowDialog, useReminderFlow } from "../ui/ReminderConfirm";
 import { reminderEligibility } from "../data/reminders";
 import { LatestReportAnswer, PendingReport, ReceiptHistory, pendingReport, useReceiptActions } from "../ui/Receipts";
@@ -28,6 +28,7 @@ import { netBalances } from "../../../../packages/core/src/balances";
 import "./ExpenseEditor.css";
 import { SplitEditor } from "../ui/SplitEditor";
 import { moneyInputError, parseMoneyInput } from "../data/moneyInput";
+import type { Notification, UnreadNotice } from "../live/model";
 
 const NOTE_TYPES = [
   ["wifi", "Wi-Fi"],
@@ -238,51 +239,95 @@ function ledgerNoticeLine(kind: string, amount: string, actor: string): string {
   return `Corrected by ${actor}${amount ? ` · your share is now ${amount}` : ""}`;
 }
 
+/** One notice: what changed, by whom, for the reader, and when. */
+function NoticeRow({ notice, currency, actor, onOpen }: {
+  notice: Notification; currency: string; actor: string; onOpen: () => void;
+}) {
+  const copy = NOTICE_COPY[notice.kind] ?? { pill: "Notice", title: "Update" };
+  const ledger = notice.kind !== "nudge" && notice.kind !== "chase";
+  const amount = notice.amountMinor != null ? formatMoney(notice.amountMinor, currency) : "";
+  const date = new Date(notice.createdAt).toLocaleDateString("en-GB");
+  return (
+    <button className="a-notice" type="button" onClick={onOpen}>
+      <Pill tone={notice.readAt ? undefined : "open"}>{copy.pill}</Pill>
+      <div className="grow">
+        <strong>{notice.readAt ? null : <span className="c-notice-new">New<span className="sr-only">:</span> </span>}{ledger ? notice.title ?? copy.title : copy.title}</strong>
+        <div className="when">
+          {ledger
+            ? `${ledgerNoticeLine(notice.kind, amount, actor)} · ${date}${notice.detail ? ` · ${notice.detail}` : ""}`
+            : `${amount ? `${amount} · ` : ""}${date}`}
+        </div>
+      </div>
+    </button>
+  );
+}
+
+/**
+ * The bell: this commune's notices first, then the unread ones from the
+ * reader's other communes, each under its commune's name. Opening a notice
+ * from another commune switches to that commune.
+ */
 function Notices() {
-  const { go, hub, funds, notifications, markNotificationRead } = useApp();
+  const { go, hub, places, funds, notifications, noticeCounts, markNotificationRead, loadUnreadNotices, personName } = useApp();
   const [error, setError] = useState("");
-  if (!notifications.length) {
-    return (
-      <section className="a-window">
-        <p className="a-window-kicker">Bell</p>
-        <p className="a-window-note">No notices for you in this commune.</p>
-      </section>
-    );
-  }
+  const others = places.filter((place) => place.id !== hub.id && (noticeCounts[place.id] ?? 0) > 0);
+  // Read again whenever another commune's count changes while this is open.
+  const othersKey = others.map((place) => `${place.id}:${noticeCounts[place.id]}`).join(",");
+  const [elsewhere, setElsewhere] = useState<UnreadNotice[] | null>(null);
+  const [elsewhereError, setElsewhereError] = useState("");
+  const [attempt, setAttempt] = useState(0);
+  useEffect(() => {
+    if (!othersKey) return;
+    let live = true;
+    setElsewhereError("");
+    loadUnreadNotices()
+      .then((notices) => { if (live) setElsewhere(notices); })
+      .catch((cause: unknown) => {
+        if (live) setElsewhereError(cause instanceof Error ? cause.message : "Could not load notices from your other communes.");
+      });
+    return () => { live = false; };
+  }, [othersKey, attempt, loadUnreadNotices]);
+  const headingId = useId();
+  const read = (notice: Notification, communeId: string | undefined, open: () => void) => () => void markNotificationRead(notice.id, communeId)
+    .then(open)
+    .catch((cause) => setError(cause instanceof Error ? cause.message : "Could not mark the notice read."));
   return (
     <section className="a-window">
       <p className="a-window-kicker">Bell</p>
       {error ? <p className="a-form-error" role="alert">{error}</p> : null}
-      {notifications.map((notice) => {
-        const copy = NOTICE_COPY[notice.kind] ?? { pill: "Notice", title: "Update" };
-        const actor = hub.members.find((member) => member.userId === notice.senderUserId)?.name ?? "a former member";
-        const ledger = notice.kind !== "nudge" && notice.kind !== "chase";
-        const amount = notice.amountMinor != null ? formatMoney(notice.amountMinor, hub.currency) : "";
-        const date = new Date(notice.createdAt).toLocaleDateString("en-GB");
-        // A pledge notice opens the fund that holds the pledge.
-        const pledge = notice.kind === "pledge-changed" || notice.kind === "pledge-cancelled";
-        const fund = pledge ? funds.find((item) => !item.archivedAt && item.commitments.some((entry) => entry.id === notice.sourceId)) : undefined;
+      <section className="c-notice-group" aria-labelledby={`${headingId}-here`}>
+        <h3 id={`${headingId}-here`}>{hub.name}</h3>
+        {notifications.length ? notifications.map((notice) => {
+          const actor = personName(notice.senderUserId, "a former member");
+          const ledger = notice.kind !== "nudge" && notice.kind !== "chase";
+          // A pledge notice opens the fund that holds the pledge.
+          const pledge = notice.kind === "pledge-changed" || notice.kind === "pledge-cancelled";
+          const fund = pledge ? funds.find((item) => !item.archivedAt && item.commitments.some((entry) => entry.id === notice.sourceId)) : undefined;
+          return <NoticeRow key={notice.id} notice={notice} currency={hub.currency} actor={actor} onOpen={read(notice, undefined, () =>
+            ledger && notice.expenseId ? go("expense", { expense: notice.expenseId })
+              : pledge ? go("funds", fund ? { record: { kind: "fund", id: fund.id } } : undefined)
+                : go(notice.kind === "chase" ? "funds" : "settle"))} />;
+        }) : <p className="a-window-note">No notices for you in this commune.</p>}
+      </section>
+      {others.map((place, index) => {
+        const notices = elsewhere?.filter((notice) => notice.communeId === place.id) ?? [];
         return (
-          <button
-            className="a-notice"
-            type="button"
-            key={notice.id}
-            onClick={() => void markNotificationRead(notice.id)
-              .then(() => ledger && notice.expenseId ? go("expense", { expense: notice.expenseId })
-                : pledge ? go("funds", fund ? { record: { kind: "fund", id: fund.id } } : undefined)
-                  : go(notice.kind === "chase" ? "funds" : "settle"))
-              .catch((cause) => setError(cause instanceof Error ? cause.message : "Could not mark the notice read."))}
-          >
-            <Pill tone={notice.readAt ? undefined : "open"}>{copy.pill}</Pill>
-            <div className="grow">
-              <strong>{notice.readAt ? null : <span className="c-notice-new">New<span className="sr-only">:</span> </span>}{ledger ? notice.title ?? copy.title : copy.title}</strong>
-              <div className="when">
-                {ledger
-                  ? `${ledgerNoticeLine(notice.kind, amount, actor)} · ${date}${notice.detail ? ` · ${notice.detail}` : ""}`
-                  : `${amount ? `${amount} · ` : ""}${date}`}
-              </div>
-            </div>
-          </button>
+          <section className="c-notice-group" aria-labelledby={`${headingId}-${index}`} key={place.id}>
+            <h3 id={`${headingId}-${index}`}>{place.name}</h3>
+            {notices.length ? notices.map((notice) => {
+              const ledger = notice.kind !== "nudge" && notice.kind !== "chase";
+              const pledge = notice.kind === "pledge-changed" || notice.kind === "pledge-cancelled";
+              return <NoticeRow key={notice.id} notice={notice} currency={place.currency} actor={notice.senderName ?? "a former member"}
+                onOpen={read(notice, place.id, () =>
+                  ledger && notice.expenseId ? go("expense", { hub: place.id, expense: notice.expenseId })
+                    : pledge && notice.fundId ? go("funds", { hub: place.id, record: { kind: "fund", id: notice.fundId } })
+                      : go(pledge || notice.kind === "chase" ? "funds" : "settle", { hub: place.id }))} />;
+            }) : elsewhereError ? (
+              <div role="alert"><p className="a-window-note">{elsewhereError}</p>
+                <button className="a-btn ghost" type="button" onClick={() => setAttempt((count) => count + 1)}>Try again</button></div>
+            ) : !elsewhere ? <p className="a-window-note" role="status">Loading notices…</p>
+              : <p className="a-window-note">No unread notices here now.</p>}
+          </section>
         );
       })}
     </section>
@@ -440,12 +485,12 @@ function AddExpense() {
 function Expense() {
   const {
     go, closeWindow, hub, selectedExpense, session,
-    reminderTargets, reminderUsage, sentReminders, sendReminder,
+    reminderTargets, reminderUsage, sentReminders, sendReminder, personName,
   } = useApp();
   const reminder = useReminderFlow(sendReminder);
   const [message, setMessage] = useState("");
   const receipts = useReceiptActions(setMessage);
-  const fullName = (userId: string) => hub.members.find((item) => item.userId === userId)?.name ?? "A former member";
+  const fullName = (userId: string) => personName(userId, "A former member");
   const change = useExpenseChange(fullName, setMessage);
   if (!selectedExpense) {
     return (
@@ -454,12 +499,11 @@ function Expense() {
       </section>
     );
   }
-  const payer = hub.members.find((member) => member.userId === selectedExpense.paidByUserId);
   const isPayer = session?.userId === selectedExpense.paidByUserId;
   const remaining = selectedExpense.shares.reduce(
     (total, share) => total + Math.max(0, share.amountMinor - share.settledMinor), 0,
   );
-  const nameOf = (userId: string) => userId === session?.userId ? "you" : hub.members.find((item) => item.userId === userId)?.name ?? "a former member";
+  const nameOf = (userId: string) => userId === session?.userId ? "you" : personName(userId, "a former member");
   const voided = !!selectedExpense.voidedAt;
   const canChange = !voided && (isPayer || hub.role === "admin");
 
@@ -471,16 +515,19 @@ function Expense() {
           <span className="a-hero-kicker">{selectedExpense.dueOn ? `Due ${selectedExpense.dueOn}` : "No due date"}</span>
           <strong>{selectedExpense.name}</strong>
           <p>
-            {payer?.name ?? selectedExpense.paidBy} paid {formatMoney(selectedExpense.amountMinor, hub.currency)}. {voided ? "This expense is voided and no longer counts towards any balance." : remaining ? `${formatMoney(remaining, hub.currency)} of shares remain open.` : "All shares are settled."}
+            {personName(selectedExpense.paidByUserId, selectedExpense.paidBy, { left: true })} paid {formatMoney(selectedExpense.amountMinor, hub.currency)}. {voided ? "This expense is voided and no longer counts towards any balance." : remaining ? `${formatMoney(remaining, hub.currency)} of shares remain open.` : "All shares are settled."}
           </p>
         </div>
         <Pill tone={voided ? undefined : selectedExpense.status}>{selectedExpense.statusLabel}</Pill>
       </div>
       {voided ? <p className="c-expense-voided" role="note">Voided by {fullName(selectedExpense.voidedBy ?? "")} on {formatTimestampDay(selectedExpense.voidedAt)}: {selectedExpense.voidReason}</p> : null}
       {isPayer && !voided ? <ReminderUsageMeter usage={reminderUsage} /> : null}
+      {isPayer && !voided && selectedExpense.shares.some((share) => share.userId !== selectedExpense.paidByUserId &&
+        share.amountMinor > share.settledMinor && !pendingReport(share)) ? <ReminderAllowanceNotice usage={reminderUsage} /> : null}
       <div className="a-split">
         {selectedExpense.shares.map((share) => {
           const member = hub.members.find((item) => item.userId === share.userId);
+          const memberName = personName(share.userId, "this member");
           const outstanding = voided ? 0 : share.amountMinor - share.settledMinor;
           const isOwnPayerShare = share.userId === selectedExpense.paidByUserId;
           const partPaid = !isOwnPayerShare && share.settledMinor > 0 && outstanding > 0;
@@ -493,9 +540,9 @@ function Expense() {
           return (
             <div className="c-share-block" key={share.id}>
             <div className="a-split-row">
-              <Avatar tone={member?.cls ?? "house"} initials={member?.ini ?? "?"} />
+              <Avatar tone={member?.cls ?? "house"} initials={member?.ini ?? initialsOf(personName(share.userId, ""))} />
               <div className="grow">
-                <strong>{member?.name ?? "Member"}{share.userId === session?.userId ? " (you)" : ""}</strong>
+                <strong>{personName(share.userId, "Former member", { left: true })}{share.userId === session?.userId ? " (you)" : ""}</strong>
                 <div className="when">{formatMoney(share.amountMinor, hub.currency)} share · {voided ? "not counted" : outstanding ? `${formatMoney(outstanding, hub.currency)} outstanding` : isOwnPayerShare ? "paid the bill" : "settled"}</div>
                 {isPayer && (target || (reminderUsage?.recipientUsage[share.userId] ?? 0) > 0) ? (
                   <RecipientReminderCount usage={reminderUsage} recipientId={share.userId} />
@@ -505,23 +552,23 @@ function Expense() {
               {isPayer && !isOwnPayerShare && outstanding && !report ? (
                 <div className="a-row-actions">
                   <button className="a-btn nudge" type="button" disabled={!eligibility.canSend} title={eligibility.reason || undefined}
-                    onClick={() => { setMessage(""); reminder.open({ kind: "nudge", sourceId: share.id, recipientId: share.userId, name: member?.name ?? "your housemate", subject: selectedExpense.name, amount: formatMoney(outstanding, hub.currency), dueOn: selectedExpense.dueOn }); }}>Nudge{" "}<span className="c-visually-hidden">{member?.name ?? "this member"}</span></button>
-                  <button className="a-btn ghost" type="button" onClick={() => { setMessage(""); receipts.record({ shareId: share.id, debtorName: member?.name ?? "this member", expenseName: selectedExpense.name, shareMinor: share.amountMinor, outstandingMinor: outstanding, currency: hub.currency }); }}>Confirm received{" "}<span className="c-visually-hidden">from {member?.name ?? "this member"}</span></button>
+                    onClick={() => { setMessage(""); reminder.open({ kind: "nudge", sourceId: share.id, recipientId: share.userId, name: personName(share.userId, "your housemate"), subject: selectedExpense.name, amount: formatMoney(outstanding, hub.currency), dueOn: selectedExpense.dueOn }); }}>Nudge{" "}<span className="c-visually-hidden">{memberName}</span></button>
+                  <button className="a-btn ghost" type="button" onClick={() => { setMessage(""); receipts.record({ shareId: share.id, debtorName: memberName, expenseName: selectedExpense.name, shareMinor: share.amountMinor, outstandingMinor: outstanding, currency: hub.currency }); }}>Confirm received{" "}<span className="c-visually-hidden">from {memberName}</span></button>
                   {eligibility.reason && <p className="c-action-hint">{eligibility.reason}</p>}
                 </div>
               ) : ownDebt && !report ? (
                 <div className="a-row-actions">
-                  <button className="a-btn ghost" type="button" onClick={() => { setMessage(""); receipts.report({ shareId: share.id, payerName: payer?.name ?? "the bill payer", expenseName: selectedExpense.name, outstandingMinor: outstanding, currency: hub.currency }); }}>I’ve sent it</button>
+                  <button className="a-btn ghost" type="button" onClick={() => { setMessage(""); receipts.report({ shareId: share.id, payerName: personName(selectedExpense.paidByUserId, "the bill payer"), expenseName: selectedExpense.name, outstandingMinor: outstanding, currency: hub.currency }); }}>I’ve sent it</button>
                 </div>
               ) : null}
             </div>
             {report ? <PendingReport share={share} currency={hub.currency} viewerId={session?.userId} payerId={selectedExpense.paidByUserId}
               names={fullName} disabled={receipts.busy}
-              onAnswer={(item, decision) => { setMessage(""); receipts.answer({ report: item, debtorName: member?.name ?? "this member", expenseName: selectedExpense.name, currency: hub.currency, decision }); }}
+              onAnswer={(item, decision) => { setMessage(""); receipts.answer({ report: item, debtorName: memberName, expenseName: selectedExpense.name, currency: hub.currency, decision }); }}
               onWithdraw={(item) => { setMessage(""); void receipts.withdraw(item); }} /> : null}
             {ownDebt ? <LatestReportAnswer share={share} currency={hub.currency} viewerId={session?.userId} names={fullName} /> : null}
             {!isOwnPayerShare && <ReceiptHistory share={share} currency={hub.currency} names={nameOf}
-              onReverse={isPayer && !voided ? (receipt) => { setMessage(""); receipts.reverse({ receipt, debtorName: member?.name ?? "this member", expenseName: selectedExpense.name, currency: hub.currency }); } : undefined} />}
+              onReverse={isPayer && !voided ? (receipt) => { setMessage(""); receipts.reverse({ receipt, debtorName: memberName, expenseName: selectedExpense.name, currency: hub.currency }); } : undefined} />}
             </div>
           );
         })}
@@ -788,7 +835,7 @@ function Profile() {
 }
 
 function Breakdown() {
-  const { go, hub, expenses, voidedExpenses, session, snapshots, expenseHistory, loadFullHistory } = useApp();
+  const { go, hub, expenses, voidedExpenses, session, snapshots, expenseHistory, loadFullHistory, personName } = useApp();
   // A statement covers everything shared with that person, so it waits for every older expense.
   const [historyFailed, setHistoryFailed] = useState(false);
   useEffect(() => {
@@ -835,8 +882,6 @@ function Breakdown() {
       </div>
       <div className="a-card a-owes">
         {moves.map(({ expense, share }) => {
-          const debtor = hub.members.find((member) => member.userId === share.userId);
-          const payer = hub.members.find((member) => member.userId === expense.paidByUserId);
           return (
           <button
             className="a-move"
@@ -846,7 +891,7 @@ function Breakdown() {
           >
             <div className="a-arrow">→</div>
             <div>
-              <div className="names">{expense.paidByUserId === session?.userId ? `${debtor?.name ?? "Member"} → You` : `You → ${payer?.name ?? "Bill payer"}`}</div>
+              <div className="names">{expense.paidByUserId === session?.userId ? `${personName(share.userId, "A former member", { left: true })} → You` : `You → ${personName(expense.paidByUserId, "Bill payer", { left: true })}`}</div>
               <div className="why">{expense.name}</div>
             </div>
             <div className="amt">{formatMoney(share.amountMinor - share.settledMinor, hub.currency)}</div>
@@ -897,15 +942,14 @@ function Breakdown() {
 }
 
 function Pay() {
-  const { go, closeWindow, selectedExpense, hub, session } = useApp();
+  const { go, closeWindow, selectedExpense, hub, session, personName } = useApp();
   const share = selectedExpense?.shares.find((item) => item.userId === session?.userId);
-  const payer = hub.members.find((member) => member.userId === selectedExpense?.paidByUserId);
   const outstanding = share ? share.amountMinor - share.settledMinor : 0;
   return (
     <section className="a-window">
       <p className="a-window-kicker">Settle</p>
       <div className="a-pay-hero">
-        <span className="a-hero-kicker">{selectedExpense ? `You → ${payer?.name ?? "bill payer"}` : "Payment"}</span>
+        <span className="a-hero-kicker">{selectedExpense ? `You → ${personName(selectedExpense.paidByUserId, "bill payer", { left: true })}` : "Payment"}</span>
         <strong>{formatMoney(outstanding, hub.currency)}</strong>
         <p>
           Commune does not move money or hold payment details yet. Arrange a transfer directly with the bill payer;
@@ -983,7 +1027,7 @@ function NoteNew({ onSave, initial }: {
   onSave: (card: NoteCard & { id: string; expectedVersion?: number }, requestId: string) => Promise<string>;
   initial?: NoteCard & { id: string; version?: number };
 }) {
-  const { go, closeWindow, notes, hub } = useApp();
+  const { go, closeWindow, notes, personName } = useApp();
   // The version this edit started from. A save replaces only that version.
   const baseVersion = useRef(initial?.version);
   // One id for this form: an add retried after an unconfirmed save returns
@@ -991,7 +1035,7 @@ function NoteNew({ onSave, initial }: {
   const requestId = useRef(newRequestId());
   const [conflict, setConflict] = useState(false);
   const latest = initial ? notes[initial.id] : undefined;
-  const editorName = (userId: string | null | undefined) => hub.members.find((member) => member.userId === userId)?.name ?? "Someone";
+  const editorName = (userId: string | null | undefined) => personName(userId, "Someone");
   const fact = (label: string) => initial?.facts.find(([key]) => key === label)?.[1] ?? "";
   const [type, setType] = useState<(typeof NOTE_TYPES)[number][0]>(() => initial?.pill === "Landlord" ? "contacts" : initial ? NOTE_TYPES.find(([, label]) => label === initial.pill)?.[0] ?? "other" : "other");
   const [title, setTitle] = useState(initial?.title ?? "");

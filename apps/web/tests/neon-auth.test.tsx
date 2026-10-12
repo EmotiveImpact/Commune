@@ -44,6 +44,35 @@ describe("hosted read authentication", () => {
     expect(mocks.from).not.toHaveBeenCalled();
   });
 
+  it("carries each commune's unread notice count for the bell, when the database sends one (0039)", async () => {
+    listResult([{ ...listed, unreadNotices: 3 }, { ...listed, id: "commune-2" }]);
+    const { listCommunes } = await import("../src/live/neon");
+    const [counted, older] = await listCommunes();
+    expect(counted.unreadNotices).toBe(3);
+    // Before 0039 the field is missing, and the app counts the open commune's own notices.
+    expect("unreadNotices" in older).toBe(false);
+    listResult([{ ...listed, unreadNotices: "many" }]);
+    await expect(listCommunes()).rejects.toMatchObject({ status: 502 });
+  });
+
+  it("checks a verified session before reading notices across communes", async () => {
+    const { neonApi } = await import("../src/live/neon");
+    await expect(neonApi("/notices/unread")).rejects.toThrow("Sign in required");
+    expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+
+  it("reads unread notices across communes through one guarded RPC and refuses a malformed answer", async () => {
+    mocks.getSession.mockResolvedValue({ data: { user: { id: "viewer", emailVerified: true } } });
+    const notices = [{ id: "notice-1", kind: "payment-reported", communeId: "commune-2", senderName: "Ben", fundId: null }];
+    mocks.rpc.mockResolvedValue({ data: notices, error: null });
+    const { neonApi } = await import("../src/live/neon");
+    expect(await neonApi("/notices/unread")).toEqual({ notices });
+    expect(mocks.rpc).toHaveBeenCalledExactlyOnceWith("my_unread_notices");
+    mocks.rpc.mockResolvedValue({ data: null, error: null });
+    await expect(neonApi("/notices/unread")).rejects.toMatchObject({ status: 502 });
+    expect(mocks.from).not.toHaveBeenCalled();
+  });
+
   it("does not publish a commune without the viewer's membership or its change mark", async () => {
     const { listCommunes } = await import("../src/live/neon");
     for (const entry of [{ id: "commune-1", name: "Home" }, { ...listed, role: "owner" }, { ...listed, changeMark: null }]) {

@@ -527,8 +527,7 @@
   font-size: 13px;
 }
 
-.a-side-account-role,
-.a-side-account-separator {
+.a-side-account-role {
   font-size: 11px;
   color: rgba(255, 255, 255, 0.6);
 }
@@ -541,8 +540,7 @@
   white-space: nowrap;
 }
 
-.a-side-account-role,
-.a-side-account-separator {
+.a-side-account-role {
   flex-shrink: 0;
 }
 
@@ -555,38 +553,6 @@
   border-top: 1px solid rgba(255, 255, 255, 0.08);
   flex-shrink: 0;
   position: relative;
-}
-
-.a-side-account .a-reminder-usage--sidebar {
-  position: static;
-  margin: 0;
-  width: auto;
-  font-size: 10px;
-  color: rgba(255, 255, 255, 0.65);
-}
-
-/* 24px tall, reaching into the space below, so the line keeps its place. */
-.a-side-account .a-reminder-usage--sidebar summary {
-  min-height: 24px;
-  gap: 3px;
-  padding: 0 0 6px;
-  margin-bottom: -6px;
-  border: 0;
-  border-radius: 4px;
-}
-
-.a-side-account .a-reminder-usage--sidebar summary strong { color: inherit; }
-.a-side-account .a-reminder-usage--sidebar summary:hover { color: #fff; }
-.a-side-account .a-reminder-usage--sidebar .a-reminder-usage-details {
-  top: auto;
-  bottom: calc(100% + 8px);
-  right: auto;
-  left: 0;
-  width: 100%;
-  max-width: calc(100vw - 24px);
-  max-height: calc(100vh - 160px);
-  overflow-y: auto;
-  color: var(--ink);
 }
 
 .a-main {
@@ -3221,6 +3187,8 @@ button.a-item {
   z-index: 0;
 }
 
+/* Darkest behind the text at the bottom, so it stays readable over a bright
+   photo (tests/cover-contrast.test.ts). The top of the photo is as before. */
 .a-place-hero::after {
   content: "";
   position: absolute;
@@ -3228,9 +3196,11 @@ button.a-item {
   z-index: 1;
   pointer-events: none;
   background: linear-gradient(
-    180deg,
-    rgba(26, 30, 46, 0.08) 0%,
-    rgba(26, 30, 46, 0.72) 100%
+    0deg,
+    rgba(26, 30, 46, 0.72) 0,
+    rgba(26, 30, 46, 0.66) 104px,
+    rgba(26, 30, 46, 0.3) 140px,
+    rgba(26, 30, 46, 0.08) 100%
   );
 }
 
@@ -3246,7 +3216,7 @@ button.a-item {
   border-radius: 999px;
   display: inline-flex;
   align-items: center;
-  background: rgba(245, 241, 234, 0.16);
+  background: rgba(26, 30, 46, 0.64);
   border: 1px solid rgba(245, 241, 234, 0.2);
   font-size: 10px;
   font-weight: 700;
@@ -3264,7 +3234,7 @@ button.a-item {
 .a-place-hero p {
   margin: 0;
   font-size: 14px;
-  color: rgba(248, 245, 240, 0.82);
+  color: rgba(248, 245, 240, 0.9);
 }
 
 .a-place-hero .a-place-location,
@@ -3406,6 +3376,7 @@ button.a-item {
   transform: scale(1.03);
 }
 
+/* As the smaller cards: darkest behind the text (tests/cover-contrast.test.ts). */
 .a-focus-hero::after {
   content: "";
   position: absolute;
@@ -3413,9 +3384,13 @@ button.a-item {
   z-index: 1;
   pointer-events: none;
   background: linear-gradient(
-    180deg,
-    rgba(26, 30, 46, 0.08) 0%,
-    rgba(26, 30, 46, 0.7) 100%
+    0deg,
+    rgba(26, 30, 46, 0.72) 0,
+    rgba(26, 30, 46, 0.68) 112px,
+    rgba(26, 30, 46, 0.64) 130px,
+    rgba(26, 30, 46, 0.52) 178px,
+    rgba(26, 30, 46, 0.26) 214px,
+    rgba(26, 30, 46, 0.08) 100%
   );
 }
 
@@ -3431,7 +3406,7 @@ button.a-item {
   border-radius: 999px;
   display: inline-flex;
   align-items: center;
-  background: rgba(245, 241, 234, 0.16);
+  background: rgba(26, 30, 46, 0.64);
   border: 1px solid rgba(245, 241, 234, 0.2);
   font-size: 11px;
   font-weight: 700;
@@ -3450,7 +3425,7 @@ button.a-item {
   margin: 0;
   max-width: 34rem;
   font-size: 15px;
-  color: rgba(248, 245, 240, 0.82);
+  color: rgba(248, 245, 240, 0.9);
 }
 
 .a-focus-pair {

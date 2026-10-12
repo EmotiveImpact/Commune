@@ -92,6 +92,17 @@ lifecycle pack. Work is paused for a handoff, not a production release.
   Billing and Analytics are hidden, the unused Currency preference is gone,
   and the app has a home-screen name and icon (redraw them with
   `CHROMIUM=/path/to/chrome node apps/web/scripts/render-icons.mjs`).
+- Also from 9 October, for review: Home, notices and activity, from the same
+  review. The bell and Notices cover every commune (migration 0039,
+  `GET /api/notices/unread`). Needs you on Home and This Hub comes from one
+  rule, `needsYou()` in `apps/web/src/live/model.ts`: actions first, then
+  Waiting on others. Activity rows show the record type and time, grouped by
+  day (`apps/web/src/ui/ActivityLog.tsx`). `personName` names former members,
+  with "(left)" where it matters. The reminder allowance is in account
+  settings, on an expense its payer can nudge from, in the reminder
+  confirmation, and as a notice once a fifth or less is left; it is no longer
+  in the sidebar. Text over commune photos has a darker shade, measured by
+  `apps/web/tests/cover-contrast.test.ts` against a white stand-in.
 - The website is `web/` (the editorial homepage); the earlier v2 site is in
   `web-backup/`. Launch names `website` (3004) and `website-backup` (3003).
 - No push, deployment, hosted migration or provider change has been made. Do

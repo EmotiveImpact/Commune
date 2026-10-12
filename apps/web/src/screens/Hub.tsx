@@ -30,7 +30,7 @@ function HubSection({ title, icon, context, count, action, children }: {
   </section>;
 }
 
-function HubLocation({ hub }: { hub: Hub }) {
+function HubLocation({ hub }: { hub: Pick<Hub, "type" | "address" | "destination" | "stayName" | "stayAddress"> }) {
   if (hub.type === "Trip") {
     if (!hub.destination && !hub.stayName && !hub.stayAddress) return null;
     return <div className="c-hub-location">
@@ -113,12 +113,12 @@ const announcementDate = new Intl.DateTimeFormat("en-GB", { day: "numeric", mont
 
 /** Notices from an admin. Important ones ask each member to confirm they have seen them. */
 function Announcements() {
-  const { announcements, hub, you, acknowledgeAnnouncement, archiveAnnouncement, go } = useApp();
+  const { announcements, hub, you, acknowledgeAnnouncement, archiveAnnouncement, go, personName } = useApp();
   const [pending, setPending] = useState<string | null>(null);
   const [confirmDown, setConfirmDown] = useState<string | null>(null);
   const [error, setError] = useState("");
   if (!announcements.length) return null;
-  const nameOf = (userId: string) => hub.members.find(member => member.userId === userId)?.name ?? "A former member";
+  const nameOf = (userId: string) => personName(userId, "A former member");
   async function run(id: string, action: () => Promise<unknown>) {
     setPending(id); setError("");
     try { await action(); setConfirmDown(null); }
@@ -159,7 +159,7 @@ function Announcements() {
 }
 
 export function HubScreen() {
-  const { hub, go, notes, expenses, operations, you, announcements } = useApp();
+  const { hub, go, notes, expenses, you, announcements } = useApp();
   const entries = Object.entries(notes);
   const pinned = entries.filter(([, note]) => isNotePinned(note));
   const priority = ["Emergency", "Keys / door", "Wi-Fi", "Contacts", "Bins", "House rules", "Other"];
@@ -167,13 +167,15 @@ export function HubScreen() {
     const rank = (note: typeof a[1]) => { const index = priority.indexOf(noteCategory(note)); return index < 0 ? priority.length : index; };
     return rank(a[1]) - rank(b[1]);
   });
-  const outstanding = hub.moves.filter(move => !move.even);
-  const yours = operations.filter(item => item.status === "open" && item.kind === "task" && item.assigneeId === you.id && item.date <= todayIso());
-  const yourPledges = hub.now.filter(item => item.go === "funds");
+  // Needs you follows the same rule as Home: payments to confirm and shares
+  // to pay, then tasks, then pledges. What others owe waits separately.
+  const money = hub.now.filter(item => item.kind === "confirm" || item.kind === "pay");
+  const yours = hub.now.filter(item => item.kind === "task");
+  const yourPledges = hub.now.filter(item => item.kind === "pledge");
   // Important notices this member has not yet confirmed.
   const toConfirm = announcements.filter(item => item.needsAcknowledgement && item.authorId !== you.id
     && !item.acknowledgements.some(entry => entry.userId === you.id));
-  const attentionCount = outstanding.length + yours.length + yourPledges.length + toConfirm.length;
+  const attentionCount = hub.now.length + toConfirm.length;
   const canInvite = hub.role === "admin";
   return <div className="c-hub">
     <section className={`c-hub-identity${hub.photo ? ` has-photo ${coverToneClass(hub)}` : ""}`} aria-label="Commune identity">
@@ -199,19 +201,26 @@ export function HubScreen() {
         <button className="c-hub-link" type="button" onClick={() => go("settle")}>View settlement</button></div>
       </section>
       <HubSection title="Needs you" icon={CircleAlert} count={`${attentionCount} ${attentionCount === 1 ? "item" : "items"}`}>
-        {outstanding.slice(0, 3).map((move, index) => <div key={`${move.names}-${move.expenseId ?? index}`} className="c-hub-attention-row">
-          <span className="c-hub-attention-copy"><span className="c-hub-icon-chip"><ReceiptText size={18} strokeWidth={1.5} /></span><span><strong>{move.why}</strong><small>{move.names}</small></span></span>
-          <span className="c-hub-attention-end"><strong>{move.amt}</strong><button type="button" onClick={() => move.expenseId ? go("expense", { expense: move.expenseId }) : go("settle")}>View{" "}<span className="c-visually-hidden">{move.why}, {move.names.replace(" → ", " to ")}</span></button></span>
+        {money.slice(0, 3).map((item, index) => <div key={`${item.kind}-${item.expenseId ?? index}`} className="c-hub-attention-row">
+          <span className="c-hub-attention-copy"><span className="c-hub-icon-chip"><ReceiptText size={18} strokeWidth={1.5} /></span><span><strong>{item.title}</strong><small className={item.late ? "c-hub-late" : undefined}>{item.when}</small></span></span>
+          <span className="c-hub-attention-end"><strong>{item.amount}</strong><button type="button" onClick={() => go("expense", { expense: item.expenseId })}>View{" "}<span className="c-visually-hidden">{item.title}, {item.when}</span></button></span>
         </div>)}
         {toConfirm.slice(0, 2).map(item => <div key={item.id} className="c-hub-attention-row">
           <span className="c-hub-attention-copy"><span className="c-hub-icon-chip"><Megaphone size={18} strokeWidth={1.5} /></span><span><strong>{item.title}</strong><small>Announcement · please confirm you have seen it</small></span></span>
         </div>)}
-        {yours.slice(0, 2).map(item => <button className="c-hub-note-row" type="button" key={item.id} onClick={() => go("operation", { operation: item.id })}><span><strong>{item.title}</strong><small>{item.date < todayIso() ? "Overdue · your turn" : "Your turn today"}</small></span><ChevronRight size={16} /></button>)}
-        {yourPledges.slice(0, 2).map((item, index) => <button className="c-hub-note-row" type="button" key={`pledge-${index}`} onClick={() => go("funds")}><span><strong>{item.title}</strong><small>{item.when}</small></span><ChevronRight size={16} /></button>)}
+        {yours.slice(0, 2).map(item => <button className="c-hub-note-row" type="button" key={item.operationId} onClick={() => go("operation", { operation: item.operationId })}><span><strong>{item.title}</strong><small>{item.when}</small></span><ChevronRight size={16} /></button>)}
+        {yourPledges.slice(0, 2).map((item, index) => <button className="c-hub-note-row" type="button" key={`pledge-${item.fundId ?? index}`} onClick={() => go("funds", item.fundId ? { record: { kind: "fund", id: item.fundId } } : undefined)}><span><strong>{item.title}</strong><small>{[item.when, item.amount].filter(Boolean).join(" · ")}</small></span><ChevronRight size={16} /></button>)}
         {!attentionCount && <div className="c-hub-empty"><p>{hub.members.length<2 && canInvite ? "Bring your people in to share costs, jobs and the useful details." : "Nothing needs your attention right now."}</p></div>}
-        {outstanding.length > 3 && <button className="c-hub-link c-hub-more" type="button" onClick={() => go("settle")}>View all outstanding shares</button>}
+        {money.length > 3 && <button className="c-hub-link c-hub-more" type="button" onClick={() => go("settle")}>View all outstanding shares</button>}
         {yours.length > 2 && <button className="c-hub-link c-hub-more" type="button" onClick={() => go("operations")}>View your other tasks</button>}
         {yourPledges.length > 2 && <button className="c-hub-link c-hub-more" type="button" onClick={() => go("funds")}>View your other pledges</button>}
+        {hub.waiting.length > 0 && <section className="c-hub-waiting" aria-labelledby="hub-waiting">
+          <h3 id="hub-waiting">Waiting on others</h3>
+          {hub.waiting.slice(0, 3).map((item, index) => <button className="c-hub-note-row" type="button" key={`${item.kind}-${item.expenseId ?? index}`} onClick={() => go("expense", { expense: item.expenseId })}>
+            <span><strong>{item.title}</strong><small>{[item.when, item.amount].filter(Boolean).join(" · ")}</small></span><ChevronRight size={16} aria-hidden="true" />
+          </button>)}
+          {hub.waiting.length > 3 && <button className="c-hub-link c-hub-more" type="button" onClick={() => go("settle")}>View all in Settle</button>}
+        </section>}
       </HubSection>
     </div>
     <div className="c-hub-lower">

@@ -17,11 +17,11 @@ browser code sends same-origin `/api` requests. Non-2xx errors are
 | POST | `/api/auth/login` | `{email,password}` | `{user}` + cookie |
 | POST | `/api/auth/logout` | `{}` | `{ok:true}` + cleared cookie |
 | GET | `/api/auth/me` | public | `{user}` or `{user:null}` |
-| GET | `/api/communes` | | `{communes:[{id,name,kind,currency,role,memberCount,address,destination,stayName,stayAddress,changeMark}]}`; a commune's `changeMark` moves whenever anything in it changes |
+| GET | `/api/communes` | | `{communes:[{id,name,kind,currency,role,memberCount,address,destination,stayName,stayAddress,changeMark,unreadNotices}]}`; a commune's `changeMark` moves whenever anything in it changes; `unreadNotices` is the reader's unread notices there (0039) |
 | GET | `/api/search?q=...&commune=...&limit=8` | session required; optional commune UUID; 2–80 chars, 1–25 results per type | `{query,items,total,hasMore}`; only active memberships, safe note excerpts |
 | POST | `/api/communes` | `{name,kind,currency,address?,destination?,stayName?,stayAddress?}`; one account creates at most 10 communes an hour, 30 a day and 100 in all (409) | `{id}` |
 | PATCH | `/api/communes/:id` | `{name,kind,currency,address?,destination?,stayName?,stayAddress?}` admin; the currency is fixed (400) once the commune has an expense, fund, recurring bill or exact split template, voided or archived ones included | `{ok:true}` |
-| GET | `/api/communes/:id/snapshot` | membership checked; outsiders get 404; `?detail=summary` leaves out what only the commune's own screens show | `{commune,members,expenses,funds,notes,operations,notifications,reminderTargets,recurringBills,splitTemplates,activityEvents,expenseHistory,changeMark}`; `expenses` are the open ones, those created or changed since the start of last month (UTC) and the five newest that are not voided; `expenseHistory` is `{since,olderCount,olderVoidedCount}` |
+| GET | `/api/communes/:id/snapshot` | membership checked; outsiders get 404; `?detail=summary` leaves out what only the commune's own screens show, keeping a share's pending payment reports (0039) | `{commune,members,expenses,funds,notes,operations,notifications,reminderTargets,recurringBills,splitTemplates,activityEvents,expenseHistory,changeMark}`; `expenses` are the open ones, those created or changed since the start of last month (UTC) and the five newest that are not voided; `expenseHistory` is `{since,olderCount,olderVoidedCount}` |
 | GET | `/api/communes/:id/expenses/history?before=&months=` | member; `before` (a date) defaults to the snapshot's `since`; `months` 1 to 12, or left out for every older expense | `{expenses,before,from,olderCount,olderVoidedCount}`: whole months (UTC) before `before`, reaching back past months with none; `from` is null once nothing older remains |
 | GET | `/api/communes/:id/expenses/records?ids=` | member; 1 to 50 comma-separated expense ids; ids from another commune are left out | `{expenses}` in the snapshot's shape |
 | POST | `/api/communes/:id/expenses` | `{title,amountMinor,paidByUserId?,category?,shares:[{userId,amountMinor}],dueOn?,requestId?}`; recording for another payer requires admin; a repeated `requestId` returns the same expense, and reusing it for different details is 400 | `{id,duplicate}` (201, or 200 for a repeat) |
@@ -45,6 +45,7 @@ browser code sends same-origin `/api` requests. Non-2xx errors are
 | POST | `/api/communes/:id/members/:userId` | `{action:"admin"\|"member"\|"remove"\|"leave"}`; admin changes roles/removes, member can leave; an admin who leaves, is removed or becomes a member loses their open invitations | `{ok:true}` |
 | POST | `/api/reminders` | `{kind:"nudge"\|"chase",sourceId,requestId?}`; a repeated `requestId` returns the reminder it already created | `{id,duplicate,delivery:"in-app",emailStatus:"none",email:"not-configured"}` (201, or 200 for a repeat) |
 | POST | `/api/notifications/:id/read` | `{}` | `{ok:true}` |
+| GET | `/api/notices/unread` | | `{notices}`: the unread notices of every commune the reader belongs to, newest first, each as in `snapshot.notifications` with `senderName` and, for a pledge notice whose fund is open, `fundId` (0039) |
 | GET | `/api/communes/:id/invites` | admin | `{invites:[...]}` with `invitedBy` and `invitedByName`; an invitation works only while its sender is an admin |
 | POST | `/api/communes/:id/invites` | `{email,role}` admin | `{token,url}` to copy; no email sent |
 | GET | `/api/invites/:token` | matching signed-in email | `{invite}` or `{invite:null}` |
@@ -71,7 +72,9 @@ carry `version`, `voidedAt/voidedBy/voidReason` and their last 20 `revisions`
 (`{version,action,actorId,reason,before,after,createdAt}`). Expense shares have
 `{id,userId,amountMinor,settledMinor,settledAt,receipts}`; `settledMinor` is
 the sum of receipts that have not been reversed. Operations carry `history`
-(recent occurrences) and `undoOccurrenceId`. `sentReminders` lists the
+(recent occurrences) and `undoOccurrenceId`. Each of `activityEvents` names its
+`recordType` (expense, repayment, fund, pledge, contribution, recurring, template,
+task, event, note, member or announcement; 0039). `sentReminders` lists the
 signed-in sender's own recent reminders with their email state. Funds contain commitments
 with `contributedMinor`, cancellation and contribution-correction history.
 Notifications and reminder targets include the IDs
@@ -102,6 +105,7 @@ API_BASE=http://127.0.0.1:3006 node apps/local-api/tests/operations-history.mjs
 API_BASE=http://127.0.0.1:3006 node apps/local-api/tests/invites-pledges-requests.mjs
 API_BASE=http://127.0.0.1:3006 node apps/local-api/tests/session-viewer.mjs
 API_BASE=http://127.0.0.1:3006 node apps/local-api/tests/lighter-loading.mjs
+API_BASE=http://127.0.0.1:3006 node apps/local-api/tests/notices-and-activity.mjs
 ```
 
 `money-lifecycle.mjs` needs migrations 0015 to 0017 and covers reminder
@@ -130,6 +134,11 @@ the signed-in account and requests without the header are still served.
 `lighter-loading.mjs` needs 0036 and covers change marks in the list and the
 snapshot, the overview summary, pages of older expenses, named expense records
 and the limit on creating communes. It refuses port 3002.
+
+`notices-and-activity.mjs` needs 0039 and covers each commune's unread count in
+the list and the snapshot, the unread notices of every commune, the record type
+of each activity event and the pending payment reports an overview summary
+keeps. It refuses port 3002.
 
 Search integration requires migration 0014. It covers all eight result types,
 active membership, selected/all-commune scopes, removed-member denial, literal

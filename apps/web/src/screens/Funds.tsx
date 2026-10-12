@@ -17,7 +17,7 @@ import {
 } from "../ui/components";
 import { Pill } from "../ui/widgets";
 import { ReminderFlowDialog, useReminderFlow } from "../ui/ReminderConfirm";
-import { RecipientReminderCount } from "../ui/ReminderUsage";
+import { RecipientReminderCount, ReminderAllowanceNotice } from "../ui/ReminderUsage";
 import { formatReminderDay, reminderEligibility } from "../data/reminders";
 import { newRequestId } from "../data/requestId";
 import { commandFailure, UNCERTAIN_RETRY_SAFE } from "../data/commands";
@@ -72,6 +72,7 @@ export function FundsScreen() {
     fundKey,
     closeWindow,
     contentLoading,
+    personName,
   } = useApp();
   const [mode, setMode] = useState<Mode | null>(null);
   const [name, setName] = useState("");
@@ -117,7 +118,7 @@ export function FundsScreen() {
   const pledgerMember = commitment
     ? hub.members.find((item) => item.userId === commitment.userId)
     : undefined;
-  const pledger = pledgerMember?.name ?? "the person who made it";
+  const pledger = commitment ? personName(commitment.userId, "the person who made it") : "the person who made it";
   const recorded = commitment?.contributedMinor ? money(commitment.contributedMinor, hub.currency) : "";
   const pledgeAmountHint = !commitment ? undefined
     : othersPledge ? `Up to ${money(commitment.amountMinor, hub.currency)}${recorded ? `, and not below the ${recorded} already recorded` : ""}.`
@@ -325,7 +326,6 @@ export function FundsScreen() {
   // Render inline, not as a new component type on every state change: a Chase
   // dialog must be able to return keyboard focus to the same pledge button.
   function renderPledge(pledge: Commitment) {
-    const member = hub.members.find((item) => item.userId === pledge.userId);
     const remaining = pledge.amountMinor - pledge.contributedMinor;
     const isMine = pledge.userId === session?.userId;
     const target = reminderTargets.find(
@@ -344,7 +344,7 @@ export function FundsScreen() {
         <div className="c-pledge-head">
           <div>
             <strong>
-              {member?.name ?? "Former member"}
+              {personName(pledge.userId, "Former member", { left: true })}
               {isMine ? " (you)" : ""}
             </strong>
             <small>
@@ -393,7 +393,7 @@ export function FundsScreen() {
                     kind: "chase",
                     sourceId: pledge.id,
                     recipientId: pledge.userId,
-                    name: member?.name ?? "Member",
+                    name: personName(pledge.userId, "Member"),
                     subject: fund!.name,
                     amount: money(remaining, hub.currency),
                     dueOn: pledge.dueOn,
@@ -673,6 +673,12 @@ export function FundsScreen() {
                 . These are confirmations, not money held by Commune.
               </p>
               <FundFigures fund={fund} />
+              {/* An admin chases others' pledges from here. */}
+              {isAdmin && !fund.archivedAt && fund.commitments.some((pledge) =>
+                pledge.userId !== session?.userId && !pledge.cancelledAt &&
+                reminderTargets.some((item) => item.kind === "chase" && item.sourceId === pledge.id)) ? (
+                <ReminderAllowanceNotice usage={reminderUsage} />
+              ) : null}
               {fund.commitments.map(renderPledge)}
               {!fund.commitments.length && (
                 <p className="c-form-help">No pledges yet.</p>

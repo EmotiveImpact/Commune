@@ -47,6 +47,7 @@ export function OperationView() {
     hub,
     mutationPending,
     you,
+    personName,
   } = useApp();
   const [confirmDelete, setConfirmDelete] = useState(false);
   // One small panel at a time: skip with a reason, or hand over the turn.
@@ -178,7 +179,7 @@ export function OperationView() {
       <OccurrenceHistory
         history={item.history ?? []}
         undoId={item.undoOccurrenceId ?? null}
-        nameOf={(userId) => hub.members.find((member) => member.userId === userId)?.name ?? "A former member"}
+        nameOf={(userId) => personName(userId, "A former member")}
         disabled={mutationPending}
         onUndo={(occurrenceId) => run(() => undoOperation(occurrenceId), "Undone. The task is back as it was.")}
       />

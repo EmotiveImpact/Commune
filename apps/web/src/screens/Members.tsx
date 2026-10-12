@@ -85,7 +85,7 @@ function NewInviteLinkDialog({ invite, onClose, onDone }: {
 }
 
 export function MembersScreen() {
-  const { hub, go, session, snapshots, invites, revokeInvite, manageMember } =
+  const { hub, go, session, snapshots, invites, revokeInvite, manageMember, personName } =
     useApp();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
@@ -96,11 +96,10 @@ export function MembersScreen() {
     (invite.status === "pending" || invite.status === "expired") && invite.email !== null);
   const pastInvites = invites.filter((invite) => invite.status === "accepted" || invite.status === "revoked").slice(0, 12);
   // Someone who accepted and has since left keeps their name, not their address.
-  const invitee = (invite: PendingInvite) => invite.email
-    ?? snapshots[hub.id]?.members.find((member) => member.userId === invite.acceptedBy)?.name ?? "Former member";
+  const invitee = (invite: PendingInvite) => invite.email ?? personName(invite.acceptedBy, "Former member");
   // Who sent an invitation. It stays open only while they are an admin.
   const sender = (invite: PendingInvite) => invite.invitedBy === session?.userId ? "you"
-    : invite.invitedByName ?? (invite.invitedBy ? "a former member" : "");
+    : invite.invitedByName ?? (invite.invitedBy ? personName(invite.invitedBy, "a former member") : "");
   const pendingSentBy = (userId: string) =>
     openInvites.filter((invite) => invite.status === "pending" && invite.invitedBy === userId).length;
   const [action, setAction] = useState<{

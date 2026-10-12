@@ -7,7 +7,6 @@ import { useApp } from "../state";
 import type { ScreenId, WindowId } from "../data/household";
 import { QuickSearch } from "../ui/QuickSearch";
 import { cx } from "../ui/cx";
-import { ReminderUsageMeter } from "../ui/ReminderUsage";
 
 type NavItem = { id: ScreenId; label: string; icon: IconName };
 
@@ -170,7 +169,7 @@ function NavButton({
 }
 
 export function Sidebar({ screen }: { screen: ScreenId }) {
-  const { go, hub, you, reminderUsage } = useApp();
+  const { go, hub, you } = useApp();
   const accountRole = hub.youMeta?.split(" · ")[0];
   const active = (id: ScreenId) =>
     screen === id ||
@@ -227,8 +226,6 @@ export function Sidebar({ screen }: { screen: ScreenId }) {
           </button>
           <div className="a-side-account-meta">
             {accountRole && <span className="a-side-account-role">{accountRole}</span>}
-            {accountRole && reminderUsage && <span className="a-side-account-separator" aria-hidden="true">·</span>}
-            <ReminderUsageMeter usage={reminderUsage} placement="sidebar" />
           </div>
         </div>
       </div>
@@ -245,14 +242,15 @@ export function Header({ screen }: { screen: ScreenId }) {
     native,
     you,
     noticesOn,
-    notifications,
+    noticeCounts,
     hubId,
     session,
     window: currentWindow,
   } = useApp();
   const [searchOpen, setSearchOpen] = useState(false);
   const searchingAll = ["home", "home-empty", "communes", "home-activity"].includes(screen);
-  const unread = noticesOn ? notifications.filter((notice) => !notice.readAt).length : 0;
+  // Every commune's unread notices, wherever the reader is.
+  const unread = noticesOn ? Object.values(noticeCounts).reduce((total, count) => total + count, 0) : 0;
   useEffect(() => {
     function shortcut(event: KeyboardEvent) {
       if (event.isComposing || event.repeat) return;

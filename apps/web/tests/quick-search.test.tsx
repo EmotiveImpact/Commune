@@ -29,7 +29,7 @@ beforeEach(() => {
     places: [{ id: "home-1", name: "Our home" }, { id: "home-2", name: "Maple House" }],
     session: { hasHubs: true }, go: mocks.go, setSearchQuery: mocks.setQuery, setSearchScope: mocks.setScope,
     pageTitle: "Expenses", pageLede: "Shared expenses", setMoreOpen: vi.fn(), native: false,
-    you: { name: "Alex", initials: "AL" }, noticesOn: true, notifications: [], window: null };
+    you: { name: "Alex", initials: "AL" }, noticesOn: true, notifications: [], noticeCounts: {}, window: null };
   mocks.api.mockResolvedValue(response([item("expense", "expense-2", "Garden supplies")]));
 });
 afterEach(cleanup);
