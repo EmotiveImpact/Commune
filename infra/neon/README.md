@@ -14,8 +14,8 @@ this is not a replacement of Neon Auth or a switch back to Supabase.
 - [Current design language and preserved layouts](../../docs/DESIGN-LANGUAGE.md)
 - [Local build-out from 5 October: migrations 0020 onwards](../../docs/LOCAL-BUILDOUT-2026-10-05.md)
 
-Migrations **0015 to 0034 are local only**. They have not been applied to any
-Neon branch. Release order when they are: apply 0013 to 0034 in numeric order
+Migrations **0015 to 0035 are local only**. They have not been applied to any
+Neon branch. Release order when they are: apply 0013 to 0035 in numeric order
 to the preview branch, refresh that branch's Data API schema cache, then
 deploy the matching web client. The new client calls `send_reminder_command`,
 `record_share_receipt`, `reverse_share_receipt`, `correct_expense`,
@@ -126,6 +126,12 @@ treat them as applied production configuration until its release is verified:
   does not charge a card or silently insert an expense.
 - Saved splits are shared, with creator/admin edit/archive permissions.
   Archiving and restoring do not bypass active-member and financial validation.
+- A commune's currency is fixed once it has an expense, fund, recurring bill
+  or exact split template, voided or archived ones included, since they keep
+  their amounts (0035). `update_commune_details` enforces this and the
+  snapshot reports what fixes it as `commune.currencyLockedBy`, which the
+  settings screen shows. Clients from before 0035 keep working, and the new
+  client works the same rule out itself from a database without 0035.
 - Fund/pledge edits respect contributions already recorded. Contributions are
   corrected with a retained original entry/reason, not deleted or refunded.
   Archiving preserves history and is blocked by outstanding active pledges.
@@ -232,7 +238,7 @@ rate limits) are recorded in [`docs/AUTH-SETTINGS.md`](../../docs/AUTH-SETTINGS.
    Broad grants would let direct writes bypass ledger invariants. Keep preview
    branches separate from production.
 3. Apply `migrations/0001_commune_core.sql` through
-   `migrations/0034_database_hardening.sql` in numeric order to the
+   `migrations/0035_currency_rule.sql` in numeric order to the
    development branch via an **unpooled** connection. Run `tests/grants.sql`,
    review RLS, and run two-account signed-JWT tests before applying the same
    reviewed migrations to production. After a migration adds or changes a

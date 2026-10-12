@@ -19,7 +19,8 @@ import {
 import { Pill } from "../ui/widgets";
 import { CalendarDate } from "../ui/CalendarDate";
 import { SplitEditor } from "../ui/SplitEditor";
-import { parseMoneyInput } from "../data/moneyInput";
+import { moneyInputError, parseMoneyInput } from "../data/moneyInput";
+import { LIMITS } from "../data/limits";
 import { todayIso } from "../data/operations";
 import {
   canSkipNextPeriod,
@@ -59,7 +60,7 @@ function RecordPeriodDialog({ bill, pending, error, onRecord, onClose }: {
   const { hub } = useApp();
   const [amount, setAmount] = useState((bill.amountMinor / 100).toFixed(2));
   const [validation, setValidation] = useState("");
-  const minor = parseMoneyInput(amount);
+  const minor = parseMoneyInput(amount, hub.currency);
   const different = minor !== null && minor !== bill.amountMinor;
   const preview = different && minor ? scaleRecurringShares(bill.allocations, minor) : [];
   const name = (userId: string) => hub.members.find((member) => member.userId === userId)?.name ?? "Former member";
@@ -67,13 +68,13 @@ function RecordPeriodDialog({ bill, pending, error, onRecord, onClose }: {
     <Dialog title={`Record ${bill.title} as paid?`} pending={pending} onClose={onClose}>
       <form onSubmit={(event) => {
         event.preventDefault();
-        if (!minor) { setValidation("Enter the amount paid, for example 55.00."); return; }
+        if (!minor) { setValidation(moneyInputError(amount, hub.currency, "Enter the amount paid, for example 55.00.")); return; }
         setValidation("");
         onRecord(minor);
       }}>
         <p>Record the bill for {dateLabel(bill.nextDueOn)} only if it has actually been paid. This creates the member shares and advances the schedule once.</p>
         <Field label={`Amount paid this time (${hub.currency})`} hint={`Usually ${money(bill.amountMinor, hub.currency)}. Change it if this bill came in different.`}>
-          <input value={amount} onChange={(event) => setAmount(event.target.value)} inputMode="decimal" maxLength={14} disabled={pending} required />
+          <input value={amount} onChange={(event) => setAmount(event.target.value)} inputMode="decimal" maxLength={LIMITS.money} disabled={pending} required />
         </Field>
         {preview.length ? (
           <div className="c-period-split" role="status">
@@ -228,15 +229,16 @@ function RecurringEditor({
     if (pending || conflict) return;
     setValidation("");
     try {
-      const amountMinor = parseMoneyInput(amount);
+      const amountMinor = parseMoneyInput(amount, hub.currency);
       if (!title.trim() || !amountMinor || !date)
-        throw new Error("Enter a name, amount and next due date.");
+        throw new Error(moneyInputError(amount, hub.currency, "Enter a name, amount and next due date."));
       if (!payer) throw new Error("Choose who pays this bill.");
       const allocations = allocateExpense(
         amountMinor,
         included,
         method,
         values,
+        hub.currency,
       );
       const fields = {
         title: title.trim(),
@@ -314,7 +316,7 @@ function RecurringEditor({
                 value={amount}
                 onChange={(event) => setAmount(event.target.value)}
                 inputMode="decimal"
-                maxLength={14}
+                maxLength={LIMITS.money}
                 required
               />
             </Field>
@@ -363,7 +365,7 @@ function RecurringEditor({
           onMethod={setMethod}
           values={values}
           onValues={setValues}
-          amountMinor={parseMoneyInput(amount)}
+          amountMinor={parseMoneyInput(amount, hub.currency)}
           currency={hub.currency}
           disabled={pending}
         />

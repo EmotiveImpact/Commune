@@ -1,4 +1,5 @@
 import { commandFailure } from "./commands";
+import { timestampDay } from "./operations";
 import type { ReminderEmailStatus, ReminderResult, ReminderTarget, ReminderUsage, SentReminder } from "../live/model";
 
 /** Mirrors the server's display rules. send_reminder remains the authority. */
@@ -22,9 +23,8 @@ export function reminderWord(kind: ReminderKind): "Nudge" | "Chase" {
 
 /** A timestamp shown as the member's local calendar day. */
 export function formatTimestampDay(timestamp: string | null | undefined): string {
-  if (!timestamp) return "";
-  const date = new Date(timestamp);
-  return Number.isNaN(date.getTime()) ? timestamp : dayFormat.format(date);
+  const day = timestampDay(timestamp);
+  return day ? formatReminderDay(day) : timestamp ?? "";
 }
 
 /** A date-only value (due, received). Never shifted by time zone. */

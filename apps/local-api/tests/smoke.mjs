@@ -133,6 +133,23 @@ assert.equal((await a("GET", `/communes/${id}/snapshot`)).commune.address,
 assert.equal((await a("PATCH", `/communes/${id}`, {
   name: `Local test ${suffix}`, kind: "household", currency: "GBP",
 })).status, 200);
+// Only records with amounts fix the currency (0035): a percentage split
+// template does not; an exact one does, even archived, and the snapshot says so.
+const evenSplit = [{ userId: userA.user.id, value: "50" }, { userId: userB.user.id, value: "50" }];
+assert.equal((await a("POST", `/communes/${id}/templates`, { name: "Even", method: "Percentage", participants: evenSplit })).status, 201);
+assert.deepEqual((await a("GET", `/communes/${id}/snapshot`)).commune.currencyLockedBy, []);
+const exactSplit = [{ userId: userA.user.id, value: "6.00" }, { userId: userB.user.id, value: "4.00" }];
+const exactTemplate = await a("POST", `/communes/${id}/templates`, { name: "Exact", method: "Exact", participants: exactSplit });
+assert.equal(exactTemplate.status, 201, JSON.stringify(exactTemplate));
+assert.equal((await a("POST", `/communes/${id}/templates`, {
+  id: exactTemplate.id, name: "Exact", method: "Exact", participants: exactSplit, archived: true,
+})).status, 201);
+const currencyRefused = await a("PATCH", `/communes/${id}`, {
+  name: `Local test ${suffix}`, kind: "household", currency: "EUR",
+});
+assert.equal(currencyRefused.status, 400, "an archived exact split template must fix the currency");
+assert.match(currencyRefused.error, /currency cannot change/i);
+assert.deepEqual((await b("GET", `/communes/${id}/snapshot`)).commune.currencyLockedBy, ["exactSplitTemplates"]);
 const dueOn = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 const badSplit = await a("POST", `/communes/${id}/expenses`, {
   title: "Bad split", amountMinor: 1000, dueOn,
@@ -157,6 +174,7 @@ assert.equal(expense.status, 201, JSON.stringify(expense));
 assert.equal((await a("PATCH", `/communes/${id}`, {
   name: `Local test ${suffix}`, kind: "household", currency: "EUR",
 })).status, 400, "currency must lock after an expense");
+assert.deepEqual((await a("GET", `/communes/${id}/snapshot`)).commune.currencyLockedBy, ["expenses", "exactSplitTemplates"]);
 assert.equal((await a("PATCH", `/communes/${id}`, {
   name: `Retitled ${suffix}`, kind: "trip", currency: "GBP",
   destination: "Lisbon, Portugal", stayName: "Hotel Avenida",

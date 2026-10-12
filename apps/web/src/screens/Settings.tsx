@@ -12,6 +12,7 @@ import { useEmailReminders } from "../ui/useEmailReminders";
 import { SignInSettings } from "../ui/SignInSettings";
 import { communeExportJson, downloadText, expensesCsv } from "../data/export";
 import { todayIso } from "../data/operations";
+import { currencyHint, currencyLockedBy } from "../data/currency";
 
 export function SettingsScreen() {
   const {
@@ -225,7 +226,7 @@ export function SettingsScreen() {
 
 export function CommuneSettingsScreen() {
   const {
-    hub, session, expenses, funds, go, setHubPhoto, updateCommune, snapshots,
+    hub, session, go, setHubPhoto, updateCommune, snapshots,
   } = useApp();
   const [name, setName] = useState(hub.name);
   const [type, setType] = useState(hub.type);
@@ -239,7 +240,8 @@ export function CommuneSettingsScreen() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
-  const hasMoneyRecords = expenses.length > 0 || funds.length > 0;
+  // The database's rule, as its snapshot reports it.
+  const currencyLocks = currencyLockedBy(snapshots[hub.id]);
   const canEdit = hub.role === "admin";
   const locationChanged = type === "Trip"
     ? location.destination.trim() !== (hub.destination ?? "") || location.stayName.trim() !== (hub.stayName ?? "") || location.stayAddress.trim() !== (hub.stayAddress ?? "")
@@ -310,10 +312,10 @@ export function CommuneSettingsScreen() {
             </div>
             <div className="a-field">
               <label htmlFor="commune-setting-currency">Currency</label>
-              <select id="commune-setting-currency" value={currency} disabled={!canEdit || busy || hasMoneyRecords} onChange={(event) => { setCurrency(event.target.value as typeof currency); setSaved(false); }}>
+              <select id="commune-setting-currency" value={currency} disabled={!canEdit || busy || currencyLocks.length > 0} onChange={(event) => { setCurrency(event.target.value as typeof currency); setSaved(false); }}>
                 <option value="GBP">£ GBP</option><option value="USD">$ USD</option><option value="EUR">€ EUR</option>
               </select>
-              <p className="hint">{hasMoneyRecords ? "Locked because this commune already has an expense or fund; changing it would relabel past amounts." : "You can change this until the first expense or fund is created."}</p>
+              <p className="hint">{currencyHint(currencyLocks)}</p>
             </div>
             <CommuneLocationFields type={type} value={location} onChange={(next) => { setLocation(next); setSaved(false); }} disabled={!canEdit || busy} idPrefix="commune-setting" />
             {error ? <p className="a-form-error" role="alert">{error}</p> : null}

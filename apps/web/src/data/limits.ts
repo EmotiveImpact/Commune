@@ -17,5 +17,6 @@ export const LIMITS = {
   userName: 80,
   email: 254,
   search: 100,
-  money: 15,
+  // Long enough for the largest amount the database accepts: 10,000,000,000.00.
+  money: 17,
 } as const;

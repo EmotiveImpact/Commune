@@ -103,7 +103,8 @@ BEGIN
     'commune_private.note_content(text,text,text,text,text,jsonb)',
     'commune_private.operation_content(text,text,text,date,time,boolean,text,jsonb,text,text)',
     'commune_private.money_correction_reserve(text,text,jsonb)',
-    'commune_private.prune_delivery_records()'
+    'commune_private.prune_delivery_records()',
+    'commune_private.currency_locked_by(uuid)'
   ] LOOP
     IF has_function_privilege('authenticated', table_name, 'EXECUTE')
       OR has_function_privilege('anonymous', table_name, 'EXECUTE') THEN

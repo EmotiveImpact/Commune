@@ -435,6 +435,18 @@ export function todayIso(): string {
   return isoFromDate(new Date());
 }
 
+/**
+ * The calendar day (YYYY-MM-DD) a stored timestamp falls on where the member
+ * is. Activity, statements, exports and "This month" all date timestamps this
+ * way, never by their UTC date, so something entered late in the evening
+ * keeps the day it was entered. Empty for a missing or unreadable timestamp.
+ */
+export function timestampDay(timestamp: string | null | undefined): string {
+  if (!timestamp) return "";
+  const date = new Date(timestamp);
+  return Number.isNaN(date.getTime()) ? "" : isoFromDate(date);
+}
+
 export function addDays(date: string, days: number): string {
   const next = dateFromIso(date);
   next.setDate(next.getDate() + days);

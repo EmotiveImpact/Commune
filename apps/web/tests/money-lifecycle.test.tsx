@@ -297,6 +297,20 @@ describe("partial repayment receipts and reversals", () => {
     expect(within(dialog).getByRole("alert").textContent).toBe("Only £3.00 is still outstanding on this share. Nothing was recorded.");
   });
 
+  it("never says nothing was recorded once an earlier attempt may have been", async () => {
+    vi.mocked(post).mockImplementationOnce(async () => { throw new TypeError("Failed to fetch"); })
+      .mockImplementation(async () => { throw new ApiError("Only £3.00 is still outstanding on this share", 409); });
+    mount("/settle");
+    fireEvent.click(await screen.findByRole("button", { name: "Confirm received" }));
+    const dialog = screen.getByRole("dialog", { name: "Record a repayment from Housemate" });
+    await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Record £12.00 received" })); });
+    expect(within(dialog).getByRole("alert").textContent).toContain("Trying again will not record it twice.");
+    // The retry is refused: perhaps because the first attempt went through.
+    await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Record £12.00 received" })); });
+    expect(within(dialog).getByRole("alert").textContent)
+      .toBe("An earlier attempt may already have been recorded. Close this and check the repayment history before trying again.");
+  });
+
   it("shows the same part-paid balance in the expense, Settle and Hub", async () => {
     current.expenses = [partPaid()];
     mount("/settle");
@@ -419,6 +433,21 @@ describe("I’ve sent it: a claim the bill payer answers", () => {
     expect(within(owe).queryByRole("button", { name: "I’ve sent it" })).toBeNull();
     await act(async () => { fireEvent.click(within(owe).getByRole("button", { name: "Withdraw" })); });
     expect(reportPosts().at(-1)?.[0]).toBe("/payment-reports/report-1/withdraw");
+  });
+
+  it("never says nothing was reported once an earlier attempt may have been", async () => {
+    current.expenses = [debt()];
+    vi.mocked(post).mockImplementationOnce(async () => { throw new TypeError("Failed to fetch"); })
+      .mockImplementation(async () => { throw new ApiError("Housemate has already been told about this payment", 409); });
+    mount("/settle");
+    fireEvent.click(await screen.findByRole("button", { name: "I’ve sent it" }));
+    const dialog = screen.getByRole("dialog", { name: "Tell Housemate you’ve paid" });
+    await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Tell Housemate" })); });
+    expect(within(dialog).getByRole("alert").textContent).toContain("Trying again will not record it twice.");
+    await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Tell Housemate" })); });
+    expect(reportPosts()).toHaveLength(2);
+    expect(within(dialog).getByRole("alert").textContent)
+      .toBe("An earlier attempt may already have been reported. Close this and check the expense before trying again.");
   });
 
   it("refuses card numbers in the reference before sending", async () => {
@@ -605,6 +634,42 @@ describe("safe expense correction and void", () => {
     expect(bodies[1][1]).toMatchObject({ expectedVersion: 1, reason: "Entered twice" });
     expect(bodies[1][1].requestId).toBe(bodies[0][1].requestId);
     expect(within(windowFrame).getByRole("status").textContent).toContain("Expense voided.");
+  });
+
+  it("never says nothing was changed once an earlier correction may have saved", async () => {
+    let lost = true;
+    mockChange(() => {
+      if (lost) { lost = false; throw new TypeError("Failed to fetch"); }
+      throw new ApiError("This expense was changed by someone else. Review the latest version.", 409);
+    });
+    const { dialog } = await openCorrection();
+    fireEvent.change(within(dialog).getByLabelText("Total (GBP)"), { target: { value: "30.00" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Review changes" }));
+    fireEvent.change(within(dialog).getByLabelText("Reason for the correction"), { target: { value: "Receipt total was wrong" } });
+    await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Save correction" })); });
+    expect(within(dialog).getByRole("alert").textContent).toContain("Trying again will not record it twice.");
+    // The retry is refused: perhaps because the first attempt went through.
+    await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Save correction" })); });
+    expect(within(dialog).getByRole("alert").textContent)
+      .toBe("An earlier attempt may already have saved this correction. Close this and check the expense’s history before trying again.");
+  });
+
+  it("never says nothing was changed once an earlier void may have saved", async () => {
+    let lost = true;
+    mockChange(() => {
+      if (lost) { lost = false; throw new TypeError("Failed to fetch"); }
+      throw new ApiError("This expense was changed by someone else. Review the latest version.", 409);
+    });
+    mount("/expenses");
+    fireEvent.click(await screen.findByRole("button", { name: /House supplies/ }));
+    fireEvent.click(within(await screen.findByRole("dialog", { name: "House supplies" })).getByRole("button", { name: "Void" }));
+    const dialog = screen.getByRole("dialog", { name: "Void this expense?" });
+    fireEvent.change(within(dialog).getByLabelText("Reason for voiding"), { target: { value: "Entered twice" } });
+    await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Void expense" })); });
+    expect(within(dialog).getByRole("alert").textContent).toContain("Trying again will not record it twice.");
+    await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Void expense" })); });
+    expect(within(dialog).getByRole("alert").textContent)
+      .toBe("An earlier attempt may already have voided this expense. Close this and check the expense before trying again.");
   });
 
   it("keeps a voided expense as history that never counts towards a balance", async () => {

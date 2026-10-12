@@ -41,6 +41,13 @@ lifecycle pack. Work is paused for a handoff, not a production release.
   keeps working until its access token expires (up to 15 minutes on Neon, at
   once on the local API). The reset page takes the token out of the address
   bar. Hosted behaviour is unverified.
+- Also from 9 October, for review: money accuracy fixes from the same review.
+  Entries are dated by the member's own day; every money field reads amounts
+  one way ("1,200" everywhere, "12,50" in a euro commune); the spare penny
+  goes to the same person in the preview and the save; one rule fixes a
+  commune's currency once it has an expense, fund, recurring bill or exact
+  split template (migration 0035); statements open for former members; and
+  money dialogs no longer say nothing was saved after an unsure attempt.
 - The website is `web/` (the editorial homepage); the earlier v2 site is in
   `web-backup/`. Launch names `website` (3004) and `website-backup` (3003).
 - No push, deployment, hosted migration or provider change has been made. Do
@@ -150,7 +157,7 @@ no further copy-cleanup pass is needed for the handoff.
 Read [the product-depth roadmap](PRODUCT-DEPTH-ROADMAP-2026-10-02.md) and the
 Remaining section of [money lifecycle](MONEY-LIFECYCLE-2026-10-02.md).
 
-1. **Hosted parity.** Migrations 0013 to 0034, schema-cache refresh, the
+1. **Hosted parity.** Migrations 0013 to 0035, schema-cache refresh, the
    matching web client and sender, auth, invitations and real email delivery
    are all unverified on Neon. Apply migrations before deploying the client.
    Measure cold/warm/idle loading with separate accounts. Do not declare

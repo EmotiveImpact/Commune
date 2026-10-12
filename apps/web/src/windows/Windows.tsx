@@ -25,6 +25,7 @@ import { allocateExpense, type SplitMethod } from "../../../../packages/core/src
 import { netBalances } from "../../../../packages/core/src/balances";
 import "./ExpenseEditor.css";
 import { SplitEditor } from "../ui/SplitEditor";
+import { moneyInputError, parseMoneyInput } from "../data/moneyInput";
 
 const NOTE_TYPES = [
   ["wifi", "Wi-Fi"],
@@ -38,14 +39,6 @@ const NOTE_TYPES = [
 
 function formatMoney(minor: number, currency: string): string {
   return new Intl.NumberFormat("en-GB", { style: "currency", currency }).format(minor / 100);
-}
-
-function parseMoney(value: string): number | null {
-  const clean = value.trim();
-  if (!/^\d+(?:\.\d{1,2})?$/.test(clean)) return null;
-  const [major, decimals = ""] = clean.split(".");
-  const minor = Number(major) * 100 + Number(decimals.padEnd(2, "0"));
-  return Number.isSafeInteger(minor) && minor > 0 ? minor : null;
 }
 
 export function Windows() {
@@ -286,7 +279,7 @@ function AddExpense() {
   const members = hub.members.flatMap((member) => member.userId ? [{ ...member, userId: member.userId }] : []);
   const initialTemplate = splitTemplates.find(template => template.id === expenseTemplateId && !template.archivedAt && template.participants.every(item => members.some(member => member.userId === item.userId)));
   const [what, setWhat] = useState("");
-  const [amount, setAmount] = useState(() => initialTemplate?.method === "Exact" ? (initialTemplate.participants.reduce((total, item) => total + (parseMoney(item.value) ?? 0), 0) / 100).toFixed(2) : "");
+  const [amount, setAmount] = useState(() => initialTemplate?.method === "Exact" ? (initialTemplate.participants.reduce((total, item) => total + (parseMoneyInput(item.value) ?? 0), 0) / 100).toFixed(2) : "");
   const [due, setDue] = useState("");
   const [payer, setPayer] = useState(session?.userId ?? "");
   const [category, setCategory] = useState("Other");
@@ -301,11 +294,14 @@ function AddExpense() {
   // the same expense.
   const requestId = useRef(newRequestId());
   const [uncertain, setUncertain] = useState(false);
-  const amountMinor = parseMoney(amount);
+  const amountMinor = parseMoneyInput(amount, hub.currency);
+  // Someone who leaves while the form is open drops out of the preview as well
+  // as the save, so the two always split between the same people.
   const included = members.filter((member) => includedIds.includes(member.userId));
+  const includedUserIds = included.map(member => member.userId);
   let allocations: ReturnType<typeof allocateExpense> = [];
   let splitError = "";
-  try { allocations = allocateExpense(amountMinor ?? 0, included.map(member => member.userId), method, values); }
+  try { allocations = allocateExpense(amountMinor ?? 0, includedUserIds, method, values, hub.currency); }
   catch (cause) { splitError = cause instanceof Error ? cause.message : "Check the split."; }
 
   async function save() {
@@ -315,7 +311,7 @@ function AddExpense() {
       return;
     }
     if (amountMinor === null || amountMinor < included.length) {
-      setError("Enter a valid amount of at least one penny per selected person.");
+      setError(moneyInputError(amount, hub.currency, "Enter a valid amount of at least one penny per selected person."));
       return;
     }
     if (!included.length) {
@@ -390,14 +386,14 @@ function AddExpense() {
         if(!template) {setIncludedIds(members.map(member=>member.userId));setMethod("Equal");setValues({});return;}
         if(template.participants.some(item=>!members.some(member=>member.userId===item.userId))) {setError("This template includes a former member. Update it in Templates first.");setTemplateId("");return;}
         setIncludedIds(template.participants.map(item=>item.userId));setMethod(template.method);setValues(Object.fromEntries(template.participants.map(item=>[item.userId,item.value])));setError("");
-        if(template.method==="Exact" && !amount.trim()) {const sum=template.participants.reduce((total,item)=>total+(parseMoney(item.value) ?? 0),0);setAmount((sum/100).toFixed(2));}
+        if(template.method==="Exact" && !amount.trim()) {const sum=template.participants.reduce((total,item)=>total+(parseMoneyInput(item.value) ?? 0),0);setAmount((sum/100).toFixed(2));}
       }}><option value="">Custom split</option>{splitTemplates.filter(template=>!template.archivedAt).map(template=><option key={template.id} value={template.id}>{template.name} · {template.method}</option>)}</select></div>}
       <div className="a-field">
         <label htmlFor="exp-due">Due date (optional)</label>
         <input id="exp-due" type="date" value={due} disabled={saving || uncertain} onChange={(e) => setDue(e.target.value)} />
         <p className="a-window-note">Nudge becomes available to the payer once this date arrives.</p>
       </div>
-      <SplitEditor members={members} includedIds={includedIds} onIncludedIds={setIncludedIds} method={method} onMethod={setMethod} values={values} onValues={setValues} amountMinor={amountMinor} currency={hub.currency} disabled={saving || uncertain} />
+      <SplitEditor members={members} includedIds={includedUserIds} onIncludedIds={setIncludedIds} method={method} onMethod={setMethod} values={values} onValues={setValues} amountMinor={amountMinor} currency={hub.currency} disabled={saving || uncertain} />
       {error ? <p className="a-form-error" role="alert">{error}</p> : null}
     </section><aside className="c-expense-summary" aria-label="Split summary"><h3>The split, at a glance</h3><div><span>Total</span><strong>{formatMoney(amountMinor ?? 0, hub.currency)}</strong></div><div><span>Your share</span><strong>{formatMoney(allocations.find(share => share.userId === session?.userId)?.amountMinor ?? 0, hub.currency)}</strong></div><p>Paid by {members.find(member=>member.userId===payer)?.name ?? you.name}. Each person will see their exact share.</p><p>Commune records who paid and who owes what. It doesn’t move money.</p></aside>
       {/* One footer under both columns, so it never cuts across the split list. */}
@@ -768,12 +764,18 @@ function Profile() {
 }
 
 function Breakdown() {
-  const { go, closeWindow, hub, expenses, voidedExpenses, session } = useApp();
+  const { go, closeWindow, hub, expenses, voidedExpenses, session, snapshots } = useApp();
   const others = hub.members.filter((member) => member.userId !== session?.userId);
-  const [statementWith, setStatementWith] = useState(others[0]?.userId ?? "");
-  const other = others.find((member) => member.userId === statementWith) ?? others[0];
+  const ledger = [...expenses, ...voidedExpenses];
+  // People who have left keep their statements, listed under their own
+  // heading when there is anything between you.
+  const former = session ? (snapshots[hub.id]?.members ?? []).filter((member) => member.active === false &&
+    member.userId !== session.userId && buildStatement(ledger, session.userId, member.userId, member.name).entries.length > 0) : [];
+  const people = [...others, ...former];
+  const [statementWith, setStatementWith] = useState(people[0]?.userId ?? "");
+  const other = people.find((member) => member.userId === statementWith) ?? people[0];
   const statement = other && session
-    ? buildStatement([...expenses, ...voidedExpenses], session.userId, other.userId, other.name)
+    ? buildStatement(ledger, session.userId, other.userId, other.name)
     : null;
   // The same figure Members shows for this person.
   const net = other && session ? netBalances(expenses, session.userId).get(other.userId) ?? 0 : 0;
@@ -832,6 +834,9 @@ function Breakdown() {
             <label htmlFor="statement-member">Statement with</label>
             <select id="statement-member" value={other.userId} onChange={(event) => setStatementWith(event.target.value)}>
               {others.map((member) => <option key={member.userId} value={member.userId}>{member.name}</option>)}
+              {former.length ? <optgroup label="Former members">
+                {former.map((member) => <option key={member.userId} value={member.userId}>{member.name}</option>)}
+              </optgroup> : null}
             </select>
           </div>
           <p className="c-statement-net" role="status">
