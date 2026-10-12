@@ -3,6 +3,9 @@ import { createRemoteJWKSet, jwtVerify } from "jose";
 import { Pool } from "pg";
 import { renderReminderEmail } from "./email.ts";
 import { InvitationEmailError, sendInvitationEmail } from "./invitations.ts";
+import { formatMoney } from "./money.ts";
+import { type UnsubscribeConfig, unsubscribeConfig, unsubscribePage, unsubscribeRecipient, unsubscribeUrl } from "./unsubscribe.ts";
+import { resendWebhook } from "./webhooks.ts";
 
 type Outbox = {
   reminder_id: string;
@@ -18,10 +21,12 @@ type EmailPayload = {
   text: string;
   // Previously frozen text-only payloads must remain replayable unchanged.
   html?: string;
+  headers?: Record<string, string>;
 };
 
 type ReminderDetails = {
   kind: "nudge" | "chase";
+  recipient_user_id: string;
   outstanding_minor: string | null;
   commune_name: string;
   currency: string;
@@ -31,6 +36,7 @@ type ReminderDetails = {
   member_active: boolean;
   label: string | null;
   email_reminders: boolean | null;
+  recipient_suppressed: boolean;
   still_due: boolean;
 };
 
@@ -52,12 +58,15 @@ const SCHEDULED_CONCURRENCY = 4;
 const SCHEDULED_BUDGET_MS = 30_000;
 let jwks: ReturnType<typeof createRemoteJWKSet> | undefined;
 
-function mailConfig(): { apiKey: string; from: string; appUrl: string } | null {
+type MailConfig = { apiKey: string; from: string; appUrl: string; unsubscribe: UnsubscribeConfig | null };
+
+function mailConfig(): MailConfig | null {
   const { RESEND_API_KEY, RESEND_FROM, APP_URL } = process.env;
   if (!RESEND_API_KEY || !RESEND_FROM || !APP_URL) return null;
   const url = new URL(APP_URL);
   if (url.protocol !== "https:") throw new Error("APP_URL must use HTTPS");
-  return { apiKey: RESEND_API_KEY, from: RESEND_FROM, appUrl: url.origin };
+  // Without UNSUBSCRIBE_SECRET and WORKER_PUBLIC_URL, emails point to Settings only.
+  return { apiKey: RESEND_API_KEY, from: RESEND_FROM, appUrl: url.origin, unsubscribe: unsubscribeConfig(process.env) };
 }
 
 async function claimNext(reminderId: string | null = null): Promise<Outbox | null> {
@@ -112,7 +121,7 @@ async function expireUnsendable() {
 
 async function loadReminderDetails(reminderId: string) {
   const { rows } = await pool.query<ReminderDetails>(`
-    SELECT r.kind, c.name AS commune_name,
+    SELECT r.kind, r.recipient_user_id, c.name AS commune_name,
       c.currency, sender.name AS sender_name,
       recipient.email AS recipient_email,
       recipient."emailVerified" AS recipient_verified,
@@ -122,6 +131,10 @@ async function loadReminderDetails(reminderId: string) {
           AND m.user_id = r.recipient_user_id AND m.active
       ) AS member_active,
       pref.email_reminders,
+      EXISTS (
+        SELECT 1 FROM public.email_suppressions x
+        WHERE x.email = lower(recipient.email)
+      ) AS recipient_suppressed,
       CASE WHEN r.kind = 'nudge'
         -- voided_at arrives with migration 0017. Reading it through to_jsonb
         -- keeps this query valid on a database that has not had it applied.
@@ -159,10 +172,13 @@ function isDeliverable(detail: ReminderDetails | null): detail is ReminderDetail
   recipient_email: string;
   outstanding_minor: string;
 } {
+  // An address the provider reported as bouncing or complaining is skipped
+  // exactly like one whose owner turned reminder emails off, so a sender
+  // cannot tell the two apart.
   return !!detail && detail.still_due &&
     detail.member_active && detail.recipient_verified &&
-    detail.email_reminders !== false && !!detail.recipient_email &&
-    !!detail.outstanding_minor;
+    detail.email_reminders !== false && !detail.recipient_suppressed &&
+    !!detail.recipient_email && !!detail.outstanding_minor;
 }
 
 async function suppress(reminderId: string, attempt: number) {
@@ -180,24 +196,28 @@ async function buildPayload(
     recipient_email: string;
     outstanding_minor: string;
   },
-  from: string,
-  appUrl: string,
+  config: MailConfig,
 ) {
-  const amount = new Intl.NumberFormat("en-GB", {
-    style: "currency", currency: detail.currency,
-  }).format(Number(detail.outstanding_minor) / 100);
+  const amount = formatMoney(Number(detail.outstanding_minor), detail.currency);
+  const unsubscribe = config.unsubscribe ? unsubscribeUrl(config.unsubscribe, detail.recipient_user_id) : undefined;
   const content = renderReminderEmail({
     kind: detail.kind,
     senderName: detail.sender_name,
     communeName: detail.commune_name,
     label: detail.label ?? detail.commune_name,
     amount,
-    appUrl,
+    appUrl: config.appUrl,
+    unsubscribeUrl: unsubscribe,
   });
   const payload: EmailPayload = {
-    from,
+    from: config.from,
     to: [detail.recipient_email],
     ...content,
+    // One-click unsubscribe (RFC 8058): mail apps show their own button.
+    ...(unsubscribe ? { headers: {
+      "List-Unsubscribe": `<${unsubscribe}>`,
+      "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+    } } : {}),
   };
   // Freeze the exact request before calling Resend. Replays must send the same
   // body with the same idempotency key, even if a name or amount changes.
@@ -223,7 +243,7 @@ async function markFailure(reminderId: string, attempt: number, message: string)
   `, [reminderId, message, attempt]);
 }
 
-async function sendOne(config: { apiKey: string; from: string; appUrl: string }, reminderId: string | null = null) {
+async function sendOne(config: MailConfig, reminderId: string | null = null) {
   const item = await claimNext(reminderId);
   if (!item) return false;
   try {
@@ -245,8 +265,7 @@ async function sendOne(config: { apiKey: string; from: string; appUrl: string },
       return true;
     }
     const payload = item.payload ??
-      await buildPayload(item.reminder_id, item.attempts, detail,
-        config.from, config.appUrl);
+      await buildPayload(item.reminder_id, item.attempts, detail, config);
     if (!payload) return true;
     const response = await fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -310,7 +329,7 @@ async function verifiedSender(request: Request): Promise<string | null> {
   }
 }
 
-async function dispatch(request: Request, config: { apiKey: string; from: string; appUrl: string }): Promise<Response> {
+async function dispatch(request: Request, config: MailConfig): Promise<Response> {
   const headers = dispatchCors(request, config.appUrl);
   if (!headers) return new Response("Forbidden origin", { status: 403 });
   if (request.method === "OPTIONS") return new Response(null, { status: 204, headers });
@@ -332,11 +351,34 @@ async function dispatch(request: Request, config: { apiKey: string; from: string
   if (sender.rows[0]?.sender_user_id !== senderId) {
     return new Response("Reminder not found", { status: 404, headers });
   }
-  const processed = await sendOne(config, reminderId);
-  return Response.json({ processed }, { headers });
+  await sendOne(config, reminderId);
+  // The same answer whether an email went or the recipient turned email off:
+  // that choice is theirs to keep private (the snapshot hides it too).
+  return Response.json({ accepted: true }, { headers });
 }
 
-async function drainScheduled(config: { apiKey: string; from: string; appUrl: string }): Promise<number> {
+async function unsubscribe(request: Request, config: MailConfig): Promise<Response> {
+  const settingsOnly = "Turn reminder emails off in Commune settings instead.";
+  if (!config.unsubscribe) return unsubscribePage("This link doesn’t work", settingsOnly, config.appUrl, undefined, 404);
+  const userId = unsubscribeRecipient(config.unsubscribe, request.url);
+  if (!userId) return unsubscribePage("This link doesn’t work", settingsOnly, config.appUrl, undefined, 400);
+  if (request.method === "GET") {
+    // Opening the link only asks: link checkers in mail apps open links too.
+    const self = new URL(request.url);
+    return unsubscribePage("Turn off reminder emails?",
+      "You will stop getting an email when someone in a commune sends you a reminder. Reminders still appear in Commune.",
+      config.appUrl, { action: `${self.pathname}${self.search}`, label: "Turn off reminder emails" });
+  }
+  if (request.method !== "POST") return new Response("Method not allowed", { status: 405, headers: { Allow: "GET, POST" } });
+  await pool.query(`
+    INSERT INTO public.notification_preferences (user_id, email_reminders)
+    VALUES ($1, false)
+    ON CONFLICT (user_id) DO UPDATE SET email_reminders = false, updated_at = now()
+  `, [userId]);
+  return unsubscribePage("Reminder emails are off", "You can turn them back on in Commune settings at any time.", config.appUrl);
+}
+
+async function drainScheduled(config: MailConfig): Promise<number> {
   const deadline = Date.now() + SCHEDULED_BUDGET_MS;
   let claimed = 0;
   let processed = 0;
@@ -350,7 +392,7 @@ async function drainScheduled(config: { apiKey: string; from: string; appUrl: st
   return processed;
 }
 
-async function dispatchInvitation(request: Request, config: { apiKey: string; from: string; appUrl: string }) {
+async function dispatchInvitation(request: Request, config: MailConfig) {
   const headers = dispatchCors(request, config.appUrl);
   if (!headers) return new Response("Forbidden origin", { status: 403 });
   if (request.method === "OPTIONS") return new Response(null, { status: 204, headers });
@@ -371,6 +413,10 @@ async function dispatchInvitation(request: Request, config: { apiKey: string; fr
 
 export default {
   async fetch(request: Request): Promise<Response> {
+    // Provider events need only their own signing secret, not the mail settings.
+    if (new URL(request.url).pathname === "/webhooks/resend") {
+      return resendWebhook(pool, request, process.env.RESEND_WEBHOOK_SECRET);
+    }
     const config = mailConfig();
     if (!config) {
       console.error("Reminder worker is missing RESEND_API_KEY, RESEND_FROM, or APP_URL");
@@ -378,6 +424,7 @@ export default {
     }
     const pathname = new URL(request.url).pathname;
     if (pathname === "/invite") return dispatchInvitation(request, config);
+    if (pathname === "/unsubscribe") return unsubscribe(request, config);
     if (pathname === "/dispatch") return dispatch(request, config);
     // Neon strips client-set X-Neon-* headers before invoking a Function.
     // Only the platform's scheduled trigger can supply this header.
@@ -387,6 +434,13 @@ export default {
     }
     await expireUnsendable();
     const processed = await drainScheduled(config);
-    return Response.json({ processed });
+    // Addresses and message bodies are kept only while a send may need them.
+    // Tidying up never holds up the emails themselves.
+    const pruned = await pool.query<{ pruned: unknown }>("SELECT commune_private.prune_delivery_records() AS pruned")
+      .then((result) => result.rows[0]?.pruned ?? null, (error: unknown) => {
+        console.error("Pruning old email records failed", error);
+        return null;
+      });
+    return Response.json({ processed, pruned });
   },
 };

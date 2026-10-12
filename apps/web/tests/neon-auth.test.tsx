@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Commune } from "../src/live/model";
 
@@ -14,40 +15,75 @@ beforeEach(() => {
 });
 
 describe("hosted read authentication", () => {
-  function listResults(communes: unknown, members: unknown, error: unknown = null) {
+  // The list, each role and member count and each change mark come from one
+  // database function, read together.
+  const listed = { id: "commune-1", name: "Home", kind: "household", currency: "GBP", address: "", destination: "",
+    stayName: "", stayAddress: "", role: "admin", memberCount: 2, changeMark: "2026-10-09:3:41" };
+  function listResult(data: unknown, error: unknown = null) {
     mocks.getSession.mockResolvedValue({ data: { user: { id: "viewer", emailVerified: true } } });
-    mocks.from.mockImplementation((table: string) => {
-      const result = Promise.resolve({ data: table === "communes" ? communes : members, error });
-      return { select: () => Object.assign(result, { order: () => result, eq: () => result }) };
-    });
+    mocks.rpc.mockResolvedValue({ data, error });
   }
 
   it("reports missing database identity as authentication failure, not an empty list", async () => {
-    listResults(null, null, { code: "28000", message: "Request identity could not be verified" });
+    listResult(null, { code: "28000", message: "Request identity could not be verified" });
     const { listCommunes } = await import("../src/live/neon");
     await expect(listCommunes()).rejects.toMatchObject({ status: 401 });
   });
 
   it("does not turn malformed database responses into No communes yet", async () => {
-    listResults(null, []);
+    listResult(null);
     const { listCommunes } = await import("../src/live/neon");
     await expect(listCommunes()).rejects.toMatchObject({ status: 502 });
   });
 
-  it("rejects inconsistent membership reads instead of displaying an empty account", async () => {
-    listResults([], [{ commune_id: "commune-1", user_id: "viewer", role: "admin" }]);
+  it("reads communes, roles, member counts and change marks in one consistent call", async () => {
+    listResult([listed]);
     const { listCommunes } = await import("../src/live/neon");
-    await expect(listCommunes()).rejects.toMatchObject({ status: 409 });
+    expect(await listCommunes()).toEqual([{ id: "commune-1", name: "Home", kind: "household", currency: "GBP", role: "admin",
+      memberCount: 2, address: "", destination: "", stayName: "", stayAddress: "", changeMark: "2026-10-09:3:41" }]);
+    expect(mocks.rpc).toHaveBeenCalledExactlyOnceWith("my_communes");
+    expect(mocks.from).not.toHaveBeenCalled();
   });
 
-  it("does not publish a commune without the viewer's membership", async () => {
-    listResults([{ id: "commune-1", name: "Home" }], []);
+  it("carries each commune's unread notice count for the bell, when the database sends one (0039)", async () => {
+    listResult([{ ...listed, unreadNotices: 3 }, { ...listed, id: "commune-2" }]);
     const { listCommunes } = await import("../src/live/neon");
-    await expect(listCommunes()).rejects.toMatchObject({ status: 409 });
+    const [counted, older] = await listCommunes();
+    expect(counted.unreadNotices).toBe(3);
+    // Before 0039 the field is missing, and the app counts the open commune's own notices.
+    expect("unreadNotices" in older).toBe(false);
+    listResult([{ ...listed, unreadNotices: "many" }]);
+    await expect(listCommunes()).rejects.toMatchObject({ status: 502 });
+  });
+
+  it("checks a verified session before reading notices across communes", async () => {
+    const { neonApi } = await import("../src/live/neon");
+    await expect(neonApi("/notices/unread")).rejects.toThrow("Sign in required");
+    expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+
+  it("reads unread notices across communes through one guarded RPC and refuses a malformed answer", async () => {
+    mocks.getSession.mockResolvedValue({ data: { user: { id: "viewer", emailVerified: true } } });
+    const notices = [{ id: "notice-1", kind: "payment-reported", communeId: "commune-2", senderName: "Ben", fundId: null }];
+    mocks.rpc.mockResolvedValue({ data: notices, error: null });
+    const { neonApi } = await import("../src/live/neon");
+    expect(await neonApi("/notices/unread")).toEqual({ notices });
+    expect(mocks.rpc).toHaveBeenCalledExactlyOnceWith("my_unread_notices");
+    mocks.rpc.mockResolvedValue({ data: null, error: null });
+    await expect(neonApi("/notices/unread")).rejects.toMatchObject({ status: 502 });
+    expect(mocks.from).not.toHaveBeenCalled();
+  });
+
+  it("does not publish a commune without the viewer's membership or its change mark", async () => {
+    const { listCommunes } = await import("../src/live/neon");
+    for (const entry of [{ id: "commune-1", name: "Home" }, { ...listed, role: "owner" }, { ...listed, changeMark: null }]) {
+      listResult([entry]);
+      await expect(listCommunes()).rejects.toMatchObject({ status: 409 });
+    }
   });
 
   it("still accepts a genuinely empty new account", async () => {
-    listResults([], []);
+    listResult([]);
     const { listCommunes } = await import("../src/live/neon");
     expect(await listCommunes()).toEqual([]);
   });
@@ -68,6 +104,18 @@ describe("hosted read authentication", () => {
     expect(mocks.rpc).toHaveBeenCalledExactlyOnceWith("commune_snapshot",{p_commune_id:commune.id});
     expect(mocks.from).not.toHaveBeenCalled();
   });
+  it("reads an overview summary through its own RPC and never takes one for the full record", async () => {
+    mocks.getSession.mockResolvedValue({ data: { user: { id: "viewer", emailVerified: true } } });
+    const data = { commune, members: [], expenses: [], funds: [], reminderTargets: [], notifications: [], detail: "summary" };
+    mocks.rpc.mockResolvedValue({ data, error: null });
+    const { snapshot, neonApi } = await import("../src/live/neon");
+    expect(await snapshot(commune.id, commune, "summary")).toEqual(data);
+    expect(mocks.rpc).toHaveBeenLastCalledWith("commune_summary", { p_commune_id: commune.id });
+    expect(await neonApi(`/communes/${commune.id}/snapshot?detail=summary`)).toEqual(data);
+    expect(mocks.rpc).toHaveBeenLastCalledWith("commune_summary", { p_commune_id: commune.id });
+    await expect(snapshot(commune.id, commune)).rejects.toMatchObject({ status: 502 });
+    expect(mocks.rpc).toHaveBeenLastCalledWith("commune_snapshot", { p_commune_id: commune.id });
+  });
   it("rejects a mis-scoped snapshot instead of rendering another commune's records",async()=>{
     mocks.getSession.mockResolvedValue({data:{user:{id:"viewer",emailVerified:true}}});
     mocks.rpc.mockResolvedValue({data:{commune:{...commune,id:"other"},members:[],expenses:[],funds:[]},error:null});
@@ -80,7 +128,7 @@ describe("hosted read authentication", () => {
     const { listCommunes } = await import("../src/live/neon");
     await expect(listCommunes({ id: "old-user", name: "Old", email: "old@example.test", emailVerified: true }))
       .rejects.toThrow("Your account changed");
-    expect(mocks.from).not.toHaveBeenCalled();
+    expect(mocks.rpc).not.toHaveBeenCalled();
   });
 
   it("checks a verified session before requesting reminder usage", async () => {

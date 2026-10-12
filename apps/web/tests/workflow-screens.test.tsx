@@ -20,6 +20,7 @@ import {
 import { Router } from "wouter";
 import { memoryLocation } from "wouter/memory-location";
 import { App } from "../src/App";
+import { preloadAll } from "../src/shell/lazyComponent";
 import { AppProvider, useApp, type AppState } from "../src/state";
 import {
   api,
@@ -28,8 +29,10 @@ import {
   loadSnapshot,
   ApiError,
 } from "../src/live/api";
-import type { Commune, Snapshot } from "../src/live/model";
-import { todayIso } from "../src/data/operations";
+import { dateLabel, type Commune, type RecurringBill, type Snapshot } from "../src/live/model";
+import { addDays, todayIso } from "../src/data/operations";
+import { formatReminderDay } from "../src/data/reminders";
+import { UNCERTAIN_RETRY_SAFE } from "../src/data/commands";
 
 vi.mock("../src/live/api", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../src/live/api")>()),
@@ -102,6 +105,9 @@ const closeDescriptor = Object.getOwnPropertyDescriptor(
   "close",
 );
 const originalScroll = Element.prototype.scrollIntoView;
+// The screens and windows a browser loads on first use are loaded up front,
+// so each test sees them drawn at once.
+beforeAll(preloadAll);
 beforeAll(() => {
   Element.prototype.scrollIntoView = vi.fn();
   Object.defineProperty(HTMLDialogElement.prototype, "showModal", {
@@ -162,29 +168,44 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("complete shared workflows", () => {
-  it.each([0, 1, 2])("puts the personal Home greeting and %i-space count in the top bar only", async count => {
-    const communes = Array.from({ length: count }, (_, index) => ({ ...commune, id: `home-${index + 1}`, name: `Home ${index + 1}` }));
-    vi.mocked(loadCommunes).mockResolvedValue({ communes });
-    vi.mocked(loadSnapshot).mockImplementation(async id => ({ ...current, commune: communes.find(item => item.id === id)! }));
+  it("greets a member with no communes yet in the top bar only", async () => {
+    vi.mocked(loadCommunes).mockResolvedValue({ communes: [] });
     mount("/");
     const greeting = await screen.findByRole("heading", { name: "Your communes, Test.", level: 1 });
     const banner = screen.getByRole("banner");
-    const summary = `${count} ${count === 1 ? "space" : "spaces"} · shared details that stay in sync for everyone.`;
+    const summary = "0 spaces · shared details that stay in sync for everyone.";
     expect(banner.contains(greeting)).toBe(true);
     await within(banner).findByText(summary);
     expect(screen.getAllByText(summary)).toHaveLength(1);
     expect(screen.getAllByText("Your communes, Test.")).toHaveLength(1);
-    expect(document.querySelector("#home .a-home-greet")).toBeNull();
-    expect(document.querySelectorAll("#home .a-place")).toHaveLength(count);
-    expect(document.querySelectorAll("#home .a-focus-lead")).toHaveLength(count ? 1 : 0);
-    expect(within(banner).getByRole("button", { name: "Open search" })).toBeTruthy();
+    expect(within(banner).getByRole("button", { name: "Search Commune" })).toBeTruthy();
+    expect(within(banner).getByRole("button", { name: "Notifications" })).toBeTruthy();
+  });
+
+  it.each([1, 2])("names the page Home in the top bar and lists %i communes on it", async count => {
+    const communes = Array.from({ length: count }, (_, index) => ({ ...commune, id: `home-${index + 1}`, name: `Home ${index + 1}` }));
+    vi.mocked(loadCommunes).mockResolvedValue({ communes });
+    vi.mocked(loadSnapshot).mockImplementation(async id => ({ ...current, commune: communes.find(item => item.id === id)! }));
+    mount("/");
+    const title = await screen.findByRole("heading", { name: "Home", level: 1 });
+    const banner = screen.getByRole("banner");
+    // Home opens on its own sentence, so the bar carries no greeting or count.
+    expect(banner.contains(title)).toBe(true);
+    expect(screen.queryByText("Your communes, Test.")).toBeNull();
+    expect(screen.queryByText(/shared details that stay in sync/)).toBeNull();
+    const list = await screen.findByRole("region", { name: "Your communes" });
+    expect(within(list).getAllByRole("heading", { level: 3 }).map(heading => heading.textContent)).toEqual(communes.map(item => item.name));
+    expect(list.querySelectorAll(".c-home-tag")).toHaveLength(count > 1 ? 1 : 0);
+    expect(within(banner).getByRole("button", { name: "Search Commune" })).toBeTruthy();
     expect(within(banner).getByRole("button", { name: "Notifications" })).toBeTruthy();
   });
 
   it.each(["/hub", "/operations", "/", "/expenses", "/recurring"])("uses the shared calendar for real dated records on %s", async path => {
     const date = todayIso();
     current.operations = [{ id: "dated-task", hubId: commune.id, kind: "task", category: "chore", title: "Kitchen reset", date, allDay: true, assignee: user.name, repeat: "none", status: "open", notes: "" }];
-    current.expenses = [{ id: "dated-expense", title: "House supplies", category: "Other", amountMinor: 1000, paidByUserId: "user-2", dueOn: date, shares: [{ id: "dated-share", userId: user.id, amountMinor: 1000, settledMinor: 0 }] }];
+    // Two, so Home has a dated row as well as its next step.
+    current.expenses = [{ id: "dated-expense", title: "House supplies", category: "Other", amountMinor: 1000, paidByUserId: "user-2", dueOn: date, shares: [{ id: "dated-share", userId: user.id, amountMinor: 1000, settledMinor: 0 }] },
+      { id: "dated-expense-2", title: "Bin bags", category: "Other", amountMinor: 600, paidByUserId: "user-2", dueOn: date, shares: [{ id: "dated-share-2", userId: user.id, amountMinor: 600, settledMinor: 0 }] }];
     current.recurringBills = [{ id: "dated-bill", title: "Internet", amountMinor: 4800, paidByUserId: user.id, allocations: [{ userId: user.id, amountMinor: 4800 }], frequency: "monthly", nextDueOn: date, paused: false, createdBy: user.id }];
     mount(path);
     await waitFor(() => expect(document.querySelector(".c-calendar-date.is-today")).not.toBeNull());
@@ -206,7 +227,7 @@ describe("complete shared workflows", () => {
   });
   it("focuses the exact member returned by search without triggering a membership action", async () => {
     mount("/members");
-    await screen.findByRole("button", { name: "Make admin" });
+    await screen.findByRole("button", { name: "Make admin Housemate" });
     act(() => app.go("members", { hub: commune.id, record: { kind: "member", id: "user-2" } }));
     await waitFor(() => expect(document.activeElement?.id).toBe("search-record-member-user-2"));
     expect(app.window).toBeNull();
@@ -314,7 +335,7 @@ describe("complete shared workflows", () => {
       },
     ];
     mount("/funds");
-    fireEvent.click(await screen.findByRole("button", { name: "View fund" }));
+    fireEvent.click(await screen.findByRole("button", { name: "View fund House supplies" }));
     const fund = screen.getByRole("dialog", { name: "House supplies" });
     const chase = within(fund).getByRole("button", {
       name: "Chase",
@@ -383,7 +404,7 @@ describe("complete shared workflows", () => {
       },
     ];
     mount("/templates");
-    fireEvent.click(await screen.findByRole("button", { name: "Use split" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Use split Two to one" }));
     const dialog = screen.getByRole("dialog", { name: "Add expense" });
     expect(
       (
@@ -445,7 +466,7 @@ describe("complete shared workflows", () => {
       await screen.findByRole("button", { name: "Archived", exact: true }),
     );
     fireEvent.click(
-      screen.getByRole("button", { name: "Restore", exact: true }),
+      screen.getByRole("button", { name: "Restore Old split", exact: true }),
     );
     await screen.findByText("Template saved.");
     expect(api).toHaveBeenCalledWith(
@@ -458,6 +479,28 @@ describe("complete shared workflows", () => {
       screen.getByRole("button", { name: "Active", exact: true }),
     );
     expect(screen.getByRole("heading", { name: "Old split" })).toBeTruthy();
+  });
+
+  it("filters templates with the same side-by-side chips as Funds, marking the selected one", async () => {
+    // Each screen's filters: the chips, the one marked as selected, and any other control among them.
+    const filters = () => {
+      const group = document.querySelector(".a-toolbar .a-filters")!;
+      return {
+        chips: [...group.querySelectorAll(".a-chip")].map((chip) => chip.textContent),
+        on: [...group.querySelectorAll(".a-chip.is-on[aria-pressed=true]")].map((chip) => chip.textContent),
+        others: group.querySelectorAll(":scope > :not(.a-chip)").length,
+      };
+    };
+    mount("/funds");
+    await screen.findByRole("button", { name: "Archived", exact: true });
+    const funds = filters();
+    expect(funds).toEqual({ chips: ["Active", "Archived"], on: ["Active"], others: 0 });
+    await act(async () => app.go("templates"));
+    await screen.findByRole("button", { name: "Save template" });
+    expect(filters()).toEqual(funds);
+    fireEvent.click(screen.getByRole("button", { name: "Archived", exact: true }));
+    expect(filters()).toEqual({ chips: ["Active", "Archived"], on: ["Archived"], others: 0 });
+    expect(screen.getByRole("button", { name: "Active", exact: true }).getAttribute("aria-pressed")).toBe("false");
   });
 
   it("saves an actual recurring schedule and its exact penny allocations", async () => {
@@ -494,23 +537,22 @@ describe("complete shared workflows", () => {
       within(dialog).getByRole("button", { name: "Save recurring bill" }),
     );
     await screen.findByText("Recurring bill saved.");
-    expect(api).toHaveBeenCalledWith(
-      "/communes/home-1/recurring",
-      expect.objectContaining({
-        body: JSON.stringify({
-          title: "Broadband",
-          amountMinor: 1001,
-          paidByUserId: user.id,
-          allocations: [
-            { userId: "user-1", amountMinor: 501 },
-            { userId: "user-2", amountMinor: 500 },
-          ],
-          frequency: "monthly",
-          nextDueOn: "2026-10-31",
-          paused: false,
-        }),
-      }),
-    );
+    const call = vi.mocked(api).mock.calls.find(([path]) => path === "/communes/home-1/recurring")!;
+    const { requestId, ...sent } = JSON.parse(String(call[1]?.body));
+    expect(sent).toEqual({
+      title: "Broadband",
+      amountMinor: 1001,
+      paidByUserId: user.id,
+      allocations: [
+        { userId: "user-1", amountMinor: 501 },
+        { userId: "user-2", amountMinor: 500 },
+      ],
+      frequency: "monthly",
+      nextDueOn: "2026-10-31",
+      paused: false,
+    });
+    // An add carries a request id, so a retry cannot add the bill twice.
+    expect(requestId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
     expect(screen.getByRole("heading", { name: "Broadband" })).toBeTruthy();
   });
 
@@ -546,7 +588,7 @@ describe("complete shared workflows", () => {
     });
     mount("/recurring");
     fireEvent.click(
-      await screen.findByRole("button", { name: "Record paid bill" }),
+      await screen.findByRole("button", { name: "Record paid bill for Broadband" }),
     );
     const dialog = screen.getByRole("dialog", {
       name: "Record Broadband as paid?",
@@ -594,7 +636,7 @@ describe("complete shared workflows", () => {
       ? { status: "recorded", expenseId: "expense-1", amountMinor: 10001, dueOn: "2026-01-31", nextDueOn: "2026-02-28", duplicate: false }
       : base(path, options));
     mount("/recurring");
-    fireEvent.click(await screen.findByRole("button", { name: "Record paid bill" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Record paid bill for Electricity" }));
     const dialog = screen.getByRole("dialog", { name: "Record Electricity as paid?" });
     fireEvent.change(within(dialog).getByLabelText(/Amount paid this time/), { target: { value: "100.01" } });
     const preview = within(dialog).getByRole("status");
@@ -607,32 +649,33 @@ describe("complete shared workflows", () => {
   });
 
   it("skips a period only with a reason, and lists recorded and skipped periods", async () => {
+    const nextDueOn = addDays(todayIso(), 10);
     current.recurringBills = [{
-      id: "bill-1", title: "Electricity", amountMinor: 9000, paidByUserId: user.id, frequency: "monthly", nextDueOn: "2099-03-31",
-      paused: false, createdBy: user.id, allocations: [{ userId: user.id, amountMinor: 9000 }],
+      id: "bill-1", title: "Electricity", amountMinor: 9000, paidByUserId: user.id, frequency: "monthly", nextDueOn,
+      paused: false, createdBy: user.id, version: 3, allocations: [{ userId: user.id, amountMinor: 9000 }],
       history: [
-        { dueOn: "2099-02-28", status: "skipped", amountMinor: null, expenseId: null, actorId: user.id, actedAt: "2099-02-01T09:00:00Z", note: "Away" },
-        { dueOn: "2099-01-31", status: "recorded", amountMinor: 10001, expenseId: "expense-1", actorId: user.id, actedAt: "2099-01-31T09:00:00Z", note: null },
+        { dueOn: "2026-02-28", status: "skipped", amountMinor: null, expenseId: null, actorId: user.id, actedAt: "2026-02-01T09:00:00Z", note: "Away" },
+        { dueOn: "2026-01-31", status: "recorded", amountMinor: 10001, expenseId: "expense-1", actorId: user.id, actedAt: "2026-01-31T09:00:00Z", note: null },
       ],
     }];
     const base = vi.mocked(api).getMockImplementation()!;
     vi.mocked(api).mockImplementation(async (path, options) => path === "/recurring/bill-1/skip"
-      ? { status: "skipped", expenseId: null, amountMinor: null, dueOn: "2099-03-31", nextDueOn: "2099-04-30", duplicate: false }
+      ? { status: "skipped", expenseId: null, amountMinor: null, dueOn: nextDueOn, nextDueOn: addDays(nextDueOn, 30), duplicate: false }
       : base(path, options));
     mount("/recurring");
     // Not due yet, so it cannot be recorded, but it can be skipped ahead of time.
-    expect(screen.queryByRole("button", { name: "Record paid bill" })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Record paid bill/ })).toBeNull();
     const history = (await screen.findByText("2 recent periods")).closest("details")!;
-    expect(history.textContent).toContain("28 Feb 2099 · skipped by Test Person: Away");
-    expect(history.textContent).toContain("31 Jan 2099 · £100.01 recorded (usually £90.00) by Test Person");
-    fireEvent.click(screen.getByRole("button", { name: "Skip this period" }));
+    expect(history.textContent).toContain(`${formatReminderDay("2026-02-28")} · skipped by Test Person: Away`);
+    expect(history.textContent).toContain(`${formatReminderDay("2026-01-31")} · £100.01 recorded (usually £90.00) by Test Person`);
+    fireEvent.click(screen.getByRole("button", { name: "Skip this period for Electricity" }));
     const dialog = screen.getByRole("dialog", { name: /Skip Electricity for/ });
     await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Skip this period" })); });
     expect(api).not.toHaveBeenCalledWith("/recurring/bill-1/skip", expect.anything());
     fireEvent.change(within(dialog).getByLabelText("Why is it skipped?"), { target: { value: "Moving out" } });
     await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Skip this period" })); });
     expect(api).toHaveBeenCalledWith("/recurring/bill-1/skip",
-      expect.objectContaining({ body: '{"expectedDueOn":"2099-03-31","reason":"Moving out"}' }));
+      expect.objectContaining({ body: JSON.stringify({ expectedDueOn: nextDueOn, reason: "Moving out" }) }));
     expect(await screen.findByText(/Electricity skipped for .*Nothing was charged\./)).toBeTruthy();
   });
 
@@ -653,7 +696,7 @@ describe("complete shared workflows", () => {
       return base(path, options);
     });
     mount("/funds");
-    fireEvent.click(await screen.findByRole("button", { name: "View fund" }));
+    fireEvent.click(await screen.findByRole("button", { name: "View fund House supplies" }));
     fireEvent.click(
       within(screen.getByRole("dialog", { name: "House supplies" })).getByRole(
         "button",
@@ -702,7 +745,7 @@ describe("complete shared workflows", () => {
       },
     ];
     mount("/funds");
-    fireEvent.click(await screen.findByRole("button", { name: "View fund" }));
+    fireEvent.click(await screen.findByRole("button", { name: "View fund House supplies" }));
     const dialog = screen.getByRole("dialog", { name: "House supplies" });
     fireEvent.click(
       within(dialog).getByText(/recorded · contribution history/),
@@ -751,9 +794,9 @@ describe("complete shared workflows", () => {
 
   it("requires confirmation for role changes and keeps the last admin protected", async () => {
     mount("/members");
-    const promote = await screen.findByRole("button", { name: "Make admin" });
+    const promote = await screen.findByRole("button", { name: "Make admin Housemate" });
     expect(
-      (screen.getByRole("button", { name: "Make member" }) as HTMLButtonElement)
+      (screen.getByRole("button", { name: "Make member Test Person" }) as HTMLButtonElement)
         .disabled,
     ).toBe(true);
     fireEvent.click(promote);
@@ -859,5 +902,311 @@ describe("complete shared workflows", () => {
     expect(
       screen.getByRole("heading", { name: "Could not load Our home" }),
     ).toBeTruthy();
+  });
+});
+
+describe("recurring bill commands", () => {
+  const recurring = (id: string, title: string, overrides: Partial<RecurringBill> = {}): RecurringBill => ({
+    id, title, amountMinor: 1000, paidByUserId: user.id, createdBy: user.id, version: 1, archivedAt: null,
+    allocations: [{ userId: user.id, amountMinor: 500 }, { userId: "user-2", amountMinor: 500 }],
+    frequency: "monthly", nextDueOn: todayIso(), paused: false, ...overrides,
+  });
+  // The visible words of each action; each also names its bill for screen readers.
+  const buttons = async (title: string) =>
+    within(await screen.findByRole("region", { name: title })).queryAllByRole("button").map((button) =>
+      [...button.childNodes].filter((node) => !(node instanceof Element && node.classList.contains("c-visually-hidden")))
+        .map((node) => node.textContent).join("").trim());
+  const asMember = () => {
+    vi.mocked(loadCommunes).mockResolvedValue({ communes: [{ ...commune, role: "member" }] });
+    current.commune = { ...commune, role: "member" };
+    current.members = [
+      { userId: user.id, name: user.name, role: "member", active: true },
+      { userId: "user-2", name: "Housemate", role: "admin", active: true },
+      { userId: "user-3", name: "Sam Lee", role: "member", active: false },
+    ];
+  };
+  const saves = () => vi.mocked(api).mock.calls.filter(([path]) => path === "/communes/home-1/recurring")
+    .map(([, options]) => JSON.parse(String(options?.body)));
+
+  it("shows each action only to the people its command allows", async () => {
+    asMember();
+    current.recurringBills = [
+      recurring("bill-1", "Mine"),
+      recurring("bill-2", "Added by me", { paidByUserId: "user-2" }),
+      recurring("bill-3", "Paid by me", { createdBy: "user-2" }),
+      recurring("bill-4", "Someone else's", { createdBy: "user-2", paidByUserId: "user-2" }),
+    ];
+    mount("/recurring");
+    expect(await buttons("Mine")).toEqual(["Record paid bill", "Skip this period", "Edit", "Pause"]);
+    expect(await buttons("Added by me")).toEqual(["Pause"]);
+    expect(await buttons("Paid by me")).toEqual(["Record paid bill", "Skip this period", "Pause"]);
+    expect(await buttons("Someone else's")).toEqual([]);
+  });
+
+  it("pauses, archives and restores through their own commands, never by saving the bill", async () => {
+    current.recurringBills = [recurring("bill-1", "Broadband", { nextDueOn: addDays(todayIso(), 5) })];
+    const base = vi.mocked(api).getMockImplementation()!;
+    vi.mocked(api).mockImplementation(async (path, options) => {
+      const body = options?.body ? JSON.parse(String(options.body)) : {};
+      const [bill] = current.recurringBills!;
+      if (path === "/recurring/bill-1/pause") {
+        current = { ...current, recurringBills: [{ ...bill, paused: body.paused, version: bill.version + 1 }] };
+        return { id: bill.id, paused: body.paused, archivedAt: null, version: bill.version + 1, duplicate: false };
+      }
+      if (path === "/recurring/bill-1/archive") {
+        const archivedAt = body.archived ? "2026-10-09T10:00:00Z" : null;
+        current = { ...current, recurringBills: [{ ...bill, archivedAt, paused: true, version: bill.version + 1 }] };
+        return { id: bill.id, paused: true, archivedAt, version: bill.version + 1, duplicate: false };
+      }
+      return base(path, options);
+    });
+    mount("/recurring");
+    fireEvent.click(await screen.findByRole("button", { name: "Pause Broadband" }));
+    expect(await screen.findByText("Schedule paused.")).toBeTruthy();
+    expect(api).toHaveBeenCalledWith("/recurring/bill-1/pause", expect.objectContaining({ body: '{"paused":true}' }));
+    fireEvent.click(screen.getByRole("button", { name: "Archive Broadband" }));
+    expect(await screen.findByText("Bill archived and paused. Find it in Archived to restore it.")).toBeTruthy();
+    expect(api).toHaveBeenCalledWith("/recurring/bill-1/archive", expect.objectContaining({ body: '{"archived":true}' }));
+    // It leaves the active list, and the Archived filter appears with it.
+    expect(screen.queryByRole("region", { name: "Broadband" })).toBeNull();
+    expect(screen.getByText("No active recurring bills.")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Archived" }));
+    expect(await buttons("Broadband")).toEqual(["Restore"]);
+    fireEvent.click(screen.getByRole("button", { name: "Restore Broadband" }));
+    expect(await screen.findByText("Bill restored. It stays paused until someone resumes it.")).toBeTruthy();
+    expect(api).toHaveBeenCalledWith("/recurring/bill-1/archive", expect.objectContaining({ body: '{"archived":false}' }));
+    expect(await buttons("Broadband")).toEqual(["Edit", "Resume", "Archive"]);
+    expect(saves()).toEqual([]);
+  });
+
+  it("resumes a bill whose payer and split include someone who left by opening the editor", async () => {
+    current.members = [...initial.members, { userId: "user-3", name: "Sam Lee", role: "member", active: false }];
+    const nextDueOn = addDays(todayIso(), 5);
+    current.recurringBills = [recurring("bill-1", "Cleaner", {
+      paused: true, version: 4, paidByUserId: "user-3", nextDueOn,
+      allocations: [{ userId: user.id, amountMinor: 500 }, { userId: "user-3", amountMinor: 500 }],
+    })];
+    const base = vi.mocked(api).getMockImplementation()!;
+    vi.mocked(api).mockImplementation(async (path, options) => {
+      if (path === "/communes/home-1/recurring") return { id: "bill-1" };
+      if (path === "/recurring/bill-1/pause") return { id: "bill-1", paused: false, archivedAt: null, version: 6, duplicate: false };
+      return base(path, options);
+    });
+    mount("/recurring");
+    fireEvent.click(await screen.findByRole("button", { name: "Resume Cleaner" }));
+    expect(api).not.toHaveBeenCalledWith("/recurring/bill-1/pause", expect.anything());
+    const dialog = screen.getByRole("dialog", { name: "Edit recurring bill" });
+    expect(within(dialog).getByText("Sam Lee has left, so they were taken out of this split. Check the amounts before saving.")).toBeTruthy();
+    expect(within(dialog).getByText("Sam Lee paid this bill and has left. Choose who pays it now.")).toBeTruthy();
+    fireEvent.click(within(dialog).getByRole("button", { name: "Save and resume" }));
+    expect(await within(dialog).findByText("Choose who pays this bill.")).toBeTruthy();
+    expect(saves()).toEqual([]);
+    fireEvent.change(within(dialog).getByLabelText("Paid by"), { target: { value: user.id } });
+    fireEvent.change(within(dialog).getByLabelText("Amount (GBP)"), { target: { value: "5.00" } });
+    await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Save and resume" })); });
+    expect(await screen.findByText("Bill saved and resumed.")).toBeTruthy();
+    expect(saves()).toEqual([{
+      title: "Cleaner", amountMinor: 500, paidByUserId: user.id, allocations: [{ userId: user.id, amountMinor: 500 }],
+      frequency: "monthly", nextDueOn, id: "bill-1", expectedVersion: 4,
+    }]);
+    expect(api).toHaveBeenCalledWith("/recurring/bill-1/pause", expect.objectContaining({ body: '{"paused":false}' }));
+  });
+
+  it("tells someone who cannot edit a bill why it cannot resume yet", async () => {
+    asMember();
+    current.recurringBills = [recurring("bill-1", "Cleaner", {
+      paused: true, createdBy: "user-2", allocations: [{ userId: user.id, amountMinor: 500 }, { userId: "user-3", amountMinor: 500 }],
+    })];
+    mount("/recurring");
+    expect(await buttons("Cleaner")).toEqual(["Archive"]);
+    expect(screen.getByText("Sam Lee has left the commune, so an admin needs to update this bill before it can resume.")).toBeTruthy();
+  });
+
+  it("says plainly when the period was already recorded, and refreshes", async () => {
+    current.recurringBills = [recurring("bill-1", "Broadband")];
+    const base = vi.mocked(api).getMockImplementation()!;
+    vi.mocked(api).mockImplementation(async (path, options) => path === "/recurring/bill-1/periods"
+      ? { status: "recorded", expenseId: "expense-1", amountMinor: 1000, dueOn: todayIso(), nextDueOn: addDays(todayIso(), 30), duplicate: true }
+      : base(path, options));
+    mount("/recurring");
+    fireEvent.click(await screen.findByRole("button", { name: "Record paid bill for Broadband" }));
+    const loads = vi.mocked(loadSnapshot).mock.calls.length;
+    const dialog = screen.getByRole("dialog", { name: "Record Broadband as paid?" });
+    await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Record £10.00 paid" })); });
+    expect(await screen.findByText(`Broadband for ${dateLabel(todayIso())} was already recorded, so nothing new was added.`)).toBeTruthy();
+    expect(vi.mocked(loadSnapshot).mock.calls.length).toBeGreaterThan(loads);
+  });
+
+  it("shows the newer version when an edit was based on an old one, then saves the person's edits on top of it", async () => {
+    const due = addDays(todayIso(), 3);
+    const later = addDays(due, 31);
+    current.recurringBills = [recurring("bill-1", "Broadband", { version: 2, nextDueOn: due })];
+    let calls = 0;
+    const base = vi.mocked(api).getMockImplementation()!;
+    vi.mocked(api).mockImplementation(async (path, options) => {
+      if (path !== "/communes/home-1/recurring") return base(path, options);
+      calls += 1;
+      if (calls > 1) return { id: "bill-1" };
+      // Someone recorded the period while this editor was open.
+      current = { ...current, recurringBills: [{ ...current.recurringBills![0], version: 3, nextDueOn: later }] };
+      throw new ApiError("This recurring bill was changed by someone else. Review the latest version before saving your changes.", 409);
+    });
+    mount("/recurring");
+    fireEvent.click(await screen.findByRole("button", { name: "Edit Broadband" }));
+    const dialog = screen.getByRole("dialog", { name: "Edit recurring bill" });
+    fireEvent.change(within(dialog).getByLabelText("Bill name"), { target: { value: "Fibre" } });
+    await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Save recurring bill" })); });
+    const conflict = await within(dialog).findByRole("alert");
+    expect(conflict.textContent).toContain("This bill changed while you were editing.");
+    expect(conflict.textContent).toContain("Nothing of yours was saved.");
+    expect(conflict.textContent).toContain(`Next due: ${formatReminderDay(due)} to ${formatReminderDay(later)}`);
+    expect((within(dialog).getByRole("button", { name: "Save recurring bill" }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(within(dialog).getByRole("button", { name: "Keep my edits and check again" }));
+    expect((within(dialog).getByLabelText("Bill name") as HTMLInputElement).value).toBe("Fibre");
+    expect((within(dialog).getByLabelText("Next due date") as HTMLInputElement).value).toBe(later);
+    await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Save recurring bill" })); });
+    expect(await screen.findByText("Recurring bill saved.")).toBeTruthy();
+    expect(saves().map((body) => [body.expectedVersion, body.title, body.nextDueOn])).toEqual([[2, "Fibre", due], [3, "Fibre", later]]);
+  });
+
+  it("recognises its own edit when the reply was lost and a retry finds it saved", async () => {
+    current.recurringBills = [recurring("bill-1", "Broadband", { version: 2, nextDueOn: addDays(todayIso(), 3) })];
+    let calls = 0;
+    const base = vi.mocked(api).getMockImplementation()!;
+    vi.mocked(api).mockImplementation(async (path, options) => {
+      if (path !== "/communes/home-1/recurring") return base(path, options);
+      calls += 1;
+      if (calls === 1) {
+        current = { ...current, recurringBills: [{ ...current.recurringBills![0], title: "Fibre", version: 3 }] };
+        throw new TypeError("Failed to fetch");
+      }
+      throw new ApiError("This recurring bill was changed by someone else. Review the latest version before saving your changes.", 409);
+    });
+    mount("/recurring");
+    fireEvent.click(await screen.findByRole("button", { name: "Edit Broadband" }));
+    const dialog = screen.getByRole("dialog", { name: "Edit recurring bill" });
+    fireEvent.change(within(dialog).getByLabelText("Bill name"), { target: { value: "Fibre" } });
+    await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Save recurring bill" })); });
+    expect(await within(dialog).findByText(UNCERTAIN_RETRY_SAFE)).toBeTruthy();
+    await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Save recurring bill" })); });
+    expect(await screen.findByText("Your changes were saved. The reply was lost on the way back, but the bill now shows them.")).toBeTruthy();
+    expect(saves().map((body) => body.expectedVersion)).toEqual([2, 2]);
+    fireEvent.click(screen.getByRole("button", { name: "Done" }));
+    expect(await screen.findByText("Recurring bill saved.")).toBeTruthy();
+    expect(screen.queryByText(/changed by someone else/)).toBeNull();
+  });
+
+  it("says an earlier save may have gone through when its reply was lost and the bill then changed again", async () => {
+    const due = addDays(todayIso(), 3);
+    const later = addDays(due, 31);
+    current.recurringBills = [recurring("bill-1", "Broadband", { version: 2, nextDueOn: due })];
+    let calls = 0;
+    const base = vi.mocked(api).getMockImplementation()!;
+    vi.mocked(api).mockImplementation(async (path, options) => {
+      if (path !== "/communes/home-1/recurring") return base(path, options);
+      calls += 1;
+      if (calls === 1) {
+        // The save lands but its reply is lost, then someone records the period.
+        current = { ...current, recurringBills: [{ ...current.recurringBills![0], title: "Fibre", version: 4, nextDueOn: later }] };
+        throw new TypeError("Failed to fetch");
+      }
+      throw new ApiError("This recurring bill was changed by someone else. Review the latest version before saving your changes.", 409);
+    });
+    mount("/recurring");
+    fireEvent.click(await screen.findByRole("button", { name: "Edit Broadband" }));
+    const dialog = screen.getByRole("dialog", { name: "Edit recurring bill" });
+    fireEvent.change(within(dialog).getByLabelText("Bill name"), { target: { value: "Fibre" } });
+    await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Save recurring bill" })); });
+    expect(await within(dialog).findByText(UNCERTAIN_RETRY_SAFE)).toBeTruthy();
+    await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Save recurring bill" })); });
+    const conflict = await within(dialog).findByRole("alert");
+    expect(conflict.textContent).toContain("Your earlier save may have gone through. Check the bill below before saving again.");
+    expect(conflict.textContent).not.toContain("Nothing of yours was saved.");
+    // Once the person has taken the latest version, a new conflict is about new edits only.
+    fireEvent.click(within(dialog).getByRole("button", { name: "Use the latest version" }));
+    expect(within(dialog).queryByRole("alert")).toBeNull();
+  });
+
+  it("keeps saying nothing was saved when a later attempt was refused outright", async () => {
+    const due = addDays(todayIso(), 3);
+    current.recurringBills = [recurring("bill-1", "Broadband", { version: 2, nextDueOn: due })];
+    let calls = 0;
+    const base = vi.mocked(api).getMockImplementation()!;
+    vi.mocked(api).mockImplementation(async (path, options) => {
+      if (path !== "/communes/home-1/recurring") return base(path, options);
+      calls += 1;
+      if (calls === 1) throw new TypeError("Failed to fetch");
+      if (calls === 2) throw new ApiError("Choose a next due date between 9 Oct 2025 and 9 Oct 2028", 400);
+      current = { ...current, recurringBills: [{ ...current.recurringBills![0], amountMinor: 1200, version: 3 }] };
+      throw new ApiError("This recurring bill was changed by someone else. Review the latest version before saving your changes.", 409);
+    });
+    mount("/recurring");
+    fireEvent.click(await screen.findByRole("button", { name: "Edit Broadband" }));
+    const dialog = screen.getByRole("dialog", { name: "Edit recurring bill" });
+    fireEvent.change(within(dialog).getByLabelText("Bill name"), { target: { value: "Fibre" } });
+    for (let attempt = 1; attempt <= 3; attempt += 1) {
+      await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Save recurring bill" })); });
+    }
+    const conflict = await within(dialog).findByRole("alert");
+    expect(conflict.textContent).toContain("Nothing of yours was saved.");
+    expect(saves()).toHaveLength(3);
+  });
+
+  it("asks the person to check Recurring when an earlier attempt may already have added the bill", async () => {
+    current.recurringBills = [];
+    let calls = 0;
+    const base = vi.mocked(api).getMockImplementation()!;
+    vi.mocked(api).mockImplementation(async (path, options) => {
+      if (path !== "/communes/home-1/recurring") return base(path, options);
+      calls += 1;
+      if (calls === 1) throw new TypeError("Failed to fetch");
+      throw new ApiError("This request was already used for a different bill", 400);
+    });
+    mount("/recurring");
+    fireEvent.click(await screen.findByRole("button", { name: "Add recurring bill" }));
+    const dialog = screen.getByRole("dialog", { name: "Add recurring bill" });
+    fireEvent.change(within(dialog).getByLabelText("Bill name"), { target: { value: "Water" } });
+    fireEvent.change(within(dialog).getByLabelText("Amount (GBP)"), { target: { value: "30.00" } });
+    await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Save recurring bill" })); });
+    expect(await within(dialog).findByText(UNCERTAIN_RETRY_SAFE)).toBeTruthy();
+    fireEvent.change(within(dialog).getByLabelText("Amount (GBP)"), { target: { value: "32.00" } });
+    await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Save recurring bill" })); });
+    expect(await within(dialog).findByText(
+      "An earlier attempt may already have been saved. Close this and check Recurring before adding it again.")).toBeTruthy();
+    const [first, second] = saves();
+    expect(second.requestId).toBe(first.requestId);
+    expect([first.amountMinor, second.amountMinor]).toEqual([3000, 3200]);
+  });
+
+  it("still resumes after a lost reply when the person chose Save and resume", async () => {
+    current.members = [...initial.members, { userId: "user-3", name: "Sam Lee", role: "member", active: false }];
+    current.recurringBills = [recurring("bill-1", "Cleaner", {
+      paused: true, version: 4, nextDueOn: addDays(todayIso(), 5),
+      allocations: [{ userId: user.id, amountMinor: 500 }, { userId: "user-3", amountMinor: 500 }],
+    })];
+    let calls = 0;
+    const base = vi.mocked(api).getMockImplementation()!;
+    vi.mocked(api).mockImplementation(async (path, options) => {
+      if (path === "/recurring/bill-1/pause") return { id: "bill-1", paused: false, archivedAt: null, version: 6, duplicate: false };
+      if (path !== "/communes/home-1/recurring") return base(path, options);
+      calls += 1;
+      if (calls === 1) {
+        const body = JSON.parse(String(options?.body));
+        current = { ...current, recurringBills: [{ ...current.recurringBills![0], amountMinor: body.amountMinor, allocations: body.allocations, version: 5 }] };
+        throw new TypeError("Failed to fetch");
+      }
+      throw new ApiError("This recurring bill was changed by someone else. Review the latest version before saving your changes.", 409);
+    });
+    mount("/recurring");
+    fireEvent.click(await screen.findByRole("button", { name: "Resume Cleaner" }));
+    const dialog = screen.getByRole("dialog", { name: "Edit recurring bill" });
+    fireEvent.change(within(dialog).getByLabelText("Amount (GBP)"), { target: { value: "5.00" } });
+    await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Save and resume" })); });
+    expect(await within(dialog).findByText(UNCERTAIN_RETRY_SAFE)).toBeTruthy();
+    expect(api).not.toHaveBeenCalledWith("/recurring/bill-1/pause", expect.anything());
+    await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Save and resume" })); });
+    fireEvent.click(await screen.findByRole("button", { name: "Done" }));
+    expect(await screen.findByText("Bill saved and resumed.")).toBeTruthy();
+    expect(api).toHaveBeenCalledWith("/recurring/bill-1/pause", expect.objectContaining({ body: '{"paused":false}' }));
   });
 });

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
   Copy,
@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import type { NoteCard } from "../data/household";
 import { LIMITS } from "../data/limits";
-import { useApp } from "../state";
+import { useApp, type AppState } from "../state";
 import { NoteHistory } from "../ui/NoteHistory";
 import {
   isNotePinned,
@@ -49,11 +49,11 @@ export function NotesScreen() {
     noteKey,
     window: win,
     hubId,
-    native,
-    noteSearchQuery,
-    setNoteSearchQuery,
   } = useApp();
   const [filter, setFilter] = useState("All notes");
+  // The screen's own search text: a note opened over the screen keeps it,
+  // and typing re-renders only this screen.
+  const [noteSearchQuery, setNoteSearchQuery] = useState("");
   const selected = win === "note" ? notes[noteKey] : undefined;
   const entries = Object.entries(notes).filter(
     ([, note]) =>
@@ -78,27 +78,7 @@ export function NotesScreen() {
         <h2>{title}</h2>
         <div className="notes-grid">
           {rows.map(([id, note]) => (
-            <button
-              key={id}
-              type="button"
-              className={`note-tile${selected && noteKey === id ? " is-selected" : ""}`}
-              data-note-id={id}
-              aria-label={`Open ${note.title}`}
-              aria-pressed={Boolean(selected && noteKey === id)}
-              onClick={() => go("note", { note: id })}
-            >
-              <span className="note-tile-icon">
-                <NoteIcon type={noteCategory(note)} />
-              </span>
-              <span className="note-tile-copy">
-                <strong>{note.title}</strong>
-                <span className="note-category">{noteCategory(note)}</span>
-                <span className="note-excerpt">{notePreview(note)}</span>
-              </span>
-              {isNotePinned(note) ? (
-                <Pin className="note-pin" size={16} aria-label="Pinned" />
-              ) : null}
-            </button>
+            <NoteTile key={id} id={id} note={note} selected={Boolean(selected && noteKey === id)} go={go} />
           ))}
         </div>
       </section>
@@ -179,6 +159,34 @@ export function NotesScreen() {
     </div>
   );
 }
+
+// One note on the board. It re-renders when its note does, not as someone
+// types in the search above it.
+const NoteTile = memo(function NoteTile({ id, note, selected, go }: {
+  id: string; note: NoteCard; selected: boolean; go: AppState["go"];
+}) {
+  return (
+    <button
+      type="button"
+      className={`note-tile${selected ? " is-selected" : ""}`}
+      data-note-id={id}
+      aria-pressed={selected}
+      onClick={() => go("note", { note: id })}
+    >
+      <span className="note-tile-icon">
+        <NoteIcon type={noteCategory(note)} />
+      </span>
+      <span className="note-tile-copy">
+        <strong>{note.title}</strong>
+        <span className="note-category">{noteCategory(note)}</span>
+        <span className="note-excerpt">{notePreview(note)}</span>
+      </span>
+      {isNotePinned(note) ? (
+        <Pin className="note-pin" size={16} aria-label="Pinned" />
+      ) : null}
+    </button>
+  );
+});
 
 function NoteReader({ note, id }: { note: NoteCard; id: string }) {
   const { closeWindow, go, updateNote } = useApp();
@@ -366,13 +374,13 @@ function NoteFact({ label, value }: { label: string; value: string }) {
       setError("Could not copy. Select and copy the text instead.");
     }
   }
+  // A list group holds only its term and descriptions, so the buttons and
+  // the notes under them sit in descriptions of their own.
   return (
     <div className="note-fact">
-      <div className="note-fact-text">
-        <dt>{label}</dt>
-        <dd>{secret && !revealed ? "••••••••••" : value}</dd>
-      </div>
-      <div className="note-fact-actions">
+      <dt>{label}</dt>
+      <dd className="note-fact-value">{secret && !revealed ? "••••••••••" : value}</dd>
+      <dd className="note-fact-actions">
         {secret ? (
           <button
             className="note-icon-button"
@@ -390,10 +398,14 @@ function NoteFact({ label, value }: { label: string; value: string }) {
         >
           <Copy size={19} />
         </button>
-      </div>
-      {secret ? <small>Only reveal when you need it.</small> : null}
-      {copied ? <small role="status">{label} copied.</small> : null}
-      {error ? <small role="alert">{error}</small> : null}
+      </dd>
+      {secret || copied || error ? (
+        <dd className="note-fact-note">
+          {secret ? <small>Only reveal when you need it.</small> : null}
+          {copied ? <small role="status">{label} copied.</small> : null}
+          {error ? <small role="alert">{error}</small> : null}
+        </dd>
+      ) : null}
     </div>
   );
 }

@@ -35,8 +35,51 @@
   font-weight: 500;
 }
 .a-body :is(button, a, input, select, textarea, summary):focus-visible {
-  outline: 2px solid var(--sage);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 3px;
+}
+/* The green ring is too faint on navy: the sidebar and its commune list, the
+   phone tab bar and top bar, and the toast take the lighter one. */
+.a-side,
+.a-hub-menu,
+.a-bottom,
+.c-toast {
+  --focus-ring: #649578;
+}
+@media (max-width: 560px) {
+  .a-header { --focus-ring: #649578; }
+  /* Search opens from the top bar in a light window, which keeps the usual ring. */
+  .a-header dialog { --focus-ring: var(--sage); }
+  .a-body.is-dark .a-header dialog { --focus-ring: #649578; }
+}
+/* First stop on every page; shows only while it has keyboard focus. */
+.a-skip-link {
+  --focus-ring: #649578;
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 60;
+  padding: 10px 14px;
+  border-radius: var(--radius-control);
+  background: #f5f1ea;
+  color: var(--navy);
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.a-skip-link:not(:focus) {
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+/* Focus lands on the page heading and the content area after a move; they
+   are not controls, so they show no ring. */
+.a-header-title h1:focus,
+#main-content:focus {
+  outline: none;
 }
 .a-body .a-btn:disabled {
   cursor: not-allowed;
@@ -55,7 +98,46 @@
   letter-spacing: -0.5px;
 }
 @media (max-width: 560px) {
-  .a-header-home { flex-wrap: wrap; }
+  /* Phone top bar, as drawn for Home (design panel, direction B): one slim
+     row of the menu, the page's name, then search, notifications and you,
+     as plain icons on navy. The page description stays on larger screens. */
+  .a-header { min-height: 56px; gap: 0; padding: 6px 6px 6px 4px; }
+  .a-header :is(.a-more-btn, .a-icon-btn, .c-search-trigger) {
+    display: grid; place-items: center; width: 44px; height: 44px; min-height: 44px; padding: 0;
+    border: 0; background: transparent; color: #f5f1ea;
+  }
+  .a-body.is-dark .a-header :is(.a-more-btn, .a-icon-btn, .c-search-trigger) { background: transparent; color: #f5f1ea; }
+  @media (hover: hover) {
+    .a-body .a-header :is(.a-more-btn, .a-icon-btn, .c-search-trigger):hover { background: rgba(255, 255, 255, 0.08); }
+  }
+  .a-header :is(.a-more-btn, .a-icon-btn, .c-search-trigger) svg { stroke-width: 1.8; }
+  .a-header :is(.a-more-btn, .a-icon-btn, .c-search-trigger) svg { width: 20px; height: 20px; }
+  .a-header .a-icon-btn.has-unread::after { top: 11px; right: 11px; background: #f08a7c; }
+  .a-header .a-icon-btn.a-you-btn { margin-left: 2px; }
+  .a-header .a-you-btn .avatar { width: 32px; height: 32px; }
+  .a-header-actions { gap: 0; margin-left: 0; }
+  .a-header-title { padding-left: 2px; }
+  .a-header .a-header-wordmark { display: block; padding-left: 4px; font-size: 25px; letter-spacing: -1.4px; color: #f5f1ea; }
+  .a-header:not(.a-header-home) .a-header-title h1 { font-size: 17px; font-weight: 600; letter-spacing: -0.01em; }
+  .a-header:not(.a-header-home) .a-header-title p { display: none; }
+  /* Home opens on its sentence, so the bar carries no name there; the
+     heading stays for screen readers and is where focus lands. */
+  .a-header.is-home .a-header-title h1 {
+    position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+  }
+  /* On Home the bar and the navy band beneath it read as one. */
+  .a-header.is-home { border-bottom-color: transparent; }
+  .a-body.is-dark .a-header.is-home { background: #1a1f2b; }
+  /* All square: the bar sits over the photo until the page scrolls. */
+  .a-main:has(.c-home-square) > .a-header.is-home { transition: background-color var(--motion-long) var(--ease-standard); }
+  .a-main:has(.c-home-square) > .a-header.is-home:not(.is-scrolled) { background: transparent; backdrop-filter: none; }
+  .a-header.is-home + .a-content .c-home-square { margin-top: -72px; }
+  .notes-mobile-search.c-record-filter { width: 100%; }
+  /* iOS Safari zooms the whole page into any field under 16px when it gets
+     focus, and stays zoomed. Every text field on a phone is 16px. */
+  :is(input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"]), select, textarea) { font-size: 16px !important; }
+  .a-header-home { flex-wrap: wrap; row-gap: 10px; padding-bottom: 14px; }
+  .a-body.is-native .a-header-home .a-header-actions { margin-left: auto; }
   .a-header-home .a-header-title { order: 1; flex-basis: 100%; }
   .a-header-home .a-header-title h1 { white-space: normal; overflow-wrap: anywhere; }
   .a-header-home .c-search-trigger { margin-left: auto; }
@@ -100,11 +182,15 @@
   width: min(560px, calc(100vw - 32px));
   max-height: calc(100dvh - 48px);
   overflow: auto;
-  background: var(--white, #fff);
+  background: var(--white);
   color: var(--ink);
   border: 1px solid var(--border);
   border-radius: var(--radius-surface);
   padding: 26px;
+}
+/* Narrower for the question about discarding changes. */
+.c-product-dialog.c-discard-dialog {
+  width: min(420px, calc(100vw - 32px));
 }
 .c-product-dialog::backdrop {
   background: rgba(26, 30, 43, 0.45);
@@ -143,7 +229,7 @@
 .c-result-row:last-child {
   border-bottom: 0;
 }
-.c-result-row > span:not(.avatar) {
+.c-result-row > span:not(.avatar, .c-type-chip) {
   flex: 1;
   min-width: 0;
 }
@@ -164,6 +250,65 @@
 }
 .c-result-row:hover {
   background: var(--paper);
+}
+/* The kind of record behind an activity row, as a coloured icon chip:
+   money in slate, plans in sage, what everyone shares in cream. */
+.c-type-chip {
+  width: 36px;
+  height: 36px;
+  flex: none;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+}
+.c-type-chip.is-money {
+  background: #edf0f3;
+  color: #637689;
+}
+.c-type-chip.is-plan {
+  background: #edf3eb;
+  color: var(--sage);
+}
+.c-type-chip.is-shared {
+  background: #f5f1ea;
+  color: #60706b;
+}
+.a-body.is-dark .c-type-chip.is-money {
+  background: #2a3440;
+  color: #b5c6bb;
+}
+.a-body.is-dark .c-type-chip.is-plan {
+  background: #253b34;
+  color: #a8cbb5;
+}
+.a-body.is-dark .c-type-chip.is-shared {
+  background: #2e3646;
+  color: var(--ink-soft);
+}
+/* Activity, a day at a time; Notices, a commune at a time; Home's Waiting on
+   others after what needs you. Each headed like search results. */
+.c-log-day + .c-log-day,
+.c-notice-group + .c-notice-group,
+.c-needs-waiting {
+  margin-top: 22px;
+}
+:is(.c-log-day, .c-notice-group, .c-needs-waiting) > h3 {
+  margin: 0 0 8px;
+  color: var(--ink-soft);
+  font-size: 11px;
+  font-weight: 550;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+}
+/* The reminder allowance, said where reminders are sent once it runs low. */
+.c-allowance-note {
+  margin: 12px 0;
+  padding: 8px 12px;
+  border-radius: var(--radius-control);
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 12px;
+  line-height: 1.6;
 }
 .c-scope-label {
   font-size: 12px;
@@ -393,6 +538,9 @@
 .c-member-row .c-member-actions {
   margin-left: auto;
 }
+.c-member-actions .c-action-hint {
+  text-align: right;
+}
 .ops-card h2 {
   font-weight: 550;
 }
@@ -401,9 +549,6 @@
 }
 .c-product-dialog .a-field-row {
   flex-wrap: wrap;
-}
-.c-product-dialog .a-field-label {
-  font-weight: 500;
 }
 @media (max-width: 760px) {
   .c-workflow-grid {
@@ -420,3 +565,67 @@
 @media (max-width: 560px) {
   .c-split-hint { min-height: 4.8em; }
 }
+
+/* The phone menu is the desktop sidebar, opened as a drawer from the left. */
+.a-side-head { display: flex; align-items: flex-start; }
+.a-side-head .a-brand { flex: 1; min-width: 0; }
+.a-drawer-x {
+  display: grid; place-items: center; flex-shrink: 0; width: 44px; height: 44px; margin: -6px -2px 0 0;
+  border: 0; border-radius: var(--radius-control);
+  background: transparent; color: #f5f1ea; cursor: pointer;
+}
+@media (hover: hover) { .a-drawer-x:hover { background: rgba(255, 255, 255, 0.08); } }
+.a-body .a-side.a-drawer {
+  display: flex;
+  position: fixed;
+  inset: 0 auto 0 0;
+  z-index: 41;
+  width: min(300px, 84vw);
+  height: 100dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: calc(18px + env(safe-area-inset-top, 0px)) 14px calc(16px + env(safe-area-inset-bottom, 0px));
+  box-shadow: 18px 0 50px rgba(26, 30, 43, 0.28);
+  animation: a-drawer-in var(--motion-medium) var(--ease-standard);
+}
+.a-body.is-native .a-side.a-drawer { left: max(0px, calc(50% - 195px)); }
+.a-drawer .a-brand { padding-bottom: 24px; }
+.a-drawer .a-wordmark { font-size: 28px; }
+@keyframes a-drawer-in { from { transform: translateX(-100%); } to { transform: none; } }
+
+/* List toolbars on narrow screens: status chips get their own scrollable
+   row, then the filter and the main action share the next one. */
+@media (max-width: 850px) {
+  .a-toolbar:has(> .c-record-filter) { flex-wrap: wrap; row-gap: 10px; }
+  .a-toolbar:has(> .c-record-filter) > .a-filters { flex: 1 0 100%; overflow-x: auto; scrollbar-width: none; }
+  .a-toolbar > .c-record-filter { flex: 1 1 0; min-width: 0; }
+}
+.c-expense-amount strong { white-space: nowrap; }
+
+/* The wordmark beside the menu is a phone's; wider screens have it in the sidebar. */
+.a-header-wordmark { display: none; }
+.a-body.is-native .a-header .a-header-wordmark { display: block; padding-left: 4px; font-size: 25px; letter-spacing: -1.4px; color: #f5f1ea; }
+
+/* Add expense in Home's top bar, beside the bell. Phones add from the Hub. */
+.a-header .a-header-add {
+  height: 38px;
+  font-weight: 500;
+  gap: 7px;
+  white-space: nowrap;
+}
+/* Beside the tablet sidebar the title needs the room: the plus alone, still named. */
+@media (max-width: 700px) {
+  .a-header .a-header-add { width: 38px; padding: 0; justify-content: center; }
+  .a-header-add-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+@media (max-width: 560px) {
+  .a-header .a-header-add { display: none; }
+}
+.a-body.is-native .a-header .a-header-add { display: none; }

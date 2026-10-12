@@ -1,11 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { WifiOff } from "lucide-react";
-import "./connection-recovery.css";
+import { StreetScene } from "./StreetScene";
 
-export function ConnectionRecovery({ retry }: { retry: () => Promise<void> }) {
+export function ConnectionRecovery({ retry, signOut }: { retry: () => Promise<void>; signOut: () => Promise<void> }) {
   const [offline, setOffline] = useState(() => !navigator.onLine);
   const [busy, setBusy] = useState(false);
   const [attempted, setAttempted] = useState(false);
+  // The connection came back during a run: say so, and let the run finish.
+  const [backOnline, setBackOnline] = useState(false);
+  const playing = useRef(false);
   const inFlight = useRef(false);
   const retryRef = useRef(retry);
   retryRef.current = retry;
@@ -15,6 +18,7 @@ export function ConnectionRecovery({ retry }: { retry: () => Promise<void> }) {
     inFlight.current = true;
     setBusy(true);
     setAttempted(false);
+    setBackOnline(false);
     try { await retryRef.current(); }
     finally {
       inFlight.current = false;
@@ -24,8 +28,11 @@ export function ConnectionRecovery({ retry }: { retry: () => Promise<void> }) {
   }
 
   useEffect(() => {
-    const online = () => { setOffline(false); void reconnect(); };
-    const offline = () => setOffline(true);
+    const online = () => {
+      setOffline(false);
+      if (playing.current) setBackOnline(true); else void reconnect();
+    };
+    const offline = () => { setOffline(true); setBackOnline(false); };
     window.addEventListener("online", online);
     window.addEventListener("offline", offline);
     return () => {
@@ -34,14 +41,17 @@ export function ConnectionRecovery({ retry }: { retry: () => Promise<void> }) {
     };
   }, []);
 
-  return <main className="a-body c-connection-recovery">
-    <span className="a-wordmark">commune.</span>
-    <section className="c-connection-card" aria-labelledby="connection-title" aria-busy={busy}>
-      <WifiOff className="c-connection-icon" size={24} strokeWidth={1.5} aria-hidden="true" />
-      <h1 id="connection-title">{offline ? "You’re offline" : "We couldn’t connect"}</h1>
-      <p>{offline ? "Check your internet connection. We’ll try again when you’re back online." : "We couldn’t check your account just now. Try again in a moment."}</p>
-      <button className="a-btn" type="button" disabled={busy || offline} onClick={() => void reconnect()}>{busy ? "Reconnecting…" : "Try again"}</button>
-      <div className="c-connection-feedback" role="status">{attempted && !busy ? "Still unable to connect. Please try again shortly." : ""}</div>
-    </section>
-  </main>;
+  return <StreetScene label="Street runner, a game to play while Commune reconnects" onPlayingChange={(now) => { playing.current = now; }}>
+    <div aria-busy={busy}>
+      <WifiOff className="c-street-icon" size={24} strokeWidth={1.5} aria-hidden="true" />
+      <h1>{backOnline ? "You’re back online" : offline ? "You’re offline" : "We couldn’t connect"}</h1>
+      <p>{backOnline ? "Commune is ready. Open it when you’ve finished your run." : offline ? "Check your internet connection. We’ll try again when you’re back online." : "We couldn’t check your account just now. Try again in a moment."}</p>
+      <div className="c-street-actions">
+        <button className="a-btn" type="button" disabled={busy || offline} onClick={() => void reconnect()}>{busy ? "Reconnecting…" : backOnline ? "Open Commune" : "Try again"}</button>
+        {/* Signing out here also works offline: this device forgets the account straight away. */}
+        <button className="a-btn ghost" type="button" disabled={busy} onClick={() => void signOut()}>Sign out</button>
+      </div>
+      <div className="c-street-feedback" role="status">{attempted && !busy ? "Still unable to connect. Please try again shortly." : ""}</div>
+    </div>
+  </StreetScene>;
 }

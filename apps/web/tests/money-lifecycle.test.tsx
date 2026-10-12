@@ -3,9 +3,12 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testi
 import { Router } from "wouter";
 import { memoryLocation } from "wouter/memory-location";
 import { App } from "../src/App";
+import { preloadAll } from "../src/shell/lazyComponent";
 import { AppProvider, useApp, type AppState } from "../src/state";
 import { api, post, loadCommunes, loadSnapshot, ApiError } from "../src/live/api";
 import type { Commune, Snapshot } from "../src/live/model";
+import { formatReminderDay, formatTimestampDay } from "../src/data/reminders";
+import { toastRegion, toastText } from "./toast";
 
 vi.mock("../src/live/api", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../src/live/api")>()),
@@ -35,6 +38,9 @@ function mount(path: string) {
 const modalDescriptor = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, "showModal");
 const closeDescriptor = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, "close");
 const originalScroll = Element.prototype.scrollIntoView;
+// The screens and windows a browser loads on first use are loaded up front,
+// so each test sees them drawn at once.
+beforeAll(preloadAll);
 beforeAll(() => {
   Element.prototype.scrollIntoView = vi.fn();
   Object.defineProperty(HTMLDialogElement.prototype, "showModal", { configurable: true, value: function (this: HTMLDialogElement) { this.setAttribute("open", ""); } });
@@ -91,7 +97,7 @@ describe("one Nudge/Chase interaction at every entry point", () => {
     mount("/expenses");
     fireEvent.click(await screen.findByRole("button", { name: /House supplies/ }));
     const windowFrame = await screen.findByRole("dialog", { name: "House supplies" });
-    fireEvent.click(within(windowFrame).getByRole("button", { name: "Nudge" }));
+    fireEvent.click(within(windowFrame).getByRole("button", { name: /^Nudge / }));
     const preview = screen.getByRole("dialog", { name: "A gentle reminder for Housemate" });
     expect(within(preview).getByText(/£12.00 outstanding for House supplies/)).toBeTruthy();
     expect(within(preview).getByText("Nudge · expense share")).toBeTruthy();
@@ -100,30 +106,32 @@ describe("one Nudge/Chase interaction at every entry point", () => {
     expect(screen.queryByRole("dialog", { name: "A gentle reminder for Housemate" })).toBeNull();
     expect(reminderPosts()).toHaveLength(0);
 
-    fireEvent.click(within(windowFrame).getByRole("button", { name: "Nudge" }));
+    fireEvent.click(within(windowFrame).getByRole("button", { name: /^Nudge / }));
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Send reminder" })); });
     expect(reminderPosts()).toHaveLength(1);
     expect(reminderPosts()[0][1]).toMatchObject({ kind: "nudge", sourceId: "share-1" });
     expect((reminderPosts()[0][1] as { requestId: string }).requestId).toMatch(/^[0-9a-f-]{36}$/);
-    expect((await screen.findByRole("status")).textContent)
-      .toBe("Nudge recorded. Housemate will see it in Commune. No email was sent for this reminder.");
+    // The preview goes, and the toast says what was recorded; no Undo on a reminder.
+    expect(screen.queryByRole("dialog", { name: "A gentle reminder for Housemate" })).toBeNull();
+    expect(toastText()).toBe("Nudge recorded for Housemate. 1 of 60 in 30 days. No email was sent this time.");
+    expect(within(toastRegion()).queryByRole("button")).toBeNull();
   });
 
   it("keeps the expense window open when Escape closes only the reminder preview", async () => {
     mount("/expenses");
     fireEvent.click(await screen.findByRole("button", { name: /House supplies/ }));
     const windowFrame = await screen.findByRole("dialog", { name: "House supplies" });
-    fireEvent.click(within(windowFrame).getByRole("button", { name: "Nudge" }));
+    fireEvent.click(within(windowFrame).getByRole("button", { name: /^Nudge / }));
     fireEvent.keyDown(document, { key: "Escape" });
     expect(app.window).toBe("expense");
   });
 
   it("uses the same preview and the same explanation from Settle", async () => {
     mount("/settle");
-    fireEvent.click(await screen.findByRole("button", { name: "Nudge" }));
+    fireEvent.click(await screen.findByRole("button", { name: /^Nudge / }));
     const preview = screen.getByRole("dialog", { name: "A gentle reminder for Housemate" });
     expect(within(preview).getByText("Nudge · expense share")).toBeTruthy();
-    expect(within(preview).getByText("5 Jan 2026")).toBeTruthy();
+    expect(within(preview).getByText(formatReminderDay("2026-01-05"))).toBeTruthy();
     expect(reminderPosts()).toHaveLength(0);
   });
 
@@ -131,7 +139,7 @@ describe("one Nudge/Chase interaction at every entry point", () => {
     current.reminderTargets = [{ ...nudgeTarget(), lastSentAt: new Date(Date.now() - 60_000).toISOString() }];
     mount(path);
     if (path === "/expenses") fireEvent.click(await screen.findByRole("button", { name: /House supplies/ }));
-    const nudge = await screen.findByRole("button", { name: "Nudge" }) as HTMLButtonElement;
+    const nudge = await screen.findByRole("button", { name: /^Nudge / }) as HTMLButtonElement;
     expect(nudge.disabled).toBe(true);
     expect(screen.getByText(/^Next nudge /)).toBeTruthy();
   });
@@ -142,7 +150,7 @@ describe("one Nudge/Chase interaction at every entry point", () => {
       return { ok: true };
     });
     mount("/settle");
-    fireEvent.click(await screen.findByRole("button", { name: "Nudge" }));
+    fireEvent.click(await screen.findByRole("button", { name: /^Nudge / }));
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Send reminder" })); });
     const preview = screen.getByRole("dialog", { name: "A gentle reminder for Housemate" });
     expect(within(preview).getByRole("alert").textContent)
@@ -170,10 +178,9 @@ describe("one Nudge/Chase interaction at every entry point", () => {
       return { ok: true };
     });
     mount("/settle");
-    fireEvent.click(await screen.findByRole("button", { name: "Nudge" }));
+    fireEvent.click(await screen.findByRole("button", { name: /^Nudge / }));
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Send reminder" })); });
-    expect((await screen.findByRole("status")).textContent)
-      .toBe("Nudge recorded. Housemate will see it in Commune. Whether they also get an email depends on their own preferences, so it is not confirmed here.");
+    await waitFor(() => expect(toastText()).toBe("Nudge recorded for Housemate. 1 of 60 in 30 days."));
     expect(screen.queryByRole("alert")).toBeNull();
   });
 
@@ -184,15 +191,15 @@ describe("one Nudge/Chase interaction at every entry point", () => {
     vi.mocked(post).mockImplementation(async (path) => path === "/reminders"
       ? { id: "reminder-2", duplicate: true, emailStatus: "none" } : { ok: true });
     mount("/funds");
-    fireEvent.click(await screen.findByRole("button", { name: "View fund" }));
+    fireEvent.click(await screen.findByRole("button", { name: "View fund Boiler fund" }));
     fireEvent.click(within(screen.getByRole("dialog", { name: "Boiler fund" })).getByRole("button", { name: "Chase", exact: true }));
     const preview = screen.getByRole("dialog", { name: "A gentle reminder for Housemate" });
     expect(within(preview).getByText("Chase · fund pledge")).toBeTruthy();
     expect(reminderPosts()).toHaveLength(0);
     await act(async () => { fireEvent.click(within(preview).getByRole("button", { name: "Send reminder" })); });
     expect(reminderPosts()[0][1]).toMatchObject({ kind: "chase", sourceId: "pledge-1" });
-    await waitFor(() => expect(within(preview).getByRole("status").textContent)
-      .toBe("This chase was already recorded. Nothing was sent twice. No email was sent for this reminder."));
+    await waitFor(() => expect(toastText()).toBe("This chase for Housemate was already recorded. Nothing was sent twice."));
+    expect(preview.isConnected).toBe(false);
     expect(screen.getByRole("dialog", { name: "Boiler fund" })).toBeTruthy();
   });
 });
@@ -217,7 +224,7 @@ describe("partial repayment receipts and reversals", () => {
     vi.mocked(post).mockImplementation(async (path) => /receipts$/.test(path)
       ? { id: "receipt-1", duplicate: false, settledMinor: 500, outstandingMinor: 700 } : { ok: true });
     mount("/settle");
-    fireEvent.click(await screen.findByRole("button", { name: "Confirm received" }));
+    fireEvent.click(await screen.findByRole("button", { name: /^Confirm received / }));
     const dialog = screen.getByRole("dialog", { name: "Record a repayment from Housemate" });
     const amount = within(dialog).getByLabelText(/Amount received/) as HTMLInputElement;
     expect(amount.value).toBe("12.00");
@@ -232,8 +239,10 @@ describe("partial repayment receipts and reversals", () => {
     expect(receiptPosts()[0][1]).toMatchObject({ amountMinor: 500, reference: "Bank transfer" });
     expect((receiptPosts()[0][1] as { requestId: string }).requestId).toMatch(/^[0-9a-f-]{36}$/);
     expect(screen.queryByRole("dialog", { name: "Record a repayment from Housemate" })).toBeNull();
-    expect(screen.getByRole("status").textContent)
-      .toBe("£5.00 recorded as received from Housemate. £7.00 still outstanding. No payment was taken by Commune.");
+    expect(toastText()).toBe("Confirmed. Housemate’s £5.00 is recorded as received. £7.00 still outstanding.");
+    // The line offers the expense; a confirmed payment has no Undo.
+    expect(within(toastRegion()).getByRole("button", { name: "View" })).toBeTruthy();
+    expect(within(toastRegion()).queryByRole("button", { name: "Undo" })).toBeNull();
   });
 
   it("keeps keyboard focus in the panel when a full repayment removes its own row", async () => {
@@ -245,18 +254,18 @@ describe("partial repayment receipts and reversals", () => {
       return { id: "receipt-1", duplicate: false, settledMinor: 1200, outstandingMinor: 0 };
     });
     mount("/settle");
-    const buttons = await screen.findAllByRole("button", { name: "Confirm received" });
+    const buttons = await screen.findAllByRole("button", { name: /^Confirm received / });
     buttons[0].focus();
     fireEvent.click(buttons[0]);
     const dialog = screen.getByRole("dialog", { name: "Record a repayment from Housemate" });
     await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Record £12.00 received" })); });
-    expect(screen.getAllByRole("button", { name: "Confirm received" })).toHaveLength(1);
+    expect(screen.getAllByRole("button", { name: /^Confirm received / })).toHaveLength(1);
     expect(screen.getByRole("region", { name: "You’re owed" }).contains(document.activeElement)).toBe(true);
   });
 
   it("refuses an excess amount, a future date and an account-like reference before sending", async () => {
     mount("/settle");
-    fireEvent.click(await screen.findByRole("button", { name: "Confirm received" }));
+    fireEvent.click(await screen.findByRole("button", { name: /^Confirm received / }));
     const dialog = screen.getByRole("dialog", { name: "Record a repayment from Housemate" });
     const submit = () => fireEvent.submit(dialog.querySelector("form")!);
     fireEvent.change(within(dialog).getByLabelText(/Amount received/), { target: { value: "12.01" } });
@@ -277,7 +286,7 @@ describe("partial repayment receipts and reversals", () => {
     vi.mocked(post).mockImplementationOnce(async () => { throw new TypeError("Failed to fetch"); })
       .mockImplementation(async () => ({ id: "receipt-1", duplicate: true, settledMinor: 1200, outstandingMinor: 0 }));
     mount("/settle");
-    fireEvent.click(await screen.findByRole("button", { name: "Confirm received" }));
+    fireEvent.click(await screen.findByRole("button", { name: /^Confirm received / }));
     const dialog = screen.getByRole("dialog", { name: "Record a repayment from Housemate" });
     await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Record £12.00 received" })); });
     expect(within(dialog).getByRole("alert").textContent).toContain("Trying again will not record it twice.");
@@ -285,16 +294,47 @@ describe("partial repayment receipts and reversals", () => {
     const ids = receiptPosts().map(([, body]) => (body as { requestId: string }).requestId);
     expect(ids).toHaveLength(2);
     expect(ids[1]).toBe(ids[0]);
-    expect(screen.getByRole("status").textContent).toContain("This repayment was already recorded.");
+    expect(toastText()).toContain("This repayment was already recorded.");
   });
 
   it("reports a server rejection as nothing recorded", async () => {
     vi.mocked(post).mockImplementation(async () => { throw new ApiError("Only £3.00 is still outstanding on this share", 409); });
     mount("/settle");
-    fireEvent.click(await screen.findByRole("button", { name: "Confirm received" }));
+    fireEvent.click(await screen.findByRole("button", { name: /^Confirm received / }));
     const dialog = screen.getByRole("dialog", { name: "Record a repayment from Housemate" });
     await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Record £12.00 received" })); });
     expect(within(dialog).getByRole("alert").textContent).toBe("Only £3.00 is still outstanding on this share. Nothing was recorded.");
+  });
+
+  it("puts an amount error under Amount, links it to the field and moves focus there", async () => {
+    mount("/settle");
+    fireEvent.click(await screen.findByRole("button", { name: /^Confirm received / }));
+    const dialog = screen.getByRole("dialog", { name: "Record a repayment from Housemate" });
+    const amount = within(dialog).getByLabelText(/Amount received/) as HTMLInputElement;
+    fireEvent.change(amount, { target: { value: "13.00" } });
+    await act(async () => { fireEvent.submit(dialog.querySelector("form")!); });
+    const error = within(dialog).getByRole("alert");
+    expect(error.textContent).toBe("Only £12.00 is still outstanding on this share.");
+    expect(amount.getAttribute("aria-invalid")).toBe("true");
+    expect(amount.getAttribute("aria-describedby")?.split(" ")).toContain(error.id);
+    expect(document.activeElement).toBe(amount);
+    // Straight after the Amount field, before the date.
+    expect(amount.closest(".a-field")?.nextElementSibling).toBe(error);
+    expect(receiptPosts()).toHaveLength(0);
+  });
+
+  it("never says nothing was recorded once an earlier attempt may have been", async () => {
+    vi.mocked(post).mockImplementationOnce(async () => { throw new TypeError("Failed to fetch"); })
+      .mockImplementation(async () => { throw new ApiError("Only £3.00 is still outstanding on this share", 409); });
+    mount("/settle");
+    fireEvent.click(await screen.findByRole("button", { name: /^Confirm received / }));
+    const dialog = screen.getByRole("dialog", { name: "Record a repayment from Housemate" });
+    await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Record £12.00 received" })); });
+    expect(within(dialog).getByRole("alert").textContent).toContain("Trying again will not record it twice.");
+    // The retry is refused: perhaps because the first attempt went through.
+    await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Record £12.00 received" })); });
+    expect(within(dialog).getByRole("alert").textContent)
+      .toBe("An earlier attempt may already have been recorded. Close this and check the repayment history before trying again.");
   });
 
   it("shows the same part-paid balance in the expense, Settle and Hub", async () => {
@@ -305,7 +345,7 @@ describe("partial repayment receipts and reversals", () => {
     expect(within(owed).getByText("£25.00 of £80.00 received")).toBeTruthy();
     const recent = screen.getByRole("region", { name: "Recent repayments" });
     expect(within(recent).getByText("Recorded as received")).toBeTruthy();
-    expect(within(recent).getByText(/received 6 Jan 2026 · Bank transfer/)).toBeTruthy();
+    expect(within(recent).getByText(new RegExp(`received ${formatReminderDay("2026-01-06")} · Bank transfer`))).toBeTruthy();
     expect(app.hub.oweAmount).toBe("£55.00");
     act(() => app.go("expense", { expense: "expense-1" }));
     const windowFrame = await screen.findByRole("dialog", { name: "House supplies" });
@@ -324,7 +364,7 @@ describe("partial repayment receipts and reversals", () => {
     fireEvent.click(within(windowFrame).getByText("£25.00 received · 1 repayment"));
     fireEvent.click(within(windowFrame).getByRole("button", { name: "Reverse" }));
     const dialog = screen.getByRole("dialog", { name: "Reverse this repayment?" });
-    expect(within(dialog).getByText(/£25.00 from Housemate · House supplies · received 6 Jan 2026 · Bank transfer/)).toBeTruthy();
+    expect(within(dialog).getByText(new RegExp(`£25.00 from Housemate · House supplies · received ${formatReminderDay("2026-01-06")} · Bank transfer`))).toBeTruthy();
     fireEvent.submit(dialog.querySelector("form")!);
     expect(within(dialog).getByRole("alert").textContent).toContain("Give a short reason");
     expect(reversalPosts()).toHaveLength(0);
@@ -333,10 +373,9 @@ describe("partial repayment receipts and reversals", () => {
       { ...current.expenses[0].shares[1].receipts![0], reversedAt: "2026-01-07T09:00:00Z", reversedBy: user.id, reversalReason: "Transfer bounced" }] };
     await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Reverse repayment" })); });
     expect(reversalPosts()).toEqual([["/receipts/receipt-1/reverse", { reason: "Transfer bounced" }]]);
-    expect(within(windowFrame).getByRole("status").textContent)
-      .toBe("£25.00 repayment reversed. £80.00 is outstanding from Housemate. The original entry stays in the history.");
+    expect(toastText()).toBe("£25.00 repayment reversed. £80.00 is outstanding from Housemate. The original entry stays in the history.");
     expect(within(windowFrame).getByText("£80.00 share · £80.00 outstanding")).toBeTruthy();
-    expect(within(windowFrame).getByText(/Reversed by you on 7 Jan 2026: Transfer bounced/)).toBeTruthy();
+    expect(within(windowFrame).getByText(new RegExp(`Reversed by you on ${formatTimestampDay("2026-01-07T09:00:00Z")}: Transfer bounced`))).toBeTruthy();
     expect(within(windowFrame).queryByRole("button", { name: "Reverse" })).toBeNull();
   });
 
@@ -352,14 +391,14 @@ describe("partial repayment receipts and reversals", () => {
     const owe = await screen.findByRole("region", { name: "You owe" });
     expect(within(owe).getByText("£25.00 of £80.00 received")).toBeTruthy();
     // The debtor can say they have paid; only the payer can record receipt.
-    expect(within(owe).getByRole("button", { name: "I’ve sent it" })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Confirm received" })).toBeNull();
+    expect(within(owe).getByRole("button", { name: /^I’ve sent it/ })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /^Confirm received / })).toBeNull();
     expect(within(screen.getByRole("region", { name: "Recent repayments" })).getByText("You to Housemate")).toBeTruthy();
     act(() => app.go("expense", { expense: "expense-1" }));
     const windowFrame = await screen.findByRole("dialog", { name: "House supplies" });
     expect(within(windowFrame).getByText(/recorded by Housemate/)).toBeTruthy();
     expect(within(windowFrame).queryByRole("button", { name: "Reverse" })).toBeNull();
-    expect(within(windowFrame).queryByRole("button", { name: "Confirm received" })).toBeNull();
+    expect(within(windowFrame).queryByRole("button", { name: /^Confirm received / })).toBeNull();
   });
 
   it("opens the exact expense from a reversal notice", async () => {
@@ -401,7 +440,7 @@ describe("I’ve sent it: a claim the bill payer answers", () => {
       ? (current.expenses = [debt([pending])], { id: "report-1", duplicate: false, status: "pending", receiptId: null, settledMinor: 0, outstandingMinor: 1200 })
       : { ok: true });
     mount("/settle");
-    fireEvent.click(await screen.findByRole("button", { name: "I’ve sent it" }));
+    fireEvent.click(await screen.findByRole("button", { name: /^I’ve sent it/ }));
     const dialog = screen.getByRole("dialog", { name: "Tell Housemate you’ve paid" });
     expect((within(dialog).getByLabelText(/Amount sent/) as HTMLInputElement).value).toBe("12.00");
     fireEvent.change(within(dialog).getByLabelText(/Reference/), { target: { value: "Bank transfer" } });
@@ -411,20 +450,35 @@ describe("I’ve sent it: a claim the bill payer answers", () => {
     expect(path).toBe("/shares/share-mine/payment-reports");
     expect(body).toMatchObject({ amountMinor: 1200, reference: "Bank transfer" });
     expect((body as { requestId: string }).requestId).toMatch(/^[0-9a-f-]{36}$/);
-    expect(screen.getByRole("status").textContent).toContain("Your balance changes when they confirm it");
+    expect(toastText()).toBe("Recorded. Housemate will confirm your £12.00.");
     const owe = screen.getByRole("region", { name: "You owe" });
     // Still owed in full; the row now waits for the payer and offers Withdraw.
     expect(within(owe).getByText("£12.00", { selector: ".c-settle-total" })).toBeTruthy();
-    expect(within(owe).getByText(/You said you sent £12\.00 on 6 Jan 2026\. Waiting for Housemate/)).toBeTruthy();
-    expect(within(owe).queryByRole("button", { name: "I’ve sent it" })).toBeNull();
-    await act(async () => { fireEvent.click(within(owe).getByRole("button", { name: "Withdraw" })); });
+    expect(within(owe).getByText(new RegExp(`You said you sent £12\\.00 on ${formatReminderDay("2026-01-06")}\\. Waiting for Housemate`))).toBeTruthy();
+    expect(within(owe).queryByRole("button", { name: /^I’ve sent it/ })).toBeNull();
+    await act(async () => { fireEvent.click(within(owe).getByRole("button", { name: /^Withdraw/ })); });
     expect(reportPosts().at(-1)?.[0]).toBe("/payment-reports/report-1/withdraw");
+  });
+
+  it("never says nothing was reported once an earlier attempt may have been", async () => {
+    current.expenses = [debt()];
+    vi.mocked(post).mockImplementationOnce(async () => { throw new TypeError("Failed to fetch"); })
+      .mockImplementation(async () => { throw new ApiError("Housemate has already been told about this payment", 409); });
+    mount("/settle");
+    fireEvent.click(await screen.findByRole("button", { name: /^I’ve sent it/ }));
+    const dialog = screen.getByRole("dialog", { name: "Tell Housemate you’ve paid" });
+    await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Tell Housemate" })); });
+    expect(within(dialog).getByRole("alert").textContent).toContain("Trying again will not record it twice.");
+    await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Tell Housemate" })); });
+    expect(reportPosts()).toHaveLength(2);
+    expect(within(dialog).getByRole("alert").textContent)
+      .toBe("An earlier attempt may already have been reported. Close this and check the expense before trying again.");
   });
 
   it("refuses card numbers in the reference before sending", async () => {
     current.expenses = [debt()];
     mount("/settle");
-    fireEvent.click(await screen.findByRole("button", { name: "I’ve sent it" }));
+    fireEvent.click(await screen.findByRole("button", { name: /^I’ve sent it/ }));
     const dialog = screen.getByRole("dialog", { name: "Tell Housemate you’ve paid" });
     fireEvent.change(within(dialog).getByLabelText(/Reference/), { target: { value: "4111 1111 1111 1111" } });
     await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Tell Housemate" })); });
@@ -439,28 +493,28 @@ describe("I’ve sent it: a claim the bill payer answers", () => {
     vi.mocked(post).mockImplementation(async () => ({ id: "report-1", duplicate: false, status: "confirmed", receiptId: "receipt-9", settledMinor: 800, outstandingMinor: 400 }));
     mount("/settle");
     const owed = await screen.findByRole("region", { name: "You’re owed" });
-    expect(within(owed).getByText(/Housemate sent £8\.00 on 6 Jan 2026 · Bank transfer\. Not yet confirmed\./)).toBeTruthy();
+    expect(within(owed).getByText(new RegExp(`Housemate sent £8\\.00 on ${formatReminderDay("2026-01-06")} · Bank transfer\\. Not yet confirmed\\.`))).toBeTruthy();
     // While a report waits, the payer answers it rather than nudging.
-    expect(within(owed).queryByRole("button", { name: "Nudge" })).toBeNull();
-    fireEvent.click(within(owed).getByRole("button", { name: "Confirm £8.00" }));
+    expect(within(owed).queryByRole("button", { name: /^Nudge / })).toBeNull();
+    fireEvent.click(within(owed).getByRole("button", { name: /^Confirm £8\.00 from Housemate/ }));
     const confirm = screen.getByRole("dialog", { name: "Confirm £8.00 received?" });
-    await act(async () => { fireEvent.click(within(confirm).getByRole("button", { name: "Confirm £8.00 received" })); });
+    await act(async () => { fireEvent.click(within(confirm).getByRole("button", { name: "Confirm Housemate’s £8.00" })); });
     const [path, body] = reportPosts()[0];
     expect(path).toBe("/payment-reports/report-1/resolve");
     expect(body).toMatchObject({ decision: "confirm" });
     expect((body as { requestId: string }).requestId).toMatch(/^[0-9a-f-]{36}$/);
-    expect(screen.getByRole("status").textContent).toContain("£8.00 recorded as received from Housemate. £4.00 still outstanding.");
+    expect(toastText()).toBe("Confirmed. Housemate’s £8.00 is recorded as received. £4.00 still outstanding.");
 
     vi.mocked(post).mockClear();
     vi.mocked(post).mockImplementation(async () => ({ id: "report-1", duplicate: false, status: "declined", receiptId: null, settledMinor: 0, outstandingMinor: 1200 }));
-    fireEvent.click(within(owed).getByRole("button", { name: "Not received" }));
+    fireEvent.click(within(owed).getByRole("button", { name: /^Not received/ }));
     const decline = screen.getByRole("dialog", { name: "Not received yet?" });
     await act(async () => { fireEvent.click(within(decline).getByRole("button", { name: "Send" })); });
     expect(reportPosts()).toHaveLength(0);
     fireEvent.change(within(decline).getByLabelText("What should they check?"), { target: { value: "Nothing has arrived" } });
     await act(async () => { fireEvent.click(within(decline).getByRole("button", { name: "Send" })); });
     expect(reportPosts()[0][1]).toEqual({ decision: "decline", note: "Nothing has arrived" });
-    expect(screen.getByRole("status").textContent).toContain("Nothing was recorded");
+    expect(toastText()).toContain("Nothing was recorded");
   });
 
   it("tells the debtor why a report was declined, and names report notices plainly", async () => {
@@ -470,7 +524,7 @@ describe("I’ve sent it: a claim the bill payer answers", () => {
     mount("/settle");
     const owe = await screen.findByRole("region", { name: "You owe" });
     expect(within(owe).getByText("Housemate has not received the £12.00 you reported: Nothing has arrived")).toBeTruthy();
-    expect(within(owe).getByRole("button", { name: "I’ve sent it" })).toBeTruthy();
+    expect(within(owe).getByRole("button", { name: /^I’ve sent it/ })).toBeTruthy();
     act(() => app.go("notices"));
     const notice = within(await screen.findByRole("dialog", { name: "Notices" })).getByRole("button", { name: /House supplies/ });
     expect(notice.textContent).toContain("Not received");
@@ -607,6 +661,42 @@ describe("safe expense correction and void", () => {
     expect(within(windowFrame).getByRole("status").textContent).toContain("Expense voided.");
   });
 
+  it("never says nothing was changed once an earlier correction may have saved", async () => {
+    let lost = true;
+    mockChange(() => {
+      if (lost) { lost = false; throw new TypeError("Failed to fetch"); }
+      throw new ApiError("This expense was changed by someone else. Review the latest version.", 409);
+    });
+    const { dialog } = await openCorrection();
+    fireEvent.change(within(dialog).getByLabelText("Total (GBP)"), { target: { value: "30.00" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Review changes" }));
+    fireEvent.change(within(dialog).getByLabelText("Reason for the correction"), { target: { value: "Receipt total was wrong" } });
+    await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Save correction" })); });
+    expect(within(dialog).getByRole("alert").textContent).toContain("Trying again will not record it twice.");
+    // The retry is refused: perhaps because the first attempt went through.
+    await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Save correction" })); });
+    expect(within(dialog).getByRole("alert").textContent)
+      .toBe("An earlier attempt may already have saved this correction. Close this and check the expense’s history before trying again.");
+  });
+
+  it("never says nothing was changed once an earlier void may have saved", async () => {
+    let lost = true;
+    mockChange(() => {
+      if (lost) { lost = false; throw new TypeError("Failed to fetch"); }
+      throw new ApiError("This expense was changed by someone else. Review the latest version.", 409);
+    });
+    mount("/expenses");
+    fireEvent.click(await screen.findByRole("button", { name: /House supplies/ }));
+    fireEvent.click(within(await screen.findByRole("dialog", { name: "House supplies" })).getByRole("button", { name: "Void" }));
+    const dialog = screen.getByRole("dialog", { name: "Void this expense?" });
+    fireEvent.change(within(dialog).getByLabelText("Reason for voiding"), { target: { value: "Entered twice" } });
+    await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Void expense" })); });
+    expect(within(dialog).getByRole("alert").textContent).toContain("Trying again will not record it twice.");
+    await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Void expense" })); });
+    expect(within(dialog).getByRole("alert").textContent)
+      .toBe("An earlier attempt may already have voided this expense. Close this and check the expense before trying again.");
+  });
+
   it("keeps a voided expense as history that never counts towards a balance", async () => {
     current.expenses = [{ ...owedExpense(), version: 2, voidedAt: "2026-01-08T09:00:00Z", voidedBy: user.id, voidReason: "Entered twice",
       revisions: [{ id: "rev-1", version: 2, action: "voided", actorId: user.id, reason: "Entered twice", createdAt: "2026-01-08T09:00:00Z",
@@ -622,10 +712,12 @@ describe("safe expense correction and void", () => {
     act(() => app.go("expenses"));
     expect(await screen.findByText("1 expense · £24.00 total recorded in this view")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Voided" }));
-    expect(screen.getByText("1 voided expense · kept for history, not counted in any balance")).toBeTruthy();
+    // It was recorded in January; earlier months show on request.
+    fireEvent.click(screen.getByRole("button", { name: "Show earlier" }));
+    expect(await screen.findByText("1 voided expense · kept for history, not counted in any balance")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: /House supplies/ }));
     const windowFrame = await screen.findByRole("dialog", { name: "House supplies" });
-    expect(within(windowFrame).getByText("Voided by Test Person on 8 Jan 2026: Entered twice")).toBeTruthy();
+    expect(within(windowFrame).getByText(`Voided by Test Person on ${formatTimestampDay("2026-01-08T09:00:00Z")}: Entered twice`)).toBeTruthy();
     expect(within(windowFrame).getByText("1 change to this expense")).toBeTruthy();
     for (const name of ["Correct", "Void", "Nudge", "Confirm received"]) {
       expect(within(windowFrame).queryByRole("button", { name })).toBeNull();
@@ -655,7 +747,8 @@ describe("review fixes: voided ledger, lost replies, locks and Escape", () => {
     expect(await screen.findByRole("button", { name: "Voided" })).toBeTruthy();
     expect(screen.queryByText("No expenses yet.")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Voided" }));
-    expect(screen.getByRole("button", { name: /House supplies/ })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Show earlier" }));
+    expect(await screen.findByRole("button", { name: /House supplies/ })).toBeTruthy();
   });
 
   it("tells an admin who did not pay to ask the payer to reverse, not to reverse themselves", async () => {
@@ -694,7 +787,7 @@ describe("review fixes: voided ledger, lost replies, locks and Escape", () => {
     current.expenses = [owedExpense()];
     vi.mocked(post).mockImplementation(async () => { throw new TypeError("Failed to fetch"); });
     mount("/settle");
-    fireEvent.click(await screen.findByRole("button", { name: "Confirm received" }));
+    fireEvent.click(await screen.findByRole("button", { name: /^Confirm received / }));
     const dialog = screen.getByRole("dialog", { name: "Record a repayment from Housemate" });
     await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Record £12.00 received" })); });
     expect((within(dialog).getByLabelText(/Amount received/) as HTMLInputElement).disabled).toBe(true);

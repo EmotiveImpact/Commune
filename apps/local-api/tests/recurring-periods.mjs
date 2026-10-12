@@ -11,7 +11,8 @@ if (url.protocol !== "http:" || !["127.0.0.1", "localhost"].includes(url.hostnam
     url.port === "3002" || url.pathname !== "/" || url.search || url.hash || url.username || url.password) {
   throw new Error("Recurring period tests require an isolated loopback API port (not 3002).");
 }
-const suffix = randomUUID().slice(0, 8);
+// Letters only, so a commune name that carries it never holds a phone-like run of digits.
+const suffix = randomUUID().slice(0, 8).replace(/[0-9]/g, (digit) => "ghijklmnop"[digit]);
 const password = "DisposableRecurringFixture-2026!";
 function session() {
   let cookie = "";
@@ -45,69 +46,83 @@ const iso = (date) => date.toISOString().slice(0, 10);
 const today = iso(new Date());
 const snapshot = async (call = a) => ok(await call("GET", `/communes/${id}/snapshot`));
 const bill = async (billId) => (await snapshot()).recurringBills.find(item => item.id === billId);
+// Month ends, in UTC like the database's dates: the latest 31st followed by
+// a shorter month whose third period is already past. The bill is then
+// recent enough to add, and its periods can be recorded or skipped.
+const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const monthEnd = (year, month) => new Date(Date.UTC(year, month + 1, 0));
+let anchor = null;
+for (let back = 3; !anchor; back += 1) {
+  const now = new Date();
+  const candidate = monthEnd(now.getUTCFullYear(), now.getUTCMonth() - back);
+  if (candidate.getUTCDate() === 31 && monthEnd(now.getUTCFullYear(), now.getUTCMonth() - back + 1).getUTCDate() < 31) anchor = candidate;
+}
+const periodDate = (offset) => monthEnd(anchor.getUTCFullYear(), anchor.getUTCMonth() + offset);
+const period = (offset) => iso(periodDate(offset));
+const label = (offset) => `${periodDate(offset).getUTCDate()} ${months[periodDate(offset).getUTCMonth()]}`;
 
 const electricity = ok(await a("POST", `/communes/${id}/recurring`, {
-  title: "Electricity", amountMinor: 9000, paidByUserId: avery.id, frequency: "monthly", nextDueOn: "2026-01-31", paused: false,
+  title: "Electricity", amountMinor: 9000, paidByUserId: avery.id, frequency: "monthly", nextDueOn: period(0), paused: false, requestId: randomUUID(),
   allocations: [{ userId: avery.id, amountMinor: 3000 }, { userId: blake.id, amountMinor: 3000 }, { userId: casey.id, amountMinor: 3000 }],
 }), 201).id;
 
 // --------------------------------------------- a different amount this time
-assert.equal((await b("POST", `/recurring/${electricity}/periods`, { expectedDueOn: "2026-01-31" })).status, 403, "only the payer or an admin");
-assert.equal((await a("POST", `/recurring/${electricity}/periods`, { expectedDueOn: "2026-01-31", amountMinor: 0 })).status, 400);
-const january = ok(await a("POST", `/recurring/${electricity}/periods`, { expectedDueOn: "2026-01-31", amountMinor: 10001 }), 201);
-assert.deepEqual([january.periodStatus, january.amountMinor, january.dueOn, january.nextDueOn, january.duplicate],
-  ["recorded", 10001, "2026-01-31", "2026-02-28", false]);
+assert.equal((await b("POST", `/recurring/${electricity}/periods`, { expectedDueOn: period(0) })).status, 403, "only the payer or an admin");
+assert.equal((await a("POST", `/recurring/${electricity}/periods`, { expectedDueOn: period(0), amountMinor: 0 })).status, 400);
+const first = ok(await a("POST", `/recurring/${electricity}/periods`, { expectedDueOn: period(0), amountMinor: 10001 }), 201);
+assert.deepEqual([first.periodStatus, first.amountMinor, first.dueOn, first.nextDueOn, first.duplicate],
+  ["recorded", 10001, period(0), period(1), false]);
 // The recorded expense carries the scaled split, which adds up exactly.
 let snap = await snapshot();
-const expense = snap.expenses.find(item => item.id === january.expenseId);
+const expense = snap.expenses.find(item => item.id === first.expenseId);
 assert.equal(expense.amountMinor, 10001);
 assert.deepEqual(expense.shares.map(share => share.amountMinor).sort((x, y) => y - x), [3334, 3334, 3333]);
 // The saved bill is unchanged; only this period differed.
 assert.equal((await bill(electricity)).amountMinor, 9000);
 // A retry of the same period reports the one already recorded.
-const retry = ok(await a("POST", `/recurring/${electricity}/periods`, { expectedDueOn: "2026-01-31", amountMinor: 10001 }), 200);
-assert.deepEqual([retry.duplicate, retry.expenseId], [true, january.expenseId]);
-assert.equal((await a("POST", `/recurring/${electricity}/periods`, { expectedDueOn: "2026-01-31", amountMinor: 9000 })).status, 409);
+const retry = ok(await a("POST", `/recurring/${electricity}/periods`, { expectedDueOn: period(0), amountMinor: 10001 }), 200);
+assert.deepEqual([retry.duplicate, retry.expenseId], [true, first.expenseId]);
+assert.equal((await a("POST", `/recurring/${electricity}/periods`, { expectedDueOn: period(0), amountMinor: 9000 })).status, 409);
 assert.equal((await snapshot()).expenses.filter(item => item.title === "Electricity").length, 1);
 
 // ------------------------------------------------- skip, ahead of time too
-assert.equal((await a("POST", `/recurring/${electricity}/skip`, { expectedDueOn: "2026-02-28", reason: "no" })).status, 400);
-assert.equal((await c("POST", `/recurring/${electricity}/skip`, { expectedDueOn: "2026-02-28", reason: "Away" })).status, 403);
-const february = ok(await a("POST", `/recurring/${electricity}/skip`, { expectedDueOn: "2026-02-28", reason: "Supplier holiday credit" }), 201);
-assert.deepEqual([february.periodStatus, february.expenseId, february.nextDueOn], ["skipped", null, "2026-03-31"]);
-assert.equal(ok(await a("POST", `/recurring/${electricity}/skip`, { expectedDueOn: "2026-02-28", reason: "Supplier holiday credit" })).duplicate, true);
-assert.equal((await a("POST", `/recurring/${electricity}/periods`, { expectedDueOn: "2026-02-28" })).status, 409, "a skipped period cannot be recorded");
-assert.equal((await a("POST", `/recurring/${electricity}/skip`, { expectedDueOn: "2026-01-31", reason: "Too late" })).status, 409, "a recorded period cannot be skipped");
+assert.equal((await a("POST", `/recurring/${electricity}/skip`, { expectedDueOn: period(1), reason: "no" })).status, 400);
+assert.equal((await c("POST", `/recurring/${electricity}/skip`, { expectedDueOn: period(1), reason: "Away" })).status, 403);
+const second = ok(await a("POST", `/recurring/${electricity}/skip`, { expectedDueOn: period(1), reason: "Supplier holiday credit" }), 201);
+assert.deepEqual([second.periodStatus, second.expenseId, second.nextDueOn], ["skipped", null, period(2)]);
+assert.equal(ok(await a("POST", `/recurring/${electricity}/skip`, { expectedDueOn: period(1), reason: "Supplier holiday credit" })).duplicate, true);
+assert.equal((await a("POST", `/recurring/${electricity}/periods`, { expectedDueOn: period(1) })).status, 409, "a skipped period cannot be recorded");
+assert.equal((await a("POST", `/recurring/${electricity}/skip`, { expectedDueOn: period(0), reason: "Too late" })).status, 409, "a recorded period cannot be skipped");
 // The usual amount, via the original command older clients use.
-const march = ok(await a("POST", `/recurring/${electricity}/record`, { expectedDueOn: "2026-03-31" }), 201);
-assert.ok(march.id);
+const third = ok(await a("POST", `/recurring/${electricity}/record`, { expectedDueOn: period(2) }), 201);
+assert.ok(third.id);
 // A future period can be skipped ahead of time, but not recorded.
 const future = (await bill(electricity)).nextDueOn;
-assert.equal(future, "2026-04-30");
+assert.equal(future, period(3));
 if (future > today) {
   assert.equal((await a("POST", `/recurring/${electricity}/periods`, { expectedDueOn: future })).status, 409);
 }
-ok(await a("POST", `/recurring/${electricity}/skip`, { expectedDueOn: future, reason: "Moving out for April" }), 201);
+ok(await a("POST", `/recurring/${electricity}/skip`, { expectedDueOn: future, reason: "Moving out that month" }), 201);
 
 // ------------------------------------------------------------ history line
 const saved = await bill(electricity);
-assert.equal(saved.nextDueOn, "2026-05-31");
-assert.deepEqual(saved.history.map(period => [period.dueOn, period.status, period.amountMinor, period.note]), [
-  ["2026-04-30", "skipped", null, "Moving out for April"],
-  ["2026-03-31", "recorded", 9000, null],
-  ["2026-02-28", "skipped", null, "Supplier holiday credit"],
-  ["2026-01-31", "recorded", 10001, null],
+assert.equal(saved.nextDueOn, period(4));
+assert.deepEqual(saved.history.map(item => [item.dueOn, item.status, item.amountMinor, item.note]), [
+  [period(3), "skipped", null, "Moving out that month"],
+  [period(2), "recorded", 9000, null],
+  [period(1), "skipped", null, "Supplier holiday credit"],
+  [period(0), "recorded", 10001, null],
 ]);
-assert.ok(saved.history.every(period => period.actorId === avery.id));
+assert.ok(saved.history.every(item => item.actorId === avery.id));
 const events = (await snapshot()).activityEvents.filter(item => item.entityId === electricity).map(item => item.description);
-assert.ok(events.includes("Recorded for 31 Jan · £100.01 (usually £90.00)"), JSON.stringify(events));
-assert.ok(events.includes("Skipped 28 Feb: Supplier holiday credit"), JSON.stringify(events));
+assert.ok(events.includes(`Recorded for ${label(0)} · £100.01 (usually £90.00)`), JSON.stringify(events));
+assert.ok(events.includes(`Skipped ${label(1)}: Supplier holiday credit`), JSON.stringify(events));
 assert.equal(events.filter(item => item === "Updated").length, 0, JSON.stringify(events));
 
 // --------------------------------------- two people record at once: one wins
 {
   const water = ok(await a("POST", `/communes/${id}/recurring`, {
-    title: "Water", amountMinor: 4000, paidByUserId: avery.id, frequency: "weekly", nextDueOn: today, paused: false,
+    title: "Water", amountMinor: 4000, paidByUserId: avery.id, frequency: "weekly", nextDueOn: today, paused: false, requestId: randomUUID(),
     allocations: [{ userId: avery.id, amountMinor: 2000 }, { userId: blake.id, amountMinor: 2000 }],
   }), 201).id;
   const results = await Promise.all([

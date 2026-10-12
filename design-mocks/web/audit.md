@@ -1,3 +1,7 @@
+> **Historical.** This audit is of the earlier Mantine app, which has since been
+> replaced. It is kept for the record; the approved design direction is
+> [docs/DESIGN-LANGUAGE.md](../../docs/DESIGN-LANGUAGE.md).
+
 # Commune Web — UI Design Audit (punch list)
 
 READ-ONLY audit. The "calm" (de-colour) pass went too far: brand colour was stripped from accents and status, controls were left at Mantine's small defaults, and the only segmented control on the app (Active/Paused) has zero custom styling so it renders as a thin grey pill. Below is a prioritised, file-anchored punch list with concrete fixes.

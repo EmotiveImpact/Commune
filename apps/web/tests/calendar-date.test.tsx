@@ -6,24 +6,39 @@ import { CalendarDate } from "../src/ui/CalendarDate";
 
 afterEach(cleanup);
 
+// The full date is visually hidden text inside <time>; the stacked parts are
+// for sight only.
+function calendar(description: string) {
+  const hidden = screen.getByText(description);
+  expect(hidden.classList.contains("c-visually-hidden")).toBe(true);
+  const time = hidden.closest("time");
+  if (!time) throw new Error("No <time> around " + description);
+  expect(time.firstElementChild).toBe(hidden);
+  return time;
+}
+const visible = (time: Element) => [...time.children]
+  .filter(child => child.getAttribute("aria-hidden") === "true")
+  .map(child => child.textContent);
+
 describe("shared Operations calendar", () => {
   it("stacks weekday, number and Today without changing the actual date", () => {
     render(<CalendarDate date="2026-10-02" today="2026-10-02" />);
-    const date = screen.getByLabelText("Friday, 2 October 2026 (Today)");
+    const date = calendar("Friday, 2 October 2026 (Today)");
     expect(date.tagName).toBe("TIME");
     expect(date.getAttribute("datetime")).toBe("2026-10-02");
     expect(date.classList.contains("is-today")).toBe(true);
-    expect([...date.children].map(child => child.textContent)).toEqual(["Fri", "2", "Today"]);
+    expect(date.hasAttribute("aria-label")).toBe(false);
+    expect(visible(date)).toEqual(["Fri", "2", "Today"]);
   });
   it("handles Tomorrow across a month/year boundary", () => {
     render(<CalendarDate date="2027-01-01" today="2026-12-31" label="Due" />);
-    expect(screen.getByLabelText("Due: Friday, 1 January 2027 (Tomorrow)").textContent).toBe("Fri1Tomorrow");
+    expect(visible(calendar("Due: Friday, 1 January 2027 (Tomorrow)")).join("")).toBe("Fri1Tomorrow");
   });
   it("adds a month for dates outside the week and can preserve Operations' plain footer", () => {
     const { rerender } = render(<CalendarDate date="2026-11-12" today="2026-10-02" />);
-    expect(screen.getByLabelText("Thursday, 12 November 2026").textContent).toBe("Thu12Nov");
+    expect(visible(calendar("Thursday, 12 November 2026")).join("")).toBe("Thu12Nov");
     rerender(<CalendarDate date="2026-11-12" today="2026-10-02" showMonth={false} className="ops-week-date" />);
-    expect(screen.getByLabelText("Thursday, 12 November 2026").textContent).toBe("Thu12");
+    expect(visible(calendar("Thursday, 12 November 2026")).join("")).toBe("Thu12");
     expect(document.querySelector(".ops-week-date.c-calendar-date")).not.toBeNull();
   });
   it.each(["", "not-a-date", "2026-02-30", "2026-13-01", "2026-10-02T23:00:00Z"])("does not invent a calendar date for %s", date => {
@@ -32,9 +47,11 @@ describe("shared Operations calendar", () => {
   });
   it("has a single stylesheet shared by the app and document, with protected Operations columns", () => {
     const read = (path: string) => readFileSync(resolve(process.cwd(), path), "utf8");
-    expect(read("index.html")).toContain('href="/styles/calendar-date.css"');
-    expect(read("public/design-language/index.html")).toContain('href="/styles/calendar-date.css"');
-    const css = read("public/styles/calendar-date.css");
+    // Bundled with the app's styles, so it no longer holds up the first paint.
+    expect(read("index.html")).not.toContain("calendar-date.css");
+    expect(read("src/styles/index.css")).toContain('@import "./calendar-date.css" layer(base);');
+    expect(read("reference/design-language/index.html")).toContain('href="/src/styles/calendar-date.css"');
+    const css = read("src/styles/calendar-date.css");
     expect(css).toContain("width: 60px;");
     expect(css).toContain("width: 52px;");
     expect(css).toContain(".a-body.is-dark .c-calendar-date");

@@ -6,9 +6,13 @@ import {
   formatTimeLabel,
   isoFromDate,
   holdsTurn,
+  needsDoneBy,
   nextPerson,
   overdueDays,
+  shortDay,
+  taskDoneCopy,
   todayIso,
+  type DoneBy,
   type OperationItem,
 } from "../data/operations";
 import { useApp } from "../state";
@@ -16,8 +20,12 @@ import { Icon } from "../ui/Icon";
 import { Avatar } from "../ui/widgets";
 import { CalendarDate } from "../ui/CalendarDate";
 import { cx } from "../ui/cx";
+import { DoneByChoice } from "../ui/DoneByChoice";
+import { hideToast, showToast } from "../ui/Toast";
 
 type Cut = "week" | "people" | "month";
+/** The late card, and which of its buttons, an Undo puts focus back on. */
+type LateAction = { id: string; action: "skip" | "done" };
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const CATEGORY_LABEL: Record<OperationItem["category"], string> = {
@@ -52,16 +60,19 @@ export function OperationsScreen() {
     toggleOperation,
     skipOperation,
     undoOperation,
+    mutationPending,
   } = useApp();
   const today = todayIso();
   const [cut, setCut] = useState<Cut>("week");
   const [month, setMonth] = useState(today.slice(0, 7));
   const [selectedDate, setSelectedDate] = useState(today);
-  const [toast, setToast] = useState<{ text: string; undoId?: string; error?: boolean } | null>(null);
-  const [undoing, setUndoing] = useState(false);
-  const toastTimer = useRef<number | undefined>(undefined);
-  const toastRef = useRef<HTMLDivElement>(null);
-  const toastHeld = useRef(false);
+  const [error, setError] = useState("");
+  // Which late card's action is being recorded, so its button can say so.
+  const [working, setWorking] = useState<LateAction | null>(null);
+  // After Undo, the button that was used, once its card is back.
+  const [refocus, setRefocus] = useState<LateAction | null>(null);
+  // The late task whose card is asking who did it.
+  const [asking, setAsking] = useState<string | null>(null);
 
   const ordered = useMemo(
     () =>
@@ -73,19 +84,28 @@ export function OperationsScreen() {
     [operations],
   );
   const open = ordered.filter((item) => item.status === "open");
+  // Every late task is listed: yours first, then the oldest first.
   const late = open
     .filter((item) => item.kind === "task" && item.date < today)
-    .sort((a, b) => a.date.localeCompare(b.date))[0];
+    .sort((a, b) =>
+      Number(b.assigneeId === you.id) - Number(a.assigneeId === you.id) ||
+      a.date.localeCompare(b.date));
+  const lateIds = new Set(late.map((item) => item.id));
   const weekEnd = addDays(today, 6);
   const weekItems = open.filter(
     (item) =>
-      item.id !== late?.id &&
+      !lateIds.has(item.id) &&
       ((item.date >= today && item.date <= weekEnd) ||
         item.lastDone?.date === today),
   );
-  const yoursToday = open.filter(
-    (item) => item.kind === "task" && item.assigneeId === you.id && item.date === today,
-  );
+  // Yours includes your late tasks, so it never says you are clear while
+  // one of them is waiting.
+  const yours = [
+    ...late.filter((item) => item.assigneeId === you.id),
+    ...open.filter(
+      (item) => item.kind === "task" && item.assigneeId === you.id && item.date === today,
+    ),
+  ];
   const yoursNext = open.find(
     (item) =>
       item.kind === "task" &&
@@ -98,42 +118,34 @@ export function OperationsScreen() {
     (item) => item.date <= weekEnd || item.lastDone?.date === today,
   );
 
-  useEffect(() => () => window.clearTimeout(toastTimer.current), []);
+  useEffect(() => {
+    if (!refocus) return;
+    setRefocus(null);
+    const card = [...document.querySelectorAll<HTMLElement>(".ops-late")].find((item) => item.dataset.late === refocus.id);
+    (card?.querySelector<HTMLElement>(`[data-late-action="${refocus.action}"]`)
+      ?? document.querySelector<HTMLElement>(".ops-cuts [aria-pressed=\"true\"]"))?.focus();
+  }, [refocus, operations]);
 
-  // Messages with an Undo, and errors, stay long enough to read and use. The
-  // timer pauses while the pointer or keyboard focus is on the toast.
-  function scheduleToastClose(ms: number) {
-    window.clearTimeout(toastTimer.current);
-    toastTimer.current = window.setTimeout(() => {
-      if (toastHeld.current) return;
-      const hadFocus = toastRef.current?.contains(document.activeElement);
-      setToast(null);
-      if (hadFocus) document.querySelector<HTMLElement>(".ops-prod-head button")?.focus();
-    }, ms);
+  // What was recorded is said in the shared toast, with Undo. A late card's
+  // buttons go once its task moves on, so Undo takes focus then (the toast
+  // does that when focus is lost); Undo puts focus back on the button used.
+  function flash(text: string, undoId?: string, from?: LateAction) {
+    setError("");
+    showToast({ text, action: undoId ? { label: "Undo", busyLabel: "Undoing…", undo: true, run: () => undo(undoId, from) } : undefined });
   }
-  function flash(text: string, undoId?: string) {
-    setToast({ text, undoId });
-    scheduleToastClose(undoId ? 9000 : 2600);
-  }
-  function flashError(text: string) {
-    setToast({ text, error: true });
-    scheduleToastClose(8000);
-  }
-  function holdToast(held: boolean) {
-    toastHeld.current = held;
-    if (!held && toast) scheduleToastClose(4000);
+  // An error stays on the screen, as a form's does, until the next action.
+  function fail(text: string) {
+    hideToast();
+    setError(text);
   }
 
-  async function undo(occurrenceId: string) {
-    if (undoing) return;
-    setUndoing(true);
+  async function undo(occurrenceId: string, from?: LateAction) {
     try {
       const result = await undoOperation(occurrenceId);
-      flash(`Undone · back with ${firstNameOf(result.assignee ?? undefined) || "the commune"} for ${shortDateFormatter.format(dateFromIso(result.date))}`);
+      if (from) setRefocus(from);
+      flash(`Undone. Back with ${firstNameOf(result.assignee ?? undefined) || "the commune"} for ${shortDay(result.date)}.`);
     } catch (error) {
-      flashError(error instanceof Error ? error.message : "Could not undo that");
-    } finally {
-      setUndoing(false);
+      fail(error instanceof Error ? error.message : "Could not undo that");
     }
   }
 
@@ -148,30 +160,34 @@ export function OperationsScreen() {
     showDate(isoFromDate(date));
   }
 
-  async function completeTask(item: OperationItem) {
+  async function completeTask(item: OperationItem, doneBy?: DoneBy) {
+    // Someone else's task first asks who did it.
+    if (!doneBy && needsDoneBy(item, you.id)) {
+      setAsking(item.id);
+      return;
+    }
+    setAsking(null);
+    setWorking({ id: item.id, action: "done" });
     try {
       // The server decides the next date and person; report what it saved.
-      const result = await toggleOperation(item.id);
-      const handed = item.repeat !== "none" && item.rotation?.length ? firstNameOf(result.assignee ?? undefined) : "";
-      flash(
-        handed
-          ? `Handed to ${handed} · ${shortDateFormatter.format(dateFromIso(result.date))}`
-          : item.repeat !== "none"
-            ? `Done · next ${shortDateFormatter.format(dateFromIso(result.date))}`
-            : `Done · ${item.title}`,
-        result.occurrenceId,
-      );
+      const result = await toggleOperation(item.id, doneBy);
+      flash(taskDoneCopy(item, doneBy, result), result.occurrenceId, { id: item.id, action: "done" });
     } catch (error) {
-      flashError(error instanceof Error ? error.message : "Could not update task");
+      fail(error instanceof Error ? error.message : "Could not update task");
+    } finally {
+      setWorking(null);
     }
   }
 
   async function skipTask(item: OperationItem) {
+    setWorking({ id: item.id, action: "skip" });
     try {
       const result = await skipOperation(item.id);
-      flash(`Moved to ${shortDateFormatter.format(dateFromIso(result.date))}`, result.occurrenceId);
+      flash(`${item.title} moved to ${shortDay(result.date)}.`, result.occurrenceId, { id: item.id, action: "skip" });
     } catch (error) {
-      flashError(error instanceof Error ? error.message : "Could not move task");
+      fail(error instanceof Error ? error.message : "Could not move task");
+    } finally {
+      setWorking(null);
     }
   }
 
@@ -210,13 +226,12 @@ export function OperationsScreen() {
   return (
     <div className="ops ops-prod">
       <div className="ops-prod-head">
-        <div className="ops-cuts" role="tablist" aria-label="Operations view">
+        <div className="ops-cuts" role="group" aria-label="Operations view">
           {(["week", "people", "month"] as const).map((id) => (
             <button
               key={id}
               type="button"
-              role="tab"
-              aria-selected={cut === id}
+              aria-pressed={cut === id}
               className={cx(cut === id && "is-on")}
               onClick={() => setCut(id)}
             >
@@ -233,23 +248,29 @@ export function OperationsScreen() {
           Add item
         </button>
       </div>
+      {error ? <p className="a-form-error" role="alert">{error}</p> : null}
 
       {cut === "week" ? (
         <div className="ops-stack">
-          {late ? (
+          {late.map((item) => (
             <LateCard
-              item={late}
+              key={item.id}
+              item={item}
               today={today}
-              onOpen={() => go("operation", { operation: late.id })}
-              onSkip={() => skipTask(late)}
-              onDone={() => completeTask(late)}
+              pending={mutationPending}
+              working={working?.id === item.id ? working.action : null}
+              asking={asking === item.id}
+              onOpen={() => go("operation", { operation: item.id })}
+              onSkip={() => skipTask(item)}
+              onDone={(doneBy) => completeTask(item, doneBy)}
+              onCancel={() => setAsking(null)}
             />
-          ) : null}
+          ))}
 
-          <section className="ops-card ops-yours">
+          <section className="ops-card ops-yours" data-flip-box="" data-answer="fade">
             <p className="ops-kicker">Yours</p>
-            {yoursToday.length ? (
-              yoursToday.map((item) => (
+            {yours.length ? (
+              yours.map((item) => (
                 <button
                   key={item.id}
                   className="ops-yours-row"
@@ -257,7 +278,7 @@ export function OperationsScreen() {
                   onClick={() => go("operation", { operation: item.id })}
                 >
                   <h2>{item.title}</h2>
-                  <p>{metaLine(item)}</p>
+                  <p>{lateIds.has(item.id) ? `${lateLabel(item.date, today)} · ` : ""}{metaLine(item)}</p>
                 </button>
               ))
             ) : (
@@ -326,7 +347,7 @@ export function OperationsScreen() {
                     <strong>{item.title}</strong>
                     <small>
                       {item.date < today
-                        ? `Late · ${item.rotation?.length ? `then ${firstNameOf(nextPerson(item))}` : "open"}`
+                        ? `${lateLabel(item.date, today)}${item.rotation?.length ? ` · then ${firstNameOf(nextPerson(item))}` : ""}`
                         : `${shortDateFormatter.format(dateFromIso(item.date))} · ${item.allDay ? "All day" : formatTimeLabel(item.time)}${
                             item.rotation?.length
                               ? ` · then ${firstNameOf(nextPerson(item))}`
@@ -384,6 +405,8 @@ export function OperationsScreen() {
                     className="ops-tile-num"
                     type="button"
                     aria-label={dayFormatter.format(dateFromIso(date))}
+                    aria-current={date === today ? "date" : undefined}
+                    aria-pressed={date === selectedDate}
                     onClick={() => showDate(date)}
                   >
                     {Number(date.slice(-2))}
@@ -402,7 +425,10 @@ export function OperationsScreen() {
                         go("operation", { operation: item.id });
                       }}
                     >
-                      {item.title}
+                      {item.title}{" "}
+                      <span className="c-visually-hidden">
+                        {item.kind === "task" ? item.date < today ? "(late task)" : "(task)" : "(event)"}
+                      </span>
                     </button>
                   ))}
                 </div>
@@ -438,24 +464,6 @@ export function OperationsScreen() {
         </section>
       ) : null}
 
-      {/* Always present so screen readers announce each new message. */}
-      <div
-        ref={toastRef}
-        className={toast ? "ops-toast" : "sr-only"}
-        // Errors are also raised in the app's alert banner; one alert is enough.
-        role="status"
-        onMouseEnter={() => holdToast(true)}
-        onMouseLeave={() => holdToast(false)}
-        onFocus={() => holdToast(true)}
-        onBlur={() => holdToast(false)}
-      >
-        {toast ? <span>{toast.text}</span> : null}
-        {toast?.undoId ? (
-          <button type="button" className="ops-toast-undo" disabled={undoing} onClick={() => void undo(toast.undoId!)}>
-            {undoing ? "Undoing…" : "Undo"}
-          </button>
-        ) : null}
-      </div>
     </div>
   );
 }
@@ -463,24 +471,36 @@ export function OperationsScreen() {
 function LateCard({
   item,
   today,
+  pending,
+  working = null,
+  asking,
   onOpen,
   onSkip,
   onDone,
+  onCancel,
 }: {
   item: OperationItem;
   today: string;
+  /** A change is saving: the actions wait so one click is not sent twice. */
+  pending: boolean;
+  /** This card's own action is being recorded. */
+  working?: LateAction["action"] | null;
+  /** Done was pressed on someone else's task: the card asks who did it. */
+  asking: boolean;
   onOpen: () => void;
   onSkip: () => void;
-  onDone: () => void;
+  onDone: (doneBy?: DoneBy) => void;
+  onCancel: () => void;
 }) {
+  const card = useRef<HTMLElement>(null);
   const next = item.rotation?.length
     ? firstNameOf(nextPerson(item))
     : "";
-  const who = firstNameOf(item.assignee) || "Unassigned";
+  const who = firstNameOf(item.assignee);
   return (
-    <section className="ops-card ops-late">
+    <section ref={card} className="ops-card ops-late" data-late={item.id} data-row="" data-flip="">
       <p className="ops-kicker is-late">
-        Late · {overdueDays(item.date, today)} days · {who}
+        {lateLabel(item.date, today)} · {who || "Unassigned"}
       </p>
       <h2>{item.title}</h2>
       {item.notes ? <p className="ops-note">{item.notes}</p> : null}
@@ -497,21 +517,42 @@ function LateCard({
         </div>
       ) : null}
       <p className="ops-note">
-        {who} still has this.{next ? ` Next is ${next}.` : ""}
+        {who ? `${who} still has this.` : "Nobody has this yet."}{next ? ` Next is ${next}.` : ""}
       </p>
-      <div className="ops-late-actions">
+      {asking ? (
+        <DoneByChoice
+          holder={item.assignee ?? ""}
+          title={item.title}
+          disabled={pending}
+          onChoose={onDone}
+          onCancel={() => {
+            onCancel();
+            // Back to the Done button the question replaced.
+            requestAnimationFrame(() => card.current?.querySelector<HTMLElement>('[data-late-action="done"]')?.focus());
+          }}
+        />
+      ) : <div className="ops-late-actions">
         <button className="a-btn ghost" type="button" onClick={onOpen}>
-          Open
+          Open{" "}<span className="c-visually-hidden">{item.title}</span>
         </button>
-        <button className="a-btn ghost" type="button" onClick={onSkip}>
-          Skip a week
+        {/* As in the task window, only a repeating task can be skipped. */}
+        {item.repeat !== "none" ? (
+          <button className="a-btn ghost" type="button" data-late-action="skip" disabled={pending} aria-busy={working === "skip" || undefined} onClick={onSkip}>
+            {working === "skip" ? "Recording…" : "Skip a week"}{" "}<span className="c-visually-hidden">for {item.title}</span>
+          </button>
+        ) : null}
+        <button className="a-btn" type="button" data-late-action="done" disabled={pending} aria-busy={working === "done" || undefined} onClick={() => onDone()}>
+          {working === "done" ? "Recording…" : next ? `Done · ${next}` : "Mark done"}{" "}<span className="c-visually-hidden">({item.title})</span>
         </button>
-        <button className="a-btn" type="button" onClick={onDone}>
-          {next ? `Done · ${next}` : "Mark done"}
-        </button>
-      </div>
+      </div>}
     </section>
   );
+}
+
+/** "1 day late", "3 days late". */
+function lateLabel(date: string, today: string): string {
+  const days = overdueDays(date, today);
+  return `${days} ${days === 1 ? "day" : "days"} late`;
 }
 
 function metaLine(item: OperationItem): string {

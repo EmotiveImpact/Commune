@@ -190,3 +190,73 @@ sent anywhere. Passwords and door codes in notes are left out of the JSON, as
 they are masked on the board. CSV text cells are quoted and formula-like text
 is neutralised. Tested in `apps/web/tests/export.test.ts` (251 web tests) and
 checked in the browser.
+
+## 9. Task handovers and skip reasons (migration 0024, 6 October)
+
+**Why.** The roadmap's remaining Operations gap was exceptions and
+reassignment. A housemate who could not do their turn had two poor options:
+edit the task (which changed the rotation for good and left no history) or
+leave it late.
+
+**What changed.**
+- `hand_over_operation(task, to member, expected date, expected holder, today,
+  reason, request id)`: any member hands the current occurrence to another
+  active member. It is a recorded occurrence (`handed_over`) with the actor,
+  time, optional reason and state before and after, so it shows in History and
+  the latest one can be undone. A retry returns the same handover; a stale
+  date or holder is refused.
+- On a task that takes turns, `commune_operations.turn_owner_id` remembers
+  whose turn it is while someone covers it. Completing advances the rotation
+  from that person, so the cover does one turn and nobody gains or loses a
+  place. The cover is credited in "last done". Handing it back to the turn
+  owner ends the cover. The person covering need not be in the rotation.
+- A member's own edit of who has the task, who takes turns or the repeat
+  replaces any cover; other edits keep it. Clients cannot write
+  `turn_owner_id` (no column grant).
+- Departures: if the person covering leaves, the task goes back to whoever's
+  turn it is; if the turn owner leaves, the cover keeps it. Undo refuses to
+  hand a task back to someone who has left (this also closes the same gap for
+  undoing a completion).
+- `record_operation_occurrence` takes an optional reason (skips only, up to 200
+  characters). Older clients that call it without one keep working. The skip
+  date rule is unchanged.
+- Web: the task window has **Hand over** (choose a member, optional reason)
+  and **Skip a week** now asks for an optional reason first. "Assigned to"
+  reads "Dana Moss · covering for Avery"; the rotation highlights whose turn it
+  is; History lists handovers and reasons. The Late card's one-click skip is
+  unchanged. The edit form keeps a cover out of the rotation.
+
+**Evidence.** `infra/neon/tests/operation_handovers.sql` (refusals, retry,
+cover, completion, undo, hand back, edits, skip reasons, departures),
+`tests/grants.sql`, `apps/local-api/tests/operations-history.mjs` and the other
+seven HTTP suites on a fresh database, 256 web tests, web typecheck and
+production build, local API typecheck, and a browser check of the handover
+and skip panels at desktop and phone widths on a disposable database. Not
+applied to any hosted database.
+
+## 10. Announcements (migration 0025, 6 October)
+
+**Why.** The roadmap's communication item: important notices with optional
+acknowledgement, attached to the commune, before anything like a group chat.
+
+**What changed.**
+- `commune_announcements` and `announcement_acknowledgements`, readable by
+  members through RLS and the snapshot, with no client write grants.
+- `post_announcement` (admins only; title up to 80, body up to 1000
+  characters; at most 20 up at once; retry-safe by request id),
+  `acknowledge_announcement` (members, only for a notice that asks for it,
+  idempotent) and `archive_announcement` (author or admin; idempotent). A
+  notice is never edited; it is taken down, and the record and confirmations
+  stay. Posting and taking down write activity history lines.
+- Web: admins get **Announce** beside Invite on This Hub. Announcements show
+  above the balance when there are any. A notice that asks for confirmation
+  shows "Seen by 1 of 2", lists who is still to confirm for the author and
+  admins, and gives other members **I've seen this**. Unconfirmed notices also
+  appear in Needs you. **Take down** asks first.
+- No email or push is sent for an announcement; it is in-app only.
+
+**Evidence.** `infra/neon/tests/announcements.sql`, `tests/grants.sql`,
+`apps/local-api/tests/announcements.mjs` with the other eight HTTP suites on a
+fresh database, 260 web tests, typecheck and build, and a browser check as an
+admin and a member at desktop and phone widths on a disposable database. Not
+applied to any hosted database.

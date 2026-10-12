@@ -11,7 +11,7 @@ function maskSecrets(body: string, facts: Array<[string, string]>): string {
 
 /** Earlier versions of a note: read any of them, or restore one as the newest. */
 export function NoteHistory({ noteId }: { noteId: string }) {
-  const { notes, hub, loadNoteRevision, updateNote } = useApp();
+  const { notes, personName, loadNoteRevision, updateNote } = useApp();
   const note = notes[noteId];
   const [open, setOpen] = useState<NoteRevision | null>(null);
   const [busy, setBusy] = useState(false);
@@ -19,7 +19,7 @@ export function NoteHistory({ noteId }: { noteId: string }) {
   const [message, setMessage] = useState("");
   const revisions = note?.revisions ?? [];
   if (!note || !revisions.length) return null;
-  const name = (userId: string | null | undefined) => hub.members.find((member) => member.userId === userId)?.name ?? "a former member";
+  const name = (userId: string | null | undefined) => personName(userId, "a former member");
   async function view(id: string) {
     setBusy(true); setError(""); setMessage("");
     try {

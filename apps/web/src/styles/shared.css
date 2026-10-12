@@ -9,6 +9,12 @@
   --sage-strong: #1b4332;
   --sage-soft: #d9ebe5;
   --sage-mist: #d7e6dd;
+  /* Green text, focus rings and error text. Dark mode lightens each one
+     (overrides.css); navy surfaces take the lighter ring in both themes. */
+  --text-green: var(--sage);
+  --focus-ring: var(--sage);
+  --danger: #9b2c2c;
+  --danger-soft: #fde8e4;
   --navy: #1a1e2b;
   --navy-2: #1f2330;
   --navy-3: #21262f;
@@ -18,6 +24,10 @@
   --lilac: #e8e1ef;
   --gold: #f1e5bf;
   --coral: #eaa681;
+  /* Each commune type's tone behind its cover photo (see .c-cover-* below). */
+  --cover-household: #3d5a4c;
+  --cover-workspace: #3f4b5a;
+  --cover-trip: #6a4b3c;
   --border: rgba(23, 27, 36, 0.08);
   --border-strong: rgba(23, 27, 36, 0.14);
   --shadow-sm: 0 1px 3px rgba(23, 27, 36, 0.06), 0 1px 2px rgba(23, 27, 36, 0.04);
@@ -28,6 +38,25 @@
   --radius: var(--radius-surface);
   --radius-sm: var(--radius-control);
   --font: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  /* Motion (design panel, 11 October 2026, medium direction). Every duration
+     and curve in the app is one of these. Things arrive over the medium
+     time and leave over the short one; the long one is for the all-square
+     clearing and the sage layer on a row that has just changed. */
+  --motion-short: 150ms;
+  --motion-medium: 250ms;
+  --motion-long: 400ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* One switch for people who asked for less motion: nothing moves or fades,
+   and positions and sizes change in one paint. ui/motion.ts reads the same
+   tokens, so motion driven from script stops too. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-short: 0ms;
+    --motion-medium: 0ms;
+    --motion-long: 0ms;
+  }
 }
 
 *,
@@ -107,9 +136,9 @@ img {
   flex-shrink: 0;
 }
 
-.avatar.maya { background: #d9ebe5; color: #1b4332; }
-.avatar.jordan { background: #efdccf; color: #7a3e1d; }
-.avatar.alex { background: #e8e1ef; color: #4a3d63; }
+.avatar.maya { background: var(--sage-soft); color: var(--sage-strong); }
+.avatar.jordan { background: var(--peach); color: #7a3e1d; }
+.avatar.alex { background: var(--lilac); color: #4a3d63; }
 .avatar.priya { background: #f0e6d8; color: #6b4423; }
 .avatar.sam { background: #dce8f0; color: #1e3a5f; }
 .avatar.ness { background: #f3e0e6; color: #6b2d45; }
@@ -125,6 +154,20 @@ img {
   max-width: none;
   object-fit: cover;
   border-radius: inherit;
+}
+
+/* Commune covers (ui/CoverImage.tsx). The container takes its type's tone,
+   which shows while the photo loads and stays if the photo cannot load. */
+.c-cover-household { --cover-tone: var(--cover-household); }
+.c-cover-workspace { --cover-tone: var(--cover-workspace); }
+.c-cover-trip { --cover-tone: var(--cover-trip); }
+
+.c-cover-photo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .avatar-stack {
@@ -161,115 +204,6 @@ img {
 .pill.open { background: #f8e8d8; color: #8a4b1f; border-color: transparent; }
 .pill.settled { background: var(--sage-soft); color: var(--sage-strong); border-color: transparent; }
 .pill.warn { background: #fde8e4; color: #9b2c2c; border-color: transparent; }
-.pill.navy { background: rgba(255,255,255,0.1); color: #f5f1ea; border-color: rgba(255,255,255,0.08); }
-
-.mock-bar {
-  height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 16px;
-  background: #0d0f17;
-  color: rgba(245, 241, 234, 0.72);
-  font-size: 12px;
-  letter-spacing: 0.04em;
-  z-index: 40;
-  position: sticky;
-  top: 0;
-}
-
-.mock-bar a {
-  color: #f5f1ea;
-  text-decoration: none;
-  font-weight: 600;
-}
-
-.mock-bar a:hover {
-  text-decoration: underline;
-}
-
-.mock-bar strong {
-  color: #f5f1ea;
-  font-weight: 600;
-}
-
-.layout-tabs {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-
-.layout-tabs button {
-  height: 24px;
-  padding: 0 10px;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  background: transparent;
-  color: #f5f1ea;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  cursor: pointer;
-}
-
-.layout-tabs button.is-active {
-  background: #f5f1ea;
-  color: #0d0f17;
-  border-color: transparent;
-}
-
-.layout-tabs a {
-  margin-left: 4px;
-}
-
-.jump-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-  margin-top: 16px;
-}
-
-.jump-tile {
-  display: block;
-  width: 100%;
-  text-align: left;
-  padding: 16px 18px;
-  border-radius: 16px;
-  border: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.86);
-  box-shadow: var(--shadow-sm);
-  cursor: pointer;
-  font: inherit;
-  color: inherit;
-}
-
-.jump-tile:hover {
-  border-color: var(--border-strong);
-}
-
-.jump-tile span {
-  display: block;
-  font-size: 11px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  font-weight: 700;
-  color: var(--ink-soft);
-}
-
-.jump-tile strong {
-  display: block;
-  margin: 8px 0 4px;
-  font-size: 1.05rem;
-  font-weight: 750;
-  letter-spacing: -0.02em;
-}
-
-.jump-tile small {
-  display: block;
-  color: var(--ink-soft);
-  font-size: 13px;
-}
 
 .hub-feed {
   display: flex;
@@ -319,10 +253,4 @@ img {
   font-weight: 650;
   color: var(--sage);
   white-space: nowrap;
-}
-
-@media (max-width: 560px) {
-  .jump-grid {
-    grid-template-columns: 1fr 1fr;
-  }
 }

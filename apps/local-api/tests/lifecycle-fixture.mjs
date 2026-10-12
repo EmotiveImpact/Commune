@@ -59,12 +59,17 @@ await b("POST", `/communes/${commune.id}/expenses`, { title: "Broadband", amount
   shares: [avery, blake, casey].map(user => ({ userId: user.id, amountMinor: 1500 })) });
 const fund = await a("POST", `/communes/${commune.id}/funds`, { name: "Boiler repair fund", targetMinor: 30000 });
 await b("POST", `/funds/${fund.id}/pledges`, { amountMinor: 10000, dueOn: day(-3) });
-const rotation = [avery.name, blake.name, casey.name];
-const task = { kind: "task", category: "chore", allDay: true, notes: "", status: "open" };
-await a("POST", `/communes/${commune.id}/operations`, { ...task, title: "Put the bins out", date: day(0), assignee: avery.name, rotation, repeat: "weekly" });
-await a("POST", `/communes/${commune.id}/operations`, { ...task, title: "Kitchen deep clean", date: day(-2), assignee: avery.name, rotation, repeat: "monthly" });
-await a("POST", `/communes/${commune.id}/operations`, { ...task, title: "Return the spare key", date: day(0), assignee: avery.name, repeat: "none" });
-await a("POST", `/communes/${commune.id}/operations`, { kind: "event", category: "visit", title: "Boiler engineer", date: day(2), time: "10:30", allDay: false, repeat: "none", notes: "", status: "open" });
+const rotationIds = [avery.id, blake.id, casey.id];
+const task = { kind: "task", category: "chore", allDay: true, notes: "" };
+const plan = (input) => a("POST", `/communes/${commune.id}/operations`, { ...input, requestId: randomUUID() });
+await plan({ ...task, title: "Put the bins out", date: day(0), assigneeId: avery.id, rotationIds, repeat: "weekly" });
+await plan({ ...task, title: "Kitchen deep clean", date: day(-2), assigneeId: avery.id, rotationIds, repeat: "monthly" });
+await plan({ ...task, title: "Return the spare key", date: day(0), assigneeId: avery.id, repeat: "none" });
+// Late for someone else, and late with nobody on it: the week lists every
+// late task, Avery's first.
+await plan({ ...task, title: "Descale the kettle", date: day(-5), assigneeId: blake.id, rotationIds, repeat: "weekly" });
+await plan({ ...task, title: "Clear the gutters", date: day(-1), repeat: "none" });
+await plan({ kind: "event", category: "visit", title: "Boiler engineer", date: day(2), time: "10:30", allDay: false, repeat: "none", notes: "" });
 // A second, empty commune for the empty states.
 await a("POST", "/communes", { name: "QA Empty Trip", kind: "trip", currency: "EUR" });
 console.log(JSON.stringify({ api: base, commune: commune.id, accounts: users.map(user => user.email), passwordSource: "apps/local-api/tests/lifecycle-fixture.mjs" }, null, 2));

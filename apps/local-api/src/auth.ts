@@ -111,3 +111,59 @@ export async function logout(req: IncomingMessage): Promise<void> {
   if (!token) return;
   await pool.query("DELETE FROM app_auth.sessions WHERE token_hash = $1", [digest(token)]);
 }
+
+// Ends the account's other sessions and keeps the one making the request, so
+// this device stays signed in. Every request looks its session up, so another
+// device is refused from its next request.
+const endOtherSessions = `
+  DELETE FROM app_auth.sessions
+  WHERE user_id = $1 AND token_hash IS DISTINCT FROM $2
+`;
+function kept(req: IncomingMessage): Buffer | null {
+  const token = cookieToken(req);
+  return token ? digest(token) : null;
+}
+
+export async function logoutOthers(req: IncomingMessage, userId: string): Promise<void> {
+  await pool.query(endOtherSessions, [userId, kept(req)]);
+}
+
+/**
+ * Sets a new password if the current one is right, checked the same
+ * constant-time way as login, and ends the account's other sessions. False
+ * when the current password is wrong; nothing changes then.
+ */
+export async function changePassword(
+  req: IncomingMessage, userId: string, currentPassword: string, newPassword: string,
+): Promise<boolean> {
+  const { rows } = await pool.query<{ salt: Buffer; password_hash: Buffer }>(
+    "SELECT salt, password_hash FROM app_auth.credentials WHERE user_id = $1", [userId]);
+  const record = rows[0];
+  const computed = await passwordHash(currentPassword, record?.salt ?? dummySalt);
+  const expected = record?.password_hash ?? dummyHash;
+  if (!record || !timingSafeEqual(computed, expected)) return false;
+  const salt = randomBytes(32);
+  const hash = await passwordHash(newPassword, salt);
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    // Only over the password just checked: if another change landed in the
+    // meantime, the password this request knew is no longer the current one.
+    const updated = await client.query(`
+      UPDATE app_auth.credentials SET salt = $2, password_hash = $3
+      WHERE user_id = $1 AND password_hash = $4
+    `, [userId, salt, hash, record.password_hash]);
+    if (updated.rowCount !== 1) {
+      await client.query("ROLLBACK");
+      return false;
+    }
+    await client.query(endOtherSessions, [userId, kept(req)]);
+    await client.query("COMMIT");
+    return true;
+  } catch (error) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    throw error;
+  } finally {
+    client.release();
+  }
+}

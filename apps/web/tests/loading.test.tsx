@@ -1,14 +1,18 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { Router } from "wouter";
 import { memoryLocation } from "wouter/memory-location";
 import { App } from "../src/App";
+import { preloadAll } from "../src/shell/lazyComponent";
 import { AppProvider, useApp, type AppState } from "../src/state";
 import { api, post, loadCommunes, loadSnapshot, ApiError } from "../src/live/api";
 import type { Commune, Snapshot } from "../src/live/model";
 import { hubFromSnapshot } from "../src/live/model";
 import { todayIso, type OperationItem } from "../src/data/operations";
 import { HUBS } from "../src/data/household";
+import { coverSource } from "../src/data/covers";
+import { UNCERTAIN_RETRY_SAFE } from "../src/data/commands";
+import { toastRegion } from "./toast";
 
 vi.mock("../src/live/api", async (importOriginal) => ({
   ...await importOriginal<typeof import("../src/live/api")>(),
@@ -30,6 +34,9 @@ function mount(path = "/hub") {
   render(<Router hook={location.hook}><AppProvider><Capture /><App /></AppProvider></Router>);
   return location;
 }
+// The screens and windows a browser loads on first use are loaded up front,
+// so each test sees them drawn at once.
+beforeAll(preloadAll);
 beforeEach(() => {
   vi.resetAllMocks();
   sessionStorage.clear();
@@ -126,12 +133,12 @@ describe("commune loading", () => {
     await screen.findByRole("heading", { name: commune.name });
     expect(screen.getByRole("region", { name: "Pinned notes" }).textContent).toContain(note.title);
     expect(screen.getByRole("checkbox", { name: "Mark Take recycling out done" })).toBeTruthy();
-    expect(document.querySelector(".c-hub-cover")?.getAttribute("src")).toBe(HUBS.park.photo);
+    expect(document.querySelector(".c-hub-cover")?.getAttribute("src")).toBe(coverSource({ type: "Household", photo: HUBS.park.photo }, "hero").src);
     expect(document.querySelector(".c-hub")?.textContent).not.toContain("↗");
     expect(within(screen.getByRole("region", { name: "Your balance" })).getByRole("button", { name: "Add expense" })).toBeTruthy();
     expect(within(screen.getByRole("region", { name: "Your balance" })).getByRole("button", { name: "View settlement" })).toBeTruthy();
     expect(within(screen.getByRole("region", { name: "Shared essentials" })).getByText(note.title)).toBeTruthy();
-    expect(within(screen.getByRole("region", { name: "Commune identity" })).getByRole("button", { name: "View commune members" })).toBeTruthy();
+    expect(within(screen.getByRole("region", { name: "Commune identity" })).getByRole("button", { name: /^\d+ (people|person) in this commune, view members$/ })).toBeTruthy();
     fireEvent.click(within(screen.getByRole("region", { name: "Pinned notes" })).getByRole("button", { name: /House essentials/ }));
     await screen.findByRole("complementary", { name: "House essentials" });
   });
@@ -158,16 +165,16 @@ describe("commune loading", () => {
     const week = within(screen.getByRole("region", { name: "This week" }));
     expect(week.getByText("Nothing planned for this week.")).toBeTruthy();
     expect(task.status).toBe("done");
-    // The confirmation is visible and offers the way back.
-    expect(week.getByRole("status").textContent).toContain("Take recycling out marked done.");
+    // The confirmation is said in the toast and offers the way back.
+    expect(toastRegion().textContent).toContain("Take recycling out marked done.");
     vi.mocked(post).mockImplementation(async (path) => {
       expect(path).toBe("/occurrences/occurrence-1/undo");
       task = { ...hubTask };
       return { id: "occurrence-1", duplicate: false, date: task.date, assignee: task.assignee, status: "open" };
     });
-    await act(async () => { fireEvent.click(week.getByRole("button", { name: "Undo" })); });
+    await act(async () => { fireEvent.click(within(toastRegion()).getByRole("button", { name: "Undo" })); });
     expect(await screen.findByRole("checkbox", { name: "Mark Take recycling out done" })).toBeTruthy();
-    expect(week.getByRole("status").textContent).toBe("Undone. The task is back as it was.");
+    expect(toastRegion().textContent).toBe("Undone. The task is back as it was.");
   });
 
   it("retains an open task and offers an actionable error when completion fails", async () => {
@@ -182,37 +189,6 @@ describe("commune loading", () => {
     await within(screen.getByRole("region", { name: "This week" })).findByText("Task could not be saved");
     expect(check.checked).toBe(false);
     expect(check.disabled).toBe(false);
-  });
-
-  it.each(["/funds", "/settle"])("keeps the overall reminder allowance in the sidebar instead of the %s toolbar", async (path) => {
-    mount(path);
-    const summary = await screen.findByLabelText("Reminder allowance: 0 of 60 used in the last 30 days");
-    expect(summary.closest(".a-side-account")).not.toBeNull();
-    expect(summary.textContent).toContain("60 reminders left");
-    const metadata = summary.closest(".a-side-account-meta")!;
-    expect(metadata.querySelector(".a-side-account-role")?.textContent).toBe("Admin");
-    expect(metadata.querySelector(".a-side-account-separator")?.getAttribute("aria-hidden")).toBe("true");
-    expect(metadata.textContent).toContain("Admin·60 reminders left");
-    expect(summary.closest("details")?.parentElement).toBe(metadata);
-    expect(summary.closest("button")).toBeNull();
-    expect(summary.closest(".a-side-account")?.textContent).not.toContain(commune.name);
-    expect(document.querySelector(`${path.replace("/", "#")} .a-reminder-usage`)).toBeNull();
-    expect(document.querySelectorAll(".a-reminder-usage")).toHaveLength(1);
-  });
-
-  it("does not show a separator or an invented count while the reminder allowance is pending", async () => {
-    const usage = deferred<{ totalUsed: number; totalLimit: number; recipientLimit: number; recipientUsage: Record<string, number>; nextSlotAt: null }>();
-    const baseApi = vi.mocked(api).getMockImplementation()!;
-    vi.mocked(api).mockImplementation(async (path, options) => path === "/reminders/usage" ? usage.promise : baseApi(path, options));
-    mount();
-    await screen.findByRole("heading", { name: commune.name });
-    const metadata = document.querySelector(".a-side-account-meta")!;
-    expect(metadata.textContent).toBe("Admin");
-    expect(metadata.querySelector(".a-side-account-separator")).toBeNull();
-    await act(async () => usage.resolve({ totalUsed: 12, totalLimit: 60, recipientLimit: 6, recipientUsage: {}, nextSlotAt: null }));
-    await screen.findByLabelText("Reminder allowance: 12 of 60 used in the last 30 days");
-    expect(metadata.textContent).toContain("Admin·48 reminders left");
-    expect(metadata.querySelectorAll(".a-side-account-separator")).toHaveLength(1);
   });
 
   it("offers the same allowance in account settings and closes its details with Escape", async () => {
@@ -265,6 +241,23 @@ describe("commune loading", () => {
     expect(vi.mocked(post).mock.calls.filter(([path]) => path.endsWith("/invites"))).toHaveLength(1);
   });
 
+  it("shows the email sender's refusal of a contact-like name and keeps the link to share", async () => {
+    const inviteToken = "d".repeat(64);
+    const refusal = "This invitation can't be emailed because a name in it looks like a link or phone number. Copy the link and share it yourself.";
+    vi.mocked(post).mockImplementation(async (path) => {
+      if (path === "/invitation-email") throw new ApiError(refusal, 422);
+      return { token: inviteToken, url: `http://localhost:3000/invite?token=${inviteToken}` };
+    });
+    mount("/members");
+    fireEvent.click(await screen.findByRole("button", { name: "Invite", exact: true }));
+    const dialog = await screen.findByRole("dialog", { name: "Invite" });
+    fireEvent.change(within(dialog).getByLabelText("Email", { exact: true }), { target: { value: "friend@example.com" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Send invitation" }));
+    expect((await within(dialog).findByRole("alert")).textContent).toBe(refusal);
+    expect((within(dialog).getByLabelText("Invitation link") as HTMLInputElement).value).toContain(inviteToken);
+    expect(within(dialog).queryByText(/Invitation email sent to/)).toBeNull();
+  });
+
   it("keeps link-only invitations as an explicit alternative without sending email", async () => {
     const inviteToken = "c".repeat(64);
     vi.mocked(post).mockResolvedValue({ token: inviteToken, url: `http://localhost:3000/invite?token=${inviteToken}` });
@@ -308,8 +301,9 @@ describe("commune loading", () => {
     vi.mocked(loadSnapshot).mockImplementation(async () => ({ ...snapshot, notes: saved ? [saved] : [] }));
     vi.mocked(post).mockImplementation(async (path, payload) => {
       expect(path).toBe("/communes/home-1/notes");
+      expect((payload as { requestId: string }).requestId).toMatch(/^[0-9a-f-]{36}$/);
       saved = { ...(payload as typeof wifiNote), id: "contact-1" };
-      return { id: "contact-1" };
+      return { id: "contact-1", version: 1, duplicate: false };
     });
     mount("/notes");
     fireEvent.click(await screen.findByRole("button", { name: "Add note" }));
@@ -336,9 +330,9 @@ describe("commune loading", () => {
       return { invites: [] };
     });
     mount("/notes");
-    await screen.findByRole("button", { name: "Open House contacts" });
+    await screen.findByRole("button", { name: /^House contacts/ });
     fireEvent.change(screen.getByRole("combobox", { name: "Filter notes" }), { target: { value: "Contacts" } });
-    fireEvent.click(screen.getByRole("button", { name: "Open House contacts" }));
+    fireEvent.click(screen.getByRole("button", { name: /^House contacts/ }));
     fireEvent.click(screen.getByRole("button", { name: "Edit note" }));
     const dialog = await screen.findByRole("dialog", { name: "Edit note" });
     expect((within(dialog).getByLabelText("Role or service") as HTMLInputElement).value).toBe("Landlord");
@@ -358,14 +352,14 @@ describe("commune loading", () => {
       if (path === "/notes/note-1" && options?.method === "PUT") {
         const body = JSON.parse(String(options.body));
         puts.push(body);
-        if (body.expectedVersion !== current.version) throw new ApiError("Someone else saved this note while you were editing. Your text is still here; check their version before saving again.", 409);
+        if (body.expectedVersion !== current.version) throw new ApiError("This note was changed by someone else. Review the latest version before saving your changes.", 409);
         current = { ...current, ...body, version: current.version + 1 };
         return { ok: true, version: current.version };
       }
       return { invites: [] };
     });
     mount("/notes");
-    fireEvent.click(await screen.findByRole("button", { name: "Open House rules" }));
+    fireEvent.click(await screen.findByRole("button", { name: /^House rules/ }));
     fireEvent.click(screen.getByRole("button", { name: "Edit note" }));
     const dialog = await screen.findByRole("dialog", { name: "Edit note" });
     // Blake saves while this edit is open.
@@ -396,7 +390,7 @@ describe("commune loading", () => {
       return { invites: [] };
     });
     mount("/notes");
-    fireEvent.click(await screen.findByRole("button", { name: "Open House rules" }));
+    fireEvent.click(await screen.findByRole("button", { name: /^House rules/ }));
     const history = (await screen.findByText(/Version 3 · saved by Test Person · 1 earlier version/)).closest("details")!;
     await act(async () => { fireEvent.click(within(history).getByRole("button", { name: "View" })); });
     const opened = within(history).getByLabelText("Version 2");
@@ -409,8 +403,8 @@ describe("commune loading", () => {
     expect(within(history).getByRole("status").textContent).toBe("Version 2 restored as the newest version. Nothing was deleted.");
   });
 
-  it("does not save an empty note or lose a draft after a failed save", async () => {
-    vi.mocked(post).mockRejectedValue(new Error("Could not save. Try again."));
+  it("does not save an empty note or lose a draft after a failed save, and retries as the same add", async () => {
+    vi.mocked(post).mockRejectedValue(new TypeError("Failed to fetch"));
     mount("/notes");
     fireEvent.click(await screen.findByRole("button", { name: "Add note" }));
     const dialog = await screen.findByRole("dialog", { name: "Add note" });
@@ -420,8 +414,26 @@ describe("commune loading", () => {
     expect(post).not.toHaveBeenCalled();
     fireEvent.change(within(dialog).getByLabelText(/^Note \(/), { target: { value: "Keep this draft" } });
     fireEvent.click(within(dialog).getByRole("button", { name: "Save", exact: true }));
-    await within(dialog).findByText("Could not save. Try again.");
+    // The outcome is unknown, so the retry must be recognisable as the same add.
+    await within(dialog).findByText(UNCERTAIN_RETRY_SAFE);
     expect((within(dialog).getByLabelText(/^Note \(/) as HTMLTextAreaElement).value).toBe("Keep this draft");
+    await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Save", exact: true })); });
+    const ids = vi.mocked(post).mock.calls.map(([, body]) => (body as { requestId: string }).requestId);
+    expect(ids).toHaveLength(2);
+    expect(ids[0]).toMatch(/^[0-9a-f-]{36}$/);
+    expect(ids[1]).toBe(ids[0]);
+  });
+
+  it("shows why a new note was refused instead of offering to overwrite anything", async () => {
+    vi.mocked(post).mockRejectedValue(new ApiError("This commune already has 500 notes. Remove one you no longer need first.", 409));
+    mount("/notes");
+    fireEvent.click(await screen.findByRole("button", { name: "Add note" }));
+    const dialog = await screen.findByRole("dialog", { name: "Add note" });
+    fireEvent.change(within(dialog).getByLabelText(/^Title/), { target: { value: "Spare key" } });
+    fireEvent.change(within(dialog).getByLabelText(/^Note \(/), { target: { value: "Under the plant pot" } });
+    await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Save", exact: true })); });
+    expect(within(dialog).getByRole("alert").textContent).toBe("This commune already has 500 notes. Remove one you no longer need first.");
+    expect(within(dialog).queryByRole("button", { name: "Save mine over theirs" })).toBeNull();
   });
 
   it("keeps sensitive note previews off the Hub as well as the notes board", () => {
@@ -435,7 +447,7 @@ describe("commune loading", () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
     mount("/notes");
-    const opener = await screen.findByRole("button", { name: "Open Wi-Fi & internet" });
+    const opener = await screen.findByRole("button", { name: /^Wi-Fi & internet/ });
     expect(document.body.textContent).not.toContain("private-secret");
     opener.focus(); fireEvent.click(opener);
     const reader = screen.getByRole("complementary", { name: "Wi-Fi & internet" });
@@ -458,12 +470,12 @@ describe("commune loading", () => {
   it("filters notes without searching private content or changing expense search", async () => {
     vi.mocked(loadSnapshot).mockResolvedValue({ ...snapshot, notes: [wifiNote] });
     mount("/notes");
-    await screen.findByRole("button", { name: "Open Wi-Fi & internet" });
+    await screen.findByRole("button", { name: /^Wi-Fi & internet/ });
     fireEvent.change(screen.getByRole("searchbox", { name: "Search notes in this commune", exact: true }), { target: { value: "private-secret" } });
     expect(screen.getByRole("heading", { name: "No matching notes." })).toBeTruthy();
-    expect(app.searchQuery).toBe("");
+    expect(app.recallSearch().query).toBe("");
     fireEvent.click(screen.getByRole("button", { name: "Show all notes" }));
-    expect(screen.getAllByRole("button", { name: "Open Wi-Fi & internet" })).toHaveLength(1);
+    expect(screen.getAllByRole("button", { name: /^Wi-Fi & internet/ })).toHaveLength(1);
   });
 
   it("shows a dismissible error rather than a blank mobile reader when a note disappears", async () => {
@@ -486,7 +498,7 @@ describe("commune loading", () => {
       return originalApi(path, options);
     });
     mount("/notes");
-    fireEvent.click(await screen.findByRole("button", { name: "Open Wi-Fi & internet" }));
+    fireEvent.click(await screen.findByRole("button", { name: /^Wi-Fi & internet/ }));
     fireEvent.click(screen.getByRole("button", { name: "Unpin", exact: true }));
     await screen.findByText("Note unpinned.");
     expect(saved.facts.some(([key]) => key === "This Hub")).toBe(false);
@@ -507,7 +519,7 @@ describe("commune loading", () => {
     vi.mocked(loadSnapshot).mockResolvedValue({ ...snapshot, notes: [wifiNote] });
     Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText: vi.fn().mockRejectedValue(new Error("Denied")) } });
     mount("/notes");
-    fireEvent.click(await screen.findByRole("button", { name: "Open Wi-Fi & internet" }));
+    fireEvent.click(await screen.findByRole("button", { name: /^Wi-Fi & internet/ }));
     fireEvent.click(screen.getByRole("button", { name: "Copy network" }));
     await screen.findByText("Could not copy. Select and copy the text instead.");
     fireEvent.click(screen.getByRole("button", { name: "Unpin", exact: true }));
@@ -574,7 +586,7 @@ describe("commune loading", () => {
     mount("/");
     await screen.findByRole("heading", { name: "Our home" });
     expect(screen.getByRole("heading", { name: "Second home" })).toBeTruthy();
-    expect(screen.queryByText("Nothing waiting right now.")).toBeNull();
+    expect(screen.queryByText("Nothing for you to do right now.")).toBeNull();
     await act(async () => pending.reject(new Error("Not a commune member")));
     expect(screen.getByRole("heading", { name: "Our home" })).toBeTruthy();
     expect(screen.queryByRole("heading", { name: "Could not load Our home" })).toBeNull();
@@ -642,7 +654,8 @@ describe("commune loading", () => {
     });
     await screen.findByRole("heading", { name: "New home" });
     expect(screen.getByText("42 Test Road")).toBeTruthy();
-    expect(location.history?.at(-1)).toBe("/hub");
+    // In place of the form, so Back does not return to it.
+    expect(location.history).toEqual(["/hub?commune=new-home"]);
     expect(app.hub.members[0].userId).toBe(user.id);
     expect(loadCommunes).toHaveBeenCalledTimes(1);
     expect(loadSnapshot).not.toHaveBeenCalled();
@@ -685,18 +698,19 @@ describe("commune loading", () => {
     expect(loadSnapshot).toHaveBeenCalledTimes(2);
   });
 
-  it("clears prior account data when the signed-in account changes", async () => {
+  it("clears prior account data and asks for a sign-in when the signed-in account changes", async () => {
     mount();
     await screen.findByRole("heading", { name: "Our home" });
     vi.mocked(api).mockImplementation(async (path) => path === "/auth/me"
       ? { user: { ...user, id: "different-user" } } : path.endsWith("/invites") ? { invites: [] } : null);
-    const pending = deferred<Snapshot>();
-    vi.mocked(loadSnapshot).mockReturnValue(pending.promise);
-    let refresh!: Promise<void>;
-    await act(async () => { refresh = app.refresh(); });
+    vi.mocked(loadSnapshot).mockClear();
+    await act(async () => { await app.refresh(); });
     expect(app.hub.members).toHaveLength(0);
-    expect(app.contentLoading).toBe(true);
-    await act(async () => { pending.resolve({ ...snapshot, members: [] }); await refresh; });
+    expect(app.session).toBeNull();
+    expect(app.sessionNotice).toBe("You were signed out. Sign in to carry on.");
+    // Nothing of the other account loads without a sign-in in this tab.
+    expect(loadSnapshot).not.toHaveBeenCalled();
+    await screen.findByRole("heading", { name: "Welcome back" });
   });
 
   it("ignores an older refresh that finishes after a commune is created", async () => {
@@ -729,14 +743,14 @@ describe("commune loading", () => {
     vi.mocked(loadSnapshot).mockRejectedValue(new Error("Network unavailable"));
     mount();
     await screen.findByRole("heading", { name: "Could not load Our home" });
-    expect(screen.getByRole("button", { name: "Try again" })).toBeTruthy();
+    expect(await screen.findByRole("button", { name: "Try again" })).toBeTruthy();
     expect(screen.queryByText("No expenses yet. Add the first one to start the shared ledger.")).toBeNull();
   });
 
   it("redirects bookmarked empty-state URLs to the canonical hub", async () => {
     const location = mount("/hub-empty");
     await screen.findByRole("heading", { name: "Our home" });
-    await waitFor(() => expect(location.history?.at(-1)).toBe("/hub"));
+    await waitFor(() => expect(location.history?.at(-1)).toBe("/hub?commune=home-1"));
   });
 
   it("offers commune creation at /hub when membership is genuinely empty", async () => {

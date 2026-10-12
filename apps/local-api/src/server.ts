@@ -1,9 +1,10 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { randomUUID } from "node:crypto";
 import type { PoolClient } from "pg";
-import { createAccount, getUser, login, logout, setSessionCookie, type User } from "./auth.js";
+import { changePassword, createAccount, getUser, login, logout, logoutOthers, setSessionCookie, type User } from "./auth.js";
 import { pool, withActor } from "./db.js";
 import { InvitationEmailError, invitationMailConfig, sendInvitationEmail } from "../../reminder-worker/src/invitations.js";
+import { invitationEmailSetting } from "./invitation-email.js";
 
 const host = "127.0.0.1";
 const port = Number(process.env.API_PORT ?? "3002");
@@ -114,7 +115,9 @@ function noteInput(input: Record<string, unknown>) {
   };
 }
 
-function operationInput(input: Record<string, unknown>) {
+// A task or event's fields, checked, in the order create_operation and
+// update_operation take them.
+function operationArgs(input: Record<string, unknown>) {
   if (input.kind !== "task" && input.kind !== "event") {
     throw new ApiError(400, "Invalid kind");
   }
@@ -129,13 +132,9 @@ function operationInput(input: Record<string, unknown>) {
       (typeof input.time !== "string" || !/^([01]\d|2[0-3]):[0-5]\d$/.test(input.time))) {
     throw new ApiError(400, "Invalid time");
   }
-  if (input.rotation != null && (!Array.isArray(input.rotation) ||
-      input.rotation.length > 50 ||
-      !input.rotation.every((name) => typeof name === "string" && name.length <= 80))) {
-    throw new ApiError(400, "Invalid rotation");
-  }
-  // Current clients name people by member id; older ones send names only.
-  const byId = "assigneeId" in input || "rotationIds" in input;
+  // People are member ids; the database checks they are current members and
+  // copies their names. Status and completion are not part of an add or an
+  // edit: only the occurrence commands change them.
   if (input.assigneeId != null && (typeof input.assigneeId !== "string" ||
       !input.assigneeId || input.assigneeId.length > 128)) {
     throw new ApiError(400, "Invalid assigneeId");
@@ -146,31 +145,10 @@ function operationInput(input: Record<string, unknown>) {
       !input.rotationIds.every((id) => typeof id === "string" && id.length > 0 && id.length <= 128))) {
     throw new ApiError(400, "Invalid rotationIds");
   }
-  if (input.status !== undefined && input.status !== "open" && input.status !== "done") {
-    throw new ApiError(400, "Invalid status");
-  }
-  let lastDone: { by: string; date: string } | null = null;
-  if (input.lastDone != null) {
-    if (typeof input.lastDone !== "object" || Array.isArray(input.lastDone)) {
-      throw new ApiError(400, "Invalid lastDone");
-    }
-    const value = input.lastDone as Record<string, unknown>;
-    lastDone = { by: text(value.by, "lastDone.by", 80),
-      date: isoDate(value.date)! };
-  }
-  return {
-    kind: input.kind, category: input.category,
-    title: text(input.title, "title", 80),
-    date: isoDate(input.date)!, time: input.time ?? null,
-    allDay: input.allDay,
-    byId,
-    assignee: byId || input.assignee == null ? null : optionalText(input.assignee, "assignee", 80),
-    rotation: byId ? null : input.rotation ?? null, lastDone,
-    assigneeId: (input.assigneeId as string | null | undefined) ?? null,
-    rotationIds: (input.rotationIds as string[] | null | undefined) ?? null,
-    repeat: input.repeat, status: input.status === "done" ? "done" : "open",
-    notes: optionalText(input.notes, "notes", 1000),
-  };
+  return [input.kind, input.category, text(input.title, "title", 80), isoDate(input.date, false, "date"),
+    input.time ?? null, input.allDay, (input.assigneeId as string | null | undefined) ?? null,
+    input.rotationIds == null ? null : JSON.stringify(input.rotationIds), input.repeat,
+    optionalText(input.notes, "notes", 1000)];
 }
 
 async function body(req: IncomingMessage): Promise<Record<string, unknown>> {
@@ -194,10 +172,21 @@ async function body(req: IncomingMessage): Promise<Record<string, unknown>> {
 async function actor(req: IncomingMessage): Promise<User> {
   const user = await getUser(req);
   if (!user) throw new ApiError(401, "Sign in required");
+  // Every tab shares one sign-in. A tab names the account it is showing, and
+  // nothing is done for anyone else (apps/web/src/live/session.ts).
+  const viewer = req.headers["x-commune-viewer"];
+  if (typeof viewer === "string" && viewer && viewer !== user.id) {
+    throw new ApiError(401, "You signed out or changed account in another tab, so this wasn’t saved.");
+  }
   return user;
 }
 
-// A bounded local throttle protects password verification from quick guessing.
+// A local throttle protects password verification from quick guessing: ten
+// failures for one email from one client lock that pair out until 15 minutes
+// after the latest. Entries stay in order of their latest failure, so expired
+// ones are always first and each failure drops them. A lockout still running
+// is never dropped, however many other failures arrive; each one costs a
+// password hash, which bounds how many can build up in 15 minutes.
 const failures = new Map<string, { count: number; until: number }>();
 function checkThrottle(req: IncomingMessage, address: string): string {
   const key = `${req.socket.remoteAddress ?? "?"}:${address}`;
@@ -208,38 +197,33 @@ function checkThrottle(req: IncomingMessage, address: string): string {
   return key;
 }
 function failed(key: string): void {
-  if (failures.size > 1000) failures.clear();
+  const now = Date.now();
+  for (const [stale, item] of failures) {
+    if (item.until > now) break;
+    failures.delete(stale);
+  }
   const existing = failures.get(key);
+  failures.delete(key);
   failures.set(key, {
-    count: existing && existing.until > Date.now() ? existing.count + 1 : 1,
-    until: Date.now() + 15 * 60 * 1000,
+    count: existing && existing.until > now ? existing.count + 1 : 1,
+    until: now + 15 * 60 * 1000,
   });
 }
 
+// The same list the hosted app reads, with each commune's change mark.
 async function listCommunes(user: User) {
   return withActor(user.id, async (client) => {
-    const { rows } = await client.query(`
-      SELECT c.id, c.name, c.kind, c.currency, c.address,
-        c.destination, c.stay_name, c.stay_address, m.role,
-        (SELECT count(*)::integer FROM public.commune_members mm
-         WHERE mm.commune_id = c.id AND mm.active) AS member_count
-      FROM public.communes c
-      JOIN public.commune_members m ON m.commune_id = c.id
-      WHERE m.user_id = auth.user_id() AND m.active
-      ORDER BY c.created_at DESC
-    `);
-    return { communes: rows.map((row) => ({
-      id: row.id, name: row.name, kind: row.kind, currency: row.currency,
-      address: row.address, destination: row.destination,
-      stayName: row.stay_name, stayAddress: row.stay_address,
-      role: row.role, memberCount: row.member_count,
-    })) };
+    const { rows } = await client.query("SELECT public.my_communes() AS communes");
+    return { communes: rows[0].communes };
   });
 }
 
-async function snapshot(user: User, communeId: string) {
+// A summary is what the overview screens show of a commune that is not open.
+async function snapshot(user: User, communeId: string, summary = false) {
   return withActor(user.id, async client => {
-    const result = await client.query("SELECT CASE WHEN public.is_commune_member($1) THEN public.commune_snapshot($1) ELSE NULL END AS snapshot", [communeId]);
+    const result = await client.query(summary
+      ? "SELECT CASE WHEN public.is_commune_member($1) THEN public.commune_summary($1) ELSE NULL END AS snapshot"
+      : "SELECT CASE WHEN public.is_commune_member($1) THEN public.commune_snapshot($1) ELSE NULL END AS snapshot", [communeId]);
     if (!result.rows[0].snapshot) throw new ApiError(404,"Commune not found");
     return result.rows[0].snapshot;
   });
@@ -251,6 +235,12 @@ function route(method: string, pattern: RegExp, handle: Handler): void {
   routes.push({ method, pattern, handle });
 }
 const send = (res: ServerResponse, result: unknown, status = 200) => json(res, status, result);
+// Create commands take a client request id, so a retry returns the record it
+// already created. Older callers without one still work, without retry protection.
+const requestIdOf = (input: Record<string, unknown>) =>
+  input.requestId == null ? randomUUID() : uuid(input.requestId, "requestId");
+const sendCreated = (res: ServerResponse, result: { id: string; duplicate: boolean }) =>
+  send(res, { id: result.id, duplicate: result.duplicate }, result.duplicate ? 200 : 201);
 const userAction = async <T>(req: IncomingMessage,
   work: (client: PoolClient, user: User) => Promise<T>): Promise<T> => {
   const user = await actor(req);
@@ -306,6 +296,34 @@ route("POST", /^\/api\/auth\/login$/, async (req, res) => {
 route("POST", /^\/api\/auth\/logout$/, async (req, res) => {
   await logout(req);
   setSessionCookie(res, null);
+  send(res, { ok: true });
+});
+
+// Both keep this device's session and end the account's others.
+route("POST", /^\/api\/auth\/change-password$/, async (req, res) => {
+  const user = await actor(req);
+  const input = await body(req);
+  if (typeof input.currentPassword !== "string" || input.currentPassword.length > 128) {
+    throw new ApiError(400, "Invalid currentPassword");
+  }
+  const password = input.newPassword;
+  if (typeof password !== "string" || password.length < 12 || password.length > 128) {
+    throw new ApiError(400, "Password must contain 12–128 characters");
+  }
+  // A wrong current password counts towards the same limit as signing in.
+  const key = checkThrottle(req, user.email);
+  if (!await changePassword(req, user.id, input.currentPassword, password)) {
+    failed(key);
+    throw new ApiError(400, "Your current password isn’t right. Nothing was changed.");
+  }
+  failures.delete(key);
+  send(res, { ok: true });
+});
+
+route("POST", /^\/api\/auth\/logout-others$/, async (req, res) => {
+  const user = await actor(req);
+  await body(req);
+  await logoutOthers(req, user.id);
   send(res, { ok: true });
 });
 
@@ -376,7 +394,34 @@ route("PATCH", /^\/api\/communes\/([0-9a-f-]{36})$/, async (req, res, match) => 
 });
 
 route("GET", /^\/api\/communes\/([0-9a-f-]{36})\/snapshot$/, async (req, res, match) => {
-  send(res, await snapshot(await actor(req), uuid(match[1])));
+  const detail = new URL(req.url ?? "", "http://127.0.0.1").searchParams.get("detail");
+  if (detail !== null && detail !== "summary") throw new ApiError(400, "Invalid detail");
+  send(res, await snapshot(await actor(req), uuid(match[1]), detail === "summary"));
+});
+
+// Expenses older than the snapshot holds: the given number of months before
+// `before` (the snapshot's own start when absent), or all of them when months
+// is absent, as a statement or an export needs.
+route("GET", /^\/api\/communes\/([0-9a-f-]{36})\/expenses\/history$/, async (req, res, match) => {
+  const params = new URL(req.url ?? "", "http://127.0.0.1").searchParams;
+  const before = isoDate(params.get("before"), true, "before");
+  const months = params.has("months") ? Number(params.get("months")) : null;
+  if (months !== null && (!Number.isInteger(months) || months < 1 || months > 12)) {
+    throw new ApiError(400, "Ask for 1 to 12 months of expenses at a time");
+  }
+  const result = await userAction(req, async client => (await client.query(
+    "SELECT public.commune_expense_page($1, $2::date, $3) AS result", [uuid(match[1]), before, months])).rows[0].result);
+  send(res, result);
+});
+
+// Named expenses, for a link to one that is not loaded.
+route("GET", /^\/api\/communes\/([0-9a-f-]{36})\/expenses\/records$/, async (req, res, match) => {
+  const ids = (new URL(req.url ?? "", "http://127.0.0.1").searchParams.get("ids") ?? "").split(",").filter(Boolean);
+  if (ids.length < 1 || ids.length > 50) throw new ApiError(400, "Ask for 1 to 50 expenses at a time");
+  const result = await userAction(req, async client => (await client.query(
+    "SELECT public.commune_expense_records($1, $2::uuid[]) AS result",
+    [uuid(match[1]), ids.map((id) => uuid(id, "ids"))])).rows[0].result);
+  send(res, result);
 });
 
 route("GET", /^\/api\/reminders\/usage$/, async (req, res) => {
@@ -388,6 +433,14 @@ route("GET", /^\/api\/reminders\/usage$/, async (req, res) => {
     recipientLimit: row.recipient_limit, recipientUsage: row.recipient_usage,
     nextSlotAt: row.next_slot_at, recipientLastSent: row.recipient_last_sent ?? {},
   });
+});
+
+// Unread notices from every commune the caller belongs to (0039), read when
+// Notices opens. The commune list carries each commune's count.
+route("GET", /^\/api\/notices\/unread$/, async (req, res) => {
+  const notices = await userAction(req, async (client) => (await client.query(
+    "SELECT public.my_unread_notices() AS notices")).rows[0].notices);
+  send(res, { notices });
 });
 
 route("POST", /^\/api\/communes\/([0-9a-f-]{36})\/expenses$/, async (req, res, match) => {
@@ -406,9 +459,10 @@ route("POST", /^\/api\/communes\/([0-9a-f-]{36})\/expenses$/, async (req, res, m
   });
   const dueOn = isoDate(input.dueOn, true);
   const result = await userAction(req, async (client) => client.query(
-    "SELECT public.create_expense_for($1, $2, $3, $4::jsonb, $5::date, $6, $7) AS id",
-    [communeId, title, amountMinor, JSON.stringify(shares), dueOn, input.paidByUserId == null ? null : uuid(input.paidByUserId), input.category == null ? "Other" : text(input.category,"category",40)]));
-  send(res, { id: result.rows[0].id }, 201);
+    "SELECT public.create_expense_command($1, $2, $3, $4::jsonb, $5::date, $6, $7, $8) AS result",
+    [communeId, title, amountMinor, JSON.stringify(shares), dueOn, input.paidByUserId == null ? null : uuid(input.paidByUserId), input.category == null ? "Other" : text(input.category,"category",40),
+      requestIdOf(input)]));
+  sendCreated(res, result.rows[0].result);
 });
 
 route("POST", /^\/api\/shares\/([0-9a-f-]{36})\/confirm$/, async (req, res, match) => {
@@ -504,31 +558,81 @@ route("POST", /^\/api\/payment-reports\/([0-9a-f-]{36})\/resolve$/, async (req, 
   send(res, result.rows[0].result);
 });
 
+// Announcements: an admin posts, members confirm an important one, and the
+// author or an admin takes it down. The database checks every rule.
+route("POST", /^\/api\/communes\/([0-9a-f-]{36})\/announcements$/, async (req, res, match) => {
+  const input = await body(req);
+  if (input.body != null && typeof input.body !== "string") throw new ApiError(400, "Invalid body");
+  if (typeof input.needsAcknowledgement !== "boolean") throw new ApiError(400, "Invalid needsAcknowledgement");
+  const result = await userAction(req, async (client) => client.query(
+    "SELECT public.post_announcement($1, $2, $3, $4, $5) AS result",
+    [uuid(match[1]), text(input.title, "title", 80), input.body ?? "", input.needsAcknowledgement,
+      uuid(input.requestId, "requestId")]));
+  const announcement = result.rows[0].result as { duplicate: boolean };
+  send(res, announcement, announcement.duplicate ? 200 : 201);
+});
+
+route("POST", /^\/api\/announcements\/([0-9a-f-]{36})\/acknowledge$/, async (req, res, match) => {
+  await body(req);
+  const result = await userAction(req, async (client) => client.query(
+    "SELECT public.acknowledge_announcement($1) AS result", [uuid(match[1])]));
+  send(res, result.rows[0].result);
+});
+
+route("POST", /^\/api\/announcements\/([0-9a-f-]{36})\/archive$/, async (req, res, match) => {
+  await body(req);
+  const result = await userAction(req, async (client) => client.query(
+    "SELECT public.archive_announcement($1) AS result", [uuid(match[1])]));
+  send(res, result.rows[0].result);
+});
+
+// Pay links: how this person likes to be paid. People who share a commune
+// with them read these from the snapshot; the database validates every field.
+route("GET", /^\/api\/pay-links$/, async (req, res) => {
+  const result = await userAction(req, async (client) => client.query("SELECT public.my_pay_links() AS links"));
+  send(res, { links: result.rows[0].links });
+});
+
+route("PUT", /^\/api\/pay-links\/(monzo|paypal|revolut|bank)$/, async (req, res, match) => {
+  const input = await body(req);
+  const result = await userAction(req, async (client) => client.query(
+    "SELECT public.set_pay_link($1, $2, $3, $4, $5) AS links",
+    [match[1], optionalText(input.handle, "handle", 120), optionalText(input.accountName, "accountName", 60),
+      optionalText(input.sortCode, "sortCode", 12), optionalText(input.accountNumber, "accountNumber", 12)]));
+  send(res, { links: result.rows[0].links });
+});
+
+route("DELETE", /^\/api\/pay-links\/(monzo|paypal|revolut|bank)$/, async (req, res, match) => {
+  const result = await userAction(req, async (client) => client.query(
+    "SELECT public.remove_pay_link($1) AS links", [match[1]]));
+  send(res, { links: result.rows[0].links });
+});
+
 route("POST", /^\/api\/communes\/([0-9a-f-]{36})\/funds$/, async (req, res, match) => {
   const input = await body(req);
   const name = text(input.name, "name", 80);
   const target = input.targetMinor === undefined || input.targetMinor === null
     ? null : amount(input.targetMinor, "targetMinor");
   const result = await userAction(req, async (client) => client.query(
-    "SELECT public.create_fund($1, $2, $3) AS id",
-    [uuid(match[1]), name, target]));
-  send(res, { id: result.rows[0].id }, 201);
+    "SELECT public.create_fund_command($1, $2, $3, $4) AS result",
+    [uuid(match[1]), name, target, requestIdOf(input)]));
+  sendCreated(res, result.rows[0].result);
 });
 
 route("POST", /^\/api\/funds\/([0-9a-f-]{36})\/pledges$/, async (req, res, match) => {
   const input = await body(req);
   const result = await userAction(req, async (client) => client.query(
-    "SELECT public.pledge_fund($1, $2, $3::date) AS id",
-    [uuid(match[1]), amount(input.amountMinor), isoDate(input.dueOn)]));
-  send(res, { id: result.rows[0].id }, 201);
+    "SELECT public.pledge_fund_command($1, $2, $3::date, $4) AS result",
+    [uuid(match[1]), amount(input.amountMinor), isoDate(input.dueOn), requestIdOf(input)]));
+  sendCreated(res, result.rows[0].result);
 });
 
 route("POST", /^\/api\/commitments\/([0-9a-f-]{36})\/contributions$/, async (req, res, match) => {
   const input = await body(req);
   const result = await userAction(req, async (client) => client.query(
-    "SELECT public.record_fund_contribution($1, $2) AS id",
-    [uuid(match[1]), amount(input.amountMinor)]));
-  send(res, { id: result.rows[0].id }, 201);
+    "SELECT public.record_fund_contribution_command($1, $2, $3) AS result",
+    [uuid(match[1]), amount(input.amountMinor), requestIdOf(input)]));
+  sendCreated(res, result.rows[0].result);
 });
 
 route("PATCH", /^\/api\/funds\/([0-9a-f-]{36})$/, async (req, res, match) => {
@@ -545,7 +649,10 @@ route("POST", /^\/api\/funds\/([0-9a-f-]{36})\/archive$/, async (req, res, match
 route("PATCH", /^\/api\/commitments\/([0-9a-f-]{36})$/, async (req,res,match) => {
   const input=await body(req);
   if (input.cancel != null && typeof input.cancel !== "boolean") throw new ApiError(400,"Invalid cancellation");
-  await userAction(req,client=>client.query("SELECT public.update_fund_pledge($1,$2,$3::date,$4)",[uuid(match[1]),input.cancel === true ? null : amount(input.amountMinor),input.cancel === true ? null : isoDate(input.dueOn),input.cancel === true]));
+  // The amount and date the editor opened with. If the pledge has changed since, nothing is saved (409).
+  const expectedAmount = input.expectedAmountMinor == null ? null : amount(input.expectedAmountMinor, "expectedAmountMinor");
+  const expectedDueOn = isoDate(input.expectedDueOn, true, "expectedDueOn");
+  await userAction(req,client=>client.query("SELECT public.update_fund_pledge($1,$2,$3::date,$4,$5,$6::date)",[uuid(match[1]),input.cancel === true ? null : amount(input.amountMinor),input.cancel === true ? null : isoDate(input.dueOn),input.cancel === true,expectedAmount,expectedDueOn]));
   send(res,{ok:true});
 });
 route("POST", /^\/api\/contributions\/([0-9a-f-]{36})\/void$/, async (req,res,match) => {
@@ -559,12 +666,31 @@ route("POST", /^\/api\/communes\/([0-9a-f-]{36})\/members\/([0-9a-f-]{36})$/, as
   await userAction(req,client=>client.query("SELECT public.manage_commune_member($1,$2,$3)",[uuid(match[1]),uuid(match[2]),input.action]));
   send(res,{ok:true});
 });
+// Add a bill (requestId makes a retry return the same bill), or edit one from
+// the version the editor loaded: a stale expectedVersion is a 409. An edit
+// never pauses or resumes; that is /recurring/:id/pause.
 route("POST", /^\/api\/communes\/([0-9a-f-]{36})\/recurring$/, async (req,res,match) => {
   const input=await body(req);
-  if (!Array.isArray(input.allocations) || input.allocations.length>100 || !["weekly","monthly"].includes(String(input.frequency)) || typeof input.paused !== "boolean") throw new ApiError(400,"Invalid recurring bill");
+  if (!Array.isArray(input.allocations) || input.allocations.length>100 || !["weekly","monthly"].includes(String(input.frequency)) || (input.paused != null && typeof input.paused !== "boolean")) throw new ApiError(400,"Invalid recurring bill");
   const shares=input.allocations.map(value=>{const share=value as Record<string,unknown>; return {user_id:uuid(share?.userId),amount_minor:amount(share?.amountMinor)};});
-  const result=await userAction(req,client=>client.query("SELECT public.save_recurring_bill($1,$2,$3,$4,$5::jsonb,$6,$7::date,$8,$9) AS id",[uuid(match[1]),text(input.title,"title",80),amount(input.amountMinor),uuid(input.paidByUserId),JSON.stringify(shares),input.frequency,isoDate(input.nextDueOn),input.paused,input.id == null ? null : uuid(input.id)]));
+  const editing=input.id != null;
+  const result=await userAction(req,client=>client.query("SELECT public.save_recurring_bill($1,$2,$3,$4,$5::jsonb,$6,$7::date,$8,$9,$10,$11) AS id",[uuid(match[1]),text(input.title,"title",80),amount(input.amountMinor),uuid(input.paidByUserId),JSON.stringify(shares),input.frequency,isoDate(input.nextDueOn),
+    editing ? uuid(input.id) : null,editing ? expectedVersion(input.expectedVersion) : null,editing ? null : uuid(input.requestId,"requestId"),input.paused ?? null]));
   send(res,{id:result.rows[0].id},201);
+});
+// Pause or resume, and archive or restore: each changes only that state and
+// is safe to repeat (duplicate: true when the bill was already that way).
+route("POST", /^\/api\/recurring\/([0-9a-f-]{36})\/pause$/, async (req,res,match) => {
+  const input=await body(req);
+  if (typeof input.paused !== "boolean") throw new ApiError(400,"Invalid paused state");
+  const result=await userAction(req,client=>client.query("SELECT public.set_recurring_bill_paused($1,$2) AS result",[uuid(match[1]),input.paused]));
+  send(res,result.rows[0].result);
+});
+route("POST", /^\/api\/recurring\/([0-9a-f-]{36})\/archive$/, async (req,res,match) => {
+  const input=await body(req);
+  if (typeof input.archived !== "boolean") throw new ApiError(400,"Invalid archived state");
+  const result=await userAction(req,client=>client.query("SELECT public.set_recurring_bill_archived($1,$2) AS result",[uuid(match[1]),input.archived]));
+  send(res,result.rows[0].result);
 });
 route("POST", /^\/api\/recurring\/([0-9a-f-]{36})\/record$/, async (req,res,match) => {
   const input=await body(req);
@@ -618,42 +744,28 @@ route("POST", /^\/api\/notifications\/([0-9a-f-]{36})\/read$/, async (req, res, 
   send(res, { ok: true });
 });
 
+// Notes and tasks change only through database commands (migration 0027).
+// An add carries requestId, so a retry returns what it already added. An
+// edit carries expectedVersion; a stale one is a 409 and nothing is saved.
 route("POST", /^\/api\/communes\/([0-9a-f-]{36})\/notes$/, async (req, res, match) => {
-  const card = noteInput(await body(req));
-  const result = await userAction(req, async (client) => client.query(`
-    INSERT INTO public.commune_notes
-      (commune_id, title, pill, kicker, lede, body, facts, created_by)
-    VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, auth.user_id())
-    RETURNING id
-  `, [uuid(match[1]), card.title, card.pill, card.kicker,
-      card.lede, card.body, JSON.stringify(card.facts)]));
-  send(res, { id: result.rows[0].id }, 201);
+  const input = await body(req);
+  const card = noteInput(input);
+  const result = await userAction(req, async (client) => client.query(
+    "SELECT public.create_note($1, $2, $3, $4, $5, $6, $7::jsonb, $8) AS result",
+    [uuid(match[1]), card.title, card.pill, card.kicker, card.lede, card.body,
+      JSON.stringify(card.facts), uuid(input.requestId, "requestId")]));
+  const note = result.rows[0].result as { duplicate: boolean };
+  send(res, note, note.duplicate ? 200 : 201);
 });
 
-// expectedVersion names the version the edit was based on. When someone else
-// saved since, nothing is written and the caller is told (409).
 route("PUT", /^\/api\/notes\/([0-9a-f-]{36})$/, async (req, res, match) => {
   const input = await body(req);
   const card = noteInput(input);
-  const expected = input.expectedVersion == null ? null : Number(input.expectedVersion);
-  if (expected !== null && (!Number.isInteger(expected) || expected < 1)) throw new ApiError(400, "Invalid expectedVersion");
-  const result = await userAction(req, async (client) => {
-    const updated = await client.query(`
-      UPDATE public.commune_notes
-        SET title = $2, pill = $3, kicker = $4, lede = $5,
-          body = $6, facts = $7::jsonb, updated_at = now()
-        WHERE id = $1 AND ($8::integer IS NULL OR version = $8) RETURNING id, version
-    `, [uuid(match[1]), card.title, card.pill, card.kicker,
-        card.lede, card.body, JSON.stringify(card.facts), expected]);
-    if (updated.rowCount || expected === null) return updated;
-    const current = await client.query("SELECT version FROM public.commune_notes WHERE id = $1", [uuid(match[1])]);
-    if (current.rowCount) {
-      throw new ApiError(409, "Someone else saved this note while you were editing. Your text is still here; check their version before saving again.");
-    }
-    return updated;
-  });
-  if (!result.rowCount) throw new ApiError(404, "Note not found");
-  send(res, { ok: true, version: result.rows[0].version });
+  const result = await userAction(req, async (client) => client.query(
+    "SELECT public.update_note($1, $2, $3, $4, $5, $6, $7, $8::jsonb) AS result",
+    [uuid(match[1]), expectedVersion(input.expectedVersion), card.title, card.pill, card.kicker,
+      card.lede, card.body, JSON.stringify(card.facts)]));
+  send(res, result.rows[0].result);
 });
 
 route("GET", /^\/api\/notes\/([0-9a-f-]{36})\/revisions\/([0-9a-f-]{36})$/, async (req, res, match) => {
@@ -667,52 +779,32 @@ route("GET", /^\/api\/notes\/([0-9a-f-]{36})\/revisions\/([0-9a-f-]{36})$/, asyn
     lede: row.lede, body: row.body, facts: row.facts, editedBy: row.edited_by, editedAt: row.edited_at } });
 });
 
+// The person who added it or an admin removes a note or task. The record and
+// its history are kept, and both leave every view: a removed note's earlier
+// versions answer 404 like an unknown one.
 route("DELETE", /^\/api\/notes\/([0-9a-f-]{36})$/, async (req, res, match) => {
   const result = await userAction(req, async (client) => client.query(
-    "DELETE FROM public.commune_notes WHERE id = $1 RETURNING id", [uuid(match[1])]));
-  if (!result.rowCount) throw new ApiError(404, "Note not found");
-  send(res, { ok: true });
+    "SELECT public.remove_note($1) AS result", [uuid(match[1])]));
+  send(res, result.rows[0].result);
 });
 
 route("POST", /^\/api\/communes\/([0-9a-f-]{36})\/operations$/, async (req, res, match) => {
-  const item = operationInput(await body(req));
-  const result = await userAction(req, async (client) => client.query(`
-    INSERT INTO public.commune_operations
-      (commune_id, kind, category, title, date, time, all_day,
-        assignee, rotation, last_done, repeat, status, notes, created_by,
-        assignee_id, rotation_ids)
-    VALUES ($1, $2, $3, $4, $5::date, $6::time, $7, $8,
-      $9::jsonb, $10::jsonb, $11, $12, $13, auth.user_id(), $14, $15::jsonb)
-    RETURNING id
-  `, [uuid(match[1]), item.kind, item.category, item.title, item.date,
-      item.time, item.allDay, item.assignee,
-      item.rotation == null ? null : JSON.stringify(item.rotation),
-      item.lastDone == null ? null : JSON.stringify(item.lastDone),
-      item.repeat, item.status, item.notes, item.assigneeId,
-      item.rotationIds == null ? null : JSON.stringify(item.rotationIds)]));
-  send(res, { id: result.rows[0].id }, 201);
+  const input = await body(req);
+  const item = operationArgs(input);
+  const result = await userAction(req, async (client) => client.query(
+    "SELECT public.create_operation($1, $2, $3, $4, $5::date, $6::time, $7, $8, $9::jsonb, $10, $11, $12) AS result",
+    [uuid(match[1]), ...item, uuid(input.requestId, "requestId")]));
+  const operation = result.rows[0].result as { duplicate: boolean };
+  send(res, operation, operation.duplicate ? 200 : 201);
 });
 
 route("PUT", /^\/api\/operations\/([0-9a-f-]{36})$/, async (req, res, match) => {
-  const item = operationInput(await body(req));
-  const result = await userAction(req, async (client) => client.query(`
-    UPDATE public.commune_operations
-      SET kind = $2, category = $3, title = $4, date = $5::date,
-        time = $6::time, all_day = $7, assignee = $8,
-        rotation = $9::jsonb, last_done = $10::jsonb,
-        repeat = $11, status = $12, notes = $13, updated_at = now(),
-        -- A names-only write leaves the ids for the database to resolve.
-        assignee_id = CASE WHEN $14 THEN $15 ELSE assignee_id END,
-        rotation_ids = CASE WHEN $14 THEN $16::jsonb ELSE rotation_ids END
-      WHERE id = $1 RETURNING id
-  `, [uuid(match[1]), item.kind, item.category, item.title, item.date,
-      item.time, item.allDay, item.assignee,
-      item.rotation == null ? null : JSON.stringify(item.rotation),
-      item.lastDone == null ? null : JSON.stringify(item.lastDone),
-      item.repeat, item.status, item.notes, item.byId, item.assigneeId,
-      item.rotationIds == null ? null : JSON.stringify(item.rotationIds)]));
-  if (!result.rowCount) throw new ApiError(404, "Operation not found");
-  send(res, { ok: true });
+  const input = await body(req);
+  const item = operationArgs(input);
+  const result = await userAction(req, async (client) => client.query(
+    "SELECT public.update_operation($1, $2, $3, $4, $5, $6::date, $7::time, $8, $9, $10::jsonb, $11, $12) AS result",
+    [uuid(match[1]), expectedVersion(input.expectedVersion), ...item]));
+  send(res, result.rows[0].result);
 });
 
 // Completing, skipping or reopening a task is a recorded occurrence. The
@@ -722,12 +814,34 @@ route("POST", /^\/api\/operations\/([0-9a-f-]{36})\/occurrences$/, async (req, r
   if (!["completed", "skipped", "reopened"].includes(String(input.action))) {
     throw new ApiError(400, "Invalid task action");
   }
+  if (input.reason != null && typeof input.reason !== "string") throw new ApiError(400, "Invalid reason");
+  // Marking someone else's task done says who did it: "me" or "assignee".
+  if (input.doneBy != null && !["me", "assignee"].includes(String(input.doneBy))) throw new ApiError(400, "Invalid doneBy");
   const result = await userAction(req, async (client) => client.query(
-    "SELECT public.record_operation_occurrence($1, $2, $3::date, $4::date, $5) AS result",
+    "SELECT public.record_operation_occurrence($1, $2, $3::date, $4::date, $5, $6, $7) AS result",
     [uuid(match[1]), input.action, isoDate(input.expectedDate, false, "expectedDate"),
-      isoDate(input.today, false, "today"), uuid(input.requestId, "requestId")]));
+      isoDate(input.today, false, "today"), uuid(input.requestId, "requestId"), input.reason ?? null, input.doneBy ?? null]));
   const occurrence = result.rows[0].result as { duplicate: boolean };
   send(res, occurrence, occurrence.duplicate ? 200 : 201);
+});
+
+// Handing the current turn of a task to someone else. On a task that takes
+// turns the database remembers whose turn it was, so the rotation carries on
+// from them. expectedDate and expectedAssigneeId reject a stale screen.
+route("POST", /^\/api\/operations\/([0-9a-f-]{36})\/handovers$/, async (req, res, match) => {
+  const input = await body(req);
+  if (typeof input.toMemberId !== "string" || !input.toMemberId) throw new ApiError(400, "Choose who takes it");
+  if (input.expectedAssigneeId != null && typeof input.expectedAssigneeId !== "string") {
+    throw new ApiError(400, "Invalid expectedAssigneeId");
+  }
+  if (input.reason != null && typeof input.reason !== "string") throw new ApiError(400, "Invalid reason");
+  const result = await userAction(req, async (client) => client.query(
+    "SELECT public.hand_over_operation($1, $2, $3::date, $4, $5::date, $6, $7) AS result",
+    [uuid(match[1]), input.toMemberId, isoDate(input.expectedDate, false, "expectedDate"),
+      input.expectedAssigneeId ?? null, isoDate(input.today, false, "today"), input.reason ?? null,
+      uuid(input.requestId, "requestId")]));
+  const handover = result.rows[0].result as { duplicate: boolean };
+  send(res, handover, handover.duplicate ? 200 : 201);
 });
 
 route("POST", /^\/api\/occurrences\/([0-9a-f-]{36})\/undo$/, async (req, res, match) => {
@@ -739,9 +853,8 @@ route("POST", /^\/api\/occurrences\/([0-9a-f-]{36})\/undo$/, async (req, res, ma
 
 route("DELETE", /^\/api\/operations\/([0-9a-f-]{36})$/, async (req, res, match) => {
   const result = await userAction(req, async (client) => client.query(
-    "DELETE FROM public.commune_operations WHERE id = $1 RETURNING id", [uuid(match[1])]));
-  if (!result.rowCount) throw new ApiError(404, "Operation not found");
-  send(res, { ok: true });
+    "SELECT public.remove_operation($1) AS result", [uuid(match[1])]));
+  send(res, result.rows[0].result);
 });
 
 route("GET", /^\/api\/communes\/([0-9a-f-]{36})\/invites$/, async (req, res, match) => {
@@ -751,6 +864,7 @@ route("GET", /^\/api\/communes\/([0-9a-f-]{36})\/invites$/, async (req, res, mat
     id: row.id, email: row.email, role: row.role,
     createdAt: row.created_at, expiresAt: row.expires_at,
     acceptedAt: row.accepted_at, revokedAt: row.revoked_at,
+    invitedBy: row.invited_by, invitedByName: row.invited_by_name, acceptedBy: row.accepted_by,
   })) });
 });
 
@@ -775,11 +889,24 @@ route("GET", /^\/api\/invites\/([0-9a-f]{64})$/, async (req, res, match) => {
   } : null });
 });
 
+// For an invitation sent to another address than this account's.
+route("GET", /^\/api\/invites\/([0-9a-f]{64})\/hint$/, async (req, res, match) => {
+  const result = await userAction(req, async (client) => client.query(
+    "SELECT public.invite_address_hint($1) AS hint", [match[1]]));
+  send(res, { hint: result.rows[0].hint });
+});
+
+// Real email needs LOCAL_API_SEND_EMAIL=yes as well as the Resend settings.
+// Without both, the sender is told email isn't set up here (503).
+const invitationEmail = invitationEmailSetting(process.env);
+console.log(invitationEmail.notice);
+
 route("POST", /^\/api\/invitation-email$/, async (req, res) => {
   const user = await actor(req);
   const input = await body(req);
   try {
-    send(res, await sendInvitationEmail(pool, user.id, text(input.token, "token", 64), invitationMailConfig()));
+    send(res, await sendInvitationEmail(pool, user.id, text(input.token, "token", 64),
+      invitationEmail.send ? invitationMailConfig() : null));
   } catch (error) {
     if (error instanceof InvitationEmailError) throw new ApiError(error.status, error.message);
     throw error;
@@ -813,12 +940,29 @@ route("PUT", /^\/api\/preferences$/, async (req, res) => {
   if (typeof input.emailReminders !== "boolean") {
     throw new ApiError(400, "Invalid emailReminders");
   }
-  await userAction(req, async (client) => client.query(`
-    INSERT INTO public.notification_preferences (user_id, email_reminders)
-    VALUES (auth.user_id(), $1)
-    ON CONFLICT (user_id) DO UPDATE SET email_reminders = EXCLUDED.email_reminders
-  `, [input.emailReminders]));
-  send(res, { emailReminders: input.emailReminders });
+  const result = await userAction(req, async (client) => client.query(
+    "SELECT public.set_email_reminders($1) AS email_reminders", [input.emailReminders]));
+  send(res, { emailReminders: result.rows[0].email_reminders });
+});
+
+// An error report or one page load's speed figures from the web app. The
+// database checks each field, and drops a report over the account's limit
+// (stored: false).
+route("POST", /^\/api\/client-reports$/, async (req, res) => {
+  const input = await body(req);
+  const words = (value: unknown) => typeof value === "string" ? value : null;
+  const figure = (value: unknown, field: string) => {
+    if (value === undefined || value === null) return null;
+    if (typeof value !== "number" || !Number.isFinite(value) || value < 0 || value > 600_000) {
+      throw new ApiError(400, `Invalid ${field}`);
+    }
+    return value;
+  };
+  const result = await userAction(req, async (client) => client.query(
+    "SELECT public.report_client_event($1, $2, $3, $4, $5, $6, $7, $8, $9) AS stored",
+    [words(input.kind), words(input.release), words(input.route), words(input.browser), words(input.message),
+      words(input.stack), figure(input.lcpMs, "lcpMs"), figure(input.inpMs, "inpMs"), figure(input.cls, "cls")]));
+  send(res, { stored: result.rows[0].stored });
 });
 
 function normalizedError(error: unknown): ApiError {

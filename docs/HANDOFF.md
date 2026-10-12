@@ -1,7 +1,7 @@
 # Commune local handoff
 
-Prepared 2 October 2026 and updated later the same day after the money
-lifecycle pack. Work is paused for a handoff, not a production release.
+Prepared 2 October 2026 and updated through 9 October 2026. Work is paused
+for a handoff, not a production release.
 
 ## Start here
 
@@ -17,18 +17,156 @@ lifecycle pack. Work is paused for a handoff, not a production release.
   history and conflict protection, fund figures and data export. Migrations
   0020 to 0023. See [local build-out](LOCAL-BUILDOUT-2026-10-05.md) and the
   prepared [hosted release checklist](HOSTED-RELEASE-CHECKLIST.md).
+- From 6 October, on a branch for review: task handovers and skip reasons
+  (migration 0024) and announcements (0025). See sections 9 and 10 of the
+  [local build-out](LOCAL-BUILDOUT-2026-10-05.md).
+- From 9 October, on a branch for review: fixes for the serious findings of a
+  full app review. Recurring bill versions, pause and archive (migration
+  0026); notes and tasks changed only through database commands (0027);
+  invitations that end with their sender's admin role, retry-safe creates and
+  pledge rules (0028); the email reminders setting and one-click unsubscribe
+  (0029); account lookups by uuid (0030). 0027 and 0028 change the release
+  order: see [infra/neon/README.md](../infra/neon/README.md).
+- Also from 9 October, for review: security and privacy fixes from the same
+  review. Former members' email addresses hidden (migration 0031); limits on
+  notices and payment reports (0032); invitation emails that name their
+  sender, refuse names carrying contact details, and stop at bounced addresses
+  (0033); extension functions closed to clients where the migration role owns
+  them (0034 warns otherwise; see infra/neon/README.md), an admin's own pledge
+  confirmed by another admin, and old email records trimmed (0034). Sign-out
+  now clears every tab, and the Neon Auth console settings Commune expects are
+  in [AUTH-SETTINGS.md](AUTH-SETTINGS.md). Settings has Change password and
+  Sign out everywhere else; both keep this device signed in and end the
+  account's other sessions, though a device that already has Commune open
+  keeps working until its access token expires (up to 15 minutes on Neon, at
+  once on the local API). The reset page takes the token out of the address
+  bar. Hosted behaviour is unverified.
+- Also from 9 October, for review: money accuracy fixes from the same review.
+  Entries are dated by the member's own day; every money field reads amounts
+  one way ("1,200" everywhere, "12,50" in a euro commune); the spare penny
+  goes to the same person in the preview and the save; one rule fixes a
+  commune's currency once it has an expense, fund, recurring bill or exact
+  split template (migration 0035); statements open for former members; and
+  money dialogs no longer say nothing was saved after an unsure attempt.
+- Also from 9 October, for review: speed fixes from the same review. An open
+  tab checks a small commune list each minute, only while someone is using
+  it, and reads a commune again only when something in it changed (migration
+  0036). A snapshot carries open and recent expenses and the five newest;
+  older ones load on Show earlier, and statements and exports load them all
+  first. The commune list no longer slows as the platform grows, and an
+  account can create at most 10 communes an hour, 30 a day and 100 in all.
+  Deploy the client straight after 0036: see
+  [infra/neon/README.md](../infra/neon/README.md).
+- Also from 9 October, for review: fonts, cover photos and start-up loading
+  from the same review. Inter and the wordmark font are served from the app
+  (`apps/web/src/styles/fonts`, the OFL licence beside them), so the hosted
+  policy allows fonts and styles only from the app's own origin. Default cover
+  photos still come from Unsplash, at the width each placement needs
+  (`apps/web/src/data/covers.ts`), on a calm tone for the commune type while
+  they load or if they fail; bundling them needs the three original files from
+  Edem. Production builds preload the data client chunk (`vite.config.ts`).
+- Also from 9 October, for review: completing, skipping, handing over and
+  undoing a task now lock the commune first (migration 0037), and the
+  invitation email sender does the same, so either meeting a member leaving
+  waits for it instead of failing as a deadlock.
+- Also from 9 October, for review: accessibility fixes from the same review.
+  The content area is `<main id="main-content">` behind a Skip to content
+  link, and moving to another page puts focus on its heading; windows, the
+  note reader and search results keep the focus they take. Errors are tied to
+  their fields (`useFormError`), and Escape, the backdrop or a close button ask
+  before throwing away typed text (`useTypedText`, `DiscardQuestion`). The
+  alert strip shows only failures nothing on screen caught. Operations' Week,
+  People and Month are pressed buttons, and its Undo message takes focus.
+  Signed-out pages have header, main and footer landmarks.
+- Also from 9 October, for review: getting around, from the same review.
+  Windows, records and the open commune have addresses (`apps/web/src/nav.ts`),
+  so Back, links and reload work, and a signed-out visit returns to the page
+  asked for after sign-in. Preferences stay in this browser: theme, sidebar
+  and notices under `commune.device`, and the last commune, payment usernames
+  and photos under `commune.local.<userId>`, removed at sign-out. Each screen
+  and window has its own error boundary, and signed-in browsers send short,
+  scrubbed error reports (migration 0038). Read them with an owner
+  connection: `SELECT kind, release, route, browser, message, created_at FROM
+  commune_private.client_reports ORDER BY created_at DESC`. An invitation
+  opened by another account names the address it was sent to, masked (0038).
+  Billing and Analytics are hidden, the unused Currency preference is gone,
+  and the app has a home-screen name and icon (redraw them with
+  `CHROMIUM=/path/to/chrome node apps/web/scripts/render-icons.mjs`).
+- Also from 9 October, for review: Home, notices and activity, from the same
+  review. The bell and Notices cover every commune (migration 0039,
+  `GET /api/notices/unread`). Needs you on Home and This Hub comes from one
+  rule, `needsYou()` in `apps/web/src/live/model.ts`: actions first, then
+  Waiting on others. Activity rows show the record type and time, grouped by
+  day (`apps/web/src/ui/ActivityLog.tsx`). `personName` names former members,
+  with "(left)" where it matters. The reminder allowance is in account
+  settings, on an expense its payer can nudge from, in the reminder
+  confirmation, and as a notice once a fifth or less is left; it is no longer
+  in the sidebar. Text over commune photos has a darker shade, measured by
+  `apps/web/tests/cover-contrast.test.ts` against a white stand-in.
+- Also from 9 October, for review: one way to write money and dates, and a
+  lighter app state, from the same review. `formatMoney` and `formatDay` in
+  `packages/core/src/format.ts` write every amount ("$32.10", "£12.50") and
+  date ("9 Oct", "9 Oct 2025" in another year); the reminder worker keeps a
+  copy in `apps/reminder-worker/src/money.ts`, checked against it by
+  `apps/web/tests/formatting.test.ts`. `packages/core` is imported as
+  `@commune/core` and its tests run with the web tests. The quick finder's
+  dates come from `label` and `date` (migration 0040). App state is a store:
+  `useApp()` re-renders a component only when a field it read changes, each
+  commune's view is built once per snapshot (`readyPlace`), and filter and
+  search text live in their screens. `apps/web/tests/render-counts.test.tsx`
+  guards how much re-renders; time a year's snapshot with
+  `cd apps/web && node node_modules/vitest/vitest.mjs bench --run tests/derive-snapshot.bench.ts`.
+- Also from 9 October, for review: styles and loading on demand, from the
+  same review. Every stylesheet sits in a cascade layer, declared once in
+  `apps/web/src/styles/index.css`, which `src/main.tsx` imports before
+  anything else: `base` (tokens and the shared app, sign-in and legal
+  styles), then `screens` (each screen's and window's own stylesheet, which
+  wraps itself in `@layer screens {}`), then `overrides` (the dark theme and
+  the design-language primitives). A screen rule that must beat those goes in
+  an `@layer overrides {}` block in its own file.
+  `apps/web/tests/stylesheets.test.ts` checks that every stylesheet is layered
+  and that fixed palette colours are written as their tokens. The sign-in
+  page loads only the entry and the Neon client. The signed-in app
+  (`shell/ProductShell.tsx`) is fetched while the session is checked; other
+  screens and windows load when first opened, or once the browser is idle
+  unless it asks to save data (`shell/lazyComponent.tsx`). A failed code load
+  reloads the page once (`commune.codeReloadedAt` in session storage, 30
+  seconds). Tests that draw the signed-in app call `preloadAll()` first.
+  `?native=1` shows the phone layout at any width; the `.is-native` rules
+  serve it.
+- From 11 October, for review: Street runner. The connection screen
+  (`shell/ConnectionRecovery.tsx`) and the missing page (`NotFoundPage` in
+  `App.tsx`) show a street scene across the top of the screen with their
+  message in its sky (`shell/StreetScene.tsx`); tapping the street or Space
+  plays a small runner game (`shell/streetRunner.ts`, tested in
+  `tests/street-runner.test.tsx`). It is in the first download so it works
+  offline, plays no sound, pauses when the page is hidden, and keeps only the
+  best distance in local storage. If the connection returns mid-run the
+  screen says so and waits for Open Commune instead of reconnecting. The
+  "something went wrong" card (`shell/Recovery.tsx`) has no game.
+- From 11 October, for review: who did a task (migration 0041). Marking done
+  a task someone else holds asks "This is Ama's turn. Who did it?" with "I
+  did it" and "Ama did it", each pressed and held until its bar fills
+  (`ui/DoneByChoice.tsx`, on the late card, the task window and This Hub's
+  week). The database refuses the completion without an answer. The task's
+  last done names who did it and who marked it ("Ama Owusu · 11 Oct · marked
+  by Ben") or whose turn they covered, and the history line says the same.
+  The rotation moves on from the holder's turn as before.
 - The website is `web/` (the editorial homepage); the earlier v2 site is in
   `web-backup/`. Launch names `website` (3004) and `website-backup` (3003).
 - No push, deployment, hosted migration or provider change has been made. Do
   not infer hosted parity from local work.
-- Preserve the modified `.claude/launch.json` and all untracked landing, mobile
-  and artifact work. Do not reset or clean the checkout.
+- `.claude/launch.json` lists only servers that exist: `commune-web`,
+  `commune-web-qa`, `commune-api`, `website`, `website-backup` and
+  `mobile-v2`. Merge any local additions into it rather than overwriting
+  them. Preserve all untracked landing, mobile and artifact work. Do not reset
+  or clean the checkout.
 
 The active app is `apps/web`: React 19, Vite, TypeScript and wouter, using pnpm.
 Hosted data/auth use Neon. Local development uses the loopback PostgreSQL API
 in `apps/local-api`; it must not be deployed as production authentication.
-Root `AGENTS.md` and `CLAUDE.md` now describe this migrated architecture and
-mark the Supabase/Mantine stack as historical.
+Root `CLAUDE.md` describes this architecture, its ports, the tests and CI, and
+marks the Supabase/Mantine stack as historical; `AGENTS.md` points to it.
 
 ## Running application
 
@@ -38,8 +176,8 @@ longer running and are not needed.
 - UI: `http://localhost:3000/` (and `http://127.0.0.1:3000/`), Vite, started
   from `apps/web`. Launch name `commune-web`.
 - API: `127.0.0.1:3002`, started from `apps/local-api` against the everyday
-  local database `commune_loading_test_20260927`. Log:
-  `.local/logs/local-api-3002.log`.
+  local database `commune_loading_test_20260927`. Launch name `commune-api`.
+  Log: `.local/logs/local-api-3002.log`.
 
 To restart them by hand:
 
@@ -53,6 +191,10 @@ records, point the one UI at an isolated API instead: `COMMUNE_API_PORT=3005`
 (launch name `commune-web-qa`) with a test API on port 3005 and a disposable
 database. `commune_depth_test_a` holds a synthetic household for that purpose
 (`apps/local-api/tests/lifecycle-fixture.mjs`); it can be dropped at any time.
+
+Ports: 3000 the UI (one at a time), 3002 the everyday API, 3005 the QA API,
+3004 the website, 3003 the website backup and 8082 the Expo app. CI starts its
+local API on 3102, and the local API's HTTP tests refuse 3002.
 
 The Claude desktop session folder is `/Users/augustusedem/Commune ` (with a
 trailing space). It is a set of symlinks into this repository with its own
@@ -74,7 +216,9 @@ reminder and event counts, and the money totals, were identical before and
 after. Two previously confirmed shares became two `migrated` receipts. The new
 snapshot loads for all six active memberships. No account was created in it
 and no record of the existing households was changed. To go back:
-`pg_restore --clean` that dump into the same database.
+`pg_restore --clean` that dump into the same database. Nothing here records
+0024 or later being applied to it: back it up, rehearse on a clone and apply
+0024 to 0040 in order before running the current API against it.
 
 ### Dependencies
 
@@ -90,17 +234,23 @@ install was run.
 - Avoid `pnpm run` and `pnpm install` here for now. pnpm 11 checks the whole
   workspace first, the untracked apps are not in the lockfile, and the last
   attempt ran out of disk.
+- CI: `.github/workflows/ci.yml` (web, database, secrets) runs on pull
+  requests and pushes to main. pnpm is pinned to 10.34.6 through
+  `packageManager`; pnpm 11 hands over to it here. vite is 7.3.7; reinstall
+  `.deps-web` to pick it up.
 - A proper `pnpm install` needs a decision about the untracked workspace apps
   and several GB free. **Free disk fell to about 1.6 GB during this session**
   (from 4.4 GB); this work accounts for under 200 MB of that.
 
 ## Verified baseline
 
-- 222 web tests across 17 files pass. Web TypeScript and the Vite production
-  build pass. Local API and reminder worker type-check.
-- On a fresh isolated database: smoke, workflow, search, money-lifecycle and
-  operations-history HTTP suites pass; `grants.sql` passes; the reminder
-  worker integration test (simulated provider) passes.
+- 9 October, on the tidying branch (from `a3db9b2`): 602 web tests in 56 files
+  (23 of them run in Node, the rest in jsdom); the web, local API and reminder
+  worker typechecks and the web production build; 27 database tests through
+  `infra/neon/tests/run-local.sh` (two more need a Neon branch and are
+  skipped) and the schema dump check; 21 local API test suites, 20 of them
+  over HTTP against an API on a fresh database; the worker's 6 unit tests and
+  its 4 database suites. CI runs the same commands (see `CLAUDE.md`).
 - Browser journeys with synthetic accounts on an isolated database are listed
   in [money lifecycle](MONEY-LIFECYCLE-2026-10-02.md), with what was not
   checked. Earlier evidence is in
@@ -110,12 +260,14 @@ install was run.
 ## Preserve the design and real functions
 
 Use [the design brief](DESIGN-LANGUAGE.md) and the illustrative
-`/design-language/index.html` with In context, Components and States.
+`/reference/design-language/index.html` (dev server only) with In context,
+Components and States.
 Keep the approved typography, wordmark, original switcher/avatar, compact rail,
-large selected Home card, Hub photo and hierarchy, expense boxes, adjacent
+Home's opening sentence and next step (Direction B), Hub photo and hierarchy, expense boxes, adjacent
 settlement panels, Notes board and shared Operations calendar-date badges.
 Do not change the design direction or remove functioning features for a mockup.
-Latest refinements include the Home greeting in the top bar, right-aligned
+Latest refinements include Home's Direction B layout (the greeting stays in
+the top bar only until there is a commune), right-aligned
 Settle actions and stable split-editor layout across all four split methods.
 Em-dash cleanup already made before the pause is included in the checkpoint;
 no further copy-cleanup pass is needed for the handoff.
@@ -125,7 +277,7 @@ no further copy-cleanup pass is needed for the handoff.
 Read [the product-depth roadmap](PRODUCT-DEPTH-ROADMAP-2026-10-02.md) and the
 Remaining section of [money lifecycle](MONEY-LIFECYCLE-2026-10-02.md).
 
-1. **Hosted parity.** Migrations 0013 to 0018, schema-cache refresh, the
+1. **Hosted parity.** Migrations 0013 to 0040, schema-cache refresh, the
    matching web client and sender, auth, invitations and real email delivery
    are all unverified on Neon. Apply migrations before deploying the client.
    Measure cold/warm/idle loading with separate accounts. Do not declare

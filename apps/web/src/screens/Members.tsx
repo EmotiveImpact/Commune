@@ -6,12 +6,15 @@ import { useSearchRecord } from "../ui/useSearchRecord";
 import { Avatar, Pill } from "../ui/widgets";
 import { Button, Dialog, EmptyState, Feedback, Panel } from "../ui/components";
 
+/** An invitation no one has accepted, which always carries its address. */
+type OpenInvite = PendingInvite & { email: string };
+
 /**
  * A fresh link for an invitation that is pending or has expired. Creating it
  * retires the earlier link, so the dialog asks first.
  */
 function NewInviteLinkDialog({ invite, onClose, onDone }: {
-  invite: PendingInvite; onClose: () => void; onDone: (message: string) => void;
+  invite: OpenInvite; onClose: () => void; onDone: (message: string) => void;
 }) {
   const { createInvite, sendInviteEmail } = useApp();
   const [url, setUrl] = useState("");
@@ -82,15 +85,23 @@ function NewInviteLinkDialog({ invite, onClose, onDone }: {
 }
 
 export function MembersScreen() {
-  const { hub, go, session, snapshots, invites, revokeInvite, manageMember } =
+  const { hub, go, session, snapshots, invites, revokeInvite, manageMember, personName } =
     useApp();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const searchRecord = useSearchRecord("member", hub.members.map(item => item.userId));
-  const [reissue, setReissue] = useState<PendingInvite | null>(null);
-  const openInvites = invites.filter((invite) => invite.status === "pending" || invite.status === "expired");
+  const [reissue, setReissue] = useState<OpenInvite | null>(null);
+  const openInvites = invites.filter((invite): invite is OpenInvite =>
+    (invite.status === "pending" || invite.status === "expired") && invite.email !== null);
   const pastInvites = invites.filter((invite) => invite.status === "accepted" || invite.status === "revoked").slice(0, 12);
+  // Someone who accepted and has since left keeps their name, not their address.
+  const invitee = (invite: PendingInvite) => invite.email ?? personName(invite.acceptedBy, "Former member");
+  // Who sent an invitation. It stays open only while they are an admin.
+  const sender = (invite: PendingInvite) => invite.invitedBy === session?.userId ? "you"
+    : invite.invitedByName ?? (invite.invitedBy ? personName(invite.invitedBy, "a former member") : "");
+  const pendingSentBy = (userId: string) =>
+    openInvites.filter((invite) => invite.status === "pending" && invite.invitedBy === userId).length;
   const [action, setAction] = useState<{
     userId: string;
     name: string;
@@ -147,6 +158,8 @@ export function MembersScreen() {
           );
           const me = member.userId === session?.userId;
           const lastAdmin = profile?.role === "admin" && admins.length <= 1;
+          // Why an action is unavailable is shown, not left to a hover tooltip.
+          const hintId = `member-hint-${member.userId}`;
           return (
             <div key={member.userId} id={`search-record-member-${member.userId}`} tabIndex={-1}
               className={`a-member-row c-member-row${searchRecord.highlightedId === member.userId ? " c-search-record-highlight" : ""}`}>
@@ -167,11 +180,7 @@ export function MembersScreen() {
                     <Button
                       variant="secondary"
                       disabled={pending || lastAdmin}
-                      title={
-                        lastAdmin
-                          ? "Promote another member before changing the last admin"
-                          : undefined
-                      }
+                      aria-describedby={lastAdmin ? hintId : undefined}
                       onClick={() => {
                         setError("");
                         setAction({
@@ -182,12 +191,13 @@ export function MembersScreen() {
                         });
                       }}
                     >
-                      {profile?.role === "admin" ? "Make member" : "Make admin"}
+                      {profile?.role === "admin" ? "Make member" : "Make admin"}{" "}<span className="c-visually-hidden">{member.name}</span>
                     </Button>
                     {!me && (
                       <Button
                         variant="secondary"
                         disabled={pending || lastAdmin}
+                        aria-describedby={lastAdmin ? hintId : undefined}
                         onClick={() => {
                           setError("");
                           setAction({
@@ -197,7 +207,7 @@ export function MembersScreen() {
                           });
                         }}
                       >
-                        Remove
+                        Remove{" "}<span className="c-visually-hidden">{member.name}</span>
                       </Button>
                     )}
                   </>
@@ -206,11 +216,7 @@ export function MembersScreen() {
                   <Button
                     variant="secondary"
                     disabled={pending || lastAdmin}
-                    title={
-                      lastAdmin
-                        ? "A commune must keep an admin. Promote someone else first."
-                        : undefined
-                    }
+                    aria-describedby={lastAdmin ? hintId : undefined}
                     onClick={() => {
                       setError("");
                       setAction({
@@ -223,6 +229,11 @@ export function MembersScreen() {
                     Leave
                   </Button>
                 )}
+                {lastAdmin && (isAdmin || me) ? (
+                  <p className="c-action-hint" id={hintId}>
+                    A commune must keep an admin. Promote someone else first.
+                  </p>
+                ) : null}
               </div>
             </div>
           );
@@ -239,8 +250,8 @@ export function MembersScreen() {
                 <span>
                   {invite.role} invitation ·{" "}
                   {invite.status === "expired"
-                    ? `expired ${formatTimestampDay(invite.expiresAt)}`
-                    : `sent ${formatTimestampDay(invite.createdAt)}, expires ${formatTimestampDay(invite.expiresAt)}`}
+                    ? `${sender(invite) ? `sent by ${sender(invite)} · ` : ""}expired ${formatTimestampDay(invite.expiresAt)}`
+                    : `sent ${sender(invite) ? `by ${sender(invite)} on ` : ""}${formatTimestampDay(invite.createdAt)}, expires ${formatTimestampDay(invite.expiresAt)}`}
                 </span>
               </div>
               <Pill tone={invite.status === "expired" ? undefined : "open"}>
@@ -282,10 +293,11 @@ export function MembersScreen() {
           <ul>
             {pastInvites.map((invite) => (
               <li key={invite.id}>
-                {invite.email} · {invite.role.toLowerCase()} ·{" "}
+                {invitee(invite)} · {invite.role.toLowerCase()} ·{" "}
                 {invite.status === "accepted"
                   ? `accepted ${formatTimestampDay(invite.acceptedAt)}`
                   : `revoked ${formatTimestampDay(invite.revokedAt)}`}
+                {sender(invite) ? ` · sent by ${sender(invite)}` : ""}
               </li>
             ))}
           </ul>
@@ -330,6 +342,13 @@ export function MembersScreen() {
                 ? "They keep their shared records and everyday tools, but lose commune-management permissions."
                 : "This ends access to the commune, not its recorded history. Unresolved balances and active recurring bills are checked on the server before anything changes."}
           </p>
+          {action.action !== "admin" && pendingSentBy(action.userId) > 0 && (
+            <p className="c-form-help">
+              {pendingSentBy(action.userId) === 1
+                ? `${action.userId === session?.userId ? "Your" : "Their"} open invitation will be withdrawn.`
+                : `${action.userId === session?.userId ? "Your" : "Their"} ${pendingSentBy(action.userId)} open invitations will be withdrawn.`}
+            </p>
+          )}
           <Feedback error={error} />
           <div className="a-field-row">
             <Button

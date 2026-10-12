@@ -1,6 +1,7 @@
-import { useApp } from "../state";
-import { Button, EmptyState, Panel } from "../ui/components";
-import { Avatar } from "../ui/widgets";
+import { useState } from "react";
+import { useApp, type SearchMemory } from "../state";
+import { Button, EmptyState } from "../ui/components";
+import { ActivityLog } from "../ui/ActivityLog";
 import { SEARCH_MAX_QUERY } from "../live/search";
 import { SearchResults } from "../ui/SearchResults";
 import { useRecordSearch } from "../ui/useRecordSearch";
@@ -20,30 +21,18 @@ export function AllActivityScreen() {
     <>
       <p className="c-scope-label">All your communes</p>
       {rows.length ? (
-        <Panel>
-          {rows.map(({ hub, item }, index) => (
-            <button
-              className="c-result-row"
-              type="button"
-              key={`${hub.id}-${index}`}
-              onClick={() =>
-                go(item.expenseId ? "expense" : item.go, {
-                  hub: hub.id,
-                  expense: item.expenseId,
-                })
-              }
-            >
-              <Avatar tone={item.cls} initials={item.ini} />
-              <span>
-                <strong>{item.title}</strong>
-                <small>
-                  {hub.name} · {item.when}
-                </small>
-              </span>
-              <time dateTime={item.createdAt}>{item.time}</time>
-            </button>
-          ))}
-        </Panel>
+        <ActivityLog
+          rows={rows.map(({ hub, item }, index) => ({
+            key: `${hub.id}-${index}`,
+            item,
+            commune: hub.name,
+            onOpen: () =>
+              go(item.expenseId ? "expense" : item.go, {
+                hub: hub.id,
+                expense: item.expenseId,
+              }),
+          }))}
+        />
       ) : (
         !incomplete && (
           <EmptyState
@@ -63,19 +52,32 @@ export function AllActivityScreen() {
 }
 
 export function SearchScreen() {
-  const { searchQuery, setSearchQuery, searchScope, setSearchScope, places, go } = useApp();
+  const { searchOpened } = useApp();
+  // Opened again from the finder, Search starts from the finder's words.
+  return <FullSearch key={searchOpened} />;
+}
+
+function FullSearch() {
+  const { recallSearch, rememberSearch, places, go } = useApp();
+  // The screen keeps its own text, so typing re-renders only this screen. The
+  // app keeps a copy, so going Back to Search finds the same search.
+  const [{ query: searchQuery, scope: searchScope }, setSearch] = useState(recallSearch);
+  function change(next: SearchMemory) {
+    setSearch(next);
+    rememberSearch(next);
+  }
   const search = useRecordSearch(searchQuery, searchScope, 25);
   return <div className="c-search-full">
     <form className="c-search-form" role="search" onSubmit={event => event.preventDefault()}>
       <label htmlFor="global-search">Search Commune</label>
       <div><input id="global-search" type="search" autoFocus value={searchQuery}
-        onChange={event => setSearchQuery(event.target.value)} maxLength={SEARCH_MAX_QUERY}
+        onChange={event => change({ query: event.target.value, scope: searchScope })} maxLength={SEARCH_MAX_QUERY}
         placeholder="Expense, note, task, fund or person…" />
-        {searchQuery && <Button variant="secondary" onClick={() => setSearchQuery("")}>Clear</Button>}
+        {searchQuery && <Button variant="secondary" onClick={() => change({ query: "", scope: searchScope })}>Clear</Button>}
       </div>
     </form>
     <div className="c-search-scope"><label>Search in <select value={searchScope ?? ""} aria-label="Search in"
-      onChange={event => setSearchScope(event.target.value || null)}>
+      onChange={event => change({ query: searchQuery, scope: event.target.value || null })}>
       <option value="">All your communes</option>{places.map(place => <option key={place.id} value={place.id}>{place.name}</option>)}
     </select></label></div>
     {search.result && <p className="c-search-count" role="status">{search.result.total} {search.result.total === 1 ? "match" : "matches"}

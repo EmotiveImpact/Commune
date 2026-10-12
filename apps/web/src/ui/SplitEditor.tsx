@@ -1,7 +1,7 @@
 import {
   allocateExpense,
   type SplitMethod,
-} from "../../../../packages/core/src/expenseSplit";
+} from "@commune/core";
 import type { LiveHub } from "../live/model";
 import { Avatar } from "./widgets";
 import { LIMITS } from "../data/limits";
@@ -34,7 +34,7 @@ export function SplitEditor({
   let error = "";
   if (amountMinor) {
     try {
-      allocations = allocateExpense(amountMinor, includedIds, method, values);
+      allocations = allocateExpense(amountMinor, includedIds, method, values, currency);
     } catch (cause) {
       error = cause instanceof Error ? cause.message : "Check the split.";
     }

@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import { allocateExpense, type ExpenseAllocation, type SplitMethod } from "../../../../packages/core/src/expenseSplit";
+import { allocateExpense, type ExpenseAllocation, type SplitMethod } from "@commune/core";
 import { useApp } from "../state";
 import { money, type CurrencyCode, type ExpenseRevision, type ExpenseState, type LiveExpenseRow } from "../live/model";
-import { parseMoneyInput } from "../data/moneyInput";
+import { moneyInputError, parseMoneyInput } from "../data/moneyInput";
 import { newRequestId } from "../data/requestId";
 import { commandFailure, UNCERTAIN_RETRY_SAFE } from "../data/commands";
 import { formatReminderDay, formatTimestampDay } from "../data/reminders";
@@ -127,17 +127,17 @@ export function CorrectExpenseDialog({ expense, names, onClose, onSaved }: {
   const hasRepayments = repayments.any;
   const formerMember = expense.shares.some(share => !members.some(member => member.userId === share.userId));
   const moneyLocked = hasRepayments || formerMember;
-  const amountMinor = parseMoneyInput(amount);
+  const amountMinor = parseMoneyInput(amount, currency);
   const proposal = useMemo(() => {
     if (moneyLocked) return { shares: base.state.shares as ExpenseAllocation[], error: "" };
-    if (amountMinor === null) return { shares: [] as ExpenseAllocation[], error: "Enter a valid total, for example 93.00." };
+    if (amountMinor === null) return { shares: [] as ExpenseAllocation[], error: moneyInputError(amount, currency, "Enter a valid total, for example 93.00.") };
     // An untouched equal split keeps the saved pennies exactly as they are.
     const untouched = method === "Equal" && amountMinor === base.state.amountMinor && isEqualSplit(base.state.shares) &&
       includedIds.length === base.state.shares.length && includedIds.every(id => base.state.shares.some(share => share.userId === id));
     if (untouched) return { shares: base.state.shares as ExpenseAllocation[], error: "" };
-    try { return { shares: allocateExpense(amountMinor, includedIds, method, values), error: "" }; }
+    try { return { shares: allocateExpense(amountMinor, includedIds, method, values, currency), error: "" }; }
     catch (cause) { return { shares: [] as ExpenseAllocation[], error: cause instanceof Error ? cause.message : "Check the split." }; }
-  }, [amountMinor, base.state, includedIds, method, moneyLocked, values]);
+  }, [amount, amountMinor, base.state, currency, includedIds, method, moneyLocked, values]);
   const after: ExpenseState = {
     title: title.trim(), amountMinor: moneyLocked ? base.state.amountMinor : amountMinor ?? 0,
     paidByUserId: moneyLocked ? base.state.paidByUserId : payer, category, dueOn: due || null, shares: proposal.shares,
@@ -193,7 +193,10 @@ export function CorrectExpenseDialog({ expense, names, onClose, onSaved }: {
     } catch (cause) {
       const failure = commandFailure(cause, "Could not save the correction.");
       if (!failure.rejected) setUncertain(true);
-      setError(failure.rejected ? `${failure.message.replace(/\.$/, "")}. Nothing was changed.` : UNCERTAIN_RETRY_SAFE);
+      // Once an attempt may have saved, a later refusal does not mean nothing was.
+      setError(!failure.rejected ? UNCERTAIN_RETRY_SAFE
+        : uncertain ? "An earlier attempt may already have saved this correction. Close this and check the expense’s history before trying again."
+          : `${failure.message.replace(/\.$/, "")}. Nothing was changed.`);
     } finally {
       setPending(false);
     }
@@ -309,7 +312,10 @@ export function VoidExpenseDialog({ expense, onClose, onSaved }: {
     } catch (cause) {
       const failure = commandFailure(cause, "Could not void the expense.");
       if (!failure.rejected) setUncertain(true);
-      setError(failure.rejected ? `${failure.message.replace(/\.$/, "")}. Nothing was changed.` : UNCERTAIN_RETRY_SAFE);
+      // Once an attempt may have saved, a later refusal does not mean nothing was.
+      setError(!failure.rejected ? UNCERTAIN_RETRY_SAFE
+        : uncertain ? "An earlier attempt may already have voided this expense. Close this and check the expense before trying again."
+          : `${failure.message.replace(/\.$/, "")}. Nothing was changed.`);
     } finally {
       setPending(false);
     }

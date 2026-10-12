@@ -2,8 +2,10 @@ import { createClient } from "@neondatabase/neon-js";
 import { ApiError } from "./api";
 import { observedDataFetch, reportRead } from "./diagnostics";
 import { parseSearchResponse } from "./search";
+import { ACCOUNT_CHANGED, currentViewer } from "./session";
+import { forgetReturn, readReturn } from "../nav";
 import type {
-  Commune, CurrencyCode, ReminderUsage, Snapshot, User,
+  Commune, CurrencyCode, Expense, ExpensePage, ReminderUsage, Snapshot, User,
 } from "./model";
 
 // This module is used only by production builds. The browser sees endpoint
@@ -163,12 +165,13 @@ function idResult(value: unknown): { id: string } {
   if (typeof value !== "string" || !value) throw new ApiError("Database did not return an ID", 502);
   return { id: value };
 }
-function communal(row: Row, role: string, memberCount: number): Commune {
+function communal(row: Row): Commune {
   return {
     id: str(row.id), name: str(row.name), kind: row.kind as Commune["kind"],
-    currency: row.currency as CurrencyCode, role: role as Commune["role"], memberCount,
+    currency: row.currency as CurrencyCode, role: row.role as Commune["role"], memberCount: minor(row.memberCount),
     address: str(row.address), destination: str(row.destination),
-    stayName: str(row.stay_name), stayAddress: str(row.stay_address),
+    stayName: str(row.stayName), stayAddress: str(row.stayAddress), changeMark: str(row.changeMark),
+    ...(row.unreadNotices == null ? {} : { unreadNotices: minor(row.unreadNotices) }),
   };
 }
 
@@ -188,46 +191,69 @@ async function currentUser(): Promise<User | null> {
 async function requireUser(): Promise<User> {
   const user = await currentUser();
   if (!user) throw new ApiError("Sign in required", 401);
+  // The session is shared by every tab. Never act for an account other than
+  // the one this tab is showing (see session.ts).
+  const viewer = currentViewer();
+  if (viewer && viewer !== user.id) throw new ApiError(ACCOUNT_CHANGED, 401);
   return user;
 }
 
+// One call returns the caller's communes, their role and member count in
+// each, and each commune's change mark, read together by the database.
 export async function listCommunes(knownViewer?: User): Promise<Commune[]> {
   const viewer = await requireUser();
   if (knownViewer && knownViewer.id !== viewer.id) throw new ApiError("Your account changed. Reload Commune.", 401);
-  const [communeResult, memberResult] = await Promise.all([
-    db().from("communes").select("id,name,kind,currency,address,destination,stay_name,stay_address,created_at").order("created_at", { ascending: false }),
-    db().from("commune_members").select("commune_id,user_id,role").eq("active", true),
-  ]);
-  const communeData = unwrap(communeResult);
-  const memberData = unwrap(memberResult);
-  if (!Array.isArray(communeData) || !Array.isArray(memberData)) {
-    throw new ApiError("Could not verify your commune list. Please try again.", 502);
-  }
-  const communeRows = rows(communeData);
-  const memberRows = rows(memberData);
-  if (memberRows.some((member) => member.user_id === viewer.id && !communeRows.some((row) => row.id === member.commune_id))) {
-    throw new ApiError("Your commune membership changed while loading. Please try again.", 409);
-  }
-  return communeRows.map((row) => {
-    const group = memberRows.filter((member) => member.commune_id === row.id);
-    const membership = group.find((member) => member.user_id === viewer.id);
-    if (!membership || (membership.role !== "admin" && membership.role !== "member")) {
+  const data = unwrap(await db().rpc("my_communes"));
+  if (!Array.isArray(data)) throw new ApiError("Could not verify your commune list. Please try again.", 502);
+  return rows(data).map((row) => {
+    if (typeof row.id !== "string" || !row.id || (row.role !== "admin" && row.role !== "member") ||
+        typeof row.changeMark !== "string") {
       throw new ApiError("Could not verify your commune membership. Please try again.", 409);
     }
-    return communal(row, str(membership.role), group.length);
+    return communal(row);
   });
 }
 
-export async function snapshot(communeId: string, knownCommune?: Commune): Promise<Snapshot> {
+export async function snapshot(communeId: string, knownCommune?: Commune, detail?: "summary"): Promise<Snapshot> {
   await requireUser();
   if (knownCommune && knownCommune.id !== communeId) throw new ApiError("Commune mismatch", 400);
   // The RPC re-checks membership against the verified JWT and reads one
   // consistent database snapshot. No browser-stored identity is authority.
-  const data = unwrap(await db().rpc("commune_snapshot", { p_commune_id: communeId })) as Snapshot;
-  if (!data || data.commune?.id !== communeId || !Array.isArray(data.members) || !Array.isArray(data.expenses) || !Array.isArray(data.funds)) {
+  const data = unwrap(await db().rpc(detail === "summary" ? "commune_summary" : "commune_snapshot", { p_commune_id: communeId })) as Snapshot;
+  if (!data || data.commune?.id !== communeId || !Array.isArray(data.members) || !Array.isArray(data.expenses) || !Array.isArray(data.funds) ||
+      data.detail !== detail) {
     throw new ApiError("Shared records could not be verified. Please try again.", 502);
   }
   return data;
+}
+
+// Older expenses and named ones come in the snapshot's shape, so they are
+// checked the same way.
+function expenseList(value: unknown): { expenses: Expense[] } {
+  const item = asObject(value);
+  if (!Array.isArray(item.expenses) || item.expenses.some((expense) => typeof asObject(expense).id !== "string" ||
+      !Array.isArray(asObject(expense).shares))) {
+    throw new ApiError("Shared records could not be verified. Please try again.", 502);
+  }
+  return item as { expenses: Expense[] };
+}
+async function expensePage(communeId: string, params: URLSearchParams): Promise<ExpensePage> {
+  await requireUser();
+  const months = params.has("months") ? Number(params.get("months")) : null;
+  if (months !== null && (!Number.isInteger(months) || months < 1 || months > 12)) {
+    throw new ApiError("Ask for 1 to 12 months of expenses at a time", 400);
+  }
+  const page = unwrap(await db().rpc("commune_expense_page", { p_commune_id: communeId,
+    p_before: params.get("before") || null, p_months: months }));
+  const item = asObject(page);
+  return { ...expenseList(item), before: str(item.before), from: typeof item.from === "string" ? item.from : null,
+    olderCount: minor(item.olderCount), olderVoidedCount: minor(item.olderVoidedCount) };
+}
+async function expenseRecords(communeId: string, params: URLSearchParams): Promise<{ expenses: Expense[] }> {
+  await requireUser();
+  const ids = (params.get("ids") ?? "").split(",").filter(Boolean);
+  if (ids.length < 1 || ids.length > 50) throw new ApiError("Ask for 1 to 50 expenses at a time", 400);
+  return expenseList(unwrap(await db().rpc("commune_expense_records", { p_commune_id: communeId, p_ids: ids })));
 }
 async function reminderUsage(): Promise<ReminderUsage> {
   await requireUser();
@@ -257,6 +283,11 @@ async function rpcVoid(name: string, arguments_: Row): Promise<{ ok: true }> {
   unwrap(await db().rpc(name, arguments_));
   return { ok: true };
 }
+/** A create command's answer: the record, and whether this was a repeat. */
+function createdResult(value: unknown) {
+  const item = asObject(value);
+  return { ...idResult(item.id), duplicate: item.duplicate === true };
+}
 function expenseChangeResult(value: unknown) {
   const item = asObject(value);
   return { version: minor(item.version), duplicate: item.duplicate === true };
@@ -272,10 +303,85 @@ function paymentReportResult(value: unknown) {
     receiptId: typeof item.receiptId === "string" ? item.receiptId : null };
 }
 function asObject(value: unknown): Row { return value && typeof value === "object" && !Array.isArray(value) ? value as Row : {}; }
+// What a note or task command returns: the record, its version now, and
+// whether the call repeated a change already made.
+function recordResult(value: unknown) {
+  const item = asObject(value);
+  return { ...idResult(item.id), version: minor(item.version), duplicate: item.duplicate === true };
+}
+function noteArguments(body: Row): Row {
+  return { p_title: body.title, p_pill: body.pill ?? "", p_kicker: body.kicker ?? "", p_lede: body.lede ?? "",
+    p_body: body.body ?? "", p_facts: body.facts ?? [] };
+}
+// Status and completion are not sent: only the occurrence commands change them.
+function operationArguments(body: Row): Row {
+  return { p_kind: body.kind, p_category: body.category, p_title: body.title, p_date: body.date,
+    p_time: body.time ?? null, p_all_day: body.allDay, p_assignee_id: body.assigneeId ?? null,
+    p_rotation_ids: body.rotationIds ?? null, p_repeat: body.repeat, p_notes: body.notes ?? "" };
+}
+
+// The auth SDK tells other tabs about each sign-in and token refresh by
+// writing the whole session, with its token, email and IP address, to
+// localStorage, where it would outlive the browser session. Other tabs have
+// heard it by the time a request settles, and the SDK never reads it back.
+const AUTH_BROADCAST_KEY = "better-auth.message";
+function forgetAuthBroadcast(): void {
+  try {
+    localStorage.removeItem(AUTH_BROADCAST_KEY);
+  } catch {
+    // Storage is blocked, so nothing was written either.
+  }
+}
 
 export async function neonApi<T>(path: string, init: RequestInit = {}): Promise<T> {
+  try {
+    return await route<T>(path, init);
+  } finally {
+    forgetAuthBroadcast();
+  }
+}
+
+// The auth SDK rejects with its own error for any refusal. It reports an
+// ended session and a wrong current password alike, as a 401 with code
+// invalid_credentials; only the message differs, and for a wrong password
+// the SDK writes its own. The app reads a 401 as being signed out (state.tsx),
+// so a wrong password becomes a 400 here, as it is on the local API.
+function signInEnded(error: unknown): never {
+  if ((error as { status?: unknown } | null)?.status === 401) {
+    throw new ApiError("Your sign-in has ended. Sign in again to carry on.", 401);
+  }
+  message(error);
+}
+function passwordChangeFailure(error: unknown): never {
+  const item = error as { code?: unknown; message?: unknown } | null;
+  if (item?.code === "invalid_credentials" && item.message === "Invalid email or password") {
+    throw new ApiError("Your current password isn’t right. Nothing was changed.", 400);
+  }
+  // An account that only signs in with Google has no password to check.
+  if (item?.code === "identity_not_found") {
+    throw new ApiError("This account signs in with Google, so it has no password to change.", 400);
+  }
+  // The server failed after the change, while starting this device's new
+  // session. The SDK calls that a missing session; the outcome is unknown.
+  if (item?.code === "session_not_found") throw new ApiError("Commune couldn’t confirm the change.", 502);
+  signInEnded(error);
+}
+// A used or expired reset link comes back as "Invalid or expired session
+// token", which reads like a sign-in problem.
+function resetFailure(error: unknown): never {
+  if ((error as { code?: unknown } | null)?.code === "bad_jwt") {
+    throw new ApiError("This reset link has expired or was already used. Request a new one.", 400);
+  }
+  message(error);
+}
+
+async function route<T>(path: string, init: RequestInit): Promise<T> {
   const method = (init.method ?? "GET").toUpperCase();
   const body = payload(init);
+  // Everything but signing in and out reads or changes records, and does it
+  // only for the account this tab shows. The Data API token belongs to
+  // whoever holds the shared session now, which may be someone else.
+  if (!path.startsWith("/auth/")) await requireUser();
   let response: unknown;
   if (path === "/auth/me" && method === "GET") response = { user: await currentUser() };
   else if (path === "/auth/login" && method === "POST") {
@@ -285,17 +391,15 @@ export async function neonApi<T>(path: string, init: RequestInit = {}): Promise<
     response = { user: await currentUser() };
   } else if (path === "/auth/google" && method === "POST") {
     if (import.meta.env.VITE_GOOGLE_OAUTH_ENABLED !== "true") throw new ApiError("Google sign-in is not configured", 503);
-    const requested = sessionStorage.getItem("commune.return-to");
-    const requestedUrl = new URL(requested ?? "/", window.location.origin);
-    const callbackURL = requestedUrl.origin === window.location.origin
-      ? requestedUrl.href : new URL("/", window.location.origin).href;
+    // Back from Google to the page that asked for a sign-in, only ever on this site.
+    const callbackURL = new URL(readReturn() ?? "/", window.location.origin).href;
     const result = await db().auth.signIn.social({
       provider: "google",
       callbackURL,
       errorCallbackURL: new URL("/login?oauth=error", window.location.origin).href,
     });
     if (result.error) message(result.error);
-    sessionStorage.removeItem("commune.return-to");
+    forgetReturn();
     response = { ok: true };
   } else if (path === "/auth/signup" && method === "POST") {
     const result = await db().auth.signUp.email({ name: inputString(body.name, "name"), email: inputString(body.email, "email"), password: inputString(body.password, "password") });
@@ -317,12 +421,32 @@ export async function neonApi<T>(path: string, init: RequestInit = {}): Promise<
   } else if (path === "/auth/reset-password" && method === "POST") {
     const result = await db().auth.resetPassword({
       newPassword: inputString(body.password, "password"), token: inputString(body.token, "token"),
-    });
-    if (result.error) message(result.error);
+    }).catch(resetFailure);
+    if (result.error) resetFailure(result.error);
     response = { ok: true };
   } else if (path === "/auth/logout" && method === "POST") {
     const result = await db().auth.signOut();
     if (result.error) message(result.error);
+    response = { ok: true };
+  } else if (path === "/auth/change-password" && method === "POST") {
+    await requireUser();
+    const currentPassword = inputString(body.currentPassword, "currentPassword");
+    const newPassword = inputString(body.newPassword, "newPassword");
+    if (newPassword.length < 12 || newPassword.length > 128) throw new ApiError("Password must contain 12–128 characters", 400);
+    // Ends every session of the account, this one too, and starts a new one
+    // whose cookie comes back with the reply. This tab keeps its cached token,
+    // still valid until it expires, and then renews it from the new cookie as
+    // the same account, so nothing here signs it out.
+    const result = await db().auth.changePassword({ currentPassword, newPassword, revokeOtherSessions: true })
+      .catch(passwordChangeFailure);
+    if (result.error) passwordChangeFailure(result.error);
+    response = { ok: true };
+  } else if (path === "/auth/logout-others" && method === "POST") {
+    await requireUser();
+    // Keeps this session and ends the account's others. Another device's
+    // token stays valid until it expires (see SignInSettings.tsx).
+    const result = await db().auth.revokeOtherSessions().catch(signInEnded);
+    if (result.error) signInEnded(result.error);
     response = { ok: true };
   } else if (method === "GET" && path.startsWith("/search?")) {
     await requireUser();
@@ -348,18 +472,43 @@ export async function neonApi<T>(path: string, init: RequestInit = {}): Promise<
     });
   } else if (path === "/reminders/usage" && method === "GET") {
     response = await reminderUsage();
-  } else if (method === "GET" && pathId(path, /^\/communes\/([^/]+)\/snapshot$/)) {
-    response = await snapshot(pathId(path, /^\/communes\/([^/]+)\/snapshot$/)!);
+  } else if (path === "/notices/unread" && method === "GET") {
+    // Unread notices from every commune the reader belongs to, for Notices.
+    const notices = unwrap(await db().rpc("my_unread_notices"));
+    if (!Array.isArray(notices)) throw new ApiError("Notices could not be verified. Please try again.", 502);
+    response = { notices };
+  } else if (path === "/preferences" && method === "GET") {
+    // No row yet means the default: reminder emails on.
+    const viewer = await requireUser();
+    const rows = unwrap(await db().from("notification_preferences").select("email_reminders").eq("user_id", viewer.id)) as Array<{ email_reminders: boolean }> | null;
+    response = { emailReminders: rows?.[0]?.email_reminders ?? true };
+  } else if (path === "/preferences" && method === "PUT") {
+    if (typeof body.emailReminders !== "boolean") throw new ApiError("Choose whether to get reminder emails", 400);
+    response = { emailReminders: unwrap(await db().rpc("set_email_reminders", { p_enabled: body.emailReminders })) === true };
+  } else if (path === "/client-reports" && method === "POST") {
+    // An error report or one page load's speed figures. The database checks
+    // each field, and drops a report over the account's limit.
+    response = { stored: unwrap(await db().rpc("report_client_event", {
+      p_kind: body.kind ?? null, p_release: body.release ?? null, p_route: body.route ?? null, p_browser: body.browser ?? null,
+      p_message: body.message ?? null, p_stack: body.stack ?? null,
+      p_lcp_ms: body.lcpMs ?? null, p_inp_ms: body.inpMs ?? null, p_cls: body.cls ?? null,
+    })) === true };
+  } else if (method === "GET" && pathId(path, /^\/communes\/([^/]+)\/snapshot(?:\?detail=summary)?$/)) {
+    response = await snapshot(pathId(path, /^\/communes\/([^/]+)\/snapshot/)!, undefined, path.endsWith("?detail=summary") ? "summary" : undefined);
+  } else if (method === "GET" && pathId(path, /^\/communes\/([^/]+)\/expenses\/history(?:\?|$)/)) {
+    response = await expensePage(pathId(path, /^\/communes\/([^/]+)\/expenses\/history/)!, new URL(path, "https://commune.invalid").searchParams);
+  } else if (method === "GET" && pathId(path, /^\/communes\/([^/]+)\/expenses\/records\?/)) {
+    response = await expenseRecords(pathId(path, /^\/communes\/([^/]+)\/expenses\/records/)!, new URL(path, "https://commune.invalid").searchParams);
   } else if (method === "POST" && pathId(path, /^\/communes\/([^/]+)\/expenses$/)) {
     const shares = Array.isArray(body.shares) ? body.shares.map((share) => {
       const item = asObject(share);
       return { user_id: item.userId, amount_minor: item.amountMinor };
     }) : [];
-    response = await rpcId("create_expense_for", {
+    response = createdResult(unwrap(await db().rpc("create_expense_command", {
       p_commune_id: pathId(path, /^\/communes\/([^/]+)\/expenses$/),
       p_title: body.title, p_amount_minor: body.amountMinor, p_shares: shares, p_due_on: body.dueOn ?? null,
-      p_paid_by: body.paidByUserId ?? null, p_category: body.category ?? "Other",
-    });
+      p_paid_by: body.paidByUserId ?? null, p_category: body.category ?? "Other", p_request_id: body.requestId,
+    })));
   } else if (method === "POST" && pathId(path, /^\/shares\/([^/]+)\/confirm$/)) {
     response = await rpcVoid("confirm_expense_share", { p_share_id: pathId(path, /^\/shares\/([^/]+)\/confirm$/) });
   } else if (method === "PUT" && pathId(path, /^\/expenses\/([^/]+)$/)) {
@@ -401,33 +550,41 @@ export async function neonApi<T>(path: string, init: RequestInit = {}): Promise<
       p_receipt_id: pathId(path, /^\/receipts\/([^/]+)\/reverse$/), p_reason: body.reason,
     })));
   } else if (method === "POST" && pathId(path, /^\/communes\/([^/]+)\/funds$/)) {
-    response = await rpcId("create_fund", {
+    response = createdResult(unwrap(await db().rpc("create_fund_command", {
       p_commune_id: pathId(path, /^\/communes\/([^/]+)\/funds$/),
-      p_name: body.name, p_target_minor: body.targetMinor ?? null,
-    });
+      p_name: body.name, p_target_minor: body.targetMinor ?? null, p_request_id: body.requestId,
+    })));
   } else if (method === "POST" && pathId(path, /^\/funds\/([^/]+)\/pledges$/)) {
-    response = await rpcId("pledge_fund", {
+    response = createdResult(unwrap(await db().rpc("pledge_fund_command", {
       p_fund_id: pathId(path, /^\/funds\/([^/]+)\/pledges$/),
-      p_amount_minor: body.amountMinor, p_due_on: body.dueOn,
-    });
+      p_amount_minor: body.amountMinor, p_due_on: body.dueOn, p_request_id: body.requestId,
+    })));
   } else if (method === "POST" && pathId(path, /^\/commitments\/([^/]+)\/contributions$/)) {
-    response = await rpcId("record_fund_contribution", {
+    response = createdResult(unwrap(await db().rpc("record_fund_contribution_command", {
       p_commitment_id: pathId(path, /^\/commitments\/([^/]+)\/contributions$/), p_amount_minor: body.amountMinor,
-    });
+      p_request_id: body.requestId,
+    })));
   } else if (method === "PATCH" && pathId(path, /^\/funds\/([^/]+)$/)) {
     response = await rpcVoid("update_fund", { p_fund_id:pathId(path,/^\/funds\/([^/]+)$/),p_name:body.name,p_target_minor:body.targetMinor ?? null });
   } else if (method === "POST" && pathId(path, /^\/funds\/([^/]+)\/archive$/)) {
     response = await rpcVoid("set_fund_archived", { p_fund_id:pathId(path,/^\/funds\/([^/]+)\/archive$/),p_archived:body.archived });
   } else if (method === "PATCH" && pathId(path, /^\/commitments\/([^/]+)$/)) {
-    response = await rpcVoid("update_fund_pledge", { p_commitment_id:pathId(path,/^\/commitments\/([^/]+)$/),p_amount_minor:body.amountMinor ?? null,p_due_on:body.dueOn ?? null,p_cancel:body.cancel ?? false });
+    response = await rpcVoid("update_fund_pledge", { p_commitment_id:pathId(path,/^\/commitments\/([^/]+)$/),p_amount_minor:body.amountMinor ?? null,p_due_on:body.dueOn ?? null,p_cancel:body.cancel ?? false,
+      p_expected_amount_minor:body.expectedAmountMinor ?? null,p_expected_due_on:body.expectedDueOn ?? null });
   } else if (method === "POST" && pathId(path, /^\/contributions\/([^/]+)\/void$/)) {
     response = await rpcVoid("void_fund_contribution", { p_contribution_id:pathId(path,/^\/contributions\/([^/]+)\/void$/),p_reason:body.reason });
   } else if (method === "POST" && pathId(path, /^\/communes\/([^/]+)\/members\/[^/]+$/)) {
     response = await rpcVoid("manage_commune_member", { p_commune_id:pathId(path,/^\/communes\/([^/]+)\/members\//),p_user_id:pathId(path,/^\/communes\/[^/]+\/members\/([^/]+)$/),p_action:body.action });
   } else if (method === "POST" && pathId(path, /^\/communes\/([^/]+)\/recurring$/)) {
+    // An add carries a request id; an edit carries the version it was based on.
     response = await rpcId("save_recurring_bill", {p_commune_id:pathId(path,/^\/communes\/([^/]+)\/recurring$/),p_title:body.title,p_amount_minor:body.amountMinor,p_paid_by:body.paidByUserId,
       p_shares:Array.isArray(body.allocations) ? body.allocations.map(value => { const item=asObject(value); return {user_id:item.userId,amount_minor:item.amountMinor}; }) : [],
-      p_frequency:body.frequency,p_next_due_on:body.nextDueOn,p_paused:body.paused,p_id:body.id ?? null});
+      p_frequency:body.frequency,p_next_due_on:body.nextDueOn,p_id:body.id ?? null,p_expected_version:body.expectedVersion ?? null,
+      p_request_id:body.requestId ?? null,p_paused:body.paused ?? null});
+  } else if (method === "POST" && pathId(path, /^\/recurring\/([^/]+)\/pause$/)) {
+    response = asObject(unwrap(await db().rpc("set_recurring_bill_paused", {p_id:pathId(path,/^\/recurring\/([^/]+)\/pause$/),p_paused:body.paused})));
+  } else if (method === "POST" && pathId(path, /^\/recurring\/([^/]+)\/archive$/)) {
+    response = asObject(unwrap(await db().rpc("set_recurring_bill_archived", {p_id:pathId(path,/^\/recurring\/([^/]+)\/archive$/),p_archived:body.archived})));
   } else if (method === "POST" && pathId(path, /^\/recurring\/([^/]+)\/record$/)) {
     response = await rpcId("record_recurring_bill", {p_id:pathId(path,/^\/recurring\/([^/]+)\/record$/),p_expected_due_on:body.expectedDueOn});
   } else if (method === "POST" && pathId(path, /^\/recurring\/([^/]+)\/periods$/)) {
@@ -471,10 +628,13 @@ export async function neonApi<T>(path: string, init: RequestInit = {}): Promise<
       p_commune_id: pathId(path, /^\/communes\/([^/]+)\/invites$/),
     })));
     response = { invites: invites.map((invite) => ({
-      id: str(invite.id), email: str(invite.email), role: str(invite.role),
+      id: str(invite.id), email: invite.email == null ? null : str(invite.email), role: str(invite.role),
       createdAt: str(invite.created_at), expiresAt: str(invite.expires_at),
       acceptedAt: invite.accepted_at == null ? null : str(invite.accepted_at),
       revokedAt: invite.revoked_at == null ? null : str(invite.revoked_at),
+      invitedBy: invite.invited_by == null ? null : str(invite.invited_by),
+      invitedByName: invite.invited_by_name == null ? null : str(invite.invited_by_name),
+      acceptedBy: invite.accepted_by == null ? null : str(invite.accepted_by),
     })) };
   } else if (method === "POST" && pathId(path, /^\/invites\/([^/]+)\/revoke$/)) {
     response = await rpcVoid("revoke_commune_invite", {
@@ -483,34 +643,23 @@ export async function neonApi<T>(path: string, init: RequestInit = {}): Promise<
   } else if (method === "GET" && pathId(path, /^\/invites\/([0-9a-f]{64})$/)) {
     const result = rows(unwrap(await db().rpc("preview_commune_invite", { p_token: pathId(path, /^\/invites\/([0-9a-f]{64})$/) })))[0];
     response = { invite: result ? { communeName: str(result.commune_name), role: str(result.role), expiresAt: str(result.expires_at) } : null };
+  } else if (method === "GET" && pathId(path, /^\/invites\/([0-9a-f]{64})\/hint$/)) {
+    const hint = unwrap(await db().rpc("invite_address_hint", { p_token: pathId(path, /^\/invites\/([0-9a-f]{64})\/hint$/) }));
+    response = { hint: typeof hint === "string" && hint ? hint : null };
   } else if (method === "POST" && pathId(path, /^\/invites\/([0-9a-f]{64})\/accept$/)) {
     const communeId = unwrap(await db().rpc("accept_commune_invite", { p_token: pathId(path, /^\/invites\/([0-9a-f]{64})\/accept$/) }));
     response = { communeId };
   } else if (method === "POST" && pathId(path, /^\/communes\/([^/]+)\/notes$/)) {
-    const user = await requireUser();
-    const result = await db().from("commune_notes").insert({
-      commune_id: pathId(path, /^\/communes\/([^/]+)\/notes$/), created_by: user.id,
-      title: body.title, pill: body.pill ?? "", kicker: body.kicker ?? "",
-      lede: body.lede ?? "", body: body.body ?? "", facts: body.facts ?? [],
-    }).select("id").single();
-    response = idResult(asObject(unwrap(result)).id);
+    // Notes and tasks change only through commands (migration 0027). An add
+    // carries a request id; an edit carries the version it was based on.
+    response = recordResult(unwrap(await db().rpc("create_note", {
+      p_commune_id: pathId(path, /^\/communes\/([^/]+)\/notes$/), ...noteArguments(body),
+      p_request_id: body.requestId ?? null,
+    })));
   } else if (method === "PUT" && pathId(path, /^\/notes\/([^/]+)$/)) {
-    const noteId = pathId(path, /^\/notes\/([^/]+)$/)!;
-    let update = db().from("commune_notes").update({
-      title: body.title, pill: body.pill ?? "", kicker: body.kicker ?? "",
-      lede: body.lede ?? "", body: body.body ?? "", facts: body.facts ?? [],
-      updated_at: new Date().toISOString(),
-    }).eq("id", noteId);
-    // Only the version the edit was based on may be replaced (migration 0023).
-    if (typeof body.expectedVersion === "number") update = update.eq("version", body.expectedVersion);
-    const saved = rows(unwrap(await update.select("id,version")));
-    if (!saved.length) {
-      const exists = typeof body.expectedVersion === "number"
-        && rows(unwrap(await db().from("commune_notes").select("id").eq("id", noteId))).length > 0;
-      if (exists) throw new ApiError("Someone else saved this note while you were editing. Your text is still here; check their version before saving again.", 409);
-      throw new ApiError("Note not found", 404);
-    }
-    response = { ok: true, version: Number(asObject(saved[0]).version) };
+    response = recordResult(unwrap(await db().rpc("update_note", {
+      p_note_id: pathId(path, /^\/notes\/([^/]+)$/), p_expected_version: body.expectedVersion ?? null, ...noteArguments(body),
+    })));
   } else if (method === "GET" && pathId(path, /^\/notes\/[^/]+\/revisions\/([^/]+)$/)) {
     const found = rows(unwrap(await db().from("note_revisions")
       .select("id,version,title,pill,kicker,lede,body,facts,edited_by,edited_at")
@@ -522,48 +671,62 @@ export async function neonApi<T>(path: string, init: RequestInit = {}): Promise<
       kicker: str(row.kicker), lede: str(row.lede), body: str(row.body), facts: Array.isArray(row.facts) ? row.facts : [],
       editedBy: row.edited_by == null ? null : str(row.edited_by), editedAt: str(row.edited_at) } };
   } else if (method === "DELETE" && pathId(path, /^\/notes\/([^/]+)$/)) {
-    const result = await db().from("commune_notes").delete().eq("id", pathId(path, /^\/notes\/([^/]+)$/)!).select("id");
-    if (!rows(unwrap(result)).length) throw new ApiError("Note not found", 404);
-    response = { ok: true };
+    response = recordResult(unwrap(await db().rpc("remove_note", { p_note_id: pathId(path, /^\/notes\/([^/]+)$/) })));
   } else if (method === "POST" && pathId(path, /^\/communes\/([^/]+)\/operations$/)) {
-    const user = await requireUser();
-    const result = await db().from("commune_operations").insert({
-      commune_id: pathId(path, /^\/communes\/([^/]+)\/operations$/), created_by: user.id,
-      kind: body.kind, category: body.category, title: body.title, date: body.date,
-      time: body.time ?? null, all_day: body.allDay,
-      // Names are copied from the ids by the database (migration 0020).
-      assignee: null, rotation: null,
-      assignee_id: body.assigneeId ?? null, rotation_ids: body.rotationIds ?? null,
-      last_done: body.lastDone ?? null,
-      repeat: body.repeat, status: body.status, notes: body.notes ?? "",
-    }).select("id").single();
-    response = idResult(asObject(unwrap(result)).id);
+    response = recordResult(unwrap(await db().rpc("create_operation", {
+      p_commune_id: pathId(path, /^\/communes\/([^/]+)\/operations$/), ...operationArguments(body),
+      p_request_id: body.requestId ?? null,
+    })));
   } else if (method === "POST" && pathId(path, /^\/operations\/([^/]+)\/occurrences$/)) {
     response = asObject(unwrap(await db().rpc("record_operation_occurrence", {
       p_operation_id: pathId(path, /^\/operations\/([^/]+)\/occurrences$/), p_action: body.action,
       p_expected_date: body.expectedDate, p_today: body.today, p_request_id: body.requestId,
+      // Sent only with a reason, so a skip without one matches the 0018 signature.
+      ...(body.reason ? { p_reason: body.reason } : {}),
+      // Sent only when marking someone else's task done (0041).
+      ...(body.doneBy ? { p_done_by: body.doneBy } : {}),
+    })));
+  } else if (method === "POST" && pathId(path, /^\/operations\/([^/]+)\/handovers$/)) {
+    response = asObject(unwrap(await db().rpc("hand_over_operation", {
+      p_operation_id: pathId(path, /^\/operations\/([^/]+)\/handovers$/), p_to_member_id: body.toMemberId,
+      p_expected_date: body.expectedDate, p_expected_assignee_id: body.expectedAssigneeId ?? null,
+      p_today: body.today, p_reason: body.reason ?? null, p_request_id: body.requestId,
+    })));
+  } else if (method === "POST" && pathId(path, /^\/communes\/([^/]+)\/announcements$/)) {
+    response = asObject(unwrap(await db().rpc("post_announcement", {
+      p_commune_id: pathId(path, /^\/communes\/([^/]+)\/announcements$/), p_title: body.title, p_body: body.body ?? "",
+      p_needs_acknowledgement: body.needsAcknowledgement === true, p_request_id: body.requestId,
+    })));
+  } else if (method === "GET" && path === "/pay-links") {
+    response = { links: unwrap(await db().rpc("my_pay_links", {})) ?? [] };
+  } else if (method === "PUT" && pathId(path, /^\/pay-links\/(monzo|paypal|revolut|bank)$/)) {
+    response = { links: unwrap(await db().rpc("set_pay_link", {
+      p_provider: pathId(path, /^\/pay-links\/(monzo|paypal|revolut|bank)$/), p_handle: body.handle ?? "",
+      p_account_name: body.accountName ?? "", p_sort_code: body.sortCode ?? "", p_account_number: body.accountNumber ?? "",
+    })) ?? [] };
+  } else if (method === "DELETE" && pathId(path, /^\/pay-links\/(monzo|paypal|revolut|bank)$/)) {
+    response = { links: unwrap(await db().rpc("remove_pay_link", {
+      p_provider: pathId(path, /^\/pay-links\/(monzo|paypal|revolut|bank)$/),
+    })) ?? [] };
+  } else if (method === "POST" && pathId(path, /^\/announcements\/([^/]+)\/acknowledge$/)) {
+    response = asObject(unwrap(await db().rpc("acknowledge_announcement", {
+      p_announcement_id: pathId(path, /^\/announcements\/([^/]+)\/acknowledge$/),
+    })));
+  } else if (method === "POST" && pathId(path, /^\/announcements\/([^/]+)\/archive$/)) {
+    response = asObject(unwrap(await db().rpc("archive_announcement", {
+      p_announcement_id: pathId(path, /^\/announcements\/([^/]+)\/archive$/),
     })));
   } else if (method === "POST" && pathId(path, /^\/occurrences\/([^/]+)\/undo$/)) {
     response = asObject(unwrap(await db().rpc("undo_operation_occurrence", {
       p_occurrence_id: pathId(path, /^\/occurrences\/([^/]+)\/undo$/),
     })));
   } else if (method === "PUT" && pathId(path, /^\/operations\/([^/]+)$/)) {
-    const result = await db().from("commune_operations").update({
-      kind: body.kind, category: body.category, title: body.title, date: body.date,
-      time: body.time ?? null, all_day: body.allDay,
-      // Names are copied from the ids by the database (migration 0020).
-      assignee: null, rotation: null,
-      assignee_id: body.assigneeId ?? null, rotation_ids: body.rotationIds ?? null,
-      last_done: body.lastDone ?? null,
-      repeat: body.repeat, status: body.status, notes: body.notes ?? "",
-      updated_at: new Date().toISOString(),
-    }).eq("id", pathId(path, /^\/operations\/([^/]+)$/)!).select("id");
-    if (!rows(unwrap(result)).length) throw new ApiError("Operation not found", 404);
-    response = { ok: true };
+    response = recordResult(unwrap(await db().rpc("update_operation", {
+      p_operation_id: pathId(path, /^\/operations\/([^/]+)$/), p_expected_version: body.expectedVersion ?? null,
+      ...operationArguments(body),
+    })));
   } else if (method === "DELETE" && pathId(path, /^\/operations\/([^/]+)$/)) {
-    const result = await db().from("commune_operations").delete().eq("id", pathId(path, /^\/operations\/([^/]+)$/)!).select("id");
-    if (!rows(unwrap(result)).length) throw new ApiError("Operation not found", 404);
-    response = { ok: true };
+    response = recordResult(unwrap(await db().rpc("remove_operation", { p_operation_id: pathId(path, /^\/operations\/([^/]+)$/) })));
   } else {
     throw new ApiError(`This Commune action is not available in production: ${method} ${path}`, 501);
   }

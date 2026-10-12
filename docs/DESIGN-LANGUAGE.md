@@ -26,8 +26,8 @@ date ranges and user-written content. Keep the wording plain and concise.
 | Rules | Thin neutral borders; boundaries rather than decoration |
 | Money icon | Slate #637689 on #edf0f3 when a category chip is useful |
 | Operations icon | Sage on pale green; status must also have a text label |
-| Interface typography | Existing Inter stack; do not swap the entire app to the wordmark font |
-| Wordmark | Existing lowercase DM Sans wordmark, position and treatment retained |
+| Interface typography | Existing Inter stack, served from the app with every subset Google served (`apps/web/src/styles/fonts`); do not swap the entire app to the wordmark font |
+| Wordmark | Existing lowercase DM Sans wordmark, position and treatment retained. Its font file holds only the letters of "commune.", so new wordmark text needs a new subset (see `fonts.css`) |
 | Type weights | Body 400; row names and buttons 500; section headings 550–600; avoid default 700/800 headings |
 | Type sizes | Body 14px, secondary 12–13px, sections 18px, page titles 21px, hero 32–35px, principal money 36–44px |
 | Numbers | Tabular numerals; 450–500 weight on large totals; labels must explain whose money and what state |
@@ -36,6 +36,11 @@ date ranges and user-written content. Keep the wording plain and concise.
 | Header | Existing 60px desktop header; content aligned to the page gutter |
 | Corners | One shared token family: controls/search/icon actions 9px; cards/hero/dialogs 15px. Pills only for statuses, filter tracks and avatars; inset segments follow their track geometry |
 | Elevation | No default card shadows. Overlay elevation only when it communicates layering |
+| Cover tones | `--cover-household` #3d5a4c, `--cover-workspace` #3f4b5a, `--cover-trip` #6a4b3c: behind a commune's cover photo while it loads, and in its place if it cannot load |
+| Focus and green text | `--focus-ring` and `--text-green`: today's sage in light mode, the Hub's #649578 in dark mode and on navy surfaces |
+| Error text | `--danger` and `--danger-soft`, one error colour in both themes |
+| Touch areas | On phones (560px and under) small controls reach 44px through an invisible `::before` area; on desktop small links reach 24px through padding with a matching negative margin. Nothing moves visually |
+| Text over cover photos | Small text keeps 4.5:1, and large text and buttons 3:1, over a white stand-in (`apps/web/tests/cover-contrast.test.ts`). The shade is darkest behind the text and anchored in pixels from the bottom; type labels and hero buttons have their own dark translucent backdrop. The owner approved the darker shade on 9 October |
 
 Use semantic tokens with explicit dark-mode counterparts when consolidating CSS. Do not flatten dark mode with hard-coded light overrides. Normal text must reach 4.5:1 contrast; control boundaries/focus must remain discernible. Small metadata must not rely on very low opacity.
 
@@ -47,7 +52,7 @@ These are system responsibilities, not a demand to rename every existing compone
 
 | Family | Responsibility and variants |
 | --- | --- |
-| AppShell | One sidebar/header/content frame. Original commune switcher and user account control. Responsive mobile navigation preserved |
+| AppShell | One sidebar/header/content frame. Original commune switcher and user account control. On a phone: one slim navy top bar (menu, then the "commune." wordmark on Home or the page name elsewhere, then search, notifications and you as plain icons), the sidebar opening as a drawer from the left from the menu button, and four tabs at the bottom with the current one in a pill |
 | PageHeader | Title, optional useful context, global controls. No duplicate in-content title unless it serves a different hierarchy |
 | QuickFinder | One header search button and native modal, Cmd/Ctrl-K or slash; scoped grouped results with exact-record navigation. Expenses and Notes retain independent in-page filters. No copying another app's styling or credentials |
 | SectionHeader | Heading, optional muted 17–18px line icon, count or one quiet action. Same treatment for populated and empty sections |
@@ -57,6 +62,8 @@ These are system responsibilities, not a demand to rename every existing compone
 | SummaryAmount | Label, real amount, concise meaning, optional primary action. Money hierarchy through size rather than excessive boldness |
 | ListRow | Leading identity/icon if informative, primary text, secondary metadata, trailing value/status. No nested conflicting click targets |
 | StatusBadge | Compact labelled state. Green for settled/complete, amber for pending/attention, red for failure/overdue where appropriate; colour never the sole signal |
+| ActivityRow | A type chip leads: slate for money, sage for plans, cream for shared things. The type word comes first in the small line and the time sits at the end, under day headings in the search-results heading style |
+| FilterChips | Active/Archived and similar filters use `.a-chip` with `is-on` and `aria-pressed`, side by side, as on Funds and Saved splits |
 | DateBadge | Shared `CalendarDate`: Operations' weekday strip, white face, date and Today/Tomorrow; add the month for dates beyond the week. 60px face / 52px below 1000px. Operations date column stays 72px / 56px below 1000px, no shadow or coloured edge |
 | NoteCard / NoteReader | Existing board and reader. Type-specific fields without changing the basic interaction. Contacts keep editable roles; confidential values stay masked |
 | FundCard | Purpose, contributed/target, progress, outstanding pledges and relevant next action. Explicitly records contributions; never implies Commune holds money |
@@ -76,7 +83,7 @@ These are system responsibilities, not a demand to rename every existing compone
 
 ## Screen roles
 
-- Home: one large **selected/current commune**, others smaller below. Personal next actions, chronologically sorted activity and search span all communes; switching the feature also switches the active commune. Not a duplicate Hub.
+- Home (Direction B, chosen 11 October 2026): **where you stand first**, one sentence with an amount per currency, never added across currencies; then the **one next step**, which holds the page's only filled button; then your communes in order of need, the current one tagged; Needs you grouped by when (payments to confirm, overdue, today, this week, later); Waiting on others kept calm (past due in amber, never red); Coming up, the next fortnight's turns and regular bills, shown when nothing else needs you, where a task nobody holds has "I'll do it"; and recent activity. Section heads link onwards (All communes, History, Operations), and Home's desktop top bar carries Add expense beside the bell. When nothing is owed or waiting anywhere, the current commune's photo fills the top instead. On a phone the top bar shows the "commune." wordmark beside the menu in place of a page name and runs into the navy band the sentence sits on, the next step is lifted over the band, several communes show as tiles, Needs you shows its first two with "Show more", and section heads keep their counts but drop their links; when all square, the bar sits over the photo until the page scrolls. Paying and confirming act in place through the existing report and confirm dialogs; tasks and pledges open their record. Next actions, chronologically sorted activity and search span all communes; opening a commune also makes it the active one. Not a duplicate Hub. Its styles are `apps/web/src/screens/Home.css`.
 - Hub: place identity → your balance and immediate needs → this week and shared essentials → recent activity. Keep the new layout. Recover missing useful information selectively; do not automatically put the four old KPI tiles back.
 - People: keep hero access obvious; concise member context can be restored without reinstating a large repeated list. Roles, invites and member balances must remain reachable.
 - Expenses: individual **two-column boxes**, one saved expense per box; one column below 760px. Preserve payer, category, due date, status and filters. Label **Total paid** separately from **Your share**; explicitly say when the viewer is not included. Do not replace the boxes with full-width ledger rows.
@@ -125,8 +132,10 @@ Implementation and local evidence: [search review](../artifacts/workflow-qa-2026
 
 ## HTML reference: context, components and states
 
-Open `/design-language/index.html`. The three keyboard-accessible tabs are
-**In context**, **Components** and **States**; `/design-language/index.html#states`
+With the dev server running, open `/reference/design-language/index.html`
+(the file is `apps/web/reference/design-language/index.html`; it is never
+published). The three keyboard-accessible tabs are **In context**,
+**Components** and **States**; `/reference/design-language/index.html#states`
 opens the state reference directly. This is an illustrative document, not a
 second application. Its example forms and reminder controls never call the API,
 create records or send email. The existing reference typography and icon family
@@ -161,8 +170,10 @@ beside an enabled button. Server authority remains essential.
 ## Shared date calendar (2 October)
 
 `apps/web/src/ui/CalendarDate.tsx` and
-`apps/web/public/styles/calendar-date.css` are the shared component and appearance
-authority. The app and HTML reference both load that stylesheet. Operations,
+`apps/web/src/styles/calendar-date.css` are the shared component and appearance
+authority. The app bundles that stylesheet (first in the base layer of
+`src/styles/index.css`, which `src/main.tsx` imports before anything else)
+and the HTML reference links `/src/styles/calendar-date.css`. Operations,
 Hub's This week, Home's dated next actions, expense due dates and recurring
 next-due dates use the same calendar. Inline prose dates, date inputs, avatars,
 undated records and the interactive Month grid are not replaced with badges.

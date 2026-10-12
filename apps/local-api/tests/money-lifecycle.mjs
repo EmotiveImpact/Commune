@@ -11,7 +11,8 @@ if (url.protocol !== "http:" || !["127.0.0.1", "localhost"].includes(url.hostnam
     url.port === "3002" || url.pathname !== "/" || url.search || url.hash || url.username || url.password) {
   throw new Error("Money lifecycle tests require an isolated loopback API port (not 3002).");
 }
-const suffix = randomUUID().slice(0, 8);
+// Letters only, so a commune name that carries it never holds a phone-like run of digits.
+const suffix = randomUUID().slice(0, 8).replace(/[0-9]/g, (digit) => "ghijklmnop"[digit]);
 const password = "DisposableLifecycleFixture-2026!";
 function session() {
   let cookie = "";
@@ -274,9 +275,11 @@ const today = new Date().toISOString().slice(0, 10);
   saved = await find();
   assert.equal(saved.version, 3);
   assert.ok([9600, 9900].includes(saved.amountMinor));
-  // Affected members are told; the person who made the change is not.
+  // Affected members are told; the person who made the change is not. While
+  // unread, one notice per expense and person keeps up with the latest change.
   const corrections = (await snapshot(b)).notifications.filter(item => item.kind === "expense-corrected" && item.expenseId === create.id);
-  assert.equal(corrections.length, 2);
+  assert.equal(corrections.length, 1);
+  assert.equal(corrections[0].amountMinor, saved.amountMinor / 3);
   assert.deepEqual([corrections[0].detail, corrections[0].senderUserId], ["Receipt total was wrong", avery.id]);
   assert.equal((await snapshot(a)).notifications.some(item => item.kind === "expense-corrected"), false);
 

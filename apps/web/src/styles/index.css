@@ -1,0 +1,24 @@
+/*
+ * Every stylesheet sits in a cascade layer, so which rule wins no longer
+ * depends on the order stylesheets arrive in: a screen's own stylesheet comes
+ * with its code, after these. From lowest to highest:
+ *   base       tokens, reset, and the shared app, sign-in and legal styles
+ *   screens    each screen's and window's own stylesheet, which wraps itself
+ *              in this layer
+ *   overrides  the dark theme and the approved design-language primitives
+ * Main.tsx imports this file before anything else, so this order is declared
+ * before any stylesheet uses a layer.
+ */
+@layer base, screens, overrides;
+
+/* Before the app's own stylesheets, as its separate link was, so their rules still come after it. */
+@import "./calendar-date.css" layer(base);
+@import "./shared.css" layer(base);
+@import "./app.css" layer(base);
+@import "./auth.css" layer(base);
+@import "./legal.css" layer(base);
+@import "./overrides.css" layer(overrides);
+@import "./design-system.css" layer(overrides);
+@import "./motion.css" layer(overrides);
+/* Font faces only, which layers do not affect. */
+@import "./fonts.css";

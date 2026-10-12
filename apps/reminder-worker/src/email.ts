@@ -5,6 +5,8 @@ type ReminderEmailInput = {
   label: string;
   amount: string;
   appUrl: string;
+  /** A signed one-click link that turns reminder emails off, when configured. */
+  unsubscribeUrl?: string;
 };
 
 function inlineText(value: string): string {
@@ -35,9 +37,12 @@ export function renderReminderEmail(input: ReminderEmailInput) {
   if (url.protocol !== "https:") throw new Error("Email app URL must use HTTPS");
   const appUrl = url.origin;
   const settingsUrl = `${appUrl}/settings`;
+  const unsubscribeUrl = input.unsubscribeUrl ? new URL(input.unsubscribeUrl) : null;
+  if (unsubscribeUrl && unsubscribeUrl.protocol !== "https:") throw new Error("Email unsubscribe URL must use HTTPS");
   const summary = `${sender} reminded you about your ${amount} ${action} for ${label} in ${commune}.`;
   const subject = `A Commune ${input.kind} from ${sender}`.slice(0, 180);
-  const text = `${summary}\n\nOpen Commune: ${appUrl}\n\nYou can change reminder email preferences in Commune settings: ${settingsUrl}`;
+  const text = `${summary}\n\nOpen Commune: ${appUrl}\n\nYou can turn reminder emails off in Commune settings: ${settingsUrl}`
+    + (unsubscribeUrl ? `\nOr turn them off now: ${unsubscribeUrl.href}` : "");
   const html = `<!doctype html>
 <html lang="en">
 <head>
@@ -72,7 +77,7 @@ export function renderReminderEmail(input: ReminderEmailInput) {
           <a href="${escapeHtml(appUrl)}" style="display:inline-block;padding:12px 22px;background:#2d6a4f;border-radius:999px;color:#ffffff;font-size:14px;font-weight:700;line-height:1.2;text-decoration:none;">Open Commune</a>
         </td></tr>
         <tr><td style="padding:22px 32px 28px;border-top:1px solid #e8e1d8;color:#69716b;font-size:12px;line-height:1.6;">
-          This reminder concerns ${escapeHtml(commune)}. You can change reminder email preferences in <a href="${escapeHtml(settingsUrl)}" style="color:#2d6a4f;text-decoration:underline;">Commune settings</a>.
+          This reminder concerns ${escapeHtml(commune)}. You can turn reminder emails off in <a href="${escapeHtml(settingsUrl)}" style="color:#2d6a4f;text-decoration:underline;">Commune settings</a>${unsubscribeUrl ? ` or <a href="${escapeHtml(unsubscribeUrl.href)}" style="color:#2d6a4f;text-decoration:underline;">turn them off now</a>` : ""}.
         </td></tr>
       </table>
     </td></tr>

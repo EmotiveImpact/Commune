@@ -28,7 +28,26 @@ files in order using a database owner connection:
 22. `infra/neon/migrations/0021_payment_reports.sql`
 23. `infra/neon/migrations/0022_recurring_periods.sql`
 24. `infra/neon/migrations/0023_note_revisions.sql`
-25. `infra/local/after-core.sql`
+25. `infra/neon/migrations/0024_operation_handovers.sql`
+26. `infra/neon/migrations/0025_announcements.sql`
+27. `infra/neon/migrations/0026_recurring_bill_commands.sql`
+28. `infra/neon/migrations/0027_note_and_task_commands.sql`
+29. `infra/neon/migrations/0028_invites_pledges_requests.sql`
+30. `infra/neon/migrations/0029_email_reminder_setting.sql`
+31. `infra/neon/migrations/0030_account_lookups.sql`
+32. `infra/neon/migrations/0031_former_member_emails.sql`
+33. `infra/neon/migrations/0032_notice_limits.sql`
+34. `infra/neon/migrations/0033_invitation_email_safety.sql`
+35. `infra/neon/migrations/0034_database_hardening.sql`
+36. `infra/neon/migrations/0035_currency_rule.sql`
+37. `infra/neon/migrations/0036_lighter_loading.sql`
+38. `infra/neon/migrations/0037_task_command_lock_order.sql`
+39. `infra/neon/migrations/0038_invite_hint_and_client_reports.sql`
+40. `infra/neon/migrations/0039_notices_and_activity.sql`
+41. `infra/neon/migrations/0040_search_dates.sql`
+42. `infra/neon/migrations/0041_task_done_by.sql`
+43. `infra/neon/migrations/0042_pay_links.sql`
+44. `infra/local/after-core.sql`
 
 `after-core.sql` is idempotent. Re-run it after applying a newer migration to
 an existing local database so the local-only reminder helpers stay current.
@@ -49,12 +68,14 @@ suppressed locally, so no email is claimed or sent. Contributions and settled
 shares are confirmations recorded by the relevant admin/payer, not payment
 transfers; Stripe is not yet connected.
 
-Invitation emails now have a separate explicit send action. The local server
-returns an honest unavailable message unless server-only `RESEND_API_KEY`,
-`RESEND_FROM`, and `APP_URL` are configured. It still creates a real copyable
-invite link. Never point `APP_URL` at production while testing local invites:
-the email's HTTPS origin must serve this same database. Default local setup
-sends no email. Delivery service tests use a mocked provider and isolated DB.
+Invitation emails now have a separate explicit send action. The local API
+emails invitations only when `LOCAL_API_SEND_EMAIL=yes` is set as well as
+server-only `RESEND_API_KEY`, `RESEND_FROM` and `APP_URL`, and says at start-up
+which way it is set. Otherwise it returns an honest unavailable message and
+still creates a real invite link to copy and share. Never point `APP_URL` at
+production while testing local invites: the email's HTTPS origin must serve
+this same database. Default local setup sends no email. Delivery service tests
+use a mocked provider and isolated DB.
 
 ## 2 October local workflow verification
 

@@ -14,7 +14,7 @@ switcher menu, Settings link, and reminder details stay usable and within the
 rail. TypeScript, the web production build, and all 50 web tests passed. This
 is a local change only; no push or deployment was done.
 
-Source visual truth: `apps/web/public/hub-prototype/index.html`, captured at
+Source visual truth: `apps/web/reference/hub-prototype/index.html`, captured at
 `/private/tmp/commune-hub-prototype-source.png` (1391 × 1853 px).
 Implementation: `http://localhost:3000/hub`, captured at
 `/private/tmp/commune-hub-final-1113.png` (1391 × 1816 px).

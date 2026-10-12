@@ -3,11 +3,8 @@ import { Plus, UsersRound } from "lucide-react";
 import { useApp, type SplitTemplateInput } from "../state";
 import { useSearchRecord } from "../ui/useSearchRecord";
 import { type SplitTemplate } from "../live/model";
-import {
-  allocateExpense,
-  type SplitMethod,
-} from "../../../../packages/core/src/expenseSplit";
-import { parseMoneyInput } from "../data/moneyInput";
+import { allocateExpense, plainAmount, type SplitMethod } from "@commune/core";
+import { moneyInputError, parseMoneyInput } from "../data/moneyInput";
 import {
   Button,
   Dialog,
@@ -54,25 +51,36 @@ function TemplateEditor({
     setValidation("");
     try {
       if (!name.trim()) throw new Error("Name this split template.");
-      const total =
+      const exact =
         method === "Exact"
-          ? included.reduce((sum, id) => {
-              const value = parseMoneyInput(values[id] ?? "");
+          ? included.map((id) => {
+              const value = parseMoneyInput(values[id] ?? "", hub.currency);
               if (!value)
                 throw new Error(
-                  "Enter a positive exact amount for everyone included.",
+                  moneyInputError(values[id] ?? "", hub.currency, "Enter a positive exact amount for everyone included."),
                 );
-              return sum + value;
-            }, 0)
+              return value;
+            })
+          : [];
+      const total =
+        method === "Exact"
+          ? exact.reduce((sum, value) => sum + value, 0)
           : 1000000;
-      allocateExpense(total, included, method, values);
+      allocateExpense(total, included, method, values, hub.currency);
       onSave({
         id: template?.id,
         name: name.trim(),
         method,
-        participants: included.map((userId) => ({
+        participants: included.map((userId, index) => ({
           userId,
-          value: method === "Equal" ? "" : (values[userId] ?? ""),
+          // Exact amounts are stored as plain figures, like 1200.50,
+          // however they were typed.
+          value:
+            method === "Equal"
+              ? ""
+              : method === "Exact"
+                ? plainAmount(exact[index])
+                : (values[userId] ?? ""),
         })),
       });
     } catch (cause) {
@@ -130,7 +138,7 @@ function TemplateEditor({
 }
 
 export function TemplatesScreen() {
-  const { hub, splitTemplates, saveSplitTemplate, session, go } = useApp();
+  const { hub, splitTemplates, saveSplitTemplate, session, go, personName } = useApp();
   const [editor, setEditor] = useState<SplitTemplate | "new" | null>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
@@ -173,14 +181,15 @@ export function TemplatesScreen() {
       <div className="a-toolbar">
         <div className="a-filters">
           {[false, true].map((value) => (
-            <Button
+            <button
               key={String(value)}
-              variant="secondary"
+              className={`a-chip${archived === value ? " is-on" : ""}`}
+              type="button"
               aria-pressed={archived === value}
               onClick={() => setArchived(value)}
             >
               {value ? "Archived" : "Active"}
-            </Button>
+            </button>
           ))}
         </div>
         <Button
@@ -232,12 +241,7 @@ export function TemplatesScreen() {
               <p className="c-form-help">
                 {template.method} ·{" "}
                 {template.participants
-                  .map(
-                    (item) =>
-                      hub.members.find(
-                        (member) => member.userId === item.userId,
-                      )?.name ?? "Former member",
-                  )
+                  .map((item) => personName(item.userId, "Former member", { left: true }))
                   .join(", ")}
               </p>
               {missing && (
@@ -251,7 +255,7 @@ export function TemplatesScreen() {
                     disabled={missing || pending}
                     onClick={() => go("add-expense", { template: template.id })}
                   >
-                    Use split
+                    Use split{" "}<span className="c-visually-hidden">{template.name}</span>
                   </Button>
                 )}
                 {allowed && (
@@ -264,7 +268,7 @@ export function TemplatesScreen() {
                         setEditor(template);
                       }}
                     >
-                      {archived ? "Edit & restore" : "Edit"}
+                      {archived ? "Edit & restore" : "Edit"}{" "}<span className="c-visually-hidden">{template.name}</span>
                     </Button>
                     <Button
                       variant="secondary"
@@ -273,7 +277,7 @@ export function TemplatesScreen() {
                         void save({ ...template, archived: !archived })
                       }
                     >
-                      {archived ? "Restore" : "Archive"}
+                      {archived ? "Restore" : "Archive"}{" "}<span className="c-visually-hidden">{template.name}</span>
                     </Button>
                   </>
                 )}

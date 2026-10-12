@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   dateFromIso,
   firstNameOf,
+  holdsEdit,
   holdsTurn,
+  needsDoneBy,
   nextPerson,
   nextOccurrence,
   todayIso,
@@ -12,10 +14,15 @@ import {
   type OperationItem,
   type OperationKind,
 } from "../data/operations";
+import { formatDay } from "@commune/core";
 import { useApp } from "../state";
 import { Avatar, Pill } from "../ui/widgets";
 import { cx } from "../ui/cx";
 import { LIMITS } from "../data/limits";
+import { commandFailure, UNCERTAIN_RETRY_SAFE } from "../data/commands";
+import { newRequestId } from "../data/requestId";
+import { useFormError } from "../ui/components";
+import { DoneByChoice } from "../ui/DoneByChoice";
 
 const OPERATION_CATEGORIES: Array<[OperationCategory, string]> = [
   ["delivery", "Delivery"],
@@ -35,20 +42,31 @@ export function OperationView() {
     selectedOperation: item,
     toggleOperation,
     skipOperation,
+    handOverOperation,
     undoOperation,
     removeOperation,
     go,
     closeWindow,
     hub,
     mutationPending,
+    you,
+    personName,
   } = useApp();
   const [confirmDelete, setConfirmDelete] = useState(false);
+  // One small panel at a time: skip with a reason, hand over the turn, or
+  // say who did someone else's task.
+  const [panel, setPanel] = useState<"" | "skip" | "handover" | "doneby">("");
+  const [reason, setReason] = useState("");
+  const [handTo, setHandTo] = useState("");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const run = (action: () => Promise<unknown>, success: string) => {
     setError(""); setMessage("");
-    void action().then(() => setMessage(success))
+    void action().then(() => { setMessage(success); setPanel(""); setReason(""); setHandTo(""); })
       .catch((failure) => setError(failure instanceof Error ? failure.message : "Could not update item"));
+  };
+  const openPanel = (next: "skip" | "handover" | "doneby") => {
+    setError(""); setMessage(""); setReason(""); setHandTo(""); setPanel(next);
   };
   if (!item) {
     return (
@@ -82,6 +100,14 @@ export function OperationView() {
     item.repeat !== "none"
       ? nextOccurrence(item.date, item.repeat, todayIso(), item.anchorDay)
       : "";
+  // Anyone active in the hub except the person who has it now.
+  const handTargets = hub.members.filter((member) => member.userId !== item.assigneeId);
+  const turnTaking = Boolean(item.rotation?.length) && item.repeat !== "none";
+  const handoverLead = turnTaking
+    ? `Someone else does this turn. Afterwards it carries on from ${firstNameOf(item.turnOwner ?? item.assignee) || "the rotation"}.`
+    : "Someone else takes this task on.";
+  // The database lets the person who added it, or an admin, remove it.
+  const canRemove = hub.role === "admin" || (Boolean(item.createdBy) && item.createdBy === you.id);
 
   return (
     <section className="a-window operation-detail">
@@ -114,6 +140,7 @@ export function OperationView() {
           <span>{item.kind === "task" ? "Assigned to" : "Type"}</span>
           <strong>
             {item.kind === "task" ? (item.assignee ?? "Unassigned") : category}
+            {item.kind === "task" && item.turnOwner ? ` · covering for ${firstNameOf(item.turnOwner)}` : ""}
           </strong>
         </div>
         {item.kind === "task" ? (
@@ -129,6 +156,12 @@ export function OperationView() {
               {nextName || "Same person"}
               {nextDate ? ` · ${operationDateFormatter.format(dateFromIso(nextDate))}` : ""}
             </strong>
+          </div>
+        ) : null}
+        {item.kind === "task" && item.lastDone ? (
+          <div className="a-note-fact">
+            <span>Last done</span>
+            <strong>{lastDoneLine(item.lastDone)}</strong>
           </div>
         ) : null}
         <div className="a-note-fact">
@@ -156,10 +189,97 @@ export function OperationView() {
       <OccurrenceHistory
         history={item.history ?? []}
         undoId={item.undoOccurrenceId ?? null}
-        nameOf={(userId) => hub.members.find((member) => member.userId === userId)?.name ?? "A former member"}
+        nameOf={(userId) => personName(userId, "A former member")}
         disabled={mutationPending}
         onUndo={(occurrenceId) => run(() => undoOperation(occurrenceId), "Undone. The task is back as it was.")}
       />
+      {panel === "doneby" ? (
+        <DoneByChoice
+          className="operation-panel"
+          holder={item.assignee ?? ""}
+          title={item.title}
+          disabled={mutationPending}
+          onChoose={(doneBy) => {
+            const holder = firstNameOf(item.assignee) || "them";
+            run(() => toggleOperation(item.id, doneBy),
+              `${doneBy === "assignee" ? `Marked done for ${holder}` : `Marked done, covering ${holder}`}. You can undo this in History.`);
+          }}
+          onCancel={() => setPanel("")}
+        />
+      ) : null}
+      {panel === "skip" ? (
+        <div className="operation-delete operation-panel">
+          <p>Move this on a week? {firstNameOf(item.assignee) || "Whoever has it"} keeps it.</p>
+          <div className="a-field">
+            <label htmlFor="operation-skip-reason">Reason (optional)</label>
+            <input
+              id="operation-skip-reason"
+              value={reason}
+              maxLength={OCCURRENCE_REASON_MAX}
+              onChange={(event) => setReason(event.target.value)}
+              placeholder="Bins not collected this week"
+            />
+          </div>
+          <div className="a-field-row">
+            <button
+              className="a-btn"
+              type="button"
+              disabled={mutationPending}
+              onClick={() => run(() => skipOperation(item.id, reason), "Moved on a week. You can undo this in History.")}
+            >
+              Skip a week
+            </button>
+            <button className="a-btn ghost" type="button" onClick={() => setPanel("")}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : null}
+      {panel === "handover" ? (
+        <div className="operation-delete operation-panel">
+          <p>
+            {handoverLead}
+          </p>
+          <div className="a-field">
+            <label htmlFor="operation-hand-to">Hand to</label>
+            <select id="operation-hand-to" value={handTo} onChange={(event) => setHandTo(event.target.value)}>
+              <option value="">Choose someone</option>
+              {handTargets.map((member) => (
+                <option key={member.userId} value={member.userId}>
+                  {member.userId === you.id ? `${member.name} · You` : member.name}
+                  {member.userId === item.turnOwnerId ? " · their turn" : ""}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="a-field">
+            <label htmlFor="operation-handover-reason">Reason (optional)</label>
+            <input
+              id="operation-handover-reason"
+              value={reason}
+              maxLength={OCCURRENCE_REASON_MAX}
+              onChange={(event) => setReason(event.target.value)}
+              placeholder="Away this weekend"
+            />
+          </div>
+          <div className="a-field-row">
+            <button
+              className="a-btn"
+              type="button"
+              disabled={mutationPending || !handTo}
+              onClick={() => {
+                const name = firstNameOf(hub.members.find((member) => member.userId === handTo)?.name) || "them";
+                run(() => handOverOperation(item.id, handTo, reason), `Handed to ${name}. You can undo this in History.`);
+              }}
+            >
+              Hand over
+            </button>
+            <button className="a-btn ghost" type="button" onClick={() => setPanel("")}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : null}
       {confirmDelete ? (
         <div className="operation-delete">
           <p>Remove this from the calendar? It won’t come back.</p>
@@ -167,8 +287,12 @@ export function OperationView() {
             <button
               className="a-btn danger"
               type="button"
-              onClick={() => void removeOperation(item.id).catch((failure) =>
-                setError(failure instanceof Error ? failure.message : "Could not remove item"))}
+              disabled={mutationPending}
+              onClick={() => void removeOperation(item.id).catch((failure) => {
+                const result = commandFailure(failure, "Could not remove item");
+                // Removing twice is harmless, so trying again is safe.
+                setError(result.rejected ? result.message : "We could not confirm whether this was removed. Check your connection and try again.");
+              })}
             >
               Remove
             </button>
@@ -182,19 +306,18 @@ export function OperationView() {
           </div>
         </div>
       ) : (
-        <div className="a-field-row">
+        <div className="a-field-row operation-actions">
           {item.kind === "task" ? (
             <button
               className="a-btn"
               type="button"
               disabled={mutationPending}
-              onClick={() => run(() => toggleOperation(item.id), item.status === "done" ? "Reopened." : "Marked done. You can undo this in History.")}
+              aria-expanded={needsDoneBy(item, you.id) ? panel === "doneby" : undefined}
+              onClick={() => needsDoneBy(item, you.id)
+                ? openPanel("doneby")
+                : run(() => toggleOperation(item.id), item.status === "done" ? "Reopened." : "Marked done. You can undo this in History.")}
             >
-              {item.status === "done"
-                ? "Mark open"
-                : nextName
-                  ? `Done · ${nextName}`
-                  : "Mark done"}
+              {item.status === "done" ? "Mark open" : "Done"}
             </button>
           ) : null}
           {item.kind === "task" && item.status === "open" && item.repeat !== "none" ? (
@@ -202,9 +325,23 @@ export function OperationView() {
               className="a-btn ghost"
               type="button"
               disabled={mutationPending}
-              onClick={() => run(() => skipOperation(item.id), "Moved on a week. You can undo this in History.")}
+              aria-label="Skip a week"
+              aria-expanded={panel === "skip"}
+              onClick={() => openPanel("skip")}
             >
-              Skip a week
+              <span className="operation-label-long">Skip a week</span>
+              <span className="operation-label-short">Skip</span>
+            </button>
+          ) : null}
+          {item.kind === "task" && item.status === "open" && handTargets.length ? (
+            <button
+              className="a-btn ghost"
+              type="button"
+              disabled={mutationPending}
+              aria-expanded={panel === "handover"}
+              onClick={() => openPanel("handover")}
+            >
+              Hand over
             </button>
           ) : null}
           <button
@@ -214,21 +351,45 @@ export function OperationView() {
           >
             Edit
           </button>
-          <button
-            className="a-btn ghost"
-            type="button"
-            onClick={() => setConfirmDelete(true)}
-          >
-            Remove
-          </button>
+          {canRemove ? (
+            <button
+              className="operation-remove"
+              type="button"
+              onClick={() => setConfirmDelete(true)}
+            >
+              Remove
+            </button>
+          ) : null}
         </div>
       )}
     </section>
   );
 }
 
-const occurrenceDay = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short" });
-const OCCURRENCE_VERB: Record<OperationOccurrence["action"], string> = { completed: "Completed", skipped: "Skipped", reopened: "Reopened" };
+const OCCURRENCE_VERB: Record<OperationOccurrence["action"], string> = {
+  completed: "Completed", skipped: "Skipped", reopened: "Reopened", handed_over: "Handed over",
+};
+/** The database keeps a reason to 200 characters. */
+const OCCURRENCE_REASON_MAX = 200;
+
+/**
+ * Who did it, and who marked it when that was someone else: "Ama, marked by
+ * Ben", or "Ben, covering Ama". Entries before 0041 name who pressed it.
+ */
+function doneByLine(entry: OperationOccurrence, nameOf: (userId: string) => string): string {
+  const actor = nameOf(entry.actorId);
+  if (entry.action !== "completed" || !entry.doneById) return actor;
+  if (entry.doneById !== entry.actorId) return `${nameOf(entry.doneById)}, marked by ${actor}`;
+  return entry.assigneeId && entry.assigneeId !== entry.actorId && entry.assignee
+    ? `${actor}, covering ${firstNameOf(entry.assignee)}` : actor;
+}
+
+/** "Ama Owusu · 4 Oct · marked by Ben", "Ben · 4 Oct · covering Ama". */
+function lastDoneLine(lastDone: NonNullable<OperationItem["lastDone"]>): string {
+  return [lastDone.by, formatDay(lastDone.date),
+    lastDone.markedBy ? `marked by ${firstNameOf(lastDone.markedBy)}` : "",
+    lastDone.covering ? `covering ${firstNameOf(lastDone.covering)}` : ""].filter(Boolean).join(" · ");
+}
 
 /** What happened to each occurrence, newest first. Only the latest can be undone. */
 function OccurrenceHistory({ history, undoId, nameOf, disabled, onUndo }: {
@@ -242,11 +403,13 @@ function OccurrenceHistory({ history, undoId, nameOf, disabled, onUndo }: {
       {history.map((entry) => (
         <div key={entry.id} className={entry.undoneAt ? "is-undone" : undefined}>
           <span>
-            <strong>{OCCURRENCE_VERB[entry.action]}</strong> by {nameOf(entry.actorId)} on {occurrenceDay.format(dateFromIso(entry.actedOn))}
-            {entry.action !== "reopened" ? ` · was due ${occurrenceDay.format(dateFromIso(entry.dueOn))}${entry.assignee ? ` with ${firstNameOf(entry.assignee)}` : ""}` : ""}
+            <strong>{OCCURRENCE_VERB[entry.action]}</strong> by {doneByLine(entry, nameOf)} on {formatDay(entry.actedOn)}
+            {entry.action === "completed" || entry.action === "skipped" ? ` · was due ${formatDay(entry.dueOn)}${entry.assignee ? ` with ${firstNameOf(entry.assignee)}` : ""}` : ""}
             {entry.action === "completed" && entry.nextDate !== entry.dueOn
-              ? ` · next ${occurrenceDay.format(dateFromIso(entry.nextDate))}${entry.nextAssignee ? ` with ${firstNameOf(entry.nextAssignee)}` : ""}` : ""}
-            {entry.action === "skipped" ? ` · moved to ${occurrenceDay.format(dateFromIso(entry.nextDate))}` : ""}
+              ? ` · next ${formatDay(entry.nextDate)}${entry.nextAssignee ? ` with ${firstNameOf(entry.nextAssignee)}` : ""}` : ""}
+            {entry.action === "skipped" ? ` · moved to ${formatDay(entry.nextDate)}` : ""}
+            {entry.action === "handed_over" && entry.nextAssignee ? ` · to ${firstNameOf(entry.nextAssignee)}` : ""}
+            {entry.reason ? ` · “${entry.reason}”` : ""}
             {entry.undoneAt ? <em> · Undone by {nameOf(entry.undoneBy ?? "")}</em> : null}
           </span>
           {entry.id === undoId ? (
@@ -260,12 +423,15 @@ function OccurrenceHistory({ history, undoId, nameOf, disabled, onUndo }: {
 
 export function OperationNew() {
   const { addOperation, closeWindow, go } = useApp();
+  // One id for this form: an add retried after an unconfirmed save returns
+  // what it already added rather than a second copy.
+  const requestId = useRef(newRequestId());
   return (
     <OperationForm
       submitLabel="Add to calendar"
       onCancel={closeWindow}
       onSave={async (item) => {
-        const id = await addOperation(item);
+        const id = await addOperation(item, requestId.current);
         go("operation", { operation: id });
       }}
     />
@@ -274,6 +440,14 @@ export function OperationNew() {
 
 export function OperationEdit() {
   const { closeWindow, go, selectedOperation, updateOperation } = useApp();
+  // The version this edit builds on. A completion, skip or handover since
+  // makes it stale, so it cannot put back an older date or person.
+  const [baseVersion, setBaseVersion] = useState(selectedOperation?.version);
+  // What this form last sent. A save whose reply was lost still arrives with
+  // a later refresh as the next version, and that is this person's own change.
+  const [submitted, setSubmitted] = useState<NewOperation | null>(null);
+  // Loading the latest starts the form again from what is saved now.
+  const [reloads, setReloads] = useState(0);
   if (!selectedOperation) {
     return (
       <section className="a-window">
@@ -286,13 +460,27 @@ export function OperationEdit() {
       </section>
     );
   }
+  const changed = baseVersion !== undefined && selectedOperation.version !== baseVersion;
+  const ownSave = changed && submitted !== null && holdsEdit(selectedOperation, submitted);
   return (
     <OperationForm
+      key={reloads}
       item={selectedOperation}
       submitLabel="Save changes"
+      stale={changed && !ownSave}
+      saved={ownSave}
+      onReload={() => {
+        setBaseVersion(selectedOperation.version);
+        setSubmitted(null);
+        setReloads((count) => count + 1);
+      }}
       onCancel={() => go("operation", { operation: selectedOperation.id })}
       onSave={async (next) => {
-        await updateOperation(selectedOperation.id, next);
+        // After this person's own save went through, the next one builds on it.
+        const expected = ownSave ? selectedOperation.version : baseVersion;
+        setBaseVersion(expected);
+        setSubmitted(next);
+        await updateOperation(selectedOperation.id, next, expected);
         go("operation", { operation: selectedOperation.id });
       }}
     />
@@ -302,11 +490,19 @@ export function OperationEdit() {
 function OperationForm({
   item,
   submitLabel,
+  stale = false,
+  saved = false,
+  onReload,
   onCancel,
   onSave,
 }: {
   item?: OperationItem;
   submitLabel: string;
+  /** Changed since this form opened, by someone else. */
+  stale?: boolean;
+  /** The latest saved version is this form's own last save. */
+  saved?: boolean;
+  onReload?: () => void;
   onCancel: () => void;
   onSave: (item: NewOperation) => Promise<void>;
 }) {
@@ -335,17 +531,24 @@ function OperationForm({
       return matches.length === 1 ? [matches[0].userId] : [];
     });
   });
-  // The person who has it now always takes a turn; list order is turn order.
+  // While someone covers a turn, the person whose turn it is stays fixed in
+  // the rotation and the cover does not join it. Choosing someone else ends
+  // the cover.
+  const coveredFor = item?.turnOwnerId && assigneeId === item.assigneeId ? item.turnOwnerId : "";
+  const turnHolder = coveredFor || assigneeId;
+  // The person whose turn it is always takes a turn; list order is turn order.
   const turns = hub.members
     .map((member) => member.userId)
-    .filter((id) => id === assigneeId || rotationIds.includes(id));
+    .filter((id) => id === turnHolder || rotationIds.includes(id));
   const [repeat, setRepeat] = useState<NewOperation["repeat"]>(
     item?.repeat ?? "none",
   );
   const [notes, setNotes] = useState(item?.notes ?? "");
   const [attempted, setAttempted] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
+  const { setError, message } = useFormError();
+  const titleMissing = attempted && !title.trim();
+  const dateMissing = attempted && !date;
 
   function chooseKind(next: OperationKind) {
     setKind(next);
@@ -356,7 +559,12 @@ function OperationForm({
 
   async function save() {
     setAttempted(true);
-    if (!title.trim() || !date) return;
+    if (!title.trim() || !date) {
+      // The first field to fix takes focus.
+      document.getElementById(!title.trim() ? "operation-title" : "operation-date")?.focus();
+      return;
+    }
+    if (stale) return;
     setBusy(true);
     setError("");
     try {
@@ -376,7 +584,11 @@ function OperationForm({
         notes: notes.trim(),
       });
     } catch (failure) {
-      setError(failure instanceof Error ? failure.message : "Could not save item");
+      const result = commandFailure(failure, "Could not save item");
+      setError(!result.rejected ? UNCERTAIN_RETRY_SAFE
+        : /already used for a different/i.test(result.message)
+          ? "An earlier attempt may already have been saved. Close this and check the calendar before trying again."
+          : result.message);
     } finally {
       setBusy(false);
     }
@@ -419,15 +631,16 @@ function OperationForm({
           type="text"
           value={title}
           maxLength={LIMITS.operationTitle}
-          aria-invalid={attempted && !title.trim()}
+          aria-invalid={titleMissing}
+          aria-describedby={titleMissing ? "operation-title-error" : undefined}
           onChange={(event) => setTitle(event.target.value)}
           placeholder={
             kind === "task" ? "e.g. Put the bins out" : "e.g. Plumber appointment"
           }
         />
         <span className="a-field-limit">{title.length}/{LIMITS.operationTitle}</span>
-        {attempted && !title.trim() ? (
-          <p className="field-error">Add a title.</p>
+        {titleMissing ? (
+          <p className="field-error" id="operation-title-error">Add a title.</p>
         ) : null}
       </div>
 
@@ -457,9 +670,11 @@ function OperationForm({
           id="operation-date"
           type="date"
           value={date}
-          aria-invalid={attempted && !date}
+          aria-invalid={dateMissing}
+          aria-describedby={dateMissing ? "operation-date-error" : undefined}
           onChange={(event) => setDate(event.target.value)}
         />
+        {dateMissing ? <p className="field-error" id="operation-date-error">Choose a date.</p> : null}
       </div>
       <div className="a-field half">
         <label>Time</label>
@@ -529,7 +744,7 @@ function OperationForm({
             <fieldset className="a-field operation-turns">
               <legend>Takes turns</legend>
               {hub.members.map((member) => {
-                const holder = member.userId === assigneeId;
+                const holder = member.userId === turnHolder;
                 const position = turns.indexOf(member.userId);
                 return (
                   <label className="a-settle-row operation-turn" key={member.userId}>
@@ -550,7 +765,7 @@ function OperationForm({
                       {member.userId === you.id ? `${member.name} · You` : member.name}
                     </span>
                     <span className="operation-turn-note">
-                      {holder ? "Has it now" : position >= 0 ? `Turn ${position + 1}` : ""}
+                      {holder ? (coveredFor ? "Their turn now, covered" : "Has it now") : position >= 0 ? `Turn ${position + 1}` : ""}
                     </span>
                   </label>
                 );
@@ -579,9 +794,24 @@ function OperationForm({
         <span className="a-field-limit">{notes.length}/{LIMITS.operationNotes}</span>
       </div>
 
-      {error ? <p className="a-form-error" role="alert">{error}</p> : null}
+      {stale && !busy ? (
+        <div className="operation-delete operation-panel" role="alert">
+          <p>
+            This {item?.kind === "event" ? "event" : "task"} changed while you were editing, and nothing here has been saved.
+            Load the latest details, then make your change again.
+          </p>
+          <div className="a-field-row">
+            <button className="a-btn" type="button" onClick={onReload}>
+              Load the latest details
+            </button>
+          </div>
+        </div>
+      ) : saved && !busy ? (
+        // It settles the doubt an unconfirmed save left behind.
+        <p className="a-window-note" role="status">Your last save went through.</p>
+      ) : message()}
       <div className="a-field-row">
-        <button className="a-btn" type="button" onClick={() => void save()} disabled={busy}>
+        <button className="a-btn" type="button" onClick={() => void save()} disabled={busy || stale}>
           {busy ? "Saving…" : submitLabel}
         </button>
         <button className="a-btn ghost" type="button" onClick={onCancel}>

@@ -1,3 +1,7 @@
+> **Historical.** The files this brief points to belong to the earlier Mantine
+> app, which has since been replaced. The approved design direction is now
+> [docs/DESIGN-LANGUAGE.md](../DESIGN-LANGUAGE.md).
+
 # Bring the app into the homepage design direction
 
 27 September 2026 · Implementation brief · App changes not yet made

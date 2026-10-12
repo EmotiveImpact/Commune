@@ -1,6 +1,7 @@
 import { CircleAlert, FileText, House, ReceiptText, Repeat2, ShoppingBag, SquareCheck, UsersRound, Files } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { SEARCH_KINDS, SEARCH_LABELS, type SearchKind, type SearchResponse, type SearchResult } from "../live/search";
+import { formatMoney } from "@commune/core";
+import { SEARCH_KINDS, SEARCH_LABELS, searchMeta, type SearchKind, type SearchResponse, type SearchResult } from "../live/search";
 import { Button } from "./components";
 const ICONS: Record<SearchKind, LucideIcon> = {
   commune: House, expense: ReceiptText, note: FileText, operation: SquareCheck,
@@ -34,10 +35,12 @@ export function SearchResults({ result, pending, error, query, retry, onOpen, li
       const start = offset; offset += items.length;
       const Glyph = ICONS[kind];
       return <div className="c-search-group" key={kind} role={quick ? "group" : undefined} aria-label={SEARCH_LABELS[kind]}>
-        <h3>{SEARCH_LABELS[kind]}</h3>
+        {/* In the quick finder the group's label names it; a heading inside the
+            options list would break the list for screen readers. */}
+        <h3 aria-hidden={quick || undefined}>{SEARCH_LABELS[kind]}</h3>
         {items.map((item, index) => {
           const position = start + index;
-          const amount = item.amountMinor === null ? null : new Intl.NumberFormat("en-GB", { style: "currency", currency: item.currency }).format(item.amountMinor / 100);
+          const amount = item.amountMinor === null ? null : formatMoney(item.amountMinor, item.currency);
           return <button className={`c-search-result${position === activeIndex ? " is-active" : ""}`} type="button"
             id={`${listId}-${position}`} role={quick ? "option" : undefined}
             aria-selected={quick ? position === activeIndex : undefined} tabIndex={quick ? -1 : undefined}
@@ -45,7 +48,7 @@ export function SearchResults({ result, pending, error, query, retry, onOpen, li
             onMouseEnter={() => onActive?.(position)}>
             <span className="c-search-result-icon"><Glyph size={18} strokeWidth={1.5} aria-hidden="true" /></span>
             <span className="c-search-result-copy"><strong>{item.title}</strong><small>{item.kind === "commune" ? item.subtitle : `${item.communeName} · ${item.subtitle}`}</small></span>
-            <span className="c-search-result-meta">{amount && <strong>{amount}</strong>}<small>{item.meta}</small></span>
+            <span className="c-search-result-meta">{amount && <strong>{amount}</strong>}<small>{searchMeta(item)}</small></span>
           </button>;
         })}
       </div>;

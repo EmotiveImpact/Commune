@@ -1,6 +1,6 @@
 # Hosted release checklist (prepared, not run)
 
-Prepared 5 October 2026. Nothing below has been done. Migrations 0015 to 0023
+Prepared 5 October 2026. Nothing below has been done. Migrations 0015 to 0025
 exist only in local databases; the hosted Neon project, Vercel and email are
 unchanged. Each step needs a fresh instruction from the owner. Passing local
 tests is not evidence of hosted behaviour or capacity.
@@ -18,18 +18,21 @@ tests is not evidence of hosted behaviour or capacity.
 | 0021 | "I've sent it" payment reports | New notice kinds |
 | 0022 | Recurring periods (amount paid, skip, history) | Backfills period amount and recorder from each expense |
 | 0023 | Note versions and revisions | Backfill runs with the change-history trigger disabled |
+| 0024 | Task handovers and skip reasons | Replaces `record_operation_occurrence` with a version taking an optional reason; no backfill |
+| 0025 | Announcements with optional confirmation | Two new tables, read through the snapshot; no backfill |
 
 The matching web client calls the new commands, so it must not be deployed
 before the migrations. Older clients keep working after them (name-only task
 writes are resolved; `record_recurring_bill` keeps its contract; note saves
-without a version still save).
+without a version still save; a skip without a reason still calls the
+occurrence command as before).
 
 ## Order
 
 1. **Back up.** Take a Neon branch (or point-in-time restore point) of
    production, and record its name here.
 2. **Rehearse on a branch made from production data.** Apply 0013 (if not yet
-   applied) to 0023 in numeric order over an unpooled connection. Each file is
+   applied) to 0025 in numeric order over an unpooled connection. Each file is
    one transaction; stop at the first error. Rehearse on real data, not an
    empty branch: 0023's first draft failed only when notes already existed.
 3. **Compare.** Before and after on the branch: counts of users, communes,
@@ -47,7 +50,10 @@ without a version still save).
    rotation; a member leaving with tasks assigned.
 7. **Preview deploy** of the web client against the branch. Walk Settle,
    Recurring, Notes, Operations, Members and commune settings in light and
-   dark, at phone and desktop widths.
+   dark, at phone and desktop widths. The policy in `apps/web/vercel.json` no
+   longer allows fonts.googleapis.com or fonts.gstatic.com, because the app
+   serves its own fonts; `img-src` keeps images.unsplash.com until the default
+   covers are bundled. Check the console for refused fonts or images.
 8. **Production.** Repeat 2 to 5 on production in a quiet window, then deploy
    the web client. Keep the step 1 backup until the release has run cleanly
    for a week.

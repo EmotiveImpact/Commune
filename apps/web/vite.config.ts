@@ -1,5 +1,6 @@
 import net from "node:net";
-import { defineConfig, type Plugin } from "vite";
+import { fileURLToPath } from "node:url";
+import { defineConfig, loadEnv, type Plugin, type Rollup } from "vite";
 import react from "@vitejs/plugin-react";
 
 const PORT = 3000;
@@ -32,8 +33,89 @@ function listenIpv6Too(): Plugin {
   };
 }
 
-export default defineConfig({
-  plugins: [react(), listenIpv6Too()],
+/**
+ * vercel.json allows connections to any HTTPS host, so a preview built for a
+ * new Neon branch cannot break on its host name. A build that knows its Neon
+ * endpoints narrows that to exactly those origins; browsers enforce both.
+ */
+export function exactConnectPolicy(env: Record<string, string | undefined>): Plugin {
+  return {
+    name: "exact-connect-policy",
+    apply: "build",
+    transformIndexHtml(html) {
+      const origins = [env.VITE_NEON_AUTH_URL, env.VITE_NEON_DATA_API_URL, env.VITE_REMINDER_FUNCTION_URL]
+        .map((value) => value?.trim())
+        .filter((value): value is string => Boolean(value))
+        .map((value) => new URL(value).origin);
+      if (!origins.length) return html;
+      const charset = '<meta charset="UTF-8" />';
+      if (!html.includes(charset)) throw new Error("index.html must declare its charset before the connect policy");
+      return html.replace(charset, `${charset}\n    <meta http-equiv="Content-Security-Policy" content="connect-src 'self' ${[...new Set(origins)].join(" ")}" />`);
+    },
+  };
+}
+
+/**
+ * The production data client (src/live/neon.ts and the Neon SDK) is a chunk
+ * of its own that src/live/api.ts imports on first use. Every visit needs it
+ * at once to check the session, so the page starts downloading it alongside
+ * the main bundle rather than after the main bundle has run.
+ */
+export function preloadDataClient(): Plugin {
+  let base = "/";
+  return {
+    name: "preload-data-client",
+    apply: "build",
+    configResolved(config) {
+      base = config.base;
+    },
+    transformIndexHtml: {
+      order: "post",
+      handler(_html, ctx) {
+        const chunks = Object.values(ctx.bundle ?? {}).filter((item): item is Rollup.OutputChunk => item.type === "chunk");
+        const client = chunks.find((chunk) => !chunk.isEntry && chunk.facadeModuleId?.endsWith("/src/live/neon.ts"));
+        if (!client) return [];
+        const entries = new Set(chunks.filter((chunk) => chunk.isEntry).map((chunk) => chunk.fileName));
+        return [client.fileName, ...client.imports.filter((file) => !entries.has(file))].map((file) => ({
+          tag: "link",
+          attrs: { rel: "modulepreload", crossorigin: true, href: `${base}${file}` },
+          injectTo: "head" as const,
+        }));
+      },
+    },
+  };
+}
+
+/**
+ * Which build sent an error report (src/live/reports.ts): the commit Vercel
+ * built, else "local".
+ */
+export function releaseId(env: Record<string, string | undefined>): string {
+  const commit = env.VERCEL_GIT_COMMIT_SHA?.trim().toLowerCase() ?? "";
+  return /^[0-9a-f]{7,40}$/.test(commit) ? commit.slice(0, 12) : "local";
+}
+
+/** packages/core by name, as tsconfig.json's paths and vitest.config.ts name it. */
+export const sharedCode = [
+  { find: /^@commune\/core$/, replacement: fileURLToPath(new URL("../../packages/core/src/index.ts", import.meta.url)) },
+];
+
+export default defineConfig(({ mode }) => ({
+  resolve: { alias: sharedCode },
+  plugins: [
+    react(),
+    listenIpv6Too(),
+    exactConnectPolicy(loadEnv(mode, fileURLToPath(new URL(".", import.meta.url)), "VITE_")),
+    preloadDataClient(),
+  ],
+  define: {
+    __COMMUNE_RELEASE__: JSON.stringify(releaseId(process.env)),
+  },
+  build: {
+    // The hosted policy allows fonts only from the app's own origin
+    // (font-src 'self'), so a small font must never become a data: URL.
+    assetsInlineLimit: (file: string) => (file.endsWith(".woff2") ? false : undefined),
+  },
   server: {
     host: "127.0.0.1",
     port: PORT,
@@ -52,4 +134,4 @@ export default defineConfig({
     strictPort: true,
     allowedHosts: ["localhost", "127.0.0.1"],
   },
-});
+}));

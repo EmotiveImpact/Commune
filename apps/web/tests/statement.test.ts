@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from "vitest";
 import { buildStatement, statementCsv, type StatementExpense } from "../src/data/statement";
 

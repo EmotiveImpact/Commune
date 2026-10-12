@@ -1,20 +1,22 @@
-import { useEffect, useRef, useState } from "react";
-import { ArrowRightLeft, ChartColumn, Clock3, CreditCard, FileText, Files, House, LayoutGrid, ReceiptText, Repeat2, ShoppingBag, SquareCheck, UsersRound, type LucideIcon } from "lucide-react";
+import { useEffect, useId, useRef, useState } from "react";
+import { ArrowRightLeft, Clock3, FileText, Files, House, LayoutGrid, ReceiptText, Repeat2, ShoppingBag, SquareCheck, UsersRound, type LucideIcon } from "lucide-react";
 import type { IconName } from "../ui/Icon";
 import { Icon } from "../ui/Icon";
 import { Avatar } from "../ui/widgets";
 import { useApp } from "../state";
-import type { ScreenId, WindowId } from "../data/household";
+import type { ScreenId } from "../data/household";
 import { QuickSearch } from "../ui/QuickSearch";
 import { cx } from "../ui/cx";
-import { ReminderUsageMeter } from "../ui/ReminderUsage";
+import { LeaveWithParent } from "../ui/components";
+import { crossFadeContent } from "../ui/motion";
+import { showToast } from "../ui/Toast";
 
 type NavItem = { id: ScreenId; label: string; icon: IconName };
 
 const NAV_ICONS: Partial<Record<IconName, LucideIcon>> = {
   home: LayoutGrid, hub: House, expenses: ReceiptText, settle: ArrowRightLeft,
   recurring: Repeat2, funds: ShoppingBag, notes: FileText, operations: SquareCheck,
-  templates: Files, billing: CreditCard, analytics: ChartColumn,
+  templates: Files,
   activity: Clock3, members: UsersRound,
 };
 
@@ -27,17 +29,22 @@ const BASIC: NavItem[] = [
   { id: "operations", label: "Operations", icon: "operations" },
 ];
 
+// The phone menu has no other route to these in basic mode.
+const DRAWER_BASIC: NavItem[] = [
+  { id: "members", label: "Members", icon: "members" },
+  { id: "templates", label: "Templates", icon: "templates" },
+];
+
 const MONEY: NavItem[] = [
   { id: "expenses", label: "Expenses", icon: "expenses" },
   { id: "settle", label: "Settle", icon: "settle" },
   { id: "recurring", label: "Recurring", icon: "recurring" },
   { id: "funds", label: "Funds", icon: "funds" },
   { id: "templates", label: "Templates", icon: "templates" },
-  { id: "billing", label: "Billing", icon: "billing" },
 ];
 
+// Billing and Analytics stay out of the navigation until they do something.
 const INSIGHTS: NavItem[] = [
-  { id: "analytics", label: "Analytics", icon: "analytics" },
   { id: "activity", label: "Activity", icon: "activity" },
 ];
 
@@ -47,9 +54,9 @@ const PEOPLE: NavItem[] = [
   { id: "notes", label: "Notes", icon: "notes" },
 ];
 
-function CreateCommune({ onClick, menu }: { onClick: () => void; menu?: boolean }) {
+function CreateCommune({ onClick }: { onClick: () => void }) {
   return (
-    <button className="a-create-space" type="button" role={menu ? "menuitem" : undefined} onClick={onClick}>
+    <button className="a-create-space" type="button" onClick={onClick}>
       <span className="a-create-mark" aria-hidden="true">
         <Icon name="plus" size={14} />
       </span>
@@ -62,20 +69,28 @@ function CommuneSwitch() {
   const { go, hub, places, session } = useApp();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const listId = useId();
   const hasCommunes = Boolean(session?.hasHubs && places.length);
 
+  // A plain show-and-hide list: a click or focus elsewhere closes it, and
+  // Escape closes it and returns focus to the button.
   useEffect(() => {
     if (!open) return;
-    const onDoc = (event: MouseEvent) => {
+    const onOutside = (event: Event) => {
       if (!ref.current?.contains(event.target as Node)) setOpen(false);
     };
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setOpen(false);
+      if (event.key !== "Escape") return;
+      setOpen(false);
+      buttonRef.current?.focus();
     };
-    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("mousedown", onOutside);
+    document.addEventListener("focusin", onOutside);
     document.addEventListener("keydown", onKey);
     return () => {
-      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("mousedown", onOutside);
+      document.removeEventListener("focusin", onOutside);
       document.removeEventListener("keydown", onKey);
     };
   }, [open]);
@@ -91,11 +106,11 @@ function CommuneSwitch() {
   return (
     <div className="a-switch-section" ref={ref}>
       <button
+        ref={buttonRef}
         className={cx("a-hub-switch", open && "is-active")}
         type="button"
         aria-expanded={open}
-        aria-haspopup="menu"
-        aria-label="Switch commune"
+        aria-controls={open ? listId : undefined}
         onClick={() => setOpen((value) => !value)}
       >
         <div className="hub-ico" aria-hidden="true">
@@ -105,21 +120,26 @@ function CommuneSwitch() {
           <strong>{hub.name}</strong>
           <span>{hub.switchMeta}</span>
         </div>
+        {" "}<span className="c-visually-hidden">Switch commune</span>
         <span className={cx("a-hub-chev", open && "is-open")} aria-hidden="true">
           <Icon name="chevronDown" size={14} />
         </span>
       </button>
       {open ? (
-        <div className="a-hub-menu" role="menu" aria-label="Communes">
+        <div className="a-hub-menu" id={listId} role="group" aria-label="Communes">
           {places.map((place) => (
             <button
               key={place.id}
               className={cx("a-hub-option", place.id === hub.id && "is-current")}
               type="button"
-              role="menuitem"
               aria-current={place.id === hub.id ? "true" : undefined}
               onClick={() => {
                 setOpen(false);
+                if (place.id !== hub.id) {
+                  // The content cross-fades, and the line near the thumb says where you are now.
+                  crossFadeContent();
+                  showToast({ text: `Showing ${place.name}.` });
+                }
                 go("hub", { hub: place.id });
               }}
             >
@@ -133,7 +153,6 @@ function CommuneSwitch() {
             </button>
           ))}
           <CreateCommune
-            menu
             onClick={() => {
               setOpen(false);
               go("commune-new");
@@ -163,8 +182,12 @@ function NavButton({
   );
 }
 
-export function Sidebar({ screen }: { screen: ScreenId }) {
-  const { go, hub, you, reminderUsage } = useApp();
+export function Sidebar({ screen, drawer }: { screen: ScreenId; drawer?: boolean }) {
+  const { go, hub, you, setMoreOpen } = useApp();
+  const closeRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (drawer) closeRef.current?.focus();
+  }, [drawer]);
   const accountRole = hub.youMeta?.split(" · ")[0];
   const active = (id: ScreenId) =>
     screen === id ||
@@ -174,17 +197,30 @@ export function Sidebar({ screen }: { screen: ScreenId }) {
     (id === "expenses" && screen === "expenses-empty");
 
   return (
-    <aside className="a-side">
-      <button className="a-brand" type="button" onClick={() => go("home")}>
-        <span className="a-wordmark">commune.</span>
-      </button>
+    <aside
+      className={cx("a-side", drawer && "a-drawer")}
+      data-leave={drawer ? "drawer" : undefined}
+      role={drawer ? "dialog" : undefined}
+      aria-modal={drawer ? true : undefined}
+      aria-label={drawer ? "Menu" : undefined}
+    >
+      <div className="a-side-head">
+        <button className="a-brand" type="button" onClick={() => go("home")}>
+          <span className="a-wordmark">commune.</span>
+        </button>
+        {drawer ? (
+          <button ref={closeRef} className="a-drawer-x" type="button" aria-label="Close menu" onClick={() => setMoreOpen(false)}>
+            <Icon name="close" size={18} />
+          </button>
+        ) : null}
+      </div>
 
       <nav className="a-nav" aria-label="Primary">
         <NavButton item={{ id: "home", label: "Home", icon: "home" }} active={active("home")} onClick={() => go("home")} />
         <NavButton item={{ id: "hub", label: "This Hub", icon: "hub" }} active={active("hub")} onClick={() => go("hub")} />
 
         <div className="a-nav-basic">
-          {BASIC.map((item) => (
+          {(drawer ? [...BASIC, ...DRAWER_BASIC] : BASIC).map((item) => (
             <NavButton key={item.id} item={item} active={active(item.id)} onClick={() => go(item.id)} />
           ))}
         </div>
@@ -221,8 +257,6 @@ export function Sidebar({ screen }: { screen: ScreenId }) {
           </button>
           <div className="a-side-account-meta">
             {accountRole && <span className="a-side-account-role">{accountRole}</span>}
-            {accountRole && reminderUsage && <span className="a-side-account-separator" aria-hidden="true">·</span>}
-            <ReminderUsageMeter usage={reminderUsage} placement="sidebar" />
           </div>
         </div>
       </div>
@@ -235,17 +269,29 @@ export function Header({ screen }: { screen: ScreenId }) {
     go,
     pageTitle,
     pageLede,
+    moreOpen,
     setMoreOpen,
     native,
     you,
     noticesOn,
-    notifications,
+    noticeCounts,
     hubId,
     session,
+    places,
     window: currentWindow,
   } = useApp();
   const [searchOpen, setSearchOpen] = useState(false);
+  // On a phone, Home's all-square photo shows through the bar until the page moves.
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 4);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
   const searchingAll = ["home", "home-empty", "communes", "home-activity"].includes(screen);
+  // Every commune's unread notices, wherever the reader is.
+  const unread = noticesOn ? Object.values(noticeCounts).reduce((total, count) => total + count, 0) : 0;
   useEffect(() => {
     function shortcut(event: KeyboardEvent) {
       if (event.isComposing || event.repeat) return;
@@ -262,26 +308,34 @@ export function Header({ screen }: { screen: ScreenId }) {
     return () => document.removeEventListener("keydown", shortcut);
   }, [searchOpen, currentWindow]);
   return (
-    <header className={cx("a-header", (screen === "home" || screen === "home-empty") && "a-header-home")}>
-      <button className="a-icon-btn a-more-btn" type="button" aria-label="More" onClick={() => setMoreOpen(true)}>
+    <header className={cx("a-header", (screen === "home" || screen === "home-empty") && (places.length ? "is-home" : "a-header-home"), scrolled && "is-scrolled")}>
+      <button className="a-icon-btn a-more-btn" type="button" aria-label="Menu" aria-haspopup="dialog" aria-expanded={moreOpen}
+        onClick={() => setMoreOpen(true)}>
         <Icon name="menu" size={16} />
       </button>
-      <img className="a-header-mark" src="/logo-mark.svg" width={18} height={18} alt="" />
+      {/* A phone's Home names the app beside the menu; other pages name themselves. */}
+      {screen === "home" || screen === "home-empty" ? <span className="a-wordmark a-header-wordmark" aria-hidden="true">commune.</span> : null}
       <div className="a-header-title">
         <h1>{pageTitle}</h1>
         {pageLede ? <p>{pageLede}</p> : null}
       </div>
-      <button className="a-search c-search-trigger" type="button" aria-label="Open search"
+      <button className="a-search c-search-trigger" type="button" aria-label="Search Commune"
         aria-haspopup="dialog" aria-keyshortcuts="Meta+K Control+K" onClick={() => setSearchOpen(true)}>
           <Icon name="search" size={16} />
-          {!native && <><span>Search Commune</span><kbd>⌘ K</kbd></>}
+          {!native && <><span>Search Commune</span><kbd aria-hidden="true">⌘ K</kbd></>}
       </button>
       <div className="a-header-actions">
-        <button className="a-icon-btn a-you-btn" type="button" aria-label="You" onClick={() => go("settings")}>
-          <Avatar tone="maya" initials={you.initials} />
-        </button>
-        <button className={cx("a-icon-btn", noticesOn && notifications.some((notice) => !notice.readAt) && "has-unread")} type="button" aria-label="Notifications" onClick={() => go("notices")}>
+        <button className={cx("a-icon-btn", unread > 0 && "has-unread")} type="button" aria-label={unread ? `Notifications, ${unread} unread` : "Notifications"} onClick={() => go("notices")}>
           <Icon name="bell" size={16} />
+        </button>
+        {/* Home's everyday action, beside the bell as drawn; a phone has it on the Hub. */}
+        {screen === "home" && places.length ? (
+          <button className="a-btn ghost a-header-add" type="button" onClick={() => go("add-expense")}>
+            <Icon name="plus" size={16} /><span className="a-header-add-label">Add expense</span>
+          </button>
+        ) : null}
+        <button className="a-icon-btn a-you-btn" type="button" aria-label="You" onClick={() => go("settings")}>
+          <Avatar tone="maya" initials={you.initials} decorative />
         </button>
       </div>
       {searchOpen && <QuickSearch onClose={() => setSearchOpen(false)}
@@ -290,31 +344,36 @@ export function Header({ screen }: { screen: ScreenId }) {
   );
 }
 
+// The same drawings as the sidebar, in a pill that marks the current tab.
+function TabIcon({ name }: { name: IconName }) {
+  const TabGlyph = NAV_ICONS[name];
+  return <span className="a-tab-pill" aria-hidden="true">{TabGlyph ? <TabGlyph size={20} strokeWidth={1.6} /> : <Icon name={name} />}</span>;
+}
+
 export function PhoneTabs({ screen }: { screen: ScreenId }) {
-  const { go } = useApp();
+  const { go, moreOpen } = useApp();
   const tabs: Array<{ id: ScreenId; label: string; icon: IconName }> = [
     { id: "home", label: "Home", icon: "home" },
     { id: "hub", label: "Hub", icon: "hub" },
     { id: "expenses", label: "Expenses", icon: "expenses" },
     { id: "settle", label: "Settle", icon: "settle" },
   ];
+  const current = (id: ScreenId) =>
+    (id === "home" && (screen === "home" || screen === "home-empty" || screen === "home-inbox")) ||
+    (id === "hub" && (screen === "hub" || screen === "hub-empty" || screen === "commune-settings")) ||
+    (id === "expenses" && (screen === "expenses" || screen === "expenses-empty")) ||
+    (id === "settle" && (screen === "settle" || screen === "settle-even"));
   return (
-    <nav className="a-bottom" aria-label="Phone">
+    <nav className="a-bottom" aria-label="Phone" inert={moreOpen}>
       {tabs.map((tab) => (
         <button
           key={tab.id}
           type="button"
-          className={cx(
-            (tab.id === "home" && (screen === "home" || screen === "home-empty" || screen === "home-inbox")) ||
-              (tab.id === "hub" && (screen === "hub" || screen === "hub-empty" || screen === "commune-settings")) ||
-              (tab.id === "expenses" && (screen === "expenses" || screen === "expenses-empty")) ||
-              (tab.id === "settle" && (screen === "settle" || screen === "settle-even"))
-              ? "is-active"
-              : undefined,
-          )}
+          className={cx(current(tab.id) && "is-active")}
+          aria-current={current(tab.id) ? "page" : undefined}
           onClick={() => go(tab.id)}
         >
-          <Icon name={tab.icon} />
+          <TabIcon name={tab.icon} />
           {tab.label}
         </button>
       ))}
@@ -322,47 +381,35 @@ export function PhoneTabs({ screen }: { screen: ScreenId }) {
   );
 }
 
-const MORE: Array<{ id: ScreenId | WindowId; title: string; hint: string; icon: IconName; dash?: boolean }> = [
-  { id: "commune-new", title: "Create a commune", hint: "A home, a studio, or a trip", icon: "plus", dash: true },
-  { id: "communes", title: "Places", hint: "Switch house, studio, or trip", icon: "hub" },
-  { id: "search", title: "Search", hint: "Find expenses, notes and jobs across your communes", icon: "search" },
-  { id: "notes", title: "Notes", hint: "Shared details to remember", icon: "notes" },
-  { id: "funds", title: "Funds", hint: "Contributions and commitments", icon: "funds" },
-  { id: "recurring", title: "Recurring", hint: "Regular bills, recorded after payment", icon: "refresh" },
-  { id: "templates", title: "Saved splits", hint: "Participants, percentages and share weights", icon: "templates" },
-  { id: "operations", title: "Operations", hint: "What’s late, what’s yours, then the week", icon: "operations" },
-  { id: "members", title: "Members", hint: "Who’s here this cycle", icon: "members" },
-  { id: "settings", title: "You & settings", hint: "Profile and preferences", icon: "settings" },
-];
-
+/** The phone menu: the desktop sidebar, opened as a drawer from the left. */
 export function MoreSheet() {
-  const { setMoreOpen, go } = useApp();
+  const { moreOpen, setMoreOpen, screen } = useApp();
+  const wasOpen = useRef(false);
+  useEffect(() => {
+    if (!moreOpen) {
+      if (!wasOpen.current) return;
+      wasOpen.current = false;
+      // Closing returns focus to the menu button, unless choosing a page
+      // has already moved it there.
+      const active = document.activeElement;
+      if (!active || active === document.body) document.querySelector<HTMLElement>(".a-header .a-more-btn")?.focus();
+      return;
+    }
+    wasOpen.current = true;
+    const onKey = (event: KeyboardEvent) => {
+      // An open commune list inside the drawer closes first.
+      if (event.key === "Escape" && !document.querySelector(".a-drawer .a-hub-menu")) setMoreOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [moreOpen, setMoreOpen]);
+  if (!moreOpen) return null;
+  // In over the medium time; out the way it came, the scrim fading with it.
   return (
-    <>
-      <div className="a-sheet-scrim" onClick={() => setMoreOpen(false)} />
-      <div className="a-more" role="dialog" aria-label="More">
-        <div className="a-more-head">
-          <div>
-            <p className="a-more-kicker">More</p>
-            <p className="a-more-lede">Notes, funds, and the rest of your commune. The four tabs stay the spine.</p>
-          </div>
-          <button className="a-more-x" type="button" aria-label="Close More" onClick={() => setMoreOpen(false)}>
-            <Icon name="close" size={16} />
-          </button>
-        </div>
-        {MORE.map((row) => (
-          <button key={row.id} type="button" onClick={() => go(row.id)}>
-            <span className={cx("a-more-ic", row.dash && "a-more-ic-dash")} aria-hidden="true">
-              <Icon name={row.icon} />
-            </span>
-            <span className="a-more-copy">
-              <strong>{row.title}</strong>
-              <span>{row.hint}</span>
-            </span>
-            <Icon name="chevron" size={16} />
-          </button>
-        ))}
-      </div>
-    </>
+    <div style={{ display: "contents" }}>
+      <LeaveWithParent />
+      <div className="a-sheet-scrim" data-leave="scrim" onClick={() => setMoreOpen(false)} />
+      <Sidebar screen={screen} drawer />
+    </div>
   );
 }
