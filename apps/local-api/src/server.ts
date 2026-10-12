@@ -586,6 +586,28 @@ route("POST", /^\/api\/announcements\/([0-9a-f-]{36})\/archive$/, async (req, re
   send(res, result.rows[0].result);
 });
 
+// Pay links: how this person likes to be paid. People who share a commune
+// with them read these from the snapshot; the database validates every field.
+route("GET", /^\/api\/pay-links$/, async (req, res) => {
+  const result = await userAction(req, async (client) => client.query("SELECT public.my_pay_links() AS links"));
+  send(res, { links: result.rows[0].links });
+});
+
+route("PUT", /^\/api\/pay-links\/(monzo|paypal|revolut|bank)$/, async (req, res, match) => {
+  const input = await body(req);
+  const result = await userAction(req, async (client) => client.query(
+    "SELECT public.set_pay_link($1, $2, $3, $4, $5) AS links",
+    [match[1], optionalText(input.handle, "handle", 120), optionalText(input.accountName, "accountName", 60),
+      optionalText(input.sortCode, "sortCode", 12), optionalText(input.accountNumber, "accountNumber", 12)]));
+  send(res, { links: result.rows[0].links });
+});
+
+route("DELETE", /^\/api\/pay-links\/(monzo|paypal|revolut|bank)$/, async (req, res, match) => {
+  const result = await userAction(req, async (client) => client.query(
+    "SELECT public.remove_pay_link($1) AS links", [match[1]]));
+  send(res, { links: result.rows[0].links });
+});
+
 route("POST", /^\/api\/communes\/([0-9a-f-]{36})\/funds$/, async (req, res, match) => {
   const input = await body(req);
   const name = text(input.name, "name", 80);

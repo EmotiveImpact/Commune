@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent } from "react";
 import { firstNameOf, type DoneBy } from "../data/operations";
 import { cx } from "./cx";
+import { prefersReducedMotion } from "./motion";
 import "./done-by.css";
 
 /** How long an answer is held before it counts. */
@@ -50,6 +51,7 @@ function HoldButton({ label, disabled, onHeld, onShort }: {
   label: string; disabled?: boolean; onHeld: () => void; onShort: (hint: string) => void;
 }) {
   const [holding, setHolding] = useState(false);
+  const still = prefersReducedMotion();
   const timer = useRef<number | undefined>(undefined);
   const done = useRef(false);
   // A press that began here; the click that follows it is not a plain click.
@@ -73,7 +75,7 @@ function HoldButton({ label, disabled, onHeld, onShort }: {
     window.clearTimeout(timer.current);
     timer.current = undefined;
     setHolding(false);
-    if (!done.current) onShort("Keep holding until the bar fills.");
+    if (!done.current) onShort(prefersReducedMotion() ? "Keep holding for a second." : "Keep holding until the bar fills.");
   };
   const isHoldKey = (event: KeyboardEvent) => event.key === " " || event.key === "Enter";
   return (
@@ -105,7 +107,8 @@ function HoldButton({ label, disabled, onHeld, onShort }: {
         onShort("Press and hold to confirm.");
       }}
     >
-      <span>{label}</span>
+      {/* With less motion there is no filling bar: the words say to keep holding. */}
+      <span>{holding && still ? "Keep holding…" : label}</span>
     </button>
   );
 }

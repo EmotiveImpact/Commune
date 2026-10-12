@@ -35,6 +35,7 @@ import {
   type OperationStore,
 } from "./data/operations";
 import { newRequestId } from "./data/requestId";
+import { parsePayLinks, type PayLink, type PayLinkInput, type PayProvider } from "./data/payLinks";
 import { COMMUNE_SCREENS, FORM_WINDOWS, addressOf, isNativeNow, keepSearch, readAddress, withCommune } from "./nav";
 import { api, post, loadCommunes, loadExpensePage, loadExpenseRecords, loadSnapshot, ApiError } from "./live/api";
 import { announceSession, currentViewer, onOtherTabSession, setViewer } from "./live/session";
@@ -279,7 +280,19 @@ export type AppState = {
   /** Counts the times the finder has opened Search, so Search starts from what it was given. */
   searchOpened: number;
   invites: PendingInvite[];
+  /** Browser-only notes from before pay links; nothing shows them now. Kept until preferences drop them. */
   payMethods: PayMethod[];
+  /**
+   * How a member likes to be paid, from the snapshot of their commune (the
+   * open one unless given). Null while only that commune's summary is held.
+   */
+  payLinksFor: (userId: string | null | undefined, communeId?: string) => PayLink[] | null;
+  loadPayLinksFor: (communeId?: string) => Promise<void>;
+  /** Your own pay links, loaded on demand. Null until loaded. */
+  myPayLinks: PayLink[] | null;
+  loadMyPayLinks: () => Promise<PayLink[]>;
+  savePayLink: (provider: PayProvider, input: PayLinkInput) => Promise<PayLink[]>;
+  removePayLink: (provider: PayProvider) => Promise<PayLink[]>;
   native: boolean;
   you: { id: string; name: string; email: string; initials: string; photo?: string };
   lastExpense: { name: string; amount: string; paidBy: string } | null;
@@ -343,6 +356,8 @@ export type AppState = {
   go: (target: GoTarget, opts?: GoOpts) => void;
   /** Back to the window's screen: the entry before it when that is where it opened. */
   closeWindow: () => void;
+  /** Closes a window whose own save has just finished, while the count of saving changes catches up. */
+  closeSavedWindow: () => void;
   /**
    * An open window reports whether it holds typed text, so Back can ask
    * before discarding it. Returns a function that stops the reporting.
@@ -1617,6 +1632,41 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await refreshRecords();
     return result;
   }), [mutate, refreshRecords]);
+  const [myPayLinks, setMyPayLinks] = useState<PayLink[] | null>(null);
+  // Never show one account's links to the next person who signs in here.
+  useEffect(() => { setMyPayLinks(null); }, [session?.userId]);
+  const loadMyPayLinks = useCallback(async () => {
+    const links = parsePayLinks((await api<{ links: unknown }>("/pay-links")).links);
+    setMyPayLinks(links);
+    return links;
+  }, []);
+  // Saving refreshes the commune too, so the links you see when paying match.
+  const savePayLink = useCallback((provider: PayProvider, input: PayLinkInput) => mutate(async () => {
+    const result = await api<{ links: unknown }>(`/pay-links/${provider}`, { method: "PUT", body: JSON.stringify(input) });
+    const links = parsePayLinks(result.links);
+    setMyPayLinks(links);
+    await refreshRecords();
+    return links;
+  }), [mutate, refreshRecords]);
+  const removePayLink = useCallback((provider: PayProvider) => mutate(async () => {
+    const result = await api<{ links: unknown }>(`/pay-links/${provider}`, { method: "DELETE" });
+    const links = parsePayLinks(result.links);
+    setMyPayLinks(links);
+    await refreshRecords();
+    return links;
+  }), [mutate, refreshRecords]);
+  const heldSnapshots = data?.snapshots;
+  const payLinksFor = useCallback((userId: string | null | undefined, communeId?: string) => {
+    const record = heldSnapshots?.[communeId ?? activeId];
+    if (!record || record.detail === "summary") return null;
+    return userId ? parsePayLinks(record.payLinks?.[userId]) : [];
+  }, [heldSnapshots, activeId]);
+  // A commune that isn't open is held only as a summary, without pay links.
+  // Asking to pay someone there reads its full record.
+  const loadPayLinksFor = useCallback((communeId?: string) => {
+    const commune = dataRef.current?.communes.find((item) => item.id === (communeId ?? activeId));
+    return commune ? readSnapshot(commune, refreshSequence.current) : Promise.resolve();
+  }, [readSnapshot, activeId]);
   const withdrawPaymentReport = useCallback((reportId: string) => mutate(async () => {
     const result = await post<PaymentReportResult>(`/payment-reports/${encodeURIComponent(reportId)}/withdraw`, {});
     await refreshRecords();
@@ -1931,6 +1981,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const rememberSearch = useCallback((search: SearchMemory) => { searchMemory.current = search; }, []);
   const clearApiError = useCallback(() => setApiError(null), []);
   const closeWindow = useCallback(() => { if (!mutationCountRef.current) leaveRecord(); }, [leaveRecord]);
+  const closeSavedWindow = leaveRecord;
   const setNavMode = useCallback((navMode: NavMode) => saveDevice({ navMode }), [saveDevice]);
   const setTheme = useCallback((theme: Theme) => saveDevice({ theme }), [saveDevice]);
   const setNoticesOn = useCallback((noticesOn: boolean) => saveDevice({ noticesOn }), [saveDevice]);
@@ -1971,14 +2022,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     navMode: device.navMode, noteKey, notes, operationKey, operationDate,
     operationTime, operationsByHub, operations, selectedOperation, fundKey,
     dark: device.theme === "dark" || (device.theme === "system" && prefersDark), theme: device.theme, noticesOn: device.noticesOn,
-    searchTarget, searchOpened, invites: data?.invites[activeId] ?? NONE, payMethods: prefs.payMethods, native, you,
+    searchTarget, searchOpened, invites: data?.invites[activeId] ?? NONE, payMethods: prefs.payMethods,
+    payLinksFor, loadPayLinksFor, myPayLinks, loadMyPayLinks, savePayLink, removePayLink, native, you,
     lastExpense, expenses, selectedExpense, createdExpenses: expenses, voidedExpenses,
     expenseRead, retryExpenseRead, expenseHistory, loadEarlierExpenses, loadFullHistory,
     funds, recurringBills, splitTemplates, expenseTemplateId, reminderTargets, reminderUsage, sentReminders, notifications,
     noticeCounts, loadUnreadNotices, personName: nameOf,
     signOut, signOutUnconfirmed, retrySignOut: confirmSignOut, sessionNotice, go,
     changePassword, signOutOtherDevices,
-    closeWindow, watchTypedText, leaveAsked, answerLeave, setMoreOpen,
+    closeWindow, closeSavedWindow, watchTypedText, leaveAsked, answerLeave, setMoreOpen,
     setNavMode, setTheme, setNoticesOn,
     clearSearchTarget, openFullSearch, recallSearch, rememberSearch, savePayMethod, setHubPhoto, setAvatar, addNote, updateNote, loadNoteRevision,
     addOperation, updateOperation, toggleOperation, skipOperation, handOverOperation, undoOperation,

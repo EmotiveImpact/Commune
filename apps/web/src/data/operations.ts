@@ -1,3 +1,4 @@
+import { formatDay } from "@commune/core";
 import type { HubId } from "./household";
 
 export type OperationKind = "task" | "event";
@@ -227,4 +228,26 @@ export function addDays(date: string, days: number): string {
   const next = dateFromIso(date);
   next.setDate(next.getDate() + days);
   return isoFromDate(next);
+}
+
+const weekdayFormat = new Intl.DateTimeFormat("en-GB", { weekday: "short" });
+
+/** "Sat 17 Oct", as a toast says a day. */
+export function shortDay(iso: string): string {
+  return `${weekdayFormat.format(dateFromIso(iso))} ${formatDay(iso)}`;
+}
+
+/**
+ * The line once a task is marked done: "Put the bins out marked done. Next:
+ * Sat 17 Oct." Who did it is named when it was not the holder alone, and the
+ * next turn when the rotation handed it on.
+ */
+export function taskDoneCopy(item: OperationItem, doneBy: DoneBy | undefined, result: { assignee?: string | null; date: string; status?: string }): string {
+  const handed = item.repeat !== "none" && item.rotation?.length ? firstNameOf(result.assignee ?? undefined) : "";
+  const holder = firstNameOf(item.assignee);
+  const lead = doneBy === "assignee" ? `${item.title} marked done by ${holder}`
+    : doneBy === "me" ? `${item.title} marked done, covering ${holder}` : `${item.title} marked done`;
+  if (item.repeat === "none" || result.status === "done") return `${lead}.`;
+  const next = shortDay(result.date);
+  return `${lead}. Next: ${handed ? `${handed}, ` : ""}${next}.`;
 }

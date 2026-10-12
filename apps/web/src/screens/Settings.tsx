@@ -82,13 +82,13 @@ export function SettingsScreen() {
               </span>
               <Icon name="chevron" size={16} />
             </button>
-            <button className="a-set-row" type="button" onClick={() => go("profile")}>
+            <button className="a-set-row" type="button" onClick={() => go("pay-method")}>
               <span className="a-set-row-ic" aria-hidden="true">
                 <Icon name="billing" />
               </span>
               <span className="a-set-row-copy">
                 <strong>How people pay you</strong>
-                <span>Revolut, PayPal, bank. Saved only in this browser for now.</span>
+                <span>Monzo, PayPal, Revolut or bank. Shown to people in your communes.</span>
               </span>
               <Icon name="chevron" size={16} />
             </button>

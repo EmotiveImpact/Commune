@@ -7,6 +7,9 @@ import { useApp } from "../state";
 import type { ScreenId } from "../data/household";
 import { QuickSearch } from "../ui/QuickSearch";
 import { cx } from "../ui/cx";
+import { LeaveWithParent } from "../ui/components";
+import { crossFadeContent } from "../ui/motion";
+import { showToast } from "../ui/Toast";
 
 type NavItem = { id: ScreenId; label: string; icon: IconName };
 
@@ -132,6 +135,11 @@ function CommuneSwitch() {
               aria-current={place.id === hub.id ? "true" : undefined}
               onClick={() => {
                 setOpen(false);
+                if (place.id !== hub.id) {
+                  // The content cross-fades, and the line near the thumb says where you are now.
+                  crossFadeContent();
+                  showToast({ text: `Showing ${place.name}.` });
+                }
                 go("hub", { hub: place.id });
               }}
             >
@@ -191,6 +199,7 @@ export function Sidebar({ screen, drawer }: { screen: ScreenId; drawer?: boolean
   return (
     <aside
       className={cx("a-side", drawer && "a-drawer")}
+      data-leave={drawer ? "drawer" : undefined}
       role={drawer ? "dialog" : undefined}
       aria-modal={drawer ? true : undefined}
       aria-label={drawer ? "Menu" : undefined}
@@ -395,10 +404,12 @@ export function MoreSheet() {
     return () => document.removeEventListener("keydown", onKey);
   }, [moreOpen, setMoreOpen]);
   if (!moreOpen) return null;
+  // In over the medium time; out the way it came, the scrim fading with it.
   return (
-    <>
-      <div className="a-sheet-scrim" onClick={() => setMoreOpen(false)} />
+    <div style={{ display: "contents" }}>
+      <LeaveWithParent />
+      <div className="a-sheet-scrim" data-leave="scrim" onClick={() => setMoreOpen(false)} />
       <Sidebar screen={screen} drawer />
-    </>
+    </div>
   );
 }

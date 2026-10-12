@@ -697,6 +697,17 @@ async function route<T>(path: string, init: RequestInit): Promise<T> {
       p_commune_id: pathId(path, /^\/communes\/([^/]+)\/announcements$/), p_title: body.title, p_body: body.body ?? "",
       p_needs_acknowledgement: body.needsAcknowledgement === true, p_request_id: body.requestId,
     })));
+  } else if (method === "GET" && path === "/pay-links") {
+    response = { links: unwrap(await db().rpc("my_pay_links", {})) ?? [] };
+  } else if (method === "PUT" && pathId(path, /^\/pay-links\/(monzo|paypal|revolut|bank)$/)) {
+    response = { links: unwrap(await db().rpc("set_pay_link", {
+      p_provider: pathId(path, /^\/pay-links\/(monzo|paypal|revolut|bank)$/), p_handle: body.handle ?? "",
+      p_account_name: body.accountName ?? "", p_sort_code: body.sortCode ?? "", p_account_number: body.accountNumber ?? "",
+    })) ?? [] };
+  } else if (method === "DELETE" && pathId(path, /^\/pay-links\/(monzo|paypal|revolut|bank)$/)) {
+    response = { links: unwrap(await db().rpc("remove_pay_link", {
+      p_provider: pathId(path, /^\/pay-links\/(monzo|paypal|revolut|bank)$/),
+    })) ?? [] };
   } else if (method === "POST" && pathId(path, /^\/announcements\/([^/]+)\/acknowledge$/)) {
     response = asObject(unwrap(await db().rpc("acknowledge_announcement", {
       p_announcement_id: pathId(path, /^\/announcements\/([^/]+)\/acknowledge$/),

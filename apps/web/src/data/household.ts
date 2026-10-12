@@ -180,7 +180,7 @@ export const PAGE_TITLES: Record<string, string> = {
   "add-expense": "Add expense",
   "member-invite": "Invite",
   pay: "Pay a member",
-  "pay-method": "Pay me",
+  "pay-method": "How people pay you",
   profile: "Profile",
   settings: "Settings",
 };
@@ -220,7 +220,7 @@ export const PAGE_LEDES: Record<string, string> = {
   "add-expense": "Choose the members and check the split.",
   "member-invite": "Send an email invitation or share a secure link.",
   pay: "Choose how to settle outside Commune.",
-  "pay-method": "A username they can tap from Settle.",
+  "pay-method": "Monzo, PayPal, Revolut or bank details people in your communes see when they owe you.",
   profile: "Your account and payment methods.",
   settings: "You, the house, and how this app behaves.",
 };

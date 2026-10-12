@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useId, useRef, useState, type CSSProperties } from "react";
+import { Suspense, useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { NOTE_BODY_HINT, initialsOf, type NoteCard } from "../data/household";
 import { LIMITS } from "../data/limits";
 import { useApp } from "../state";
@@ -18,7 +18,9 @@ import { formatReminderDay, formatTimestampDay } from "../data/reminders";
 import { isNotePinned } from "../data/notePresentation";
 import { buildStatement, statementCsv } from "../data/statement";
 import { NoteHistory } from "../ui/NoteHistory";
-import { DiscardQuestion, useFormError, useTypedText } from "../ui/components";
+import { DiscardQuestion, LeaveWithParent, useFormError, useTypedText } from "../ui/components";
+import { firstWord, namesInWords, showToast } from "../ui/Toast";
+import { LayoutMotion } from "../ui/motion";
 import { RecoveryBoundary, WindowRecovery } from "../shell/Recovery";
 import "./NoteEditor.css";
 import { allocateExpense, formatMoney, netBalances, type SplitMethod } from "@commune/core";
@@ -27,6 +29,7 @@ import { SplitEditor } from "../ui/SplitEditor";
 import { moneyInputError, parseMoneyInput } from "../data/moneyInput";
 import type { Notification, UnreadNotice } from "../live/model";
 import { lazyComponent } from "../shell/lazyComponent";
+import { PayeeLinks, PayLinksEditor } from "../ui/PayLinks";
 
 // Schedule items and announcements open less often: their windows load when
 // first opened (or once the browser is idle), behind the record skeleton.
@@ -131,8 +134,9 @@ export function Windows() {
 
   return (
     <div className="a-windows">
-      <button className="a-window-back" type="button" tabIndex={-1} aria-hidden="true" onClick={() => { frameRef.current?.focus(); dismiss(); }} />
-      <div ref={frameRef} tabIndex={-1} className={cx("a-window-frame", window === "add-expense" && "c-expense-frame")} role="dialog" aria-modal="true" aria-labelledby="commune-window-title" onInput={typed.onInput}>
+      <LeaveWithParent />
+      <button className="a-window-back" data-leave="scrim" type="button" tabIndex={-1} aria-hidden="true" onClick={() => { frameRef.current?.focus(); dismiss(); }} />
+      <div ref={frameRef} data-leave="surface" tabIndex={-1} className={cx("a-window-frame", window === "add-expense" && "c-expense-frame")} role="dialog" aria-modal="true" aria-labelledby="commune-window-title" onInput={typed.onInput}>
         <header className="a-window-bar">
           <h2 id="commune-window-title">{title}</h2>
           <button className="a-window-x" type="button" aria-label="Close" disabled={mutationPending} onClick={dismiss}>
@@ -140,6 +144,7 @@ export function Windows() {
           </button>
         </header>
         <div className="a-window-body">
+          <MotionScope />
           {waitingForRecord ? recordError ? <div role="alert"><p>{recordError}</p>
             <button className="a-btn" type="button" onClick={() => contentLoading ? void refresh() : retryExpenseRead()}>Try again</button></div> :
             <div className="c-window-record-loading" role="status" aria-label="Loading selected record"><span /><span /><span /></div> :
@@ -176,6 +181,16 @@ export function Windows() {
   );
 }
 
+/** Rows in a window answer in place too, while it is open. */
+function MotionScope() {
+  const ref = useRef<HTMLElement>(null);
+  useLayoutEffect(() => {
+    const body = ref.current?.parentElement;
+    return body ? new LayoutMotion(body).start() : undefined;
+  }, []);
+  return <i ref={ref} hidden />;
+}
+
 function titleFor(id: string): string {
   const map: Record<string, string> = {
     notices: "Notices",
@@ -188,7 +203,7 @@ function titleFor(id: string): string {
     profile: "Profile",
     breakdown: "Breakdown",
     pay: "Settle a share",
-    "pay-method": "Pay me",
+    "pay-method": "How people pay you",
     "note-new": "Add note",
     "note-edit": "Edit note",
     "operation-new": "Add to calendar",
@@ -340,6 +355,7 @@ function AddExpense() {
   const {
     go,
     closeWindow,
+    closeSavedWindow,
     hub,
     you,
     session,
@@ -404,7 +420,14 @@ function AddExpense() {
         category,
         requestId: requestId.current,
       });
-      go("expense", { expense: id });
+      // The form closes on save, and the line says who can now see it.
+      const others = included.filter((member) => member.userId !== you.id).map((member) => firstWord(member.name));
+      const communeId = hub.id;
+      closeSavedWindow();
+      showToast({
+        text: others.length ? `${name} added. ${namesInWords(others)} can see their share.` : `${name} added.`,
+        action: { label: "View", run: () => go("expense", { expense: id, hub: communeId }) },
+      });
     } catch (cause) {
       const failure = commandFailure(cause, "Could not save the expense.");
       if (!failure.rejected) setUncertain(true);
@@ -491,7 +514,8 @@ function Expense() {
   } = useApp();
   const reminder = useReminderFlow(sendReminder);
   const [message, setMessage] = useState("");
-  const receipts = useReceiptActions(setMessage);
+  // Opened from this expense: the toast needs no View.
+  const receipts = useReceiptActions(setMessage, { view: false });
   const fullName = (userId: string) => personName(userId, "A former member");
   const change = useExpenseChange(fullName, setMessage);
   if (!selectedExpense) {
@@ -540,7 +564,7 @@ function Expense() {
           const report = voided ? undefined : pendingReport(share);
           const ownDebt = share.userId === session?.userId && !isOwnPayerShare && outstanding > 0;
           return (
-            <div className="c-share-block" key={share.id}>
+            <div className="c-share-block" key={share.id} data-row="" data-flip="" data-answer="wash">
             <div className="a-split-row">
               <Avatar tone={member?.cls ?? "house"} initials={member?.ini ?? initialsOf(personName(share.userId, ""))} />
               <div className="grow">
@@ -560,7 +584,7 @@ function Expense() {
                 </div>
               ) : ownDebt && !report ? (
                 <div className="a-row-actions">
-                  <button className="a-btn ghost" type="button" onClick={() => { setMessage(""); receipts.report({ shareId: share.id, payerName: personName(selectedExpense.paidByUserId, "the bill payer"), expenseName: selectedExpense.name, outstandingMinor: outstanding, currency: hub.currency }); }}>I’ve sent it</button>
+                  <button className="a-btn ghost" type="button" onClick={() => { setMessage(""); receipts.report({ shareId: share.id, payerName: personName(selectedExpense.paidByUserId, "the bill payer"), payerId: selectedExpense.paidByUserId, expenseName: selectedExpense.name, outstandingMinor: outstanding, currency: hub.currency }); }}>I’ve sent it</button>
                 </div>
               ) : null}
             </div>
@@ -825,6 +849,15 @@ function Profile() {
       </div>
       <div className="a-settle-row">
         <div>
+          <strong>How people pay you</strong>
+          <div className="when">Monzo, PayPal, Revolut or bank details</div>
+        </div>
+        <button className="a-btn ghost" type="button" onClick={() => go("pay-method")}>
+          Open
+        </button>
+      </div>
+      <div className="a-settle-row">
+        <div>
           <strong>Settings</strong>
           <div className="when">Theme, notices, sidebar</div>
         </div>
@@ -954,10 +987,12 @@ function Pay() {
         <span className="a-hero-kicker">{selectedExpense ? `You → ${personName(selectedExpense.paidByUserId, "bill payer", { left: true })}` : "Payment"}</span>
         <strong>{formatMoney(outstanding, hub.currency)}</strong>
         <p>
-          Commune does not move money or hold payment details yet. Arrange a transfer directly with the bill payer;
-          they can confirm your individual share here after receiving it.
+          Commune does not move money. Pay the bill payer in your own app, then tell them in Commune;
+          they confirm your share after receiving it.
         </p>
       </div>
+      {selectedExpense && outstanding > 0 ? <PayeeLinks userId={selectedExpense.paidByUserId} name={personName(selectedExpense.paidByUserId, "The bill payer")}
+        amountMinor={outstanding} currency={hub.currency} note={selectedExpense.name} /> : null}
       <div className="a-field-row">
         {selectedExpense ? <button className="a-btn" type="button" onClick={() => go("expense", { expense: selectedExpense.id })}>View share</button> : null}
         <button className="a-btn ghost" type="button" onClick={closeWindow}>
@@ -973,9 +1008,10 @@ function PayMethod() {
   return (
     <section className="a-window">
       <p className="a-window-kicker">You</p>
-      <h3>Payment links are not connected yet.</h3>
-      <p className="a-window-note">For now, arrange transfers directly with your housemates. Commune records each share after the bill payer confirms receipt; it does not store or publish payment details.</p>
-      <button className="a-btn" type="button" onClick={closeWindow}>Close</button>
+      <p className="a-window-note">When someone owes you, they see these with the amount filled in where the app allows it. Only people in your communes can see them, and leaving a commune stops sharing them there.</p>
+      <PayLinksEditor />
+      <p className="a-window-note">Commune never moves money and never sees your bank login. These are only the details you choose to share.</p>
+      <button className="a-btn" type="button" onClick={closeWindow}>Done</button>
     </section>
   );
 }

@@ -36,6 +36,9 @@ minimumReleaseAgeExclude:
 
 packages:
   - apps/*
+  # The native app keeps its own lockfile (apps/native/pnpm-lock.yaml) so the
+  # web CI install stays unchanged.
+  - '!apps/native'
   - artifacts/*
   - lib/*
   - lib/integrations/*

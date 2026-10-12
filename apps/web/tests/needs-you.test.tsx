@@ -1,5 +1,5 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { Router } from "wouter";
 import { memoryLocation } from "wouter/memory-location";
 import { App } from "../src/App";
@@ -7,6 +7,7 @@ import { preloadAll } from "../src/shell/lazyComponent";
 import { AppProvider } from "../src/state";
 import { api, loadCommunes, loadSnapshot, post } from "../src/live/api";
 import { comingUp, needsYou, type Commune, type PaymentReport, type Snapshot } from "../src/live/model";
+import { toastText } from "./toast";
 
 vi.mock("../src/live/api", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../src/live/api")>()),
@@ -260,7 +261,7 @@ describe("Needs you on Home", () => {
     fireEvent.click(within(needs).getByRole("button", { name: "I’ve paid Ben Baker for Internet" }));
     const dialog = await screen.findByRole("dialog", { name: "Tell Ben Baker you’ve paid" });
     fireEvent.click(within(dialog).getByRole("button", { name: "Tell Ben Baker" }));
-    expect(await screen.findByText("Ben Baker has been told you sent £15.00. Your balance changes when they confirm it.")).toBeTruthy();
+    await waitFor(() => expect(toastText()).toBe("Recorded. Ben will confirm your £15.00."));
     expect(post).toHaveBeenCalledWith("/shares/share-me-1500/payment-reports", expect.objectContaining({ amountMinor: 1500, sentOn: today }));
     expect(readAgain()).toEqual(["home-1"]);
   });
@@ -273,8 +274,8 @@ describe("Needs you on Home", () => {
     vi.mocked(loadSnapshot).mockClear();
     fireEvent.click(within(needs).getByRole("button", { name: "Confirm €25.00 from Ben Baker" }));
     const dialog = await screen.findByRole("dialog", { name: "Confirm €25.00 received?" });
-    fireEvent.click(within(dialog).getByRole("button", { name: "Confirm €25.00 received" }));
-    expect(await screen.findByText("€25.00 recorded as received from Ben Baker. Their share is settled.")).toBeTruthy();
+    fireEvent.click(within(dialog).getByRole("button", { name: "Confirm Ben’s €25.00" }));
+    await waitFor(() => expect(toastText()).toBe("Confirmed. Ben’s €25.00 is recorded as received."));
     expect(post).toHaveBeenCalledWith("/payment-reports/report-ben-2500/resolve", expect.objectContaining({ decision: "confirm" }));
     expect(readAgain()).toEqual(["trip-1"]);
   });

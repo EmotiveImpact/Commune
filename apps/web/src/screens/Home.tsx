@@ -1,4 +1,4 @@
-import { useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { Check, ChevronDown, ChevronRight } from "lucide-react";
 import { formatDay } from "@commune/core";
 import { useApp } from "../state";
@@ -10,6 +10,9 @@ import { CoverImage, coverToneClass } from "../ui/CoverImage";
 import { activityStamp, activityWord } from "../ui/ActivityLog";
 import { useReceiptActions } from "../ui/Receipts";
 import { addDays, dateFromIso, todayIso } from "../data/operations";
+import { coverSource } from "../data/covers";
+import { animate } from "../ui/motion";
+import { showToast } from "../ui/Toast";
 import "./Home.css";
 
 // Home opens on where you stand, then the one thing to do next, then your
@@ -152,7 +155,7 @@ function Standing({ places, needs, waiting, today, name }: {
   }
   const sub = [...lines, partial].filter(Boolean).join(" ");
   return (
-    <div className="c-home-standing">
+    <div className="c-home-standing" data-answer="fade">
       <p className="c-home-over">{longDate.format(dateFromIso(today))}</p>
       {sentence ? <h2 className="c-home-display">{sentence}</h2> : <h2 className="c-visually-hidden">Where you stand</h2>}
       {sub || !ready.length ? <p className="c-home-sub" role={ready.length ? undefined : "status"}>{sub || "Loading your communes…"}</p> : null}
@@ -174,7 +177,7 @@ function NextStep({ entry, total, onAct, busy }: { entry: Entry; total: number; 
   const note = item.kind === "pay" ? `Pay ${first} however you usually do, then record it here. ${first} confirms it.`
     : item.kind === "confirm" ? `Only once it has reached you. ${first} is told either way.` : "";
   return (
-    <article className="c-home-next" aria-labelledby="home-next-title">
+    <article className="c-home-next" aria-labelledby="home-next-title" data-flip="" data-answer="wash">
       <div className="c-home-next-top"><span>Your next step</span>{total > 1 ? <span>1 of {total}</span> : null}</div>
       <div className="c-home-next-body">
         <span className="c-home-who">
@@ -208,7 +211,7 @@ function Calm({ waiting, today }: { waiting: Entry[]; today: string }) {
   const people = late ? joined((late.item.people ?? []).map((id) => firstName(nameOf(late.hub, id, "a former member")))) : [];
   const days = late?.item.dueOn ? daysBetween(late.item.dueOn, today) : 0;
   return (
-    <article className="c-home-next is-calm" aria-labelledby="home-calm-title">
+    <article className="c-home-next is-calm" aria-labelledby="home-calm-title" data-flip="">
       <div className="c-home-next-body">
         <span className="c-home-calm" aria-hidden="true"><Check size={20} strokeWidth={1.8} /></span>
         <div className="c-home-next-copy">
@@ -302,7 +305,7 @@ function Row({ entry, today, waiting = false, onAct, busy, className }: {
   const verb = item.kind === "pay" ? "I’ve paid" : item.kind === "confirm" ? "Confirm" : "Open";
   const context = item.kind === "pay" ? `${nameOf(hub, item.person)} for ${item.title}` : item.kind === "confirm" ? `${item.amount} from ${nameOf(hub, item.person)}` : item.title;
   return (
-    <li className={cx("c-home-row", waiting && "is-waiting", className)}>
+    <li className={cx("c-home-row", waiting && "is-waiting", className)} data-row="" data-flip="">
       <span className="c-home-row-lead">
         {(waiting || item.kind === "confirm") && who.length
           ? <Faces hub={hub} ids={who} max={3} />
@@ -352,13 +355,13 @@ function NeedsList({ needs, today, onAct, busy }: { needs: Entry[]; today: strin
   // Past the limit on every screen, past it on a phone, or never.
   const extra = (index: number) => cx(index >= limit && "is-extra", index >= phoneLimit && "is-extra-phone");
   return (
-    <section className={cx("c-home-panel", "c-home-needs", all && "is-all")} aria-labelledby="home-needs">
+    <section className={cx("c-home-panel", "c-home-needs", all && "is-all")} aria-labelledby="home-needs" data-flip="" data-flip-box="">
       <div className="c-home-head">
         <h2 id="home-needs">Needs you</h2><span className="c-home-count">{needs.length}</span>
         <button className="c-home-link is-wide" type="button" onClick={() => go("home-activity")}>History</button>
       </div>
       {groups.map((group) => (
-        <div key={group.name} className={cx("c-home-group", extra(group.first))}>
+        <div key={group.name} className={cx("c-home-group", extra(group.first))} data-flip="">
           <h3 className={cx(group.name === "Overdue" && "is-late")}>{group.name} <span>{group.rows.length}</span></h3>
           <ul>{group.rows.map((entry, index) => (
             <Row key={`${entry.hub.id}-${entry.item.kind}-${entry.item.title}-${index}`} entry={entry} today={today} onAct={onAct} busy={busy}
@@ -367,7 +370,7 @@ function NeedsList({ needs, today, onAct, busy }: { needs: Entry[]; today: strin
         </div>
       ))}
       {phoneCollapsible ? (
-        <button className={cx("c-home-more", !collapsible && "is-phone")} type="button" aria-expanded={all} onClick={() => setAll((value) => !value)}>
+        <button data-flip="" className={cx("c-home-more", !collapsible && "is-phone")} type="button" aria-expanded={all} onClick={() => setAll((value) => !value)}>
           {all ? "Show fewer" : <>
             {collapsible ? <span className="c-home-more-wide">Show {needs.length - SHOWN} more</span> : null}
             <span className="c-home-more-phone">Show {needs.length - PHONE_SHOWN} more</span>
@@ -382,7 +385,7 @@ function NeedsList({ needs, today, onAct, busy }: { needs: Entry[]; today: strin
 function WaitingList({ waiting, today }: { waiting: Entry[]; today: string }) {
   const total = perCurrency(waiting.filter(({ item }) => item.kind === "owed").map(({ hub, item }) => [hub.currency, item.minor ?? 0]));
   return (
-    <section className="c-home-panel" aria-labelledby="home-waiting">
+    <section className="c-home-panel" aria-labelledby="home-waiting" data-flip="" data-flip-box="">
       <div className="c-home-head">
         <h2 id="home-waiting">Waiting on others</h2><span className="c-home-count">{waiting.length}</span>
         {total.length ? <span className="c-home-head-note">{total.join(" · ")}</span> : null}
@@ -398,7 +401,7 @@ function Activity({ places }: { places: LiveHub[] }) {
     .sort((a, b) => (Date.parse(b.item.createdAt ?? "") || 0) - (Date.parse(a.item.createdAt ?? "") || 0)).slice(0, 5);
   const incomplete = places.some((hub) => hub.activityState !== "ready");
   return (
-    <section className="c-home-panel" aria-labelledby="home-activity">
+    <section className="c-home-panel" aria-labelledby="home-activity" data-flip="">
       <div className="c-home-head">
         <h2 id="home-activity">Recent activity</h2>
         <button className="c-home-link" type="button" onClick={() => go("home-activity")}>All activity</button>
@@ -429,7 +432,7 @@ const COMING_SHOWN = 5;
 function ComingUp({ coming, today, onTake, busy }: { coming: Coming[]; today: string; onTake: (entry: Coming) => void; busy: boolean }) {
   const { go } = useApp();
   return (
-    <section className="c-home-panel" aria-labelledby="home-coming">
+    <section className="c-home-panel" aria-labelledby="home-coming" data-flip="" data-flip-box="">
       <div className="c-home-head">
         <h2 id="home-coming">Coming up</h2><span className="c-home-count">{coming.length}</span>
         <button className="c-home-link is-wide" type="button" onClick={() => go("operations")}>Operations</button>
@@ -438,7 +441,7 @@ function ComingUp({ coming, today, onTake, busy }: { coming: Coming[]; today: st
         {coming.slice(0, COMING_SHOWN).map((entry) => {
           const { hub, item } = entry;
           return (
-            <li key={`${hub.id}-${item.kind}-${item.operationId ?? item.billId}`} className="c-home-row is-coming">
+            <li key={`${hub.id}-${item.kind}-${item.operationId ?? item.billId}`} className="c-home-row is-coming" data-row="" data-flip="" data-answer="fade">
               <span className="c-home-row-lead"><CalendarDate date={item.dueOn} today={today} label={item.kind === "bill" ? "Due" : "On"} /></span>
               <span className="c-home-row-main">
                 <button className="c-home-row-title" type="button" onClick={() => item.kind === "task"
@@ -462,15 +465,31 @@ function ComingUp({ coming, today, onTake, busy }: { coming: Coming[]; today: st
 }
 
 /** All square and nothing to do: the current commune's photo, as a reward. */
-function SquareBand({ hub, places, name, today }: { hub: LiveHub; places: LiveHub[]; name: string; today: string }) {
+function SquareBand({ hub, places, name, today, clearing }: { hub: LiveHub; places: LiveHub[]; name: string; today: string; clearing: boolean }) {
   const { you } = useApp();
+  const ref = useRef<HTMLElement>(null);
+  // The clearing: the navy band fades over the long time as the photo comes
+  // up through it, and the sentence arrives over the short time.
+  useLayoutEffect(() => {
+    const band = ref.current;
+    if (!clearing || !band) return;
+    const veil = document.createElement("i");
+    veil.className = "c-home-clearing";
+    veil.setAttribute("aria-hidden", "true");
+    veil.setAttribute("data-motion-ghost", "");
+    band.append(veil);
+    const fade = animate(veil, [{ opacity: 1 }, { opacity: 0 }], "long", { fill: "forwards" });
+    animate(band.querySelector(".c-cover-photo"), [{ opacity: 0 }, { opacity: 1 }], "long");
+    animate(band.querySelector(".c-home-square-copy"), [{ opacity: 0 }, { opacity: 1 }], "short");
+    if (fade) fade.finished.then(() => veil.remove(), () => veil.remove()); else veil.remove();
+  }, [clearing]);
   const people = new Map<string, LiveHub["members"][number]>();
   for (const place of places) for (const member of place.members) if (!people.has(member.userId)) people.set(member.userId, member);
   const others = [...people.values()].filter((member) => member.userId !== you.id);
   const names = joined(["You", ...others.slice(0, 3).map((member) => firstName(member.name))]);
   const communes = places.length === 1 ? places[0].name : `your ${count(places.length, "commune")}`;
   return (
-    <section className={cx("c-home-square", coverToneClass(hub))} aria-labelledby="home-square">
+    <section ref={ref} className={cx("c-home-square", coverToneClass(hub))} aria-labelledby="home-square">
       <CoverImage hub={hub} placement="hero" />
       <div className="c-home-square-copy">
         <p className="c-home-over">{longDate.format(dateFromIso(today))}<span className="c-home-over-place"> · {hub.name}</span></p>
@@ -487,13 +506,91 @@ function SquareBand({ hub, places, name, today }: { hub: LiveHub; places: LiveHu
   );
 }
 
+const CLEARED_KEY = "commune.cleared";
+
+/**
+ * Whether the all-square clearing plays: when the last thing owed or waiting
+ * goes while Home is open, once per commune per day. The day is kept on this
+ * device only, and anything the browser refuses just means it plays again.
+ */
+function useClearing(square: boolean, ready: boolean, communeId: string, today: string): boolean {
+  const was = useRef<boolean | null>(null);
+  const [clearing, setClearing] = useState(false);
+  useLayoutEffect(() => {
+    if (!ready) return;
+    const before = was.current;
+    was.current = square;
+    if (!square) { setClearing(false); return; }
+    if (before !== false) return;
+    const key = `${CLEARED_KEY}.${communeId}`;
+    let seen = false;
+    try { seen = window.localStorage.getItem(key) === today; } catch { /* storage refused */ }
+    if (seen) return;
+    try { window.localStorage.setItem(key, today); } catch { /* storage refused */ }
+    setClearing(true);
+  }, [square, ready, communeId, today]);
+  return clearing;
+}
+
+/** Fetches and decodes a commune's large photo ahead of the clearing. */
+function usePreloadPhoto(hub: LiveHub | null) {
+  const source = hub ? coverSource(hub, "hero") : null;
+  const src = source?.src ?? "";
+  const srcSet = source?.srcSet ?? "";
+  const sizes = source?.sizes ?? "";
+  useEffect(() => {
+    if (!src || typeof Image === "undefined") return;
+    const image = new Image();
+    if (sizes) image.sizes = sizes;
+    if (srcSet) image.srcset = srcSet;
+    image.src = src;
+    image.decode?.().catch(() => { /* the tone shows instead */ });
+  }, [src, srcSet, sizes]);
+}
+
+// The sentence and the next step arrive over the short time on the first
+// Home of a visit; after that, Home is simply there.
+let homeArrived = false;
+function useFirstArrival(ready: boolean) {
+  useLayoutEffect(() => {
+    if (!ready || homeArrived) return;
+    homeArrived = true;
+    for (const element of document.querySelectorAll(".c-home .c-home-display, .c-home .c-home-sub, .c-home .c-home-next")) {
+      animate(element, [{ opacity: 0 }, { opacity: 1 }], "short");
+    }
+  }, [ready]);
+}
+
+/** Home's shape while its records load: the band, today's date, and where the sentence and next step will be. */
+export function HomeSkeleton() {
+  return (
+    <div className="c-home c-home-skeleton" aria-hidden="true">
+      <div className="c-home-split c-home-lead">
+        <div className="c-home-col c-home-top">
+          <div className="c-home-standing">
+            <p className="c-home-over">{longDate.format(dateFromIso(todayIso()))}</p>
+            <span className="c-skel-line is-display" />
+            <span className="c-skel-line" />
+          </div>
+          <div className="c-home-next c-skel-card" />
+        </div>
+        <div className="c-home-col"><div className="c-skel-card is-tall" /></div>
+      </div>
+    </div>
+  );
+}
+
 export function HomeScreen() {
+  const { places } = useApp();
+  return places.length ? <HomeWithCommunes /> : <HomeEmptyScreen />;
+}
+
+function HomeWithCommunes() {
   const { places, hubId, you, go, handOverOperation } = useApp();
   const [message, setMessage] = useState("");
   const [taking, setTaking] = useState(false);
   const receipts = useReceiptActions(setMessage);
   const open = useOpen();
-  if (!places.length) return <HomeEmptyScreen />;
   const today = todayIso();
   const name = firstName(you.name);
   // The same rule as This Hub, across every commune: actions in their order, then what others owe.
@@ -505,6 +602,10 @@ export function HomeScreen() {
   const communes = places.map((hub, index) => ({ hub, index })).sort((a, b) => needRank(a.hub) - needRank(b.hub) || a.index - b.index).map(({ hub }) => hub);
   const ready = places.every((hub) => hub.activityState === "ready");
   const square = ready && !needs.length && !waiting.length && places.every((hub) => !hub.youOweMinor && !hub.owedToYouMinor);
+  const clearing = useClearing(square, ready, current.id, today);
+  useFirstArrival(ready);
+  // One thing left: have the photo decoded before it is needed.
+  usePreloadPhoto(ready && needs.length + waiting.length === 1 ? current : null);
 
   // Taking a task nobody holds is a handover to yourself, checked against the task as Home saw it.
   async function take({ hub, item }: Coming) {
@@ -513,7 +614,7 @@ export function HomeScreen() {
     setTaking(true);
     try {
       await handOverOperation(item.operationId, you.id, undefined, { communeId: hub.id, date: item.dueOn, assigneeId: null });
-      setMessage(`${item.title} is yours now. Open the task to undo this.`);
+      showToast({ text: `${item.title} is yours now. Open the task to undo this.` });
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Could not take this task. Try again.");
     } finally {
@@ -526,17 +627,17 @@ export function HomeScreen() {
     setMessage("");
     if (item.kind === "pay" && item.shareId && item.minor) {
       receipts.report({ shareId: item.shareId, payerName: nameOf(hub, item.person, "the bill payer"), expenseName: item.title,
-        outstandingMinor: item.minor, currency: hub.currency, communeId: hub.id });
+        outstandingMinor: item.minor, currency: hub.currency, communeId: hub.id, payerId: item.person });
     } else if (item.kind === "confirm" && item.report) {
       receipts.answer({ report: item.report, debtorName: nameOf(hub, item.person, "a former member"), expenseName: item.title,
-        currency: hub.currency, decision: decline ? "decline" : "confirm", communeId: hub.id });
+        currency: hub.currency, decision: decline ? "decline" : "confirm", communeId: hub.id, expenseId: item.expenseId });
     } else {
       open(entry);
     }
   }
 
   const communeList = (
-    <section className="c-home-communes" aria-labelledby="home-communes">
+    <section className="c-home-communes" aria-labelledby="home-communes" data-flip="">
       <div className="c-home-head">
         <h2 id="home-communes">Your communes</h2><span className="c-home-count">{places.length}</span>
         {square ? null : <button className="c-home-link is-wide" type="button" onClick={() => go("communes")}>All communes</button>}
@@ -546,14 +647,15 @@ export function HomeScreen() {
       </ul>
     </section>
   );
-  const status = message ? <p className="c-home-message" role="status">{message}</p> : null;
+  // What was recorded is said in the toast; only what could not be done stays here.
+  const status = message ? <p className="c-home-message" role="alert">{message}</p> : null;
   // Coming up fills the quiet states, where nothing needs you beyond the next step.
   const comingUp = coming.length ? <ComingUp coming={coming} today={today} onTake={(entry) => void take(entry)} busy={taking} /> : null;
 
   if (square) {
     return (
       <div className="c-home is-square">
-        <SquareBand hub={current} places={places} name={name} today={today} />
+        <SquareBand hub={current} places={places} name={name} today={today} clearing={clearing} />
         {status}
         <div className="c-home-split">
           <div className="c-home-col">{comingUp}<Activity places={places} /></div>

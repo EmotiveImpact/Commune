@@ -8,6 +8,7 @@ import { AppProvider, useApp, type AppState } from "../src/state";
 import { api, post, loadCommunes, loadSnapshot, ApiError } from "../src/live/api";
 import type { Commune, Snapshot } from "../src/live/model";
 import { formatReminderDay, formatTimestampDay } from "../src/data/reminders";
+import { toastRegion, toastText } from "./toast";
 
 vi.mock("../src/live/api", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../src/live/api")>()),
@@ -110,8 +111,10 @@ describe("one Nudge/Chase interaction at every entry point", () => {
     expect(reminderPosts()).toHaveLength(1);
     expect(reminderPosts()[0][1]).toMatchObject({ kind: "nudge", sourceId: "share-1" });
     expect((reminderPosts()[0][1] as { requestId: string }).requestId).toMatch(/^[0-9a-f-]{36}$/);
-    expect((await screen.findByRole("status")).textContent)
-      .toBe("Nudge recorded. Housemate will see it in Commune. No email was sent for this reminder.");
+    // The preview goes, and the toast says what was recorded; no Undo on a reminder.
+    expect(screen.queryByRole("dialog", { name: "A gentle reminder for Housemate" })).toBeNull();
+    expect(toastText()).toBe("Nudge recorded for Housemate. 1 of 60 in 30 days. No email was sent this time.");
+    expect(within(toastRegion()).queryByRole("button")).toBeNull();
   });
 
   it("keeps the expense window open when Escape closes only the reminder preview", async () => {
@@ -177,8 +180,7 @@ describe("one Nudge/Chase interaction at every entry point", () => {
     mount("/settle");
     fireEvent.click(await screen.findByRole("button", { name: /^Nudge / }));
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Send reminder" })); });
-    expect((await screen.findByRole("status")).textContent)
-      .toBe("Nudge recorded. Housemate will see it in Commune. Whether they also get an email depends on their own preferences, so it is not confirmed here.");
+    await waitFor(() => expect(toastText()).toBe("Nudge recorded for Housemate. 1 of 60 in 30 days."));
     expect(screen.queryByRole("alert")).toBeNull();
   });
 
@@ -196,8 +198,8 @@ describe("one Nudge/Chase interaction at every entry point", () => {
     expect(reminderPosts()).toHaveLength(0);
     await act(async () => { fireEvent.click(within(preview).getByRole("button", { name: "Send reminder" })); });
     expect(reminderPosts()[0][1]).toMatchObject({ kind: "chase", sourceId: "pledge-1" });
-    await waitFor(() => expect(within(preview).getByRole("status").textContent)
-      .toBe("This chase was already recorded. Nothing was sent twice. No email was sent for this reminder."));
+    await waitFor(() => expect(toastText()).toBe("This chase for Housemate was already recorded. Nothing was sent twice."));
+    expect(preview.isConnected).toBe(false);
     expect(screen.getByRole("dialog", { name: "Boiler fund" })).toBeTruthy();
   });
 });
@@ -237,8 +239,10 @@ describe("partial repayment receipts and reversals", () => {
     expect(receiptPosts()[0][1]).toMatchObject({ amountMinor: 500, reference: "Bank transfer" });
     expect((receiptPosts()[0][1] as { requestId: string }).requestId).toMatch(/^[0-9a-f-]{36}$/);
     expect(screen.queryByRole("dialog", { name: "Record a repayment from Housemate" })).toBeNull();
-    expect(screen.getByRole("status").textContent)
-      .toBe("£5.00 recorded as received from Housemate. £7.00 still outstanding. No payment was taken by Commune.");
+    expect(toastText()).toBe("Confirmed. Housemate’s £5.00 is recorded as received. £7.00 still outstanding.");
+    // The line offers the expense; a confirmed payment has no Undo.
+    expect(within(toastRegion()).getByRole("button", { name: "View" })).toBeTruthy();
+    expect(within(toastRegion()).queryByRole("button", { name: "Undo" })).toBeNull();
   });
 
   it("keeps keyboard focus in the panel when a full repayment removes its own row", async () => {
@@ -290,7 +294,7 @@ describe("partial repayment receipts and reversals", () => {
     const ids = receiptPosts().map(([, body]) => (body as { requestId: string }).requestId);
     expect(ids).toHaveLength(2);
     expect(ids[1]).toBe(ids[0]);
-    expect(screen.getByRole("status").textContent).toContain("This repayment was already recorded.");
+    expect(toastText()).toContain("This repayment was already recorded.");
   });
 
   it("reports a server rejection as nothing recorded", async () => {
@@ -300,6 +304,23 @@ describe("partial repayment receipts and reversals", () => {
     const dialog = screen.getByRole("dialog", { name: "Record a repayment from Housemate" });
     await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Record £12.00 received" })); });
     expect(within(dialog).getByRole("alert").textContent).toBe("Only £3.00 is still outstanding on this share. Nothing was recorded.");
+  });
+
+  it("puts an amount error under Amount, links it to the field and moves focus there", async () => {
+    mount("/settle");
+    fireEvent.click(await screen.findByRole("button", { name: /^Confirm received / }));
+    const dialog = screen.getByRole("dialog", { name: "Record a repayment from Housemate" });
+    const amount = within(dialog).getByLabelText(/Amount received/) as HTMLInputElement;
+    fireEvent.change(amount, { target: { value: "13.00" } });
+    await act(async () => { fireEvent.submit(dialog.querySelector("form")!); });
+    const error = within(dialog).getByRole("alert");
+    expect(error.textContent).toBe("Only £12.00 is still outstanding on this share.");
+    expect(amount.getAttribute("aria-invalid")).toBe("true");
+    expect(amount.getAttribute("aria-describedby")?.split(" ")).toContain(error.id);
+    expect(document.activeElement).toBe(amount);
+    // Straight after the Amount field, before the date.
+    expect(amount.closest(".a-field")?.nextElementSibling).toBe(error);
+    expect(receiptPosts()).toHaveLength(0);
   });
 
   it("never says nothing was recorded once an earlier attempt may have been", async () => {
@@ -352,8 +373,7 @@ describe("partial repayment receipts and reversals", () => {
       { ...current.expenses[0].shares[1].receipts![0], reversedAt: "2026-01-07T09:00:00Z", reversedBy: user.id, reversalReason: "Transfer bounced" }] };
     await act(async () => { fireEvent.click(within(dialog).getByRole("button", { name: "Reverse repayment" })); });
     expect(reversalPosts()).toEqual([["/receipts/receipt-1/reverse", { reason: "Transfer bounced" }]]);
-    expect(within(windowFrame).getByRole("status").textContent)
-      .toBe("£25.00 repayment reversed. £80.00 is outstanding from Housemate. The original entry stays in the history.");
+    expect(toastText()).toBe("£25.00 repayment reversed. £80.00 is outstanding from Housemate. The original entry stays in the history.");
     expect(within(windowFrame).getByText("£80.00 share · £80.00 outstanding")).toBeTruthy();
     expect(within(windowFrame).getByText(new RegExp(`Reversed by you on ${formatTimestampDay("2026-01-07T09:00:00Z")}: Transfer bounced`))).toBeTruthy();
     expect(within(windowFrame).queryByRole("button", { name: "Reverse" })).toBeNull();
@@ -430,7 +450,7 @@ describe("I’ve sent it: a claim the bill payer answers", () => {
     expect(path).toBe("/shares/share-mine/payment-reports");
     expect(body).toMatchObject({ amountMinor: 1200, reference: "Bank transfer" });
     expect((body as { requestId: string }).requestId).toMatch(/^[0-9a-f-]{36}$/);
-    expect(screen.getByRole("status").textContent).toContain("Your balance changes when they confirm it");
+    expect(toastText()).toBe("Recorded. Housemate will confirm your £12.00.");
     const owe = screen.getByRole("region", { name: "You owe" });
     // Still owed in full; the row now waits for the payer and offers Withdraw.
     expect(within(owe).getByText("£12.00", { selector: ".c-settle-total" })).toBeTruthy();
@@ -478,12 +498,12 @@ describe("I’ve sent it: a claim the bill payer answers", () => {
     expect(within(owed).queryByRole("button", { name: /^Nudge / })).toBeNull();
     fireEvent.click(within(owed).getByRole("button", { name: /^Confirm £8\.00 from Housemate/ }));
     const confirm = screen.getByRole("dialog", { name: "Confirm £8.00 received?" });
-    await act(async () => { fireEvent.click(within(confirm).getByRole("button", { name: "Confirm £8.00 received" })); });
+    await act(async () => { fireEvent.click(within(confirm).getByRole("button", { name: "Confirm Housemate’s £8.00" })); });
     const [path, body] = reportPosts()[0];
     expect(path).toBe("/payment-reports/report-1/resolve");
     expect(body).toMatchObject({ decision: "confirm" });
     expect((body as { requestId: string }).requestId).toMatch(/^[0-9a-f-]{36}$/);
-    expect(screen.getByRole("status").textContent).toContain("£8.00 recorded as received from Housemate. £4.00 still outstanding.");
+    expect(toastText()).toBe("Confirmed. Housemate’s £8.00 is recorded as received. £4.00 still outstanding.");
 
     vi.mocked(post).mockClear();
     vi.mocked(post).mockImplementation(async () => ({ id: "report-1", duplicate: false, status: "declined", receiptId: null, settledMinor: 0, outstandingMinor: 1200 }));
@@ -494,7 +514,7 @@ describe("I’ve sent it: a claim the bill payer answers", () => {
     fireEvent.change(within(decline).getByLabelText("What should they check?"), { target: { value: "Nothing has arrived" } });
     await act(async () => { fireEvent.click(within(decline).getByRole("button", { name: "Send" })); });
     expect(reportPosts()[0][1]).toEqual({ decision: "decline", note: "Nothing has arrived" });
-    expect(screen.getByRole("status").textContent).toContain("Nothing was recorded");
+    expect(toastText()).toContain("Nothing was recorded");
   });
 
   it("tells the debtor why a report was declined, and names report notices plainly", async () => {

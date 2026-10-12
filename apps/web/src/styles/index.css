@@ -19,5 +19,6 @@
 @import "./legal.css" layer(base);
 @import "./overrides.css" layer(overrides);
 @import "./design-system.css" layer(overrides);
+@import "./motion.css" layer(overrides);
 /* Font faces only, which layers do not affect. */
 @import "./fonts.css";

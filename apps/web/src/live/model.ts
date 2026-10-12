@@ -293,6 +293,8 @@ export type Snapshot = {
   recurringBills?: RecurringBill[];
   splitTemplates?: SplitTemplate[];
   announcements?: Announcement[];
+  /** Pay links of current members who have saved any, keyed by user id (0042). */
+  payLinks?: Record<string, unknown>;
   /** recordType: the kind of record the event is about (0039). */
   activityEvents?: Array<{id:string;actorId:string;kind:ActivityEventKind;entityId:string;title:string;description:string;createdAt:string;recordType?:ActivityType}>;
   /**

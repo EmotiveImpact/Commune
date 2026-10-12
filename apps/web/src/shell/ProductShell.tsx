@@ -2,7 +2,7 @@ import { Suspense, useEffect, useRef, useState, type MouseEvent, type ReactNode 
 import { diagnosticsEnabled } from "../live/diagnostics";
 import { useApp } from "../state";
 import { Header, MoreSheet, PhoneTabs, Sidebar } from "./Shell";
-import { HomeEmptyScreen, HomeScreen, PlacesScreen } from "../screens/Home";
+import { HomeEmptyScreen, HomeScreen, HomeSkeleton, PlacesScreen } from "../screens/Home";
 import { HubEmptyScreen, HubScreen } from "../screens/Hub";
 import { ExpensesEmptyScreen, ExpensesScreen, SettleEvenScreen, SettleScreen } from "../screens/Money";
 import { Windows } from "../windows/Windows";
@@ -13,6 +13,8 @@ import { RecoveryBoundary, ScreenRecovery } from "./Recovery";
 import { isConnectionFailure } from "../live/connection";
 import { lazyComponent, preloadWhenIdle } from "./lazyComponent";
 import { usePageTitle } from "./pageTitle";
+import { ToastHost } from "../ui/Toast";
+import { useLayoutMotion } from "../ui/motion";
 
 // The signed-in app. App draws it only for someone signed in, and starts
 // fetching it while the session is checked on one of its addresses (never on
@@ -36,6 +38,9 @@ export function ProductShell() {
   const noteReader = screen === "notes" && win === "note" && Boolean(notes[noteKey]);
   const modalOpen = Boolean(win) && !noteReader;
   usePageFocus(screen, hub.id, Boolean(win) || Boolean(searchTarget));
+  // Rows answer in place, fold away and make room, after something you did.
+  const mainRef = useRef<HTMLElement>(null);
+  useLayoutMotion(mainRef);
   // The screens and windows still to come load once the browser is idle, so
   // they open at once later.
   useEffect(() => preloadWhenIdle(), []);
@@ -62,7 +67,7 @@ export function ProductShell() {
           {diagnosticsEnabled() ? <ConnectionCheck /> : null}
           {apiError ? <div className="a-api-error" role="alert">{isConnectionFailure(apiError) ? <>Connection interrupted. Your last loaded view is still available.<button type="button" onClick={() => void refresh()}>Try again</button></> : apiError}<button type="button" onClick={clearApiError} aria-label="Dismiss error">×</button></div> : null}
           {contentError && hub.activityState === "ready" ? <div className="a-api-error" role="alert">Could not refresh this commune. Showing its last loaded activity.<button type="button" onClick={() => void refresh()}>Try again</button></div> : null}
-          <main className="a-content" id="main-content">
+          <main ref={mainRef} className="a-content" id="main-content">
             <RecoveryBoundary resetKey={`${screen} ${hub.id}`} fallback={(retry) => <ScreenRecovery retry={retry} />}>
               <Screen screen={screen} />
             </RecoveryBoundary>
@@ -74,6 +79,7 @@ export function ProductShell() {
         <MoreSheet />
       </div>
       <Windows key={hub.id} />
+      <ToastHost />
     </div>
   );
 }
@@ -151,8 +157,8 @@ function Screen({ screen }: { screen: ScreenId }) {
 }
 
 // The page's own skeleton, while its records load or a screen's code arrives.
-function ContentSkeleton({ label, children }: { label: string; children?: ReactNode }) {
-  return <div className="c-content-skeleton" role="status" aria-label={label} aria-busy="true"><span className="c-visually-hidden">{label}</span>{children}<div className="c-skeleton-grid" aria-hidden="true"><div /><div /><div /><div /></div></div>;
+function ContentSkeleton({ label, children, grid = true }: { label: string; children?: ReactNode; grid?: boolean }) {
+  return <div className="c-content-skeleton" role="status" aria-label={label} aria-busy="true"><span className="c-visually-hidden">{label}</span>{children}{grid ? <div className="c-skeleton-grid" aria-hidden="true"><div /><div /><div /><div /></div> : null}</div>;
 }
 
 function ScreenBody({ screen }: { screen: ScreenId }) {
@@ -167,6 +173,7 @@ function ScreenBody({ screen }: { screen: ScreenId }) {
 
   if (contentLoading && screen !== "settings" && screen !== "search") {
     if (contentError) return <div className="a-content-loading" role="alert"><h2>Could not load {hub.name}</h2><p>{contentError}</p><button className="a-btn" type="button" onClick={() => void refresh()}>Try again</button></div>;
+    if (hasHubs && (screen === "home" || screen === "home-empty" || screen === "home-inbox")) return <ContentSkeleton label="Loading shared records" grid={false}><HomeSkeleton /></ContentSkeleton>;
     return <ContentSkeleton label="Loading shared records">{screen === "hub" && <div className="c-skeleton-identity" style={hub.photo ? { backgroundImage: `linear-gradient(0deg, rgba(26,30,43,.8), rgba(26,30,43,.1)), url("${hub.photo}")` } : undefined}><h2>{hub.name}</h2><p>{hub.switchMeta}</p></div>}</ContentSkeleton>;
   }
 

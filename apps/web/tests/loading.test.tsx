@@ -12,6 +12,7 @@ import { todayIso, type OperationItem } from "../src/data/operations";
 import { HUBS } from "../src/data/household";
 import { coverSource } from "../src/data/covers";
 import { UNCERTAIN_RETRY_SAFE } from "../src/data/commands";
+import { toastRegion } from "./toast";
 
 vi.mock("../src/live/api", async (importOriginal) => ({
   ...await importOriginal<typeof import("../src/live/api")>(),
@@ -164,16 +165,16 @@ describe("commune loading", () => {
     const week = within(screen.getByRole("region", { name: "This week" }));
     expect(week.getByText("Nothing planned for this week.")).toBeTruthy();
     expect(task.status).toBe("done");
-    // The confirmation is visible and offers the way back.
-    expect(week.getByRole("status").textContent).toContain("Take recycling out marked done.");
+    // The confirmation is said in the toast and offers the way back.
+    expect(toastRegion().textContent).toContain("Take recycling out marked done.");
     vi.mocked(post).mockImplementation(async (path) => {
       expect(path).toBe("/occurrences/occurrence-1/undo");
       task = { ...hubTask };
       return { id: "occurrence-1", duplicate: false, date: task.date, assignee: task.assignee, status: "open" };
     });
-    await act(async () => { fireEvent.click(week.getByRole("button", { name: "Undo" })); });
+    await act(async () => { fireEvent.click(within(toastRegion()).getByRole("button", { name: "Undo" })); });
     expect(await screen.findByRole("checkbox", { name: "Mark Take recycling out done" })).toBeTruthy();
-    expect(week.getByRole("status").textContent).toBe("Undone. The task is back as it was.");
+    expect(toastRegion().textContent).toBe("Undone. The task is back as it was.");
   });
 
   it("retains an open task and offers an actionable error when completion fails", async () => {
