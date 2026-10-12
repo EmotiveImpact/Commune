@@ -54,11 +54,12 @@ describe("cascade layers", () => {
       '@import "./overrides.css" layer(overrides);',
       '@import "./design-system.css" layer(overrides);',
       '@import "./motion.css" layer(overrides);',
+      '@import "./harmony.css" layer(overrides);',
       '@import "./fonts.css";',
     ]);
     expect(stylesheets(resolve(src, "styles")).sort()).toEqual([
       "styles/app.css", "styles/auth.css", "styles/calendar-date.css", "styles/design-system.css",
-      "styles/fonts.css", "styles/index.css", "styles/legal.css", "styles/motion.css", "styles/overrides.css", "styles/shared.css",
+      "styles/fonts.css", "styles/harmony.css", "styles/index.css", "styles/legal.css", "styles/motion.css", "styles/overrides.css", "styles/shared.css",
     ]);
     expect(topLevel(read("styles/fonts.css")).every((block) => block === "@font-face")).toBe(true);
   });
@@ -95,7 +96,7 @@ describe("colours", () => {
     const fixed = new Map([...definitions]
       .filter(([, values]) => values.length === 1 && /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(values[0]))
       .map(([name, [value]]) => [hex(value), name]));
-    expect(fixed.get("1a1e2b")).toBe("--navy");
+    expect(fixed.get("14243b")).toBe("--navy");
     expect(fixed.get("2d6a4f")).toBe("--sage");
     const literals = css.flatMap(([path, text]) => [...text.replace(/--[\w-]+\s*:[^;}]+/g, "").matchAll(/#([0-9a-f]{6}|[0-9a-f]{3})\b/gi)]
       .filter(([match]) => fixed.has(hex(match)))

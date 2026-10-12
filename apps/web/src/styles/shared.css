@@ -15,9 +15,9 @@
   --focus-ring: var(--sage);
   --danger: #9b2c2c;
   --danger-soft: #fde8e4;
-  --navy: #1a1e2b;
-  --navy-2: #1f2330;
-  --navy-3: #21262f;
+  --navy: #14243b;
+  --navy-2: #1b2d47;
+  --navy-3: #203450;
   --ink: #171b24;
   --ink-soft: #667085;
   --peach: #efdccf;
@@ -33,11 +33,13 @@
   --shadow-sm: 0 1px 3px rgba(23, 27, 36, 0.06), 0 1px 2px rgba(23, 27, 36, 0.04);
   --shadow: 0 4px 12px rgba(23, 27, 36, 0.07), 0 1px 3px rgba(23, 27, 36, 0.05);
   --radius-control: 9px;
-  --radius-surface: 15px;
+  --radius-surface: 24px;
   --radius-pill: 999px;
   --radius: var(--radius-surface);
   --radius-sm: var(--radius-control);
   --font: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  /* The website's display face, for headlines (harmony.css). */
+  --font-display: "DM Sans", var(--font);
   /* Motion (design panel, 11 October 2026, medium direction). Every duration
      and curve in the app is one of these. Things arrive over the medium
      time and leave over the short one; the long one is for the all-square

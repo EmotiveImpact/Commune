@@ -1,6 +1,6 @@
 /* Approved design-language primitives. Auth and Operations retain their layouts. */
 .a-body:not(.is-gate) {
-  --ink: #1a1e2b;
+  --ink: #14243b;
   --ink-soft: #60706b;
   background: var(--paper);
 }
@@ -9,9 +9,10 @@
   --ink-soft: #b5bdca;
 }
 .a-header-title h1 {
-  font-size: 21px;
-  font-weight: 550;
-  letter-spacing: -0.5px;
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 400;
+  letter-spacing: -0.035em;
 }
 .a-content :is(.a-btn, .c-hub-button),
 .a-windows .a-btn,
