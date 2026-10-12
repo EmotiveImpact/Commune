@@ -117,6 +117,7 @@
   .a-header .a-you-btn .avatar { width: 32px; height: 32px; }
   .a-header-actions { gap: 0; margin-left: 0; }
   .a-header-title { padding-left: 2px; }
+  .a-header .a-header-wordmark { display: block; padding-left: 4px; font-size: 25px; letter-spacing: -1.4px; color: #f5f1ea; }
   .a-header:not(.a-header-home) .a-header-title h1 { font-size: 17px; font-weight: 600; letter-spacing: -0.01em; }
   .a-header:not(.a-header-home) .a-header-title p { display: none; }
   /* Home opens on its sentence, so the bar carries no name there; the
@@ -601,6 +602,10 @@
   .a-toolbar > .c-record-filter { flex: 1 1 0; min-width: 0; }
 }
 .c-expense-amount strong { white-space: nowrap; }
+
+/* The wordmark beside the menu is a phone's; wider screens have it in the sidebar. */
+.a-header-wordmark { display: none; }
+.a-body.is-native .a-header .a-header-wordmark { display: block; padding-left: 4px; font-size: 25px; letter-spacing: -1.4px; color: #f5f1ea; }
 
 /* Add expense in Home's top bar, beside the bell. Phones add from the Hub. */
 .a-header .a-header-add {

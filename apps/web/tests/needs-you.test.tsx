@@ -244,6 +244,8 @@ describe("Needs you on Home", () => {
       .toBe("You’re owed £70.00 and €25.00. Three things are overdue, the oldest eight days.");
     // The bar names the page; the sentence is Home's own heading.
     expect(screen.getByRole("heading", { level: 1, name: "Home" })).toBeTruthy();
+    // A phone's bar shows the wordmark beside the menu on Home; the h1 names the page.
+    expect(screen.getByRole("banner").querySelector(".a-header-wordmark[aria-hidden='true']")?.textContent).toBe("commune.");
     // Home's top bar adds an expense, as drawn (a phone adds from the Hub).
     fireEvent.click(within(screen.getByRole("banner")).getByRole("button", { name: "Add expense" }));
     expect(await screen.findByRole("dialog", { name: "Add expense" })).toBeTruthy();
