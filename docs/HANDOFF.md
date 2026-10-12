@@ -144,6 +144,14 @@ for a handoff, not a production release.
   best distance in local storage. If the connection returns mid-run the
   screen says so and waits for Open Commune instead of reconnecting. The
   "something went wrong" card (`shell/Recovery.tsx`) has no game.
+- From 11 October, for review: who did a task (migration 0041). Marking done
+  a task someone else holds asks "This is Ama's turn. Who did it?" with "I
+  did it" and "Ama did it", each pressed and held until its bar fills
+  (`ui/DoneByChoice.tsx`, on the late card, the task window and This Hub's
+  week). The database refuses the completion without an answer. The task's
+  last done names who did it and who marked it ("Ama Owusu · 11 Oct · marked
+  by Ben") or whose turn they covered, and the history line says the same.
+  The rotation moves on from the holder's turn as before.
 - The website is `web/` (the editorial homepage); the earlier v2 site is in
   `web-backup/`. Launch names `website` (3004) and `website-backup` (3003).
 - No push, deployment, hosted migration or provider change has been made. Do

@@ -14,8 +14,8 @@ this is not a replacement of Neon Auth or a switch back to Supabase.
 - [Current design language and preserved layouts](../../docs/DESIGN-LANGUAGE.md)
 - [Local build-out from 5 October: migrations 0020 onwards](../../docs/LOCAL-BUILDOUT-2026-10-05.md)
 
-Migrations **0015 to 0040 are local only**. They have not been applied to any
-Neon branch. Release order when they are: apply 0013 to 0040 in numeric order
+Migrations **0015 to 0041 are local only**. They have not been applied to any
+Neon branch. Release order when they are: apply 0013 to 0041 in numeric order
 to the preview branch, refresh that branch's Data API schema cache, then
 deploy the matching web client. The new client calls `send_reminder_command`,
 `record_share_receipt`, `reverse_share_receipt`, `correct_expense`,
@@ -124,6 +124,14 @@ the previous client keeps working; a later migration can drop it once no
 released client reads it. Apply it and refresh the Data API schema cache
 before deploying the client that reads `label` and `date`; with an older
 database that client shows the old text.
+
+0041 records who did a task. `record_operation_occurrence` gains an optional
+`p_done_by` (`'me'` or `'assignee'`), and marking done a task that someone
+else holds is refused without it, so a client released before 0041 can still
+complete its own and unheld tasks but not someone else's. `last_done` gains
+`markedBy` and `covering`, each occurrence a `done_by_id`, and the snapshot's
+task history a `doneById`. Apply it, refresh the Data API schema cache, then
+deploy the client that asks "Who did it?".
 
 ## Writing a migration
 
@@ -313,7 +321,7 @@ rate limits) are recorded in [`docs/AUTH-SETTINGS.md`](../../docs/AUTH-SETTINGS.
    Broad grants would let direct writes bypass ledger invariants. Keep preview
    branches separate from production.
 3. Apply `migrations/0001_commune_core.sql` through
-   `migrations/0040_search_dates.sql` in numeric order to the
+   `migrations/0041_task_done_by.sql` in numeric order to the
    development branch via an **unpooled** connection. Run `tests/grants.sql`,
    review RLS, and run two-account signed-JWT tests before applying the same
    reviewed migrations to production. After a migration adds or changes a

@@ -4,6 +4,7 @@ import {
   firstNameOf,
   holdsEdit,
   holdsTurn,
+  needsDoneBy,
   nextPerson,
   nextOccurrence,
   todayIso,
@@ -21,6 +22,7 @@ import { LIMITS } from "../data/limits";
 import { commandFailure, UNCERTAIN_RETRY_SAFE } from "../data/commands";
 import { newRequestId } from "../data/requestId";
 import { useFormError } from "../ui/components";
+import { DoneByChoice } from "../ui/DoneByChoice";
 
 const OPERATION_CATEGORIES: Array<[OperationCategory, string]> = [
   ["delivery", "Delivery"],
@@ -51,8 +53,9 @@ export function OperationView() {
     personName,
   } = useApp();
   const [confirmDelete, setConfirmDelete] = useState(false);
-  // One small panel at a time: skip with a reason, or hand over the turn.
-  const [panel, setPanel] = useState<"" | "skip" | "handover">("");
+  // One small panel at a time: skip with a reason, hand over the turn, or
+  // say who did someone else's task.
+  const [panel, setPanel] = useState<"" | "skip" | "handover" | "doneby">("");
   const [reason, setReason] = useState("");
   const [handTo, setHandTo] = useState("");
   const [error, setError] = useState("");
@@ -62,7 +65,7 @@ export function OperationView() {
     void action().then(() => { setMessage(success); setPanel(""); setReason(""); setHandTo(""); })
       .catch((failure) => setError(failure instanceof Error ? failure.message : "Could not update item"));
   };
-  const openPanel = (next: "skip" | "handover") => {
+  const openPanel = (next: "skip" | "handover" | "doneby") => {
     setError(""); setMessage(""); setReason(""); setHandTo(""); setPanel(next);
   };
   if (!item) {
@@ -155,6 +158,12 @@ export function OperationView() {
             </strong>
           </div>
         ) : null}
+        {item.kind === "task" && item.lastDone ? (
+          <div className="a-note-fact">
+            <span>Last done</span>
+            <strong>{lastDoneLine(item.lastDone)}</strong>
+          </div>
+        ) : null}
         <div className="a-note-fact">
           <span>Visible to</span>
           <strong>Everyone in this hub</strong>
@@ -184,6 +193,20 @@ export function OperationView() {
         disabled={mutationPending}
         onUndo={(occurrenceId) => run(() => undoOperation(occurrenceId), "Undone. The task is back as it was.")}
       />
+      {panel === "doneby" ? (
+        <DoneByChoice
+          className="operation-panel"
+          holder={item.assignee ?? ""}
+          title={item.title}
+          disabled={mutationPending}
+          onChoose={(doneBy) => {
+            const holder = firstNameOf(item.assignee) || "them";
+            run(() => toggleOperation(item.id, doneBy),
+              `${doneBy === "assignee" ? `Marked done for ${holder}` : `Marked done, covering ${holder}`}. You can undo this in History.`);
+          }}
+          onCancel={() => setPanel("")}
+        />
+      ) : null}
       {panel === "skip" ? (
         <div className="operation-delete operation-panel">
           <p>Move this on a week? {firstNameOf(item.assignee) || "Whoever has it"} keeps it.</p>
@@ -289,7 +312,10 @@ export function OperationView() {
               className="a-btn"
               type="button"
               disabled={mutationPending}
-              onClick={() => run(() => toggleOperation(item.id), item.status === "done" ? "Reopened." : "Marked done. You can undo this in History.")}
+              aria-expanded={needsDoneBy(item, you.id) ? panel === "doneby" : undefined}
+              onClick={() => needsDoneBy(item, you.id)
+                ? openPanel("doneby")
+                : run(() => toggleOperation(item.id), item.status === "done" ? "Reopened." : "Marked done. You can undo this in History.")}
             >
               {item.status === "done" ? "Mark open" : "Done"}
             </button>
@@ -346,6 +372,25 @@ const OCCURRENCE_VERB: Record<OperationOccurrence["action"], string> = {
 /** The database keeps a reason to 200 characters. */
 const OCCURRENCE_REASON_MAX = 200;
 
+/**
+ * Who did it, and who marked it when that was someone else: "Ama, marked by
+ * Ben", or "Ben, covering Ama". Entries before 0041 name who pressed it.
+ */
+function doneByLine(entry: OperationOccurrence, nameOf: (userId: string) => string): string {
+  const actor = nameOf(entry.actorId);
+  if (entry.action !== "completed" || !entry.doneById) return actor;
+  if (entry.doneById !== entry.actorId) return `${nameOf(entry.doneById)}, marked by ${actor}`;
+  return entry.assigneeId && entry.assigneeId !== entry.actorId && entry.assignee
+    ? `${actor}, covering ${firstNameOf(entry.assignee)}` : actor;
+}
+
+/** "Ama Owusu · 4 Oct · marked by Ben", "Ben · 4 Oct · covering Ama". */
+function lastDoneLine(lastDone: NonNullable<OperationItem["lastDone"]>): string {
+  return [lastDone.by, formatDay(lastDone.date),
+    lastDone.markedBy ? `marked by ${firstNameOf(lastDone.markedBy)}` : "",
+    lastDone.covering ? `covering ${firstNameOf(lastDone.covering)}` : ""].filter(Boolean).join(" · ");
+}
+
 /** What happened to each occurrence, newest first. Only the latest can be undone. */
 function OccurrenceHistory({ history, undoId, nameOf, disabled, onUndo }: {
   history: OperationOccurrence[]; undoId: string | null; nameOf: (userId: string) => string;
@@ -358,7 +403,7 @@ function OccurrenceHistory({ history, undoId, nameOf, disabled, onUndo }: {
       {history.map((entry) => (
         <div key={entry.id} className={entry.undoneAt ? "is-undone" : undefined}>
           <span>
-            <strong>{OCCURRENCE_VERB[entry.action]}</strong> by {nameOf(entry.actorId)} on {formatDay(entry.actedOn)}
+            <strong>{OCCURRENCE_VERB[entry.action]}</strong> by {doneByLine(entry, nameOf)} on {formatDay(entry.actedOn)}
             {entry.action === "completed" || entry.action === "skipped" ? ` · was due ${formatDay(entry.dueOn)}${entry.assignee ? ` with ${firstNameOf(entry.assignee)}` : ""}` : ""}
             {entry.action === "completed" && entry.nextDate !== entry.dueOn
               ? ` · next ${formatDay(entry.nextDate)}${entry.nextAssignee ? ` with ${firstNameOf(entry.nextAssignee)}` : ""}` : ""}

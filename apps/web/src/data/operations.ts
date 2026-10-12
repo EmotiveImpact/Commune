@@ -26,9 +26,25 @@ export type OperationOccurrence = {
   nextAssigneeId?: string | null;
   /** Why it was skipped or handed over, when someone said. */
   reason?: string | null;
+  /**
+   * Who a completion credits: the person who marked it, or the holder they
+   * marked it for. Missing on older entries and on tasks held by a name only.
+   */
+  doneById?: string | null;
   undoneAt: string | null;
   undoneBy: string | null;
 };
+/**
+ * Who did a task someone else holds, said by the person marking it done:
+ * themselves, covering the turn, or the holder.
+ */
+export type DoneBy = "me" | "assignee";
+
+/** Marking this task done has to say who did it: someone else holds it. */
+export function needsDoneBy(item: OperationItem, youId: string): boolean {
+  return item.kind === "task" && item.status === "open" && Boolean(item.assigneeId) && item.assigneeId !== youId;
+}
+
 /** What the server reports after a task action or its undo. */
 export type OperationChange = {
   occurrenceId: string;
@@ -61,7 +77,11 @@ export type OperationItem = {
    */
   turnOwnerId?: string | null;
   turnOwner?: string | null;
-  lastDone?: { by: string; date: string };
+  /**
+   * The last completion: who did it, and who marked it done for them or
+   * whose turn they covered, when that was someone else.
+   */
+  lastDone?: { by: string; date: string; markedBy?: string; covering?: string };
   repeat: OperationRepeat;
   status: OperationStatus;
   notes: string;

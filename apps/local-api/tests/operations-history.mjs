@@ -87,7 +87,7 @@ assert.deepEqual([done.duplicate, done.date, done.assignee, done.taskStatus], [f
 const again = ok(await act(bins, "completed", today, a, { requestId }), 200);
 assert.deepEqual([again.id, again.duplicate, again.date, again.assignee], [done.id, true, day(7), blake.name]);
 // A second person's stale click cannot advance the rotation twice.
-const stale = await act(bins, "completed", today, b);
+const stale = await act(bins, "completed", today, b, { doneBy: "assignee" });
 assert.equal(stale.status, 409);
 assert.match(stale.error, /already moved on/);
 let saved = await read(bins, b);
@@ -108,7 +108,8 @@ assert.equal(saved.history[0].undoneBy, blake.id);
 assert.ok(saved.history[0].undoneAt);
 
 // Six people-at-once completions of one occurrence: exactly one counts.
-const burst = await Promise.all(Array.from({ length: 6 }, (_, index) => act(bins, "completed", today, index % 2 ? b : a)));
+const burst = await Promise.all(Array.from({ length: 6 }, (_, index) =>
+  index % 2 ? act(bins, "completed", today, b, { doneBy: "assignee" }) : act(bins, "completed", today, a)));
 assert.equal(burst.filter(result => result.status === 201).length, 1, JSON.stringify(burst));
 assert.equal(burst.filter(result => result.status === 409).length, 5);
 saved = await read(bins);
@@ -127,7 +128,7 @@ assert.equal((await read(bins)).undoOccurrenceId, null);
 assert.equal((await a("POST", `/occurrences/${second.id}/undo`, {})).status, 409);
 assert.deepEqual([(await read(bins)).date, (await read(bins)).assignee], [day(15), casey.name]);
 // The rotation wraps round to the first person.
-const wrapped = ok(await act(bins, "completed", day(15)), 201);
+const wrapped = ok(await act(bins, "completed", day(15), a, { doneBy: "assignee" }), 201);
 assert.equal(wrapped.assignee, avery.name);
 
 
@@ -135,10 +136,16 @@ assert.equal(wrapped.assignee, avery.name);
 const late = await create({ title: "Deep clean", date: day(-40), assigneeId: blake.id, repeat: "monthly" });
 let expected = day(-40);
 do { expected = addMonth(expected); } while (expected <= today);
-const monthly = ok(await act(late, "completed", day(-40)), 201);
+// Marking Blake's task done says who did it (0041): without an answer it is
+// refused, and with one both names go on it.
+const unanswered = await act(late, "completed", day(-40));
+assert.equal(unanswered.status, 400);
+assert.equal(unanswered.error, "This is Blake's turn. Say whether you did it or they did.");
+assert.equal((await act(late, "completed", day(-40), a, { doneBy: "someone" })).status, 400);
+const monthly = ok(await act(late, "completed", day(-40), a, { doneBy: "assignee" }), 201);
 assert.deepEqual([monthly.date, monthly.assignee, monthly.taskStatus], [expected, blake.name, "open"]);
-// The assignee, not whoever ticked the box, is credited for a repeating task.
-assert.deepEqual((await read(late)).lastDone, { by: blake.name, date: today });
+assert.deepEqual((await read(late)).lastDone, { by: blake.name, date: today, markedBy: avery.name });
+assert.deepEqual([(await read(late)).history[0].actorId, (await read(late)).history[0].doneById], [avery.id, blake.id]);
 ok(await a("POST", `/occurrences/${monthly.id}/undo`, {}));
 assert.deepEqual([(await read(late)).date, (await read(late)).lastDone], [day(-40), null]);
 const skipped = ok(await act(late, "skipped", day(-40)), 201);
@@ -170,10 +177,13 @@ assert.equal((await read(late)).date, day(-40));
 // ---------------------------------------- one-off tasks, reopen, and events
 const key = await create({ title: "Return the spare key", date: today, assigneeId: blake.id });
 assert.equal((await act(key, "skipped", today)).status, 409);
-const finished = ok(await act(key, "completed", today), 201);
+const finished = ok(await act(key, "completed", today, a, { doneBy: "me" }), 201);
 assert.deepEqual([finished.taskStatus, finished.date], ["done", today]);
-assert.deepEqual((await read(key)).lastDone, { by: avery.name, date: today });
+assert.deepEqual((await read(key)).lastDone, { by: avery.name, date: today, covering: blake.name });
 assert.equal((await act(key, "completed", today, b)).status, 409);
+// The activity names both people.
+assert.ok(ok(await a("GET", `/communes/${id}/snapshot`)).activityEvents.some(item => item.entityId === key
+  && item.description === `Completed, covering ${blake.name}`));
 ok(await b("POST", `/occurrences/${finished.id}/undo`, {}));
 assert.deepEqual([(await read(key)).status, (await read(key)).lastDone], ["open", null]);
 // Status and completion cannot be sent with an add or an edit: a new task

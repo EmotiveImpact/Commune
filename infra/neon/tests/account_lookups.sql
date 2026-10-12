@@ -30,8 +30,8 @@ BEGIN
     RETURNING id INTO v_task;
   INSERT INTO public.commune_operations (commune_id, kind, category, title, date, assignee_id, created_by)
     VALUES (v_home, 'task', 'chore', 'Plants', current_date, v_gone, v_alice);
-  -- Bea hands the bins to Cal, then Cal leaves.
-  PERFORM public.record_operation_occurrence(v_task, 'completed', current_date, current_date, gen_random_uuid());
+  -- Alice marks Bea's turn done for her, it passes to Cal, then Cal leaves.
+  PERFORM public.record_operation_occurrence(v_task, 'completed', current_date, current_date, gen_random_uuid(), NULL, 'assignee');
   PERFORM public.manage_commune_member(v_home, v_cal, 'remove');
   PERFORM set_config('test.home', v_home::text, true);
 

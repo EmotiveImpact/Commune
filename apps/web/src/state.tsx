@@ -29,6 +29,7 @@ import {
 import {
   todayIso,
   type NewOperation,
+  type DoneBy,
   type OperationChange,
   type OperationItem,
   type OperationStore,
@@ -381,7 +382,8 @@ export type AppState = {
    */
   updateOperation: (id: string, item: NewOperation, expectedVersion?: number) => Promise<void>;
   /** Completes an open task, or reopens a done one. The server advances repeats and rotation. */
-  toggleOperation: (id: string) => Promise<OperationChange>;
+  /** Marking someone else's task done says who did it (needsDoneBy). */
+  toggleOperation: (id: string, doneBy?: DoneBy) => Promise<OperationChange>;
   skipOperation: (id: string, reason?: string) => Promise<OperationChange>;
   handOverOperation: (id: string, toMemberId: string, reason?: string) => Promise<OperationChange>;
   /** Restores the task to exactly how it was before that action. */
@@ -1819,12 +1821,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
       turnOwnerId: typeof raw.turnOwnerId === "string" ? raw.turnOwnerId : null, status: raw.status === "done" ? "done" : "open",
     } satisfies OperationChange;
   }), [mutate, refreshRecords]);
-  const taskAction = useCallback((id: string, action: "completed" | "skipped" | "reopened", reason?: string) => {
+  const taskAction = useCallback((id: string, action: "completed" | "skipped" | "reopened", reason?: string, doneBy?: DoneBy) => {
     const item = operationsRef.current.find((row) => row.id === id);
     if (!item) return Promise.reject(new Error("Schedule item not found"));
     return occurrenceCommand(`/operations/${encodeURIComponent(id)}/occurrences`, {
       action, expectedDate: item.date, today: todayIso(), requestId: newRequestId(),
       ...(reason?.trim() ? { reason: reason.trim() } : {}),
+      ...(doneBy ? { doneBy } : {}),
     });
   }, [occurrenceCommand]);
   // The expected date and holder reject a handover made from a stale screen.
@@ -1838,9 +1841,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [occurrenceCommand]);
   const undoOperation = useCallback((occurrenceId: string) =>
     occurrenceCommand(`/occurrences/${encodeURIComponent(occurrenceId)}/undo`, {}), [occurrenceCommand]);
-  const toggleOperation = useCallback((id: string) => {
+  const toggleOperation = useCallback((id: string, doneBy?: DoneBy) => {
     const item = operationsRef.current.find((row) => row.id === id);
-    if (item?.status !== "done") return taskAction(id, "completed");
+    if (item?.status !== "done") return taskAction(id, "completed", undefined, doneBy);
     // Undo the completion when it is still the latest state; a task finished
     // before occurrences existed is reopened as a new recorded action.
     return item.undoOccurrenceId ? undoOperation(item.undoOccurrenceId) : taskAction(id, "reopened");

@@ -1252,7 +1252,7 @@ CREATE FUNCTION commune_private.snapshot_operations(p_commune_id uuid) RETURNS j
           'assignee',CASE WHEN h.assignee_id IS NULL THEN h.assignee ELSE coalesce(names.map->>h.assignee_id, commune_private.member_name(h.assignee_id)) END,'assigneeId',h.assignee_id,
           'actorId',h.actor_id,'actedOn',h.acted_on,'actedAt',h.acted_at,'nextDate',h.next_date,
           'nextAssignee',CASE WHEN h.next_assignee_id IS NULL THEN h.next_assignee ELSE coalesce(names.map->>h.next_assignee_id, commune_private.member_name(h.next_assignee_id)) END,'nextAssigneeId',h.next_assignee_id,
-          'reason',h.reason,
+          'reason',h.reason,'doneById',h.done_by_id,
           'undoneAt',h.undone_at,'undoneBy',h.undone_by) ORDER BY h.acted_at DESC, h.id)
         FROM (SELECT * FROM public.operation_occurrences x WHERE x.operation_id=o.id ORDER BY x.acted_at DESC, x.id LIMIT 12) h),'[]'::jsonb)
     ) ORDER BY o.date,o.time),'[]'::jsonb)
@@ -2623,10 +2623,10 @@ $$;
 
 
 --
--- Name: record_operation_occurrence(uuid, text, date, date, uuid, text); Type: FUNCTION; Schema: public; Owner: -
+-- Name: record_operation_occurrence(uuid, text, date, date, uuid, text, text); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.record_operation_occurrence(p_operation_id uuid, p_action text, p_expected_date date, p_today date, p_request_id uuid, p_reason text DEFAULT NULL::text) RETURNS jsonb
+CREATE FUNCTION public.record_operation_occurrence(p_operation_id uuid, p_action text, p_expected_date date, p_today date, p_request_id uuid, p_reason text DEFAULT NULL::text, p_done_by text DEFAULT NULL::text) RETURNS jsonb
     LANGUAGE plpgsql SECURITY DEFINER
     SET search_path TO 'public', 'pg_temp'
     AS $$
@@ -2638,6 +2638,7 @@ DECLARE
   v_actor_name text;
   v_date date; v_assignee text; v_assignee_id text; v_turn_owner_id text; v_status text; v_last_done jsonb;
   v_id uuid; v_description text; v_reason text;
+  v_holder_name text; v_held_by_name text; v_done_by_id text;
 BEGIN
   IF p_request_id IS NULL THEN
     RAISE EXCEPTION 'A request id is required to update a task' USING ERRCODE = '22023';
@@ -2669,6 +2670,9 @@ BEGIN
   IF v_reason IS NOT NULL AND p_action <> 'skipped' THEN
     RAISE EXCEPTION 'Only a skip or a handover takes a reason' USING ERRCODE = '22023';
   END IF;
+  IF p_done_by IS NOT NULL AND (p_done_by NOT IN ('me', 'assignee') OR p_action <> 'completed') THEN
+    RAISE EXCEPTION 'Only marking a task done says who did it: you, or the person who has it' USING ERRCODE = '22023';
+  END IF;
   -- A commune has no time zone, so the member's own date decides "today".
   -- It may differ from the server's UTC date by at most one day.
   IF p_today IS NULL OR p_today NOT BETWEEN current_date - 1 AND current_date + 1 THEN
@@ -2689,9 +2693,32 @@ BEGIN
     IF v_op.status <> 'open' THEN
       RAISE EXCEPTION 'This task is already done' USING ERRCODE = 'P0001';
     END IF;
+    -- Who did it. Someone else's task needs an answer, so nothing is marked
+    -- done for a person without both names on it.
+    IF v_op.assignee_id IS NOT NULL THEN
+      v_holder_name := commune_private.member_name(v_op.assignee_id);
+    END IF;
+    IF v_op.assignee_id IS NOT NULL AND v_op.assignee_id <> v_actor THEN
+      IF p_done_by IS NULL THEN
+        RAISE EXCEPTION 'This is %''s turn. Say whether you did it or they did.', split_part(v_holder_name, ' ', 1) USING ERRCODE = '22023';
+      END IF;
+      v_done_by_id := CASE p_done_by WHEN 'me' THEN v_actor ELSE v_op.assignee_id END;
+    ELSIF p_done_by = 'assignee' AND v_op.assignee_id IS NULL THEN
+      RAISE EXCEPTION 'Nobody has this task. Mark it done as yourself.' USING ERRCODE = '22023';
+    ELSE
+      v_held_by_name := left(nullif(btrim(coalesce(v_op.assignee, '')), ''), 80);
+      -- A task held by a name with no account cannot say who that was.
+      v_done_by_id := CASE WHEN v_op.assignee_id IS NULL AND v_held_by_name IS NOT NULL THEN NULL ELSE v_actor END;
+    END IF;
+    v_last_done := CASE
+      WHEN v_done_by_id IS NULL THEN jsonb_strip_nulls(jsonb_build_object('by', v_held_by_name, 'date', p_today,
+        'markedBy', CASE WHEN v_held_by_name <> v_actor_name THEN v_actor_name END))
+      WHEN v_done_by_id <> v_actor THEN jsonb_build_object('by', v_holder_name, 'date', p_today, 'markedBy', v_actor_name)
+      WHEN v_op.assignee_id IS NOT NULL AND v_op.assignee_id <> v_actor THEN
+        jsonb_build_object('by', v_actor_name, 'date', p_today, 'covering', v_holder_name)
+      ELSE jsonb_build_object('by', v_actor_name, 'date', p_today) END;
     IF v_op.repeat = 'none' THEN
       v_status := 'done';
-      v_last_done := jsonb_build_object('by', v_actor_name, 'date', p_today);
     ELSE
       -- Next occurrence strictly after today.
       LOOP
@@ -2717,15 +2744,15 @@ BEGIN
         v_assignee_id := v_op.turn_owner_id;
         v_assignee := commune_private.member_name(v_assignee_id);
       END IF;
-      -- The person who held it, the cover included, is credited.
-      v_last_done := jsonb_build_object('by', coalesce(CASE WHEN v_op.assignee_id IS NOT NULL THEN commune_private.member_name(v_op.assignee_id) END,
-        nullif(btrim(v_op.assignee), ''), v_actor_name), 'date', p_today);
     END IF;
     -- A cover lasts for one occurrence.
     v_turn_owner_id := NULL;
-    v_description := CASE WHEN v_op.repeat = 'none' THEN 'Completed'
-      WHEN v_assignee_id IS DISTINCT FROM v_op.assignee_id AND v_assignee IS NOT NULL THEN 'Completed. Next: ' || v_assignee
-      ELSE 'Completed. Next due ' || to_char(v_date, 'FMDD Mon') END;
+    v_description := CASE WHEN v_last_done ? 'markedBy' THEN 'Marked done for ' || (v_last_done->>'by')
+        WHEN v_last_done ? 'covering' THEN 'Completed, covering ' || (v_last_done->>'covering')
+        ELSE 'Completed' END
+      || CASE WHEN v_op.repeat = 'none' THEN ''
+        WHEN v_assignee_id IS DISTINCT FROM v_op.assignee_id AND v_assignee IS NOT NULL THEN '. Next: ' || v_assignee
+        ELSE '. Next due ' || to_char(v_date, 'FMDD Mon') END;
   ELSIF p_action = 'skipped' THEN
     IF v_op.status <> 'open' OR v_op.repeat = 'none' THEN
       RAISE EXCEPTION 'Only an open repeating task can be skipped' USING ERRCODE = 'P0001';
@@ -2749,10 +2776,10 @@ BEGIN
   -- by when they were recorded rather than when their transaction began.
   INSERT INTO public.operation_occurrences (operation_id, commune_id, action, due_on, assignee, actor_id, acted_on, acted_at, request_id,
       prev_date, prev_assignee, prev_status, prev_last_done, next_date, next_assignee, next_status, next_last_done,
-      assignee_id, prev_assignee_id, next_assignee_id, reason, prev_turn_owner_id, next_turn_owner_id)
+      assignee_id, prev_assignee_id, next_assignee_id, reason, prev_turn_owner_id, next_turn_owner_id, done_by_id)
     VALUES (p_operation_id, v_op.commune_id, p_action, v_op.date, v_op.assignee, v_actor, p_today, clock_timestamp(), p_request_id,
       v_op.date, v_op.assignee, v_op.status, v_op.last_done, v_date, v_assignee, v_status, v_last_done,
-      v_op.assignee_id, v_op.assignee_id, v_assignee_id, v_reason, v_op.turn_owner_id, v_turn_owner_id)
+      v_op.assignee_id, v_op.assignee_id, v_assignee_id, v_reason, v_op.turn_owner_id, v_turn_owner_id, v_done_by_id)
     RETURNING id INTO v_id;
   INSERT INTO public.commune_events (commune_id, actor_id, kind, entity_id, title, description)
     VALUES (v_op.commune_id, v_actor, 'operations', p_operation_id, v_op.title, left(v_description, 240));
@@ -4348,7 +4375,14 @@ BEGIN
   END IF;
   IF EXISTS (
     SELECT 1 FROM jsonb_object_keys(p_last_done) AS field(key)
-    WHERE field.key NOT IN ('by', 'date')
+    WHERE field.key NOT IN ('by', 'date', 'markedBy', 'covering')
+  ) THEN
+    RETURN false;
+  END IF;
+  IF EXISTS (
+    SELECT 1 FROM jsonb_each(p_last_done) AS field(key, value)
+    WHERE field.key IN ('markedBy', 'covering')
+      AND (jsonb_typeof(field.value) <> 'string' OR length(btrim(field.value #>> '{}')) NOT BETWEEN 1 AND 80)
   ) THEN
     RETURN false;
   END IF;
@@ -5146,8 +5180,10 @@ CREATE TABLE public.operation_occurrences (
     reason text,
     prev_turn_owner_id text,
     next_turn_owner_id text,
+    done_by_id text,
     CONSTRAINT operation_occurrences_action_check CHECK ((action = ANY (ARRAY['completed'::text, 'skipped'::text, 'reopened'::text, 'handed_over'::text]))),
     CONSTRAINT operation_occurrences_check CHECK (((undone_at IS NULL) = (undone_by IS NULL))),
+    CONSTRAINT operation_occurrences_done_by_id_check CHECK (((done_by_id IS NULL) OR ((length(done_by_id) >= 1) AND (length(done_by_id) <= 128)))),
     CONSTRAINT operation_occurrences_reason_check CHECK (((reason IS NULL) OR ((length(reason) >= 1) AND (length(reason) <= 200))))
 );
 
@@ -8041,11 +8077,11 @@ GRANT ALL ON FUNCTION public.record_fund_contribution_command(p_commitment_id uu
 
 
 --
--- Name: FUNCTION record_operation_occurrence(p_operation_id uuid, p_action text, p_expected_date date, p_today date, p_request_id uuid, p_reason text); Type: ACL; Schema: public; Owner: -
+-- Name: FUNCTION record_operation_occurrence(p_operation_id uuid, p_action text, p_expected_date date, p_today date, p_request_id uuid, p_reason text, p_done_by text); Type: ACL; Schema: public; Owner: -
 --
 
-REVOKE ALL ON FUNCTION public.record_operation_occurrence(p_operation_id uuid, p_action text, p_expected_date date, p_today date, p_request_id uuid, p_reason text) FROM PUBLIC;
-GRANT ALL ON FUNCTION public.record_operation_occurrence(p_operation_id uuid, p_action text, p_expected_date date, p_today date, p_request_id uuid, p_reason text) TO authenticated;
+REVOKE ALL ON FUNCTION public.record_operation_occurrence(p_operation_id uuid, p_action text, p_expected_date date, p_today date, p_request_id uuid, p_reason text, p_done_by text) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.record_operation_occurrence(p_operation_id uuid, p_action text, p_expected_date date, p_today date, p_request_id uuid, p_reason text, p_done_by text) TO authenticated;
 
 
 --

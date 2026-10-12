@@ -793,10 +793,12 @@ route("POST", /^\/api\/operations\/([0-9a-f-]{36})\/occurrences$/, async (req, r
     throw new ApiError(400, "Invalid task action");
   }
   if (input.reason != null && typeof input.reason !== "string") throw new ApiError(400, "Invalid reason");
+  // Marking someone else's task done says who did it: "me" or "assignee".
+  if (input.doneBy != null && !["me", "assignee"].includes(String(input.doneBy))) throw new ApiError(400, "Invalid doneBy");
   const result = await userAction(req, async (client) => client.query(
-    "SELECT public.record_operation_occurrence($1, $2, $3::date, $4::date, $5, $6) AS result",
+    "SELECT public.record_operation_occurrence($1, $2, $3::date, $4::date, $5, $6, $7) AS result",
     [uuid(match[1]), input.action, isoDate(input.expectedDate, false, "expectedDate"),
-      isoDate(input.today, false, "today"), uuid(input.requestId, "requestId"), input.reason ?? null]));
+      isoDate(input.today, false, "today"), uuid(input.requestId, "requestId"), input.reason ?? null, input.doneBy ?? null]));
   const occurrence = result.rows[0].result as { duplicate: boolean };
   send(res, occurrence, occurrence.duplicate ? 200 : 201);
 });

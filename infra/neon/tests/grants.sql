@@ -49,7 +49,7 @@ BEGIN
     'public.reverse_share_receipt(uuid,text)',
     'public.correct_expense(uuid,integer,text,bigint,jsonb,date,text,text,text,uuid)',
     'public.void_expense(uuid,integer,text,uuid)',
-    'public.record_operation_occurrence(uuid,text,date,date,uuid,text)',
+    'public.record_operation_occurrence(uuid,text,date,date,uuid,text,text)',
     'public.hand_over_operation(uuid,text,date,text,date,text,uuid)',
     'public.post_announcement(uuid,text,text,boolean,uuid)',
     'public.acknowledge_announcement(uuid)',

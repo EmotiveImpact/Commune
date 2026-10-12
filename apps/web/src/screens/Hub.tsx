@@ -6,7 +6,8 @@ import { Icon } from "../ui/Icon";
 import { CalendarDate } from "../ui/CalendarDate";
 import { CoverImage, coverToneClass } from "../ui/CoverImage";
 import { isNotePinned, noteCategory, notePreview } from "../data/notePresentation";
-import { addDays, dateFromIso, todayIso } from "../data/operations";
+import { addDays, dateFromIso, firstNameOf, needsDoneBy, todayIso, type DoneBy, type OperationItem } from "../data/operations";
+import { DoneByChoice } from "../ui/DoneByChoice";
 import { formatTimestampDay } from "../data/reminders";
 import type { Hub, RouteId } from "../data/household";
 import "./Hub.css";
@@ -43,8 +44,10 @@ function HubLocation({ hub }: { hub: Pick<Hub, "type" | "address" | "destination
 }
 
 function Responsibilities() {
-  const { operations, toggleOperation, undoOperation, go } = useApp();
+  const { operations, toggleOperation, undoOperation, go, you } = useApp();
   const [pending, setPending] = useState<string | null>(null);
+  // Someone else's task, ticked: it asks who did it before it is marked done.
+  const [asking, setAsking] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [feedback, setFeedback] = useState<{ text: string; undoId?: string } | null>(null);
   // A completed task leaves the list (and its checkbox with it). Move focus to
@@ -68,11 +71,16 @@ function Responsibilities() {
   const end = addDays(today, 6);
   const items = operations.filter(item => item.status === "open" && item.date <= end && (item.date >= today || item.kind === "task"))
     .sort((a, b) => a.date.localeCompare(b.date)).slice(0, 5);
-  async function complete(id: string, title: string) {
-    setPending(id); setError(""); setFeedback(null);
+  async function complete(item: OperationItem, doneBy?: DoneBy) {
+    const { id, title } = item;
+    if (!doneBy && needsDoneBy(item, you.id)) { setAsking(id); setError(""); setFeedback(null); return; }
+    setAsking(null); setPending(id); setError(""); setFeedback(null);
     try {
-      const result = await toggleOperation(id);
-      setFeedback({ text: result.status === "done" ? `${title} marked done.` : `${title} done. Next: ${result.assignee ?? "unassigned"}.`, undoId: result.occurrenceId });
+      const result = await toggleOperation(id, doneBy);
+      const holder = firstNameOf(item.assignee);
+      const said = doneBy === "assignee" ? `${title} marked done for ${holder}.` : doneBy === "me" ? `${title} done, covering ${holder}.`
+        : result.status === "done" ? `${title} marked done.` : `${title} done.`;
+      setFeedback({ text: result.status === "done" ? said : `${said} Next: ${result.assignee ?? "unassigned"}.`, undoId: result.occurrenceId });
       setFocusTarget({ kind: "undo" });
     }
     catch (cause) { setError(cause instanceof Error ? cause.message : "Could not update the task. Please try again."); }
@@ -91,16 +99,19 @@ function Responsibilities() {
   return <HubSection title="This week" icon={CalendarDays} action={{ label: "View week", to: "operations" }}>
     <div ref={listRef}>
     {items.map(item => {
+      const choice = asking === item.id && <DoneByChoice key={`${item.id}-who`} className="c-hub-doneby" holder={item.assignee ?? ""} title={item.title}
+        disabled={pending !== null} onChoose={(doneBy) => void complete(item, doneBy)}
+        onCancel={() => { setAsking(null); setFocusTarget({ kind: "task", id: item.id }); }} />;
       const due = item.date === today ? "Today" : new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "numeric", month: "short" }).format(dateFromIso(item.date));
       const late = item.status === "open" && item.date < today;
-      return <div className={`c-hub-task${item.status === "done" ? " is-done" : ""}`} key={item.id} data-task={item.id}>
+      return [<div className={`c-hub-task${item.status === "done" ? " is-done" : ""}`} key={item.id} data-task={item.id}>
         <CalendarDate date={item.date} today={today} showMonth={false} />
         <button className="c-hub-task-copy" type="button" onClick={() => go("operation", { operation: item.id })}>
           <strong>{item.title}</strong><span>{item.assignee || "Unassigned"} · <span className={late ? "c-hub-late" : undefined}>{late ? "Overdue · " : ""}{due}</span>{item.time ? ` · ${item.time}` : ""}</span>
         </button>
         {item.kind === "task" && <label className="c-hub-check"><input type="checkbox" aria-label={`Mark ${item.title} ${item.status === "done" ? "open" : "done"}`}
-          checked={item.status === "done"} disabled={pending !== null} onChange={() => void complete(item.id, item.title)} /></label>}
-      </div>;
+          checked={item.status === "done"} disabled={pending !== null} onChange={() => void complete(item)} /></label>}
+      </div>, choice];
     })}
     </div>
     {!items.length && <div className="c-hub-empty"><p>Nothing planned for this week.</p><button className="c-hub-link" type="button" onClick={() => go("operation-new")}>Add a task or event</button></div>}

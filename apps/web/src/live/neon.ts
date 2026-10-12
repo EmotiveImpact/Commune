@@ -683,6 +683,8 @@ async function route<T>(path: string, init: RequestInit): Promise<T> {
       p_expected_date: body.expectedDate, p_today: body.today, p_request_id: body.requestId,
       // Sent only with a reason, so a skip without one matches the 0018 signature.
       ...(body.reason ? { p_reason: body.reason } : {}),
+      // Sent only when marking someone else's task done (0041).
+      ...(body.doneBy ? { p_done_by: body.doneBy } : {}),
     })));
   } else if (method === "POST" && pathId(path, /^\/operations\/([^/]+)\/handovers$/)) {
     response = asObject(unwrap(await db().rpc("hand_over_operation", {

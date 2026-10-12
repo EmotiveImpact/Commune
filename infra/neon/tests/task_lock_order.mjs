@@ -169,7 +169,7 @@ try {
   // is refused because Blake has left, and the task stays with Casey.
   const undo = await race({ name: "An undo", sql: "SELECT public.undo_operation_occurrence($1)",
     prepare: async (task) => [(await as(casey, `SELECT public.record_operation_occurrence($1, 'completed', current_date,
-      current_date, $2) ->> 'id' AS id`, [task, randomUUID()])).id] });
+      current_date, $2, NULL, 'me') ->> 'id' AS id`, [task, randomUUID()])).id] });
   assert.equal(undo.change.error?.code, "P0001", undo.change.error?.message ?? "The undo gave the task back to Blake");
   assert.equal(undo.change.error.message,
     "The person who had this task has left, so it can no longer be undone. Edit the task instead.");
