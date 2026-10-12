@@ -48,7 +48,7 @@ export function Button({ label, onPress, variant = "primary", size = "md", block
     disabled={disabled || busy}
     onPress={() => { tap(); onPress?.(); }}
     style={({ pressed }) => [{
-      height, paddingHorizontal: size === "sm" ? 12 : size === "lg" ? 20 : 16, borderRadius: radius.control, backgroundColor: bg,
+      height, paddingHorizontal: size === "sm" ? 14 : size === "lg" ? 22 : 18, borderRadius: radius.pill, backgroundColor: bg,
       flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, alignSelf: block ? "stretch" : "flex-start",
       opacity: disabled ? 0.45 : pressed ? 0.85 : 1,
     }, variant === "secondary" || variant === "danger" ? { borderWidth: 1, borderColor: variant === "danger" ? c.late : c.outline } : null]}>
