@@ -167,8 +167,9 @@ beside an enabled button. Server authority remains essential.
 ## Shared date calendar (2 October)
 
 `apps/web/src/ui/CalendarDate.tsx` and
-`apps/web/public/styles/calendar-date.css` are the shared component and appearance
-authority. The app and HTML reference both load that stylesheet. Operations,
+`apps/web/src/styles/calendar-date.css` are the shared component and appearance
+authority. The app bundles that stylesheet (imported first in `src/main.tsx`)
+and the HTML reference links `/src/styles/calendar-date.css`. Operations,
 Hub's This week, Home's dated next actions, expense due dates and recurring
 next-due dates use the same calendar. Inline prose dates, date inputs, avatars,
 undated records and the interactive Month grid are not replaced with badges.

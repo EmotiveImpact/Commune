@@ -682,7 +682,8 @@ describe("commune loading", () => {
     });
     await screen.findByRole("heading", { name: "New home" });
     expect(screen.getByText("42 Test Road")).toBeTruthy();
-    expect(location.history?.at(-1)).toBe("/hub");
+    // In place of the form, so Back does not return to it.
+    expect(location.history).toEqual(["/hub?commune=new-home"]);
     expect(app.hub.members[0].userId).toBe(user.id);
     expect(loadCommunes).toHaveBeenCalledTimes(1);
     expect(loadSnapshot).not.toHaveBeenCalled();
@@ -770,14 +771,14 @@ describe("commune loading", () => {
     vi.mocked(loadSnapshot).mockRejectedValue(new Error("Network unavailable"));
     mount();
     await screen.findByRole("heading", { name: "Could not load Our home" });
-    expect(screen.getByRole("button", { name: "Try again" })).toBeTruthy();
+    expect(await screen.findByRole("button", { name: "Try again" })).toBeTruthy();
     expect(screen.queryByText("No expenses yet. Add the first one to start the shared ledger.")).toBeNull();
   });
 
   it("redirects bookmarked empty-state URLs to the canonical hub", async () => {
     const location = mount("/hub-empty");
     await screen.findByRole("heading", { name: "Our home" });
-    await waitFor(() => expect(location.history?.at(-1)).toBe("/hub"));
+    await waitFor(() => expect(location.history?.at(-1)).toBe("/hub?commune=home-1"));
   });
 
   it("offers commune creation at /hub when membership is genuinely empty", async () => {

@@ -857,6 +857,13 @@ route("GET", /^\/api\/invites\/([0-9a-f]{64})$/, async (req, res, match) => {
   } : null });
 });
 
+// For an invitation sent to another address than this account's.
+route("GET", /^\/api\/invites\/([0-9a-f]{64})\/hint$/, async (req, res, match) => {
+  const result = await userAction(req, async (client) => client.query(
+    "SELECT public.invite_address_hint($1) AS hint", [match[1]]));
+  send(res, { hint: result.rows[0].hint });
+});
+
 // Real email needs LOCAL_API_SEND_EMAIL=yes as well as the Resend settings.
 // Without both, the sender is told email isn't set up here (503).
 const invitationEmail = invitationEmailSetting(process.env);
@@ -904,6 +911,26 @@ route("PUT", /^\/api\/preferences$/, async (req, res) => {
   const result = await userAction(req, async (client) => client.query(
     "SELECT public.set_email_reminders($1) AS email_reminders", [input.emailReminders]));
   send(res, { emailReminders: result.rows[0].email_reminders });
+});
+
+// An error report or one page load's speed figures from the web app. The
+// database checks each field, and drops a report over the account's limit
+// (stored: false).
+route("POST", /^\/api\/client-reports$/, async (req, res) => {
+  const input = await body(req);
+  const words = (value: unknown) => typeof value === "string" ? value : null;
+  const figure = (value: unknown, field: string) => {
+    if (value === undefined || value === null) return null;
+    if (typeof value !== "number" || !Number.isFinite(value) || value < 0 || value > 600_000) {
+      throw new ApiError(400, `Invalid ${field}`);
+    }
+    return value;
+  };
+  const result = await userAction(req, async (client) => client.query(
+    "SELECT public.report_client_event($1, $2, $3, $4, $5, $6, $7, $8, $9) AS stored",
+    [words(input.kind), words(input.release), words(input.route), words(input.browser), words(input.message),
+      words(input.stack), figure(input.lcpMs, "lcpMs"), figure(input.inpMs, "inpMs"), figure(input.cls, "cls")]));
+  send(res, { stored: result.rows[0].stored });
 });
 
 function normalizedError(error: unknown): ApiError {

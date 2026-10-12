@@ -7,14 +7,13 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { useLocation } from "wouter";
+import { useLocation, useRouter, useSearch } from "wouter";
+import { useBrowserLocation } from "wouter/use-browser-location";
 import { isConnectionFailure } from "./live/connection";
 import { allocateExpense, validateExpenseAllocation, type ExpenseAllocation } from "../../../packages/core/src/expenseSplit";
 import {
   PAGE_LEDES,
   PAGE_TITLES,
-  PATH_SCREEN,
-  SCREEN_PATH,
   WINDOW_PAGE,
   initialsOf,
   isWindowId,
@@ -31,12 +30,27 @@ import {
   type OperationItem,
   type OperationStore,
 } from "./data/operations";
-import { isStoredImage, readHubPhotos } from "./data/images";
 import { newRequestId } from "./data/requestId";
-import { isNativeNow, keepSearch, pathOnly } from "./nav";
+import { COMMUNE_SCREENS, FORM_WINDOWS, addressOf, isNativeNow, keepSearch, readAddress, withCommune } from "./nav";
 import { api, post, loadCommunes, loadExpensePage, loadExpenseRecords, loadSnapshot, ApiError } from "./live/api";
 import { announceSession, currentViewer, onOtherTabSession, setViewer } from "./live/session";
-import { readStored, removeStored, writeStored } from "./live/storage";
+import {
+  DEFAULT_ACCOUNT,
+  DEFAULT_DEVICE,
+  DEVICE_KEY,
+  accountKey,
+  adoptTabPrefs,
+  forgetAccountPrefs,
+  readAccountPrefs,
+  readDevicePrefs,
+  saveAccountPrefs,
+  saveDevicePrefs,
+  type AccountPrefs,
+  type DevicePrefs,
+  type NavMode,
+  type PayMethod,
+  type Theme,
+} from "./live/preferences";
 import {
   expenseRows,
   hubFromSnapshot,
@@ -67,9 +81,8 @@ import {
   type AnnouncementResult,
 } from "./live/model";
 
-const LOCAL_PREFIX = "commune.local.";
 export type Seed = "new";
-export type NavMode = "basic" | "advanced";
+export type { NavMode, PayMethod, Theme };
 /** An invitation and where it is in its life. Admins see them all. */
 export type PendingInvite = {
   /** Null once the person who accepted it has left: their address is theirs. */
@@ -88,10 +101,6 @@ export function inviteStatus(invite: Pick<InviteRecord, "acceptedAt" | "revokedA
   if (invite.revokedAt) return "revoked";
   return Date.parse(invite.expiresAt) > now ? "pending" : "expired";
 }
-export type PayMethod = {
-  provider: "Revolut" | "PayPal" | "Monzo" | "Bank transfer";
-  value: string;
-};
 export type Session = {
   userId: string;
   name: string;
@@ -180,22 +189,13 @@ type GoOpts = {
   operation?: string;
   date?: string;
   time?: string;
-  window?: WindowId;
   expense?: string;
+  /** A fund opens at its own address, over Funds. */
+  fund?: string;
   template?: string;
   record?: { kind: "fund" | "recurring" | "member" | "template"; id: string };
 };
 export type SearchTarget = NonNullable<GoOpts["record"]> & { communeId: string };
-type LocalPrefs = {
-  activeHubId?: string;
-  navMode: NavMode;
-  dark: boolean;
-  noticesOn: boolean;
-  currency: "£ GBP" | "$ USD" | "€ EUR";
-  payMethods: PayMethod[];
-  hubPhotos: Partial<Record<HubId, string>>;
-  avatar?: string;
-};
 type LiveData = {
   user: User;
   communes: Commune[];
@@ -248,6 +248,8 @@ export type AppState = {
   contentLoading: boolean;
   contentError: string | null;
   emptyHub: boolean;
+  /** The address names a commune this account is not in, or no longer in. */
+  unknownCommune: boolean;
   window: WindowId | null;
   moreOpen: boolean;
   navMode: NavMode;
@@ -259,9 +261,12 @@ export type AppState = {
   operationsByHub: OperationStore;
   operations: OperationItem[];
   selectedOperation: OperationItem | null;
+  /** The fund whose address is open, shown in a dialog on Funds. */
+  fundKey: string;
+  /** Whether the app is dark now: chosen, or following the device. */
   dark: boolean;
+  theme: Theme;
   noticesOn: boolean;
-  currency: "£ GBP" | "$ USD" | "€ EUR";
   searchQuery: string;
   searchScope: string | null;
   searchTarget: SearchTarget | null;
@@ -316,12 +321,20 @@ export type AppState = {
   /** Why this tab was sent back to sign-in, when it was not the person's choice. */
   sessionNotice: string | null;
   go: (target: GoTarget, opts?: GoOpts) => void;
+  /** Back to the window's screen: the entry before it when that is where it opened. */
   closeWindow: () => void;
+  /**
+   * An open window reports whether it holds typed text, so Back can ask
+   * before discarding it. Returns a function that stops the reporting.
+   */
+  watchTypedText: (hasTyped: () => boolean) => () => void;
+  /** Back was pressed over typed text; the window waits for an answer. */
+  leaveAsked: boolean;
+  answerLeave: (discard: boolean) => void;
   setMoreOpen: (open: boolean) => void;
   setNavMode: (mode: NavMode) => void;
-  setDark: (on: boolean) => void;
+  setTheme: (theme: Theme) => void;
   setNoticesOn: (on: boolean) => void;
-  setCurrency: (currency: "£ GBP" | "$ USD" | "€ EUR") => void;
   setSearchQuery: (query: string) => void;
   setSearchScope: (id: string | null) => void;
   clearSearchTarget: () => void;
@@ -374,6 +387,8 @@ export type AppState = {
   sendInviteEmail: (token: string) => Promise<void>;
   revokeInvite: (id: string) => Promise<void>;
   previewInvite: (token: string) => Promise<InvitePreview | null>;
+  /** The address an invitation this account cannot see was sent to, masked, when it is another one. */
+  inviteAddressHint: (token: string) => Promise<string | null>;
   acceptInvite: (token: string) => Promise<string>;
   /** requestId stays the same across retries of one open form. */
   createFund: (name: string, targetMinor: number | null, requestId: string) => Promise<string>;
@@ -408,15 +423,6 @@ export type AppState = {
 
 const Ctx = createContext<AppState | null>(null);
 
-const DEFAULT_PREFS: LocalPrefs = {
-  navMode: "basic",
-  dark: false,
-  noticesOn: true,
-  currency: "£ GBP",
-  payMethods: [],
-  hubPhotos: {},
-};
-
 function endedNotice(unsaved: boolean): string {
   return unsaved
     ? "You were signed out, so your last change wasn’t saved. Sign in to try again."
@@ -427,28 +433,19 @@ function endedNotice(unsaved: boolean): string {
 // itself; only one that nothing caught reaches the alert strip.
 const commandFailures = new WeakSet<object>();
 
-function readPrefs(userId: string): LocalPrefs {
-  try {
-    const raw = readStored(`${LOCAL_PREFIX}${userId}`);
-    if (!raw) return { ...DEFAULT_PREFS };
-    const parsed = JSON.parse(raw) as Partial<LocalPrefs>;
-    const photos = readHubPhotos(parsed.hubPhotos);
-    return {
-      activeHubId: typeof parsed.activeHubId === "string" ? parsed.activeHubId : undefined,
-      navMode: parsed.navMode === "advanced" ? "advanced" : "basic",
-      dark: parsed.dark === true,
-      noticesOn: parsed.noticesOn !== false,
-      currency: parsed.currency === "$ USD" || parsed.currency === "€ EUR" ? parsed.currency : "£ GBP",
-      payMethods: Array.isArray(parsed.payMethods) ? parsed.payMethods.filter(
-        (method): method is PayMethod => !!method && typeof method.value === "string" &&
-          ["Revolut", "PayPal", "Monzo", "Bank transfer"].includes(method.provider),
-      ) : [],
-      hubPhotos: photos ?? {},
-      avatar: isStoredImage(parsed.avatar) ? parsed.avatar : undefined,
-    };
-  } catch {
-    return { ...DEFAULT_PREFS };
-  }
+// Whether the device is set to dark, followed while the theme is "system".
+function usePrefersDark(): boolean {
+  const query = () => typeof window.matchMedia === "function" ? window.matchMedia("(prefers-color-scheme: dark)") : null;
+  const [dark, setDark] = useState(() => query()?.matches === true);
+  useEffect(() => {
+    const media = query();
+    if (!media) return;
+    const update = () => setDark(media.matches);
+    update();
+    media.addEventListener?.("change", update);
+    return () => media.removeEventListener?.("change", update);
+  }, []);
+  return dark;
 }
 
 function emptyHub(): LiveHub {
@@ -478,6 +475,11 @@ function emptyHub(): LiveHub {
     notes: [],
     jumps: [],
   };
+}
+
+function addressAt(url: string) {
+  const at = url.indexOf("?");
+  return at < 0 ? readAddress(url) : readAddress(url.slice(0, at), url.slice(at + 1));
 }
 
 function authPath(target: GoTarget): string {
@@ -550,8 +552,11 @@ function withOlderExpenses(snapshot: Snapshot, older: OlderExpenses | undefined)
 }
 
 export function AppProvider({ children }: { children: ReactNode }) {
-  const [location, setLocation] = useLocation();
-  const screen: ScreenId = PATH_SCREEN[pathOnly(location)] ?? "home";
+  const [path, setLocation] = useLocation();
+  const search = useSearch();
+  // Back and Forward belong to the browser's history; tests use a memory location.
+  const browserHistory = useRouter().hook === useBrowserLocation;
+  const url = search ? `${path}?${search}` : path;
   const [authStatus, setAuthStatus] = useState<AuthStatus>("loading");
   const [apiError, setApiError] = useState<string | null>(null);
   const [signOutUnconfirmed, setSignOutUnconfirmed] = useState(false);
@@ -563,17 +568,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     dataRef.current = next;
     setData(next);
   }, []);
-  const [prefs, setPrefs] = useState<LocalPrefs>({ ...DEFAULT_PREFS });
+  const [prefs, setPrefs] = useState<AccountPrefs>(DEFAULT_ACCOUNT);
+  const [device, setDevice] = useState<DevicePrefs>(() => readDevicePrefs() ?? DEFAULT_DEVICE);
+  const prefersDark = usePrefersDark();
   const [hubId, setHubId] = useState<HubId>("");
   const [snapshotErrors, setSnapshotErrors] = useState<Record<string, string>>({});
-  const [windowId, setWindowId] = useState<WindowId | null>(null);
   const [moreOpen, setMoreOpen] = useState(false);
-  const [noteKey, setNoteKey] = useState("");
-  const [selectedExpenseId, setSelectedExpenseId] = useState("");
-  const [expenseTemplateId, setExpenseTemplateId] = useState("");
-  const [operationKey, setOperationKey] = useState("");
-  const [operationDate, setOperationDate] = useState(todayIso());
-  const [operationTime, setOperationTime] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [searchScope, setSearchScope] = useState<string | null>(null);
   const [searchTarget, setSearchTarget] = useState<SearchTarget | null>(null);
@@ -596,10 +596,88 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // by account, commune and expense.
   const recordReads = useRef(new Set<string>());
   const [recordResults, setRecordResults] = useState<Partial<Record<string, "missing" | "failed">>>({});
+
+  // Navigations this tab makes itself. Any other change of address is the
+  // browser's: Back, Forward or an address typed in.
+  const navigating = useRef(false);
+  const typedText = useRef<(() => boolean) | null>(null);
+  // Back over typed text in a window keeps the window at its address until
+  // the person says whether to discard what they typed.
+  const [heldUrl, setHeldUrl] = useState<string | null>(null);
+  const [leaveAsked, setLeaveAsked] = useState(false);
+  const [seen, setSeen] = useState(url);
+  if (seen !== url) {
+    setSeen(url);
+    const before = addressAt(seen);
+    const after = readAddress(path, search);
+    const closing = Boolean(before.window) && (before.window !== after.window || before.record !== after.record);
+    if (!navigating.current && closing && after.screen && data && typedText.current?.()) setHeldUrl(seen);
+    else if (heldUrl === url) setHeldUrl(null);
+  }
+  const shown = heldUrl ? addressAt(heldUrl) : readAddress(path, search);
+  const screen: ScreenId = shown.screen ?? "home";
+  const urlRef = useRef(url);
+  urlRef.current = url;
+  const shownRef = useRef(shown);
+  shownRef.current = shown;
+  // A screen for one commune names it in its address. Other screens show the
+  // commune this tab showed last.
+  const urlCommune = shown.screen && COMMUNE_SCREENS.has(shown.screen) ? shown.commune : "";
+  const unknownCommune = Boolean(urlCommune) && Boolean(data) && !data!.communes.some((commune) => commune.id === urlCommune);
+  const chosenId = urlCommune && !unknownCommune ? urlCommune : hubId;
+  const activeRef = useRef("");
   const overview = screen === "home" || screen === "home-empty" || screen === "home-inbox" || screen === "communes" || screen === "home-activity";
-  const viewRef = useRef({ hubId, overview });
-  viewRef.current = { hubId, overview };
+  const viewRef = useRef({ hubId: chosenId, overview });
+  viewRef.current = { hubId: chosenId, overview };
   const native = isNativeNow();
+
+  useEffect(() => { navigating.current = false; }, [url]);
+  // Back went past a window with typed text: put the window back and ask.
+  useEffect(() => {
+    if (!heldUrl || heldUrl === url) return;
+    navigating.current = true;
+    setLocation(heldUrl, { state: { communeBack: url } });
+    setLeaveAsked(true);
+  }, [heldUrl, url, setLocation]);
+
+  // Opening something adds an entry to the history; leaving a window returns
+  // to the entry before it when that is where it opened, so Back never goes
+  // to a window already closed. A replaced entry keeps where it opened from.
+  const navigate = useCallback((to: string, how: { returning?: boolean; fallback?: "push" | "replace" } = {}) => {
+    const target = keepSearch(to);
+    const here = urlRef.current;
+    if (target === here) return;
+    navigating.current = true;
+    const entry: unknown = browserHistory ? window.history.state : null;
+    const back = entry && typeof entry === "object" && typeof (entry as { communeBack?: unknown }).communeBack === "string"
+      ? (entry as { communeBack: string }).communeBack : null;
+    // Where this tab is going, before the address shows it.
+    urlRef.current = target;
+    if (how.returning && back === target) {
+      window.history.back();
+      return;
+    }
+    if (how.fallback === "replace") setLocation(target, { replace: true, state: back ? { communeBack: back } : null });
+    else setLocation(target, { state: { communeBack: here } });
+  }, [browserHistory, setLocation]);
+  // A window, or a fund's dialog, closes to the screen it is over.
+  const leaveRecord = useCallback(() => {
+    const here = shownRef.current;
+    if (!here.screen || (!here.window && !here.record)) return;
+    navigate(addressOf(here.screen, { commune: here.commune || activeRef.current }), { returning: true, fallback: "replace" });
+  }, [navigate]);
+  const watchTypedText = useCallback((hasTyped: () => boolean) => {
+    typedText.current = hasTyped;
+    return () => { if (typedText.current === hasTyped) typedText.current = null; };
+  }, []);
+  const answerLeave = useCallback((discard: boolean) => {
+    setLeaveAsked(false);
+    if (!discard) return;
+    // Carry on to where Back was going.
+    if (!browserHistory) return leaveRecord();
+    navigating.current = true;
+    window.history.back();
+  }, [browserHistory, leaveRecord]);
 
   const readSnapshot = useCallback((commune: Commune, sequence: number, force = false, detail?: "summary"): Promise<void> => {
     const current = dataRef.current;
@@ -645,7 +723,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const current = dataRef.current;
     if (!current || sequence !== refreshSequence.current) return;
     const active = current.communes.find((item) => item.id === viewRef.current.hubId)
-      ?? current.communes.find((item) => item.id === readPrefs(current.user.id).activeHubId)
+      ?? current.communes.find((item) => item.id === readAccountPrefs(current.user.id)?.activeHubId)
       ?? current.communes[0];
     if (!active) return;
     await readSnapshot(active, sequence, force);
@@ -670,9 +748,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setSnapshotErrors({});
     snapshotRevisions.current.clear();
     setHubId("");
-    setWindowId(null);
-    setPrefs({ ...DEFAULT_PREFS });
-    if (userId) removeStored(`${LOCAL_PREFIX}${userId}`);
+    // Device preferences stay; the account's go with it.
+    setPrefs(DEFAULT_ACCOUNT);
+    if (userId) forgetAccountPrefs(userId);
     setSessionNotice(notice);
     setAuthStatus("guest");
     loadedRef.current = true;
@@ -727,6 +805,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         user = result.user;
       }
       const viewer = user;
+      adoptTabPrefs(viewer.id);
       const { communes } = await startupRead(() => loadCommunes(viewer));
       if (sequence !== refreshSequence.current) return;
       const previous = dataRef.current?.user.id === viewer.id ? dataRef.current : null;
@@ -753,8 +832,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       });
       setAuthStatus("authenticated");
       setHubId((current) => communes.some((commune) => commune.id === current)
-        ? current : communes.find((commune) => commune.id === readPrefs(viewer.id).activeHubId)?.id ?? communes[0]?.id ?? "");
-      if (!previous) setPrefs(readPrefs(viewer.id));
+        ? current : communes.find((commune) => commune.id === readAccountPrefs(viewer.id)?.activeHubId)?.id ?? communes[0]?.id ?? "");
+      if (!previous) {
+        setPrefs(readAccountPrefs(viewer.id) ?? DEFAULT_ACCOUNT);
+        setDevice((shown) => readDevicePrefs() ?? shown);
+      }
       loadedRef.current = true;
       // Counts and invitations must not delay the commune itself. A check
       // reads the counts when something changed or a reminder slot has opened.
@@ -901,15 +983,33 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener("unhandledrejection", onUnhandled);
   }, []);
 
-  const savePrefs = useCallback((patch: Partial<LocalPrefs>) => {
-    if (!data) return;
-    const next = { ...prefs, ...patch };
-    // A full or blocked store keeps the change for this visit only.
-    if (!writeStored(`${LOCAL_PREFIX}${data.user.id}`, JSON.stringify(next))) {
+  // Each change starts from what the browser keeps, which another tab may
+  // have changed since. A full or blocked store keeps it for this visit only.
+  const savePrefs = useCallback((patch: Partial<AccountPrefs>) => {
+    // An effect or handler still holding the account can run after it signed
+    // out, or after someone else signed in here: it keeps nothing.
+    if (!data || dataRef.current?.user.id !== data.user.id) return;
+    const next = { ...(readAccountPrefs(data.user.id) ?? prefs), ...patch };
+    if (!saveAccountPrefs(data.user.id, next)) {
       console.warn("This browser could not keep a Commune preference");
     }
     setPrefs(next);
   }, [data, prefs]);
+  const saveDevice = useCallback((patch: Partial<DevicePrefs>) => {
+    const next = { ...(readDevicePrefs() ?? device), ...patch };
+    if (!saveDevicePrefs(next)) console.warn("This browser could not keep a Commune preference");
+    setDevice(next);
+  }, [device]);
+  // A change made in another tab shows here too.
+  const viewerId = data?.user.id;
+  useEffect(() => {
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === null || event.key === DEVICE_KEY) setDevice(readDevicePrefs() ?? DEFAULT_DEVICE);
+      if (viewerId && (event.key === null || event.key === accountKey(viewerId))) setPrefs(readAccountPrefs(viewerId) ?? DEFAULT_ACCOUNT);
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, [viewerId]);
 
   // A sign-in ends in a refresh, which tells the other tabs. For Google it is
   // the one that runs when the page comes back from Google.
@@ -947,9 +1047,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     forgetSession();
     setApiError(null);
     announceSession(null);
-    setLocation(keepSearch("/login"));
+    navigate("/login");
     await confirmSignOut();
-  }, [confirmSignOut, forgetSession, setLocation]);
+  }, [confirmSignOut, forgetSession, navigate]);
   const changePassword = useCallback((currentPassword: string, newPassword: string) => mutate(async () => {
     await post("/auth/change-password", { currentPassword, newPassword });
   }), [mutate]);
@@ -982,8 +1082,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
       youMeta: `${commune.role === "admin" ? "Admin" : "Member"} · ${commune.name}`,
     };
   }) : [];
-  const hub = places.find((place) => place.id === hubId) ?? places[0] ?? emptyHub();
+  const hub = places.find((place) => place.id === chosenId) ?? places[0] ?? emptyHub();
   const activeId = hub.id;
+  activeRef.current = activeId;
+  // The open window and the record it shows come from the address.
+  const windowId = unknownCommune ? null : shown.window;
+  const recordId = unknownCommune ? "" : shown.record;
+  const selectedExpenseId = windowId === "expense" || windowId === "expense-paid" || windowId === "pay" ? recordId : "";
+  const noteKey = windowId === "note" || windowId === "note-edit" ? recordId : "";
+  const operationKey = windowId === "operation" || windowId === "operation-edit" ? recordId : "";
+  const fundKey = screen === "funds" ? recordId : "";
+  const expenseTemplateId = windowId === "add-expense" ? shown.params.get("template") ?? "" : "";
+  const askedDate = windowId === "operation-new" ? shown.params.get("date") ?? "" : "";
+  const askedTime = windowId === "operation-new" ? shown.params.get("time") ?? "" : "";
+  const operationDate = /^\d{4}-\d{2}-\d{2}$/.test(askedDate) ? askedDate : todayIso();
+  const operationTime = /^\d{2}:\d{2}$/.test(askedTime) ? askedTime : "";
   const held = data?.snapshots[activeId];
   // The open commune's own screens never show a summary; they wait for its record.
   const snapshot = held?.detail === "summary" ? undefined : held;
@@ -1228,12 +1341,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       } }, invites: { ...latest.invites, [result.id]: [] },
     });
     setHubId(result.id);
-    savePrefs({ activeHubId: result.id });
     setMoreOpen(false);
-    setLocation(keepSearch(SCREEN_PATH.hub));
-    setWindowId(opts?.openExpense ? "add-expense" : null);
+    // The form that made it is done with, so it leaves no entry to go back to.
+    navigate(opts?.openExpense ? addressOf("expenses", { window: "add-expense", commune: result.id })
+      : addressOf("hub", { commune: result.id }), { fallback: "replace" });
     return result.id;
-  }), [mutate, publishData, savePrefs, setLocation]);
+  }), [mutate, navigate, publishData]);
 
   const updateCommune = useCallback((input: {
     name: string; type: LiveHub["type"]; currency: CurrencyCode;
@@ -1267,7 +1380,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       requestId: input.requestId,
     });
     await refreshRecords();
-    setSelectedExpenseId(result.id);
     return result.id;
   }), [activeId, data, mutate, refreshRecords]);
 
@@ -1380,14 +1492,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const result = await api<{ invite: InvitePreview | null }>(`/invites/${encodeURIComponent(token)}`);
     return result.invite;
   }, []);
+  const inviteAddressHint = useCallback(async (token: string) => {
+    const result = await api<{ hint: string | null }>(`/invites/${encodeURIComponent(token)}/hint`);
+    return result.hint;
+  }, []);
   const acceptInvite = useCallback((token: string) => mutate(async () => {
     const result = await post<{ communeId: string }>(`/invites/${encodeURIComponent(token)}/accept`, {});
     await refresh();
     setHubId(result.communeId);
-    savePrefs({ activeHubId: result.communeId });
-    setLocation(keepSearch(SCREEN_PATH.hub));
+    navigate(addressOf("hub", { commune: result.communeId }), { fallback: "replace" });
     return result.communeId;
-  }), [mutate, refresh, savePrefs, setLocation]);
+  }), [mutate, navigate, refresh]);
 
   // A repeat of the same requestId returns the record the first attempt made.
   const createFund = useCallback((name: string, targetMinor: number | null, requestId: string) => mutate(async () => {
@@ -1447,8 +1562,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const saveSplitTemplate = async (input: SplitTemplateInput) => (await workflow<{id:string}>(`/communes/${encodeURIComponent(activeId)}/templates`,input)).id;
   const manageMember = async (userId: string, action: "admin" | "member" | "leave" | "remove") => mutate(async () => {
     await post(`/communes/${encodeURIComponent(activeId)}/members/${encodeURIComponent(userId)}`,{action});
+    // Its addresses are no longer yours: go Home before the list drops it.
+    if (action === "leave") navigate(addressOf("home"));
     await refresh();
-    if (action === "leave") { setWindowId(null); setLocation(keepSearch("/")); }
   });
   const sendReminder = useCallback((kind: "nudge" | "chase", sourceId: string, requestId: string) => mutate(async () => {
     const actorId = dataRef.current?.user.id;
@@ -1478,7 +1594,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const { id: _draftId, ...payload } = card;
     const result = await post<{ id: string }>(`/communes/${encodeURIComponent(activeId)}/notes`, { ...payload, requestId });
     await refreshRecords();
-    setNoteKey(result.id);
     return result.id;
   }), [activeId, mutate, refreshRecords]);
   const updateNote = useCallback((card: NoteCard & { id: string; expectedVersion?: number }) => mutate(async () => {
@@ -1494,7 +1609,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       throw error;
     }
     await refreshRecords();
-    setNoteKey(id);
     return id;
   }), [activeId, data, mutate, refreshRecords]);
   const loadNoteRevision = useCallback(async (noteId: string, revisionId: string) =>
@@ -1503,8 +1617,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!activeId) throw new Error("Choose a commune first");
     const result = await post<{ id: string }>(`/communes/${encodeURIComponent(activeId)}/operations`, { ...operationPayload(item), requestId });
     await refreshRecords();
-    setOperationKey(result.id);
-    setOperationDate(item.date);
     return result.id;
   }), [activeId, mutate, refreshRecords]);
   const updateOperation = useCallback((id: string, item: NewOperation, expectedVersion?: number) => mutate(async () => {
@@ -1522,8 +1634,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       throw error;
     }
     await refreshRecords();
-    setOperationDate(item.date);
-    if (item.time) setOperationTime(item.time);
   }), [mutate, operations, refreshRecords]);
   // Task actions are commands: the database advances the date and rotation
   // and rejects a stale click, so two people cannot complete one occurrence.
@@ -1575,64 +1685,71 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const removeOperation = useCallback((id: string) => mutate(async () => {
     await api(`/operations/${encodeURIComponent(id)}`, { method: "DELETE" });
     await refreshRecords();
-    setWindowId(null);
-  }), [mutate, refreshRecords]);
+    leaveRecord();
+  }), [leaveRecord, mutate, refreshRecords]);
+
+  // A commune named in the address is the one this tab shows, on every screen.
+  useEffect(() => {
+    if (urlCommune && !unknownCommune && urlCommune !== hubId) setHubId(urlCommune);
+  }, [hubId, unknownCommune, urlCommune]);
+  // A screen for one commune names it, so a reload or a shared link opens the same one.
+  useEffect(() => {
+    if (heldUrl || !data || !shown.screen || !COMMUNE_SCREENS.has(shown.screen) || shown.commune || !activeId) return;
+    // Never over a newer navigation that this render has not seen.
+    if (urlRef.current !== url) return;
+    navigate(withCommune(path, search, activeId), { fallback: "replace" });
+  }, [activeId, data, heldUrl, navigate, path, search, shown.commune, shown.screen, url]);
+  // The commune this tab shows opens next time, while the account is still in it.
+  const remembered = useRef("");
+  useEffect(() => {
+    if (!viewerId || !activeId || remembered.current === `${viewerId}:${activeId}`) return;
+    remembered.current = `${viewerId}:${activeId}`;
+    savePrefs({ activeHubId: activeId });
+  }, [activeId, savePrefs, viewerId]);
 
   const go = useCallback((target: GoTarget, opts?: GoOpts) => {
-    setSearchTarget(opts?.record ? { ...opts.record, communeId: opts.hub ?? activeId } : null);
-    if (opts?.hub && places.some((place) => place.id === opts.hub)) {
-      if (opts.hub !== activeId) {
-        setSelectedExpenseId("");
-        setNoteKey("");
-        setOperationKey("");
-      }
-      setHubId(opts.hub);
-      savePrefs({ activeHubId: opts.hub });
-    }
-    if (opts?.expense) setSelectedExpenseId(opts.expense);
-    if (target === "add-expense") setExpenseTemplateId(opts?.template ?? "");
-    if (opts?.note) setNoteKey(opts.note);
-    if (opts?.operation) setOperationKey(opts.operation);
-    if (opts?.date) setOperationDate(opts.date);
-    if (opts?.time) setOperationTime(opts.time);
-    else if (target === "operation-new") setOperationTime("");
+    // A fund opens at its own address; other records are found on their screen.
+    const fund = opts?.fund ?? (opts?.record?.kind === "fund" ? opts.record.id : undefined);
+    setSearchTarget(opts?.record && opts.record.kind !== "fund" ? { ...opts.record, communeId: opts.hub ?? activeId } : null);
     setMoreOpen(false);
     if (target === "login" || target === "signup" || target === "forgot" ||
         target === "invite" || target === "onboard") {
-      setWindowId(null);
-      setLocation(keepSearch(authPath(target)));
+      navigate(authPath(target));
       return;
     }
-    if (isWindowId(target)) {
-      const stay = target === "add-expense" &&
-        (screen === "hub-empty" || screen === "home-empty" || screen === "expenses-empty");
-      if (!stay) {
-        const page = WINDOW_PAGE[target];
-        if (page) {
-          const dest: ScreenId = page;
-          if (dest !== screen) setLocation(keepSearch(SCREEN_PATH[dest]));
-        }
-      }
-      setWindowId(target);
-      return;
-    }
-    let dest: ScreenId = target;
-    if (target === "home-empty") dest = "home";
-    if (target === "hub-empty") dest = "hub";
-    if (target === "expenses-empty") dest = "expenses";
-    if (target === "settle-even") dest = "settle";
-    setWindowId(opts?.window ?? null);
-    setLocation(keepSearch(SCREEN_PATH[dest]));
-  }, [activeId, data, places, savePrefs, screen, session?.hasHubs, setLocation]);
+    const commune = opts?.hub && places.some((place) => place.id === opts.hub) ? opts.hub : activeId;
+    // Screens that do not name a commune still show this one.
+    if (commune !== hubId) setHubId(commune);
+    const here = shownRef.current;
+    const win = isWindowId(target) ? target : null;
+    const dest: ScreenId = win ? WINDOW_PAGE[win] ?? here.screen ?? "home"
+      : target === "home-empty" ? "home" : target === "hub-empty" ? "hub"
+        : target === "expenses-empty" ? "expenses" : target === "settle-even" ? "settle" : target as ScreenId;
+    const record = win === "expense" || win === "expense-paid" || win === "pay" ? opts?.expense
+      : win === "note" || win === "note-edit" ? opts?.note
+        : win === "operation" || win === "operation-edit" ? opts?.operation
+          : !win && dest === "funds" ? fund : undefined;
+    const to = addressOf(dest, { window: win, record, commune, params: {
+      template: win === "add-expense" ? opts?.template : undefined,
+      date: win === "operation-new" ? opts?.date : undefined,
+      time: win === "operation-new" ? opts?.time : undefined,
+    } });
+    // From a window, going where it opened from is Back. A finished or
+    // cancelled form is replaced, so Back never reopens it.
+    navigate(to, {
+      returning: Boolean(here.window || here.record),
+      fallback: here.window && FORM_WINDOWS.has(here.window) ? "replace" : "push",
+    });
+  }, [activeId, hubId, navigate, places]);
 
   // Dialogs have their own heading; the page behind them remains the page.
   const isHome = screen === "home" || screen === "home-empty";
   const firstName = you.name.trim().split(/\s+/)[0];
-  const pageTitle = isHome
+  const pageTitle = unknownCommune ? "Commune not found" : isHome
     ? firstName ? `Your communes, ${firstName}.` : "Your communes."
     : PAGE_TITLES[screen] ?? "Home";
   const outstandingShareCount = places.reduce((sum, place) => sum + place.moves.length, 0);
-  const pageLede = isHome
+  const pageLede = unknownCommune ? "" : isHome
     ? `${places.length} ${places.length === 1 ? "space" : "spaces"} · shared details that stay in sync for everyone.`
     : screen === "communes"
       ? session?.hasHubs
@@ -1651,27 +1768,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
   return <Ctx.Provider value={{
     authStatus, apiError, mutationPending: mutationCount > 0, clearApiError: () => setApiError(null), refresh: fullRefresh,
     signInWithPassword, signInWithGoogle, signUpWithPassword, verifyEmailCode, session, screen, hubId: activeId,
-    hub, places, snapshots: data?.snapshots ?? {}, contentLoading, contentError, emptyHub: empty, window: windowId, moreOpen,
-    navMode: prefs.navMode, noteKey, notes, operationKey, operationDate,
-    operationTime, operationsByHub, operations, selectedOperation,
-    dark: prefs.dark, noticesOn: prefs.noticesOn, currency: prefs.currency,
+    hub, places, snapshots: data?.snapshots ?? {}, contentLoading, contentError, emptyHub: empty, unknownCommune, window: windowId, moreOpen,
+    navMode: device.navMode, noteKey, notes, operationKey, operationDate,
+    operationTime, operationsByHub, operations, selectedOperation, fundKey,
+    dark: device.theme === "dark" || (device.theme === "system" && prefersDark), theme: device.theme, noticesOn: device.noticesOn,
     searchQuery, searchScope, searchTarget, noteSearchQuery, invites: data?.invites[activeId] ?? [], payMethods: prefs.payMethods, native, you,
     lastExpense, expenses, selectedExpense, createdExpenses: expenses, voidedExpenses,
     expenseRead, retryExpenseRead, expenseHistory, loadEarlierExpenses, loadFullHistory,
     funds, recurringBills, splitTemplates, expenseTemplateId, reminderTargets, reminderUsage, sentReminders, notifications,
     signOut, signOutUnconfirmed, retrySignOut: confirmSignOut, sessionNotice, go,
     changePassword, signOutOtherDevices,
-    closeWindow: () => { if (!mutationCount) setWindowId(null); }, setMoreOpen,
-    setNavMode: (navMode) => savePrefs({ navMode }),
-    setDark: (dark) => savePrefs({ dark }),
-    setNoticesOn: (noticesOn) => savePrefs({ noticesOn }),
-    setCurrency: (currency) => savePrefs({ currency }),
+    closeWindow: () => { if (!mutationCount) leaveRecord(); }, watchTypedText, leaveAsked, answerLeave, setMoreOpen,
+    setNavMode: (navMode) => saveDevice({ navMode }),
+    setTheme: (theme) => saveDevice({ theme }),
+    setNoticesOn: (noticesOn) => saveDevice({ noticesOn }),
     setSearchQuery, setSearchScope, clearSearchTarget, setNoteSearchQuery, savePayMethod, setHubPhoto, setAvatar, addNote, updateNote, loadNoteRevision,
     addOperation, updateOperation, toggleOperation, skipOperation, handOverOperation, undoOperation,
     removeOperation, createHub, updateCommune, recordExpense, confirmExpenseShare, correctExpense, voidExpense, recordShareReceipt, reverseShareReceipt,
     reportSharePayment, withdrawPaymentReport, resolvePaymentReport,
     announcements, postAnnouncement, acknowledgeAnnouncement, archiveAnnouncement,
-    markExpensePaid, createInvite, sendInviteEmail, revokeInvite, previewInvite, acceptInvite, createFund,
+    markExpensePaid, createInvite, sendInviteEmail, revokeInvite, previewInvite, inviteAddressHint, acceptInvite, createFund,
     pledgeFund, recordFundContribution, sendReminder, markNotificationRead,
     updateFund, archiveFund, updatePledge, voidContribution, saveRecurringBill, pauseRecurringBill, archiveRecurringBill, recordRecurringBill, recordRecurringPeriod, skipRecurringPeriod, saveSplitTemplate, manageMember,
     pageTitle, pageLede,

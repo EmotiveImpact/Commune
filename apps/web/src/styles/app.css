@@ -5802,7 +5802,7 @@ button.a-item {
   border-top: 1px solid rgba(26, 30, 43, 0.05);
 }
 
-/* Calendar appearance is shared in public/styles/calendar-date.css. */
+/* Calendar appearance is shared in calendar-date.css. */
 .ops-week-items {
   display: grid;
   gap: 6px;

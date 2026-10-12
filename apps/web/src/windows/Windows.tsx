@@ -21,6 +21,7 @@ import { isNotePinned } from "../data/notePresentation";
 import { buildStatement, statementCsv } from "../data/statement";
 import { NoteHistory } from "../ui/NoteHistory";
 import { DiscardQuestion, useFormError, useTypedText } from "../ui/components";
+import { RecoveryBoundary, WindowRecovery } from "../shell/Recovery";
 import "./NoteEditor.css";
 import { allocateExpense, type SplitMethod } from "../../../../packages/core/src/expenseSplit";
 import { netBalances } from "../../../../packages/core/src/balances";
@@ -60,6 +61,9 @@ export function Windows() {
     expenseRead,
     retryExpenseRead,
     refresh,
+    watchTypedText,
+    leaveAsked,
+    answerLeave,
   } = useApp();
   const frameRef = useRef<HTMLDivElement>(null);
   const inlineNote = window === "note" && screen === "notes" && Boolean(notes[noteKey]);
@@ -76,6 +80,8 @@ export function Windows() {
   const dismissRef = useRef(dismiss);
   useEffect(() => { dismissRef.current = dismiss; });
   useEffect(() => { if (!isOpen) setAsking(false); }, [isOpen]);
+  // Back asks too (see heldUrl in state.tsx).
+  useEffect(() => isOpen ? watchTypedText(typed.hasTyped) : undefined, [isOpen, typed.hasTyped, watchTypedText]);
   useEffect(() => {
     if (!isOpen) return;
     const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -135,7 +141,9 @@ export function Windows() {
         <div className="a-window-body">
           {waitingForRecord ? recordError ? <div role="alert"><p>{recordError}</p>
             <button className="a-btn" type="button" onClick={() => contentLoading ? void refresh() : retryExpenseRead()}>Try again</button></div> :
-            <div className="c-window-record-loading" role="status" aria-label="Loading selected record"><span /><span /><span /></div> : <>
+            <div className="c-window-record-loading" role="status" aria-label="Loading selected record"><span /><span /><span /></div> :
+          <RecoveryBoundary resetKey={`${window} ${selectedExpense?.id ?? ""} ${noteKey} ${selectedOperation?.id ?? ""}`}
+            fallback={(retry) => <WindowRecovery retry={retry} />}>
           {window === "notices" && <Notices />}
           {window === "reminder-preview" && <ReminderPreview />}
           {window === "add-expense" && <AddExpense />}
@@ -156,10 +164,11 @@ export function Windows() {
           {window === "operation-new" && <OperationNew />}
           {window === "operation-edit" && <OperationEdit />}
           {window === "announcement-new" && <AnnouncementNew />}
-          </>}
+          </RecoveryBoundary>}
         </div>
       </div>
-      {asking ? <DiscardQuestion onDiscard={() => { setAsking(false); closeWindow(); }} onKeep={() => setAsking(false)} /> : null}
+      {asking ? <DiscardQuestion onDiscard={() => { setAsking(false); closeWindow(); }} onKeep={() => setAsking(false)} />
+        : leaveAsked ? <DiscardQuestion onDiscard={() => answerLeave(true)} onKeep={() => answerLeave(false)} /> : null}
     </div>
   );
 }
@@ -560,14 +569,7 @@ function ExpensePaid() {
         share after receiving payment outside the app.
       </p>
       <div className="a-field-row">
-        <button
-          className="a-btn"
-          type="button"
-          onClick={() => {
-            closeWindow();
-            go("settle");
-          }}
-        >
+        <button className="a-btn" type="button" onClick={() => go("settle")}>
           Open settlement
         </button>
         <button className="a-btn ghost" type="button" onClick={closeWindow}>
@@ -764,7 +766,7 @@ function Profile() {
         <Pill tone="sage">You</Pill>
       </div>
       <p className="a-window-note">
-        Your photo is saved in this browser session. Expense shares and balances are shared with your commune.
+        Your photo is saved in this browser. Expense shares and balances are shared with your commune.
       </p>
       <div className="a-settle-row">
         <div>
@@ -775,7 +777,7 @@ function Profile() {
       <div className="a-settle-row">
         <div>
           <strong>Settings</strong>
-          <div className="when">Currency, notices, sidebar</div>
+          <div className="when">Theme, notices, sidebar</div>
         </div>
         <button className="a-btn ghost" type="button" onClick={() => go("settings")}>
           Open
@@ -786,7 +788,7 @@ function Profile() {
 }
 
 function Breakdown() {
-  const { go, closeWindow, hub, expenses, voidedExpenses, session, snapshots, expenseHistory, loadFullHistory } = useApp();
+  const { go, hub, expenses, voidedExpenses, session, snapshots, expenseHistory, loadFullHistory } = useApp();
   // A statement covers everything shared with that person, so it waits for every older expense.
   const [historyFailed, setHistoryFailed] = useState(false);
   useEffect(() => {
@@ -827,14 +829,7 @@ function Breakdown() {
     <section className="a-window">
       <p className="a-window-kicker">Settle</p>
       <div className="a-toolbar">
-        <button
-          className="a-btn"
-          type="button"
-          onClick={() => {
-            closeWindow();
-            go("settle");
-          }}
-        >
+        <button className="a-btn" type="button" onClick={() => go("settle")}>
           Open settlement
         </button>
       </div>

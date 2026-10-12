@@ -134,6 +134,29 @@ describe("hosted money lifecycle and task commands", () => {
     ]);
   });
 
+  it("asks for the address an invitation was sent to by its token, masked by the database", async () => {
+    const token = "ab".repeat(32);
+    mocks.rpc.mockResolvedValue({ data: "e•••@g•••.com", error: null });
+    expect(await send(`/invites/${token}/hint`, undefined, "GET")).toEqual({ hint: "e•••@g•••.com" });
+    expect(mocks.rpc).toHaveBeenCalledWith("invite_address_hint", { p_token: token });
+    mocks.rpc.mockResolvedValue({ data: null, error: null });
+    expect(await send(`/invites/${token}/hint`, undefined, "GET")).toEqual({ hint: null });
+  });
+
+  it("sends an error report or speed figures to the database, which drops any over the limit", async () => {
+    mocks.rpc.mockResolvedValue({ data: true, error: null });
+    expect(await send("/client-reports", { kind: "error", release: "local", route: "/expenses/:id", browser: "chrome",
+      message: "TypeError: x is undefined", stack: "    at render (/assets/index.js:1:2)" })).toEqual({ stored: true });
+    expect(mocks.rpc).toHaveBeenLastCalledWith("report_client_event", { p_kind: "error", p_release: "local", p_route: "/expenses/:id",
+      p_browser: "chrome", p_message: "TypeError: x is undefined", p_stack: "    at render (/assets/index.js:1:2)",
+      p_lcp_ms: null, p_inp_ms: null, p_cls: null });
+    mocks.rpc.mockResolvedValue({ data: false, error: null });
+    expect(await send("/client-reports", { kind: "speed", release: "local", route: "/", browser: "safari", lcpMs: 2300, inpMs: null, cls: 0.05 }))
+      .toEqual({ stored: false });
+    expect(mocks.rpc).toHaveBeenLastCalledWith("report_client_event", { p_kind: "speed", p_release: "local", p_route: "/", p_browser: "safari",
+      p_message: null, p_stack: null, p_lcp_ms: 2300, p_inp_ms: null, p_cls: 0.05 });
+  });
+
   it("pages older expenses and fetches named ones in the snapshot's shape", async () => {
     const expense = { id: "expense-old", title: "Gas", amountMinor: 2000, paidByUserId: "viewer", dueOn: null, shares: [] };
     const page = { expenses: [expense], before: "2026-09-01", from: "2026-08-01", olderCount: 4, olderVoidedCount: 1 };

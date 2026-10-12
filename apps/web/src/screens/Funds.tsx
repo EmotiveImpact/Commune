@@ -2,7 +2,6 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { fundFigures } from "../data/funds";
 import { HandCoins, Plus } from "lucide-react";
 import { useApp } from "../state";
-import { useSearchRecord } from "../ui/useSearchRecord";
 import { money, type Fund, type Commitment } from "../live/model";
 import { moneyInputError, parseMoneyInput } from "../data/moneyInput";
 import { LIMITS } from "../data/limits";
@@ -70,6 +69,9 @@ export function FundsScreen() {
     voidContribution,
     sendReminder,
     go,
+    fundKey,
+    closeWindow,
+    contentLoading,
   } = useApp();
   const [mode, setMode] = useState<Mode | null>(null);
   const [name, setName] = useState("");
@@ -95,8 +97,6 @@ export function FundsScreen() {
   // commune has one; the database refuses it otherwise.
   const anotherAdmin = (snapshots[hub.id]?.members ?? []).some((member) =>
     member.active !== false && member.role === "admin" && member.userId !== session?.userId);
-  const searchRecord = useSearchRecord("fund", funds.filter(item => !item.archivedAt).map(item => item.id),
-    id => { setShowArchived(false); setMode({ kind: "view", fundId: id }); });
   const fund =
     mode && "fundId" in mode
       ? funds.find((item) => item.id === mode.fundId)
@@ -134,6 +134,43 @@ export function FundsScreen() {
       setDate(commitment.dueOn);
     }
   }, [rebase, commitment, mode]);
+
+  // A fund's address opens it: a link, a reload, Back to it, a search result
+  // or a notice. Leaving the address closes its view; a form opened from the
+  // view stays until it is finished.
+  const [highlightedId, setHighlightedId] = useState("");
+  const [missingFund, setMissingFund] = useState("");
+  const opened = useRef("");
+  useEffect(() => {
+    if (!fundKey) {
+      opened.current = "";
+      setMissingFund("");
+      setMode((current) => current?.kind === "view" ? null : current);
+      return;
+    }
+    if (contentLoading || opened.current === fundKey) return;
+    opened.current = fundKey;
+    // Opened with View fund on this screen: already showing.
+    if (mode && "fundId" in mode && mode.fundId === fundKey) return;
+    const target = funds.find((item) => item.id === fundKey);
+    if (!target) {
+      setMissingFund("That fund isn’t in this commune. It may have been removed.");
+      return;
+    }
+    setShowArchived(Boolean(target.archivedAt));
+    setHighlightedId(fundKey);
+    const card = document.getElementById(`search-record-fund-${fundKey}`);
+    card?.scrollIntoView({ block: "center" });
+    card?.focus();
+    open({ kind: "view", fundId: fundKey });
+  }, [contentLoading, fundKey, funds]);
+  // Closing the fund's dialogs leaves its address.
+  const shownMode = useRef<Mode | null>(null);
+  useEffect(() => {
+    const was = shownMode.current;
+    shownMode.current = mode;
+    if (was && !mode && fundKey && opened.current === fundKey) closeWindow();
+  }, [mode]);
 
   function open(next: Mode) {
     setError("");
@@ -486,7 +523,7 @@ export function FundsScreen() {
           </Button>
         )}
       </div>
-      <Feedback error={!mode && !chase.request ? error || searchRecord.error : ""} message={message} />
+      <Feedback error={!mode && !chase.request ? error || missingFund : ""} message={message} />
       {!visible.length && (
         <EmptyState
           title={
@@ -512,7 +549,7 @@ export function FundsScreen() {
             (pledge) => pledge.userId === session?.userId,
           );
           return (
-            <Panel className={`c-workflow-card${searchRecord.highlightedId === item.id ? " c-search-record-highlight" : ""}`}
+            <Panel className={`c-workflow-card${highlightedId === item.id ? " c-search-record-highlight" : ""}`}
               id={`search-record-fund-${item.id}`} tabIndex={-1} label={item.name} key={item.id}>
               <SectionHeading
                 title={item.name}
@@ -569,7 +606,10 @@ export function FundsScreen() {
               <div className="a-field-row">
                 <Button
                   variant="secondary"
-                  onClick={() => open({ kind: "view", fundId: item.id })}
+                  onClick={() => {
+                    open({ kind: "view", fundId: item.id });
+                    go("funds", { fund: item.id });
+                  }}
                 >
                   View fund{" "}<span className="c-visually-hidden">{item.name}</span>
                 </Button>

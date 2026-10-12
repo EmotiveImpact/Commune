@@ -535,9 +535,10 @@ export function hubFromSnapshot(
     credit: youOwe === 0 && youAreOwed > 0,
     kpis: [
       { go: "funds", tone: "peach", kicker: "Recorded contributions", num: money(fundTotal, currency), hint: `${snapshot.funds.length} ${snapshot.funds.length === 1 ? "fund" : "funds"}` },
-      { go: "analytics", tone: "lilac", kicker: "This month", num: money(monthTotal, currency), hint: `${monthExpenses.length} ${monthExpenses.length === 1 ? "expense" : "expenses"} logged` },
+      { go: "expenses", tone: "lilac", kicker: "This month", num: money(monthTotal, currency), hint: `${monthExpenses.length} ${monthExpenses.length === 1 ? "expense" : "expenses"} logged` },
       { go: "expenses", tone: "sage", kicker: "Open bills", num: String(openRows.length), hint: openRows[0]?.name ?? "Nothing waiting" },
-      { go: "expenses", tone: "ink", kicker: "Next due", num: nextDue ? dateLabel(nextDue.dueOn) : "-", hint: nextDue?.name ?? "No dated open bills" },
+      // A date that has passed says so rather than reading as still to come.
+      { go: "expenses", tone: "ink", kicker: "Next due", num: nextDue?.dueOn ? nextDue.dueOn < today ? `Overdue since ${dateLabel(nextDue.dueOn)}` : dateLabel(nextDue.dueOn) : "-", hint: nextDue?.name ?? "No dated open bills" },
     ],
     now: personalNeeds.sort((a, b) => (a.dueOn ?? "9999").localeCompare(b.dueOn ?? "9999")),
     moves,

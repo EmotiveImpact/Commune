@@ -47,6 +47,7 @@ afterEach(cleanup);
 
 describe("signing out", () => {
   it("clears the tab and its stored settings before the server answers", async () => {
+    localStorage.setItem(`commune.local.${user.id}`, JSON.stringify({ activeHubId: commune.id, payMethods: [{ provider: "Monzo", value: "@test" }] }));
     sessionStorage.setItem(`commune.local.${user.id}`, JSON.stringify({ activeHubId: commune.id, dark: true }));
     const location = mount();
     await screen.findByRole("heading", { name: commune.name });
@@ -58,6 +59,7 @@ describe("signing out", () => {
     await screen.findByRole("heading", { name: "Welcome back" });
     expect(screen.queryByText(commune.name)).toBeNull();
     expect(sessionStorage.getItem(`commune.local.${user.id}`)).toBeNull();
+    expect(localStorage.getItem(`commune.local.${user.id}`)).toBeNull();
     expect(location.history?.at(-1)).toBe("/login");
     expect(currentViewer()).toBeNull();
     await act(async () => answer());

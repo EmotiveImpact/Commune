@@ -1,16 +1,14 @@
 import { useState, type FormEvent } from "react";
-import { Link, useLocation } from "wouter";
+import { Link } from "wouter";
 import { AuthLayout } from "./AuthLayout";
 import { useApp } from "../state";
 import { LIMITS } from "../data/limits";
 import { keepSearch } from "../nav";
 import { GoogleMark } from "../ui/Icon";
-import { readStored, removeStored } from "../live/storage";
 import { useFormError } from "../ui/components";
 
 export function SignupPage() {
   const { signUpWithPassword, verifyEmailCode, signInWithPassword, signInWithGoogle } = useApp();
-  const [, setLocation] = useLocation();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -37,14 +35,9 @@ export function SignupPage() {
     }
     setBusy(true);
     try {
+      // Signed in, the page moves on by itself (see GuestOnly in App.tsx).
       const status = await signUpWithPassword(name.trim(), email.trim(), password);
-      if (status === "verify") {
-        setVerificationPending(true);
-        return;
-      }
-      const returnTo = readStored("commune.return-to");
-      removeStored("commune.return-to");
-      setLocation(returnTo || keepSearch("/onboard"));
+      if (status === "verify") setVerificationPending(true);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not create your account.");
     } finally {
@@ -59,9 +52,6 @@ export function SignupPage() {
     try {
       await verifyEmailCode(email.trim(), code.trim());
       await signInWithPassword(email.trim(), password);
-      const returnTo = readStored("commune.return-to");
-      removeStored("commune.return-to");
-      setLocation(returnTo || keepSearch("/onboard"));
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not verify your email.");
     } finally {

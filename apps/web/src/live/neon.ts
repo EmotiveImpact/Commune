@@ -3,7 +3,7 @@ import { ApiError } from "./api";
 import { observedDataFetch, reportRead } from "./diagnostics";
 import { parseSearchResponse } from "./search";
 import { ACCOUNT_CHANGED, currentViewer } from "./session";
-import { readStored, removeStored } from "./storage";
+import { forgetReturn, readReturn } from "../nav";
 import type {
   Commune, CurrencyCode, Expense, ExpensePage, ReminderUsage, Snapshot, User,
 } from "./model";
@@ -390,17 +390,15 @@ async function route<T>(path: string, init: RequestInit): Promise<T> {
     response = { user: await currentUser() };
   } else if (path === "/auth/google" && method === "POST") {
     if (import.meta.env.VITE_GOOGLE_OAUTH_ENABLED !== "true") throw new ApiError("Google sign-in is not configured", 503);
-    const requested = readStored("commune.return-to");
-    const requestedUrl = new URL(requested ?? "/", window.location.origin);
-    const callbackURL = requestedUrl.origin === window.location.origin
-      ? requestedUrl.href : new URL("/", window.location.origin).href;
+    // Back from Google to the page that asked for a sign-in, only ever on this site.
+    const callbackURL = new URL(readReturn() ?? "/", window.location.origin).href;
     const result = await db().auth.signIn.social({
       provider: "google",
       callbackURL,
       errorCallbackURL: new URL("/login?oauth=error", window.location.origin).href,
     });
     if (result.error) message(result.error);
-    removeStored("commune.return-to");
+    forgetReturn();
     response = { ok: true };
   } else if (path === "/auth/signup" && method === "POST") {
     const result = await db().auth.signUp.email({ name: inputString(body.name, "name"), email: inputString(body.email, "email"), password: inputString(body.password, "password") });
@@ -481,6 +479,14 @@ async function route<T>(path: string, init: RequestInit): Promise<T> {
   } else if (path === "/preferences" && method === "PUT") {
     if (typeof body.emailReminders !== "boolean") throw new ApiError("Choose whether to get reminder emails", 400);
     response = { emailReminders: unwrap(await db().rpc("set_email_reminders", { p_enabled: body.emailReminders })) === true };
+  } else if (path === "/client-reports" && method === "POST") {
+    // An error report or one page load's speed figures. The database checks
+    // each field, and drops a report over the account's limit.
+    response = { stored: unwrap(await db().rpc("report_client_event", {
+      p_kind: body.kind ?? null, p_release: body.release ?? null, p_route: body.route ?? null, p_browser: body.browser ?? null,
+      p_message: body.message ?? null, p_stack: body.stack ?? null,
+      p_lcp_ms: body.lcpMs ?? null, p_inp_ms: body.inpMs ?? null, p_cls: body.cls ?? null,
+    })) === true };
   } else if (method === "GET" && pathId(path, /^\/communes\/([^/]+)\/snapshot(?:\?detail=summary)?$/)) {
     response = await snapshot(pathId(path, /^\/communes\/([^/]+)\/snapshot/)!, undefined, path.endsWith("?detail=summary") ? "summary" : undefined);
   } else if (method === "GET" && pathId(path, /^\/communes\/([^/]+)\/expenses\/history(?:\?|$)/)) {
@@ -631,6 +637,9 @@ async function route<T>(path: string, init: RequestInit): Promise<T> {
   } else if (method === "GET" && pathId(path, /^\/invites\/([0-9a-f]{64})$/)) {
     const result = rows(unwrap(await db().rpc("preview_commune_invite", { p_token: pathId(path, /^\/invites\/([0-9a-f]{64})$/) })))[0];
     response = { invite: result ? { communeName: str(result.commune_name), role: str(result.role), expiresAt: str(result.expires_at) } : null };
+  } else if (method === "GET" && pathId(path, /^\/invites\/([0-9a-f]{64})\/hint$/)) {
+    const hint = unwrap(await db().rpc("invite_address_hint", { p_token: pathId(path, /^\/invites\/([0-9a-f]{64})\/hint$/) }));
+    response = { hint: typeof hint === "string" && hint ? hint : null };
   } else if (method === "POST" && pathId(path, /^\/invites\/([0-9a-f]{64})\/accept$/)) {
     const communeId = unwrap(await db().rpc("accept_commune_invite", { p_token: pathId(path, /^\/invites\/([0-9a-f]{64})\/accept$/) }));
     response = { communeId };
