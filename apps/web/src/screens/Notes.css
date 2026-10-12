@@ -1,3 +1,6 @@
+/* In the screens layer, above the shared base styles and below the dark
+   theme and the design-language primitives (see styles/index.css). */
+@layer screens {
 .notes-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -73,7 +76,7 @@
   background: #fcfcf8;
 }
 .note-tile.is-selected {
-  border-color: var(--text-green, #2d6a4f);
+  border-color: var(--text-green);
   background: #f0f6f0;
 }
 .note-tile-icon {
@@ -121,7 +124,7 @@
   position: absolute;
   right: 16px;
   top: 20px;
-  color: var(--text-green, #2d6a4f);
+  color: var(--text-green);
 }
 .notes-pinned .note-tile {
   flex-direction: row;
@@ -173,7 +176,7 @@
   display: flex;
   align-items: center;
   gap: 9px;
-  color: var(--text-green, #2d6a4f);
+  color: var(--text-green);
   font-size: 12px;
   font-weight: 500;
 }
@@ -194,7 +197,7 @@
   margin: 0 0 28px;
 }
 .note-pin-status svg {
-  color: var(--text-green, #2d6a4f);
+  color: var(--text-green);
 }
 .note-details {
   margin: 28px 0 0;
@@ -298,7 +301,7 @@
   font-size: 14px;
   background: transparent;
   border: 0;
-  color: var(--text-green, #2d6a4f);
+  color: var(--text-green);
   min-height: 44px;
   padding: 0 8px;
   cursor: pointer;
@@ -309,7 +312,7 @@
 }
 .note-feedback {
   font-size: 12px;
-  color: var(--text-green, #2d6a4f);
+  color: var(--text-green);
   min-height: 18px;
   margin: 12px 0;
 }
@@ -333,7 +336,7 @@
 .notes-layout button:focus-visible,
 .notes-layout select:focus-visible,
 .notes-layout input:focus-visible {
-  outline: 2px solid var(--focus-ring, #2d6a4f);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 4px;
 }
 .is-reading .notes-grid {
@@ -368,9 +371,9 @@
   }
   .has-note-reader .a-side,
   .has-note-reader .a-header,
-  .has-note-reader .a-bottom,
-  .has-note-reader .notes-board,
-  .has-note-reader .a-more-sheet {
+  /* The phone app's layout keeps its tabs under a note (app.css). */
+  .has-note-reader .a-bottom:where(:not(.is-native *)),
+  .has-note-reader .notes-board {
     display: none;
   }
   .note-reader {
@@ -444,7 +447,9 @@
     color: var(--ink-soft);
     background: #fffdfa;
   }
-  .notes-mobile-search input {
+  /* With .c-record-filter: QuickSearch.css styles the same field, and the
+     screens' stylesheets can arrive in either order. */
+  .notes-mobile-search.c-record-filter input {
     width: 100%;
     min-width: 0;
     border: 0;
@@ -477,7 +482,7 @@
 }
 .is-dark .note-tile,
 .is-dark .notes-toolbar select,
-.is-dark .notes-mobile-search {
+.is-dark .notes-mobile-search.c-record-filter {
   background: #252c30;
 }
 .is-dark .note-tile.is-selected {
@@ -494,4 +499,5 @@
   .note-tile {
     transition: none;
   }
+}
 }

@@ -1,8 +1,9 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { Router } from "wouter";
 import { memoryLocation } from "wouter/memory-location";
 import { App } from "../src/App";
+import { preloadAll } from "../src/shell/lazyComponent";
 import { AppProvider, useApp, type AppState } from "../src/state";
 import { api, post, loadCommunes, loadExpensePage, loadExpenseRecords, loadSnapshot, ApiError } from "../src/live/api";
 import { downloadText } from "../src/data/export";
@@ -77,6 +78,9 @@ const reads = (id: string, detail?: "summary") =>
 // Lets every request the app has started finish: the mocks answer at once.
 const settle = () => act(() => new Promise<void>((resolve) => setTimeout(resolve, 0)));
 
+// The screens and windows a browser loads on first use are loaded up front,
+// so each test sees them drawn at once.
+beforeAll(preloadAll);
 beforeEach(() => {
   vi.resetAllMocks();
   sessionStorage.clear();

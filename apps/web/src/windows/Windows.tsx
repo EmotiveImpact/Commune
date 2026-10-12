@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type CSSProperties } from "react";
+import { Suspense, useEffect, useId, useRef, useState, type CSSProperties } from "react";
 import { NOTE_BODY_HINT, initialsOf, type NoteCard } from "../data/household";
 import { LIMITS } from "../data/limits";
 import { useApp } from "../state";
@@ -6,8 +6,6 @@ import { Icon } from "../ui/Icon";
 import { Avatar, Pill } from "../ui/widgets";
 import { ImagePick } from "../ui/photos";
 import { cx } from "../ui/cx";
-import { OperationEdit, OperationNew, OperationView } from "./OperationsWindows";
-import { AnnouncementNew } from "./AnnouncementWindows";
 import { CommuneLocationFields, EMPTY_COMMUNE_LOCATION } from "../ui/CommuneLocationFields";
 import { RecipientReminderCount, ReminderAllowanceNotice, ReminderUsageMeter } from "../ui/ReminderUsage";
 import { ReminderFlowDialog, useReminderFlow } from "../ui/ReminderConfirm";
@@ -28,6 +26,14 @@ import "./ExpenseEditor.css";
 import { SplitEditor } from "../ui/SplitEditor";
 import { moneyInputError, parseMoneyInput } from "../data/moneyInput";
 import type { Notification, UnreadNotice } from "../live/model";
+import { lazyComponent } from "../shell/lazyComponent";
+
+// Schedule items and announcements open less often: their windows load when
+// first opened (or once the browser is idle), behind the record skeleton.
+const OperationView = lazyComponent(() => import("./OperationsWindows").then((m) => m.OperationView));
+const OperationNew = lazyComponent(() => import("./OperationsWindows").then((m) => m.OperationNew));
+const OperationEdit = lazyComponent(() => import("./OperationsWindows").then((m) => m.OperationEdit));
+const AnnouncementNew = lazyComponent(() => import("./AnnouncementWindows").then((m) => m.AnnouncementNew));
 
 const NOTE_TYPES = [
   ["wifi", "Wi-Fi"],
@@ -139,6 +145,7 @@ export function Windows() {
             <div className="c-window-record-loading" role="status" aria-label="Loading selected record"><span /><span /><span /></div> :
           <RecoveryBoundary resetKey={`${window} ${selectedExpense?.id ?? ""} ${noteKey} ${selectedOperation?.id ?? ""}`}
             fallback={(retry) => <WindowRecovery retry={retry} />}>
+          <Suspense fallback={<div className="c-window-record-loading" role="status" aria-label="Loading"><span /><span /><span /></div>}>
           {window === "notices" && <Notices />}
           {window === "reminder-preview" && <ReminderPreview />}
           {window === "add-expense" && <AddExpense />}
@@ -159,6 +166,7 @@ export function Windows() {
           {window === "operation-new" && <OperationNew />}
           {window === "operation-edit" && <OperationEdit />}
           {window === "announcement-new" && <AnnouncementNew />}
+          </Suspense>
           </RecoveryBoundary>}
         </div>
       </div>

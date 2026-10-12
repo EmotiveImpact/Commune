@@ -46,7 +46,7 @@ body,
 .a-body.is-dark .a-app,
 .a-body.is-dark .a-main,
 .a-body.is-dark .a-content {
-  background: linear-gradient(180deg, #1b202c 0%, #171b24 100%);
+  background: linear-gradient(180deg, var(--paper-2), var(--paper));
 }
 
 .a-body.is-dark .a-header {
@@ -65,7 +65,7 @@ body,
   .a-more,
   .a-owe-card.a-card
 ) {
-  background: #242b39;
+  background: var(--white);
   color: var(--ink);
   border-color: var(--border);
 }
@@ -90,7 +90,7 @@ body,
    invisible. Invert it (cream face, navy text) and keep the chip's own tone. */
 .a-body.is-dark :is(.ops-cuts button.is-on, .c-split-methods button[aria-pressed=true]) {
   background: var(--ink);
-  color: #1a1e2b;
+  color: var(--navy);
 }
 .a-body.is-dark .a-chip.is-on {
   background: var(--sage-soft);
@@ -98,8 +98,9 @@ body,
   border-color: transparent;
 }
 /* The sticky action row of a window kept its cream face in dark mode. */
-.a-body.is-dark .a-window .a-field-row {
-  background: #242b39;
+/* Not a delete question in a task window, which keeps its plain row (app.css). */
+.a-body.is-dark .a-window .a-field-row:where(:not(.operation-delete *)) {
+  background: var(--white);
   border-top-color: var(--border);
 }
 
@@ -164,8 +165,6 @@ body,
 /* Home keeps one featured commune with smaller places beneath it. */
 .a-home-featured { margin-bottom: 16px; }
 .a-home-places { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-bottom: 22px; }
-#home .a-home-greet h1 { font-size: 24px; font-weight: 550; }
-#home .a-home-greet p { font-size: 13px; color: var(--ink-soft); }
 #home .a-place { box-shadow: none; border-radius: var(--radius-surface); }
 #home .a-place-hero { min-height: 208px; padding: 18px; }
 #home .a-place-hero h3 { font-size: 21px; font-weight: 500; letter-spacing: -.6px; }
@@ -189,7 +188,7 @@ body,
    so in dark mode the titles turned light-on-cream and disappeared. Give its
    surfaces the dark card face and keep the approved geometry unchanged. */
 .a-body.is-dark :is(.ops-card, .ops-late, .ops-yours) {
-  background: #242b39;
+  background: var(--white);
   border-color: var(--border);
 }
 .a-body.is-dark :is(.ops-note, .ops-board-head small, .ops-cuts button:not(.is-on), .ops-week-row span) {
@@ -206,7 +205,7 @@ body,
 .a-body.is-dark .ops-rotation em.is-on {
   background: var(--ink);
   border-color: var(--ink);
-  color: #1a1e2b;
+  color: var(--navy);
 }
 .a-body.is-dark .ops-rotation i {
   background: var(--border-strong);
@@ -215,17 +214,14 @@ body,
   background: rgba(217, 235, 229, 0.07);
 }
 .a-body.is-dark .ops-kicker.is-late {
-  color: #f2b9a2;
-}
-.a-body.is-dark .ops-kicker.is-sage {
-  color: #9fd3b8;
+  color: var(--danger);
 }
 .a-body.is-dark :is(.ops-person, .ops-month-shell, .ops-tile, .ops-month-selected-list button) {
-  background: #242b39;
+  background: var(--white);
   border-color: var(--border);
 }
 .a-body.is-dark .ops-month-selected {
-  background: #202633;
+  background: var(--paper-3);
   border-top-color: var(--border);
 }
 .a-body.is-dark .ops-month-toolbar {
@@ -248,7 +244,7 @@ body,
   color: var(--ink-soft);
 }
 .a-body.is-dark .ops-person-task.is-late strong {
-  color: #f2b9a2;
+  color: var(--danger);
 }
 .a-body.is-dark .ops-month-toolbar button {
   background: #1d2330;
@@ -256,7 +252,7 @@ body,
   color: var(--ink);
 }
 .a-body.is-dark .hub-feed-go {
-  color: #9fd3b8;
+  color: var(--text-green);
 }
 
 /* A pill with no tone (for example Voided) used a white face with soft ink,
@@ -275,7 +271,7 @@ body,
   color: var(--ink-soft);
 }
 .a-body.is-dark .a-field label .need {
-  color: #9fd3b8;
+  color: var(--text-green);
 }
 .a-body.is-dark .a-reminder-usage-track {
   background: rgba(245, 241, 234, 0.14);
@@ -288,7 +284,7 @@ body,
   box-shadow: inset 0 0 0 1px rgba(245, 241, 234, 0.28);
 }
 .a-body.is-dark .a-switch::after {
-  background: #b5bdca;
+  background: var(--ink-soft);
   box-shadow: none;
 }
 .a-body.is-dark .a-switch[aria-checked="true"] {
@@ -296,7 +292,7 @@ body,
   box-shadow: none;
 }
 .a-body.is-dark .a-switch[aria-checked="true"]::after {
-  background: #1a1e2b;
+  background: var(--navy);
 }
 .a-body.is-dark ::placeholder {
   color: #9aa3b2;

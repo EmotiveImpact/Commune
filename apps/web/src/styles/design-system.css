@@ -62,7 +62,7 @@
   padding: 10px 14px;
   border-radius: var(--radius-control);
   background: #f5f1ea;
-  color: #1a1e2b;
+  color: var(--navy);
   font-size: 14px;
   font-weight: 600;
   text-decoration: none;
@@ -143,11 +143,15 @@
   width: min(560px, calc(100vw - 32px));
   max-height: calc(100dvh - 48px);
   overflow: auto;
-  background: var(--white, #fff);
+  background: var(--white);
   color: var(--ink);
   border: 1px solid var(--border);
   border-radius: var(--radius-surface);
   padding: 26px;
+}
+/* Narrower for the question about discarding changes. */
+.c-product-dialog.c-discard-dialog {
+  width: min(420px, calc(100vw - 32px));
 }
 .c-product-dialog::backdrop {
   background: rgba(26, 30, 43, 0.45);
@@ -224,7 +228,7 @@
 }
 .c-type-chip.is-plan {
   background: #edf3eb;
-  color: #2d6a4f;
+  color: var(--sage);
 }
 .c-type-chip.is-shared {
   background: #f5f1ea;
@@ -240,7 +244,7 @@
 }
 .a-body.is-dark .c-type-chip.is-shared {
   background: #2e3646;
-  color: #b5bdca;
+  color: var(--ink-soft);
 }
 /* Activity, a day at a time; Notices, a commune at a time; Home's Waiting on
    others after what needs you. Each headed like search results. */
@@ -506,9 +510,6 @@
 }
 .c-product-dialog .a-field-row {
   flex-wrap: wrap;
-}
-.c-product-dialog .a-field-label {
-  font-weight: 500;
 }
 @media (max-width: 760px) {
   .c-workflow-grid {

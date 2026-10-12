@@ -1,3 +1,6 @@
+/* In the screens layer, above the shared base styles and below the dark
+   theme and the design-language primitives (see styles/index.css). */
+@layer screens {
 .note-editor-intro {
   margin: 0 0 12px;
   color: var(--ink-soft);
@@ -58,3 +61,4 @@
 .c-note-revision p { margin: 4px 0; }
 .c-note-revision p span { color: var(--ink-soft); }
 .c-contribution-history > .c-note-revision { display: block; }
+}

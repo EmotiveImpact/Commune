@@ -20,6 +20,7 @@ import {
 import { Router } from "wouter";
 import { memoryLocation } from "wouter/memory-location";
 import { App } from "../src/App";
+import { preloadAll } from "../src/shell/lazyComponent";
 import { AppProvider, useApp, type AppState } from "../src/state";
 import {
   api,
@@ -104,6 +105,9 @@ const closeDescriptor = Object.getOwnPropertyDescriptor(
   "close",
 );
 const originalScroll = Element.prototype.scrollIntoView;
+// The screens and windows a browser loads on first use are loaded up front,
+// so each test sees them drawn at once.
+beforeAll(preloadAll);
 beforeAll(() => {
   Element.prototype.scrollIntoView = vi.fn();
   Object.defineProperty(HTMLDialogElement.prototype, "showModal", {
