@@ -9,7 +9,7 @@ import { openSearchResult } from "./searchNavigation";
 import "./QuickSearch.css";
 
 export function QuickSearch({ onClose, initialScope }: { onClose: () => void; initialScope: string | null }) {
-  const { hub, places, go, setSearchQuery, setSearchScope } = useApp();
+  const { hub, places, go, openFullSearch } = useApp();
   const [query, setQuery] = useState("");
   const [scope, setScope] = useState(initialScope);
   const [active, setActive] = useState(0);
@@ -20,7 +20,7 @@ export function QuickSearch({ onClose, initialScope }: { onClose: () => void; in
   useEffect(() => { inputRef.current?.focus(); }, []);
   useEffect(() => { document.getElementById(`${listId}-${active}`)?.scrollIntoView({ block: "nearest" }); }, [active, listId]);
   function fullSearch() {
-    setSearchQuery(query); setSearchScope(scope); onClose(); go("search");
+    onClose(); openFullSearch(query, scope);
   }
   return <Dialog title="Search Commune" onClose={onClose} className="c-quick-search">
     <div className="c-quick-search-input"><Search size={20} strokeWidth={1.5} aria-hidden="true" />

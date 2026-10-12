@@ -23,8 +23,7 @@ import { NoteHistory } from "../ui/NoteHistory";
 import { DiscardQuestion, useFormError, useTypedText } from "../ui/components";
 import { RecoveryBoundary, WindowRecovery } from "../shell/Recovery";
 import "./NoteEditor.css";
-import { allocateExpense, type SplitMethod } from "../../../../packages/core/src/expenseSplit";
-import { netBalances } from "../../../../packages/core/src/balances";
+import { allocateExpense, formatMoney, netBalances, type SplitMethod } from "@commune/core";
 import "./ExpenseEditor.css";
 import { SplitEditor } from "../ui/SplitEditor";
 import { moneyInputError, parseMoneyInput } from "../data/moneyInput";
@@ -39,10 +38,6 @@ const NOTE_TYPES = [
   ["rules", "House rules"],
   ["other", "Other"],
 ] as const;
-
-function formatMoney(minor: number, currency: string): string {
-  return new Intl.NumberFormat("en-GB", { style: "currency", currency }).format(minor / 100);
-}
 
 export function Windows() {
   const {
@@ -245,7 +240,7 @@ function NoticeRow({ notice, currency, actor, onOpen }: {
   const copy = NOTICE_COPY[notice.kind] ?? { pill: "Notice", title: "Update" };
   const ledger = notice.kind !== "nudge" && notice.kind !== "chase";
   const amount = notice.amountMinor != null ? formatMoney(notice.amountMinor, currency) : "";
-  const date = new Date(notice.createdAt).toLocaleDateString("en-GB");
+  const date = formatTimestampDay(notice.createdAt);
   return (
     <button className="a-notice" type="button" onClick={onOpen}>
       <Pill tone={notice.readAt ? undefined : "open"}>{copy.pill}</Pill>
@@ -511,7 +506,7 @@ function Expense() {
       <p className="a-window-kicker">Expense</p>
       <div className="a-fund-hero">
         <div>
-          <span className="a-hero-kicker">{selectedExpense.dueOn ? `Due ${selectedExpense.dueOn}` : "No due date"}</span>
+          <span className="a-hero-kicker">{selectedExpense.dueOn ? `Due ${selectedExpense.due}` : "No due date"}</span>
           <strong>{selectedExpense.name}</strong>
           <p>
             {personName(selectedExpense.paidByUserId, selectedExpense.paidBy, { left: true })} paid {formatMoney(selectedExpense.amountMinor, hub.currency)}. {voided ? "This expense is voided and no longer counts towards any balance." : remaining ? `${formatMoney(remaining, hub.currency)} of shares remain open.` : "All shares are settled."}

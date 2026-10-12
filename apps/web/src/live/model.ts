@@ -10,7 +10,7 @@ import {
 import type { OperationItem } from "../data/operations";
 import { notePreview } from "../data/notePresentation";
 import { timestampDay, todayIso } from "../data/operations";
-import { netBalances, overallNet } from "../../../../packages/core/src/balances";
+import { formatDay, formatMoney, netBalances, overallNet } from "@commune/core";
 
 export type CurrencyCode = "GBP" | "USD" | "EUR";
 /** Records that keep a commune's currency as it is, voided or archived ones too. */
@@ -446,45 +446,20 @@ const EVENT_TYPES: Record<ActivityEventKind, ActivityType> = {
 
 const TONES: AvatarTone[] = ["jordan", "alex", "priya", "sam", "ness"];
 
+/** An amount in the commune's currency: "£12.50", "$32.10". The shared, cached formatter. */
 export function money(minor: number, currency: CurrencyCode): string {
-  return new Intl.NumberFormat("en-GB", {
-    style: "currency",
-    currency,
-  }).format(minor / 100);
+  return formatMoney(minor, currency);
 }
 
-export function dateLabel(iso: string | null | undefined): string {
-  if (!iso) return "No due date";
-  const date = new Date(`${iso.slice(0, 10)}T12:00:00`);
-  return Number.isNaN(date.getTime())
-    ? iso
-    : new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short" }).format(date);
+/** A due date as "9 Oct" (with the year when it is not this year), or "No due date". */
+export function dateLabel(iso: string | null | undefined, today?: string): string {
+  return iso ? formatDay(iso, today) : "No due date";
 }
 
-export function equalShares(
-  amountMinor: number,
-  userIds: string[],
-): Array<{ userId: string; amountMinor: number }> {
-  const ids = [...userIds];
-  if (new Set(ids).size !== ids.length) {
-    throw new Error("Each person may appear only once in a split.");
-  }
-  if (!Number.isSafeInteger(amountMinor) || amountMinor <= 0 || !ids.length || amountMinor < ids.length) {
-    throw new Error("The amount must have at least one penny for each person in the split.");
-  }
-  const base = Math.floor(amountMinor / ids.length);
-  const remainder = amountMinor % ids.length;
-  return ids.map((userId, index) => ({
-    userId,
-    amountMinor: base + (index < remainder ? 1 : 0),
-  }));
-}
-
-export function expenseRows(snapshot: Snapshot, viewerId: string): LiveExpenseRow[] {
+/** today: the member's own calendar date, as tasks and pledges use. */
+export function expenseRows(snapshot: Snapshot, viewerId: string, today = todayIso()): LiveExpenseRow[] {
   const currency = snapshot.commune.currency;
   const names = new Map(snapshot.members.map((member) => [member.userId, member.name]));
-  // The member's own calendar date, as tasks and pledges use.
-  const today = todayIso();
   return snapshot.expenses.map((expense) => {
     const voided = !!expense.voidedAt;
     // A voided expense keeps its shares for history but is never outstanding.
@@ -502,7 +477,7 @@ export function expenseRows(snapshot: Snapshot, viewerId: string): LiveExpenseRo
       paidByUserId: expense.paidByUserId,
       amount: money(expense.amountMinor, currency),
       amountMinor: expense.amountMinor,
-      due: dateLabel(expense.dueOn),
+      due: dateLabel(expense.dueOn, today),
       dueOn: expense.dueOn,
       createdAt: expense.createdAt,
       status: outstanding ? (overdue ? "warn" : "open") : "settled",
@@ -527,6 +502,7 @@ export function hubFromSnapshot(
   source: Snapshot,
   viewer: User,
   photo?: string,
+  today = todayIso(),
 ): LiveHub {
   // Voided expenses stay in the ledger as history but never count towards a
   // balance, a total or an outstanding share anywhere on the hub.
@@ -536,7 +512,7 @@ export function hubFromSnapshot(
   const { commune } = snapshot;
   const currency = commune.currency;
   const names = new Map(snapshot.members.map((member) => [member.userId, member.name]));
-  const rows = expenseRows(snapshot, viewer.id);
+  const rows = expenseRows(snapshot, viewer.id, today);
   const openRows = rows.filter((row) => row.open);
   const moves: Hub["moves"] = [];
   let youOwe = 0;
@@ -600,7 +576,6 @@ export function hubFromSnapshot(
   });
   const fundTotal = snapshot.funds.reduce((sum, fund) => sum +
     fund.commitments.reduce((subtotal, commitment) => subtotal + commitment.contributedMinor, 0), 0);
-  const today = todayIso();
   // This month where the member is: an expense entered late on the last
   // evening of a month belongs to that month.
   const month = today.slice(0, 7);
@@ -620,7 +595,7 @@ export function hubFromSnapshot(
     title: note.title,
     when: notePreview(note),
   }));
-  const needs = needsYou(source, viewer.id);
+  const needs = needsYou(source, viewer.id, today);
   return {
     id: commune.id,
     currency,
@@ -652,7 +627,7 @@ export function hubFromSnapshot(
       { go: "expenses", tone: "lilac", kicker: "This month", num: money(monthTotal, currency), hint: `${monthExpenses.length} ${monthExpenses.length === 1 ? "expense" : "expenses"} logged` },
       { go: "expenses", tone: "sage", kicker: "Open bills", num: String(openRows.length), hint: openRows[0]?.name ?? "Nothing waiting" },
       // A date that has passed says so rather than reading as still to come.
-      { go: "expenses", tone: "ink", kicker: "Next due", num: nextDue?.dueOn ? nextDue.dueOn < today ? `Overdue since ${dateLabel(nextDue.dueOn)}` : dateLabel(nextDue.dueOn) : "-", hint: nextDue?.name ?? "No dated open bills" },
+      { go: "expenses", tone: "ink", kicker: "Next due", num: nextDue?.dueOn ? nextDue.dueOn < today ? `Overdue since ${dateLabel(nextDue.dueOn, today)}` : dateLabel(nextDue.dueOn, today) : "-", hint: nextDue?.name ?? "No dated open bills" },
     ],
     now: needs.actions,
     waiting: needs.waiting,
@@ -664,7 +639,7 @@ export function hubFromSnapshot(
       ini: initialsOf(names.get(expense.paidByUserId) ?? "Member"),
       title: expense.title,
       when: `${names.get(expense.paidByUserId) ?? "Member"} paid`,
-      time: expense.createdAt ? dateLabel(timestampDay(expense.createdAt)) : "Recently",
+      time: expense.createdAt ? dateLabel(timestampDay(expense.createdAt), today) : "Recently",
       createdAt: expense.createdAt,
       expenseId: expense.id,
       type: "expense" as const,
@@ -672,7 +647,7 @@ export function hubFromSnapshot(
       // Announcements live on This Hub.
       go:event.kind === "announcements" ? "hub" as const : event.kind,cls:members.find(member=>member.userId===event.actorId)?.cls ?? "jordan" as const,
       ini:initialsOf(names.get(event.actorId) ?? "Member"), title:event.title,
-      when:`${event.description} · ${names.get(event.actorId) ?? "Member"}`, time:dateLabel(timestampDay(event.createdAt)),createdAt:event.createdAt,
+      when:`${event.description} · ${names.get(event.actorId) ?? "Member"}`, time:dateLabel(timestampDay(event.createdAt), today),createdAt:event.createdAt,
       expenseId:event.kind==="expenses" ? event.entityId : undefined,
       type:event.recordType ?? EVENT_TYPES[event.kind],
     }))].sort((a,b)=>(Date.parse(b.createdAt ?? "")||0)-(Date.parse(a.createdAt ?? "")||0)),
@@ -685,4 +660,21 @@ export function hubFromSnapshot(
       { go: "operations", kicker: "Operations", title: `${snapshot.operations?.length ?? 0} items`, hint: "The week ahead" },
     ],
   };
+}
+
+/** A commune whose snapshot is loaded, as the app shows it. */
+export type ReadyPlace = LiveHub & { activityState: "ready" };
+const readyPlaces = new WeakMap<Snapshot, { viewerId: string; photo: string | undefined; today: string; place: ReadyPlace }>();
+/**
+ * hubFromSnapshot, kept with the snapshot it was built from. A commune's
+ * views are built again only when the commune is read again (a new
+ * snapshot), its photo changes or the date does, and never for a change
+ * anywhere else in the app.
+ */
+export function readyPlace(snapshot: Snapshot, viewer: User, photo?: string, today = todayIso()): ReadyPlace {
+  const held = readyPlaces.get(snapshot);
+  if (held && held.viewerId === viewer.id && held.photo === photo && held.today === today) return held.place;
+  const place: ReadyPlace = { ...hubFromSnapshot(snapshot, viewer, photo, today), activityState: "ready" };
+  readyPlaces.set(snapshot, { viewerId: viewer.id, photo, today, place });
+  return place;
 }

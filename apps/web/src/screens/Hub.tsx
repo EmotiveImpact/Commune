@@ -7,6 +7,7 @@ import { CalendarDate } from "../ui/CalendarDate";
 import { CoverImage, coverToneClass } from "../ui/CoverImage";
 import { isNotePinned, noteCategory, notePreview } from "../data/notePresentation";
 import { addDays, dateFromIso, todayIso } from "../data/operations";
+import { formatTimestampDay } from "../data/reminders";
 import type { Hub, RouteId } from "../data/household";
 import "./Hub.css";
 
@@ -109,8 +110,6 @@ function Responsibilities() {
   </HubSection>;
 }
 
-const announcementDate = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short" });
-
 /** Notices from an admin. Important ones ask each member to confirm they have seen them. */
 function Announcements() {
   const { announcements, hub, you, acknowledgeAnnouncement, archiveAnnouncement, go, personName } = useApp();
@@ -139,7 +138,7 @@ function Announcements() {
       return <article className="c-hub-announcement" key={item.id}>
         <strong>{item.title}</strong>
         {item.body && <p>{item.body}</p>}
-        <small>{mine ? "You" : nameOf(item.authorId)} · {announcementDate.format(new Date(item.createdAt))}</small>
+        <small>{mine ? "You" : nameOf(item.authorId)} · {formatTimestampDay(item.createdAt)}</small>
         {item.needsAcknowledgement && <div className="c-hub-announcement-seen">
           <span>Seen by {audience.length - waiting.length} of {audience.length}{waiting.length && (mine || hub.role === "admin")
             ? `. Waiting for ${waiting.map(member => member.name.split(" ")[0]).join(", ")}` : ""}</span>

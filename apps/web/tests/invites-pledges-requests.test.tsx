@@ -7,7 +7,7 @@ import { AppProvider, useApp, type AppState } from "../src/state";
 import { api, post, loadCommunes, loadSnapshot, ApiError } from "../src/live/api";
 import type { Commune, Snapshot } from "../src/live/model";
 import { UNCERTAIN_RETRY_SAFE } from "../src/data/commands";
-import { formatTimestampDay } from "../src/data/reminders";
+import { formatReminderDay, formatTimestampDay } from "../src/data/reminders";
 
 vi.mock("../src/live/api", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../src/live/api")>()),
@@ -282,7 +282,7 @@ describe("changing someone else's pledge", () => {
     expect(dialog.textContent).toContain(
       "You can lower this pledge or move its due date later. Only Housemate can raise it or bring the date forward. They will be told what you changed.");
     expect(dialog.textContent).toContain("Up to £120.00, and not below the £20.00 already recorded.");
-    expect(dialog.textContent).toContain("1 Nov 2026 or later.");
+    expect(dialog.textContent).toContain(`${formatReminderDay("2026-11-01")} or later.`);
     const amount = within(dialog).getByLabelText("Pledge amount (GBP)") as HTMLInputElement;
     const due = within(dialog).getByLabelText("Due date") as HTMLInputElement;
     expect(due.min).toBe("2026-11-01");
@@ -294,7 +294,7 @@ describe("changing someone else's pledge", () => {
     fireEvent.change(amount, { target: { value: "100.00" } });
     fireEvent.change(due, { target: { value: "2026-10-20" } });
     fireEvent.submit(form);
-    expect(within(dialog).getByRole("alert").textContent).toBe("Only Housemate can bring the due date forward. Choose 1 Nov 2026 or later.");
+    expect(within(dialog).getByRole("alert").textContent).toBe(`Only Housemate can bring the due date forward. Choose ${formatReminderDay("2026-11-01")} or later.`);
     fireEvent.change(amount, { target: { value: "10.00" } });
     fireEvent.change(due, { target: { value: "2026-11-15" } });
     fireEvent.submit(form);

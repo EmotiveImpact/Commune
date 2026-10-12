@@ -1,7 +1,7 @@
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ReminderConfirm, ReminderFlowDialog, useReminderFlow, type ReminderRequest } from "../src/ui/ReminderConfirm";
-import { reminderEligibility, reminderFailureCopy, reminderResultCopy } from "../src/data/reminders";
+import { formatReminderDay, reminderEligibility, reminderFailureCopy, reminderResultCopy } from "../src/data/reminders";
 import { ApiError } from "../src/live/api";
 import type { ReminderResult, ReminderTarget, ReminderUsage } from "../src/live/model";
 
@@ -23,7 +23,7 @@ describe("shared reminder preview", () => {
     expect(screen.getByRole("dialog", { name: "A gentle reminder for Alex" })).toBeTruthy();
     expect(screen.getByText(/£12.00 outstanding for House supplies/)).toBeTruthy();
     expect(screen.getByText("Nudge · expense share")).toBeTruthy();
-    expect(screen.getByText("5 Jan 2026")).toBeTruthy();
+    expect(screen.getByText(formatReminderDay("2026-01-05"))).toBeTruthy();
     expect(screen.getByText("1 of 8 in 30 days")).toBeTruthy();
     expect(screen.getByText("58 of 60 left")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Send reminder" }));
@@ -103,7 +103,7 @@ describe("reminder eligibility shared by every entry point", () => {
   });
   it("explains an undated or not-yet-due share", () => {
     expect(check({ target: undefined, dueOn: null })).toMatchObject({ canSend: false, state: "undated", reason: "Add a due date to enable reminders." });
-    expect(check({ target: undefined, dueOn: "2026-03-20" })).toMatchObject({ canSend: false, state: "not-due", reason: "Nudge available from 20 Mar 2026." });
+    expect(check({ target: undefined, dueOn: "2026-03-20" })).toMatchObject({ canSend: false, state: "not-due", reason: `Nudge available from ${formatReminderDay("2026-03-20")}.` });
   });
   it("explains the 72-hour source cooldown and the one-day recipient cooldown", () => {
     expect(check({ target: { ...target, lastSentAt: "2026-03-09T12:00:00Z" } })).toMatchObject({ canSend: false, state: "cooldown" });

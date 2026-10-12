@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { renderReminderEmail } from "../src/email.ts";
+import { formatMoney } from "../src/money.ts";
 
 test("nudge has branded HTML and a useful plain-text fallback", () => {
   const email = renderReminderEmail({
@@ -74,4 +75,20 @@ test("offers a one-click link to turn reminder emails off when one is given", ()
     kind: "nudge", senderName: "Maya", communeName: "Park", label: "Gas", amount: "£20.00",
     appUrl: "https://ourcommune.io", unsubscribeUrl: "http://worker.example.test/unsubscribe",
   }), /HTTPS/);
+});
+
+test("amounts read as the app writes them, with each currency's own symbol", () => {
+  assert.equal(formatMoney(3210, "USD"), "$32.10");
+  assert.equal(formatMoney(4200, "GBP"), "£42.00");
+  assert.equal(formatMoney(123456, "EUR"), "€1,234.56");
+  const email = renderReminderEmail({
+    kind: "nudge",
+    senderName: "Maya Chen",
+    communeName: "Brooklyn loft",
+    label: "Internet",
+    amount: formatMoney(3210, "USD"),
+    appUrl: "https://ourcommune.io",
+  });
+  assert.match(email.text, /\$32\.10 expense share for Internet in Brooklyn loft/);
+  assert.doesNotMatch(email.text, /US\$/);
 });

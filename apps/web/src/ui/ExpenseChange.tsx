@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import { allocateExpense, type ExpenseAllocation, type SplitMethod } from "../../../../packages/core/src/expenseSplit";
+import { allocateExpense, type ExpenseAllocation, type SplitMethod } from "@commune/core";
 import { useApp } from "../state";
 import { money, type CurrencyCode, type ExpenseRevision, type ExpenseState, type LiveExpenseRow } from "../live/model";
 import { moneyInputError, parseMoneyInput } from "../data/moneyInput";

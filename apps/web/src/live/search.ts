@@ -1,3 +1,4 @@
+import { formatDay } from "@commune/core";
 import { ApiError } from "./api";
 
 export const SEARCH_KINDS = ["commune", "expense", "note", "operation", "fund", "recurring", "member", "template"] as const;
@@ -10,7 +11,11 @@ export type SearchResult = {
   communeName: string;
   title: string;
   subtitle: string;
+  /** The database's own text, with any date in its own style ("Due 2026-11-04"). Kept for older app versions. */
   meta: string;
+  /** Since 0040: the words without the date ("Due", "Task"), and the date on its own (YYYY-MM-DD) or null. */
+  label?: string;
+  date?: string | null;
   amountMinor: number | null;
   currency: string;
 };
@@ -31,8 +36,21 @@ export function parseSearchResponse(value: unknown): SearchResponse {
         [item.id, item.communeId, item.communeName, item.title, item.subtitle, item.meta, item.currency]
           .some(field => typeof field !== "string") || !item.id || !item.communeId ||
         !["GBP", "USD", "EUR"].includes(item.currency) ||
+        (item.label !== undefined && typeof item.label !== "string") ||
+        (item.date !== undefined && item.date !== null && (typeof item.date !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(item.date))) ||
         (item.amountMinor !== null && (!Number.isSafeInteger(item.amountMinor) || item.amountMinor < 0)))) {
     throw new ApiError("Search returned an invalid response. Please try again.", 502);
   }
   return result as SearchResponse;
+}
+
+/**
+ * A result's right-hand line, with any date written as every screen writes it:
+ * "Due 4 Nov" for a recurring bill, "Task · 20 Oct" for a task or event. A
+ * database from before 0040 sends only its own text, which is shown as it is.
+ */
+export function searchMeta(item: SearchResult): string {
+  if (item.label === undefined) return item.meta;
+  if (!item.date) return item.label;
+  return `${item.label}${item.kind === "recurring" ? " " : " · "}${formatDay(item.date)}`;
 }

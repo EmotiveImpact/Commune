@@ -5,7 +5,7 @@ import { QuickSearch } from "../src/ui/QuickSearch";
 import { parseSearchResponse, type SearchKind, type SearchResult } from "../src/live/search";
 import { openSearchResult } from "../src/ui/searchNavigation";
 
-const mocks = vi.hoisted(() => ({ api: vi.fn(), go: vi.fn(), setQuery: vi.fn(), setScope: vi.fn(), app: {} as Record<string, unknown> }));
+const mocks = vi.hoisted(() => ({ api: vi.fn(), go: vi.fn(), openFullSearch: vi.fn(), app: {} as Record<string, unknown> }));
 vi.mock("../src/state", () => ({ useApp: () => mocks.app }));
 vi.mock("../src/live/api", async () => ({ ...await vi.importActual<typeof import("../src/live/api")>("../src/live/api"), api: mocks.api }));
 const item = (kind: SearchKind, id: string, title: string): SearchResult => ({ kind, id, title, communeId: "home-2", communeName: "Maple House", subtitle: "Shared record", meta: "Open", amountMinor: null, currency: "GBP" });
@@ -27,7 +27,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   mocks.app = { hub: { id: "home-1", name: "Our home" }, hubId: "home-1",
     places: [{ id: "home-1", name: "Our home" }, { id: "home-2", name: "Maple House" }],
-    session: { hasHubs: true }, go: mocks.go, setSearchQuery: mocks.setQuery, setSearchScope: mocks.setScope,
+    session: { hasHubs: true }, go: mocks.go, openFullSearch: mocks.openFullSearch,
     pageTitle: "Expenses", pageLede: "Shared expenses", setMoreOpen: vi.fn(), native: false,
     you: { name: "Alex", initials: "AL" }, noticesOn: true, notifications: [], noticeCounts: {}, window: null };
   mocks.api.mockResolvedValue(response([item("expense", "expense-2", "Garden supplies")]));
@@ -98,8 +98,7 @@ describe("Commune quick search", () => {
   it("keeps query and scope when moving to full search", async () => {
     const close = mount(); await query();
     fireEvent.click(await screen.findByRole("button", { name: "Open full search" }));
-    expect(mocks.setQuery).toHaveBeenCalledWith("garden"); expect(mocks.setScope).toHaveBeenCalledWith("home-1");
-    expect(mocks.go).toHaveBeenCalledWith("search"); expect(close).toHaveBeenCalledOnce();
+    expect(mocks.openFullSearch).toHaveBeenCalledWith("garden", "home-1"); expect(close).toHaveBeenCalledOnce();
   });
   it("opens with Ctrl-K and slash, closes with the shortcut, and restores focus", async () => {
     render(<Header screen="expenses" />);

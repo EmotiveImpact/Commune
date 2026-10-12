@@ -8,7 +8,10 @@
     "allowJs": false,
     "resolveJsonModule": true,
     "strictFunctionTypes": true,
-    "noUnusedLocals": true
+    "noUnusedLocals": true,
+    "paths": {
+      "@commune/core": ["../../packages/core/src/index.ts"]
+    }
   },
   "include": ["src"]
 }

@@ -6,6 +6,7 @@ import { App } from "../src/App";
 import { AppProvider, useApp, type AppState } from "../src/state";
 import { api, post, loadCommunes, loadSnapshot, ApiError } from "../src/live/api";
 import type { Commune, Snapshot } from "../src/live/model";
+import { formatReminderDay, formatTimestampDay } from "../src/data/reminders";
 
 vi.mock("../src/live/api", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../src/live/api")>()),
@@ -123,7 +124,7 @@ describe("one Nudge/Chase interaction at every entry point", () => {
     fireEvent.click(await screen.findByRole("button", { name: /^Nudge / }));
     const preview = screen.getByRole("dialog", { name: "A gentle reminder for Housemate" });
     expect(within(preview).getByText("Nudge · expense share")).toBeTruthy();
-    expect(within(preview).getByText("5 Jan 2026")).toBeTruthy();
+    expect(within(preview).getByText(formatReminderDay("2026-01-05"))).toBeTruthy();
     expect(reminderPosts()).toHaveLength(0);
   });
 
@@ -319,7 +320,7 @@ describe("partial repayment receipts and reversals", () => {
     expect(within(owed).getByText("£25.00 of £80.00 received")).toBeTruthy();
     const recent = screen.getByRole("region", { name: "Recent repayments" });
     expect(within(recent).getByText("Recorded as received")).toBeTruthy();
-    expect(within(recent).getByText(/received 6 Jan 2026 · Bank transfer/)).toBeTruthy();
+    expect(within(recent).getByText(new RegExp(`received ${formatReminderDay("2026-01-06")} · Bank transfer`))).toBeTruthy();
     expect(app.hub.oweAmount).toBe("£55.00");
     act(() => app.go("expense", { expense: "expense-1" }));
     const windowFrame = await screen.findByRole("dialog", { name: "House supplies" });
@@ -338,7 +339,7 @@ describe("partial repayment receipts and reversals", () => {
     fireEvent.click(within(windowFrame).getByText("£25.00 received · 1 repayment"));
     fireEvent.click(within(windowFrame).getByRole("button", { name: "Reverse" }));
     const dialog = screen.getByRole("dialog", { name: "Reverse this repayment?" });
-    expect(within(dialog).getByText(/£25.00 from Housemate · House supplies · received 6 Jan 2026 · Bank transfer/)).toBeTruthy();
+    expect(within(dialog).getByText(new RegExp(`£25.00 from Housemate · House supplies · received ${formatReminderDay("2026-01-06")} · Bank transfer`))).toBeTruthy();
     fireEvent.submit(dialog.querySelector("form")!);
     expect(within(dialog).getByRole("alert").textContent).toContain("Give a short reason");
     expect(reversalPosts()).toHaveLength(0);
@@ -350,7 +351,7 @@ describe("partial repayment receipts and reversals", () => {
     expect(within(windowFrame).getByRole("status").textContent)
       .toBe("£25.00 repayment reversed. £80.00 is outstanding from Housemate. The original entry stays in the history.");
     expect(within(windowFrame).getByText("£80.00 share · £80.00 outstanding")).toBeTruthy();
-    expect(within(windowFrame).getByText(/Reversed by you on 7 Jan 2026: Transfer bounced/)).toBeTruthy();
+    expect(within(windowFrame).getByText(new RegExp(`Reversed by you on ${formatTimestampDay("2026-01-07T09:00:00Z")}: Transfer bounced`))).toBeTruthy();
     expect(within(windowFrame).queryByRole("button", { name: "Reverse" })).toBeNull();
   });
 
@@ -429,7 +430,7 @@ describe("I’ve sent it: a claim the bill payer answers", () => {
     const owe = screen.getByRole("region", { name: "You owe" });
     // Still owed in full; the row now waits for the payer and offers Withdraw.
     expect(within(owe).getByText("£12.00", { selector: ".c-settle-total" })).toBeTruthy();
-    expect(within(owe).getByText(/You said you sent £12\.00 on 6 Jan 2026\. Waiting for Housemate/)).toBeTruthy();
+    expect(within(owe).getByText(new RegExp(`You said you sent £12\\.00 on ${formatReminderDay("2026-01-06")}\\. Waiting for Housemate`))).toBeTruthy();
     expect(within(owe).queryByRole("button", { name: /^I’ve sent it/ })).toBeNull();
     await act(async () => { fireEvent.click(within(owe).getByRole("button", { name: /^Withdraw/ })); });
     expect(reportPosts().at(-1)?.[0]).toBe("/payment-reports/report-1/withdraw");
@@ -468,7 +469,7 @@ describe("I’ve sent it: a claim the bill payer answers", () => {
     vi.mocked(post).mockImplementation(async () => ({ id: "report-1", duplicate: false, status: "confirmed", receiptId: "receipt-9", settledMinor: 800, outstandingMinor: 400 }));
     mount("/settle");
     const owed = await screen.findByRole("region", { name: "You’re owed" });
-    expect(within(owed).getByText(/Housemate sent £8\.00 on 6 Jan 2026 · Bank transfer\. Not yet confirmed\./)).toBeTruthy();
+    expect(within(owed).getByText(new RegExp(`Housemate sent £8\\.00 on ${formatReminderDay("2026-01-06")} · Bank transfer\\. Not yet confirmed\\.`))).toBeTruthy();
     // While a report waits, the payer answers it rather than nudging.
     expect(within(owed).queryByRole("button", { name: /^Nudge / })).toBeNull();
     fireEvent.click(within(owed).getByRole("button", { name: /^Confirm £8\.00 from Housemate/ }));
@@ -692,7 +693,7 @@ describe("safe expense correction and void", () => {
     expect(await screen.findByText("1 voided expense · kept for history, not counted in any balance")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: /House supplies/ }));
     const windowFrame = await screen.findByRole("dialog", { name: "House supplies" });
-    expect(within(windowFrame).getByText("Voided by Test Person on 8 Jan 2026: Entered twice")).toBeTruthy();
+    expect(within(windowFrame).getByText(`Voided by Test Person on ${formatTimestampDay("2026-01-08T09:00:00Z")}: Entered twice`)).toBeTruthy();
     expect(within(windowFrame).getByText("1 change to this expense")).toBeTruthy();
     for (const name of ["Correct", "Void", "Nudge", "Confirm received"]) {
       expect(within(windowFrame).queryByRole("button", { name })).toBeNull();

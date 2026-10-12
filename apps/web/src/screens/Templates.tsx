@@ -3,12 +3,8 @@ import { Plus, UsersRound } from "lucide-react";
 import { useApp, type SplitTemplateInput } from "../state";
 import { useSearchRecord } from "../ui/useSearchRecord";
 import { type SplitTemplate } from "../live/model";
-import {
-  allocateExpense,
-  type SplitMethod,
-} from "../../../../packages/core/src/expenseSplit";
+import { allocateExpense, plainAmount, type SplitMethod } from "@commune/core";
 import { moneyInputError, parseMoneyInput } from "../data/moneyInput";
-import { plainAmount } from "../../../../packages/core/src/money";
 import {
   Button,
   Dialog,

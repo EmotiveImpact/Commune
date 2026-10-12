@@ -1,4 +1,4 @@
-import type { SplitMethod } from "../../../../packages/core/src/expenseSplit";
+import type { SplitMethod } from "@commune/core";
 import { dateLabel, money, type CurrencyCode, type RecurringBill, type RecurringPeriodResult } from "../live/model";
 import { addDays, todayIso } from "./operations";
 import { formatReminderDay } from "./reminders";
