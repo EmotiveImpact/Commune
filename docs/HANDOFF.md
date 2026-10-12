@@ -134,6 +134,16 @@ for a handoff, not a production release.
   seconds). Tests that draw the signed-in app call `preloadAll()` first.
   `?native=1` shows the phone layout at any width; the `.is-native` rules
   serve it.
+- From 11 October, for review: Street runner. The connection screen
+  (`shell/ConnectionRecovery.tsx`) and the missing page (`NotFoundPage` in
+  `App.tsx`) show a street scene across the top of the screen with their
+  message in its sky (`shell/StreetScene.tsx`); tapping the street or Space
+  plays a small runner game (`shell/streetRunner.ts`, tested in
+  `tests/street-runner.test.tsx`). It is in the first download so it works
+  offline, plays no sound, pauses when the page is hidden, and keeps only the
+  best distance in local storage. If the connection returns mid-run the
+  screen says so and waits for Open Commune instead of reconnecting. The
+  "something went wrong" card (`shell/Recovery.tsx`) has no game.
 - The website is `web/` (the editorial homepage); the earlier v2 site is in
   `web-backup/`. Launch names `website` (3004) and `website-backup` (3003).
 - No push, deployment, hosted migration or provider change has been made. Do
