@@ -28,13 +28,13 @@ SELECT set_config('request.jwt.claims', json_build_object('sub', '00000000-0000-
 DO $$
 DECLARE
   v_home uuid := current_setting('test.home')::uuid;
-  v_op uuid; v_legacy uuid; v_result jsonb; v_row public.commune_operations%ROWTYPE; v_snapshot jsonb;
+  v_op uuid; v_once uuid; v_result jsonb; v_row public.commune_operations%ROWTYPE; v_snapshot jsonb;
   v_failed boolean;
+  v_turns jsonb := '["00000000-0000-4000-8000-0000000000a1","00000000-0000-4000-8000-0000000000c3","00000000-0000-4000-8000-0000000000b2"]';
 BEGIN
   -- Two members share the name "Sam"; ids keep them apart.
-  INSERT INTO public.commune_operations (commune_id, kind, category, title, date, repeat, assignee_id, rotation_ids, created_by)
-    VALUES (v_home, 'task', 'chore', 'Bins', current_date, 'weekly', '00000000-0000-4000-8000-0000000000c3',
-      '["00000000-0000-4000-8000-0000000000a1","00000000-0000-4000-8000-0000000000c3","00000000-0000-4000-8000-0000000000b2"]', '00000000-0000-4000-8000-0000000000a1') RETURNING id INTO v_op;
+  v_op := (public.create_operation(v_home, 'task', 'chore', 'Bins', current_date, NULL, true,
+    '00000000-0000-4000-8000-0000000000c3', v_turns, 'weekly', '', gen_random_uuid())->>'id')::uuid;
   SELECT * INTO v_row FROM public.commune_operations WHERE id = v_op;
   IF v_row.assignee <> 'Sam' OR v_row.rotation <> '["Alice","Sam","Sam"]'::jsonb THEN
     RAISE EXCEPTION 'Names were not copied from ids: % %', v_row.assignee, v_row.rotation;
@@ -51,52 +51,55 @@ BEGIN
     RAISE EXCEPTION 'Undo did not restore the person by id';
   END IF;
 
-  -- People must be current members of this commune.
+  -- People must be current members of this commune. An edit names the
+  -- version it started from (0027).
   FOREACH v_result IN ARRAY ARRAY['"00000000-0000-4000-8000-0000000000e5"'::jsonb, '"nobody"'::jsonb] LOOP
     v_failed := false;
     BEGIN
-      UPDATE public.commune_operations SET assignee_id = v_result #>> '{}' WHERE id = v_op;
+      PERFORM public.update_operation(v_op, (SELECT version FROM public.commune_operations WHERE id = v_op), 'task', 'chore', 'Bins',
+        current_date, NULL, true, v_result #>> '{}', NULL, 'weekly', '');
     EXCEPTION WHEN invalid_parameter_value THEN v_failed := true;
     END;
     IF NOT v_failed THEN RAISE EXCEPTION 'Assigned a non-member: %', v_result; END IF;
   END LOOP;
   v_failed := false;
   BEGIN
-    UPDATE public.commune_operations SET rotation_ids = '["00000000-0000-4000-8000-0000000000a1","00000000-0000-4000-8000-0000000000a1"]' WHERE id = v_op;
+    PERFORM public.update_operation(v_op, (SELECT version FROM public.commune_operations WHERE id = v_op), 'task', 'chore', 'Bins',
+      current_date, NULL, true, '00000000-0000-4000-8000-0000000000a1',
+      '["00000000-0000-4000-8000-0000000000a1","00000000-0000-4000-8000-0000000000a1"]', 'weekly', '');
   EXCEPTION WHEN invalid_parameter_value THEN v_failed := true;
   END;
   IF NOT v_failed THEN RAISE EXCEPTION 'Accepted a person twice in a rotation'; END IF;
   v_failed := false;
   BEGIN
-    UPDATE public.commune_operations SET assignee_id = '00000000-0000-4000-8000-0000000000d4' WHERE id = v_op;
+    PERFORM public.update_operation(v_op, (SELECT version FROM public.commune_operations WHERE id = v_op), 'task', 'chore', 'Bins',
+      current_date, NULL, true, '00000000-0000-4000-8000-0000000000d4', v_turns, 'weekly', '');
   EXCEPTION WHEN invalid_parameter_value THEN v_failed := true;
   END;
   IF NOT v_failed THEN RAISE EXCEPTION 'Assigned someone outside the rotation'; END IF;
 
-  -- An older client that writes names: a unique name resolves, an ambiguous one is refused.
-  INSERT INTO public.commune_operations (commune_id, kind, category, title, date, assignee, created_by)
-    VALUES (v_home, 'task', 'chore', 'Legacy', current_date, 'Dan', '00000000-0000-4000-8000-0000000000a1') RETURNING id INTO v_legacy;
-  IF (SELECT assignee_id FROM public.commune_operations WHERE id = v_legacy) <> '00000000-0000-4000-8000-0000000000d4' THEN
-    RAISE EXCEPTION 'A unique legacy name was not resolved';
-  END IF;
-  v_failed := false;
+  -- Names cannot be written by a client any more, only ids.
   BEGIN
-    UPDATE public.commune_operations SET assignee = 'Sam' WHERE id = v_legacy;
-  EXCEPTION WHEN invalid_parameter_value THEN v_failed := true;
+    INSERT INTO public.commune_operations (commune_id, kind, category, title, date, assignee, created_by)
+      VALUES (v_home, 'task', 'chore', 'Legacy', current_date, 'Dan', '00000000-0000-4000-8000-0000000000a1');
+    RAISE EXCEPTION 'A client wrote a task directly';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
   END;
-  IF NOT v_failed THEN RAISE EXCEPTION 'An ambiguous legacy name was accepted'; END IF;
-  UPDATE public.commune_operations SET assignee = 'Alice' WHERE id = v_legacy;
-  IF (SELECT assignee_id FROM public.commune_operations WHERE id = v_legacy) <> '00000000-0000-4000-8000-0000000000a1' THEN
-    RAISE EXCEPTION 'A legacy rename of the assignee was not resolved';
+  -- Clearing the person clears the copied name with it.
+  v_once := (public.create_operation(v_home, 'task', 'chore', 'Return the key', current_date, NULL, true,
+    '00000000-0000-4000-8000-0000000000d4', NULL, 'none', '', gen_random_uuid())->>'id')::uuid;
+  IF (SELECT assignee FROM public.commune_operations WHERE id = v_once) <> 'Dan' THEN
+    RAISE EXCEPTION 'The name was not copied from the id';
   END IF;
-  -- A current client clears the id; the copied name goes with it.
-  UPDATE public.commune_operations SET assignee_id = NULL, assignee = NULL WHERE id = v_legacy;
-  IF (SELECT assignee FROM public.commune_operations WHERE id = v_legacy) IS NOT NULL THEN
+  PERFORM public.update_operation(v_once, 1, 'task', 'chore', 'Return the key', current_date, NULL, true, NULL, NULL, 'none', '');
+  IF (SELECT assignee FROM public.commune_operations WHERE id = v_once) IS NOT NULL THEN
     RAISE EXCEPTION 'Clearing the id left a name behind';
   END IF;
   -- Editing other fields leaves the people alone.
-  UPDATE public.commune_operations SET title = 'Bins and recycling' WHERE id = v_op;
-  IF (SELECT assignee_id FROM public.commune_operations WHERE id = v_op) <> '00000000-0000-4000-8000-0000000000c3' THEN
+  PERFORM public.update_operation(v_op, (SELECT version FROM public.commune_operations WHERE id = v_op), 'task', 'chore', 'Bins and recycling',
+    current_date, NULL, true, '00000000-0000-4000-8000-0000000000c3', v_turns, 'weekly', '');
+  IF (SELECT assignee_id FROM public.commune_operations WHERE id = v_op) <> '00000000-0000-4000-8000-0000000000c3'
+     OR (SELECT title FROM public.commune_operations WHERE id = v_op) <> 'Bins and recycling' THEN
     RAISE EXCEPTION 'An unrelated edit changed the assignee';
   END IF;
 

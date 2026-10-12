@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react";
+import { Link } from "wouter";
 import { Icon } from "../ui/Icon";
 import { Avatar, Switch } from "../ui/widgets";
 import { ImagePick } from "../ui/photos";
@@ -7,6 +8,7 @@ import { cx } from "../ui/cx";
 import { LIMITS } from "../data/limits";
 import { CommuneLocationFields, type CommuneLocation } from "../ui/CommuneLocationFields";
 import { ReminderUsageMeter } from "../ui/ReminderUsage";
+import { useEmailReminders } from "../ui/useEmailReminders";
 import { communeExportJson, downloadText, expensesCsv } from "../data/export";
 import { todayIso } from "../data/operations";
 
@@ -27,7 +29,9 @@ export function SettingsScreen() {
     hub,
     places,
     reminderUsage,
+    session,
   } = useApp();
+  const emailReminders = useEmailReminders(session?.userId);
   return (
     <div className="a-set">
       <aside className="a-set-left">
@@ -141,6 +145,22 @@ export function SettingsScreen() {
             </div>
             <div className="a-set-row">
               <span className="a-set-row-copy">
+                <strong>Email reminders</strong>
+                <span aria-live="polite">
+                  {emailReminders.error || (emailReminders.enabled === null
+                    ? "Checking your email setting…"
+                    : "Email me when someone in a commune sends me a reminder.")}
+                </span>
+              </span>
+              <Switch
+                checked={emailReminders.enabled === true}
+                onChange={(next) => void emailReminders.save(next)}
+                label="Email reminders"
+                disabled={emailReminders.enabled === null || emailReminders.saving}
+              />
+            </div>
+            <div className="a-set-row">
+              <span className="a-set-row-copy">
                 <strong>Currency</strong>
                 <span>Your display preference; each commune keeps its own currency.</span>
               </span>
@@ -175,18 +195,18 @@ export function SettingsScreen() {
               </span>
               <Icon name="external" size={16} />
             </a>
-            <a className="a-set-row" href="https://ourcommune.io/privacy" target="_blank" rel="noreferrer">
+            <Link className="a-set-row" href="/privacy">
               <span className="a-set-row-copy">
-                <strong>Privacy policy</strong>
+                <strong>Privacy</strong>
               </span>
-              <Icon name="external" size={16} />
-            </a>
-            <a className="a-set-row" href="https://ourcommune.io/terms" target="_blank" rel="noreferrer">
+              <Icon name="chevron" size={16} />
+            </Link>
+            <Link className="a-set-row" href="/terms">
               <span className="a-set-row-copy">
-                <strong>Terms of service</strong>
+                <strong>Terms of use</strong>
               </span>
-              <Icon name="external" size={16} />
-            </a>
+              <Icon name="chevron" size={16} />
+            </Link>
             <button className="a-set-row" type="button" onClick={signOut}>
               <span className="a-set-row-copy">
                 <strong>Log out</strong>

@@ -1,0 +1,93 @@
+/* Privacy and terms: a plain reading page that works signed in and out. */
+
+.commune-legal {
+  min-height: 100vh;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font);
+}
+
+.commune-legal-bar {
+  padding: 14px 22px;
+  background: var(--navy);
+}
+
+.commune-legal-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: #fff;
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-decoration: none;
+}
+
+.commune-legal-brand img {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: block;
+}
+
+.commune-legal-main {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 32px 16px 48px;
+}
+
+.commune-legal-panel {
+  padding: 32px;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-surface);
+}
+
+.commune-legal-panel h1 {
+  margin: 0 0 10px;
+  font-size: 1.75rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.commune-legal-lede {
+  margin: 0 0 8px;
+  color: var(--ink-soft);
+  font-size: 1rem;
+  line-height: 1.55;
+}
+
+.commune-legal-panel h2 {
+  margin: 28px 0 8px;
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.commune-legal-panel p {
+  margin: 0 0 10px;
+  font-size: 0.9375rem;
+  line-height: 1.65;
+}
+
+.commune-legal-panel a {
+  color: var(--sage);
+}
+
+.commune-legal-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  padding: 20px 4px 0;
+  font-size: 0.875rem;
+}
+
+.commune-legal-foot a {
+  color: var(--ink);
+}
+
+@media (max-width: 600px) {
+  .commune-legal-panel {
+    padding: 22px 18px;
+  }
+}

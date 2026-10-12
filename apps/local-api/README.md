@@ -22,33 +22,39 @@ browser code sends same-origin `/api` requests. Non-2xx errors are
 | POST | `/api/communes` | `{name,kind,currency,address?,destination?,stayName?,stayAddress?}` | `{id}` |
 | PATCH | `/api/communes/:id` | `{name,kind,currency,address?,destination?,stayName?,stayAddress?}` admin; currency locks once money exists | `{ok:true}` |
 | GET | `/api/communes/:id/snapshot` | membership checked; outsiders get 404 | `{commune,members,expenses,funds,notes,operations,notifications,reminderTargets,recurringBills,splitTemplates,activityEvents}` |
-| POST | `/api/communes/:id/expenses` | `{title,amountMinor,paidByUserId?,category?,shares:[{userId,amountMinor}],dueOn?}`; recording for another payer requires admin | `{id}` |
+| POST | `/api/communes/:id/expenses` | `{title,amountMinor,paidByUserId?,category?,shares:[{userId,amountMinor}],dueOn?,requestId?}`; recording for another payer requires admin; a repeated `requestId` returns the same expense, and reusing it for different details is 400 | `{id,duplicate}` (201, or 200 for a repeat) |
 | POST | `/api/shares/:id/confirm` | `{}` payer only; records one receipt for everything outstanding | `{ok:true}` |
 | POST | `/api/shares/:id/receipts` | `{amountMinor,receivedOn,reference?,requestId}` payer only; amount up to the outstanding share; a repeated `requestId` returns the same entry | `{id,duplicate,settledMinor,outstandingMinor}` (201, or 200 for a repeat) |
 | POST | `/api/receipts/:id/reverse` | `{reason}` payer only; keeps the original entry; refused for a former member's share | `{id,duplicate,settledMinor,outstandingMinor}` |
 | PUT | `/api/expenses/:id` | `{expectedVersion,title,amountMinor,category,dueOn?,paidByUserId,shares:[{userId,amountMinor}],reason,requestId}` payer or admin; only an admin changes the payer; money fields are locked while repayments exist | `{version,duplicate}`; a stale `expectedVersion` is 409 |
 | POST | `/api/expenses/:id/void` | `{expectedVersion,reason,requestId}` payer or admin; refused while repayments exist; nothing is deleted | `{version,duplicate}` |
-| POST | `/api/communes/:id/funds` | `{name,targetMinor?}` | `{id}` |
+| POST | `/api/communes/:id/funds` | `{name,targetMinor?,requestId?}` admin; a repeated `requestId` returns the same fund | `{id,duplicate}` (201, or 200 for a repeat) |
 | PATCH | `/api/funds/:id` | `{name,targetMinor?}` admin | `{ok:true}` |
 | POST | `/api/funds/:id/archive` | `{archived:boolean}` admin; outstanding pledges block archive | `{ok:true}` |
-| POST | `/api/funds/:id/pledges` | `{amountMinor,dueOn}` | `{id}` |
-| PATCH | `/api/commitments/:id` | `{amountMinor,dueOn}` or `{cancel:true}`; own pledge or admin | `{ok:true}` |
-| POST | `/api/commitments/:id/contributions` | `{amountMinor}` | `{id}` |
+| POST | `/api/funds/:id/pledges` | `{amountMinor,dueOn,requestId?}`; one active pledge per member; a repeated `requestId` returns the same pledge | `{id,duplicate}` (201, or 200 for a repeat) |
+| PATCH | `/api/commitments/:id` | `{amountMinor,dueOn}` or `{cancel:true}`, each with optional `expectedAmountMinor,expectedDueOn` (the pledge the change was based on; 409 if it has changed since); own pledge or admin; only the pledger can raise it or bring its date forward (403); the pledger is notified when someone else changes or cancels it | `{ok:true}` |
+| POST | `/api/commitments/:id/contributions` | `{amountMinor,requestId?}` admin; a repeated `requestId` returns the same entry | `{id,duplicate}` (201, or 200 for a repeat) |
 | POST | `/api/contributions/:id/void` | `{reason}` admin; preserves original entry and correction reason | `{ok:true}` |
-| POST | `/api/communes/:id/recurring` | `{id?,title,amountMinor,paidByUserId,allocations:[{userId,amountMinor}],frequency:"weekly"\|"monthly",nextDueOn,paused}` | `{id}` |
+| POST | `/api/communes/:id/recurring` | add: `{title,amountMinor,paidByUserId,allocations:[{userId,amountMinor}],frequency:"weekly"\|"monthly",nextDueOn,paused?,requestId}`, a repeated `requestId` returns the same bill; edit: the same fields with `{id,expectedVersion}` and no `paused`, admin or the member who added the bill and pays it | `{id}`; a stale `expectedVersion` is 409 |
+| POST | `/api/recurring/:id/pause` | `{paused:boolean}` the member who added it, its payer or an admin; resuming is refused while the payer or anyone in the split has left | `{id,paused,archivedAt,version,duplicate}` |
+| POST | `/api/recurring/:id/archive` | `{archived:boolean}` the member who added it, its payer or an admin; archiving pauses, restoring keeps it paused | `{id,paused,archivedAt,version,duplicate}` |
 | POST | `/api/recurring/:id/record` | `{expectedDueOn}` payer/admin; advances the due period once | `{id}` of the created expense |
 | POST | `/api/communes/:id/templates` | `{id?,name,method,participants:[{userId,value}],archived?}`; methods Equal/Exact/Percentage/Shares | `{id}` |
-| POST | `/api/communes/:id/members/:userId` | `{action:"admin"\|"member"\|"remove"\|"leave"}`; admin changes roles/removes, member can leave | `{ok:true}` |
+| POST | `/api/communes/:id/members/:userId` | `{action:"admin"\|"member"\|"remove"\|"leave"}`; admin changes roles/removes, member can leave; an admin who leaves, is removed or becomes a member loses their open invitations | `{ok:true}` |
 | POST | `/api/reminders` | `{kind:"nudge"\|"chase",sourceId,requestId?}`; a repeated `requestId` returns the reminder it already created | `{id,duplicate,delivery:"in-app",emailStatus:"none",email:"not-configured"}` (201, or 200 for a repeat) |
 | POST | `/api/notifications/:id/read` | `{}` | `{ok:true}` |
-| GET | `/api/communes/:id/invites` | admin | `{invites:[...]}` |
+| GET | `/api/communes/:id/invites` | admin | `{invites:[...]}` with `invitedBy` and `invitedByName`; an invitation works only while its sender is an admin |
 | POST | `/api/communes/:id/invites` | `{email,role}` admin | `{token,url}` to copy; no email sent |
 | GET | `/api/invites/:token` | matching signed-in email | `{invite}` or `{invite:null}` |
 | POST | `/api/invites/:token/accept` | `{}` matching signed-in email | `{communeId}` |
 | POST | `/api/invites/:id/revoke` | `{}` admin | `{ok:true}` |
 | GET/PUT | `/api/preferences` | PUT `{emailReminders:boolean}` | `{emailReminders}` |
-| POST/PUT/DELETE | `/api/communes/:id/notes`, `/api/notes/:id` | full NoteCard on POST/PUT | `{id}` or `{ok:true}` |
-| POST/PUT/DELETE | `/api/communes/:id/operations`, `/api/operations/:id` | full OperationItem sans id on POST/PUT | `{id}` or `{ok:true}` |
+| POST | `/api/communes/:id/notes` | `{title,pill,kicker,lede,body,facts,requestId}`; any member; at most 500 notes per commune; a repeated `requestId` returns the same note, or 409 once it has been removed | `{id,version,duplicate}` (201, or 200 for a repeat) |
+| PUT | `/api/notes/:id` | the same fields with `expectedVersion`; a stale version is 409 and saves nothing; an unchanged save is `duplicate` | `{id,version,duplicate}` |
+| DELETE | `/api/notes/:id` | the person who added it or an admin; it and its earlier versions leave every view and are kept; repeating is harmless | `{id,version,duplicate}` |
+| POST | `/api/communes/:id/operations` | `{kind,category,title,date,time,allDay,assigneeId,rotationIds,repeat,notes,requestId}`; any member; at most 1,000 tasks and events per commune; a new task is open; a repeated `requestId` returns the same one, or 409 once it has been removed | `{id,version,duplicate}` (201, or 200 for a repeat) |
+| PUT | `/api/operations/:id` | the same fields with `expectedVersion`; changes what, when and who only, never status or completion; any occurrence or handover since makes the edit stale (409) | `{id,version,duplicate}` |
+| DELETE | `/api/operations/:id` | the person who added it or an admin; it and its occurrences leave every view and are kept, as is the activity; repeating is harmless | `{id,version,duplicate}` |
 | POST | `/api/operations/:id/occurrences` | `{action:"completed"\|"skipped"\|"reopened",expectedDate,today,requestId,reason?}`; the database advances the date and rotation; a stale `expectedDate` is 409; only a skip takes a `reason` (up to 200 characters) | `{id,duplicate,date,assignee,assigneeId,turnOwnerId,status}` |
 | POST | `/api/operations/:id/handovers` | `{toMemberId,expectedDate,expectedAssigneeId,today,reason?,requestId}`; any member hands the current occurrence to another active member; on a task that takes turns the rotation then carries on from the person whose turn it was; a stale date or holder is 409 | `{id,duplicate,date,assignee,assigneeId,turnOwnerId,status}` |
 | POST | `/api/communes/:id/announcements` | `{title,body?,needsAcknowledgement,requestId}` admin only; title up to 80, body up to 1000 characters; at most 20 up at once; a repeated `requestId` returns the same notice | `{id,duplicate,archived}` (201, or 200 for a repeat) |
@@ -87,13 +93,23 @@ API_BASE=http://127.0.0.1:3005 node apps/local-api/tests/workflows.mjs
 API_BASE=http://127.0.0.1:3006 node apps/local-api/tests/search.mjs
 API_BASE=http://127.0.0.1:3006 node apps/local-api/tests/money-lifecycle.mjs
 API_BASE=http://127.0.0.1:3006 node apps/local-api/tests/operations-history.mjs
+API_BASE=http://127.0.0.1:3006 node apps/local-api/tests/invites-pledges-requests.mjs
 ```
 
 `money-lifecycle.mjs` needs migrations 0015 to 0017 and covers reminder
 commands, partial receipts and reversals, expense correction/void and
 former-member protection, including retries and parallel requests.
-`operations-history.mjs` needs 0018 to 0024 and covers completion, skip, reopen, undo,
+`operations-history.mjs` needs 0018 to 0027 and covers completion, skip, reopen, undo,
 rotation, concurrent completion, handovers and skip reasons. Both refuse port 3002.
+
+`note-and-task-commands.mjs` needs 0027 and covers retried and reused adds, stale
+note and task edits (a completion makes an open task edit stale), who may
+remove a note or task, and retries after removal.
+
+`invites-pledges-requests.mjs` needs 0028 and covers invitation senders,
+invitations withdrawn when their sender is removed or demoted, retried and
+concurrent creates of expenses, funds, pledges and contributions, reused
+request ids, and pledge limits and notices. It also refuses port 3002.
 
 Search integration requires migration 0014. It covers all eight result types,
 active membership, selected/all-commune scopes, removed-member denial, literal

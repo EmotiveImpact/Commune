@@ -58,6 +58,7 @@ import {
   type Snapshot,
   type User,
   type RecurringBill,
+  type RecurringBillState,
   type SplitTemplate,
   type Announcement,
   type AnnouncementResult,
@@ -71,8 +72,11 @@ export type PendingInvite = {
   id: string; email: string; role: "Member" | "Admin";
   status: "pending" | "expired" | "accepted" | "revoked";
   createdAt: string; expiresAt: string; acceptedAt: string | null; revokedAt: string | null;
+  /** Who sent it. Their open invitations end when they stop being an admin. */
+  invitedBy: string | null; invitedByName: string | null;
 };
-type InviteRecord = { id: string; email: string; role: "member" | "admin"; createdAt: string; expiresAt: string; acceptedAt: string | null; revokedAt: string | null };
+type InviteRecord = { id: string; email: string; role: "member" | "admin"; createdAt: string; expiresAt: string; acceptedAt: string | null; revokedAt: string | null;
+  invitedBy?: string | null; invitedByName?: string | null };
 export function inviteStatus(invite: Pick<InviteRecord, "acceptedAt" | "revokedAt" | "expiresAt">, now = Date.now()): PendingInvite["status"] {
   if (invite.acceptedAt) return "accepted";
   if (invite.revokedAt) return "revoked";
@@ -104,6 +108,13 @@ export type CreateExpenseInput = {
   shareUserIds: string[];
   allocations?: ExpenseAllocation[];
   paidByUserId?: string;
+  /** One id per open form, kept across retries, so a retry cannot record it twice. */
+  requestId: string;
+};
+/** A pledge edit or cancellation, with the amount and date it was based on. */
+export type PledgeChange = {
+  amountMinor?: number; dueOn?: string; cancel?: boolean;
+  expectedAmountMinor?: number; expectedDueOn?: string;
 };
 export type CorrectExpenseInput = {
   expectedVersion: number;
@@ -116,7 +127,11 @@ export type CorrectExpenseInput = {
   reason: string;
   requestId: string;
 };
-export type RecurringBillInput = Omit<RecurringBill, "id" | "createdBy"> & { id?: string };
+/** An add carries one request id per open form, so a retry cannot add it
+ * twice. An edit names the version the editor loaded and never pauses or
+ * resumes the bill. */
+export type RecurringBillInput = Pick<RecurringBill, "title" | "amountMinor" | "paidByUserId" | "allocations" | "frequency" | "nextDueOn"> &
+  ({ requestId: string; paused?: boolean } | { id: string; expectedVersion: number });
 export type SplitTemplateInput = Omit<SplitTemplate, "id" | "createdBy" | "archivedAt"> & { id?: string; archived?: boolean };
 
 function locationForKind(input: {
@@ -260,12 +275,19 @@ export type AppState = {
   savePayMethod: (method: PayMethod) => boolean;
   setHubPhoto: (id: HubId, dataUrl: string | null) => void;
   setAvatar: (dataUrl: string | null) => void;
-  addNote: (card: NoteCard & { id: string }) => Promise<string>;
+  /** requestId: one per open form, so a retried add returns the note it already added. */
+  addNote: (card: NoteCard & { id: string }, requestId: string) => Promise<string>;
   /** expectedVersion: the version the edit started from. Defaults to the version on screen now. */
   updateNote: (card: NoteCard & { id: string; expectedVersion?: number }) => Promise<string>;
   loadNoteRevision: (noteId: string, revisionId: string) => Promise<NoteRevision>;
-  addOperation: (item: NewOperation) => Promise<string>;
-  updateOperation: (id: string, item: NewOperation) => Promise<void>;
+  /** requestId: one per open form, so a retried add returns what it already added. */
+  addOperation: (item: NewOperation, requestId: string) => Promise<string>;
+  /**
+   * expectedVersion: the version the edit started from. Any change since, a
+   * completion or handover included, makes the edit stale: it is refused and
+   * the latest is loaded.
+   */
+  updateOperation: (id: string, item: NewOperation, expectedVersion?: number) => Promise<void>;
   /** Completes an open task, or reopens a done one. The server advances repeats and rotation. */
   toggleOperation: (id: string) => Promise<OperationChange>;
   skipOperation: (id: string, reason?: string) => Promise<OperationChange>;
@@ -299,14 +321,23 @@ export type AppState = {
   revokeInvite: (id: string) => Promise<void>;
   previewInvite: (token: string) => Promise<InvitePreview | null>;
   acceptInvite: (token: string) => Promise<string>;
-  createFund: (name: string, targetMinor?: number | null) => Promise<string>;
-  pledgeFund: (fundId: string, amountMinor: number, dueOn: string) => Promise<string>;
-  recordFundContribution: (commitmentId: string, amountMinor: number) => Promise<string>;
+  /** requestId stays the same across retries of one open form. */
+  createFund: (name: string, targetMinor: number | null, requestId: string) => Promise<string>;
+  pledgeFund: (fundId: string, amountMinor: number, dueOn: string, requestId: string) => Promise<string>;
+  recordFundContribution: (commitmentId: string, amountMinor: number, requestId: string) => Promise<string>;
   updateFund: (fundId: string, name: string, targetMinor: number | null) => Promise<void>;
   archiveFund: (fundId: string, archived: boolean) => Promise<void>;
-  updatePledge: (commitmentId: string, input: { amountMinor?: number; dueOn?: string; cancel?: boolean }) => Promise<void>;
+  /**
+   * expectedAmountMinor and expectedDueOn are what the editor opened with. If
+   * the pledge has changed since, nothing is saved: a 409, after the fund reloads.
+   */
+  updatePledge: (commitmentId: string, input: PledgeChange) => Promise<void>;
   voidContribution: (contributionId: string, reason: string) => Promise<void>;
   saveRecurringBill: (input: RecurringBillInput) => Promise<string>;
+  /** Pause or resume only; a repeat reports duplicate: true. */
+  pauseRecurringBill: (id: string, paused: boolean) => Promise<RecurringBillState>;
+  /** Archive (which also pauses) or restore, still paused. */
+  archiveRecurringBill: (id: string, archived: boolean) => Promise<RecurringBillState>;
   recordRecurringBill: (id: string, expectedDueOn: string) => Promise<string>;
   /** Record one period as paid, optionally at a different amount. */
   recordRecurringPeriod: (id: string, expectedDueOn: string, amountMinor?: number) => Promise<RecurringPeriodResult>;
@@ -421,9 +452,8 @@ function operationPayload(item: NewOperation | OperationItem) {
     // People are sent by member id; the server copies the names.
     assigneeId: item.kind === "task" ? item.assigneeId ?? null : null,
     rotationIds: item.kind === "task" && item.rotationIds?.length ? item.rotationIds : null,
-    lastDone: "lastDone" in item ? item.lastDone ?? null : null,
+    // No status or completion: only task actions change those.
     repeat: item.repeat,
-    status: "status" in item ? item.status : "open",
     notes: item.notes,
   };
 }
@@ -593,6 +623,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 role: invite.role === "admin" ? "Admin" as const : "Member" as const,
                 status: inviteStatus(invite), createdAt: invite.createdAt, expiresAt: invite.expiresAt,
                 acceptedAt: invite.acceptedAt, revokedAt: invite.revokedAt,
+                invitedBy: invite.invitedBy ?? null, invitedByName: invite.invitedByName ?? null,
               }))] as const;
           })).then((inviteEntries) => {
         if (sequence !== refreshSequence.current || !dataRef.current) return;
@@ -871,13 +902,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!data) throw new Error("Sign in first");
     const shares = input.allocations ? validateExpenseAllocation(input.amountMinor, input.allocations) : allocateExpense(input.amountMinor, input.shareUserIds, "Equal");
     if (shares.length !== input.shareUserIds.length || shares.some(share => !input.shareUserIds.includes(share.userId))) throw new Error("The split must match the selected people.");
-    const result = await post<{ id: string }>(`/communes/${encodeURIComponent(activeId)}/expenses`, {
+    const result = await post<{ id: string; duplicate?: boolean }>(`/communes/${encodeURIComponent(activeId)}/expenses`, {
       title: input.name.trim(),
       amountMinor: input.amountMinor,
       shares,
       dueOn: input.dueOn ?? null,
       paidByUserId: input.paidByUserId ?? data.user.id,
       ...(input.category ? { category: input.category } : {}),
+      requestId: input.requestId,
     });
     await refreshRecords();
     setSelectedExpenseId(result.id);
@@ -1002,32 +1034,61 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return result.communeId;
   }), [mutate, refresh, savePrefs, setLocation]);
 
-  const createFund = useCallback((name: string, targetMinor?: number | null) => mutate(async () => {
+  // A repeat of the same requestId returns the record the first attempt made.
+  const createFund = useCallback((name: string, targetMinor: number | null, requestId: string) => mutate(async () => {
     if (!activeId) throw new Error("Choose a commune first");
-    const result = await post<{ id: string }>(`/communes/${encodeURIComponent(activeId)}/funds`, { name, targetMinor: targetMinor ?? null });
+    const result = await post<{ id: string; duplicate?: boolean }>(`/communes/${encodeURIComponent(activeId)}/funds`, { name, targetMinor, requestId });
     await refreshRecords();
     return result.id;
   }), [activeId, mutate, refreshRecords]);
-  const pledgeFund = useCallback((fundId: string, amountMinor: number, dueOn: string) => mutate(async () => {
-    const result = await post<{ id: string }>(`/funds/${encodeURIComponent(fundId)}/pledges`, { amountMinor, dueOn });
+  const pledgeFund = useCallback((fundId: string, amountMinor: number, dueOn: string, requestId: string) => mutate(async () => {
+    const result = await post<{ id: string; duplicate?: boolean }>(`/funds/${encodeURIComponent(fundId)}/pledges`, { amountMinor, dueOn, requestId });
     await refreshRecords();
     return result.id;
   }), [mutate, refreshRecords]);
-  const recordFundContribution = useCallback((commitmentId: string, amountMinor: number) => mutate(async () => {
-    const result = await post<{ id: string }>(`/commitments/${encodeURIComponent(commitmentId)}/contributions`, { amountMinor });
+  const recordFundContribution = useCallback((commitmentId: string, amountMinor: number, requestId: string) => mutate(async () => {
+    const result = await post<{ id: string; duplicate?: boolean }>(`/commitments/${encodeURIComponent(commitmentId)}/contributions`, { amountMinor, requestId });
     await refreshRecords();
     return result.id;
   }), [mutate, refreshRecords]);
   const updateFund = async (id: string, name: string, targetMinor: number | null) => { await workflow(`/funds/${encodeURIComponent(id)}`,{name,targetMinor},"PATCH"); };
   const archiveFund = async (id: string, archived: boolean) => { await workflow(`/funds/${encodeURIComponent(id)}/archive`,{archived}); };
-  const updatePledge = async (id: string, input: { amountMinor?: number; dueOn?: string; cancel?: boolean }) => { await workflow(`/commitments/${encodeURIComponent(id)}`,input,"PATCH"); };
+  // A pledge changed since the editor opened is a conflict. Load it before the
+  // error reaches the form, so the editor can start again from what is saved.
+  const updatePledge = (id: string, input: PledgeChange) => mutate(async () => {
+    try {
+      await api(`/commitments/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify(input) });
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 409) await refreshRecords();
+      throw error;
+    }
+    await refreshRecords();
+  });
   const voidContribution = async (id: string, reason: string) => { await workflow(`/contributions/${encodeURIComponent(id)}/void`,{reason}); };
-  const saveRecurringBill = async (input: RecurringBillInput) => (await workflow<{id:string}>(`/communes/${encodeURIComponent(activeId)}/recurring`,input)).id;
+  // A conflict means the bill changed after this screen loaded it (someone
+  // edited, recorded, paused or archived it). Load the latest before the
+  // error reaches the screen, as an expense correction does.
+  const recurringChange = useCallback(async <T,>(path: string, body: unknown): Promise<T> => mutate(async () => {
+    let result: T;
+    try {
+      result = await api<T>(path, { method: "POST", body: JSON.stringify(body) });
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 409) await refreshRecords();
+      throw error;
+    }
+    await refreshRecords();
+    return result;
+  }), [mutate, refreshRecords]);
+  const saveRecurringBill = async (input: RecurringBillInput) => (await recurringChange<{id:string}>(`/communes/${encodeURIComponent(activeId)}/recurring`,input)).id;
+  const pauseRecurringBill = (id: string, paused: boolean) =>
+    recurringChange<RecurringBillState>(`/recurring/${encodeURIComponent(id)}/pause`, { paused });
+  const archiveRecurringBill = (id: string, archived: boolean) =>
+    recurringChange<RecurringBillState>(`/recurring/${encodeURIComponent(id)}/archive`, { archived });
   const recordRecurringBill = async (id: string, expectedDueOn: string) => (await workflow<{id:string}>(`/recurring/${encodeURIComponent(id)}/record`,{expectedDueOn})).id;
   const recordRecurringPeriod = (id: string, expectedDueOn: string, amountMinor?: number) =>
-    workflow<RecurringPeriodResult>(`/recurring/${encodeURIComponent(id)}/periods`, { expectedDueOn, amountMinor: amountMinor ?? null });
+    recurringChange<RecurringPeriodResult>(`/recurring/${encodeURIComponent(id)}/periods`, { expectedDueOn, amountMinor: amountMinor ?? null });
   const skipRecurringPeriod = (id: string, expectedDueOn: string, reason: string) =>
-    workflow<RecurringPeriodResult>(`/recurring/${encodeURIComponent(id)}/skip`, { expectedDueOn, reason: reason.trim() });
+    recurringChange<RecurringPeriodResult>(`/recurring/${encodeURIComponent(id)}/skip`, { expectedDueOn, reason: reason.trim() });
   const saveSplitTemplate = async (input: SplitTemplateInput) => (await workflow<{id:string}>(`/communes/${encodeURIComponent(activeId)}/templates`,input)).id;
   const manageMember = async (userId: string, action: "admin" | "member" | "leave" | "remove") => mutate(async () => {
     await post(`/communes/${encodeURIComponent(activeId)}/members/${encodeURIComponent(userId)}`,{action});
@@ -1057,10 +1118,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await refreshRecords();
   }), [mutate, refreshRecords]);
 
-  const addNote = useCallback((card: NoteCard & { id: string }) => mutate(async () => {
+  const addNote = useCallback((card: NoteCard & { id: string }, requestId: string) => mutate(async () => {
     if (!activeId) throw new Error("Choose a commune first");
     const { id: _draftId, ...payload } = card;
-    const result = await post<{ id: string }>(`/communes/${encodeURIComponent(activeId)}/notes`, payload);
+    const result = await post<{ id: string }>(`/communes/${encodeURIComponent(activeId)}/notes`, { ...payload, requestId });
     await refreshRecords();
     setNoteKey(result.id);
     return result.id;
@@ -1083,21 +1144,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }), [activeId, data, mutate, refreshRecords]);
   const loadNoteRevision = useCallback(async (noteId: string, revisionId: string) =>
     (await api<{ revision: NoteRevision }>(`/notes/${encodeURIComponent(noteId)}/revisions/${encodeURIComponent(revisionId)}`)).revision, []);
-  const addOperation = useCallback((item: NewOperation) => mutate(async () => {
+  const addOperation = useCallback((item: NewOperation, requestId: string) => mutate(async () => {
     if (!activeId) throw new Error("Choose a commune first");
-    const result = await post<{ id: string }>(`/communes/${encodeURIComponent(activeId)}/operations`, operationPayload(item));
+    const result = await post<{ id: string }>(`/communes/${encodeURIComponent(activeId)}/operations`, { ...operationPayload(item), requestId });
     await refreshRecords();
     setOperationKey(result.id);
     setOperationDate(item.date);
     return result.id;
   }), [activeId, mutate, refreshRecords]);
-  const updateOperation = useCallback((id: string, item: NewOperation) => mutate(async () => {
+  const updateOperation = useCallback((id: string, item: NewOperation, expectedVersion?: number) => mutate(async () => {
     const existing = operations.find((row) => row.id === id);
     if (!existing) throw new Error("Schedule item not found");
-    await api(`/operations/${encodeURIComponent(id)}`, {
-      method: "PUT",
-      body: JSON.stringify(operationPayload({ ...existing, ...item })),
-    });
+    try {
+      await api(`/operations/${encodeURIComponent(id)}`, {
+        method: "PUT",
+        body: JSON.stringify({ ...operationPayload({ ...existing, ...item }), expectedVersion: expectedVersion ?? existing.version ?? null }),
+      });
+    } catch (error) {
+      // It changed since the edit began: load what is saved now, so the form
+      // can show it rather than put back an older date or person.
+      if (error instanceof ApiError && error.status === 409) await refreshRecords();
+      throw error;
+    }
     await refreshRecords();
     setOperationDate(item.date);
     if (item.time) setOperationTime(item.time);
@@ -1247,7 +1315,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     announcements, postAnnouncement, acknowledgeAnnouncement, archiveAnnouncement,
     markExpensePaid, createInvite, sendInviteEmail, revokeInvite, previewInvite, acceptInvite, createFund,
     pledgeFund, recordFundContribution, sendReminder, markNotificationRead,
-    updateFund, archiveFund, updatePledge, voidContribution, saveRecurringBill, recordRecurringBill, recordRecurringPeriod, skipRecurringPeriod, saveSplitTemplate, manageMember,
+    updateFund, archiveFund, updatePledge, voidContribution, saveRecurringBill, pauseRecurringBill, archiveRecurringBill, recordRecurringBill, recordRecurringPeriod, skipRecurringPeriod, saveSplitTemplate, manageMember,
     pageTitle, pageLede,
   }}>{children}</Ctx.Provider>;
 }

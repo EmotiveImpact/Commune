@@ -5,6 +5,7 @@ import { LoginPage } from "./auth/Login";
 import { SignupPage, VerifyEmailPage } from "./auth/Signup";
 import { ForgotPasswordPage, ResetPasswordPage } from "./auth/ForgotPassword";
 import { InvitePage, OnboardPage } from "./auth/InviteOnboard";
+import { PrivacyPage, TermsPage } from "./legal/LegalPages";
 import { useApp } from "./state";
 import { Header, MoreSheet, PhoneTabs, Sidebar } from "./shell/Shell";
 import { HomeEmptyScreen, HomeScreen, PlacesScreen } from "./screens/Home";
@@ -65,6 +66,8 @@ export function App() {
         <ResetPasswordPage />
       </Route>
       <Route path="/invite" component={InvitePage} />
+      <Route path="/privacy" component={PrivacyPage} />
+      <Route path="/terms" component={TermsPage} />
       <Route path="/onboard">
         <AuthenticatedOnly>
           <OnboardPage />

@@ -381,6 +381,20 @@ snap = await get();
 assert.equal(snap.splitTemplates[0].participants[1].value, "40");
 
 // The same due period can be confirmed only once, including parallel clicks.
+// Month ends: the latest 31st followed by a shorter month whose next period
+// is already past, so the bill is recent enough to add and both are due.
+const monthEnd = (year, month) => new Date(Date.UTC(year, month + 1, 0));
+let anchor = null;
+for (let back = 2; !anchor; back += 1) {
+  const now = new Date();
+  const candidate = monthEnd(now.getUTCFullYear(), now.getUTCMonth() - back);
+  const following = monthEnd(now.getUTCFullYear(), now.getUTCMonth() - back + 1);
+  if (candidate.getUTCDate() === 31 && following.getUTCDate() < 31) anchor = candidate;
+}
+const monthPeriod = (offset) =>
+  monthEnd(anchor.getUTCFullYear(), anchor.getUTCMonth() + offset)
+    .toISOString()
+    .slice(0, 10);
 const billInput = {
   title: "Monthly utilities",
   amountMinor: 1000,
@@ -390,49 +404,45 @@ const billInput = {
     { userId: carol.id, amountMinor: 400 },
   ],
   frequency: "monthly",
-  nextDueOn: "2026-01-31",
-  paused: false,
+  nextDueOn: monthPeriod(0),
 };
-const bill = await a("POST", `/communes/${id}/recurring`, billInput);
+const bill = await a("POST", `/communes/${id}/recurring`, {
+  ...billInput,
+  paused: false,
+  requestId: randomUUID(),
+});
 assert.equal(bill.status, 201, JSON.stringify(bill));
 assert.equal(
   (
     await c("POST", `/recurring/${bill.id}/record`, {
-      expectedDueOn: "2026-01-31",
+      expectedDueOn: monthPeriod(0),
     })
   ).status,
   403,
 );
 const simultaneous = await Promise.all([
-  a("POST", `/recurring/${bill.id}/record`, { expectedDueOn: "2026-01-31" }),
-  a("POST", `/recurring/${bill.id}/record`, { expectedDueOn: "2026-01-31" }),
+  a("POST", `/recurring/${bill.id}/record`, { expectedDueOn: monthPeriod(0) }),
+  a("POST", `/recurring/${bill.id}/record`, { expectedDueOn: monthPeriod(0) }),
 ]);
 assert.deepEqual(simultaneous.map((item) => item.status).sort(), [201, 409]);
 snap = await get();
 let rule = snap.recurringBills.find((row) => row.id === bill.id);
-assert.equal(rule.nextDueOn, "2026-02-28");
+assert.equal(rule.nextDueOn, monthPeriod(1));
 assert.equal(snap.expenses.filter((row) => row.recurring).length, 1);
 assert.equal(
   (
     await b("POST", `/recurring/${bill.id}/record`, {
-      expectedDueOn: "2026-02-28",
+      expectedDueOn: monthPeriod(1),
     })
   ).status,
   201,
 );
 snap = await get();
 rule = snap.recurringBills.find((row) => row.id === bill.id);
-assert.equal(rule.nextDueOn, "2026-03-31");
+assert.equal(rule.nextDueOn, monthPeriod(2));
 assert.equal(
-  (
-    await a("POST", `/communes/${id}/recurring`, {
-      ...billInput,
-      id: bill.id,
-      nextDueOn: rule.nextDueOn,
-      paused: true,
-    })
-  ).status,
-  201,
+  (await a("POST", `/recurring/${bill.id}/pause`, { paused: true })).status,
+  200,
 );
 assert.equal(
   (
@@ -460,6 +470,7 @@ assert.equal(
     await outsider("POST", `/communes/${other.id}/recurring`, {
       ...billInput,
       id: bill.id,
+      expectedVersion: rule.version,
       paidByUserId: stranger.id,
       allocations: [{ userId: stranger.id, amountMinor: 1000 }],
     })

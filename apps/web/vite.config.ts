@@ -1,5 +1,6 @@
 import net from "node:net";
-import { defineConfig, type Plugin } from "vite";
+import { fileURLToPath } from "node:url";
+import { defineConfig, loadEnv, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 
 const PORT = 3000;
@@ -32,8 +33,34 @@ function listenIpv6Too(): Plugin {
   };
 }
 
-export default defineConfig({
-  plugins: [react(), listenIpv6Too()],
+/**
+ * vercel.json allows connections to any HTTPS host, so a preview built for a
+ * new Neon branch cannot break on its host name. A build that knows its Neon
+ * endpoints narrows that to exactly those origins; browsers enforce both.
+ */
+export function exactConnectPolicy(env: Record<string, string | undefined>): Plugin {
+  return {
+    name: "exact-connect-policy",
+    apply: "build",
+    transformIndexHtml(html) {
+      const origins = [env.VITE_NEON_AUTH_URL, env.VITE_NEON_DATA_API_URL, env.VITE_REMINDER_FUNCTION_URL]
+        .map((value) => value?.trim())
+        .filter((value): value is string => Boolean(value))
+        .map((value) => new URL(value).origin);
+      if (!origins.length) return html;
+      const charset = '<meta charset="UTF-8" />';
+      if (!html.includes(charset)) throw new Error("index.html must declare its charset before the connect policy");
+      return html.replace(charset, `${charset}\n    <meta http-equiv="Content-Security-Policy" content="connect-src 'self' ${[...new Set(origins)].join(" ")}" />`);
+    },
+  };
+}
+
+export default defineConfig(({ mode }) => ({
+  plugins: [
+    react(),
+    listenIpv6Too(),
+    exactConnectPolicy(loadEnv(mode, fileURLToPath(new URL(".", import.meta.url)), "VITE_")),
+  ],
   server: {
     host: "127.0.0.1",
     port: PORT,
@@ -52,4 +79,4 @@ export default defineConfig({
     strictPort: true,
     allowedHosts: ["localhost", "127.0.0.1"],
   },
-});
+}));

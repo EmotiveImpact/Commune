@@ -1207,6 +1207,11 @@ div.a-set-row {
   transform: translateX(18px);
 }
 
+.a-switch:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
 .a-sheet-scrim {
   display: none;
   position: fixed;

@@ -246,6 +246,19 @@ a.commune-auth-btn {
   color: #667085;
 }
 
+.commune-auth-legal {
+  margin: 12px 0 0;
+  text-align: center;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: #525c6b;
+}
+
+.commune-auth-legal-links {
+  display: flex;
+  gap: 14px;
+}
+
 .commune-auth-ok {
   text-align: center;
   font-weight: 600;
@@ -256,6 +269,8 @@ a.commune-auth-btn {
   position: absolute;
   right: 24px;
   bottom: 24px;
+  display: flex;
+  gap: 16px;
   font-size: 0.75rem;
   color: #667085;
 }

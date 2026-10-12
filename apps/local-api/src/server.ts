@@ -114,7 +114,9 @@ function noteInput(input: Record<string, unknown>) {
   };
 }
 
-function operationInput(input: Record<string, unknown>) {
+// A task or event's fields, checked, in the order create_operation and
+// update_operation take them.
+function operationArgs(input: Record<string, unknown>) {
   if (input.kind !== "task" && input.kind !== "event") {
     throw new ApiError(400, "Invalid kind");
   }
@@ -129,13 +131,9 @@ function operationInput(input: Record<string, unknown>) {
       (typeof input.time !== "string" || !/^([01]\d|2[0-3]):[0-5]\d$/.test(input.time))) {
     throw new ApiError(400, "Invalid time");
   }
-  if (input.rotation != null && (!Array.isArray(input.rotation) ||
-      input.rotation.length > 50 ||
-      !input.rotation.every((name) => typeof name === "string" && name.length <= 80))) {
-    throw new ApiError(400, "Invalid rotation");
-  }
-  // Current clients name people by member id; older ones send names only.
-  const byId = "assigneeId" in input || "rotationIds" in input;
+  // People are member ids; the database checks they are current members and
+  // copies their names. Status and completion are not part of an add or an
+  // edit: only the occurrence commands change them.
   if (input.assigneeId != null && (typeof input.assigneeId !== "string" ||
       !input.assigneeId || input.assigneeId.length > 128)) {
     throw new ApiError(400, "Invalid assigneeId");
@@ -146,31 +144,10 @@ function operationInput(input: Record<string, unknown>) {
       !input.rotationIds.every((id) => typeof id === "string" && id.length > 0 && id.length <= 128))) {
     throw new ApiError(400, "Invalid rotationIds");
   }
-  if (input.status !== undefined && input.status !== "open" && input.status !== "done") {
-    throw new ApiError(400, "Invalid status");
-  }
-  let lastDone: { by: string; date: string } | null = null;
-  if (input.lastDone != null) {
-    if (typeof input.lastDone !== "object" || Array.isArray(input.lastDone)) {
-      throw new ApiError(400, "Invalid lastDone");
-    }
-    const value = input.lastDone as Record<string, unknown>;
-    lastDone = { by: text(value.by, "lastDone.by", 80),
-      date: isoDate(value.date)! };
-  }
-  return {
-    kind: input.kind, category: input.category,
-    title: text(input.title, "title", 80),
-    date: isoDate(input.date)!, time: input.time ?? null,
-    allDay: input.allDay,
-    byId,
-    assignee: byId || input.assignee == null ? null : optionalText(input.assignee, "assignee", 80),
-    rotation: byId ? null : input.rotation ?? null, lastDone,
-    assigneeId: (input.assigneeId as string | null | undefined) ?? null,
-    rotationIds: (input.rotationIds as string[] | null | undefined) ?? null,
-    repeat: input.repeat, status: input.status === "done" ? "done" : "open",
-    notes: optionalText(input.notes, "notes", 1000),
-  };
+  return [input.kind, input.category, text(input.title, "title", 80), isoDate(input.date, false, "date"),
+    input.time ?? null, input.allDay, (input.assigneeId as string | null | undefined) ?? null,
+    input.rotationIds == null ? null : JSON.stringify(input.rotationIds), input.repeat,
+    optionalText(input.notes, "notes", 1000)];
 }
 
 async function body(req: IncomingMessage): Promise<Record<string, unknown>> {
@@ -251,6 +228,12 @@ function route(method: string, pattern: RegExp, handle: Handler): void {
   routes.push({ method, pattern, handle });
 }
 const send = (res: ServerResponse, result: unknown, status = 200) => json(res, status, result);
+// Create commands take a client request id, so a retry returns the record it
+// already created. Older callers without one still work, without retry protection.
+const requestIdOf = (input: Record<string, unknown>) =>
+  input.requestId == null ? randomUUID() : uuid(input.requestId, "requestId");
+const sendCreated = (res: ServerResponse, result: { id: string; duplicate: boolean }) =>
+  send(res, { id: result.id, duplicate: result.duplicate }, result.duplicate ? 200 : 201);
 const userAction = async <T>(req: IncomingMessage,
   work: (client: PoolClient, user: User) => Promise<T>): Promise<T> => {
   const user = await actor(req);
@@ -406,9 +389,10 @@ route("POST", /^\/api\/communes\/([0-9a-f-]{36})\/expenses$/, async (req, res, m
   });
   const dueOn = isoDate(input.dueOn, true);
   const result = await userAction(req, async (client) => client.query(
-    "SELECT public.create_expense_for($1, $2, $3, $4::jsonb, $5::date, $6, $7) AS id",
-    [communeId, title, amountMinor, JSON.stringify(shares), dueOn, input.paidByUserId == null ? null : uuid(input.paidByUserId), input.category == null ? "Other" : text(input.category,"category",40)]));
-  send(res, { id: result.rows[0].id }, 201);
+    "SELECT public.create_expense_command($1, $2, $3, $4::jsonb, $5::date, $6, $7, $8) AS result",
+    [communeId, title, amountMinor, JSON.stringify(shares), dueOn, input.paidByUserId == null ? null : uuid(input.paidByUserId), input.category == null ? "Other" : text(input.category,"category",40),
+      requestIdOf(input)]));
+  sendCreated(res, result.rows[0].result);
 });
 
 route("POST", /^\/api\/shares\/([0-9a-f-]{36})\/confirm$/, async (req, res, match) => {
@@ -538,25 +522,25 @@ route("POST", /^\/api\/communes\/([0-9a-f-]{36})\/funds$/, async (req, res, matc
   const target = input.targetMinor === undefined || input.targetMinor === null
     ? null : amount(input.targetMinor, "targetMinor");
   const result = await userAction(req, async (client) => client.query(
-    "SELECT public.create_fund($1, $2, $3) AS id",
-    [uuid(match[1]), name, target]));
-  send(res, { id: result.rows[0].id }, 201);
+    "SELECT public.create_fund_command($1, $2, $3, $4) AS result",
+    [uuid(match[1]), name, target, requestIdOf(input)]));
+  sendCreated(res, result.rows[0].result);
 });
 
 route("POST", /^\/api\/funds\/([0-9a-f-]{36})\/pledges$/, async (req, res, match) => {
   const input = await body(req);
   const result = await userAction(req, async (client) => client.query(
-    "SELECT public.pledge_fund($1, $2, $3::date) AS id",
-    [uuid(match[1]), amount(input.amountMinor), isoDate(input.dueOn)]));
-  send(res, { id: result.rows[0].id }, 201);
+    "SELECT public.pledge_fund_command($1, $2, $3::date, $4) AS result",
+    [uuid(match[1]), amount(input.amountMinor), isoDate(input.dueOn), requestIdOf(input)]));
+  sendCreated(res, result.rows[0].result);
 });
 
 route("POST", /^\/api\/commitments\/([0-9a-f-]{36})\/contributions$/, async (req, res, match) => {
   const input = await body(req);
   const result = await userAction(req, async (client) => client.query(
-    "SELECT public.record_fund_contribution($1, $2) AS id",
-    [uuid(match[1]), amount(input.amountMinor)]));
-  send(res, { id: result.rows[0].id }, 201);
+    "SELECT public.record_fund_contribution_command($1, $2, $3) AS result",
+    [uuid(match[1]), amount(input.amountMinor), requestIdOf(input)]));
+  sendCreated(res, result.rows[0].result);
 });
 
 route("PATCH", /^\/api\/funds\/([0-9a-f-]{36})$/, async (req, res, match) => {
@@ -573,7 +557,10 @@ route("POST", /^\/api\/funds\/([0-9a-f-]{36})\/archive$/, async (req, res, match
 route("PATCH", /^\/api\/commitments\/([0-9a-f-]{36})$/, async (req,res,match) => {
   const input=await body(req);
   if (input.cancel != null && typeof input.cancel !== "boolean") throw new ApiError(400,"Invalid cancellation");
-  await userAction(req,client=>client.query("SELECT public.update_fund_pledge($1,$2,$3::date,$4)",[uuid(match[1]),input.cancel === true ? null : amount(input.amountMinor),input.cancel === true ? null : isoDate(input.dueOn),input.cancel === true]));
+  // The amount and date the editor opened with. If the pledge has changed since, nothing is saved (409).
+  const expectedAmount = input.expectedAmountMinor == null ? null : amount(input.expectedAmountMinor, "expectedAmountMinor");
+  const expectedDueOn = isoDate(input.expectedDueOn, true, "expectedDueOn");
+  await userAction(req,client=>client.query("SELECT public.update_fund_pledge($1,$2,$3::date,$4,$5,$6::date)",[uuid(match[1]),input.cancel === true ? null : amount(input.amountMinor),input.cancel === true ? null : isoDate(input.dueOn),input.cancel === true,expectedAmount,expectedDueOn]));
   send(res,{ok:true});
 });
 route("POST", /^\/api\/contributions\/([0-9a-f-]{36})\/void$/, async (req,res,match) => {
@@ -587,12 +574,31 @@ route("POST", /^\/api\/communes\/([0-9a-f-]{36})\/members\/([0-9a-f-]{36})$/, as
   await userAction(req,client=>client.query("SELECT public.manage_commune_member($1,$2,$3)",[uuid(match[1]),uuid(match[2]),input.action]));
   send(res,{ok:true});
 });
+// Add a bill (requestId makes a retry return the same bill), or edit one from
+// the version the editor loaded: a stale expectedVersion is a 409. An edit
+// never pauses or resumes; that is /recurring/:id/pause.
 route("POST", /^\/api\/communes\/([0-9a-f-]{36})\/recurring$/, async (req,res,match) => {
   const input=await body(req);
-  if (!Array.isArray(input.allocations) || input.allocations.length>100 || !["weekly","monthly"].includes(String(input.frequency)) || typeof input.paused !== "boolean") throw new ApiError(400,"Invalid recurring bill");
+  if (!Array.isArray(input.allocations) || input.allocations.length>100 || !["weekly","monthly"].includes(String(input.frequency)) || (input.paused != null && typeof input.paused !== "boolean")) throw new ApiError(400,"Invalid recurring bill");
   const shares=input.allocations.map(value=>{const share=value as Record<string,unknown>; return {user_id:uuid(share?.userId),amount_minor:amount(share?.amountMinor)};});
-  const result=await userAction(req,client=>client.query("SELECT public.save_recurring_bill($1,$2,$3,$4,$5::jsonb,$6,$7::date,$8,$9) AS id",[uuid(match[1]),text(input.title,"title",80),amount(input.amountMinor),uuid(input.paidByUserId),JSON.stringify(shares),input.frequency,isoDate(input.nextDueOn),input.paused,input.id == null ? null : uuid(input.id)]));
+  const editing=input.id != null;
+  const result=await userAction(req,client=>client.query("SELECT public.save_recurring_bill($1,$2,$3,$4,$5::jsonb,$6,$7::date,$8,$9,$10,$11) AS id",[uuid(match[1]),text(input.title,"title",80),amount(input.amountMinor),uuid(input.paidByUserId),JSON.stringify(shares),input.frequency,isoDate(input.nextDueOn),
+    editing ? uuid(input.id) : null,editing ? expectedVersion(input.expectedVersion) : null,editing ? null : uuid(input.requestId,"requestId"),input.paused ?? null]));
   send(res,{id:result.rows[0].id},201);
+});
+// Pause or resume, and archive or restore: each changes only that state and
+// is safe to repeat (duplicate: true when the bill was already that way).
+route("POST", /^\/api\/recurring\/([0-9a-f-]{36})\/pause$/, async (req,res,match) => {
+  const input=await body(req);
+  if (typeof input.paused !== "boolean") throw new ApiError(400,"Invalid paused state");
+  const result=await userAction(req,client=>client.query("SELECT public.set_recurring_bill_paused($1,$2) AS result",[uuid(match[1]),input.paused]));
+  send(res,result.rows[0].result);
+});
+route("POST", /^\/api\/recurring\/([0-9a-f-]{36})\/archive$/, async (req,res,match) => {
+  const input=await body(req);
+  if (typeof input.archived !== "boolean") throw new ApiError(400,"Invalid archived state");
+  const result=await userAction(req,client=>client.query("SELECT public.set_recurring_bill_archived($1,$2) AS result",[uuid(match[1]),input.archived]));
+  send(res,result.rows[0].result);
 });
 route("POST", /^\/api\/recurring\/([0-9a-f-]{36})\/record$/, async (req,res,match) => {
   const input=await body(req);
@@ -646,42 +652,28 @@ route("POST", /^\/api\/notifications\/([0-9a-f-]{36})\/read$/, async (req, res, 
   send(res, { ok: true });
 });
 
+// Notes and tasks change only through database commands (migration 0027).
+// An add carries requestId, so a retry returns what it already added. An
+// edit carries expectedVersion; a stale one is a 409 and nothing is saved.
 route("POST", /^\/api\/communes\/([0-9a-f-]{36})\/notes$/, async (req, res, match) => {
-  const card = noteInput(await body(req));
-  const result = await userAction(req, async (client) => client.query(`
-    INSERT INTO public.commune_notes
-      (commune_id, title, pill, kicker, lede, body, facts, created_by)
-    VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, auth.user_id())
-    RETURNING id
-  `, [uuid(match[1]), card.title, card.pill, card.kicker,
-      card.lede, card.body, JSON.stringify(card.facts)]));
-  send(res, { id: result.rows[0].id }, 201);
+  const input = await body(req);
+  const card = noteInput(input);
+  const result = await userAction(req, async (client) => client.query(
+    "SELECT public.create_note($1, $2, $3, $4, $5, $6, $7::jsonb, $8) AS result",
+    [uuid(match[1]), card.title, card.pill, card.kicker, card.lede, card.body,
+      JSON.stringify(card.facts), uuid(input.requestId, "requestId")]));
+  const note = result.rows[0].result as { duplicate: boolean };
+  send(res, note, note.duplicate ? 200 : 201);
 });
 
-// expectedVersion names the version the edit was based on. When someone else
-// saved since, nothing is written and the caller is told (409).
 route("PUT", /^\/api\/notes\/([0-9a-f-]{36})$/, async (req, res, match) => {
   const input = await body(req);
   const card = noteInput(input);
-  const expected = input.expectedVersion == null ? null : Number(input.expectedVersion);
-  if (expected !== null && (!Number.isInteger(expected) || expected < 1)) throw new ApiError(400, "Invalid expectedVersion");
-  const result = await userAction(req, async (client) => {
-    const updated = await client.query(`
-      UPDATE public.commune_notes
-        SET title = $2, pill = $3, kicker = $4, lede = $5,
-          body = $6, facts = $7::jsonb, updated_at = now()
-        WHERE id = $1 AND ($8::integer IS NULL OR version = $8) RETURNING id, version
-    `, [uuid(match[1]), card.title, card.pill, card.kicker,
-        card.lede, card.body, JSON.stringify(card.facts), expected]);
-    if (updated.rowCount || expected === null) return updated;
-    const current = await client.query("SELECT version FROM public.commune_notes WHERE id = $1", [uuid(match[1])]);
-    if (current.rowCount) {
-      throw new ApiError(409, "Someone else saved this note while you were editing. Your text is still here; check their version before saving again.");
-    }
-    return updated;
-  });
-  if (!result.rowCount) throw new ApiError(404, "Note not found");
-  send(res, { ok: true, version: result.rows[0].version });
+  const result = await userAction(req, async (client) => client.query(
+    "SELECT public.update_note($1, $2, $3, $4, $5, $6, $7, $8::jsonb) AS result",
+    [uuid(match[1]), expectedVersion(input.expectedVersion), card.title, card.pill, card.kicker,
+      card.lede, card.body, JSON.stringify(card.facts)]));
+  send(res, result.rows[0].result);
 });
 
 route("GET", /^\/api\/notes\/([0-9a-f-]{36})\/revisions\/([0-9a-f-]{36})$/, async (req, res, match) => {
@@ -695,52 +687,32 @@ route("GET", /^\/api\/notes\/([0-9a-f-]{36})\/revisions\/([0-9a-f-]{36})$/, asyn
     lede: row.lede, body: row.body, facts: row.facts, editedBy: row.edited_by, editedAt: row.edited_at } });
 });
 
+// The person who added it or an admin removes a note or task. The record and
+// its history are kept, and both leave every view: a removed note's earlier
+// versions answer 404 like an unknown one.
 route("DELETE", /^\/api\/notes\/([0-9a-f-]{36})$/, async (req, res, match) => {
   const result = await userAction(req, async (client) => client.query(
-    "DELETE FROM public.commune_notes WHERE id = $1 RETURNING id", [uuid(match[1])]));
-  if (!result.rowCount) throw new ApiError(404, "Note not found");
-  send(res, { ok: true });
+    "SELECT public.remove_note($1) AS result", [uuid(match[1])]));
+  send(res, result.rows[0].result);
 });
 
 route("POST", /^\/api\/communes\/([0-9a-f-]{36})\/operations$/, async (req, res, match) => {
-  const item = operationInput(await body(req));
-  const result = await userAction(req, async (client) => client.query(`
-    INSERT INTO public.commune_operations
-      (commune_id, kind, category, title, date, time, all_day,
-        assignee, rotation, last_done, repeat, status, notes, created_by,
-        assignee_id, rotation_ids)
-    VALUES ($1, $2, $3, $4, $5::date, $6::time, $7, $8,
-      $9::jsonb, $10::jsonb, $11, $12, $13, auth.user_id(), $14, $15::jsonb)
-    RETURNING id
-  `, [uuid(match[1]), item.kind, item.category, item.title, item.date,
-      item.time, item.allDay, item.assignee,
-      item.rotation == null ? null : JSON.stringify(item.rotation),
-      item.lastDone == null ? null : JSON.stringify(item.lastDone),
-      item.repeat, item.status, item.notes, item.assigneeId,
-      item.rotationIds == null ? null : JSON.stringify(item.rotationIds)]));
-  send(res, { id: result.rows[0].id }, 201);
+  const input = await body(req);
+  const item = operationArgs(input);
+  const result = await userAction(req, async (client) => client.query(
+    "SELECT public.create_operation($1, $2, $3, $4, $5::date, $6::time, $7, $8, $9::jsonb, $10, $11, $12) AS result",
+    [uuid(match[1]), ...item, uuid(input.requestId, "requestId")]));
+  const operation = result.rows[0].result as { duplicate: boolean };
+  send(res, operation, operation.duplicate ? 200 : 201);
 });
 
 route("PUT", /^\/api\/operations\/([0-9a-f-]{36})$/, async (req, res, match) => {
-  const item = operationInput(await body(req));
-  const result = await userAction(req, async (client) => client.query(`
-    UPDATE public.commune_operations
-      SET kind = $2, category = $3, title = $4, date = $5::date,
-        time = $6::time, all_day = $7, assignee = $8,
-        rotation = $9::jsonb, last_done = $10::jsonb,
-        repeat = $11, status = $12, notes = $13, updated_at = now(),
-        -- A names-only write leaves the ids for the database to resolve.
-        assignee_id = CASE WHEN $14 THEN $15 ELSE assignee_id END,
-        rotation_ids = CASE WHEN $14 THEN $16::jsonb ELSE rotation_ids END
-      WHERE id = $1 RETURNING id
-  `, [uuid(match[1]), item.kind, item.category, item.title, item.date,
-      item.time, item.allDay, item.assignee,
-      item.rotation == null ? null : JSON.stringify(item.rotation),
-      item.lastDone == null ? null : JSON.stringify(item.lastDone),
-      item.repeat, item.status, item.notes, item.byId, item.assigneeId,
-      item.rotationIds == null ? null : JSON.stringify(item.rotationIds)]));
-  if (!result.rowCount) throw new ApiError(404, "Operation not found");
-  send(res, { ok: true });
+  const input = await body(req);
+  const item = operationArgs(input);
+  const result = await userAction(req, async (client) => client.query(
+    "SELECT public.update_operation($1, $2, $3, $4, $5, $6::date, $7::time, $8, $9, $10::jsonb, $11, $12) AS result",
+    [uuid(match[1]), expectedVersion(input.expectedVersion), ...item]));
+  send(res, result.rows[0].result);
 });
 
 // Completing, skipping or reopening a task is a recorded occurrence. The
@@ -787,9 +759,8 @@ route("POST", /^\/api\/occurrences\/([0-9a-f-]{36})\/undo$/, async (req, res, ma
 
 route("DELETE", /^\/api\/operations\/([0-9a-f-]{36})$/, async (req, res, match) => {
   const result = await userAction(req, async (client) => client.query(
-    "DELETE FROM public.commune_operations WHERE id = $1 RETURNING id", [uuid(match[1])]));
-  if (!result.rowCount) throw new ApiError(404, "Operation not found");
-  send(res, { ok: true });
+    "SELECT public.remove_operation($1) AS result", [uuid(match[1])]));
+  send(res, result.rows[0].result);
 });
 
 route("GET", /^\/api\/communes\/([0-9a-f-]{36})\/invites$/, async (req, res, match) => {
@@ -799,6 +770,7 @@ route("GET", /^\/api\/communes\/([0-9a-f-]{36})\/invites$/, async (req, res, mat
     id: row.id, email: row.email, role: row.role,
     createdAt: row.created_at, expiresAt: row.expires_at,
     acceptedAt: row.accepted_at, revokedAt: row.revoked_at,
+    invitedBy: row.invited_by, invitedByName: row.invited_by_name,
   })) });
 });
 
@@ -861,12 +833,9 @@ route("PUT", /^\/api\/preferences$/, async (req, res) => {
   if (typeof input.emailReminders !== "boolean") {
     throw new ApiError(400, "Invalid emailReminders");
   }
-  await userAction(req, async (client) => client.query(`
-    INSERT INTO public.notification_preferences (user_id, email_reminders)
-    VALUES (auth.user_id(), $1)
-    ON CONFLICT (user_id) DO UPDATE SET email_reminders = EXCLUDED.email_reminders
-  `, [input.emailReminders]));
-  send(res, { emailReminders: input.emailReminders });
+  const result = await userAction(req, async (client) => client.query(
+    "SELECT public.set_email_reminders($1) AS email_reminders", [input.emailReminders]));
+  send(res, { emailReminders: result.rows[0].email_reminders });
 });
 
 function normalizedError(error: unknown): ApiError {

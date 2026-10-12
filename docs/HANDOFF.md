@@ -20,6 +20,13 @@ lifecycle pack. Work is paused for a handoff, not a production release.
 - From 6 October, on a branch for review: task handovers and skip reasons
   (migration 0024) and announcements (0025). See sections 9 and 10 of the
   [local build-out](LOCAL-BUILDOUT-2026-10-05.md).
+- From 9 October, on a branch for review: fixes for the serious findings of a
+  full app review. Recurring bill versions, pause and archive (migration
+  0026); notes and tasks changed only through database commands (0027);
+  invitations that end with their sender's admin role, retry-safe creates and
+  pledge rules (0028); the email reminders setting and one-click unsubscribe
+  (0029); account lookups by uuid (0030). 0027 and 0028 change the release
+  order: see [infra/neon/README.md](../infra/neon/README.md).
 - The website is `web/` (the editorial homepage); the earlier v2 site is in
   `web-backup/`. Launch names `website` (3004) and `website-backup` (3003).
 - No push, deployment, hosted migration or provider change has been made. Do
@@ -128,7 +135,7 @@ no further copy-cleanup pass is needed for the handoff.
 Read [the product-depth roadmap](PRODUCT-DEPTH-ROADMAP-2026-10-02.md) and the
 Remaining section of [money lifecycle](MONEY-LIFECYCLE-2026-10-02.md).
 
-1. **Hosted parity.** Migrations 0013 to 0018, schema-cache refresh, the
+1. **Hosted parity.** Migrations 0013 to 0030, schema-cache refresh, the
    matching web client and sender, auth, invitations and real email delivery
    are all unverified on Neon. Apply migrations before deploying the client.
    Measure cold/warm/idle loading with separate accounts. Do not declare

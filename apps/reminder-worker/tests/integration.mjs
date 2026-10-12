@@ -13,6 +13,8 @@ process.env.RESEND_FROM = "Commune <test@example.test>";
 process.env.APP_URL = "https://example.test";
 process.env.NEON_AUTH_BASE_URL = "https://auth.example.test/neondb/auth";
 process.env.NEON_AUTH_JWKS_URL = "https://auth.example.test/jwks";
+process.env.UNSUBSCRIBE_SECRET = "test-only-unsubscribe-secret-0123456789";
+process.env.WORKER_PUBLIC_URL = "https://worker.example.test";
 
 const { publicKey, privateKey } = await generateKeyPair("EdDSA");
 const publicJwk = await exportJWK(publicKey);
@@ -384,6 +386,51 @@ try {
     WHERE reminder_id = ANY($1::uuid[]) AND status = 'sent'
   `, [batchIds]);
   assert.equal(batch.rows[0].count, 12);
+
+  // One-click unsubscribe. Each email carries a signed link for its
+  // recipient. Opening it only asks; a link altered to name someone else
+  // changes nothing; the one-click POST turns reminder emails off, and the
+  // next reminder is then held back.
+  const lastPayload = providerCalls.at(-1).payload;
+  assert.equal(lastPayload.headers["List-Unsubscribe-Post"], "List-Unsubscribe=One-Click");
+  const link = lastPayload.headers["List-Unsubscribe"].replace(/^<|>$/g, "");
+  assert.equal(new URL(link).origin, "https://worker.example.test");
+  assert.equal(new URL(link).searchParams.get("u"), bob);
+  assert.ok(lastPayload.text.includes(link), "The plain-text email offers the same link");
+  const emailSetting = async (userId) => (await db.query(
+    "SELECT email_reminders FROM public.notification_preferences WHERE user_id = $1", [userId],
+  )).rows[0]?.email_reminders ?? true;
+  assert.equal(await emailSetting(bob), true);
+  const asked = await worker.fetch(new Request(link));
+  assert.equal(asked.status, 200);
+  assert.match(await asked.text(), /Turn off reminder emails/);
+  assert.equal(await emailSetting(bob), true, "Opening the link must not turn emails off");
+  const altered = new URL(link);
+  altered.searchParams.set("u", alice);
+  assert.equal((await worker.fetch(new Request(altered, {
+    method: "POST", body: "List-Unsubscribe=One-Click",
+  }))).status, 400);
+  assert.equal(await emailSetting(alice), true);
+  const unsubscribed = await worker.fetch(new Request(link, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: "List-Unsubscribe=One-Click",
+  }));
+  assert.equal(unsubscribed.status, 200);
+  assert.equal(await emailSetting(bob), false);
+  assert.equal(await emailSetting(alice), true);
+  const afterShare = await createShare("After unsubscribing");
+  const afterReminder = (await db.query(`
+    INSERT INTO public.reminders
+      (commune_id, kind, source_id, sender_user_id, recipient_user_id, amount_minor)
+    VALUES ($1, 'nudge', $2, $3, $4, 5000)
+    RETURNING id
+  `, [commune, afterShare, alice, bob])).rows[0].id;
+  await db.query("INSERT INTO public.reminder_email_outbox (reminder_id) VALUES ($1)", [afterReminder]);
+  const callsBefore = providerCalls.length;
+  await runWorker();
+  assert.equal((await outbox(afterReminder)).status, "suppressed");
+  assert.equal(providerCalls.length, callsBefore);
 
   console.log("Reminder worker integration checks passed");
 } catch (error) {

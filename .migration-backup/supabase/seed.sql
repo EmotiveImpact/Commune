@@ -1,2 +1,0 @@
--- Seed data for Commune
--- Add seed data here when needed for development and testing.

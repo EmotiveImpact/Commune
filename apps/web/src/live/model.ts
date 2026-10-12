@@ -9,6 +9,7 @@ import {
 import type { OperationItem } from "../data/operations";
 import { notePreview } from "../data/notePresentation";
 import { todayIso } from "../data/operations";
+import { netBalances, overallNet } from "../../../../packages/core/src/balances";
 
 export type CurrencyCode = "GBP" | "USD" | "EUR";
 export type MemberRole = "admin" | "member";
@@ -159,8 +160,16 @@ export type RecurringBill = {
   id: string; title: string; amountMinor: number; paidByUserId: string;
   allocations: Array<{ userId: string; amountMinor: number }>;
   frequency: "weekly" | "monthly"; nextDueOn: string; paused: boolean; createdBy: string;
+  /** Every change makes a new version; an edit sends the one it was based on. */
+  version: number;
+  /** An archived bill is paused and out of the due list until restored. */
+  archivedAt?: string | null;
   /** The latest periods, newest first. */
   history?: RecurringPeriod[];
+};
+/** What pausing, resuming, archiving or restoring left the bill as. */
+export type RecurringBillState = {
+  id: string; paused: boolean; archivedAt: string | null; version: number; duplicate: boolean;
 };
 export type RecurringPeriod = {
   dueOn: string; status: "recorded" | "skipped"; amountMinor: number | null; expenseId: string | null;
@@ -217,9 +226,12 @@ export type SentReminder = {
 };
 export type Notification = {
   id: string;
-  /** Reminders, plus ledger notices about an expense the reader is part of. */
+  /**
+   * Reminders, ledger notices about an expense the reader is part of, and
+   * changes someone else made to the reader's own pledge (sourceId is the pledge).
+   */
   kind: "nudge" | "chase" | "receipt-reversed" | "expense-corrected" | "expense-voided"
-    | "payment-reported" | "payment-confirmed" | "payment-declined";
+    | "payment-reported" | "payment-confirmed" | "payment-declined" | "pledge-changed" | "pledge-cancelled";
   sourceId: string;
   amountMinor: number | null;
   communeId: string;
@@ -383,7 +395,6 @@ export function hubFromSnapshot(
   const moves: Hub["moves"] = [];
   let youOwe = 0;
   let youAreOwed = 0;
-  const byMember = new Map<string, { owesYou: number; youOwe: number }>();
   for (const expense of snapshot.expenses) {
     for (const share of expense.shares) {
       if (share.userId === expense.paidByUserId) continue;
@@ -391,9 +402,6 @@ export function hubFromSnapshot(
       if (!due) continue;
       if (share.userId === viewer.id) {
         youOwe += due;
-        const prior = byMember.get(expense.paidByUserId) ?? { owesYou: 0, youOwe: 0 };
-        prior.youOwe += due;
-        byMember.set(expense.paidByUserId, prior);
         moves.push({
           go: "settle",
           arrow: "→",
@@ -404,9 +412,6 @@ export function hubFromSnapshot(
         });
       } else if (expense.paidByUserId === viewer.id) {
         youAreOwed += due;
-        const prior = byMember.get(share.userId) ?? { owesYou: 0, youOwe: 0 };
-        prior.owesYou += due;
-        byMember.set(share.userId, prior);
         moves.push({
           go: "settle",
           arrow: "→",
@@ -419,18 +424,21 @@ export function hubFromSnapshot(
     }
   }
   const activeMembers = snapshot.members.filter(member => member.active !== false);
+  // One net figure per person, so money owed both ways is never half shown.
+  // The breakdown's statement uses the same figures.
+  const nets = netBalances(snapshot.expenses, viewer.id);
   const members: LiveHub["members"] = activeMembers.map((member, index) => {
-    const relation = byMember.get(member.userId) ?? { owesYou: 0, youOwe: 0 };
+    const net = member.userId === viewer.id ? overallNet(nets) : nets.get(member.userId) ?? 0;
     const balance = member.userId === viewer.id
-      ? youOwe > 0
-        ? `Owe ${money(youOwe, currency)}`
-        : youAreOwed > 0
-          ? `Owed ${money(youAreOwed, currency)}`
+      ? net < 0
+        ? `Owe ${money(-net, currency)} overall`
+        : net > 0
+          ? `Owed ${money(net, currency)} overall`
           : "Even"
-      : relation.owesYou > 0
-        ? `Owes you ${money(relation.owesYou, currency)}`
-        : relation.youOwe > 0
-          ? `You owe ${money(relation.youOwe, currency)}`
+      : net > 0
+        ? `Owes you ${money(net, currency)}`
+        : net < 0
+          ? `You owe ${money(-net, currency)}`
           : "Even";
     return {
       userId: member.userId,
