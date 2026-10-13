@@ -137,10 +137,10 @@
 }
 @media (min-width: 561px) {
   .c-home-top {
-    gap: 16px;
-    padding: 30px 16px 16px;
+    gap: 0;
+    padding: 28px 16px 16px;
     border-radius: var(--radius-surface);
     background: var(--home-panel);
   }
-  .c-home-top > .c-home-standing { padding: 0 16px 10px; }
+  .c-home-top > .c-home-standing { padding: 0 16px 28px; }
 }
