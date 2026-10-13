@@ -31,11 +31,11 @@ export default function Expenses() {
       <Pad gap={14}>
         <ScopeRow />
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-          <View accessibilityRole="radiogroup" style={{ flexDirection: "row", padding: 3, gap: 2, borderRadius: 11, backgroundColor: c.recessed }}>
+          <View accessibilityRole="radiogroup" style={{ flexDirection: "row", padding: 3, gap: 2, borderRadius: radius.pill, backgroundColor: c.recessed }}>
             {(["all", "open", "settled"] as Filter[]).map((value) => {
               const on = filter === value;
               return <Pressable key={value} accessibilityRole="radio" accessibilityState={{ selected: on }} onPress={() => setFilter(value)}
-                style={{ height: 32, paddingHorizontal: 14, borderRadius: 8, justifyContent: "center", backgroundColor: on ? c.frame : "transparent" }}>
+                style={{ height: 32, paddingHorizontal: 14, borderRadius: radius.pill, justifyContent: "center", backgroundColor: on ? c.frame : "transparent" }}>
                 <Text style={{ fontSize: 13, fontWeight: "500", color: on ? c.onFrame : c.ink2 }}>{value[0].toUpperCase() + value.slice(1)}</Text>
               </Pressable>;
             })}

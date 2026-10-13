@@ -27,8 +27,8 @@ describe("shared page header contract", () => {
     expect(styles.hub).not.toMatch(/\.hub-editorial\s+\.a-header(?:\b|[-\s])/);
     expect(declarations("app", ".a-header")).toContain("padding: 12px 28px;");
     expect(declarations("app", ".a-header")).toContain("color: var(--ink);");
-    expect(declarations("primitives", ".a-header-title h1")).toContain("font-size: 21px;");
-    expect(declarations("primitives", ".a-header-title h1")).toContain("font-weight: 550;");
+    expect(declarations("primitives", ".a-header-title h1")).toContain("font-size: 24px;");
+    expect(declarations("primitives", ".a-header-title h1")).toContain("font-weight: 400;");
   });
 });
 
@@ -46,7 +46,7 @@ describe("Settle share action alignment", () => {
 describe("shared corner contracts", () => {
   it("defines a single control/surface family with legacy aliases", () => {
     expect(styles.shared).toContain("--radius-control: 9px;");
-    expect(styles.shared).toContain("--radius-surface: 15px;");
+    expect(styles.shared).toContain("--radius-surface: 24px;");
     expect(styles.shared).toContain("--radius: var(--radius-surface);");
     expect(styles.shared).toContain("--radius-sm: var(--radius-control);");
     expect(styles.primitives).not.toMatch(/--radius(?:-sm)?:\s*\d/);

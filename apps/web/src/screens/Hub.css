@@ -3,7 +3,7 @@
 @layer screens {
 /* The live Hub follows the selected desktop prototype. Other screens keep their own layout. */
 .a-body.hub-editorial {
-  --hub-ink: #1a1e2b;
+  --hub-ink: var(--navy);
   --hub-muted: #737d79;
   --hub-paper: #f5f1ea;
   --hub-panel: #fffefa;

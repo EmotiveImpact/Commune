@@ -1,0 +1,146 @@
+/*
+ * Harmony with the website (12 October 2026). The marketing site leads and
+ * the app borrows its signatures: light DM Sans headlines with tight
+ * tracking, one navy (#14243b), round sage buttons, the white highlight
+ * behind the amount, small uppercase labels and rounder cards. Inter stays
+ * for rows, figures and forms. Sage stays for what is settled and good
+ * (Edem kept the green and took the website's round shape, 12 October).
+ * Plan: https://claude.ai/artifact/K1Wao31fQRzg4fPFNtFXw2
+ * In the overrides layer, after the design-language primitives, so one file
+ * holds the whole change.
+ */
+
+:root {
+  --action: var(--sage);
+  --action-hover: #24583f;
+  --on-action: #ffffff;
+}
+.a-body.is-dark {
+  --action: #7cc39f;
+  --action-hover: #95d2b2;
+  --on-action: #0c1912;
+}
+
+/* Headlines: the website's light display type. */
+.a-window-bar h2,
+.c-product-dialog h2,
+.ops-yours > h2,
+.ops-board-head > span,
+.a-content :is(.a-panel, .a-card) h2,
+.c-home-head h2,
+.c-hub .c-hub-identity h2 {
+  font-family: var(--font-display);
+  font-weight: 400;
+}
+.a-window-bar h2,
+.c-product-dialog h2 {
+  font-size: 22px;
+  letter-spacing: -0.03em;
+}
+.a-content :is(.a-panel, .a-card) h2,
+.c-home-head h2,
+.ops-board-head > span {
+  font-size: 20px;
+  letter-spacing: -0.025em;
+}
+.c-hub .c-hub-identity h2 {
+  letter-spacing: -0.04em;
+}
+.ops-yours > h2 {
+  font-size: 30px;
+  letter-spacing: -0.035em;
+}
+.c-home-display {
+  font-weight: 400;
+  letter-spacing: -0.04em;
+}
+.c-home-square .c-home-display {
+  letter-spacing: -0.045em;
+}
+
+/* The website's white highlight, behind the amounts Home opens on. It
+   carries its own ink, so it reads on the phone's navy band too. */
+.c-home-standing .c-home-display em {
+  padding: 0 0.16em 0.04em;
+  border-radius: 12px;
+  background: var(--home-surface);
+  color: var(--home-ink);
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
+/* The website's small label: uppercase, 12px, spaced. */
+.c-home-over,
+.c-home-group h3 {
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* Buttons: the website's round shape, in the app's green. */
+.a-body :is(.a-btn, .c-home-btn, .ops-add, .c-hub-button) {
+  border-radius: var(--radius-pill);
+}
+.a-body .a-btn:not(.ghost, .danger, .nudge),
+.a-body .ops-add,
+.a-body :is(.a-seg, .a-note-types) button.is-on,
+.a-body .c-split-methods button[aria-pressed=true] {
+  background: var(--action);
+  color: var(--on-action);
+}
+.a-body .a-btn:not(.ghost, .danger, .nudge):hover:not(:disabled),
+.a-body .ops-add:hover:not(:disabled) {
+  background: var(--action-hover);
+}
+.c-home {
+  --home-action: var(--action);
+  --home-action-hover: var(--action-hover);
+  --home-on-action: var(--on-action);
+}
+
+/* Rounder cards, as on the website. */
+.a-card {
+  border-radius: var(--radius-surface);
+}
+
+/* This Hub: the same green pills and display headings. Links that
+   used the green action colour keep green for text, as on the website. */
+.c-hub {
+  --hub-action: var(--action);
+  --hub-action-text: var(--on-action);
+  --hub-action-hover: var(--action-hover);
+}
+.c-hub-link,
+.c-hub-note-row:hover strong {
+  color: var(--text-green);
+}
+.c-hub :is(.c-hub-attention-end button, .c-hub-invite, .c-hub-settings) {
+  border-radius: var(--radius-pill);
+}
+.c-hub-section-title {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 20px;
+  letter-spacing: -0.025em;
+}
+
+/* Home on wider screens: the sentence and the next step share one pale
+   green panel (the landing page's green), the white next step held inside
+   it, so the two read as one shape, as the navy band and the next step do
+   on a phone (Edem, 13 October). */
+.c-home {
+  --home-panel: #dce8d3;
+}
+.a-body.is-dark .c-home {
+  --home-panel: #253b34;
+}
+@media (min-width: 561px) {
+  .c-home-top {
+    gap: 0;
+    padding: 28px 16px 16px;
+    border-radius: var(--radius-surface);
+    background: var(--home-panel);
+  }
+  .c-home-top > .c-home-standing { padding: 0 16px 28px; }
+}
