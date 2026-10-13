@@ -124,3 +124,23 @@
   font-size: 20px;
   letter-spacing: -0.025em;
 }
+
+/* Home on wider screens: the sentence and the next step share one pale
+   green panel (the landing page's green), the white next step held inside
+   it, so the two read as one shape, as the navy band and the next step do
+   on a phone (Edem, 13 October). */
+.c-home {
+  --home-panel: #dce8d3;
+}
+.a-body.is-dark .c-home {
+  --home-panel: #253b34;
+}
+@media (min-width: 561px) {
+  .c-home-top {
+    gap: 16px;
+    padding: 30px 16px 16px;
+    border-radius: var(--radius-surface);
+    background: var(--home-panel);
+  }
+  .c-home-top > .c-home-standing { padding: 0 16px 10px; }
+}
