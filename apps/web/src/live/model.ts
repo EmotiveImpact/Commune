@@ -443,6 +443,13 @@ function namesList(names: string[]): string {
  * there is nothing for the viewer to do. A summary snapshot keeps pending
  * payment reports (0039), so Home sees them for every commune.
  */
+/** Owed both ways: say where that leaves the viewer, so the two figures never read as opposite answers. */
+function overallLine(netMinor: number, currency: CurrencyCode): string {
+  if (netMinor > 0) return `, so you’re ${money(netMinor, currency)} ahead overall`;
+  if (netMinor < 0) return `, so you owe ${money(-netMinor, currency)} overall`;
+  return ", so you’re even overall";
+}
+
 export function needsYou(snapshot: Snapshot, viewerId: string, today = todayIso()): { actions: Need[]; waiting: Need[] } {
   const currency = snapshot.commune.currency;
   const nameOf = (userId: string) => personName(snapshot.members, userId, "a former member", { left: true });
@@ -683,7 +690,7 @@ export function hubFromSnapshot(
     oweLabel,
     oweAmount: money(moneyFocus, currency),
     oweCopy: youOwe > 0
-      ? `You owe ${money(youOwe, currency)} in outstanding shares.${youAreOwed > 0 ? ` You’re also owed ${money(youAreOwed, currency)}.` : ""}`
+      ? `You owe ${money(youOwe, currency)} in outstanding shares.${youAreOwed > 0 ? ` You’re also owed ${money(youAreOwed, currency)}${overallLine(youAreOwed - youOwe, currency)}.` : ""}`
       : youAreOwed > 0
         ? `You’re owed ${money(youAreOwed, currency)} in outstanding shares.`
         : "No outstanding shares involving you.",

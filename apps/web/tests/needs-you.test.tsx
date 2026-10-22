@@ -315,29 +315,23 @@ describe("Coming up on Home", () => {
   });
 });
 
-describe("Needs you on This Hub", () => {
-  it("counts only what needs the viewer, in the same order, and keeps what others owe apart", async () => {
+describe("Your part on This Hub", () => {
+  it("leads with the first payment to act on, in Home's order, and keeps what others owe apart", async () => {
     mount("/hub");
-    const needs = await screen.findByRole("region", { name: "Needs you" });
-    await within(needs).findAllByText("Electricity");
-    expect(within(needs).getByText("6 items")).toBeTruthy();
-    const waiting = within(needs).getByRole("region", { name: "Waiting on others" });
-    const money = [...needs.querySelectorAll<HTMLElement>(".c-hub-attention-row")].map((row) =>
-      [row.querySelector("strong")?.textContent, row.querySelector("small")?.textContent, row.querySelector(".c-hub-attention-end strong")?.textContent]);
-    expect(money).toEqual([
-      ["Electricity", "Ben Baker says they sent it", "£20.00"],
-      ["Internet", "You owe Ben Baker · overdue", "£15.00"],
-      ["Water", "You owe Cat Cole", "£8.00"],
-    ]);
-    const others = [...needs.querySelectorAll<HTMLElement>(".c-hub-note-row")].filter((row) => !waiting.contains(row))
-      .map((row) => [row.querySelector("strong")?.textContent, row.querySelector("small")?.textContent]);
-    expect(others).toEqual([
-      ["Bins", "Overdue · your turn"],
-      ["Hoover", "Your turn today"],
-      ["Boiler", "Remaining on your pledge · overdue · £60.00"],
-    ]);
-    expect([...waiting.querySelectorAll<HTMLElement>(".c-hub-note-row")].map((row) => row.querySelector("small")?.textContent)).toEqual([
-      "Cat Cole owes you · £20.00", "3 people owe you · £30.00", "You said you sent it · waiting for Cat Cole · £500.00",
-    ]);
+    const part = await screen.findByRole("region", { name: "Your part" });
+    await within(part).findByText("Electricity");
+    // A payment someone says they sent comes first, with the answer on the button.
+    expect(within(part).getByText("Ben Baker says they sent it")).toBeTruthy();
+    expect(within(part).getByRole("button", { name: "Confirm £20.00 received" })).toBeTruthy();
+    expect(within(part).getByRole("button", { name: "Not received" })).toBeTruthy();
+    expect(within(part).getByRole("button", { name: "2 more to settle" })).toBeTruthy();
+    // Pledges stay with the viewer's part; tasks live in the week.
+    const pledge = within(part).getByRole("button", { name: /Boiler/ });
+    expect(pledge.querySelector("small")?.textContent).toBe("Remaining on your pledge · overdue · £60.00");
+    expect(within(part).getByText("3 waiting on others")).toBeTruthy();
+    const week = screen.getByRole("region", { name: "This week" });
+    expect(within(week).getByRole("checkbox", { name: "Mark Bins done" })).toBeTruthy();
+    expect(within(week).getByRole("checkbox", { name: "Mark Hoover done" })).toBeTruthy();
   });
 });
+
