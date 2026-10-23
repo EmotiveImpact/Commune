@@ -127,11 +127,21 @@ describe("paying someone who has shared their pay links", () => {
     expect(within(dialog).getByRole("button", { name: "Copy details" })).toBeTruthy();
   });
 
+  it("puts their ways to pay on the Settle row; opening one also opens I’ve sent it", async () => {
+    mount("/settle");
+    const ways = await screen.findByRole("group", { name: "Ways to pay Sam" });
+    const monzo = within(ways).getByRole("link", { name: /^Monzo/ });
+    expect(monzo.getAttribute("href")).toBe("https://monzo.me/samokafor/16.00?d=Printer%20ink");
+    fireEvent.click(monzo);
+    expect(screen.getByRole("dialog", { name: "Tell Sam you’ve paid" })).toBeTruthy();
+  });
+
   it("says plainly when the bill payer has not added any", async () => {
     current.payLinks = {};
     mount("/settle");
     fireEvent.click(await screen.findByRole("button", { name: /^I’ve sent it/ }));
     const dialog = screen.getByRole("dialog", { name: "Tell Sam you’ve paid" });
+    expect(screen.queryByRole("group", { name: "Ways to pay Sam" })).toBeNull();
     expect(within(dialog).queryByRole("link")).toBeNull();
     expect(within(dialog).getByText(/Sam hasn’t added how they like to be paid/)).toBeTruthy();
   });

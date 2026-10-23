@@ -292,14 +292,21 @@ describe("Today on Home", () => {
     expect(readAgain()).toEqual(["home-1"]);
   });
 
-  it("says how the bill payer takes money on the next step, and sums nothing across currencies", async () => {
+  it("offers the bill payer’s own ways to pay on the next step, each opening I’ve paid too", async () => {
     vi.mocked(loadSnapshot).mockImplementation(async (commune) => commune.id === home.id
       ? { ...homeSnapshot(), reports: undefined, expenses: homeSnapshot().expenses.filter((item) => item.title !== "Electricity"),
         payLinks: { ben: [{ provider: "monzo", handle: "benbaker" }, { provider: "bank", accountName: "Ben Baker", sortCode: "204577", accountNumber: "41029388" }] } }
       : { ...tripSummary(), expenses: [] });
     mount("/");
     const next = await screen.findByRole("article", { name: "Internet" });
-    expect(next.querySelector(".c-home-pays")?.textContent).toBe("Ben takes MonzoBank transfer");
+    const ways = within(next).getByRole("group", { name: "Ways to pay Ben Baker" });
+    const monzo = within(ways).getByRole("link", { name: /^Monzo £15\.00/ });
+    expect(monzo.getAttribute("href")).toBe("https://monzo.me/benbaker/15.00?d=Internet");
+    expect(monzo.getAttribute("target")).toBe("_blank");
+    expect(within(ways).getByRole("button", { name: /^Bank transfer/ })).toBeTruthy();
+    // Opening their app also opens "I’ve paid", so the payment is recorded on the way back.
+    fireEvent.click(monzo);
+    expect(await screen.findByRole("dialog", { name: "Tell Ben Baker you’ve paid" })).toBeTruthy();
   });
 });
 

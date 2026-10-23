@@ -9,6 +9,7 @@ import { cx } from "../ui/cx";
 import { CoverImage, coverToneClass } from "../ui/CoverImage";
 import { activityStamp, activityWord } from "../ui/ActivityLog";
 import { useReceiptActions } from "../ui/Receipts";
+import { PayButtons } from "../ui/PayLinks";
 import { addDays, dateFromIso, todayIso } from "../data/operations";
 import { coverSource } from "../data/covers";
 import { animate } from "../ui/motion";
@@ -224,8 +225,9 @@ function NextStep({ entry, total, onAct, busy }: { entry: Entry; total: number; 
         {item.kind === "confirm"
           ? <button className="c-home-btn is-secondary is-large" type="button" disabled={busy} onClick={() => onAct(entry, true)}>Not received</button>
           : null}
-        {item.kind === "pay" && item.person && hub.payWith?.[item.person]?.length ? (
-          <span className="c-home-pays">{first} takes {hub.payWith[item.person].map((name) => <span key={name} className="c-home-pay">{name}</span>)}</span>
+        {item.kind === "pay" && item.person && item.minor ? (
+          <PayButtons userId={item.person} communeId={hub.id} name={nameOf(hub, item.person, "them")} amountMinor={item.minor} currency={hub.currency}
+            note={item.title} onOpen={() => onAct(entry)} disabled={busy} load />
         ) : null}
         {note ? <span className="c-home-note">{note}</span> : null}
       </div>
@@ -344,6 +346,10 @@ function Row({ entry, today, waiting = false, onAct, busy, className }: {
       <span className="c-home-row-main">
         <button className="c-home-row-title" type="button" onClick={() => open(entry)}>{item.title}</button>
         <span className="c-home-row-meta"><Place hub={hub} /><span aria-hidden="true">·</span><span>{detail(item)}</span></span>
+        {onAct && item.kind === "pay" && item.person && item.minor ? (
+          <PayButtons userId={item.person} communeId={hub.id} name={nameOf(hub, item.person, "them")} amountMinor={item.minor} currency={hub.currency}
+            note={item.title} onOpen={() => onAct(entry)} disabled={busy} short />
+        ) : null}
       </span>
       <span className="c-home-row-fig">
         {item.amount ? <strong>{item.amount}</strong> : null}

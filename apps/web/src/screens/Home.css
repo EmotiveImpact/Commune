@@ -395,8 +395,8 @@
 .c-home-feed-side strong { font-size: 13.5px; line-height: 19px; font-weight: 500; font-variant-numeric: tabular-nums; }
 
 /* How the bill payer takes money, under the next step's button. */
-.c-home-pays { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 12px; line-height: 16px; color: var(--home-ink-2); }
-.c-home-pay { padding: 3px 9px; border: 1px solid var(--home-line-strong); border-radius: 999px; color: var(--home-ink); font-weight: 500; }
+.c-home-next-foot .c-pay-buttons { flex-basis: 100%; }
+.c-home-row-main .c-pay-buttons { margin-top: 6px; }
 
 /* A commune card's week in a few words. */
 .c-home-pulse { display: block; margin-top: 4px; font-size: 12.5px; line-height: 17px; font-weight: 500; color: var(--home-action); }

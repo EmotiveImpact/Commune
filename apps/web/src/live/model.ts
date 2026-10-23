@@ -9,7 +9,6 @@ import {
 } from "../data/household";
 import type { OperationItem } from "../data/operations";
 import { notePreview } from "../data/notePresentation";
-import { parsePayLinks, PAY_PROVIDER_NAME } from "../data/payLinks";
 import { addDays, timestampDay, todayIso } from "../data/operations";
 import { formatDay, formatMoney, netBalances, overallNet } from "@commune/core";
 
@@ -342,8 +341,6 @@ export type LiveHub = Omit<Hub, "members" | "activity" | "now"> & {
   coming: Upcoming[];
   /** This commune's week in a few words, for its card on Home (see communePulse). */
   pulse?: { text: string; late: boolean };
-  /** How each member takes money, from the pay links they saved: provider names by user id. */
-  payWith?: Record<string, string[]>;
 };
 
 /**
@@ -740,8 +737,6 @@ export function hubFromSnapshot(
     owingYou: [...owingYou],
     coming: comingUp(source, viewer.id, today),
     pulse: communePulse(snapshot, today),
-    payWith: Object.fromEntries(Object.entries(snapshot.payLinks ?? {}).map(([userId, links]) =>
-      [userId, parsePayLinks(links).map((link) => PAY_PROVIDER_NAME[link.provider])])),
     moves,
     members,
     activity: [...snapshot.expenses.map((expense) => ({

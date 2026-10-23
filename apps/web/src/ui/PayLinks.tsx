@@ -57,6 +57,46 @@ export function PayeeLinks({ userId, communeId, name, amountMinor, currency, not
   </div>;
 }
 
+/**
+ * The ways someone takes payment, as buttons beside a payment you owe them:
+ * "Tom takes [Monzo £5.90] [Bank transfer]". A link opens their own app with
+ * the amount filled in where it can. Either button also runs onOpen, which
+ * opens "I’ve paid" (with the bank details to copy), so the payment is
+ * recorded when the person comes back. Commune moves no money.
+ */
+export function PayButtons({ userId, communeId, name, amountMinor, currency, note, onOpen, load = false, short = false, disabled = false }: {
+  userId: string | null | undefined; communeId?: string; name: string; amountMinor: number; currency: CurrencyCode; note?: string;
+  onOpen?: () => void; load?: boolean; short?: boolean; disabled?: boolean;
+}) {
+  const { payLinksFor, loadPayLinksFor } = useApp();
+  const links = payLinksFor(userId, communeId);
+  const unread = links === null;
+  // A commune held only as a summary has no pay links; reading its record is
+  // worth it for one next step, not for every row of a list.
+  useEffect(() => {
+    if (load && unread) void loadPayLinksFor(communeId).catch(() => undefined);
+  }, [load, unread, communeId, loadPayLinksFor]);
+  if (!links?.length) return null;
+  const amount = money(amountMinor, currency);
+  const first = name.split(" ")[0] || name;
+  return <span className={`c-pay-buttons${short ? " is-short" : ""}`} role="group" aria-label={`Ways to pay ${name}`}>
+    {short ? null : <span className="c-pay-buttons-lead">{first} takes</span>}
+    {links.map((link) => {
+      const provider = PAY_PROVIDER_NAME[link.provider];
+      const target = payLinkHref(link, amountMinor, currency, note);
+      const label = target?.amountFilled && !short ? `${provider} ${amount}` : provider;
+      return target
+        ? <a key={link.provider} className="c-pay-button" href={target.href} target="_blank" rel="noopener noreferrer"
+          aria-disabled={disabled || undefined} onClick={(event) => { if (disabled) { event.preventDefault(); return; } onOpen?.(); }}>
+          {label}<span className="c-visually-hidden">, opens {provider} to pay {first} {amount}</span>
+        </a>
+        : <button key={link.provider} className="c-pay-button" type="button" disabled={disabled} onClick={() => onOpen?.()}>
+          {label}<span className="c-visually-hidden">: see {first}’s details</span>
+        </button>;
+    })}
+  </span>;
+}
+
 const EMPTY: Record<PayProvider, PayLinkInput> = {
   monzo: { handle: "" }, paypal: { handle: "" }, revolut: { handle: "" },
   bank: { accountName: "", sortCode: "", accountNumber: "" },

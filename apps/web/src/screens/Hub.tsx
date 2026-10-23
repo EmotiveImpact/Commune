@@ -8,6 +8,7 @@ import { CoverImage, coverToneClass } from "../ui/CoverImage";
 import { isNotePinned, isSecretFact, noteCategory, notePreview } from "../data/notePresentation";
 import { addDays, dateFromIso, needsDoneBy, taskDoneCopy, todayIso, type DoneBy, type OperationItem } from "../data/operations";
 import { useReceiptActions } from "../ui/Receipts";
+import { PayButtons } from "../ui/PayLinks";
 import type { Need } from "../live/model";
 import { hideToast, showToast } from "../ui/Toast";
 import { DoneByChoice } from "../ui/DoneByChoice";
@@ -117,6 +118,10 @@ function YourPart() {
         <span><strong>{next.title}</strong><small className={next.late && next.kind !== "confirm" ? "c-hub-late" : undefined}>{next.when}</small></span>
         {next.amount && <strong className="c-hub-next-amount">{next.amount}</strong>}
       </div>
+      {next.kind === "pay" && next.minor ? <div className="c-hub-next-pay">
+        <PayButtons userId={next.person} communeId={hub.id} name={who} amountMinor={next.minor} currency={hub.currency} note={next.title}
+          onOpen={() => act()} disabled={receipts.busy} />
+      </div> : null}
       <div className="c-hub-next-foot">
         <button className="c-hub-button is-large" type="button" disabled={receipts.busy} onClick={() => act()}>
           {next.kind === "pay" ? `I’ve paid ${firstOf(who)} ${next.amount ?? ""}`.trim() : next.kind === "confirm" ? `Confirm ${next.amount ?? ""} received`.replace("  ", " ") : "Open"}

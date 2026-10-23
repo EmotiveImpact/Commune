@@ -8,6 +8,7 @@ import { LIMITS } from "../data/limits";
 import { ReminderFlowDialog, useReminderFlow } from "../ui/ReminderConfirm";
 import { formatReminderDay, reminderEligibility } from "../data/reminders";
 import { LatestReportAnswer, pendingReport, reportSummary, useReceiptActions } from "../ui/Receipts";
+import { PayButtons } from "../ui/PayLinks";
 import { CalendarDate } from "../ui/CalendarDate";
 import { initialsOf } from "../data/household";
 import { formatMoney } from "@commune/core";
@@ -211,6 +212,8 @@ export function SettleScreen() {
                 {report ? <div className="why">{receiving
                   ? `${reportSummary(report, hub.currency, personName(share.userId, "A member"))}. Not yet confirmed.`
                   : `You said you sent ${formatMoney(report.amountMinor, hub.currency)} on ${formatReminderDay(report.sentOn)}. Waiting for ${payerName}.`}</div> : null}
+                {!receiving && !report ? <PayButtons userId={expense.paidByUserId} name={payerName} amountMinor={outstanding} currency={hub.currency} note={expense.name} short
+                  onOpen={() => { setMessage(""); receipts.report({ shareId: share.id, payerName, payerId: expense.paidByUserId, expenseName: expense.name, outstandingMinor: outstanding, currency: hub.currency }); }} /> : null}
                 {!receiving ? <LatestReportAnswer share={share} currency={hub.currency} viewerId={me} names={(userId) => personName(userId, "The bill payer")} /> : null}
                 {receiving && (target || (reminderUsage?.recipientUsage[share.userId] ?? 0) > 0) ? (
                   <RecipientReminderCount usage={reminderUsage} recipientId={share.userId} />

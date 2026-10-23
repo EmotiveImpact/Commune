@@ -229,4 +229,14 @@
   .c-pay-copy { flex: 1 1 calc(100% - 40px); }
   .c-pay-link .a-btn:first-of-type { margin-left: 40px; }
 }
+
+/* Ways to pay someone, beside a payment you owe them. */
+.c-pay-buttons { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; font-size: 12.5px; line-height: 16px; color: var(--ink-soft); }
+.c-pay-button { display: inline-flex; align-items: center; min-height: 32px; padding: 0 12px; border: 1px solid var(--border); border-radius: 999px; background: transparent; color: var(--ink); font: inherit; font-weight: 600; text-decoration: none; white-space: nowrap; cursor: pointer; }
+.c-pay-button:hover { border-color: var(--ink-soft); }
+.c-pay-button:focus-visible { outline: 2px solid var(--focus, currentColor); outline-offset: 2px; }
+.c-pay-button[aria-disabled="true"], .c-pay-button:disabled { opacity: .5; cursor: default; }
+.a-move .c-pay-buttons { margin-top: 6px; }
+.c-pay-buttons.is-short .c-pay-button { min-height: 28px; padding: 0 10px; font-size: 12px; }
+@media (pointer: coarse) { .c-pay-button, .c-pay-buttons.is-short .c-pay-button { min-height: 44px; } }
 }
