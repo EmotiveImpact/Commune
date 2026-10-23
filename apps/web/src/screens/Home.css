@@ -65,6 +65,7 @@
   text-wrap: balance;
 }
 .c-home-display em { font-style: normal; }
+.c-home-display.is-one-line { white-space: nowrap; text-wrap: nowrap; contain: inline-size; }
 .c-home-sub { max-width: 560px; font-size: 16px; line-height: 24px; color: var(--home-ink-2); }
 
 /* ---------- Status ---------- */
@@ -395,7 +396,7 @@
 .c-home-feed-side strong { font-size: 13.5px; line-height: 19px; font-weight: 500; font-variant-numeric: tabular-nums; }
 
 /* How the bill payer takes money, under the next step's button. */
-.c-home-next-foot .c-pay-buttons { flex-basis: 100%; }
+.c-home-next-foot .c-pay-buttons { max-width: none; flex-basis: calc(100% + 20px); margin-right: -20px; padding-right: 20px; }
 .c-home-row-main .c-pay-buttons { margin-top: 6px; }
 
 /* A commune card's week in a few words. */

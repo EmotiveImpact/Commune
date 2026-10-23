@@ -181,10 +181,11 @@ function Standing({ places, needs, waiting, today, name }: {
     lines = [needs.length || waiting.length ? `Nothing owed either way in ${communes}.` : `Nothing owed and nothing waiting in ${communes}.`, lateLine];
   }
   const sub = [...lines, partial].filter(Boolean).join(" ");
+  const display = useOneLine<HTMLHeadingElement>(sentence ? `${owe.join()}|${owed.join()}|${owing.length}|${name}` : "");
   return (
     <div className="c-home-standing" data-answer="fade">
       <p className="c-home-over">{longDate.format(dateFromIso(today))}</p>
-      {sentence ? <h2 className="c-home-display">{sentence}</h2> : <h2 className="c-visually-hidden">Where you stand</h2>}
+      {sentence ? <h2 ref={display} className="c-home-display">{sentence}</h2> : <h2 className="c-visually-hidden">Where you stand</h2>}
       {sub || !ready.length ? <p className="c-home-sub" role={ready.length ? undefined : "status"}>{sub || "Loading your communes…"}</p> : null}
     </div>
   );
@@ -233,6 +234,41 @@ function NextStep({ entry, total, onAct, busy }: { entry: Entry; total: number; 
       </div>
     </article>
   );
+}
+
+/**
+ * On a phone the sentence keeps to one line ("You owe £78.90 in Elm Road.")
+ * by easing its size down, never below 22px; a sentence too long even then
+ * wraps at the usual size. Wider screens leave it to the stylesheet.
+ */
+const PHONE = "(max-width: 560px)";
+const SMALLEST_LINE = 22;
+function useOneLine<T extends HTMLElement>(key: string) {
+  const ref = useRef<T>(null);
+  useLayoutEffect(() => {
+    const element = ref.current;
+    if (!element || typeof window.matchMedia !== "function") return undefined;
+    const fit = () => {
+      element.style.fontSize = "";
+      element.style.lineHeight = "";
+      element.classList.remove("is-one-line");
+      if (!window.matchMedia(PHONE).matches) return;
+      element.classList.add("is-one-line");
+      const size = parseFloat(getComputedStyle(element).fontSize);
+      const room = element.clientWidth;
+      const needed = element.scrollWidth;
+      if (!size || !room || needed <= room) return;
+      const next = Math.floor(size * room / needed * 10) / 10;
+      if (next < SMALLEST_LINE) { element.classList.remove("is-one-line"); return; }
+      element.style.fontSize = `${next}px`;
+      element.style.lineHeight = "1.15";
+    };
+    fit();
+    window.addEventListener("resize", fit);
+    void document.fonts?.ready.then(fit);
+    return () => window.removeEventListener("resize", fit);
+  }, [key]);
+  return ref;
 }
 
 /** Nothing needs you: say so, and point at anything others are late with. */

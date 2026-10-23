@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type FormEvent } from "react";
 import { useApp } from "../state";
 import { money, type CurrencyCode } from "../live/model";
 import { commandFailure } from "../data/commands";
@@ -76,10 +76,22 @@ export function PayButtons({ userId, communeId, name, amountMinor, currency, not
   useEffect(() => {
     if (load && unread) void loadPayLinksFor(communeId).catch(() => undefined);
   }, [load, unread, communeId, loadPayLinksFor]);
+  // The row slides sideways; while more is hidden off the edge it fades there.
+  const row = useRef<HTMLSpanElement>(null);
+  const count = links?.length ?? 0;
+  useLayoutEffect(() => {
+    const element = row.current;
+    if (!element) return undefined;
+    const mark = () => element.classList.toggle("has-more", element.scrollLeft + element.clientWidth < element.scrollWidth - 1);
+    mark();
+    element.addEventListener("scroll", mark, { passive: true });
+    window.addEventListener("resize", mark);
+    return () => { element.removeEventListener("scroll", mark); window.removeEventListener("resize", mark); };
+  }, [count]);
   if (!links?.length) return null;
   const amount = money(amountMinor, currency);
   const first = name.split(" ")[0] || name;
-  return <span className={`c-pay-buttons${short ? " is-short" : ""}`} role="group" aria-label={`Ways to pay ${name}`}>
+  return <span ref={row} className={`c-pay-buttons${short ? " is-short" : ""}`} role="group" aria-label={`Ways to pay ${name}`}>
     {short ? null : <span className="c-pay-buttons-lead">{first} takes</span>}
     {links.map((link) => {
       const provider = PAY_PROVIDER_NAME[link.provider];

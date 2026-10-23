@@ -231,7 +231,12 @@
 }
 
 /* Ways to pay someone, beside a payment you owe them. */
-.c-pay-buttons { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; font-size: 12.5px; line-height: 16px; color: var(--ink-soft); }
+/* One row that slides sideways: a pill cut off at the edge says there is more. */
+.c-pay-buttons { display: flex; flex-wrap: nowrap; align-items: center; gap: 8px; min-width: 0; max-width: 100%; contain: inline-size; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; -webkit-overflow-scrolling: touch; font-size: 12.5px; line-height: 16px; color: var(--ink-soft); }
+.c-pay-buttons::-webkit-scrollbar { display: none; }
+.c-pay-buttons.has-more { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 20px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 20px), transparent); }
+.c-pay-buttons > * { flex: none; }
+.c-pay-buttons-lead { white-space: nowrap; }
 .c-pay-button { display: inline-flex; align-items: center; min-height: 32px; padding: 0 12px; border: 1px solid var(--border); border-radius: 999px; background: transparent; color: var(--ink); font: inherit; font-weight: 600; text-decoration: none; white-space: nowrap; cursor: pointer; }
 .c-pay-button:hover { border-color: var(--ink-soft); }
 .c-pay-button:focus-visible { outline: 2px solid var(--focus, currentColor); outline-offset: 2px; }
