@@ -12,6 +12,7 @@ import { failure, useApp } from "../../src/state";
 import { Body, Pad, ScopeRow, TopBar, photoOf } from "../../src/ui/chrome";
 import { Avatar, Button, Cal, Empty, Faces, Panel, SectionHead, State, T, tap } from "../../src/ui/kit";
 import { TaskCheck } from "../../src/ui/parts";
+import { PayPrimary } from "../../src/ui/pay";
 import { useToast } from "../../src/ui/toast";
 import { KIND_NAME, radius, useTheme } from "../../src/ui/theme";
 
@@ -104,7 +105,7 @@ function YourPart() {
         </View>
         <T kind="amount" style={{ fontSize: 19, lineHeight: 24 }}>{money(first.amountMinor, first.currency)}</T>
       </Pressable>
-      <Button block label={`I’ve paid ${firstName(first.payerName)} ${money(first.amountMinor, first.currency)}`} onPress={() => router.push(`/record/${first.shareId}`)} />
+      <PayPrimary size="md" target={{ shareId: first.shareId, communeId: first.communeId, payerId: first.payerId, payerName: first.payerName, amountMinor: first.amountMinor, currency: first.currency, title: first.title }} />
       {shares.length > 1 ? <Button variant="quiet" size="sm" label={`${shares.length - 1} more to settle`} onPress={() => router.push("/settle")} /> : null}
     </View> : toConfirm?.debtor.pending ? <View style={{ backgroundColor: c.surface, borderRadius: 12, padding: 12, gap: 10 }}>
       <View style={{ flexDirection: "row", gap: 8 }}>

@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Linking } from "react-native";
 import { type Backend, serverBackend } from "./lib/backend";
 import { demoBackend } from "./lib/demo";
 import {
@@ -56,6 +57,15 @@ type App = {
   loadMyPayLinks(): Promise<void>;
   savePayLink(provider: PayProvider, input: PayLinkInput): Promise<void>;
   removePayLink(provider: PayProvider): Promise<void>;
+  setPreferredPayLink(provider: PayProvider | null): Promise<void>;
+  /**
+   * Opens one of their apps to pay a share, remembering it, so that coming
+   * back to Commune asks whether the payment went (see PayReturn).
+   */
+  openPayLink(shareId: string, provider: string, href: string): void;
+  /** The share whose payee's app was opened last, until it is asked about. */
+  payingAway: { shareId: string; provider: string } | null;
+  clearPayingAway(): void;
 };
 
 const Context = createContext<App | null>(null);
@@ -68,6 +78,7 @@ export function AppProvider({ children, backend: given }: { children: ReactNode;
   const [communes, setCommunes] = useState<Commune[]>([]);
   const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
   const [currentId, setCurrentId] = useState<string | null>(null);
+  const [payingAway, setPayingAway] = useState<{ shareId: string; provider: string } | null>(null);
   const [myPayLinks, setMyPayLinks] = useState<PayLink[] | null>(null);
   const [today, setToday] = useState(todayIso());
   const userRef = useRef<User | null>(null);
@@ -183,8 +194,18 @@ export function AppProvider({ children, backend: given }: { children: ReactNode;
         setMyPayLinks(await backend.removePayLink(provider));
         await Promise.all(snapshots.map((item) => reload(item.commune.id)));
       },
+      async setPreferredPayLink(provider) {
+        setMyPayLinks(await backend.setPreferredPayLink(provider));
+        await Promise.all(snapshots.map((item) => reload(item.commune.id)));
+      },
+      openPayLink(shareId, provider, href) {
+        setPayingAway({ shareId, provider });
+        void Linking.openURL(href).catch(() => setPayingAway(null));
+      },
+      payingAway,
+      clearPayingAway() { setPayingAway(null); },
     };
-  }, [backend, status, error, user, today, communes, snapshots, currentId, myPayLinks, refresh, loadAll, reload, loadMyPayLinks]);
+  }, [backend, status, error, user, today, communes, snapshots, currentId, myPayLinks, payingAway, refresh, loadAll, reload, loadMyPayLinks]);
 
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }

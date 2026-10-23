@@ -53,7 +53,7 @@ function demoData(today: string): Snapshot[] {
     })));
   const links = {
     [id("maya")]: [{ provider: "monzo", handle: "mayachen" }, { provider: "paypal", handle: "mayachen" }],
-    [id("sam")]: [{ provider: "monzo", handle: "samokafor" }, { provider: "bank", accountName: "Sam Okafor", sortCode: "204577", accountNumber: "41029388" }],
+    [id("sam")]: [{ provider: "monzo", handle: "samokafor", preferred: true }, { provider: "bank", accountName: "Sam Okafor", sortCode: "204577", accountNumber: "41029388" }],
     [id("jordan")]: [{ provider: "paypal", handle: "jordanhale" }, { provider: "revolut", handle: "jordanhale" }],
     [id("alex")]: [{ provider: "bank", accountName: "Alex Rivera", sortCode: "040004", accountNumber: "17722610" }],
   };
@@ -254,11 +254,16 @@ export function demoBackend(now: () => string = todayIso): Backend {
       } else if (!/^[A-Za-z0-9._-]{1,40}$/.test(handle)) {
         throw new ApiError("Enter your username: letters, numbers, dots, dashes or underscores, up to 40", 400);
       }
+      const kept = myLinks().find((item) => item.provider === provider)?.preferred ?? false;
       const link: PayLink = provider === "bank"
-        ? { provider, handle: null, accountName: input.accountName!.trim(), sortCode, accountNumber }
-        : { provider, handle, accountName: null, sortCode: null, accountNumber: null };
+        ? { provider, handle: null, accountName: input.accountName!.trim(), sortCode, accountNumber, preferred: kept }
+        : { provider, handle, accountName: null, sortCode: null, accountNumber: null, preferred: kept };
       return setMyLinks(parsePayLinks([...myLinks().filter((item) => item.provider !== provider), link]));
     },
     async removePayLink(provider) { return setMyLinks(myLinks().filter((item) => item.provider !== provider)); },
+    async setPreferredPayLink(provider) {
+      if (provider && !myLinks().some((item) => item.provider === provider)) throw new ApiError("Add that way to be paid before making it your favourite", 400);
+      return setMyLinks(parsePayLinks(myLinks().map((item) => ({ ...item, preferred: item.provider === provider }))));
+    },
   };
 }

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { demoBackend } from "../src/lib/demo";
 import { aheadBy, essentials, feed, hubMoneyLine, needs, owedTotals, oweTotals, people, recorded, settle, standing, standingClause, statusFor, tilePulse, waiting, week, weekSentence } from "../src/lib/derive";
 import { equalShares, moneyList, parseAmount } from "../src/lib/format";
-import { payLinkHref } from "../src/lib/payLinks";
+import { parsePayLinks, payLinkHref } from "../src/lib/payLinks";
 import type { Snapshot } from "../src/lib/types";
 
 // Saturday 11 October 2026, the prototype's day.
@@ -166,5 +166,29 @@ describe("the Hub at a glance", () => {
     const plants = (await backend.snapshot((await backend.communes())[0])).operations!.find((item) => item.id === "op-plants")!;
     await expect(backend.completeTask("op-plants", { expectedDate: plants.date, today: TODAY, requestId: "r2" })).rejects.toThrow("did it");
     await expect(backend.completeTask("op-plants", { expectedDate: plants.date, today: TODAY, requestId: "r3", doneBy: "assignee" })).resolves.toMatch(/^occ-/);
+  });
+});
+
+describe("a favourite way to be paid", () => {
+  it("puts the favourite first and keeps the usual order after it", () => {
+    const links = parsePayLinks([
+      { provider: "bank", accountName: "Tom Reid", sortCode: "204577", accountNumber: "12345678" },
+      { provider: "paypal", handle: "tomreid", preferred: true },
+      { provider: "monzo", handle: "tomreid" },
+    ]);
+    expect(links.map((link) => link.provider)).toEqual(["paypal", "monzo", "bank"]);
+    expect(links[0].preferred).toBe(true);
+    expect(links[1].preferred).toBe(false);
+  });
+
+  it("only lets you favourite a way you have added, and clears it with null", async () => {
+    const backend = demoBackend();
+    await backend.signIn("maya@example.test", "x");
+    await expect(backend.setPreferredPayLink("revolut")).rejects.toThrow();
+    await backend.savePayLink("monzo", { handle: "maya" });
+    const marked = await backend.setPreferredPayLink("monzo");
+    expect(marked.find((link) => link.provider === "monzo")?.preferred).toBe(true);
+    const cleared = await backend.setPreferredPayLink(null);
+    expect(cleared.some((link) => link.preferred)).toBe(false);
   });
 });

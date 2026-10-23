@@ -33,6 +33,8 @@ export interface Backend {
   myPayLinks(): Promise<PayLink[]>;
   savePayLink(provider: PayProvider, input: PayLinkInput): Promise<PayLink[]>;
   removePayLink(provider: PayProvider): Promise<PayLink[]>;
+  /** Mark one of your links as your favourite, or none (null). */
+  setPreferredPayLink(provider: PayProvider | null): Promise<PayLink[]>;
 }
 
 export class ApiError extends Error {
@@ -94,6 +96,9 @@ export function serverBackend(base: string): Backend {
     },
     async removePayLink(provider) {
       return parsePayLinks((await call<{ links: unknown }>(`/pay-links/${provider}`, { method: "DELETE" })).links);
+    },
+    async setPreferredPayLink(provider) {
+      return parsePayLinks((await call<{ links: unknown }>("/pay-links-preferred", { method: "PUT", body: JSON.stringify({ provider }) })).links);
     },
   };
 }

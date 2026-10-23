@@ -2,13 +2,13 @@ import { useState } from "react";
 import { Image, Pressable, View } from "react-native";
 import { useRouter } from "expo-router";
 import { Check, ChevronDown } from "lucide-react-native";
-import { payLinksOf, standing, tilePulse, type Need, type Waiting } from "../lib/derive";
-import { PAY_PROVIDER_NAME } from "../lib/payLinks";
+import { standing, tilePulse, type Need, type Waiting } from "../lib/derive";
 import { firstName, joinAnd, money } from "../lib/format";
 import { failure, useApp } from "../state";
 import type { Snapshot } from "../lib/types";
 import { photoOf } from "./chrome";
 import { Avatar, Button, Cal, Faces, Group, Meta, Row, State, T, Who, tap } from "./kit";
+import { PayPrimary, usePayable } from "./pay";
 import { useToast } from "./toast";
 import { useTheme } from "./theme";
 
@@ -45,6 +45,7 @@ export function NeedRow({ need, first }: { need: Need; first?: boolean }) {
   const router = useRouter();
   const { today } = useApp();
   const task = useCompleteTask();
+  const payable = usePayable(need.communeId, need.kind === "share" ? need.payerId : "");
   return <Row first={first}
     accessibilityLabel={`${need.title}. ${need.status.text}.`}
     onPress={() => router.push(need.kind === "share" ? `/expense/${need.expenseId}` : "/tasks")}
@@ -55,7 +56,9 @@ export function NeedRow({ need, first }: { need: Need; first?: boolean }) {
       <State text={need.status.text} tone={need.status.tone} />
     </>}
     right={need.kind === "share"
-      ? <Button size="sm" variant="secondary" label="I’ve paid" accessibilityLabel={`I’ve paid ${need.payerName} for ${need.title}`} onPress={() => router.push(`/record/${need.shareId}`)} />
+      ? payable
+        ? <Button size="sm" variant="secondary" label="Pay" accessibilityLabel={`Pay ${need.payerName} for ${need.title}`} onPress={() => router.push(`/pay/${need.shareId}`)} />
+        : <Button size="sm" variant="secondary" label="I’ve paid" accessibilityLabel={`I’ve paid ${need.payerName} for ${need.title}`} onPress={() => router.push(`/record/${need.shareId}`)} />
       : <Button size="sm" variant="secondary" label="Mark done" busy={task.busy === need.key} onPress={() => void task.run(need)} />}
   />;
 }
@@ -206,24 +209,10 @@ export function NextStep({ need, total }: { need: Need | undefined; total: numbe
     <View style={{ gap: 10 }}>
       {need.kind === "share"
         ? <>
-          <Button size="lg" block label={`I’ve paid ${firstName(need.payerName)} ${money(need.amountMinor, need.currency)}`} onPress={() => router.push(`/record/${need.shareId}`)} />
-          <PaysWith name={firstName(need.payerName)} providers={payLinksOf(snapshotOf(need.communeId), need.payerId).map((link) => PAY_PROVIDER_NAME[link.provider])} />
-          <T kind="note" muted>Pay {firstName(need.payerName)} however you usually do, then record it here. {firstName(need.payerName)} confirms it.</T>
+          <PayPrimary target={{ shareId: need.shareId, communeId: need.communeId, payerId: need.payerId, payerName: need.payerName, amountMinor: need.amountMinor, currency: need.currency, title: need.title }} />
         </>
         : <Button size="lg" block label="Mark done" busy={task.busy === need.key} onPress={() => void task.run(need)} />}
     </View>
-  </View>;
-}
-
-/** How the bill payer takes money, from the pay links they saved. */
-function PaysWith({ name, providers }: { name: string; providers: string[] }) {
-  const { c } = useTheme();
-  if (!providers.length) return null;
-  return <View accessibilityLabel={`${name} takes ${joinAnd(providers)}`} style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 6 }}>
-    <T kind="note" muted>{name} takes</T>
-    {providers.map((provider) => <View key={provider} style={{ borderWidth: 1, borderColor: c.outline, borderRadius: 999, paddingHorizontal: 9, paddingVertical: 3 }}>
-      <T kind="note" style={{ fontWeight: "500" }}>{provider}</T>
-    </View>)}
   </View>;
 }
 
