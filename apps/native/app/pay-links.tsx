@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { KeyboardAvoidingView, Platform, ScrollView, Text, TextInput, View } from "react-native";
-import { Landmark } from "lucide-react-native";
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { Landmark, Star } from "lucide-react-native";
 import { formatSortCode, payLinkLabel, PAY_PROVIDER_NAME, PAY_PROVIDERS, type PayLink, type PayLinkInput, type PayProvider } from "../src/lib/payLinks";
 import { failure, useApp } from "../src/state";
 import { Button, ErrorText, Panel, Row, T, tap } from "../src/ui/kit";
@@ -20,7 +20,7 @@ function inputFrom(link: PayLink | undefined, provider: PayProvider): PayLinkInp
 /** Your own pay links: saved in Commune and shown to people in your communes when they owe you. */
 export default function PayLinks() {
   const { c } = useTheme();
-  const { myPayLinks, loadMyPayLinks, savePayLink, removePayLink } = useApp();
+  const { myPayLinks, loadMyPayLinks, savePayLink, removePayLink, setPreferredPayLink } = useApp();
   const [editing, setEditing] = useState<PayProvider | null>(null);
   const [draft, setDraft] = useState<PayLinkInput>({});
   const [busy, setBusy] = useState(false);
@@ -46,6 +46,15 @@ export default function PayLinks() {
     } catch (cause) { setError(failure(cause, "Couldn’t remove it.")); } finally { setBusy(false); }
   }
 
+  async function favourite(provider: PayProvider | null) {
+    setBusy(true); setError(""); setMessage("");
+    try {
+      await setPreferredPayLink(provider);
+      tap("success");
+      setMessage(provider ? `${PAY_PROVIDER_NAME[provider]} is your favourite. People who owe you get one button that opens it.` : "No favourite. People who owe you see all your ways.");
+    } catch (cause) { setError(failure(cause, "Couldn’t change your favourite.")); } finally { setBusy(false); }
+  }
+
   const input = { height: 46, borderRadius: radius.control, borderWidth: 1, borderColor: c.outline, backgroundColor: c.surface, paddingHorizontal: 12, fontSize: 16, color: c.ink };
   const field = (label: string, value: string, set: (text: string) => void, extra: object = {}) => <View style={{ gap: 6 }}>
     <T kind="label" style={{ fontWeight: "600" }}>{label}</T>
@@ -58,7 +67,7 @@ export default function PayLinks() {
 
   return <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1, backgroundColor: c.canvas }}>
     <ScrollView contentContainerStyle={{ padding: 16, gap: 16 }} keyboardShouldPersistTaps="handled">
-      <T kind="body" muted>When someone owes you, they see these with the amount filled in. Only people in your communes can see them.</T>
+      <T kind="body" muted>When someone owes you, they see these with the amount filled in. Only people in your communes can see them. Star one to make it your favourite.</T>
       {myPayLinks == null ? <T kind="body" muted>Loading your pay links…</T> : <Panel>
         {PAY_PROVIDERS.map((provider, index) => {
           const link = myPayLinks.find((item) => item.provider === provider);
@@ -84,9 +93,14 @@ export default function PayLinks() {
             </View>;
           }
           return <Row key={provider} first={index === 0} left={mark(provider)} title={PAY_PROVIDER_NAME[provider]}
-            meta={<T kind="label" muted>{link ? payLinkLabel(link) : "Not added"}</T>}
-            right={<Button size="sm" variant="secondary" label={link ? "Change" : "Add"} accessibilityLabel={`${link ? "Change" : "Add"} ${PAY_PROVIDER_NAME[provider]}`}
-              disabled={busy || editing !== null} onPress={() => { setEditing(provider); setDraft(inputFrom(link, provider)); setError(""); setMessage(""); }} />} />;
+            meta={<T kind="label" muted>{link ? `${link.preferred ? "Your favourite · " : ""}${payLinkLabel(link)}` : "Not added"}</T>}
+            right={<View style={{ flexDirection: "row", alignItems: "center", gap: 2 }}>{link ? <Pressable accessibilityRole="button"
+              accessibilityLabel={`${link.preferred ? "Unfavourite" : "Make favourite"} ${PAY_PROVIDER_NAME[provider]}`} accessibilityState={{ selected: !!link.preferred, disabled: busy || editing !== null }}
+              disabled={busy || editing !== null} onPress={() => void favourite(link.preferred ? null : provider)}
+              style={{ width: 44, height: 44, alignItems: "center", justifyContent: "center" }}>
+              <Star size={20} color={link.preferred ? c.action : c.ink2} fill={link.preferred ? c.action : "transparent"} />
+            </Pressable> : null}<Button size="sm" variant="secondary" label={link ? "Change" : "Add"} accessibilityLabel={`${link ? "Change" : "Add"} ${PAY_PROVIDER_NAME[provider]}`}
+              disabled={busy || editing !== null} onPress={() => { setEditing(provider); setDraft(inputFrom(link, provider)); setError(""); setMessage(""); }} /></View>} />;
         })}
       </Panel>}
       {!editing ? <ErrorText>{error}</ErrorText> : null}

@@ -146,7 +146,7 @@ export function ExpensesEmptyScreen() {
 }
 
 export function SettleScreen() {
-  const { go, hub, expenses, session, reminderTargets, reminderUsage, sentReminders, sendReminder, personName } = useApp();
+  const { go, hub, expenses, session, reminderTargets, reminderUsage, sentReminders, sendReminder, personName, payLinksFor } = useApp();
   const reminder = useReminderFlow(sendReminder);
   const [message, setMessage] = useState("");
   const receipts = useReceiptActions(setMessage);
@@ -244,9 +244,16 @@ export function SettleScreen() {
                 </div>
               ) : (
                 <div className="a-row-actions">
-                  <button className="a-btn ghost" type="button" onClick={() => { setMessage(""); receipts.report({ shareId: share.id, payerName, payerId: expense.paidByUserId, expenseName: expense.name, outstandingMinor: outstanding, currency: hub.currency }); }}>
+                  {payLinksFor(expense.paidByUserId)?.length ? <>
+                    <button className="a-btn" type="button" onClick={() => { setMessage(""); receipts.pay({ shareId: share.id, payerName, payerId: expense.paidByUserId, expenseName: expense.name, outstandingMinor: outstanding, currency: hub.currency }); }}>
+                      Pay{" "}<span className="c-visually-hidden">{payerName} for {expense.name}</span>
+                    </button>
+                    <button className="a-btn ghost" type="button" onClick={() => { setMessage(""); receipts.report({ shareId: share.id, payerName, payerId: expense.paidByUserId, expenseName: expense.name, outstandingMinor: outstanding, currency: hub.currency }); }}>
+                      Already paid{" "}<span className="c-visually-hidden">{payerName} for {expense.name}</span>
+                    </button>
+                  </> : <button className="a-btn ghost" type="button" onClick={() => { setMessage(""); receipts.report({ shareId: share.id, payerName, payerId: expense.paidByUserId, expenseName: expense.name, outstandingMinor: outstanding, currency: hub.currency }); }}>
                     I’ve sent it{" "}<span className="c-visually-hidden">to {payerName} for {expense.name}</span>
-                  </button>
+                  </button>}
                 </div>
               )}
             </div>

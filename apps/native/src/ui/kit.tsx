@@ -35,9 +35,9 @@ export function T({ kind = "body", muted, color, style, children, lines, ...rest
   return <Text {...rest} numberOfLines={lines} style={[TEXT[kind], { color: color ?? (muted ? c.ink2 : c.ink), flexShrink: 1 }, style]}>{children}</Text>;
 }
 
-export function Button({ label, onPress, variant = "primary", size = "md", block, disabled, busy, icon, accessibilityLabel, onFrame }: {
+export function Button({ label, onPress, variant = "primary", size = "md", block, disabled, busy, icon, trailing, accessibilityLabel, onFrame }: {
   label: string; onPress?: () => void; variant?: "primary" | "secondary" | "quiet" | "danger"; size?: "sm" | "md" | "lg";
-  block?: boolean; disabled?: boolean; busy?: boolean; icon?: ReactNode; accessibilityLabel?: string; onFrame?: boolean;
+  block?: boolean; disabled?: boolean; busy?: boolean; icon?: ReactNode; trailing?: ReactNode; accessibilityLabel?: string; onFrame?: boolean;
 }) {
   const { c } = useTheme();
   const height = size === "lg" ? 48 : size === "sm" ? 34 : 42;
@@ -52,7 +52,7 @@ export function Button({ label, onPress, variant = "primary", size = "md", block
       flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, alignSelf: block ? "stretch" : "flex-start",
       opacity: disabled ? 0.45 : pressed ? 0.85 : 1,
     }, variant === "secondary" || variant === "danger" ? { borderWidth: 1, borderColor: variant === "danger" ? c.late : c.outline } : null]}>
-    {busy ? <ActivityIndicator color={fg} /> : <>{icon}<Text style={{ color: fg, fontSize: size === "lg" ? 15.5 : size === "sm" ? 13 : 14, fontWeight: "500" }}>{label}</Text></>}
+    {busy ? <ActivityIndicator color={fg} /> : <>{icon}<Text style={{ color: fg, fontSize: size === "lg" ? 15.5 : size === "sm" ? 13 : 14, fontWeight: "500" }}>{label}</Text>{trailing}</>}
   </Pressable>;
 }
 

@@ -131,15 +131,15 @@ describe("commune loading", () => {
     vi.mocked(loadSnapshot).mockResolvedValue({ ...snapshot, notes: [note], operations: [hubTask] });
     mount();
     await screen.findByRole("heading", { name: commune.name });
-    expect(screen.getByRole("region", { name: "Pinned notes" }).textContent).toContain(note.title);
+    expect(screen.getByRole("region", { name: "Shared essentials" }).textContent).toContain(note.title);
     expect(screen.getByRole("checkbox", { name: "Mark Take recycling out done" })).toBeTruthy();
     expect(document.querySelector(".c-hub-cover")?.getAttribute("src")).toBe(coverSource({ type: "Household", photo: HUBS.park.photo }, "hero").src);
     expect(document.querySelector(".c-hub")?.textContent).not.toContain("↗");
-    expect(within(screen.getByRole("region", { name: "Your balance" })).getByRole("button", { name: "Add expense" })).toBeTruthy();
-    expect(within(screen.getByRole("region", { name: "Your balance" })).getByRole("button", { name: "View settlement" })).toBeTruthy();
+    expect(within(screen.getByRole("region", { name: "Your part" })).getByRole("button", { name: "Add expense" })).toBeTruthy();
+    expect(within(screen.getByRole("region", { name: "Your part" })).getByRole("button", { name: "View settlement" })).toBeTruthy();
     expect(within(screen.getByRole("region", { name: "Shared essentials" })).getByText(note.title)).toBeTruthy();
     expect(within(screen.getByRole("region", { name: "Commune identity" })).getByRole("button", { name: /^\d+ (people|person) in this commune, view members$/ })).toBeTruthy();
-    fireEvent.click(within(screen.getByRole("region", { name: "Pinned notes" })).getByRole("button", { name: /House essentials/ }));
+    fireEvent.click(within(screen.getByRole("region", { name: "Shared essentials" })).getByRole("button", { name: "House essentials" }));
     await screen.findByRole("complementary", { name: "House essentials" });
   });
 
@@ -273,14 +273,18 @@ describe("commune loading", () => {
   });
   const wifiNote = { id: "note-1", title: "Wi-Fi & internet", pill: "Wi-Fi", kicker: "Pinned · everyone", lede: "private-secret", body: "Connect upstairs. Password: private-secret", facts: [["Network", "Test network"], ["Password", "private-secret"], ["This Hub", "Pinned"]] as Array<[string, string]> };
 
-  it("keeps credentials out of hub pinned cards and essentials previews", async () => {
+  it("keeps passwords on hub essentials hidden until someone asks to see them", async () => {
     const unpinnedWifi = { ...wifiNote, id: "note-2", title: "Guest network", kicker: "Everyone", facts: wifiNote.facts.filter(([key]) => key !== "This Hub") };
     vi.mocked(loadSnapshot).mockResolvedValue({ ...snapshot, notes: [wifiNote, unpinnedWifi] });
     mount();
     await screen.findByRole("heading", { name: commune.name });
-    expect(screen.getByRole("region", { name: "Pinned notes" }).textContent).toContain("Network and password. Open to view connection details.");
-    expect(screen.getByRole("region", { name: "Shared essentials" }).textContent).toContain("Guest network");
+    const essentials = screen.getByRole("region", { name: "Shared essentials" });
+    // The network name is shown; the password waits behind Show.
+    expect(essentials.textContent).toContain("Guest network");
+    expect(essentials.textContent).toContain("Test network");
     expect(document.body.textContent).not.toContain("private-secret");
+    fireEvent.click(within(essentials).getAllByText("Show")[0].closest("button")!);
+    expect(essentials.textContent).toContain("private-secret");
   });
 
   it("restores default covers while preserving uploads and the activity owner's identity", () => {

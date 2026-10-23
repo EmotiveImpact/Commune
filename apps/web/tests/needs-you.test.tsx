@@ -1,5 +1,5 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { Router } from "wouter";
 import { memoryLocation } from "wouter/memory-location";
 import { App } from "../src/App";
@@ -194,45 +194,44 @@ describe("Needs you on Home", () => {
     expect(within(next).getByRole("button", { name: "Confirm £20.00 received" })).toBeTruthy();
     expect(within(next).getByRole("button", { name: "Not received" })).toBeTruthy();
 
-    const needs = screen.getByRole("region", { name: "Needs you" });
-    await within(needs).findByText("Ferry");
+    // Chores due are ticked off from Home, in whichever commune they are.
+    const chores = screen.getByRole("region", { name: "Today" });
+    expect([...chores.querySelectorAll<HTMLElement>(".c-home-row-title")].map((title) => title.textContent)).toEqual(["Bins", "Hoover"]);
+    expect(within(chores).getByRole("checkbox", { name: "Mark Bins done" })).toBeTruthy();
+    expect(within(chores).getByRole("checkbox", { name: "Mark Hoover done" })).toBeTruthy();
+    expect(within(chores).getByText("2 days overdue")).toBeTruthy();
+
+    const needs = screen.getByRole("region", { name: "Still to pay" });
     const groups = [...needs.querySelectorAll<HTMLElement>(".c-home-group")].map((group) =>
       [group.querySelector("h3")?.firstChild?.textContent?.trim(), [...group.querySelectorAll<HTMLElement>(".c-home-row")].map(row)]);
     expect(groups).toEqual([
-      // The trip's report waits on Maya now, whenever its bill is due.
-      ["To confirm", [["Ferry", "Lisbon trip", "Ben Baker says they sent it", "€25.00", null]]],
       ["Overdue", [
         ["Internet", "Our home", "You owe Ben Baker", "£15.00", "8 days overdue"],
-        ["Bins", "Our home", "Your turn", null, "2 days overdue"],
         ["Boiler", "Our home", "Remaining on your pledge", "£60.00", "4 days overdue"],
       ]],
-      ["Today", [["Hoover", "Our home", "Your turn today", null, "Due today"]]],
       ["No due date", [["Water", "Our home", "You owe Cat Cole", "£8.00", null]]],
     ]);
-    // Payments act where they are; tasks and pledges open their record.
+    // Payments act where they are; a pledge opens its record.
     expect(within(needs).getAllByRole("button").filter((button) => button.classList.contains("c-home-btn")).map((button) => button.textContent)).toEqual([
-      "Confirm €25.00 from Ben Baker", "I’ve paid Ben Baker for Internet", "Open Bins", "Open Boiler", "Open Hoover", "I’ve paid Cat Cole for Water",
+      "I’ve paid Ben Baker for Internet", "Open Boiler", "I’ve paid Cat Cole for Water",
     ]);
-    // A phone shows the first two in the order drawn and offers the rest; a wider screen shows all six.
-    const extra = [...needs.querySelectorAll<HTMLElement>(".c-home-row")].map((item) => item.classList.contains("is-extra-phone"));
-    expect(extra).toEqual([false, false, true, true, true, true]);
-    expect(needs.querySelectorAll(".is-extra")).toHaveLength(0);
-    expect([...needs.querySelectorAll(".c-home-group.is-extra-phone h3")].map((h) => h.firstChild?.textContent?.trim())).toEqual(["Today", "No due date"]);
-    const more = within(needs).getByRole("button", { name: "Show 4 more" });
-    expect(more.classList.contains("is-phone")).toBe(true);
-    expect(more.getAttribute("aria-expanded")).toBe("false");
-    fireEvent.click(more);
-    expect(within(needs).getByRole("button", { name: "Show fewer" }).getAttribute("aria-expanded")).toBe("true");
-    expect(needs.classList.contains("is-all")).toBe(true);
+    // Three rows fit a phone, so nothing is folded away.
+    expect(needs.querySelectorAll(".is-extra-phone")).toHaveLength(0);
+    expect(within(needs).queryByRole("button", { name: /Show \d+ more/ })).toBeNull();
 
+    // A payment someone says they sent sits with what others owe, with Confirm on the row.
     const waiting = screen.getByRole("region", { name: "Waiting on others" });
+    await within(waiting).findByText("Ferry");
     expect(within(waiting).getByText("£50.00")).toBeTruthy();
     expect([...waiting.querySelectorAll<HTMLElement>(".c-home-row")].map(row)).toEqual([
+      // The trip's report waits on Maya now, whenever its bill is due.
+      ["Ferry", "Lisbon trip", "Ben Baker says they sent it", "€25.00", null],
       ["Electricity", "Our home", "Cat Cole owes you", "£20.00", "Due 20 Oct"],
       ["Takeaway", "Our home", "3 people owe you", "£30.00", null],
       ["Rent", "Our home", "You said you sent it · waiting for Cat Cole", "£500.00", "Due Thu"],
     ]);
-    expect(within(waiting).queryByRole("button", { name: /I’ve paid|Confirm/ })).toBeNull();
+    expect(within(waiting).getAllByRole("button").filter((button) => button.classList.contains("c-home-btn")).map((button) => button.textContent))
+      .toEqual(["Confirm €25.00 from Ben Baker"]);
   });
 
   it("says where Maya stands per currency, never adding pounds to euros", async () => {
@@ -242,7 +241,7 @@ describe("Needs you on Home", () => {
     mount("/");
     const standing = await screen.findByRole("heading", { name: "You owe £523.00 and €12.00 across two communes." });
     expect(standing.parentElement?.querySelector(".c-home-sub")?.textContent)
-      .toBe("You’re owed £70.00 and €25.00. Three things are overdue, the oldest eight days.");
+      .toBe("You’re owed £70.00 and €25.00, so in pounds you owe £453.00 and in euros you’re €13.00 ahead. Three things are overdue, the oldest eight days.");
     // The bar names the page; the sentence is Home's own heading.
     expect(screen.getByRole("heading", { level: 1, name: "Home" })).toBeTruthy();
     // A phone's bar shows the wordmark beside the menu on Home; the h1 names the page.
@@ -255,8 +254,8 @@ describe("Needs you on Home", () => {
   it("tells the bill payer from Home, then reads the share's own commune again", async () => {
     vi.mocked(post).mockResolvedValue({ duplicate: false });
     mount("/");
-    const needs = await screen.findByRole("region", { name: "Needs you" });
-    await within(needs).findByText("Ferry");
+    await screen.findByText("Ferry");
+    const needs = screen.getByRole("region", { name: "Still to pay" });
     vi.mocked(loadSnapshot).mockClear();
     fireEvent.click(within(needs).getByRole("button", { name: "I’ve paid Ben Baker for Internet" }));
     const dialog = await screen.findByRole("dialog", { name: "Tell Ben Baker you’ve paid" });
@@ -269,15 +268,77 @@ describe("Needs you on Home", () => {
   it("confirms a payment in another commune where it sits, and reads that commune again", async () => {
     vi.mocked(post).mockResolvedValue({ outstandingMinor: 0 });
     mount("/");
-    const needs = await screen.findByRole("region", { name: "Needs you" });
-    await within(needs).findByText("Ferry");
+    const waiting = await screen.findByRole("region", { name: "Waiting on others" });
+    await within(waiting).findByText("Ferry");
     vi.mocked(loadSnapshot).mockClear();
-    fireEvent.click(within(needs).getByRole("button", { name: "Confirm €25.00 from Ben Baker" }));
+    fireEvent.click(within(waiting).getByRole("button", { name: "Confirm €25.00 from Ben Baker" }));
     const dialog = await screen.findByRole("dialog", { name: "Confirm €25.00 received?" });
     fireEvent.click(within(dialog).getByRole("button", { name: "Confirm Ben’s €25.00" }));
     await waitFor(() => expect(toastText()).toBe("Confirmed. Ben’s €25.00 is recorded as received."));
     expect(post).toHaveBeenCalledWith("/payment-reports/report-ben-2500/resolve", expect.objectContaining({ decision: "confirm" }));
     expect(readAgain()).toEqual(["trip-1"]);
+  });
+});
+
+describe("Today on Home", () => {
+  it("ticks off a chore in its own commune, checked against the date Home showed, with Undo", async () => {
+    vi.mocked(post).mockResolvedValue({ id: "occurrence-bins", date: "2026-10-14", assigneeId: "me", turnOwnerId: "me", status: "open" });
+    mount("/");
+    const chores = await screen.findByRole("region", { name: "Today" });
+    vi.mocked(loadSnapshot).mockClear();
+    fireEvent.click(within(chores).getByRole("checkbox", { name: "Mark Bins done" }));
+    await waitFor(() => expect(toastText()).toBe("Bins is done."));
+    expect(post).toHaveBeenCalledWith("/operations/bins/occurrences", expect.objectContaining({ action: "completed", expectedDate: "2026-10-07", today }));
+    expect(readAgain()).toEqual(["home-1"]);
+  });
+
+  const withLinks = (links: unknown[]) => vi.mocked(loadSnapshot).mockImplementation(async (commune) => commune.id === home.id
+    ? { ...homeSnapshot(), reports: undefined, expenses: homeSnapshot().expenses.filter((item) => item.title !== "Electricity"),
+      payLinks: { ben: links } }
+    : { ...tripSummary(), expenses: [] });
+  const monzo = { provider: "monzo", handle: "benbaker" };
+  const bank = { provider: "bank", accountName: "Ben Baker", sortCode: "204577", accountNumber: "41029388" };
+
+  it("with no favourite, Pay lists every way the bill payer takes money, and Already paid tells them", async () => {
+    withLinks([monzo, bank]);
+    mount("/");
+    const next = await screen.findByRole("article", { name: "Internet" });
+    expect(within(next).getByText("Monzo · Bank transfer")).toBeTruthy();
+    fireEvent.click(within(next).getByRole("button", { name: "Pay Ben £15.00" }));
+    const sheet = await screen.findByRole("dialog", { name: "Pay Ben £15.00" });
+    expect(within(sheet).getByRole("link", { name: "Open Monzo" }).getAttribute("href")).toBe("https://monzo.me/benbaker/15.00?d=Internet");
+    expect(within(sheet).getByRole("button", { name: "Copy details" })).toBeTruthy();
+    fireEvent.click(within(sheet).getByRole("button", { name: "I’ve already paid, tell Ben" }));
+    expect(await screen.findByRole("dialog", { name: "Tell Ben Baker you’ve paid" })).toBeTruthy();
+  });
+
+  it("with a favourite, one button opens it, and coming back asks whether it went", async () => {
+    withLinks([bank, { ...monzo, preferred: true }]);
+    vi.mocked(post).mockResolvedValue({ duplicate: false });
+    mount("/");
+    const next = await screen.findByRole("article", { name: "Internet" });
+    const open = within(next).getByRole("link", { name: /^Pay £15\.00 with Monzo/ });
+    expect(open.getAttribute("href")).toBe("https://monzo.me/benbaker/15.00?d=Internet");
+    expect(open.getAttribute("target")).toBe("_blank");
+    expect(within(next).getByRole("button", { name: "Other ways (1)" })).toBeTruthy();
+    expect(within(next).getByRole("button", { name: "Already paid" })).toBeTruthy();
+    fireEvent.click(open);
+    // Nothing is asked until the person has been away and come back.
+    expect(screen.queryByRole("dialog")).toBeNull();
+    act(() => { window.dispatchEvent(new Event("blur")); window.dispatchEvent(new Event("focus")); });
+    const back = await screen.findByRole("dialog", { name: "Did £15.00 go to Ben?" });
+    fireEvent.click(within(back).getByRole("button", { name: "Yes, tell Ben" }));
+    await waitFor(() => expect(toastText()).toBe("Recorded. Ben will confirm your £15.00."));
+    expect(post).toHaveBeenCalledWith("/shares/share-me-1500/payment-reports",
+      expect.objectContaining({ amountMinor: 1500, sentOn: today, reference: "Monzo" }));
+  });
+
+  it("with no pay links saved, keeps I’ve paid and says why", async () => {
+    withLinks([]);
+    mount("/");
+    const next = await screen.findByRole("article", { name: "Internet" });
+    expect(within(next).getByRole("button", { name: "I’ve paid Ben £15.00" })).toBeTruthy();
+    expect(within(next).getByText(/Ben hasn’t said how they like to be paid/)).toBeTruthy();
   });
 });
 
@@ -315,29 +376,23 @@ describe("Coming up on Home", () => {
   });
 });
 
-describe("Needs you on This Hub", () => {
-  it("counts only what needs the viewer, in the same order, and keeps what others owe apart", async () => {
+describe("Your part on This Hub", () => {
+  it("leads with the first payment to act on, in Home's order, and keeps what others owe apart", async () => {
     mount("/hub");
-    const needs = await screen.findByRole("region", { name: "Needs you" });
-    await within(needs).findAllByText("Electricity");
-    expect(within(needs).getByText("6 items")).toBeTruthy();
-    const waiting = within(needs).getByRole("region", { name: "Waiting on others" });
-    const money = [...needs.querySelectorAll<HTMLElement>(".c-hub-attention-row")].map((row) =>
-      [row.querySelector("strong")?.textContent, row.querySelector("small")?.textContent, row.querySelector(".c-hub-attention-end strong")?.textContent]);
-    expect(money).toEqual([
-      ["Electricity", "Ben Baker says they sent it", "£20.00"],
-      ["Internet", "You owe Ben Baker · overdue", "£15.00"],
-      ["Water", "You owe Cat Cole", "£8.00"],
-    ]);
-    const others = [...needs.querySelectorAll<HTMLElement>(".c-hub-note-row")].filter((row) => !waiting.contains(row))
-      .map((row) => [row.querySelector("strong")?.textContent, row.querySelector("small")?.textContent]);
-    expect(others).toEqual([
-      ["Bins", "Overdue · your turn"],
-      ["Hoover", "Your turn today"],
-      ["Boiler", "Remaining on your pledge · overdue · £60.00"],
-    ]);
-    expect([...waiting.querySelectorAll<HTMLElement>(".c-hub-note-row")].map((row) => row.querySelector("small")?.textContent)).toEqual([
-      "Cat Cole owes you · £20.00", "3 people owe you · £30.00", "You said you sent it · waiting for Cat Cole · £500.00",
-    ]);
+    const part = await screen.findByRole("region", { name: "Your part" });
+    await within(part).findByText("Electricity");
+    // A payment someone says they sent comes first, with the answer on the button.
+    expect(within(part).getByText("Ben Baker says they sent it")).toBeTruthy();
+    expect(within(part).getByRole("button", { name: "Confirm £20.00 received" })).toBeTruthy();
+    expect(within(part).getByRole("button", { name: "Not received" })).toBeTruthy();
+    expect(within(part).getByRole("button", { name: "2 more to settle" })).toBeTruthy();
+    // Pledges stay with the viewer's part; tasks live in the week.
+    const pledge = within(part).getByRole("button", { name: /Boiler/ });
+    expect(pledge.querySelector("small")?.textContent).toBe("Remaining on your pledge · overdue · £60.00");
+    expect(within(part).getByText("3 waiting on others")).toBeTruthy();
+    const week = screen.getByRole("region", { name: "This week" });
+    expect(within(week).getByRole("checkbox", { name: "Mark Bins done" })).toBeTruthy();
+    expect(within(week).getByRole("checkbox", { name: "Mark Hoover done" })).toBeTruthy();
   });
 });
+

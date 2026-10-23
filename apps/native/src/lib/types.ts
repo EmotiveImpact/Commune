@@ -98,7 +98,13 @@ export type Notification = {
   createdAt: string;
   readAt: string | null;
 };
-export type Note = { id: string; title: string; lede?: string; body?: string; kicker?: string };
+export type Note = {
+  id: string; title: string; lede?: string; body?: string; kicker?: string;
+  /** The kind of detail, such as "Wi-Fi" or "Bins". */
+  pill?: string;
+  /** Labelled details such as ["Password", "…"]; secret ones stay hidden until asked for. */
+  facts?: Array<[string, string]>;
+};
 export type Operation = {
   id: string;
   kind: "task" | "event";
@@ -110,6 +116,9 @@ export type Operation = {
   repeat: "none" | "weekly" | "monthly";
   status: "open" | "done";
   notes?: string;
+  time?: string | null;
+  /** The latest completion that can still be undone. */
+  undoOccurrenceId?: string | null;
 };
 export type Announcement = {
   id: string; title: string; body: string; authorId: string; createdAt: string; needsAcknowledgement: boolean;

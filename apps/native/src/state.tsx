@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Linking } from "react-native";
 import { type Backend, serverBackend } from "./lib/backend";
 import { demoBackend } from "./lib/demo";
 import {
@@ -45,7 +46,9 @@ type App = {
   reportPayment(communeId: string, shareId: string, amountMinor: number, sentOn: string, reference: string | null): Promise<void>;
   resolveReport(communeId: string, reportId: string, decision: "confirm" | "decline", note?: string): Promise<void>;
   withdrawReport(communeId: string, reportId: string): Promise<void>;
-  completeTask(communeId: string, operationId: string, expectedDate: string): Promise<void>;
+  /** Returns the completion's id, for Undo. */
+  completeTask(communeId: string, operationId: string, expectedDate: string, doneBy?: "me" | "assignee"): Promise<string | null>;
+  undoCompletion(communeId: string, occurrenceId: string): Promise<void>;
   addExpense(communeId: string, input: Parameters<Backend["addExpense"]>[1]): Promise<void>;
   nudge(communeId: string, shareId: string): Promise<void>;
   /** Marks what you've now seen as read, so the bell stops showing new. */
@@ -54,6 +57,15 @@ type App = {
   loadMyPayLinks(): Promise<void>;
   savePayLink(provider: PayProvider, input: PayLinkInput): Promise<void>;
   removePayLink(provider: PayProvider): Promise<void>;
+  setPreferredPayLink(provider: PayProvider | null): Promise<void>;
+  /**
+   * Opens one of their apps to pay a share, remembering it, so that coming
+   * back to Commune asks whether the payment went (see PayReturn).
+   */
+  openPayLink(shareId: string, provider: string, href: string): void;
+  /** The share whose payee's app was opened last, until it is asked about. */
+  payingAway: { shareId: string; provider: string } | null;
+  clearPayingAway(): void;
 };
 
 const Context = createContext<App | null>(null);
@@ -66,6 +78,7 @@ export function AppProvider({ children, backend: given }: { children: ReactNode;
   const [communes, setCommunes] = useState<Commune[]>([]);
   const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
   const [currentId, setCurrentId] = useState<string | null>(null);
+  const [payingAway, setPayingAway] = useState<{ shareId: string; provider: string } | null>(null);
   const [myPayLinks, setMyPayLinks] = useState<PayLink[] | null>(null);
   const [today, setToday] = useState(todayIso());
   const userRef = useRef<User | null>(null);
@@ -148,8 +161,13 @@ export function AppProvider({ children, backend: given }: { children: ReactNode;
         await backend.withdrawReport(reportId);
         await reload(communeId);
       },
-      async completeTask(communeId, operationId, expectedDate) {
-        await backend.completeTask(operationId, { expectedDate, today: todayIso(), requestId: requestId() });
+      async completeTask(communeId, operationId, expectedDate, doneBy) {
+        const occurrenceId = await backend.completeTask(operationId, { expectedDate, today: todayIso(), requestId: requestId(), ...(doneBy ? { doneBy } : {}) });
+        await reload(communeId);
+        return occurrenceId;
+      },
+      async undoCompletion(communeId, occurrenceId) {
+        await backend.undoCompletion(occurrenceId);
         await reload(communeId);
       },
       async addExpense(communeId, input) {
@@ -176,8 +194,18 @@ export function AppProvider({ children, backend: given }: { children: ReactNode;
         setMyPayLinks(await backend.removePayLink(provider));
         await Promise.all(snapshots.map((item) => reload(item.commune.id)));
       },
+      async setPreferredPayLink(provider) {
+        setMyPayLinks(await backend.setPreferredPayLink(provider));
+        await Promise.all(snapshots.map((item) => reload(item.commune.id)));
+      },
+      openPayLink(shareId, provider, href) {
+        setPayingAway({ shareId, provider });
+        void Linking.openURL(href).catch(() => setPayingAway(null));
+      },
+      payingAway,
+      clearPayingAway() { setPayingAway(null); },
     };
-  }, [backend, status, error, user, today, communes, snapshots, currentId, myPayLinks, refresh, loadAll, reload, loadMyPayLinks]);
+  }, [backend, status, error, user, today, communes, snapshots, currentId, myPayLinks, payingAway, refresh, loadAll, reload, loadMyPayLinks]);
 
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }

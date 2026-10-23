@@ -293,6 +293,8 @@ export type AppState = {
   loadMyPayLinks: () => Promise<PayLink[]>;
   savePayLink: (provider: PayProvider, input: PayLinkInput) => Promise<PayLink[]>;
   removePayLink: (provider: PayProvider) => Promise<PayLink[]>;
+  /** Mark one of your pay links as your favourite, or none (null). */
+  setPreferredPayLink: (provider: PayProvider | null) => Promise<PayLink[]>;
   native: boolean;
   you: { id: string; name: string; email: string; initials: string; photo?: string };
   lastExpense: { name: string; amount: string; paidBy: string } | null;
@@ -398,7 +400,8 @@ export type AppState = {
   updateOperation: (id: string, item: NewOperation, expectedVersion?: number) => Promise<void>;
   /** Completes an open task, or reopens a done one. The server advances repeats and rotation. */
   /** Marking someone else's task done says who did it (needsDoneBy). */
-  toggleOperation: (id: string, doneBy?: DoneBy) => Promise<OperationChange>;
+  /** From another commune than the one in view (Home), name it and the date the task was seen on. */
+  toggleOperation: (id: string, doneBy?: DoneBy, from?: { communeId: string; date: string }) => Promise<OperationChange>;
   skipOperation: (id: string, reason?: string) => Promise<OperationChange>;
   /**
    * from: the task as another screen saw it, in a commune that may not be the
@@ -407,7 +410,7 @@ export type AppState = {
   handOverOperation: (id: string, toMemberId: string, reason?: string,
     from?: { communeId: string; date: string; assigneeId: string | null }) => Promise<OperationChange>;
   /** Restores the task to exactly how it was before that action. */
-  undoOperation: (occurrenceId: string) => Promise<OperationChange>;
+  undoOperation: (occurrenceId: string, communeId?: string) => Promise<OperationChange>;
   removeOperation: (id: string) => Promise<void>;
   createHub: (input: CreatedHub, opts?: { openExpense?: boolean }) => Promise<string>;
   updateCommune: (input: {
@@ -1655,6 +1658,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await refreshRecords();
     return links;
   }), [mutate, refreshRecords]);
+  const setPreferredPayLink = useCallback((provider: PayProvider | null) => mutate(async () => {
+    const result = await api<{ links: unknown }>("/pay-links-preferred", { method: "PUT", body: JSON.stringify({ provider }) });
+    const links = parsePayLinks(result.links);
+    setMyPayLinks(links);
+    await refreshRecords();
+    return links;
+  }), [mutate, refreshRecords]);
   const heldSnapshots = data?.snapshots;
   const payLinksFor = useCallback((userId: string | null | undefined, communeId?: string) => {
     const record = heldSnapshots?.[communeId ?? activeId];
@@ -1901,9 +1911,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
       reason: reason?.trim() || null, requestId: newRequestId(),
     }, from?.communeId);
   }, [occurrenceCommand]);
-  const undoOperation = useCallback((occurrenceId: string) =>
-    occurrenceCommand(`/occurrences/${encodeURIComponent(occurrenceId)}/undo`, {}), [occurrenceCommand]);
-  const toggleOperation = useCallback((id: string, doneBy?: DoneBy) => {
+  const undoOperation = useCallback((occurrenceId: string, communeId?: string) =>
+    occurrenceCommand(`/occurrences/${encodeURIComponent(occurrenceId)}/undo`, {}, communeId), [occurrenceCommand]);
+  const toggleOperation = useCallback((id: string, doneBy?: DoneBy, from?: { communeId: string; date: string }) => {
+    // Home marks tasks done in any commune, checked against the date it showed.
+    if (from) {
+      return occurrenceCommand(`/operations/${encodeURIComponent(id)}/occurrences`, {
+        action: "completed", expectedDate: from.date, today: todayIso(), requestId: newRequestId(), ...(doneBy ? { doneBy } : {}),
+      }, from.communeId);
+    }
     const item = operationsRef.current.find((row) => row.id === id);
     if (item?.status !== "done") return taskAction(id, "completed", undefined, doneBy);
     // Undo the completion when it is still the latest state; a task finished
@@ -2023,7 +2039,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     operationTime, operationsByHub, operations, selectedOperation, fundKey,
     dark: device.theme === "dark" || (device.theme === "system" && prefersDark), theme: device.theme, noticesOn: device.noticesOn,
     searchTarget, searchOpened, invites: data?.invites[activeId] ?? NONE, payMethods: prefs.payMethods,
-    payLinksFor, loadPayLinksFor, myPayLinks, loadMyPayLinks, savePayLink, removePayLink, native, you,
+    payLinksFor, loadPayLinksFor, myPayLinks, loadMyPayLinks, savePayLink, removePayLink, setPreferredPayLink, native, you,
     lastExpense, expenses, selectedExpense, createdExpenses: expenses, voidedExpenses,
     expenseRead, retryExpenseRead, expenseHistory, loadEarlierExpenses, loadFullHistory,
     funds, recurringBills, splitTemplates, expenseTemplateId, reminderTargets, reminderUsage, sentReminders, notifications,

@@ -704,6 +704,8 @@ async function route<T>(path: string, init: RequestInit): Promise<T> {
       p_provider: pathId(path, /^\/pay-links\/(monzo|paypal|revolut|bank)$/), p_handle: body.handle ?? "",
       p_account_name: body.accountName ?? "", p_sort_code: body.sortCode ?? "", p_account_number: body.accountNumber ?? "",
     })) ?? [] };
+  } else if (method === "PUT" && path === "/pay-links-preferred") {
+    response = { links: unwrap(await db().rpc("set_preferred_pay_link", { p_provider: body.provider ?? "" })) ?? [] };
   } else if (method === "DELETE" && pathId(path, /^\/pay-links\/(monzo|paypal|revolut|bank)$/)) {
     response = { links: unwrap(await db().rpc("remove_pay_link", {
       p_provider: pathId(path, /^\/pay-links\/(monzo|paypal|revolut|bank)$/),
