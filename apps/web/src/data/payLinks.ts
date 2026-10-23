@@ -12,6 +12,8 @@ export type PayLink = {
   accountName: string | null;
   sortCode: string | null;
   accountNumber: string | null;
+  /** The one way they would most like to be paid, if they picked one. */
+  preferred: boolean;
 };
 export type PayLinkInput = {
   handle?: string; accountName?: string; sortCode?: string; accountNumber?: string;
@@ -39,11 +41,11 @@ export function parsePayLinks(value: unknown): PayLink[] {
     if (typeof provider !== "string" || !PAY_PROVIDERS.includes(provider as PayProvider)) return [];
     const link: PayLink = {
       provider: provider as PayProvider, handle: text(row.handle), accountName: text(row.accountName),
-      sortCode: text(row.sortCode), accountNumber: text(row.accountNumber),
+      sortCode: text(row.sortCode), accountNumber: text(row.accountNumber), preferred: row.preferred === true,
     };
     if (link.provider === "bank" ? !(link.accountName && link.sortCode && link.accountNumber) : !link.handle) return [];
     return [link];
-  }).sort((a, b) => PAY_PROVIDERS.indexOf(a.provider) - PAY_PROVIDERS.indexOf(b.provider));
+  }).sort((a, b) => Number(b.preferred) - Number(a.preferred) || PAY_PROVIDERS.indexOf(a.provider) - PAY_PROVIDERS.indexOf(b.provider));
 }
 
 /** 204577 becomes 20-45-77. */

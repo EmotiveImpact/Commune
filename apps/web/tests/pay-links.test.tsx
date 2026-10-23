@@ -39,6 +39,9 @@ describe("pay link addresses", () => {
       "nonsense",
     ]);
     expect(links.map((link) => link.provider)).toEqual(["monzo", "bank"]);
+    // A favourite comes first.
+    expect(parsePayLinks([{ provider: "monzo", handle: "sam" }, { provider: "revolut", handle: "sam", preferred: true }])
+      .map((link) => [link.provider, link.preferred])).toEqual([["revolut", true], ["monzo", false]]);
     expect(parsePayLinks(undefined)).toEqual([]);
   });
 
@@ -117,7 +120,7 @@ afterEach(cleanup);
 describe("paying someone who has shared their pay links", () => {
   it("offers their Monzo with the amount filled in, and their bank details, before you report it", async () => {
     mount("/settle");
-    fireEvent.click(await screen.findByRole("button", { name: /^I’ve sent it/ }));
+    fireEvent.click(await screen.findByRole("button", { name: "Already paid Sam for Printer ink" }));
     const dialog = screen.getByRole("dialog", { name: "Tell Sam you’ve paid" });
     const open = within(dialog).getByRole("link", { name: "Open Monzo" });
     expect(open.getAttribute("href")).toBe("https://monzo.me/samokafor/16.00?d=Printer%20ink");
@@ -127,12 +130,15 @@ describe("paying someone who has shared their pay links", () => {
     expect(within(dialog).getByRole("button", { name: "Copy details" })).toBeTruthy();
   });
 
-  it("puts their ways to pay on the Settle row; opening one also opens I’ve sent it", async () => {
+  it("Pay on the Settle row lists their ways to be paid; opening one asks on the way back", async () => {
     mount("/settle");
-    const ways = await screen.findByRole("group", { name: "Ways to pay Sam" });
-    const monzo = within(ways).getByRole("link", { name: /^Monzo/ });
-    expect(monzo.getAttribute("href")).toBe("https://monzo.me/samokafor/16.00?d=Printer%20ink");
-    fireEvent.click(monzo);
+    fireEvent.click(await screen.findByRole("button", { name: "Pay Sam for Printer ink" }));
+    const sheet = screen.getByRole("dialog", { name: "Pay Sam £16.00" });
+    fireEvent.click(within(sheet).getByRole("link", { name: "Open Monzo" }));
+    expect(screen.queryByRole("dialog", { name: "Pay Sam £16.00" })).toBeNull();
+    act(() => { document.dispatchEvent(new Event("visibilitychange")); window.dispatchEvent(new Event("blur")); window.dispatchEvent(new Event("focus")); });
+    const back = await screen.findByRole("dialog", { name: "Did £16.00 go to Sam?" });
+    fireEvent.click(within(back).getByRole("button", { name: "Paid a different amount" }));
     expect(screen.getByRole("dialog", { name: "Tell Sam you’ve paid" })).toBeTruthy();
   });
 
@@ -141,7 +147,7 @@ describe("paying someone who has shared their pay links", () => {
     mount("/settle");
     fireEvent.click(await screen.findByRole("button", { name: /^I’ve sent it/ }));
     const dialog = screen.getByRole("dialog", { name: "Tell Sam you’ve paid" });
-    expect(screen.queryByRole("group", { name: "Ways to pay Sam" })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Pay Sam/ })).toBeNull();
     expect(within(dialog).queryByRole("link")).toBeNull();
     expect(within(dialog).getByText(/Sam hasn’t added how they like to be paid/)).toBeTruthy();
   });
@@ -162,6 +168,32 @@ describe("your own pay links", () => {
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Remove" })); });
     expect(vi.mocked(api).mock.calls.some(([path, init]) => path === "/pay-links/monzo" && init?.method === "DELETE")).toBe(true);
     expect(statusLines()).toContain("Monzo removed.");
+  });
+
+  it("marks one way as the favourite, and can take it off again", async () => {
+    saved = [monzo];
+    vi.mocked(api).mockImplementation(async (path, init) => {
+      if (path === "/auth/me") return { user };
+      if (path === "/reminders/usage") return { totalUsed: 0, totalLimit: 60, recipientLimit: 8, recipientUsage: {}, nextSlotAt: null };
+      if (path.endsWith("/invites")) return { invites: [] };
+      if (path === "/pay-links") return { links: saved };
+      if (path === "/pay-links-preferred" && init?.method === "PUT") {
+        const provider = JSON.parse(String(init.body)).provider;
+        saved = [{ ...monzo, preferred: provider === "monzo" }];
+        return { links: saved };
+      }
+      return { ok: true };
+    });
+    mount("/settings");
+    fireEvent.click(await screen.findByRole("button", { name: /How people pay you/ }));
+    const make = await screen.findByRole("button", { name: "Make favourite Monzo" });
+    await act(async () => { fireEvent.click(make); });
+    const put = vi.mocked(api).mock.calls.find(([path]) => path === "/pay-links-preferred");
+    expect(JSON.parse(String(put?.[1]?.body))).toEqual({ provider: "monzo" });
+    expect(await screen.findByText("Your favourite")).toBeTruthy();
+    expect(statusLines().some((line) => line.includes("Monzo is your favourite"))).toBe(true);
+    await act(async () => { fireEvent.click(await screen.findByRole("button", { name: "Unfavourite Monzo" })); });
+    expect(screen.queryByText("Your favourite")).toBeNull();
   });
 });
 

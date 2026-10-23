@@ -1,5 +1,5 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { Router } from "wouter";
 import { memoryLocation } from "wouter/memory-location";
 import { App } from "../src/App";
@@ -292,21 +292,53 @@ describe("Today on Home", () => {
     expect(readAgain()).toEqual(["home-1"]);
   });
 
-  it("offers the bill payer’s own ways to pay on the next step, each opening I’ve paid too", async () => {
-    vi.mocked(loadSnapshot).mockImplementation(async (commune) => commune.id === home.id
-      ? { ...homeSnapshot(), reports: undefined, expenses: homeSnapshot().expenses.filter((item) => item.title !== "Electricity"),
-        payLinks: { ben: [{ provider: "monzo", handle: "benbaker" }, { provider: "bank", accountName: "Ben Baker", sortCode: "204577", accountNumber: "41029388" }] } }
-      : { ...tripSummary(), expenses: [] });
+  const withLinks = (links: unknown[]) => vi.mocked(loadSnapshot).mockImplementation(async (commune) => commune.id === home.id
+    ? { ...homeSnapshot(), reports: undefined, expenses: homeSnapshot().expenses.filter((item) => item.title !== "Electricity"),
+      payLinks: { ben: links } }
+    : { ...tripSummary(), expenses: [] });
+  const monzo = { provider: "monzo", handle: "benbaker" };
+  const bank = { provider: "bank", accountName: "Ben Baker", sortCode: "204577", accountNumber: "41029388" };
+
+  it("with no favourite, Pay lists every way the bill payer takes money, and Already paid tells them", async () => {
+    withLinks([monzo, bank]);
     mount("/");
     const next = await screen.findByRole("article", { name: "Internet" });
-    const ways = within(next).getByRole("group", { name: "Ways to pay Ben Baker" });
-    const monzo = within(ways).getByRole("link", { name: /^Monzo £15\.00/ });
-    expect(monzo.getAttribute("href")).toBe("https://monzo.me/benbaker/15.00?d=Internet");
-    expect(monzo.getAttribute("target")).toBe("_blank");
-    expect(within(ways).getByRole("button", { name: /^Bank transfer/ })).toBeTruthy();
-    // Opening their app also opens "I’ve paid", so the payment is recorded on the way back.
-    fireEvent.click(monzo);
+    expect(within(next).getByText("Monzo · Bank transfer")).toBeTruthy();
+    fireEvent.click(within(next).getByRole("button", { name: "Pay Ben £15.00" }));
+    const sheet = await screen.findByRole("dialog", { name: "Pay Ben £15.00" });
+    expect(within(sheet).getByRole("link", { name: "Open Monzo" }).getAttribute("href")).toBe("https://monzo.me/benbaker/15.00?d=Internet");
+    expect(within(sheet).getByRole("button", { name: "Copy details" })).toBeTruthy();
+    fireEvent.click(within(sheet).getByRole("button", { name: "I’ve already paid, tell Ben" }));
     expect(await screen.findByRole("dialog", { name: "Tell Ben Baker you’ve paid" })).toBeTruthy();
+  });
+
+  it("with a favourite, one button opens it, and coming back asks whether it went", async () => {
+    withLinks([bank, { ...monzo, preferred: true }]);
+    vi.mocked(post).mockResolvedValue({ duplicate: false });
+    mount("/");
+    const next = await screen.findByRole("article", { name: "Internet" });
+    const open = within(next).getByRole("link", { name: /^Pay £15\.00 with Monzo/ });
+    expect(open.getAttribute("href")).toBe("https://monzo.me/benbaker/15.00?d=Internet");
+    expect(open.getAttribute("target")).toBe("_blank");
+    expect(within(next).getByRole("button", { name: "Other ways (1)" })).toBeTruthy();
+    expect(within(next).getByRole("button", { name: "Already paid" })).toBeTruthy();
+    fireEvent.click(open);
+    // Nothing is asked until the person has been away and come back.
+    expect(screen.queryByRole("dialog")).toBeNull();
+    act(() => { window.dispatchEvent(new Event("blur")); window.dispatchEvent(new Event("focus")); });
+    const back = await screen.findByRole("dialog", { name: "Did £15.00 go to Ben?" });
+    fireEvent.click(within(back).getByRole("button", { name: "Yes, tell Ben" }));
+    await waitFor(() => expect(toastText()).toBe("Recorded. Ben will confirm your £15.00."));
+    expect(post).toHaveBeenCalledWith("/shares/share-me-1500/payment-reports",
+      expect.objectContaining({ amountMinor: 1500, sentOn: today, reference: "Monzo" }));
+  });
+
+  it("with no pay links saved, keeps I’ve paid and says why", async () => {
+    withLinks([]);
+    mount("/");
+    const next = await screen.findByRole("article", { name: "Internet" });
+    expect(within(next).getByRole("button", { name: "I’ve paid Ben £15.00" })).toBeTruthy();
+    expect(within(next).getByText(/Ben hasn’t said how they like to be paid/)).toBeTruthy();
   });
 });
 

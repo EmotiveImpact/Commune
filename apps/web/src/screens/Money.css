@@ -231,17 +231,23 @@
 }
 
 /* Ways to pay someone, beside a payment you owe them. */
-/* One row that slides sideways: a pill cut off at the edge says there is more. */
-.c-pay-buttons { display: flex; flex-wrap: nowrap; align-items: center; gap: 8px; min-width: 0; max-width: 100%; contain: inline-size; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; -webkit-overflow-scrolling: touch; font-size: 12.5px; line-height: 16px; color: var(--ink-soft); }
-.c-pay-buttons::-webkit-scrollbar { display: none; }
-.c-pay-buttons.has-more { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 20px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 20px), transparent); }
-.c-pay-buttons > * { flex: none; }
-.c-pay-buttons-lead { white-space: nowrap; }
-.c-pay-button { display: inline-flex; align-items: center; min-height: 32px; padding: 0 12px; border: 1px solid var(--border); border-radius: 999px; background: transparent; color: var(--ink); font: inherit; font-weight: 600; text-decoration: none; white-space: nowrap; cursor: pointer; }
-.c-pay-button:hover { border-color: var(--ink-soft); }
-.c-pay-button:focus-visible { outline: 2px solid var(--focus, currentColor); outline-offset: 2px; }
-.c-pay-button[aria-disabled="true"], .c-pay-button:disabled { opacity: .5; cursor: default; }
-.a-move .c-pay-buttons { margin-top: 6px; }
-.c-pay-buttons.is-short .c-pay-button { min-height: 28px; padding: 0 10px; font-size: 12px; }
-@media (pointer: coarse) { .c-pay-button, .c-pay-buttons.is-short .c-pay-button { min-height: 44px; } }
+/* Paying: the main button (their favourite way, or "Pay Tom"), what else
+   there is, and the way to say it was already paid. */
+.c-pay-primary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 46px; padding: 0 20px; border: 0; border-radius: var(--radius-control); background: var(--action); color: var(--on-action); font: inherit; font-size: 15px; font-weight: 600; text-decoration: none; cursor: pointer; }
+.c-pay-primary:hover { background: var(--action-hover); }
+.c-pay-primary:focus-visible, .c-pay-secondary:focus-visible, .c-pay-tell:focus-visible { outline: 2px solid var(--action); outline-offset: 2px; }
+.c-pay-primary:disabled, .c-pay-primary[aria-disabled="true"], .c-pay-secondary:disabled, .c-pay-tell:disabled { opacity: .45; cursor: not-allowed; }
+.c-pay-more { display: inline-flex; flex-wrap: wrap; gap: 8px; }
+.c-pay-secondary { min-height: 46px; padding: 0 18px; border: 1px solid var(--border); border-radius: var(--radius-control); background: transparent; color: var(--ink); font: inherit; font-size: 14.5px; font-weight: 600; cursor: pointer; }
+.c-pay-hint { flex-basis: 100%; margin: 0; font-size: 12.5px; line-height: 18px; color: var(--ink-soft); }
+.c-pay-tell { min-height: 44px; padding: 0 4px; border: 0; background: none; color: var(--action); font: inherit; font-size: 14.5px; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.c-pay-intro { margin: 0 0 12px; font-size: 14px; line-height: 1.5; color: var(--ink-soft); }
+@media (max-width: 560px) {
+  .c-pay-primary { flex: 1 1 100%; height: 50px; font-size: 16px; }
+  .c-pay-more { flex: 1 1 100%; }
+  .c-pay-more .c-pay-secondary { flex: 1 1 0; }
+  .c-pay-hint { text-align: center; }
+  .c-pay-tell { flex: 1 1 100%; }
+}
+.c-pay-favourite { color: var(--action); font-weight: 600; }
 }

@@ -9,7 +9,8 @@ import { cx } from "../ui/cx";
 import { CoverImage, coverToneClass } from "../ui/CoverImage";
 import { activityStamp, activityWord } from "../ui/ActivityLog";
 import { useReceiptActions } from "../ui/Receipts";
-import { PayButtons } from "../ui/PayLinks";
+import { PayPrimary, usePayeeLinks } from "../ui/PayLinks";
+import type { PayLink } from "../data/payLinks";
 import { addDays, dateFromIso, todayIso } from "../data/operations";
 import { coverSource } from "../data/covers";
 import { animate } from "../ui/motion";
@@ -192,7 +193,10 @@ function Standing({ places, needs, waiting, today, name }: {
 }
 
 /** The first thing that needs you, with the only filled button on the page. */
-function NextStep({ entry, total, onAct, busy }: { entry: Entry; total: number; onAct: (entry: Entry, decline?: boolean) => void; busy: boolean }) {
+function NextStep({ entry, total, onAct, onPay, onOpened, busy }: {
+  entry: Entry; total: number; onAct: (entry: Entry, decline?: boolean) => void;
+  onPay: (entry: Entry) => void; onOpened: (entry: Entry, link: PayLink) => void; busy: boolean;
+}) {
   const { hub, item } = entry;
   const today = todayIso();
   // The bill's due date says nothing about a payment waiting to be confirmed.
@@ -202,8 +206,7 @@ function NextStep({ entry, total, onAct, busy }: { entry: Entry; total: number; 
   const action = item.kind === "pay" ? `I’ve paid ${first} ${item.amount}`
     : item.kind === "confirm" ? `Confirm ${item.amount} received`
       : item.kind === "task" ? "Open the task" : "Open the fund";
-  const note = item.kind === "pay" ? `Pay ${first} however you usually do, then record it here. ${first} confirms it.`
-    : item.kind === "confirm" ? `Only once it has reached you. ${first} is told either way.` : "";
+  const note = item.kind === "confirm" ? `Only once it has reached you. ${first} is told either way.` : "";
   return (
     <article className="c-home-next" aria-labelledby="home-next-title" data-flip="" data-answer="wash">
       <div className="c-home-next-top"><span>Your next step</span>{total > 1 ? <span>1 of {total}</span> : null}</div>
@@ -221,15 +224,17 @@ function NextStep({ entry, total, onAct, busy }: { entry: Entry; total: number; 
         </div>
         {item.amount ? <strong className="c-home-next-amount">{item.amount}</strong> : null}
       </div>
-      <div className="c-home-next-foot">
-        <button className="c-home-btn is-primary is-large" type="button" disabled={busy} onClick={() => onAct(entry)}>{action}</button>
-        {item.kind === "confirm"
-          ? <button className="c-home-btn is-secondary is-large" type="button" disabled={busy} onClick={() => onAct(entry, true)}>Not received</button>
-          : null}
-        {item.kind === "pay" && item.person && item.minor ? (
-          <PayButtons userId={item.person} communeId={hub.id} name={nameOf(hub, item.person, "them")} amountMinor={item.minor} currency={hub.currency}
-            note={item.title} onOpen={() => onAct(entry)} disabled={busy} load />
-        ) : null}
+      <div className={cx("c-home-next-foot", item.kind === "pay" && "is-pay")}>
+        {item.kind === "pay" && item.minor ? (
+          <PayPrimary busy={busy} onPay={() => onPay(entry)} onTell={() => onAct(entry)} onOpened={(link) => onOpened(entry, link)}
+            target={{ payerId: item.person, payerName: nameOf(hub, item.person, "the bill payer"), communeId: hub.id,
+              outstandingMinor: item.minor, currency: hub.currency, expenseName: item.title }} />
+        ) : <>
+          <button className="c-home-btn is-primary is-large" type="button" disabled={busy} onClick={() => onAct(entry)}>{action}</button>
+          {item.kind === "confirm"
+            ? <button className="c-home-btn is-secondary is-large" type="button" disabled={busy} onClick={() => onAct(entry, true)}>Not received</button>
+            : null}
+        </>}
         {note ? <span className="c-home-note">{note}</span> : null}
       </div>
     </article>
@@ -363,14 +368,16 @@ function CommuneCard({ hub, current }: { hub: LiveHub; current: boolean }) {
 }
 
 /** A row in Needs you or Waiting on others. The title opens the record; the button acts on it. */
-function Row({ entry, today, waiting = false, onAct, busy, className }: {
-  entry: Entry; today: string; waiting?: boolean; onAct?: (entry: Entry) => void; busy?: boolean; className?: string;
+function Row({ entry, today, waiting = false, onAct, onPay, busy, className }: {
+  entry: Entry; today: string; waiting?: boolean; onAct?: (entry: Entry) => void; onPay?: (entry: Entry) => void; busy?: boolean; className?: string;
 }) {
   const open = useOpen();
   const { hub, item } = entry;
   const state = item.kind === "confirm" ? null : dueState(item.dueOn, today, waiting);
   const who = item.kind === "owed" ? item.people ?? [] : item.person ? [item.person] : [];
-  const verb = item.kind === "pay" ? "I’ve paid" : item.kind === "confirm" ? "Confirm" : "Open";
+  const links = usePayeeLinks(item.kind === "pay" ? item.person : null, hub.id);
+  const payable = item.kind === "pay" && Boolean(links?.length) && Boolean(onPay);
+  const verb = item.kind === "pay" ? payable ? "Pay" : "I’ve paid" : item.kind === "confirm" ? "Confirm" : "Open";
   const context = item.kind === "pay" ? `${nameOf(hub, item.person)} for ${item.title}` : item.kind === "confirm" ? `${item.amount} from ${nameOf(hub, item.person)}` : item.title;
   return (
     <li className={cx("c-home-row", waiting && "is-waiting", className)} data-row="" data-flip="">
@@ -382,10 +389,6 @@ function Row({ entry, today, waiting = false, onAct, busy, className }: {
       <span className="c-home-row-main">
         <button className="c-home-row-title" type="button" onClick={() => open(entry)}>{item.title}</button>
         <span className="c-home-row-meta"><Place hub={hub} /><span aria-hidden="true">·</span><span>{detail(item)}</span></span>
-        {onAct && item.kind === "pay" && item.person && item.minor ? (
-          <PayButtons userId={item.person} communeId={hub.id} name={nameOf(hub, item.person, "them")} amountMinor={item.minor} currency={hub.currency}
-            note={item.title} onOpen={() => onAct(entry)} disabled={busy} short />
-        ) : null}
       </span>
       <span className="c-home-row-fig">
         {item.amount ? <strong>{item.amount}</strong> : null}
@@ -394,7 +397,7 @@ function Row({ entry, today, waiting = false, onAct, busy, className }: {
       {onAct ? (
         <span className="c-home-row-act">
           <button className="c-home-btn is-secondary is-small" type="button" disabled={busy}
-            onClick={() => item.kind === "pay" || item.kind === "confirm" ? onAct(entry) : open(entry)}>
+            onClick={() => payable ? onPay!(entry) : item.kind === "pay" || item.kind === "confirm" ? onAct(entry) : open(entry)}>
             {verb} <span className="c-visually-hidden">{context}</span>
           </button>
         </span>
@@ -410,8 +413,8 @@ const COLLAPSE_OVER = 7;
 const PHONE_SHOWN = 2;
 const PHONE_COLLAPSE_OVER = 3;
 
-function NeedsList({ needs, today, onAct, busy, title = "Needs you", id = "home-needs" }: {
-  needs: Entry[]; today: string; onAct: (entry: Entry) => void; busy: boolean; title?: string; id?: string;
+function NeedsList({ needs, today, onAct, onPay, busy, title = "Needs you", id = "home-needs" }: {
+  needs: Entry[]; today: string; onAct: (entry: Entry) => void; onPay?: (entry: Entry) => void; busy: boolean; title?: string; id?: string;
 }) {
   const { go } = useApp();
   const [all, setAll] = useState(false);
@@ -438,7 +441,7 @@ function NeedsList({ needs, today, onAct, busy, title = "Needs you", id = "home-
         <div key={group.name} className={cx("c-home-group", extra(group.first))} data-flip="">
           <h3 className={cx(group.name === "Overdue" && "is-late")}>{group.name} <span>{group.rows.length}</span></h3>
           <ul>{group.rows.map((entry, index) => (
-            <Row key={`${entry.hub.id}-${entry.item.kind}-${entry.item.title}-${index}`} entry={entry} today={today} onAct={onAct} busy={busy}
+            <Row key={`${entry.hub.id}-${entry.item.kind}-${entry.item.title}-${index}`} entry={entry} today={today} onAct={onAct} onPay={onPay} busy={busy}
               className={extra(group.first + index) || undefined} />
           ))}</ul>
         </div>
@@ -757,12 +760,26 @@ function HomeWithCommunes() {
     }
   }
 
+  const payTarget = ({ hub, item }: Entry) => item.shareId && item.minor
+    ? { shareId: item.shareId, payerName: nameOf(hub, item.person, "the bill payer"), expenseName: item.title,
+      outstandingMinor: item.minor, currency: hub.currency, communeId: hub.id, payerId: item.person }
+    : null;
+  // Pay opens their ways to be paid; opening one asks on the way back whether it went.
+  function pay(entry: Entry) {
+    const target = payTarget(entry);
+    setMessage("");
+    if (target) receipts.pay(target); else open(entry);
+  }
+  function opened(entry: Entry, link: PayLink) {
+    const target = payTarget(entry);
+    if (target) receipts.opened(target, link);
+  }
   function act(entry: Entry, decline = false) {
     const { hub, item } = entry;
     setMessage("");
-    if (item.kind === "pay" && item.shareId && item.minor) {
-      receipts.report({ shareId: item.shareId, payerName: nameOf(hub, item.person, "the bill payer"), expenseName: item.title,
-        outstandingMinor: item.minor, currency: hub.currency, communeId: hub.id, payerId: item.person });
+    const target = item.kind === "pay" ? payTarget(entry) : null;
+    if (target) {
+      receipts.report(target);
     } else if (item.kind === "confirm" && item.report) {
       receipts.answer({ report: item.report, debtorName: nameOf(hub, item.person, "a former member"), expenseName: item.title,
         currency: hub.currency, decision: decline ? "decline" : "confirm", communeId: hub.id, expenseId: item.expenseId });
@@ -804,7 +821,7 @@ function HomeWithCommunes() {
       <div className="c-home-split c-home-lead">
         <div className="c-home-col c-home-top">
           <Standing places={places} needs={needs} waiting={waiting} today={today} name={name} />
-          {next ? <NextStep entry={next} total={needs.length} onAct={act} busy={receipts.busy} /> : ready ? <Calm waiting={waiting} today={today} /> : null}
+          {next ? <NextStep entry={next} total={needs.length} onAct={act} onPay={pay} onOpened={opened} busy={receipts.busy} /> : ready ? <Calm waiting={waiting} today={today} /> : null}
           {status}
         </div>
         <div className="c-home-col">{communeList}</div>
@@ -814,7 +831,7 @@ function HomeWithCommunes() {
           <>
             <div className="c-home-col">
               {chores.length ? <Chores chores={chores} today={today} /> : null}
-              {toPay.length ? <NeedsList needs={toPay} today={today} onAct={act} busy={receipts.busy} title="Still to pay" id="home-to-pay" /> : null}
+              {toPay.length ? <NeedsList needs={toPay} today={today} onAct={act} onPay={pay} busy={receipts.busy} title="Still to pay" id="home-to-pay" /> : null}
             </div>
             <div className="c-home-col">
               {waitingAll.length ? <WaitingList waiting={waitingAll} today={today} onAct={act} busy={receipts.busy} /> : null}

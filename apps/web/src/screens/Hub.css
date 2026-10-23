@@ -143,8 +143,6 @@
 .c-hub-sentence em { padding: 0 .16em .04em; border-radius: 10px; background: var(--hub-panel); font-style: normal; font-variant-numeric: tabular-nums; }
 .c-hub-part-copy { color: var(--hub-muted); }
 .c-hub-next { margin-top: 10px; border-radius: 16px; background: var(--hub-panel); }
-.c-hub-next-pay { padding: 0 0 12px 16px; }
-.c-hub-next-pay .c-pay-buttons { padding-right: 16px; scroll-padding-right: 16px; }
 .c-hub-next-body { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 16px 12px; }
 .c-hub-next-body > span { display: grid; min-width: 0; }
 .c-hub-next-body strong { font-size: 14px; font-weight: 500; overflow-wrap: anywhere; }

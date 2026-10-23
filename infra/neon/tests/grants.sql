@@ -36,7 +36,8 @@ BEGIN
   END IF;
   IF has_function_privilege('anonymous', 'public.set_pay_link(text,text,text,text,text)', 'EXECUTE')
     OR has_function_privilege('anonymous', 'public.my_pay_links()', 'EXECUTE')
-    OR has_function_privilege('anonymous', 'public.remove_pay_link(text)', 'EXECUTE') THEN
+    OR has_function_privilege('anonymous', 'public.remove_pay_link(text)', 'EXECUTE')
+    OR has_function_privilege('anonymous', 'public.set_preferred_pay_link(text)', 'EXECUTE') THEN
     RAISE EXCEPTION 'Anonymous pay link execution grant';
   END IF;
   IF has_function_privilege('anonymous', 'public.commune_snapshot(uuid)', 'EXECUTE')
