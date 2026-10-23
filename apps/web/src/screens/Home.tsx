@@ -114,6 +114,32 @@ function useOpen() {
     : go(item.go, { hub: hub.id, expense: item.expenseId, operation: item.operationId });
 }
 
+const CURRENCY_WORD: Record<CurrencyCode, string> = { GBP: "pounds", EUR: "euros", USD: "dollars" };
+/**
+ * Where you stand once both directions count, per currency you owe in:
+ * "so you’re £92.45 ahead overall", or "so in pounds you’re £92.45 ahead"
+ * when more than one currency is in play. Currencies are never converted.
+ */
+function standingClauses(ready: LiveHub[]): string {
+  const owe = new Map<CurrencyCode, number>();
+  const owed = new Map<CurrencyCode, number>();
+  for (const hub of ready) {
+    owe.set(hub.currency, (owe.get(hub.currency) ?? 0) + hub.youOweMinor);
+    owed.set(hub.currency, (owed.get(hub.currency) ?? 0) + hub.owedToYouMinor);
+  }
+  const used = new Set([...owe].filter(([, minor]) => minor > 0).map(([currency]) => currency));
+  for (const [currency, minor] of owed) if (minor > 0) used.add(currency);
+  const many = used.size > 1;
+  const clauses = [...owe].filter(([, minor]) => minor > 0).map(([currency, minor]) => {
+    const net = (owed.get(currency) ?? 0) - minor;
+    const where = many ? `in ${CURRENCY_WORD[currency]} ` : "";
+    const end = many ? "" : " overall";
+    return net > 0 ? `${where}you’re ${money(net, currency)} ahead${end}`
+      : net < 0 ? `${where}you owe ${money(-net, currency)}${end}` : `${where}you’re even${end}`;
+  });
+  return `so ${clauses.join(" and ")}`;
+}
+
 /** The opening sentence: what you owe and are owed, per currency, never summed. */
 function Standing({ places, needs, waiting, today, name }: {
   places: LiveHub[]; needs: Entry[]; waiting: Entry[]; today: string; name: string;
@@ -144,7 +170,7 @@ function Standing({ places, needs, waiting, today, name }: {
     lines = [];
   } else if (owe.length) {
     sentence = <>You owe {amounts(owe)} {where(owing)}.</>;
-    lines = [owed.length ? `You’re owed ${owed.join(" and ")}.` : "", lateLine];
+    lines = [owed.length ? `You’re owed ${owed.join(" and ")}, ${standingClauses(ready)}.` : "", lateLine];
   } else if (owed.length) {
     sentence = <>You’re owed {amounts(owed)}.</>;
     lines = [`You owe nothing. ${capital(count(people, "person", "people"))} still ${people === 1 ? "owes" : "owe"} you ${where(owedIn)}.`, lateLine];
@@ -198,6 +224,9 @@ function NextStep({ entry, total, onAct, busy }: { entry: Entry; total: number; 
         {item.kind === "confirm"
           ? <button className="c-home-btn is-secondary is-large" type="button" disabled={busy} onClick={() => onAct(entry, true)}>Not received</button>
           : null}
+        {item.kind === "pay" && item.person && hub.payWith?.[item.person]?.length ? (
+          <span className="c-home-pays">{first} takes {hub.payWith[item.person].map((name) => <span key={name} className="c-home-pay">{name}</span>)}</span>
+        ) : null}
         {note ? <span className="c-home-note">{note}</span> : null}
       </div>
     </article>
@@ -288,6 +317,7 @@ function CommuneCard({ hub, current }: { hub: LiveHub; current: boolean }) {
           {state ? <State {...state} /> : null}
           {square ? <span className="c-home-badge"><Check size={13} strokeWidth={2.2} aria-hidden="true" />All square</span> : null}
         </span>
+        {hub.activityState === "ready" && hub.pulse ? <span className={cx("c-home-pulse", hub.pulse.late && "is-late")}>{hub.pulse.text}</span> : null}
       </span>
       <span className="c-home-commune-go" aria-hidden="true"><ChevronRight size={16} strokeWidth={1.6} /></span>
     </li>
@@ -338,7 +368,9 @@ const COLLAPSE_OVER = 7;
 const PHONE_SHOWN = 2;
 const PHONE_COLLAPSE_OVER = 3;
 
-function NeedsList({ needs, today, onAct, busy }: { needs: Entry[]; today: string; onAct: (entry: Entry) => void; busy: boolean }) {
+function NeedsList({ needs, today, onAct, busy, title = "Needs you", id = "home-needs" }: {
+  needs: Entry[]; today: string; onAct: (entry: Entry) => void; busy: boolean; title?: string; id?: string;
+}) {
   const { go } = useApp();
   const [all, setAll] = useState(false);
   const collapsible = needs.length > COLLAPSE_OVER;
@@ -355,9 +387,9 @@ function NeedsList({ needs, today, onAct, busy }: { needs: Entry[]; today: strin
   // Past the limit on every screen, past it on a phone, or never.
   const extra = (index: number) => cx(index >= limit && "is-extra", index >= phoneLimit && "is-extra-phone");
   return (
-    <section className={cx("c-home-panel", "c-home-needs", all && "is-all")} aria-labelledby="home-needs" data-flip="" data-flip-box="">
+    <section className={cx("c-home-panel", "c-home-needs", all && "is-all")} aria-labelledby={id} data-flip="" data-flip-box="">
       <div className="c-home-head">
-        <h2 id="home-needs">Needs you</h2><span className="c-home-count">{needs.length}</span>
+        <h2 id={id}>{title}</h2><span className="c-home-count">{needs.length}</span>
         <button className="c-home-link is-wide" type="button" onClick={() => go("home-activity")}>History</button>
       </div>
       {groups.map((group) => (
@@ -382,7 +414,60 @@ function NeedsList({ needs, today, onAct, busy }: { needs: Entry[]; today: strin
   );
 }
 
-function WaitingList({ waiting, today }: { waiting: Entry[]; today: string }) {
+/** Your chores that are due, each ticked off here with Undo on the toast, in whichever commune it is. */
+function Chores({ chores, today }: { chores: Entry[]; today: string }) {
+  const { toggleOperation, undoOperation } = useApp();
+  const go = useOpen();
+  const [pending, setPending] = useState<string | null>(null);
+  const [error, setError] = useState("");
+  async function done({ hub, item }: Entry) {
+    if (!item.operationId || !item.dueOn) return;
+    setPending(item.operationId); setError("");
+    try {
+      const result = await toggleOperation(item.operationId, undefined, { communeId: hub.id, date: item.dueOn });
+      showToast({ text: `${item.title} is done.`, action: { label: "Undo", busyLabel: "Undoing…", undo: true, run: () => undo(result.occurrenceId, hub.id) } });
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not update the task. Please try again.");
+    } finally {
+      setPending(null);
+    }
+  }
+  async function undo(occurrenceId: string, communeId: string) {
+    try {
+      await undoOperation(occurrenceId, communeId);
+      showToast({ text: "Undone. The task is back as it was." });
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not undo that. Please try again.");
+    }
+  }
+  return (
+    <section className="c-home-panel c-home-chores" aria-labelledby="home-chores" data-flip="" data-flip-box="">
+      <div className="c-home-head"><h2 id="home-chores">Today</h2><span className="c-home-count">{chores.length}</span></div>
+      <ul>{chores.map((entry) => {
+        const { hub, item } = entry;
+        const state = dueState(item.dueOn, today);
+        return (
+          <li key={`${hub.id}-${item.operationId}`} className={cx("c-home-row", "is-chore", lateForYou(item) && "is-late")} data-row="" data-flip="">
+            <span className="c-home-row-lead">{item.dueOn ? <CalendarDate date={item.dueOn} today={today} label="Due" /> : <span className="c-home-nodate">No date</span>}</span>
+            <span className="c-home-row-main">
+              <button className="c-home-row-title" type="button" onClick={() => go(entry)}>{item.title}</button>
+              <span className="c-home-row-meta"><Place hub={hub} />{state ? <><span aria-hidden="true">·</span><State {...state} /></> : null}</span>
+            </span>
+            <span className="c-home-row-act">
+              <label className="c-home-check">
+                <input type="checkbox" checked={false} disabled={pending === item.operationId} onChange={() => void done(entry)} />
+                <span className="c-visually-hidden">Mark {item.title} done</span>
+              </label>
+            </span>
+          </li>
+        );
+      })}</ul>
+      {error ? <p className="c-home-message" role="alert">{error}</p> : null}
+    </section>
+  );
+}
+
+function WaitingList({ waiting, today, onAct, busy }: { waiting: Entry[]; today: string; onAct?: (entry: Entry) => void; busy?: boolean }) {
   const total = perCurrency(waiting.filter(({ item }) => item.kind === "owed").map(({ hub, item }) => [hub.currency, item.minor ?? 0]));
   return (
     <section className="c-home-panel" aria-labelledby="home-waiting" data-flip="" data-flip-box="">
@@ -390,7 +475,8 @@ function WaitingList({ waiting, today }: { waiting: Entry[]; today: string }) {
         <h2 id="home-waiting">Waiting on others</h2><span className="c-home-count">{waiting.length}</span>
         {total.length ? <span className="c-home-head-note">{total.join(" · ")}</span> : null}
       </div>
-      <ul>{waiting.map((entry, index) => <Row key={`${entry.hub.id}-${entry.item.kind}-${entry.item.title}-${index}`} entry={entry} today={today} waiting />)}</ul>
+      <ul>{waiting.map((entry, index) => <Row key={`${entry.hub.id}-${entry.item.kind}-${entry.item.title}-${index}`} entry={entry} today={today}
+        waiting={entry.item.kind !== "confirm"} onAct={entry.item.kind === "confirm" ? onAct : undefined} busy={busy} />)}</ul>
     </section>
   );
 }
@@ -416,7 +502,10 @@ function Activity({ places }: { places: LiveHub[] }) {
                 {/* "Joined the commune · Maya Chen" under "Maya Chen" names her once. */}
                 <span>{[hub.name, activityWord(item.type), item.when.endsWith(` · ${item.title}`) ? item.when.slice(0, -` · ${item.title}`.length) : item.when].filter(Boolean).join(" · ")}</span>
               </button>
-              <time>{activityStamp(item)}</time>
+              <span className="c-home-feed-side">
+                {item.amount ? <strong>{item.amount}</strong> : null}
+                <time>{activityStamp(item)}</time>
+              </span>
             </li>
           ))}
         </ul>
@@ -598,6 +687,10 @@ function HomeWithCommunes() {
   const waiting = places.flatMap((hub) => hub.waiting.map((item) => ({ hub, item }))).sort((a, b) => compareNeeds(a.item, b.item));
   const coming = places.flatMap((hub) => hub.coming.map((item) => ({ hub, item }))).sort((a, b) => a.item.dueOn.localeCompare(b.item.dueOn));
   const [next, ...rest] = needs;
+  // After the next step: chores to tick, money to pay, and payments to confirm sit with what others owe.
+  const chores = rest.filter(({ item }) => item.kind === "task");
+  const toPay = rest.filter(({ item }) => item.kind !== "task" && item.kind !== "confirm");
+  const waitingAll = [...rest.filter(({ item }) => item.kind === "confirm"), ...waiting];
   const current = places.find((place) => place.id === hubId) ?? places[0];
   const communes = places.map((hub, index) => ({ hub, index })).sort((a, b) => needRank(a.hub) - needRank(b.hub) || a.index - b.index).map(({ hub }) => hub);
   const ready = places.every((hub) => hub.activityState === "ready");
@@ -675,17 +768,20 @@ function HomeWithCommunes() {
         <div className="c-home-col">{communeList}</div>
       </div>
       <div className="c-home-split">
-        {rest.length ? (
+        {chores.length || toPay.length ? (
           <>
-            <div className="c-home-col"><NeedsList needs={rest} today={today} onAct={act} busy={receipts.busy} /></div>
             <div className="c-home-col">
-              {waiting.length ? <WaitingList waiting={waiting} today={today} /> : null}
+              {chores.length ? <Chores chores={chores} today={today} /> : null}
+              {toPay.length ? <NeedsList needs={toPay} today={today} onAct={act} busy={receipts.busy} title="Still to pay" id="home-to-pay" /> : null}
+            </div>
+            <div className="c-home-col">
+              {waitingAll.length ? <WaitingList waiting={waitingAll} today={today} onAct={act} busy={receipts.busy} /> : null}
               <Activity places={places} />
             </div>
           </>
-        ) : waiting.length || comingUp ? (
+        ) : waitingAll.length || comingUp ? (
           <>
-            <div className="c-home-col">{waiting.length ? <WaitingList waiting={waiting} today={today} /> : null}{comingUp}</div>
+            <div className="c-home-col">{waitingAll.length ? <WaitingList waiting={waitingAll} today={today} onAct={act} busy={receipts.busy} /> : null}{comingUp}</div>
             <div className="c-home-col"><Activity places={places} /></div>
           </>
         ) : <div className="c-home-col"><Activity places={places} /></div>}

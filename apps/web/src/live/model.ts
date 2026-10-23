@@ -9,6 +9,7 @@ import {
 } from "../data/household";
 import type { OperationItem } from "../data/operations";
 import { notePreview } from "../data/notePresentation";
+import { parsePayLinks, PAY_PROVIDER_NAME } from "../data/payLinks";
 import { addDays, timestampDay, todayIso } from "../data/operations";
 import { formatDay, formatMoney, netBalances, overallNet } from "@commune/core";
 
@@ -339,7 +340,36 @@ export type LiveHub = Omit<Hub, "members" | "activity" | "now"> & {
   owingYou: string[];
   /** Coming up: turns and regular bills in the next fortnight (see comingUp). */
   coming: Upcoming[];
+  /** This commune's week in a few words, for its card on Home (see communePulse). */
+  pulse?: { text: string; late: boolean };
+  /** How each member takes money, from the pay links they saved: provider names by user id. */
+  payWith?: Record<string, string[]>;
 };
+
+/**
+ * A commune's week in a few words, at most two things, the most pressing
+ * first: late chores, overdue bills, then bills due this week. Failing those,
+ * the next bill due; failing that, "Nothing due".
+ */
+export function communePulse(snapshot: Snapshot, today = todayIso()): { text: string; late: boolean } {
+  const end = addDays(today, 6);
+  const unsettled = snapshot.expenses.filter((expense) => !expense.voidedAt && expense.dueOn && expense.shares.some((share) => share.settledMinor < share.amountMinor));
+  const lateChores = (snapshot.operations ?? []).filter((item) => item.kind === "task" && item.status === "open" && item.date < today).length;
+  const overdue = unsettled.filter((expense) => expense.dueOn! < today).length;
+  const thisWeek = unsettled.filter((expense) => expense.dueOn! >= today && expense.dueOn! <= end).length;
+  const parts = [
+    lateChores ? `${lateChores} late ${lateChores === 1 ? "chore" : "chores"}` : "",
+    overdue ? `${overdue} overdue ${overdue === 1 ? "bill" : "bills"}` : "",
+    thisWeek ? `${thisWeek} ${thisWeek === 1 ? "bill" : "bills"} this week` : "",
+  ].filter(Boolean);
+  if (parts.length) return { text: parts.slice(0, 2).join(" · "), late: Boolean(lateChores || overdue) };
+  const next = unsettled.filter((expense) => expense.dueOn! > end).sort((a, b) => a.dueOn!.localeCompare(b.dueOn!))[0];
+  if (!next) return { text: "Nothing due", late: false };
+  const [y1, m1, d1] = today.split("-").map(Number);
+  const [y2, m2, d2] = next.dueOn!.split("-").map(Number);
+  const days = Math.round((Date.UTC(y2, m2 - 1, d2) - Date.UTC(y1, m1 - 1, d1)) / 86400000);
+  return { text: `${next.title} due in ${days} days`, late: false };
+}
 
 /**
  * One row of "Coming up": a task's next turn or a regular bill's next date in
@@ -709,6 +739,9 @@ export function hubFromSnapshot(
     owedToYouMinor: youAreOwed,
     owingYou: [...owingYou],
     coming: comingUp(source, viewer.id, today),
+    pulse: communePulse(snapshot, today),
+    payWith: Object.fromEntries(Object.entries(snapshot.payLinks ?? {}).map(([userId, links]) =>
+      [userId, parsePayLinks(links).map((link) => PAY_PROVIDER_NAME[link.provider])])),
     moves,
     members,
     activity: [...snapshot.expenses.map((expense) => ({
@@ -717,6 +750,7 @@ export function hubFromSnapshot(
       ini: initialsOf(names.get(expense.paidByUserId) ?? "Member"),
       title: expense.title,
       when: `${names.get(expense.paidByUserId) ?? "Member"} paid`,
+      amount: money(expense.amountMinor, currency),
       time: expense.createdAt ? dateLabel(timestampDay(expense.createdAt), today) : "Recently",
       createdAt: expense.createdAt,
       expenseId: expense.id,

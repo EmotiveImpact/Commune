@@ -398,7 +398,8 @@ export type AppState = {
   updateOperation: (id: string, item: NewOperation, expectedVersion?: number) => Promise<void>;
   /** Completes an open task, or reopens a done one. The server advances repeats and rotation. */
   /** Marking someone else's task done says who did it (needsDoneBy). */
-  toggleOperation: (id: string, doneBy?: DoneBy) => Promise<OperationChange>;
+  /** From another commune than the one in view (Home), name it and the date the task was seen on. */
+  toggleOperation: (id: string, doneBy?: DoneBy, from?: { communeId: string; date: string }) => Promise<OperationChange>;
   skipOperation: (id: string, reason?: string) => Promise<OperationChange>;
   /**
    * from: the task as another screen saw it, in a commune that may not be the
@@ -407,7 +408,7 @@ export type AppState = {
   handOverOperation: (id: string, toMemberId: string, reason?: string,
     from?: { communeId: string; date: string; assigneeId: string | null }) => Promise<OperationChange>;
   /** Restores the task to exactly how it was before that action. */
-  undoOperation: (occurrenceId: string) => Promise<OperationChange>;
+  undoOperation: (occurrenceId: string, communeId?: string) => Promise<OperationChange>;
   removeOperation: (id: string) => Promise<void>;
   createHub: (input: CreatedHub, opts?: { openExpense?: boolean }) => Promise<string>;
   updateCommune: (input: {
@@ -1901,9 +1902,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
       reason: reason?.trim() || null, requestId: newRequestId(),
     }, from?.communeId);
   }, [occurrenceCommand]);
-  const undoOperation = useCallback((occurrenceId: string) =>
-    occurrenceCommand(`/occurrences/${encodeURIComponent(occurrenceId)}/undo`, {}), [occurrenceCommand]);
-  const toggleOperation = useCallback((id: string, doneBy?: DoneBy) => {
+  const undoOperation = useCallback((occurrenceId: string, communeId?: string) =>
+    occurrenceCommand(`/occurrences/${encodeURIComponent(occurrenceId)}/undo`, {}, communeId), [occurrenceCommand]);
+  const toggleOperation = useCallback((id: string, doneBy?: DoneBy, from?: { communeId: string; date: string }) => {
+    // Home marks tasks done in any commune, checked against the date it showed.
+    if (from) {
+      return occurrenceCommand(`/operations/${encodeURIComponent(id)}/occurrences`, {
+        action: "completed", expectedDate: from.date, today: todayIso(), requestId: newRequestId(), ...(doneBy ? { doneBy } : {}),
+      }, from.communeId);
+    }
     const item = operationsRef.current.find((row) => row.id === id);
     if (item?.status !== "done") return taskAction(id, "completed", undefined, doneBy);
     // Undo the completion when it is still the latest state; a task finished

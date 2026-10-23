@@ -179,7 +179,8 @@ export function focusAfterClose(opener: HTMLElement | null): () => void {
   return () => {
     settle();
     if (typeof requestAnimationFrame === "function") requestAnimationFrame(() => { if (focusLost()) settle(); });
-    window.setTimeout(() => { if (focusLost()) settle(); }, 400);
+    // The page may be gone by then (a test that has finished, say).
+    window.setTimeout(() => { if (typeof document !== "undefined" && focusLost()) settle(); }, 400);
   };
 }
 

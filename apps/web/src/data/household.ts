@@ -109,6 +109,8 @@ export type Hub = {
     time: string;
     createdAt?: string;
     expenseId?: string;
+    /** What a bill came to, for rows about a bill. */
+    amount?: string;
     /** The kind of record the row is about. */
     type?: ActivityType;
   }>;
