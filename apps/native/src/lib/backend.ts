@@ -18,7 +18,12 @@ export interface Backend {
   reportPayment(shareId: string, input: { amountMinor: number; sentOn: string; reference: string | null; requestId: string }): Promise<void>;
   resolveReport(reportId: string, decision: "confirm" | "decline", requestId: string, note?: string): Promise<void>;
   withdrawReport(reportId: string): Promise<void>;
-  completeTask(operationId: string, input: { expectedDate: string; today: string; requestId: string }): Promise<void>;
+  /**
+   * Marks a task done and returns the completion so it can be undone. On
+   * someone else's turn, doneBy says who did it: you ("me") or them ("assignee").
+   */
+  completeTask(operationId: string, input: { expectedDate: string; today: string; requestId: string; doneBy?: "me" | "assignee" }): Promise<string | null>;
+  undoCompletion(occurrenceId: string): Promise<void>;
   addExpense(communeId: string, input: {
     title: string; amountMinor: number; category: string; dueOn: string | null; paidByUserId: string;
     shares: Array<{ userId: string; amountMinor: number }>;
@@ -75,7 +80,11 @@ export function serverBackend(base: string): Backend {
       await post(`/payment-reports/${reportId}/resolve`, { decision, note: note ?? null, requestId: decision === "confirm" ? requestId : null });
     },
     async withdrawReport(reportId) { await post(`/payment-reports/${reportId}/withdraw`); },
-    async completeTask(operationId, input) { await post(`/operations/${operationId}/occurrences`, { action: "completed", ...input }); },
+    async completeTask(operationId, input) {
+      const result = await post<{ id?: string }>(`/operations/${operationId}/occurrences`, { action: "completed", ...input });
+      return result?.id ?? null;
+    },
+    async undoCompletion(occurrenceId) { await post(`/occurrences/${occurrenceId}/undo`); },
     async addExpense(communeId, input) { await post(`/communes/${communeId}/expenses`, input); },
     async nudge(shareId, requestId) { await post("/reminders", { kind: "nudge", sourceId: shareId, requestId }); },
     async markRead(notificationId) { await post(`/notifications/${notificationId}/read`); },

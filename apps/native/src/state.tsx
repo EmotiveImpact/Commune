@@ -45,7 +45,9 @@ type App = {
   reportPayment(communeId: string, shareId: string, amountMinor: number, sentOn: string, reference: string | null): Promise<void>;
   resolveReport(communeId: string, reportId: string, decision: "confirm" | "decline", note?: string): Promise<void>;
   withdrawReport(communeId: string, reportId: string): Promise<void>;
-  completeTask(communeId: string, operationId: string, expectedDate: string): Promise<void>;
+  /** Returns the completion's id, for Undo. */
+  completeTask(communeId: string, operationId: string, expectedDate: string, doneBy?: "me" | "assignee"): Promise<string | null>;
+  undoCompletion(communeId: string, occurrenceId: string): Promise<void>;
   addExpense(communeId: string, input: Parameters<Backend["addExpense"]>[1]): Promise<void>;
   nudge(communeId: string, shareId: string): Promise<void>;
   /** Marks what you've now seen as read, so the bell stops showing new. */
@@ -148,8 +150,13 @@ export function AppProvider({ children, backend: given }: { children: ReactNode;
         await backend.withdrawReport(reportId);
         await reload(communeId);
       },
-      async completeTask(communeId, operationId, expectedDate) {
-        await backend.completeTask(operationId, { expectedDate, today: todayIso(), requestId: requestId() });
+      async completeTask(communeId, operationId, expectedDate, doneBy) {
+        const occurrenceId = await backend.completeTask(operationId, { expectedDate, today: todayIso(), requestId: requestId(), ...(doneBy ? { doneBy } : {}) });
+        await reload(communeId);
+        return occurrenceId;
+      },
+      async undoCompletion(communeId, occurrenceId) {
+        await backend.undoCompletion(occurrenceId);
         await reload(communeId);
       },
       async addExpense(communeId, input) {
