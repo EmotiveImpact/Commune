@@ -125,6 +125,9 @@ export function ResetPasswordPage() {
       </> : <p className="commune-auth-lede">{expired
         ? "This reset link has expired or was already used. Request a new one."
         : "This reset link is missing a token. Request a new one."}</p>}
-    <Link href={keepSearch("/login")} className="commune-auth-btn">Back to sign in</Link>
+    {/* Beside the reset form, a quiet link, so the form keeps one main button. */}
+    {token && !done
+      ? <p className="commune-auth-foot commune-auth-solo"><Link href={keepSearch("/login")} className="commune-auth-link">Back to sign in</Link></p>
+      : <Link href={keepSearch("/login")} className="commune-auth-btn">Back to sign in</Link>}
   </div></AuthLayout>;
 }
