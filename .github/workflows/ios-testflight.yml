@@ -61,7 +61,10 @@ jobs:
         run: pnpm install --ignore-workspace --frozen-lockfile
       - name: Typecheck and test
         run: pnpm run typecheck && pnpm test
+      # apps/native sits outside the pnpm workspace with its own lockfile.
+      # EAS_NO_VCS and EAS_PROJECT_ROOT make EAS pack only this folder (minus
+      # .easignore) and install its own dependencies, as the Mac builds did.
       - name: Build for iPhone on this runner
-        run: npx --yes eas-cli@latest build --local --platform ios --profile testflight --non-interactive --output "$RUNNER_TEMP/commune.ipa"
+        run: EAS_NO_VCS=1 EAS_PROJECT_ROOT="$PWD" npx --yes eas-cli@latest build --local --platform ios --profile testflight --non-interactive --output "$RUNNER_TEMP/commune.ipa"
       - name: Send to TestFlight
         run: npx --yes eas-cli@latest submit --platform ios --profile testflight --path "$RUNNER_TEMP/commune.ipa" --non-interactive
