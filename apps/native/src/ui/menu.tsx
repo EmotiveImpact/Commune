@@ -1,14 +1,13 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ComponentType, type ReactNode } from "react";
-import { Alert, Image, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from "react-native";
+import { Alert, Image, Platform, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import Animated, { interpolate, runOnJS, useAnimatedStyle, useSharedValue, withSpring, withTiming } from "react-native-reanimated";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, type Href } from "expo-router";
 import {
-  Bell, Check, CircleHelp, FileText, Files, LogOut, Plus, Receipt, Repeat2, Search, Settings, ShoppingBag, SquareCheck, UsersRound, X,
+  Bell, Check, CircleHelp, FileText, Files, LogOut, Plus, Repeat2, Settings, ShoppingBag, SquareCheck, UsersRound, X,
 } from "lucide-react-native";
 import { standing } from "../lib/derive";
-import { search, type SearchHit } from "../lib/search";
 import { useApp } from "../state";
 import { haptic, springs, useCalm } from "./motion";
 import { useToast } from "./toast";
@@ -92,16 +91,8 @@ function MenuPanel() {
   const toast = useToast();
   const { close } = useMenu();
   const { snapshots, current, setCurrent, needs, waiting, recorded, user, signOut } = useApp();
-  const [query, setQuery] = useState("");
-  const hits = useMemo(() => search(snapshots, query), [snapshots, query]);
-  const searching = query.trim().length > 0;
   const unread = snapshots.reduce((sum, snapshot) => sum + snapshot.notifications.filter((item) => !item.readAt).length, 0);
-  const go = (href: Href) => { close(); setQuery(""); router.push(href); };
-  const HIT_ICON: Record<SearchHit["kind"], Icon> = { expense: Receipt, chore: SquareCheck, note: FileText, person: UsersRound };
-  const openHit = (hit: SearchHit) => {
-    if (hit.communeId !== current?.commune.id) setCurrent(hit.communeId);
-    go(hit.kind === "expense" ? `/expense/${hit.id}` : hit.kind === "chore" ? "/tasks" : hit.kind === "note" ? "/notes" : "/members");
-  };
+  const go = (href: Href) => { close(); router.push(href); };
   function askSignOut() {
     const leave = () => { close(); void signOut().then(() => router.replace("/sign-in")); };
     if (Platform.OS === "web") { if (globalThis.confirm?.("Sign out of Commune on this phone?") ?? true) leave(); return; }
@@ -137,21 +128,7 @@ function MenuPanel() {
         <X size={22} color={c.onFrame} strokeWidth={1.8} />
       </Pressable>
     </View>
-    <View style={{ paddingHorizontal: 18, paddingBottom: 10 }}>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 10, height: 44, paddingHorizontal: 14, borderRadius: 22, backgroundColor: c.frameRaised }}>
-        <Search size={18} color={c.onFrame2} strokeWidth={1.8} />
-        <TextInput value={query} onChangeText={setQuery} placeholder="Search bills, chores, notes, people" placeholderTextColor={c.onFrame2}
-          accessibilityLabel="Search your communes" returnKeyType="search" autoCorrect={false} clearButtonMode="while-editing"
-          style={{ flex: 1, color: c.onFrame, fontSize: 16, paddingVertical: 0 }} />
-      </View>
-    </View>
     <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" contentContainerStyle={{ paddingHorizontal: 12, paddingBottom: insets.bottom + 16, gap: 2 }}>
-      {searching ? <>
-        {hits.length ? hits.map((hit) => row(`${hit.kind}-${hit.communeId}-${hit.id}`, HIT_ICON[hit.kind], hit.title, () => openHit(hit), hit.meta))
-          : <Text style={{ color: c.onFrame2, fontSize: 15, paddingHorizontal: 12, paddingTop: 8 }}>
-            {query.trim().length < 2 ? "Keep typing to search." : `Nothing matches “${query.trim()}”.`}
-          </Text>}
-      </> : <>
       {snapshots.map((snapshot) => {
         const on = snapshot.commune.id === current?.commune.id;
         const line = standing(snapshot, needs, waiting, recorded).line;
@@ -191,7 +168,6 @@ function MenuPanel() {
       {row("help", CircleHelp, "Help and feedback", () => go("/help"))}
       <View style={{ height: 18 }} />
       {row("signout", LogOut, "Sign out", askSignOut, user?.email)}
-      </>}
     </ScrollView>
   </View>;
 }

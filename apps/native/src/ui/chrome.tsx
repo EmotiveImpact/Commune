@@ -1,9 +1,10 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Image, Pressable, StyleSheet, Text, View, type ScrollViewProps } from "react-native";
 import Animated, { useAnimatedScrollHandler, useAnimatedStyle, useSharedValue } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { Bell, ChevronDown, Menu } from "lucide-react-native";
+import { Bell, ChevronDown, Menu, Search } from "lucide-react-native";
+import { SearchScreen } from "./search";
 import { useMenu } from "./menu";
 import { useApp } from "../state";
 import { activeMembers } from "../lib/derive";
@@ -11,9 +12,9 @@ import { T } from "./kit";
 import { KIND_NAME, KIND_PHOTO, radius, useTheme } from "./theme";
 
 /**
- * The slim dark top bar: the wordmark on every tab, then on the right the
- * notifications bell (a dot means something new) and the burger that opens
- * the menu. The title names the screen for screen readers.
+ * The slim dark top bar: the wordmark on every tab, then on the right search,
+ * the notifications bell (a dot means something new) and the burger that
+ * opens the menu. The title names the screen for screen readers.
  */
 export function TopBar({ title, children }: { title?: string; children?: ReactNode }) {
   const { c } = useTheme();
@@ -22,10 +23,15 @@ export function TopBar({ title, children }: { title?: string; children?: ReactNo
   const router = useRouter();
   const { snapshots } = useApp();
   const unread = snapshots.some((snapshot) => snapshot.notifications.some((item) => !item.readAt));
+  const [searching, setSearching] = useState(false);
   return <View style={{ backgroundColor: c.frame, paddingTop: insets.top }}>
     <View style={{ height: 52, flexDirection: "row", alignItems: "center", paddingLeft: 20, paddingRight: 8, gap: 4 }}>
       <Text accessibilityRole="header" accessibilityLabel={title ? `Commune, ${title}` : "Commune, Home"} style={{ color: c.onFrame, fontSize: 25, fontWeight: "700", letterSpacing: -1.4 }}>commune.</Text>
       <View style={{ flex: 1 }} />
+      <Pressable accessibilityRole="button" accessibilityLabel="Search" hitSlop={4}
+        onPress={() => setSearching(true)} style={({ pressed }) => ({ width: 46, height: 46, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 })}>
+        <Search size={22} color={c.onFrame} strokeWidth={1.7} />
+      </Pressable>
       <Pressable accessibilityRole="button" accessibilityLabel={unread ? "Notifications, something new" : "Notifications"} hitSlop={4}
         onPress={() => router.push("/notifications")} style={({ pressed }) => ({ width: 46, height: 46, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 })}>
         <Bell size={22} color={c.onFrame} strokeWidth={1.7} />
@@ -37,6 +43,7 @@ export function TopBar({ title, children }: { title?: string; children?: ReactNo
       </Pressable>
     </View>
     {children}
+    <SearchScreen visible={searching} onClose={() => setSearching(false)} />
   </View>;
 }
 
