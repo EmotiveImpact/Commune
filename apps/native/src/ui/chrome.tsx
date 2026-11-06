@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
-import { Image, Pressable, ScrollView, StyleSheet, Text, View, type ScrollViewProps } from "react-native";
+import { Image, Pressable, StyleSheet, Text, View, type ScrollViewProps } from "react-native";
+import Animated, { useAnimatedScrollHandler, useAnimatedStyle, useSharedValue } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Bell, ChevronDown, Menu } from "lucide-react-native";
@@ -42,10 +43,27 @@ export function TopBar({ title, children }: { title?: string; children?: ReactNo
 /** The scrolling body under a top bar. */
 export function Body({ children, ground, ...rest }: ScrollViewProps & { children: ReactNode; ground?: string }) {
   const { c } = useTheme();
-  return <ScrollView style={{ flex: 1, backgroundColor: c.canvas }} contentContainerStyle={{ paddingBottom: 32 }} {...rest}>
+  const pull = usePull();
+  return <Animated.ScrollView style={{ flex: 1, backgroundColor: c.canvas }} contentContainerStyle={{ paddingBottom: 32 }}
+    onScroll={pull.onScroll} scrollEventThrottle={16} {...rest}>
     <Ground color={ground ?? c.frame} />
-    {children}
-  </ScrollView>;
+    <Animated.View style={pull.damp}>{children}</Animated.View>
+  </Animated.ScrollView>;
+}
+
+/** Share of a pull past the top that the content follows; the rest is taken up by the stretching top. */
+export const PULL_SHOWN = 0.5;
+
+/**
+ * Tracks a scroll view's position and damps a pull past the top: the content
+ * moves down only PULL_SHOWN of the way, so the screen pulls down less while
+ * the dark top fills the gap. Wrap the content in an Animated.View with `damp`.
+ */
+export function usePull() {
+  const y = useSharedValue(0);
+  const onScroll = useAnimatedScrollHandler((event) => { y.value = event.contentOffset.y; });
+  const damp = useAnimatedStyle(() => ({ transform: [{ translateY: y.value < 0 ? y.value * (1 - PULL_SHOWN) : 0 }] }));
+  return { y, onScroll, damp };
 }
 
 /**

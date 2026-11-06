@@ -3,7 +3,7 @@ import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 import { ImageBackground, Linking, Pressable, RefreshControl, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { useRouter, type Href } from "expo-router";
 import * as Clipboard from "expo-clipboard";
-import Animated, { interpolate, runOnJS, useAnimatedScrollHandler, useAnimatedStyle, useSharedValue, withSpring, withTiming, Extrapolation, type SharedValue } from "react-native-reanimated";
+import Animated, { interpolate, runOnJS, useAnimatedStyle, useSharedValue, withSpring, withTiming, Extrapolation, type SharedValue } from "react-native-reanimated";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { CalendarDays, Check, ChevronDown, ChevronRight, Copy, Eye, EyeOff, Files, Phone, Plus, ReceiptText, Repeat2, ShoppingBag, UsersRound } from "lucide-react-native";
 import {
@@ -13,7 +13,7 @@ import {
 import { addDays, calParts, firstName, joinAnd, money } from "../../src/lib/format";
 import { usePrefs } from "../../src/prefs";
 import { failure, useApp } from "../../src/state";
-import { Body, Ground, Pad, TopBar, photoOf } from "../../src/ui/chrome";
+import { Body, Ground, Pad, PULL_SHOWN, TopBar, photoOf, usePull } from "../../src/ui/chrome";
 import { Avatar, Button, Cal, Empty, Faces, Panel, Row, SectionHead, State, T, tap } from "../../src/ui/kit";
 import { haptic, PressScale, springs, useCalm } from "../../src/ui/motion";
 import { NeedsList, TaskCheck, WaitingRow } from "../../src/ui/parts";
@@ -40,8 +40,7 @@ export default function Hub() {
   const { hubTabsAt } = usePrefs();
   const [tab, setTab] = useState<HubTab>("overview");
   const [heights, setHeights] = useState<Partial<Record<HubTab, number>>>({});
-  const scrollY = useSharedValue(0);
-  const onScroll = useAnimatedScrollHandler((event) => { scrollY.value = event.contentOffset.y; });
+  const pull = usePull();
   const { refresh } = useApp();
   const [pulling, setPulling] = useState(false);
   const index = HUB_TABS.findIndex((item) => item.id === tab);
@@ -107,13 +106,13 @@ export default function Hub() {
   };
   return <View style={{ flex: 1, backgroundColor: c.canvas }}>
     <TopBar title="Hub" />
-    <Animated.ScrollView onScroll={onScroll} scrollEventThrottle={16} style={{ flex: 1 }}
+    <Animated.ScrollView onScroll={pull.onScroll} scrollEventThrottle={16} style={{ flex: 1 }}
       refreshControl={<RefreshControl refreshing={pulling} tintColor="#ffffff" onRefresh={async () => { setPulling(true); await refresh(); setPulling(false); }} />}
       stickyHeaderIndices={hubTabsAt === "top" ? [1] : undefined}
       contentContainerStyle={{ paddingBottom: hubTabsAt === "bottom" ? 96 : 32 }}>
-      <Hero scrollY={scrollY} />
-      {hubTabsAt === "top" ? pills : null}
-      <GestureDetector gesture={swipe}>
+      <Animated.View style={pull.damp}><Hero scrollY={pull.y} /></Animated.View>
+      {hubTabsAt === "top" ? <Animated.View style={pull.damp}>{pills}</Animated.View> : null}
+      <Animated.View style={pull.damp}><GestureDetector gesture={swipe}>
         <View style={{ overflow: "hidden", height: heights[tab] }}>
           <Animated.View style={[{ flexDirection: "row", width: width * HUB_TABS.length, alignItems: "flex-start" }, track]}>
             {HUB_TABS.map((item) => <View key={item.id} accessibilityElementsHidden={item.id !== tab} importantForAccessibility={item.id === tab ? "auto" : "no-hide-descendants"}
@@ -123,7 +122,7 @@ export default function Hub() {
             </View>)}
           </Animated.View>
         </View>
-      </GestureDetector>
+      </GestureDetector></Animated.View>
     </Animated.ScrollView>
     {hubTabsAt === "bottom" ? pills : null}
   </View>;
@@ -142,8 +141,8 @@ function Hero({ scrollY }: { scrollY: SharedValue<number> }) {
   // Pulled past the top, the photo grows from its bottom edge to fill the
   // gap, like a music app's album header, instead of showing a blank band.
   const stretch = useAnimatedStyle(() => {
-    const pull = Math.max(0, -scrollY.value);
-    return { transform: [{ translateY: -pull / 2 }, { scale: interpolate(pull, [0, HERO_HEIGHT], [1, 2], Extrapolation.EXTEND) }] };
+    const gap = Math.max(0, -scrollY.value) * PULL_SHOWN;
+    return { transform: [{ translateY: -gap / 2 }, { scale: interpolate(gap, [0, HERO_HEIGHT], [1, 2], Extrapolation.EXTEND) }] };
   });
   const { current, communes, user, today } = useApp();
   if (!current) return null;
