@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 import { ImageBackground, Linking, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { useRouter, type Href } from "expo-router";
 import * as Clipboard from "expo-clipboard";
@@ -140,8 +141,19 @@ function Hero() {
   const sentence = weekSentence(week(current, user?.id ?? "", today));
   const glass = { flexDirection: "row" as const, alignItems: "center" as const, gap: 6, height: 36, paddingHorizontal: 13, borderRadius: 18, backgroundColor: "rgba(20,22,30,0.42)", borderWidth: StyleSheet.hairlineWidth, borderColor: "rgba(255,255,255,0.35)" };
   return <ImageBackground source={{ uri: photoOf(commune.kind) }} accessibilityIgnoresInvertColors style={{ height: 290, backgroundColor: "#262b3a" }}>
-    <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(14,16,24,0.18)" }]} />
-    <View style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: 190, backgroundColor: "rgba(14,16,24,0.42)" }} />
+    {/* A smooth scrim, clear at the top and dark under the name, drawn with
+        react-native-svg so it needs no extra native module. */}
+    <Svg style={StyleSheet.absoluteFill} width="100%" height="100%" preserveAspectRatio="none" pointerEvents="none">
+      <Defs>
+        <LinearGradient id="heroScrim" x1="0" y1="0" x2="0" y2="1">
+          <Stop offset="0" stopColor="#0e1018" stopOpacity={0.3} />
+          <Stop offset="0.3" stopColor="#0e1018" stopOpacity={0.05} />
+          <Stop offset="0.55" stopColor="#0e1018" stopOpacity={0.25} />
+          <Stop offset="1" stopColor="#0e1018" stopOpacity={0.82} />
+        </LinearGradient>
+      </Defs>
+      <Rect x="0" y="0" width="100%" height="100%" fill="url(#heroScrim)" />
+    </Svg>
     <View style={{ flexDirection: "row", padding: 14, gap: 8 }}>
       {communes.length > 1 ? <PressScale accessibilityRole="button" accessibilityLabel={`Commune: ${commune.name}. Change commune.`} onPress={() => router.push("/switch")} style={glass}>
         <ChevronDown size={15} color="#fff" /><Text style={{ color: "#fff", fontSize: 14, fontWeight: "500" }}>Change</Text>
