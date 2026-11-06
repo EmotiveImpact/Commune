@@ -11,6 +11,7 @@ import { photoOf } from "../../src/ui/chrome";
 import { Button, Panel, Row, T, Who, tap, FITTED } from "../../src/ui/kit";
 import { PayMark } from "../../src/ui/marks";
 import { Rise } from "../../src/ui/motion";
+import { Sheet } from "../../src/ui/sheet";
 import { useTheme } from "../../src/ui/theme";
 
 /**
@@ -18,7 +19,7 @@ import { useTheme } from "../../src/ui/theme";
  * the amount filled in where it can; Commune never moves money. Coming back
  * asks whether it went.
  */
-export default function Pay() {
+function PayBody({ close }: { close: () => void }) {
   const { c } = useTheme();
   const router = useRouter();
   const { shareId } = useLocalSearchParams<{ shareId: string }>();
@@ -26,7 +27,6 @@ export default function Pay() {
   const [copied, setCopied] = useState(false);
   const found = snapshots.flatMap((snapshot) => snapshot.expenses.flatMap((expense) => expense.shares
     .filter((share) => share.id === shareId).map((share) => ({ snapshot, expense, share }))))[0];
-  const close = () => (router.canGoBack() ? router.back() : router.replace("/"));
   const left = found ? outstanding(found.share) : 0;
   if (!found || !left) {
     return <View style={[FITTED, { padding: 24, gap: 14, backgroundColor: c.canvas }]}>
@@ -43,7 +43,7 @@ export default function Pay() {
 
   const others = links.map((link) => (link.provider === "bank" ? "your bank" : PAY_PROVIDER_NAME[link.provider]));
   const movers = others.length < 2 ? others.join("") : `${others.slice(0, -1).join(", ")} or ${others[others.length - 1]}`;
-  return <ScrollView style={[FITTED, { flexGrow: 0, backgroundColor: c.canvas }]} contentContainerStyle={{ padding: 20, paddingTop: 14, paddingBottom: 34, gap: 18 }}>
+  return <ScrollView style={[FITTED, { flexGrow: 0, backgroundColor: c.canvas }]} contentContainerStyle={{ padding: 20, paddingTop: 14, gap: 18 }}>
     <View style={{ flexDirection: "row", alignItems: "center", minHeight: 40 }}>
       <Pressable accessibilityRole="button" onPress={close} hitSlop={8} style={{ minWidth: 64 }}><T kind="body" style={{ fontSize: 16 }}>Cancel</T></Pressable>
       <T kind="strong" accessibilityRole="header" style={{ flex: 1, textAlign: "center" }} lines={1}>Pay {name} {amount}</T>
@@ -81,4 +81,11 @@ export default function Pay() {
     {links.length ? <Rise index={3}><T kind="note" muted style={{ textAlign: "center" }}>{movers.charAt(0).toUpperCase() + movers.slice(1)} moves the money. Commune just records it.</T></Rise> : null}
     <Rise index={4}><Button size="lg" block variant="secondary" label={`I’ve already paid, tell ${name}`} onPress={() => router.replace(`/record/${shareId}`)} /></Rise>
   </ScrollView>;
+}
+
+export default function Pay() {
+  const router = useRouter();
+  const [closing, setClosing] = useState(false);
+  const leave = () => (router.canGoBack() ? router.back() : router.replace("/"));
+  return <Sheet closing={closing} onClosed={leave}><PayBody close={() => setClosing(true)} /></Sheet>;
 }

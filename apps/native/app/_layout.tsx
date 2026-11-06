@@ -6,6 +6,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { PrefsProvider } from "../src/prefs";
 import { AppProvider, useApp } from "../src/state";
 import { ToastProvider } from "../src/ui/toast";
+import { SHEET_SCREEN } from "../src/ui/sheet";
 import { useTheme } from "../src/ui/theme";
 
 /**
@@ -61,17 +62,6 @@ function Screens() {
   // Long forms (add an expense, switch commune) open as iOS page sheets: the
   // screen behind shrinks back and the sheet swipes down to close.
   const sheet = { ...pushed, presentation: "modal" as const, headerShown: false };
-  // The pay sheets are as tall as what they hold. Fixed detents laid content
-  // out at the bottom of a blank sheet, so these fit their content instead,
-  // and their screens never use flex: 1 at the root.
-  const fitted = {
-    presentation: "formSheet" as const,
-    sheetAllowedDetents: "fitToContents" as const,
-    sheetGrabberVisible: true,
-    sheetCornerRadius: 22,
-    headerShown: false,
-    contentStyle: { backgroundColor: c.canvas },
-  };
   return <>
     <StatusBar style="light" />
     <PayReturn />
@@ -89,9 +79,9 @@ function Screens() {
       <Stack.Screen name="recurring" options={{ ...pushed, title: "Recurring" }} />
       <Stack.Screen name="funds" options={{ ...pushed, title: "Funds" }} />
       <Stack.Screen name="templates" options={{ ...pushed, title: "Templates" }} />
-      <Stack.Screen name="record/[shareId]" options={fitted} />
-      <Stack.Screen name="pay/[shareId]" options={fitted} />
-      <Stack.Screen name="paid/[shareId]" options={fitted} />
+      <Stack.Screen name="record/[shareId]" options={SHEET_SCREEN} />
+      <Stack.Screen name="pay/[shareId]" options={SHEET_SCREEN} />
+      <Stack.Screen name="paid/[shareId]" options={SHEET_SCREEN} />
       <Stack.Screen name="add-expense" options={sheet} />
       <Stack.Screen name="switch" options={sheet} />
     </Stack>

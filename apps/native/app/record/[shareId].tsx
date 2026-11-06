@@ -8,6 +8,7 @@ import { addDays, firstName, money, parseAmount, shortDate } from "../../src/lib
 import { bankDetailsText, payLinkHref, payLinkLabel, PAY_PROVIDER_NAME } from "../../src/lib/payLinks";
 import { failure, useApp } from "../../src/state";
 import { Button, ErrorText, Panel, Row, T, tap, FITTED } from "../../src/ui/kit";
+import { Sheet } from "../../src/ui/sheet";
 import { useToast } from "../../src/ui/toast";
 import { radius, useTheme } from "../../src/ui/theme";
 
@@ -16,9 +17,8 @@ import { radius, useTheme } from "../../src/ui/theme";
  * in your banking app with the amount filled in, then record it here. It is
  * a claim until they confirm it; Commune never moves money.
  */
-export default function Record() {
+function RecordBody({ close }: { close: () => void }) {
   const { c } = useTheme();
-  const router = useRouter();
   const toast = useToast();
   const { shareId } = useLocalSearchParams<{ shareId: string }>();
   const { snapshots, today, reportPayment } = useApp();
@@ -33,7 +33,6 @@ export default function Record() {
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
 
-  const close = () => (router.canGoBack() ? router.back() : router.replace("/"));
   if (!found || !left || pendingReport(found.share)) {
     return <View style={[FITTED, { padding: 24, gap: 14, backgroundColor: c.canvas }]}>
       <T kind="title">{found && pendingReport(found.share) ? "Already recorded" : "Nothing left to pay"}</T>
@@ -64,10 +63,10 @@ export default function Record() {
   }
 
   const input = { height: 46, borderRadius: radius.control, borderWidth: 1, borderColor: c.outline, backgroundColor: c.surface, paddingHorizontal: 12, fontSize: 16, color: c.ink };
-  // No KeyboardAvoidingView: inside an iOS form sheet it pads the top and pushes
-  // the content to the bottom. The scroll view moves fields above the keyboard.
+  // The Sheet lifts itself above the keyboard and shrinks to the space left;
+  // this scroll view then scrolls the fields.
   return <View style={[FITTED, { backgroundColor: c.canvas }]}>
-    <ScrollView automaticallyAdjustKeyboardInsets style={{ flexGrow: 0 }} contentContainerStyle={{ padding: 20, paddingTop: 22, paddingBottom: 34, gap: 18 }} keyboardShouldPersistTaps="handled">
+    <ScrollView style={{ flexGrow: 0 }} contentContainerStyle={{ padding: 20, paddingTop: 22, gap: 18 }} keyboardShouldPersistTaps="handled">
       <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 12 }}>
         <View style={{ flex: 1 }}>
           <T kind="title" accessibilityRole="header">Tell {name} you’ve paid</T>
@@ -136,4 +135,11 @@ export default function Record() {
 
 function Mark({ c, children }: { c: string; children: React.ReactNode }) {
   return <View style={{ width: 34, height: 34, borderRadius: 9, backgroundColor: c, alignItems: "center", justifyContent: "center" }}>{children}</View>;
+}
+
+export default function Record() {
+  const router = useRouter();
+  const [closing, setClosing] = useState(false);
+  const leave = () => (router.canGoBack() ? router.back() : router.replace("/"));
+  return <Sheet closing={closing} onClosed={leave}><RecordBody close={() => setClosing(true)} /></Sheet>;
 }
