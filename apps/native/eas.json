@@ -6,7 +6,9 @@
   "build": {
     "preview": {
       "distribution": "internal",
-      "ios": { "simulator": false }
+      "ios": {
+        "simulator": false
+      }
     },
     "testflight": {
       "distribution": "store",
@@ -15,7 +17,9 @@
   },
   "submit": {
     "testflight": {
-      "ios": {}
+      "ios": {
+        "ascAppId": "6829415902"
+      }
     }
   }
 }

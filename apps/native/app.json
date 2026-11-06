@@ -11,7 +11,9 @@
     "ios": {
       "bundleIdentifier": "io.ourcommune.app",
       "supportsTablet": false,
-      "config": { "usesNonExemptEncryption": false }
+      "config": {
+        "usesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "io.ourcommune.app",
@@ -22,7 +24,17 @@
       "output": "single",
       "name": "Commune"
     },
-    "plugins": ["expo-router"],
-    "experiments": { "typedRoutes": false }
+    "plugins": [
+      "expo-router"
+    ],
+    "experiments": {
+      "typedRoutes": false
+    },
+    "extra": {
+      "eas": {
+        "projectId": "b694a83d-aec0-47d4-a0ac-6a5934fce923"
+      }
+    },
+    "owner": "emotiveimpact"
   }
 }
