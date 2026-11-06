@@ -58,11 +58,20 @@ function Screens() {
     headerBackButtonDisplayMode: "minimal" as const,
     contentStyle: { backgroundColor: c.canvas },
   };
-  // Sheets are iOS page sheets: the screen behind shrinks back and the sheet
-  // swipes down to close. They replaced react-native-screens' form sheets,
-  // whose fixed detents laid content out at the bottom of a blank sheet,
-  // above all when one sheet replaced another (pay, then "tell them").
+  // Long forms (add an expense, switch commune) open as iOS page sheets: the
+  // screen behind shrinks back and the sheet swipes down to close.
   const sheet = { ...pushed, presentation: "modal" as const, headerShown: false };
+  // The pay sheets are as tall as what they hold. Fixed detents laid content
+  // out at the bottom of a blank sheet, so these fit their content instead,
+  // and their screens never use flex: 1 at the root.
+  const fitted = {
+    presentation: "formSheet" as const,
+    sheetAllowedDetents: "fitToContents" as const,
+    sheetGrabberVisible: true,
+    sheetCornerRadius: 22,
+    headerShown: false,
+    contentStyle: { backgroundColor: c.canvas },
+  };
   return <>
     <StatusBar style="light" />
     <PayReturn />
@@ -80,9 +89,9 @@ function Screens() {
       <Stack.Screen name="recurring" options={{ ...pushed, title: "Recurring" }} />
       <Stack.Screen name="funds" options={{ ...pushed, title: "Funds" }} />
       <Stack.Screen name="templates" options={{ ...pushed, title: "Templates" }} />
-      <Stack.Screen name="record/[shareId]" options={sheet} />
-      <Stack.Screen name="pay/[shareId]" options={sheet} />
-      <Stack.Screen name="paid/[shareId]" options={sheet} />
+      <Stack.Screen name="record/[shareId]" options={fitted} />
+      <Stack.Screen name="pay/[shareId]" options={fitted} />
+      <Stack.Screen name="paid/[shareId]" options={fitted} />
       <Stack.Screen name="add-expense" options={sheet} />
       <Stack.Screen name="switch" options={sheet} />
     </Stack>

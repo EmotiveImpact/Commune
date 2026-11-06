@@ -8,7 +8,7 @@ import { firstName, money } from "../../src/lib/format";
 import { bankDetailsText, payLinkHref, payLinkLabel, PAY_PROVIDER_NAME } from "../../src/lib/payLinks";
 import { useApp } from "../../src/state";
 import { photoOf } from "../../src/ui/chrome";
-import { Button, Panel, Row, T, Who, tap, useSheetFill } from "../../src/ui/kit";
+import { Button, Panel, Row, T, Who, tap, FITTED } from "../../src/ui/kit";
 import { PayMark } from "../../src/ui/marks";
 import { Rise } from "../../src/ui/motion";
 import { useTheme } from "../../src/ui/theme";
@@ -20,7 +20,6 @@ import { useTheme } from "../../src/ui/theme";
  */
 export default function Pay() {
   const { c } = useTheme();
-  const fill = useSheetFill();
   const router = useRouter();
   const { shareId } = useLocalSearchParams<{ shareId: string }>();
   const { snapshots, openPayLink } = useApp();
@@ -30,7 +29,7 @@ export default function Pay() {
   const close = () => (router.canGoBack() ? router.back() : router.replace("/"));
   const left = found ? outstanding(found.share) : 0;
   if (!found || !left) {
-    return <View style={[fill, { padding: 24, gap: 14, backgroundColor: c.canvas }]}>
+    return <View style={[FITTED, { padding: 24, gap: 14, backgroundColor: c.canvas }]}>
       <T kind="title">Nothing left to pay</T>
       <T kind="body" muted>This share is settled or no longer here.</T>
       <Button label="Close" variant="secondary" onPress={close} />
@@ -44,7 +43,7 @@ export default function Pay() {
 
   const others = links.map((link) => (link.provider === "bank" ? "your bank" : PAY_PROVIDER_NAME[link.provider]));
   const movers = others.length < 2 ? others.join("") : `${others.slice(0, -1).join(", ")} or ${others[others.length - 1]}`;
-  return <ScrollView style={{ backgroundColor: c.canvas }} contentContainerStyle={{ padding: 20, paddingTop: 14, gap: 18 }}>
+  return <ScrollView style={[FITTED, { flexGrow: 0, backgroundColor: c.canvas }]} contentContainerStyle={{ padding: 20, paddingTop: 14, paddingBottom: 34, gap: 18 }}>
     <View style={{ flexDirection: "row", alignItems: "center", minHeight: 40 }}>
       <Pressable accessibilityRole="button" onPress={close} hitSlop={8} style={{ minWidth: 64 }}><T kind="body" style={{ fontSize: 16 }}>Cancel</T></Pressable>
       <T kind="strong" accessibilityRole="header" style={{ flex: 1, textAlign: "center" }} lines={1}>Pay {name} {amount}</T>

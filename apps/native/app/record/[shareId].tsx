@@ -7,7 +7,7 @@ import { memberName, outstanding, payLinksOf, pendingReport } from "../../src/li
 import { addDays, firstName, money, parseAmount, shortDate } from "../../src/lib/format";
 import { bankDetailsText, payLinkHref, payLinkLabel, PAY_PROVIDER_NAME } from "../../src/lib/payLinks";
 import { failure, useApp } from "../../src/state";
-import { Button, ErrorText, Panel, Row, T, tap, useSheetFill } from "../../src/ui/kit";
+import { Button, ErrorText, Panel, Row, T, tap, FITTED } from "../../src/ui/kit";
 import { useToast } from "../../src/ui/toast";
 import { radius, useTheme } from "../../src/ui/theme";
 
@@ -18,7 +18,6 @@ import { radius, useTheme } from "../../src/ui/theme";
  */
 export default function Record() {
   const { c } = useTheme();
-  const fill = useSheetFill();
   const router = useRouter();
   const toast = useToast();
   const { shareId } = useLocalSearchParams<{ shareId: string }>();
@@ -36,7 +35,7 @@ export default function Record() {
 
   const close = () => (router.canGoBack() ? router.back() : router.replace("/"));
   if (!found || !left || pendingReport(found.share)) {
-    return <View style={[fill, { padding: 24, gap: 14, backgroundColor: c.canvas }]}>
+    return <View style={[FITTED, { padding: 24, gap: 14, backgroundColor: c.canvas }]}>
       <T kind="title">{found && pendingReport(found.share) ? "Already recorded" : "Nothing left to pay"}</T>
       <T kind="body" muted>{found && pendingReport(found.share) ? "You’ve told them you’ve paid this. They’ll confirm it." : "This share is settled or no longer here."}</T>
       <Button label="Close" variant="secondary" onPress={close} />
@@ -67,8 +66,8 @@ export default function Record() {
   const input = { height: 46, borderRadius: radius.control, borderWidth: 1, borderColor: c.outline, backgroundColor: c.surface, paddingHorizontal: 12, fontSize: 16, color: c.ink };
   // No KeyboardAvoidingView: inside an iOS form sheet it pads the top and pushes
   // the content to the bottom. The scroll view moves fields above the keyboard.
-  return <View style={[fill, { backgroundColor: c.canvas }]}>
-    <ScrollView automaticallyAdjustKeyboardInsets contentContainerStyle={{ padding: 20, paddingTop: 22, gap: 18 }} keyboardShouldPersistTaps="handled">
+  return <View style={[FITTED, { backgroundColor: c.canvas }]}>
+    <ScrollView automaticallyAdjustKeyboardInsets style={{ flexGrow: 0 }} contentContainerStyle={{ padding: 20, paddingTop: 22, paddingBottom: 34, gap: 18 }} keyboardShouldPersistTaps="handled">
       <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 12 }}>
         <View style={{ flex: 1 }}>
           <T kind="title" accessibilityRole="header">Tell {name} you’ve paid</T>

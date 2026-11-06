@@ -4,7 +4,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { memberName, outstanding, pendingReport } from "../../src/lib/derive";
 import { firstName, money } from "../../src/lib/format";
 import { failure, useApp } from "../../src/state";
-import { Button, ErrorText, T, tap } from "../../src/ui/kit";
+import { Button, ErrorText, FITTED, T, tap } from "../../src/ui/kit";
 import { useToast } from "../../src/ui/toast";
 import { useTheme } from "../../src/ui/theme";
 
@@ -26,7 +26,7 @@ export default function Paid() {
   const close = () => (router.canGoBack() ? router.back() : router.replace("/"));
   const left = found ? outstanding(found.share) : 0;
   if (!found || !left || pendingReport(found.share)) {
-    return <View style={{ width: "100%", padding: 24, gap: 14, backgroundColor: c.canvas }}>
+    return <View style={[FITTED, { padding: 24, gap: 14, backgroundColor: c.canvas }]}>
       <T kind="title">{found && pendingReport(found.share) ? "Already recorded" : "Nothing left to pay"}</T>
       <Button label="Close" variant="secondary" onPress={close} />
     </View>;
@@ -49,7 +49,7 @@ export default function Paid() {
     }
   }
 
-  return <View style={{ width: "100%", padding: 20, paddingTop: 22, gap: 16, backgroundColor: c.canvas }}>
+  return <View style={[FITTED, { padding: 20, paddingTop: 22, paddingBottom: 34, gap: 16, backgroundColor: c.canvas }]}>
     <View style={{ gap: 4 }}>
       <T kind="title" accessibilityRole="header">Did {amount} go to {name}?</T>
       <T kind="body" muted>{expense.title}{provider ? ` · paid with ${provider}, today` : ""}</T>

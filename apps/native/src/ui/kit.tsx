@@ -6,10 +6,16 @@ import type { Tone } from "../lib/derive";
 import { radius, useTheme, type Palette } from "./theme";
 import { PressScale } from "./motion";
 
-/** Root style for a sheet screen: it fills the page sheet it opens in. */
+/** Root style for a page sheet screen: it fills the page sheet it opens in. */
 export function useSheetFill(): ViewStyle {
   return { flex: 1 };
 }
+
+/**
+ * Root style for a fitted sheet (pay, record, did it go). The sheet takes the
+ * height of its content, so the root must not stretch with flex.
+ */
+export const FITTED: ViewStyle = { width: "100%" };
 
 export function tap(kind: "light" | "success" | "select" = "light") {
   // Haptics are a nicety; the web build and older phones simply skip them.
