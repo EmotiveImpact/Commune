@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
-import { ImageBackground, Linking, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { ImageBackground, Linking, Pressable, RefreshControl, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { useRouter, type Href } from "expo-router";
 import * as Clipboard from "expo-clipboard";
-import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withSpring, withTiming, type SharedValue } from "react-native-reanimated";
+import Animated, { interpolate, runOnJS, useAnimatedScrollHandler, useAnimatedStyle, useSharedValue, withSpring, withTiming, Extrapolation, type SharedValue } from "react-native-reanimated";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { CalendarDays, Check, ChevronDown, ChevronRight, Copy, Eye, EyeOff, Files, Phone, Plus, ReceiptText, Repeat2, ShoppingBag, UsersRound } from "lucide-react-native";
 import {
@@ -13,7 +13,7 @@ import {
 import { addDays, calParts, firstName, joinAnd, money } from "../../src/lib/format";
 import { usePrefs } from "../../src/prefs";
 import { failure, useApp } from "../../src/state";
-import { Body, Pad, TopBar, photoOf } from "../../src/ui/chrome";
+import { Body, Ground, Pad, TopBar, photoOf } from "../../src/ui/chrome";
 import { Avatar, Button, Cal, Empty, Faces, Panel, Row, SectionHead, State, T, tap } from "../../src/ui/kit";
 import { haptic, PressScale, springs, useCalm } from "../../src/ui/motion";
 import { NeedsList, TaskCheck, WaitingRow } from "../../src/ui/parts";
@@ -40,7 +40,10 @@ export default function Hub() {
   const { hubTabsAt } = usePrefs();
   const [tab, setTab] = useState<HubTab>("overview");
   const [heights, setHeights] = useState<Partial<Record<HubTab, number>>>({});
-  const scroller = useRef<ScrollView>(null);
+  const scrollY = useSharedValue(0);
+  const onScroll = useAnimatedScrollHandler((event) => { scrollY.value = event.contentOffset.y; });
+  const { refresh } = useApp();
+  const [pulling, setPulling] = useState(false);
   const index = HUB_TABS.findIndex((item) => item.id === tab);
   const at = useSharedValue(index);
   const pager = useSharedValue(-index * width);
@@ -104,9 +107,11 @@ export default function Hub() {
   };
   return <View style={{ flex: 1, backgroundColor: c.canvas }}>
     <TopBar title="Hub" />
-    <ScrollView ref={scroller} style={{ flex: 1 }} stickyHeaderIndices={hubTabsAt === "top" ? [1] : undefined}
+    <Animated.ScrollView onScroll={onScroll} scrollEventThrottle={16} style={{ flex: 1 }}
+      refreshControl={<RefreshControl refreshing={pulling} tintColor="#ffffff" onRefresh={async () => { setPulling(true); await refresh(); setPulling(false); }} />}
+      stickyHeaderIndices={hubTabsAt === "top" ? [1] : undefined}
       contentContainerStyle={{ paddingBottom: hubTabsAt === "bottom" ? 96 : 32 }}>
-      <Hero />
+      <Hero scrollY={scrollY} />
       {hubTabsAt === "top" ? pills : null}
       <GestureDetector gesture={swipe}>
         <View style={{ overflow: "hidden", height: heights[tab] }}>
@@ -119,7 +124,7 @@ export default function Hub() {
           </Animated.View>
         </View>
       </GestureDetector>
-    </ScrollView>
+    </Animated.ScrollView>
     {hubTabsAt === "bottom" ? pills : null}
   </View>;
 }
@@ -129,8 +134,17 @@ function moneySections(): ReactNode[] {
 }
 
 /** The photo, its place and people, and the week's pulse, with Change and Invite on glass. */
-function Hero() {
+const HERO_HEIGHT = 290;
+const HERO_GROUND = "#262b3a";
+
+function Hero({ scrollY }: { scrollY: SharedValue<number> }) {
   const router = useRouter();
+  // Pulled past the top, the photo grows from its bottom edge to fill the
+  // gap, like a music app's album header, instead of showing a blank band.
+  const stretch = useAnimatedStyle(() => {
+    const pull = Math.max(0, -scrollY.value);
+    return { transform: [{ translateY: -pull / 2 }, { scale: interpolate(pull, [0, HERO_HEIGHT], [1, 2], Extrapolation.EXTEND) }] };
+  });
   const { current, communes, user, today } = useApp();
   if (!current) return null;
   const { commune } = current;
@@ -138,7 +152,10 @@ function Hero() {
   const place = commune.address || commune.destination || "";
   const sentence = weekSentence(week(current, user?.id ?? "", today));
   const glass = { flexDirection: "row" as const, alignItems: "center" as const, gap: 6, height: 36, paddingHorizontal: 13, borderRadius: 18, backgroundColor: "rgba(20,22,30,0.42)", borderWidth: StyleSheet.hairlineWidth, borderColor: "rgba(255,255,255,0.35)" };
-  return <ImageBackground source={{ uri: photoOf(commune.kind) }} accessibilityIgnoresInvertColors style={{ height: 290, backgroundColor: "#262b3a" }}>
+  return <View style={{ height: HERO_HEIGHT, backgroundColor: HERO_GROUND }}>
+    <Ground color={HERO_GROUND} />
+    <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, stretch]}>
+    <ImageBackground source={{ uri: photoOf(commune.kind) }} accessibilityIgnoresInvertColors style={StyleSheet.absoluteFill} />
     {/* A smooth scrim, clear at the top and dark under the name, drawn with
         react-native-svg so it needs no extra native module. */}
     <Svg style={StyleSheet.absoluteFill} width="100%" height="100%" preserveAspectRatio="none" pointerEvents="none">
@@ -152,6 +169,7 @@ function Hero() {
       </Defs>
       <Rect x="0" y="0" width="100%" height="100%" fill="url(#heroScrim)" />
     </Svg>
+    </Animated.View>
     <View style={{ flexDirection: "row", padding: 14, gap: 8 }}>
       {communes.length > 1 ? <PressScale accessibilityRole="button" accessibilityLabel={`Commune: ${commune.name}. Change commune.`} onPress={() => router.push("/switch")} style={glass}>
         <ChevronDown size={15} color="#fff" /><Text style={{ color: "#fff", fontSize: 14, fontWeight: "500" }}>Change</Text>
@@ -173,7 +191,7 @@ function Hero() {
         <Text style={{ color: "#1a1e2b", fontSize: 13.5, fontWeight: "500" }}>{sentence}</Text>
       </View>
     </View>
-  </ImageBackground>;
+  </View>;
 }
 
 /** Edge of the pill at a fractional tab position, between two measured buttons. */

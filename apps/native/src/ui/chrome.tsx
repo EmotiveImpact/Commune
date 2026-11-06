@@ -40,9 +40,21 @@ export function TopBar({ title, children }: { title?: string; children?: ReactNo
 }
 
 /** The scrolling body under a top bar. */
-export function Body({ children, ...rest }: ScrollViewProps & { children: ReactNode }) {
+export function Body({ children, ground, ...rest }: ScrollViewProps & { children: ReactNode; ground?: string }) {
   const { c } = useTheme();
-  return <ScrollView style={{ flex: 1, backgroundColor: c.canvas }} contentContainerStyle={{ paddingBottom: 32 }} {...rest}>{children}</ScrollView>;
+  return <ScrollView style={{ flex: 1, backgroundColor: c.canvas }} contentContainerStyle={{ paddingBottom: 32 }} {...rest}>
+    <Ground color={ground ?? c.frame} />
+    {children}
+  </ScrollView>;
+}
+
+/**
+ * The dark top carried on above the content, so pulling down (to refresh, or
+ * just past the top) stretches the dark band under the top bar instead of
+ * showing an empty light gap. Put it first inside a scroll view.
+ */
+export function Ground({ color }: { color: string }) {
+  return <View pointerEvents="none" style={{ position: "absolute", left: 0, right: 0, top: -1200, height: 1200, backgroundColor: color }} />;
 }
 export function Pad({ children, gap = 16 }: { children: ReactNode; gap?: number }) {
   return <View style={{ padding: 16, gap }}>{children}</View>;
