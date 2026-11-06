@@ -6,8 +6,9 @@
 #
 # It runs only when asked: from the Actions tab (Run workflow, once this file
 # is on main), on a push whose commit message contains [testflight], or by
-# re-running an earlier run. Ordinary pushes skip it. The repository is
-# public, so its macOS runner minutes are free.
+# re-running an earlier run from the Actions tab. Ordinary pushes skip it.
+# The repository is public, so its macOS runner minutes are free. A build
+# takes about half an hour; TestFlight then needs a few minutes to process it.
 name: iPhone build to TestFlight
 
 on:
